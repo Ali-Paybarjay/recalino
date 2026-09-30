@@ -11,6 +11,7 @@
   - [docs/TRACEABILITY_MATRIX.md](docs/TRACEABILITY_MATRIX.md): مالک هر شناسه PRD.
   - [docs/PRODUCT_DECISIONS_LOG.md](docs/PRODUCT_DECISIONS_LOG.md): تصمیم‌های محصول پس از PRD (از D28)؛ بر متن PRD مقدم‌اند.
   - تصمیم‌های معماری در `docs/adr/`. ADR با وضعیت Proposed هنوز مبنای کد نیست.
+  - [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md): دستورها، ساختار مخزن، سبک کد، راهبرد آزمون و مرزهای Always / Ask first / Never.
 - در تعارض، اولویت با تصمیم تازه و نسخه‌دار مالک محصول است، سپس PRD، سپس FR و ADR. تعارض را گزارش کن؛ خودسرانه حلش نکن.
 
 ## قواعد کار (PRD بخش ۳۱.۳)
@@ -58,4 +59,4 @@
 
 ## دستورها
 
-هنوز تعریف نشده‌اند؛ در spec پروژه‌سطحی (بر پایه ADR-0001) اضافه می‌شوند.
+در [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md) بخش ۴ تعریف شده‌اند و پس از milestone راه‌اندازی مخزن قابل اجرا می‌شوند.
