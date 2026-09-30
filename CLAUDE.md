@@ -4,7 +4,7 @@
 
 ## وضعیت و اسناد مرجع
 
-- وضعیت فعلی: پایان مستندسازی پایه و آغاز milestone راه‌اندازی مخزن (M0). [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
+- وضعیت فعلی: milestone راه‌اندازی مخزن (M0) ساخته شده است؛ گزارش و محدودیت‌ها در [docs/plans/M0_REPO_SCAFFOLD.md](docs/plans/M0_REPO_SCAFFOLD.md). هنوز هیچ FR محصولی پیاده نشده است. [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
 - سند مرجع محصول: [PRD_Recalino_FA_v0.3.md](PRD_Recalino_FA_v0.3.md). تصمیم‌های D01 تا D27 قطعی‌اند.
 - در حال تدوین:
   - [docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md](docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md): نقشه ماژول‌ها، قالب FR و فرض‌ها؛ FRهای هر ماژول در `docs/fr/<MODULE>.md`.
