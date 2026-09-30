@@ -1,0 +1,22 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Dependency build scripts are denied unless listed here (pnpm 12 default).
+allowBuilds:
+  # Downloads the pinned Supabase CLI binary used by the db:* scripts.
+  supabase: true
+
+minimumReleaseAgeExclude:
+  - '@biomejs/biome@2.5.15'
+  - '@biomejs/cli-darwin-arm64@2.5.15'
+  - '@biomejs/cli-darwin-x64@2.5.15'
+  - '@biomejs/cli-linux-arm64-musl@2.5.15'
+  - '@biomejs/cli-linux-arm64@2.5.15'
+  - '@biomejs/cli-linux-x64-musl@2.5.15'
+  - '@biomejs/cli-linux-x64@2.5.15'
+  - '@biomejs/cli-win32-arm64@2.5.15'
+  - '@biomejs/cli-win32-x64@2.5.15'
+
+# Record exact versions in package.json (PROJECT_SPEC §3).
+saveExact: true
