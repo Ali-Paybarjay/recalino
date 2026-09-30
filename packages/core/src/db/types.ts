@@ -3,5 +3,4 @@
  * Please do not edit it manually.
  */
 
-// biome-ignore lint/suspicious/noEmptyInterface: no module tables exist yet (M0).
 export interface DB {}
