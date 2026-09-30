@@ -1,0 +1,25 @@
+# Dependencies & build output
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Logs & OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# Local agent settings
+.claude/settings.local.json
