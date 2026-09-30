@@ -53,28 +53,28 @@
 | PRD-ONB-04 | ۶. پروفایل، زبان و ورود اولیه | ACC | PERS | FR-ACC-003 | — |
 | PRD-ONB-05 | ۶. پروفایل، زبان و ورود اولیه | ACC | PROC, QUOTA | FR-ACC-004, FR-ACC-005 | — |
 | PRD-PLT-01 | ۸.۱. پلتفرم اولیه | PLT | REC | FR-PLT-010 | — |
-| PRD-PLT-02 | ۸.۱. پلتفرم اولیه | REC | SRC | — | — |
-| PRD-SRC-01 | ۸.۲. منابع قابل قبول | SRC | PROC | — | — |
-| PRD-SRC-02 | ۸.۲. منابع قابل قبول | SRC | PLT, PROC | — | — |
-| PRD-SRC-03 | ۸.۲. منابع قابل قبول | PROC | SRC, AIP | — | — |
-| PRD-SRC-04 | ۸.۲. منابع قابل قبول | PROC | LKM, NOTE, QUOTA | — | — |
-| PRD-SRC-05 | ۸.۲. منابع قابل قبول | SRC | PROC, NOTE, CARD | — | — |
+| PRD-PLT-02 | ۸.۱. پلتفرم اولیه | REC | SRC | FR-SRC-007 (بخشی) | — |
+| PRD-SRC-01 | ۸.۲. منابع قابل قبول | SRC | PROC | FR-SRC-002, FR-SRC-003, FR-SRC-005, FR-SRC-007 | — |
+| PRD-SRC-02 | ۸.۲. منابع قابل قبول | SRC | PLT, PROC | FR-SRC-006, FR-SRC-012 | — |
+| PRD-SRC-03 | ۸.۲. منابع قابل قبول | PROC | SRC, AIP | FR-SRC-010 (بخشی) | — |
+| PRD-SRC-04 | ۸.۲. منابع قابل قبول | PROC | LKM, NOTE, QUOTA | FR-SRC-008 (بخشی) | — |
+| PRD-SRC-05 | ۸.۲. منابع قابل قبول | SRC | PROC, NOTE, CARD | FR-SRC-009 | — |
 | PRD-REC-01 | ۹.۱. رفتار پایه | REC | — | — | — |
 | PRD-REC-02 | ۹.۱. رفتار پایه | REC | QUOTA | — | — |
 | PRD-REC-03 | ۹.۱. رفتار پایه | REC | — | — | — |
 | PRD-REC-04 | ۹.۲. ذخیره و بازیابی | REC | — | — | — |
 | PRD-REC-05 | ۹.۲. ذخیره و بازیابی | REC | PROC | — | — |
 | PRD-REC-06 | ۹.۲. ذخیره و بازیابی | REC | PROC | — | — |
-| PRD-REC-07 | ۹.۲. ذخیره و بازیابی | REC | SRC | — | — |
-| PRD-REC-08 | ۹.۲. ذخیره و بازیابی | REC | SRC | — | — |
+| PRD-REC-07 | ۹.۲. ذخیره و بازیابی | REC | SRC | FR-SRC-004, FR-SRC-005, FR-SRC-007 (بخشی) | — |
+| PRD-REC-08 | ۹.۲. ذخیره و بازیابی | REC | SRC | FR-SRC-004, FR-SRC-007 (بخشی) | — |
 | PRD-REC-09 | ۹.۲. ذخیره و بازیابی | REC | PRIV | — | — |
 | PRD-SEG-01 | ۱۰.۱. سه مفهوم مستقل | PROC | AIP | — | — |
 | PRD-SEG-02 | ۱۰.۱. سه مفهوم مستقل | PROC | LKM, NOTE, CARD | — | — |
 | PRD-SEG-03 | ۱۰.۱. سه مفهوم مستقل | PROC | QUOTA | — | — |
 | PRD-SEG-04 | ۱۰.۱. سه مفهوم مستقل | PROC | QUOTA | — | — |
 | PRD-ALIGN-01 | ۱۰.۲. زمان و تصاویر | REC | PROC | — | — |
-| PRD-ALIGN-02 | ۱۰.۲. زمان و تصاویر | PROC | SRC | — | — |
-| PRD-ALIGN-03 | ۱۰.۲. زمان و تصاویر | PROC | SRC, LKM | — | — |
+| PRD-ALIGN-02 | ۱۰.۲. زمان و تصاویر | PROC | SRC | FR-SRC-003, FR-SRC-008 (بخشی) | — |
+| PRD-ALIGN-03 | ۱۰.۲. زمان و تصاویر | PROC | SRC, LKM | FR-SRC-003, FR-SRC-008 (بخشی) | — |
 | PRD-SPK-01 | ۱۰.۳. گویندگان | PROC | NOTE | — | — |
 | PRD-SPK-02 | ۱۰.۳. گویندگان | PROC | — | — | — |
 | PRD-SPK-03 | ۱۰.۳. گویندگان | LKM | PROC, NOTE | — | — |
@@ -82,7 +82,7 @@
 | PRD-PROC-02 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | LKM | — | — |
 | PRD-PROC-03 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | QUOTA, PLT | FR-PLT-004 (بخشی) | — |
 | PRD-PROC-04 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | NOTE | — | — |
-| PRD-PROC-05 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | ORG, PRIV | FR-ORG-007 | — |
+| PRD-PROC-05 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | ORG, PRIV | FR-ORG-007, FR-SRC-013 (بخشی) | — |
 | PRD-LKM-01 | ۱۲.۱. خروجی ساخت‌یافته | LKM | PROC, NOTE | — | — |
 | PRD-LKM-02 | ۱۲.۱. خروجی ساخت‌یافته | LKM | AIP, PROC | — | — |
 | PRD-LKM-03 | ۱۲.۲. دو برچسب اصلی، اطلاعات منشأ دقیق‌تر | LKM | NOTE | — | — |
@@ -91,7 +91,7 @@
 | PRD-LKM-06 | ۱۲.۲. دو برچسب اصلی، اطلاعات منشأ دقیق‌تر | LKM | CARD | — | — |
 | PRD-LKM-07 | ۱۲.۲. دو برچسب اصلی، اطلاعات منشأ دقیق‌تر | LKM | PROC | — | — |
 | PRD-NOTE-01 | ۱۳. جزوه آموزشی داخل اپ | NOTE | — | — | — |
-| PRD-NOTE-02 | ۱۳. جزوه آموزشی داخل اپ | NOTE | SRC, PRIV | — | — |
+| PRD-NOTE-02 | ۱۳. جزوه آموزشی داخل اپ | NOTE | SRC, PRIV | FR-SRC-012 (بخشی) | — |
 | PRD-NOTE-03 | ۱۳. جزوه آموزشی داخل اپ | NOTE | — | — | — |
 | PRD-NOTE-04 | ۱۳. جزوه آموزشی داخل اپ | CARD | NOTE | — | — |
 | PRD-NOTE-05 | ۱۳. جزوه آموزشی داخل اپ | NOTE | PROC | — | — |
@@ -102,10 +102,10 @@
 | PRD-CARD-05 | ۱۴.۲. ورود به مرور | CARD | — | — | — |
 | PRD-CARD-06 | ۱۴.۲. ورود به مرور | CARD | PROC | — | — |
 | PRD-CARD-07 | ۱۴.۲. ورود به مرور | CARD | SRS | — | — |
-| PRD-MEDIA-01 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | SRC, CARD | — | — |
+| PRD-MEDIA-01 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | SRC, CARD | FR-SRC-011 (بخشی) | — |
 | PRD-MEDIA-02 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | AIP, QUOTA | — | — |
 | PRD-MEDIA-03 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | CARD | — | — |
-| PRD-MEDIA-04 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | SRC, ANKI | — | — |
+| PRD-MEDIA-04 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | SRC, ANKI | FR-SRC-007 (بخشی) | — |
 | PRD-MEDIA-05 | ۱۴.۳. صوت و تصویر در MVP | MEDIA | CARD, SRS | — | — |
 | PRD-EDIT-01 | ۱۵. کنترل کاربر و قواعد ویرایش کارت | CARD | SRS | — | — |
 | PRD-EDIT-02 | ۱۵. کنترل کاربر و قواعد ویرایش کارت | CARD | MEDIA, SRS | — | — |
@@ -137,36 +137,36 @@
 | PRD-COST-01 | ۱۹.۱. واحدهای مصرف | QUOTA | AIP | FR-QUOTA-001, FR-QUOTA-008, FR-QUOTA-011 | — |
 | PRD-COST-02 | ۱۹.۲. رفتار سهمیه | QUOTA | PROC | FR-QUOTA-004, FR-QUOTA-005, FR-QUOTA-006 | — |
 | PRD-COST-03 | ۱۹.۲. رفتار سهمیه | QUOTA | PROC | FR-QUOTA-006 | — |
-| PRD-COST-04 | ۱۹.۲. رفتار سهمیه | QUOTA | REC, SRC | FR-QUOTA-004, FR-QUOTA-007, FR-QUOTA-011 | — |
+| PRD-COST-04 | ۱۹.۲. رفتار سهمیه | QUOTA | REC, SRC | FR-QUOTA-004, FR-QUOTA-007, FR-QUOTA-011, FR-SRC-003, FR-SRC-007, FR-SRC-008 (بخشی) | — |
 | PRD-COST-05 | ۱۹.۲. رفتار سهمیه | QUOTA | NOTE, SRS, MEDIA | FR-QUOTA-010 | — |
 | PRD-COST-06 | ۱۹.۲. رفتار سهمیه | QUOTA | CARD, MEDIA, PROC | FR-QUOTA-003, FR-QUOTA-010 | — |
-| PRD-PRIV-01 | ۲۰.۱. ضبط و داده اشخاص | REC | SRC, ACC | — | — |
+| PRD-PRIV-01 | ۲۰.۱. ضبط و داده اشخاص | REC | SRC, ACC | FR-SRC-015 (بخشی) | — |
 | PRD-PRIV-02 | ۲۰.۱. ضبط و داده اشخاص | G11 (غیرکدی) | AIP | — | — |
 | PRD-PRIV-03 | ۲۰.۱. ضبط و داده اشخاص | HTML, ANKI | PROC, NOTE | — | — |
 | PRD-PRIV-04 | ۲۰.۱. ضبط و داده اشخاص | ACC | G11 | FR-ACC-001 | — |
 | PRD-PRIV-05 | ۲۰.۲. استفاده از داده در AI | AIP | G10 | — | — |
 | PRD-PRIV-06 | ۲۰.۲. استفاده از داده در AI | PLT | OPS | FR-PLT-007 | — |
 | PRD-DEL-01 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | — | — |
-| PRD-DEL-02 | ۲۰.۳. نگهداری و حذف | PRIV | ORG, SRC | — | — |
-| PRD-DEL-03 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | — | — |
+| PRD-DEL-02 | ۲۰.۳. نگهداری و حذف | PRIV | ORG, SRC | FR-SRC-013 (بخشی) | — |
+| PRD-DEL-03 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | FR-SRC-011, FR-SRC-013, FR-PLT-014 (بخشی) | — |
 | PRD-DEL-04 | ۲۰.۳. نگهداری و حذف | PRIV | OPS | — | — |
 | PRD-DEL-05 | ۲۰.۳. نگهداری و حذف | PRIV | HTML, ANKI, REC | — | — |
 | PRD-SEC-01 | ۲۰.۴. امنیت ورودی و مدل | PLT | همه ماژول‌ها | FR-PLT-001, FR-PLT-002, FR-PLT-008 | — |
-| PRD-SEC-02 | ۲۰.۴. امنیت ورودی و مدل | SRC | PLT | — | — |
-| PRD-SEC-03 | ۲۰.۴. امنیت ورودی و مدل | PROC | LKM, AIP | — | — |
+| PRD-SEC-02 | ۲۰.۴. امنیت ورودی و مدل | SRC | PLT | FR-SRC-002, FR-SRC-004, FR-SRC-005, FR-SRC-006 | — |
+| PRD-SEC-03 | ۲۰.۴. امنیت ورودی و مدل | PROC | LKM, AIP | FR-SRC-006 (بخشی) | — |
 | PRD-SEC-04 | ۲۰.۴. امنیت ورودی و مدل | PLT | OPS | FR-PLT-006, FR-PLT-007, FR-PLT-009 | — |
 | PRD-RIGHTS-01 | ۲۰.۵. حقوق منابع | G11 (غیرکدی) | PRIV | — | — |
-| PRD-RIGHTS-02 | ۲۰.۵. حقوق منابع | PRIV | SRC, HTML, ANKI | FR-ACC-001, FR-ACC-007 (بخشی) | — |
+| PRD-RIGHTS-02 | ۲۰.۵. حقوق منابع | PRIV | SRC, HTML, ANKI | FR-ACC-001, FR-ACC-007 (بخشی), FR-SRC-015 (بخشی) | — |
 | PRD-ARCH-01 | ۲۱.۲. تصمیم‌های معماری | ADR-0001 | PLT | — | — |
 | PRD-ARCH-02 | ۲۱.۲. تصمیم‌های معماری | ADR-0001 | PLT, PROC | FR-PLT-005 | — |
 | PRD-ARCH-03 | ۲۱.۲. تصمیم‌های معماری | AIP | G03 | — | — |
 | PRD-ARCH-04 | ۲۱.۲. تصمیم‌های معماری | LKM | — | — | — |
 | PRD-ARCH-05 | ۲۱.۲. تصمیم‌های معماری | ADR-0001 | — | — | — |
-| PRD-DATA-01 | ۲۲.۱. قواعد مهم مدل | SRC | — | — | — |
+| PRD-DATA-01 | ۲۲.۱. قواعد مهم مدل | SRC | — | FR-SRC-001 | — |
 | PRD-DATA-02 | ۲۲.۱. قواعد مهم مدل | LKM | CARD | — | — |
-| PRD-DATA-03 | ۲۲.۱. قواعد مهم مدل | LKM | SRC | — | — |
+| PRD-DATA-03 | ۲۲.۱. قواعد مهم مدل | LKM | SRC | FR-SRC-010 (بخشی) | — |
 | PRD-DATA-04 | ۲۲.۱. قواعد مهم مدل | SRS | PERS | — | — |
-| PRD-DATA-05 | ۲۲.۱. قواعد مهم مدل | SRC | PRIV, LKM | — | — |
+| PRD-DATA-05 | ۲۲.۱. قواعد مهم مدل | SRC | PRIV, LKM | FR-SRC-010, FR-SRC-011, FR-SRC-013, FR-PLT-014 | — |
 
 ## الزامات غیرعملکردی (`NFR-*`)
 
@@ -193,19 +193,19 @@
 | AC-02 | ضبط از دقیقه ۹۰ عبور می‌کند | REC | — | — | — |
 | AC-03 | ضبط ۱۸۰ دقیقه‌ای تمام می‌شود | REC, PROC | NOTE | — | — |
 | AC-04 | میکروفون واقعاً قطع می‌شود | REC | — | — | — |
-| AC-05 | اینترنت قطع و بعد برمی‌گردد | REC | SRC | — | — |
+| AC-05 | اینترنت قطع و بعد برمی‌گردد | REC | SRC | FR-SRC-004, FR-SRC-007 (بخشی) | — |
 | AC-06 | فقط ۶۰ دقیقه سهمیه برای فایل ۱۸۰ دقیقه‌ای موجود است | QUOTA | REC, PROC | FR-QUOTA-007 | — |
-| AC-07 | یک بخش صوت یا صفحه استخراج نمی‌شود | PROC | NOTE | — | — |
+| AC-07 | یک بخش صوت یا صفحه استخراج نمی‌شود | PROC | NOTE | FR-SRC-010 (بخشی) | — |
 | AC-08 | موضوع فقط در PDF وجود دارد | LKM | NOTE | — | — |
-| AC-09 | نقش گوینده یا محل عکس مبهم است | PROC | SRC | — | — |
+| AC-09 | نقش گوینده یا محل عکس مبهم است | PROC | SRC | FR-SRC-008 (بخشی) | — |
 | AC-10 | AI برای درس مثال تازه می‌سازد | LKM | NOTE | — | — |
 | AC-11 | کاربر جزوه و کارت را ویرایش و سپس بازتولید می‌کند | NOTE, CARD | PROC | — | — |
 | AC-12 | حالت Simple و Advanced استفاده می‌شود | SRS | — | — | — |
 | AC-13 | پاسخ مرور یا درخواست پردازش دوبار ارسال می‌شود | SRS, PROC, QUOTA | PLT | FR-PLT-004 (بخشی), FR-QUOTA-005, FR-QUOTA-006 | — |
 | AC-14 | HTML بدون اینترنت باز می‌شود | HTML | — | — | — |
 | AC-15 | APKG در کلاینت‌های هدف وارد می‌شود | ANKI | MEDIA | — | — |
-| AC-16 | متن PDF دستور دسترسی به حساب دیگر دارد | PROC | PLT | — | — |
-| AC-17 | کاربر جلسه را حین پردازش حذف می‌کند | PROC | PRIV, ORG | FR-ORG-007 | — |
+| AC-16 | متن PDF دستور دسترسی به حساب دیگر دارد | PROC | PLT | FR-SRC-006 (بخشی) | — |
+| AC-17 | کاربر جلسه را حین پردازش حذف می‌کند | PROC | PRIV, ORG | FR-ORG-007, FR-SRC-013 (بخشی) | — |
 | AC-18 | کاربر هنوز نمونه Speaking ندارد | PERS | — | — | — |
 | AC-19 | کارت صوتی چندبار مرور می‌شود | MEDIA | SRS | — | — |
 | AC-20 | کاربر وارد MVP می‌شود | همه ماژول‌ها | قاعده دامنه | — | — |
@@ -218,7 +218,7 @@
 | D02 | حوزه | ADR-0001 | ACC | — | — |
 | D03 | زبان‌ها (دامنه با D31 گسترش یافت) | ACC | LKM | FR-ACC-003 | — |
 | D04 | توضیحات دوزبانه (با D31 اصلاح شد) | LKM | NOTE | FR-ACC-005 (بخشی) | — |
-| D05 | ورود صدا | REC, SRC | — | — | — |
+| D05 | ورود صدا | REC, SRC | — | FR-SRC-007 (بخشی؛ ضبط در REC) | — |
 | D06 | گویندگان | PROC | LKM | — | — |
 | D07 | منشأ محتوا | LKM | NOTE, CARD | — | — |
 | D08 | جزوه | NOTE, HTML | — | — | — |
@@ -239,7 +239,7 @@
 | D23 | هدف یادگیری | ACC | — | FR-ACC-003 | — |
 | D24 | سطح | ACC, PERS | — | FR-ACC-003 (بخشی) | — |
 | D25 | ارزش محوری | NOTE, CARD, SRS | OPS (معیار ۲۵.۱) | — | — |
-| D26 | کتاب‌خانه | همه ماژول‌ها | خارج از دامنه؛ آمادگی در SRC و LKM | — | — |
+| D26 | کتاب‌خانه | همه ماژول‌ها | خارج از دامنه؛ آمادگی در SRC و LKM | FR-SRC-001 (بخشی) | — |
 | D27 | نام محصول | CLAUDE.md | — | — | — |
 
 ## دروازه‌های تصمیم/انتشار (`G*`)
@@ -251,7 +251,7 @@
 | G03 | ارائه‌دهنده AI | AIP | EVAL | — | — |
 | G04 | ماتریس ضبط | REC | PLT | FR-PLT-010 (بخشی) | — |
 | G05 | زبان‌های اول (رویکرد با D31 بسته شد؛ فهرست «تأییدشده» با آزمون) | ACC | EVAL | FR-ACC-003 (بخشی) | — |
-| G06 | قرارداد ورودی | SRC | — | — | — |
+| G06 | قرارداد ورودی | SRC | — | FR-SRC-002 (مقادیر باز) | — |
 | G07 | سیاست FSRS | SRS | — | FR-PLT-013 (بخشی) | — |
 | G08 | مقدار پلن‌ها | QUOTA | — | FR-QUOTA-001, FR-QUOTA-002 (مقادیر باز) | — |
 | G09 | سیاست لغو/مصرف | QUOTA | PROC | FR-QUOTA-006 (سیاست باز) | — |
@@ -266,5 +266,5 @@
 | شناسه | موضوع | مالک | مرتبط | الزامات متأثر PRD | FR | تست |
 |---|---|---|---|---|---|---|
 | D28 | هزینه زیرساخت MVP | ADR-0001 | QUOTA, OPS | PRD-ARCH-05, NFR-12 | — | — |
-| D29 | صوت کلاس روی دستگاه؛ نسخه سرور موقت | REC, PRIV | SRC, PROC, NOTE, MEDIA, AIP | PRD-REC-07, PRD-REC-08, PRD-REC-09, PRD-DEL-01, PRD-DEL-02, PRD-NOTE-02, PRD-NOTE-05, PRD-MEDIA-04, PRD-COST-04, PRD-PROC-03, AC-05 | — | — |
+| D29 | صوت کلاس روی دستگاه؛ نسخه سرور موقت | REC, PRIV | SRC, PROC, NOTE, MEDIA, AIP | PRD-REC-07, PRD-REC-08, PRD-REC-09, PRD-DEL-01, PRD-DEL-02, PRD-NOTE-02, PRD-NOTE-05, PRD-MEDIA-04, PRD-COST-04, PRD-PROC-03, AC-05 | FR-SRC-007, FR-SRC-011, FR-SRC-012 (بخشی) | — |
 | D31 | زبان اول: همه زبان‌ها با دو سطح کیفیت؛ زبان توضیح دوگزینه‌ای | ACC | EVAL, LKM, PROC, NOTE, CARD, PLT | D03, D04, PRD-ONB-01, PRD-ONB-02, PRD-ONB-03, PRD-CARD-01, G05، PRD بخش ۲۴.۱ | FR-ACC-003, FR-ACC-005, FR-PLT-011 | — |
