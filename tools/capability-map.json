@@ -1,0 +1,25 @@
+{
+  "$comment": "Direct dependencies of each module, copied from the approved capability map (docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md §3). Transitive dependencies are allowed; '*' means every other module. Keep this file in sync with the document.",
+  "modules": {
+    "plt": [],
+    "acc": ["plt"],
+    "quota": ["acc"],
+    "org": ["acc"],
+    "src": ["org", "quota"],
+    "aip": ["plt"],
+    "rec": ["src"],
+    "lkm": ["src"],
+    "proc": ["src", "quota", "aip", "lkm"],
+    "note": ["lkm", "proc"],
+    "html": ["note"],
+    "media": ["src", "aip", "quota"],
+    "card": ["lkm", "proc", "note", "media"],
+    "srs": ["card"],
+    "anki": ["card", "media"],
+    "pers": ["acc", "note", "card", "srs"],
+    "priv": ["*"],
+    "ops": ["plt", "quota", "proc"],
+    "eval": ["proc", "lkm", "card"]
+  },
+  "shared": ["db", "config"]
+}

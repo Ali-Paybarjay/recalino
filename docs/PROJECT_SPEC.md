@@ -28,8 +28,8 @@
 | لایه | انتخاب |
 |---|---|
 | Runtime | Node.js 24 LTS (`.nvmrc` و `engines`) |
-| مدیر بسته | pnpm 12، workspace؛ نسخه در فیلد `packageManager` |
-| زبان | TypeScript با `strict`. نسخه 7.x در صورت سازگاری Next.js و ابزارها در زمان راه‌اندازی، وگرنه آخرین نسخه سازگار |
+| مدیر بسته | pnpm 12، workspace؛ نسخه در فیلد `packageManager`. build script بسته‌ها فقط با فهرست `allowBuilds` در `pnpm-workspace.yaml` اجرا می‌شود |
+| زبان | TypeScript با `strict`؛ نسخه 6.0.3. TypeScript 7.0 هنوز API جاوااسکریپتی لازم Next.js را ندارد (M0، 2026-09-30) |
 | وب و API | Next.js 16.3 (App Router) و React 19.3 روی Vercel در `lhr1` |
 | داده | Kysely 0.29 و `pg` 8؛ migration با Supabase CLI 2.x (ADR-0002) |
 | احراز هویت | Supabase Auth با `@supabase/ssr`؛ فقط Google (Q-ACC-1) |
@@ -51,7 +51,7 @@ pnpm install
 # دیتابیس محلی (Docker باید روشن باشد)
 pnpm db:start              # supabase start: Postgres + Auth محلی
 pnpm db:reset              # همه migrationها + seed مصنوعی روی دیتابیس محلی
-pnpm db:new <name>         # supabase migration new <name>
+pnpm db:new <name>         # supabase migration new <name>؛ در shell غیرتعاملی: pnpm db:new <name> < /dev/null
 pnpm db:types              # تولید نوع‌های Kysely از دیتابیس محلی
 pnpm db:stop               # supabase stop
 
@@ -74,7 +74,7 @@ pnpm test                  # unit + integration
 # دروازه پیش از commit و در CI
 pnpm verify                # lint + typecheck + boundaries + test
 
-# اپراتور (FR-QUOTA-002)
+# اپراتور (FR-QUOTA-002) — همراه همان FR اضافه می‌شود، نه در M0
 pnpm ops <command>         # ابزار خط فرمان اپراتور؛ فقط با اعتبار سمت سرور
 ```
 
@@ -181,7 +181,7 @@ describe("FR-QUOTA-005 reserve", () => {
 5. **ورود در آزمون E2E:** در Supabase محلی کاربر آزمونی مستقیم با Admin API ساخته و وارد می‌شود. این مسیر فقط در پیکربندی محلی و CI فعال است و در پروژه ابری وجود ندارد (Q-SPEC-2).
 6. **پوشش خط‌ها** گزارش می‌شود ولی دروازه نیست. دروازه، پوشش معیارهای پذیرش است.
 
-**CI** (GitHub Actions، روی هر push و pull request):
+**CI** (GitHub Actions، روی هر push؛ pull request وضعیت همان commit را نشان می‌دهد و اجرای تکراری ندارد):
 
 1. نصب با Node 24 و pnpm
 2. `pnpm lint`، `pnpm typecheck`، `pnpm check:boundaries`
@@ -194,7 +194,7 @@ describe("FR-QUOTA-005 reserve", () => {
 
 | محیط | دیتابیس و فایل | AI | اسرار |
 |---|---|---|---|
-| محلی | Supabase در Docker؛ لایه ذخیره‌سازی در حافظه یا دیسک محلی (ADR-0001 قاعده ۹) | mock | `.env.local`، که در git نیست |
+| محلی | Supabase در Docker، فقط Postgres 17، Auth، Kong و REST؛ لایه ذخیره‌سازی در حافظه یا دیسک محلی (ADR-0001 قاعده ۹) | mock | `.env.local`، که در git نیست |
 | CI | Supabase موقت در runner | mock | GitHub Secrets، فقط در صورت نیاز |
 | پایلوت | پروژه Supabase `recalino`؛ Vercel Blob خصوصی در `lhr1` | تأمین‌کننده واقعی، پس از G03 و تأیید هزینه | متغیرهای محیطی Vercel |
 

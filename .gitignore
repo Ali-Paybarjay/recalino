@@ -23,3 +23,17 @@ Thumbs.db
 
 # Local agent settings
 .claude/settings.local.json
+
+# Next.js
+next-env.d.ts
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
+
+# Vercel
+.vercel/
+
+# Playwright
+blob-report/
+playwright/.cache/
