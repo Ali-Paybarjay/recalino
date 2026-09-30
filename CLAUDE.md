@@ -59,4 +59,11 @@
 
 ## دستورها
 
-در [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md) بخش ۴ تعریف شده‌اند و پس از milestone راه‌اندازی مخزن قابل اجرا می‌شوند.
+فهرست کامل در [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md) بخش ۴. پرکاربردها:
+
+- `pnpm install` — نصب (Node 24، pnpm 12)
+- `pnpm db:start` / `pnpm db:reset` / `pnpm db:stop` — Supabase محلی در Docker
+- `pnpm db:types` — تولید نوع‌های Kysely پس از هر migration
+- `pnpm verify` — lint، typecheck، مرز ماژول‌ها و همه آزمون‌ها؛ پیش از هر commit
+- `pnpm dev` — اپ روی `http://localhost:3000`
+- `pnpm test:e2e` — آزمون Playwright
