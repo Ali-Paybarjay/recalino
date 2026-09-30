@@ -4,7 +4,7 @@
 
 ## وضعیت و اسناد مرجع
 
-- وضعیت فعلی: مرحله مستندسازی. Stack در [ADR-0001](docs/adr/0001-stack-and-hosting.md) پذیرفته شده است (2026-09-30)؛ هنوز کد یا دستور build/test وجود ندارد.
+- وضعیت فعلی: پایان مستندسازی پایه و آغاز milestone راه‌اندازی مخزن (M0). [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
 - سند مرجع محصول: [PRD_Recalino_FA_v0.3.md](PRD_Recalino_FA_v0.3.md). تصمیم‌های D01 تا D27 قطعی‌اند.
 - در حال تدوین:
   - [docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md](docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md): نقشه ماژول‌ها، قالب FR و فرض‌ها؛ FRهای هر ماژول در `docs/fr/<MODULE>.md`.

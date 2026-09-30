@@ -1,8 +1,8 @@
 # Spec پروژه‌سطحی — ریکالینو (Recalino)
 
-> **وضعیت:** پیش‌نویس ۰٫۱ — در انتظار تأیید مالک محصول  
+> **وضعیت:** نسخه ۱٫۰ — تأییدشده توسط مالک محصول (2026-09-30)  
 > **تاریخ:** 2026-09-30  
-> **مبنا:** [ADR-0001 (Accepted)](adr/0001-stack-and-hosting.md) · [ADR-0002 (Proposed)](adr/0002-data-access-and-migrations.md) · [سند FR](MVP_FUNCTIONAL_REQUIREMENTS_FA.md) · [CLAUDE.md](../CLAUDE.md)
+> **مبنا:** [ADR-0001 (Accepted)](adr/0001-stack-and-hosting.md) · [ADR-0002 (Accepted)](adr/0002-data-access-and-migrations.md) · [سند FR](MVP_FUNCTIONAL_REQUIREMENTS_FA.md) · [CLAUDE.md](../CLAUDE.md)
 
 ## ۱. هدف
 
@@ -17,9 +17,9 @@
 | S1 | محیط توسعه محلی: Windows 11 با WSL2 و Docker Desktop؛ Supabase محلی با `supabase start` | ✅ تصمیم مالک محصول، 2026-09-30 |
 | S2 | مخزن خصوصی GitHub (`Ali-Paybarjay/recalino`) و CI با GitHub Actions | ✅ تصمیم مالک محصول، 2026-09-30؛ مخزن ساخته شد |
 | S3 | Node.js 24 LTS در محیط محلی، CI و Vercel | ✅ تصمیم مالک محصول، 2026-09-30 |
-| S4 | لایه داده و migration طبق ADR-0002 | در انتظار پذیرش ADR-0002 |
-| S5 | یک محیط ابری: پروژه Supabase `recalino` و پروژه Vercel، که محیط پایلوت است. توسعه و آزمون فقط محلی و در CI | پیشنهادی؛ Q-SPEC-1 |
-| S6 | هیچ فراخوانی واقعی AI در آزمون‌ها و CI؛ فقط mock قطعی | پیشنهادی؛ هم‌راستا با فرض A5 و D28 |
+| S4 | لایه داده و migration طبق ADR-0002 | ✅ ADR-0002 پذیرفته شد، 2026-09-30 |
+| S5 | یک محیط ابری: پروژه Supabase `recalino` و پروژه Vercel، که محیط پایلوت است. توسعه و آزمون فقط محلی و در CI | ✅ تأیید با spec، 2026-09-30 |
+| S6 | هیچ فراخوانی واقعی AI در آزمون‌ها و CI؛ فقط mock قطعی | ✅ تأیید با spec، 2026-09-30 |
 
 ## ۳. Tech Stack
 
@@ -244,9 +244,11 @@ describe("FR-QUOTA-005 reserve", () => {
 4. یک import خلاف جهت نقشه قابلیت‌ها باعث شکست `pnpm check:boundaries` می‌شود (با یک fixture آزموده می‌شود).
 5. تغییر migration بدون اجرای `pnpm db:types` باعث شکست CI می‌شود.
 
-## ۱۱. پرسش‌های باز
+## ۱۱. پرسش‌های پاسخ‌داده‌شده
 
-| # | پرسش | پیشنهاد |
+پیشنهادهای زیر همراه spec در 2026-09-30 تأیید شدند.
+
+| # | پرسش | پاسخ |
 |---|---|---|
 | Q-SPEC-1 | محیط staging ابری جدا از پایلوت؟ | **تا آماده‌سازی پایلوت نه.** توسعه و آزمون محلی و در CI است؛ Deployment پیش‌نمایش به دیتابیس پایلوت وصل نمی‌شود. پروژه دوم رایگان Supabase در صورت نیاز بعداً staging می‌شود. |
 | Q-SPEC-2 | ورود کاربر آزمونی در E2E | **فقط در Supabase محلی و CI** با Admin API؛ در پروژه ابری هیچ روش ورودی جز Google فعال نیست. |
