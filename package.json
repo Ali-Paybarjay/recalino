@@ -17,8 +17,12 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:new": "supabase migration new",
-    "check:boundaries": "depcruise packages tools --config .dependency-cruiser.cjs --output-type err",
-    "db:types": "node tools/db-types.mjs"
+    "check:boundaries": "depcruise apps packages tools --config .dependency-cruiser.cjs --output-type err",
+    "db:types": "node tools/db-types.mjs",
+    "dev": "pnpm --filter @recalino/web dev",
+    "build": "pnpm --filter @recalino/web build",
+    "test:e2e": "pnpm --filter @recalino/web test:e2e",
+    "verify": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

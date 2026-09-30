@@ -27,7 +27,8 @@ module.exports = {
   options: {
     doNotFollow: { path: "node_modules" },
     exclude: {
-      path: "(^|/)(node_modules|.next|coverage|test-results|playwright-report)/|^tools/boundaries/fixture/",
+      // Build output, test artefacts, the deliberate-violation fixture and Next.js's generated types.
+      path: "(^|/)(node_modules|\\.next|coverage|test-results|playwright-report)/|^tools/boundaries/fixture/|(^|/)next-env\\.d\\.ts$",
     },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
