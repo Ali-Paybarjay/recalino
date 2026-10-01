@@ -1,6 +1,6 @@
 # FR ماژول PLT — پلتفرم و حفاظت پایه
 
-> **وضعیت:** پیش‌نویس ۰٫۱ — در انتظار بازبینی مالک محصول  
+> **وضعیت:** نسخه ۱٫۰ — تأییدشده توسط مالک محصول (2026-10-01)  
 > **تاریخ:** 2026-09-30 · **مرحله تحویل:** ۱ · **وابسته به:** —  
 > **مبنا:** [نقشه قابلیت‌ها](../MVP_FUNCTIONAL_REQUIREMENTS_FA.md#capability-map) · [قالب FR](../MVP_FUNCTIONAL_REQUIREMENTS_FA.md) · [ماتریس ردیابی](../TRACEABILITY_MATRIX.md) · [ADR-0001 (Accepted)](../adr/0001-stack-and-hosting.md)
 

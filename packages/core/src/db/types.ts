@@ -3,4 +3,69 @@
  * Please do not edit it manually.
  */
 
-export interface DB {}
+import type { ColumnType } from "kysely";
+
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
+
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
+export type Json = JsonValue;
+
+export type JsonArray = JsonValue[];
+
+export type JsonObject = {
+  [x: string]: JsonValue | undefined;
+};
+
+export type JsonPrimitive = boolean | number | string | null;
+
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
+
+export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+export interface PltAuditEvent {
+  action: string;
+  actor_id: string;
+  actor_kind: string;
+  id: Generated<Int8>;
+  occurred_at: Generated<Timestamp>;
+  reason: string | null;
+  request_id: string | null;
+  subject_id: string;
+  subject_type: string;
+}
+
+export interface PltIdempotencyKey {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  key: string;
+  request_hash: string;
+  response_body: Json | null;
+  response_status: number | null;
+  route: string;
+  user_id: string;
+}
+
+export interface PltRateLimitBucket {
+  bucket: string;
+  hits: Generated<number>;
+  window_start: Timestamp;
+}
+
+export interface PltSecurityEvent {
+  id: Generated<Int8>;
+  kind: string;
+  occurred_at: Generated<Timestamp>;
+  request_id: string | null;
+  route: string | null;
+  user_id: string | null;
+}
+
+export interface DB {
+  "plt.audit_event": PltAuditEvent;
+  "plt.idempotency_key": PltIdempotencyKey;
+  "plt.rate_limit_bucket": PltRateLimitBucket;
+  "plt.security_event": PltSecurityEvent;
+}

@@ -64,6 +64,7 @@ pnpm lint                  # biome check .
 pnpm format                # biome check --write .
 pnpm typecheck             # tsc --noEmit در همه بسته‌ها
 pnpm check:boundaries      # dependency-cruiser: جهت وابستگی ماژول‌ها
+pnpm check:client-bundle   # پس از build: نبود اسرار در خروجی قابل دریافت مرورگر (FR-PLT-009)
 
 # آزمون
 pnpm test:unit             # vitest run --project unit      (بدون دیتابیس)
