@@ -4,7 +4,7 @@
 
 ## وضعیت و اسناد مرجع
 
-- وضعیت فعلی: milestone راه‌اندازی مخزن (M0) ساخته شده است؛ گزارش و محدودیت‌ها در [docs/plans/M0_REPO_SCAFFOLD.md](docs/plans/M0_REPO_SCAFFOLD.md). هنوز هیچ FR محصولی پیاده نشده است. [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
+- وضعیت فعلی: M0 (راه‌اندازی مخزن) و M1 (هسته سمت سرور PLT) ساخته شده‌اند؛ گزارش‌ها در [docs/plans/](docs/plans/). FRهای PLT، ACC، QUOTA، ORG و SRC تأیید شده‌اند (2026-10-01). [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
 - سند مرجع محصول: [PRD_Recalino_FA_v0.3.md](PRD_Recalino_FA_v0.3.md). تصمیم‌های D01 تا D27 قطعی‌اند.
 - در حال تدوین:
   - [docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md](docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md): نقشه ماژول‌ها، قالب FR و فرض‌ها؛ FRهای هر ماژول در `docs/fr/<MODULE>.md`.
@@ -12,6 +12,7 @@
   - [docs/PRODUCT_DECISIONS_LOG.md](docs/PRODUCT_DECISIONS_LOG.md): تصمیم‌های محصول پس از PRD (از D28)؛ بر متن PRD مقدم‌اند.
   - تصمیم‌های معماری در `docs/adr/`. ADR با وضعیت Proposed هنوز مبنای کد نیست.
   - [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md): دستورها، ساختار مخزن، سبک کد، راهبرد آزمون و مرزهای Always / Ask first / Never.
+  - [docs/legal/](docs/legal/README.md): پیش‌نویس ۰٫۱ متن‌های حقوقی، فقط برای محیط توسعه؛ وعده‌ای فراتر از تصمیم‌های مصوب در آن‌ها اضافه نکن.
 - در تعارض، اولویت با تصمیم تازه و نسخه‌دار مالک محصول است، سپس PRD، سپس FR و ADR. تعارض را گزارش کن؛ خودسرانه حلش نکن.
 
 ## قواعد کار (PRD بخش ۳۱.۳)
