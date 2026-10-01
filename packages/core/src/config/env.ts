@@ -13,10 +13,27 @@ export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
 export function readDatabaseEnv(
   env: Record<string, string | undefined> = process.env,
 ): DatabaseEnv {
-  const result = databaseEnvSchema.safeParse(env);
+  return parseEnv(databaseEnvSchema, env, "database");
+}
+
+const rateLimitEnvSchema = z.object({
+  // Keys the HMAC that turns client IPs into rate-limit buckets; the raw IP is never stored.
+  RATE_LIMIT_IP_KEY: z.string().min(32),
+});
+
+export function readRateLimitIpKey(env: Record<string, string | undefined> = process.env): string {
+  return parseEnv(rateLimitEnvSchema, env, "rate limit").RATE_LIMIT_IP_KEY;
+}
+
+function parseEnv<T>(
+  schema: z.ZodType<T>,
+  env: Record<string, string | undefined>,
+  label: string,
+): T {
+  const result = schema.safeParse(env);
   if (!result.success) {
     const names = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];
-    throw new Error(`Invalid database configuration: ${names.join(", ")}`);
+    throw new Error(`Invalid ${label} configuration: ${names.join(", ")}`);
   }
   return result.data;
 }
