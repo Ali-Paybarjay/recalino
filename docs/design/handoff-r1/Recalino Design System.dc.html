@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:56px;width:1640px;display:flex;flex-direction:column;gap:72px;font-family:var(--font-body)">
+
+<header style="display:flex;flex-direction:column;gap:14px;max-width:880px">
+  <div style="display:flex;align-items:baseline;gap:10px">
+    <span style="font-size:40px;font-weight:700;letter-spacing:-0.03em">recalino</span>
+    <span style="width:10px;height:10px;border-radius:3px;background:var(--color-accent);transform:translateY(-3px)"></span>
+    <span class="tag tag-neutral" style="margin-left:12px">Placeholder wordmark</span>
+  </div>
+  <h1 style="font-size:30px;margin:0">Design system v0.2 · Mint &amp; lime</h1>
+  <p style="margin:0;font-size:16px;color:var(--rc-text-muted);text-wrap:pretty">Built on Nocturne's structure (compact spacing, tonal ramps, themed focus) with the youthful "Mint &amp; lime" colour direction: filled deep-green primary buttons, 14px button / 20px card radii, one lime hero surface per screen. Recalino adds: light-first theme + dark, system fonts only, provenance and status roles, 44px touch targets. Tokens live in <a href="recalino/tokens.css">recalino/tokens.css</a> as CSS custom properties. Icons: Phosphor (MIT) — bundle as local SVG in the app. No styling library assumed. Handoff: <a href="HANDOFF.md">HANDOFF.md</a>.</p>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">1 · Colour</h2>
+  <p style="margin:0;max-width:760px;color:var(--rc-text-muted)">Both themes use the same token names. The app follows the OS setting. Colour is never the only signal — every status and provenance has a text label and an icon.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+    <div data-theme="{{ t.id }}" style="border-radius:14px;padding:28px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:18px;font-weight:500"><i class="ph ph-{{ t.icon }}"></i>{{ t.name }} theme</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 18px">
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--color-bg);box-shadow:inset 0 0 0 1px var(--color-divider)"></div><div><div style="font-size:13px">Background</div><code style="font-size:12px;color:var(--rc-text-muted)">--color-bg</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--color-surface);box-shadow:inset 0 0 0 1px var(--color-divider)"></div><div><div style="font-size:13px">Surface</div><code style="font-size:12px;color:var(--rc-text-muted)">--color-surface</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--rc-surface-2);box-shadow:inset 0 0 0 1px var(--color-divider)"></div><div><div style="font-size:13px">Surface raised</div><code style="font-size:12px;color:var(--rc-text-muted)">--rc-surface-2</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--color-text)"></div><div><div style="font-size:13px">Text</div><code style="font-size:12px;color:var(--rc-text-muted)">--color-text</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--rc-text-muted)"></div><div><div style="font-size:13px">Text muted · ≥6.9:1</div><code style="font-size:12px;color:var(--rc-text-muted)">--rc-text-muted</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--rc-border-strong)"></div><div><div style="font-size:13px">Border strong</div><code style="font-size:12px;color:var(--rc-text-muted)">--rc-border-strong · --color-divider</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--color-accent)"></div><div><div style="font-size:13px">Primary / focus</div><code style="font-size:12px;color:var(--rc-text-muted)">--color-accent · --rc-focus</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--rc-primary-tint);box-shadow:inset 0 0 0 1px var(--rc-primary-tint-2)"></div><div><div style="font-size:13px">Primary tint</div><code style="font-size:12px;color:var(--rc-text-muted)">--rc-primary-tint(-2)</code></div></div>
+        <div style="display:flex;gap:10px;align-items:center"><div style="width:40px;height:40px;flex:none;border-radius:8px;background:var(--rc-rec)"></div><div><div style="font-size:13px">Recording dot</div><code style="font-size:12px;color:var(--rc-text-muted)">--rc-rec</code></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--rc-text-muted)">Status · text on tint (all ≥4.5:1)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-success-tint);color:var(--rc-success);border:1px solid var(--rc-success-border)"><i class="ph ph-check-circle"></i>success</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-warning"></i>warning</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-danger-tint);color:var(--rc-danger);border:1px solid var(--rc-danger-border)"><i class="ph ph-warning-circle"></i>danger</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border)"><i class="ph ph-info"></i>info</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-cards"></i>due (primary, never red)</span>
+        </div>
+        <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--rc-text-muted);margin-top:6px">Provenance</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-prov-class-tint);color:var(--rc-prov-class);border:1px solid var(--rc-prov-class-border)"><i class="ph ph-chalkboard-simple"></i>From class</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-prov-ai-tint);color:var(--rc-prov-ai);border:1px solid var(--rc-prov-ai-border)"><i class="ph ph-lightbulb"></i>AI explanation</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-size:13px;font-weight:500;background:var(--rc-prov-edit-tint);color:var(--rc-prov-edit);border:1px solid var(--rc-prov-edit-border)"><i class="ph ph-pencil-simple-line"></i>Edited by you</span>
+        </div>
+      </div>
+    </div>
+    </sc-for>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">2 · Typography</h2>
+  <p style="margin:0;max-width:760px;color:var(--rc-text-muted)">System font stack only — nothing loaded. Headings use weight 700 (option 1c); body stays 400/500. Every content block sets <code>dir="auto"</code> (or the stored block direction) so each block picks its own direction inside the LTR UI.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:28px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px">
+      <code style="font-size:12px;color:var(--rc-text-muted);line-height:1.5">--font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Noto Sans Arabic", "Geeza Pro", Tahoma, "PingFang SC", "Hiragino Sans", "Microsoft YaHei", "Yu Gothic UI", "Noto Sans CJK SC", sans-serif</code>
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:10px 16px;align-items:baseline">
+        <code style="font-size:12px;color:var(--rc-text-muted)">3xl · 40/1.1</code><div style="font-size:40px;font-weight:500;line-height:1.1;letter-spacing:-0.02em">Today</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">2xl · 30/1.15</code><div style="font-size:30px;font-weight:500;line-height:1.15">Present perfect vs past simple</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">xl · 24/1.2</code><div style="font-size:24px;font-weight:500">Vocabulary</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">lg · 20/1.3</code><div style="font-size:20px;font-weight:500">already</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">read · 17/1.65</code><div style="font-size:17px;line-height:1.65">We use <em>already</em> when something happened earlier than expected.</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">md · 16/1.5</code><div style="font-size:16px">Body UI text and inputs.</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">sm · 14/1.45</code><div style="font-size:14px;color:var(--rc-text-muted)">Secondary text, metadata.</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">xs · 12/1.4</code><div style="font-size:12px;font-weight:500">Chip and label text (minimum)</div>
+        <code style="font-size:12px;color:var(--rc-text-muted)">timer · 64 mono</code><div class="rc-num" style="font-size:64px;font-weight:400;font-family:var(--font-mono);letter-spacing:-0.02em;line-height:1">1:12:08</div>
+      </div>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:28px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:16px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--rc-text-muted)">Scripts at reading size (17/1.65)</div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">English · LTR</span><p dir="ltr" style="margin:0;font-size:17px;line-height:1.65">We use <em>already</em> when something happened earlier than expected.</p></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Persian · RTL block, right-aligned</span><p dir="rtl" lang="fa" style="margin:0;font-size:17px;line-height:1.8;text-align:right">already یعنی «قبلاً» یا «تا حالا»؛ وقتی کاری زودتر از انتظار انجام شده است.</p></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Arabic · RTL</span><p dir="rtl" lang="ar" style="margin:0;font-size:17px;line-height:1.8;text-align:right">already تعني "بالفعل" أو "مسبقًا"، وتُستخدم عندما يحدث شيء أبكر من المتوقع.</p></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Russian · Cyrillic</span><p lang="ru" style="margin:0;font-size:17px;line-height:1.65">already — «уже»: действие произошло раньше, чем ожидалось.</p></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Japanese · CJK</span><p lang="ja" style="margin:0;font-size:17px;line-height:1.75">already は「もう」「すでに」という意味です。予想より早く起きたことを表します。</p></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Chinese (Simplified) · CJK</span><p lang="zh-Hans" style="margin:0;font-size:17px;line-height:1.75">already 的意思是“已经”，表示事情比预期更早发生。</p></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Mixed bidi · LTR paragraph, RTL run isolated with &lt;bdi&gt;</span><p dir="ltr" style="margin:0;font-size:17px;line-height:1.65">The word "already" <bdi lang="fa">یعنی قبلاً</bdi>.</p></div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Rules: RTL/CJK line-height +0.1–0.15. Never letter-space non-Latin. Never uppercase non-Latin. Wrap inline foreign runs in &lt;bdi&gt; so punctuation doesn't jump.</p>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">3 · Spacing, radius, elevation, motion</h2>
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px">
+      <div style="font-weight:500">Spacing (0.7× scale)</div>
+      <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;font-size:12px">
+        <code>--space-2 · 5.6</code><div style="height:10px;width:5.6px;background:var(--color-accent);border-radius:2px"></div>
+        <code>--space-3 · 8.4</code><div style="height:10px;width:8.4px;background:var(--color-accent);border-radius:2px"></div>
+        <code>--space-4 · 11.2</code><div style="height:10px;width:11.2px;background:var(--color-accent);border-radius:2px"></div>
+        <code>--space-6 · 16.8</code><div style="height:10px;width:16.8px;background:var(--color-accent);border-radius:2px"></div>
+        <code>--space-8 · 22.4</code><div style="height:10px;width:22.4px;background:var(--color-accent);border-radius:2px"></div>
+        <code>--space-10 · 28</code><div style="height:10px;width:28px;background:var(--color-accent);border-radius:2px"></div>
+        <code>--space-16 · 44.8</code><div style="height:10px;width:44.8px;background:var(--color-accent);border-radius:2px"></div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Dense chrome; reading surfaces use --space-8+ between blocks.</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Radius · targets</div>
+      <div style="display:flex;gap:12px;align-items:end">
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center;font-size:12px"><div style="width:44px;height:44px;border:1px solid var(--rc-border-strong);border-radius:4px"></div>sm 4</div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center;font-size:12px"><div style="width:44px;height:44px;border:1px solid var(--rc-border-strong);border-radius:8px"></div>md 8</div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center;font-size:12px"><div style="width:44px;height:44px;border:1px solid var(--rc-border-strong);border-radius:14px"></div>lg 14</div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center;font-size:12px"><div style="width:72px;height:44px;border:1px solid var(--rc-border-strong);border-radius:999px"></div>pill</div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">--rc-target 44px (all controls). --rc-target-lg 72px (recording controls).</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Elevation</div>
+      <div style="display:flex;gap:14px">
+        <div style="flex:1;height:64px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:grid;place-items:center;font-size:12px">sm · rows</div>
+        <div style="flex:1;height:64px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-md);display:grid;place-items:center;font-size:12px">md · sheets</div>
+        <div style="flex:1;height:64px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-lg);display:grid;place-items:center;font-size:12px">lg · dialogs</div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">An edge plus ambient shade. Never stack.</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;font-size:13px">
+      <div style="font-weight:500;font-size:15px">Motion</div>
+      <div><code>--rc-dur-fast 120ms</code> · hovers, chip state</div>
+      <div><code>--rc-dur 200ms</code> · sheets, card flip (cross-fade)</div>
+      <div><code>--rc-dur-slow 320ms</code> · page-level</div>
+      <div><code>--rc-ease</code> cubic-bezier(.2,0,0,1)</div>
+      <p style="margin:6px 0 0;color:var(--rc-text-muted)">prefers-reduced-motion: all durations → 0, spinners become a static icon + text, the recording dot stops pulsing (the "Recording" word stays).</p>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">4 · Controls</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px">
+      <div style="font-weight:500">Button · <code style="font-size:12px">Button variant="primary|secondary|ghost|danger" size="md|lg" loading disabled</code></div>
+      <div style="display:grid;grid-template-columns:80px 1fr 1fr;gap:10px;align-items:center;font-size:12px;color:var(--rc-text-muted)">
+        <span></span><span>primary</span><span>secondary</span>
+        <span>default</span><button class="btn btn-primary">Start review</button><button class="btn btn-secondary">Later</button>
+        <span>hover</span><button class="btn btn-primary" style="background:color-mix(in srgb,var(--color-accent) 12%,transparent)">Start review</button><button class="btn btn-secondary" style="background:color-mix(in srgb,var(--color-text) 7%,transparent)">Later</button>
+        <span>focus</span><button class="btn btn-primary" style="outline:2px solid var(--rc-focus);outline-offset:2px">Start review</button><button class="btn btn-secondary" style="outline:2px solid var(--rc-focus);outline-offset:2px">Later</button>
+        <span>active</span><button class="btn btn-primary" style="background:color-mix(in srgb,var(--color-accent) 22%,transparent)">Start review</button><button class="btn btn-secondary" style="background:color-mix(in srgb,var(--color-text) 14%,transparent)">Later</button>
+        <span>disabled</span><button class="btn btn-primary" disabled="">Start review</button><button class="btn btn-secondary" disabled="">Later</button>
+        <span>loading</span><button class="btn btn-primary" aria-busy="true"><i class="ph ph-circle-notch"></i>Saving…</button><button class="btn btn-secondary" aria-busy="true"><i class="ph ph-circle-notch"></i>Checking…</button>
+        <span>danger</span><button class="btn btn-secondary" style="color:var(--rc-danger);border-color:var(--rc-danger-border)"><i class="ph ph-trash"></i>Discard</button><button class="btn btn-ghost"><i class="ph ph-plus"></i>Ghost</button>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Primary is always an outline (Nocturne). Min height 44. Loading keeps width and says what is happening.</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px">
+      <div style="font-weight:500">Text field · <code style="font-size:12px">TextField label hint error disabled</code></div>
+      <div class="field"><label>Title (optional)</label><input class="input" value="Present perfect vs past simple"></div>
+      <div class="field"><label>Focus</label><input class="input" style="border-color:var(--color-accent);outline:2px solid var(--rc-focus);outline-offset:0" value="ESOL Entry 3"></div>
+      <div class="field"><label style="color:var(--rc-danger)">Course name</label><input class="input" style="border-color:var(--rc-danger)" value="" aria-invalid="true"><div style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:13px;color:var(--rc-danger)"><i class="ph ph-warning-circle"></i>Please write a name.</div></div>
+      <div class="field"><label>Disabled</label><input class="input" disabled="" style="opacity:.45" value="English"></div>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Checkbox · <code style="font-size:12px">Checkbox checked required</code></div>
+      <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:15px"><span style="width:22px;height:22px;flex:none;border:1.5px solid var(--rc-border-strong);border-radius:5px"></span>Unchecked (default for all consent)</label>
+      <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:15px"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center"><i class="ph ph-check" style="font-size:15px"></i></span>Checked</label>
+      <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:15px"><span style="width:22px;height:22px;flex:none;border:1.5px solid var(--color-accent);border-radius:5px;outline:2px solid var(--rc-focus);outline-offset:2px"></span>Focus</label>
+      <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:15px;opacity:.45"><span style="width:22px;height:22px;flex:none;border:1.5px solid var(--rc-border-strong);border-radius:5px"></span>Disabled</label>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Native &lt;input type="checkbox"&gt;; whole row is the 44px hit area. Consent boxes are never pre-checked.</p>
+      <div style="font-weight:500;margin-top:4px">Segmented / radio card</div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--rc-border-strong)"></span>English</div>
+        <div style="flex:1;min-height:52px;border:1px solid var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--rc-primary-tint)"><span style="width:18px;height:18px;border-radius:50%;background:var(--color-accent);box-shadow:inset 0 0 0 4px var(--rc-primary-tint)"></span><span lang="fa">فارسی</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Language combobox · <code style="font-size:12px">LanguageCombobox value onChange experimental[]</code></div>
+      <div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-accent);border-radius:8px;background:var(--color-surface)"><i class="ph ph-magnifying-glass" style="color:var(--rc-text-muted)"></i><span style="font-size:16px">ar</span><span style="width:1px;height:20px;background:var(--color-accent)"></span></div>
+      <div role="listbox" style="border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-md);padding:4px;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border-radius:6px;background:var(--rc-primary-tint)"><span style="flex:1">Arabic — <span lang="ar">العربية</span></span><span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:5px;font-size:12px;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask"></i>Experimental</span></div>
+        <div style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px"><span style="flex:1">Armenian — <span lang="hy">Հայերեն</span></span><span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:5px;font-size:12px;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask"></i>Experimental</span></div>
+        <div style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px"><span style="flex:1">Urdu — <span lang="ur">اردو</span></span></div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">ARIA combobox + listbox. Matches English and native names ("فار" finds Persian). Arrow keys move, Enter selects. States: loading (skeleton rows), no match ("No language found. Check the spelling."), error (inline + Retry).</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px">
+      <div style="font-weight:500">Tabs · <code style="font-size:12px">Tabs items value</code></div>
+      <div role="tablist" style="display:flex;gap:4px;border-bottom:1px solid var(--color-divider)">
+        <div style="min-height:44px;padding:0 14px;display:flex;align-items:center;color:var(--color-accent);box-shadow:inset 0 -2px 0 var(--color-accent);font-weight:500">Notes</div>
+        <div style="min-height:44px;padding:0 14px;display:flex;align-items:center;color:var(--rc-text-muted)">Cards · 14</div>
+        <div style="min-height:44px;padding:0 14px;display:flex;align-items:center;color:var(--rc-text-muted)">Sources · 4</div>
+        <div style="min-height:44px;padding:0 14px;display:flex;align-items:center;color:var(--rc-text-muted)">Transcript</div>
+      </div>
+      <div style="font-weight:500;margin-top:6px">Bottom navigation · <code style="font-size:12px">BottomNav current</code></div>
+      <nav style="display:grid;grid-template-columns:repeat(4,1fr);border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);padding:6px 4px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--color-accent);font-size:12px;font-weight:500"><i class="ph-fill ph-sun-horizon" style="font-size:24px"></i>Today</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-folders" style="font-size:24px"></i>Classes</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-cards" style="font-size:24px"></i>Review</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-user-circle" style="font-size:24px"></i>Me</div>
+      </nav>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Current item: filled icon + accent + aria-current="page". Review shows a count as text ("Review, 12 due") for screen readers.</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Snackbar · <code style="font-size:12px">Snackbar message action onUndo</code></div>
+      <div role="status" style="display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:10px;background:var(--rc-surface-2);box-shadow:var(--shadow-md)"><i class="ph ph-pause-circle"></i><span style="flex:1;font-size:15px">Card suspended</span><button class="btn btn-ghost">Undo</button></div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Only for the last non-destructive action. Stays 8 s, pauses on hover/focus. Never during recording. Never the only place important status appears.</p>
+      <div style="font-weight:500;margin-top:6px">Skeleton · Empty</div>
+      <div style="display:flex;flex-direction:column;gap:8px" aria-busy="true">
+        <div style="height:14px;width:60%;border-radius:4px;background:var(--rc-surface-2)"></div>
+        <div style="height:14px;width:90%;border-radius:4px;background:var(--rc-surface-2)"></div>
+        <div style="height:14px;width:75%;border-radius:4px;background:var(--rc-surface-2)"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:16px;border:1px dashed var(--color-divider);border-radius:10px">
+        <i class="ph ph-folder-simple" style="font-size:28px;color:var(--rc-text-muted)"></i>
+        <div style="font-size:15px">No classes yet. Add your first class.</div>
+        <button class="btn btn-primary"><i class="ph ph-plus"></i>New class</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">5 · Status, provenance, sources</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Class status chip · <code style="font-size:12px">StatusChip status detail</code></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border)"><i class="ph ph-circle-dashed"></i>Ready to process</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-hourglass-medium"></i>Waiting for allowance</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border)"><i class="ph ph-queue"></i>In queue</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-notch"></i>Processing</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-hand-pointing"></i>Needs your action</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half"></i>Partly ready · Part 2 missing</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-success-tint);color:var(--rc-success);border:1px solid var(--rc-success-border)"><i class="ph ph-check-circle"></i>Ready</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-danger-tint);color:var(--rc-danger);border:1px solid var(--rc-danger-border)"><i class="ph ph-warning-circle"></i>Failed</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border)"><i class="ph ph-prohibit"></i>Cancelled</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">"Partly ready" requires a <code>detail</code> prop naming what is missing. "Failed" always sits next to "Retry — no extra allowance".</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Provenance label + block · <code style="font-size:12px">Provenance kind="class|ai|edited"</code></div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 0">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span>
+        <p style="margin:0;font-size:16px">"I've already finished my homework."</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 18:42</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span>
+        <p style="margin:0;font-size:16px">We often put <em>already</em> between <em>have</em> and the verb.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:8px;background:var(--rc-prov-edit-tint);border:1px dashed var(--rc-prov-edit-border)">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-edit)"><i class="ph ph-pencil-simple-line"></i>Edited by you · 30 Sep</span>
+        <p style="margin:0;font-size:16px">Already = earlier than I thought.</p>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Three distinct treatments: plain (class) · solid tint (AI) · dashed tint (edited). Label + icon always present.</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Source chip · <code style="font-size:12px">SourceChip type ref availability</code></div>
+      <div style="display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;font-size:12px;color:var(--rc-text-muted)">
+        <span>audio</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px;color:var(--color-text);width:fit-content"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 18:42</span>
+        <span>playing</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class);background:var(--rc-prov-class-tint);font-size:13px;color:var(--color-text);width:fit-content"><i class="ph ph-pause" style="color:var(--rc-prov-class)"></i>18:42 – 19:05 · playing</span>
+        <span>page</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px;color:var(--color-text);width:fit-content"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i>Worksheet · page 4</span>
+        <span>photo</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px;color:var(--color-text);width:fit-content"><i class="ph ph-image" style="color:var(--rc-prov-class)"></i>Board photo 2</span>
+        <span>not on device</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px dashed var(--rc-border-strong);font-size:13px;color:var(--rc-text-muted);width:fit-content"><i class="ph ph-device-mobile-slash"></i>Class audio · 18:42 · not on this device</span>
+        <span>file deleted</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px dashed var(--rc-border-strong);font-size:13px;color:var(--rc-text-muted);width:fit-content"><i class="ph ph-file-dashed"></i>Worksheet · p.4 · no longer kept</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">32px visual, 44px hit area (::after inset -6px). Unavailable chips stay readable but open an explanation, never a broken link.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px">
+      <div style="font-weight:500">Source row · <code style="font-size:12px">SourceRow type name role status progress included</code></div>
+      <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:8px;background:var(--color-surface)">
+        <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-prov-class-tint);display:grid;place-items:center;color:var(--rc-prov-class)"><i class="ph ph-waveform" style="font-size:20px"></i></div>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px">Class recording · 2 h 40 min</span><span style="font-size:13px;color:var(--rc-text-muted);display:flex;gap:8px;align-items:center">Class audio · <span style="display:inline-flex;align-items:center;gap:4px;color:var(--rc-success)"><i class="ph ph-device-mobile"></i>On this device</span></span></div>
+        <div role="switch" aria-checked="true" aria-label="Include in processing" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:8px;background:var(--color-surface)">
+        <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-file-pdf" style="font-size:20px"></i></div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span style="font-size:15px">worksheet-unit4.pdf</span><div style="height:4px;border-radius:2px;background:var(--rc-surface-2)"><div style="width:30%;height:4px;border-radius:2px;background:var(--color-accent)"></div></div><span style="font-size:13px;color:var(--rc-text-muted)">Uploading 3/10 MB</span></div>
+        <button class="btn btn-icon btn-ghost" aria-label="Cancel upload"><i class="ph ph-x"></i></button>
+      </div>
+      <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:8px;background:var(--color-surface)">
+        <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-file-pdf" style="font-size:20px"></i></div>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px">homework.pdf</span><span style="font-size:13px;color:var(--rc-warning);display:flex;gap:5px;align-items:center"><i class="ph ph-hand-pointing"></i>Needs your action: upload a copy without a password</span></div>
+        <button class="btn btn-secondary">Replace</button>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Statuses — audio: On this device · Sending for processing… · Sent for processing · Server copy deleted · Original audio isn't on this device. File: Uploading n/N · Checking… · Received · Not accepted (reason) · Needs your action.</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Audio range timeline · <code style="font-size:12px">RangeTimeline duration parts ranges[] markers[] onChange</code></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--rc-text-muted)" class="rc-num"><span>0:00</span><span>Part 1 · 0:00–1:30</span><span>Part 2 · 1:30–2:40</span><span>2:40:00</span></div>
+      <div style="position:relative;height:56px;border-radius:8px;background:var(--rc-surface-2);overflow:hidden">
+        <div style="position:absolute;left:56.25%;top:0;bottom:0;width:2px;background:var(--color-bg)"></div>
+        <div style="position:absolute;left:8%;width:30%;top:0;bottom:0;background:color-mix(in srgb,var(--color-accent) 28%,transparent);border-left:3px solid var(--color-accent);border-right:3px solid var(--color-accent)"></div>
+        <div style="position:absolute;left:62%;width:18%;top:0;bottom:0;background:color-mix(in srgb,var(--color-accent) 28%,transparent);border-left:3px solid var(--color-accent);border-right:3px solid var(--color-accent);outline:2px solid var(--rc-focus);outline-offset:2px"></div>
+        <i class="ph ph-camera" style="position:absolute;left:21%;bottom:6px;font-size:14px;color:var(--rc-text-muted)"></i>
+        <i class="ph ph-camera" style="position:absolute;left:47%;bottom:6px;font-size:14px;color:var(--rc-text-muted)"></i>
+        <div style="position:absolute;left:30%;top:0;bottom:0;width:2px;background:var(--color-text)"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:13px" class="rc-num">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--color-accent)">0:12:48 – 1:01:00 <i class="ph ph-x"></i></span>
+        <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--color-accent)">1:39:12 – 2:08:00 <i class="ph ph-x"></i></span>
+        <span style="margin-left:auto;color:var(--rc-text-muted)">Selected: 1 h 17 min</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Handles are 44px-wide hit areas; keyboard: Tab to handle, ←/→ moves 10 s, Shift = 1 min. Each range also has "Start / End" time inputs (accessible alternative to dragging). Playback from local copy only.</p>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">6 · Recording, cards, rating</h2>
+  <div style="display:grid;grid-template-columns:420px minmax(0,1fr);gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:18px">
+      <div style="font-weight:500">Recording controls · <code style="font-size:12px">RecordControls state="recording|paused|problem"</code></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:28px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px"><button class="btn btn-secondary" aria-label="Take photo" style="width:64px;height:64px;border-radius:50%;padding:0"><i class="ph ph-camera" style="font-size:26px"></i></button>Photo</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px"><button class="btn btn-primary" aria-label="Pause recording" style="width:88px;height:88px;border-radius:50%;padding:0;border-width:2px"><i class="ph-fill ph-pause" style="font-size:34px"></i></button>Pause</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px"><button class="btn btn-secondary" aria-label="Stop recording" style="width:72px;height:72px;border-radius:50%;padding:0;border-color:var(--rc-rec);color:var(--rc-rec)"><i class="ph-fill ph-stop" style="font-size:26px"></i></button>Stop</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--rc-rec)"></span><b style="font-weight:500">Recording</b> · <span style="color:var(--rc-success);display:inline-flex;gap:4px;align-items:center"><i class="ph ph-check-circle"></i>Saving on this device</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><i class="ph-fill ph-pause-circle" style="color:var(--rc-text-muted)"></i><b style="font-weight:500">Paused</b> · not recording</div>
+        <div style="display:flex;align-items:center;gap:8px;color:var(--rc-danger)"><i class="ph ph-microphone-slash"></i><b style="font-weight:500">Microphone stopped — recording is paused</b></div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Stop is secondary-weight so a stray tap can't end class; it always confirms. Pause is the biggest target. State text is an aria-live="polite" region; problems use role="alert" (no sound).</p>
+    </div>
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px">
+      <div style="font-weight:500">Card faces · <code style="font-size:12px">CardFace type side media</code></div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+        <div style="border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column">
+          <div style="padding:14px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--rc-text-muted)">Question / answer</span><div style="font-size:16px">When do we use <em>yet</em>?</div></div>
+          <div style="padding:14px;border-top:1px dashed var(--color-divider);font-size:15px;color:var(--rc-text-muted)">In questions and negatives: "Have you finished <em>yet</em>?"</div>
+        </div>
+        <div style="border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column">
+          <div style="padding:14px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--rc-text-muted)">Vocabulary</span><div style="font-size:22px;font-weight:500">already</div></div>
+          <div style="padding:14px;border-top:1px dashed var(--color-divider);font-size:15px;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px"><span>earlier than expected</span><span style="color:var(--color-text)">"I've already finished my homework."</span></div>
+        </div>
+        <div style="border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column">
+          <div style="padding:14px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--rc-text-muted)">Cloze</span><div style="font-size:16px">I've <span style="display:inline-block;min-width:64px;border-bottom:2px solid var(--color-accent)">&nbsp;</span> finished my homework.</div></div>
+          <div style="padding:14px;border-top:1px dashed var(--color-divider);font-size:15px">I've <b style="font-weight:500;color:var(--color-accent)">already</b> finished my homework.</div>
+        </div>
+        <div style="border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column">
+          <div style="padding:14px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--rc-text-muted)">Grammar point</span><div style="font-size:16px">Present perfect or past simple with <em>yesterday</em>?</div></div>
+          <div style="padding:14px;border-top:1px dashed var(--color-divider);font-size:15px;color:var(--rc-text-muted)">Past simple. A finished time → past simple.</div>
+        </div>
+        <div style="border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column">
+          <div style="padding:14px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:var(--rc-text-muted)">Error correction</span><div style="font-size:16px"><s style="text-decoration-color:var(--rc-danger)">I have seen him yesterday.</s></div></div>
+          <div style="padding:14px;border-top:1px dashed var(--color-divider);font-size:15px">I <b style="font-weight:500;color:var(--rc-success)">saw</b> him yesterday.</div>
+        </div>
+        <div style="border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column">
+          <div style="padding:14px;display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--rc-text-muted)">Simple listening</span><div style="display:flex;gap:8px;align-items:center"><button class="btn btn-secondary btn-icon" aria-label="Play" style="border-radius:50%"><i class="ph-fill ph-play"></i></button><span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:5px;font-size:12px;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border)"><i class="ph ph-robot"></i>Computer voice</span></div></div>
+          <div style="padding:14px;border-top:1px dashed var(--color-divider);font-size:15px">"Have you ever been to Leeds?"</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:6px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-weight:500">Rating · simple (default)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn btn-secondary" style="min-height:56px;font-size:16px"><i class="ph ph-arrow-counter-clockwise"></i>Forgot</button>
+            <button class="btn btn-primary" style="min-height:56px;font-size:16px"><i class="ph ph-check"></i>Remembered</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-weight:500">Rating · advanced</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <button class="btn btn-secondary" style="min-height:56px;flex-direction:column;gap:2px">Again<span style="font-size:12px;color:var(--rc-text-muted)">1 min</span></button>
+            <button class="btn btn-secondary" style="min-height:56px;flex-direction:column;gap:2px">Hard<span style="font-size:12px;color:var(--rc-text-muted)">2 d</span></button>
+            <button class="btn btn-primary" style="min-height:56px;flex-direction:column;gap:2px">Good<span style="font-size:12px;color:var(--rc-text-muted)">4 d</span></button>
+            <button class="btn btn-secondary" style="min-height:56px;flex-direction:column;gap:2px">Easy<span style="font-size:12px;color:var(--rc-text-muted)">9 d</span></button>
+          </div>
+        </div>
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Keyboard: Space = Show answer; 1/2 (simple) or 1–4 (advanced). Ratings never use red/green; "Forgot" is neutral, not a failure.</p>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+  <h2 style="font-size:26px;margin:0">7 · Banners, sheet, dialog</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <div style="background:var(--color-bg);border-radius:14px;padding:24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:500">Banner · <code style="font-size:12px">Banner kind="partial|experimental|offline|sources-changed|problem"</code></div>
+      <div role="status" style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half" style="font-size:20px;color:var(--rc-primary-text)"></i><div style="font-size:14px;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">Partly ready</b><span>Part 2 isn't ready yet. These notes use Part 1 and the worksheet only.</span></div></div>
+      <div style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-warning-tint);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask" style="font-size:20px;color:var(--rc-warning)"></i><div style="font-size:14px;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">Experimental quality</b><span>Arabic explanations may have mistakes. We show English next to them.</span></div></div>
+      <div style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-info-tint);border:1px solid var(--rc-info-border)"><i class="ph ph-wifi-slash" style="font-size:20px"></i><div style="font-size:14px;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">You're offline</b><span>Recording still works. Other changes will wait until you're back online.</span></div></div>
+      <div style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-divider);align-items:flex-start"><i class="ph ph-arrows-clockwise" style="font-size:20px;color:var(--color-accent)"></i><div style="font-size:14px;display:flex;flex-direction:column;gap:6px;flex:1"><b style="font-weight:500">New sources since your notes were made</b><button class="btn btn-ghost" style="align-self:flex-start;padding-inline:0">Review changes</button></div></div>
+    </div>
+    <div style="border-radius:14px;box-shadow:var(--shadow-sm);overflow:hidden;position:relative;height:440px;background:color-mix(in srgb,var(--color-bg) 50%,var(--rc-canvas))">
+      <div style="position:absolute;left:24px;top:20px;font-weight:500">Bottom sheet (mobile)</div>
+      <div role="dialog" aria-modal="true" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:14px 14px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 24px;display:flex;flex-direction:column;gap:12px">
+        <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+        <div style="display:flex;align-items:center"><h3 style="font-size:20px;margin:0;flex:1">Sheet title</h3><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+        <p style="margin:0;font-size:15px;color:var(--rc-text-muted)">Focus moves to the title. Swipe down, Esc or ✕ closes. Focus returns to the trigger.</p>
+        <button class="btn btn-primary" style="width:100%">Primary action</button>
+      </div>
+    </div>
+    <div style="border-radius:14px;box-shadow:var(--shadow-sm);overflow:hidden;position:relative;height:440px;background:color-mix(in srgb,var(--color-bg) 50%,var(--rc-canvas));display:grid;place-items:center">
+      <div style="position:absolute;left:24px;top:20px;font-weight:500">Dialog (desktop) · destructive confirm</div>
+      <div role="alertdialog" class="dialog" style="width:360px">
+        <div class="dialog-title">Discard this recording?</div>
+        <div class="dialog-body" style="font-size:15px">The audio from 30 Sep, 10:05 (1 h 12 min) will be deleted from this device. You can't undo this.</div>
+        <div class="dialog-actions"><button class="btn btn-secondary">Keep it</button><button class="btn btn-secondary" style="color:var(--rc-danger);border-color:var(--rc-danger-border)">Discard</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      theme: this.props.theme ?? 'light',
+      themes: [
+        { id: 'light', name: 'Light', icon: 'sun' },
+        { id: 'dark', name: 'Dark (Nocturne)', icon: 'moon' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

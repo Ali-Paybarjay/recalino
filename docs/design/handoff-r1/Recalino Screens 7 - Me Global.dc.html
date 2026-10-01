@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:56px;display:flex;flex-direction:column;gap:80px;width:max-content;font-family:var(--font-body)">
+
+<header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+  <div style="font-size:13px;color:var(--rc-text-muted)">Recalino MVP · Screens round 2 · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 4 - Setup Classes Capture.dc.html">Setup &amp; Capture</a> · <a href="Recalino Screens 5 - Notes Tools.dc.html">Notes tools</a> · <a href="Recalino Screens 6 - Cards Review.dc.html">Cards &amp; Review</a> · <a href="Recalino Prototype.dc.html">Prototype</a> · <a href="Recalino Assumptions.dc.html">Assumptions</a></div>
+  <h1 style="font-size:34px;margin:0">G1–G4 · Progress, preferences, settings, allowance  ·  H · Global patterns</h1>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">G1 · Progress  ·  G2 · Preferences</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="G1" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G1</span><span style="font-weight:500">Progress</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:00</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Me"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px;overflow:hidden">
+          <h1 style="font-size:28px;margin:0">Progress</h1>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:var(--rc-card-radius);background:var(--color-surface)">
+            <div style="display:flex;align-items:baseline"><h2 style="font-size:16px;margin:0;flex:1">Reviews · last 4 weeks</h2><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">212 total</span></div>
+            <div role="img" aria-label="Reviews per week: 38, 52, 61, 61" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:110px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end"><span class="rc-num" style="font-size:12px">38</span><div style="width:100%;height:56%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end"><span class="rc-num" style="font-size:12px">52</span><div style="width:100%;height:76%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end"><span class="rc-num" style="font-size:12px">61</span><div style="width:100%;height:88%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end"><span class="rc-num" style="font-size:12px">61</span><div style="width:100%;height:88%;border-radius:8px 8px 3px 3px;background:var(--color-accent)"></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:12px;color:var(--rc-text-muted);text-align:center"><span>8 Sep</span><span>15 Sep</span><span>22 Sep</span><span>This week</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="padding:14px;border-radius:14px;background:var(--color-surface)"><div style="font-size:13px;color:var(--rc-text-muted)">Cards due</div><div class="rc-num" style="font-size:26px;font-weight:700">12</div></div>
+            <div style="padding:14px;border-radius:14px;background:var(--color-surface)"><div style="font-size:13px;color:var(--rc-text-muted)">Cards added</div><div class="rc-num" style="font-size:26px;font-weight:700">86</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:var(--rc-card-radius);background:var(--color-surface)">
+            <div style="display:flex;align-items:center;gap:8px"><i class="ph ph-user" style="color:var(--rc-text-muted)"></i><span style="font-size:15px">Your level: <b style="font-weight:600">B1</b> <span style="color:var(--rc-text-muted)">(you said)</span></span></div>
+            <div style="height:1px;background:var(--color-divider)"></div>
+            <div style="display:flex;align-items:flex-start;gap:8px"><i class="ph ph-compass" style="color:var(--rc-text-muted);margin-top:3px"></i><span style="font-size:15px;line-height:1.5">Suggested support level: <b style="font-weight:600">around B1</b><br><span style="font-size:13px;color:var(--rc-text-muted)">Based on 40 reviews. This may change.</span></span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px"><h2 style="font-size:16px;margin:0">Repeated mistakes</h2>
+            <div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:12px;background:var(--color-surface)"><span style="flex:1;font-size:15px">Past simple with "yesterday"</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">5 times</span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:12px;background:var(--color-surface)"><span style="flex:1;font-size:15px">"yet" in questions</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">3 times</span></div>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Self-reported level and estimated support level are separate rows, with the evidence count and "may change".</li>
+        <li>No mastery %, no streaks. Chart has a text alternative listing every value.</li>
+      </ul>
+    </figure>
+
+    <figure id="G2" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G2</span><span style="font-weight:500">Preferences — set + learned</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:02</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Me"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:18px">
+          <h1 style="font-size:28px;margin:0">Preferences</h1>
+          <div style="display:flex;flex-direction:column;gap:6px"><h2 style="font-size:13px;margin:0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">You chose</h2>
+            <div style="display:flex;flex-direction:column;padding:4px 14px;border-radius:14px;background:var(--color-surface)">
+              <div style="display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--color-divider)"><span style="flex:1">Explanations in</span><span lang="fa" style="color:var(--rc-text-muted)">فارسی</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+              <div style="display:flex;align-items:center;gap:10px;min-height:52px"><span style="flex:1">More examples from class</span><span role="switch" aria-checked="true" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px"><h2 style="font-size:13px;margin:0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Learned from your edits</h2>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:var(--color-surface)"><div style="display:flex;align-items:center;gap:10px"><i class="ph ph-text-align-left" style="font-size:20px;color:var(--rc-prov-edit)"></i><span style="flex:1;font-weight:500">Shorter explanations</span><span role="switch" aria-checked="true" aria-label="Use shorter explanations" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></span></div><span style="font-size:13px;color:var(--rc-text-muted);line-height:1.5">You shortened 6 explanations in 3 classes.</span><button class="btn btn-ghost" style="align-self:flex-start;padding-inline:0;font-size:14px">Reset</button></div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:var(--color-surface)"><div style="display:flex;align-items:center;gap:10px"><i class="ph ph-translate" style="font-size:20px;color:var(--rc-prov-edit)"></i><span style="flex:1;font-weight:500">Add the English word in brackets</span><span role="switch" aria-checked="false" aria-label="Add the English word in brackets" style="width:44px;height:26px;border-radius:999px;background:var(--rc-surface-2);box-shadow:inset 0 0 0 1px var(--rc-border-strong);position:relative"><span style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--rc-border-strong)"></span></span></div><span style="font-size:13px;color:var(--rc-text-muted);line-height:1.5">Turned off by you on 28 Sep.</span></div>
+          </div>
+          <button class="btn btn-secondary" style="background:var(--color-surface)"><i class="ph ph-arrow-counter-clockwise"></i>Reset everything learned</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Everything Recalino learned is visible, says why, and can be switched off or reset.</li>
+      </ul>
+    </figure>
+
+    <figure id="G1-desktop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G</span><span style="font-weight:500">Desktop 1440 — Me (progress + allowance)</span></div>
+      <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:grid;grid-template-columns:248px 1fr">
+        <aside style="background:var(--color-surface);display:flex;flex-direction:column;padding:24px 16px;gap:6px">
+          <div style="display:flex;align-items:baseline;gap:6px;padding:0 10px 22px"><span style="font-size:22px;font-weight:700;letter-spacing:-0.03em">recalino</span><span style="width:7px;height:7px;border-radius:50%;background:var(--color-accent)"></span></div>
+          <button class="btn btn-primary" style="justify-content:flex-start;margin-bottom:14px"><i class="ph ph-plus"></i>New class</button>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-sun-horizon" style="font-size:20px;color:var(--rc-text-muted)"></i>Today</div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-folders" style="font-size:20px;color:var(--rc-text-muted)"></i>Classes</div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-cards" style="font-size:20px;color:var(--rc-text-muted)"></i>Review</div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;background:var(--rc-primary-tint);color:var(--rc-primary-text);font-weight:600"><i class="ph-fill ph-user-circle" style="font-size:20px"></i>Me</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding-left:44px;font-size:14px"><span style="min-height:36px;display:flex;align-items:center;font-weight:600">Progress</span><span style="min-height:36px;display:flex;align-items:center;color:var(--rc-text-muted)">Preferences</span><span style="min-height:36px;display:flex;align-items:center;color:var(--rc-text-muted)">Allowance</span><span style="min-height:36px;display:flex;align-items:center;color:var(--rc-text-muted)">Settings</span></div>
+        </aside>
+        <main style="padding:48px 64px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:40px;align-content:start">
+          <div style="display:flex;flex-direction:column;gap:24px">
+            <h1 style="font-size:40px;margin:0">Progress</h1>
+            <div style="display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:var(--rc-card-radius);background:var(--color-surface)">
+              <div style="display:flex;align-items:baseline"><h2 style="font-size:18px;margin:0;flex:1">Reviews · last 8 weeks</h2><span class="rc-num" style="color:var(--rc-text-muted);font-size:14px">402 total</span></div>
+              <div role="img" aria-label="Reviews per week for 8 weeks" style="display:grid;grid-template-columns:repeat(8,1fr);gap:16px;align-items:end;height:200px">
+                <div style="height:30%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:42%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:25%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:50%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:56%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:76%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:88%;border-radius:8px 8px 3px 3px;background:var(--rc-primary-tint-2)"></div><div style="height:88%;border-radius:8px 8px 3px 3px;background:var(--color-accent)"></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+              <div style="padding:20px;border-radius:16px;background:var(--color-surface)"><div style="font-size:14px;color:var(--rc-text-muted)">Cards due</div><div class="rc-num" style="font-size:32px;font-weight:700">12</div></div>
+              <div style="padding:20px;border-radius:16px;background:var(--color-surface)"><div style="font-size:14px;color:var(--rc-text-muted)">Cards added</div><div class="rc-num" style="font-size:32px;font-weight:700">86</div></div>
+              <div style="padding:20px;border-radius:16px;background:var(--color-surface)"><div style="font-size:14px;color:var(--rc-text-muted)">Classes</div><div class="rc-num" style="font-size:32px;font-weight:700">17</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;border-radius:16px;background:var(--color-surface);display:flex;flex-direction:column;gap:4px"><span style="font-size:14px;color:var(--rc-text-muted)">Your level (you said)</span><span style="font-size:24px;font-weight:700">B1</span></div>
+              <div style="padding:20px;border-radius:16px;background:var(--color-surface);display:flex;flex-direction:column;gap:4px"><span style="font-size:14px;color:var(--rc-text-muted)">Suggested support level</span><span style="font-size:24px;font-weight:700">around B1</span><span style="font-size:13px;color:var(--rc-text-muted)">Based on 40 reviews. This may change.</span></div>
+            </div>
+          </div>
+          <aside style="display:flex;flex-direction:column;gap:16px;padding-top:68px">
+            <div style="display:flex;flex-direction:column;gap:14px;padding:22px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:center"><h2 style="font-size:18px;margin:0;flex:1">Allowance</h2><a href="#" style="font-size:14px">Details</a></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex"><span style="flex:1">Class audio</span><span class="rc-num" style="font-weight:600">4 h 20 min left</span></div><div style="height:8px;border-radius:4px;background:var(--rc-surface-2)"><div style="width:72%;height:100%;border-radius:4px;background:var(--color-accent)"></div></div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex"><span style="flex:1">Pages</span><span class="rc-num" style="font-weight:600">86 left</span></div><div style="height:8px;border-radius:4px;background:var(--rc-surface-2)"><div style="width:86%;height:100%;border-radius:4px;background:var(--color-accent)"></div></div></div>
+              <span style="font-size:13px;color:var(--rc-text-muted)">Valid until 31 Oct 2026</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:22px;border-radius:var(--rc-card-radius);background:var(--color-surface)"><h2 style="font-size:18px;margin:0 0 4px">Repeated mistakes</h2><div style="display:flex;min-height:36px;align-items:center"><span style="flex:1">Past simple with "yesterday"</span><span class="rc-num" style="color:var(--rc-text-muted);font-size:14px">5×</span></div><div style="display:flex;min-height:36px;align-items:center"><span style="flex:1">"yet" in questions</span><span class="rc-num" style="color:var(--rc-text-muted);font-size:14px">3×</span></div></div>
+          </aside>
+        </main>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">G3 · Settings  ·  G4 · Allowance</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="G3" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G3</span><span style="font-weight:500">Settings</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:05</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Me"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:14px;overflow:hidden">
+          <h1 style="font-size:28px;margin:0">Settings</h1>
+          <div role="status" style="display:grid;grid-template-columns:24px 1fr;gap:10px;padding:12px 14px;border-radius:12px;background:var(--rc-warning-tint);border:1px solid var(--rc-warning-border)"><i class="ph ph-file-text" style="font-size:20px;color:var(--rc-warning)"></i><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;line-height:1.5">The Terms changed on 1 Oct. Please read and accept them to keep processing new classes.</span><button class="btn btn-secondary" style="align-self:flex-start;background:var(--color-surface)">Read and accept</button></div></div>
+          <h2 style="font-size:13px;margin:4px 0 0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Profile</h2>
+          <div style="display:flex;flex-direction:column;padding:2px 14px;border-radius:14px;background:var(--color-surface)">
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--color-divider)"><span style="flex:1">First language</span><span style="color:var(--rc-text-muted)">Persian — <span lang="fa">فارسی</span></span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--color-divider)"><span style="flex:1">Explanations in</span><span lang="fa" style="color:var(--rc-text-muted)">فارسی</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--color-divider)"><span style="flex:1">Level · Goal</span><span style="color:var(--rc-text-muted)">B1 · ESOL</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px"><span style="flex:1">Time zone</span><span style="color:var(--rc-text-muted)">London (GMT+1)</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+          </div>
+          <h2 style="font-size:13px;margin:4px 0 0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Review</h2>
+          <div style="display:flex;flex-direction:column;padding:2px 14px;border-radius:14px;background:var(--color-surface)">
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--color-divider)"><span style="flex:1">Review mode</span><span style="display:flex;padding:3px;border-radius:10px;background:var(--rc-surface-2);gap:2px"><span style="padding:4px 10px;border-radius:8px;background:var(--color-surface);font-size:14px;font-weight:600">Simple</span><span style="padding:4px 10px;font-size:14px">Advanced</span></span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px"><span style="flex:1">New cards per day</span><span style="display:flex;align-items:center;gap:6px"><button class="btn btn-icon btn-ghost" aria-label="Fewer"><i class="ph ph-minus"></i></button><span class="rc-num" style="min-width:24px;text-align:center;font-weight:600">10</span><button class="btn btn-icon btn-ghost" aria-label="More"><i class="ph ph-plus"></i></button></span></div>
+          </div>
+          <h2 style="font-size:13px;margin:4px 0 0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Data</h2>
+          <div style="display:flex;flex-direction:column;padding:2px 14px;border-radius:14px;background:var(--color-surface)">
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--color-divider)"><span style="flex:1">Manage classes and sources</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:48px;color:var(--rc-danger)"><span style="flex:1">Delete my account</span><i class="ph ph-caret-right"></i></div>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Updated Terms: a calm banner; review and study keep working, only new processing waits.</li>
+      </ul>
+    </figure>
+
+    <figure id="G3-delete-source" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G3</span><span style="font-weight:500">Delete a source — 3 options</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:07</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 60%,transparent)"></div>
+        <div role="dialog" aria-modal="true" aria-labelledby="g3d" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:20px 20px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 30px;display:flex;flex-direction:column;gap:12px">
+          <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+          <h2 id="g3d" style="font-size:22px;margin:0">Delete "Worksheet"?</h2>
+          <div role="radiogroup" style="display:flex;flex-direction:column;gap:8px">
+            <label style="display:grid;grid-template-columns:24px 1fr;gap:12px;padding:14px;border-radius:14px;border:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:2px solid var(--rc-border-strong);margin-top:1px"></span><span style="display:flex;flex-direction:column;gap:3px"><span style="font-weight:500">Remove from this class</span><span style="font-size:14px;color:var(--rc-text-muted);line-height:1.45">The file stays for other classes that use it. Notes don't change.</span></span></label>
+            <label style="display:grid;grid-template-columns:24px 1fr;gap:12px;padding:14px;border-radius:14px;border:2px solid var(--color-accent);background:var(--rc-primary-tint)"><span style="width:22px;height:22px;border-radius:50%;border:7px solid var(--color-accent);background:var(--color-surface);margin-top:1px"></span><span style="display:flex;flex-direction:column;gap:3px"><span style="font-weight:600">Delete the original, keep the notes</span><span style="font-size:14px;line-height:1.45">Notes and cards stay. Source chips will say "The original file is no longer kept."</span></span></label>
+            <label style="display:grid;grid-template-columns:24px 1fr;gap:12px;padding:14px;border-radius:14px;border:1px solid var(--color-divider)"><span style="width:22px;height:22px;border-radius:50%;border:2px solid var(--rc-border-strong);margin-top:1px"></span><span style="display:flex;flex-direction:column;gap:3px"><span style="font-weight:500">Delete completely</span><span style="font-size:14px;color:var(--rc-text-muted);line-height:1.45">Also removes notes and 4 cards made only from this file.</span></span></label>
+          </div>
+          <p style="margin:0;font-size:14px;color:var(--rc-text-muted);line-height:1.5"><i class="ph ph-info"></i> Files you already downloaded (exports) can't be recalled.</p>
+          <div style="display:flex;gap:8px"><button class="btn btn-secondary" style="flex:1;background:var(--color-surface)">Cancel</button><button class="btn btn-secondary" style="flex:1;color:var(--rc-danger);border-color:var(--rc-danger-border)">Delete original</button></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>No option preselected in production; the action button names the chosen option. Shown selected here for illustration.</li>
+        <li>Delete class / account use the same pattern, listing every consequence.</li>
+      </ul>
+    </figure>
+
+    <figure id="G4" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G4</span><span style="font-weight:500">Allowance</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:10</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Me"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:4px"><h1 style="font-size:28px;margin:0">Allowance</h1><span style="font-size:14px;color:var(--rc-text-muted)">Valid until 31 Oct 2026</span></div>
+          <div style="display:flex;flex-direction:column;gap:16px;padding:18px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:baseline"><span style="flex:1;font-size:16px"><i class="ph ph-waveform"></i> Class audio</span><span class="rc-num" style="font-size:18px;font-weight:700">4 h 20 min left</span></div><div style="height:8px;border-radius:4px;background:var(--rc-surface-2);display:flex;overflow:hidden"><div style="width:62%;background:var(--color-accent)"></div><div style="width:10%;background:repeating-linear-gradient(45deg,var(--color-accent-400) 0 4px,transparent 4px 8px)"></div></div><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">46 min in use by processing now</span></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:baseline"><span style="flex:1;font-size:16px"><i class="ph ph-files"></i> Pages</span><span class="rc-num" style="font-size:18px;font-weight:700">86 left</span></div><div style="height:8px;border-radius:4px;background:var(--rc-surface-2)"><div style="width:86%;height:100%;border-radius:4px;background:var(--color-accent)"></div></div></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:baseline"><span style="flex:1;font-size:16px"><i class="ph ph-copy-simple"></i> Card extras</span><span class="rc-num" style="font-size:18px;font-weight:700">18 left</span></div><div style="height:8px;border-radius:4px;background:var(--rc-surface-2)"><div style="width:36%;height:100%;border-radius:4px;background:var(--color-accent)"></div></div><span style="font-size:13px;color:var(--rc-text-muted)">For "Make similar" and simpler explanations</span></div>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:1.55;color:var(--rc-text-muted)">Photos don't use allowance. Retrying a failed class is free.</p>
+          <button class="btn btn-secondary" style="background:var(--color-surface)"><i class="ph ph-envelope-simple"></i>Ask the pilot operator for more</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>"In use" segment is hatched (pattern, not just colour). No prices or plans anywhere.</li>
+      </ul>
+    </figure>
+
+    <figure id="G4-empty" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">G4</span><span style="font-weight:500">No allowance yet</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:10</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Me"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+          <h1 style="font-size:28px;margin:0">Allowance</h1>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding-bottom:120px">
+            <i class="ph ph-hourglass-simple" style="font-size:40px;color:var(--rc-text-muted)"></i>
+            <p style="margin:0;font-size:18px;line-height:1.5">You don't have a processing allowance yet. Ask the pilot operator.</p>
+            <p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">You can still record and add files. They'll wait on this device until you have an allowance.</p>
+            <button class="btn btn-primary" style="align-self:flex-start"><i class="ph ph-envelope-simple"></i>Ask the pilot operator</button>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>"Ask" channel is an open question (see Assumptions) — designed as a mailto/prefilled message for now.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">H · Global patterns</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="H-offline" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">H</span><span style="font-weight:500">Offline banner · skeleton · inline error</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph ph-wifi-slash"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div role="status" style="display:flex;gap:10px;align-items:center;padding:10px 20px;background:var(--rc-info-tint);font-size:14px"><i class="ph ph-wifi-slash" style="font-size:18px"></i><span style="flex:1">You're offline. You can still record and recover recordings.</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 16px;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Wednesday 1 October</span><h1 style="font-size:30px;margin:0">Today</h1></div>
+          <div aria-busy="true" aria-label="Loading review" style="display:flex;flex-direction:column;gap:12px;padding:20px;border-radius:var(--rc-card-radius);background:var(--color-surface)">
+            <div style="height:14px;width:40%;border-radius:4px;background:var(--rc-surface-2)"></div>
+            <div style="height:22px;width:75%;border-radius:4px;background:var(--rc-surface-2)"></div>
+            <div style="height:52px;width:100%;border-radius:14px;background:var(--rc-surface-2)"></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px"><i class="ph-fill ph-microphone"></i>Record a class</button>
+          <div role="alert" style="display:grid;grid-template-columns:24px 1fr;gap:10px;padding:14px;border-radius:14px;background:var(--color-surface);border:1px solid var(--rc-danger-border)"><i class="ph ph-warning-circle" style="font-size:20px;color:var(--rc-danger)"></i><div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:15px;font-weight:500">Couldn't load your classes</span><span style="font-size:14px;color:var(--rc-text-muted)">Check your connection and try again.</span><button class="btn btn-secondary" style="align-self:flex-start;background:var(--color-surface)"><i class="ph ph-arrow-clockwise"></i>Try again</button></div></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Offline banner is honest about what works. Recording + recovery pages are cached (service worker).</li>
+        <li>Skeletons: static blocks (shimmer off under reduced motion). Errors are inline with Retry, never toast-only.</li>
+      </ul>
+    </figure>
+
+    <figure id="H-unsupported" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">H</span><span style="font-weight:500">Unsupported browser</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:48px 24px 16px;gap:20px">
+          <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:24px;font-weight:700;letter-spacing:-0.03em">recalino</span><span style="width:7px;height:7px;border-radius:50%;background:var(--color-accent)"></span></div>
+          <h1 style="font-size:28px;margin:0;line-height:1.2">This browser isn't supported</h1>
+          <p style="margin:0;font-size:16px;line-height:1.55;color:var(--rc-text-muted)">Recalino needs a newer browser to save recordings safely on your device.</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;border-radius:14px;background:var(--color-surface)"><i class="ph ph-device-mobile" style="font-size:22px"></i><span style="flex:1">iPhone · <b style="font-weight:600">Safari</b></span></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;border-radius:14px;background:var(--color-surface)"><i class="ph ph-android-logo" style="font-size:22px"></i><span style="flex:1">Android · <b style="font-weight:600">Chrome</b></span></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;border-radius:14px;background:var(--color-surface)"><i class="ph ph-laptop" style="font-size:22px"></i><span style="flex:1">Computer · <b style="font-weight:600">Chrome</b> or <b style="font-weight:600">Edge</b></span></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px"><i class="ph ph-copy"></i>Copy the link</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Server-rendered, no JS needed. Copy link so the learner can paste it into a supported browser.</li>
+      </ul>
+    </figure>
+
+    <figure id="H-rules" style="margin:0;display:flex;flex-direction:column;gap:14px;width:560px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">H</span><span style="font-weight:500">Toasts vs inline · destructive confirm · empty</span></div>
+      <div style="display:flex;flex-direction:column;gap:16px;padding:28px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+        <h3 style="font-size:18px;margin:0">When to use what</h3>
+        <div style="display:grid;grid-template-columns:150px 1fr;gap:10px 18px;font-size:15px;line-height:1.5">
+          <b style="font-weight:600">Inline status</b><span>Anything the learner must know: save state, upload state, failures, partial results. Always in the page.</span>
+          <b style="font-weight:600">Banner</b><span>Page-wide state: offline, partial result, new sources, updated Terms, experimental language.</span>
+          <b style="font-weight:600">Snackbar</b><span>Confirmation of a small action + Undo. Never the only place a status appears. <b style="font-weight:600">Never during recording.</b></span>
+          <b style="font-weight:600">Dialog</b><span>Destructive actions only. Lists every consequence. Safe option is focused first.</span>
+        </div>
+        <div style="height:1px;background:var(--color-divider)"></div>
+        <div role="alertdialog" aria-labelledby="hdel" style="display:flex;flex-direction:column;gap:12px;padding:22px;border-radius:var(--rc-card-radius);background:var(--color-bg);box-shadow:var(--shadow-lg)">
+          <h4 id="hdel" style="font-size:20px;margin:0">Delete this class?</h4>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:1.55"><li>Notes and 14 cards from this class will be deleted.</li><li>The recording on this device will be deleted.</li><li>Files you already downloaded can't be recalled.</li></ul>
+          <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" style="background:var(--color-surface)">Keep class</button><button class="btn btn-secondary" style="color:var(--rc-danger);border-color:var(--rc-danger-border)">Delete class</button></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:22px;border-radius:var(--rc-card-radius);border:1px dashed var(--rc-border-strong)">
+          <i class="ph ph-cards" style="font-size:32px;color:var(--rc-text-muted)"></i>
+          <span style="font-size:16px">No cards yet. Cards appear after a class is processed.</span>
+          <button class="btn btn-secondary" style="align-self:flex-start;background:var(--color-surface)"><i class="ph ph-plus"></i>New class</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Empty states: icon + one plain sentence + the one next action. No illustrations.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

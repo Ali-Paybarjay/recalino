@@ -1,0 +1,118 @@
+/* Recalino tokens v0.1 — layered on the Nocturne system (styles.css).
+   Hand-off: copy this file as-is. All values are CSS custom properties.
+   Dark = Nocturne native. Light = derived from the same OKLCH ramps.
+   App follows the OS: wrap the app in [data-theme] set from prefers-color-scheme. */
+
+:root, [data-theme="dark"] {
+  /* Type — system fonts only; the OS picks script-specific faces */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
+    "Noto Sans Arabic", "Geeza Pro", Tahoma,
+    "PingFang SC", "Hiragino Sans", "Microsoft YaHei", "Yu Gothic UI", "Noto Sans CJK SC", sans-serif;
+  --font-heading: var(--font-body);
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --rc-text-xs: 12px;   /* labels, chips — min size */
+  --rc-text-sm: 14px;   /* secondary UI */
+  --rc-text-md: 16px;   /* body UI (mobile inputs: never below 16) */
+  --rc-text-read: 17px; /* notes reading surface, line-height 1.65 */
+  --rc-text-lg: 20px;
+  --rc-text-xl: 24px;
+  --rc-text-2xl: 30px;
+  --rc-text-3xl: 40px;
+  --rc-text-timer: 64px; /* recording clock, tabular numerals */
+
+  /* Spacing — Nocturne 0.7x scale, extended */
+  --space-5: 14px;
+  --space-10: 28px;
+  --space-12: 33.6px;
+  --space-16: 44.8px;
+  --rc-target: 44px;      /* min touch target */
+  --rc-target-lg: 72px;   /* recording controls */
+  --radius-pill: 999px;
+
+  /* Motion */
+  --rc-dur-fast: 120ms;
+  --rc-dur: 200ms;
+  --rc-dur-slow: 320ms;
+  --rc-ease: cubic-bezier(.2, 0, 0, 1);
+
+  /* Surfaces + text (Nocturne values) */
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --rc-surface-2: #2b2e3c;
+  --color-text: #e9e9ed;
+  --rc-text-muted: #b2b6ca;          /* 8.9:1 on bg */
+  --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --rc-border-strong: #595d6c;
+  --rc-canvas: #0f1019;               /* doc boards only, not app UI */
+
+  /* Primary / focus */
+  --color-accent: #9184d9;            /* 5.5:1 on bg */
+  --rc-primary-text: #d2cefd;
+  --rc-primary-tint: #2b2741;
+  --rc-primary-tint-2: #423a6a;
+  --rc-focus: #9184d9;
+
+  /* Status */
+  --rc-success: #8fd1a3;  --rc-success-tint: #1b3124;  --rc-success-border: #2f5a3d;
+  --rc-warning: #e8bd72;  --rc-warning-tint: #372c18;  --rc-warning-border: #5f4c26;
+  --rc-danger:  #f09a90;  --rc-danger-tint:  #3b2124;  --rc-danger-border:  #6a3a3c;
+  --rc-info:    #b2b6ca;  --rc-info-tint:    #292b31;  --rc-info-border:    #3f424d;
+
+  /* Provenance — never colour alone: always label + icon */
+  --rc-prov-class: #7fcfc3;  --rc-prov-class-tint: #1a3130;  --rc-prov-class-border: #2d5752;
+  --rc-prov-ai:    #b5abfc;  --rc-prov-ai-tint:    #24223a;  --rc-prov-ai-border:    #423a6a;
+  --rc-prov-edit:  #94bdf0;  --rc-prov-edit-tint:  #1b2a3e;  --rc-prov-edit-border:  #33496a;
+
+  /* Recording (calm, not alarm red) */
+  --rc-rec: #f09a90;
+}
+
+[data-theme="light"] {
+  --color-bg: #f3f4fa;
+  --color-surface: #fbfbfe;
+  --rc-surface-2: #e9ebf5;
+  --color-text: #22242c;
+  --rc-text-muted: #525665;          /* 6.9:1 on bg */
+  --color-divider: color-mix(in srgb, #22242c 16%, transparent);
+  --rc-border-strong: #9397ab;
+  --rc-canvas: #dcdfeb;
+
+  --color-accent: #5d5294;            /* 6.9:1 on bg */
+  --rc-primary-text: #423a6a;
+  --rc-primary-tint: #ecebfc;
+  --rc-primary-tint-2: #dcd9f8;
+  --rc-focus: #5d5294;
+
+  --rc-success: #2b6b40;  --rc-success-tint: #e2f2e7;  --rc-success-border: #a9d4b6;
+  --rc-warning: #7d5510;  --rc-warning-tint: #f8edd6;  --rc-warning-border: #e3c78e;
+  --rc-danger:  #a1352d;  --rc-danger-tint:  #f9e4e1;  --rc-danger-border:  #e6b1ab;
+  --rc-info:    #525665;  --rc-info-tint:    #e9ebf5;  --rc-info-border:    #cfd3e5;
+
+  --rc-prov-class: #1b675e;  --rc-prov-class-tint: #e0f1ee;  --rc-prov-class-border: #a6d5ce;
+  --rc-prov-ai:    #5d5294;  --rc-prov-ai-tint:    #efeefc;  --rc-prov-ai-border:    #cfcaf2;
+  --rc-prov-edit:  #2b5a8e;  --rc-prov-edit-tint:  #e4edf9;  --rc-prov-edit-border:  #b3cae8;
+
+  --rc-rec: #a1352d;
+
+  --shadow-sm: 0 0 0 1px #cfd3e5;
+  --shadow-md: 0 0 0 1px #cfd3e5, 0 6px 18px rgba(34,36,44,0.10);
+  --shadow-lg: 0 0 0 1px #b2b6ca, 0 16px 40px rgba(34,36,44,0.16);
+}
+
+[data-theme] { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+[data-theme] .btn { min-height: var(--rc-target); padding-inline: 16px; font-size: 15px; font-family: var(--font-body); }
+[data-theme] .btn-icon { width: var(--rc-target); height: var(--rc-target); padding: 0; }
+[data-theme] .btn-ghost { padding-inline: 10px; }
+[data-theme] .input { min-height: var(--rc-target); font-size: 16px; }
+[data-theme] :focus-visible { outline: 2px solid var(--rc-focus); outline-offset: 2px; }
+[data-theme] .ph, [data-theme] .ph-fill { line-height: 1; }
+.rc-num { font-variant-numeric: tabular-nums; }
+
+@keyframes rc-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes rc-shimmer { 0% { background-position: -200px 0 } 100% { background-position: 200px 0 } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --rc-dur-fast: 0ms; --rc-dur: 0ms; --rc-dur-slow: 0ms; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

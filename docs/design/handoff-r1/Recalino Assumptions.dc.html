@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:100vh;padding:48px 24px;font-family:var(--font-body)">
+  <div style="max-width:760px;display:flex;flex-direction:column;gap:32px;margin-left:clamp(0px,8vw,120px)">
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;color:var(--rc-text-muted)">Recalino MVP · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 1 - Setup & Today.dc.html">Setup &amp; Today</a> · <a href="Recalino Screens 2 - Capture.dc.html">Capture</a> · <a href="Recalino Screens 3 - Notes & Review.dc.html">Notes &amp; Review</a> · <a href="Recalino Screens 4 - Setup Classes Capture.dc.html">Setup, Classes, Capture</a> · <a href="Recalino Screens 5 - Notes Tools.dc.html">Notes tools</a> · <a href="Recalino Screens 6 - Cards Review.dc.html">Cards &amp; Review</a> · <a href="Recalino Screens 7 - Me Global.dc.html">Me &amp; Global</a> · <a href="Recalino Prototype.dc.html">Prototype</a> · <a href="Recalino Colour Options.dc.html">Colour options</a></div>
+      <h1 style="font-size:34px;margin:0">Assumptions and open questions</h1>
+      <p style="margin:0;color:var(--rc-text-muted)">Rounds 1 + 2. Each item is also labelled on the screen where it applies.</p>
+    </header>
+
+    <section style="display:flex;flex-direction:column;gap:12px">
+      <h2 style="font-size:22px;margin:0">Assumptions made</h2>
+      <ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.55">
+        <li><b style="font-weight:500">Visual base = Nocturne structure, "Mint &amp; lime" colour (option 1c).</b> Light is the default; dark uses the same hues on a deep green ground. Both themes share token names — switch with the <i>theme</i> tweak. The previous indigo set is kept in <code>recalino/archive/</code>.</li>
+        <li><b style="font-weight:500">Fonts:</b> Nocturne specifies Inter; the brief forbids web fonts. Recalino overrides <code>--font-body</code>/<code>--font-heading</code> with a system stack. Don't ship Nocturne's Google Fonts import.</li>
+        <li><b style="font-weight:500">Icons:</b> Phosphor (MIT) instead of Lucide — it is the design system's set. Mockups load it from a CDN for convenience only; the app should bundle <code>@phosphor-icons/react</code> or inline SVGs.</li>
+        <li><b style="font-weight:500">Primary buttons are filled</b> (deep green ink; mint in dark) — a deliberate departure from Nocturne's outline rule, chosen with option 1c. One lime "hero" surface per screen at most (Today's review card); it is not used when the learner is behind on reviews.</li>
+        <li><b style="font-weight:500">"From class" provenance is plum</b>, not teal, so it never reads as the green primary colour.</li>
+        <li><b style="font-weight:500">Prototype timer</b> starts at 2:39:41 so the 2 h 40 min sample class can be demoed; A3/A4 are treated as already accepted.</li>
+        <li><b style="font-weight:500">A2 step 2</b> (learning language, fixed) is a locked line on the step 3 screen; <b style="font-weight:500">steps 4 and 5</b> share one screen. The progress bar still counts 6 steps.</li>
+        <li><b style="font-weight:500">Experimental "side by side"</b> stacks L1 above English under 768px; two columns above.</li>
+        <li><b style="font-weight:500">Allowance units:</b> audio minutes and pages use allowance; photos don't. "Card extras" (Make similar, simpler explanation) use a separate count. Sample numbers only.</li>
+        <li><b style="font-weight:500">Stop confirm</b> is a bottom sheet; audio keeps recording behind it.</li>
+        <li><b style="font-weight:500">No styling library assumed.</b> Tokens are plain CSS custom properties (<a href="recalino/tokens.css">recalino/tokens.css</a>); components are described by name + props in the design system page.</li>
+      </ol>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:12px">
+      <h2 style="font-size:22px;margin:0">Open questions</h2>
+      <ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.55">
+        <li>Should the app default to light regardless of OS setting for the pilot, or follow the OS (brief says follow)?</li>
+        <li>Do photos and HTML pages count against the allowance? If yes, in which unit?</li>
+        <li>"Ask the pilot operator for more" — in-app message, email, or a mailto link?</li>
+        <li>Max file sizes and accepted formats for "Not accepted" reasons.</li>
+        <li>Which languages are "Experimental quality" at launch?</li>
+        <li>Does "Remembered" in simple mode map to FSRS Good (assumed) or to a derived rating?</li>
+      </ol>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:12px">
+      <h2 style="font-size:22px;margin:0">Round 1 covers</h2>
+      <p style="margin:0;font-size:16px;line-height:1.55">Design system · A1, A2 · B1, B2 · C1, C2 · C5, C6 · D1 · F2.</p>
+      <h2 style="font-size:22px;margin:12px 0 0">Round 2 covers</h2>
+      <p style="margin:0;font-size:16px;line-height:1.55">A3, A4 · B3 · C3, C4, C7 · D2–D5 · E1–E4 · F1, F3 · G1–G4 · H · clickable core-loop prototype with the not-enough branch · handoff package (<code>HANDOFF.md</code>, <code>handoff/</code>).</p>
+      <h2 style="font-size:22px;margin:12px 0 0">Known gaps</h2>
+      <p style="margin:0;font-size:16px;line-height:1.55">Desktop 1440 is drawn for the key screens (B1, B2, B3, C1, D3 compare, E1, G); the other screens follow the documented desktop rules in the handoff (sidebar + centred column, sheets become dialogs).</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

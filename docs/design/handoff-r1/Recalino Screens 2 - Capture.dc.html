@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:56px;display:flex;flex-direction:column;gap:80px;width:max-content;font-family:var(--font-body)">
+
+<header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+  <div style="font-size:13px;color:var(--rc-text-muted)">Recalino MVP · Screens round 1 · <a href="Recalino Prototype.dc.html">Prototype</a> · <a href="Recalino Screens 4 - Setup Classes Capture.dc.html">Round 2 screens</a> · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 1 - Setup & Today.dc.html">Setup &amp; Today</a> · <a href="Recalino Screens 3 - Notes & Review.dc.html">Notes &amp; Review</a> · <a href="Recalino Assumptions.dc.html">Assumptions</a></div>
+  <h1 style="font-size:34px;margin:0">C · Capture — class page, recording, estimate, allowance</h1>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">C1 · Class page</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="C1-mobile" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C1</span><span style="font-weight:500">After recording — ready to process</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Classes"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1"></span><button class="btn btn-icon btn-ghost" aria-label="More actions"><i class="ph ph-dots-three" style="font-size:22px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 12px;gap:12px;overflow:hidden">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <h1 style="font-size:26px;margin:0;line-height:1.2">Present perfect vs past simple</h1>
+            <span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep 2026</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border);width:fit-content"><i class="ph ph-circle-dashed"></i>Ready to process</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center"><h2 style="font-size:17px;margin:0;flex:1">Sources · 4</h2><span style="font-size:13px;color:var(--rc-text-muted)">Include</span></div>
+            <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:9px 12px;border-radius:10px;background:var(--color-surface)">
+              <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-prov-class-tint);display:grid;place-items:center;color:var(--rc-prov-class)"><i class="ph ph-waveform" style="font-size:20px"></i></div>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px">Class recording · 2 h 40 min</span><span style="font-size:13px;color:var(--rc-text-muted)">Class audio <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-device-mobile"></i>On this device</span></div>
+              <div role="switch" aria-checked="true" aria-label="Include class recording" style="width:48px;height:28px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--color-bg)"></span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:9px 12px;border-radius:10px;background:var(--color-surface)">
+              <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-image" style="font-size:20px"></i></div>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px">Board photo 1 · 0:24:10</span><span style="font-size:13px;color:var(--rc-text-muted)">Board photo <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-check-circle"></i>Received</span></div>
+              <div role="switch" aria-checked="true" aria-label="Include board photo 1" style="width:48px;height:28px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--color-bg)"></span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:9px 12px;border-radius:10px;background:var(--color-surface)">
+              <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-image" style="font-size:20px"></i></div>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px">Board photo 2 · 1:05:42</span><span style="font-size:13px;color:var(--rc-text-muted)">Board photo <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-text-muted);display:flex;gap:4px;align-items:center"><i class="ph ph-circle-notch"></i>Checking…</span></div>
+              <div role="switch" aria-checked="true" aria-label="Include board photo 2" style="width:48px;height:28px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--color-bg)"></span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:9px 12px;border-radius:10px;background:var(--color-surface)">
+              <div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-file-pdf" style="font-size:20px"></i></div>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px">Worksheet · 4 pages</span><span style="font-size:13px;color:var(--rc-text-muted)">Class material <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-check-circle"></i>Received</span></div>
+              <div role="switch" aria-checked="true" aria-label="Include worksheet" style="width:48px;height:28px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--color-bg)"></span></div>
+            </div>
+          </div>
+          <button class="btn btn-secondary" style="width:100%;justify-content:flex-start;padding-inline:14px"><i class="ph ph-plus" style="color:var(--color-accent)"></i>Add sources</button>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;box-shadow:var(--shadow-sm)">
+            <h2 style="font-size:17px;margin:0">Processing</h2>
+            <p style="margin:0;font-size:14px;color:var(--rc-text-muted)">Notes and cards appear here after processing. Board photo 2 is still being checked.</p>
+            <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">See estimate</button>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Role is a small menu per row (Class audio / Board photo / Class material / My notes).</li>
+        <li>"Received" only after the server check; "Checking…" until then. Processing waits for checks or excludes that file (asked in C5).</li>
+        <li>Photo names carry the recording time they were taken.</li>
+      </ul>
+    </figure>
+
+    <figure id="C1-add" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C1</span><span style="font-weight:500">Add sources sheet</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:52px 20px;opacity:.3"><h1 style="font-size:26px;margin:0">Class — 30 Sep 2026</h1></div>
+        <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 60%,transparent)"></div>
+        <div role="dialog" aria-modal="true" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:16px 16px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 34px;display:flex;flex-direction:column;gap:10px">
+          <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+          <div style="display:flex;align-items:center;margin-bottom:4px"><h2 style="font-size:22px;margin:0;flex:1">Add sources</h2><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+          <div style="display:flex;align-items:center;gap:14px;min-height:64px;padding:0 14px;border-radius:10px;border:1px solid var(--color-accent)"><i class="ph ph-microphone" style="font-size:24px;color:var(--color-accent)"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Record class</span><span style="font-size:13px;color:var(--rc-text-muted)">Audio stays on this phone</span></div><i class="ph ph-caret-right"></i></div>
+          <div style="display:flex;align-items:center;gap:14px;min-height:60px;padding:0 14px;border-radius:10px;background:var(--color-bg)"><i class="ph ph-file-audio" style="font-size:24px"></i><span style="flex:1;font-size:16px">Add audio file</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+          <div style="display:flex;align-items:center;gap:14px;min-height:60px;padding:0 14px;border-radius:10px;background:var(--color-bg)"><i class="ph ph-files" style="font-size:24px"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Add photos, PDF, HTML or text</span><span style="font-size:13px;color:var(--rc-text-muted)">You can choose many files</span></div><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+          <div style="display:flex;align-items:center;gap:14px;min-height:60px;padding:0 14px;border-radius:10px;background:var(--color-bg)"><i class="ph ph-clock-counter-clockwise" style="font-size:24px"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Use a previous source</span><span style="font-size:13px;color:var(--rc-text-muted)">From another class</span></div><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Record is first and outlined — the in-class action. First time → A3 notice, then A4 readiness check.</li>
+        <li>"Use a previous source" opens a picker inside this sheet, not a library page.</li>
+      </ul>
+    </figure>
+
+    <figure id="C1-desktop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C1</span><span style="font-weight:500">Desktop — partly ready, new sources added, range selection</span></div>
+      <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:grid;grid-template-columns:248px 1fr">
+        <aside style="background:var(--color-surface);display:flex;flex-direction:column;padding:24px 16px;gap:6px">
+          <div style="display:flex;align-items:baseline;gap:6px;padding:0 10px 22px"><span style="font-size:22px;font-weight:500;letter-spacing:-0.03em">recalino</span><span style="width:7px;height:7px;border-radius:2px;background:var(--color-accent)"></span></div>
+          <button class="btn btn-primary" style="justify-content:flex-start;margin-bottom:14px"><i class="ph ph-plus"></i>New class</button>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-sun-horizon" style="font-size:20px;color:var(--rc-text-muted)"></i>Today</div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;background:var(--rc-primary-tint);color:var(--rc-primary-text);font-weight:500"><i class="ph-fill ph-folders" style="font-size:20px"></i>Classes</div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-cards" style="font-size:20px;color:var(--rc-text-muted)"></i><span style="flex:1">Review</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">12 due</span></div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-user-circle" style="font-size:20px;color:var(--rc-text-muted)"></i>Me</div>
+        </aside>
+        <main style="padding:36px 56px;display:flex;flex-direction:column;gap:22px;overflow:hidden">
+          <div style="display:flex;align-items:flex-end;gap:24px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;color:var(--rc-text-muted)">Classes / ESOL Entry 3 / Unit 4 · Experiences</span><h1 style="font-size:34px;margin:0">Present perfect vs past simple</h1><div style="display:flex;gap:12px;align-items:center;font-size:14px;color:var(--rc-text-muted)">Tue 30 Sep 2026<span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half"></i>Partly ready · Part 2 missing</span></div></div>
+            <button class="btn btn-primary" style="min-height:48px"><i class="ph ph-notebook"></i>Open notes</button>
+            <button class="btn btn-secondary" style="min-height:48px"><i class="ph ph-cards"></i>Suggested cards · 14</button>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:8px;background:var(--color-surface);border:1px solid var(--color-divider)"><i class="ph ph-arrows-clockwise" style="font-size:20px;color:var(--color-accent)"></i><span style="flex:1;font-size:15px"><b style="font-weight:500">New sources since your notes were made.</b> Board photo 3 was added. Your notes haven't changed.</span><button class="btn btn-secondary">Update affected parts…</button></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:32px;min-height:0">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center"><h2 style="font-size:18px;margin:0;flex:1">Sources · 6</h2><button class="btn btn-ghost"><i class="ph ph-plus"></i>Add sources</button></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:0 12px;min-height:32px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)"><span></span><span>Name</span><span>Role</span><span>Status</span><span>Include</span></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--color-surface)"><div style="width:40px;height:40px;border-radius:8px;background:var(--rc-prov-class-tint);display:grid;place-items:center;color:var(--rc-prov-class)"><i class="ph ph-waveform" style="font-size:20px"></i></div><span style="font-size:15px">Class recording · 2 h 40 min</span><span style="font-size:14px">Class audio <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;display:flex;flex-direction:column;gap:2px"><span style="color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-device-mobile"></i>On this device</span><span style="color:var(--rc-text-muted)">Part 1: server copy deleted · Part 2: sending for processing…</span></span><div role="switch" aria-checked="true" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></div></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--color-surface)"><div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-file-pdf" style="font-size:20px"></i></div><span style="font-size:15px">Worksheet · 4 pages</span><span style="font-size:14px">Class material <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-check-circle"></i>Received</span><div role="switch" aria-checked="true" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></div></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--color-surface)"><div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-image" style="font-size:20px"></i></div><span style="font-size:15px">Board photo 1, 2</span><span style="font-size:14px">Board photo <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-check-circle"></i>Received</span><div role="switch" aria-checked="true" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></div></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--color-surface)"><div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-image" style="font-size:20px"></i></div><span style="font-size:15px;display:flex;gap:8px;align-items:center">Board photo 3 <span class="tag tag-accent">New</span></span><span style="font-size:14px">Board photo <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-success);display:flex;gap:4px;align-items:center"><i class="ph ph-check-circle"></i>Received</span><div role="switch" aria-checked="true" style="width:44px;height:26px;border-radius:999px;background:var(--color-accent);position:relative"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--color-bg)"></span></div></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--color-surface)"><div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-file-html" style="font-size:20px"></i></div><span style="font-size:15px">grammar-page.html</span><span style="font-size:14px">Class material <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-danger);display:flex;gap:4px;align-items:flex-start"><i class="ph ph-x-circle" style="margin-top:2px"></i>Not accepted: the page is empty</span><div role="switch" aria-checked="false" aria-disabled="true" style="width:44px;height:26px;border-radius:999px;background:var(--rc-surface-2);position:relative;opacity:.45"><span style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--rc-border-strong)"></span></div></div>
+              <div style="display:grid;grid-template-columns:40px 1fr 150px 230px 52px;gap:14px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--color-surface)"><div style="width:40px;height:40px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center"><i class="ph ph-file-pdf" style="font-size:20px"></i></div><span style="font-size:15px">homework.pdf</span><span style="font-size:14px">Class material <i class="ph ph-caret-down" style="font-size:11px"></i></span><span style="font-size:13px;color:var(--rc-warning);display:flex;gap:4px;align-items:flex-start"><i class="ph ph-hand-pointing" style="margin-top:2px"></i>Needs your action: upload a copy without a password</span><div role="switch" aria-checked="false" aria-disabled="true" style="width:44px;height:26px;border-radius:999px;background:var(--rc-surface-2);position:relative;opacity:.45"><span style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--rc-border-strong)"></span></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-sm);align-self:start">
+              <h2 style="font-size:18px;margin:0">Choose parts of the audio</h2>
+              <p style="margin:0;font-size:14px;color:var(--rc-text-muted)">Only the parts you pick are processed. Playback uses the copy on this device.</p>
+              <div class="rc-num" style="display:flex;justify-content:space-between;font-size:12px;color:var(--rc-text-muted)"><span>0:00</span><span>Part 1 | Part 2</span><span>2:40:00</span></div>
+              <div style="position:relative;height:56px;border-radius:8px;background:var(--rc-surface-2);overflow:hidden">
+                <div style="position:absolute;left:56.25%;top:0;bottom:0;width:2px;background:var(--color-surface)"></div>
+                <div style="position:absolute;left:0;width:56.25%;top:0;bottom:0;background:color-mix(in srgb,var(--rc-success) 16%,transparent)"></div>
+                <div style="position:absolute;left:62%;width:20%;top:0;bottom:0;background:color-mix(in srgb,var(--color-accent) 30%,transparent);border-left:3px solid var(--color-accent);border-right:3px solid var(--color-accent)"></div>
+                <i class="ph ph-camera" style="position:absolute;left:15%;bottom:6px;font-size:14px;color:var(--rc-text-muted)"></i>
+                <i class="ph ph-camera" style="position:absolute;left:41%;bottom:6px;font-size:14px;color:var(--rc-text-muted)"></i>
+              </div>
+              <div style="display:flex;gap:14px;font-size:13px;color:var(--rc-text-muted)"><span style="display:flex;gap:6px;align-items:center"><span style="width:12px;height:12px;border-radius:3px;background:color-mix(in srgb,var(--rc-success) 30%,transparent)"></span><i class="ph ph-check"></i>Processed</span><span style="display:flex;gap:6px;align-items:center"><span style="width:12px;height:12px;border-radius:3px;border:2px solid var(--color-accent)"></span>Selected</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+                <div class="field"><label>Start</label><input class="input rc-num" value="1:39:12"></div>
+                <div class="field"><label>End</label><input class="input rc-num" value="2:11:12"></div>
+                <button class="btn btn-icon btn-secondary" aria-label="Play this range"><i class="ph-fill ph-play"></i></button>
+              </div>
+              <button class="btn btn-ghost" style="align-self:flex-start"><i class="ph ph-plus"></i>Add another range</button>
+              <div style="display:flex;align-items:center;gap:10px;padding-top:6px"><span class="rc-num" style="flex:1;font-size:15px">Selected: 32 min</span><button class="btn btn-primary">See estimate</button></div>
+            </div>
+          </div>
+        </main>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px;max-width:900px">
+        <li>The "new sources" banner never updates anything by itself. "Update affected parts…" opens a comparison first (D3).</li>
+        <li>Not-accepted and needs-action files can't be included and don't block other files.</li>
+        <li>Timeline: processed part shaded + icon legend; start/end inputs are the keyboard/screen-reader path.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">C2 · Recording (focus mode — no navigation, no pop-ups)</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="C2-recording" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C2</span><span style="font-weight:500">Recording</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>10:05</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:12px 24px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Present perfect vs past simple</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px;gap:14px">
+          <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:10px;font-size:20px;font-weight:500"><span style="width:14px;height:14px;border-radius:50%;background:var(--rc-rec)"></span>Recording</div>
+          <div class="rc-num" aria-label="1 hour 12 minutes 8 seconds" style="font-family:var(--font-mono);font-size:72px;line-height:1;letter-spacing:-0.03em">1:12:08</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--rc-success)"><i class="ph ph-check-circle" style="font-size:18px"></i>Saving on this device</div>
+          <div style="display:flex;gap:8px;margin-top:22px">
+            <div style="width:64px;height:64px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center;color:var(--rc-text-muted)"><i class="ph ph-image" style="font-size:22px"></i></div>
+            <div style="width:64px;height:64px;border-radius:8px;background:var(--rc-surface-2);display:grid;place-items:center;color:var(--rc-text-muted)"><i class="ph ph-image" style="font-size:22px"></i></div>
+            <div class="rc-num" style="display:flex;flex-direction:column;justify-content:center;font-size:13px;color:var(--rc-text-muted)"><span>2 photos</span><span>0:24:10 · 1:05:42</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:0 32px 48px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Take photo" style="width:72px;height:72px;border-radius:50%;padding:0"><i class="ph ph-camera" style="font-size:28px"></i></button>Photo</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-primary" aria-label="Pause recording" style="width:96px;height:96px;border-radius:50%;padding:0;border-width:2px"><i class="ph-fill ph-pause" style="font-size:38px"></i></button>Pause</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Stop recording" style="width:72px;height:72px;border-radius:50%;padding:0;border-color:var(--rc-rec);color:var(--rc-rec)"><i class="ph-fill ph-stop" style="font-size:26px"></i></button>Stop</div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>"Recording" shows only while audio chunks are being captured <i>and</i> written locally (health check every few seconds).</li>
+        <li>No duration, 90-min split or allowance info here — all of that waits until after Stop.</li>
+        <li>Controls at the bottom for one-handed reach; Pause is the largest (96px).</li>
+        <li>Screen wake lock is requested; the dot pulses unless reduced motion.</li>
+        <li>Microphone permission is re-checked during recording (track <code>ended</code>/<code>mute</code> + permission <code>change</code> event). If lost → C2-mic inline, audio so far stays saved.</li>
+      </ul>
+    </figure>
+
+    <figure id="C2-paused" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C2</span><span style="font-weight:500">Paused</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>10:21</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:12px 24px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Present perfect vs past simple</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px;gap:14px">
+          <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:10px;font-size:20px;font-weight:500"><i class="ph-fill ph-pause-circle" style="font-size:20px;color:var(--rc-text-muted)"></i>Paused</div>
+          <div class="rc-num" aria-label="1 hour 12 minutes 8 seconds, paused" style="font-family:var(--font-mono);font-size:72px;line-height:1;letter-spacing:-0.03em;color:var(--rc-text-muted)">1:12:08</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--rc-success)"><i class="ph ph-check-circle" style="font-size:18px"></i>Saved on this device so far</div>
+          <p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">Nothing is recorded while paused. Tap Resume to go on.</p>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:0 32px 48px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Take photo" style="width:72px;height:72px;border-radius:50%;padding:0"><i class="ph ph-camera" style="font-size:28px"></i></button>Photo</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-primary" aria-label="Resume recording" style="width:96px;height:96px;border-radius:50%;padding:0;border-width:2px"><i class="ph-fill ph-play" style="font-size:38px"></i></button>Resume</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Stop recording" style="width:72px;height:72px;border-radius:50%;padding:0;border-color:var(--rc-rec);color:var(--rc-rec)"><i class="ph-fill ph-stop" style="font-size:26px"></i></button>Stop</div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Pause/Resume is one toggle in the same 96px spot (aria-pressed). Pause = <code>MediaRecorder.pause()</code>; the timer freezes and is muted.</li>
+        <li>Pausing never ends the recording or creates a new part; Resume continues the same file.</li>
+        <li>No auto-resume. Paused time isn't counted for allowance. If paused 30 min, one quiet inline line: "Still paused" — no sound, no modal.</li>
+        <li>Photo still works while paused (timestamp = paused position).</li>
+      </ul>
+    </figure>
+
+    <figure id="C2-mic" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C2</span><span style="font-weight:500">Problem — microphone stopped</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>10:48</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:12px 24px"><span style="font-size:14px;color:var(--rc-text-muted)">Present perfect vs past simple</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px;gap:14px">
+          <div role="alert" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:12px;background:var(--rc-danger-tint);border:1px solid var(--rc-danger-border)">
+            <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:500;color:var(--rc-danger)"><i class="ph ph-microphone-slash" style="font-size:24px"></i>Microphone stopped — recording is paused</div>
+            <span style="font-size:15px">Another app may be using the microphone. Tap Resume to try again.</span>
+          </div>
+          <div class="rc-num" style="font-family:var(--font-mono);font-size:72px;line-height:1;letter-spacing:-0.03em;color:var(--rc-text-muted)">1:43:51</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--rc-success)"><i class="ph ph-check-circle" style="font-size:18px"></i>Saved on this device up to 1:43:51</div>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:0 32px 48px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Take photo" style="width:72px;height:72px;border-radius:50%;padding:0"><i class="ph ph-camera" style="font-size:28px"></i></button>Photo</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-primary" aria-label="Resume recording" style="width:96px;height:96px;border-radius:50%;padding:0;border-width:2px"><i class="ph-fill ph-microphone" style="font-size:36px"></i></button>Resume</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Stop recording" style="width:72px;height:72px;border-radius:50%;padding:0;border-color:var(--rc-rec);color:var(--rc-rec)"><i class="ph-fill ph-stop" style="font-size:26px"></i></button>Stop</div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Shown immediately, inline, silent (role="alert", no sound, no modal). The word "Recording" is gone.</li>
+        <li>Timer freezes and turns muted; the saved point is stated.</li>
+      </ul>
+    </figure>
+
+    <figure id="C2-storage" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C2</span><span style="font-weight:500">Problem — storage full</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>11:12</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:12px 24px"><span style="font-size:14px;color:var(--rc-text-muted)">Present perfect vs past simple</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px;gap:14px">
+          <div role="alert" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:12px;background:var(--rc-danger-tint);border:1px solid var(--rc-danger-border)">
+            <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:500;color:var(--rc-danger)"><i class="ph ph-hard-drives" style="font-size:24px"></i>Can't save on this device — storage is full</div>
+            <span style="font-size:15px">Recording has stopped. Free up some space on your phone, then tap Resume.</span>
+          </div>
+          <div class="rc-num" style="font-family:var(--font-mono);font-size:72px;line-height:1;letter-spacing:-0.03em;color:var(--rc-text-muted)">2:07:30</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--rc-success)"><i class="ph ph-check-circle" style="font-size:18px"></i>Saved on this device up to 2:07:30</div>
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:0 32px 48px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;opacity:.45"><button class="btn btn-secondary" disabled="" aria-label="Take photo (not available, storage full)" style="width:72px;height:72px;border-radius:50%;padding:0"><i class="ph ph-camera" style="font-size:28px"></i></button>Photo</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-primary" aria-label="Resume recording" style="width:96px;height:96px;border-radius:50%;padding:0;border-width:2px"><i class="ph-fill ph-microphone" style="font-size:36px"></i></button>Resume</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px"><button class="btn btn-secondary" aria-label="Stop recording" style="width:72px;height:72px;border-radius:50%;padding:0;border-color:var(--rc-rec);color:var(--rc-rec)"><i class="ph-fill ph-stop" style="font-size:26px"></i></button>Stop</div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Resume re-checks storage first; if still full, the message stays and nothing claims to record.</li>
+      </ul>
+    </figure>
+
+    <figure id="C2-stop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C2</span><span style="font-weight:500">Stop — confirm</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>12:45</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 24px 240px;gap:14px">
+          <div style="display:flex;align-items:center;gap:10px;font-size:20px;font-weight:500"><span style="width:14px;height:14px;border-radius:50%;background:var(--rc-rec)"></span>Recording</div>
+          <div class="rc-num" style="font-family:var(--font-mono);font-size:72px;line-height:1;letter-spacing:-0.03em">2:40:03</div>
+        </div>
+        <div role="alertdialog" aria-modal="true" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:16px 16px 0 0;box-shadow:var(--shadow-lg);padding:20px 20px 34px;display:flex;flex-direction:column;gap:14px">
+          <h2 style="font-size:22px;margin:0">Stop recording?</h2>
+          <p style="margin:0;font-size:16px;color:var(--rc-text-muted)">Recording continues until you choose. After you stop, you can't add to this recording.</p>
+          <button class="btn btn-primary" style="width:100%;min-height:56px;font-size:16px">Keep recording</button>
+          <button class="btn btn-secondary" style="width:100%;min-height:56px;font-size:16px;color:var(--rc-rec);border-color:var(--rc-danger-border)"><i class="ph-fill ph-stop"></i>Stop and save</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Audio keeps recording behind the sheet; state remains visible above it.</li>
+        <li>"Keep recording" is first and gets initial focus (safe default).</li>
+      </ul>
+    </figure>
+
+    <figure id="C2-saved" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C2</span><span style="font-weight:500">Saved → post-stop messages</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>12:46</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:28px 24px 28px;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:6px;padding-bottom:6px">
+            <div class="rc-num" style="font-size:14px;color:var(--rc-text-muted);display:flex;gap:8px;align-items:center"><i class="ph ph-circle-notch"></i><s>Saving…</s> <span style="font-size:12px">(earlier state)</span></div>
+            <div role="status" style="display:flex;align-items:center;gap:10px;font-size:24px;font-weight:500;color:var(--rc-success)"><i class="ph-fill ph-check-circle" style="font-size:28px"></i>Saved on this device</div>
+            <span class="rc-num" style="font-size:15px;color:var(--rc-text-muted)">Class recording · 2 h 40 min · 2 photos</span>
+          </div>
+          <div style="display:flex;gap:12px;padding:14px;border-radius:10px;background:var(--color-surface)"><i class="ph ph-scissors" style="font-size:20px;color:var(--color-accent);flex:none;margin-top:2px"></i><span style="font-size:15px">This class is 2 h 40 min. We'll process it in 2 parts — you'll still get one set of notes.</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:var(--color-surface)">
+            <div style="display:flex;gap:12px"><i class="ph ph-hourglass-medium" style="font-size:20px;color:var(--color-accent);flex:none;margin-top:2px"></i><span style="font-size:15px">This uses <b style="font-weight:500">2 h 40 min</b> of your <b style="font-weight:500">4 h 20 min</b>.</span></div>
+            <div style="height:8px;border-radius:4px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:61%;background:var(--color-accent)"></span></div>
+          </div>
+          <div style="display:flex;gap:12px;padding:14px;border-radius:10px;background:var(--color-surface);align-items:center"><i class="ph ph-download-simple" style="font-size:20px;flex:none"></i><span style="font-size:15px;flex:1">Keep your own copy of the audio.</span><button class="btn btn-secondary">Save a copy</button></div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">See estimate</button>
+          <button class="btn btn-secondary" style="width:100%;min-height:52px">Go to class page</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Sequence: Stop → "Saving…" (spinner, nothing else) → "Saved on this device" only after the final write succeeds. Only then do the split, allowance and copy messages appear.</li>
+        <li>If the final save fails: "Not saved yet — trying again", with Save a copy offered.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">C5 · Estimate and confirm  ·  C6 · Not enough allowance</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="C5" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C5</span><span style="font-weight:500">Estimate — enough allowance</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>12:47</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:4px 24px 24px;gap:18px">
+          <h1 style="font-size:26px;margin:0">Process this class?</h1>
+          <div style="display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;border-bottom:1px solid var(--color-divider)"><i class="ph ph-waveform" style="font-size:20px;color:var(--rc-prov-class)"></i><span style="flex:1;font-size:16px">Class audio</span><span class="rc-num" style="font-size:16px">2 h 40 min · 2 parts</span></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px;border-bottom:1px solid var(--color-divider)"><i class="ph ph-file-pdf" style="font-size:20px"></i><span style="flex:1;font-size:16px">Worksheet</span><span class="rc-num" style="font-size:16px">4 pages</span></div>
+            <div style="display:flex;align-items:center;gap:12px;min-height:52px"><i class="ph ph-image" style="font-size:20px"></i><span style="flex:1;font-size:16px">Board photos</span><span class="rc-num" style="font-size:16px">2 photos</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="font-size:17px">Uses <b style="font-weight:500">2 h 40 min</b> of <b style="font-weight:500">4 h 20 min</b></div>
+            <div role="img" aria-label="Uses 2 hours 40 minutes of 4 hours 20 minutes" style="height:10px;border-radius:5px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:61%;background:var(--color-accent)"></span></div>
+            <div class="rc-num" style="display:flex;justify-content:space-between;font-size:14px;color:var(--rc-text-muted)"><span>Left afterwards: 1 h 40 min</span><span>Until 31 Oct</span></div>
+            <div class="rc-num" style="font-size:14px;color:var(--rc-text-muted);padding-top:8px;border-top:1px solid var(--color-divider)">Pages: 4 of 96 left · Photos don't use allowance</div>
+          </div>
+          <div style="display:flex;gap:10px;font-size:15px"><i class="ph ph-shield-check" style="font-size:20px;color:var(--color-accent);flex:none"></i><span><b style="font-weight:500">Nothing is sent until you confirm.</b> A temporary copy of the audio goes to our server for transcription and is deleted automatically.</span></div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">Confirm and process</button>
+          <button class="btn btn-secondary" style="width:100%;min-height:52px">Not now</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Estimate sits next to what's left, before anything is sent. Meter has a text equivalent.</li>
+        <li><b style="font-weight:500">Assumption:</b> photos don't use allowance; pages do. Needs confirmation.</li>
+        <li>Desktop: same content in a 480px dialog.</li>
+      </ul>
+    </figure>
+
+    <figure id="C6" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C6</span><span style="font-weight:500">Not enough allowance</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>12:47</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:4px 24px 24px;gap:16px">
+          <h1 style="font-size:26px;margin:0;line-height:1.25">This class needs 2 h 40 min. You have 1 h left.</h1>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div role="img" aria-label="Needs 2 hours 40 minutes, 1 hour left" style="position:relative;height:10px;border-radius:5px;background:var(--rc-surface-2);overflow:hidden"><span style="position:absolute;left:0;top:0;bottom:0;width:37.5%;background:var(--color-accent)"></span></div>
+            <div class="rc-num" style="display:flex;justify-content:space-between;font-size:14px;color:var(--rc-text-muted)"><span>1 h left</span><span>2 h 40 min needed</span></div>
+          </div>
+          <p style="margin:0;font-size:16px">What would you like to do?</p>
+          <div role="radiogroup" style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:14px;align-items:center;min-height:64px;padding:10px 14px;border-radius:10px;border:1px solid var(--color-divider)"><i class="ph ph-clock" style="font-size:22px;color:var(--color-accent)"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Keep for later</span><span style="font-size:13px;color:var(--rc-text-muted)">The audio stays on this device.</span></div><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;gap:14px;align-items:center;min-height:64px;padding:10px 14px;border-radius:10px;border:1px solid var(--color-divider)"><i class="ph ph-selection" style="font-size:22px;color:var(--color-accent)"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Process a part</span><span style="font-size:13px;color:var(--rc-text-muted)">Choose up to 1 h of the audio.</span></div><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;gap:14px;align-items:center;min-height:64px;padding:10px 14px;border-radius:10px;border:1px solid var(--color-divider)"><i class="ph ph-download-simple" style="font-size:22px;color:var(--color-accent)"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Save a copy to this device</span><span style="font-size:13px;color:var(--rc-text-muted)">Keep your own audio file.</span></div><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            <div style="display:flex;gap:14px;align-items:center;min-height:64px;padding:10px 14px;border-radius:10px;border:1px solid var(--color-divider)"><i class="ph ph-envelope-simple" style="font-size:22px;color:var(--color-accent)"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:16px">Ask the pilot operator for more</span><span style="font-size:13px;color:var(--rc-text-muted)">We'll send them a short message.</span></div><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+          </div>
+          <div style="flex:1"></div>
+          <p style="margin:0;font-size:14px;color:var(--rc-text-muted);display:flex;gap:8px"><i class="ph ph-info" style="margin-top:2px"></i>Nothing has been sent. Class status: Waiting for allowance.</p>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Calm: no red, no warning icon, no purchase options anywhere.</li>
+        <li>Each option is a full-row button (64px). Options can be combined (e.g. save a copy and keep for later).</li>
+      </ul>
+    </figure>
+
+    <figure id="C6-part" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">C6</span><span style="font-weight:500">Process a part — range picker</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>12:48</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:4px 24px 24px;gap:16px">
+          <h1 style="font-size:26px;margin:0">Choose a part</h1>
+          <p style="margin:0;font-size:15px;color:var(--rc-text-muted)">You can choose up to 1 h. Tap play to check a part.</p>
+          <div class="rc-num" style="display:flex;justify-content:space-between;font-size:12px;color:var(--rc-text-muted)"><span>0:00</span><span>1:30</span><span>2:40</span></div>
+          <div style="position:relative;height:64px;border-radius:8px;background:var(--rc-surface-2);overflow:hidden">
+            <div style="position:absolute;left:56.25%;top:0;bottom:0;width:2px;background:var(--color-bg)"></div>
+            <div style="position:absolute;left:10%;width:35%;top:0;bottom:0;background:color-mix(in srgb,var(--color-accent) 30%,transparent);border-left:4px solid var(--color-accent);border-right:4px solid var(--color-accent)"></div>
+            <i class="ph ph-camera" style="position:absolute;left:15%;bottom:6px;font-size:14px;color:var(--rc-text-muted)"></i>
+            <i class="ph ph-camera" style="position:absolute;left:41%;bottom:6px;font-size:14px;color:var(--rc-text-muted)"></i>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+            <div class="field"><label style="font-size:14px">Start</label><input class="input rc-num" value="0:16:00"></div>
+            <div class="field"><label style="font-size:14px">End</label><input class="input rc-num" value="1:12:00"></div>
+            <button class="btn btn-icon btn-secondary" aria-label="Play this part"><i class="ph-fill ph-play"></i></button>
+          </div>
+          <button class="btn btn-ghost" style="align-self:flex-start"><i class="ph ph-plus"></i>Add another part</button>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:12px;background:var(--color-surface)">
+            <div class="rc-num" style="font-size:16px">Uses <b style="font-weight:500">56 min</b> of <b style="font-weight:500">1 h</b></div>
+            <div style="height:10px;border-radius:5px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:93%;background:var(--color-accent)"></span></div>
+            <span style="font-size:14px;color:var(--rc-text-muted)">The rest stays on this device. You can process it later.</span>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">Confirm and process 56 min</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>If the selection goes over 1 h, the Confirm button disables and the line reads "That's 1 h 10 min. Please choose up to 1 h."</li>
+        <li>Notes from a part → status "Partly ready", with what's missing named.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

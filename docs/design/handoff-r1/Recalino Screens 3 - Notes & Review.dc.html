@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:56px;display:flex;flex-direction:column;gap:80px;width:max-content;font-family:var(--font-body)">
+
+<header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+  <div style="font-size:13px;color:var(--rc-text-muted)">Recalino MVP · Screens round 1 · <a href="Recalino Prototype.dc.html">Prototype</a> · <a href="Recalino Screens 5 - Notes Tools.dc.html">Round 2 screens</a> · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 1 - Setup & Today.dc.html">Setup &amp; Today</a> · <a href="Recalino Screens 2 - Capture.dc.html">Capture</a> · <a href="Recalino Assumptions.dc.html">Assumptions</a></div>
+  <h1 style="font-size:34px;margin:0">D1 · Notes  ·  F2 · Review card</h1>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">D1 · Notes for a class</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="D1-top" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D1</span><span style="font-weight:500">Top — partial banner, summary, contents</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:20</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to class"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px;color:var(--rc-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Present perfect vs past simple</span><button class="btn btn-icon btn-ghost" aria-label="Edit notes"><i class="ph ph-pencil-simple" style="font-size:20px"></i></button><button class="btn btn-icon btn-ghost" aria-label="More"><i class="ph ph-dots-three" style="font-size:22px"></i></button></div>
+        <div role="tablist" style="display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--color-divider)">
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--color-accent);box-shadow:inset 0 -2px 0 var(--color-accent);font-weight:500;font-size:15px">Notes</div>
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--rc-text-muted);font-size:15px">Cards · 14</div>
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--rc-text-muted);font-size:15px">Sources</div>
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--rc-text-muted);font-size:15px">Transcript</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 20px;gap:20px;overflow:hidden">
+          <div role="status" style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half" style="font-size:20px;color:var(--rc-primary-text);flex:none"></i><div style="font-size:14px;display:flex;flex-direction:column;gap:2px"><b style="font-weight:500">Partly ready</b><span>Part 2 isn't ready yet. These notes use Part 1 and the worksheet only.</span></div></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 style="font-size:26px;margin:0;line-height:1.2">Present perfect vs past simple</h1>
+            <span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep 2026</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span>
+            <h2 style="font-size:13px;margin:0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Lesson goal</h2>
+            <p style="margin:0;font-size:17px;line-height:1.6">Choose between the present perfect and the past simple, and use <em>already</em>, <em>yet</em>, <em>ever</em> and <em>recently</em>.</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 02:15</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i>Worksheet · page 1</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation · summary</span>
+            <p style="margin:0;font-size:16px;line-height:1.6">Use the past simple for a finished time (<em>yesterday</em>). Use the present perfect when the time is not said or not finished.</p>
+          </div>
+          <nav aria-label="Contents" style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-size:13px;margin:0 0 4px;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Contents</h2>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Key points</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Vocabulary · 4</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Grammar</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Examples from class</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Common mistakes</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Practice</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Homework</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Sources</a>
+              <a href="#" style="display:flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--color-surface);color:var(--color-text);text-decoration:none;font-size:14px">Cards · 14</a>
+            </div>
+          </nav>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Sections appear only if they have content (no "Related images" here — none found).</li>
+        <li>Contents chips: 36px visual, 44px hit area. They jump and move focus to the section heading.</li>
+        <li>Partial banner is role="status" and sits above the title so it's read first.</li>
+      </ul>
+    </figure>
+
+    <figure id="D1-vocab" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D1</span><span style="font-weight:500">Vocabulary — provenance + Persian (RTL)</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:22</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--color-divider)"><button class="btn btn-icon btn-ghost" aria-label="Back to class"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px">Vocabulary</span><span style="font-size:13px;color:var(--rc-text-muted);padding-right:12px">Explanations: <span lang="fa">فارسی</span></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 20px;gap:18px;overflow:hidden">
+          <div style="display:flex;align-items:baseline;gap:10px"><h2 style="font-size:26px;margin:0">already</h2><span style="font-size:14px;color:var(--rc-text-muted)">adverb</span></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span><span style="font-size:12px;color:var(--rc-text-muted)">· Teacher (confirmed by you)</span></div>
+            <p style="margin:0;font-size:17px;line-height:1.6">"I've already finished my homework."</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><button style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);background:transparent;color:var(--color-text);font:inherit;font-size:13px"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 18:42</button><button style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);background:transparent;color:var(--color-text);font:inherit;font-size:13px"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i>Worksheet · page 4</button></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation · <span lang="fa">فارسی</span></span>
+            <p dir="rtl" lang="fa" style="margin:0;font-size:17px;line-height:1.85;text-align:right">already یعنی «قبلاً» یا «تا حالا»؛ وقتی کاری زودتر از انتظار انجام شده است.</p>
+            <button class="btn btn-ghost" style="align-self:flex-start;padding-inline:0;min-height:36px;font-size:14px"><i class="ph ph-translate"></i>Show in English</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:8px;background:var(--rc-prov-edit-tint);border:1px dashed var(--rc-prov-edit-border)">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-edit)"><i class="ph ph-pencil-simple-line"></i>Edited by you · 30 Sep</span>
+            <p dir="ltr" style="margin:0;font-size:17px;line-height:1.6">The word "already" <bdi lang="fa">یعنی قبلاً</bdi>.</p>
+          </div>
+          <div style="height:1px;background:linear-gradient(to right,transparent,var(--color-divider) 48px,var(--color-divider) calc(100% - 48px),transparent)"></div>
+          <div style="display:flex;align-items:baseline;gap:10px"><h2 style="font-size:26px;margin:0">yet</h2><span style="font-size:14px;color:var(--rc-text-muted)">adverb</span></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span><span style="font-size:12px;color:var(--rc-text-muted)">· Mentioned in class discussion (Speaker 2)</span></div>
+            <p style="margin:0;font-size:17px;line-height:1.6">"Have you finished it yet?"</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><button style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);background:transparent;color:var(--color-text);font:inherit;font-size:13px"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 21:07</button></div>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>"Teacher" appears only with audio evidence + a speaker role the learner confirmed. Otherwise: "Mentioned in class discussion".</li>
+        <li>The Persian block is dir="rtl", right-aligned inside the LTR page. Mixed line uses &lt;bdi&gt; so the quote marks and full stop stay in place.</li>
+        <li>Tapping an audio chip plays 18:42 → end of sentence from the local copy (D2).</li>
+      </ul>
+    </figure>
+
+    <figure id="D1-exp" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D1</span><span style="font-weight:500">Experimental language (Arabic) + practice</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:24</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--color-divider)"><button class="btn btn-icon btn-ghost" aria-label="Back to class"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px">Vocabulary</span><span style="font-size:13px;color:var(--rc-text-muted);padding-right:12px">Explanations: <span lang="ar">العربية</span></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 20px;gap:16px;overflow:hidden">
+          <h2 style="font-size:26px;margin:0">already</h2>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span><span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:5px;font-size:12px;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask"></i>Experimental quality</span></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">Arabic</span><p dir="rtl" lang="ar" style="margin:0;font-size:17px;line-height:1.85;text-align:right">already تعني "بالفعل" أو "مسبقًا"، وتُستخدم عندما يحدث شيء أبكر من المتوقع.</p></div>
+            <div style="height:1px;background:var(--rc-prov-ai-border)"></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">English</span><p dir="ltr" style="margin:0;font-size:17px;line-height:1.6">We use <em>already</em> when something happened earlier than expected.</p></div>
+            <button class="btn btn-ghost" style="align-self:flex-start;padding-inline:0;min-height:40px;font-size:14px"><i class="ph ph-flag"></i>Report a problem</button>
+          </div>
+          <h2 style="font-size:20px;margin:6px 0 0">Practice</h2>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:var(--color-surface)">
+            <div style="display:flex;gap:8px;align-items:center"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span><span style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:12px"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i>Worksheet · page 3</span></div>
+            <p style="margin:0;font-size:17px">1. I ___ (see) that film last week.</p>
+            <button class="btn btn-secondary" style="align-self:flex-start"><i class="ph ph-eye"></i>Show answer</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:var(--color-surface)">
+            <div style="display:flex;gap:8px;align-items:center"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span></div>
+            <p style="margin:0;font-size:17px">2. ___ you ever ___ (be) to Scotland?</p>
+            <p style="margin:0;font-size:17px;color:var(--rc-success);display:flex;gap:6px;align-items:center"><i class="ph ph-check"></i>Have … been</p>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li><b style="font-weight:500">Assumption:</b> "side by side" stacks L1 over English at 390px; true two columns from 768px up (see desktop).</li>
+        <li>Report a problem opens a short sheet (what's wrong + optional note). It doesn't use allowance.</li>
+      </ul>
+    </figure>
+  </div>
+
+  <figure id="D1-desktop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+    <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D1</span><span style="font-weight:500">Desktop — laptop (audio isn't on this device), worksheet page open</span></div>
+    <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:grid;grid-template-columns:248px 220px minmax(0,1fr) 400px">
+      <aside style="background:var(--color-surface);display:flex;flex-direction:column;padding:24px 16px;gap:6px">
+        <div style="display:flex;align-items:baseline;gap:6px;padding:0 10px 22px"><span style="font-size:22px;font-weight:500;letter-spacing:-0.03em">recalino</span><span style="width:7px;height:7px;border-radius:2px;background:var(--color-accent)"></span></div>
+        <button class="btn btn-primary" style="justify-content:flex-start;margin-bottom:14px"><i class="ph ph-plus"></i>New class</button>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-sun-horizon" style="font-size:20px;color:var(--rc-text-muted)"></i>Today</div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;background:var(--rc-primary-tint);color:var(--rc-primary-text);font-weight:500"><i class="ph-fill ph-folders" style="font-size:20px"></i>Classes</div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-cards" style="font-size:20px;color:var(--rc-text-muted)"></i><span style="flex:1">Review</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">12 due</span></div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-user-circle" style="font-size:20px;color:var(--rc-text-muted)"></i>Me</div>
+      </aside>
+      <nav aria-label="Contents" style="padding:40px 16px 24px 28px;display:flex;flex-direction:column;gap:2px;font-size:14px">
+        <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted);padding:0 10px 8px">Contents</div>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Summary</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Key points</a>
+        <a href="#" aria-current="true" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-accent);text-decoration:none;background:var(--rc-primary-tint)">Vocabulary · 4</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Grammar</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Examples from class</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Common mistakes</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Practice</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Homework</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Sources</a>
+        <a href="#" style="min-height:36px;display:flex;align-items:center;padding:0 10px;border-radius:6px;color:var(--color-text);text-decoration:none">Cards · 14</a>
+      </nav>
+      <main style="padding:40px 48px;display:flex;flex-direction:column;gap:22px;overflow:hidden;max-width:760px">
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep 2026</span><h1 style="font-size:32px;margin:0">Present perfect vs past simple</h1></div>
+        <div role="status" style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half" style="font-size:20px;color:var(--rc-primary-text)"></i><span style="font-size:14px"><b style="font-weight:500">Partly ready.</b> Part 2 isn't ready yet. These notes use Part 1 and the worksheet only.</span></div>
+        <h2 style="font-size:24px;margin:8px 0 0">Vocabulary</h2>
+        <div style="display:flex;align-items:baseline;gap:10px"><h3 style="font-size:22px;margin:0">already</h3><span style="font-size:14px;color:var(--rc-text-muted)">adverb</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span><span style="font-size:12px;color:var(--rc-text-muted)">· Teacher (confirmed by you)</span></div>
+          <p style="margin:0;font-size:17px;line-height:1.65">"I've already finished my homework."</p>
+          <div style="display:flex;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px dashed var(--rc-border-strong);font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile-slash"></i>Class audio · 18:42 · not on this device</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class);background:var(--rc-prov-class-tint);font-size:13px"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i>Worksheet · page 4 · open</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+          <div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span><span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:5px;font-size:12px;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask"></i>Experimental quality</span><span style="flex:1"></span><button class="btn btn-ghost" style="min-height:36px;font-size:14px"><i class="ph ph-flag"></i>Report a problem</button></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted)">English</span><p dir="ltr" style="margin:0;font-size:17px;line-height:1.65">We use <em>already</em> when something happened earlier than expected.</p></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;color:var(--rc-text-muted);text-align:right">Arabic</span><p dir="rtl" lang="ar" style="margin:0;font-size:17px;line-height:1.85;text-align:right">already تعني "بالفعل" أو "مسبقًا"، وتُستخدم عندما يحدث شيء أبكر من المتوقع.</p></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class · Common mistake</span>
+          <p style="margin:0;font-size:17px;line-height:1.65"><s style="text-decoration-color:var(--rc-danger)">I have seen him yesterday.</s> → I <b style="font-weight:500">saw</b> him yesterday.</p>
+          <div style="display:flex;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-image" style="color:var(--rc-prov-class)"></i>Board photo 2</span></div>
+        </div>
+      </main>
+      <aside aria-label="Source viewer" style="background:var(--color-surface);padding:28px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:-1px 0 0 var(--color-divider)">
+        <div style="display:flex;align-items:center"><span style="flex:1;font-size:16px;font-weight:500;display:flex;gap:8px;align-items:center"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i>Worksheet · page 4</span><button class="btn btn-icon btn-ghost" aria-label="Close source"><i class="ph ph-x" style="font-size:18px"></i></button></div>
+        <div style="flex:1;border-radius:8px;background:var(--color-bg);box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:12px;font-size:13px;color:var(--rc-text-muted)">
+          <div style="height:10px;width:50%;border-radius:3px;background:var(--rc-surface-2)"></div>
+          <div style="height:8px;width:90%;border-radius:3px;background:var(--rc-surface-2)"></div>
+          <div style="height:8px;width:80%;border-radius:3px;background:var(--rc-surface-2)"></div>
+          <div style="padding:8px 10px;border-radius:6px;background:var(--rc-prov-class-tint);box-shadow:inset 0 0 0 1.5px var(--rc-prov-class);color:var(--color-text);font-size:14px">I've already finished my homework.</div>
+          <div style="height:8px;width:85%;border-radius:3px;background:var(--rc-surface-2)"></div>
+          <div style="height:8px;width:70%;border-radius:3px;background:var(--rc-surface-2)"></div>
+          <div style="flex:1;display:grid;place-items:center;border:1px dashed var(--color-divider);border-radius:6px">PDF page render</div>
+        </div>
+        <div class="rc-num" style="display:flex;align-items:center;gap:8px"><button class="btn btn-icon btn-secondary" aria-label="Previous page"><i class="ph ph-caret-left"></i></button><span style="flex:1;text-align:center;font-size:14px">Page 4 of 4</span><button class="btn btn-icon btn-secondary" aria-label="Next page" disabled=""><i class="ph ph-caret-right"></i></button></div>
+        <div style="display:flex;gap:10px;padding:12px;border-radius:8px;background:var(--rc-info-tint);border:1px solid var(--rc-info-border);font-size:14px"><i class="ph ph-device-mobile-slash" style="font-size:20px;flex:none"></i><span>The original audio isn't on this device. It's on the phone you recorded with.</span></div>
+      </aside>
+    </div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px;max-width:900px">
+      <li>On a device without the recording, audio chips stay visible but dashed with "not on this device" — tapping explains, never a broken player.</li>
+      <li>Reading column capped at ~68 characters. Source viewer is a side panel on desktop, full-screen sheet on mobile.</li>
+    </ul>
+  </figure>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">F2 · Review card</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="F2-front" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">F2</span><span style="font-weight:500">Front</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:02</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 12px 4px 8px"><button class="btn btn-ghost" style="font-size:15px">End for now</button><div role="progressbar" aria-valuenow="4" aria-valuemax="17" aria-label="Card 4 of 17" style="flex:1;height:6px;border-radius:3px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:23%;background:var(--color-accent)"></span></div><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">4 / 17</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 20px 24px;gap:16px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:20px;padding:24px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--rc-text-muted)"><span>Cloze</span><span>·</span><span>Present perfect vs past simple</span></div>
+            <div style="flex:1;display:flex;align-items:center"><p style="margin:0;font-size:26px;line-height:1.45">I've <span style="display:inline-block;min-width:90px;border-bottom:2px solid var(--color-accent)">&nbsp;</span> finished my homework.</p></div>
+            <div style="display:flex;gap:8px;align-items:center"><button class="btn btn-secondary btn-icon" aria-label="Play class audio" style="border-radius:50%"><i class="ph-fill ph-play"></i></button><span style="font-size:13px;color:var(--rc-text-muted)">Class audio · 18:42</span></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;min-height:60px;font-size:17px">Show answer</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>"End for now" is always available; remaining cards stay due (no fake "done").</li>
+        <li>Audio plays only on the recording device; elsewhere the button is replaced by "Audio not on this device".</li>
+      </ul>
+    </figure>
+
+    <figure id="F2-answer" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">F2</span><span style="font-weight:500">Answer — simple mode (default)</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:02</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 12px 4px 8px"><button class="btn btn-ghost" style="font-size:15px">End for now</button><div style="flex:1;height:6px;border-radius:3px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:23%;background:var(--color-accent)"></span></div><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">4 / 17</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 20px 24px;gap:16px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:18px;padding:24px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--rc-text-muted)"><span>Cloze</span><span>·</span><span>Present perfect vs past simple</span></div>
+            <p style="margin:0;font-size:26px;line-height:1.45">I've <b style="font-weight:500;color:var(--color-accent);border-bottom:2px solid var(--color-accent)">already</b> finished my homework.</p>
+            <div style="height:1px;background:var(--color-divider)"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span>
+              <p dir="rtl" lang="fa" style="margin:0;font-size:16px;line-height:1.8;text-align:right">already یعنی «قبلاً» یا «تا حالا»؛ وقتی کاری زودتر از انتظار انجام شده است.</p>
+            </div>
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:8px;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 18:42</span><span style="flex:1"></span><button class="btn btn-icon btn-ghost" aria-label="Card actions"><i class="ph ph-dots-three" style="font-size:22px"></i></button></div>
+          </div>
+          <div role="group" aria-label="How did you do?" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn btn-secondary" style="min-height:60px;font-size:17px"><i class="ph ph-arrow-counter-clockwise"></i>Forgot</button>
+            <button class="btn btn-primary" style="min-height:60px;font-size:17px"><i class="ph ph-check"></i>Remembered</button>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Focus moves to the answer text on reveal (announced). Keys: 1 = Forgot, 2 = Remembered.</li>
+        <li>Card actions (⋯) hold Edit, Suspend, I know this, Important, Too hard, Wrong card (E3).</li>
+      </ul>
+    </figure>
+
+    <figure id="F2-advanced" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">F2</span><span style="font-weight:500">Advanced mode — one-time hint</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:05</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 12px 4px 8px"><button class="btn btn-ghost" style="font-size:15px">End for now</button><div style="flex:1;height:6px;border-radius:3px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:41%;background:var(--color-accent)"></span></div><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">7 / 17</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 20px 24px;gap:14px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:16px;padding:24px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--rc-text-muted)"><span>Error correction</span></div>
+            <p style="margin:0;font-size:22px;line-height:1.45;color:var(--rc-text-muted)"><s style="text-decoration-color:var(--rc-danger)">I have seen him yesterday.</s></p>
+            <p style="margin:0;font-size:26px;line-height:1.45">I <b style="font-weight:500;color:var(--rc-success)">saw</b> him yesterday.</p>
+            <p style="margin:0;font-size:15px;color:var(--rc-text-muted)"><em>Yesterday</em> is a finished time, so we use the past simple.</p>
+            <div style="flex:1"></div>
+            <div style="display:flex;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-image" style="color:var(--rc-prov-class)"></i>Board photo 2</span></div>
+          </div>
+          <div role="note" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2);font-size:15px"><i class="ph ph-info" style="font-size:20px;color:var(--rc-primary-text);flex:none"></i><span style="flex:1">Hard means you remembered, but it was difficult.</span><button class="btn btn-icon btn-ghost" aria-label="Got it, hide this tip" style="width:36px;height:36px;min-height:36px"><i class="ph ph-x"></i></button></div>
+          <div role="group" aria-label="How did you do?" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <button class="btn btn-secondary" style="min-height:64px;flex-direction:column;gap:2px;padding-inline:4px">Again<span class="rc-num" style="font-size:12px;color:var(--rc-text-muted)">1 min</span></button>
+            <button class="btn btn-secondary" style="min-height:64px;flex-direction:column;gap:2px;padding-inline:4px">Hard<span class="rc-num" style="font-size:12px;color:var(--rc-text-muted)">2 days</span></button>
+            <button class="btn btn-primary" style="min-height:64px;flex-direction:column;gap:2px;padding-inline:4px">Good<span class="rc-num" style="font-size:12px;color:var(--rc-text-muted)">4 days</span></button>
+            <button class="btn btn-secondary" style="min-height:64px;flex-direction:column;gap:2px;padding-inline:4px">Easy<span class="rc-num" style="font-size:12px;color:var(--rc-text-muted)">9 days</span></button>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Hint shows once per user (dismissed state stored). Intervals come from FSRS.</li>
+        <li>"Too hard" (asks for a simpler explanation) lives in card actions — it is not the Hard rating.</li>
+      </ul>
+    </figure>
+
+    <figure id="F2-unsaved" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">F2</span><span style="font-weight:500">Answer not saved yet</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:06</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-low"></i><i class="ph-fill ph-wifi-low"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 12px 4px 8px"><button class="btn btn-ghost" style="font-size:15px">End for now</button><div style="flex:1;height:6px;border-radius:3px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:41%;background:var(--color-accent)"></span><span style="width:6%;background:repeating-linear-gradient(90deg,var(--color-accent) 0 3px,transparent 3px 6px)"></span></div><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">8 / 17</span></div>
+        <div role="status" aria-live="polite" style="margin:6px 20px 0;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:10px;background:var(--rc-warning-tint);border:1px solid var(--rc-warning-border);font-size:15px"><i class="ph ph-circle-notch" style="font-size:18px;color:var(--rc-warning)"></i><span style="flex:1">Card 7: not saved yet — retrying</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:14px 20px 24px;gap:16px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:20px;padding:24px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--rc-text-muted)"><span>Vocabulary</span><span>·</span><span>Present perfect vs past simple</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px"><p style="margin:0;font-size:34px;font-weight:500">recently</p></div>
+            <div style="display:flex;gap:8px;align-items:center"><button class="btn btn-secondary btn-icon" aria-label="Play word" style="border-radius:50%"><i class="ph-fill ph-play"></i></button><span style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:5px;font-size:12px;background:var(--rc-info-tint);color:var(--rc-info);border:1px solid var(--rc-info-border)"><i class="ph ph-robot"></i>Computer voice</span></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;min-height:60px;font-size:17px">Show answer</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>The learner can continue; the unsaved answer shows as a striped segment in progress, and in words above.</li>
+        <li>States: "Saving…" (quiet, after 1 s) → "Not saved yet — retrying" → disappears only on server confirm. If "End for now" is tapped while unsaved, the summary says "1 answer is still saving".</li>
+        <li>Computer-generated audio is labelled "Computer voice", distinct from class audio chips.</li>
+      </ul>
+    </figure>
+  </div>
+
+  <figure id="F2-desktop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+    <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">F2</span><span style="font-weight:500">Desktop — answer shown, keyboard hints</span></div>
+    <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:20px;padding:20px 40px"><button class="btn btn-ghost" style="font-size:15px"><i class="ph ph-x"></i>End for now</button><div style="flex:1;max-width:720px;height:6px;border-radius:3px;background:var(--rc-surface-2);display:flex;overflow:hidden"><span style="width:23%;background:var(--color-accent)"></span></div><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">4 of 17 · about 11 min left</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:32px 0 48px 200px;gap:24px;width:960px">
+        <div style="display:flex;flex-direction:column;gap:22px;padding:40px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-sm);min-height:460px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--rc-text-muted)"><span>Cloze</span><span>·</span><span>Present perfect vs past simple</span></div>
+          <p style="margin:0;font-size:34px;line-height:1.4">I've <b style="font-weight:500;color:var(--color-accent);border-bottom:2px solid var(--color-accent)">already</b> finished my homework.</p>
+          <div style="height:1px;background:var(--color-divider)"></div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border);max-width:640px">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span>
+            <p dir="rtl" lang="fa" style="margin:0;font-size:18px;line-height:1.8;text-align:right">already یعنی «قبلاً» یا «تا حالا»؛ وقتی کاری زودتر از انتظار انجام شده است.</p>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px dashed var(--rc-border-strong);font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile-slash"></i>Class audio · 18:42 · not on this device</span><span style="flex:1"></span><button class="btn btn-ghost"><i class="ph ph-dots-three"></i>Card actions</button></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <button class="btn btn-secondary" style="min-height:60px;font-size:17px"><i class="ph ph-arrow-counter-clockwise"></i>Forgot<kbd style="margin-left:10px;font-family:var(--font-mono);font-size:12px;padding:2px 6px;border-radius:4px;border:1px solid var(--color-divider);color:var(--rc-text-muted)">1</kbd></button>
+          <button class="btn btn-primary" style="min-height:60px;font-size:17px"><i class="ph ph-check"></i>Remembered<kbd style="margin-left:10px;font-family:var(--font-mono);font-size:12px;padding:2px 6px;border-radius:4px;border:1px solid var(--color-divider);color:var(--rc-text-muted)">2</kbd></button>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px;max-width:900px">
+      <li>Left-aligned, asymmetric (Nocturne). Card width ~760px for 30–34px card text.</li>
+    </ul>
+  </figure>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>
