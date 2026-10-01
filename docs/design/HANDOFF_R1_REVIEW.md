@@ -43,6 +43,7 @@
 5. **PDF رمزدار:** در صفحه‌های C1 و C4، کنار «Upload a copy without a password»، اقدام «Enter the password» هم می‌آید (Q-SRC-3، مصوب 2026-10-01). از کامپوننت‌های موجود ساخته می‌شود: Field و Button در BottomSheet یا Dialog.
 6. **اعلان منابع (A3):** بخش «Where your files are kept» با متن «Your photos and other files are kept privately on our server until you delete them.» اضافه می‌شود، چون FR-SRC-015 توضیح نحوه نگهداری فایل‌ها را هم لازم می‌داند. پیشنهاد پیش‌نویس حقوقی ۰٫۱ ([consents.md](../legal/consents.md))، 2026-10-01.
 7. **متن skip link:** «Skip to content». `accessibility.md` در صفحه Today یک skip link می‌خواهد، ولی متنش در `copy.md` و قاب‌ها نیست (M2، 2026-10-01).
+8. **دکمه «Sign out»:** طرح جایی برای خروج ندارد، ولی FR-ACC-002 آن را لازم دارد. دکمه secondary در پایین Settings (G3) قرار می‌گیرد (مصوب مالک محصول، 2026-10-01).
 
 ## قواعد اجرای طرح (خلاصه HANDOFF بخش ۰ تا ۵)
 
@@ -50,7 +51,7 @@
   - token‌ها از `recalino/tokens.css` و لایه پایه از `handoff/css/nocturne-base.css`، بدون تغییر کپی می‌شوند.
   - ترتیب بارگذاری: base، سپس tokens، سپس CSS اپ.
 - **فایل‌های `.dc.html` مشخصات پیکسلی‌اند.** هر صفحه کنار قاب خودش، در ۳۹۰ و ۱۴۴۰ پیکسل، بررسی می‌شود.
-- **متن رابط** کلمه‌به‌کلمه از `handoff/copy.md` می‌آید، در یک فایل متن واحد. استثناها فقط تفاوت‌های بند ۱، ۶ و ۷ بالاست.
+- **متن رابط** کلمه‌به‌کلمه از `handoff/copy.md` می‌آید، در یک فایل متن واحد. استثناها فقط تفاوت‌های بند ۱، ۶، ۷ و ۸ بالاست.
 - **کامپوننت‌ها** طبق `handoff/components.md`، و دسترس‌پذیری طبق `handoff/accessibility.md`.
 - **آیکون:** فقط `@phosphor-icons/react`. نصبش در milestone پایه UI، با تأیید مالک محصول، انجام می‌شود.
 - **کتابخانه UI با ظاهر خودش ممنوع است** (مثل MUI یا تم پیش‌فرض shadcn). کتابخانه بدون ظاهر (headless) فقط با تأیید مالک محصول اضافه می‌شود.
