@@ -19,11 +19,12 @@
 | [design/HANDOFF_R1_REVIEW.md](design/HANDOFF_R1_REVIEW.md): بازبینی طرح Claude Design، دور اول ([بسته](design/handoff-r1/)) | تصمیم‌ها ثبت شد (2026-10-01)؛ دو مورد باز |
 | [fr/PLT.md](fr/PLT.md): پلتفرم و حفاظت پایه | ✅ تأییدشده (2026-10-01)؛ هسته سمت سرور در M1 پیاده شد |
 | [API_CONTRACTS.md](API_CONTRACTS.md): پاکت خطا، سرآیندها و مسیرهای API | نسخه ۰٫۱، همراه M1 |
-| [fr/ACC.md](fr/ACC.md): حساب و پروفایل یادگیری | ✅ تأییدشده (2026-10-01)؛ تنها مورد باز Q-ACC-3 (متن‌های حقوقی) |
+| [fr/ACC.md](fr/ACC.md): حساب و پروفایل یادگیری | ✅ تأییدشده (2026-10-01)؛ تنها مورد باز Q-ACC-3 (متن‌های حقوقی؛ پیش‌نویس ۰٫۱ آماده) |
 | [fr/QUOTA.md](fr/QUOTA.md): پلن، سهمیه و دفتر مصرف | ✅ تأییدشده (2026-10-01)؛ مقادیر پس از SPIKE-02 |
 | [fr/ORG.md](fr/ORG.md): دوره و جلسه | ✅ تأییدشده (2026-10-01) |
 | [fr/SRC.md](fr/SRC.md): منابع و آپلود | ✅ تأییدشده (2026-10-01)؛ Q-SRC-4 وابسته به SPIKE-05 |
 | [PILOT_SETUP.md](PILOT_SETUP.md): مشخصات پایلوت، زبان‌های آزمون و تنظیمات عملیاتی | ثبت‌شده (2026-10-01) |
+| [legal/README.md](legal/README.md): شرایط استفاده، اطلاعیه حریم خصوصی و متن اعلام‌ها | پیش‌نویس ۰٫۱ (2026-10-01)، فقط توسعه؛ نسخه ۱٫۰ پیش از پایلوت (G11) |
 | `docs/fr/<MODULE>.md` برای بقیه ماژول‌ها | به ترتیب ساخت (بخش ۳.۲) |
 | DATA_MODEL، AI_PIPELINE_SPEC، RECORDING_AND_RECOVERY_SPEC، REVIEW_ENGINE_SPEC، SECURITY_PRIVACY_AND_DELETION، ACCEPTANCE_TEST_PLAN، IMPLEMENTATION_BACKLOG | شروع‌نشده؛ هم‌زمان با FR ماژول‌های مرتبط |
 
