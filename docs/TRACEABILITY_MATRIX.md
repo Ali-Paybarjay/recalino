@@ -47,12 +47,12 @@
 | PRD-CORE-04 | ۵. اصول طراحی و شناسه الزامات | SRS, QUOTA, PLT | PROC | FR-QUOTA-001, FR-QUOTA-005, FR-QUOTA-010 | — |
 | PRD-CORE-05 | ۵. اصول طراحی و شناسه الزامات | NOTE, CARD | PROC | — | — |
 | PRD-CORE-06 | ۵. اصول طراحی و شناسه الزامات | همه ماژول‌ها | قاعده دامنه؛ آزمون AC-20 | — | — |
-| PRD-ONB-01 | ۶. پروفایل، زبان و ورود اولیه | ACC | PLT | FR-PLT-011, FR-ACC-003 | — |
+| PRD-ONB-01 | ۶. پروفایل، زبان و ورود اولیه | ACC | PLT | FR-PLT-011, FR-ACC-003 | `e2e/text.spec.ts`, `ui/direction.test.ts` (FR-PLT-011) |
 | PRD-ONB-02 | ۶. پروفایل، زبان و ورود اولیه | ACC | — | FR-ACC-003 | — |
 | PRD-ONB-03 | ۶. پروفایل، زبان و ورود اولیه | ACC | EVAL | FR-ACC-003 | — |
 | PRD-ONB-04 | ۶. پروفایل، زبان و ورود اولیه | ACC | PERS | FR-ACC-003 | — |
 | PRD-ONB-05 | ۶. پروفایل، زبان و ورود اولیه | ACC | PROC, QUOTA | FR-ACC-004, FR-ACC-005 | — |
-| PRD-PLT-01 | ۸.۱. پلتفرم اولیه | PLT | REC | FR-PLT-010 | — |
+| PRD-PLT-01 | ۸.۱. پلتفرم اولیه | PLT | REC | FR-PLT-010 | `e2e/pwa.spec.ts` (بخشی: manifest) |
 | PRD-PLT-02 | ۸.۱. پلتفرم اولیه | REC | SRC | FR-SRC-007 (بخشی) | — |
 | PRD-SRC-01 | ۸.۲. منابع قابل قبول | SRC | PROC | FR-SRC-002, FR-SRC-003, FR-SRC-005, FR-SRC-007 | — |
 | PRD-SRC-02 | ۸.۲. منابع قابل قبول | SRC | PLT, PROC | FR-SRC-006, FR-SRC-012 | — |
@@ -181,7 +181,7 @@
 | NFR-07 | زمان AI | PROC | EVAL | — | — |
 | NFR-08 | ارجاع | LKM | — | — | — |
 | NFR-09 | کیفیت آموزشی | EVAL | LKM, CARD | — | — |
-| NFR-10 | دسترس‌پذیری | PLT | همه ماژول‌ها | FR-PLT-012 (بخشی) | — |
+| NFR-10 | دسترس‌پذیری | PLT | همه ماژول‌ها | FR-PLT-012 (بخشی) | `e2e/ui-kit.spec.ts`, `e2e/shell.spec.ts` (axe و صفحه‌کلید) |
 | NFR-11 | بازیابی سرویس | OPS | PRIV | — | — |
 | NFR-12 | هزینه | QUOTA, OPS | AIP | FR-QUOTA-008, FR-QUOTA-009 | — |
 
@@ -267,6 +267,6 @@
 |---|---|---|---|---|---|---|
 | D28 | هزینه زیرساخت MVP | ADR-0001 | QUOTA, OPS | PRD-ARCH-05, NFR-12 | — | — |
 | D29 | صوت کلاس روی دستگاه؛ نسخه سرور موقت | REC, PRIV | SRC, PROC, NOTE, MEDIA, AIP | PRD-REC-07, PRD-REC-08, PRD-REC-09, PRD-DEL-01, PRD-DEL-02, PRD-NOTE-02, PRD-NOTE-05, PRD-MEDIA-04, PRD-COST-04, PRD-PROC-03, AC-05 | FR-SRC-007, FR-SRC-011, FR-SRC-012 (بخشی) | — |
-| D31 | زبان اول: همه زبان‌ها با دو سطح کیفیت؛ زبان توضیح دوگزینه‌ای | ACC | EVAL, LKM, PROC, NOTE, CARD, PLT | D03, D04, PRD-ONB-01, PRD-ONB-02, PRD-ONB-03, PRD-CARD-01, G05، PRD بخش ۲۴.۱ | FR-ACC-003, FR-ACC-005, FR-PLT-011 | — |
+| D31 | زبان اول: همه زبان‌ها با دو سطح کیفیت؛ زبان توضیح دوگزینه‌ای | ACC | EVAL, LKM, PROC, NOTE, CARD, PLT | D03, D04, PRD-ONB-01, PRD-ONB-02, PRD-ONB-03, PRD-CARD-01, G05، PRD بخش ۲۴.۱ | FR-ACC-003, FR-ACC-005, FR-PLT-011 | `e2e/theme.spec.ts`, `e2e/budget.spec.ts` (قاعده ۸) |
 | D32 | ضبط با یک لمس (Record first) | ORG | REC, ACC | PRD بخش ۷ (گام ۲)، D13 | FR-ORG-008 | — |
 | D33 | رضایت ضبط یک بار در تنظیم پروفایل، نسخه‌دار | ACC | REC, SRC | PRD-PRIV-01 | FR-ACC-003, FR-SRC-015 | — |

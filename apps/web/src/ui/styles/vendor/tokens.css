@@ -1,0 +1,156 @@
+/* Recalino tokens v0.2 — "Mint & lime" (option 1c). Layered on the Nocturne system (styles.css).
+   Hand-off: copy this file as-is. All values are CSS custom properties.
+   Light is primary; dark is the same hues on a deep green ground.
+   App follows the OS: wrap the app in [data-theme] set from prefers-color-scheme.
+   Previous indigo set: recalino/archive/tokens-v0.1-indigo.css */
+
+:root, [data-theme="light"] {
+  /* Type — system fonts only; the OS picks script-specific faces */
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
+    "Noto Sans Arabic", "Geeza Pro", Tahoma,
+    "PingFang SC", "Hiragino Sans", "Microsoft YaHei", "Yu Gothic UI", "Noto Sans CJK SC", sans-serif;
+  --font-heading: var(--font-body);
+  --font-heading-weight: 700;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --rc-text-xs: 12px;   /* labels, chips — min size */
+  --rc-text-sm: 14px;   /* secondary UI */
+  --rc-text-md: 16px;   /* body UI (mobile inputs: never below 16) */
+  --rc-text-read: 17px; /* notes reading surface, line-height 1.65 */
+  --rc-text-lg: 20px;
+  --rc-text-xl: 24px;
+  --rc-text-2xl: 30px;
+  --rc-text-3xl: 40px;
+  --rc-text-timer: 64px; /* recording clock, tabular numerals */
+
+  /* Spacing — Nocturne 0.7x scale, extended */
+  --space-5: 14px;
+  --space-10: 28px;
+  --space-12: 33.6px;
+  --space-16: 44.8px;
+  --rc-target: 44px;      /* min touch target */
+  --rc-target-lg: 72px;   /* recording controls */
+  --radius-pill: 999px;
+  --rc-btn-radius: 14px;
+  --rc-card-radius: 20px;
+
+  /* Motion */
+  --rc-dur-fast: 120ms;
+  --rc-dur: 200ms;
+  --rc-dur-slow: 320ms;
+  --rc-ease: cubic-bezier(.2, 0, 0, 1);
+
+  /* Surfaces + text */
+  --color-bg: #eef9f3;
+  --color-surface: #fbfffd;
+  --rc-surface-2: #d9f2e5;
+  --color-text: #13261f;
+  --rc-text-muted: #4a6259;          /* 6.4:1 on bg */
+  --color-divider: color-mix(in srgb, #13261f 14%, transparent);
+  --rc-border-strong: #94b5a7;
+  --rc-canvas: #d3e8dc;               /* doc boards only, not app UI */
+
+  /* Primary / focus */
+  --color-accent: #0d7556;            /* 5.4:1 on bg */
+  --rc-primary-text: #0a5540;
+  --rc-primary-tint: #d3f4e5;
+  --rc-primary-tint-2: #a6e6c9;
+  --rc-focus: #0d7556;
+
+  /* Nocturne accent ramps re-pointed to mint (tags, DS components read these) */
+  --color-accent-100: #effbf5; --color-accent-200: #d3f4e5; --color-accent-300: #a6e6c9;
+  --color-accent-400: #6fd2a7; --color-accent-500: #3fb487; --color-accent-600: #1f936b;
+  --color-accent-700: #0d7556; --color-accent-800: #0b5a43; --color-accent-900: #0a3f30;
+  --color-accent-2: var(--color-accent);
+  --color-accent-2-100: var(--color-accent-100); --color-accent-2-200: var(--color-accent-200); --color-accent-2-300: var(--color-accent-300);
+  --color-accent-2-400: var(--color-accent-400); --color-accent-2-500: var(--color-accent-500); --color-accent-2-600: var(--color-accent-600);
+  --color-accent-2-700: var(--color-accent-700); --color-accent-2-800: var(--color-accent-800); --color-accent-2-900: var(--color-accent-900);
+
+  /* Filled primary button (youthful treatment: solid ink, not outline) */
+  --rc-cta-bg: #13261f;  --rc-cta-bg-hover: #25443a;  --rc-cta-text: #eef9f3;
+
+  /* Hero card — the one lime surface per screen (Today's review card) */
+  --rc-hero-bg: #b9f06b;  --rc-hero-text: #13261f;  --rc-hero-muted: #2f4a1a;  --rc-hero-label: #13261f;
+  --rc-hero-cta-bg: #13261f;  --rc-hero-cta-text: #eef9f3;
+
+  /* Status */
+  --rc-success: #1f6b3a;  --rc-success-tint: #dff3e4;  --rc-success-border: #a3d6b2;
+  --rc-warning: #7d5510;  --rc-warning-tint: #fbf0d6;  --rc-warning-border: #e8cc8f;
+  --rc-danger:  #a1352d;  --rc-danger-tint:  #fbe6e2;  --rc-danger-border:  #e9b3ac;
+  --rc-info:    #4a6259;  --rc-info-tint:    #e3efe9;  --rc-info-border:    #c3d8ce;
+
+  /* Provenance — never colour alone: always label + icon.
+     Class moved off teal so it doesn't read as the green primary. */
+  --rc-prov-class: #8c2f6a;  --rc-prov-class-tint: #fbe6f1;  --rc-prov-class-border: #efb6d4;
+  --rc-prov-ai:    #5d4bb0;  --rc-prov-ai-tint:    #eeebfc;  --rc-prov-ai-border:    #cec7f2;
+  --rc-prov-edit:  #2b5a8e;  --rc-prov-edit-tint:  #e4edf9;  --rc-prov-edit-border:  #b3cae8;
+
+  /* Recording (calm, not alarm red) */
+  --rc-rec: #a1352d;
+
+  --shadow-sm: 0 0 0 1px #c9e2d5;
+  --shadow-md: 0 0 0 1px #c9e2d5, 0 6px 18px rgba(19,38,31,0.10);
+  --shadow-lg: 0 0 0 1px #a9cbbb, 0 16px 40px rgba(19,38,31,0.16);
+}
+
+[data-theme="dark"] {
+  --color-bg: #0f1a16;
+  --color-surface: #17251f;
+  --rc-surface-2: #203029;
+  --color-text: #e8f3ee;
+  --rc-text-muted: #a9c2b8;          /* 9:1 on bg */
+  --color-divider: color-mix(in srgb, #e8f3ee 15%, transparent);
+  --rc-border-strong: #4f6860;
+  --rc-canvas: #09110e;
+
+  --color-accent: #5fd6a8;            /* 9.6:1 on bg */
+  --rc-primary-text: #b5f0d6;
+  --rc-primary-tint: #163a2d;
+  --rc-primary-tint-2: #235443;
+  --rc-focus: #5fd6a8;
+
+  --rc-cta-bg: #5fd6a8;  --rc-cta-bg-hover: #86e3bf;  --rc-cta-text: #0f1a16;
+
+  --rc-hero-bg: #b9f06b;  --rc-hero-text: #13261f;  --rc-hero-muted: #2f4a1a;  --rc-hero-label: #13261f;
+  --rc-hero-cta-bg: #13261f;  --rc-hero-cta-text: #eef9f3;
+
+  --rc-success: #8fd8a3;  --rc-success-tint: #17301f;  --rc-success-border: #2c5a3a;
+  --rc-warning: #ecc275;  --rc-warning-tint: #33291a;  --rc-warning-border: #5f4c26;
+  --rc-danger:  #f09a90;  --rc-danger-tint:  #3b2124;  --rc-danger-border:  #6a3a3c;
+  --rc-info:    #a9c2b8;  --rc-info-tint:    #1d2925;  --rc-info-border:    #34463f;
+
+  --rc-prov-class: #f2a6cf;  --rc-prov-class-tint: #3a1b2c;  --rc-prov-class-border: #6a3050;
+  --rc-prov-ai:    #b9adfc;  --rc-prov-ai-tint:    #24223a;  --rc-prov-ai-border:    #423a6a;
+  --rc-prov-edit:  #94bdf0;  --rc-prov-edit-tint:  #1b2a3e;  --rc-prov-edit-border:  #33496a;
+
+  --rc-rec: #f09a90;
+
+  --shadow-sm: 0 0 0 1px #24362f;
+  --shadow-md: 0 0 0 1px #24362f, 0 8px 24px rgba(0,0,0,0.35);
+  --shadow-lg: 0 0 0 1px #34463f, 0 18px 44px rgba(0,0,0,0.45);
+}
+
+[data-theme] { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+[data-theme] h1, [data-theme] h2, [data-theme] h3 { letter-spacing: -0.02em; }
+[data-theme] .btn { min-height: var(--rc-target); padding-inline: 16px; font-size: 15px; font-family: var(--font-body); border-radius: var(--rc-btn-radius); }
+[data-theme] .btn-primary { background: var(--rc-cta-bg); color: var(--rc-cta-text); border-color: var(--rc-cta-bg); font-weight: 600; }
+[data-theme] .btn-primary:hover { background: var(--rc-cta-bg-hover); border-color: var(--rc-cta-bg-hover); }
+[data-theme] .btn-primary:active { filter: brightness(0.92); }
+[data-theme] .rc-hero { background: var(--rc-hero-bg); color: var(--rc-hero-text); border-radius: var(--rc-card-radius); }
+[data-theme] .rc-hero .btn-primary { background: var(--rc-hero-cta-bg); color: var(--rc-hero-cta-text); border-color: var(--rc-hero-cta-bg); }
+[data-theme] .rc-hero .btn-primary:hover { filter: brightness(1.25); }
+[data-theme] .rc-hero :focus-visible { outline-color: var(--rc-hero-text); }
+[data-theme] .btn-icon { width: var(--rc-target); height: var(--rc-target); padding: 0; }
+[data-theme] .btn-ghost { padding-inline: 10px; }
+[data-theme] .input { min-height: var(--rc-target); font-size: 16px; }
+[data-theme] :focus-visible { outline: 2px solid var(--rc-focus); outline-offset: 2px; }
+[data-theme] .ph, [data-theme] .ph-fill { line-height: 1; }
+.rc-num { font-variant-numeric: tabular-nums; }
+
+@keyframes rc-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes rc-shimmer { 0% { background-position: -200px 0 } 100% { background-position: 200px 0 } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --rc-dur-fast: 0ms; --rc-dur: 0ms; --rc-dur-slow: 0ms; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

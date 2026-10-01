@@ -1,0 +1,24 @@
+/* Design System §2: "Never letter-space non-Latin. Never uppercase non-Latin." */
+.block {
+  text-align: start;
+  unicode-bidi: isolate;
+}
+
+.block:not(:lang(en)) {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.reading {
+  font-size: var(--rc-text-read);
+  line-height: 1.65;
+}
+
+/* RTL and CJK line-height +0.1–0.15 at reading size (Design System §2: 1.8 and 1.75). */
+.reading:is(:lang(fa), :lang(ar), :lang(ur), :lang(he), :lang(ps), :lang(ckb), :lang(yi)) {
+  line-height: 1.8;
+}
+
+.reading:is(:lang(zh), :lang(ja), :lang(ko)) {
+  line-height: 1.75;
+}

@@ -1,0 +1,82 @@
+/* Values from frame G3 (delete-source options); the selected state uses the Design System
+   radio card (border + inset ring + primary tint), which does not shift the layout. */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 14px;
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+/* With a description the dot sits beside the first line (frame G3); alone it centres (A2). */
+.card:has(.description) {
+  align-items: flex-start;
+}
+
+.dot {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--rc-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.title {
+  font-weight: 500;
+}
+
+.description {
+  font-size: var(--rc-text-sm);
+  line-height: 1.45;
+  color: var(--rc-text-muted);
+}
+
+.meta {
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
+
+.card:has(.input:checked) {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  background: var(--rc-primary-tint);
+}
+
+.card:has(.description) .dot {
+  margin-top: 1px;
+}
+
+.card:has(.input:checked) .dot {
+  border: 7px solid var(--color-accent);
+}
+
+.card:has(.input:checked) .title {
+  font-weight: 600;
+}
+
+.card:has(.input:checked) .description {
+  color: var(--color-text);
+}
+
+.card:has(.input:focus-visible) {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 2px;
+}

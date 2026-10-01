@@ -4,7 +4,7 @@ import { assertOwner } from "./ownership";
 import { DEFAULT_PLT_SETTINGS, pltSettingsSchema, readPltSettings } from "./settings";
 
 describe("PLT settings (Q-PLT-2)", () => {
-  it("has valid proposed defaults", () => {
+  it("has valid pilot defaults", () => {
     expect(pltSettingsSchema.safeParse(DEFAULT_PLT_SETTINGS).success).toBe(true);
     expect(readPltSettings({})).toBe(DEFAULT_PLT_SETTINGS);
   });

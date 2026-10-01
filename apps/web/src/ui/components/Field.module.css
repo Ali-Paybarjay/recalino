@@ -1,0 +1,29 @@
+/* Values from frame B2 (New class) and the Design System text field. */
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Two classes to win over the design's ".field > label" (12px). */
+.field .label {
+  font-size: var(--rc-text-sm);
+}
+
+.field[data-invalid] .label {
+  color: var(--rc-danger);
+}
+
+.error {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--rc-danger);
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--rc-text-muted);
+}

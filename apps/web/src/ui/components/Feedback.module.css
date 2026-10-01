@@ -1,0 +1,180 @@
+/* Banner — Design System §7 and frame H-offline. */
+.banner {
+  display: flex;
+  gap: 10px;
+  font-size: var(--rc-text-sm);
+}
+
+.box {
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+.strip {
+  align-items: center;
+  padding: 10px 20px;
+}
+
+.bannerIcon {
+  flex: none;
+  font-size: 20px;
+}
+
+.strip .bannerIcon {
+  font-size: 18px;
+}
+
+.bannerBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.bannerTitle {
+  font-weight: 500;
+}
+
+/* The action lines up with the text (Design System, "New sources" banner). */
+.bannerAction > :global(.btn) {
+  padding-inline: 0;
+}
+
+.info {
+  background: var(--rc-info-tint);
+  border-color: var(--rc-info-border);
+}
+
+.primary {
+  background: var(--rc-primary-tint);
+  border-color: var(--rc-primary-tint-2);
+}
+
+.primary .bannerIcon {
+  color: var(--rc-primary-text);
+}
+
+.warning {
+  background: var(--rc-warning-tint);
+  border-color: var(--rc-warning-border);
+}
+
+.warning .bannerIcon {
+  color: var(--rc-warning);
+}
+
+.success {
+  background: var(--rc-success-tint);
+  border-color: var(--rc-success-border);
+}
+
+.success .bannerIcon {
+  color: var(--rc-success);
+}
+
+.danger {
+  background: var(--rc-danger-tint);
+  border-color: var(--rc-danger-border);
+}
+
+.danger .bannerIcon {
+  color: var(--rc-danger);
+}
+
+.neutral {
+  align-items: flex-start;
+  background: var(--color-surface);
+  border-color: var(--color-divider);
+}
+
+.neutral .bannerIcon {
+  color: var(--color-accent);
+}
+
+.neutral .bannerBody {
+  gap: 6px;
+}
+
+/* A strip has no frame of its own: it spans the page. */
+.strip.info,
+.strip.primary,
+.strip.warning,
+.strip.success,
+.strip.danger,
+.strip.neutral {
+  border: 0;
+}
+
+/* Inline error — frame H-offline. */
+.inlineError {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--rc-danger-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.inlineErrorIcon {
+  color: var(--rc-danger);
+}
+
+.inlineErrorBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.inlineErrorTitle {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.muted {
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
+
+.onSurface {
+  background: var(--color-surface);
+}
+
+/* Empty state — frame H-rules. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px;
+  border: 1px dashed var(--rc-border-strong);
+  border-radius: var(--rc-card-radius);
+}
+
+.emptyText {
+  font-size: var(--rc-text-md);
+}
+
+/* Skeleton — frame H-offline. */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeletonLine {
+  max-width: 100%;
+  background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--color-surface) 60%, transparent),
+      transparent
+    )
+    var(--rc-surface-2);
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  animation: rc-shimmer calc(var(--rc-dur-slow) * 4) linear infinite;
+}

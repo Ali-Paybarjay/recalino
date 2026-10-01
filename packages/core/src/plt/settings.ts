@@ -26,9 +26,10 @@ export type PltSettings = z.infer<typeof pltSettingsSchema>;
 export type RateLimitRule = PltSettings["rateLimits"][RateLimitClass];
 
 /**
- * Proposed defaults (Q-PLT-2; the day boundary waits for gate G07). They live here as
- * configuration, apart from the logic, and a deployment overrides any of them with
- * PLT_SETTINGS_JSON without a code change.
+ * Pilot defaults, approved by the product owner on 2026-10-01 (Q-PLT-2), including the 04:00
+ * study-day boundary; the rest of gate G07 is still open. They live here as configuration, apart
+ * from the logic, and a deployment overrides any of them with PLT_SETTINGS_JSON without a code
+ * change.
  */
 export const DEFAULT_PLT_SETTINGS: PltSettings = {
   idempotencyTtlSeconds: 24 * 60 * 60,

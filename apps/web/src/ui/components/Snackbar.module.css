@@ -1,0 +1,29 @@
+/* Frame E3. The shell raises it above the bottom navigation with --rc-snackbar-offset. */
+.snackbar {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--rc-snackbar-offset, 0px) + 16px);
+  left: 16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  min-height: 56px;
+  margin-inline: auto;
+  padding: 6px 6px 6px 16px;
+  border-radius: 14px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+}
+
+.message {
+  flex: 1;
+  font-size: 15px;
+}
+
+.undo {
+  color: var(--color-bg);
+  font-weight: 700;
+}
