@@ -1,5 +1,7 @@
 # Recalino — App icon request (design round 2)
 
+> **وضعیت:** تحویل شد (2026-10-01). فایل‌ها در [handoff-r1/recalino/icons/](handoff-r1/recalino/icons/)، راهنما در [HANDOFF.md](handoff-r1/HANDOFF.md) بخش ۵c و بازبینی در [HANDOFF_R1_REVIEW.md](HANDOFF_R1_REVIEW.md).
+
 Paste the text below into the same Claude Design project that made round 1.
 
 ---

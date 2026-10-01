@@ -11,7 +11,8 @@
       "**",
       "!**/src/db/types.ts",
       "!docs/design/handoff-r1",
-      "!apps/web/src/ui/styles/vendor"
+      "!apps/web/src/ui/styles/vendor",
+      "!apps/web/public/icons"
     ]
   },
   "css": {

@@ -76,6 +76,34 @@ The `.dc.html` files open directly in a browser (they need `support.js`, `_ds/` 
 9. **Honest progress:** backlog visible; self-reported level and estimated support level shown separately with evidence count.
 10. **WCAG 2.2 AA:** see `handoff/accessibility.md`.
 
+## 5c. App icon + favicon (`recalino/icons/`)
+
+Mark (option 1d "Record and recall"): a lime record dot inside an open mint loop — record once, come back to it in review. Outlined paths only. One icon for light and dark home screens. Colours, all from `tokens.css`: tile `--color-text` (light) `#13261f`, loop `--color-accent` (dark) `#5fd6a8`, dot `--rc-hero-bg` `#b9f06b`. Mark radius 164/512 — inside the maskable safe zone in every file.
+
+| File | Use |
+|---|---|
+| `icon-master.svg` | Master, 512 × 512 artboard, rounded tile. Edit this one. |
+| `icon-192.png`, `icon-512.png` | Manifest, `"purpose": "any"` |
+| `icon-maskable.svg`, `icon-maskable-192.png`, `icon-maskable-512.png` | Manifest, `"purpose": "maskable"` — full-bleed, mark inside the central 80 % circle |
+| `apple-touch-icon.png` (180 × 180, opaque) + `icon-apple.svg` source | `<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">` |
+| `favicon.svg` | `<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">` |
+| `favicon-32.png` (+ `favicon-16.png`) | `<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">` fallback |
+
+Manifest colours:
+- `theme_color`: `--color-bg` light `#eef9f3`. Dark: `--color-bg` dark `#0f1a16`. The manifest takes one value, so also set `<meta name="theme-color" content="#eef9f3" media="(prefers-color-scheme: light)">` and `<meta name="theme-color" content="#0f1a16" media="(prefers-color-scheme: dark)">`.
+- `background_color` (splash): `--color-bg` light `#eef9f3`.
+
+```json
+"theme_color": "#eef9f3",
+"background_color": "#eef9f3",
+"icons": [
+  { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+  { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+  { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+  { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+]
+```
+
 ## 6. Suggested build order
 
 1. Tokens + base CSS + theme switching + icon package.
