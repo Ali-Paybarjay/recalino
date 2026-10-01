@@ -80,7 +80,7 @@
 | PRD-SPK-03 | ۱۰.۳. گویندگان | LKM | PROC, NOTE | — | — |
 | PRD-PROC-01 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | PLT | — | — |
 | PRD-PROC-02 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | LKM | — | — |
-| PRD-PROC-03 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | QUOTA, PLT | FR-PLT-004 (بخشی) | — |
+| PRD-PROC-03 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | QUOTA, PLT | FR-PLT-004 (بخشی) | بخشی (FR-PLT-004): core plt/idempotency.int.test.ts |
 | PRD-PROC-04 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | NOTE | — | — |
 | PRD-PROC-05 | ۱۱. پردازش، وضعیت‌ها و خطاها | PROC | ORG, PRIV | FR-ORG-007, FR-SRC-013 (بخشی) | — |
 | PRD-LKM-01 | ۱۲.۱. خروجی ساخت‌یافته | LKM | PROC, NOTE | — | — |
@@ -117,7 +117,7 @@
 | PRD-SRS-06 | ۱۶.۲. صف روزانه | SRS | — | — | — |
 | PRD-SRS-07 | ۱۶.۲. صف روزانه | SRS | — | — | — |
 | PRD-SRS-08 | ۱۶.۲. صف روزانه | SRS | CARD | — | — |
-| PRD-SRS-09 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | ACC | FR-PLT-013, FR-ACC-006 (بخشی) | — |
+| PRD-SRS-09 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | ACC | FR-PLT-013, FR-ACC-006 (بخشی) | بخشی (FR-PLT-013): core plt/time.test.ts |
 | PRD-SRS-10 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | PLT | — | — |
 | PRD-SRS-11 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | PLT | — | — |
 | PRD-SRS-12 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | PERS | — | — |
@@ -145,16 +145,16 @@
 | PRD-PRIV-03 | ۲۰.۱. ضبط و داده اشخاص | HTML, ANKI | PROC, NOTE | — | — |
 | PRD-PRIV-04 | ۲۰.۱. ضبط و داده اشخاص | ACC | G11 | FR-ACC-001 | — |
 | PRD-PRIV-05 | ۲۰.۲. استفاده از داده در AI | AIP | G10 | — | — |
-| PRD-PRIV-06 | ۲۰.۲. استفاده از داده در AI | PLT | OPS | FR-PLT-007 | — |
+| PRD-PRIV-06 | ۲۰.۲. استفاده از داده در AI | PLT | OPS | FR-PLT-007 | core plt/log.test.ts; web server/api.test.ts (canary) |
 | PRD-DEL-01 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | — | — |
 | PRD-DEL-02 | ۲۰.۳. نگهداری و حذف | PRIV | ORG, SRC | FR-SRC-013 (بخشی) | — |
 | PRD-DEL-03 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | FR-SRC-011, FR-SRC-013, FR-PLT-014 (بخشی) | — |
 | PRD-DEL-04 | ۲۰.۳. نگهداری و حذف | PRIV | OPS | — | — |
 | PRD-DEL-05 | ۲۰.۳. نگهداری و حذف | PRIV | HTML, ANKI, REC | — | — |
-| PRD-SEC-01 | ۲۰.۴. امنیت ورودی و مدل | PLT | همه ماژول‌ها | FR-PLT-001, FR-PLT-002, FR-PLT-008 | — |
+| PRD-SEC-01 | ۲۰.۴. امنیت ورودی و مدل | PLT | همه ماژول‌ها | FR-PLT-001, FR-PLT-002, FR-PLT-008 | بخشی (FR-PLT-002): core plt/access.int.test.ts, plt/settings.test.ts; web server/api.int.test.ts, server/route-coverage.test.ts |
 | PRD-SEC-02 | ۲۰.۴. امنیت ورودی و مدل | SRC | PLT | FR-SRC-002, FR-SRC-004, FR-SRC-005, FR-SRC-006 | — |
 | PRD-SEC-03 | ۲۰.۴. امنیت ورودی و مدل | PROC | LKM, AIP | FR-SRC-006 (بخشی) | — |
-| PRD-SEC-04 | ۲۰.۴. امنیت ورودی و مدل | PLT | OPS | FR-PLT-006, FR-PLT-007, FR-PLT-009 | — |
+| PRD-SEC-04 | ۲۰.۴. امنیت ورودی و مدل | PLT | OPS | FR-PLT-006, FR-PLT-007, FR-PLT-009 | core plt/rate-limit.int.test.ts, plt/log.test.ts; web server/api.int.test.ts; tools/client-bundle/scan.test.ts |
 | PRD-RIGHTS-01 | ۲۰.۵. حقوق منابع | G11 (غیرکدی) | PRIV | — | — |
 | PRD-RIGHTS-02 | ۲۰.۵. حقوق منابع | PRIV | SRC, HTML, ANKI | FR-ACC-001, FR-ACC-007 (بخشی), FR-SRC-015 (بخشی) | — |
 | PRD-ARCH-01 | ۲۱.۲. تصمیم‌های معماری | ADR-0001 | PLT | — | — |
@@ -172,8 +172,8 @@
 
 | شناسه | موضوع در PRD | مالک | مرتبط | FR | تست |
 |---|---|---|---|---|---|
-| NFR-01 | صحت دسترسی | PLT | همه ماژول‌ها | FR-PLT-002 | — |
-| NFR-02 | صحت مرور/مصرف | SRS, QUOTA, PROC | PLT | FR-PLT-004, FR-PLT-005 (بخشی), FR-QUOTA-005, FR-QUOTA-006 | — |
+| NFR-01 | صحت دسترسی | PLT | همه ماژول‌ها | FR-PLT-002 | web server/route-coverage.test.ts, server/api.int.test.ts; core plt/access.int.test.ts |
+| NFR-02 | صحت مرور/مصرف | SRS, QUOTA, PROC | PLT | FR-PLT-004, FR-PLT-005 (بخشی), FR-QUOTA-005, FR-QUOTA-006 | بخشی (FR-PLT-004): core plt/idempotency.int.test.ts; web server/api.int.test.ts |
 | NFR-03 | سلامت ضبط | REC | — | — | — |
 | NFR-04 | پاسخ تعاملی | PLT | — | PLT: قیود غیرعملکردی (بخشی) | — |
 | NFR-05 | نمایش محتوا | NOTE | — | — | — |
@@ -201,7 +201,7 @@
 | AC-10 | AI برای درس مثال تازه می‌سازد | LKM | NOTE | — | — |
 | AC-11 | کاربر جزوه و کارت را ویرایش و سپس بازتولید می‌کند | NOTE, CARD | PROC | — | — |
 | AC-12 | حالت Simple و Advanced استفاده می‌شود | SRS | — | — | — |
-| AC-13 | پاسخ مرور یا درخواست پردازش دوبار ارسال می‌شود | SRS, PROC, QUOTA | PLT | FR-PLT-004 (بخشی), FR-QUOTA-005, FR-QUOTA-006 | — |
+| AC-13 | پاسخ مرور یا درخواست پردازش دوبار ارسال می‌شود | SRS, PROC, QUOTA | PLT | FR-PLT-004 (بخشی), FR-QUOTA-005, FR-QUOTA-006 | بخشی (FR-PLT-004): core plt/idempotency.int.test.ts; web server/api.int.test.ts |
 | AC-14 | HTML بدون اینترنت باز می‌شود | HTML | — | — | — |
 | AC-15 | APKG در کلاینت‌های هدف وارد می‌شود | ANKI | MEDIA | — | — |
 | AC-16 | متن PDF دستور دسترسی به حساب دیگر دارد | PROC | PLT | FR-SRC-006 (بخشی) | — |
@@ -252,7 +252,7 @@
 | G04 | ماتریس ضبط | REC | PLT | FR-PLT-010 (بخشی) | — |
 | G05 | زبان‌های اول (رویکرد با D31 بسته شد؛ فهرست «تأییدشده» با آزمون) | ACC | EVAL | FR-ACC-003 (بخشی) | — |
 | G06 | قرارداد ورودی | SRC | — | FR-SRC-002 (مقادیر باز) | — |
-| G07 | سیاست FSRS | SRS | — | FR-PLT-013 (بخشی) | — |
+| G07 | سیاست FSRS | SRS | — | FR-PLT-013 (بخشی) | بخشی (مرز روز قابل پیکربندی): core plt/time.test.ts |
 | G08 | مقدار پلن‌ها | QUOTA | — | FR-QUOTA-001, FR-QUOTA-002 (مقادیر باز) | — |
 | G09 | سیاست لغو/مصرف | QUOTA | PROC | FR-QUOTA-006 (سیاست باز) | — |
 | G10 | نگهداری/حذف | PRIV | AIP | — | — |
