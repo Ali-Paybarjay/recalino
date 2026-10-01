@@ -1,0 +1,36 @@
+/* Values from frame D5 (Export type: md; Image quality: sm). */
+.group {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--rc-surface-2);
+}
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--rc-target);
+  border-radius: 9px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.small .option {
+  min-height: 40px;
+  font-size: var(--rc-text-sm);
+}
+
+.option:has(.input:checked) {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+.option:has(.input:focus-visible) {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 2px;
+}

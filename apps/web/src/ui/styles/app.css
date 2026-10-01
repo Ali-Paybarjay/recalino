@@ -1,0 +1,73 @@
+/* App layer, loaded after the design files (vendor/nocturne-base.css → vendor/tokens.css → this).
+   It adds only behaviour the design describes but the design CSS does not cover. No new colours,
+   sizes or durations: every value is a design token or comes from a design frame. */
+
+/* Native controls and scrollbars follow the theme. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* A control that is unavailable but still focusable, so it can announce why (components.md). */
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Danger button: secondary with danger text and border (components.md). */
+.btn.rc-btn-danger {
+  color: var(--rc-danger);
+  border-color: var(--rc-danger-border);
+}
+
+/* Full-width button, without the top margin of the design's .btn-block. */
+.btn.rc-btn-block {
+  width: 100%;
+}
+
+/* Large button: 52px (components.md, size "lg"). */
+.btn.rc-btn-lg {
+  min-height: 52px;
+  font-size: var(--rc-text-md);
+}
+
+/* Text fields: the focus ring sits on the border (Design System, text field "Focus"). */
+[data-theme] .input:focus-visible {
+  outline-offset: 0;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--rc-danger);
+}
+
+.input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Spinner for loading states. Under reduced motion tokens.css stops it: a static icon + text. */
+@keyframes rc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rc-spin {
+  animation: rc-spin calc(var(--rc-dur-slow) * 3) linear infinite;
+}
+
+/* Hidden from view, still read by assistive technology. */
+.rc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

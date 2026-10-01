@@ -1,0 +1,191 @@
+/* Class status chip — Design System §5. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: var(--rc-text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chip.info {
+  background: var(--rc-info-tint);
+  color: var(--rc-info);
+  border-color: var(--rc-info-border);
+}
+
+.chip.warning {
+  background: var(--rc-warning-tint);
+  color: var(--rc-warning);
+  border-color: var(--rc-warning-border);
+}
+
+.chip.primary {
+  background: var(--rc-primary-tint);
+  color: var(--rc-primary-text);
+  border-color: var(--rc-primary-tint-2);
+}
+
+.chip.success {
+  background: var(--rc-success-tint);
+  color: var(--rc-success);
+  border-color: var(--rc-success-border);
+}
+
+.chip.danger {
+  background: var(--rc-danger-tint);
+  color: var(--rc-danger);
+  border-color: var(--rc-danger-border);
+}
+
+/* Source status text — frames C1 and C4. */
+.statusText {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.muted {
+  color: var(--rc-text-muted);
+}
+
+.success {
+  color: var(--rc-success);
+}
+
+.danger {
+  color: var(--rc-danger);
+}
+
+.warning {
+  color: var(--rc-warning);
+}
+
+.upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.track {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rc-surface-2);
+}
+
+.bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+/* Provenance — Design System §5. */
+.provenance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--rc-text-xs);
+  font-weight: 500;
+}
+
+.prov_class {
+  color: var(--rc-prov-class);
+}
+
+.prov_ai {
+  color: var(--rc-prov-ai);
+}
+
+.prov_edited {
+  color: var(--rc-prov-edit);
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.blockContent {
+  font-size: var(--rc-text-md);
+}
+
+.block_class {
+  padding: 12px 0;
+}
+
+.block_ai {
+  padding: 12px;
+  border: 1px solid var(--rc-prov-ai-border);
+  border-radius: var(--radius-md);
+  background: var(--rc-prov-ai-tint);
+}
+
+.block_edited {
+  padding: 12px;
+  border: 1px dashed var(--rc-prov-edit-border);
+  border-radius: var(--radius-md);
+  background: var(--rc-prov-edit-tint);
+}
+
+/* Source chip — Design System §5: 32px visual, 44px hit area. */
+.sourceChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--rc-prov-class-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sourceChip::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.sourceIcon {
+  color: var(--rc-prov-class);
+}
+
+.playing {
+  border-color: var(--rc-prov-class);
+  background: var(--rc-prov-class-tint);
+}
+
+.unavailable {
+  border: 1px dashed var(--rc-border-strong);
+  color: var(--rc-text-muted);
+}
+
+/* Experimental badge — Design System, language combobox. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--rc-warning-border);
+  border-radius: 5px;
+  background: var(--rc-warning-tint);
+  color: var(--rc-warning);
+  font-size: var(--rc-text-xs);
+}

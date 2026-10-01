@@ -7,7 +7,17 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/src/db/types.ts", "!docs/design/handoff-r1"]
+    "includes": [
+      "**",
+      "!**/src/db/types.ts",
+      "!docs/design/handoff-r1",
+      "!apps/web/src/ui/styles/vendor"
+    ]
+  },
+  "css": {
+    "parser": {
+      "cssModules": true
+    }
   },
   "formatter": {
     "enabled": true,

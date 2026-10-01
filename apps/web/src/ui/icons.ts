@@ -1,0 +1,39 @@
+// The Phosphor icons the app uses (HANDOFF §2). Each one is imported on its own, so only these
+// reach the bundle. The SSR builds need no React context, so they work in server and client
+// components alike. Add an icon here before using it.
+export { ArrowClockwiseIcon as ArrowClockwise } from "@phosphor-icons/react/dist/ssr/ArrowClockwise";
+export { ArrowsClockwiseIcon as ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
+export { CardsIcon as Cards } from "@phosphor-icons/react/dist/ssr/Cards";
+export { ChalkboardSimpleIcon as ChalkboardSimple } from "@phosphor-icons/react/dist/ssr/ChalkboardSimple";
+export { CheckIcon as Check } from "@phosphor-icons/react/dist/ssr/Check";
+export { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle";
+export { CircleDashedIcon as CircleDashed } from "@phosphor-icons/react/dist/ssr/CircleDashed";
+export { CircleHalfIcon as CircleHalf } from "@phosphor-icons/react/dist/ssr/CircleHalf";
+export { CircleNotchIcon as CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch";
+export { DeviceMobileIcon as DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
+export { DeviceMobileSlashIcon as DeviceMobileSlash } from "@phosphor-icons/react/dist/ssr/DeviceMobileSlash";
+export { FileDashedIcon as FileDashed } from "@phosphor-icons/react/dist/ssr/FileDashed";
+export { FilePdfIcon as FilePdf } from "@phosphor-icons/react/dist/ssr/FilePdf";
+export { FlaskIcon as Flask } from "@phosphor-icons/react/dist/ssr/Flask";
+export { FolderSimpleIcon as FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple";
+export { FoldersIcon as Folders } from "@phosphor-icons/react/dist/ssr/Folders";
+export { HandPointingIcon as HandPointing } from "@phosphor-icons/react/dist/ssr/HandPointing";
+export { HourglassMediumIcon as HourglassMedium } from "@phosphor-icons/react/dist/ssr/HourglassMedium";
+export { ImageIcon as Image } from "@phosphor-icons/react/dist/ssr/Image";
+export { InfoIcon as Info } from "@phosphor-icons/react/dist/ssr/Info";
+export { LightbulbIcon as Lightbulb } from "@phosphor-icons/react/dist/ssr/Lightbulb";
+export { MicrophoneIcon as Microphone } from "@phosphor-icons/react/dist/ssr/Microphone";
+export { PauseIcon as Pause } from "@phosphor-icons/react/dist/ssr/Pause";
+export { PauseCircleIcon as PauseCircle } from "@phosphor-icons/react/dist/ssr/PauseCircle";
+export { PencilSimpleLineIcon as PencilSimpleLine } from "@phosphor-icons/react/dist/ssr/PencilSimpleLine";
+export { PlayIcon as Play } from "@phosphor-icons/react/dist/ssr/Play";
+export { PlusIcon as Plus } from "@phosphor-icons/react/dist/ssr/Plus";
+export { ProhibitIcon as Prohibit } from "@phosphor-icons/react/dist/ssr/Prohibit";
+export { QueueIcon as Queue } from "@phosphor-icons/react/dist/ssr/Queue";
+export { SunHorizonIcon as SunHorizon } from "@phosphor-icons/react/dist/ssr/SunHorizon";
+export { TrashIcon as Trash } from "@phosphor-icons/react/dist/ssr/Trash";
+export { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle";
+export { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/dist/ssr/WarningCircle";
+export { WifiSlashIcon as WifiSlash } from "@phosphor-icons/react/dist/ssr/WifiSlash";
+export { XIcon as X } from "@phosphor-icons/react/dist/ssr/X";
+export { XCircleIcon as XCircle } from "@phosphor-icons/react/dist/ssr/XCircle";

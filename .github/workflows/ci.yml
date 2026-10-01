@@ -46,12 +46,16 @@ jobs:
       - name: No secrets in the client-visible build (FR-PLT-009)
         run: pnpm check:client-bundle
 
+  # Main and milestone branches (feat/*); docs branches skip it to save minutes.
   e2e:
-    name: End-to-end (main only)
-    if: github.ref == 'refs/heads/main'
+    name: End-to-end (main and feat branches)
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/feat/')
     needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      # Serves the /dev UI test pages that the accessibility and component tests use.
+      RECALINO_DEV_UI: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0

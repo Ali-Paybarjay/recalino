@@ -1,0 +1,47 @@
+/* Values from frames A2.7, C3 and D5 (24px box, components.md). */
+.row {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: var(--rc-target);
+  font-size: var(--rc-text-md);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border: 2px solid var(--rc-border-strong);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-bg);
+}
+
+.mark {
+  visibility: hidden;
+}
+
+.input:checked + .box {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.input:checked + .box .mark {
+  visibility: visible;
+}
+
+.input:focus-visible + .box {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 2px;
+}
+
+.row:has(.input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
