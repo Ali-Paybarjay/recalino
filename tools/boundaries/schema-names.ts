@@ -1,4 +1,5 @@
-// ADR-0002 rule 4: a module's tables are referenced only inside packages/core/src/<module>/.
+// ADR-0002 rule 4: production code references a module's tables only inside
+// packages/core/src/<module>/. Test files are exempt so they can observe effects.
 // Table names come from the generated DB types, so the check knows every real table.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -25,6 +26,8 @@ export function findSchemaNameViolations(
 ): SchemaNameViolation[] {
   const violations: SchemaNameViolation[] = [];
   for (const file of files) {
+    // Tests may read any table to observe effects; the rule protects production code.
+    if (/\.test\.ts$/.test(file.path)) continue;
     for (const table of tables) {
       const schema = table.split(".")[0];
       const ownFolder = `packages/core/src/${schema}/`;
