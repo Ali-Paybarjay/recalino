@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:56px;display:flex;flex-direction:column;gap:80px;width:max-content;font-family:var(--font-body)">
+
+<header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+  <div style="font-size:13px;color:var(--rc-text-muted)">Recalino MVP · Screens round 2 · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 3 - Notes & Review.dc.html">D1 Notes</a> · <a href="Recalino Screens 4 - Setup Classes Capture.dc.html">Setup &amp; Capture</a> · <a href="Recalino Screens 6 - Cards Review.dc.html">Cards &amp; Review</a> · <a href="Recalino Screens 7 - Me Global.dc.html">Me &amp; Global</a> · <a href="Recalino Assumptions.dc.html">Assumptions</a></div>
+  <h1 style="font-size:34px;margin:0">D2 · Source viewer  ·  D3 · Edit notes  ·  D4 · Transcript  ·  D5 · Export</h1>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">D2 · Source reference viewer</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="D2-audio" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D2</span><span style="font-weight:500">Audio range — local copy</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:25</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:20px;opacity:.3;display:flex;flex-direction:column;gap:10px"><h2 style="font-size:26px;margin:0">already</h2><p style="margin:0;font-size:17px">"I've already finished my homework."</p></div>
+        <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 60%,transparent)"></div>
+        <div role="dialog" aria-modal="true" aria-labelledby="d2a" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:20px 20px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 34px;display:flex;flex-direction:column;gap:16px">
+          <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+          <div style="display:flex;align-items:center;gap:8px"><i class="ph ph-waveform" style="font-size:20px;color:var(--rc-prov-class)"></i><h2 id="d2a" class="rc-num" style="font-size:20px;margin:0;flex:1">Class audio · 18:42</h2><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+          <p style="margin:0;font-size:17px;line-height:1.6;padding:14px;border-radius:12px;background:var(--color-bg)"><span style="font-size:13px;color:var(--rc-text-muted);display:block;margin-bottom:4px">Teacher (confirmed by you)</span>"So, I've <mark style="background:var(--rc-primary-tint-2);color:inherit;border-radius:3px;padding:0 2px">already</mark> finished my homework — it happened before now, earlier than you expected."</p>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div role="slider" aria-label="Position in clip" aria-valuetext="18:46 of 18:42 to 18:51" style="position:relative;height:28px;display:flex;align-items:center"><div style="height:6px;width:100%;border-radius:3px;background:var(--rc-surface-2)"></div><div style="position:absolute;left:0;width:44%;height:6px;border-radius:3px;background:var(--color-accent)"></div><div style="position:absolute;left:calc(44% - 10px);width:20px;height:20px;border-radius:50%;background:var(--color-surface);box-shadow:0 0 0 2px var(--color-accent)"></div></div>
+            <div class="rc-num" style="display:flex;justify-content:space-between;font-size:13px;color:var(--rc-text-muted)"><span>18:42</span><span>18:46</span><span>18:51</span></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:20px">
+            <button class="btn btn-icon btn-ghost" aria-label="Back 5 seconds"><i class="ph ph-arrow-counter-clockwise" style="font-size:24px"></i></button>
+            <button class="btn btn-primary" aria-label="Pause" style="width:64px;height:64px;border-radius:50%;padding:0"><i class="ph-fill ph-pause" style="font-size:26px"></i></button>
+            <button class="btn btn-icon btn-ghost" aria-label="Forward 5 seconds"><i class="ph ph-arrow-clockwise" style="font-size:24px"></i></button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile"></i>Playing from this device<span style="flex:1"></span><button class="btn btn-ghost" style="font-size:14px">Play more context</button></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Never autoplays: opens paused on desktop; on mobile, tapping the chip is the play gesture.</li>
+        <li>"Play more context" extends ±15 s. Desktop: same player in a right-side panel.</li>
+      </ul>
+    </figure>
+
+    <figure id="D2-page" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D2</span><span style="font-weight:500">Worksheet page view</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:26</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--color-divider)"><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button><span style="flex:1;font-size:15px"><i class="ph ph-file-pdf" style="color:var(--rc-prov-class)"></i> Worksheet · page 4</span><button class="btn btn-icon btn-ghost" aria-label="Zoom in"><i class="ph ph-magnifying-glass-plus" style="font-size:20px"></i></button></div>
+        <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--rc-surface-2)">
+          <div role="img" aria-label="Worksheet page 4. Highlighted: exercise 3, sentence 2." style="flex:1;border-radius:6px;background:var(--color-surface);box-shadow:var(--shadow-md);padding:28px 24px;display:flex;flex-direction:column;gap:12px">
+            <div style="height:14px;width:55%;border-radius:3px;background:var(--rc-text-muted);opacity:.6"></div>
+            <div style="height:8px;width:90%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+            <div style="height:8px;width:82%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+            <div style="height:8px;width:70%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+            <div style="height:10px;width:40%;border-radius:3px;background:var(--rc-text-muted);opacity:.5;margin-top:10px"></div>
+            <div style="height:8px;width:88%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+            <div style="padding:8px;margin:0 -8px;border-radius:6px;background:var(--rc-primary-tint);box-shadow:inset 0 0 0 2px var(--color-accent);font-size:13px">2. I've ___ finished my homework. <i>(already)</i></div>
+            <div style="height:8px;width:76%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+            <div style="height:8px;width:84%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+            <div style="height:8px;width:60%;border-radius:3px;background:var(--rc-border-strong);opacity:.5"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px"><button class="btn btn-icon btn-secondary" aria-label="Previous page" style="background:var(--color-surface)"><i class="ph ph-caret-left"></i></button><span class="rc-num" style="font-size:15px">Page 4 of 4</span><button class="btn btn-icon btn-secondary" aria-label="Next page" disabled style="background:var(--color-surface)"><i class="ph ph-caret-right"></i></button></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>The referenced region is outlined; its text is the image's accessible name.</li>
+        <li>Photo view uses the same frame (pinch zoom, "Board photo 2 · taken at 1:05:42").</li>
+      </ul>
+    </figure>
+
+    <figure id="D2-missing" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D2</span><span style="font-weight:500">Not on this device · no longer kept</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>21:10</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px;gap:20px">
+          <h2 style="font-size:13px;margin:0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">On a laptop — audio chip tapped</h2>
+          <div style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;gap:10px;align-items:center"><i class="ph ph-device-mobile-slash" style="font-size:24px;color:var(--rc-info)"></i><h3 class="rc-num" style="font-size:17px;margin:0">Class audio · 18:42</h3></div>
+            <p style="margin:0;font-size:15px;line-height:1.55"><b style="font-weight:600">The original audio isn't on this device.</b> It was recorded on your phone. Open this class on that phone to listen.</p>
+            <p style="margin:0;font-size:15px;line-height:1.6;padding:12px;border-radius:10px;background:var(--color-bg)"><span style="font-size:13px;color:var(--rc-text-muted);display:block;margin-bottom:4px">Transcript · Teacher (confirmed by you)</span>"So, I've already finished my homework…"</p>
+          </div>
+          <h2 style="font-size:13px;margin:8px 0 0;letter-spacing:.06em;text-transform:uppercase;color:var(--rc-text-muted)">Original deleted by the learner</h2>
+          <div style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;gap:10px;align-items:center"><i class="ph ph-file-dashed" style="font-size:24px;color:var(--rc-info)"></i><h3 style="font-size:17px;margin:0">Worksheet · page 4</h3></div>
+            <p style="margin:0;font-size:15px;line-height:1.55"><b style="font-weight:600">The original file is no longer kept.</b> You deleted it on 2 Oct. The notes made from it are still here.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--rc-text-muted)">How these chips look in notes</span><div style="display:flex;gap:6px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px dashed var(--rc-border-strong);font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile-slash"></i>Class audio · 18:42</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px dashed var(--rc-border-strong);font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-file-dashed"></i>Worksheet · page 4 · not kept</span></div></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Never a broken link. The chip stays (provenance is still true) but changes icon + dashed border.</li>
+        <li>Transcript text is still shown when available — the learner keeps the evidence.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">D3 · Edit notes and versions</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="D3-edit" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D3</span><span style="font-weight:500">Inline edit</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:38</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--color-divider)"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px">Key points</span><button class="btn btn-ghost" style="font-size:15px"><i class="ph ph-clock-counter-clockwise"></i>History</button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 20px;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span>
+            <p style="margin:0;font-size:17px;line-height:1.6">Past simple: a finished time — <em>yesterday, last week, in 2019</em>.</p>
+            <div style="display:flex;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-image" style="color:var(--rc-prov-class)"></i>Board photo 1</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;background:var(--rc-prov-edit-tint);border:1px dashed var(--rc-prov-edit-border)">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-edit)"><i class="ph ph-pencil-simple-line"></i>Edited by you · editing now</span>
+            <label for="d3t" style="font-size:13px;color:var(--rc-text-muted)">Key point 2</label>
+            <textarea id="d3t" rows="4" style="font:inherit;font-size:17px;line-height:1.6;padding:12px;border-radius:10px;border:2px solid var(--rc-focus);background:var(--color-surface);color:var(--color-text);resize:vertical;outline:none">Present perfect: no time said, or the time isn't finished — today, this week. My trick: if I can say "when?", use past simple.</textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:13px;color:var(--rc-text-muted)">Sources kept:</span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 24:10</span></div>
+            <div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1">Save</button><button class="btn btn-ghost">Cancel</button><button class="btn btn-ghost" style="font-size:14px">Undo my edit</button></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span>
+            <p style="margin:0;font-size:16px;line-height:1.6">Both forms can talk about the past. The difference is the time word.</p>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Editing a "From class" item turns it into "Edited by you"; the original stays in History.</li>
+        <li>Source chips stay attached so evidence isn't lost. "Undo my edit" restores the generated text.</li>
+      </ul>
+    </figure>
+
+    <figure id="D3-history" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D3</span><span style="font-weight:500">Version history + new suggestion</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:02</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px;border-bottom:1px solid var(--color-divider)"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px">Notes history</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:18px 20px;gap:16px">
+          <div role="status" style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:var(--rc-card-radius);background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2)">
+            <div style="display:flex;gap:8px;align-items:center"><i class="ph ph-sparkle" style="font-size:20px;color:var(--rc-primary-text)"></i><b style="font-weight:600">A new version is suggested</b></div>
+            <p style="margin:0;font-size:15px;line-height:1.5">Part 2 is ready now. 3 sections changed. Your edits are not changed.</p>
+            <button class="btn btn-primary" style="width:100%">Compare versions</button>
+          </div>
+          <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px">
+            <li style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;min-height:60px;padding:8px 4px;border-bottom:1px solid var(--color-divider)"><i class="ph ph-sparkle" style="color:var(--rc-prov-ai)"></i><div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:500">Suggested · Part 1 + Part 2</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">Today 20:00 · not used yet</span></div><span style="font-size:12px;color:var(--rc-text-muted)">New</span></li>
+            <li style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;min-height:60px;padding:8px 4px;border-bottom:1px solid var(--color-divider);background:var(--color-surface);border-radius:10px"><i class="ph-fill ph-check-circle" style="color:var(--color-accent)"></i><div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:500">Current · with your edits</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">Today 19:40 · 2 edits</span></div><span style="font-size:12px;color:var(--rc-text-muted)">In use</span></li>
+            <li style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;min-height:60px;padding:8px 4px;border-bottom:1px solid var(--color-divider)"><i class="ph ph-pencil-simple-line" style="color:var(--rc-prov-edit)"></i><div style="display:flex;flex-direction:column"><span style="font-size:15px">Your edit · Key points</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">Today 19:38</span></div><button class="btn btn-ghost" style="font-size:14px">View</button></li>
+            <li style="display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;min-height:60px;padding:8px 4px"><i class="ph ph-file-text" style="color:var(--rc-text-muted)"></i><div style="display:flex;flex-direction:column"><span style="font-size:15px">First version · Part 1 only</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">Today 14:05</span></div><button class="btn btn-ghost" style="font-size:14px">Restore</button></li>
+          </ol>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Regenerating never overwrites — it appears here as "Suggested". Restore creates a new entry (history is append-only).</li>
+      </ul>
+    </figure>
+  </div>
+
+  <figure id="D3-compare" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+    <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D3</span><span style="font-weight:500">Desktop 1440 — compare versions, choose per section</span></div>
+    <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:16px;padding:20px 40px;border-bottom:1px solid var(--color-divider);background:var(--color-surface)">
+        <button class="btn btn-icon btn-ghost" aria-label="Back to notes"><i class="ph ph-caret-left" style="font-size:20px"></i></button>
+        <div style="flex:1;display:flex;flex-direction:column"><h1 style="font-size:24px;margin:0">Compare versions</h1><span style="font-size:14px;color:var(--rc-text-muted)">Present perfect vs past simple · 3 sections changed</span></div>
+        <div role="radiogroup" aria-label="How to choose" style="display:flex;padding:4px;border-radius:12px;background:var(--rc-surface-2);gap:4px">
+          <span role="radio" aria-checked="false" style="min-height:40px;padding:0 14px;display:flex;align-items:center;border-radius:9px;font-size:15px">Keep mine</span>
+          <span role="radio" aria-checked="false" style="min-height:40px;padding:0 14px;display:flex;align-items:center;border-radius:9px;font-size:15px">Use new</span>
+          <span role="radio" aria-checked="true" style="min-height:40px;padding:0 14px;display:flex;align-items:center;border-radius:9px;font-size:15px;background:var(--color-surface);box-shadow:var(--shadow-sm);font-weight:600">Choose per section</span>
+        </div>
+        <button class="btn btn-primary" style="min-height:48px;padding-inline:24px">Apply choices</button>
+      </div>
+      <div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:0;padding:0 40px;font-size:13px;color:var(--rc-text-muted);letter-spacing:.06em;text-transform:uppercase"><span style="padding:16px 0">Section</span><span style="padding:16px 20px">Your version (in use)</span><span style="padding:16px 20px">New suggested version</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:0 40px 32px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:200px 1fr 1fr;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm);overflow:hidden">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:8px"><span style="font-weight:600">Key points</span><span style="font-size:13px;color:var(--rc-text-muted)">You edited this</span></div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 0 0 2px var(--color-accent);background:var(--rc-primary-tint)">
+            <label style="display:flex;gap:10px;align-items:center;min-height:32px;font-weight:600;font-size:15px"><span style="width:20px;height:20px;border-radius:50%;border:6px solid var(--color-accent);background:var(--color-surface)"></span>Keep mine</label>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-edit)"><i class="ph ph-pencil-simple-line"></i>Edited by you</span>
+            <p style="margin:0;font-size:16px;line-height:1.6">Present perfect: no time said, or the time isn't finished. <span style="background:var(--rc-prov-edit-tint);border-bottom:2px solid var(--rc-prov-edit)">My trick: if I can say "when?", use past simple.</span></p>
+          </div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;gap:10px;align-items:center;min-height:32px;font-size:15px"><span style="width:20px;height:20px;border-radius:50%;border:2px solid var(--rc-border-strong)"></span>Use new</label>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span>
+            <p style="margin:0;font-size:16px;line-height:1.6">Present perfect: no time said, or the time isn't finished — <span style="background:var(--rc-success-tint);border-bottom:2px solid var(--rc-success)">today, this week, so far</span>.</p>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 1fr;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm);overflow:hidden">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:8px"><span style="font-weight:600">Examples from class</span><span style="font-size:13px;color:var(--rc-text-muted)">2 new from Part 2</span></div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;gap:10px;align-items:center;min-height:32px;font-size:15px"><span style="width:20px;height:20px;border-radius:50%;border:2px solid var(--rc-border-strong)"></span>Keep mine</label>
+            <p style="margin:0;font-size:16px;line-height:1.6">"I've already finished my homework." <span style="font-size:13px;color:var(--rc-text-muted)">· 18:42</span></p>
+          </div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 0 0 2px var(--color-accent);background:var(--rc-primary-tint)">
+            <label style="display:flex;gap:10px;align-items:center;min-height:32px;font-weight:600;font-size:15px"><span style="width:20px;height:20px;border-radius:50%;border:6px solid var(--color-accent);background:var(--color-surface)"></span>Use new</label>
+            <p style="margin:0;font-size:16px;line-height:1.6">"I've already finished my homework." <span style="font-size:13px;color:var(--rc-text-muted)">· 18:42</span></p>
+            <p style="margin:0;font-size:16px;line-height:1.6;background:var(--rc-success-tint);border-left:3px solid var(--rc-success);padding:4px 10px">"Have you ever been to Scotland?" <span style="font-size:13px;color:var(--rc-text-muted)">· 1:52:30 · added</span></p>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr 1fr;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm);overflow:hidden">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:8px"><span style="font-weight:600">Homework</span><span style="font-size:13px;color:var(--rc-text-muted)">New section</span></div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;gap:10px;align-items:center;min-height:32px;font-size:15px"><span style="width:20px;height:20px;border-radius:50%;border:2px solid var(--rc-border-strong)"></span>Keep mine</label>
+            <p style="margin:0;font-size:15px;color:var(--rc-text-muted);font-style:italic">Not in your version</p>
+          </div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 0 0 2px var(--color-accent);background:var(--rc-primary-tint)">
+            <label style="display:flex;gap:10px;align-items:center;min-height:32px;font-weight:600;font-size:15px"><span style="width:20px;height:20px;border-radius:50%;border:6px solid var(--color-accent);background:var(--color-surface)"></span>Use new</label>
+            <p style="margin:0;font-size:16px;line-height:1.6;background:var(--rc-success-tint);border-left:3px solid var(--rc-success);padding:4px 10px">Worksheet page 4, exercises 3 and 4. Due Thursday. <span style="font-size:13px;color:var(--rc-text-muted)">· 2:31:05</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px;max-width:900px">
+      <li>Default per section: sections you edited → Keep mine; untouched sections → Use new. Nothing applies until "Apply choices".</li>
+      <li>Diff marks use background + underline / left rule — not colour alone. Each section is a radiogroup.</li>
+      <li>Mobile: one section at a time, stacked (mine above new), same radios.</li>
+    </ul>
+  </figure>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">D4 · Transcript  ·  D5 · Export</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="D4" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D4</span><span style="font-weight:500">Transcript — fix text and speaker</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>19:50</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to class"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px;color:var(--rc-text-muted)">Present perfect vs past simple</span><button class="btn btn-icon btn-ghost" aria-label="Search transcript"><i class="ph ph-magnifying-glass" style="font-size:20px"></i></button></div>
+        <div role="tablist" style="display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--color-divider)">
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--rc-text-muted);font-size:15px">Notes</div>
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--rc-text-muted);font-size:15px">Cards · 14</div>
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--rc-text-muted);font-size:15px">Sources</div>
+          <div style="min-height:44px;padding:0 12px;display:flex;align-items:center;color:var(--color-accent);box-shadow:inset 0 -2px 0 var(--color-accent);font-weight:600;font-size:15px">Transcript</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px;gap:4px;overflow:hidden">
+          <div style="display:flex;gap:8px;align-items:center;padding:6px 0 10px;font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-info"></i>Part 1 · 0:00–1:30:00. Part 2 is still processing.</div>
+          <div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)"><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted);padding-top:2px">18:30</span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:13px;font-weight:600;color:var(--rc-prov-class)">Teacher <span style="font-weight:400;color:var(--rc-text-muted)">(confirmed by you)</span></span><p style="margin:0;font-size:16px;line-height:1.55">OK, so look at sentence two on the worksheet.</p></div></div>
+          <div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)"><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted);padding-top:2px">18:42</span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:13px;font-weight:600;color:var(--rc-prov-class)">Teacher <span style="font-weight:400;color:var(--rc-text-muted)">(confirmed by you)</span></span><p style="margin:0;font-size:16px;line-height:1.55">So, I've already finished my homework — earlier than you expected.</p></div></div>
+          <div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:10px 12px;margin:4px -12px;border-radius:12px;background:var(--rc-prov-edit-tint);border:1px dashed var(--rc-prov-edit-border)"><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted);padding-top:12px">19:05</span><div style="display:flex;flex-direction:column;gap:8px">
+            <button style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border-radius:999px;border:1px solid var(--rc-border-strong);background:var(--color-surface);color:var(--color-text);font:inherit;font-size:13px"><i class="ph ph-user"></i>Speaker 2<i class="ph ph-caret-down" style="font-size:11px"></i></button>
+            <textarea aria-label="Segment at 19:05" rows="2" style="font:inherit;font-size:16px;line-height:1.55;padding:10px;border-radius:10px;border:2px solid var(--rc-focus);background:var(--color-surface);color:var(--color-text);resize:none;outline:none">Have you finished it yet?</textarea>
+            <div style="display:flex;gap:8px;align-items:center"><button class="btn btn-primary">Save</button><button class="btn btn-ghost">Cancel</button><span style="font-size:12px;color:var(--rc-text-muted)">Was: "Have you finish it yet"</span></div>
+          </div></div>
+          <div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)"><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted);padding-top:2px">19:11</span><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:13px;font-weight:600;color:var(--rc-text-muted)">Unknown</span><p style="margin:0;font-size:16px;line-height:1.55">Not yet. Maybe tomorrow.</p></div></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Tap a segment to edit. Speaker menu: Teacher (confirm), Speaker 1/2…, Unknown. No waveform editor.</li>
+        <li>Confirming "Teacher" here is what unlocks "Teacher said" in notes. Time stamps play from the local copy.</li>
+      </ul>
+    </figure>
+
+    <figure id="D5-html" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D5</span><span style="font-weight:500">Export — HTML notes file</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:15</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+          <h1 style="font-size:26px;margin:0">Export</h1>
+          <div role="radiogroup" aria-label="Export type" style="display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:12px;background:var(--rc-surface-2);gap:4px">
+            <span role="radio" aria-checked="true" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:15px;background:var(--color-surface);box-shadow:var(--shadow-sm);font-weight:600"><i class="ph ph-file-html"></i>Notes file</span>
+            <span role="radio" aria-checked="false" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:15px"><i class="ph ph-cards"></i>Anki cards</span>
+          </div>
+          <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:4px"><legend style="font-size:15px;font-weight:600;margin-bottom:6px">Include</legend>
+            <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:16px"><span style="flex:none;width:24px;height:24px;border-radius:6px;background:var(--color-accent);display:grid;place-items:center;color:var(--color-bg)"><i class="ph-bold ph-check" style="font-size:14px"></i></span>Notes and explanations</label>
+            <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:16px"><span style="flex:none;width:24px;height:24px;border-radius:6px;background:var(--color-accent);display:grid;place-items:center;color:var(--color-bg)"><i class="ph-bold ph-check" style="font-size:14px"></i></span>Board photos (2)</label>
+            <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:16px"><span style="flex:none;width:24px;height:24px;border-radius:6px;border:2px solid var(--rc-border-strong)"></span>Worksheet pages (4)</label>
+          </fieldset>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:15px;font-weight:600">Image quality</span>
+            <div role="radiogroup" style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:4px;border-radius:12px;background:var(--rc-surface-2);gap:4px"><span role="radio" aria-checked="false" style="min-height:40px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:14px">Low</span><span role="radio" aria-checked="true" style="min-height:40px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:14px;background:var(--color-surface);box-shadow:var(--shadow-sm);font-weight:600">Medium</span><span role="radio" aria-checked="false" style="min-height:40px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:14px">Original</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--color-surface)"><i class="ph ph-file-html" style="font-size:22px"></i><span style="flex:1;font-size:15px">present-perfect-notes.html</span><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">about 2.4 MB</span></div>
+          <div style="display:grid;grid-template-columns:24px 1fr;gap:10px;padding:12px 14px;border-radius:12px;background:var(--rc-info-tint);border:1px solid var(--rc-info-border)"><i class="ph ph-camera" style="font-size:20px"></i><p style="margin:0;font-size:14px;line-height:1.5">This file is a snapshot. It won't update if your notes change later. Audio isn't included.</p></div>
+        </div>
+        <div style="flex:none;padding:12px 20px 30px"><button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-download-simple"></i>Download notes file</button></div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Size updates live as options change (aria-live polite).</li>
+        <li>Provenance labels and source chip text are kept in the file (chips become plain text).</li>
+      </ul>
+    </figure>
+
+    <figure id="D5-anki" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">D5</span><span style="font-weight:500">Export — Anki package</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>20:16</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+          <h1 style="font-size:26px;margin:0">Export</h1>
+          <div role="radiogroup" aria-label="Export type" style="display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:12px;background:var(--rc-surface-2);gap:4px">
+            <span role="radio" aria-checked="false" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:15px"><i class="ph ph-file-html"></i>Notes file</span>
+            <span role="radio" aria-checked="true" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:9px;font-size:15px;background:var(--color-surface);box-shadow:var(--shadow-sm);font-weight:600"><i class="ph ph-cards"></i>Anki cards</span>
+          </div>
+          <div style="display:flex;align-items:center"><span style="font-size:15px;font-weight:600;flex:1">Cards · 11 of 14 chosen</span><button class="btn btn-ghost" style="font-size:14px">Choose all</button></div>
+          <div style="display:flex;flex-direction:column;gap:2px;border-radius:12px;background:var(--color-surface);padding:4px 14px">
+            <label style="display:flex;gap:12px;align-items:center;min-height:52px;font-size:15px;border-bottom:1px solid var(--color-divider)"><span style="flex:none;width:24px;height:24px;border-radius:6px;background:var(--color-accent);display:grid;place-items:center;color:var(--color-bg)"><i class="ph-bold ph-check" style="font-size:14px"></i></span><span style="flex:1">already → earlier than expected</span><span style="font-size:12px;color:var(--rc-text-muted)">Vocabulary</span></label>
+            <label style="display:flex;gap:12px;align-items:center;min-height:52px;font-size:15px;border-bottom:1px solid var(--color-divider)"><span style="flex:none;width:24px;height:24px;border-radius:6px;background:var(--color-accent);display:grid;place-items:center;color:var(--color-bg)"><i class="ph-bold ph-check" style="font-size:14px"></i></span><span style="flex:1">I've ___ finished my homework.</span><span style="font-size:12px;color:var(--rc-text-muted)">Cloze</span></label>
+            <label style="display:flex;gap:12px;align-items:center;min-height:52px;font-size:15px"><span style="flex:none;width:24px;height:24px;border-radius:6px;border:2px solid var(--rc-border-strong)"></span><span style="flex:1">Listen: "Have you ever…"</span><span style="font-size:12px;color:var(--rc-text-muted)">Listening</span></label>
+          </div>
+          <div style="display:grid;grid-template-columns:24px 1fr;gap:10px;padding:14px;border-radius:12px;background:var(--rc-warning-tint);border:1px solid var(--rc-warning-border)"><i class="ph ph-info" style="font-size:20px;color:var(--rc-warning)"></i><div style="display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.5"><p style="margin:0"><b style="font-weight:600">Your review history is not included.</b> Recalino and Anki keep separate schedules.</p><p style="margin:0">Class audio clips can't be included. Computer-voice audio is included.</p></div></div>
+        </div>
+        <div style="flex:none;padding:12px 20px 30px"><button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-download-simple"></i>Download .apkg · 11 cards</button></div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Card count lives in the button label so it's announced with the action.</li>
+        <li>Export only — no Anki import or sync anywhere (out of scope).</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

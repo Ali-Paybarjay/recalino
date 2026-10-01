@@ -15,7 +15,8 @@
 | [adr/0001-stack-and-hosting.md](adr/0001-stack-and-hosting.md): Stack، میزبانی و صف (G02) | Accepted (بازنگری ۳، 2026-09-30) |
 | [adr/0002-data-access-and-migrations.md](adr/0002-data-access-and-migrations.md): لایه داده، migration و مالکیت جدول‌ها | Accepted، 2026-09-30 |
 | [PROJECT_SPEC.md](PROJECT_SPEC.md): spec پروژه‌سطحی — دستورها، ساختار مخزن، سبک کد، آزمون و مرزها | ✅ تأییدشده، 2026-09-30 |
-| [PRODUCT_DECISIONS_LOG.md](PRODUCT_DECISIONS_LOG.md): تصمیم‌های محصول پس از PRD v0.3 (D28 هزینه، D29 صوت روی دستگاه، D31 زبان اول) | ثبت‌شده؛ بر متن PRD مقدم است |
+| [PRODUCT_DECISIONS_LOG.md](PRODUCT_DECISIONS_LOG.md): تصمیم‌های محصول پس از PRD v0.3 (D28 هزینه، D29 صوت روی دستگاه، D31 زبان اول، D32 ضبط یک‌لمسی، D33 رضایت ضبط) | ثبت‌شده؛ بر متن PRD مقدم است |
+| [design/HANDOFF_R1_REVIEW.md](design/HANDOFF_R1_REVIEW.md): بازبینی طرح Claude Design، دور اول ([بسته](design/handoff-r1/)) | تصمیم‌ها ثبت شد (2026-10-01)؛ دو مورد باز |
 | [fr/PLT.md](fr/PLT.md): پلتفرم و حفاظت پایه | پیش‌نویس ۰٫۱، در انتظار بازبینی؛ FR-PLT-011 با D31 به‌روز شد |
 | [fr/ACC.md](fr/ACC.md): حساب و پروفایل یادگیری | پیش‌نویس ۰٫۲، در انتظار بازبینی؛ ۱ پرسش باز (Q-ACC-3، وابسته به G11) |
 | [fr/QUOTA.md](fr/QUOTA.md): پلن، سهمیه و دفتر مصرف | پیش‌نویس ۰٫۱، در انتظار بازبینی؛ ۵ پرسش باز |
