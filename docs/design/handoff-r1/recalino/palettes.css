@@ -1,0 +1,85 @@
+/* Recalino colour directions — exploration only. Layered after tokens.css.
+   Each [data-palette] overrides the same token names, plus --opt-* for the bolder youthful treatments. */
+
+[data-palette] {
+  --opt-hero-bg: var(--color-surface);
+  --opt-hero-text: var(--color-text);
+  --opt-hero-muted: var(--rc-text-muted);
+  --opt-hero-label: var(--rc-primary-text);
+  --opt-cta-bg: transparent;
+  --opt-cta-text: var(--color-accent);
+  --opt-cta-border: var(--color-accent);
+  --opt-nav-pill: transparent;
+  --opt-r: 14px;
+  --opt-r-sm: 10px;
+  --opt-btn-r: 8px;
+  --opt-h-weight: 500;
+}
+
+[data-palette="nocturne"] {
+  --color-bg: #f3f4fa; --color-surface: #fbfbfe; --rc-surface-2: #e9ebf5;
+  --color-text: #22242c; --rc-text-muted: #525665; --rc-border-strong: #9397ab;
+  --color-divider: color-mix(in srgb, #22242c 16%, transparent);
+  --color-accent: #5d5294; --rc-primary-text: #423a6a; --rc-primary-tint: #ecebfc; --rc-primary-tint-2: #dcd9f8; --rc-focus: #5d5294;
+  --rc-success: #2b6b40; --rc-success-tint: #e2f2e7; --rc-success-border: #a9d4b6;
+  --shadow-sm: 0 0 0 1px #cfd3e5;
+}
+
+[data-palette="coral"] {
+  --color-bg: #fff4ec; --color-surface: #fffcf9; --rc-surface-2: #fbe6d8;
+  --color-text: #2a1d1a; --rc-text-muted: #6b5550; --rc-border-strong: #c9a99c;
+  --color-divider: color-mix(in srgb, #2a1d1a 14%, transparent);
+  --color-accent: #c23c1f; --rc-primary-text: #8a2a15; --rc-primary-tint: #ffe2d6; --rc-primary-tint-2: #ffc7b2; --rc-focus: #c23c1f;
+  --opt-hero-bg: #ff7a59; --opt-hero-text: #2a1d1a; --opt-hero-muted: #4a2a20; --opt-hero-label: #2a1d1a;
+  --opt-cta-bg: #2a1d1a; --opt-cta-text: #fff4ec; --opt-cta-border: #2a1d1a;
+  --opt-nav-pill: #ffe2d6; --opt-r: 22px; --opt-r-sm: 16px; --opt-btn-r: 999px; --opt-h-weight: 700;
+}
+
+[data-palette="mint"] {
+  --color-bg: #eef9f3; --color-surface: #fbfffd; --rc-surface-2: #d9f2e5;
+  --color-text: #13261f; --rc-text-muted: #4a6259; --rc-border-strong: #94b5a7;
+  --color-divider: color-mix(in srgb, #13261f 14%, transparent);
+  --color-accent: #0d7556; --rc-primary-text: #0a5540; --rc-primary-tint: #d3f4e5; --rc-primary-tint-2: #a6e6c9; --rc-focus: #0d7556;
+  --opt-hero-bg: #b9f06b; --opt-hero-text: #13261f; --opt-hero-muted: #2f4a1a; --opt-hero-label: #13261f;
+  --opt-cta-bg: #13261f; --opt-cta-text: #eef9f3; --opt-cta-border: #13261f;
+  --opt-nav-pill: #d3f4e5; --opt-r: 20px; --opt-r-sm: 14px; --opt-btn-r: 14px; --opt-h-weight: 700;
+}
+
+[data-palette="grape"] {
+  --color-bg: #f6f2ff; --color-surface: #fdfcff; --rc-surface-2: #ebe3ff;
+  --color-text: #1f1535; --rc-text-muted: #5c5078; --rc-border-strong: #ab9fcf;
+  --color-divider: color-mix(in srgb, #1f1535 14%, transparent);
+  --color-accent: #6a38dc; --rc-primary-text: #4a22a8; --rc-primary-tint: #ebe2ff; --rc-primary-tint-2: #d6c5ff; --rc-focus: #6a38dc;
+  --opt-hero-bg: #6a38dc; --opt-hero-text: #fdfcff; --opt-hero-muted: #e6dcff; --opt-hero-label: #ffc6ea;
+  --opt-cta-bg: #ff8fd3; --opt-cta-text: #1f1535; --opt-cta-border: #ff8fd3;
+  --opt-nav-pill: #ebe2ff; --opt-r: 24px; --opt-r-sm: 18px; --opt-btn-r: 999px; --opt-h-weight: 700;
+}
+
+[data-palette="sky"] {
+  --color-bg: #f0f6ff; --color-surface: #fcfdff; --rc-surface-2: #deeaff;
+  --color-text: #0f1d33; --rc-text-muted: #4a5a73; --rc-border-strong: #97a9c6;
+  --color-divider: color-mix(in srgb, #0f1d33 14%, transparent);
+  --color-accent: #1c5fd6; --rc-primary-text: #1448a3; --rc-primary-tint: #dde9ff; --rc-primary-tint-2: #b9d2ff; --rc-focus: #1c5fd6;
+  --opt-hero-bg: #ffd84a; --opt-hero-text: #0f1d33; --opt-hero-muted: #4a3d0a; --opt-hero-label: #0f1d33;
+  --opt-cta-bg: #1c5fd6; --opt-cta-text: #fcfdff; --opt-cta-border: #1c5fd6;
+  --opt-nav-pill: #dde9ff; --opt-r: 20px; --opt-r-sm: 14px; --opt-btn-r: 12px; --opt-h-weight: 700;
+}
+
+[data-palette="neon"] {
+  --color-bg: #14121f; --color-surface: #1f1c2e; --rc-surface-2: #2a2640;
+  --color-text: #f1eefb; --rc-text-muted: #b3aecb; --rc-border-strong: #5b5673;
+  --color-divider: color-mix(in srgb, #f1eefb 14%, transparent);
+  --color-accent: #c3f26a; --rc-primary-text: #dcfaa3; --rc-primary-tint: #28301a; --rc-primary-tint-2: #43521f; --rc-focus: #c3f26a;
+  --opt-hero-bg: #ff6fae; --opt-hero-text: #14121f; --opt-hero-muted: #3a1428; --opt-hero-label: #14121f;
+  --opt-cta-bg: #14121f; --opt-cta-text: #f1eefb; --opt-cta-border: #14121f;
+  --opt-nav-pill: #28301a; --opt-r: 22px; --opt-r-sm: 16px; --opt-btn-r: 999px; --opt-h-weight: 700;
+}
+
+[data-palette][data-bold="false"] {
+  --opt-hero-bg: var(--color-surface); --opt-hero-text: var(--color-text); --opt-hero-muted: var(--rc-text-muted); --opt-hero-label: var(--rc-primary-text);
+  --opt-cta-bg: transparent; --opt-cta-text: var(--color-accent); --opt-cta-border: var(--color-accent);
+}
+
+[data-palette] .btn { border-radius: var(--opt-btn-r); }
+[data-palette] .opt-cta { background: var(--opt-cta-bg); color: var(--opt-cta-text); border-color: var(--opt-cta-border); }
+[data-palette] .opt-cta:hover { filter: brightness(1.08); }

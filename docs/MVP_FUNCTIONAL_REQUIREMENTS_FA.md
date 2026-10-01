@@ -15,7 +15,8 @@
 | [adr/0001-stack-and-hosting.md](adr/0001-stack-and-hosting.md): Stack، میزبانی و صف (G02) | Accepted (بازنگری ۳، 2026-09-30) |
 | [adr/0002-data-access-and-migrations.md](adr/0002-data-access-and-migrations.md): لایه داده، migration و مالکیت جدول‌ها | Accepted، 2026-09-30 |
 | [PROJECT_SPEC.md](PROJECT_SPEC.md): spec پروژه‌سطحی — دستورها، ساختار مخزن، سبک کد، آزمون و مرزها | ✅ تأییدشده، 2026-09-30 |
-| [PRODUCT_DECISIONS_LOG.md](PRODUCT_DECISIONS_LOG.md): تصمیم‌های محصول پس از PRD v0.3 (D28 هزینه، D29 صوت روی دستگاه، D31 زبان اول) | ثبت‌شده؛ بر متن PRD مقدم است |
+| [PRODUCT_DECISIONS_LOG.md](PRODUCT_DECISIONS_LOG.md): تصمیم‌های محصول پس از PRD v0.3 (D28 هزینه، D29 صوت روی دستگاه، D31 زبان اول، D32 ضبط یک‌لمسی، D33 رضایت ضبط) | ثبت‌شده؛ بر متن PRD مقدم است |
+| [design/HANDOFF_R1_REVIEW.md](design/HANDOFF_R1_REVIEW.md): بازبینی طرح Claude Design، دور اول ([بسته](design/handoff-r1/)) | تصمیم‌ها ثبت شد (2026-10-01)؛ دو مورد باز |
 | [fr/PLT.md](fr/PLT.md): پلتفرم و حفاظت پایه | ✅ تأییدشده (2026-10-01)؛ هسته سمت سرور در M1 پیاده شد |
 | [API_CONTRACTS.md](API_CONTRACTS.md): پاکت خطا، سرآیندها و مسیرهای API | نسخه ۰٫۱، همراه M1 |
 | [fr/ACC.md](fr/ACC.md): حساب و پروفایل یادگیری | پیش‌نویس ۰٫۲، در انتظار بازبینی؛ ۱ پرسش باز (Q-ACC-3، وابسته به G11) |
@@ -23,7 +24,7 @@
 | [fr/ORG.md](fr/ORG.md): دوره و جلسه | پیش‌نویس ۰٫۱، در انتظار بازبینی؛ ۳ پرسش باز |
 | [fr/SRC.md](fr/SRC.md): منابع و آپلود | پیش‌نویس ۰٫۱، در انتظار بازبینی؛ ۱۱ پرسش باز |
 | `docs/fr/<MODULE>.md` برای بقیه ماژول‌ها | به ترتیب ساخت (بخش ۳.۲) |
-| DATA_MODEL، API_CONTRACTS، AI_PIPELINE_SPEC، RECORDING_AND_RECOVERY_SPEC، REVIEW_ENGINE_SPEC، SECURITY_PRIVACY_AND_DELETION، ACCEPTANCE_TEST_PLAN، IMPLEMENTATION_BACKLOG | شروع‌نشده؛ هم‌زمان با FR ماژول‌های مرتبط |
+| DATA_MODEL، AI_PIPELINE_SPEC، RECORDING_AND_RECOVERY_SPEC، REVIEW_ENGINE_SPEC، SECURITY_PRIVACY_AND_DELETION، ACCEPTANCE_TEST_PLAN، IMPLEMENTATION_BACKLOG | شروع‌نشده؛ هم‌زمان با FR ماژول‌های مرتبط |
 
 ## ۲. فرض‌ها — پیش از ادامه تأیید یا اصلاح شوند
 

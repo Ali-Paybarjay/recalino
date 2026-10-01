@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}@keyframes rc-spin{to{transform:rotate(360deg)}}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:40px 24px;display:flex;gap:48px;justify-content:center;align-items:flex-start;flex-wrap:wrap;font-family:var(--font-body)">
+
+  <div data-screen-label="{{ screenLabel }}" style="width:390px;height:844px;flex:none;border-radius:32px;overflow:hidden;background:var(--color-bg);color:var(--color-text);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+    <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>{{ clock }}</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+
+    <sc-if value="{{ s.today }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 16px;gap:18px;overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Tuesday 30 September</span><h1 style="font-size:30px;margin:0">Today</h1></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" onClick="{{ quickRec }}" style="width:100%;min-height:72px;font-size:18px;gap:10px"><i class="ph-fill ph-microphone" style="font-size:26px"></i>Record a class</button>
+          <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile" style="font-size:16px"></i>Starts right away · saved on this device · name it later</span>
+        </div>
+        <div class="rc-hero" style="display:flex;flex-direction:column;gap:12px;padding:20px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--rc-hero-label)"><i class="ph ph-cards" style="font-size:18px"></i>Daily review</div>
+          <div class="rc-num" style="font-size:24px;font-weight:700;line-height:1.25">{{ reviewLine }}</div>
+          <div style="font-size:15px;color:var(--rc-hero-muted)">{{ reviewSub }}</div>
+          <button class="btn btn-secondary" onClick="{{ startReview }}" style="width:100%;min-height:52px;font-size:16px;background:var(--color-surface)"><i class="ph-fill ph-play"></i>Start review</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center"><h2 style="font-size:18px;margin:0;flex:1">Recent classes</h2><button class="btn btn-ghost" onClick="{{ goNew }}" style="min-height:44px;font-size:14px"><i class="ph ph-plus"></i>New class</button></div>
+          <sc-if value="{{ hasClass }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openClass }}" style="all:unset;cursor:pointer;display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:var(--color-surface);box-shadow:inset 0 0 0 2px var(--color-accent)">
+              <span style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font-size:16px;font-weight:500">Present perfect vs past simple</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted);margin-top:3px"></i></span>
+              <span style="font-size:13px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:{{ chip.bg }};color:{{ chip.fg }};border:1px solid {{ chip.border }};width:fit-content"><i class="ph {{ chip.icon }}"></i>{{ chip.label }}</span>
+            </button>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:var(--color-surface)">
+            <span style="font-size:16px;font-weight:500">Talking about the weekend</span>
+            <span style="font-size:13px;color:var(--rc-text-muted)">ESOL Entry 3 · Thu 25 Sep</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-success-tint);color:var(--rc-success);border:1px solid var(--rc-success-border);width:fit-content"><i class="ph ph-check-circle"></i>Ready</span>
+          </div>
+        </div>
+      </div>
+      <nav style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider);padding:6px 4px 22px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--color-accent);font-size:12px;font-weight:600"><i class="ph-fill ph-sun-horizon" style="font-size:24px"></i>Today</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-folders" style="font-size:24px"></i>Classes</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-cards" style="font-size:24px"></i>Review</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-user-circle" style="font-size:24px"></i>Me</div>
+      </nav>
+    </sc-if>
+
+    <sc-if value="{{ s.newClass }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:12px 20px;opacity:.3"><h1 style="font-size:30px;margin:0">Today</h1></div>
+      <div onClick="{{ goToday }}" style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 60%,transparent)"></div>
+      <div role="dialog" aria-modal="true" aria-labelledby="pnc" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:20px 20px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 34px;display:flex;flex-direction:column;gap:14px">
+        <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+        <div style="display:flex;align-items:center"><h2 id="pnc" style="font-size:22px;margin:0;flex:1">New class</h2><button class="btn btn-icon btn-ghost" aria-label="Close" onClick="{{ goToday }}"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+        <div class="field"><label style="font-size:14px">Title (optional)</label><input class="input" value="Present perfect vs past simple" readOnly="{{ true }}"></div>
+        <div class="field"><label style="font-size:14px">Date</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px"><i class="ph ph-calendar-blank"></i><span style="flex:1">Today · Tue 30 Sep 2026</span></div></div>
+        <div class="field"><label style="font-size:14px">Course (optional)</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px"><i class="ph ph-folder-simple"></i><span style="flex:1">ESOL Entry 3</span><i class="ph ph-caret-down"></i></div></div>
+        <button class="btn btn-primary" onClick="{{ createClass }}" style="width:100%;min-height:52px;font-size:16px">Create class</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.classEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Today" onClick="{{ goToday }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:18px">
+        <div style="display:flex;flex-direction:column;gap:6px"><h1 style="font-size:26px;margin:0;line-height:1.2">Present perfect vs past simple</h1><span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep 2026</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:22px;border-radius:var(--rc-card-radius);border:1px dashed var(--rc-border-strong)"><i class="ph ph-tray" style="font-size:30px;color:var(--rc-text-muted)"></i><span style="font-size:16px">No sources yet. Record the class, or add photos and files.</span></div>
+        <button class="btn btn-primary" onClick="{{ startRec }}" style="width:100%;min-height:64px;font-size:17px"><i class="ph-fill ph-microphone" style="font-size:22px"></i>Record class</button>
+        <button class="btn btn-secondary" style="width:100%;background:var(--color-surface)"><i class="ph ph-files"></i>Add photos, PDF, HTML or text</button>
+        <p style="margin:0;font-size:13px;color:var(--rc-text-muted)">Prototype: the A3 notice and A4 check are assumed done.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.recView }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;padding:12px 24px 34px;gap:20px">
+        <span style="font-size:14px;color:var(--rc-text-muted);text-align:center">Present perfect vs past simple</span>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+          <div role="status" style="display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600">{{ recDot }}{{ recLabel }}</div>
+          <div class="rc-num" aria-label="Recording time" style="font-size:64px;font-weight:600;letter-spacing:-0.02em">{{ timer }}</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--rc-success)"><i class="ph ph-check-circle"></i>Saving on this device</div>
+          <div style="font-size:14px;color:var(--rc-text-muted);min-height:20px">{{ photoLine }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><button class="btn btn-secondary" aria-label="Take photo" onClick="{{ takePhoto }}" style="width:72px;height:72px;border-radius:50%;padding:0;background:var(--color-surface)"><i class="ph ph-camera" style="font-size:28px"></i></button><span style="font-size:13px">Take photo</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><button class="btn btn-secondary" aria-label="{{ pauseLabel }}" onClick="{{ togglePause }}" style="width:72px;height:72px;border-radius:50%;padding:0;background:var(--color-surface)"><i class="ph-fill {{ pauseIcon }}" style="font-size:28px"></i></button><span style="font-size:13px">{{ pauseLabel }}</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><button class="btn btn-primary" aria-label="Stop" onClick="{{ askStop }}" style="width:72px;height:72px;border-radius:50%;padding:0"><i class="ph-fill ph-stop" style="font-size:28px"></i></button><span style="font-size:13px">Stop</span></div>
+        </div>
+        <p style="margin:0;text-align:center;font-size:13px;color:var(--rc-text-muted)">Keep this page open and the screen on.</p>
+      </div>
+      <sc-if value="{{ s.stopConfirm }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 55%,transparent)"></div>
+        <div role="dialog" aria-modal="true" aria-labelledby="pst" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:20px 20px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 34px;display:flex;flex-direction:column;gap:14px">
+          <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+          <h2 id="pst" style="font-size:22px;margin:0">Stop recording?</h2>
+          <p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">The recording keeps going until you choose.</p>
+          <div style="display:flex;gap:8px"><button class="btn btn-secondary" onClick="{{ cancelStop }}" style="flex:1;min-height:52px;background:var(--color-surface)">Keep recording</button><button class="btn btn-primary" onClick="{{ confirmStop }}" style="flex:1;min-height:52px">Stop and save</button></div>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ s.saved }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;padding:24px 20px 16px;gap:16px">
+        <h1 style="font-size:26px;margin:0;line-height:1.2">Present perfect vs past simple</h1>
+        <div role="status" style="display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:center;padding:16px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+          <sc-if value="{{ saving }}" hint-placeholder-val="{{ true }}"><i class="ph ph-circle-notch" style="font-size:26px;color:var(--rc-text-muted);animation:rc-spin 1s linear infinite"></i><span style="font-size:17px">Saving…</span></sc-if>
+          <sc-if value="{{ savedDone }}" hint-placeholder-val="{{ false }}"><i class="ph-fill ph-check-circle" style="font-size:26px;color:var(--rc-success)"></i><div style="display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">Saved on this device</span><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">{{ recSummary }}</span></div></sc-if>
+        </div>
+        <sc-if value="{{ savedDone }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:24px 1fr;gap:10px;padding:14px;border-radius:14px;background:var(--rc-info-tint);border:1px solid var(--rc-info-border)"><i class="ph ph-scissors" style="font-size:20px"></i><p style="margin:0;font-size:15px;line-height:1.5">This class is 2 h 40 min. We'll process it in 2 parts — you'll still get one set of notes.</p></div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:14px;background:var(--color-surface)"><span style="font-size:14px;color:var(--rc-text-muted)">Allowance left</span><span class="rc-num" style="font-size:20px;font-weight:700">{{ allowLeft }}</span></div>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary" onClick="{{ seeEstimate }}" style="width:100%;min-height:52px;font-size:16px">See estimate</button>
+          <button class="btn btn-ghost" onClick="{{ saveCopy }}" style="width:100%"><i class="ph {{ copyIcon }}"></i>{{ copyLabel }}</button>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.estimate }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back" onClick="{{ backFromEstimate }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+        <h1 style="font-size:26px;margin:0">Before we process</h1>
+        <div style="display:flex;flex-direction:column;padding:4px 16px;border-radius:var(--rc-card-radius);background:var(--color-surface)">
+          <div style="display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid var(--color-divider)"><i class="ph ph-waveform" style="font-size:20px;color:var(--rc-prov-class)"></i><span style="flex:1">Class audio</span><span class="rc-num" style="font-weight:600">{{ audioUse }}</span></div>
+          <div style="display:flex;align-items:center;gap:12px;min-height:56px"><i class="ph ph-image" style="font-size:20px;color:var(--rc-text-muted)"></i><span style="flex:1">Board photos · {{ photos }}</span><span style="font-size:13px;color:var(--rc-text-muted)">No allowance</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:var(--rc-card-radius);background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2)">
+          <p class="rc-num" style="margin:0;font-size:18px;line-height:1.45">This uses <b style="font-weight:700">{{ needs }}</b> of your <b style="font-weight:700">{{ allowLeft }}</b>.</p>
+          <span class="rc-num" style="font-size:14px;color:var(--rc-primary-text)">Left afterwards: {{ leftAfter }}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--rc-text-muted)"><i class="ph ph-lock-simple"></i>Nothing is sent until you confirm.</div>
+        <span style="flex:1"></span>
+        <button class="btn btn-primary" onClick="{{ confirmProcess }}" style="width:100%;min-height:56px;font-size:17px">Confirm and process</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.notEnough }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back" onClick="{{ goSaved }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:14px">
+        <h1 style="font-size:26px;margin:0">Not enough allowance</h1>
+        <p class="rc-num" style="margin:0;font-size:17px;line-height:1.5">This class needs <b style="font-weight:700">2 h 40 min</b>. You have <b style="font-weight:700">1 h</b> left.</p>
+        <button onClick="{{ keepLater }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr 16px;gap:12px;align-items:center;padding:14px 16px;border-radius:14px;background:var(--color-surface)"><i class="ph ph-clock" style="font-size:24px;color:var(--color-accent)"></i><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:500">Keep for later</span><span style="font-size:13px;color:var(--rc-text-muted)">The audio stays on this device</span></span><i class="ph ph-caret-right"></i></button>
+        <button onClick="{{ goRange }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr 16px;gap:12px;align-items:center;padding:14px 16px;border-radius:14px;background:var(--color-surface);box-shadow:inset 0 0 0 2px var(--color-accent)"><i class="ph ph-selection" style="font-size:24px;color:var(--color-accent)"></i><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:500">Process a part</span><span style="font-size:13px;color:var(--rc-text-muted)">Choose up to 1 h of the class</span></span><i class="ph ph-caret-right"></i></button>
+        <button onClick="{{ saveCopy }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr 16px;gap:12px;align-items:center;padding:14px 16px;border-radius:14px;background:var(--color-surface)"><i class="ph {{ copyIcon }}" style="font-size:24px;color:var(--color-accent)"></i><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:500">Save a copy to this device</span><span style="font-size:13px;color:var(--rc-text-muted)">{{ copyDesc }}</span></span><i class="ph ph-caret-right"></i></button>
+        <button onClick="{{ askMore }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr 16px;gap:12px;align-items:center;padding:14px 16px;border-radius:14px;background:var(--color-surface)"><i class="ph ph-envelope-simple" style="font-size:24px;color:var(--color-accent)"></i><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:500">Ask the pilot operator for more</span><span style="font-size:13px;color:var(--rc-text-muted)">{{ askDesc }}</span></span><i class="ph ph-caret-right"></i></button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.range }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back" onClick="{{ goNotEnough }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+        <h1 style="font-size:26px;margin:0">Choose a part</h1>
+        <p style="margin:0;font-size:15px;color:var(--rc-text-muted)">You have 1 h left. Choose up to 1 h. The rest stays on this device.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:18px;border-radius:var(--rc-card-radius);background:var(--color-surface)">
+          <div role="group" aria-label="Class timeline, 2 h 40 min" style="position:relative;height:48px;border-radius:10px;background:var(--rc-surface-2);overflow:hidden">
+            <div style="position:absolute;top:0;bottom:0;left:{{ rangeLeft }};width:37.5%;background:var(--rc-primary-tint-2);box-shadow:inset 0 0 0 2px var(--color-accent);border-radius:10px"></div>
+          </div>
+          <div class="rc-num" style="display:flex;justify-content:space-between;font-size:12px;color:var(--rc-text-muted)"><span>0:00</span><span>1:00</span><span>2:00</span><span>2:40</span></div>
+        </div>
+        <div role="radiogroup" aria-label="Part to process" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button role="radio" aria-checked="{{ firstHour }}" onClick="{{ pickFirst }}" class="btn btn-secondary" style="min-height:52px;background:{{ firstBg }};box-shadow:{{ firstRing }}">First hour</button>
+          <button role="radio" aria-checked="{{ lastHour }}" onClick="{{ pickLast }}" class="btn btn-secondary" style="min-height:52px;background:{{ lastBg }};box-shadow:{{ lastRing }}">Last hour</button>
+        </div>
+        <span class="rc-num" style="font-size:16px;font-weight:600">{{ rangeText }}</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-primary" onClick="{{ rangeEstimate }}" style="width:100%;min-height:52px;font-size:16px">See estimate</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.processing }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Today" onClick="{{ goToday }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 16px;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px"><h1 style="font-size:26px;margin:0;line-height:1.2">Present perfect vs past simple</h1><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:{{ chip.bg }};color:{{ chip.fg }};border:1px solid {{ chip.border }};width:fit-content"><i class="ph {{ chip.icon }}"></i>{{ chip.label }}</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+          <ol aria-live="polite" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column">
+            <sc-for list="{{ steps }}" as="st" hint-placeholder-count="4">
+              <li style="display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:center;min-height:48px;color:{{ st.color }}"><i class="{{ st.icon }}" style="font-size:24px;color:{{ st.iconColor }}"></i><span style="font-size:16px;font-weight:{{ st.weight }}">{{ st.label }}</span></li>
+            </sc-for>
+          </ol>
+          <div style="display:grid;grid-template-columns:24px 1fr;gap:10px;padding:12px;border-radius:12px;background:var(--rc-primary-tint);margin-top:6px"><i class="ph ph-moon" style="font-size:20px;color:var(--rc-primary-text)"></i><p style="margin:0;font-size:15px">You can close this page — we'll keep working.</p></div>
+        </div>
+        <sc-if value="{{ procDone }}" hint-placeholder-val="{{ false }}">
+          <button class="btn btn-primary" onClick="{{ goNotes }}" style="width:100%;min-height:56px;font-size:17px"><i class="ph ph-notebook"></i>Open notes</button>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.notes }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to Today" onClick="{{ goToday }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px;color:var(--rc-text-muted)">Notes</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:4px 20px 12px;gap:16px;overflow:auto">
+        <div role="status" style="display:flex;gap:10px;padding:12px 14px;border-radius:12px;background:var(--rc-primary-tint);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half" style="font-size:20px;color:var(--rc-primary-text);flex:none"></i><div style="font-size:14px;display:flex;flex-direction:column;gap:2px"><b style="font-weight:600">Partly ready</b><span>{{ partialText }}</span></div></div>
+        <h1 style="font-size:24px;margin:0;line-height:1.2">Present perfect vs past simple</h1>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:baseline;gap:10px"><h2 style="font-size:24px;margin:0">already</h2><span style="font-size:14px;color:var(--rc-text-muted)">adverb</span></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span><span style="font-size:12px;color:var(--rc-text-muted)">· Teacher (confirmed by you)</span></div>
+          <p style="margin:0;font-size:17px;line-height:1.6">"I've already finished my homework."</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button onClick="{{ toggleChip }}" aria-pressed="{{ chipPlaying }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--rc-prov-class-border);background:{{ chipBg }};color:var(--color-text);font:inherit;font-size:13px;cursor:pointer"><i class="ph-fill {{ chipIcon }}" style="color:var(--rc-prov-class)"></i>Class audio · 18:42</button><span style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px"><i class="ph ph-image" style="color:var(--rc-prov-class)"></i>Board photo 1</span></div>
+          <sc-if value="{{ chipPlaying }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile"></i>Playing 18:42–18:51 from this device</div></sc-if>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation · <span lang="fa">فارسی</span></span>
+          <p dir="rtl" lang="fa" style="margin:0;font-size:17px;line-height:1.85;text-align:right">already یعنی «قبلاً» یا «تا حالا»؛ وقتی کاری زودتر از انتظار انجام شده است.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation · English</span>
+          <p style="margin:0;font-size:16px;line-height:1.6">We use <em>already</em> when something happened earlier than expected.</p>
+        </div>
+      </div>
+      <div style="flex:none;padding:12px 20px 30px;background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider)"><button class="btn btn-primary" onClick="{{ goCards }}" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-cards"></i>Suggested cards · 4</button></div>
+    </sc-if>
+
+    <sc-if value="{{ s.cards }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;padding:0 8px"><button class="btn btn-icon btn-ghost" aria-label="Back to notes" onClick="{{ goNotes }}"><i class="ph ph-caret-left" style="font-size:20px"></i></button><span style="flex:1;font-size:15px;color:var(--rc-text-muted)">Present perfect vs past simple</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:0 20px 12px;gap:10px;overflow:auto">
+        <h1 style="font-size:26px;margin:0">Suggested cards</h1>
+        <p style="margin:0;font-size:14px;color:var(--rc-text-muted)">Choose the cards you want. Nothing is added until you tap Add.</p>
+        <sc-for list="{{ cardList }}" as="c" hint-placeholder-count="4">
+          <button onClick="{{ c.toggle }}" role="checkbox" aria-checked="{{ c.sel }}" style="all:unset;cursor:pointer;display:grid;grid-template-columns:24px 1fr;gap:12px;padding:14px;border-radius:14px;background:var(--color-surface);box-shadow:{{ c.ring }}">
+            <span style="width:24px;height:24px;border-radius:6px;display:grid;place-items:center;background:{{ c.boxBg }};border:2px solid {{ c.boxBorder }};color:var(--color-bg);box-sizing:border-box"><i class="ph-bold ph-check" style="font-size:14px;opacity:{{ c.tick }}"></i></span>
+            <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;font-weight:600;color:var(--rc-text-muted)">{{ c.type }}</span><span style="font-size:17px;font-weight:600">{{ c.front }}</span><span style="font-size:13px;color:{{ c.provColor }}">{{ c.prov }}</span></span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px;padding:12px 20px 30px;background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider)">
+        <sc-if value="{{ addedShow }}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--rc-success)"><i class="ph-fill ph-check-circle"></i>{{ addedText }}</div>
+          <button class="btn btn-primary" onClick="{{ startReview }}" style="width:100%;min-height:52px;font-size:16px"><i class="ph-fill ph-play"></i>Start review</button>
+        </sc-if>
+        <sc-if value="{{ addNotShown }}" hint-placeholder-val="{{ true }}">
+          <button class="btn btn-primary" onClick="{{ addSelected }}" disabled="{{ noneSel }}" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-plus"></i>Add selected · {{ selCount }}</button>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.review }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:8px;padding:0 12px 0 8px"><button class="btn btn-ghost" onClick="{{ endReview }}">End for now</button><span style="flex:1"></span><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">{{ revProgress }}</span></div>
+      <div style="height:4px;margin:0 20px;border-radius:2px;background:var(--rc-surface-2)"><div style="height:100%;width:{{ revPct }};border-radius:2px;background:var(--color-accent)"></div></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:20px;gap:16px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:var(--shadow-md)">
+          <span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--rc-text-muted)">{{ rc.type }}</span>
+          <span style="font-size:28px;font-weight:700;line-height:1.3">{{ rc.front }}</span>
+          <span style="font-size:15px;color:var(--rc-text-muted)">{{ rc.prompt }}</span>
+          <sc-if value="{{ shown }}" hint-placeholder-val="{{ false }}">
+            <div style="height:1px;background:var(--color-divider);margin:6px 0"></div>
+            <span style="font-size:20px;line-height:1.45;font-weight:500">{{ rc.back }}</span>
+            <span style="font-size:15px;color:var(--rc-text-muted);line-height:1.5">{{ rc.extra }}</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>{{ rc.prov }}</span>
+          </sc-if>
+        </div>
+        <div role="status" style="min-height:20px;font-size:14px;color:var(--rc-text-muted);display:flex;align-items:center;gap:6px">{{ saveNote }}</div>
+        <sc-if value="{{ notShown }}" hint-placeholder-val="{{ true }}">
+          <button class="btn btn-primary" onClick="{{ showAnswer }}" style="width:100%;min-height:60px;font-size:17px">Show answer</button>
+        </sc-if>
+        <sc-if value="{{ shown }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn btn-secondary" onClick="{{ rateForgot }}" disabled="{{ rating }}" style="min-height:60px;font-size:17px;background:var(--color-surface)"><i class="ph ph-arrow-counter-clockwise"></i>Forgot</button>
+            <button class="btn btn-primary" onClick="{{ rateRemembered }}" disabled="{{ rating }}" style="min-height:60px;font-size:17px"><i class="ph-bold ph-check"></i>Remembered</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ s.summary }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;padding:40px 20px 16px;gap:22px">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--rc-hero-bg);display:grid;place-items:center;color:var(--rc-hero-text)"><i class="ph-bold ph-check" style="font-size:28px"></i></div>
+        <h1 style="font-size:30px;margin:0">Done for now</h1>
+        <dl style="margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="padding:16px;border-radius:14px;background:var(--color-surface)"><dt style="font-size:14px;color:var(--rc-text-muted)">Cards reviewed</dt><dd class="rc-num" style="margin:4px 0 0;font-size:30px;font-weight:700">{{ sumReviewed }}</dd></div>
+          <div style="padding:16px;border-radius:14px;background:var(--color-surface)"><dt style="font-size:14px;color:var(--rc-text-muted)">Time</dt><dd class="rc-num" style="margin:4px 0 0;font-size:30px;font-weight:700">{{ sumTime }}</dd></div>
+          <div style="padding:16px;border-radius:14px;background:var(--color-surface)"><dt style="font-size:14px;color:var(--rc-text-muted)">Remembered</dt><dd class="rc-num" style="margin:4px 0 0;font-size:30px;font-weight:700">{{ sumRem }}</dd></div>
+          <div style="padding:16px;border-radius:14px;background:var(--color-surface)"><dt style="font-size:14px;color:var(--rc-text-muted)">Forgot</dt><dd class="rc-num" style="margin:4px 0 0;font-size:30px;font-weight:700">{{ sumForgot }}</dd></div>
+        </dl>
+        <div style="display:flex;flex-direction:column;gap:6px"><h2 style="font-size:17px;margin:0">What's next</h2><p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">{{ nextText }}</p></div>
+        <span style="flex:1"></span>
+        <button class="btn btn-primary" onClick="{{ finish }}" style="width:100%;min-height:52px">Back to Today</button>
+      </div>
+    </sc-if>
+  </div>
+
+  <aside style="width:320px;display:flex;flex-direction:column;gap:20px;color:#13261f">
+    <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:22px;font-weight:700;letter-spacing:-0.03em">recalino</span><span style="width:7px;height:7px;border-radius:50%;background:#0d7556"></span></div><h1 style="font-size:24px;margin:0">Core loop prototype</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#4a6259">Click through the phone. Steps on the left jump to any point. <a href="Recalino Assumptions.dc.html">Assumptions</a> · <a href="Recalino Screens 1 - Setup & Today.dc.html">All screens</a></p></div>
+    <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:16px;background:#fbfffd">
+      <span style="font-size:14px;font-weight:600">Allowance for this run</span>
+      <div role="radiogroup" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button role="radio" aria-checked="{{ allowEnough }}" onClick="{{ setEnough }}" class="btn btn-secondary" style="background:{{ enoughBg }};box-shadow:{{ enoughRing }};color:#13261f">4 h 20 min</button>
+        <button role="radio" aria-checked="{{ allowShort }}" onClick="{{ setShort }}" class="btn btn-secondary" style="background:{{ shortBg }};box-shadow:{{ shortRing }};color:#13261f">1 h · not enough</button>
+      </div>
+      <span style="font-size:13px;color:#4a6259">"Not enough" takes the C6 branch after Stop.</span>
+    </div>
+    <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ flow }}" as="f" hint-placeholder-count="14">
+        <li><button onClick="{{ f.go }}" style="all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;min-height:36px;padding:0 10px;border-radius:10px;background:{{ f.bg }};font-size:14px;font-weight:{{ f.weight }};color:#13261f"><span class="rc-num" style="color:#4a6259">{{ f.n }}</span>{{ f.label }}</button></li>
+      </sc-for>
+    </ol>
+    <button class="btn btn-secondary" onClick="{{ restart }}" style="align-self:flex-start;color:#13261f;border-color:#94b5a7"><i class="ph ph-arrow-counter-clockwise"></i>Restart</button>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;allowance&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;enough&quot;,&quot;not-enough&quot;],&quot;default&quot;:&quot;enough&quot;,&quot;tsType&quot;:&quot;'enough'|'not-enough'&quot;}}">
+const CARDS = [
+  { type: 'VOCABULARY', front: 'already', prompt: 'What does it mean here: "I\'ve already finished my homework."?', back: 'Earlier than expected.', extra: 'already یعنی «قبلاً» یا «تا حالا»', prov: 'Class audio · 18:42', provColor: 'var(--rc-prov-class)' },
+  { type: 'CLOZE', front: 'I\'ve ___ finished my homework.', prompt: 'Fill the gap.', back: 'already', extra: 'I\'ve already finished my homework.', prov: 'Worksheet · page 4', provColor: 'var(--rc-prov-class)' },
+  { type: 'ERROR CORRECTION', front: 'I have seen him yesterday.', prompt: 'Find and fix the mistake.', back: 'I saw him yesterday.', extra: '"Yesterday" is a finished time → past simple.', prov: 'Board photo 1', provColor: 'var(--rc-prov-class)' },
+  { type: 'GRAMMAR', front: 'When do we use the past simple?', prompt: 'Say the rule.', back: 'For a finished time: yesterday, last week, in 2019.', extra: 'AI explanation', prov: 'AI explanation', provColor: 'var(--rc-prov-ai)' }
+];
+const FLOW = [
+  ['today', 'Today'], ['newClass', 'New class'], ['classEmpty', 'Class page'], ['recording', 'Record + take a photo'], ['stopConfirm', 'Stop'],
+  ['saved', 'Saved on this device'], ['estimate', 'Estimate'], ['notEnough', 'Not enough (branch)'], ['range', 'Process a part (branch)'],
+  ['processing', 'Confirm → Processing'], ['notes', 'Notes'], ['cards', 'Suggested cards → Add'], ['review', 'Review'], ['summary', 'Summary']
+];
+const INIT = { screen: 'today', sec: 9581, paused: false, photos: 0, saving: false, copySaved: false, askSent: false, part: false, range: 'first', proc: 0, chip: false, sel: [true, true, true, false], added: false, idx: 0, shown: false, rating: false, ratings: [], hasClass: false, status: null, reviewDone: false, revStart: 0, revEnd: 0 };
+
+class Component extends DCLogic {
+  state = { ...INIT, allow: this.props.allowance === 'not-enough' ? 'short' : 'enough' };
+
+  recLoop() {
+    clearTimeout(this.rt);
+    this.rt = setTimeout(() => {
+      const s = this.state, on = s.screen === 'recording' || s.screen === 'stopConfirm';
+      if (on && !s.paused) this.setState({ sec: s.sec + 1 });
+      if (on) this.recLoop();
+    }, 1000);
+  }
+  procRun() {
+    (this.pts || []).forEach(clearTimeout);
+    this.pts = [1, 2, 3, 4].map(p => setTimeout(() => {
+      if (this.state.screen !== 'processing' && p < 4 && this.state.proc >= 4) return;
+      this.setState({ proc: p, status: p >= 4 ? (this.state.part ? 'partly1' : 'partly') : 'processing' });
+    }, p * 2000));
+  }
+  componentWillUnmount() { clearTimeout(this.rt); (this.pts || []).forEach(clearTimeout); clearTimeout(this.t1); clearTimeout(this.t2); }
+
+  go(screen, extra) {
+    this.setState({ screen, ...(extra || {}) });
+    if (screen === 'recording' || screen === 'stopConfirm') this.recLoop();
+    if (screen === 'processing' && extra && extra.proc === 0) this.procRun();
+  }
+
+  jump(screen) {
+    const base = { hasClass: true, photos: Math.max(this.state.photos, 2), saving: false, shown: false, rating: false };
+    const map = {
+      today: {}, newClass: {}, classEmpty: { hasClass: true }, recording: { paused: false }, stopConfirm: {},
+      saved: { saving: false }, estimate: { part: false }, notEnough: { allow: 'short', part: false }, range: { allow: 'short' },
+      processing: { proc: 0, status: 'processing' }, notes: { proc: 4, status: this.state.part ? 'partly1' : 'partly' },
+      cards: { added: false }, review: { idx: 0, ratings: [], added: true, revStart: Date.now() }, summary: { ratings: ['r', 'r', 'f'], revStart: Date.now() - 135000, revEnd: Date.now() }
+    };
+    const extra = screen === 'today' || screen === 'newClass' ? {} : base;
+    this.go(screen, { ...extra, ...map[screen] });
+  }
+
+  fmt(sec) { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
+
+  chipFor(status) {
+    const C = {
+      processing: { label: 'Processing', icon: 'ph-spinner-gap', bg: 'var(--rc-primary-tint)', fg: 'var(--rc-primary-text)', border: 'var(--rc-primary-tint-2)' },
+      waiting: { label: 'Waiting for allowance', icon: 'ph-hourglass-medium', bg: 'var(--rc-warning-tint)', fg: 'var(--rc-warning)', border: 'var(--rc-warning-border)' },
+      partly: { label: 'Partly ready · Part 2 missing', icon: 'ph-circle-half', bg: 'var(--rc-primary-tint)', fg: 'var(--rc-primary-text)', border: 'var(--rc-primary-tint-2)' },
+      partly1: { label: 'Partly ready · 1 h of 2 h 40 processed', icon: 'ph-circle-half', bg: 'var(--rc-primary-tint)', fg: 'var(--rc-primary-text)', border: 'var(--rc-primary-tint-2)' },
+      ready: { label: 'Ready to process', icon: 'ph-circle-dashed', bg: 'var(--rc-info-tint)', fg: 'var(--rc-info)', border: 'var(--rc-info-border)' }
+    };
+    return C[status] || C.ready;
+  }
+
+  renderVals() {
+    const st = this.state;
+    const sc = st.screen;
+    const enough = st.allow === 'enough';
+    const flowIdx = FLOW.findIndex(f => f[0] === sc);
+    const steps = ['Transcribing', 'Matching photos and pages', 'Writing notes', 'Suggesting cards'].map((label, i) => {
+      const done = st.proc > i, cur = st.proc === i;
+      return { label: done ? label + ' · done' : label, icon: done ? 'ph-fill ph-check-circle' : cur ? 'ph ph-circle-notch' : 'ph ph-circle', iconColor: done ? 'var(--rc-success)' : cur ? 'var(--color-accent)' : 'var(--rc-text-muted)', color: done || cur ? 'var(--color-text)' : 'var(--rc-text-muted)', weight: cur ? 600 : 400 };
+    });
+    const selCards = CARDS.filter((_, i) => st.sel[i]);
+    const deck = selCards.length ? selCards : CARDS.slice(0, 3);
+    const rc = deck[Math.min(st.idx, deck.length - 1)];
+    const rem = st.ratings.filter(r => r === 'r').length;
+    const secs = Math.max(0, Math.round(((st.revEnd || Date.now()) - (st.revStart || Date.now())) / 1000));
+    const selCount = st.sel.filter(Boolean).length;
+    const ring = on => on ? 'inset 0 0 0 2px var(--color-accent)' : 'none';
+    const recording = sc === 'recording' || sc === 'stopConfirm';
+
+    const rate = r => () => {
+      if (st.rating) return;
+      this.setState({ rating: true });
+      this.t2 = setTimeout(() => {
+        const ratings = [...this.state.ratings, r];
+        if (this.state.idx + 1 >= deck.length) this.setState({ ratings, rating: false, screen: 'summary', revEnd: Date.now() });
+        else this.setState({ ratings, rating: false, idx: this.state.idx + 1, shown: false });
+      }, 900);
+    };
+
+    return {
+      theme: this.props.theme ?? 'light',
+      s: { today: sc === 'today', newClass: sc === 'newClass', classEmpty: sc === 'classEmpty', recView: recording, stopConfirm: sc === 'stopConfirm', saved: sc === 'saved', estimate: sc === 'estimate', notEnough: sc === 'notEnough', range: sc === 'range', processing: sc === 'processing', notes: sc === 'notes', cards: sc === 'cards', review: sc === 'review', summary: sc === 'summary' },
+      screenLabel: String(flowIdx + 1).padStart(2, '0') + ' ' + (FLOW[flowIdx] || ['', ''])[1],
+      clock: recording ? '10:05' : sc === 'review' || sc === 'summary' ? '19:40' : '9:41',
+      reviewLine: st.reviewDone ? 'All done for today' : `12 cards due · ${st.added ? 5 + selCount : 5} new`,
+      reviewSub: st.reviewDone ? 'About 9 cards tomorrow' : 'About 15 min',
+      hasClass: st.hasClass,
+      chip: this.chipFor(st.status),
+      flow: FLOW.map(([id, label], i) => ({ n: i + 1, label, go: () => this.jump(id), bg: i === flowIdx ? '#b9f06b' : 'transparent', weight: i === flowIdx ? 600 : 400 })),
+      allowEnough: enough, allowShort: !enough,
+      enoughBg: enough ? '#d3f4e5' : '#fbfffd', shortBg: enough ? '#fbfffd' : '#d3f4e5',
+      enoughRing: enough ? 'inset 0 0 0 2px #0d7556' : 'none', shortRing: enough ? 'none' : 'inset 0 0 0 2px #0d7556',
+      setEnough: () => this.setState({ allow: 'enough', part: false }),
+      setShort: () => this.setState({ allow: 'short' }),
+      restart: () => this.setState({ ...INIT, allow: st.allow }),
+      goToday: () => this.go('today'),
+      goNew: () => this.go('newClass'),
+      createClass: () => this.go('classEmpty', { hasClass: true, status: null }),
+      openClass: () => this.go(st.status === 'processing' ? 'processing' : (st.status === 'partly' || st.status === 'partly1') ? 'notes' : st.status === 'waiting' ? 'notEnough' : 'classEmpty'),
+      startRec: () => this.go('recording', { sec: 9581, paused: false, photos: 0 }),
+      quickRec: () => this.go('recording', { sec: 9581, paused: false, photos: 0, hasClass: true, status: null }),
+      recDot: React.createElement('span', { 'aria-hidden': true, style: { width: 12, height: 12, borderRadius: '50%', display: 'inline-block', background: st.paused ? 'var(--rc-text-muted)' : 'var(--rc-rec)', animation: st.paused ? 'none' : 'rc-pulse 1.6s ease-in-out infinite' } }),
+      recLabel: st.paused ? 'Paused' : 'Recording',
+      timer: this.fmt(st.sec),
+      photoLine: st.photos ? `${st.photos} photo${st.photos > 1 ? 's' : ''} · last at ${this.fmt(st.lastPhoto || st.sec)}` : 'Tap Take photo to add the board',
+      takePhoto: () => this.setState({ photos: st.photos + 1, lastPhoto: st.sec }),
+      togglePause: () => { this.setState({ paused: !st.paused }); this.recLoop(); },
+      pauseLabel: st.paused ? 'Resume' : 'Pause',
+      pauseIcon: st.paused ? 'ph-play' : 'ph-pause',
+      askStop: () => this.go('stopConfirm'),
+      cancelStop: () => this.go('recording'),
+      confirmStop: () => { this.go('saved', { saving: true, status: 'ready' }); this.t1 = setTimeout(() => this.setState({ saving: false }), 1600); },
+      saving: st.saving, savedDone: sc === 'saved' && !st.saving,
+      recSummary: `2 h 40 min · ${st.photos} photo${st.photos === 1 ? '' : 's'}`,
+      allowLeft: enough ? '4 h 20 min' : '1 h',
+      seeEstimate: () => this.go(enough ? 'estimate' : 'notEnough', { part: false }),
+      saveCopy: () => this.setState({ copySaved: true }),
+      copyIcon: st.copySaved ? 'ph-check-circle' : 'ph-download-simple',
+      copyLabel: st.copySaved ? 'Copy saved to Downloads' : 'Save a copy to this device',
+      copyDesc: st.copySaved ? 'Saved to your Downloads folder' : 'An audio file you can keep',
+      askMore: () => this.setState({ askSent: true }),
+      askDesc: st.askSent ? 'Email opened — send it from your email app' : 'Opens an email to the pilot team',
+      backFromEstimate: () => this.go(st.part ? 'range' : 'saved'),
+      audioUse: st.part ? (st.range === 'first' ? '1 h · 0:00–1:00' : '1 h · 1:40–2:40') : '2 h 40 min · 2 parts',
+      photos: st.photos,
+      needs: st.part ? '1 h' : '2 h 40 min',
+      leftAfter: st.part ? '0 min' : '1 h 40 min',
+      confirmProcess: () => this.go('processing', { proc: 0, status: 'processing', hasClass: true }),
+      goSaved: () => this.go('saved'),
+      keepLater: () => this.go('today', { status: 'waiting', hasClass: true }),
+      goRange: () => this.go('range'),
+      goNotEnough: () => this.go('notEnough'),
+      rangeLeft: st.range === 'first' ? '0%' : '62.5%',
+      firstHour: st.range === 'first', lastHour: st.range === 'last',
+      firstBg: st.range === 'first' ? 'var(--rc-primary-tint)' : 'var(--color-surface)', lastBg: st.range === 'last' ? 'var(--rc-primary-tint)' : 'var(--color-surface)',
+      firstRing: ring(st.range === 'first'), lastRing: ring(st.range === 'last'),
+      pickFirst: () => this.setState({ range: 'first' }), pickLast: () => this.setState({ range: 'last' }),
+      rangeText: st.range === 'first' ? '0:00 – 1:00 · 1 h selected' : '1:40 – 2:40 · 1 h selected',
+      rangeEstimate: () => this.go('estimate', { part: true }),
+      steps, procDone: st.proc >= 4,
+      goNotes: () => this.go('notes'),
+      partialText: st.part ? 'Only 1 h of the class was processed. The rest is kept on this device.' : "Part 2 isn't ready yet. These notes use Part 1 and the board photos only.",
+      chipPlaying: st.chip, toggleChip: () => this.setState({ chip: !st.chip }),
+      chipBg: st.chip ? 'var(--rc-prov-class-tint)' : 'transparent', chipIcon: st.chip ? 'ph-pause' : 'ph-play',
+      goCards: () => this.go('cards'),
+      cardList: CARDS.map((c, i) => ({ ...c, sel: !!st.sel[i], ring: ring(st.sel[i]), boxBg: st.sel[i] ? 'var(--color-accent)' : 'transparent', boxBorder: st.sel[i] ? 'var(--color-accent)' : 'var(--rc-border-strong)', tick: st.sel[i] ? 1 : 0, toggle: () => { if (st.added) return; const sel = [...st.sel]; sel[i] = !sel[i]; this.setState({ sel }); } })),
+      selCount, noneSel: selCount === 0,
+      addSelected: () => this.setState({ added: true }),
+      addedShow: st.added, addNotShown: !st.added,
+      addedText: `${selCount} card${selCount === 1 ? '' : 's'} added to your review`,
+      startReview: () => this.go('review', { idx: 0, shown: false, ratings: [], revStart: Date.now(), revEnd: 0 }),
+      endReview: () => this.go('summary', { revEnd: Date.now() }),
+      revProgress: `${Math.min(st.idx + 1, deck.length)} of ${deck.length}`,
+      revPct: `${Math.round((st.idx + (st.shown ? 0.5 : 0)) / deck.length * 100)}%`,
+      rc, shown: st.shown, notShown: !st.shown, rating: st.rating,
+      showAnswer: () => this.setState({ shown: true }),
+      saveNote: st.rating ? 'Saving…' : st.ratings.length ? 'Last answer saved' : '',
+      rateForgot: rate('f'), rateRemembered: rate('r'),
+      sumReviewed: st.ratings.length, sumRem: rem, sumForgot: st.ratings.length - rem,
+      sumTime: secs < 60 ? `${secs} s` : `${Math.round(secs / 60)} min`,
+      nextText: st.ratings.length < deck.length ? `${deck.length - st.ratings.length} still due — continue any time.` : 'Nothing else is due today. The cards you forgot will come back soon.',
+      finish: () => this.go('today', { reviewDone: st.ratings.length >= deck.length })
+    };
+  }
+}
+</script>
+</body>
+</html>

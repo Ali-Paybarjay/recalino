@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="recalino/palettes.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#dcdfeb}a{color:#5d5294}a:hover{color:#423a6a}</style>
+</helmet>
+<section data-theme="light" style="background:#dcdfeb;min-height:100vh;padding:56px;display:flex;flex-direction:column;gap:40px;width:max-content;font-family:var(--font-body)">
+  <header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+    <div style="font-size:13px;color:#525665">Recalino · Colour directions · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 1 - Setup &amp; Today.dc.html">Screens 1</a></div>
+    <h1 style="font-size:34px;margin:0;color:#22242c">Turn 1 · Six colour directions on the Today screen</h1>
+    <p dir="rtl" style="margin:0;font-size:16px;line-height:1.7;color:#525665;text-align:right">همه روی یک صفحه (Today) و با همان ساختار. فقط رنگ، گردی گوشه‌ها و وزن تیتر عوض شده. ۱a نسخهٔ فعلی است برای مقایسه؛ ۱b تا ۱f شادتر و جوان‌پسندترند. از پنل Tweaks می‌توانید کارت پررنگ و دکمهٔ توپر را خاموش کنید.</p>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;max-width:2600px">
+    <sc-for list="{{ palettes }}" as="p" hint-placeholder-count="6">
+      <figure id="{{ p.badge }}" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <span style="display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:6px;background:#22242c;color:#f3f4fa;font-size:13px;font-weight:600">{{ p.badge }}</span>
+          <span style="font-weight:600;font-size:17px;color:#22242c">{{ p.name }}</span>
+        </div>
+
+        <div data-theme="{{ p.theme }}" data-palette="{{ p.id }}" data-bold="{{ boldFlag }}" style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);color:var(--color-text);box-shadow:0 0 0 1px rgba(34,36,44,.12),0 10px 30px rgba(34,36,44,.14);display:flex;flex-direction:column">
+          <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 16px;gap:18px;overflow:hidden">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Tuesday 30 September</span><h1 style="font-size:30px;margin:0;font-weight:var(--opt-h-weight);letter-spacing:-0.02em">Today</h1></div>
+            <div style="display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:var(--opt-r);background:var(--opt-hero-bg);color:var(--opt-hero-text);box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--opt-hero-label)"><i class="ph ph-cards" style="font-size:18px"></i>Daily review</div>
+              <div class="rc-num" style="font-size:24px;font-weight:var(--opt-h-weight);line-height:1.25">12 cards due · 5 new</div>
+              <div style="font-size:15px;color:var(--opt-hero-muted)">About 15 min</div>
+              <button class="btn btn-primary opt-cta" style="width:100%;min-height:52px;font-size:16px;font-weight:600"><i class="ph-fill ph-play"></i>Start review</button>
+            </div>
+            <button class="btn btn-secondary" style="width:100%;min-height:52px;font-size:16px;justify-content:flex-start;padding-inline:16px;background:var(--color-surface);border-radius:var(--opt-r-sm)"><i class="ph ph-plus" style="font-size:20px;color:var(--color-accent)"></i>New class</button>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;align-items:center"><h2 style="font-size:18px;margin:0;flex:1;font-weight:var(--opt-h-weight)">Recent classes</h2><span style="font-size:14px;min-height:44px;display:flex;align-items:center;color:var(--color-accent);font-weight:500">All classes</span></div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--opt-r-sm);background:var(--color-surface)">
+                  <div style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font-size:16px;font-weight:500">Present perfect vs past simple</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted);margin-top:3px"></i></div>
+                  <span style="font-size:13px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep</span>
+                  <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:var(--opt-btn-r);font-size:12px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2);width:fit-content"><i class="ph ph-circle-half"></i>Partly ready · Part 2 missing</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--opt-r-sm);background:var(--color-surface)">
+                  <div style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font-size:16px;font-weight:500">Talking about the weekend</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted);margin-top:3px"></i></div>
+                  <span style="font-size:13px;color:var(--rc-text-muted)">ESOL Entry 3 · Thu 25 Sep</span>
+                  <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:var(--opt-btn-r);font-size:12px;font-weight:500;background:var(--rc-success-tint);color:var(--rc-success);border:1px solid var(--rc-success-border);width:fit-content"><i class="ph ph-check-circle"></i>Ready</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--opt-r-sm);background:var(--color-surface)">
+                  <div style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font-size:16px;font-weight:500">Class — 23 Sep 2026</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted);margin-top:3px"></i></div>
+                  <span style="font-size:13px;color:var(--rc-text-muted)">My classes · Tue 23 Sep</span>
+                  <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:var(--opt-btn-r);font-size:12px;font-weight:500;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border);width:fit-content"><i class="ph ph-hourglass-medium"></i>Waiting for allowance</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider);padding:6px 4px 22px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--color-accent);font-size:12px;font-weight:600"><span style="display:grid;place-items:center;width:56px;height:30px;border-radius:999px;background:var(--opt-nav-pill)"><i class="ph-fill ph-sun-horizon" style="font-size:22px"></i></span>Today</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><span style="display:grid;place-items:center;height:30px"><i class="ph ph-folders" style="font-size:22px"></i></span>Classes</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><span style="display:grid;place-items:center;height:30px"><i class="ph ph-cards" style="font-size:22px"></i></span>Review</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><span style="display:grid;place-items:center;height:30px"><i class="ph ph-user-circle" style="font-size:22px"></i></span>Me</div>
+          </nav>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+          <sc-for list="{{ p.swatches }}" as="s" hint-placeholder-count="5">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="height:36px;border-radius:8px;background:{{ s.hex }};box-shadow:inset 0 0 0 1px rgba(34,36,44,.14)"></div>
+              <span style="font-size:11px;color:#525665">{{ s.label }}</span>
+              <span style="font-size:11px;font-family:var(--font-mono);color:#22242c">{{ s.hex }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <p dir="rtl" style="margin:0;font-size:14px;line-height:1.7;color:#3b3e4a;text-align:right">{{ p.fa }}</p>
+      </figure>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;boldHero&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Treatment&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const sw = (bg, surface, accent, hero, cta) => [
+      { label: 'Ground', hex: bg }, { label: 'Surface', hex: surface }, { label: 'Primary', hex: accent },
+      { label: 'Hero', hex: hero }, { label: 'Button', hex: cta }
+    ];
+    return {
+      boldFlag: String(this.props.boldHero ?? true),
+      palettes: [
+        { id: 'nocturne', badge: '1a', theme: 'light', name: 'Indigo calm — current',
+          swatches: sw('#f3f4fa', '#fbfbfe', '#5d5294', '#fbfbfe', '#5d5294'),
+          fa: 'نسخهٔ فعلی برای مقایسه: آرام، جدی و حرفه‌ای. کنتراست بالا، ولی کمتر شاد و جوان‌پسند.' },
+        { id: 'coral', badge: '1b', theme: 'light', name: 'Coral sunrise',
+          swatches: sw('#fff4ec', '#fffcf9', '#c23c1f', '#ff7a59', '#2a1d1a'),
+          fa: 'گرم و پرانرژی. مرجانی روی زمینهٔ کرم؛ حس صبح و انگیزه. دکمه‌های گرد (pill) و تیتر پررنگ‌تر.' },
+        { id: 'mint', badge: '1c', theme: 'light', name: 'Mint & lime',
+          swatches: sw('#eef9f3', '#fbfffd', '#0d7556', '#b9f06b', '#13261f'),
+          fa: 'تازه و سرزنده. سبز نعنایی با کارت لیمویی؛ حس رشد و پیشرفت. مناسب اپ یادگیری، کمتر رسمی.' },
+        { id: 'grape', badge: '1d', theme: 'light', name: 'Grape soda',
+          swatches: sw('#f6f2ff', '#fdfcff', '#6a38dc', '#6a38dc', '#ff8fd3'),
+          fa: 'بنفش پررنگ با دکمهٔ صورتی؛ شادترین و جوان‌ترین. نزدیک‌ترین به هویت فعلی ولی خیلی زنده‌تر.' },
+        { id: 'sky', badge: '1e', theme: 'light', name: 'Sky & lemon',
+          swatches: sw('#f0f6ff', '#fcfdff', '#1c5fd6', '#ffd84a', '#1c5fd6'),
+          fa: 'آبی روشن با زرد لیمویی؛ شاد ولی قابل‌اعتماد. آشنا برای کاربر و خوانا برای همهٔ سنین.' },
+        { id: 'neon', badge: '1f', theme: 'dark', name: 'Night neon (dark)',
+          swatches: sw('#14121f', '#1f1c2e', '#c3f26a', '#ff6fae', '#14121f'),
+          fa: 'تم تیره با لیمویی نئونی و صورتی؛ خیلی جوان و «گیمی». برای حالت شب یا مخاطب نوجوان.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

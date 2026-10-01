@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/styles.css">
+<link rel="stylesheet" href="recalino/tokens.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="_ds/nocturne-6d98428c-55b2-4412-bcc7-c5ba74078bed/_ds_bundle.js"></script>
+<style>body{margin:0;background:#d3e8dc}a{color:var(--color-accent)}a:hover{color:var(--rc-primary-text)}</style>
+</helmet>
+<div data-theme="{{ theme }}" style="background:var(--rc-canvas);min-height:100vh;padding:56px;display:flex;flex-direction:column;gap:80px;width:max-content;font-family:var(--font-body)">
+
+<header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+  <div style="font-size:13px;color:var(--rc-text-muted)">Recalino MVP · Screens round 1 · <a href="Recalino Prototype.dc.html">Prototype</a> · <a href="Recalino Screens 4 - Setup Classes Capture.dc.html">Round 2 screens</a> · <a href="Recalino Design System.dc.html">Design system</a> · <a href="Recalino Screens 2 - Capture.dc.html">Capture</a> · <a href="Recalino Screens 3 - Notes & Review.dc.html">Notes &amp; Review</a> · <a href="Recalino Assumptions.dc.html">Assumptions</a></div>
+  <h1 style="font-size:34px;margin:0">A · Sign-in and setup  ·  B · Today and New class</h1>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">A1 · Welcome / sign in</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="A1-default" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A1</span><span style="font-weight:500">Default — nothing checked</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:56px 24px 32px;gap:20px">
+          <div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:30px;font-weight:500;letter-spacing:-0.03em">recalino</span><span style="width:8px;height:8px;border-radius:2px;background:var(--color-accent)"></span></div>
+          <h1 style="font-size:30px;line-height:1.2;margin:28px 0 0;text-wrap:pretty">Turn your English class into clear notes and a short daily review.</h1>
+          <div style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--rc-text-muted)"><i class="ph ph-identification-badge"></i>For adults 18+</div>
+          <div style="flex:1"></div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="display:flex;gap:12px;align-items:flex-start;min-height:44px;padding:10px 0;font-size:16px"><span style="width:22px;height:22px;flex:none;border:1.5px solid var(--rc-border-strong);border-radius:5px;margin-top:1px"></span>I am 18 or older.</label>
+            <label style="display:flex;gap:12px;align-items:flex-start;min-height:44px;padding:10px 0;font-size:16px"><span style="width:22px;height:22px;flex:none;border:1.5px solid var(--rc-border-strong);border-radius:5px;margin-top:1px"></span><span>I accept the <a href="#">Terms</a> and the <a href="#">Privacy Notice</a>.</span></label>
+          </div>
+          <button class="btn btn-primary" disabled="" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-google-logo" style="font-size:20px"></i>Continue with Google</button>
+          <p style="margin:0;font-size:14px;color:var(--rc-text-muted);display:flex;gap:8px"><i class="ph ph-info" style="margin-top:3px"></i>Please tick both boxes to continue. You need a Google account to join the pilot.</p>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Both boxes start unchecked. Button stays disabled (aria-disabled + reason text linked with aria-describedby).</li>
+        <li>Terms / Privacy open in a sheet, not a new app page, so ticks are not lost.</li>
+        <li>Focus order: 18+ → Terms link → Privacy link → Terms box → Continue.</li>
+      </ul>
+    </figure>
+
+    <figure id="A1-failed" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A1</span><span style="font-weight:500">Sign-in cancelled or failed</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:56px 24px 32px;gap:20px">
+          <div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:30px;font-weight:500;letter-spacing:-0.03em">recalino</span><span style="width:8px;height:8px;border-radius:2px;background:var(--color-accent)"></span></div>
+          <h1 style="font-size:30px;line-height:1.2;margin:28px 0 0;text-wrap:pretty">Turn your English class into clear notes and a short daily review.</h1>
+          <div style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--rc-text-muted)"><i class="ph ph-identification-badge"></i>For adults 18+</div>
+          <div style="flex:1"></div>
+          <div role="alert" style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-warning-tint);border:1px solid var(--rc-warning-border);font-size:15px"><i class="ph ph-warning" style="font-size:20px;color:var(--rc-warning)"></i><span>Sign-in didn't finish. Please try again.</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="display:flex;gap:12px;align-items:flex-start;min-height:44px;padding:10px 0;font-size:16px"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;margin-top:1px"><i class="ph ph-check" style="font-size:15px"></i></span>I am 18 or older.</label>
+            <label style="display:flex;gap:12px;align-items:flex-start;min-height:44px;padding:10px 0;font-size:16px"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;margin-top:1px"><i class="ph ph-check" style="font-size:15px"></i></span><span>I accept the <a href="#">Terms</a> and the <a href="#">Privacy Notice</a>.</span></label>
+          </div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-google-logo" style="font-size:20px"></i>Continue with Google</button>
+          <p style="margin:0;font-size:14px;color:var(--rc-text-muted);display:flex;gap:8px"><i class="ph ph-info" style="margin-top:3px"></i>You need a Google account to join the pilot.</p>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>One general message for cancel, failure and "not in pilot" — never reveals whether an account exists.</li>
+        <li>Ticks are kept after the failed attempt (same session only).</li>
+      </ul>
+    </figure>
+
+    <figure id="A1-desktop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A1</span><span style="font-weight:500">Desktop 1440 — ready to continue</span></div>
+      <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:grid;grid-template-columns:560px 1fr">
+        <div style="display:flex;flex-direction:column;padding:64px 72px;gap:22px">
+          <div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:28px;font-weight:500;letter-spacing:-0.03em">recalino</span><span style="width:8px;height:8px;border-radius:2px;background:var(--color-accent)"></span></div>
+          <div style="flex:1"></div>
+          <h1 style="font-size:40px;line-height:1.15;margin:0;text-wrap:pretty">Turn your English class into clear notes and a short daily review.</h1>
+          <div style="display:flex;align-items:center;gap:6px;font-size:15px;color:var(--rc-text-muted)"><i class="ph ph-identification-badge"></i>For adults 18+</div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-top:12px">
+            <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:16px"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center"><i class="ph ph-check" style="font-size:15px"></i></span>I am 18 or older.</label>
+            <label style="display:flex;gap:12px;align-items:center;min-height:44px;font-size:16px"><span style="width:22px;height:22px;flex:none;border-radius:5px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center"><i class="ph ph-check" style="font-size:15px"></i></span><span>I accept the <a href="#">Terms</a> and the <a href="#">Privacy Notice</a>.</span></label>
+          </div>
+          <button class="btn btn-primary" style="width:320px;min-height:52px;font-size:16px"><i class="ph ph-google-logo" style="font-size:20px"></i>Continue with Google</button>
+          <p style="margin:0;font-size:14px;color:var(--rc-text-muted)">You need a Google account to join the pilot.</p>
+          <div style="flex:1"></div>
+        </div>
+        <div style="background:var(--color-surface);display:flex;align-items:center;padding:64px">
+          <div style="width:520px;display:flex;flex-direction:column;gap:18px;padding:32px;border-radius:14px;background:var(--color-bg);box-shadow:var(--shadow-md)">
+            <div style="font-size:13px;color:var(--rc-text-muted)">Example notes · ESOL Entry 3</div>
+            <div style="font-size:24px;font-weight:500">already</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-class)"><i class="ph ph-chalkboard-simple"></i>From class</span>
+              <p style="margin:0;font-size:17px">"I've already finished my homework."</p>
+              <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--rc-prov-class-border);font-size:13px;width:fit-content"><i class="ph ph-play" style="color:var(--rc-prov-class)"></i>Class audio · 18:42</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:8px;background:var(--rc-prov-ai-tint);border:1px solid var(--rc-prov-ai-border)">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--rc-prov-ai)"><i class="ph ph-lightbulb"></i>AI explanation</span>
+              <p style="margin:0;font-size:17px">We use <em>already</em> when something happened earlier than expected.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding-top:6px;font-size:14px;color:var(--rc-text-muted)"><i class="ph ph-cards"></i>Then review a few cards each day.</div>
+          </div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px;max-width:720px">
+        <li>The right panel is a static example built from UI components — no illustration, no imagery weight.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">A2 · Profile setup (7 short steps, resumable)</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="A2-1" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A2.1</span><span style="font-weight:500">First language — searching</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 12px"><button class="btn btn-icon btn-ghost" aria-label="Back" disabled=""><i class="ph ph-caret-left" style="font-size:20px"></i></button><div style="flex:1;display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span></div><span style="font-size:13px;color:var(--rc-text-muted);padding:0 8px">1 of 7</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 24px;gap:16px;min-height:0">
+          <h2 style="font-size:26px;margin:0">What is your first language?</h2>
+          <div style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:1px solid var(--color-accent);border-radius:8px;background:var(--color-surface)"><i class="ph ph-magnifying-glass" style="color:var(--rc-text-muted);font-size:18px"></i><span style="font-size:16px;flex:1">Search in English or your language</span></div>
+          <div role="listbox" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:8px;background:var(--rc-primary-tint);box-shadow:inset 0 0 0 1px var(--color-accent)"><span style="flex:1;font-size:16px">Persian — <span lang="fa">فارسی</span></span><i class="ph ph-check" style="color:var(--color-accent);font-size:20px"></i></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;font-size:16px">Japanese — <span lang="ja">日本語</span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;font-size:16px">Russian — <span lang="ru">Русский</span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;font-size:16px">Chinese (Simplified) — <span lang="zh-Hans">简体中文</span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px"><span style="flex:1;font-size:16px">Arabic — <span lang="ar">العربية</span></span><span style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:5px;font-size:12px;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask"></i>Experimental</span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;font-size:16px">Urdu — <span lang="ur">اردو</span></div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;font-size:16px">Polish — Polski</div>
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;font-size:16px">Somali — Soomaali</div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">Continue</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Each name in English + in the language itself (lang attribute set so the OS picks the right font).</li>
+        <li>Back disabled on step 1. Answers save after each step; returning resumes here.</li>
+      </ul>
+    </figure>
+
+    <figure id="A2-1b" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A2.1</span><span style="font-weight:500">Experimental language selected</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 12px"><button class="btn btn-icon btn-ghost" aria-label="Back" disabled=""><i class="ph ph-caret-left" style="font-size:20px"></i></button><div style="flex:1;display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span></div><span style="font-size:13px;color:var(--rc-text-muted);padding:0 8px">1 of 7</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 24px;gap:16px;min-height:0">
+          <h2 style="font-size:26px;margin:0">What is your first language?</h2>
+          <div style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-surface)"><i class="ph ph-magnifying-glass" style="color:var(--rc-text-muted);font-size:18px"></i><span style="font-size:16px;flex:1">arab</span><i class="ph ph-x-circle" style="color:var(--rc-text-muted);font-size:20px"></i></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:8px;background:var(--rc-primary-tint);box-shadow:inset 0 0 0 1px var(--color-accent)"><span style="flex:1;font-size:16px">Arabic — <span lang="ar">العربية</span></span><span style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:5px;font-size:12px;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-flask"></i>Experimental</span><i class="ph ph-check" style="color:var(--color-accent);font-size:20px"></i></div>
+            <div role="status" style="display:flex;gap:10px;padding:12px 14px;border-radius:8px;background:var(--rc-warning-tint);border:1px solid var(--rc-warning-border);font-size:15px"><i class="ph ph-flask" style="font-size:20px;color:var(--rc-warning);flex:none"></i><span>Explanations in Arabic may have mistakes, so we always show English next to them.</span></div>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">Continue</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>One sentence, shown only after selection. Badge = icon + word, not colour alone.</li>
+      </ul>
+    </figure>
+
+    <figure id="A2-2" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A2.2–3</span><span style="font-weight:500">Learning language + Explanations in</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 12px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button><div style="flex:1;display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span></div><span style="font-size:13px;color:var(--rc-text-muted);padding:0 8px">3 of 7</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 24px;gap:16px">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;background:var(--color-surface)"><i class="ph ph-lock-simple" style="color:var(--rc-text-muted)"></i><div style="display:flex;flex-direction:column;flex:1"><span style="font-size:13px;color:var(--rc-text-muted)">You are learning</span><span style="font-size:16px">English</span></div><span style="font-size:13px;color:var(--rc-text-muted)">Step 2 · fixed</span></div>
+          <h2 style="font-size:26px;margin:12px 0 0">Explanations in…</h2>
+          <p style="margin:0;font-size:15px;color:var(--rc-text-muted)">Which language should Recalino use to explain words and grammar? You can change this any time.</p>
+          <div role="radiogroup" style="display:flex;flex-direction:column;gap:10px">
+            <label style="min-height:64px;border:1px solid var(--color-divider);border-radius:10px;display:flex;align-items:center;gap:14px;padding:0 16px;font-size:17px"><span style="width:20px;height:20px;border-radius:50%;border:1.5px solid var(--rc-border-strong);flex:none"></span>English</label>
+            <label style="min-height:64px;border:1px solid var(--color-divider);border-radius:10px;display:flex;align-items:center;gap:14px;padding:0 16px;font-size:17px"><span style="width:20px;height:20px;border-radius:50%;border:1.5px solid var(--rc-border-strong);flex:none"></span><span lang="fa" style="flex:1">فارسی</span><span style="font-size:14px;color:var(--rc-text-muted)">Persian</span></label>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" disabled="" style="width:100%;min-height:52px;font-size:16px">Continue</button>
+          <p style="margin:0;text-align:center;font-size:14px;color:var(--rc-text-muted)">Please choose one.</p>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li><b style="font-weight:500">Assumption:</b> Step 2 (learning language) has no decision, so it shows as a locked line at the top of step 3 instead of its own page. Progress still counts 6 steps.</li>
+        <li>Nothing preselected; Continue disabled until one is chosen.</li>
+      </ul>
+    </figure>
+
+    <figure id="A2-4" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A2.4–5</span><span style="font-weight:500">Level and goal (optional)</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 12px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button><div style="flex:1;display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span></div><span style="font-size:13px;color:var(--rc-text-muted);padding:0 8px">4 of 7</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 24px;gap:14px">
+          <h2 style="font-size:26px;margin:0">Your English level</h2>
+          <p style="margin:0;font-size:15px;color:var(--rc-text-muted)">Optional. This is your own view. It isn't a test.</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div style="min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:grid;place-items:center;font-size:16px">A1</div>
+            <div style="min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:grid;place-items:center;font-size:16px">A2</div>
+            <div style="min-height:52px;border:1px solid var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent);background:var(--rc-primary-tint);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;color:var(--rc-primary-text)"><i class="ph ph-check"></i>B1</div>
+            <div style="min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:grid;place-items:center;font-size:16px">B2</div>
+            <div style="min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:grid;place-items:center;font-size:16px">C1</div>
+            <div style="min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:grid;place-items:center;font-size:16px">C2</div>
+          </div>
+          <div style="min-height:52px;border:1px solid var(--color-divider);border-radius:8px;display:grid;place-items:center;font-size:16px">Not sure</div>
+          <h3 style="font-size:20px;margin:16px 0 0">Your goal</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <div style="min-height:44px;padding:0 16px;border:1px solid var(--color-accent);box-shadow:inset 0 0 0 1px var(--color-accent);background:var(--rc-primary-tint);border-radius:999px;display:flex;align-items:center;gap:6px;font-size:15px;color:var(--rc-primary-text)"><i class="ph ph-check"></i>ESOL</div>
+            <div style="min-height:44px;padding:0 16px;border:1px solid var(--color-divider);border-radius:999px;display:flex;align-items:center;font-size:15px">IELTS</div>
+            <div style="min-height:44px;padding:0 16px;border:1px solid var(--color-divider);border-radius:999px;display:flex;align-items:center;font-size:15px">General English</div>
+            <div style="min-height:44px;padding:0 16px;border:1px solid var(--color-divider);border-radius:999px;display:flex;align-items:center;font-size:15px">No specific goal</div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;gap:10px"><button class="btn btn-secondary" style="flex:1;min-height:52px">Skip</button><button class="btn btn-primary" style="flex:2;min-height:52px;font-size:16px">Continue</button></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li><b style="font-weight:500">Assumption:</b> steps 4 and 5 share a screen (both optional, one choice each); the bar shows them as 4 and 5.</li>
+        <li>Single-select radio groups styled as tiles; checkmark marks the choice (not colour only).</li>
+      </ul>
+    </figure>
+
+    <figure id="A2-6" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A2.6</span><span style="font-weight:500">Time zone</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 12px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button><div style="flex:1;display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--rc-surface-2)"></span></div><span style="font-size:13px;color:var(--rc-text-muted);padding:0 8px">6 of 7</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 24px;gap:16px">
+          <h2 style="font-size:26px;margin:0">Is this your time zone?</h2>
+          <p style="margin:0;font-size:15px;color:var(--rc-text-muted)">We use it to plan your daily review.</p>
+          <div style="display:flex;align-items:center;gap:14px;padding:18px 16px;border-radius:10px;background:var(--color-surface);box-shadow:var(--shadow-sm)"><i class="ph ph-globe-hemisphere-west" style="font-size:28px;color:var(--color-accent)"></i><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px">London (UK)</span><span class="rc-num" style="font-size:14px;color:var(--rc-text-muted)">Europe/London · now 09:41</span></div></div>
+          <div style="flex:1"></div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">Yes, that's right</button>
+          <button class="btn btn-secondary" style="width:100%;min-height:52px">Change time zone</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Detected from the browser. Change opens a searchable list (same combobox as languages).</li>
+        <li>After confirm → A2.7 Recording consent (last step).</li>
+      </ul>
+    </figure>
+
+    <figure id="A2-7" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">A2.7</span><span style="font-weight:500">Recording consent — asked once</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 12px"><button class="btn btn-icon btn-ghost" aria-label="Back"><i class="ph ph-caret-left" style="font-size:20px"></i></button><div style="flex:1;display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span><span style="flex:1;height:4px;border-radius:2px;background:var(--color-accent)"></span></div><span style="font-size:13px;color:var(--rc-text-muted);padding:0 8px">7 of 7</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:20px 24px 0;gap:20px;overflow:hidden">
+          <div style="display:flex;flex-direction:column;gap:8px"><h2 style="font-size:26px;margin:0">Recording other people</h2><p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">When you record a class, your teacher's and classmates' voices are in the recording.</p></div>
+          <div style="display:grid;grid-template-columns:40px 1fr;gap:14px">
+            <div style="width:40px;height:40px;border-radius:12px;background:var(--rc-primary-tint);display:grid;place-items:center;color:var(--color-accent)"><i class="ph ph-hand-waving" style="font-size:22px"></i></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:17px;margin:0">Ask first</h3><p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">Before you record, ask your teacher and the people in your class if it is OK.</p></div>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr;gap:14px">
+            <div style="width:40px;height:40px;border-radius:12px;background:var(--rc-primary-tint);display:grid;place-items:center;color:var(--color-accent)"><i class="ph ph-buildings" style="font-size:22px"></i></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:17px;margin:0">Follow your college's rules</h3><p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">If you are not sure, ask your teacher.</p></div>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr;gap:14px">
+            <div style="width:40px;height:40px;border-radius:12px;background:var(--rc-primary-tint);display:grid;place-items:center;color:var(--color-accent)"><i class="ph ph-lock-simple" style="font-size:22px"></i></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><h3 style="font-size:17px;margin:0">Only for your study</h3><p style="margin:0;font-size:15px;line-height:1.55;color:var(--rc-text-muted)">Don't share recordings with other people.</p></div>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:1.5;color:var(--rc-text-muted)">We ask you this once. After this, we trust that you ask each time you record.</p>
+        </div>
+        <div style="flex:none;display:flex;flex-direction:column;gap:14px;padding:16px 20px 30px;background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider)">
+          <label style="display:flex;gap:12px;align-items:flex-start;min-height:44px;font-size:16px;line-height:1.45"><span style="flex:none;width:24px;height:24px;border-radius:6px;border:2px solid var(--rc-border-strong);background:var(--color-surface);margin-top:1px"></span>I understand that I must ask the people in my class before I record.</label>
+          <button class="btn btn-primary" disabled style="width:100%;min-height:52px;font-size:16px">Finish setup</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li><b>Asked once per account, during profile setup only.</b> Store <code>recordingConsent: { acceptedAt, version }</code> on the profile (server). Never shown again before a recording.</li>
+        <li>Checkbox never pre-checked; Finish setup disabled (aria-disabled + reason) until checked. Setup can't be finished without it.</li>
+        <li>Existing users without <code>recordingConsent</code> see this screen once, before their next Record.</li>
+        <li>After Finish setup → Today (B1, empty state).</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">B1 · Today</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+
+    <figure id="B1-default" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">B1</span><span style="font-weight:500">Default</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 16px;gap:18px;overflow:hidden">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Tuesday 30 September</span><h1 style="font-size:30px;margin:0">Today</h1></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-primary" style="width:100%;min-height:72px;font-size:18px;gap:10px"><i class="ph-fill ph-microphone" style="font-size:26px"></i>Record a class</button>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile" style="font-size:16px"></i>Starts right away · saved on this device · name it later</span>
+          </div>
+          <div class="rc-hero" style="display:flex;flex-direction:column;gap:10px;padding:16px 20px">
+            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--rc-hero-label)"><i class="ph ph-cards" style="font-size:18px"></i>Daily review</div>
+            <div class="rc-num" style="font-size:24px;font-weight:700;line-height:1.25">12 cards due · 5 new</div>
+            <div style="font-size:15px;color:var(--rc-hero-muted)">About 15 min</div>
+            <button class="btn btn-secondary" style="width:100%;min-height:52px;font-size:16px;background:var(--color-surface)"><i class="ph ph-play"></i>Start review</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;align-items:center"><h2 style="font-size:18px;margin:0;flex:1">Recent classes</h2><button class="btn btn-ghost" style="min-height:44px;font-size:14px"><i class="ph ph-plus"></i>New class</button></div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:10px;background:var(--color-surface)">
+                <div style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font-size:16px;font-weight:500">Present perfect vs past simple</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted);margin-top:3px"></i></div>
+                <span style="font-size:13px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2);width:fit-content"><i class="ph ph-circle-half"></i>Partly ready · Part 2 missing</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:10px;background:var(--color-surface)">
+                <div style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font-size:16px;font-weight:500">Class — 23 Sep 2026</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted);margin-top:3px"></i></div>
+                <span style="font-size:13px;color:var(--rc-text-muted)">My classes · Tue 23 Sep</span>
+                <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border);width:fit-content"><i class="ph ph-hourglass-medium"></i>Waiting for allowance</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <nav style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider);padding:6px 4px 22px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--color-accent);font-size:12px;font-weight:500"><i class="ph-fill ph-sun-horizon" style="font-size:24px"></i>Today</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-folders" style="font-size:24px"></i>Classes</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-cards" style="font-size:24px"></i>Review</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-user-circle" style="font-size:24px"></i>Me</div>
+        </nav>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li><b>Record is the first and main action.</b> One tap: microphone permission is checked, then recording starts at once and creates an untitled class "Class — 30 Sep 2026" (rename later). Recording consent was given once in A2.7 — never asked again here.</li>
+        <li>Record is the only filled primary on Today; Start review is secondary inside the lime card.</li>
+        <li>"Cards due" uses the calm primary tint — never red. No streaks.</li>
+        <li>Each class row is one link; the status chip is text + icon and is read in the link name.</li>
+        <li>"Partly ready" always says what is missing.</li>
+      </ul>
+    </figure>
+
+    <figure id="B1-empty" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">B1</span><span style="font-weight:500">Empty — brand-new user</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 16px;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Tuesday 30 September</span><h1 style="font-size:30px;margin:0">Today</h1></div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;padding-bottom:80px">
+            <i class="ph ph-microphone" style="font-size:36px;color:var(--rc-text-muted)"></i>
+            <p style="margin:0;font-size:20px;line-height:1.4;text-wrap:pretty">Record your first class. We'll help you make notes and cards from it.</p>
+            <button class="btn btn-primary" style="width:100%;min-height:72px;font-size:18px;gap:10px"><i class="ph-fill ph-microphone" style="font-size:26px"></i>Record a class</button>
+            <button class="btn btn-secondary" style="width:100%;min-height:52px;font-size:16px"><i class="ph ph-plus"></i>New class without recording</button>
+          </div>
+        </div>
+        <nav style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider);padding:6px 4px 22px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--color-accent);font-size:12px;font-weight:500"><i class="ph-fill ph-sun-horizon" style="font-size:24px"></i>Today</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-folders" style="font-size:24px"></i>Classes</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-cards" style="font-size:24px"></i>Review</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-user-circle" style="font-size:24px"></i>Me</div>
+        </nav>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>No review card until cards exist — no "0 due" placeholder.</li>
+      </ul>
+    </figure>
+
+    <figure id="B1-states" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">B1</span><span style="font-weight:500">Loading + list error</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-slash"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div role="status" style="display:flex;gap:10px;align-items:center;padding:10px 20px;background:var(--rc-info-tint);font-size:14px"><i class="ph ph-wifi-slash" style="font-size:18px"></i><span style="flex:1">You're offline. You can still record a class.</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 16px;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;color:var(--rc-text-muted)">Tuesday 30 September</span><h1 style="font-size:30px;margin:0">Today</h1></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-primary" style="width:100%;min-height:72px;font-size:18px;gap:10px"><i class="ph-fill ph-microphone" style="font-size:26px"></i>Record a class</button>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--rc-text-muted)"><i class="ph ph-device-mobile" style="font-size:16px"></i>Starts right away · saved on this device · name it later</span>
+          </div>
+          <div aria-busy="true" aria-label="Loading review" style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:14px;background:var(--color-surface)">
+            <div style="height:14px;width:40%;border-radius:4px;background:var(--rc-surface-2)"></div>
+            <div style="height:22px;width:75%;border-radius:4px;background:var(--rc-surface-2)"></div>
+            <div style="height:14px;width:30%;border-radius:4px;background:var(--rc-surface-2)"></div>
+            <div style="height:52px;border-radius:8px;background:var(--rc-surface-2)"></div>
+          </div>
+          <div style="display:flex;align-items:center"><h2 style="font-size:18px;margin:0;flex:1">Recent classes</h2><button class="btn btn-ghost" style="min-height:44px;font-size:14px"><i class="ph ph-plus"></i>New class</button></div>
+          <div role="alert" style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:10px;border:1px solid var(--rc-warning-border);background:var(--rc-warning-tint)">
+            <div style="display:flex;gap:10px;font-size:15px"><i class="ph ph-warning" style="font-size:20px;color:var(--rc-warning)"></i>We couldn't load your classes.</div>
+            <button class="btn btn-secondary" style="align-self:flex-start"><i class="ph ph-arrow-clockwise"></i>Try again</button>
+          </div>
+        </div>
+        <nav style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:var(--color-surface);box-shadow:0 -1px 0 var(--color-divider);padding:6px 4px 22px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--color-accent);font-size:12px;font-weight:500"><i class="ph-fill ph-sun-horizon" style="font-size:24px"></i>Today</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-folders" style="font-size:24px"></i>Classes</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-cards" style="font-size:24px"></i>Review</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;justify-content:center;color:var(--rc-text-muted);font-size:12px"><i class="ph ph-user-circle" style="font-size:24px"></i>Me</div>
+        </nav>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Record never waits for loading or network — available from the first frame, offline too.</li>
+        <li>Skeleton keeps final layout (no jump). Error is inline, per block — New class still works.</li>
+        <li>Offline banner is honest and names what still works.</li>
+      </ul>
+    </figure>
+  </div>
+
+  <figure id="B1-desktop" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+    <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">B1</span><span style="font-weight:500">Desktop 1440 — Today</span></div>
+    <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:grid;grid-template-columns:248px 1fr">
+      <aside style="background:var(--color-surface);display:flex;flex-direction:column;padding:24px 16px;gap:6px">
+        <div style="display:flex;align-items:baseline;gap:6px;padding:0 10px 22px"><span style="font-size:22px;font-weight:500;letter-spacing:-0.03em">recalino</span><span style="width:7px;height:7px;border-radius:2px;background:var(--color-accent)"></span></div>
+        <button class="btn btn-secondary" style="justify-content:flex-start;margin-bottom:14px"><i class="ph ph-plus"></i>New class</button>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;background:var(--rc-primary-tint);color:var(--rc-primary-text);font-weight:500"><i class="ph-fill ph-sun-horizon" style="font-size:20px"></i>Today</div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-folders" style="font-size:20px;color:var(--rc-text-muted)"></i>Classes</div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-cards" style="font-size:20px;color:var(--rc-text-muted)"></i><span style="flex:1">Review</span><span class="rc-num" style="font-size:13px;color:var(--rc-text-muted)">12 due</span></div>
+        <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px"><i class="ph ph-user-circle" style="font-size:20px;color:var(--rc-text-muted)"></i>Me</div>
+        <div style="flex:1"></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:12px;font-size:13px;color:var(--rc-text-muted)"><span>Allowance</span><span class="rc-num" style="color:var(--color-text);font-size:14px">Class audio: 4 h 20 min left</span><span>Valid until 31 Oct 2026</span></div>
+      </aside>
+      <main style="padding:48px 64px;display:grid;grid-template-columns:minmax(0,720px) 1fr;gap:48px;align-content:start">
+        <div style="display:flex;flex-direction:column;gap:28px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;color:var(--rc-text-muted)">Tuesday 30 September</span><h1 style="font-size:40px;margin:0">Today</h1></div>
+          <div style="display:flex;align-items:center;gap:24px;padding:24px 28px;border-radius:var(--rc-card-radius);background:var(--color-surface);box-shadow:inset 0 0 0 1px var(--color-divider)">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:600">Record your class</span><span style="font-size:15px;color:var(--rc-text-muted)">Starts right away and saves on this device. Name it later.</span></div>
+            <button class="btn btn-primary" style="min-height:60px;font-size:17px;padding-inline:32px;gap:10px"><i class="ph-fill ph-microphone" style="font-size:22px"></i>Record a class</button>
+          </div>
+          <div class="rc-hero" style="display:flex;align-items:center;gap:24px;padding:28px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--rc-hero-label)"><i class="ph ph-cards" style="font-size:18px"></i>Daily review</div><div class="rc-num" style="font-size:28px;font-weight:700">12 cards due · 5 new</div><div style="font-size:15px;color:var(--rc-hero-muted)">About 15 min</div></div>
+            <button class="btn btn-secondary" style="min-height:52px;font-size:16px;padding-inline:28px;background:var(--color-surface)"><i class="ph ph-play"></i>Start review</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center"><h2 style="font-size:20px;margin:0;flex:1">Recent classes</h2><a href="#" style="font-size:14px">All classes</a></div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:grid;grid-template-columns:1fr 200px auto 24px;gap:16px;align-items:center;min-height:64px;padding:0 12px;border-bottom:1px solid var(--color-divider)"><span style="font-size:16px;font-weight:500">Present perfect vs past simple</span><span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 30 Sep</span><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-primary-tint);color:var(--rc-primary-text);border:1px solid var(--rc-primary-tint-2)"><i class="ph ph-circle-half"></i>Partly ready · Part 2 missing</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+              <div style="display:grid;grid-template-columns:1fr 200px auto 24px;gap:16px;align-items:center;min-height:64px;padding:0 12px;border-bottom:1px solid var(--color-divider)"><span style="font-size:16px;font-weight:500">Talking about the weekend</span><span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Thu 25 Sep</span><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-success-tint);color:var(--rc-success);border:1px solid var(--rc-success-border)"><i class="ph ph-check-circle"></i>Ready</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+              <div style="display:grid;grid-template-columns:1fr 200px auto 24px;gap:16px;align-items:center;min-height:64px;padding:0 12px;border-bottom:1px solid var(--color-divider)"><span style="font-size:16px;font-weight:500">Class — 23 Sep 2026</span><span style="font-size:14px;color:var(--rc-text-muted)">My classes · Tue 23 Sep</span><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-warning-tint);color:var(--rc-warning);border:1px solid var(--rc-warning-border)"><i class="ph ph-hourglass-medium"></i>Waiting for allowance</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+              <div style="display:grid;grid-template-columns:1fr 200px auto 24px;gap:16px;align-items:center;min-height:64px;padding:0 12px"><span style="font-size:16px;font-weight:500">Job interview phrases</span><span style="font-size:14px;color:var(--rc-text-muted)">ESOL Entry 3 · Tue 16 Sep</span><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;background:var(--rc-success-tint);color:var(--rc-success);border:1px solid var(--rc-success-border)"><i class="ph ph-check-circle"></i>Ready</span><i class="ph ph-caret-right" style="color:var(--rc-text-muted)"></i></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </figure>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:28px">
+  <h2 style="font-size:24px;margin:0">B2 · New class</h2>
+  <div style="display:flex;gap:56px;align-items:flex-start">
+    <figure id="B2-sheet" style="margin:0;display:flex;flex-direction:column;gap:14px;width:390px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">B2</span><span style="font-weight:500">Bottom sheet — no course yet</span></div>
+      <div style="width:390px;height:844px;border-radius:32px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;position:relative">
+        <div class="rc-num" style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:14px;font-weight:500"><span>9:41</span><span style="display:flex;gap:6px"><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-high"></i></span></div>
+        <div style="padding:12px 20px;opacity:.35"><h1 style="font-size:30px;margin:0">Today</h1></div>
+        <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 60%,transparent)"></div>
+        <div role="dialog" aria-modal="true" aria-labelledby="b2t" style="position:absolute;left:0;right:0;bottom:0;background:var(--color-surface);border-radius:16px 16px 0 0;box-shadow:var(--shadow-lg);padding:10px 20px 34px;display:flex;flex-direction:column;gap:16px">
+          <div style="width:40px;height:4px;border-radius:2px;background:var(--rc-border-strong);align-self:center"></div>
+          <div style="display:flex;align-items:center"><h2 id="b2t" style="font-size:22px;margin:0;flex:1">New class</h2><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+          <div class="field"><label style="font-size:14px">Title (optional)</label><input class="input" placeholder="For example: Present perfect"></div>
+          <div class="field"><label style="font-size:14px">Date</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-bg)"><i class="ph ph-calendar-blank" style="color:var(--rc-text-muted)"></i><span style="flex:1;font-size:16px">Today, 30 Sep 2026</span></div></div>
+          <div class="field"><label style="font-size:14px">Course (optional)</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-bg)"><i class="ph ph-folder-simple" style="color:var(--rc-text-muted)"></i><span style="flex:1;font-size:16px;color:var(--rc-text-muted)">My classes</span><i class="ph ph-caret-down"></i></div><div style="font-size:13px;color:var(--rc-text-muted);margin-top:6px">If you don't choose, the class goes into "My classes".</div></div>
+          <div class="field" style="opacity:.45"><label style="font-size:14px">Unit (optional)</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px"><span style="flex:1;font-size:16px">Choose a course first</span><i class="ph ph-caret-down"></i></div></div>
+          <button class="btn btn-primary" style="width:100%;min-height:52px;font-size:16px">Create class</button>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px">
+        <li>Every field is optional — Create works immediately (fast in class). Untitled → "Class — 30 Sep 2026".</li>
+        <li>Unit is hidden from the tab order until a course is chosen.</li>
+        <li>After Create → Class page (C1) with Record as the first action.</li>
+      </ul>
+    </figure>
+
+    <figure id="B2-dialog" style="margin:0;display:flex;flex-direction:column;gap:14px;width:1440px">
+      <div style="display:flex;gap:8px;align-items:center"><span class="tag tag-accent">B2</span><span style="font-weight:500">Desktop dialog — course chosen, unit open</span></div>
+      <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;background:var(--color-bg);box-shadow:var(--shadow-md);display:grid;place-items:center;position:relative">
+        <div style="position:absolute;inset:0;display:grid;grid-template-columns:248px 1fr;opacity:.3"><aside style="background:var(--color-surface)"></aside><div style="padding:48px 64px"><h1 style="font-size:40px;margin:0">Today</h1></div></div>
+        <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--rc-canvas) 55%,transparent)"></div>
+        <div role="dialog" aria-modal="true" class="dialog" style="position:relative;width:480px;padding:24px;gap:18px">
+          <div style="display:flex;align-items:center"><div class="dialog-title" style="flex:1;font-size:22px">New class</div><button class="btn btn-icon btn-ghost" aria-label="Close"><i class="ph ph-x" style="font-size:20px"></i></button></div>
+          <div class="field"><label style="font-size:14px">Title (optional)</label><input class="input" value="Present perfect vs past simple"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label style="font-size:14px">Date</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-bg)"><i class="ph ph-calendar-blank" style="color:var(--rc-text-muted)"></i><span style="font-size:16px">Today, 30 Sep</span></div></div>
+            <div class="field"><label style="font-size:14px">Course (optional)</label><div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-bg)"><span style="flex:1;font-size:16px">ESOL Entry 3</span><i class="ph ph-caret-down"></i></div></div>
+          </div>
+          <div class="field"><label style="font-size:14px">Unit (optional)</label>
+            <div style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--color-accent);border-radius:8px;background:var(--color-bg)"><span style="flex:1;font-size:16px;color:var(--rc-text-muted)">No unit</span><i class="ph ph-caret-up"></i></div>
+            <div role="listbox" style="margin-top:6px;border-radius:8px;background:var(--rc-surface-2);padding:4px;display:flex;flex-direction:column">
+              <div style="min-height:44px;display:flex;align-items:center;padding:0 12px;border-radius:6px;background:var(--rc-primary-tint)">No unit</div>
+              <div style="min-height:44px;display:flex;align-items:center;padding:0 12px">Unit 4 · Experiences</div>
+              <div style="min-height:44px;display:flex;align-items:center;padding:0 12px">Unit 5 · Work</div>
+              <div style="min-height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--color-accent)"><i class="ph ph-plus"></i>New unit</div>
+            </div>
+          </div>
+          <div class="dialog-actions"><button class="btn btn-secondary">Cancel</button><button class="btn btn-primary">Create class</button></div>
+        </div>
+      </div>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--rc-text-muted);display:flex;flex-direction:column;gap:4px;max-width:720px">
+        <li>Focus trapped in dialog; Esc closes; focus returns to "New class". Enter submits.</li>
+      </ul>
+    </figure>
+  </div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>
