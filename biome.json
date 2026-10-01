@@ -11,6 +11,7 @@
       "**",
       "!**/src/db/types.ts",
       "!docs/design/handoff-r1",
+      "!docs/design/handoff-r2-icons",
       "!apps/web/src/ui/styles/vendor"
     ]
   },
