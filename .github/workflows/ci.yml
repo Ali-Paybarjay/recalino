@@ -43,6 +43,8 @@ jobs:
       - run: pnpm test:int
 
       - run: pnpm build
+      - name: No secrets in the client-visible build (FR-PLT-009)
+        run: pnpm check:client-bundle
 
   e2e:
     name: End-to-end (main only)
