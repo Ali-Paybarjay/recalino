@@ -52,7 +52,7 @@
 | PRD-ONB-03 | ۶. پروفایل، زبان و ورود اولیه | ACC | EVAL | FR-ACC-003 | core `acc/acc.test.ts` (سطح Experimental)؛ `e2e/setup.spec.ts`. کیفیت واقعی زبان‌ها با EVAL |
 | PRD-ONB-04 | ۶. پروفایل، زبان و ورود اولیه | ACC | PERS | FR-ACC-003 | core `acc/profile.int.test.ts`؛ `e2e/setup.spec.ts`. ترجیح‌های آموخته‌شده با PERS |
 | PRD-ONB-05 | ۶. پروفایل، زبان و ورود اولیه | ACC | PROC, QUOTA | FR-ACC-004, FR-ACC-005 | core `acc/profile.int.test.ts` (نسخه‌ها)؛ web `cross-account/profile.int.test.ts`, `e2e/account.spec.ts` |
-| PRD-PLT-01 | ۸.۱. پلتفرم اولیه | PLT | REC | FR-PLT-010 | `e2e/pwa.spec.ts` (بخشی: manifest) |
+| PRD-PLT-01 | ۸.۱. پلتفرم اولیه | PLT | REC | FR-PLT-010 | بخشی: web `e2e/pwa.spec.ts` (manifest با نام، رنگ‌ها و چهار آیکون any و maskable که با نوع PNG سرو می‌شوند؛ لینک favicon SVG؛ لینک و سرو شدن Apple touch icon)، `ui/styles/vendor.test.ts` (برابری بایت‌به‌بایت هشت فایل آیکون و favicon با تحویل دور ۲) |
 | PRD-PLT-02 | ۸.۱. پلتفرم اولیه | REC | SRC | FR-SRC-007 (بخشی) | — |
 | PRD-SRC-01 | ۸.۲. منابع قابل قبول | SRC | PROC | FR-SRC-002, FR-SRC-003, FR-SRC-005, FR-SRC-007 | — |
 | PRD-SRC-02 | ۸.۲. منابع قابل قبول | SRC | PLT, PROC | FR-SRC-006, FR-SRC-012 | — |
