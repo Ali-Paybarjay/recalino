@@ -144,3 +144,87 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
 - **QUOTA و ORG:** سهمیه و دفتر مصرف، دوره و جلسه.
 - **سپس SRC:** آپلود منابع روی همین صف و لایه ذخیره‌سازی.
 - **milestone استقرار:** Backup روزانه، اتصال GitHub، دامنه، و باز کردن ورود برای زبان‌آموزان پایلوت با تأیید جداگانه.
+
+## وضعیت در 2026-10-02 و کارهای باقی‌مانده
+
+از این نقطه، ادامه M4 را نشست مدیر به نشست‌های مجری می‌سپارد ([روال نشست‌های موازی](../runbooks/PARALLEL_SESSIONS.md)).
+
+### انجام‌شده
+
+- **T1:** مقایسه دو نامزد صف انجام شد و [ADR-0003](../adr/0003-job-queue.md) پذیرفته شد.
+- **T7، کد:** صف (`plt.job`، `plt.job_step`)، runner و Cron دقیقه‌ای، و پاک‌سازی‌های دوره‌ای. آزمون‌ها سبزند. بررسی ابری با T3 انجام می‌شود.
+- **T8، کد:** لایه ذخیره‌سازی و لینک امضاشده. آزمون‌ها سبزند. آزمون ابری با T4 انجام می‌شود.
+- **T2، تقریباً کامل:**
+  - **پروژه Vercel `recalino`:** پوشه `apps/web`، Node 24، Functions در `lhr1`، محافظت All Deployments با Vercel Authentication، بدون اتصال GitHub.
+  - **Blob store خصوصی** `recalino-files` (`store_IdktZXodSY0qudhu`) در `lhr1`، متصل به پروژه.
+  - **دیتابیس ابری:** هر پنج migration اعمال شد. مالک محصول `db push` را اجرا کرد.
+  - **متغیرها، همه از نوع Secret:**
+    - در Production و Preview: `DATABASE_URL`، `SUPABASE_URL`، `SUPABASE_PUBLISHABLE_KEY`، `SUPABASE_SECRET_KEY`، `RATE_LIMIT_IP_KEY`، `CRON_SECRET` و `BLOB_STORE_ID`.
+    - فقط در Production و موقت: `RECALINO_SPIKE` و `SPIKE_TOKEN`.
+    - `BLOB_READ_WRITE_TOKEN` را اتصال store خودکار ساخت. قابل خواندن است و Vercel آن را «Needs Attention» نشان می‌دهد.
+  - **bypass خودکار** برای محافظت deployment با یادداشت «SPIKE-05» ساخته شد. پس از spike باید باطل شود.
+  - **deploy محافظت‌شده production:** `dpl_C3pnAzWH7yrdCsjYoec8cn9rWZtA`. مالک محصول اجرایش کرد، چون `vercel deploy` برای نشست‌ها مسدود است. بررسی‌ها:
+    - همه نشانی‌ها بدون ورود به Vercel به SSO هدایت می‌شوند (302).
+    - `/api/health` با bypass پاسخ 200 داد.
+    - از فایل‌های env فقط `.env.example` آپلود شد (`.vercelignore`).
+- **رمز `recalino_app`:** یک بار پیش از استفاده در یک تصویر دیده شد و همان روز عوض شد.
+
+### مشکل باز، اولویت اول: اتصال اپ به دیتابیس ابری
+
+- **نشانه:** Vercel Cron از محافظت عبور می‌کند و هر دقیقه `/api/jobs/run` را صدا می‌زند. ولی هر بار در حدود ۲۰ میلی‌ثانیه با 500 و `pg_code` برابر `XX000` شکست می‌خورد.
+- **علت احتمالی:** پاسخ Supavisor به «کاربر یا tenant پیدا نشد». یعنی بخش کاربر (`recalino_app.twowhuzhvyuzjrpraikm`) یا میزبان pooler در `DATABASE_URL` ایراد دارد. رمز اشتباه معمولاً `28P01` می‌دهد.
+- **تشخیص، بدون دیدن سر:**
+  - با کانکتور Supabase، پس از بررسی حساب طبق CLAUDE.md، فقط خواندن: `select rolname, rolcanlogin from pg_roles where rolname = 'recalino_app'`، و خواندن لاگ‌های دیتابیس اگر در دسترس باشد.
+  - یا آزمون اتصال روی کامپیوتر مالک محصول، طوری که رشته اتصال در تاریخچه ترمینال ذخیره نشود.
+- **اصلاح:** مالک محصول `DATABASE_URL` را در Vercel اصلاح می‌کند و `vercel deploy --prod` را اجرا می‌کند.
+- **بررسی:** در `vercel logs --deployment <id>`، درخواست `/api/jobs/run` باید 200 بگیرد.
+- **تا اصلاح:** مالک محصول می‌تواند Cron را موقتاً خاموش کند (**Settings ← Cron Jobs**).
+
+### کارهای باقی‌مانده
+
+- **T3، T4 و T5:**
+  - **ابزار:** `tools/spikes/cloud-drive.mjs`. گام‌ها در سر همان فایل آمده‌اند.
+  - **فایل‌ها:** اسرار spike و صوت مصنوعی بیرون از مخزن، در `%USERPROFILE%\.recalino-spike\` هستند.
+  - **ترتیب گام‌ها:**
+    1. protection
+    2. queue
+    3. crash، و حدود یک دقیقه بعد crash-status
+    4. blob
+    5. chunks
+    6. compose
+    7. ffmpeg برای هر دو فایل
+    8. cleanup
+  - **مصرف Vercel** ثبت می‌شود. سقف مصرف spike ۳ دلار است.
+- **OIDC در Blob:**
+  - وقتی `BLOB_STORE_ID` تنظیم باشد، SDK اول OIDC را به کار می‌برد. پس موفقیت گام blob یعنی OIDC کار می‌کند.
+  - بعد از آن، `BLOB_READ_WRITE_TOKEN` با تأیید مالک محصول حذف می‌شود و دوباره deploy می‌شود.
+- **T6، گزارش و ADR:**
+  - گزارش SPIKE-05، بخش‌های ۲ تا ۵.
+  - ADR-0004 برای تأیید: روش یکپارچه‌سازی قطعه‌ها (Q-SRC-4) و مسیر ffmpeg در صورت نیاز.
+  - پاسخ Q-SRC-4 در FR-SRC.
+- **T6، پاک‌سازی:**
+  - **کد spike حذف می‌شود:**
+    - `tools/spikes/`
+    - مسیر `/dev/spike/[action]` و `ROUTES.spike`
+    - `server/spike.ts`، `server/spike-jobs.ts` و `plt/spike.ts`
+    - روش بازنده در `VercelBlobStore.compose`
+    - `ffmpeg-static`، همراه `allowBuilds` و تنظیمات `next.config.ts`
+    - `pg-boss` و `@types/pg` در ریشه
+  - **در Vercel:** حذف `RECALINO_SPIKE` و `SPIKE_TOKEN`، و باطل کردن bypass.
+  - **روی کامپیوتر:** حذف پوشه `.recalino-spike`.
+  - **deploy دوباره:** با مالک محصول.
+- **T9، اسناد و بستن M4:**
+  - `.env.example` و SECRETS.md: `BLOB_STORE_ID` و OIDC.
+  - اجرای `pnpm check:client-bundle`.
+  - ماتریس ردیابی:
+    - FR-PLT-005، 008 و 014.
+    - **ردیف FR-PLT-010:** افزودن آیکون‌ها و `apps/web/src/ui/styles/vendor.test.ts` به ستون آزمون. پیشنهاد نشست دیگری در 2026-10-02 بود که روی همین شاخه انجام شود، تا دو نشست یک فایل را هم‌زمان تغییر ندهند.
+  - ردیف صف در PROJECT_SPEC، طبق ADR-0003.
+  - خط وضعیت CLAUDE.md.
+  - **اختیاری:** یک خط اشاره به `docs/design/handoff-r2-icons/` در بخش «پیاده‌سازی رابط کاربری» CLAUDE.md.
+  - گزارش M4، سپس push، PR، CI و تأیید ادغام از مالک محصول.
+
+### مشکل محیط محلی
+
+از 2026-10-02 فایل `pnpm-native.exe` در پوشه corepack کاربر نیست و هر دستور `pnpm` روی این کامپیوتر خطا می‌دهد. اصلاحش با مالک محصول است. تا آن زمان ابزارها را می‌توان مستقیم از `node_modules/.bin` اجرا کرد.
+
