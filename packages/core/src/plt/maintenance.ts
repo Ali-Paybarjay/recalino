@@ -4,6 +4,7 @@ import { purgeExpiredIdempotencyKeys } from "./idempotency";
 import { type JobDefinition, purgeFinishedJobs } from "./jobs";
 import { purgeRateLimitBuckets } from "./rate-limit";
 import type { PltSettings } from "./settings";
+import { type ObjectStore, reconcileStorage } from "./storage";
 
 export type EmptyPayload = Record<string, never>;
 
@@ -54,6 +55,23 @@ export function pltPeriodicJobs(settings: PltSettings): PeriodicJob[] {
         run: async (_payload, ctx) => {
           const days = settings.jobs.retentionDays;
           await purgeFinishedJobs(ctx.db, new Date(ctx.now().getTime() - days * 86_400_000));
+        },
+      },
+    },
+  ];
+}
+
+/** FR-PLT-014 rule 5: records against the store, daily. Only where a real store is configured. */
+export function storagePeriodicJobs(store: ObjectStore, settings: PltSettings): PeriodicJob[] {
+  return [
+    {
+      everySeconds: 24 * HOUR,
+      definition: {
+        kind: "plt.reconcile_storage",
+        version: 1,
+        payload: emptyPayload,
+        run: async (_payload, ctx) => {
+          await reconcileStorage(ctx.db, store, { now: ctx.now(), settings: settings.storage });
         },
       },
     },

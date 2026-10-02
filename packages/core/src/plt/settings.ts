@@ -30,6 +30,13 @@ export const pltSettingsSchema = z.strictObject({
     /** Finished jobs are kept this long for inspection, then purged. */
     retentionDays: z.int().positive(),
   }),
+  /** FR-PLT-008 and FR-PLT-014. */
+  storage: z.strictObject({
+    writeLinkSeconds: z.int().positive(),
+    readLinkSeconds: z.int().positive(),
+    /** An object with no record is deleted only after this long, so uploads in flight survive. */
+    orphanGraceSeconds: z.int().positive(),
+  }),
 });
 
 export type PltSettings = z.infer<typeof pltSettingsSchema>;
@@ -59,6 +66,12 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
     retryBaseSeconds: 30,
     retryMaxSeconds: 3600,
     retentionDays: 30,
+  },
+  // Proposed in M4: "a few minutes" for the browser (FR-PLT-008 rule 6).
+  storage: {
+    writeLinkSeconds: 300,
+    readLinkSeconds: 300,
+    orphanGraceSeconds: 86_400,
   },
 };
 

@@ -50,7 +50,13 @@ export {
   type LogSink,
   type LogValue,
 } from "./log";
-export { type EmptyPayload, emptyPayload, type PeriodicJob, pltPeriodicJobs } from "./maintenance";
+export {
+  type EmptyPayload,
+  emptyPayload,
+  type PeriodicJob,
+  pltPeriodicJobs,
+  storagePeriodicJobs,
+} from "./maintenance";
 export { assertOwner, type LearnerContext } from "./ownership";
 export {
   checkRateLimit,
@@ -76,4 +82,22 @@ export {
   type RateLimitRule,
   readPltSettings,
 } from "./settings";
+export {
+  type ConfirmResult,
+  confirmObject,
+  createObject,
+  deleteObject,
+  issueReadLink,
+  issueWriteLink,
+  type LinkRequest,
+  type NewObject,
+  type ObjectState,
+  type ObjectStore,
+  type ReconcileSummary,
+  type Retention,
+  reconcileStorage,
+  type StorageActor,
+  type StoredObjectInfo,
+} from "./storage";
+export { MemoryObjectStore } from "./storage-memory";
 export { isValidTimeZone, resolveTimeZone, studyDay } from "./time";

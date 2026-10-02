@@ -13,6 +13,7 @@ const ALLOWED_FIELDS = new Set([
   "code",
   "kind",
   "job_id",
+  "object_id",
   "attempt",
   "module",
   "error_name",

@@ -144,6 +144,20 @@ export interface PltSecurityEvent {
   user_id: string | null;
 }
 
+export interface PltStorageObject {
+  content_type: string;
+  created_at: Timestamp;
+  deleted_at: Timestamp | null;
+  id: Generated<string>;
+  key: string;
+  owner_module: string;
+  owner_user_id: string | null;
+  retention: string;
+  size_bytes: Int8;
+  state: Generated<string>;
+  verified_at: Timestamp | null;
+}
+
 export interface DB {
   "acc.consent": AccConsent;
   "acc.learning_profile": AccLearningProfile;
@@ -157,4 +171,5 @@ export interface DB {
   "plt.job_step": PltJobStep;
   "plt.rate_limit_bucket": PltRateLimitBucket;
   "plt.security_event": PltSecurityEvent;
+  "plt.storage_object": PltStorageObject;
 }
