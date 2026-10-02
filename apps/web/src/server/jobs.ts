@@ -15,6 +15,7 @@ import {
 import { after } from "next/server";
 import type { Handler } from "./api";
 import { getDatabase } from "./db";
+import { spikeJobDefinitions } from "./spike-jobs";
 import { getObjectStore } from "./storage";
 
 /** The runner route's limit (ADR-0001: up to 800 seconds); `maxDuration` in its route file. */
@@ -34,7 +35,7 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
 
 // biome-ignore lint/suspicious/noExplicitAny: each definition checks its own payload type.
 export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
-  return periodicJobs(settings).map((job) => job.definition);
+  return [...periodicJobs(settings).map((job) => job.definition), ...spikeJobDefinitions()];
 }
 
 interface RunnerDeps {

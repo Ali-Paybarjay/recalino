@@ -6,6 +6,8 @@ packages:
 allowBuilds:
   # Downloads the pinned Supabase CLI binary used by the db:* scripts.
   supabase: true
+  # SPIKE-05 only (M4, T5): downloads a static ffmpeg for the platform. Removed with the spike.
+  ffmpeg-static: true
 
 minimumReleaseAgeExclude:
   - '@biomejs/biome@2.5.15'

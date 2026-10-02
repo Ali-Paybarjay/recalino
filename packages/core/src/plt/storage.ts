@@ -12,6 +12,8 @@ export interface StoredObjectInfo {
   size: number;
   contentType: string;
   uploadedAt: Date;
+  /** The store's version tag, when it has one. */
+  etag?: string;
 }
 
 /** What a storage provider must offer. Implementations: Vercel Blob, and in-memory for tests. */

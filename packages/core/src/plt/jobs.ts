@@ -34,6 +34,8 @@ export interface ClaimedJob {
 export interface JobContext {
   db: Database;
   now: () => Date;
+  /** For records and logs; the payload carries the job's subject. */
+  job: { id: string; attempt: number };
   /**
    * Runs `effect` at most once for this job, in one transaction with the step's record
    * (FR-PLT-005 rule 6). Throws `JobCancelled` when the job was cancelled meanwhile (rule 7).
@@ -309,6 +311,7 @@ export async function runDueJobs(
     const ctx: JobContext = {
       db,
       now,
+      job: { id: job.id, attempt: job.attempt },
       step: (name, effect) => runJobStep(db, job, name, effect, now()),
     };
     try {

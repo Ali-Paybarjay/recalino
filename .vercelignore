@@ -1,0 +1,16 @@
+# The Vercel CLI uploads this folder on deploy. Never send local secrets, and skip what the
+# build doesn't need (ADR-0001; docs/runbooks/SECRETS.md).
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.vercel
+**/node_modules
+**/.next
+docs/design
+test-results
+playwright-report
+apps/web/test-results
+supabase/.temp

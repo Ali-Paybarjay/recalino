@@ -3,12 +3,16 @@
 // environment: OIDC with BLOB_STORE_ID on Vercel, or BLOB_READ_WRITE_TOKEN.
 import {
   BlobNotFoundError,
+  completeMultipartUpload,
+  createMultipartUpload,
   del,
   get,
   head,
   issueSignedToken,
   list,
   presignUrl,
+  put,
+  uploadPart,
 } from "@vercel/blob";
 import type { ObjectStore, StoredObjectInfo } from "./storage";
 
@@ -57,7 +61,12 @@ export class VercelBlobStore implements ObjectStore {
   async head(key: string): Promise<StoredObjectInfo | null> {
     try {
       const info = await head(key);
-      return { size: info.size, contentType: info.contentType, uploadedAt: info.uploadedAt };
+      return {
+        size: info.size,
+        contentType: info.contentType,
+        uploadedAt: info.uploadedAt,
+        etag: info.etag,
+      };
     } catch (error) {
       if (error instanceof BlobNotFoundError) return null;
       throw error;
@@ -83,5 +92,70 @@ export class VercelBlobStore implements ObjectStore {
       uploadedAt: blob.uploadedAt,
     }));
     return page.hasMore && page.cursor ? { objects, cursor: page.cursor } : { objects };
+  }
+
+  /**
+   * SPIKE-05, Q-SRC-4: joins chunk objects into one readable object, two ways, to compare them.
+   * "stream" reads the chunks in order and writes one new object; "multipart" sends each chunk as
+   * one part of a native multipart upload. ADR-0004 keeps one of them.
+   */
+  async compose(
+    sourceKeys: readonly string[],
+    targetKey: string,
+    contentType: string,
+    method: "stream" | "multipart",
+  ): Promise<void> {
+    const open = async (key: string) => {
+      const result = await get(key, { access: "private", useCache: false });
+      if (result?.statusCode !== 200 || !result.stream) throw new Error("chunk missing");
+      return result.stream;
+    };
+    if (method === "stream") {
+      const keys = [...sourceKeys];
+      const joined = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          const key = keys.shift();
+          if (key === undefined) {
+            controller.close();
+            return;
+          }
+          const reader = (await open(key)).getReader();
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        },
+      });
+      await put(targetKey, joined, {
+        access: "private",
+        contentType,
+        multipart: true,
+        addRandomSuffix: false,
+      });
+      return;
+    }
+    const upload = await createMultipartUpload(targetKey, {
+      access: "private",
+      contentType,
+      addRandomSuffix: false,
+    });
+    const parts = [];
+    for (const [index, key] of sourceKeys.entries()) {
+      const bytes = Buffer.from(await new Response(await open(key)).arrayBuffer());
+      parts.push(
+        await uploadPart(targetKey, bytes, {
+          access: "private",
+          uploadId: upload.uploadId,
+          key: upload.key,
+          partNumber: index + 1,
+        }),
+      );
+    }
+    await completeMultipartUpload(targetKey, parts, {
+      access: "private",
+      uploadId: upload.uploadId,
+      key: upload.key,
+    });
   }
 }
