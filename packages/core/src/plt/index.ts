@@ -21,6 +21,28 @@ export {
   type StoredResponse,
 } from "./idempotency";
 export {
+  type ClaimedJob,
+  cancelJob,
+  claimJobs,
+  completeJob,
+  type EnqueueRequest,
+  enqueueJob,
+  ensurePeriodicJob,
+  failJob,
+  JobCancelled,
+  type JobContext,
+  type JobDefinition,
+  type JobOptions,
+  type JobState,
+  jobState,
+  purgeFinishedJobs,
+  type RunOptions,
+  type RunSummary,
+  runDueJobs,
+  runJobStep,
+  sweepJobs,
+} from "./jobs";
+export {
   createLogger,
   formatLogLine,
   type Logger,
@@ -28,6 +50,7 @@ export {
   type LogSink,
   type LogValue,
 } from "./log";
+export { type EmptyPayload, emptyPayload, type PeriodicJob, pltPeriodicJobs } from "./maintenance";
 export { assertOwner, type LearnerContext } from "./ownership";
 export {
   checkRateLimit,

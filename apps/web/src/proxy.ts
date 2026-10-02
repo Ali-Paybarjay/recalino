@@ -29,6 +29,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Not for static files, icons, the manifest or the health check: they never touch a session.
-  matcher: ["/((?!_next/static|_next/image|icons/|manifest.webmanifest|api/health).*)"],
+  // Not for static files, icons, the manifest, the health check or the job runner: they never
+  // touch a session.
+  matcher: ["/((?!_next/static|_next/image|icons/|manifest.webmanifest|api/health|api/jobs/).*)"],
 };

@@ -1,6 +1,6 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
-import { readRateLimitIpKey } from "@recalino/core/config";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { readCronSecret, readRateLimitIpKey } from "@recalino/core/config";
 import type { Database } from "@recalino/core/db";
 import {
   AppError,
@@ -55,6 +55,8 @@ export interface RouteDeps {
   log: Logger;
   settings: () => PltSettings;
   ipKey: () => string;
+  /** CRON_SECRET, the bearer token of "system" routes. */
+  cronSecret: () => string;
   now: () => Date;
 }
 
@@ -72,6 +74,7 @@ const defaultDeps: RouteDeps = {
   log: createLogger(),
   settings: once(() => readPltSettings()),
   ipKey: once(() => readRateLimitIpKey()),
+  cronSecret: once(() => readCronSecret()),
   now: () => new Date(),
 };
 
@@ -104,6 +107,7 @@ export function defineRoute(
         userId = (await deps.sessions.getSession(request))?.userId ?? null;
         if (userId === null) throw errors.unauthenticated();
       }
+      if (meta.access === "system") assertSystemCaller(request, deps.cronSecret());
       const ctx: RequestContext = { requestId, route: meta.id, userId };
 
       if (meta.rateLimit) await enforceRateLimit(meta.rateLimit, request, ctx, deps);
@@ -242,6 +246,13 @@ async function recordSignal(
       error_name: error instanceof Error ? error.name : typeof error,
     });
   }
+}
+
+/** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; compared in constant time. */
+function assertSystemCaller(request: Request, secret: string): void {
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  const given = request.headers.get("authorization") ?? "";
+  if (!timingSafeEqual(digest(given), digest(`Bearer ${secret}`))) throw errors.unauthenticated();
 }
 
 /**

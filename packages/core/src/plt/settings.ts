@@ -20,6 +20,16 @@ export const pltSettingsSchema = z.strictObject({
   rateLimitRepeatThreshold: z.int().positive(),
   /** Local hour at which a new study day starts. */
   studyDayStartHour: z.int().min(0).max(23),
+  /** FR-PLT-005 job queue defaults; a job kind may override the first four. */
+  jobs: z.strictObject({
+    maxAttempts: z.int().min(1).max(20),
+    /** Longer than the longest function run, so a live runner never loses its claim. */
+    leaseSeconds: z.int().min(1).max(3600),
+    retryBaseSeconds: z.int().min(0),
+    retryMaxSeconds: z.int().min(0),
+    /** Finished jobs are kept this long for inspection, then purged. */
+    retentionDays: z.int().positive(),
+  }),
 });
 
 export type PltSettings = z.infer<typeof pltSettingsSchema>;
@@ -42,6 +52,14 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
   },
   rateLimitRepeatThreshold: 5,
   studyDayStartHour: 4,
+  // Proposed in M4 (2026-10-02). The lease outlasts the 800-second function limit (ADR-0001).
+  jobs: {
+    maxAttempts: 5,
+    leaseSeconds: 900,
+    retryBaseSeconds: 30,
+    retryMaxSeconds: 3600,
+    retentionDays: 30,
+  },
 };
 
 export function readPltSettings(

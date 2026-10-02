@@ -15,6 +15,7 @@
 |---|---|---|
 | `DATABASE_URL` | اتصال سرور به Postgres با نقش `recalino_app` | تا استقرار تازه، اتصال با رمز قبلی رد می‌شود |
 | `RATE_LIMIT_IP_KEY` | hash کلیددار IP در کنترل نرخ | شمارنده‌های کنترل نرخ از صفر شروع می‌شوند |
+| `CRON_SECRET` | فقط سرور: اجازه اجرای Job runner (`/api/jobs/run`) که Vercel Cron هر دقیقه صدا می‌زند (FR-PLT-005) | تا استقرار تازه، Cron با 401 رد می‌شود و Jobها با تأخیر اجرا می‌شوند |
 | `SUPABASE_SECRET_KEY` | فقط سرور: حذف کاربر Auth که حساب ریکالینو نساخت (FR-ACC-001) | تا استقرار تازه، آن حذف شکست می‌خورد و ورود ناقص با پیام عمومی خطا تمام می‌شود |
 | Client secret گوگل | در داشبورد Supabase (Authentication ← Providers ← Google)، نه در Vercel؛ برای CLI محلی در `.env` ریشه ([GOOGLE_OAUTH.md](GOOGLE_OAUTH.md)) | تا ثبت مقدار تازه در Supabase، ورود با Google شکست می‌خورد |
 
@@ -22,7 +23,7 @@
 
 ## چرخش یک کلید
 
-1. مقدار تازه را بسازید (برای `RATE_LIMIT_IP_KEY`، دست‌کم ۳۲ نویسه تصادفی).
+1. مقدار تازه را بسازید (برای `RATE_LIMIT_IP_KEY` و `CRON_SECRET`، دست‌کم ۳۲ نویسه تصادفی).
 2. در داشبورد Vercel، مقدار تازه را برای همه محیط‌های لازم ثبت کنید.
 3. **رمز دیتابیس:** در SQL Editor پروژه Supabase اجرا کنید: `alter role recalino_app with password '<رمز تازه>';`. بلافاصله `DATABASE_URL` را در Vercel به‌روز کنید.
    **کلید secret سوپابیس:** در Project Settings ← API Keys یک کلید secret تازه بسازید و در Vercel ثبت کنید. کلید قبلی را پس از استقرار تازه (گام ۴) حذف کنید.

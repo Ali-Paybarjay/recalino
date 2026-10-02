@@ -41,6 +41,15 @@ export function readSupabaseEnv(
   return parseEnv(supabaseEnvSchema, env, "Supabase");
 }
 
+const cronEnvSchema = z.object({
+  // Vercel Cron sends it as a bearer token; it guards the job runner (FR-PLT-005, M4).
+  CRON_SECRET: z.string().min(32),
+});
+
+export function readCronSecret(env: Record<string, string | undefined> = process.env): string {
+  return parseEnv(cronEnvSchema, env, "cron").CRON_SECRET;
+}
+
 function parseEnv<T>(
   schema: z.ZodType<T>,
   env: Record<string, string | undefined>,

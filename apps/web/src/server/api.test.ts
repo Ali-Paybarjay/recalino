@@ -123,3 +123,26 @@ describe("route wrapper (FR-PLT-003, FR-PLT-007)", () => {
     });
   });
 });
+
+describe("system routes (FR-PLT-005)", () => {
+  const systemRoute: RouteMeta = { id: "probe", path: "/api/probe", access: "system" };
+  const SECRET = "cron-secret-for-tests-0123456789abcdef";
+
+  it("run only with the cron secret as a bearer token", async () => {
+    const ran: string[] = [];
+    const handler: Handler = async () => {
+      ran.push("ran");
+      return { body: { ok: true } };
+    };
+    const deps = { ...testDeps([]), cronSecret: () => SECRET };
+    const missing = await call(systemRoute, handler, deps);
+    const wrong = await call(systemRoute, handler, deps, {
+      headers: { authorization: `Bearer ${SECRET}x` },
+    });
+    const right = await call(systemRoute, handler, deps, {
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    expect([missing.status, wrong.status, right.status]).toEqual([401, 401, 200]);
+    expect(ran).toEqual(["ran"]);
+  });
+});

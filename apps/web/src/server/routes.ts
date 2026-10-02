@@ -1,6 +1,7 @@
 import type { RateLimitClass } from "@recalino/core/plt";
 
-export type Access = "public" | "learner";
+/** "system": only Vercel Cron and the app itself, with CRON_SECRET (FR-PLT-005). */
+export type Access = "public" | "learner" | "system";
 
 export interface RouteMeta {
   id: string;
@@ -38,6 +39,8 @@ export const ROUTES = {
   // M3: learning profile and acceptances (FR-ACC-003 to FR-ACC-007).
   profile: { id: "profile", path: "/api/profile", access: "learner" },
   consents: { id: "consents", path: "/api/consents", access: "learner" },
+  // M4: the job runner (FR-PLT-005, ADR-0003). Vercel Cron calls it every minute.
+  jobsRun: { id: "jobsRun", path: "/api/jobs/run", access: "system" },
   // Local tests only: 404 unless the dev pages are on and Auth runs on this machine.
   devAuthSession: { id: "devAuthSession", path: "/dev/auth/session", access: "public" },
 } as const satisfies Record<string, RouteMeta>;

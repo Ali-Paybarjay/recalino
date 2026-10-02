@@ -102,6 +102,33 @@ export interface PltIdempotencyKey {
   user_id: string;
 }
 
+export interface PltJob {
+  attempt: Generated<number>;
+  created_at: Timestamp;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  kind: string;
+  last_error: string | null;
+  lease_seconds: number;
+  lease_token: string | null;
+  lease_until: Timestamp | null;
+  max_attempts: number;
+  payload: Json;
+  payload_version: number;
+  retry_base_seconds: number;
+  retry_max_seconds: number;
+  run_at: Timestamp;
+  singleton_key: string | null;
+  state: Generated<string>;
+  updated_at: Timestamp;
+}
+
+export interface PltJobStep {
+  done_at: Timestamp;
+  job_id: string;
+  step: string;
+}
+
 export interface PltRateLimitBucket {
   bucket: string;
   hits: Generated<number>;
@@ -126,6 +153,8 @@ export interface DB {
   "acc.user_account": AccUserAccount;
   "plt.audit_event": PltAuditEvent;
   "plt.idempotency_key": PltIdempotencyKey;
+  "plt.job": PltJob;
+  "plt.job_step": PltJobStep;
   "plt.rate_limit_bucket": PltRateLimitBucket;
   "plt.security_event": PltSecurityEvent;
 }
