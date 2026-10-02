@@ -192,11 +192,19 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
   - در اجرای اول، هر پنج Job دوره‌ای موفق شدند، از جمله `plt.reconcile_storage`.
   - گام protection: بدون bypass، 302؛ `/api/health` با bypass، 200.
 - **پیشنهاد پیشگیری** (تغییر کد اپ؛ جدا تصمیم‌گیری می‌شود): `readDatabaseEnv` فاصله و خط تازه را در `DATABASE_URL` رد کند تا چنین مقداری با خطای روشن متوقف شود.
-- **پیگیری باز: `SUPABASE_URL` در Production**
-  - در همان ویرایش، ساعت 14:41:46 UTC، این مقدار هم عوض شد و دیگر نشانی `https` معتبر نیست.
-  - روی deploy بالا، middleware برای همه صفحه‌ها و مسیرهای spike با `Invalid Supabase configuration: SUPABASE_URL` پاسخ 500 می‌دهد. Cron و `/api/health` از middleware نمی‌گذرند.
-  - مالک محصول مقدار را `https://twowhuzhvyuzjrpraikm.supabase.co` می‌گذارد و دوباره deploy می‌کند.
-  - T3 به این اصلاح وابسته است.
+- **پیگیری، حل شد: `SUPABASE_URL` در Production**
+  - در همان ویرایش، ساعت 14:41:46 UTC، این مقدار هم به اشتباه عوض شد.
+  - روی deploy بالا، middleware برای همه صفحه‌ها و مسیرهای spike با `Invalid Supabase configuration: SUPABASE_URL` پاسخ 500 می‌داد. Cron و `/api/health` از middleware نمی‌گذرند.
+  - مالک محصول مقدار را به `https://twowhuzhvyuzjrpraikm.supabase.co` برگرداند و دوباره deploy کرد.
+- **deploy‌های نهایی:** دو deploy production با ۱۴ ثانیه فاصله ساخته شدند:
+  - `dpl_GCeLnFz7jmkcAssvXxDqygSgG8NK`: Redeploy از داشبورد، با همان کد deploy بالا.
+  - `dpl_GHB1MMUXEwrGWqdenhK6eLGq1UM6`: با CLI، روی commit `70ed513`.
+  - کد اپ هر دو یکی است.
+  - دامنه‌های production روی `dpl_GHB1…` هستند، ولی Cron به `dpl_GCeL…` می‌رود. احتمالاً چون `dpl_GCeL…` ۱.۳ ثانیه دیرتر آماده شد.
+  - **بررسی:**
+    - روی `dpl_GCeL…`، Cron از 14:53 تا 14:57 UTC پنج بار پیاپی 200 گرفت، و `GET /` از middleware گذشت.
+    - روی `dpl_GHB1…`، گام protection: بدون bypass، 302؛ `/api/health` با bypass، 200؛ مسیر spike بدون توکن، 404.
+  - یک `vercel deploy --prod` تازه پیش از T3، Cron و دامنه‌ها را دوباره روی یک deploy می‌برد.
 
 ### کارهای باقی‌مانده
 
