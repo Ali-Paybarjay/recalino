@@ -167,18 +167,36 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
     - همه نشانی‌ها بدون ورود به Vercel به SSO هدایت می‌شوند (302).
     - `/api/health` با bypass پاسخ 200 داد.
     - از فایل‌های env فقط `.env.example` آپلود شد (`.vercelignore`).
-- **رمز `recalino_app`:** یک بار پیش از استفاده در یک تصویر دیده شد و همان روز عوض شد.
+- **رمز `recalino_app`:** یک بار پیش از استفاده در یک تصویر دیده شد و همان روز عوض شد. در M4-A1 دوباره تعیین شد، چون رشته ثبت‌شده در Vercel هنوز رمز قبلی را داشت.
 
-### مشکل باز، اولویت اول: اتصال اپ به دیتابیس ابری
+### حل شد (2026-10-02): اتصال اپ به دیتابیس ابری
 
-- **نشانه:** Vercel Cron از محافظت عبور می‌کند و هر دقیقه `/api/jobs/run` را صدا می‌زند. ولی هر بار در حدود ۲۰ میلی‌ثانیه با 500 و `pg_code` برابر `XX000` شکست می‌خورد.
-- **علت احتمالی:** پاسخ Supavisor به «کاربر یا tenant پیدا نشد». یعنی بخش کاربر (`recalino_app.twowhuzhvyuzjrpraikm`) یا میزبان pooler در `DATABASE_URL` ایراد دارد. رمز اشتباه معمولاً `28P01` می‌دهد.
-- **تشخیص، بدون دیدن سر:**
-  - با کانکتور Supabase، پس از بررسی حساب طبق CLAUDE.md، فقط خواندن: `select rolname, rolcanlogin from pg_roles where rolname = 'recalino_app'`، و خواندن لاگ‌های دیتابیس اگر در دسترس باشد.
-  - یا آزمون اتصال روی کامپیوتر مالک محصول، طوری که رشته اتصال در تاریخچه ترمینال ذخیره نشود.
-- **اصلاح:** مالک محصول `DATABASE_URL` را در Vercel اصلاح می‌کند و `vercel deploy --prod` را اجرا می‌کند.
-- **بررسی:** در `vercel logs --deployment <id>`، درخواست `/api/jobs/run` باید 200 بگیرد.
-- **تا اصلاح:** مالک محصول می‌تواند Cron را موقتاً خاموش کند (**Settings ← Cron Jobs**).
+- **نشانه:** Vercel Cron از محافظت عبور می‌کرد و هر دقیقه `/api/jobs/run` را صدا می‌زد. ولی هر بار در حدود ۲۰ میلی‌ثانیه با 500 و `pg_code` برابر `XX000` شکست می‌خورد.
+- **علت:** در مقدار `DATABASE_URL` در Vercel، درست پس از `postgresql://` یک فاصله بود.
+  - `readDatabaseEnv` این رشته را می‌پذیرد و pg نام کاربر را با همان فاصله می‌فرستد.
+  - Supavisor پروژه را پیدا می‌کرد، ولی نقشی به نام ` recalino_app` (با فاصله) نبود.
+  - رمز داخل همان رشته هم رمز پیش از چرخش بود.
+- **شاهد** (task M4-A1، بدون دیدن هیچ سری):
+  - **لاگ Supavisor ابری:** ۱۲۵ تلاش از 10:56 UTC، هم‌زمان با خطاهای Vercel، همه با `(EAUTHQUERY) user not found in the database`. کاربر در لاگ ` recalino_app` بود: بایت اول `0x20` و طول ۱۳ نویسه، به‌جای ۱۲.
+  - **دیتابیس:** نقش `recalino_app` با اجازه login و رمز SCRAM وجود داشت.
+  - **منطقه و tenant:** در همان لاگ، منطقه eu-west-2، پروژه و حالت transaction درست بودند. پس میزبان pooler و بخش tenant ایراد نداشتند.
+  - **بازتولید محلی:** همین فاصله روی Supavisor محلی همان خطا را داد.
+  - **رشته مالک محصول:** `tools/spikes/db-url-check.mjs` روی رشته مالک محصول هم همین خطا را نشان داد. پس از حذف فاصله، خطا `28P01` شد، یعنی رمز قدیمی.
+- **اصلاح، به دست مالک محصول:**
+  1. تعیین رمز تازه برای `recalino_app`، طبق گام ۲ [CLOUD_SETUP](../runbooks/CLOUD_SETUP.md).
+  2. ساخت رشته تازه. `db-url-check.mjs` آن را تأیید کرد: بدون نویسه اضافه، و اتصال از طریق pooler ابری با `current_user = recalino_app`.
+  3. ثبت رشته در هر دو ردیف `DATABASE_URL`، یعنی Production و Preview.
+  4. `vercel deploy --prod`.
+- **بررسی، روی deploy `dpl_HLUwfefHtw4rh2YNKEpmmHK9jFda`:**
+  - Cron از 14:44 تا 14:47 UTC چهار بار پیاپی 200 گرفت.
+  - در اجرای اول، هر پنج Job دوره‌ای موفق شدند، از جمله `plt.reconcile_storage`.
+  - گام protection: بدون bypass، 302؛ `/api/health` با bypass، 200.
+- **پیشنهاد پیشگیری** (تغییر کد اپ؛ جدا تصمیم‌گیری می‌شود): `readDatabaseEnv` فاصله و خط تازه را در `DATABASE_URL` رد کند تا چنین مقداری با خطای روشن متوقف شود.
+- **پیگیری باز: `SUPABASE_URL` در Production**
+  - در همان ویرایش، ساعت 14:41:46 UTC، این مقدار هم عوض شد و دیگر نشانی `https` معتبر نیست.
+  - روی deploy بالا، middleware برای همه صفحه‌ها و مسیرهای spike با `Invalid Supabase configuration: SUPABASE_URL` پاسخ 500 می‌دهد. Cron و `/api/health` از middleware نمی‌گذرند.
+  - مالک محصول مقدار را `https://twowhuzhvyuzjrpraikm.supabase.co` می‌گذارد و دوباره deploy می‌کند.
+  - T3 به این اصلاح وابسته است.
 
 ### کارهای باقی‌مانده
 
@@ -204,14 +222,14 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
   - پاسخ Q-SRC-4 در FR-SRC.
 - **T6، پاک‌سازی:**
   - **کد spike حذف می‌شود:**
-    - `tools/spikes/`
+    - `tools/spikes/`، از جمله `cloud-drive.mjs` و `db-url-check.mjs`
     - مسیر `/dev/spike/[action]` و `ROUTES.spike`
     - `server/spike.ts`، `server/spike-jobs.ts` و `plt/spike.ts`
     - روش بازنده در `VercelBlobStore.compose`
     - `ffmpeg-static`، همراه `allowBuilds` و تنظیمات `next.config.ts`
     - `pg-boss` و `@types/pg` در ریشه
   - **در Vercel:** حذف `RECALINO_SPIKE` و `SPIKE_TOKEN`، و باطل کردن bypass.
-  - **روی کامپیوتر:** حذف پوشه `.recalino-spike`.
+  - **روی کامپیوتر:** حذف پوشه `.recalino-spike`، همراه `database-url.txt`.
   - **deploy دوباره:** با مالک محصول.
 - **T9، اسناد و بستن M4:**
   - `.env.example` و SECRETS.md: `BLOB_STORE_ID` و OIDC.
