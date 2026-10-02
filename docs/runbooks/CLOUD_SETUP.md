@@ -23,17 +23,35 @@
 
 ### ۱. اعمال migrationها روی Supabase ابری
 
-در ترمینال، در پوشه مخزن:
+در ترمینال (PowerShell، یا ترمینال VS Code)، در پوشه `D:\Claude Projects\Recalino`، این دستورها را **یکی‌یکی** اجرا کنید:
 
 ```bash
 pnpm exec supabase login
 pnpm exec supabase link --project-ref twowhuzhvyuzjrpraikm
+pnpm exec supabase db push --dry-run
 pnpm exec supabase db push
 ```
 
-- `login` مرورگر را باز می‌کند تا با **حساب Supabase ریکالینو** وارد شوید، نه حساب قدیمی.
-- `link` رمز دیتابیس را می‌پرسد. آن را در داشبورد Supabase، در **Project Settings ← Database**، پیدا یا reset کنید.
-- `db push` فهرست migrationها را نشان می‌دهد و تأیید می‌خواهد. سه migration باید باشد: `baseline`، `plt_core` و `acc_core`. گزینه `--include-seed` را **به کار نبرید**؛ seed فقط برای محیط محلی است.
+- **`login`:**
+  - مرورگر باز می‌شود. با **حساب Supabase ریکالینو** وارد شوید، نه حساب قدیمی.
+  - اگر مرورگر یک کد تأیید نشان داد، آن را در ترمینال بنویسید و Enter بزنید.
+- **`link`:**
+  - رمز دیتابیس را می‌پرسد. هنگام تایپ چیزی نمایش داده نمی‌شود؛ عادی است.
+  - رمز در داشبورد Supabase، در **Project Settings ← Database** است. اگر آن را ندارید، **Reset database password** را بزنید و رمز تازه را به کار ببرید. هنوز چیزی به این دیتابیس وصل نیست، پس reset کردن مشکلی ندارد.
+  - اگر هشداری درباره تفاوت تنظیمات محلی و پروژه دیدید، نادیده بگیرید. دستور `config push` را **اجرا نکنید**.
+- **`db push --dry-run`:** فقط فهرست را نشان می‌دهد و چیزی را تغییر نمی‌دهد. باید دقیقاً این پنج migration را ببینید:
+  - `20260930175238_baseline.sql`
+  - `20261001100505_plt_core.sql`
+  - `20261001200000_acc_core.sql`
+  - `20261002094004_plt_jobs.sql`
+  - `20261002094723_plt_storage.sql`
+
+  اگر فهرست چیز دیگری بود، ادامه ندهید و خبرم کنید.
+- **`db push`:**
+  - همان فهرست را نشان می‌دهد و می‌پرسد: `Do you want to push these migrations to the remote database? [Y/n]`
+  - `Y` را بنویسید و Enter بزنید.
+  - پایانش پیامی مثل `Finished supabase db push.` است.
+- **`--include-seed` را به کار نبرید.** seed فقط برای محیط محلی است.
 
 ### ۲. رمز نقش اپ
 
