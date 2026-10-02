@@ -18,19 +18,12 @@ import {
   sha256Hex,
   toErrorResponse,
 } from "@recalino/core/plt";
+import { authSessions } from "./auth/learner";
 import { getDatabase } from "./db";
 import type { RouteMeta } from "./routes";
+import type { SessionProvider } from "./session";
 
-export interface Session {
-  userId: string;
-}
-
-export interface SessionProvider {
-  getSession(request: Request): Promise<Session | null>;
-}
-
-/** Until sign-in arrives with the ACC module (M2), nobody has a session (FR-PLT-001). */
-export const noSessions: SessionProvider = { getSession: async () => null };
+export { noSessions, type Session, type SessionProvider } from "./session";
 
 export interface RequestContext {
   requestId: string;
@@ -40,7 +33,7 @@ export interface RequestContext {
 
 export interface HandlerArgs {
   request: Request;
-  /** Parsed JSON body; handlers validate it with zod. */
+  /** Parsed JSON or form body; handlers validate it with zod. */
   input: unknown;
   ctx: RequestContext;
   /** The idempotency transaction on idempotent routes, otherwise the shared pool. */
@@ -49,7 +42,9 @@ export interface HandlerArgs {
 
 export interface ApiResult {
   status?: number;
-  body: unknown;
+  body?: unknown;
+  /** A path in the app to send the browser to (303), for form posts and the sign-in flow. */
+  redirect?: string;
 }
 
 export type Handler = (args: HandlerArgs) => Promise<ApiResult>;
@@ -72,7 +67,7 @@ function once<T>(read: () => T): () => T {
 }
 
 const defaultDeps: RouteDeps = {
-  sessions: noSessions,
+  sessions: authSessions(),
   database: getDatabase,
   log: createLogger(),
   settings: once(() => readPltSettings()),
@@ -103,19 +98,28 @@ export function defineRoute(
     let response: Response;
 
     try {
-      userId = (await deps.sessions.getSession(request))?.userId ?? null;
-      if (meta.access === "learner" && userId === null) throw errors.unauthenticated();
+      if (BODY_METHODS.has(request.method)) assertSameOrigin(request);
+      // Public routes never need the learner, so they skip the round trip to Auth.
+      if (meta.access === "learner") {
+        userId = (await deps.sessions.getSession(request))?.userId ?? null;
+        if (userId === null) throw errors.unauthenticated();
+      }
       const ctx: RequestContext = { requestId, route: meta.id, userId };
 
       if (meta.rateLimit) await enforceRateLimit(meta.rateLimit, request, ctx, deps);
 
-      const input = BODY_METHODS.has(request.method) ? await readJson(request) : undefined;
+      const input = BODY_METHODS.has(request.method) ? await readBody(request) : undefined;
       const result = await run(meta, handler, { request, input, ctx }, deps);
 
-      status = result.status;
-      const headers: Record<string, string> = { "x-request-id": requestId };
-      if (result.replayed) headers["idempotent-replayed"] = "true";
-      response = Response.json(result.body, { status, headers });
+      if (result.redirect !== undefined) {
+        status = 303;
+        response = redirectTo(result.redirect, request, requestId);
+      } else {
+        status = result.status;
+        const headers: Record<string, string> = { "x-request-id": requestId };
+        if (result.replayed) headers["idempotent-replayed"] = "true";
+        response = Response.json(result.body ?? null, { status, headers });
+      }
     } catch (error) {
       const failure = toErrorResponse(error, requestId);
       status = failure.status;
@@ -131,10 +135,16 @@ export function defineRoute(
           pg_code: postgresCode(error),
         });
       }
-      response = Response.json(failure.body, {
-        status,
-        headers: { ...failure.headers, "x-request-id": requestId },
-      });
+      if (meta.errorRedirect !== undefined) {
+        // Form posts and the sign-in flow show the failure on a page, not as JSON.
+        status = 303;
+        response = redirectTo(meta.errorRedirect, request, requestId);
+      } else {
+        response = Response.json(failure.body, {
+          status,
+          headers: { ...failure.headers, "x-request-id": requestId },
+        });
+      }
     }
 
     deps.log(status >= 500 ? "error" : "info", "request", {
@@ -155,7 +165,7 @@ async function run(
   handler: Handler,
   args: Omit<HandlerArgs, "db">,
   deps: RouteDeps,
-): Promise<{ status: number; body: unknown; replayed?: boolean }> {
+): Promise<{ status: number; body: unknown; redirect?: string; replayed?: boolean }> {
   if (meta.idempotency !== "required") {
     const result = await handler({
       ...args,
@@ -163,7 +173,7 @@ async function run(
         return deps.database();
       },
     });
-    return { status: result.status ?? 200, body: result.body };
+    return { status: result.status ?? 200, body: result.body, redirect: result.redirect };
   }
 
   const userId = args.ctx.userId;
@@ -232,6 +242,43 @@ async function recordSignal(
       error_name: error instanceof Error ? error.name : typeof error,
     });
   }
+}
+
+/**
+ * Cookie sessions make cross-site form posts dangerous: a state-changing request must come from
+ * this app. Browsers send Sec-Fetch-Site or Origin; clients that send neither (tests, curl)
+ * carry no browser cookies to abuse.
+ */
+function assertSameOrigin(request: Request): void {
+  const site = request.headers.get("sec-fetch-site");
+  if (site !== null) {
+    if (site === "same-origin" || site === "none") return;
+    throw errors.crossSite();
+  }
+  const origin = request.headers.get("origin");
+  if (origin === null) return;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  try {
+    if (new URL(origin).host === host) return;
+  } catch {
+    // An unreadable Origin is treated as foreign.
+  }
+  throw errors.crossSite();
+}
+
+function redirectTo(path: string, request: Request, requestId: string): Response {
+  return new Response(null, {
+    status: 303,
+    headers: { location: new URL(path, request.url).toString(), "x-request-id": requestId },
+  });
+}
+
+async function readBody(request: Request): Promise<unknown> {
+  const type = request.headers.get("content-type") ?? "";
+  if (type.startsWith("application/x-www-form-urlencoded")) {
+    return Object.fromEntries(new URLSearchParams(await request.text()));
+  }
+  return readJson(request);
 }
 
 async function readJson(request: Request): Promise<unknown> {

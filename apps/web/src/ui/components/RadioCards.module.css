@@ -80,3 +80,13 @@
   outline: 2px solid var(--rc-focus);
   outline-offset: 2px;
 }
+
+/* A one-line choice (frame A2.3) reads like plain text, at the frame's 17px. */
+.card:not(:has(.description)):not(:has(.input:checked)) .title {
+  font-weight: 400;
+  font-size: 17px;
+}
+
+.card:not(:has(.description)):has(.input:checked) .title {
+  font-size: 17px;
+}

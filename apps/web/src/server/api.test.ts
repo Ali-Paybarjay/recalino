@@ -1,7 +1,7 @@
 import { errorEnvelopeSchema } from "@recalino/core/plt";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { defineRoute, type Handler, type RouteDeps, type SessionProvider } from "./api";
+import { defineRoute, type Handler, noSessions, type RouteDeps, type SessionProvider } from "./api";
 import type { RouteMeta } from "./routes";
 
 const CANARY = "CANARY-class-text-7f3a";
@@ -12,7 +12,7 @@ function testDeps(lines: string[], sessions?: SessionProvider): Partial<RouteDep
     database: () => {
       throw new Error("database must not be used in this test");
     },
-    ...(sessions ? { sessions } : {}),
+    sessions: sessions ?? noSessions,
   };
 }
 

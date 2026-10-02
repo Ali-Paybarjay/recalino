@@ -1,0 +1,89 @@
+/* Frames A2-1 and A2-1b. */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+/* Focus sits on the whole field, like the text fields (Design System, text field "Focus"). */
+.search:focus-within {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 0;
+}
+
+.searchIcon {
+  flex: none;
+  color: var(--rc-text-muted);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--rc-text-md);
+}
+
+/* The field around it shows the focus ring. */
+.input:focus-visible {
+  outline: none;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(55dvh, 520px);
+  overflow-y: auto;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--rc-text-md);
+  cursor: pointer;
+}
+
+.option[data-active] {
+  background: var(--rc-surface-2);
+}
+
+.option[aria-selected="true"] {
+  background: var(--rc-primary-tint);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.label {
+  flex: 1;
+}
+
+.check {
+  flex: none;
+  color: var(--color-accent);
+}
+
+.empty {
+  margin: 0;
+  padding: 12px;
+  font-size: 15px;
+  color: var(--rc-text-muted);
+}

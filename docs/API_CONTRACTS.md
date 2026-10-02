@@ -31,6 +31,7 @@
 | `idempotency_mismatch` | 422 | همان کلید idempotency با بدنه یا مسیر دیگر |
 | `rate_limited` | 429 | عبور از کنترل نرخ؛ همراه `Retry-After` |
 | `quota_insufficient` | 403 | سهمیه کافی نیست (QUOTA) |
+| `cross_site` | 403 | درخواست تغییردهنده از سایت دیگری آمده است؛ نشست با cookie است و این مرز جلوی جعل درخواست را می‌گیرد (M3) |
 | `payload_too_large` | 413 | فایل یا بدنه بزرگ‌تر از سقف |
 | `unsupported_media` | 415 | نوع فایل پشتیبانی نمی‌شود |
 | `internal` | 500 | خطای پیش‌بینی‌نشده |

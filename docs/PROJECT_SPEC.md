@@ -53,6 +53,7 @@ pnpm db:start              # supabase start: Postgres + Auth محلی
 pnpm db:reset              # همه migrationها + seed مصنوعی روی دیتابیس محلی
 pnpm db:new <name>         # supabase migration new <name>؛ در shell غیرتعاملی: pnpm db:new <name> < /dev/null
 pnpm db:types              # تولید نوع‌های Kysely از دیتابیس محلی
+pnpm db:env                # نوشتن اتصال و کلیدهای Supabase محلی در apps/web/.env.local
 pnpm db:stop               # supabase stop
 
 # توسعه
@@ -65,6 +66,7 @@ pnpm format                # biome check --write .
 pnpm typecheck             # tsc --noEmit در همه بسته‌ها
 pnpm check:boundaries      # dependency-cruiser: جهت وابستگی ماژول‌ها
 pnpm check:client-bundle   # پس از build: نبود اسرار در خروجی قابل دریافت مرورگر (FR-PLT-009)
+pnpm legal:build           # ساخت متن‌های حقوقی اپ از docs/legal؛ آزمونی ناهمخوانی را می‌گیرد
 
 # آزمون
 pnpm test:unit             # vitest run --project unit      (بدون دیتابیس)

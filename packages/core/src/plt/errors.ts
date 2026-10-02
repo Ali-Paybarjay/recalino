@@ -9,6 +9,7 @@ export const ERROR_STATUS = {
   idempotency_mismatch: 422,
   rate_limited: 429,
   quota_insufficient: 403,
+  cross_site: 403,
   payload_too_large: 413,
   unsupported_media: 415,
   internal: 500,
@@ -27,13 +28,14 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   idempotency_mismatch: "This request is different from an earlier one with the same key.",
   rate_limited: "Too many tries. Please wait and try again.",
   quota_insufficient: "You don't have enough allowance for this.",
+  cross_site: "This request didn't come from Recalino.",
   payload_too_large: "This file is too large.",
   unsupported_media: "This type of file isn't supported.",
   internal: "Something went wrong. Please try again.",
 };
 
 /** Security events the request layer records for an error; never sent to the client. */
-export type SecuritySignal = "ownership_denied" | "job_tampered";
+export type SecuritySignal = "ownership_denied" | "job_tampered" | "auth_failures";
 
 export interface AppErrorOptions {
   details?: Record<string, unknown>;
@@ -64,6 +66,10 @@ export type FieldProblems = Record<string, string[]>;
 
 export const errors = {
   unauthenticated: () => new AppError("unauthenticated"),
+  /** A sign-in that failed at Google or Supabase, e.g. a forged or replayed code (FR-ACC-002). */
+  signInFailed: () => new AppError("unauthenticated", { securitySignal: "auth_failures" }),
+  /** A state-changing request sent from another site (cookie sessions, M3). */
+  crossSite: () => new AppError("cross_site"),
   notFound: () => new AppError("not_found"),
   /** Another user's resource: answered exactly like a missing one, but recorded (FR-PLT-002). */
   ownershipDenied: () => new AppError("not_found", { securitySignal: "ownership_denied" }),

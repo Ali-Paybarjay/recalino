@@ -37,8 +37,8 @@
   font-weight: 500;
 }
 
-/* The action lines up with the text (Design System, "New sources" banner). */
-.bannerAction > :global(.btn) {
+/* A text-style action lines up with the text (Design System, "New sources" banner). */
+.bannerAction > :global(.btn-ghost) {
   padding-inline: 0;
 }
 

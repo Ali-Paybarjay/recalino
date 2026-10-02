@@ -44,6 +44,7 @@
 6. **اعلان منابع (A3):** بخش «Where your files are kept» با متن «Your photos and other files are kept privately on our server until you delete them.» اضافه می‌شود، چون FR-SRC-015 توضیح نحوه نگهداری فایل‌ها را هم لازم می‌داند. پیشنهاد پیش‌نویس حقوقی ۰٫۱ ([consents.md](../legal/consents.md))، 2026-10-01.
 7. **متن skip link:** «Skip to content». `accessibility.md` در صفحه Today یک skip link می‌خواهد، ولی متنش در `copy.md` و قاب‌ها نیست (M2، 2026-10-01).
 8. **دکمه «Sign out»:** طرح جایی برای خروج ندارد، ولی FR-ACC-002 آن را لازم دارد. دکمه secondary در پایین Settings (G3) قرار می‌گیرد (مصوب مالک محصول، 2026-10-01).
+9. **کشور در کارت منطقه زمانی (A2.6):** نام کشور، مثل «London (UK)»، از داده خود مرورگر می‌آید، چون اپ داده منطقه زمانی همراه ندارد (D31 قاعده ۸). Firefox این داده را ندارد؛ آنجا فقط نام شهر نمایش داده می‌شود (M3، 2026-10-01).
 
 ## قواعد اجرای طرح (خلاصه HANDOFF بخش ۰ تا ۵)
 
