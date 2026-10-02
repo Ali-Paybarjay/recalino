@@ -9,6 +9,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: { baseURL, trace: "retain-on-failure" },
+  // The dev server compiles each page on first visit, which can take several seconds.
+  expect: { timeout: process.env.CI ? 5_000 : 15_000 },
   // M0 smoke test only. The browser matrix of FR-PLT-010 is added after SPIKE-01.
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

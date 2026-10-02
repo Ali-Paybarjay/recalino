@@ -25,6 +25,60 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AccConsent {
+  accepted_at: Generated<Timestamp>;
+  document: string;
+  id: Generated<Int8>;
+  user_id: string;
+  version: string;
+}
+
+export interface AccLearningProfile {
+  completed_at: Timestamp | null;
+  explanation_language: string | null;
+  first_language: string | null;
+  goal: string | null;
+  learning_language: Generated<string>;
+  level: string | null;
+  setup_step: Generated<number>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  version: Generated<number>;
+}
+
+export interface AccLearningProfileHistory {
+  created_at: Generated<Timestamp>;
+  snapshot: Json;
+  user_id: string;
+  version: number;
+}
+
+export interface AccPreference {
+  key: string;
+  origin: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  value: Json;
+}
+
+export interface AccSignupIntent {
+  adult_declared_at: Timestamp;
+  consumed_at: Timestamp | null;
+  consumed_by: string | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  id: string;
+  privacy_version: string;
+  terms_version: string;
+}
+
+export interface AccUserAccount {
+  adult_declared_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  id: string;
+  timezone: string | null;
+}
+
 export interface PltAuditEvent {
   action: string;
   actor_id: string;
@@ -64,6 +118,12 @@ export interface PltSecurityEvent {
 }
 
 export interface DB {
+  "acc.consent": AccConsent;
+  "acc.learning_profile": AccLearningProfile;
+  "acc.learning_profile_history": AccLearningProfileHistory;
+  "acc.preference": AccPreference;
+  "acc.signup_intent": AccSignupIntent;
+  "acc.user_account": AccUserAccount;
   "plt.audit_event": PltAuditEvent;
   "plt.idempotency_key": PltIdempotencyKey;
   "plt.rate_limit_bucket": PltRateLimitBucket;

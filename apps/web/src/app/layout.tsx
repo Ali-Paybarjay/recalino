@@ -10,6 +10,14 @@ import { THEME_COLORS, THEME_SCRIPT } from "../ui/theme";
 export const metadata: Metadata = {
   title: strings.brand.name,
   description: strings.brand.tagline,
+  // Design round 2, section 5c.
+  icons: {
+    icon: [
+      { url: "/icons/favicon.svg", type: "image/svg+xml" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

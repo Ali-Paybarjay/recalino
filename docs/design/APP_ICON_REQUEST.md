@@ -1,5 +1,7 @@
 # Recalino — App icon request (design round 2)
 
+> **Delivered 2026-10-01:** [handoff-r2-icons/](handoff-r2-icons/HANDOFF.md), section 5c. Used as delivered.
+
 Paste the text below into the same Claude Design project that made round 1.
 
 ---

@@ -66,5 +66,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @recalino/web exec playwright install --with-deps chromium
+      # Sign-in, setup and Settings need local Auth and Postgres (M3).
+      - name: Start local Supabase (Postgres and Auth only)
+        run: pnpm db:start
+      - name: Write the local server configuration
+        run: pnpm db:env
       - run: pnpm build
       - run: pnpm test:e2e

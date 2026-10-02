@@ -8,6 +8,7 @@ const handoff = resolve(import.meta.dirname, "../../../../docs/design/handoff-r1
 // Strings that are in neither copy.md nor a frame, each approved in HANDOFF_R1_REVIEW.md.
 const APPROVED_DEVIATIONS: Record<string, string> = {
   "Skip to content": "HANDOFF_R1_REVIEW.md, item 7: accessibility.md asks for a skip link",
+  "Sign out": "HANDOFF_R1_REVIEW.md, item 8: FR-ACC-002 needs sign-out; approved 2026-10-01",
 };
 
 function decodeEntities(text: string): string {

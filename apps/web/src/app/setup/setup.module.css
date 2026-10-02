@@ -1,0 +1,282 @@
+/* A2 — frames A2-1 to A2-7. */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+}
+
+.bars {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.bar,
+.barOn {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--rc-surface-2);
+}
+
+.barOn {
+  background: var(--color-accent);
+}
+
+.count {
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--rc-text-muted);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px 24px;
+}
+
+.stepTight {
+  gap: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.titleSpaced {
+  margin-top: 12px;
+}
+
+.subtitle {
+  margin: 16px 0 0;
+  font-size: var(--rc-text-lg);
+}
+
+.help {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--rc-text-muted);
+}
+
+.grow {
+  flex: 1;
+}
+
+.small {
+  font-size: 13px;
+  color: var(--rc-text-muted);
+}
+
+.muted {
+  color: var(--rc-text-muted);
+}
+
+.accent {
+  flex: none;
+  color: var(--color-accent);
+}
+
+.center {
+  margin: 0;
+  text-align: center;
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
+
+/* "Experimental" in the language list (frame A2-1). */
+.experimental {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--rc-warning-border);
+  border-radius: 5px;
+  background: var(--rc-warning-tint);
+  color: var(--rc-warning);
+  font-size: var(--rc-text-xs);
+}
+
+/* A2.2: the fixed learning language. */
+.locked {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.lockedText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A2.4–5: single-choice tiles. */
+.levels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.goals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--color-divider);
+  cursor: pointer;
+}
+
+.choice:has(.tileInput:checked) {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  background: var(--rc-primary-tint);
+  color: var(--rc-primary-text);
+}
+
+.choice:has(.tileInput:focus-visible) {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 2px;
+}
+
+.square,
+.wide {
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  font-size: var(--rc-text-md);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.chip {
+  min-height: var(--rc-target);
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+}
+
+.pair {
+  display: flex;
+  gap: 10px;
+}
+
+.skip {
+  flex: 1;
+}
+
+.go {
+  flex: 2;
+}
+
+/* A2.6: the detected time zone. */
+.zone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.zoneText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.zoneCity {
+  font-size: var(--rc-text-read);
+}
+
+/* A2.7: recording consent with the fixed bar at the bottom. */
+.consent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.consentHead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.point {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 14px;
+}
+
+.pointIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--rc-primary-tint);
+  color: var(--color-accent);
+}
+
+.pointText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pointTitle {
+  margin: 0;
+  font-size: var(--rc-text-read);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--rc-text-sm);
+  line-height: 1.5;
+  color: var(--rc-text-muted);
+}
+
+.consentBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px max(30px, env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  box-shadow: 0 -1px 0 var(--color-divider);
+}

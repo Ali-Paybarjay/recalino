@@ -47,11 +47,11 @@
 | PRD-CORE-04 | ۵. اصول طراحی و شناسه الزامات | SRS, QUOTA, PLT | PROC | FR-QUOTA-001, FR-QUOTA-005, FR-QUOTA-010 | — |
 | PRD-CORE-05 | ۵. اصول طراحی و شناسه الزامات | NOTE, CARD | PROC | — | — |
 | PRD-CORE-06 | ۵. اصول طراحی و شناسه الزامات | همه ماژول‌ها | قاعده دامنه؛ آزمون AC-20 | — | — |
-| PRD-ONB-01 | ۶. پروفایل، زبان و ورود اولیه | ACC | PLT | FR-PLT-011, FR-ACC-003 | `e2e/text.spec.ts`, `ui/direction.test.ts` (FR-PLT-011) |
-| PRD-ONB-02 | ۶. پروفایل، زبان و ورود اولیه | ACC | — | FR-ACC-003 | — |
-| PRD-ONB-03 | ۶. پروفایل، زبان و ورود اولیه | ACC | EVAL | FR-ACC-003 | — |
-| PRD-ONB-04 | ۶. پروفایل، زبان و ورود اولیه | ACC | PERS | FR-ACC-003 | — |
-| PRD-ONB-05 | ۶. پروفایل، زبان و ورود اولیه | ACC | PROC, QUOTA | FR-ACC-004, FR-ACC-005 | — |
+| PRD-ONB-01 | ۶. پروفایل، زبان و ورود اولیه | ACC | PLT | FR-PLT-011, FR-ACC-003 | `e2e/text.spec.ts`, `ui/direction.test.ts` (FR-PLT-011); core `acc/profile.int.test.ts`, `e2e/setup.spec.ts` (FR-ACC-003) |
+| PRD-ONB-02 | ۶. پروفایل، زبان و ورود اولیه | ACC | — | FR-ACC-003 | core `acc/acc.test.ts`, `acc/profile.int.test.ts`; web `app/setup/languages.test.ts`, `e2e/setup.spec.ts` |
+| PRD-ONB-03 | ۶. پروفایل، زبان و ورود اولیه | ACC | EVAL | FR-ACC-003 | core `acc/acc.test.ts` (سطح Experimental)؛ `e2e/setup.spec.ts`. کیفیت واقعی زبان‌ها با EVAL |
+| PRD-ONB-04 | ۶. پروفایل، زبان و ورود اولیه | ACC | PERS | FR-ACC-003 | core `acc/profile.int.test.ts`؛ `e2e/setup.spec.ts`. ترجیح‌های آموخته‌شده با PERS |
+| PRD-ONB-05 | ۶. پروفایل، زبان و ورود اولیه | ACC | PROC, QUOTA | FR-ACC-004, FR-ACC-005 | core `acc/profile.int.test.ts` (نسخه‌ها)؛ web `cross-account/profile.int.test.ts`, `e2e/account.spec.ts` |
 | PRD-PLT-01 | ۸.۱. پلتفرم اولیه | PLT | REC | FR-PLT-010 | `e2e/pwa.spec.ts` (بخشی: manifest) |
 | PRD-PLT-02 | ۸.۱. پلتفرم اولیه | REC | SRC | FR-SRC-007 (بخشی) | — |
 | PRD-SRC-01 | ۸.۲. منابع قابل قبول | SRC | PROC | FR-SRC-002, FR-SRC-003, FR-SRC-005, FR-SRC-007 | — |
@@ -117,7 +117,7 @@
 | PRD-SRS-06 | ۱۶.۲. صف روزانه | SRS | — | — | — |
 | PRD-SRS-07 | ۱۶.۲. صف روزانه | SRS | — | — | — |
 | PRD-SRS-08 | ۱۶.۲. صف روزانه | SRS | CARD | — | — |
-| PRD-SRS-09 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | ACC | FR-PLT-013, FR-ACC-006 (بخشی) | بخشی (FR-PLT-013): core plt/time.test.ts |
+| PRD-SRS-09 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | ACC | FR-PLT-013, FR-ACC-006 (بخشی) | بخشی (FR-PLT-013): core plt/time.test.ts؛ (FR-ACC-006): core `acc/profile.int.test.ts`, `e2e/setup.spec.ts` |
 | PRD-SRS-10 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | PLT | — | — |
 | PRD-SRS-11 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | PLT | — | — |
 | PRD-SRS-12 | ۱۶.۳. تاریخ، همگام‌سازی و آفلاین | SRS | PERS | — | — |
@@ -143,7 +143,7 @@
 | PRD-PRIV-01 | ۲۰.۱. ضبط و داده اشخاص | REC | SRC, ACC | FR-SRC-015 (بخشی) | — |
 | PRD-PRIV-02 | ۲۰.۱. ضبط و داده اشخاص | G11 (غیرکدی) | AIP | — | — |
 | PRD-PRIV-03 | ۲۰.۱. ضبط و داده اشخاص | HTML, ANKI | PROC, NOTE | — | — |
-| PRD-PRIV-04 | ۲۰.۱. ضبط و داده اشخاص | ACC | G11 | FR-ACC-001 | — |
+| PRD-PRIV-04 | ۲۰.۱. ضبط و داده اشخاص | ACC | G11 | FR-ACC-001 | core `acc/signup.int.test.ts`; web `auth/flow.int.test.ts`, `e2e/signin.spec.ts` |
 | PRD-PRIV-05 | ۲۰.۲. استفاده از داده در AI | AIP | G10 | — | — |
 | PRD-PRIV-06 | ۲۰.۲. استفاده از داده در AI | PLT | OPS | FR-PLT-007 | core plt/log.test.ts; web server/api.test.ts (canary) |
 | PRD-DEL-01 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | — | — |
@@ -151,12 +151,12 @@
 | PRD-DEL-03 | ۲۰.۳. نگهداری و حذف | PRIV | همه ماژول‌ها | FR-SRC-011, FR-SRC-013, FR-PLT-014 (بخشی) | — |
 | PRD-DEL-04 | ۲۰.۳. نگهداری و حذف | PRIV | OPS | — | — |
 | PRD-DEL-05 | ۲۰.۳. نگهداری و حذف | PRIV | HTML, ANKI, REC | — | — |
-| PRD-SEC-01 | ۲۰.۴. امنیت ورودی و مدل | PLT | همه ماژول‌ها | FR-PLT-001, FR-PLT-002, FR-PLT-008 | بخشی (FR-PLT-002): core plt/access.int.test.ts, plt/settings.test.ts; web server/api.int.test.ts, server/route-coverage.test.ts |
+| PRD-SEC-01 | ۲۰.۴. امنیت ورودی و مدل | PLT | همه ماژول‌ها | FR-PLT-001, FR-PLT-002, FR-PLT-008 | بخشی (FR-PLT-002): core plt/access.int.test.ts, plt/settings.test.ts; web server/api.int.test.ts, server/route-coverage.test.ts؛ (FR-PLT-001): web `auth/flow.int.test.ts`, `auth/return-path.test.ts`, `cross-account/*.int.test.ts`, `e2e/account.spec.ts` (رد توکن پس از خروج) |
 | PRD-SEC-02 | ۲۰.۴. امنیت ورودی و مدل | SRC | PLT | FR-SRC-002, FR-SRC-004, FR-SRC-005, FR-SRC-006 | — |
 | PRD-SEC-03 | ۲۰.۴. امنیت ورودی و مدل | PROC | LKM, AIP | FR-SRC-006 (بخشی) | — |
 | PRD-SEC-04 | ۲۰.۴. امنیت ورودی و مدل | PLT | OPS | FR-PLT-006, FR-PLT-007, FR-PLT-009 | core plt/rate-limit.int.test.ts, plt/log.test.ts; web server/api.int.test.ts; tools/client-bundle/scan.test.ts |
 | PRD-RIGHTS-01 | ۲۰.۵. حقوق منابع | G11 (غیرکدی) | PRIV | — | — |
-| PRD-RIGHTS-02 | ۲۰.۵. حقوق منابع | PRIV | SRC, HTML, ANKI | FR-ACC-001, FR-ACC-007 (بخشی), FR-SRC-015 (بخشی) | — |
+| PRD-RIGHTS-02 | ۲۰.۵. حقوق منابع | PRIV | SRC, HTML, ANKI | FR-ACC-001, FR-ACC-007 (بخشی), FR-SRC-015 (بخشی) | بخشی (FR-ACC-001، FR-ACC-007): core `acc/signup.int.test.ts`, `acc/profile.int.test.ts`; `e2e/account.spec.ts` |
 | PRD-ARCH-01 | ۲۱.۲. تصمیم‌های معماری | ADR-0001 | PLT | — | — |
 | PRD-ARCH-02 | ۲۱.۲. تصمیم‌های معماری | ADR-0001 | PLT, PROC | FR-PLT-005 | — |
 | PRD-ARCH-03 | ۲۱.۲. تصمیم‌های معماری | AIP | G03 | — | — |
@@ -214,10 +214,10 @@
 
 | شناسه | موضوع در PRD | مالک | مرتبط | FR | تست |
 |---|---|---|---|---|---|
-| D01 | مخاطب | ACC | — | FR-ACC-001 | — |
+| D01 | مخاطب | ACC | — | FR-ACC-001 | web `auth/flow.int.test.ts`, `e2e/signin.spec.ts` |
 | D02 | حوزه | ADR-0001 | ACC | — | — |
-| D03 | زبان‌ها (دامنه با D31 گسترش یافت) | ACC | LKM | FR-ACC-003 | — |
-| D04 | توضیحات دوزبانه (با D31 اصلاح شد) | LKM | NOTE | FR-ACC-005 (بخشی) | — |
+| D03 | زبان‌ها (دامنه با D31 گسترش یافت) | ACC | LKM | FR-ACC-003 | core `acc/acc.test.ts`, `acc/profile.int.test.ts` |
+| D04 | توضیحات دوزبانه (با D31 اصلاح شد) | LKM | NOTE | FR-ACC-005 (بخشی) | بخشی (FR-ACC-005): core `acc/profile.int.test.ts` |
 | D05 | ورود صدا | REC, SRC | — | FR-SRC-007 (بخشی؛ ضبط در REC) | — |
 | D06 | گویندگان | PROC | LKM | — | — |
 | D07 | منشأ محتوا | LKM | NOTE, CARD | — | — |
@@ -235,9 +235,9 @@
 | D19 | کسب‌وکار | ADR-0001 | PLT | — | — |
 | D20 | مدرس | همه ماژول‌ها | خارج از دامنه؛ AC-20 | — | — |
 | D21 | اشتراک‌گذاری | HTML, ANKI | خارج از دامنه برای اشتراک داخلی | — | — |
-| D22 | سن | ACC | PRIV | FR-ACC-001 | — |
-| D23 | هدف یادگیری | ACC | — | FR-ACC-003 | — |
-| D24 | سطح | ACC, PERS | — | FR-ACC-003 (بخشی) | — |
+| D22 | سن | ACC | PRIV | FR-ACC-001 | core `acc/signup.int.test.ts`; web `auth/flow.int.test.ts`, `e2e/signin.spec.ts` |
+| D23 | هدف یادگیری | ACC | — | FR-ACC-003 | core `acc/profile.int.test.ts`, `e2e/setup.spec.ts` |
+| D24 | سطح | ACC, PERS | — | FR-ACC-003 (بخشی) | core `acc/profile.int.test.ts`, `e2e/setup.spec.ts` |
 | D25 | ارزش محوری | NOTE, CARD, SRS | OPS (معیار ۲۵.۱) | — | — |
 | D26 | کتاب‌خانه | همه ماژول‌ها | خارج از دامنه؛ آمادگی در SRC و LKM | FR-SRC-001 (بخشی) | — |
 | D27 | نام محصول | CLAUDE.md | — | — | — |
@@ -250,13 +250,13 @@
 | G02 | Stack و Hosting | ADR-0001 | — | — | — |
 | G03 | ارائه‌دهنده AI | AIP | EVAL | — | — |
 | G04 | ماتریس ضبط | REC | PLT | FR-PLT-010 (بخشی) | — |
-| G05 | زبان‌های اول (رویکرد با D31 بسته شد؛ ۱۰ زبان آزمون پایلوت در PILOT_SETUP) | ACC | EVAL | FR-ACC-003 (بخشی) | — |
+| G05 | زبان‌های اول (رویکرد با D31 بسته شد؛ ۱۰ زبان آزمون پایلوت در PILOT_SETUP) | ACC | EVAL | FR-ACC-003 (بخشی) | core `acc/acc.test.ts` (فهرست زبان‌ها و سطح) |
 | G06 | قرارداد ورودی (مقادیر اولیه، HEIC و PDF رمزدار مصوب 2026-10-01؛ سقف صوت پس از spikeها) | SRC | — | FR-SRC-002, FR-SRC-005 | — |
 | G07 | سیاست FSRS (مرز روز ساعت ۴ صبح مصوب 2026-10-01؛ بقیه باز) | SRS | — | FR-PLT-013 (بخشی) | بخشی (مرز روز قابل پیکربندی): core plt/time.test.ts |
 | G08 | مقدار پلن‌ها | QUOTA | — | FR-QUOTA-001, FR-QUOTA-002 (مقادیر باز) | — |
 | G09 | سیاست لغو/مصرف (مصوب 2026-10-01: فقط خروجی منتشرشده) | QUOTA | PROC | FR-QUOTA-006 | — |
 | G10 | نگهداری/حذف | PRIV | AIP | — | — |
-| G11 | حقوق و حریم خصوصی (پیش‌نویس متن‌ها ۰٫۱ و فهرست بازبینی در docs/legal، 2026-10-01) | PRIV | ACC | FR-ACC-001, FR-ACC-007, FR-SRC-015 (متن) | — |
+| G11 | حقوق و حریم خصوصی (پیش‌نویس متن‌ها ۰٫۱ و فهرست بازبینی در docs/legal، 2026-10-01) | PRIV | ACC | FR-ACC-001, FR-ACC-007, FR-SRC-015 (متن) | `tools/legal/build.test.ts` (همگامی متن‌های اپ با docs/legal)؛ core `acc/acc.test.ts` (نسخه‌ها) |
 | G12 | ظرفیت و SLA (اندازه پایلوت ۱۱ تا ۲۵ نفر) | OPS | PLT | — | — |
 
 ## تصمیم‌های محصول پس از PRD v0.3
@@ -267,6 +267,6 @@
 |---|---|---|---|---|---|---|
 | D28 | هزینه زیرساخت MVP | ADR-0001 | QUOTA, OPS | PRD-ARCH-05, NFR-12 | — | — |
 | D29 | صوت کلاس روی دستگاه؛ نسخه سرور موقت | REC, PRIV | SRC, PROC, NOTE, MEDIA, AIP | PRD-REC-07, PRD-REC-08, PRD-REC-09, PRD-DEL-01, PRD-DEL-02, PRD-NOTE-02, PRD-NOTE-05, PRD-MEDIA-04, PRD-COST-04, PRD-PROC-03, AC-05 | FR-SRC-007, FR-SRC-011, FR-SRC-012 (بخشی) | — |
-| D31 | زبان اول: همه زبان‌ها با دو سطح کیفیت؛ زبان توضیح دوگزینه‌ای | ACC | EVAL, LKM, PROC, NOTE, CARD, PLT | D03, D04, PRD-ONB-01, PRD-ONB-02, PRD-ONB-03, PRD-CARD-01, G05، PRD بخش ۲۴.۱ | FR-ACC-003, FR-ACC-005, FR-PLT-011 | `e2e/theme.spec.ts`, `e2e/budget.spec.ts` (قاعده ۸) |
+| D31 | زبان اول: همه زبان‌ها با دو سطح کیفیت؛ زبان توضیح دوگزینه‌ای | ACC | EVAL, LKM, PROC, NOTE, CARD, PLT | D03, D04, PRD-ONB-01, PRD-ONB-02, PRD-ONB-03, PRD-CARD-01, G05، PRD بخش ۲۴.۱ | FR-ACC-003, FR-ACC-005, FR-PLT-011 | `e2e/theme.spec.ts`, `e2e/budget.spec.ts` (قاعده ۸)؛ core `acc/acc.test.ts`; web `app/setup/languages.test.ts`, `e2e/setup.spec.ts` |
 | D32 | ضبط با یک لمس (Record first) | ORG | REC, ACC | PRD بخش ۷ (گام ۲)، D13 | FR-ORG-008 | — |
-| D33 | رضایت ضبط یک بار در تنظیم پروفایل، نسخه‌دار | ACC | REC, SRC | PRD-PRIV-01 | FR-ACC-003, FR-SRC-015 | — |
+| D33 | رضایت ضبط یک بار در تنظیم پروفایل، نسخه‌دار | ACC | REC, SRC | PRD-PRIV-01 | FR-ACC-003, FR-SRC-015 | core `acc/profile.int.test.ts`; web `cross-account/consents.int.test.ts`, `e2e/setup.spec.ts`, `e2e/account.spec.ts` |

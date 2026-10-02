@@ -4,7 +4,7 @@
 
 ## وضعیت و اسناد مرجع
 
-- وضعیت فعلی: M0 (راه‌اندازی مخزن) و M1 (هسته سمت سرور PLT) ساخته شده‌اند؛ گزارش‌ها در [docs/plans/](docs/plans/). FRهای PLT، ACC، QUOTA، ORG و SRC تأیید شده‌اند (2026-10-01). [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
+- وضعیت فعلی: M0 (راه‌اندازی مخزن)، M1 (هسته سمت سرور PLT)، M2 (پایه UI) و M3 (ورود با Google و پروفایل یادگیری) ساخته شده‌اند؛ گزارش‌ها در [docs/plans/](docs/plans/). FRهای PLT، ACC، QUOTA، ORG و SRC تأیید شده‌اند (2026-10-01). [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
 - سند مرجع محصول: [PRD_Recalino_FA_v0.3.md](PRD_Recalino_FA_v0.3.md). تصمیم‌های D01 تا D27 قطعی‌اند.
 - در حال تدوین:
   - [docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md](docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md): نقشه ماژول‌ها، قالب FR و فرض‌ها؛ FRهای هر ماژول در `docs/fr/<MODULE>.md`.
@@ -81,6 +81,8 @@
 - `pnpm install` — نصب (Node 24، pnpm 12)
 - `pnpm db:start` / `pnpm db:reset` / `pnpm db:stop` — Supabase محلی در Docker
 - `pnpm db:types` — تولید نوع‌های Kysely پس از هر migration
+- `pnpm db:env` — نوشتن اتصال و کلیدهای Supabase محلی در `apps/web/.env.local`
+- `pnpm legal:build` — ساخت متن‌های حقوقی اپ پس از هر تغییر در `docs/legal`
 - `pnpm verify` — lint، typecheck، مرز ماژول‌ها و همه آزمون‌ها؛ پیش از هر commit
 - `pnpm dev` — اپ روی `http://localhost:3000`
 - `pnpm test:e2e` — آزمون Playwright

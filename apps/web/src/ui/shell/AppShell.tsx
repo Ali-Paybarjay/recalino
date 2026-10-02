@@ -18,7 +18,8 @@ type AppShellProps = {
   /** The page's own section, or null on pages outside the four (aria-current="page"). */
   current: NavId | null;
   hrefs: Record<NavId, string>;
-  newClassHref: string;
+  /** "New class" in the sidebar; left out until classes can be created (ORG, M4). */
+  newClassHref?: string;
   /** Cards due today; Review shows it (Design System, bottom navigation). */
   reviewDue?: number;
   /** Bottom of the desktop sidebar, e.g. the allowance summary (frame B1-desktop). */
@@ -48,10 +49,12 @@ export function AppShell({
         <div className={styles.brand}>
           <Wordmark />
         </div>
-        <Link href={newClassHref} className={`btn btn-secondary ${styles.newClass}`}>
-          <Icon icon={Plus} />
-          <span className={styles.sidebarLabel}>{strings.nav.newClass}</span>
-        </Link>
+        {newClassHref ? (
+          <Link href={newClassHref} className={`btn btn-secondary ${styles.newClass}`}>
+            <Icon icon={Plus} />
+            <span className={styles.sidebarLabel}>{strings.nav.newClass}</span>
+          </Link>
+        ) : null}
         <nav className={styles.sidebarNav}>
           {NAV.map(({ id, icon }) => {
             const active = id === current;
@@ -105,10 +108,13 @@ export function AppShell({
   );
 }
 
-/** The placeholder wordmark of the design: "recalino" and a small accent square. */
-export function Wordmark() {
+/**
+ * The placeholder wordmark of the design: "recalino" and a small accent square. "large" is the
+ * welcome page (A1: 30px, 28px on desktop); the default is the sidebar (B1-desktop: 22px).
+ */
+export function Wordmark({ size = "default" }: { size?: "default" | "large" }) {
   return (
-    <span className={styles.wordmark}>
+    <span className={`${styles.wordmark} ${size === "large" ? styles.wordmarkLarge : ""}`}>
       <span className={styles.wordmarkText}>{strings.brand.wordmark}</span>
       <span className={styles.wordmarkDot} aria-hidden="true" />
     </span>

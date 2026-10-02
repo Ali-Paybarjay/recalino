@@ -10,7 +10,10 @@
     "includes": [
       "**",
       "!**/src/db/types.ts",
+      "!apps/web/src/legal/texts.generated.ts",
+      "!apps/web/public/icons",
       "!docs/design/handoff-r1",
+      "!docs/design/handoff-r2-icons",
       "!apps/web/src/ui/styles/vendor"
     ]
   },

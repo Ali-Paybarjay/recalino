@@ -1,0 +1,78 @@
+/* Signed-in pages: B1-empty, the empty states and G3 Settings. */
+.onSurface {
+  background: var(--color-surface);
+}
+
+.sheetHeading {
+  margin: 12px 0 0;
+  font-size: var(--rc-text-lg);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--rc-text-sm);
+  color: var(--rc-danger);
+}
+
+/* B1-empty: one sentence in reading size. */
+.emptyToday {
+  margin: 0;
+  font-size: var(--rc-text-lg);
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+/* G3 — sections and rows. */
+.sectionTitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rc-text-muted);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 14px;
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.row + .row {
+  border-top: 1px solid var(--color-divider);
+}
+
+.rowLabel {
+  flex: 1;
+}
+
+.rowValue {
+  color: var(--rc-text-muted);
+}
+
+.signOut {
+  margin-top: 8px;
+}
+
+/* Edit screens opened from Settings. */
+.editTop {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
