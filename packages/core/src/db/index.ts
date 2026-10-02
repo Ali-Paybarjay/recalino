@@ -1,7 +1,15 @@
 import { Kysely, PostgresDialect, type Transaction } from "kysely";
 import pg from "pg";
+import { connectionConfig } from "./connection";
 import type { DB } from "./types";
 
+export {
+  connectionConfig,
+  type DatabaseProbe,
+  type DatabaseTls,
+  databaseTls,
+  probeDatabase,
+} from "./connection";
 export type { DB } from "./types";
 export type Database = Kysely<DB>;
 export type Tx = Transaction<DB>;
@@ -11,8 +19,12 @@ export interface DatabaseOptions {
   maxConnections?: number;
 }
 
+/** A pool with the app's TLS settings (connection.ts); throws on a configuration TLS forbids. */
 export function createDatabase(connectionString: string, options: DatabaseOptions = {}): Database {
-  const pool = new pg.Pool({ connectionString, max: options.maxConnections ?? 3 });
+  const pool = new pg.Pool({
+    ...connectionConfig(connectionString),
+    max: options.maxConnections ?? 3,
+  });
   return new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
 }
 

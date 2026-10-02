@@ -24,7 +24,12 @@ export default defineConfig({
         test: {
           name: "integration",
           environment: "node",
-          include: ["packages/*/src/**/*.int.test.ts", "apps/*/src/**/*.int.test.ts"],
+          include: [
+            "packages/*/src/**/*.int.test.ts",
+            "apps/*/src/**/*.int.test.ts",
+            // Not tools/spikes: spike tests run on their own config, outside `pnpm verify`.
+            "tools/db-url/**/*.int.test.ts",
+          ],
           // Integration tests share one local database; run files one at a time.
           fileParallelism: false,
           testTimeout: 30_000,

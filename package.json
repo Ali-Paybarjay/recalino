@@ -20,6 +20,8 @@
     "check:boundaries": "depcruise apps packages tools --config .dependency-cruiser.cjs --output-type err",
     "db:types": "node tools/db-types.mjs",
     "db:env": "node tools/local-env.ts",
+    "db:url-check": "node tools/db-url/check.ts",
+    "db:new-password": "node tools/db-url/rotate.ts",
     "dev": "pnpm --filter @recalino/web dev",
     "build": "pnpm --filter @recalino/web build",
     "test:e2e": "pnpm --filter @recalino/web test:e2e",
