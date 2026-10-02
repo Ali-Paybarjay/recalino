@@ -53,6 +53,7 @@
 ## پیاده‌سازی رابط کاربری
 
 - طرح مرجع، تحویل Claude Design در [docs/design/handoff-r1/](docs/design/handoff-r1/) است. پیش از هر کار UI، [HANDOFF.md](docs/design/handoff-r1/HANDOFF.md) بخش ۰ و [بازبینی تحویل](docs/design/HANDOFF_R1_REVIEW.md) را بخوان.
+- آیکون اپ و favicon از تحویل دور ۲ در [docs/design/handoff-r2-icons/](docs/design/handoff-r2-icons/) می‌آیند و بدون تغییر در `apps/web/public/icons` کپی شده‌اند. `apps/web/src/ui/styles/vendor.test.ts` برابری‌شان را می‌سنجد.
 - طراحی تازه نکن:
   - token‌ها و لایه پایه CSS را بدون تغییر کپی کن.
   - رنگ، فونت، اندازه، فاصله، شعاع، سایه یا انیمیشنی بیرون از آن‌ها اضافه نکن.
