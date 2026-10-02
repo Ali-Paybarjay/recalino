@@ -55,24 +55,35 @@ pnpm exec supabase db push
 
 ### ۲. رمز نقش اپ
 
-1. در ترمینال یک رمز تصادفی بسازید:
+رمز هرگز در SQL Editor، چت یا فایل‌های مخزن نوشته نمی‌شود. فقط verifier آن به Supabase می‌رسد. گام‌های ۲ تا ۴ برای راه‌اندازی نخستین است. برای عوض کردن رمز روی پروژه‌ای که کار می‌کند، بخش «چرخش رمز دیتابیس» در [SECRETS.md](SECRETS.md) را دنبال کنید. آن بخش استقرار تازه را هم دارد.
+
+1. در ترمینال، در پوشه `D:\Claude Projects\Recalino`، اجرا کنید:
 
    ```bash
-   node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+   pnpm db:new-password
    ```
 
-2. در داشبورد Supabase، **SQL Editor** را باز کنید و این را اجرا کنید، با رمز گام قبل به‌جای `<رمز>`:
-
-   ```sql
-   alter role recalino_app with password '<رمز>';
-   ```
+   - رمز تصادفی می‌سازد و رشته اتصال کامل را در `%USERPROFILE%\.recalino\database-url.txt` می‌نویسد. رمز و رشته را نشان نمی‌دهد.
+   - فقط یک خط SQL چاپ می‌کند: `alter role recalino_app with password 'SCRAM-SHA-256$4096:…';`. این verifier رمز است، نه خود رمز.
+   - اگر آن فایل از قبل باشد، ابزار متوقف می‌شود. فایل قبلی را حذف کنید و دوباره اجرا کنید.
+2. در داشبورد Supabase، **SQL Editor** را باز کنید. همان یک خط را paste و اجرا کنید.
+   - Postgres verifier را همان‌طور نگه می‌دارد. پس در لاگ دیتابیس فقط verifier ثبت می‌شود، نه رمز.
 
 ### ۳. رشته اتصال
 
-1. در داشبورد Supabase، دکمه **Connect** را بزنید و بخش **Transaction pooler** را باز کنید. نشانی با پورت `6543` را کپی کنید.
-2. در آن نشانی دو چیز را عوض کنید:
-   - نام کاربر `postgres.twowhuzhvyuzjrpraikm` ← `recalino_app.twowhuzhvyuzjrpraikm`
-   - `[YOUR-PASSWORD]` ← رمز گام ۲
+رشته اتصال را ابزار گام ۲ ساخته است: نقش `recalino_app.twowhuzhvyuzjrpraikm` روی `aws-0-eu-west-2.pooler.supabase.com:6543`، یعنی Transaction pooler. **بدون فاصله یا خط تازه؛ پیش از ثبت در Vercel با این ابزار بیازمایید:**
+
+```bash
+pnpm db:url-check
+```
+
+- **نتیجه درست:**
+  - خط آخر `RESULT: OK` است.
+  - `TLS version` برابر `TLSv1.3` است.
+  - جلوی `certificate verified` نوشته شده `yes`.
+  - `current_user` برابر `"recalino_app"` است.
+- **خطای `28P01` درست پس از گام ۲:** pooler رمز قبلی را برای مدت کوتاهی نگه می‌دارد. یک دقیقه صبر کنید و فقط یک بار دیگر اجرا کنید. پشت سر هم تکرار نکنید، چون چند شکست پیاپی IP شما را تا ۲ دقیقه مسدود می‌کند.
+- **چه چیزی رد می‌شود:** هر فاصله، خط تازه یا نویسه کنترلی، در هر جای مقدار. پارامتر query هم رد می‌شود، مثل `?sslmode=...`. اپ هم همین‌ها را با خطای روشن رد می‌کند، چون TLS و سنجش گواهی را خودش تنظیم می‌کند.
 
 ### ۴. ثبت در Vercel
 
@@ -80,9 +91,11 @@ pnpm exec supabase db push
 
 | نام | مقدار |
 |---|---|
-| `DATABASE_URL` | رشته اتصال گام ۳ |
+| `DATABASE_URL` | محتوای فایل `%USERPROFILE%\.recalino\database-url.txt`. آن را در Notepad باز کنید، با Ctrl+A و Ctrl+C کپی کنید و بلافاصله تب را با Ctrl+W ببندید. |
 | `SUPABASE_PUBLISHABLE_KEY` | در Supabase: **Project Settings ← API Keys**، کلید publishable |
 | `SUPABASE_SECRET_KEY` | در همان صفحه، یک کلید secret تازه با نام `vercel` بسازید |
+
+پس از ثبت و استقرار تازه، فایل `database-url.txt` را حذف کنید. clipboard و تاریخچه آن (Win+V) را هم خالی کنید.
 
 ### ۵. خبر دادن
 

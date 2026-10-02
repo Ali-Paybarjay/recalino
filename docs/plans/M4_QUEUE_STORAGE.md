@@ -251,7 +251,7 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
     - `server/spike.ts`، `server/spike-jobs.ts` و `plt/spike.ts`
     - روش بازنده در `VercelBlobStore.compose`
     - `ffmpeg-static`، همراه `allowBuilds` و تنظیمات `next.config.ts`
-    - `pg-boss` و `@types/pg` در ریشه
+    - `pg-boss` در ریشه. `pg` و `@types/pg` در ریشه می‌مانند، چون آزمون یکپارچه `tools/db-url` آن‌ها را به کار می‌برد (T10).
   - **در Vercel:** حذف `RECALINO_SPIKE` و `SPIKE_TOKEN`، و باطل کردن bypass.
   - **روی کامپیوتر:**
     - حذف پوشه `.recalino-spike`، همراه `database-url.txt`.
