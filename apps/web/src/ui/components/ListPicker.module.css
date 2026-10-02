@@ -45,6 +45,18 @@
   outline: none;
 }
 
+/* The app's own clear button replaces the browser's. */
+.input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+/* Frame A2-1b: a muted ⊗ at the end of the field, inside its 48px height. */
+.clear {
+  flex: none;
+  margin-inline-end: -10px;
+  color: var(--rc-text-muted);
+}
+
 .list {
   display: flex;
   flex-direction: column;

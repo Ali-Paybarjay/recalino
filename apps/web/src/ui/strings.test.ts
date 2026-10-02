@@ -9,6 +9,8 @@ const handoff = resolve(import.meta.dirname, "../../../../docs/design/handoff-r1
 const APPROVED_DEVIATIONS: Record<string, string> = {
   "Skip to content": "HANDOFF_R1_REVIEW.md, item 7: accessibility.md asks for a skip link",
   "Sign out": "HANDOFF_R1_REVIEW.md, item 8: FR-ACC-002 needs sign-out; approved 2026-10-01",
+  "Clear search":
+    "HANDOFF_R1_REVIEW.md, item 10: names the clear button of frame A2-1b; approved 2026-10-02",
 };
 
 function decodeEntities(text: string): string {
