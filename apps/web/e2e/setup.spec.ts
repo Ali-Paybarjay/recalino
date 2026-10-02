@@ -79,6 +79,21 @@ test("a learner who leaves comes back to the same step, and Back keeps the answe
   );
 });
 
+test("the clear button empties the search and gives the field its focus back", async ({ page }) => {
+  await signInAsNewLearner(page);
+  await page.goto("/setup");
+  const search = page.getByRole("combobox", { name: "What is your first language?" });
+  const clear = page.getByRole("button", { name: "Clear search" });
+  await expect(clear).toBeHidden();
+  await search.fill("zzz");
+  await expect(page.getByText("Check the spelling.")).toBeVisible();
+  await clear.click();
+  await expect(search).toHaveValue("");
+  await expect(search).toBeFocused();
+  await expect(clear).toBeHidden();
+  await expect(page.getByRole("option", { name: /Persian/ })).toBeVisible();
+});
+
 test("a finished setup is not shown again", async ({ page }) => {
   await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/setup");

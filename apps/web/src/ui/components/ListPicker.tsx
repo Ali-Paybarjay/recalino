@@ -1,6 +1,8 @@
 // No "use client": it always lives inside a client screen that owns the value.
-import { type KeyboardEvent, type ReactNode, useId, useMemo, useState } from "react";
-import { Check, MagnifyingGlass } from "../icons";
+import { type KeyboardEvent, type ReactNode, useId, useMemo, useRef, useState } from "react";
+import { Check, MagnifyingGlass, XCircle } from "../icons";
+import { strings } from "../strings";
+import { IconButton } from "./Button";
 import { Icon } from "./Icon";
 import styles from "./ListPicker.module.css";
 
@@ -26,6 +28,7 @@ type ListPickerProps = {
 /**
  * Search field with a list that is always open (frame A2-1; ARIA 1.2 combobox). The search
  * matches English and native names. Arrow keys move, Enter chooses, the chosen row shows a check.
+ * While there is text, a clear button empties the field and returns focus to it (frame A2-1b).
  */
 export function ListPicker({
   label,
@@ -37,6 +40,7 @@ export function ListPicker({
 }: ListPickerProps) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const optionId = (index: number) => `${listId}-${index}`;
 
@@ -73,6 +77,7 @@ export function ListPicker({
           aria-controls={listId}
           aria-activedescendant={visible.length > 0 ? optionId(active) : undefined}
           aria-autocomplete="list"
+          ref={inputRef}
           placeholder={placeholder}
           value={query}
           dir="auto"
@@ -83,6 +88,18 @@ export function ListPicker({
           onKeyDown={onKeyDown}
           className={styles.input}
         />
+        {query === "" ? null : (
+          <IconButton
+            icon={XCircle}
+            label={strings.common.clearSearch}
+            className={styles.clear}
+            onClick={() => {
+              setQuery("");
+              setActive(0);
+              inputRef.current?.focus();
+            }}
+          />
+        )}
       </div>
       {visible.length === 0 ? (
         <p role="status" className={styles.empty}>

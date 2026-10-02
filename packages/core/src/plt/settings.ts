@@ -27,14 +27,15 @@ export type RateLimitRule = PltSettings["rateLimits"][RateLimitClass];
 
 /**
  * Pilot defaults, approved by the product owner on 2026-10-01 (Q-PLT-2), including the 04:00
- * study-day boundary; the rest of gate G07 is still open. They live here as configuration, apart
- * from the logic, and a deployment overrides any of them with PLT_SETTINGS_JSON without a code
- * change.
+ * study-day boundary; the rest of gate G07 is still open. On 2026-10-02 the owner raised `auth`
+ * from 10 to 100 per 10 minutes, so a whole class can sign up at once behind one college IP. They
+ * live here as configuration, apart from the logic, and a deployment overrides any of them with
+ * PLT_SETTINGS_JSON without a code change.
  */
 export const DEFAULT_PLT_SETTINGS: PltSettings = {
   idempotencyTtlSeconds: 24 * 60 * 60,
   rateLimits: {
-    auth: { limit: 10, windowSeconds: 600, scopes: ["ip"] },
+    auth: { limit: 100, windowSeconds: 600, scopes: ["ip"] },
     upload_url: { limit: 60, windowSeconds: 60, scopes: ["user"] },
     ai_start: { limit: 10, windowSeconds: 60, scopes: ["user"] },
     export: { limit: 20, windowSeconds: 3600, scopes: ["user"] },

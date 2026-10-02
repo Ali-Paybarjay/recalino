@@ -23,6 +23,7 @@ export const strings = {
     undo: "Undo",
     tryAgain: "Try again",
     confirmIrreversible: "I understand this can't be undone",
+    clearSearch: "Clear search",
   },
   classStatus: {
     readyToProcess: "Ready to process",
