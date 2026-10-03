@@ -107,7 +107,7 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
     - `pnpm check:client-bundle` هیچ سری در خروجی مرورگر پیدا نمی‌کند.
     - ماتریس ردیابی و گزارش M4 به‌روز می‌شوند.
   - **بررسی:** `pnpm verify`، E2E و CI سبز
-- [ ] **T10 — اتصال امن دیتابیس (تصمیم مالک محصول، 2026-10-02)**
+- [x] **T10 — اتصال امن دیتابیس (تصمیم مالک محصول، 2026-10-02)**
   - **پذیرش:**
     - اپ در Vercel با TLS و سنجش گواهی، با CA پروژه Supabase، به pooler وصل می‌شود. هیچ راهی برای خاموش کردن سنجش گواهی نیست.
     - محیط محلی و آزمون‌ها بی‌تغییر کار می‌کنند. تنظیم بدون TLS در Vercel (Production و Preview) با خطای روشن متوقف می‌شود و آزمون دارد.
@@ -178,6 +178,14 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
     - از فایل‌های env فقط `.env.example` آپلود شد (`.vercelignore`).
 - **رمز `recalino_app`:** یک بار پیش از استفاده در یک تصویر دیده شد و همان روز عوض شد. در M4-A1 دوباره تعیین شد، چون رشته ثبت‌شده در Vercel هنوز رمز قبلی را داشت.
 - **T9، ردیابی آیکون‌ها:** ردیف FR-PLT-010 در ماتریس ردیابی و خط اشاره به `docs/design/handoff-r2-icons/` در CLAUDE.md در task M4-A2 (`267ebc7`) انجام شدند.
+- **T10، اتصال امن دیتابیس (task M4-A3، 2026-10-03):**
+  - **کد:** `5b0b39d` و `90dfe51`. اپ با TLS و سنجش گواهی، با CA ریشه Supabase و نام میزبان، به pooler وصل می‌شود.
+  - **رمز `recalino_app`:** با verifier از نوع SCRAM-SHA-256 عوض شد. شاهد `pnpm db:url-check` از اجرای مالک محصول: TLSv1.3، گواهی `*.pooler.supabase.com` از Supabase Intermediate 2021 CA تأیید شد، و `current_user = recalino_app`.
+  - **deploy:** `dpl_HowULqouKhD53djDGryqgbADyQDL`، بخش «حل شد» بالا.
+  - **درس‌ها:**
+    - دکمه Redeploy داشبورد کد deploy قبلی را دوباره می‌سازد. کد تازه فقط با `vercel deploy --prod` از ریشه مخزن می‌رود.
+    - هنگام ویرایش `DATABASE_URL`، مقدار `SUPABASE_URL` در Production یک بار دیگر ناخواسته عوض شد. پس از هر ویرایش متغیرها، گام protection، یعنی مسیر spike بدون توکن با پاسخ 404، آن را نشان می‌دهد.
+  - **باز، سمت Supabase:** مسیر pooler تا Postgres بدون TLS است (`upstream_ssl` پیش‌فرض Supavisor). TLS اپ فقط مسیر اپ تا pooler را می‌پوشاند.
 
 ### حل شد (2026-10-02): اتصال اپ به دیتابیس ابری
 
@@ -220,7 +228,14 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
   - **`dpl_GCeL…`:**
     - Cron از 14:53 تا 15:08 UTC شانزده بار پیاپی 200 گرفت.
     - `GET /` در 14:52 UTC از middleware با 200 گذشت.
-  - **باز:** Cron و دامنه‌ها روی یک deploy نیستند. یک `vercel deploy --prod` تکی پیش از T3، به دست مالک محصول، هر دو را روی یک deploy می‌برد. پس از آن، سه اجرای Cron روی همان deploy بررسی می‌شود.
+  - **حل شد (2026-10-03، task M4-A3): Cron و دامنه‌ها روی یک deploy‌اند:** `dpl_HowULqouKhD53djDGryqgbADyQDL`.
+    - مالک محصول آن را با یک `vercel deploy --prod` تکی، روی commit `90dfe51` ساخت. کد T10 را دارد.
+    - دامنه‌های production روی همین deploy‌اند (`list_deployment_aliases`).
+    - Cron روی همین deploy سه بار پیاپی 200 گرفت، از 10:55 تا 10:57 UTC. هیچ `28P01` یا `XX000`ی از Cron نبود. تنها `28P01` لاگ pooler، در 10:11 UTC، همان رد یک‌باره به خاطر cache، درست پس از تغییر رمز است.
+    - گام protection در 10:56 UTC، هم روی نشانی deploy و هم روی `recalino.vercel.app`:
+      - بدون bypass: 302.
+      - `/api/health` با bypass: 200.
+      - مسیر spike بدون توکن: 404.
 
 ### کارهای باقی‌مانده
 
