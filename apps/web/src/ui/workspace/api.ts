@@ -93,6 +93,8 @@ export async function workspaceRequest<T>(
       message = "This selection is too large. Select fewer items.";
     if (reasons.includes("configuration_unavailable") && path.includes("/exports"))
       message = "Exports are not configured yet.";
+    if (fields?.provider?.includes("configuration_unavailable"))
+      message = "AI is awaiting operator configuration. Your sources remain saved.";
     if (reasons.includes("provider_outcome_unresolved"))
       message =
         "A provider result is still being checked. Contact the operator before trying again.";

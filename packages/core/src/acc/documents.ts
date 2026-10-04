@@ -12,6 +12,6 @@ export type DocumentVersions = Readonly<Record<DocumentId, string>>;
  */
 export const CURRENT_VERSIONS: DocumentVersions = {
   terms: "0.1",
-  privacy: "0.1",
+  privacy: "0.2",
   "recording-consent": "0.1",
 };
