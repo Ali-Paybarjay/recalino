@@ -84,6 +84,27 @@ export class MemoryObjectStore implements ObjectStore {
     return this.objects.get(key)?.bytes ?? null;
   }
 
+  async write(key: string, bytes: Uint8Array, contentType: string): Promise<void> {
+    this.seed(key, bytes, contentType, this.clock());
+  }
+
+  async compose(
+    sourceKeys: readonly string[],
+    targetKey: string,
+    contentType: string,
+  ): Promise<void> {
+    const parts = sourceKeys.map((key) => this.objects.get(key));
+    if (parts.some((part) => !part)) throw new Error("chunk missing");
+    const bytes = new Uint8Array(parts.reduce((sum, part) => sum + (part?.size ?? 0), 0));
+    let offset = 0;
+    for (const part of parts) {
+      if (!part) throw new Error("chunk missing");
+      bytes.set(part.bytes, offset);
+      offset += part.size;
+    }
+    this.seed(targetKey, bytes, contentType, this.clock());
+  }
+
   async delete(key: string): Promise<void> {
     this.objects.delete(key);
   }

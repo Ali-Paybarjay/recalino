@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconButton } from "../../ui/components/Button";
 import { experienceCopy } from "../../ui/experience-copy";
 import { CaretLeft } from "../../ui/icons";
-import { Wordmark } from "../../ui/shell/AppShell";
+import { Wordmark } from "../../ui/shell/Wordmark";
 import { fill, strings } from "../../ui/strings";
 import { acceptTexts, saveProfile } from "./api";
 import type { FirstLanguage } from "./languages";

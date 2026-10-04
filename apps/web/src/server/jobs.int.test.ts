@@ -20,7 +20,12 @@ const SECRET = "cron-secret-for-tests-0123456789abcdef";
 function cronRun(now: Date) {
   const route = defineRoute(
     ROUTES.jobsRun,
-    runJobsHandler({ now: () => now, settings: () => DEFAULT_PLT_SETTINGS, log: () => {} }),
+    runJobsHandler({
+      now: () => now,
+      settings: () => DEFAULT_PLT_SETTINGS,
+      log: () => {},
+      kinds: periodicJobs(DEFAULT_PLT_SETTINGS).map((job) => job.definition.kind),
+    }),
     { ...routeDeps(db), cronSecret: () => SECRET },
   );
   return route(
@@ -38,7 +43,11 @@ describe("GET /api/jobs/run", () => {
 
     const first = await cronRun(hour);
     expect(first.status).toBe(200);
-    expect(await first.json()).toMatchObject({ succeeded: kinds.length, failed: 0 });
+    const summary = await first.json();
+    // The runner also completes retries already queued by other tests; inspect this
+    // period's rows below instead of assuming the shared queue was initially empty.
+    expect(summary).toMatchObject({ failed: 0, retried: 0 });
+    expect(summary.succeeded).toBeGreaterThanOrEqual(kinds.length);
 
     const again = await cronRun(new Date(hour.getTime() + 60_000));
     expect(await again.json()).toMatchObject({ succeeded: 0 });

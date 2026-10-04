@@ -1,0 +1,29 @@
+export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
+export {
+  type Claim,
+  claimSchema,
+  type EvidenceSource,
+  type KnowledgeModel,
+  knowledgeModelSchema,
+  type LearningItem,
+  LKM_SCHEMA_VERSION,
+  learningItemSchema,
+  locatorSchema,
+  matchesExplanationScript,
+  modelClaims,
+  type SourceRef,
+  sourceRefSchema,
+  validateKnowledgeModel,
+} from "./schema";
+export {
+  cleanupAccountKnowledge,
+  cleanupSessionKnowledge,
+  getLatestVersion,
+  getVersion,
+  type KnowledgeVersion,
+  listVersions,
+  liveKnowledgeVersionIdsForCleanup,
+  publishKnowledgeVersion,
+  tombstoneAccountKnowledge,
+  tombstoneKnowledge,
+} from "./versions";

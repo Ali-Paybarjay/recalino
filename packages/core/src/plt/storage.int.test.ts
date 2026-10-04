@@ -10,6 +10,7 @@ import {
   deleteObject,
   issueReadLink,
   issueWriteLink,
+  ownerStorageAccessExpiry,
   reconcileStorage,
 } from "./storage";
 import { MemoryObjectStore } from "./storage-memory";
@@ -153,6 +154,8 @@ describe("FR-PLT-014 storage layer", () => {
     store.seed(key, PNG, "image/png", T0);
     await confirmObject(db, store, { userId: owner }, id, { now: T0 });
     await deleteObject(db, store, { userId: owner }, id, at(1));
+    // A client can finish a previously authorized PUT before its short lease expires.
+    store.seed(key, PNG, "image/png", at(2));
     await deleteObject(db, store, { userId: owner }, id, at(2));
     expect(await store.head(key)).toBeNull();
     const row = await db
@@ -161,6 +164,24 @@ describe("FR-PLT-014 storage layer", () => {
       .where("id", "=", id)
       .executeTakeFirstOrThrow();
     expect(row).toEqual({ state: "deleted", deleted_at: at(1) });
+  });
+
+  it("records the longest issued lease and never shortens the final-erasure fence", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const { id, key } = await pngFor(owner);
+    const first = await issueWriteLink(db, store, { userId: owner }, id, { now: T0, settings });
+    expect(await ownerStorageAccessExpiry(db, owner, T0)).toEqual(first.validUntil);
+    await issueWriteLink(db, store, { userId: owner }, id, {
+      now: T0,
+      settings: { ...settings, writeLinkSeconds: 1 },
+    });
+    expect(await ownerStorageAccessExpiry(db, owner, T0)).toEqual(first.validUntil);
+    store.seed(key, PNG, "image/png", T0);
+    await confirmObject(db, store, { userId: owner }, id, { now: T0 });
+    const read = await issueReadLink(db, store, { userId: owner }, id, { now: at(100), settings });
+    expect(await ownerStorageAccessExpiry(db, owner, T0)).toEqual(read.validUntil);
+    expect(await ownerStorageAccessExpiry(db, randomUUID(), T0)).toEqual(T0);
   });
 
   it("reconciles: reports a verified record without its object, keeps young orphans, deletes old ones", async () => {
@@ -196,5 +217,21 @@ describe("FR-PLT-014 storage layer", () => {
       .where("id", "=", lost.id)
       .executeTakeFirstOrThrow();
     expect(lostRow.state).toBe("verified"); // reported, never deleted
+  });
+  it("immediately purges a tombstoned object recreated by a still-valid write URL", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    await confirmObject(db, store, { userId: owner }, object.id, { now: T0 });
+    await deleteObject(db, store, { userId: owner }, object.id, at(1));
+    store.seed(object.key, PNG, "image/png", at(2));
+    const summary = await reconcileStorage(db, store, {
+      now: at(3),
+      settings,
+      prefix: `src/${owner}/`,
+    });
+    expect(summary.orphansDeleted).toBe(1);
+    expect(await store.head(object.key)).toBeNull();
   });
 });

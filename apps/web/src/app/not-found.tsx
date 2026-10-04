@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { recoveryCopy } from "../ui/recovery-copy";
-import { Wordmark } from "../ui/shell/AppShell";
+import { Wordmark } from "../ui/shell/Wordmark";
 import styles from "./recovery.module.css";
 export default function NotFound() {
   return (

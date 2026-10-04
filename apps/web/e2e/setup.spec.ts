@@ -56,7 +56,7 @@ test("a new learner goes through the five setup screens to Today", async ({ page
   await finish.click();
 
   await expect(page).toHaveURL(/\/today$/);
-  await expect(page.getByRole("heading", { name: "Make room for your English." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your first class starts here." })).toBeVisible();
 });
 
 test("a learner who leaves comes back to the same step, and Back keeps the answer", async ({

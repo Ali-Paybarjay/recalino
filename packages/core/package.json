@@ -8,6 +8,22 @@
     "./config": "./src/config/env.ts",
     "./plt": "./src/plt/index.ts",
     "./acc": "./src/acc/index.ts",
+    "./org": "./src/org/index.ts",
+    "./quota": "./src/quota/index.ts",
+    "./src": "./src/src/index.ts",
+    "./aip": "./src/aip/index.ts",
+    "./lkm": "./src/lkm/index.ts",
+    "./proc": "./src/proc/index.ts",
+    "./note": "./src/note/index.ts",
+    "./card": "./src/card/index.ts",
+    "./srs": "./src/srs/index.ts",
+    "./pers": "./src/pers/index.ts",
+    "./media": "./src/media/index.ts",
+    "./priv": "./src/priv/index.ts",
+    "./html": "./src/html/index.ts",
+    "./anki": "./src/anki/index.ts",
+    "./ops": "./src/ops/index.ts",
+    "./eval": "./src/eval/index.ts",
     "./plt/vercel-blob": "./src/plt/storage-vercel-blob.ts"
   },
   "scripts": {
@@ -15,8 +31,13 @@
   },
   "dependencies": {
     "@vercel/blob": "2.8.0",
+    "fflate": "0.8.3",
     "kysely": "0.29.6",
+    "parse5": "8.0.1",
+    "pdfjs-dist": "6.4.299",
     "pg": "8.23.1",
+    "sharp": "0.35.5",
+    "ts-fsrs": "5.4.2",
     "zod": "4.6.5"
   },
   "devDependencies": {

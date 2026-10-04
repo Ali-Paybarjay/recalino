@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1",
+  "syntheticOnly": true,
+  "maximumBytes": 256,
+  "startedAt": "2026-10-04T07:40:50.392Z",
+  "deleted": true,
+  "bytes": 40,
+  "putStatus": 200,
+  "confirmState": "verified",
+  "getStatus": 200,
+  "hashMatch": true,
+  "repeatPutStatus": 400,
+  "repeatPutCode": "bad_request",
+  "contractPassed": false,
+  "contractScope": "storage_link_transport_and_immutable_write_denial",
+  "expectedRepeatPutStatuses": [400, 409],
+  "applicationResumeProvenByThisSmoke": false,
+  "originalExpectedRepeatStatus": 409,
+  "storageTransportVerified": true,
+  "immutableRepeatedWriteRejected": true,
+  "resumeCorrection": "A failed browser PUT is accepted only after the server confirms the existing part size, type and SHA. Client and API regression tests verify this recovery path separately.",
+  "finishedAt": "2026-10-04T07:40:53.428Z"
+}

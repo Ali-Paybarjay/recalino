@@ -11,12 +11,22 @@ export {
   type SecuritySignal,
   toErrorResponse,
 } from "./errors";
+export {
+  assertExportSize,
+  type ExportArtifact,
+  type ExportMedia,
+  type ExportMediaBytes,
+  type ExportSettings,
+  escapeExportHtml,
+  exportSettingsSchema,
+} from "./export";
 export { canonicalJson, hmacSha256Hex, sha256Hex } from "./hash";
 export {
   type IdempotentRequest,
   type IdempotentResult,
   isValidIdempotencyKey,
   purgeExpiredIdempotencyKeys,
+  redactUserIdempotencyResponses,
   runIdempotent,
   type StoredResponse,
 } from "./idempotency";
@@ -29,6 +39,7 @@ export {
   enqueueJob,
   ensurePeriodicJob,
   failJob,
+  hasJobStep,
   JobCancelled,
   type JobContext,
   type JobDefinition,
@@ -57,6 +68,7 @@ export {
   pltPeriodicJobs,
   storagePeriodicJobs,
 } from "./maintenance";
+export { platformOperationalSummary } from "./operations";
 export { assertOwner, type LearnerContext } from "./ownership";
 export {
   checkRateLimit,
@@ -85,6 +97,7 @@ export {
 export { spikeCleanup, spikeJobReport, spikeObjects } from "./spike";
 export {
   type ConfirmResult,
+  composeOwnedObjects,
   confirmObject,
   createObject,
   deleteObject,
@@ -94,11 +107,16 @@ export {
   type NewObject,
   type ObjectState,
   type ObjectStore,
+  ownedObjectMetadata,
+  ownerStorageAccessExpiry,
   type ReconcileSummary,
   type Retention,
+  readOwnedObject,
   reconcileStorage,
   type StorageActor,
   type StoredObjectInfo,
+  writeOwnedObject,
 } from "./storage";
 export { MemoryObjectStore } from "./storage-memory";
+export { readSystemJournalObjects } from "./system-journals";
 export { isValidTimeZone, resolveTimeZone, studyDay } from "./time";

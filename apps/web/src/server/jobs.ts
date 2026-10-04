@@ -1,5 +1,6 @@
 import "server-only";
 import { accPeriodicJobs } from "@recalino/core/acc";
+import { databaseBackupMaintenanceJob } from "@recalino/core/ops";
 import {
   createLogger,
   ensurePeriodicJob,
@@ -12,9 +13,15 @@ import {
   runDueJobs,
   storagePeriodicJobs,
 } from "@recalino/core/plt";
+import { processingPeriodicJobs } from "@recalino/core/proc";
 import { after } from "next/server";
 import type { Handler } from "./api";
 import { getDatabase } from "./db";
+import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
+import { getMediaJobDefinition } from "./media-jobs";
+import { getPrivacyJobDefinition } from "./privacy";
+import { getProcessingDefinition } from "./processing-jobs";
+import { sourceJobDefinitions, sourcePeriodicJobs } from "./source-jobs";
 import { spikeJobDefinitions } from "./spike-jobs";
 import { getObjectStore } from "./storage";
 
@@ -29,19 +36,35 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
   return [
     ...pltPeriodicJobs(settings),
     ...(store ? storagePeriodicJobs(store, settings) : []),
+    ...(store ? [databaseBackupMaintenanceJob(store)] : []),
     ...accPeriodicJobs(),
+    ...sourcePeriodicJobs(),
+    ...exportPeriodicJobs(),
+    ...processingPeriodicJobs(),
   ];
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: each definition checks its own payload type.
 export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
-  return [...periodicJobs(settings).map((job) => job.definition), ...spikeJobDefinitions()];
+  const processing = getProcessingDefinition();
+  const media = getMediaJobDefinition();
+  return [
+    ...periodicJobs(settings).map((job) => job.definition),
+    ...sourceJobDefinitions(),
+    ...(processing ? [processing] : []),
+    ...(media ? [media] : []),
+    getPrivacyJobDefinition(),
+    ...exportJobDefinitions(),
+    ...spikeJobDefinitions(),
+  ];
 }
 
 interface RunnerDeps {
   settings: () => PltSettings;
   log: Logger;
   now: () => Date;
+  /** Restrict a controlled runner; the production cron runs every registered definition. */
+  kinds?: readonly string[];
 }
 
 const defaultRunnerDeps: RunnerDeps = {
@@ -69,6 +92,7 @@ export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
       deadline,
       now: deps.now,
       log: deps.log,
+      kinds: deps.kinds,
     });
     return { body: summary };
   };

@@ -11,8 +11,12 @@ export {
   LEVELS,
   type LearningProfile,
   type Level,
+  lockAccount,
+  lockAccountForCleanup,
+  purgeAccountProfile,
   SETUP_STEPS,
   type SetupStep,
+  tombstoneAccount,
 } from "./account";
 export {
   CURRENT_VERSIONS,
@@ -22,6 +26,13 @@ export {
 } from "./documents";
 export { accPeriodicJobs } from "./jobs";
 export { FIRST_LANGUAGES, isFirstLanguage, type LanguageTier, languageTier } from "./languages";
+export {
+  listTeachingPreferences,
+  resetInferredPreferences,
+  saveTeachingPreference,
+  type TeachingPreference,
+  teachingPreferenceKeys,
+} from "./preferences";
 export { type ProfileChange, profileChangeSchema, updateProfile } from "./profile";
 export {
   type AccSettings,

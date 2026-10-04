@@ -73,7 +73,9 @@ test("new Terms: a calm notice until the learner reads and accepts them", async 
   await page.goto("/today");
   const notice = page.getByText(/The Terms changed on .*Please read and accept them/);
   await expect(notice).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Make room for your English." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your English, one class at a time." }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Read and accept" }).click();
   const sheet = page.getByRole("dialog", { name: "Terms and Privacy Notice", exact: true });
   const accept = sheet.getByRole("button", { name: "Accept and continue" });

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { accountCopy } from "../../../ui/account-copy";
-import { Wordmark } from "../../../ui/shell/AppShell";
+import { Wordmark } from "../../../ui/shell/Wordmark";
 import { fill } from "../../../ui/strings";
 import { acceptTexts } from "../api";
 import styles from "../setup.module.css";

@@ -4,7 +4,7 @@ import { Icon } from "../ui/components/Icon";
 import { ProvenanceBlock } from "../ui/components/Status";
 import { experienceCopy } from "../ui/experience-copy";
 import { Cards, IdentificationBadge, Info, Play, Warning } from "../ui/icons";
-import { Wordmark } from "../ui/shell/AppShell";
+import { Wordmark } from "../ui/shell/Wordmark";
 import { strings } from "../ui/strings";
 import styles from "./SignIn.module.css";
 import { SignInForm } from "./SignInForm";

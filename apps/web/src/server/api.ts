@@ -177,6 +177,12 @@ async function run(
   args: Omit<HandlerArgs, "db">,
   deps: RouteDeps,
 ): Promise<{ status: number; body: unknown; redirect?: string; replayed?: boolean }> {
+  if (meta.idempotency === "handler") {
+    const key = args.request.headers.get("idempotency-key");
+    if (key === null || !isValidIdempotencyKey(key)) {
+      throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
+    }
+  }
   if (meta.idempotency !== "required") {
     const result = await handler({
       ...args,

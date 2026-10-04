@@ -22,6 +22,7 @@ describe("client bundle secret scan (FR-PLT-009)", () => {
       "postgresql://recalino_app:hunter2-secret@db.example:6543/postgres",
       "sb_secret_abcdefghij0123456789",
       "sk-ant-api03-abcdefghijklmnop",
+      "sk-or-v1-0123456789abcdef0123456789abcdef0123456789abcdef",
       "-----BEGIN PRIVATE KEY-----",
     ];
     for (const secret of planted) {

@@ -76,9 +76,13 @@ test("a failed sign-in shows one general message", async ({ page }) => {
 test("a page that needs a session sends the visitor to sign in and remembers the way back", async ({
   page,
 }) => {
-  await page.goto("/me");
-  await expect(page).toHaveURL(/\/\?next=%2Fme$/);
-  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+  for (const path of ["/me", "/me/data", "/recordings", "/classes/organize"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(
+      (url) => url.pathname === "/" && url.searchParams.get("next") === path,
+    );
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+  }
 });
 
 for (const scheme of ["light", "dark"] as const) {

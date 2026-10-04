@@ -1,0 +1,20 @@
+{
+  "verifiedAt": "2026-10-04",
+  "project": "recalino",
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "newVersionedMigrationsApplied": 23,
+  "totalMigrations": 28,
+  "applicationTables": 59,
+  "tablesWithRlsEnabled": 59,
+  "anonymousOrAuthenticatedApplicationTableGrants": 0,
+  "seedsApplied": false,
+  "securityAdvisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 59,
+      "interpretation": "Intentional: private module schemas are accessed only through the server application role and owner-checked APIs. Browser roles have no table grants.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    }
+  ]
+}

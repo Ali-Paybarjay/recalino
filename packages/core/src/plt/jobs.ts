@@ -232,6 +232,17 @@ export async function sweepJobs(db: Database, now: Date): Promise<number> {
   return Number(result.numAffectedRows ?? 0);
 }
 
+/** Read an existing checkpoint before an idempotent external effect that must not hold a DB lease. */
+export async function hasJobStep(db: Database, jobId: string, name: string): Promise<boolean> {
+  const marked = await db
+    .selectFrom("plt.job_step")
+    .select("step")
+    .where("job_id", "=", jobId)
+    .where("step", "=", name)
+    .executeTakeFirst();
+  return marked !== undefined;
+}
+
 /** One step of a claimed job; `JobContext.step` calls this. Exported for tests and tools. */
 export async function runJobStep(
   db: Database,

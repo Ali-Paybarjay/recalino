@@ -7,6 +7,7 @@ import {
   createMultipartUpload,
   del,
   get,
+  getDownloadUrl,
   head,
   issueSignedToken,
   list,
@@ -43,7 +44,7 @@ export class VercelBlobStore implements ObjectStore {
     return presignedUrl;
   }
 
-  async signRead(key: string, validUntil: Date): Promise<string> {
+  async signRead(key: string, validUntil: Date, options?: { download: boolean }): Promise<string> {
     const token = await issueSignedToken({
       pathname: key,
       operations: ["get"],
@@ -55,7 +56,7 @@ export class VercelBlobStore implements ObjectStore {
       access: "private",
       validUntil: validUntil.getTime(),
     });
-    return presignedUrl;
+    return options?.download ? getDownloadUrl(presignedUrl) : presignedUrl;
   }
 
   async head(key: string): Promise<StoredObjectInfo | null> {
@@ -78,6 +79,15 @@ export class VercelBlobStore implements ObjectStore {
     const result = await get(key, { access: "private", useCache: false });
     if (result?.statusCode !== 200 || !result.stream) return null;
     return new Uint8Array(await new Response(result.stream).arrayBuffer());
+  }
+
+  async write(key: string, bytes: Uint8Array, contentType: string): Promise<void> {
+    await put(key, Buffer.from(bytes), {
+      access: "private",
+      contentType,
+      addRandomSuffix: false,
+      allowOverwrite: false,
+    });
   }
 
   async delete(key: string): Promise<void> {

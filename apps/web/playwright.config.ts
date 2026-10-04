@@ -1,4 +1,11 @@
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import { defineConfig, devices } from "@playwright/test";
+import { localJournalFixtureAvailable } from "./src/server/local-test-policy";
+
+const localEnvironment = new URL("./.env.local", import.meta.url);
+if (existsSync(localEnvironment)) loadEnvFile(localEnvironment);
+const testJournal = localJournalFixtureAvailable({ ...process.env, RECALINO_TEST_JOURNAL: "1" });
 
 const port = 3000;
 const baseURL = `http://localhost:${port}`;
@@ -16,6 +23,7 @@ export default defineConfig({
   webServer: {
     // CI runs the production build; locally the dev server is enough.
     command: process.env.CI ? "pnpm start" : "pnpm dev",
+    env: testJournal ? { RECALINO_TEST_JOURNAL: "1" } : {},
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

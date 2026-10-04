@@ -3,7 +3,7 @@ import { sql } from "kysely";
 import { afterAll, describe, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { createDatabase, type Database, type Tx } from "../db";
-import { runIdempotent } from "./idempotency";
+import { redactUserIdempotencyResponses, runIdempotent } from "./idempotency";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 2 });
 const second = createDatabase(testDatabaseUrl(), { maxConnections: 2 });
@@ -48,6 +48,38 @@ function request(overrides: Partial<Parameters<typeof runIdempotent>[1]> = {}) {
 }
 
 describe("FR-PLT-004 idempotency", () => {
+  it("revokes private cached responses without replaying effects and preserves other owners", async () => {
+    const req = request();
+    const other = request();
+    const subject = randomUUID();
+    await runIdempotent(db, req, async () => ({
+      status: 200,
+      body: { text: "Synthetic deleted content" },
+    }));
+    await runIdempotent(db, other, async () => ({
+      status: 200,
+      body: { text: "Other owner content" },
+    }));
+    await db.transaction().execute((tx) => redactUserIdempotencyResponses(tx, req.userId));
+    await expect(runIdempotent(db, req, (tx) => effect(tx, subject))).rejects.toMatchObject({
+      code: "conflict",
+    });
+    expect(await effects(subject)).toBe(0);
+    expect(
+      await db
+        .selectFrom("plt.idempotency_key")
+        .select("response_body")
+        .where("user_id", "=", req.userId)
+        .executeTakeFirst(),
+    ).toEqual({ response_body: null });
+    expect(
+      (
+        await runIdempotent(db, other, () => {
+          throw new Error("Must replay");
+        })
+      ).body,
+    ).toEqual({ text: "Other owner content" });
+  });
   it("runs once and replays the first response for the same key", async () => {
     const subject = randomUUID();
     const req = request();

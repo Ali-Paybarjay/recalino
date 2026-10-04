@@ -5,6 +5,8 @@ import { expect, type Page } from "@playwright/test";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 export async function expectNoAxeViolations(page: Page) {
+  // Next streams page metadata after the page body during development.
+  await expect.poll(() => page.title()).not.toBe("");
   const results = await new AxeBuilder({ page })
     .withTags(WCAG_TAGS)
     // The Next.js development overlay is not part of the app.

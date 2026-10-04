@@ -13,6 +13,8 @@ coverage/
 !.env.example
 
 # Test artifacts
+artifacts/verification/python/
+artifacts/verification/anki-profile/
 playwright-report/
 test-results/
 test-results-preview/

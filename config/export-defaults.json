@@ -1,0 +1,6 @@
+{
+  "version": "export-2026-10-04-1",
+  "maxBytes": 50000000,
+  "maxItems": 1000,
+  "retentionSeconds": 86400
+}

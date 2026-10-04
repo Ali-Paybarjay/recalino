@@ -5,6 +5,9 @@ import { Cards, Folders, Plus, SunHorizon, UserCircle } from "../icons";
 import { fill, strings } from "../strings";
 import { studyCopy } from "../study-copy";
 import styles from "./AppShell.module.css";
+import { Wordmark } from "./Wordmark";
+
+export { Wordmark } from "./Wordmark";
 
 export type NavId = "today" | "classes" | "review" | "me";
 
@@ -116,19 +119,6 @@ export function AppShell({
         })}
       </nav>
     </div>
-  );
-}
-
-/**
- * The placeholder wordmark of the design: "recalino" and a small accent square. "large" is the
- * welcome page (A1: 30px, 28px on desktop); the default is the sidebar (B1-desktop: 22px).
- */
-export function Wordmark({ size = "default" }: { size?: "default" | "large" }) {
-  return (
-    <span className={`${styles.wordmark} ${size === "large" ? styles.wordmarkLarge : ""}`}>
-      <span className={styles.wordmarkText}>{strings.brand.wordmark}</span>
-      <span className={styles.wordmarkDot} aria-hidden="true" />
-    </span>
   );
 }
 

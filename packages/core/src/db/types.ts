@@ -75,8 +75,258 @@ export interface AccSignupIntent {
 export interface AccUserAccount {
   adult_declared_at: Timestamp;
   created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
   id: string;
   timezone: string | null;
+}
+
+export interface AnkiExportArtifact {
+  actual_bytes: Int8 | null;
+  cleaned_at: Timestamp | null;
+  created_at: Timestamp;
+  estimated_bytes: Int8;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  last_error: string | null;
+  object_id: string | null;
+  operation_key: string;
+  request_hash: string;
+  schema_version: string;
+  session_id: string;
+  settings: Json;
+  sha256: string | null;
+  snapshot: Json | null;
+  state: Generated<string>;
+  tombstoned_at: Timestamp | null;
+  user_id: string;
+}
+
+export interface CardCard {
+  back: string;
+  back_media_id: string | null;
+  content_version: Generated<number>;
+  created_at: Generated<Timestamp>;
+  dedupe_key: string;
+  deleted_at: Timestamp | null;
+  direction: Generated<string>;
+  front: string;
+  front_media_id: string | null;
+  id: Generated<string>;
+  important: Generated<boolean>;
+  learning_item_id: string;
+  provenance: Json;
+  quality_confirmed: Generated<boolean>;
+  status: Generated<string>;
+  template: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface CardLearningItem {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  logical_key: string;
+  user_id: string;
+}
+
+export interface CardProposal {
+  back: string;
+  card_id: string;
+  created_at: Generated<Timestamp>;
+  fingerprint: string;
+  front: string;
+  id: Generated<string>;
+  note_revision_id: string;
+  provenance: Json;
+  status: Generated<string>;
+  user_id: string;
+}
+
+export interface CardRevision {
+  card_id: string;
+  content_version: number;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  snapshot: Json;
+  user_id: string;
+}
+
+export interface CardSessionLink {
+  card_id: string;
+  created_at: Generated<Timestamp>;
+  session_id: string;
+  user_id: string;
+}
+
+export interface HtmlExportArtifact {
+  actual_bytes: Int8 | null;
+  cleaned_at: Timestamp | null;
+  created_at: Timestamp;
+  estimated_bytes: Int8;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  last_error: string | null;
+  object_id: string | null;
+  operation_key: string;
+  request_hash: string;
+  schema_version: string;
+  session_id: string;
+  settings: Json;
+  sha256: string | null;
+  snapshot: Json | null;
+  state: Generated<string>;
+  tombstoned_at: Timestamp | null;
+  user_id: string;
+}
+
+export interface LkmKnowledgeVersion {
+  created_at: Generated<Timestamp>;
+  generation: Json;
+  id: Generated<string>;
+  model: Json;
+  run_id: string;
+  schema_version: string;
+  session_id: string;
+  source_fingerprint: string;
+  sources_version: number;
+  tombstoned_at: Timestamp | null;
+  user_id: string;
+  version: number;
+}
+
+export interface MediaAsset {
+  cache_key: string;
+  completed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  export_allowed: Generated<boolean>;
+  generation: Json;
+  id: Generated<string>;
+  kind: string;
+  last_error: string | null;
+  mime_type: string | null;
+  object_id: string | null;
+  operation_key: string;
+  request: Json;
+  request_hash: string;
+  reservation_id: string | null;
+  run_id: string | null;
+  session_id: string;
+  source_id: string | null;
+  source_sha256: string | null;
+  state: Generated<string>;
+  synthetic: boolean;
+  tombstoned_at: Timestamp | null;
+  user_id: string;
+}
+
+export interface NoteNotebook {
+  created_at: Generated<Timestamp>;
+  current_revision_id: string | null;
+  id: Generated<string>;
+  session_id: string;
+  user_id: string;
+}
+
+export interface NoteOutbox {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  revision_id: string;
+  session_id: string;
+  user_id: string;
+}
+
+export interface NoteRevision {
+  created_at: Generated<Timestamp>;
+  edits: Json;
+  id: Generated<string>;
+  knowledge_version_id: string;
+  model: Json;
+  notebook_id: string;
+  revision_number: number;
+  user_id: string;
+}
+
+export interface OpsDatabaseBackup {
+  archive_format: Generated<string>;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  encrypted_sha256: string | null;
+  encrypted_size_bytes: Int8 | null;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  key_id: string;
+  last_error: string | null;
+  object_id: string | null;
+  operation_key: string;
+  request_hash: string;
+  restore_drilled_at: Timestamp | null;
+  restore_metadata: Json | null;
+  schema_version: Generated<string>;
+  state: Generated<string>;
+}
+
+export interface OpsDeletionJournal {
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  encrypted_sha256: string | null;
+  id: Generated<string>;
+  key_id: string;
+  object_id: string | null;
+  request_hash: string;
+  request_id: string;
+  requested_at: Timestamp;
+  state: Generated<string>;
+}
+
+export interface OrgClassSession {
+  class_date: Timestamp;
+  course_id: string | null;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  deletion_request_id: string | null;
+  id: Generated<string>;
+  owner_id: string;
+  sources_version: Generated<number>;
+  title: string | null;
+  unit_id: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface OrgCourse {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  is_default: Generated<boolean>;
+  name: string;
+  owner_id: string;
+}
+
+export interface OrgDeletionRequest {
+  completed_at: Timestamp | null;
+  id: string;
+  owner_id: string;
+  requested_at: Generated<Timestamp>;
+  session_id: string;
+  status: Generated<string>;
+}
+
+export interface OrgOutbox {
+  created_at: Generated<Timestamp>;
+  deletion_request_id: string;
+  event_type: string;
+  id: Generated<string>;
+  owner_id: string;
+  processed_at: Timestamp | null;
+  session_id: string;
+}
+
+export interface OrgUnit {
+  course_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  owner_id: string;
+  position: Generated<number>;
 }
 
 export interface PltAuditEvent {
@@ -145,6 +395,7 @@ export interface PltSecurityEvent {
 }
 
 export interface PltStorageObject {
+  access_expires_at: Timestamp | null;
   content_type: string;
   created_at: Timestamp;
   deleted_at: Timestamp | null;
@@ -158,6 +409,337 @@ export interface PltStorageObject {
   verified_at: Timestamp | null;
 }
 
+export interface PrivCleanupStep {
+  completed_at: Generated<Timestamp>;
+  module: string;
+  request_id: string;
+}
+
+export interface PrivDeletionRequest {
+  completed_at: Timestamp | null;
+  id: Generated<string>;
+  job_id: string | null;
+  kind: string;
+  last_error: string | null;
+  modules: Generated<string[]>;
+  operation_key: string;
+  related_sessions: Generated<string[]>;
+  requested_at: Generated<Timestamp>;
+  state: Generated<string>;
+  subject_id: string;
+  user_id: string;
+}
+
+export interface ProcProcessingRun {
+  created_at: Generated<Timestamp>;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  input_snapshot: Json;
+  job_id: string | null;
+  kind: Generated<string>;
+  last_error: string | null;
+  operation_key: string;
+  output_version_id: string | null;
+  request_hash: string;
+  requested_amounts: Json;
+  reservation_id: string;
+  session_id: string;
+  settings: Json;
+  source_fingerprint: string;
+  sources_version: number;
+  state: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface ProcProviderAttempt {
+  attempt: number;
+  error_code: string | null;
+  finished_at: Timestamp | null;
+  hold_id: string;
+  id: Generated<string>;
+  model: string;
+  operation_key: string;
+  provider: string;
+  provider_request_id: string | null;
+  run_id: string;
+  started_at: Generated<Timestamp>;
+  state: Generated<string>;
+  step: string;
+  user_id: string;
+}
+
+export interface ProcRunStep {
+  completed_at: Generated<Timestamp>;
+  output: Json;
+  run_id: string;
+  step: string;
+}
+
+export interface ProcTemporaryObject {
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  object_id: string;
+  run_id: string;
+  user_id: string;
+}
+
+export interface QuotaCostHold {
+  closed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  id: Generated<string>;
+  maximum_micros: Int8;
+  operation_key: string;
+  reservation_id: string;
+  session_id: string;
+  user_id: string;
+}
+
+export interface QuotaCostPolicy {
+  currency: string;
+  kill_switch: Generated<boolean>;
+  limits: Json;
+  singleton: Generated<boolean>;
+  updated_at: Generated<Timestamp>;
+  version: string;
+}
+
+export interface QuotaEntitlement {
+  closed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  ends_at: Timestamp;
+  id: Generated<string>;
+  operation_key: string;
+  starts_at: Timestamp;
+  user_id: string;
+}
+
+export interface QuotaLedger {
+  amount: Int8;
+  balance_delta: Int8;
+  created_at: Generated<Timestamp>;
+  dimension: string;
+  entitlement_id: string;
+  id: Generated<string>;
+  kind: string;
+  operation_key: string;
+  reservation_id: string | null;
+  user_id: string;
+}
+
+export interface QuotaProviderCost {
+  amount_micros: Int8 | null;
+  attempt_id: string | null;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  estimated_micros: Int8 | null;
+  id: Generated<string>;
+  model: string;
+  operation_key: string;
+  price_version: string | null;
+  provider: string;
+  run_id: string | null;
+  session_id: string | null;
+  usage: Generated<Json>;
+  user_id: string | null;
+}
+
+export interface QuotaReservation {
+  amounts: Json;
+  closed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  entitlement_id: string;
+  id: Generated<string>;
+  operation_key: string;
+  settled_amounts: Json | null;
+  user_id: string;
+}
+
+export interface SrcAsset {
+  contract_version: string;
+  created_at: Generated<Timestamp>;
+  declared_mime: string;
+  deletion_request_id: string | null;
+  display_name: string;
+  duration_ms: Int8 | null;
+  height: number | null;
+  id: Generated<string>;
+  kind: string;
+  operation_key: string;
+  original_deleted_at: Timestamp | null;
+  original_object_id: string | null;
+  page_count: number | null;
+  request_hash: string;
+  retention: string;
+  sha256: string;
+  size_bytes: Int8;
+  tombstoned_at: Timestamp | null;
+  user_id: string;
+  verified_at: Timestamp | null;
+  verified_mime: string | null;
+  width: number | null;
+}
+
+export interface SrcAudioUpload {
+  actual_duration_ms: Int8 | null;
+  asset_id: string;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  object_id: string;
+  reservation_id: string;
+  state: Generated<string>;
+  transcribed_at: Timestamp | null;
+  user_id: string;
+  verified_at: Timestamp | null;
+}
+
+export interface SrcAudioUploadPart {
+  object_id: string;
+  part_index: number;
+  sha256: string;
+  size_bytes: Int8;
+  upload_id: string;
+  verified_at: Timestamp | null;
+}
+
+export interface SrcContentVersion {
+  asset_id: string;
+  blocks: Json;
+  created_at: Generated<Timestamp>;
+  extraction_settings: Json;
+  id: Generated<string>;
+  origin_key: string;
+  provenance: string;
+  request_hash: string;
+  schema_version: string;
+  sha256: string;
+  units: Json;
+  user_id: string;
+}
+
+export interface SrcInputContract {
+  active: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  rules: Json;
+  version: string;
+}
+
+export interface SrcNoticeAcceptance {
+  accepted_at: Generated<Timestamp>;
+  user_id: string;
+  version: string;
+}
+
+export interface SrcOutbox {
+  created_at: Generated<Timestamp>;
+  delivered_at: Timestamp | null;
+  event_type: string;
+  id: Generated<string>;
+  payload: Json;
+  subject_id: string;
+  user_id: string;
+}
+
+export interface SrcSessionSource {
+  active: Generated<boolean>;
+  anchor_source_id: string | null;
+  asset_id: string;
+  capture_offset_ms: Int8 | null;
+  capture_state: string | null;
+  changed_at: Generated<Timestamp>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  ranges: Generated<Json>;
+  role: string;
+  selected: Generated<boolean>;
+  selected_content_version_id: string | null;
+  session_id: string;
+  time_status: Generated<string>;
+  user_id: string;
+}
+
+export interface SrcSourceSnapshot {
+  created_at: Generated<Timestamp>;
+  session_id: string;
+  sources: Json;
+  sources_version: number;
+  user_id: string;
+}
+
+export interface SrcUploadPart {
+  attempts: Generated<number>;
+  object_id: string;
+  part_index: number;
+  sha256: string;
+  size_bytes: Int8;
+  upload_id: string;
+  verified_at: Timestamp | null;
+}
+
+export interface SrcUploadSession {
+  asset_id: string;
+  completed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  id: Generated<string>;
+  rejection_reason: string | null;
+  reservation_id: string;
+  state: Generated<string>;
+  user_id: string;
+}
+
+export interface SrsCardState {
+  algorithm: Generated<string>;
+  card_id: string;
+  due_at: Timestamp;
+  introduced_at: Timestamp | null;
+  parameters: Json;
+  state: Json;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  version: Generated<number>;
+}
+
+export interface SrsReviewEvent {
+  after_state: Json;
+  algorithm: string;
+  before_state: Json;
+  card_id: string;
+  created_at: Generated<Timestamp>;
+  duration_ms: number;
+  expected_version: number;
+  id: string;
+  is_new: boolean;
+  mode: string;
+  parameters: Json;
+  rating: number;
+  recorded_order: Generated<Int8>;
+  request_hash: string;
+  study_day: Timestamp;
+  timezone: string;
+  user_id: string;
+}
+
+export interface SrsReviewUndo {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  resulting_version: number;
+  review_event_id: string;
+  user_id: string;
+}
+
+export interface SrsSettings {
+  daily_new_limit: Generated<number>;
+  desired_retention: Generated<number>;
+  mode: Generated<string>;
+  time_budget_minutes: Generated<number>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface DB {
   "acc.consent": AccConsent;
   "acc.learning_profile": AccLearningProfile;
@@ -165,6 +747,25 @@ export interface DB {
   "acc.preference": AccPreference;
   "acc.signup_intent": AccSignupIntent;
   "acc.user_account": AccUserAccount;
+  "anki.export_artifact": AnkiExportArtifact;
+  "card.card": CardCard;
+  "card.learning_item": CardLearningItem;
+  "card.proposal": CardProposal;
+  "card.revision": CardRevision;
+  "card.session_link": CardSessionLink;
+  "html.export_artifact": HtmlExportArtifact;
+  "lkm.knowledge_version": LkmKnowledgeVersion;
+  "media.asset": MediaAsset;
+  "note.notebook": NoteNotebook;
+  "note.outbox": NoteOutbox;
+  "note.revision": NoteRevision;
+  "ops.database_backup": OpsDatabaseBackup;
+  "ops.deletion_journal": OpsDeletionJournal;
+  "org.class_session": OrgClassSession;
+  "org.course": OrgCourse;
+  "org.deletion_request": OrgDeletionRequest;
+  "org.outbox": OrgOutbox;
+  "org.unit": OrgUnit;
   "plt.audit_event": PltAuditEvent;
   "plt.idempotency_key": PltIdempotencyKey;
   "plt.job": PltJob;
@@ -172,4 +773,31 @@ export interface DB {
   "plt.rate_limit_bucket": PltRateLimitBucket;
   "plt.security_event": PltSecurityEvent;
   "plt.storage_object": PltStorageObject;
+  "priv.cleanup_step": PrivCleanupStep;
+  "priv.deletion_request": PrivDeletionRequest;
+  "proc.processing_run": ProcProcessingRun;
+  "proc.provider_attempt": ProcProviderAttempt;
+  "proc.run_step": ProcRunStep;
+  "proc.temporary_object": ProcTemporaryObject;
+  "quota.cost_hold": QuotaCostHold;
+  "quota.cost_policy": QuotaCostPolicy;
+  "quota.entitlement": QuotaEntitlement;
+  "quota.ledger": QuotaLedger;
+  "quota.provider_cost": QuotaProviderCost;
+  "quota.reservation": QuotaReservation;
+  "src.asset": SrcAsset;
+  "src.audio_upload": SrcAudioUpload;
+  "src.audio_upload_part": SrcAudioUploadPart;
+  "src.content_version": SrcContentVersion;
+  "src.input_contract": SrcInputContract;
+  "src.notice_acceptance": SrcNoticeAcceptance;
+  "src.outbox": SrcOutbox;
+  "src.session_source": SrcSessionSource;
+  "src.source_snapshot": SrcSourceSnapshot;
+  "src.upload_part": SrcUploadPart;
+  "src.upload_session": SrcUploadSession;
+  "srs.card_state": SrsCardState;
+  "srs.review_event": SrsReviewEvent;
+  "srs.review_undo": SrsReviewUndo;
+  "srs.settings": SrsSettings;
 }

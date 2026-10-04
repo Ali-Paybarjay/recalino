@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { accountCopy } from "../../../../../ui/account-copy";
 import { Icon } from "../../../../../ui/components/Icon";
 import { CaretLeft } from "../../../../../ui/icons";
-import { Wordmark } from "../../../../../ui/shell/AppShell";
+import { Wordmark } from "../../../../../ui/shell/Wordmark";
 import { type SavedProfile, saveProfile } from "../../../../setup/api";
 import type { FirstLanguage } from "../../../../setup/languages";
 import setupStyles from "../../../../setup/setup.module.css";

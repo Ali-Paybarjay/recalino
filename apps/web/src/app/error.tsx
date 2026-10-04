@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Button } from "../ui/components/Button";
 import { recoveryCopy } from "../ui/recovery-copy";
-import { Wordmark } from "../ui/shell/AppShell";
+import { Wordmark } from "../ui/shell/Wordmark";
 import styles from "./recovery.module.css";
 
 export default function ErrorPage({

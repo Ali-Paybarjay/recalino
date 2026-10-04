@@ -1,0 +1,20 @@
+{
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "backupId": "a82b451b-3f3c-4562-a62c-8398e699bd91",
+  "state": "ready",
+  "keyId": "recalino-backup-20261004-v1",
+  "createdAt": "2026-10-04T07:23:54.603Z",
+  "expiresAt": "2026-11-03T07:23:54.603Z",
+  "encryptedBytes": 304681,
+  "plaintextArchiveSaved": false,
+  "keyExportedToVercel": false,
+  "isolatedRestore": {
+    "isolatedLocal": true,
+    "tables": 87,
+    "constraintsValidated": true,
+    "milliseconds": 722,
+    "publicServiceOpened": false,
+    "temporaryDatabaseRemoved": true
+  },
+  "dailyScheduleRegistered": false
+}

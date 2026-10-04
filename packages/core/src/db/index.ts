@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect, type Transaction } from "kysely";
+import { CompiledQuery, Kysely, PostgresDialect, type Transaction } from "kysely";
 import pg from "pg";
 import { connectionConfig } from "./connection";
 import type { DB } from "./types";
@@ -26,6 +26,19 @@ export function createDatabase(connectionString: string, options: DatabaseOption
     max: options.maxConnections ?? 3,
   });
   return new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
+}
+
+/** Trusted backup operator only: the official temporary CLI login is a member of postgres. */
+export function createOperatorDatabase(connectionString: string): Database {
+  const pool = new pg.Pool({ ...connectionConfig(connectionString), max: 3 });
+  return new Kysely<DB>({
+    dialect: new PostgresDialect({
+      pool,
+      async onCreateConnection(connection) {
+        await connection.executeQuery(CompiledQuery.raw("SET ROLE postgres"));
+      },
+    }),
+  });
 }
 
 /**

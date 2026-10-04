@@ -1,0 +1,24 @@
+{
+  "version": "openrouter-2026-10-04-1",
+  "llmModel": "anthropic/claude-haiku-4.5",
+  "visionModel": "anthropic/claude-haiku-4.5",
+  "sttModel": "openai/whisper-large-v3-turbo",
+  "ttsModel": "hexgrad/kokoro-82m",
+  "voice": "af_heart",
+  "promptVersion": "recalino-knowledge-1",
+  "maxInputCharacters": 120000,
+  "maxOutputTokens": 6144,
+  "timeoutMs": 90000,
+  "maximumMicros": 200000,
+  "modelMaximumMicros": {
+    "anthropic/claude-haiku-4.5": 200000,
+    "openai/whisper-large-v3-turbo": 3000,
+    "hexgrad/kokoro-82m": 5000
+  },
+  "currency": "USD",
+  "priceVersion": "openrouter-models-2026-10-04",
+  "charactersPerPage": 3000,
+  "audioUrlSupported": false,
+  "sttProviderOptions": {},
+  "dataContractApproved": false
+}

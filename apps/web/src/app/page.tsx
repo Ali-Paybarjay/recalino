@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getLearner } from "../server/auth/learner";
+import { getLearner, getPendingAccountDeletion } from "../server/auth/learner";
 import { safeReturnPath } from "../server/auth/return-path";
 import { legalValues } from "../server/legal";
 import { LegalDocument } from "../ui/components/LegalDocument";
@@ -18,6 +18,7 @@ export default async function WelcomePage({ searchParams }: WelcomeProps) {
   if (learner !== null) {
     redirect(learner.state.setupComplete ? safeReturnPath(params.next) : "/setup");
   }
+  if (await getPendingAccountDeletion()) redirect("/deletion");
   const values = legalValues();
   return (
     <SignIn

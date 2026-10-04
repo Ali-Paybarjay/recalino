@@ -58,10 +58,12 @@ export async function completeSignIn(
 
     const existing = await tx
       .selectFrom("acc.user_account")
-      .select("id")
+      .select(["id", "deleted_at"])
       .where("id", "=", input.userId)
+      .forUpdate()
       .executeTakeFirst();
 
+    if (existing?.deleted_at) return { kind: "no_account" };
     if (existing === undefined && !usable) return { kind: "no_account" };
 
     if (existing === undefined && intent !== undefined) {

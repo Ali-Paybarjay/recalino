@@ -61,6 +61,20 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
   return (
     <>
       <p className={styles.intro}>{profileCopy.intro}</p>
+      <Row href="/me/quota" label="Your allowance" value="Available and used" icon={SunHorizon} />
+      <Row
+        href="/me/review-settings"
+        label="Review settings"
+        value="Daily review choices"
+        icon={ChalkboardSimple}
+      />
+      <Row
+        href="/me/learning"
+        label="Your learning"
+        value="History and preferences"
+        icon={Lightbulb}
+      />
+      <Row href="/me/data" label="Your data" value="Privacy and deletion" icon={UserCircle} />
       <section className={styles.summary} aria-labelledby="learning-profile-title">
         <div className={styles.summaryHeading}>
           <span className={styles.summaryIcon}>

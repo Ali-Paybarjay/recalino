@@ -6,6 +6,7 @@ import {
   GOALS,
   getAccountState,
   LEVELS,
+  lockAccount,
   SETUP_STEPS,
   type SetupStep,
 } from "./account";
@@ -54,6 +55,7 @@ export async function updateProfile(
 ): Promise<AccountState> {
   validate(change);
   await db.transaction().execute(async (tx) => {
+    await lockAccount(tx, ctx.userId);
     // One change at a time per learner, so versions never collide.
     await tx
       .selectFrom("acc.learning_profile")
