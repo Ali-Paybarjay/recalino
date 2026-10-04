@@ -1,0 +1,21 @@
+{
+  "createdAt": "2026-10-04T14:43:18.839Z",
+  "sourceCommit": "6d5445f",
+  "deployment": {
+    "id": "dpl_AFRH6jHBYcdWouuCANKW79FmDEmU",
+    "url": "recalino-p9sgdx5rd-ali-paybarjay-s-projects.vercel.app",
+    "readyState": "READY",
+    "target": "production",
+    "regions": ["lhr1"],
+    "nodeVersion": "24.x",
+    "alias": ["recalino-ali-paybarjay-s-projects.vercel.app"]
+  },
+  "productionSecretNamesIncluded": ["RECALINO_BACKUP_KEY_ID", "RECALINO_BACKUP_KEY_BASE64"],
+  "protection": {
+    "deploymentType": "all"
+  },
+  "mainDomainDeploymentId": "dpl_HowULqouKhD53djDGryqgbADyQDL",
+  "mainDomainPointsToThisDeployment": false,
+  "scope": "Pinned reviewed source; private env files and concurrent app edits excluded. Metadata only, no values printed.",
+  "passed": true
+}

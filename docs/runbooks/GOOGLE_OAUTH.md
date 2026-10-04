@@ -55,10 +55,10 @@
 
 بررسی واقعی در 2026-10-04 نشان داد `external.google` در `/auth/v1/settings` پروژهٔ `twowhuzhvyuzjrpraikm` مقدار `false` دارد و مسیر authorize با خطای `400 / validation_failed` و پیام `Unsupported provider: provider is not enabled` متوقف می‌شود. موفقیت build، صفحهٔ اول یا هدایت `303` به authorize، اثبات ورود موفق نیست؛ گزارش `artifacts/verification/cloud-google-readiness.json` این محدودیت را ثبت می‌کند.
 
-1. در OAuth Client گوگل، **Authorized JavaScript origin** همین نسخه را اضافه کنید: `https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app`. این **Authorized redirect URI** نیز به فهرست موجود اضافه شود: `https://twowhuzhvyuzjrpraikm.supabase.co/auth/v1/callback`. این callback با مسیر `/auth/callback` خود اپ تفاوت دارد؛ گوگل ابتدا به Supabase برمی‌گردد.
+1. در OAuth Client گوگل، **Authorized JavaScript origin** نسخهٔ تازه را اضافه کنید: `https://recalino-bzf44bkg0-ali-paybarjay-s-projects.vercel.app`. این **Authorized redirect URI** نیز به فهرست موجود اضافه شود: `https://twowhuzhvyuzjrpraikm.supabase.co/auth/v1/callback`. این callback با مسیر `/auth/callback` خود اپ تفاوت دارد؛ گوگل ابتدا به Supabase برمی‌گردد.
 2. Client ID و Client secret همان Client را در فایل ignored `.env` ریشه، با نام‌های گام ۷ ثبت کنید و فقط خبر دهید آماده است. انتقال مقدارها از چت انجام نمی‌شود.
 3. در پروژهٔ موجود Supabase، بخش **Authentication → Sign In / Providers → Google**، همان Client ID/secret ثبت و Google فعال شود. تا آماده‌بودن این دو مقدار، تغییر تنظیم provider انجام نمی‌شود.
-4. در **Authentication → URL Configuration → Redirect URLs**، callback همین نسخهٔ اپ به فهرست موجود اضافه شود: `https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app/auth/callback`. هر نسخه با میزبان تازه، به نشانی مجاز خودش نیاز دارد؛ wildcard عمومی استفاده نمی‌شود.
+4. در **Authentication → URL Configuration → Redirect URLs**، callback نسخهٔ تازهٔ اپ به فهرست موجود اضافه شود: `https://recalino-bzf44bkg0-ali-paybarjay-s-projects.vercel.app/auth/callback`. هر نسخه با میزبان تازه، به نشانی مجاز خودش نیاز دارد؛ wildcard عمومی استفاده نمی‌شود.
 5. بررسی readiness باید `external.google: true` را نشان دهد و مرورگر به Google هدایت شود. سپس ورود واقعی با حساب مالک، بازگشت به `/auth/callback`، راه‌اندازی، Today، Classes، Review و Settings بررسی شود. تا اجرای این مرحله، ورود کامل ابری تأییدشده نیست.
 
 فرمان بررسی خواندنی، با فایل محیط صریح و ignored شامل `SUPABASE_URL` و `SUPABASE_PUBLISHABLE_KEY` همان مقصد:
