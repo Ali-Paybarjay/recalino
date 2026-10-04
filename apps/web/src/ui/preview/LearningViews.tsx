@@ -62,7 +62,8 @@ function withNoteVersion(state: PreviewState, text: string, label: string, id: s
   };
 }
 
-function SourceLabel({ source }: { source: string }) {
+function SourceLabel({ source, classId }: { source: string; classId?: string }) {
+  const { setState } = usePreview();
   const ai = /ai|computer voice/i.test(source);
   const prepared = /prepared|authored|not extracted/i.test(source);
   return (
@@ -74,7 +75,27 @@ function SourceLabel({ source }: { source: string }) {
       >
         {prepared ? "Prepared sample" : ai ? "AI explanation · sample" : "From class · sample"}
       </span>
-      <Link className={styles.sourceLink} href="/preview/source">
+      <Link
+        className={styles.sourceLink}
+        href="/preview/source"
+        onClick={
+          classId
+            ? () =>
+                setState((previous) => {
+                  const lesson = previous.classes.find((item) => item.id === classId);
+                  return lesson
+                    ? {
+                        ...previous,
+                        classes: [
+                          lesson,
+                          ...previous.classes.filter((item) => item.id !== classId),
+                        ],
+                      }
+                    : previous;
+                })
+            : undefined
+        }
+      >
         {source}
       </Link>
     </div>
@@ -882,7 +903,7 @@ function Cards() {
                 <CardInstruction type={card.type} />
                 <h3>{card.question}</h3>
                 <p>{card.answer}</p>
-                <SourceLabel source={card.source} />
+                <SourceLabel source={card.source} classId={card.classId} />
                 {card.status !== "suggested" ? (
                   <p className={styles.muted}>
                     {card.status === "active"
@@ -1205,7 +1226,7 @@ function CardEditor() {
                 onChange={(event) => setAnswer(event.target.value)}
               />
             </Field>
-            <SourceLabel source={card.source} />
+            <SourceLabel source={card.source} classId={card.classId} />
           </div>
         </Panel>
         <Panel title="Learning goal">
@@ -1414,7 +1435,7 @@ function CardUpdate() {
         <Panel title="Your current card">
           <h3>{card.question}</h3>
           <p>{card.answer}</p>
-          <SourceLabel source={card.source} />
+          <SourceLabel source={card.source} classId={card.classId} />
         </Panel>
         <Panel title="Suggested update">
           <h3>{card.question}</h3>
@@ -1765,7 +1786,7 @@ function ReviewCard({ revealed }: { revealed: boolean }) {
         <CardInstruction type={card.type} />
         <h2>{card.question}</h2>
         {card.type === "listening" ? <ComputerVoice text={card.answer} /> : null}
-        <SourceLabel source={card.source} />
+        <SourceLabel source={card.source} classId={card.classId} />
         {revealed ? (
           <div className={styles.answer}>{card.answer}</div>
         ) : (

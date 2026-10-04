@@ -1,5 +1,40 @@
 import { expect, SAMPLE_BANNER, STORAGE_KEY, test, VIEWPORTS } from "./helpers";
 
+test("a global review source opens the card's own class after another class is selected", async ({
+  page,
+}) => {
+  await page.goto("/preview/new-class");
+  await page.getByLabel("Class name", { exact: true }).fill("Blank review workspace");
+  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Blank review workspace");
+  await expect(page.getByText("Class recording", { exact: true })).toHaveCount(0);
+
+  await page.goto("/preview/review");
+  await page.getByRole("button", { name: "Start review", exact: true }).click();
+  await page
+    .getByRole("article")
+    .getByRole("link", { name: /^Audio 18:42\b/ })
+    .click();
+  await expect(page).toHaveURL(/\/preview\/source$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("From your class");
+  await expect(page.getByRole("heading", { name: "Present perfect", exact: true })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw).classes[0]?.title : null;
+      }, STORAGE_KEY),
+    )
+    .toBe("Present perfect");
+
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("From your class");
+  await page.goto("/preview/class");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
+  await expect(page.getByText("Class recording", { exact: true })).toBeVisible();
+  await expect(page.getByText("Present perfect handout.pdf", { exact: true })).toBeVisible();
+});
+
 test("a new class begins empty and opening an existing class restores its own material", async ({
   page,
 }) => {
