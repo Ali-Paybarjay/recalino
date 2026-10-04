@@ -39,7 +39,7 @@ pnpm --filter @recalino/ops-cli backup --command drill --linked-supabase --env D
 
 ## فعال‌سازی روزانه روی میزبان موجود
 
-ساخت پشتیبان، زمان‌بندی ساخت را فعال نمی‌کند. فایل `tools/backup/install-daily-task.ps1` ابزار opt-in ثبت Windows Task Scheduler است؛ این فایل به‌تنهایی اجرا یا ثبت نشده است. میزبان باید روزانه روشن، متصل و دارای محیط خصوصی، Docker یا ابزار native و نسخهٔ جاری پروژه باشد. زمان‌بندی پیش‌فرض محلی 03:00 است و اجرای ازدست‌رفته پس از در دسترس شدن میزبان شروع می‌شود. دستور ثبت:
+ساخت پشتیبان، زمان‌بندی ساخت را فعال نمی‌کند. فایل `tools/backup/install-daily-task.ps1` ابزار ثبت صریح Windows Task Scheduler است. میزبان باید روزانه روشن، متصل و دارای محیط خصوصی، Docker یا ابزار native و نسخهٔ جاری پروژه باشد. زمان‌بندی پیش‌فرض محلی 03:00 است و اجرای ازدست‌رفته پس از در دسترس شدن میزبان شروع می‌شود. دستور ثبت روی میزبان تازه:
 
 ```powershell
 pwsh -File tools/backup/install-daily-task.ps1 -WorkspacePath "D:\Claude Projects\Recalino" -OperatorEnvFile D:\private-config\backup.env -ActorId operator-name -LocalTime 03:00 -NodeDirectory "C:\Program Files\nodejs"
@@ -47,11 +47,50 @@ Get-ScheduledTask -TaskName 'Recalino encrypted daily backup'
 Get-ScheduledTaskInfo -TaskName 'Recalino encrypted daily backup'
 ```
 
-زمان‌بندی ساخت روی این میزبان باید صریحاً فعال و وضعیت آخرین اجرای آن بررسی شود؛ تا آن زمان «پشتیبان روزانه فعال» ادعا نمی‌شود. نگهداری و حذف روی Vercel مستقل از روشن‌بودن میزبان اپراتور اجرا می‌شود. هیچ RPO/RTO یا SLA عمومی از این آزمون محلی نتیجه گرفته نمی‌شود.
+ثبت به‌تنهایی موفقیت اجرا را ثابت نمی‌کند؛ وضعیت آخرین اجرای همان action باید بررسی شود. نگهداری و حذف روی Vercel مستقل از روشن‌بودن میزبان اپراتور اجرا می‌شود. هیچ RPO/RTO یا SLA عمومی از این آزمون محلی نتیجه گرفته نمی‌شود.
 
 برای زمان‌بندی حالت متصل، به دستور ثبت بالا `-LinkedSupabase` اضافه کنید. این switch فقط آرگومان ثابت CLI را به runner می‌دهد و هیچ رمز یا SQL در تعریف Task Scheduler نمی‌گذارد.
 
 پارامتر `NodeDirectory` باید مسیر واقعی نصب Node.js 24 روی میزبان باشد. installer و runner اجرای `node.exe --version` را بررسی می‌کنند و نسخهٔ major دیگر را رد می‌کنند؛ runner همان مسیر را ابتدای PATH می‌گذارد. اگر این پارامتر داده نشود، installer مسیر executable موجود را از `Get-Command node` می‌گیرد و همان مسیر مؤثر را در action ثبت می‌کند؛ اجرای بعدی به PATH متفاوت Task Scheduler وابسته نمی‌شود. مسیر نمونهٔ بالا فقط برای نصب واقعی همین میزبان است.
+
+installer مسیر مطلق Windows PowerShell، Node 24 و فایل JavaScript مربوط به Corepack/pnpm را در action ثبت می‌کند. `-PnpmCliPath` مسیر صریح فایل `pnpm.js` را می‌گیرد؛ runner آن را با همان `node.exe` اجرا می‌کند، نه با launcher ویندوزی که ممکن است Node دیگری انتخاب کند. جداکنندهٔ `--` آرگومان‌های فرمان backup را در pnpm 12 به خود ابزار می‌رساند. به‌روزرسانی فقط با `-UpdateExisting` مجاز است؛ task باید متعلق به همان حساب ویندوز، همان workspace و همان runner باشد و هنگام تغییر در حال اجرا نباشد.
+
+### تنظیم رمزگذاری‌شده برای Task Scheduler
+
+روی میزبان فعلی، action زمان‌بندی‌شده نتوانست فایل محدودشدهٔ LocalAppData را بخواند. مجوز فایل بازتر نشد؛ پیکربندی task با Windows DPAPI در scope برابر `CurrentUser` محافظت شد. فایل ciphertext در `.vercel/backup-operator.dpapi.json` از Git خارج است. رمزگشایی فقط در حافظه انجام می‌شود، هفت مقدار مجاز به محیط فرایند داده می‌شوند و در `finally` مقدارهای قبلی محیط بازمی‌گردند. فایل plaintext موقت یا مقدار محرمانه در argv و تعریف task ساخته نمی‌شود. این حالت فقط با `-LinkedSupabase` کار می‌کند؛ اتصال dump و manifest هر بار اعتبارنامهٔ موقت رسمی CLI را می‌گیرند، نه رمز مدیریتی ذخیره‌شده.
+
+ابزار نسخه‌دار `tools/backup/protect-config.ps1` برای ساخت یا تعویض پیکربندی است. ورودی آن عمداً محدود است: **دقیقاً هفت متغیر زیر، هرکدام یک‌بار، در یک خط با مقدار داخل single quote**؛ خط خالی و توضیح با `#` مجاز است. newline داخل مقدار، escape سفارشی و متغیر اضافی مانند `DATABASE_URL`، `BACKUP_DATABASE_URL` یا `LOCAL_RESTORE_DATABASE_URL` پذیرفته نمی‌شود. این ورودی با فایل عمومی تنظیم manual backup در بخش بالاتر متفاوت است.
+
+```dotenv
+RECALINO_BACKUP_KEY_BASE64='<existing canonical 32-byte key>'
+RECALINO_BACKUP_KEY_ID='<matching key identifier>'
+RECALINO_BACKUP_SETTINGS_JSON='<one-line JSON with matching keyId, maxEncryptedBytes and timeoutSeconds>'
+RECALINO_BACKUP_TOOLS_JSON='<one-line JSON for existing Docker or native tools>'
+RECALINO_SUPABASE_CLI_PATH='<absolute path to pinned supabase executable>'
+RECALINO_BACKUP_LINKED_WORKSPACE='D:\Claude Projects\Recalino'
+BLOB_READ_WRITE_TOKEN='<existing private Blob credential>'
+```
+
+ساخت باید زیر همان حساب ویندوزِ task انجام شود. ابزار طول کلید، key ID و ref متصل را بررسی می‌کند و فایل خروجی را با `FileMode.CreateNew` می‌سازد؛ حتی در رقابت دو نویسنده فایل موجود جایگزین نمی‌شود. برای تعویض تنظیم، مسیر ciphertext تازه انتخاب کنید، سپس همان task را با مسیر تازه به‌روزرسانی و اجرا کنید. دادهٔ ciphertext یا مقدارهای بازشده در خروجی ابزار چاپ نمی‌شوند.
+
+```powershell
+pwsh -File tools/backup/protect-config.ps1 -OperatorEnvFile D:\private-config\linked-backup.env -OutputPath "D:\Claude Projects\Recalino\.vercel\backup-operator.dpapi.v2.json"
+pwsh -File tools/backup/install-daily-task.ps1 -WorkspacePath "D:\Claude Projects\Recalino" -OperatorEnvFile "D:\Claude Projects\Recalino\.vercel\backup-operator.dpapi.v2.json" -ActorId operator-name -LinkedSupabase -DpapiConfig -UpdateExisting -NodeDirectory "C:\Program Files\nodejs" -PnpmCliPath "C:\nvm4w\nodejs\node_modules\corepack\dist\pnpm.js"
+Start-ScheduledTask -TaskName 'Recalino encrypted daily backup'
+Get-ScheduledTaskInfo -TaskName 'Recalino encrypted daily backup'
+```
+
+پس از آزمون موفق، ورودی plaintext مشتق‌شده دیگر برای اجرای task لازم نیست؛ نسخهٔ مستقل کلید AES برای بازیابی و کلیدهای قدیمی لازم حفظ می‌شوند. DPAPI جای کلید مستقل بازیابی را نمی‌گیرد و به حساب/پروفایل ویندوز وابسته است. برای میزبان یا حساب تازه، پیکربندی DPAPI تازه بسازید. تعویض خود کلید AES باید با key ID جدید و حفظ کلیدهای بایگانی‌ها و journalهای قبلی انجام شود.
+
+runner فقط stage/کد ثابت و شناسه، وضعیت، key ID و اندازهٔ archive را در `daily-status.json` کنار فایل تنظیم و `.vercel/backup-task-runtime.json` ثبت می‌کند. stderr و JSON بازشدهٔ تنظیم ثبت نمی‌شوند. نبود نتیجهٔ معتبر یا شکست preflight، exit غیرصفر می‌دهد؛ نتیجهٔ manual را جای نتیجهٔ action زمان‌بندی‌شده حساب نکنید.
+
+### وضعیت تأییدشدهٔ میزبان فعلی
+
+در 2026-10-04، task `Recalino encrypted daily backup` با زمان محلی 03:00 و timezone برابر `GMT Standard Time` ثبت و action خودش اجرا شد. `LastTaskResult: 0` و گزارش تازهٔ 18:02:51 UTC، پس از شروع 18:02:37 UTC، موفقیت را تأیید کردند؛ Node 24.19.0 و اتصال linked ابری استفاده شد. archive آمادهٔ همان روز با 304681 بایت ciphertext طبق idempotency دوباره استفاده شد؛ snapshot تازه یا تمرین restore دیگری انجام نشد. گزارش عمومیِ بدون اسرار: `artifacts/verification/encrypted-daily-backup.json`.
+
+task از نوع `InteractiveToken` و سطح `Limited` است: حساب ویندوز مالک باید وارد سیستم باشد، میزبان روشن و آنلاین بماند، Docker موجود اجرا شود و ورود CLI اعتبار داشته باشد. `StartWhenAvailable` فعال است و اجراهای هم‌زمان نادیده گرفته می‌شوند. اجرای بعدی هنگام ثبت شواهد 2026-10-05 ساعت 03:00 محلی، برابر 02:00 UTC، بود. این نتیجه تضمین اجرای شبانه در میزبان خاموش/خارج‌شده از حساب یا عدد RPO/RTO نیست.
+
+پنج آزمون ایزولهٔ `node --test tools/backup/daily-task.test.mjs` موفق شدند: محیط کودک از DPAPI، حذف diagnostic محرمانهٔ مصنوعی از گزارش، رد مالک متفاوت، رد ciphertext تغییرکرده، منع اتصال نامشخص/محلی و حفظ فایل موجود هنگام درخواست جایگزینی. این آزمون‌ها کلید ساختگی و فرمان کودک ساختگی دارند و هیچ اتصال دیتابیس، Blob، AI یا restore انجام نمی‌دهند.
 
 ## تمرین ایزوله و سابقهٔ حذف
 

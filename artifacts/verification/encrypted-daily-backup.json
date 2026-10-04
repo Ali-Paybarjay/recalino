@@ -1,0 +1,56 @@
+{
+  "checkedAt": "2026-10-04T18:11:54.8388199+00:00",
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "task": {
+    "name": "Recalino encrypted daily backup",
+    "registered": true,
+    "enabled": true,
+    "state": "Ready",
+    "lastTaskResult": 0,
+    "lastRunTimeUtc": "2026-10-04T18:02:37.0000000+00:00",
+    "nextRunTimeUtc": "2026-10-05T02:00:00.0000000+00:00",
+    "dailyLocalTime": "03:00",
+    "windowsTimeZone": "GMT Standard Time",
+    "logonType": "Interactive",
+    "currentUserIdentityMatches": true,
+    "runLevel": "Limited",
+    "startWhenAvailable": true,
+    "multipleInstances": "IgnoreNew",
+    "absolutePowerShellExecutable": true,
+    "pinnedNode24": true,
+    "pinnedCorepack": true,
+    "linkedSupabase": true,
+    "dpapiConfig": true
+  },
+  "configuration": {
+    "protection": "Windows DPAPI CurrentUser",
+    "ciphertextIgnoredByGit": true,
+    "secretsInTaskArguments": false,
+    "plaintextTemporaryFile": false,
+    "persistentAdministrativeDatabasePassword": false,
+    "independentAesRecoveryCopyPreserved": true
+  },
+  "runtime": {
+    "checkedAt": "2026-10-04T18:02:51.7289227+00:00",
+    "freshAfterScheduledStart": true,
+    "nodeVersion": "v24.19.0",
+    "exitCode": 0,
+    "backupId": "a82b451b-3f3c-4562-a62c-8398e699bd91",
+    "backupState": "ready",
+    "keyId": "recalino-backup-20261004-v1",
+    "encryptedBytes": 304681,
+    "dailyIdempotencyReusedExistingArchive": true,
+    "isolatedRestoreRerun": false
+  },
+  "safetyRegressions": {
+    "tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "realCloudOperations": false
+  },
+  "limitations": [
+    "Existing Windows host must be available, online and owner logged on.",
+    "Existing Docker tools and valid Supabase CLI sign-in are required.",
+    "No daily RPO, RTO or availability SLA is asserted."
+  ]
+}
