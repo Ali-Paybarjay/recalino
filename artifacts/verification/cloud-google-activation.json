@@ -84,5 +84,19 @@
     "path": "/",
     "signinError": true
   },
-  "machineReady": true
+  "machineReady": true,
+  "databaseObservation": {
+    "checkedAt": "2026-10-04T16:32:49.972Z",
+    "authUsers": 1,
+    "appAccounts": 1,
+    "learningProfiles": 1,
+    "provider": "google",
+    "authCreatedAt": "2026-10-04T16:05:10.404398Z",
+    "setupStep": 8,
+    "setupComplete": true,
+    "recordingConsentPresent": true,
+    "ownerIdentityVerified": false,
+    "deploymentHostVerified": false,
+    "scope": "Read-only aggregate and lifecycle metadata; no email, identifier, token or learner content."
+  }
 }
