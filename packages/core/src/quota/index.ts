@@ -32,3 +32,10 @@ export {
   settleAllowance,
 } from "./ledger";
 export { providerCostSummary } from "./operations";
+export {
+  grantPilotEntitlement,
+  type PilotGrantInput,
+  type PilotPolicy,
+  pilotGrantOperationKey,
+  pilotPolicySchema,
+} from "./pilot";

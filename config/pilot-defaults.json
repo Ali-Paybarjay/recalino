@@ -1,0 +1,13 @@
+{
+  "version": "pilot-2026-10-04-approved",
+  "pilotId": "recalino-2026-10-04",
+  "maximumParticipants": 8,
+  "periodDays": 30,
+  "amounts": {
+    "audio": 36000,
+    "document": 100,
+    "regeneration": 20,
+    "tts": 20000,
+    "storage": 524288000
+  }
+}

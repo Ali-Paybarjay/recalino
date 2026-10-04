@@ -25,7 +25,7 @@
    - اول نشانی Gmail خودتان را اضافه کنید، برای آزمون محلی.
    - بعداً نشانی Google هر زبان‌آموز پایلوت را اضافه کنید.
 
-   در حالت Testing فقط همین افراد می‌توانند وارد شوند (تا ۱۰۰ نفر). اگر تصمیم شما برای پایلوت «ورود آزاد برای همه» باشد، این گام بعداً عوض می‌شود.
+   برای scopeهای پایهٔ `openid/email/profile`، Google استثنا قائل است: کاربر بدون عضویت در Test users هم می‌تواند وارد شود. بنابراین این فهرست allowlist ورود ریکالینو نیست. شرکت‌کنندگان دارای سهمیه با `pilot.grant` اپراتور و سقف هشت نفر کنترل می‌شوند. [مستند Google](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview)، [توضیح استثنا](https://support.google.com/cloud/answer/15549945?hl=en)
 5. **دسترسی به داده (Data Access):** با **Add or remove scopes** فقط این سه را انتخاب کنید و ذخیره کنید:
    - `openid`
    - `.../auth/userinfo.email`
@@ -59,7 +59,7 @@
 2. Client ID و Client secret همان Client را در فایل ignored `.env` ریشه، با نام‌های گام ۷ ثبت کنید و فقط خبر دهید آماده است. انتقال مقدارها از چت انجام نمی‌شود.
 3. در پروژهٔ موجود Supabase، بخش **Authentication → Sign In / Providers → Google**، همان Client ID/secret ثبت و Google فعال شود. تا آماده‌بودن این دو مقدار، تغییر تنظیم provider انجام نمی‌شود.
 4. در **Authentication → URL Configuration → Redirect URLs**، callback همین نسخهٔ اپ به فهرست موجود اضافه شود: `https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app/auth/callback`. هر نسخه با میزبان تازه، به نشانی مجاز خودش نیاز دارد؛ wildcard عمومی استفاده نمی‌شود.
-5. بررسی readiness باید `external.google: true` را نشان دهد و مرورگر به Google هدایت شود. سپس ورود واقعی با حساب مجاز در Test users، بازگشت به `/auth/callback`، راه‌اندازی، Today، Classes، Review و Settings بررسی شود. تا اجرای این مرحله، ورود کامل ابری تأییدشده نیست.
+5. بررسی readiness باید `external.google: true` را نشان دهد و مرورگر به Google هدایت شود. سپس ورود واقعی با حساب مالک، بازگشت به `/auth/callback`، راه‌اندازی، Today، Classes، Review و Settings بررسی شود. تا اجرای این مرحله، ورود کامل ابری تأییدشده نیست.
 
 فرمان بررسی خواندنی، با فایل محیط صریح و ignored شامل `SUPABASE_URL` و `SUPABASE_PUBLISHABLE_KEY` همان مقصد:
 
@@ -69,6 +69,6 @@ node --env-file=.env.auth-check.local tools/auth/check-google.mjs
 
 اگر محیط از قبل بارگذاری شده است، `pnpm auth:check` همان بررسی را اجرا می‌کند. فرمان، کلید، پاسخ خام یا متن خطای شبکه را چاپ نمی‌کند؛ فقط وضعیت HTTP، فعال‌بودن Google، میزبان پروژه و دستهٔ خطا را نشان می‌دهد. Google خاموش و پاسخ نامعتبر با exit 1 تمام می‌شوند. آزمون‌های آن مستقل از ابر هستند: `node --test tools/auth/check-google.test.mjs`.
 
-مدل Testing گوگل به فهرست Test users وابسته است. تغییر وضعیت انتشار Google یا فعال‌کردن عمومی پایلوت تصمیم جداگانهٔ مالک محصول است.
+scopeهای فعلی Supabase فقط اطلاعات پایهٔ هویت‌اند؛ محدودیت Test users در حالت Testing برای آن‌ها اعمال نمی‌شود. تصمیم قبلی نداشتن allowlist ورود اپ حفظ شده است. افزودن محدودیت ورود جداگانه، تصمیم تازه‌ای می‌خواهد؛ سقف هشت نفر ابزار اپراتور به حساب‌های دارای سهمیه مربوط است.
 
 تا برند تأیید نشده، صفحه رضایت Google به‌جای نام Recalino دامنه Supabase را نشان می‌دهد. برای پایلوت مشکلی نیست.

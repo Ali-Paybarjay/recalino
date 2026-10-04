@@ -4,11 +4,41 @@ import { createAuthUser } from "../../test/auth-users";
 import { testDatabaseUrl } from "../../test/local-db";
 import { CURRENT_VERSIONS, completeSignIn, createSignupIntent } from "../acc";
 import { createDatabase } from "../db";
-import { allowance } from "../quota";
+import { allowance, pilotGrantOperationKey } from "../quota";
 import { executeOperatorRequest } from "./operator";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 3 });
 afterAll(() => db.destroy());
+it("validates and executes bounded initial pilot admission through the operator request API", async () => {
+  const userId = await createAuthUser();
+  const now = new Date();
+  const intent = await createSignupIntent(db, { versions: CURRENT_VERSIONS, ttlSeconds: 60, now });
+  await completeSignIn(db, { userId, intentId: intent.id, now });
+  const pilotId = `synthetic-${randomUUID()}`;
+  const request = {
+    version: "1",
+    command: "pilot.grant",
+    actorId: "synthetic-pilot-operator",
+    reason: "Synthetic operator admission smoke test",
+    operationKey: pilotGrantOperationKey(pilotId, userId),
+    input: {
+      userId,
+      startsAt: now.toISOString(),
+      policy: {
+        version: "synthetic-policy-1",
+        pilotId,
+        maximumParticipants: 8,
+        periodDays: 30,
+        amounts: { audio: 36000, document: 100, regeneration: 20, tts: 20000, storage: 524288000 },
+      },
+    },
+  };
+  const result = await executeOperatorRequest(db, request, now);
+  expect(await executeOperatorRequest(db, request, now)).toEqual(result);
+  expect((await allowance(db, { userId, requestId: randomUUID() }, now)).remaining).toEqual(
+    request.input.policy.amounts,
+  );
+});
 it("runs profile-free audited quota commands, replays financial mutations once and reports metadata only", async () => {
   const userId = await createAuthUser();
   const now = new Date();

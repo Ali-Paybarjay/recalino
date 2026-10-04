@@ -1,0 +1,24 @@
+{
+  "verifiedDate": "2026-10-04",
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "version": "pilot-2026-10-04-approved",
+  "ownerApproved": true,
+  "maximumParticipants": 8,
+  "participantBoundary": "Operator-granted initial pilot entitlements; not a Google sign-in allowlist",
+  "currency": "USD",
+  "killSwitch": false,
+  "limitsMicros": {
+    "session": 1000000,
+    "userMonth": 8000000,
+    "systemDay": 5000000,
+    "systemMonth": 50000000
+  },
+  "costPolicyReadbackPassed": true,
+  "operatorAuditReadbackPassed": true,
+  "realAccountsAtVerification": 0,
+  "entitlementsAtVerification": 0,
+  "syntheticPilotAccountsCreated": false,
+  "realLearnerProviderDataApproved": false,
+  "googleEnabled": false,
+  "scope": "Non-secret configuration and aggregate counts only; no classroom data or paid inference."
+}

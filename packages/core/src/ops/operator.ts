@@ -10,6 +10,8 @@ import {
   costPolicySchema,
   DIMENSIONS,
   grantEntitlement,
+  grantPilotEntitlement,
+  pilotPolicySchema,
   providerCostSummary,
 } from "../quota";
 import { configureInputContract, inputContractSchema } from "../src";
@@ -21,6 +23,15 @@ const common = {
   operationKey: z.string().min(8).max(200),
 };
 export const operatorRequestSchema = z.discriminatedUnion("command", [
+  z.strictObject({
+    ...common,
+    command: z.literal("pilot.grant"),
+    input: z.strictObject({
+      userId: z.uuid(),
+      policy: pilotPolicySchema,
+      startsAt: z.iso.datetime(),
+    }),
+  }),
   z.strictObject({
     ...common,
     command: z.literal("quota.grant"),
@@ -64,6 +75,19 @@ export async function executeOperatorRequest(
   const request = operatorRequestSchema.parse(raw);
   const operator = { actorId: request.actorId, reason: request.reason };
   switch (request.command) {
+    case "pilot.grant":
+      return {
+        entitlementId: await grantPilotEntitlement(
+          db,
+          {
+            ...request.input,
+            ...operator,
+            operationKey: request.operationKey,
+            startsAt: new Date(request.input.startsAt),
+          },
+          now,
+        ),
+      };
     case "quota.grant":
       return {
         entitlementId: await grantEntitlement(

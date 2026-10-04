@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "command": "cost.configure",
+  "actorId": "product-owner-authorized-codex",
+  "reason": "Owner-approved eight-person pilot AI caps on 2026-10-04",
+  "operationKey": "pilot-2026-10-04-cost-approved",
+  "input": {
+    "version": "pilot-2026-10-04-approved",
+    "currency": "USD",
+    "killSwitch": false,
+    "limits": {
+      "session": 1000000,
+      "userMonth": 8000000,
+      "systemDay": 5000000,
+      "systemMonth": 50000000
+    }
+  }
+}

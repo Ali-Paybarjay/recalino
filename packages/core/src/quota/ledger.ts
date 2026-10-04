@@ -61,6 +61,13 @@ export interface GrantInput {
 
 /** Internal operator API. No web route exposes it (FR-QUOTA-002). */
 export async function grantEntitlement(db: Database, input: GrantInput, now = new Date()) {
+  if (input.operationKey.startsWith("pilot:"))
+    throw errors.validationFailed({ operationKey: ["bounded_pilot_command_required"] });
+  return db.transaction().execute((tx) => grantEntitlementInTransaction(tx, input, now));
+}
+
+/** Internal transaction helper for atomic operator admission plus its allowance grant. */
+export async function grantEntitlementInTransaction(tx: Tx, input: GrantInput, now = new Date()) {
   const units = amountsSchema.parse(input.amounts);
   operationKey.parse(input.operationKey);
   z.string().trim().min(1).max(500).parse(input.reason);
@@ -71,76 +78,73 @@ export async function grantEntitlement(db: Database, input: GrantInput, now = ne
     input.endsAt <= input.startsAt
   )
     throw errors.validationFailed({ period: ["invalid"] });
-  return db.transaction().execute(async (tx) => {
-    await lockAccount(tx, input.userId);
-    const previous = await tx
-      .selectFrom("quota.entitlement")
+  await lockAccount(tx, input.userId);
+  const previous = await tx
+    .selectFrom("quota.entitlement")
+    .selectAll()
+    .where("operation_key", "=", input.operationKey)
+    .executeTakeFirst();
+  if (previous) {
+    const grant = await tx
+      .selectFrom("quota.ledger")
       .selectAll()
-      .where("operation_key", "=", input.operationKey)
-      .executeTakeFirst();
-    if (previous) {
-      const grant = await tx
-        .selectFrom("quota.ledger")
-        .selectAll()
-        .where("entitlement_id", "=", previous.id)
-        .where("kind", "=", "grant")
-        .execute();
-      const original = emptyAmounts();
-      for (const row of grant)
-        original[z.enum(DIMENSIONS).parse(row.dimension)] = Number(row.amount);
-      if (
-        previous.user_id !== input.userId ||
-        previous.starts_at.getTime() !== input.startsAt.getTime() ||
-        previous.ends_at.getTime() !== input.endsAt.getTime() ||
-        canonicalJson(original) !== canonicalJson(units)
-      )
-        throw errors.idempotencyMismatch();
-      return previous.id;
-    }
-    const overlap = await tx
-      .selectFrom("quota.entitlement")
-      .select("id")
-      .where("user_id", "=", input.userId)
-      .where("closed_at", "is", null)
-      .where("starts_at", "<", input.endsAt)
-      .where("ends_at", ">", input.startsAt)
-      .executeTakeFirst();
-    if (overlap) throw errors.conflict();
-    const row = await tx
-      .insertInto("quota.entitlement")
+      .where("entitlement_id", "=", previous.id)
+      .where("kind", "=", "grant")
+      .execute();
+    const original = emptyAmounts();
+    for (const row of grant) original[z.enum(DIMENSIONS).parse(row.dimension)] = Number(row.amount);
+    if (
+      previous.user_id !== input.userId ||
+      previous.starts_at.getTime() !== input.startsAt.getTime() ||
+      previous.ends_at.getTime() !== input.endsAt.getTime() ||
+      canonicalJson(original) !== canonicalJson(units)
+    )
+      throw errors.idempotencyMismatch();
+    return previous.id;
+  }
+  const overlap = await tx
+    .selectFrom("quota.entitlement")
+    .select("id")
+    .where("user_id", "=", input.userId)
+    .where("closed_at", "is", null)
+    .where("starts_at", "<", input.endsAt)
+    .where("ends_at", ">", input.startsAt)
+    .executeTakeFirst();
+  if (overlap) throw errors.conflict();
+  const row = await tx
+    .insertInto("quota.entitlement")
+    .values({
+      user_id: input.userId,
+      starts_at: input.startsAt,
+      ends_at: input.endsAt,
+      operation_key: input.operationKey,
+      created_at: now,
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  for (const dimension of DIMENSIONS)
+    await tx
+      .insertInto("quota.ledger")
       .values({
         user_id: input.userId,
-        starts_at: input.startsAt,
-        ends_at: input.endsAt,
+        entitlement_id: row.id,
+        kind: "grant",
+        dimension,
+        amount: units[dimension],
+        balance_delta: units[dimension],
         operation_key: input.operationKey,
         created_at: now,
       })
-      .returning("id")
-      .executeTakeFirstOrThrow();
-    for (const dimension of DIMENSIONS)
-      await tx
-        .insertInto("quota.ledger")
-        .values({
-          user_id: input.userId,
-          entitlement_id: row.id,
-          kind: "grant",
-          dimension,
-          amount: units[dimension],
-          balance_delta: units[dimension],
-          operation_key: input.operationKey,
-          created_at: now,
-        })
-        .execute();
-    await recordAudit(tx, {
-      actorKind: "operator",
-      actorId: input.actorId,
-      action: "quota.grant",
-      subjectType: "entitlement",
-      subjectId: row.id,
-      reason: input.reason,
-    });
-    return row.id;
+      .execute();
+  await recordAudit(tx, {
+    actorKind: "operator",
+    actorId: input.actorId,
+    action: "quota.grant",
+    subjectType: "entitlement",
+    subjectId: row.id,
+    reason: input.reason,
   });
+  return row.id;
 }
 
 /** Must share the transaction that creates the consumer Run/upload (FR-QUOTA-005, 011). */
