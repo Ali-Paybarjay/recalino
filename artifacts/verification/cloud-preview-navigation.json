@@ -1,0 +1,207 @@
+{
+  "checkedAt": "2026-10-04T10:53:22.218Z",
+  "deployment": "https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app",
+  "scope": "Fresh Chromium context, client-side screen navigation through the sample workspace only. No learner session, class data, real recording or AI calls.",
+  "navigation": "Explore screens selector -> Next client router",
+  "screensChecked": 49,
+  "visits": [
+    {
+      "path": "/preview/today",
+      "heading": "Your English, one class at a time."
+    },
+    {
+      "path": "/preview/classes",
+      "heading": "Your classes"
+    },
+    {
+      "path": "/preview/course",
+      "heading": "ESOL B1"
+    },
+    {
+      "path": "/preview/class",
+      "heading": "Present perfect"
+    },
+    {
+      "path": "/preview/new-class",
+      "heading": "New class"
+    },
+    {
+      "path": "/preview/organize",
+      "heading": "Keep your classes organised"
+    },
+    {
+      "path": "/preview/first-upload",
+      "heading": "Before you add a file"
+    },
+    {
+      "path": "/preview/microphone",
+      "heading": "Ready to record?"
+    },
+    {
+      "path": "/preview/recording",
+      "heading": "Recording your class"
+    },
+    {
+      "path": "/preview/saved",
+      "heading": "Your recording is ready"
+    },
+    {
+      "path": "/preview/recovery",
+      "heading": "An unfinished recording"
+    },
+    {
+      "path": "/preview/upload",
+      "heading": "Add class material"
+    },
+    {
+      "path": "/preview/source-settings",
+      "heading": "Choose what to use"
+    },
+    {
+      "path": "/preview/estimate",
+      "heading": "Check before processing"
+    },
+    {
+      "path": "/preview/shortfall",
+      "heading": "Choose what to process"
+    },
+    {
+      "path": "/preview/processing",
+      "heading": "Making your class notes"
+    },
+    {
+      "path": "/preview/processing-result",
+      "heading": "No processing result yet"
+    },
+    {
+      "path": "/preview/notes",
+      "heading": "Present perfect"
+    },
+    {
+      "path": "/preview/source",
+      "heading": "From your class"
+    },
+    {
+      "path": "/preview/edit-notes",
+      "heading": "Edit this section"
+    },
+    {
+      "path": "/preview/history",
+      "heading": "Compare note versions"
+    },
+    {
+      "path": "/preview/transcript",
+      "heading": "Class transcript"
+    },
+    {
+      "path": "/preview/export",
+      "heading": "Take your learning with you"
+    },
+    {
+      "path": "/preview/cards",
+      "heading": "Choose useful cards"
+    },
+    {
+      "path": "/preview/card-types",
+      "heading": "Six ways to practise"
+    },
+    {
+      "path": "/preview/card-editor",
+      "heading": "Make this card useful"
+    },
+    {
+      "path": "/preview/card-update",
+      "heading": "A card update is ready"
+    },
+    {
+      "path": "/preview/review",
+      "heading": "A few minutes of practice"
+    },
+    {
+      "path": "/preview/review-card",
+      "heading": "A moment to remember"
+    },
+    {
+      "path": "/preview/review-answer",
+      "heading": "Compare your answer"
+    },
+    {
+      "path": "/preview/review-summary",
+      "heading": "A little practice is ready when you are."
+    },
+    {
+      "path": "/preview/progress",
+      "heading": "Your learning progress"
+    },
+    {
+      "path": "/preview/preferences",
+      "heading": "How you like to learn"
+    },
+    {
+      "path": "/preview/allowance",
+      "heading": "Your processing allowance"
+    },
+    {
+      "path": "/preview/profile",
+      "heading": "Your learning settings"
+    },
+    {
+      "path": "/preview/edit-language",
+      "heading": "First language"
+    },
+    {
+      "path": "/preview/edit-explanations",
+      "heading": "Explanation language"
+    },
+    {
+      "path": "/preview/edit-goal",
+      "heading": "English level and goal"
+    },
+    {
+      "path": "/preview/edit-timezone",
+      "heading": "Time zone"
+    },
+    {
+      "path": "/preview/renew-consent",
+      "heading": "Recording guidance updated"
+    },
+    {
+      "path": "/preview/legal",
+      "heading": "Terms and Privacy Notice"
+    },
+    {
+      "path": "/preview/data-controls",
+      "heading": "Your data"
+    },
+    {
+      "path": "/preview/states",
+      "heading": "A clear next step"
+    },
+    {
+      "path": "/preview/setup-explanations",
+      "heading": "How would you like explanations?"
+    },
+    {
+      "path": "/preview/setup-goal",
+      "heading": "Your English, your goal"
+    },
+    {
+      "path": "/preview/setup-timezone",
+      "heading": "Make room for a little practice"
+    },
+    {
+      "path": "/preview/recording-paused",
+      "heading": "Recording paused"
+    },
+    {
+      "path": "/preview/recording-failed",
+      "heading": "The microphone stopped"
+    },
+    {
+      "path": "/preview/stop-recording",
+      "heading": "Finish this recording?"
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

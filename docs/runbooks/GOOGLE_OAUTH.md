@@ -3,7 +3,7 @@
 > **برای:** مالک محصول · **زمان تقریبی:** ۱۵ دقیقه · **هزینه:** ندارد  
 > **مبنا:** [برنامه M3](../plans/M3_ACC.md) · [مستند Supabase: Login with Google](https://supabase.com/docs/guides/auth/social-login/auth-google)
 
-این راهنما یک OAuth Client برای محیط **محلی** می‌سازد تا ورود با Google روی کامپیوتر خودتان آزموده شود. نشانی سرور ابری بعداً، هنگام استقرار، با پرسش جداگانه اضافه می‌شود.
+این راهنما ساخت OAuth Client محلی و تنظیم همان Client برای Supabase ابری را پوشش می‌دهد. درخواست مالک محصول در 2026-10-04، اصلاح اتصال پروژهٔ موجود را مجاز کرده است؛ دسترسی Google Cloud و ساخت Client به حساب مالک نیاز دارد.
 
 **Client secret را هرگز در چت یا فایل‌های مخزن ننویسید.** فقط در فایل `.env` گام ۷ قرار می‌گیرد و git آن را نادیده می‌گیرد.
 
@@ -51,12 +51,24 @@
    - git این فایل را نادیده می‌گیرد، پس هرگز commit نمی‌شود.
 8. **خبر دادن:** فقط بنویسید «OAuth آماده است». مقادیر را نفرستید. من Supabase محلی را با Google راه می‌اندازم و یک ورود کامل با حساب شما آزموده می‌شود (T9 برنامه M3).
 
-## بعداً، هنگام استقرار
+## اتصال به Supabase ابری
 
-این کارها جزو استقرار است و پیش از انجام از شما پرسیده می‌شود:
+بررسی واقعی در 2026-10-04 نشان داد `external.google` در `/auth/v1/settings` پروژهٔ `twowhuzhvyuzjrpraikm` مقدار `false` دارد و مسیر authorize با خطای `400 / validation_failed` و پیام `Unsupported provider: provider is not enabled` متوقف می‌شود. موفقیت build، صفحهٔ اول یا هدایت `303` به authorize، اثبات ورود موفق نیست؛ گزارش `artifacts/verification/cloud-google-readiness.json` این محدودیت را ثبت می‌کند.
 
-- افزودن نشانی callback پروژه ابری به گام ۶: `https://twowhuzhvyuzjrpraikm.supabase.co/auth/v1/callback`
-- فعال‌کردن Google در داشبورد Supabase
-- بستن ورود با ایمیل در داشبورد Supabase
+1. در OAuth Client گوگل، **Authorized JavaScript origin** همین نسخه را اضافه کنید: `https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app`. این **Authorized redirect URI** نیز به فهرست موجود اضافه شود: `https://twowhuzhvyuzjrpraikm.supabase.co/auth/v1/callback`. این callback با مسیر `/auth/callback` خود اپ تفاوت دارد؛ گوگل ابتدا به Supabase برمی‌گردد.
+2. Client ID و Client secret همان Client را در فایل ignored `.env` ریشه، با نام‌های گام ۷ ثبت کنید و فقط خبر دهید آماده است. انتقال مقدارها از چت انجام نمی‌شود.
+3. در پروژهٔ موجود Supabase، بخش **Authentication → Sign In / Providers → Google**، همان Client ID/secret ثبت و Google فعال شود. تا آماده‌بودن این دو مقدار، تغییر تنظیم provider انجام نمی‌شود.
+4. در **Authentication → URL Configuration → Redirect URLs**، callback همین نسخهٔ اپ به فهرست موجود اضافه شود: `https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app/auth/callback`. هر نسخه با میزبان تازه، به نشانی مجاز خودش نیاز دارد؛ wildcard عمومی استفاده نمی‌شود.
+5. بررسی readiness باید `external.google: true` را نشان دهد و مرورگر به Google هدایت شود. سپس ورود واقعی با حساب مجاز در Test users، بازگشت به `/auth/callback`، راه‌اندازی، Today، Classes، Review و Settings بررسی شود. تا اجرای این مرحله، ورود کامل ابری تأییدشده نیست.
+
+فرمان بررسی خواندنی، با فایل محیط صریح و ignored شامل `SUPABASE_URL` و `SUPABASE_PUBLISHABLE_KEY` همان مقصد:
+
+```powershell
+node --env-file=.env.auth-check.local tools/auth/check-google.mjs
+```
+
+اگر محیط از قبل بارگذاری شده است، `pnpm auth:check` همان بررسی را اجرا می‌کند. فرمان، کلید، پاسخ خام یا متن خطای شبکه را چاپ نمی‌کند؛ فقط وضعیت HTTP، فعال‌بودن Google، میزبان پروژه و دستهٔ خطا را نشان می‌دهد. Google خاموش و پاسخ نامعتبر با exit 1 تمام می‌شوند. آزمون‌های آن مستقل از ابر هستند: `node --test tools/auth/check-google.test.mjs`.
+
+مدل Testing گوگل به فهرست Test users وابسته است. تغییر وضعیت انتشار Google یا فعال‌کردن عمومی پایلوت تصمیم جداگانهٔ مالک محصول است.
 
 تا برند تأیید نشده، صفحه رضایت Google به‌جای نام Recalino دامنه Supabase را نشان می‌دهد. برای پایلوت مشکلی نیست.

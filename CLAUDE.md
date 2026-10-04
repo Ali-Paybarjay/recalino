@@ -4,7 +4,7 @@
 
 ## وضعیت و اسناد مرجع
 
-- وضعیت فعلی: پایه M0 تا M3 و پیاده‌سازی فنی MVP با بازطراحی `codex/ui-complete-redesign` ساخته شده‌اند؛ قابلیت‌ها، آزمون‌ها و محدودیت‌های فعال‌سازی در [M5_MVP_COMPLETION](docs/plans/M5_MVP_COMPLETION.md) ثبت شده‌اند. بودجه/سهمیه تجاری، تأیید قرارداد داده و متن حقوقی، و مجوز انتقال کلید مستقل پشتیبان هنوز باز هستند؛ fixtureهای آزمون جایگزین این تصمیم‌ها نیستند. [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
+- وضعیت فعلی: پایه M0 تا M3 و پیاده‌سازی فنی MVP با بازطراحی `codex/ui-complete-redesign` ساخته شده‌اند؛ قابلیت‌ها، آزمون‌ها و محدودیت‌های فعال‌سازی در [M5_MVP_COMPLETION](docs/plans/M5_MVP_COMPLETION.md) ثبت شده‌اند. بررسی تکمیلی 2026-10-04 نشان داد Google در Supabase ابری غیرفعال است؛ ورود واقعی تا دریافت امن OAuth Client و تنظیم callback تأییدشده نیست. بودجه/سهمیه تجاری، تأیید قرارداد داده و متن حقوقی، و مجوز انتقال کلید مستقل پشتیبان هنوز باز هستند؛ fixtureهای آزمون جایگزین این تصمیم‌ها نیستند. [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
 - سند مرجع محصول: [PRD_Recalino_FA_v0.3.md](PRD_Recalino_FA_v0.3.md). تصمیم‌های D01 تا D27 قطعی‌اند.
 - در حال تدوین:
   - [docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md](docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md): نقشه ماژول‌ها، قالب FR و فرض‌ها؛ FRهای هر ماژول در `docs/fr/<MODULE>.md`.

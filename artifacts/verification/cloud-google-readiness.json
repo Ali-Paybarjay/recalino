@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-04T10:49:36.398Z",
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "scope": "Public Google provider readiness only; no Google account sign-in, learner session, class content or provider cost.",
+  "settingsStatus": 200,
+  "googleEnabled": false,
+  "authorizeStatus": 400,
+  "errorCode": "validation_failed",
+  "errorMessage": "Unsupported provider: provider is not enabled",
+  "applicationLoginReady": false
+}

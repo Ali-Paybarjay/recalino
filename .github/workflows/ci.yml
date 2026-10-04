@@ -33,6 +33,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm check:boundaries
       - run: pnpm test:unit
+      - name: Cloud Google readiness guard tests (no external calls)
+        run: node --test tools/auth/check-google.test.mjs
 
       - name: Start local Supabase (Postgres and Auth only)
         run: pnpm db:start
