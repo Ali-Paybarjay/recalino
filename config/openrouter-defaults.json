@@ -1,5 +1,5 @@
 {
-  "version": "openrouter-2026-10-04-1",
+  "version": "openrouter-2026-10-04-2",
   "llmModel": "anthropic/claude-haiku-4.5",
   "visionModel": "anthropic/claude-haiku-4.5",
   "sttModel": "openai/whisper-large-v3-turbo",
@@ -9,9 +9,9 @@
   "maxInputCharacters": 120000,
   "maxOutputTokens": 6144,
   "timeoutMs": 90000,
-  "maximumMicros": 200000,
+  "maximumMicros": 300000,
   "modelMaximumMicros": {
-    "anthropic/claude-haiku-4.5": 200000,
+    "anthropic/claude-haiku-4.5": 300000,
     "openai/whisper-large-v3-turbo": 5000,
     "hexgrad/kokoro-82m": 5000
   },
