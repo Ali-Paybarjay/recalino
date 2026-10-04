@@ -8,11 +8,7 @@
     "https://recalino-bzf44bkg0-ali-paybarjay-s-projects.vercel.app/auth/callback",
     "https://recalino-ali-paybarjay-s-projects.vercel.app/auth/callback"
   ],
-  "declaredGoogleFields": [
-    "enabled",
-    "client_id",
-    "secret"
-  ],
+  "declaredGoogleFields": ["enabled", "client_id", "secret"],
   "postApplyDeclaredDifferences": 0,
   "unrelatedFieldsPreserved": true,
   "unrelatedFieldCount": 11,

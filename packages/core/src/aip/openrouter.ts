@@ -82,6 +82,7 @@ export class OpenRouterProvider implements AiProvider {
           "Content-Type": "application/json",
           "X-Title": "Recalino",
           "Idempotency-Key": operationKey,
+          "X-OpenRouter-Cache": "false",
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(this.settings.timeoutMs),

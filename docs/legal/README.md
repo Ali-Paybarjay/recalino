@@ -11,6 +11,8 @@
 | [privacy-notice.md](privacy-notice.md) | اطلاعیه حریم خصوصی | برگه از A1، لینک A3 | FR-ACC-001، FR-ACC-007، FR-SRC-015 |
 | [consents.md](consents.md) | متن کوتاه اعلام‌ها: ۱۸+ و پذیرش شرایط (A1)، رضایت ضبط (A2.7)، اعلان منابع (A3)؛ جدول نسخه‌ها | — | FR-ACC-001، FR-ACC-003، FR-SRC-015 |
 
+شواهد فنی بررسی‌شده برای تکمیل همین پیش‌نویس‌ها در [PILOT_TECHNICAL_FACTS.md](PILOT_TECHNICAL_FACTS.md) و [پردازش دادهٔ OpenRouter](../runbooks/OPENROUTER_DATA_HANDLING.md) ثبت شده‌اند. تأیید مالک برای پیش‌نویس‌ها، اطلاعات واقعیِ نام مسئول داده و تنظیمات خصوصی حساب سرویس‌ها را جایگزین نمی‌کند.
+
 ## اصول نگارش
 
 - **مخاطب:** زبان‌آموز بزرگسال. انگلیسی ساده در سطح A2 تا B1، با جمله کوتاه و بدون اصطلاح، هم‌سبک [copy.md](../design/handoff-r1/handoff/copy.md).
