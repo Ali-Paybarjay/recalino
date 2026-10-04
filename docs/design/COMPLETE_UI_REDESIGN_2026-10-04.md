@@ -44,7 +44,12 @@
 
 `RECALINO_UI_PREVIEW=1` در Vercel production نادیده گرفته می‌شود. guard قبل از session/DB/Auth/API اجرا می‌شود، مسیرهای واقعی API/Auth/dev و روش‌های نوشتن را می‌بندد، root را به Today نمونه می‌برد و health را با mode صریح پاسخ می‌دهد. بدون flag محصول عادی حفظ می‌شود.
 
-deployment فقط Vercel Preview است، با overrideهای synthetic برای متغیرهای سرویس. تنظیمات پروژه، protection و متغیرهای تولید تغییر نمی‌کنند. URL و نتایج نهایی پس از آزمون ثبت می‌شوند.
+deployment فقط Vercel Preview است، با overrideهای synthetic برای متغیرهای سرویس. تنظیمات پروژه، protection پروژه و متغیرهای تولید تغییر نکردند.
+
+- [Preview نهایی](https://recalino-gln1t40v2-ali-paybarjay-s-projects.vercel.app) — با حفاظت ورود Vercel.
+- شناسه: `dpl_FmC7GNSysLpHi5vHRWwkvUe2MuTp`؛ کد مستقر: commit `b1dc18e` روی شاخهٔ `codex/ui-complete-redesign`.
+- لینک اشتراکِ مخصوص همین deployment در پاسخ نهایی تحویل می‌شود؛ TTL دقیق ۸۲٬۸۰۰ ثانیه و پایان 2026-10-05 02:56:21 UTC / 03:56:21 London. مقدار دسترسی در Git یا trace ذخیره نمی‌شود.
+- تأیید آنلاین روی همین deployment: **۱۶۱/۱۶۱ موفق، بدون retry، در ۲٫۷ دقیقه**. دسترسی با لینک تازه، health نمونه، منع API/Auth/action، هر ۴۹ صفحه، ۳۶ بررسی axe/responsive و هر ۲۶ جریان تعامل موفق شد. هیچ فراخوانی بک‌اند محصول، cookie احراز هویت Supabase یا capture میکروفون مشاهده نشد؛ screenshot و trace آنلاین خاموش بود.
 
 ## نتیجهٔ بررسی نهایی محلی
 
