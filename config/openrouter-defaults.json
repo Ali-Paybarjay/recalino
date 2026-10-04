@@ -12,7 +12,7 @@
   "maximumMicros": 200000,
   "modelMaximumMicros": {
     "anthropic/claude-haiku-4.5": 200000,
-    "openai/whisper-large-v3-turbo": 3000,
+    "openai/whisper-large-v3-turbo": 5000,
     "hexgrad/kokoro-82m": 5000
   },
   "currency": "USD",
