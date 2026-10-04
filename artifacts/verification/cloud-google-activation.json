@@ -11,7 +11,7 @@
     "errorCategory": null
   },
   "protectionPreserved": true,
-  "fullLoginVerified": false,
+  "fullLoginVerified": true,
   "start": {
     "status": 303,
     "supabaseOriginMatches": true,
@@ -98,5 +98,13 @@
     "ownerIdentityVerified": false,
     "deploymentHostVerified": false,
     "scope": "Read-only aggregate and lifecycle metadata; no email, identifier, token or learner content."
+  },
+  "fullLoginVerificationMethod": "owner_confirmation",
+  "ownerVerification": {
+    "recordedAt": "2026-10-04T17:35:01.184Z",
+    "response": "بله، همه‌چیز اوکی هست.",
+    "scope": "Owner confirmation in reply to signing in through the specified deployment and reaching Setup or Today.",
+    "automatedAuthenticatedBrowserTest": false,
+    "allIndividualPagesInspectedByAgent": false
   }
 }

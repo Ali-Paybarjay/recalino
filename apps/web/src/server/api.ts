@@ -158,6 +158,12 @@ export function defineRoute(
       }
     }
 
+    // Includes error responses and redirects, so a cached 401 cannot outlive sign-in and a
+    // callback's new session cookies cannot be replayed to another visitor (FR-PLT-001).
+    if (meta.access === "learner" || meta.path.startsWith("/auth/")) {
+      response.headers.set("cache-control", "private, no-store");
+    }
+
     deps.log(status >= 500 ? "error" : "info", "request", {
       request_id: requestId,
       route: meta.id,

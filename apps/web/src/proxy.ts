@@ -25,14 +25,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
   let response = NextResponse.next({ request });
+  // Auth callbacks can write cookies later in a Route Handler, after this refresh. Keep those
+  // responses and private page/API responses out of shared caches even without a token refresh.
+  const authHeaders = new Headers({ "Cache-Control": "private, no-store" });
   const env = readSupabaseEnv();
   const supabase = createServerClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
     cookieOptions: SESSION_COOKIE_OPTIONS,
     cookies: {
       getAll: () => request.cookies.getAll(),
-      setAll: (items) => {
+      setAll: (items, headers) => {
         for (const { name, value } of items) request.cookies.set(name, value);
+        // Supabase sends cache headers only with its first cookie write. A later write must
+        // preserve those headers and any earlier cookie chunks when rebuilding the response.
+        for (const [name, value] of Object.entries(headers)) authHeaders.set(name, value);
+        const earlierCookies = response.cookies.getAll();
         response = NextResponse.next({ request });
+        for (const cookie of earlierCookies) response.cookies.set(cookie);
         for (const { name, value, options } of items) {
           response.cookies.set(name, value, { ...options, ...SESSION_COOKIE_OPTIONS });
         }
@@ -40,6 +48,9 @@ export async function proxy(request: NextRequest) {
     },
   });
   await supabase.auth.getClaims();
+  authHeaders.forEach((value, name) => {
+    response.headers.set(name, value);
+  });
   return response;
 }
 

@@ -55,9 +55,23 @@ test("sign out ends the session, and the old cookies no longer work", async ({ p
   await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
   await page.goto("/today");
   await expect(page).toHaveURL(/\/\?next=%2Ftoday$/);
+  const profileChange = { field: "level_goal", level: "B1", goal: "esol" };
+  const signedOutProfile = await page.request.patch("/api/profile", { data: profileChange });
+  expect(signedOutProfile.status()).toBe(401);
+  expect(signedOutProfile.headers()["cache-control"]).toContain("private");
+  expect(signedOutProfile.headers()["cache-control"]).toContain("no-store");
 
   // FR-PLT-001: a token from before the sign-out is refused.
   const replay = await browser.newContext();
+  await replay.addCookies(before);
+  const replayedProfile = await replay.request.patch(
+    new URL("/api/profile", page.url()).toString(),
+    { data: profileChange },
+  );
+  expect(replayedProfile.status()).toBe(401);
+  expect(replayedProfile.headers()["cache-control"]).toContain("private");
+  expect(replayedProfile.headers()["cache-control"]).toContain("no-store");
+  // The rejected API request can clear cookies; check page navigation with the original replay too.
   await replay.addCookies(before);
   const replayed = await replay.newPage();
   await replayed.goto("/today");

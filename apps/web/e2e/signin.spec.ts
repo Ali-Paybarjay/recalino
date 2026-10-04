@@ -41,10 +41,12 @@ test("Continue stores the declarations and goes to Google through Supabase", asy
   // The form post is caught so the browser never leaves for Google; the server's own answer is
   // checked instead: a redirect to Supabase's Google sign-in, with the declarations' cookie.
   let location: URL | undefined;
+  let cacheControl: string | undefined;
   let cookies: string[] = [];
   await page.route("**/auth/start", async (route) => {
     const response = await route.fetch({ maxRedirects: 0 });
     location = new URL(response.headers().location ?? "");
+    cacheControl = response.headers()["cache-control"];
     cookies = response
       .headersArray()
       .filter((header) => header.name.toLowerCase() === "set-cookie")
@@ -60,8 +62,12 @@ test("Continue stores the declarations and goes to Google through Supabase", asy
   expect(location?.searchParams.get("provider")).toBe("google");
   expect(location?.searchParams.get("redirect_to")).toMatch(/\/auth\/callback$/);
   expect(location?.searchParams.get("code_challenge")).toBeTruthy();
+  expect(cacheControl).toContain("private");
+  expect(cacheControl).toContain("no-store");
   const intent = cookies.find((cookie) => cookie.startsWith("rc_signup_intent="));
   expect(intent).toMatch(/HttpOnly/i);
+  const verifier = cookies.find((cookie) => /^[^=]+-code-verifier(?:\.\d+)?=/.test(cookie));
+  expect(verifier).toMatch(/HttpOnly/i);
   expect(cookies.find((cookie) => cookie.startsWith("rc_next="))).toMatch(/^rc_next=%2Fme;/);
 });
 

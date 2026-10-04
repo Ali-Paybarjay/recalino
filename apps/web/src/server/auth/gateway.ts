@@ -50,7 +50,8 @@ export const supabaseAuth: AuthGateway = {
 
   async signOut() {
     const auth = (await createAuthClient()).auth;
-    await auth.signOut({ scope: "local" });
+    const { error } = await auth.signOut({ scope: "local" });
+    if (error) throw new Error("Sign-out could not complete");
   },
 
   async deleteUser(id) {
