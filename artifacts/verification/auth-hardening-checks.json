@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-10-04T17:52:28.791Z",
+  "scope": "Auth/cache and provider privacy request hardening; synthetic local tests and non-learner cloud runtime checks.",
+  "checks": {
+    "authUnit": {
+      "passed": 17,
+      "files": 3
+    },
+    "authIntegration": {
+      "passed": 20,
+      "files": 4,
+      "environment": "local Supabase"
+    },
+    "aipPrivacyUnit": {
+      "passed": 8,
+      "files": 2,
+      "paidCalls": 0
+    },
+    "webTypecheck": "passed",
+    "coreTypecheck": "passed",
+    "scopedAuthBiome": {
+      "files": 8,
+      "status": "passed"
+    },
+    "moduleBoundaries": {
+      "modules": 670,
+      "dependencies": 2522,
+      "status": "passed"
+    },
+    "deployment": "dpl_Hv3gAJhV7DQDXDuQnDFwjJaGd4gK",
+    "cloudRuntime": {
+      "passed": 12,
+      "learnerSessionUsed": false
+    },
+    "cloudGoogle": {
+      "machineReady": true,
+      "publishedCacheHeadersVerified": true,
+      "fullLoginVerified": false
+    }
+  },
+  "ownerLoginConfirmation": {
+    "deployment": "https://recalino-bzf44bkg0-ali-paybarjay-s-projects.vercel.app",
+    "scope": "Separate human confirmation on earlier reviewed deployment; new deployment has automatic start/header checks only."
+  },
+  "dataContractApproved": false,
+  "pilotMaximumParticipants": 8
+}

@@ -1,0 +1,38 @@
+{
+  "createdAt": "2026-10-04T17:52:25.341Z",
+  "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+  "scope": "Metadata only; values are neither decrypted nor printed. Existing AES key copied with explicit owner authorization.",
+  "variables": [
+    {
+      "key": "PILOT_OPERATOR_EMAIL",
+      "type": "sensitive",
+      "visibility": "secret",
+      "target": ["production"]
+    },
+    {
+      "key": "RECALINO_BACKUP_KEY_BASE64",
+      "type": "sensitive",
+      "visibility": "secret",
+      "target": ["production"]
+    },
+    {
+      "key": "RECALINO_BACKUP_KEY_ID",
+      "type": "sensitive",
+      "visibility": "secret",
+      "target": ["production"]
+    },
+    {
+      "key": "OPENROUTER_API_KEY",
+      "type": "sensitive",
+      "visibility": "secret",
+      "target": ["production"]
+    },
+    {
+      "key": "OPENROUTER_SETTINGS_JSON",
+      "type": "sensitive",
+      "visibility": "secret",
+      "target": ["production"]
+    }
+  ],
+  "passed": true
+}

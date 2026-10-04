@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-04T18:23:09.464Z",
+  "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+  "publicUrl": "https://recalino.vercel.app",
+  "previousDeploymentId": "dpl_A6RqXSAwVqwCCKhVGzGrf6LAkpFk",
+  "deploymentId": "dpl_4L1zG4VmE81He7o6ZEdRRwd6wigi",
+  "reviewedCommit": "98543ee",
+  "aliasUpdated": true,
+  "protectionChangedByThisOperation": false,
+  "existingSupabaseCallbackPreserved": true,
+  "readbackPassed": true
+}
