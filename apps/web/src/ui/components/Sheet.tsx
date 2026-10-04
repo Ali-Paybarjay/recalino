@@ -87,11 +87,13 @@ type SheetProps = {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  variant?: "default" | "reading";
+  footer?: ReactNode;
 };
 
 // A bottom sheet on mobile that becomes a centred 480px dialog from 1024px (HANDOFF §4).
 // Values from frames B2-sheet and B2-dialog. Focus moves to the title when it opens.
-export function Sheet({ open, onClose, title, children }: SheetProps) {
+export function Sheet({ open, onClose, title, children, variant = "default", footer }: SheetProps) {
   const dialogRef = useModal(open, onClose);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
@@ -101,7 +103,11 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
   }, [open]);
 
   return (
-    <dialog ref={dialogRef} aria-labelledby={titleId} className={`${styles.modal} ${styles.sheet}`}>
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      className={`${styles.modal} ${styles.sheet} ${variant === "reading" ? styles.reading : ""}`}
+    >
       <div className={styles.handle} aria-hidden="true" />
       <div className={styles.header}>
         <h2 id={titleId} ref={titleRef} tabIndex={-1} className={styles.title}>
@@ -109,7 +115,8 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
         </h2>
         <IconButton icon={X} label={strings.common.close} onClick={onClose} />
       </div>
-      {children}
+      <div className={styles.content}>{children}</div>
+      {footer ? <div className={styles.footer}>{footer}</div> : null}
     </dialog>
   );
 }

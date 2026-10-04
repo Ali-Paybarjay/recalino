@@ -15,6 +15,7 @@ coverage/
 # Test artifacts
 playwright-report/
 test-results/
+test-results-preview/
 
 # Logs & OS files
 *.log

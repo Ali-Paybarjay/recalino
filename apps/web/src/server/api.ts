@@ -20,6 +20,7 @@ import {
 } from "@recalino/core/plt";
 import { authSessions } from "./auth/learner";
 import { getDatabase } from "./db";
+import { previewApiResponse } from "./preview-mode";
 import type { RouteMeta } from "./routes";
 import type { SessionProvider } from "./session";
 
@@ -93,6 +94,8 @@ export function defineRoute(
   const deps: RouteDeps = { ...defaultDeps, ...overrides };
 
   return async (request) => {
+    const preview = previewApiResponse(request);
+    if (preview) return preview;
     const requestId = randomUUID();
     const started = performance.now();
     let userId: string | null = null;
@@ -139,10 +142,14 @@ export function defineRoute(
           pg_code: postgresCode(error),
         });
       }
-      if (meta.errorRedirect !== undefined) {
+      const errorRedirect =
+        failure.code === "unauthenticated" && meta.unauthenticatedRedirect !== undefined
+          ? meta.unauthenticatedRedirect
+          : meta.errorRedirect;
+      if (errorRedirect !== undefined) {
         // Form posts and the sign-in flow show the failure on a page, not as JSON.
         status = 303;
-        response = redirectTo(meta.errorRedirect, request, requestId);
+        response = redirectTo(errorRedirect, request, requestId);
       } else {
         response = Response.json(failure.body, {
           status,

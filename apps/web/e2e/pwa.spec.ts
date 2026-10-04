@@ -17,8 +17,8 @@ test("the manifest names the app, uses the theme colours and lists the icons", a
     short_name: "Recalino",
     display: "standalone",
     start_url: "/",
-    background_color: "#eef9f3",
-    theme_color: "#eef9f3",
+    background_color: "#f6f7f2",
+    theme_color: "#f6f7f2",
   });
   expect(
     manifest.icons.map(

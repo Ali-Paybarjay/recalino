@@ -1,0 +1,1406 @@
+{
+  "fileKey": "8SZY9Ju3Fatad888Ba81Ra",
+  "branch": "codex/ui-complete-redesign",
+  "scope": "Complete MVP visual UI and isolated interactive sample; ACC production forms remain connected to actual local API.",
+  "plans": [
+    {
+      "key": "today",
+      "title": "Your English, one class at a time.",
+      "subtitle": "Pick up where you left off. A short review is enough for today.",
+      "active": "today",
+      "layout": "dashboard",
+      "sections": [
+        {
+          "title": "Record a class",
+          "body": "Keep useful moments from your next English class.",
+          "rows": ["Record a class", "Consent already checked during setup"],
+          "kind": "hero"
+        },
+        {
+          "title": "Ready for a little practice?",
+          "body": "4 sample cards are due.",
+          "rows": ["Start review · about 3 minutes"],
+          "kind": "panel"
+        },
+        {
+          "title": "Recent classes",
+          "body": "Everything from each class stays together.",
+          "rows": [
+            "Present perfect · Notes ready · ESOL B1",
+            "At the doctor · Needs your action · General English",
+            "Talking about plans · Waiting for allowance"
+          ],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Record a class", "Start review", "New class"]
+    },
+    {
+      "key": "classes",
+      "title": "Your classes",
+      "subtitle": "Find a class, or keep related classes in a course.",
+      "active": "classes",
+      "layout": "list",
+      "sections": [
+        {
+          "title": "Search your classes",
+          "body": "Search by class, course or unit.",
+          "rows": ["Present perfect", "At the doctor", "Talking about plans"],
+          "kind": "search"
+        },
+        {
+          "title": "Courses",
+          "body": "A simple home for related classes.",
+          "rows": [
+            "My classes · 2 classes",
+            "ESOL B1 · 3 classes · 2 units",
+            "General English · 1 class"
+          ],
+          "kind": "panel"
+        },
+        {
+          "title": "Recent classes",
+          "body": "Most recent first.",
+          "rows": [
+            "Present perfect · 4 October · Notes ready",
+            "At the doctor · 2 October · Needs your action"
+          ],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["New class", "New course"]
+    },
+    {
+      "key": "course",
+      "title": "ESOL B1",
+      "subtitle": "Your classes, grouped by what you are learning.",
+      "active": "classes",
+      "layout": "list",
+      "sections": [
+        {
+          "title": "Everyday English",
+          "body": "Unit 1",
+          "rows": ["Present perfect · Notes ready", "Talking about plans · Waiting for allowance"],
+          "kind": "panel"
+        },
+        {
+          "title": "Work and study",
+          "body": "Unit 2",
+          "rows": ["At the doctor · Ready to process"],
+          "kind": "panel"
+        },
+        {
+          "title": "Course options",
+          "body": "Keep the structure useful.",
+          "rows": ["Rename course", "Add a unit", "Move a class", "Delete empty units only"],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["New class", "New unit"]
+    },
+    {
+      "key": "class",
+      "title": "Present perfect",
+      "subtitle": "ESOL B1 / Everyday English · 4 October 2026",
+      "active": "classes",
+      "layout": "workspace",
+      "sections": [
+        {
+          "title": "Your class material",
+          "body": "Choose the sources to use for the notes.",
+          "rows": [
+            "Class audio · 48 min · On this device",
+            "Grammar handout.pdf · 4 pages · Received",
+            "Board photo · 1 photo · Received"
+          ],
+          "kind": "sources"
+        },
+        {
+          "title": "Class notes",
+          "body": "Your notes are ready.",
+          "rows": ["Read notes", "8 suggested cards", "View transcript"],
+          "kind": "panel"
+        },
+        {
+          "title": "Before processing",
+          "body": "Only the sources you choose are included.",
+          "rows": [
+            "Audio and handouts together",
+            "Ranges and source roles",
+            "Show processing estimate"
+          ],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Read notes", "Add sources", "Class options"]
+    },
+    {
+      "key": "new-class",
+      "title": "New class",
+      "subtitle": "Give this class a useful name. You can change it later.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Class name",
+          "body": "Present perfect",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Course",
+          "body": "ESOL B1",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Unit (optional)",
+          "body": "Everyday English",
+          "rows": [],
+          "kind": "field"
+        }
+      ],
+      "actions": ["Create class", "Cancel"]
+    },
+    {
+      "key": "organize",
+      "title": "Keep your classes organised",
+      "subtitle": "Rename, move or remove an empty group.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Course name",
+          "body": "ESOL B1",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Unit name",
+          "body": "Everyday English",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Move a class",
+          "body": "Present perfect",
+          "rows": ["Destination course · My classes", "Destination unit · No unit"],
+          "kind": "choices"
+        },
+        {
+          "title": "Delete an empty course",
+          "body": "You can delete a course only when it is empty.",
+          "rows": ["Move or delete its classes first."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Save changes", "Cancel"]
+    },
+    {
+      "key": "first-upload",
+      "title": "Before you add a file",
+      "subtitle": "Your material is private and used for your own study.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Use material you may upload",
+          "body": "Check that you have permission to use it.",
+          "rows": [
+            "Only for your study",
+            "Class audio stays on your device; a temporary copy is used for transcription.",
+            "Documents and photos stay private."
+          ],
+          "kind": "panel"
+        },
+        {
+          "title": "Please confirm",
+          "body": "I have permission to upload and use this material.",
+          "rows": [],
+          "kind": "check"
+        }
+      ],
+      "actions": ["Continue to sources", "Cancel"]
+    },
+    {
+      "key": "microphone",
+      "title": "Ready to record?",
+      "subtitle": "Record only after asking the people in your class.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Microphone access",
+          "body": "Let your browser use the microphone.",
+          "rows": [
+            "Allow microphone",
+            "If access is blocked, open the browser's site settings.",
+            "Keep this page open and leave enough space on your device."
+          ],
+          "kind": "panel"
+        },
+        {
+          "title": "Other ways to continue",
+          "body": "If this browser cannot record, add a file from your device.",
+          "rows": ["Add an audio file", "Unsupported browser", "Microphone stopped"],
+          "kind": "states"
+        }
+      ],
+      "actions": ["Allow microphone", "Add a file"]
+    },
+    {
+      "key": "recording",
+      "title": "Recording your class",
+      "subtitle": "Recording demonstration · no microphone capture in this preview.",
+      "active": "classes",
+      "layout": "recording",
+      "sections": [
+        {
+          "title": "12:36",
+          "body": "Recording",
+          "rows": ["Pause", "Photo", "Stop"],
+          "kind": "recorder"
+        },
+        {
+          "title": "Keep this page open",
+          "body": "Your class audio is kept on this device.",
+          "rows": [
+            "No allowance messages interrupt recording.",
+            "Paused · Resume when you are ready.",
+            "Microphone problem · Recording stopped"
+          ],
+          "kind": "states"
+        }
+      ],
+      "actions": ["Pause", "Photo", "Stop"]
+    },
+    {
+      "key": "saved",
+      "title": "Your recording is ready",
+      "subtitle": "The demonstration has ended. No real recording was made.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Class audio",
+          "body": "48 minutes · Sample capture",
+          "rows": ["On this device", "Save a copy"],
+          "kind": "panel"
+        },
+        {
+          "title": "Next, make your notes",
+          "body": "Check the material before you use your allowance.",
+          "rows": ["Add a handout or photo", "Choose a range", "View estimate"],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["View estimate", "Go to class"]
+    },
+    {
+      "key": "recovery",
+      "title": "An unfinished recording",
+      "subtitle": "Choose what to do with the audio already saved on this device.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Class — 4 October",
+          "body": "Sample unfinished recording · 12 minutes",
+          "rows": ["Keep the saved part", "Save a copy", "Discard unfinished recording"],
+          "kind": "panel"
+        },
+        {
+          "title": "Discard this recording?",
+          "body": "This removes the unfinished audio from this device.",
+          "rows": ["Keep recording", "I understand this cannot be undone."],
+          "kind": "check"
+        }
+      ],
+      "actions": ["Keep saved part", "Discard"]
+    },
+    {
+      "key": "upload",
+      "title": "Add class material",
+      "subtitle": "Choose a sample file or browse the sources already in this workspace.",
+      "active": "classes",
+      "layout": "workspace",
+      "sections": [
+        {
+          "title": "Add a source",
+          "body": "Audio, PDF, document or photo",
+          "rows": [
+            "Choose sample audio",
+            "Choose sample handout",
+            "Choose sample photo",
+            "Reuse a source"
+          ],
+          "kind": "choices"
+        },
+        {
+          "title": "Sources being checked",
+          "body": "Each file has its own status.",
+          "rows": [
+            "Handout.pdf · Received · 4 pages",
+            "Board photo · Checking",
+            "Class audio · Upload paused · Offline",
+            "Protected.pdf · Needs password",
+            "Unsupported file · Not accepted"
+          ],
+          "kind": "sources"
+        }
+      ],
+      "actions": ["Done", "Retry upload"]
+    },
+    {
+      "key": "source-settings",
+      "title": "Choose what to use",
+      "subtitle": "Use only the useful part of this source.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Source role",
+          "body": "Class audio",
+          "rows": ["Class audio", "Supplementary material", "Excluded"],
+          "kind": "choices"
+        },
+        {
+          "title": "Audio range",
+          "body": "From 00:00 to 48:00",
+          "rows": ["Whole recording", "Use a part"],
+          "kind": "field"
+        },
+        {
+          "title": "Document pages",
+          "body": "Pages 1–4",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Photo time",
+          "body": "Taken at 18:42",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Password-protected PDF",
+          "body": "Enter the password to check the sample document.",
+          "rows": [],
+          "kind": "field"
+        }
+      ],
+      "actions": ["Save source choices", "Cancel"]
+    },
+    {
+      "key": "estimate",
+      "title": "Check before processing",
+      "subtitle": "Nothing uses your allowance until you confirm.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Included sources",
+          "body": "Only the selected ranges are counted.",
+          "rows": ["Class audio · 48 minutes", "Handout · 4 pages", "Board photo · 1 photo"],
+          "kind": "sources"
+        },
+        {
+          "title": "Processing allowance",
+          "body": "An estimate for this sample workspace.",
+          "rows": [
+            "Audio needed · 48 minutes",
+            "Pages and photos needed · 5",
+            "Available · 60 minutes and 20 pages/photos",
+            "After this · 12 minutes and 15 pages/photos"
+          ],
+          "kind": "numbers"
+        }
+      ],
+      "actions": ["Process selected sources", "Change selection"]
+    },
+    {
+      "key": "shortfall",
+      "title": "Choose what to process",
+      "subtitle": "Your material needs more allowance than you have.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Your allowance",
+          "body": "60 minutes available; 2 hours 40 minutes selected.",
+          "rows": ["Keep for later", "Process a part", "Save a copy", "Ask the pilot operator"],
+          "kind": "choices"
+        },
+        {
+          "title": "Process a useful part",
+          "body": "Choose up to 60 minutes of audio.",
+          "rows": ["From 00:00", "To 60:00", "The rest stays available for later."],
+          "kind": "field"
+        }
+      ],
+      "actions": ["Process selected part", "Keep for later"]
+    },
+    {
+      "key": "processing",
+      "title": "Making your class notes",
+      "subtitle": "You can leave this page and come back to this sample job.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Processing",
+          "body": "Current step: making notes",
+          "rows": [
+            "Checking material · Complete",
+            "Transcribing audio · Complete",
+            "Making notes · In progress",
+            "Preparing cards · Waiting"
+          ],
+          "kind": "steps"
+        },
+        {
+          "title": "Selected sources",
+          "body": "Class audio, grammar handout and board photo.",
+          "rows": ["View class", "Cancel processing"],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["View class", "Cancel processing"]
+    },
+    {
+      "key": "processing-result",
+      "title": "Your notes are partly ready",
+      "subtitle": "The handout was processed. The audio needs your attention.",
+      "active": "classes",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "What is ready",
+          "body": "Notes from Grammar handout.pdf, pages 1–4.",
+          "rows": [
+            "Read partial notes",
+            "Class audio · Failed",
+            "Retry will not use your allowance again."
+          ],
+          "kind": "steps"
+        },
+        {
+          "title": "Other job states",
+          "body": "A clear next action in every state.",
+          "rows": [
+            "In queue",
+            "Needs your action",
+            "Failed · Retry",
+            "Cancelled · Return to class",
+            "Ready · Read notes"
+          ],
+          "kind": "states"
+        }
+      ],
+      "actions": ["Read partial notes", "Retry failed source"]
+    },
+    {
+      "key": "notes",
+      "title": "Present perfect",
+      "subtitle": "Class notes · ESOL B1 · Version 2",
+      "active": "classes",
+      "layout": "reader",
+      "sections": [
+        {
+          "title": "In this class",
+          "body": "Talk about things that happened before now.",
+          "rows": ["Useful words", "Grammar", "Practice"],
+          "kind": "outline"
+        },
+        {
+          "title": "Already and yet",
+          "body": "Use already for something that happened sooner than expected.",
+          "rows": [
+            "From class · Audio 18:42",
+            "“I’ve already finished my homework.”",
+            "AI explanation · Already often comes before the main verb.",
+            "Edited by you · My own example: I’ve already had lunch."
+          ],
+          "kind": "note"
+        },
+        {
+          "title": "Present perfect",
+          "body": "have / has + past participle",
+          "rows": [
+            "From class · Handout page 2",
+            "I have visited London.",
+            "She has not finished yet."
+          ],
+          "kind": "note"
+        },
+        {
+          "title": "Try it",
+          "body": "I have _____ finished my homework.",
+          "rows": ["Show answer · already"],
+          "kind": "practice"
+        }
+      ],
+      "actions": ["Suggested cards", "Edit notes", "Notes tools"]
+    },
+    {
+      "key": "source",
+      "title": "From your class",
+      "subtitle": "The source behind this part of the notes.",
+      "active": "classes",
+      "layout": "reader",
+      "sections": [
+        {
+          "title": "Class audio",
+          "body": "Sample source · 18:42–18:55",
+          "rows": [
+            "Play sample source",
+            "“I’ve already finished my homework.”",
+            "Original class audio is available only on the device that recorded it."
+          ],
+          "kind": "player"
+        },
+        {
+          "title": "Handout · page 2",
+          "body": "Present perfect: have / has + past participle.",
+          "rows": ["Sample page with readable text", "Board photo · Source time 18:42"],
+          "kind": "page"
+        },
+        {
+          "title": "Original unavailable",
+          "body": "This source is not on this device.",
+          "rows": ["The reference stays with your notes.", "Choose the original file to play it."],
+          "kind": "states"
+        }
+      ],
+      "actions": ["Back to notes", "Choose original"]
+    },
+    {
+      "key": "edit-notes",
+      "title": "Edit this section",
+      "subtitle": "Your changes create a new version of the notes.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Section title",
+          "body": "Already and yet",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Your explanation",
+          "body": "Use already for something that happened sooner than expected.",
+          "rows": [],
+          "kind": "textarea"
+        },
+        {
+          "title": "Keep the source",
+          "body": "Class references stay attached.",
+          "rows": ["Edited by you", "Previous versions stay available."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Save a new version", "Cancel"]
+    },
+    {
+      "key": "history",
+      "title": "Compare note versions",
+      "subtitle": "Keep your edits or accept a suggested section.",
+      "active": "classes",
+      "layout": "reader",
+      "sections": [
+        {
+          "title": "Version history",
+          "body": "Changes are kept as separate versions.",
+          "rows": [
+            "Version 2 · Edited by you · Current",
+            "Version 1 · From class",
+            "Suggested version · Not applied"
+          ],
+          "kind": "rows"
+        },
+        {
+          "title": "Your current section",
+          "body": "Already and yet",
+          "rows": ["I’ve already had lunch.", "Keep this section"],
+          "kind": "note"
+        },
+        {
+          "title": "Suggested section",
+          "body": "Already and yet",
+          "rows": ["I’ve already finished my homework.", "Accept this section"],
+          "kind": "note"
+        }
+      ],
+      "actions": ["Apply selected changes", "Keep current notes"]
+    },
+    {
+      "key": "transcript",
+      "title": "Class transcript",
+      "subtitle": "Read or correct what was said in the class.",
+      "active": "classes",
+      "layout": "reader",
+      "sections": [
+        {
+          "title": "Teacher · 18:42",
+          "body": "“I’ve already finished my homework.”",
+          "rows": ["Edit text", "Rename speaker"],
+          "kind": "transcript"
+        },
+        {
+          "title": "Learner · 18:50",
+          "body": "“I haven’t finished yet.”",
+          "rows": ["Source · Class audio"],
+          "kind": "transcript"
+        },
+        {
+          "title": "Make corrections",
+          "body": "Your correction does not overwrite older notes.",
+          "rows": ["Generate a suggested update", "Compare before applying."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Save corrections", "Back to class"]
+    },
+    {
+      "key": "export",
+      "title": "Take your learning with you",
+      "subtitle": "Choose what to include before you export.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "HTML notes",
+          "body": "A readable copy of the sample class.",
+          "rows": [
+            "Include class examples",
+            "Include AI explanations",
+            "Include practice and answers",
+            "Include source references"
+          ],
+          "kind": "check"
+        },
+        {
+          "title": "Anki cards",
+          "body": "Export approved cards as an Anki package.",
+          "rows": [
+            "Approved cards only",
+            "Standard notes or cloze",
+            "Anki export service is not connected in this preview."
+          ],
+          "kind": "choices"
+        }
+      ],
+      "actions": ["Download sample HTML", "Back to notes"]
+    },
+    {
+      "key": "cards",
+      "title": "Choose useful cards",
+      "subtitle": "Select the ideas you want to practise from this class.",
+      "active": "classes",
+      "layout": "workspace",
+      "sections": [
+        {
+          "title": "Suggested cards",
+          "body": "8 sample suggestions · nothing added automatically.",
+          "rows": [
+            "Already · Meaning · From class",
+            "Have / has + past participle · Gap · From class",
+            "Already and yet · Contrast · AI expansion",
+            "Already · Duplicate of an existing card"
+          ],
+          "kind": "cards"
+        },
+        {
+          "title": "Your selection",
+          "body": "3 cards selected",
+          "rows": ["Add selected", "Reject selected", "Edit a card"],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Add selected cards", "Preview card types"]
+    },
+    {
+      "key": "card-types",
+      "title": "Six ways to practise",
+      "subtitle": "The card type should suit what you want to remember.",
+      "active": "classes",
+      "layout": "workspace",
+      "sections": [
+        {
+          "title": "Question and answer",
+          "body": "What does already tell us?",
+          "rows": ["Show answer"],
+          "kind": "card"
+        },
+        {
+          "title": "Cloze",
+          "body": "I have _____ finished my homework.",
+          "rows": ["already"],
+          "kind": "card"
+        },
+        {
+          "title": "Grammar point",
+          "body": "What form does the present perfect use?",
+          "rows": ["have / has + past participle"],
+          "kind": "card"
+        },
+        {
+          "title": "Error correction",
+          "body": "Correct this sentence: She have finished.",
+          "rows": ["She has finished."],
+          "kind": "card"
+        },
+        {
+          "title": "Vocabulary",
+          "body": "What does already mean?",
+          "rows": ["Earlier than expected · optional image attachment"],
+          "kind": "card"
+        },
+        {
+          "title": "Listening",
+          "body": "Listen to a clearly labelled synthetic example.",
+          "rows": ["Play example", "Show transcript"],
+          "kind": "card"
+        }
+      ],
+      "actions": ["Back to suggestions"]
+    },
+    {
+      "key": "card-editor",
+      "title": "Make this card useful",
+      "subtitle": "Keep one clear learning goal on each card.",
+      "active": "classes",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Card type",
+          "body": "Question and answer",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Question",
+          "body": "What does already tell us?",
+          "rows": [],
+          "kind": "textarea"
+        },
+        {
+          "title": "Answer",
+          "body": "Something happened earlier than expected.",
+          "rows": [],
+          "kind": "textarea"
+        },
+        {
+          "title": "Learning goal",
+          "body": "Understand already in the present perfect.",
+          "rows": ["If the goal changes, choose whether to keep or restart review history."],
+          "kind": "panel"
+        },
+        {
+          "title": "Card actions",
+          "body": "Manage this card without grading your memory.",
+          "rows": ["Important", "Known", "Suspend", "Too hard", "Wrong card", "Delete with undo"],
+          "kind": "choices"
+        }
+      ],
+      "actions": ["Save card", "Cancel"]
+    },
+    {
+      "key": "card-update",
+      "title": "A card update is ready",
+      "subtitle": "Notes changed. Decide whether to update this card.",
+      "active": "classes",
+      "layout": "reader",
+      "sections": [
+        {
+          "title": "Your current card",
+          "body": "What does already tell us?",
+          "rows": ["Something happened before now."],
+          "kind": "card"
+        },
+        {
+          "title": "Suggested update",
+          "body": "What does already tell us?",
+          "rows": ["Something happened earlier than expected."],
+          "kind": "card"
+        },
+        {
+          "title": "If the learning goal changes",
+          "body": "Choose how to handle previous review history.",
+          "rows": ["Keep review history", "Restart this card"],
+          "kind": "choices"
+        }
+      ],
+      "actions": ["Accept update", "Keep current card"]
+    },
+    {
+      "key": "review",
+      "title": "A few minutes of practice",
+      "subtitle": "4 cards are ready in this sample workspace.",
+      "active": "review",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Today’s cards",
+          "body": "A short session is enough.",
+          "rows": ["4 due cards", "2 new cards available", "Simple review · Remembered / Forgot"],
+          "kind": "numbers"
+        },
+        {
+          "title": "If you are behind",
+          "body": "Keep the session manageable.",
+          "rows": [
+            "Pause new cards",
+            "Review due cards first",
+            "No need to finish everything today."
+          ],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Start review", "Review settings"]
+    },
+    {
+      "key": "review-card",
+      "title": "What does already tell us?",
+      "subtitle": "Card 1 of 4 · Present perfect",
+      "active": "review",
+      "layout": "review",
+      "sections": [
+        {
+          "title": "already",
+          "body": "“I’ve already finished my homework.”",
+          "rows": ["From class · Audio 18:42"],
+          "kind": "flashcard"
+        }
+      ],
+      "actions": ["Show answer", "End session"]
+    },
+    {
+      "key": "review-answer",
+      "title": "Something happened earlier than expected.",
+      "subtitle": "Card 1 of 4 · Present perfect",
+      "active": "review",
+      "layout": "review",
+      "sections": [
+        {
+          "title": "already",
+          "body": "Compare your answer before choosing.",
+          "rows": [
+            "“I’ve already finished my homework.”",
+            "From class · Audio 18:42",
+            "AI explanation · Earlier than expected"
+          ],
+          "kind": "flashcard"
+        },
+        {
+          "title": "How did it go?",
+          "body": "A choice records one sample review event.",
+          "rows": [
+            "Forgot",
+            "Remembered",
+            "Advanced · Again / Hard / Good / Easy",
+            "Saving… · Wait for confirmation",
+            "Not saved · Retry"
+          ],
+          "kind": "states"
+        }
+      ],
+      "actions": ["Forgot", "Remembered", "Card options"]
+    },
+    {
+      "key": "review-summary",
+      "title": "You made time for your English.",
+      "subtitle": "This sample session is complete.",
+      "active": "review",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Your session",
+          "body": "A factual summary of your sample answers.",
+          "rows": ["4 cards reviewed", "3 remembered", "1 to practise again", "2 minutes spent"],
+          "kind": "numbers"
+        },
+        {
+          "title": "Keep it small",
+          "body": "Come back when more cards are ready.",
+          "rows": ["Review history is kept in this preview only."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Back to Today", "View progress"]
+    },
+    {
+      "key": "progress",
+      "title": "Your learning progress",
+      "subtitle": "See what you have practised, without turning it into a score.",
+      "active": "me",
+      "layout": "dashboard",
+      "sections": [
+        {
+          "title": "Recent practice",
+          "body": "Based on sample review events.",
+          "rows": ["Monday · 4 cards", "Wednesday · 6 cards", "Sunday · 4 cards"],
+          "kind": "activity"
+        },
+        {
+          "title": "What you are practising",
+          "body": "Useful ideas from your classes.",
+          "rows": ["Present perfect · 8 cards", "Everyday vocabulary · 6 cards"],
+          "kind": "panel"
+        },
+        {
+          "title": "Your English level",
+          "body": "B1 · Chosen by you",
+          "rows": [
+            "This is your own view, not a language test.",
+            "An estimated level is not available yet."
+          ],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Open review", "Edit level"]
+    },
+    {
+      "key": "preferences",
+      "title": "How you like to learn",
+      "subtitle": "Keep your choices separate from suggestions based on practice.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Your choices",
+          "body": "Preferences you set yourself.",
+          "rows": [
+            "Explanation language · Persian",
+            "Review mode · Simple",
+            "New cards per day · 5",
+            "Review notices · On"
+          ],
+          "kind": "choices"
+        },
+        {
+          "title": "Suggested preferences",
+          "body": "Based on this sample activity.",
+          "rows": ["Shorter explanations · Suggested", "Accept suggestion", "Dismiss suggestion"],
+          "kind": "panel"
+        },
+        {
+          "title": "Reset suggestions",
+          "body": "Your own choices stay the same.",
+          "rows": ["Reset inferred preferences"],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Save preferences", "Cancel"]
+    },
+    {
+      "key": "allowance",
+      "title": "Your processing allowance",
+      "subtitle": "Use it for the class material that helps you most.",
+      "active": "me",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Available in this sample",
+          "body": "Allowance is separate for audio and pages/photos.",
+          "rows": [
+            "60 audio minutes remaining",
+            "20 pages/photos remaining",
+            "No subscription or payment is needed for the pilot."
+          ],
+          "kind": "numbers"
+        },
+        {
+          "title": "Recent use",
+          "body": "Only confirmed sample processing is counted.",
+          "rows": ["Present perfect · 48 minutes and 5 pages/photos", "Retry · No second charge"],
+          "kind": "panel"
+        },
+        {
+          "title": "No allowance yet",
+          "body": "Ask the pilot operator.",
+          "rows": ["Keep your class material for later."],
+          "kind": "states"
+        }
+      ],
+      "actions": ["View classes", "Ask pilot operator"]
+    },
+    {
+      "key": "profile",
+      "title": "Your learning settings",
+      "subtitle": "Make Recalino work for the way you learn.",
+      "active": "me",
+      "layout": "dashboard",
+      "sections": [
+        {
+          "title": "Your learning profile",
+          "body": "B1 · Everyday English · Explanations in English",
+          "rows": [
+            "First language · Persian — فارسی",
+            "Explanations · English",
+            "Level and goal · B1 / Everyday English",
+            "Time zone · London"
+          ],
+          "kind": "rows"
+        },
+        {
+          "title": "Your learning space",
+          "body": "Choices you can update.",
+          "rows": ["Progress", "Preferences", "Processing allowance", "Your data"],
+          "kind": "panel"
+        },
+        {
+          "title": "Account",
+          "body": "Keep control of your account.",
+          "rows": ["Terms and Privacy Notice", "Sign out"],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Edit preferences"]
+    },
+    {
+      "key": "edit-language",
+      "title": "First language",
+      "subtitle": "Choose the language you use most comfortably.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Current language",
+          "body": "Persian — فارسی",
+          "rows": [],
+          "kind": "selected"
+        },
+        {
+          "title": "Search languages",
+          "body": "Search by English or native name",
+          "rows": [
+            "English",
+            "Persian — فارسی · Experimental",
+            "Arabic — العربية",
+            "Japanese — 日本語"
+          ],
+          "kind": "search"
+        },
+        {
+          "title": "Changes apply to future explanations.",
+          "body": "Your existing notes stay the same.",
+          "rows": [],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Save changes", "Cancel"]
+    },
+    {
+      "key": "edit-explanations",
+      "title": "Explanation language",
+      "subtitle": "Class examples stay in English.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Choose a language",
+          "body": "Keep the choice that helps you understand.",
+          "rows": [
+            "English · Words and grammar explained in English.",
+            "First-language explanations · Experimental"
+          ],
+          "kind": "choices"
+        },
+        {
+          "title": "Changes apply to future explanations.",
+          "body": "Your existing notes stay the same.",
+          "rows": [],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Save changes", "Cancel"]
+    },
+    {
+      "key": "edit-goal",
+      "title": "English level and goal",
+      "subtitle": "This is your own view, not a test. Both choices are optional.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Your level",
+          "body": "Choose the closest fit.",
+          "rows": ["A1", "A2", "B1", "B2", "C1", "C2", "Not sure"],
+          "kind": "choices"
+        },
+        {
+          "title": "Your goal",
+          "body": "What are you learning English for?",
+          "rows": ["ESOL study", "Everyday English", "Work", "IELTS", "Not sure"],
+          "kind": "choices"
+        }
+      ],
+      "actions": ["Save changes", "Cancel"]
+    },
+    {
+      "key": "edit-timezone",
+      "title": "Time zone",
+      "subtitle": "This changes when your review day starts. Your review history stays the same.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Current time zone",
+          "body": "London · Europe/London",
+          "rows": ["Local time · 10:30"],
+          "kind": "selected"
+        },
+        {
+          "title": "Choose a time zone",
+          "body": "Search by city or time zone",
+          "rows": ["Europe/London", "Asia/Tehran", "Asia/Tokyo"],
+          "kind": "search"
+        }
+      ],
+      "actions": ["Save changes", "Cancel"]
+    },
+    {
+      "key": "renew-consent",
+      "title": "Recording guidance updated",
+      "subtitle": "Please review the updated guidance before you continue.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Recording other people",
+          "body": "When you record a class, your teacher’s and classmates’ voices are in the recording.",
+          "rows": ["Ask first", "Follow your college’s rules", "Only for your study"],
+          "kind": "panel"
+        },
+        {
+          "title": "Please confirm",
+          "body": "I understand that I must ask the people in my class before I record.",
+          "rows": [],
+          "kind": "check"
+        },
+        {
+          "title": "Current recording guidance",
+          "body": "Version 0.1 · The full approved text is kept in the application.",
+          "rows": [],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Accept and continue"]
+    },
+    {
+      "key": "legal",
+      "title": "Terms and Privacy Notice",
+      "subtitle": "Read the current documents, with clear navigation and a reachable close control.",
+      "active": "me",
+      "layout": "reader",
+      "sections": [
+        {
+          "title": "Terms",
+          "body": "Original approved development draft · Version 0.1",
+          "rows": [
+            "Full original document content is kept unchanged.",
+            "Terms / Privacy Notice tabs"
+          ],
+          "kind": "legal"
+        },
+        {
+          "title": "Privacy Notice",
+          "body": "How your class material and account data are handled.",
+          "rows": ["Original document text, version and draft metadata"],
+          "kind": "legal"
+        },
+        {
+          "title": "Accept the current documents",
+          "body": "I accept the Terms and Privacy Notice",
+          "rows": [],
+          "kind": "check"
+        }
+      ],
+      "actions": ["Accept and continue", "Close"]
+    },
+    {
+      "key": "data-controls",
+      "title": "Your data",
+      "subtitle": "Choose exactly what to remove. Read the consequences first.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "A source used in more than one class",
+          "body": "Shared handout.pdf · Used by 2 sample classes",
+          "rows": ["Remove from this class", "Delete original, keep notes", "Delete completely"],
+          "kind": "choices"
+        },
+        {
+          "title": "Delete your account",
+          "body": "This removes the sample workspace in this preview.",
+          "rows": ["Account, classes and review history", "I understand this cannot be undone."],
+          "kind": "check"
+        }
+      ],
+      "actions": ["Keep my data", "Review deletion"]
+    },
+    {
+      "key": "states",
+      "title": "A clear next step",
+      "subtitle": "Shared states across the learning space.",
+      "active": "me",
+      "layout": "workspace",
+      "sections": [
+        {
+          "title": "Loading",
+          "body": "Loading your class…",
+          "rows": ["Matching page skeleton", "One polite loading message"],
+          "kind": "states"
+        },
+        {
+          "title": "You’re offline",
+          "body": "Reading remains available; unsaved answers must retry.",
+          "rows": ["Try again", "No false saved message"],
+          "kind": "states"
+        },
+        {
+          "title": "Something went wrong",
+          "body": "We couldn’t load this page. Please try again.",
+          "rows": ["Try again", "Back to Today"],
+          "kind": "states"
+        },
+        {
+          "title": "Page not found",
+          "body": "This page may have moved, or the link may be incorrect.",
+          "rows": ["Back to Today"],
+          "kind": "states"
+        },
+        {
+          "title": "Your session has ended",
+          "body": "Sign in again to save your changes.",
+          "rows": ["Sign in again"],
+          "kind": "states"
+        },
+        {
+          "title": "Confirm before deleting",
+          "body": "The safe action receives focus.",
+          "rows": ["Keep item", "Delete item", "Undo after a reversible deletion"],
+          "kind": "states"
+        }
+      ],
+      "actions": ["Back to Today"]
+    },
+    {
+      "key": "setup-explanations",
+      "title": "How would you like explanations?",
+      "subtitle": "Step 2 of 5 · Class notes stay in English.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Explanation language",
+          "body": "A little support in your first language can help.",
+          "rows": ["English only", "First-language explanations · Experimental"],
+          "kind": "choices"
+        }
+      ],
+      "actions": ["Continue", "Back"]
+    },
+    {
+      "key": "setup-goal",
+      "title": "Your English, your goal",
+      "subtitle": "Step 3 of 5 · Both choices are optional.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Your level",
+          "body": "Choose the closest fit.",
+          "rows": ["A1", "A2", "B1", "B2", "C1", "C2", "Not sure"],
+          "kind": "choices"
+        },
+        {
+          "title": "Your goal",
+          "body": "What are you learning English for?",
+          "rows": ["ESOL study", "Everyday English", "Work", "IELTS", "Not sure"],
+          "kind": "choices"
+        }
+      ],
+      "actions": ["Continue", "Skip for now", "Back"]
+    },
+    {
+      "key": "setup-timezone",
+      "title": "Make room for a little practice",
+      "subtitle": "Step 4 of 5 · Your time zone sets the review day.",
+      "active": "me",
+      "layout": "form",
+      "sections": [
+        {
+          "title": "Time zone",
+          "body": "Europe/London",
+          "rows": [],
+          "kind": "field"
+        },
+        {
+          "title": "Your daily rhythm",
+          "body": "Review whenever it suits you. This does not set a reminder.",
+          "rows": ["Your earlier reviews stay in your history."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Continue", "Back"]
+    },
+    {
+      "key": "recording-paused",
+      "title": "Recording paused",
+      "subtitle": "Recording demonstration · no microphone capture in this preview.",
+      "active": "today",
+      "layout": "recording",
+      "sections": [
+        {
+          "title": "12:36",
+          "body": "Paused · ready when you are",
+          "rows": [],
+          "kind": "panel"
+        },
+        {
+          "title": "Take your time",
+          "body": "Resume when the class continues.",
+          "rows": [],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Resume recording", "Stop"]
+    },
+    {
+      "key": "recording-failed",
+      "title": "The microphone stopped",
+      "subtitle": "The saved part is available on this device.",
+      "active": "today",
+      "layout": "recording",
+      "sections": [
+        {
+          "title": "12:36 saved",
+          "body": "Your microphone was interrupted. Check the permission before trying again.",
+          "rows": ["This is a sample recovery state."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Try microphone again", "Keep saved part"]
+    },
+    {
+      "key": "stop-recording",
+      "title": "Finish this recording?",
+      "subtitle": "The saved part will be ready to add to your class.",
+      "active": "today",
+      "layout": "focus",
+      "sections": [
+        {
+          "title": "Present perfect",
+          "body": "12 minutes 36 seconds · sample recording",
+          "rows": ["You can choose whether to process it next."],
+          "kind": "panel"
+        }
+      ],
+      "actions": ["Stop and keep recording", "Continue recording"]
+    }
+  ]
+}

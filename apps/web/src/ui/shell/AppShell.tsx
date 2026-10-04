@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Icon, type IconComponent } from "../components/Icon";
 import { Cards, Folders, Plus, SunHorizon, UserCircle } from "../icons";
 import { fill, strings } from "../strings";
+import { studyCopy } from "../study-copy";
 import styles from "./AppShell.module.css";
 
 export type NavId = "today" | "classes" | "review" | "me";
@@ -49,13 +50,14 @@ export function AppShell({
         <div className={styles.brand}>
           <Wordmark />
         </div>
+        <span className={styles.navCaption}>{studyCopy.navigation}</span>
         {newClassHref ? (
           <Link href={newClassHref} className={`btn btn-secondary ${styles.newClass}`}>
             <Icon icon={Plus} />
             <span className={styles.sidebarLabel}>{strings.nav.newClass}</span>
           </Link>
         ) : null}
-        <nav className={styles.sidebarNav}>
+        <nav className={styles.sidebarNav} aria-label={studyCopy.navigation}>
           {NAV.map(({ id, icon }) => {
             const active = id === current;
             return (
@@ -82,12 +84,21 @@ export function AppShell({
           })}
         </nav>
         <div className={styles.spacer} />
+        <div className={styles.sidebarNote}>
+          <Icon icon={SunHorizon} size={26} />
+          <strong>{studyCopy.sidebarTitle}</strong>
+          <p>{studyCopy.sidebarHelp}</p>
+        </div>
         {sidebarFooter ? <div className={styles.sidebarFooter}>{sidebarFooter}</div> : null}
       </aside>
       <main id="content" tabIndex={-1} className={styles.main}>
+        <div className={styles.mobileBrand}>
+          <Wordmark />
+          <span>{studyCopy.mobileBrand}</span>
+        </div>
         <div className={styles.content}>{children}</div>
       </main>
-      <nav className={styles.bottomNav}>
+      <nav className={styles.bottomNav} aria-label={studyCopy.navigation}>
         {NAV.map(({ id, icon }) => {
           const active = id === current;
           return (
@@ -125,13 +136,15 @@ type PageHeaderProps = {
   title: string;
   /** Small line above the title, e.g. the date on Today. */
   kicker?: string;
+  subtitle?: string;
 };
 
-export function PageHeader({ title, kicker }: PageHeaderProps) {
+export function PageHeader({ title, kicker, subtitle }: PageHeaderProps) {
   return (
     <header className={styles.pageHeader}>
       {kicker ? <span className={styles.kicker}>{kicker}</span> : null}
       <h1 className={styles.pageTitle}>{title}</h1>
+      {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
     </header>
   );
 }

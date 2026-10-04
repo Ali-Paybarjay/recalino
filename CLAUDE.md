@@ -52,6 +52,8 @@
 
 ## پیاده‌سازی رابط کاربری
 
+**به‌روزرسانی مالک محصول، 2026-10-04 (D34 و D35):** درخواست صریح بازطراحی با Figma بر قاعدهٔ قدیمی «طراحی تازه نکن» مقدم است. مرجع رابط جاری [گزارش نخست](docs/design/UI_REDESIGN_2026-10-04.md)، [تکمیل همهٔ صفحه‌ها](docs/design/COMPLETE_UI_REDESIGN_2026-10-04.md) و Figma آن‌هاست. بستهٔ دور اول مرجع آرشیوی است. تغییرات جدید در `app.css`، CSS Modules و فایل‌های UI قرار می‌گیرند؛ vendor و متن‌های حقوقی حفظ می‌شوند. قابلیت‌های فاقد بک‌اند در `/preview` فقط با دادهٔ مصنوعی و برچسب دائم نمایش داده می‌شوند.
+
 - طرح مرجع، تحویل Claude Design در [docs/design/handoff-r1/](docs/design/handoff-r1/) است. پیش از هر کار UI، [HANDOFF.md](docs/design/handoff-r1/HANDOFF.md) بخش ۰ و [بازبینی تحویل](docs/design/HANDOFF_R1_REVIEW.md) را بخوان.
 - آیکون اپ و favicon از تحویل دور ۲ در [docs/design/handoff-r2-icons/](docs/design/handoff-r2-icons/) می‌آیند و بدون تغییر در `apps/web/public/icons` کپی شده‌اند. `apps/web/src/ui/styles/vendor.test.ts` برابری‌شان را می‌سنجد.
 - طراحی تازه نکن:

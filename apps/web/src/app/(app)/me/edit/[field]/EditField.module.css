@@ -1,0 +1,30 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 4px 22px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 44px;
+  color: var(--color-accent);
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+.note {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--color-bg);
+  color: var(--rc-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}

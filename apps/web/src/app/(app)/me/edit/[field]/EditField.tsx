@@ -3,10 +3,10 @@
 import type { AccountState } from "@recalino/core/acc";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { buttonClassName } from "../../../../../ui/components/Button";
+import { accountCopy } from "../../../../../ui/account-copy";
 import { Icon } from "../../../../../ui/components/Icon";
 import { CaretLeft } from "../../../../../ui/icons";
-import { strings } from "../../../../../ui/strings";
+import { Wordmark } from "../../../../../ui/shell/AppShell";
 import { type SavedProfile, saveProfile } from "../../../../setup/api";
 import type { FirstLanguage } from "../../../../setup/languages";
 import setupStyles from "../../../../setup/setup.module.css";
@@ -16,7 +16,7 @@ import {
   LevelGoalStep,
   TimezoneStep,
 } from "../../../../setup/steps";
-import styles from "../../../app.module.css";
+import styles from "./EditField.module.css";
 
 export type EditableField = "first-language" | "explanations" | "level-goal" | "time-zone";
 
@@ -39,22 +39,22 @@ export function EditField({
     router.push("/me");
     router.refresh();
   };
-  const note = <p className={styles.note}>{strings.settings.notesUnchanged}</p>;
+  const note = <p className={styles.note}>{accountCopy.learningImpact}</p>;
+  const cancel = () => router.push("/me");
 
   return (
     <main className={setupStyles.page}>
-      <div className={styles.editTop}>
-        <Link
-          href="/me"
-          aria-label={strings.setup.back}
-          className={buttonClassName("ghost", "md", "btn-icon")}
-        >
-          <Icon icon={CaretLeft} size={20} />
+      <header className={styles.header}>
+        <Wordmark />
+        <Link href="/me" className={styles.back}>
+          <Icon icon={CaretLeft} size={18} /> {accountCopy.back}
         </Link>
-      </div>
+      </header>
       <div className={setupStyles.body}>
         {field === "first-language" ? (
           <FirstLanguageStep
+            mode="edit"
+            onCancel={cancel}
             value={state.profile.firstLanguage}
             languages={languages}
             note={note}
@@ -65,6 +65,8 @@ export function EditField({
         ) : null}
         {field === "explanations" && state.profile.firstLanguage ? (
           <ExplanationStep
+            mode="edit"
+            onCancel={cancel}
             firstLanguage={state.profile.firstLanguage}
             value={state.profile.explanationLanguage}
             showLearning={false}
@@ -76,6 +78,8 @@ export function EditField({
         ) : null}
         {field === "level-goal" ? (
           <LevelGoalStep
+            mode="edit"
+            onCancel={cancel}
             level={state.profile.level}
             goal={state.profile.goal}
             note={note}
@@ -84,6 +88,8 @@ export function EditField({
         ) : null}
         {field === "time-zone" ? (
           <TimezoneStep
+            mode="edit"
+            onCancel={cancel}
             value={state.timezone}
             onSubmit={(timezone) => done(saveProfile({ field: "timezone", timezone }))}
           />

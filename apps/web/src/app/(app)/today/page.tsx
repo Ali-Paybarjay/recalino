@@ -1,7 +1,7 @@
 import { requireLearner } from "../../../server/auth/learner";
+import { StudyOverview } from "../../../ui/components/StudyOverview";
 import { PageHeader } from "../../../ui/shell/AppShell";
 import { strings } from "../../../ui/strings";
-import styles from "../app.module.css";
 import { LearnerShell } from "../LearnerShell";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export default async function TodayPage() {
       current="today"
       header={<PageHeader kicker={todayLabel(learner.state.timezone)} title={strings.nav.today} />}
     >
-      <p className={styles.emptyToday}>{strings.empty.today}</p>
+      <StudyOverview />
     </LearnerShell>
   );
 }

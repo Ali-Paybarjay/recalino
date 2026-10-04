@@ -1,8 +1,8 @@
 import { requireLearner } from "../../../server/auth/learner";
-import { EmptyState } from "../../../ui/components/Feedback";
-import { Cards } from "../../../ui/icons";
+import { StudyEmptyState } from "../../../ui/components/StudyOverview";
 import { PageHeader } from "../../../ui/shell/AppShell";
 import { strings } from "../../../ui/strings";
+import { studyCopy } from "../../../ui/study-copy";
 import { LearnerShell } from "../LearnerShell";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,9 @@ export default async function ReviewPage() {
     <LearnerShell
       learner={learner}
       current="review"
-      header={<PageHeader title={strings.nav.review} />}
+      header={<PageHeader title={strings.nav.review} subtitle={studyCopy.review.subtitle} />}
     >
-      <EmptyState icon={Cards} text={strings.empty.review} />
+      <StudyEmptyState kind="review" />
     </LearnerShell>
   );
 }

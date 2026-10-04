@@ -1,0 +1,715 @@
+{
+  "pageId": "18:137",
+  "createdNodeIds": [
+    "18:137",
+    "18:141",
+    "18:138",
+    "18:139",
+    "18:140",
+    "18:142",
+    "18:143",
+    "18:144",
+    "18:145",
+    "18:146",
+    "18:147",
+    "18:151",
+    "18:148",
+    "18:149",
+    "18:150",
+    "18:152",
+    "18:153",
+    "18:154",
+    "18:155",
+    "18:156",
+    "18:157",
+    "18:160",
+    "18:158",
+    "18:159",
+    "18:161",
+    "18:162",
+    "18:163",
+    "18:164",
+    "18:168",
+    "18:165",
+    "18:166",
+    "18:167",
+    "18:169",
+    "18:170",
+    "18:171",
+    "18:172",
+    "18:173",
+    "18:174",
+    "18:175",
+    "18:176",
+    "18:177",
+    "18:178",
+    "18:179",
+    "18:180",
+    "18:181",
+    "18:182",
+    "18:183",
+    "18:184",
+    "18:185",
+    "18:186",
+    "18:187",
+    "18:188",
+    "18:189",
+    "18:190",
+    "18:191",
+    "18:192",
+    "18:193",
+    "18:194",
+    "18:195",
+    "18:196",
+    "18:197",
+    "18:198",
+    "18:199",
+    "18:200",
+    "18:201",
+    "18:202",
+    "18:203",
+    "18:204",
+    "18:205",
+    "18:206",
+    "18:207",
+    "18:208",
+    "18:209",
+    "18:210",
+    "18:211",
+    "18:212",
+    "18:213",
+    "18:214",
+    "18:215",
+    "18:216",
+    "18:217",
+    "18:218",
+    "18:219",
+    "18:220",
+    "18:221",
+    "18:222",
+    "18:223",
+    "18:224",
+    "18:225",
+    "18:226",
+    "18:227",
+    "18:228",
+    "18:229",
+    "18:230",
+    "18:231",
+    "18:232",
+    "18:233",
+    "18:234",
+    "18:235",
+    "18:236",
+    "18:237",
+    "18:238",
+    "18:239",
+    "18:240",
+    "18:241",
+    "18:242",
+    "18:243",
+    "18:244",
+    "18:245",
+    "18:246",
+    "18:247",
+    "18:248",
+    "18:249",
+    "18:250",
+    "18:251",
+    "18:252",
+    "18:253",
+    "18:254",
+    "18:255",
+    "18:256",
+    "18:257",
+    "18:258",
+    "18:259",
+    "18:260"
+  ],
+  "mutatedNodeIds": [],
+  "components": {
+    "Field": {
+      "set": "18:141",
+      "variants": [
+        {
+          "id": "18:138",
+          "name": "State=Default"
+        },
+        {
+          "id": "18:139",
+          "name": "State=Focus"
+        },
+        {
+          "id": "18:140",
+          "name": "State=Error"
+        }
+      ]
+    },
+    "Source row": {
+      "set": "18:151",
+      "variants": [
+        {
+          "id": "18:148",
+          "name": "State=Received"
+        },
+        {
+          "id": "18:149",
+          "name": "State=Checking"
+        },
+        {
+          "id": "18:150",
+          "name": "State=Needs action"
+        }
+      ]
+    },
+    "Review card": {
+      "set": "18:160",
+      "variants": [
+        {
+          "id": "18:158",
+          "name": "State=Question"
+        },
+        {
+          "id": "18:159",
+          "name": "State=Answer"
+        }
+      ]
+    },
+    "Process step": {
+      "set": "18:168",
+      "variants": [
+        {
+          "id": "18:165",
+          "name": "State=Complete"
+        },
+        {
+          "id": "18:166",
+          "name": "State=Current"
+        },
+        {
+          "id": "18:167",
+          "name": "State=Waiting"
+        }
+      ]
+    }
+  },
+  "screens": [
+    {
+      "key": "today",
+      "title": "Your English, one class at a time.",
+      "size": "Desktop",
+      "id": "18:175"
+    },
+    {
+      "key": "today",
+      "title": "Your English, one class at a time.",
+      "size": "Mobile",
+      "id": "18:176"
+    },
+    {
+      "key": "classes",
+      "title": "Your classes",
+      "size": "Desktop",
+      "id": "18:177"
+    },
+    {
+      "key": "classes",
+      "title": "Your classes",
+      "size": "Mobile",
+      "id": "18:178"
+    },
+    {
+      "key": "course",
+      "title": "ESOL B1",
+      "size": "Desktop",
+      "id": "18:179"
+    },
+    {
+      "key": "course",
+      "title": "ESOL B1",
+      "size": "Mobile",
+      "id": "18:180"
+    },
+    {
+      "key": "class",
+      "title": "Present perfect",
+      "size": "Desktop",
+      "id": "18:181"
+    },
+    {
+      "key": "class",
+      "title": "Present perfect",
+      "size": "Mobile",
+      "id": "18:182"
+    },
+    {
+      "key": "new-class",
+      "title": "New class",
+      "size": "Desktop",
+      "id": "18:183"
+    },
+    {
+      "key": "new-class",
+      "title": "New class",
+      "size": "Mobile",
+      "id": "18:184"
+    },
+    {
+      "key": "organize",
+      "title": "Keep your classes organised",
+      "size": "Desktop",
+      "id": "18:185"
+    },
+    {
+      "key": "organize",
+      "title": "Keep your classes organised",
+      "size": "Mobile",
+      "id": "18:186"
+    },
+    {
+      "key": "first-upload",
+      "title": "Before you add a file",
+      "size": "Desktop",
+      "id": "18:187"
+    },
+    {
+      "key": "first-upload",
+      "title": "Before you add a file",
+      "size": "Mobile",
+      "id": "18:188"
+    },
+    {
+      "key": "microphone",
+      "title": "Ready to record?",
+      "size": "Desktop",
+      "id": "18:189"
+    },
+    {
+      "key": "microphone",
+      "title": "Ready to record?",
+      "size": "Mobile",
+      "id": "18:190"
+    },
+    {
+      "key": "recording",
+      "title": "Recording your class",
+      "size": "Desktop",
+      "id": "18:191"
+    },
+    {
+      "key": "recording",
+      "title": "Recording your class",
+      "size": "Mobile",
+      "id": "18:192"
+    },
+    {
+      "key": "saved",
+      "title": "Your recording is ready",
+      "size": "Desktop",
+      "id": "18:193"
+    },
+    {
+      "key": "saved",
+      "title": "Your recording is ready",
+      "size": "Mobile",
+      "id": "18:194"
+    },
+    {
+      "key": "recovery",
+      "title": "An unfinished recording",
+      "size": "Desktop",
+      "id": "18:195"
+    },
+    {
+      "key": "recovery",
+      "title": "An unfinished recording",
+      "size": "Mobile",
+      "id": "18:196"
+    },
+    {
+      "key": "upload",
+      "title": "Add class material",
+      "size": "Desktop",
+      "id": "18:197"
+    },
+    {
+      "key": "upload",
+      "title": "Add class material",
+      "size": "Mobile",
+      "id": "18:198"
+    },
+    {
+      "key": "source-settings",
+      "title": "Choose what to use",
+      "size": "Desktop",
+      "id": "18:199"
+    },
+    {
+      "key": "source-settings",
+      "title": "Choose what to use",
+      "size": "Mobile",
+      "id": "18:200"
+    },
+    {
+      "key": "estimate",
+      "title": "Check before processing",
+      "size": "Desktop",
+      "id": "18:201"
+    },
+    {
+      "key": "estimate",
+      "title": "Check before processing",
+      "size": "Mobile",
+      "id": "18:202"
+    },
+    {
+      "key": "shortfall",
+      "title": "Choose what to process",
+      "size": "Desktop",
+      "id": "18:203"
+    },
+    {
+      "key": "shortfall",
+      "title": "Choose what to process",
+      "size": "Mobile",
+      "id": "18:204"
+    },
+    {
+      "key": "processing",
+      "title": "Making your class notes",
+      "size": "Desktop",
+      "id": "18:205"
+    },
+    {
+      "key": "processing",
+      "title": "Making your class notes",
+      "size": "Mobile",
+      "id": "18:206"
+    },
+    {
+      "key": "processing-result",
+      "title": "Your notes are partly ready",
+      "size": "Desktop",
+      "id": "18:207"
+    },
+    {
+      "key": "processing-result",
+      "title": "Your notes are partly ready",
+      "size": "Mobile",
+      "id": "18:208"
+    },
+    {
+      "key": "notes",
+      "title": "Present perfect",
+      "size": "Desktop",
+      "id": "18:209"
+    },
+    {
+      "key": "notes",
+      "title": "Present perfect",
+      "size": "Mobile",
+      "id": "18:210"
+    },
+    {
+      "key": "source",
+      "title": "From your class",
+      "size": "Desktop",
+      "id": "18:211"
+    },
+    {
+      "key": "source",
+      "title": "From your class",
+      "size": "Mobile",
+      "id": "18:212"
+    },
+    {
+      "key": "edit-notes",
+      "title": "Edit this section",
+      "size": "Desktop",
+      "id": "18:213"
+    },
+    {
+      "key": "edit-notes",
+      "title": "Edit this section",
+      "size": "Mobile",
+      "id": "18:214"
+    },
+    {
+      "key": "history",
+      "title": "Compare note versions",
+      "size": "Desktop",
+      "id": "18:215"
+    },
+    {
+      "key": "history",
+      "title": "Compare note versions",
+      "size": "Mobile",
+      "id": "18:216"
+    },
+    {
+      "key": "transcript",
+      "title": "Class transcript",
+      "size": "Desktop",
+      "id": "18:217"
+    },
+    {
+      "key": "transcript",
+      "title": "Class transcript",
+      "size": "Mobile",
+      "id": "18:218"
+    },
+    {
+      "key": "export",
+      "title": "Take your learning with you",
+      "size": "Desktop",
+      "id": "18:219"
+    },
+    {
+      "key": "export",
+      "title": "Take your learning with you",
+      "size": "Mobile",
+      "id": "18:220"
+    },
+    {
+      "key": "cards",
+      "title": "Choose useful cards",
+      "size": "Desktop",
+      "id": "18:221"
+    },
+    {
+      "key": "cards",
+      "title": "Choose useful cards",
+      "size": "Mobile",
+      "id": "18:222"
+    },
+    {
+      "key": "card-types",
+      "title": "Six ways to practise",
+      "size": "Desktop",
+      "id": "18:223"
+    },
+    {
+      "key": "card-types",
+      "title": "Six ways to practise",
+      "size": "Mobile",
+      "id": "18:224"
+    },
+    {
+      "key": "card-editor",
+      "title": "Make this card useful",
+      "size": "Desktop",
+      "id": "18:225"
+    },
+    {
+      "key": "card-editor",
+      "title": "Make this card useful",
+      "size": "Mobile",
+      "id": "18:226"
+    },
+    {
+      "key": "card-update",
+      "title": "A card update is ready",
+      "size": "Desktop",
+      "id": "18:227"
+    },
+    {
+      "key": "card-update",
+      "title": "A card update is ready",
+      "size": "Mobile",
+      "id": "18:228"
+    },
+    {
+      "key": "review",
+      "title": "A few minutes of practice",
+      "size": "Desktop",
+      "id": "18:229"
+    },
+    {
+      "key": "review",
+      "title": "A few minutes of practice",
+      "size": "Mobile",
+      "id": "18:230"
+    },
+    {
+      "key": "review-card",
+      "title": "What does already tell us?",
+      "size": "Desktop",
+      "id": "18:231"
+    },
+    {
+      "key": "review-card",
+      "title": "What does already tell us?",
+      "size": "Mobile",
+      "id": "18:232"
+    },
+    {
+      "key": "review-answer",
+      "title": "Something happened earlier than expected.",
+      "size": "Desktop",
+      "id": "18:233"
+    },
+    {
+      "key": "review-answer",
+      "title": "Something happened earlier than expected.",
+      "size": "Mobile",
+      "id": "18:234"
+    },
+    {
+      "key": "review-summary",
+      "title": "You made time for your English.",
+      "size": "Desktop",
+      "id": "18:235"
+    },
+    {
+      "key": "review-summary",
+      "title": "You made time for your English.",
+      "size": "Mobile",
+      "id": "18:236"
+    },
+    {
+      "key": "progress",
+      "title": "Your learning progress",
+      "size": "Desktop",
+      "id": "18:237"
+    },
+    {
+      "key": "progress",
+      "title": "Your learning progress",
+      "size": "Mobile",
+      "id": "18:238"
+    },
+    {
+      "key": "preferences",
+      "title": "How you like to learn",
+      "size": "Desktop",
+      "id": "18:239"
+    },
+    {
+      "key": "preferences",
+      "title": "How you like to learn",
+      "size": "Mobile",
+      "id": "18:240"
+    },
+    {
+      "key": "allowance",
+      "title": "Your processing allowance",
+      "size": "Desktop",
+      "id": "18:241"
+    },
+    {
+      "key": "allowance",
+      "title": "Your processing allowance",
+      "size": "Mobile",
+      "id": "18:242"
+    },
+    {
+      "key": "profile",
+      "title": "Your learning settings",
+      "size": "Desktop",
+      "id": "18:243"
+    },
+    {
+      "key": "profile",
+      "title": "Your learning settings",
+      "size": "Mobile",
+      "id": "18:244"
+    },
+    {
+      "key": "edit-language",
+      "title": "First language",
+      "size": "Desktop",
+      "id": "18:245"
+    },
+    {
+      "key": "edit-language",
+      "title": "First language",
+      "size": "Mobile",
+      "id": "18:246"
+    },
+    {
+      "key": "edit-explanations",
+      "title": "Explanation language",
+      "size": "Desktop",
+      "id": "18:247"
+    },
+    {
+      "key": "edit-explanations",
+      "title": "Explanation language",
+      "size": "Mobile",
+      "id": "18:248"
+    },
+    {
+      "key": "edit-goal",
+      "title": "English level and goal",
+      "size": "Desktop",
+      "id": "18:249"
+    },
+    {
+      "key": "edit-goal",
+      "title": "English level and goal",
+      "size": "Mobile",
+      "id": "18:250"
+    },
+    {
+      "key": "edit-timezone",
+      "title": "Time zone",
+      "size": "Desktop",
+      "id": "18:251"
+    },
+    {
+      "key": "edit-timezone",
+      "title": "Time zone",
+      "size": "Mobile",
+      "id": "18:252"
+    },
+    {
+      "key": "renew-consent",
+      "title": "Recording guidance updated",
+      "size": "Desktop",
+      "id": "18:253"
+    },
+    {
+      "key": "renew-consent",
+      "title": "Recording guidance updated",
+      "size": "Mobile",
+      "id": "18:254"
+    },
+    {
+      "key": "legal",
+      "title": "Terms and Privacy Notice",
+      "size": "Desktop",
+      "id": "18:255"
+    },
+    {
+      "key": "legal",
+      "title": "Terms and Privacy Notice",
+      "size": "Mobile",
+      "id": "18:256"
+    },
+    {
+      "key": "data-controls",
+      "title": "Your data",
+      "size": "Desktop",
+      "id": "18:257"
+    },
+    {
+      "key": "data-controls",
+      "title": "Your data",
+      "size": "Mobile",
+      "id": "18:258"
+    },
+    {
+      "key": "states",
+      "title": "A clear next step",
+      "size": "Desktop",
+      "id": "18:259"
+    },
+    {
+      "key": "states",
+      "title": "A clear next step",
+      "size": "Mobile",
+      "id": "18:260"
+    }
+  ],
+  "screenCount": 86
+}

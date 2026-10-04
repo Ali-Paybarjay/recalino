@@ -42,9 +42,9 @@ export function RadioCards<T extends string>({
           />
           <span className={styles.dot} aria-hidden="true" />
           <span className={styles.text}>
-            <span className={styles.title} lang={option.lang}>
+            <bdi className={styles.title} lang={option.lang} dir="auto">
               {option.title}
-            </span>
+            </bdi>
             {option.description ? (
               <span className={styles.description}>{option.description}</span>
             ) : null}

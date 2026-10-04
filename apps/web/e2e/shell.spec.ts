@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations, VIEWPORTS } from "./helpers";
 
-// App shell (M2, T6): bottom navigation on mobile, sidebar from 768px, icons only until 1024px
-// (HANDOFF §4). Frames B1-default and B1-desktop.
+// App shell: bottom navigation on mobile, compact labelled sidebar from 768px, and full sidebar
+// from 1024px. Labels remain visible so tablet users can identify every destination.
 
 test("mobile: bottom navigation with the current page marked", async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.mobile);
@@ -16,18 +16,18 @@ test("mobile: bottom navigation with the current page marked", async ({ page }) 
   await expectNoAxeViolations(page);
 });
 
-test("tablet: sidebar with icons only, names kept for screen readers", async ({ page }) => {
+test("tablet: compact sidebar keeps navigation labels visible", async ({ page }) => {
   await page.setViewportSize(VIEWPORTS.tablet);
   await page.goto("/dev/ui/shell");
   const sidebar = page.locator("aside");
   await expect(sidebar).toBeVisible();
-  expect((await sidebar.boundingBox())?.width).toBe(76);
+  expect((await sidebar.boundingBox())?.width).toBe(176);
   await expect(sidebar.getByRole("link", { name: "New class" })).toBeVisible();
   await expect(sidebar.getByRole("link", { name: "Today" })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await expect(sidebar.getByText("Today", { exact: true })).not.toBeInViewport();
+  await expect(sidebar.getByText("Today", { exact: true })).toBeInViewport();
   await expect(sidebar.getByText("Allowance")).toBeHidden();
   await expectNoAxeViolations(page);
 });

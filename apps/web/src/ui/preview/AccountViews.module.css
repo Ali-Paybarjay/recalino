@@ -1,0 +1,227 @@
+.page {
+  display: grid;
+  gap: 20px;
+  max-width: 760px;
+  margin: 0 auto;
+  min-width: 0;
+}
+.page p {
+  line-height: 1.65;
+}
+.page h3 {
+  font-size: 17px;
+  line-height: 1.35;
+}
+.rows {
+  display: grid;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 64px;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+  text-align: start;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.row:hover {
+  color: var(--color-accent);
+}
+.row:focus-visible {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 4px;
+}
+.row > span:first-child {
+  min-width: 0;
+}
+.rowLabel {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--rc-text-muted);
+  font-size: 13px;
+}
+.rowValue {
+  display: block;
+  overflow-wrap: anywhere;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.checks {
+  display: grid;
+  gap: 16px;
+  padding-top: 24px;
+}
+.muted {
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--rc-text-muted);
+}
+.reset {
+  padding-top: 20px;
+  margin-top: 24px;
+  border-top: 1px solid var(--color-divider);
+}
+.allowance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.allowance > div {
+  display: grid;
+  gap: 8px;
+}
+.allowance strong {
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.allowance span {
+  max-width: 160px;
+  line-height: 1.5;
+  font-size: 15px;
+}
+.badge {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--rc-warning-tint);
+  color: var(--rc-warning);
+  font-size: 11px;
+}
+.page [role="listbox"] {
+  max-height: min(36dvh, 300px);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.tile:last-child {
+  grid-column: 1 / -1;
+}
+.tile input {
+  accent-color: var(--color-accent);
+  width: 18px;
+  height: 18px;
+}
+.tile:has(input:checked) {
+  border-color: var(--color-accent);
+  background: var(--rc-primary-tint);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.tile:has(input:focus-visible) {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 3px;
+}
+.guidance {
+  display: grid;
+  gap: 0;
+}
+.guidance > div {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.guidance h3 {
+  margin: 0 0 8px;
+}
+.guidance p {
+  margin: 0;
+  color: var(--rc-text-muted);
+}
+.reader {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 200px);
+  min-height: 360px;
+  border: 1px solid var(--color-divider);
+  border-radius: 24px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.readerHeader,
+.readerFooter {
+  flex: none;
+  padding: 20px;
+}
+.readerHeader {
+  border-bottom: 1px solid var(--color-divider);
+}
+.readerFooter {
+  border-top: 1px solid var(--color-divider);
+}
+.readerFooter > div {
+  margin-top: 16px;
+}
+.readerBody {
+  min-height: 120px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+}
+.readerBody:focus-visible {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: -4px;
+}
+.documentTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.sampleNotice {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  background: var(--color-bg);
+  font-size: 14px;
+  color: var(--rc-text-muted);
+}
+.danger {
+  border-color: var(--rc-danger-border);
+  background: var(--rc-danger-tint);
+  color: var(--rc-danger);
+}
+@media (min-width: 768px) {
+  .readerHeader,
+  .readerFooter,
+  .readerBody {
+    padding: 24px 32px;
+  }
+}
+@media (max-height: 700px) {
+  .reader {
+    max-height: none;
+  }
+  .readerBody {
+    max-height: 50dvh;
+  }
+}

@@ -13,6 +13,8 @@ export interface RouteMeta {
   rateLimit?: RateLimitClass;
   /** Form posts and the sign-in flow: on any error, send the browser here instead of JSON. */
   errorRedirect?: string;
+  /** A form can treat an already-ended session as its successful signed-out destination. */
+  unauthenticatedRedirect?: string;
 }
 
 /**
@@ -35,7 +37,13 @@ export const ROUTES = {
     access: "public",
     errorRedirect: "/?error=signin",
   },
-  authSignOut: { id: "authSignOut", path: "/auth/sign-out", access: "learner", errorRedirect: "/" },
+  authSignOut: {
+    id: "authSignOut",
+    path: "/auth/sign-out",
+    access: "learner",
+    errorRedirect: "/me?error=signout",
+    unauthenticatedRedirect: "/",
+  },
   // M3: learning profile and acceptances (FR-ACC-003 to FR-ACC-007).
   profile: { id: "profile", path: "/api/profile", access: "learner" },
   consents: { id: "consents", path: "/api/consents", access: "learner" },

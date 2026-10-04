@@ -4,7 +4,9 @@ import type { AccountState, SetupStep } from "@recalino/core/acc";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "../../ui/components/Button";
+import { experienceCopy } from "../../ui/experience-copy";
 import { CaretLeft } from "../../ui/icons";
+import { Wordmark } from "../../ui/shell/AppShell";
 import { fill, strings } from "../../ui/strings";
 import { acceptTexts, saveProfile } from "./api";
 import type { FirstLanguage } from "./languages";
@@ -27,7 +29,7 @@ type SetupWizardProps = {
 };
 
 /**
- * A2 — profile setup in seven steps (FR-ACC-003). Each answer is saved before the next screen,
+ * A2 — profile setup across five screens (FR-ACC-003). Each answer is saved before the next screen,
  * so a learner who leaves comes back to the same step. Back moves to the previous screen.
  */
 export function SetupWizard({ state, languages, recordingConsentVersion }: SetupWizardProps) {
@@ -58,20 +60,30 @@ export function SetupWizard({ state, languages, recordingConsentVersion }: Setup
 
   return (
     <main className={styles.page}>
-      <div className={styles.progress}>
-        <IconButton
-          icon={CaretLeft}
-          label={strings.setup.back}
-          disabled={index === 0}
-          onClick={() => setScreen(ORDER[index - 1] ?? 1)}
-        />
+      <header className={styles.wizardHeader}>
+        <Wordmark />
+        <p className={styles.wizardTitle}>{experienceCopy.setup.title}</p>
+        <p className={styles.wizardDescription}>{experienceCopy.setup.description}</p>
+      </header>
+      <section className={styles.progress} aria-label={experienceCopy.setup.progressLabel}>
+        <div className={styles.progressTop}>
+          <IconButton
+            icon={CaretLeft}
+            label={strings.setup.back}
+            disabled={index === 0}
+            onClick={() => setScreen(ORDER[index - 1] ?? 1)}
+          />
+          <span className={styles.screenName}>{experienceCopy.setup.screens[index]}</span>
+          <span className={styles.count}>
+            {fill(experienceCopy.setup.progress, { step: index + 1, total: ORDER.length })}
+          </span>
+        </div>
         <div className={styles.bars} aria-hidden="true">
-          {[1, 2, 3, 4, 5, 6, 7].map((bar) => (
-            <span key={bar} className={bar <= screen ? styles.barOn : styles.bar} />
+          {ORDER.map((step, barIndex) => (
+            <span key={step} className={barIndex <= index ? styles.barOn : styles.bar} />
           ))}
         </div>
-        <span className={styles.count}>{fill(strings.setup.progress, { step: screen })}</span>
-      </div>
+      </section>
       <div ref={headingRef} className={styles.body}>
         {screen === 1 ? (
           <FirstLanguageStep

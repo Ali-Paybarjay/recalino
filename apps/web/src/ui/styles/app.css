@@ -1,6 +1,77 @@
-/* App layer, loaded after the design files (vendor/nocturne-base.css → vendor/tokens.css → this).
-   It adds only behaviour the design describes but the design CSS does not cover. No new colours,
-   sizes or durations: every value is a design token or comes from a design frame. */
+/* The 2026-10-04 Figma redesign overrides the archived handoff's tokens here.
+   Keep vendor files intact so the original design remains reproducible. */
+
+:root[data-theme="light"] {
+  --color-bg: #f6f7f2;
+  --color-surface: #ffffff;
+  --rc-surface-2: #edf1e9;
+  --color-text: #1c3028;
+  --rc-text-muted: #58685f;
+  --color-divider: #dce3d9;
+  --rc-border-strong: #8c9c91;
+  --color-accent: #28634a;
+  --rc-primary-text: #245b43;
+  --rc-primary-tint: #e7f0e6;
+  --rc-primary-tint-2: #d4e7d6;
+  --rc-focus: #28634a;
+  --rc-cta-bg: #234e3c;
+  --rc-cta-bg-hover: #183c2d;
+  --rc-cta-text: #ffffff;
+  --rc-hero-bg: #e9f1dd;
+  --rc-hero-text: #1c3028;
+  --rc-hero-label: #1c3028;
+  --rc-hero-muted: #4d6244;
+  --rc-hero-cta-bg: #234e3c;
+  --rc-hero-cta-text: #ffffff;
+  --rc-highlight: #d9edb1;
+  --rc-btn-radius: 12px;
+  --rc-card-radius: 24px;
+  --shadow-sm: 0 0 0 1px var(--color-divider);
+  --shadow-md: 0 0 0 1px var(--color-divider), 0 12px 32px rgb(28 48 40 / 5%);
+  --shadow-lg: 0 0 0 1px var(--color-divider), 0 20px 60px rgb(28 48 40 / 12%);
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #111b17;
+  --color-surface: #192720;
+  --rc-surface-2: #23352b;
+  --color-text: #eaf0e7;
+  --rc-text-muted: #b0c1b5;
+  --color-divider: #34463a;
+  --rc-border-strong: #7e9685;
+  --color-accent: #a5d3ac;
+  --rc-primary-text: #c3e5bd;
+  --rc-primary-tint: #283d2d;
+  --rc-primary-tint-2: #354e39;
+  --rc-focus: #b2dfaf;
+  --rc-cta-bg: #c7e4ae;
+  --rc-cta-bg-hover: #d7eec4;
+  --rc-cta-text: #192b1f;
+  --rc-hero-bg: #293d27;
+  --rc-hero-text: #eaf0e7;
+  --rc-hero-label: #eaf0e7;
+  --rc-hero-muted: #bdcfb3;
+  --rc-hero-cta-bg: #c7e4ae;
+  --rc-hero-cta-text: #192b1f;
+  --rc-highlight: #b8d897;
+  --rc-btn-radius: 12px;
+  --rc-card-radius: 24px;
+}
+
+body {
+  margin: 0;
+}
+
+[data-theme] .btn {
+  transition:
+    background var(--rc-dur-fast),
+    border-color var(--rc-dur-fast);
+}
+
+[data-theme] .btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-divider);
+}
 
 /* Native controls and scrollbars follow the theme. */
 :root[data-theme="light"] {

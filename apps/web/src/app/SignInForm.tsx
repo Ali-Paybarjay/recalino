@@ -101,10 +101,16 @@ export function SignInForm({ next, terms, privacy }: SignInFormProps) {
           </span>
         </p>
       </form>
-      <Sheet open={sheet === "terms"} onClose={() => setSheet(null)} title={strings.signIn.terms}>
+      <Sheet
+        variant="reading"
+        open={sheet === "terms"}
+        onClose={() => setSheet(null)}
+        title={strings.signIn.terms}
+      >
         {terms}
       </Sheet>
       <Sheet
+        variant="reading"
         open={sheet === "privacy"}
         onClose={() => setSheet(null)}
         title={strings.signIn.privacy}

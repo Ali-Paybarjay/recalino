@@ -76,3 +76,11 @@
   font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }
+.legalNavigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 20px;
+  border: 0;
+}

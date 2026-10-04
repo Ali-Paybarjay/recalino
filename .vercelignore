@@ -10,7 +10,9 @@
 **/node_modules
 **/.next
 docs/design
+artifacts
 test-results
 playwright-report
 apps/web/test-results
+apps/web/test-results-preview
 supabase/.temp

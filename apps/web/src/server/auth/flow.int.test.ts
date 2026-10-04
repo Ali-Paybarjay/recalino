@@ -151,6 +151,28 @@ describe("return from Google (FR-ACC-001, FR-ACC-002)", () => {
 });
 
 describe("sign out (FR-ACC-002)", () => {
+  it("keeps a genuine sign-out failure visible in Settings instead of implying success", async () => {
+    const auth = fakeAuth();
+    const failedGateway = {
+      ...auth.gateway,
+      signOut: async () => {
+        throw new Error("Synthetic provider failure");
+      },
+    };
+    const route = defineRoute(
+      ROUTES.authSignOut,
+      signOutHandler(flowDeps(failedGateway, memoryJar())),
+      routeDeps(db),
+    );
+    const userId = await createAuthUser();
+    const response = await route(
+      new Request(`${ORIGIN}/auth/sign-out`, {
+        method: "POST",
+        headers: { "x-test-user": userId, "sec-fetch-site": "same-origin" },
+      }),
+    );
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/me?error=signout`);
+  });
   it("ends the session and goes to the start page; without a session it just goes there", async () => {
     const auth = fakeAuth();
     const route = defineRoute(

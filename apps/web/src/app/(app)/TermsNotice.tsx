@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { type ReactNode, useId, useState } from "react";
+import { accountCopy } from "../../ui/account-copy";
 import { Button } from "../../ui/components/Button";
 import { Checkbox } from "../../ui/components/Checkbox";
 import { Banner } from "../../ui/components/Feedback";
@@ -28,10 +30,13 @@ export function TermsNotice({
   privacy: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const hintId = useId();
   const [open, setOpen] = useState(false);
+  const [document, setDocument] = useState<"terms" | "privacy">("terms");
   const [accepted, setAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SaveError | null>(null);
 
   const accept = async () => {
     setSaving(true);
@@ -44,7 +49,7 @@ export function TermsNotice({
       setOpen(false);
       router.refresh();
     } catch (failure) {
-      setError(failure instanceof SaveError ? failure.message : String(failure));
+      setError(failure instanceof SaveError ? failure : new SaveError(accountCopy.error.save));
       setSaving(false);
     }
   };
@@ -62,33 +67,72 @@ export function TermsNotice({
       >
         {fill(strings.settings.termsChanged, { date: changedOn })}
       </Banner>
-      <Sheet open={open} onClose={() => setOpen(false)} title={strings.signIn.terms}>
-        {terms}
-        <h2 className={styles.sheetHeading}>{strings.signIn.privacy}</h2>
-        {privacy}
-        <Checkbox
-          label={fill(strings.signIn.accept, {
-            terms: strings.signIn.terms,
-            privacy: strings.signIn.privacy,
-          })}
-          checked={accepted}
-          onChange={(event) => setAccepted(event.target.checked)}
-        />
-        {error ? (
-          <p role="alert" className={styles.error}>
-            {error}
-          </p>
-        ) : null}
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          unavailable={!accepted}
-          loading={saving}
-          onClick={accept}
-        >
-          {strings.setup.continue}
-        </Button>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={accountCopy.legal.title}
+        variant="reading"
+        footer={
+          <>
+            <Checkbox
+              label={fill(strings.signIn.accept, {
+                terms: strings.signIn.terms,
+                privacy: strings.signIn.privacy,
+              })}
+              checked={accepted}
+              disabled={saving}
+              aria-describedby={!accepted ? hintId : undefined}
+              onChange={(event) => setAccepted(event.target.checked)}
+            />
+            {!accepted ? (
+              <p id={hintId} className={styles.note}>
+                {accountCopy.legal.acceptHint}
+              </p>
+            ) : null}
+            {error ? (
+              <p role="alert" className={styles.error}>
+                {error.message}
+                {error.status === 401 ? (
+                  <Link href={`/?next=${encodeURIComponent(pathname)}`}>
+                    {accountCopy.error.signIn}
+                  </Link>
+                ) : null}
+              </p>
+            ) : null}
+            <Button
+              variant="primary"
+              size="lg"
+              block
+              unavailable={!accepted}
+              aria-describedby={!accepted ? hintId : undefined}
+              loading={saving}
+              onClick={accept}
+            >
+              {saving ? accountCopy.saving : accountCopy.accept}
+            </Button>
+            <Button disabled={saving} onClick={() => setOpen(false)}>
+              {accountCopy.legal.close}
+            </Button>
+          </>
+        }
+      >
+        <fieldset className={styles.legalNavigation} aria-label={accountCopy.legal.title}>
+          <Button
+            variant={document === "terms" ? "primary" : "secondary"}
+            aria-pressed={document === "terms"}
+            onClick={() => setDocument("terms")}
+          >
+            {strings.signIn.terms}
+          </Button>
+          <Button
+            variant={document === "privacy" ? "primary" : "secondary"}
+            aria-pressed={document === "privacy"}
+            onClick={() => setDocument("privacy")}
+          >
+            {strings.signIn.privacy}
+          </Button>
+        </fieldset>
+        {document === "terms" ? terms : privacy}
       </Sheet>
     </>
   );

@@ -1,8 +1,8 @@
 import { requireLearner } from "../../../server/auth/learner";
-import { EmptyState } from "../../../ui/components/Feedback";
-import { FolderSimple } from "../../../ui/icons";
+import { StudyEmptyState } from "../../../ui/components/StudyOverview";
 import { PageHeader } from "../../../ui/shell/AppShell";
 import { strings } from "../../../ui/strings";
+import { studyCopy } from "../../../ui/study-copy";
 import { LearnerShell } from "../LearnerShell";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,9 @@ export default async function ClassesPage() {
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title={strings.nav.classes} />}
+      header={<PageHeader title={strings.nav.classes} subtitle={studyCopy.classes.subtitle} />}
     >
-      <EmptyState icon={FolderSimple} text={strings.empty.classes} />
+      <StudyEmptyState kind="classes" />
     </LearnerShell>
   );
 }
