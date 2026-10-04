@@ -1,0 +1,30 @@
+# وضعیت اتصال Google ابری — 2026-10-04
+
+ورود نسخهٔ تازه تا نمایش فرم Google بررسی و تأیید شد. ورود واقعی مالک، بازگشت از Google، ایجاد حساب و نشست صفحات خصوصی هنوز تأیید نشده‌اند.
+
+- نسخهٔ آزموده‌شده: [Recalino](https://recalino-bzf44bkg0-ali-paybarjay-s-projects.vercel.app).
+- نشانی ثابت Auth: `https://recalino-ali-paybarjay-s-projects.vercel.app`.
+- callback گوگل به Supabase: `https://twowhuzhvyuzjrpraikm.supabase.co/auth/v1/callback`.
+- callbackهای اپ برای نسخهٔ تازه، نشانی ثابت و نسخهٔ قدیمی، همگی به‌صورت دقیق در فهرست Supabase ثبت‌اند. هر deployment با میزبان تازه به callback مجاز خودش نیاز دارد.
+
+Client ID و Client secret از فایل ignored `.env` ریشه خوانده شدند. در آغاز این بررسی، provider فعال و Client ID با فایل خصوصی یکسان بود؛ CLI رسمی نیز secret را `unchanged` گزارش کرد. اشکال باقی‌مانده در URLها اصلاح شد: نشانی اصلی Auth از localhost به نشانی ثابت ابری تغییر کرد و دو callback تازه، با حفظ callback قبلی، افزوده شدند. فقط پنج فیلد Auth در فایل مستقل اعلام شدند؛ بازبینی بعد از اعمال، اختلاف صفر و حفظ یازده فیلد نامرتبط را نشان داد. هیچ secret در کد، گزارش یا این سند ثبت نشده است.
+
+نتیجهٔ بررسی واقعی در محیط محافظت‌شدهٔ Vercel:
+
+| مرحله | نتیجه |
+|---|---|
+| `/auth/v1/settings` | HTTP 200، Google فعال |
+| `POST /auth/start` | HTTP 303، مقصد Supabase صحیح، callback نسخهٔ تازه، PKCE S256 و کوکی‌های HttpOnly |
+| authorize | HTTP 302 به Google، callback Supabase صحیح، فقط scopeهای پایهٔ هویت |
+| صفحهٔ Google | فرم قابل‌مشاهدهٔ ورود، بدون خطای شناخته‌شدهٔ OAuth |
+| callback بدون کد | HTTP 303 به `/?error=signin` |
+
+Google اکنون ورودی شناسه را با `type="text"`، `name="identifier"` و `autocomplete="username"` نمایش می‌دهد؛ بررسی فرم بر همین ساختار مشاهده‌شده انجام شد. هیچ حساب Google وارد نشد، حساب زبان‌آموز ساخته نشد یا فراخوانی پولی AI اجرا نشد. حفاظت Vercel حفظ شده است.
+
+شواهد بدون اسرار: [بررسی جریان](../../artifacts/verification/cloud-google-activation.json)، [حفظ تنظیمات](../../artifacts/verification/cloud-google-config.json). گزارش قبلی `cloud-google-readiness.json` وضعیت تاریخی پیش از این فعال‌سازی است.
+
+## آزمون با حساب مالک
+
+از لینک نسخهٔ آزموده‌شده شروع کنید. اگر Vercel درخواست احراز هویت کرد، ابتدا با حساب Vercel خودتان وارد شوید. سپس اعلام‌های صفحهٔ ورود را بخوانید و با Google خودتان ادامه دهید. نتیجهٔ مورد انتظار برای حساب تازه `/setup` است؛ حساب موجود به مقصد انتخاب‌شده، معمولاً `/today`، برمی‌گردد. پس از تکمیل پروفایل، Today، Classes، Review و Settings باید با همان نشست باز شوند و خروج از حساب دسترسی خصوصی را پایان دهد.
+
+اطلاعات ورود فقط در مرورگر مالک وارد می‌شوند. رسیدن به فرم Google، اعتبار Client secret هنگام تعویض کد یا موفقیت کامل نشست را اثبات نمی‌کند؛ تأیید این موارد پس از ورود واقعی ثبت می‌شود. سقف عضویت دارای سهمیه همچنان هشت نفر است و ورود خودکار سهمیه نمی‌دهد. وضعیت `dataContractApproved:false` و گیت حقوقی AI در این کار تغییر نکردند.
