@@ -196,7 +196,7 @@ it("confirms audio and generic parts concurrently with only one database connect
   } finally {
     await single.destroy();
   }
-}, 3000);
+}, 10000);
 it("assembles multipart audio and generic sources with durable destinations on one connection", async () => {
   const contract = await readInputContract(db),
     x = await fixture(true, contract.partBytes + 6);

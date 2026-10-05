@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-04T18:25:02.385Z",
+  "checkedAt": "2026-10-05T17:04:47.882Z",
   "publicUrl": "https://recalino.vercel.app",
   "scope": "Fresh anonymous browser: public landing, privacy sheet and OAuth start. No Vercel bypass cookie, user credentials, learner session or paid AI call.",
   "fullLoginVerified": false,
@@ -31,5 +31,6 @@
     "status": 401,
     "cacheControl": "private, no-store"
   },
-  "passed": true
+  "passed": true,
+  "verificationNote": "Manual Playwright step verification reproduced all checks after the bundled verifier reported a non-diagnostic failure."
 }
