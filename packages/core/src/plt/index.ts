@@ -1,4 +1,5 @@
 // Public API of the PLT module (platform and base protection). Other modules import only this file.
+export { isAdminOwner } from "./admin-access";
 export {
   AppError,
   ERROR_STATUS,

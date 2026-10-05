@@ -14,7 +14,9 @@ import {
   storagePeriodicJobs,
 } from "@recalino/core/plt";
 import { processingPeriodicJobs } from "@recalino/core/proc";
+import { runEmailOutbox } from "@recalino/core/support";
 import { after } from "next/server";
+import { adminDirectory } from "./admin-directory";
 import type { Handler } from "./api";
 import { getDatabase } from "./db";
 import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
@@ -82,6 +84,12 @@ export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
   return async ({ db }) => {
     const settings = deps.settings();
     const started = deps.now();
+    // Only approved snapshots are eligible. Missing configuration leaves queued mail visible.
+    await runEmailOutbox(db, {
+      limit: 25,
+      now: started,
+      resolveRecipientEmail: async (id) => (await adminDirectory().getUser(id)).email,
+    });
     for (const job of periodicJobs(settings)) {
       await ensurePeriodicJob(db, job.definition, job.everySeconds, started, settings.jobs);
     }

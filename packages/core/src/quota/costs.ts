@@ -19,14 +19,14 @@ export const costPolicySchema = z.strictObject({
 export type CostPolicy = z.infer<typeof costPolicySchema>;
 
 export async function configureCostPolicy(
-  db: Database,
+  db: Database | Tx,
   input: CostPolicy,
   operator: { actorId: string; reason: string },
   now = new Date(),
 ) {
   const policy = costPolicySchema.parse(input);
   z.string().trim().min(1).max(500).parse(operator.reason);
-  await db.transaction().execute(async (tx) => {
+  const write = async (tx: Tx) => {
     await sql`select pg_advisory_xact_lock(hashtext('quota.cost_policy'))`.execute(tx);
     await tx
       .insertInto("quota.cost_policy")
@@ -56,7 +56,9 @@ export async function configureCostPolicy(
       subjectId: policy.version,
       reason: operator.reason,
     });
-  });
+  };
+  if (db.isTransaction) return write(db as Tx);
+  return db.transaction().execute(write);
 }
 
 export interface ProviderStep {

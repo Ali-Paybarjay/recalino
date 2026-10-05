@@ -1,3 +1,19 @@
+export type * from "./admin-contracts";
+export {
+  type AdminPreferenceInput,
+  type AdminTaskInput,
+  adminOperation,
+  claimAdminRequest,
+  updateAdminPreferences,
+  updateAdminTask,
+} from "./admin-operations";
+export {
+  type AdminDirectory,
+  type AdminReadConfiguration,
+  type AdminSnapshotParameters,
+  readAdminSnapshot,
+  readApprovedEmailResults,
+} from "./admin-read";
 export {
   backupArchiveHeader,
   backupEncryptionKey,

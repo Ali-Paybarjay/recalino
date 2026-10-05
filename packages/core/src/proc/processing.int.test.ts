@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createAuthUser } from "../../test/auth-users";
-import { testDatabaseUrl } from "../../test/local-db";
+import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
 import {
   acceptDocuments,
   CURRENT_VERSIONS,
@@ -13,10 +13,13 @@ import {
 } from "../acc";
 import {
   type AiProvider,
+  type EstimateRate,
   ProviderError,
   type ProviderResult,
   type ProviderSettings,
+  readEstimateRates,
   type StructuredInput,
+  saveEstimateRates,
   type Transcript,
   type TranscriptionInput,
 } from "../aip";
@@ -68,6 +71,7 @@ class FixtureProvider implements AiProvider {
   beforeResult?: () => Promise<void>;
   failure?: ProviderError;
   invalidEvidence = false;
+  actualMicros: number | null = 1;
   prompts: string[] = [];
   inputs: unknown[] = [];
   async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
@@ -139,7 +143,7 @@ class FixtureProvider implements AiProvider {
       requestId: "synthetic-generation",
       model: input.model,
       provider: this.name,
-      actualMicros: 1,
+      actualMicros: this.actualMicros,
       usage: { inputTokens: 10, outputTokens: 10 },
     };
   }
@@ -254,6 +258,123 @@ async function fixture(grant = true) {
   return { ctx, session, asset, provider, job, start, work };
 }
 describe("durable processing, atomic quota and provenance on Postgres", () => {
+  it("snapshots estimate rates before provider dispatch while later attempts use the new revision and retain hard holds", async () => {
+    const f = await fixture();
+    const localAdmin = createDatabase(LOCAL_ADMIN_DATABASE_URL, { maxConnections: 1 });
+    const operationKeys: [string, string] = [
+      `processing-rates-1-${randomUUID()}`,
+      `processing-rates-2-${randomUUID()}`,
+    ];
+    const previous = await readEstimateRates(db);
+    const policy = await db.selectFrom("quota.cost_policy").selectAll().executeTakeFirstOrThrow();
+    const rates = (inputRate: number, outputRate: number): EstimateRate[] => [
+      {
+        id: "synthetic-input-rate",
+        stage: "generation",
+        model: settings.llmModel,
+        unit: "input_million_tokens",
+        rateMicros: inputRate,
+      },
+      {
+        id: "synthetic-output-rate",
+        stage: "generation",
+        model: settings.llmModel,
+        unit: "output_million_tokens",
+        rateMicros: outputRate,
+      },
+    ];
+    const firstRates = rates(100000, 200000);
+    const nextRates = rates(300000, 400000);
+    try {
+      const firstRevision = await saveEstimateRates(db, {
+        rates: firstRates,
+        operationKey: operationKeys[0],
+        actorId: f.ctx.userId,
+        reason: "Synthetic pre-dispatch rate snapshot verification",
+      });
+      f.provider.actualMicros = null;
+      const firstRun = await f.start();
+      let activeRunId = firstRun.id;
+      let dispatches = 0;
+      f.provider.beforeResult = async () => {
+        dispatches++;
+        const attempt = await db
+          .selectFrom("proc.provider_attempt")
+          .innerJoin("quota.cost_hold", "quota.cost_hold.id", "proc.provider_attempt.hold_id")
+          .select([
+            "proc.provider_attempt.state",
+            "proc.provider_attempt.estimate_rates",
+            "proc.provider_attempt.estimate_price_version",
+            "quota.cost_hold.maximum_micros",
+            "quota.cost_hold.closed_at",
+          ])
+          .where("proc.provider_attempt.run_id", "=", activeRunId)
+          .executeTakeFirstOrThrow();
+        expect(attempt).toEqual({
+          state: "started",
+          estimate_rates: dispatches === 1 ? firstRates : nextRates,
+          estimate_price_version: `admin-${operationKeys[dispatches === 1 ? 0 : 1]}`,
+          maximum_micros: String(settings.maximumMicros),
+          closed_at: null,
+        });
+        if (dispatches === 1) {
+          await saveEstimateRates(db, {
+            rates: nextRates,
+            operationKey: operationKeys[1],
+            actorId: f.ctx.userId,
+            reason: "Synthetic rate change during provider dispatch",
+          });
+        }
+        expect(
+          await db.selectFrom("quota.cost_policy").selectAll().executeTakeFirstOrThrow(),
+        ).toEqual(policy);
+      };
+      await f.work();
+      expect((await getRun(db, f.ctx, firstRun.id)).state).toBe("ready");
+      const nextRun = await f.start();
+      activeRunId = nextRun.id;
+      await f.work();
+      expect((await getRun(db, f.ctx, nextRun.id)).state).toBe("ready");
+      expect(dispatches).toBe(2);
+      const firstCost = await db
+        .selectFrom("quota.provider_cost")
+        .select(["amount_micros", "estimated_micros", "price_version"])
+        .where("run_id", "=", firstRun.id)
+        .executeTakeFirstOrThrow();
+      const nextCost = await db
+        .selectFrom("quota.provider_cost")
+        .select(["amount_micros", "estimated_micros", "price_version"])
+        .where("run_id", "=", nextRun.id)
+        .executeTakeFirstOrThrow();
+      expect(firstCost).toEqual({
+        amount_micros: null,
+        estimated_micros: "3",
+        price_version: firstRevision.version,
+      });
+      expect(nextCost).toEqual({
+        amount_micros: null,
+        estimated_micros: "7",
+        price_version: `admin-${operationKeys[1]}`,
+      });
+      expect(
+        await db
+          .selectFrom("proc.provider_attempt")
+          .select(["estimate_rates", "estimate_price_version"])
+          .where("run_id", "=", firstRun.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ estimate_rates: firstRates, estimate_price_version: firstRevision.version });
+    } finally {
+      try {
+        await localAdmin
+          .deleteFrom("aip.estimate_rate_revision")
+          .where("operation_key", "in", operationKeys)
+          .execute();
+      } finally {
+        await localAdmin.destroy();
+      }
+    }
+    expect(await readEstimateRates(db)).toEqual(previous);
+  });
   it("cleans registered temporary objects using a single pool connection", async () => {
     const f = await fixture();
     const pending = await f.start();

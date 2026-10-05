@@ -80,6 +80,15 @@ export interface AccUserAccount {
   timezone: string | null;
 }
 
+export interface AipEstimateRateRevision {
+  actor_id: string;
+  created_at: Generated<Timestamp>;
+  operation_key: string;
+  rates: Json;
+  reason: string;
+  version: string;
+}
+
 export interface AnkiExportArtifact {
   actual_bytes: Int8 | null;
   cleaned_at: Timestamp | null;
@@ -247,6 +256,140 @@ export interface NoteRevision {
   user_id: string;
 }
 
+export interface OpsAdminAttemptOutcome {
+  id: string | null;
+  started_at: Timestamp | null;
+  state: string | null;
+}
+
+export interface OpsAdminAudit {
+  action: string | null;
+  actor_id: string | null;
+  created_at: Timestamp | null;
+  id: string | null;
+  reason: string | null;
+  subject_id: string | null;
+}
+
+export interface OpsAdminBackup {
+  created_at: Timestamp | null;
+  id: string | null;
+  last_error: string | null;
+  restore_drilled_at: Timestamp | null;
+  state: string | null;
+  verified_at: Timestamp | null;
+}
+
+export interface OpsAdminCounts {
+  failed_emails: Int8 | null;
+  pending_feedback: Int8 | null;
+  queued_runs: Int8 | null;
+  users: Int8 | null;
+}
+
+export interface OpsAdminEmail {
+  created_at: Timestamp | null;
+  email: string | null;
+  id: string | null;
+  last_error: string | null;
+  state: string | null;
+  subject: string | null;
+  user_id: string | null;
+}
+
+export interface OpsAdminEntitlement {
+  closed_at: Timestamp | null;
+  created_at: Timestamp | null;
+  ends_at: Timestamp | null;
+  id: string | null;
+  pilot_id: string | null;
+  starts_at: Timestamp | null;
+  user_id: string | null;
+}
+
+export interface OpsAdminOperation {
+  actor_id: string;
+  created_at: Generated<Timestamp>;
+  operation_key: string;
+  request_hash: string;
+  result: Json;
+}
+
+export interface OpsAdminPreference {
+  language: Generated<string>;
+  theme: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface OpsAdminPrivacy {
+  id: string | null;
+  kind: string | null;
+  last_error: string | null;
+  requested_at: Timestamp | null;
+  state: string | null;
+}
+
+export interface OpsAdminProcessing {
+  created_at: Timestamp | null;
+  id: string | null;
+  kind: string | null;
+  last_error: string | null;
+  model: string | null;
+  session_id: string | null;
+  state: string | null;
+  step: string | null;
+  unresolved_attempt: boolean | null;
+  user_id: string | null;
+}
+
+export interface OpsAdminRequest {
+  actor_id: string;
+  created_at: Generated<Timestamp>;
+  operation_key: string;
+  request_hash: string;
+}
+
+export interface OpsAdminSourceReadiness {
+  audio_available_until: Timestamp | null;
+  content_available: boolean | null;
+  original_available: boolean | null;
+  original_expires_at: Timestamp | null;
+  requires_ocr: boolean | null;
+  session_id: string | null;
+  source_live: boolean | null;
+  user_id: string | null;
+}
+
+export interface OpsAdminTask {
+  created_at: Timestamp | null;
+  id: string | null;
+  kind: string | null;
+  preference_state: string | null;
+  resource_id: string | null;
+  snoozed_until: Timestamp | null;
+  state: string | null;
+  user_id: string | null;
+}
+
+export interface OpsAdminThread {
+  category: string | null;
+  created_at: Timestamp | null;
+  email_notification: boolean | null;
+  id: string | null;
+  status: string | null;
+  subject: string | null;
+  updated_at: Timestamp | null;
+  user_id: string | null;
+}
+
+export interface OpsAdminUser {
+  created_at: Timestamp | null;
+  id: string | null;
+  pilot: boolean | null;
+  welcome_state: string | null;
+}
+
 export interface OpsDatabaseBackup {
   archive_format: Generated<string>;
   created_at: Generated<Timestamp>;
@@ -277,6 +420,14 @@ export interface OpsDeletionJournal {
   request_id: string;
   requested_at: Timestamp;
   state: Generated<string>;
+}
+
+export interface OpsTaskPreference {
+  reason: string;
+  snoozed_until: Timestamp | null;
+  state: string;
+  task_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface OrgClassSession {
@@ -327,6 +478,13 @@ export interface OrgUnit {
   name: string;
   owner_id: string;
   position: Generated<number>;
+}
+
+export interface PltAdminOwner {
+  created_at: Generated<Timestamp>;
+  enabled: Generated<boolean>;
+  singleton: Generated<boolean>;
+  user_id: string;
 }
 
 export interface PltAuditEvent {
@@ -455,6 +613,8 @@ export interface ProcProcessingRun {
 export interface ProcProviderAttempt {
   attempt: number;
   error_code: string | null;
+  estimate_price_version: string | null;
+  estimate_rates: Json | null;
   finished_at: Timestamp | null;
   hold_id: string;
   id: Generated<string>;
@@ -481,6 +641,19 @@ export interface ProcTemporaryObject {
   deleted_at: Timestamp | null;
   object_id: string;
   run_id: string;
+  user_id: string;
+}
+
+export interface QuotaAllocationChange {
+  actor_id: string;
+  after_snapshot: Json;
+  before_snapshot: Json;
+  created_at: Generated<Timestamp>;
+  entitlement_id: string;
+  id: Generated<string>;
+  operation_key: string;
+  reason: string;
+  requested_amounts: Json;
   user_id: string;
 }
 
@@ -526,6 +699,21 @@ export interface QuotaLedger {
   operation_key: string;
   reservation_id: string | null;
   user_id: string;
+}
+
+export interface QuotaPilotRevision {
+  actor_id: string;
+  amounts: Json;
+  created_at: Generated<Timestamp>;
+  maximum_participants: Int8;
+  operation_key: string;
+  period_days: number;
+  pilot_id: string;
+  previous_revision: Int8 | null;
+  reason: string;
+  request_hash: string;
+  revision: Generated<Int8>;
+  version: string;
 }
 
 export interface QuotaProviderCost {
@@ -740,6 +928,101 @@ export interface SrsSettings {
   user_id: string;
 }
 
+export interface SupportActivity {
+  action: string;
+  actor_id: string;
+  created_at: Generated<Timestamp>;
+  detail: Json;
+  id: Generated<Int8>;
+  resource_id: string;
+}
+
+export interface SupportEmailDraft {
+  actor_id: string;
+  approved_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  id: string;
+  input: Json;
+  operation_key: string;
+  recipients: Json;
+  request_hash: string;
+  revision: Generated<number>;
+  state: Generated<string>;
+  template_id: string;
+  template_version: string;
+}
+
+export interface SupportEmailOutbox {
+  attempted_at: Timestamp | null;
+  attempts: Generated<number>;
+  body: string;
+  created_at: Generated<Timestamp>;
+  draft_id: string | null;
+  email: string;
+  id: string;
+  language: string;
+  last_error: string | null;
+  provider_id: string | null;
+  purpose_key: string;
+  sent_at: Timestamp | null;
+  state: Generated<string>;
+  subject: string;
+  template_id: string;
+  thread_id: string | null;
+  user_id: string | null;
+}
+
+export interface SupportMessage {
+  actor_id: string;
+  author: string;
+  body: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  operation_key: string;
+  request_hash: string;
+  thread_id: string;
+}
+
+export interface SupportReplyDraft {
+  actor_id: string;
+  approved_at: Timestamp | null;
+  approved_message_id: string | null;
+  body: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  language: string;
+  operation_key: string;
+  request_hash: string;
+  revision: Generated<number>;
+  source: string;
+  state: Generated<string>;
+  thread_id: string;
+}
+
+export interface SupportTemplateRevision {
+  actor_id: string;
+  content: Json;
+  created_at: Generated<Timestamp>;
+  revision: number;
+  template_id: string;
+}
+
+export interface SupportThread {
+  category: string;
+  context: Json | null;
+  created_at: Generated<Timestamp>;
+  email_notification: boolean;
+  id: string;
+  last_admin_at: Timestamp | null;
+  operation_key: string;
+  read_at: Timestamp | null;
+  request_hash: string;
+  status: Generated<string>;
+  subject: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface DB {
   "acc.consent": AccConsent;
   "acc.learning_profile": AccLearningProfile;
@@ -747,6 +1030,7 @@ export interface DB {
   "acc.preference": AccPreference;
   "acc.signup_intent": AccSignupIntent;
   "acc.user_account": AccUserAccount;
+  "aip.estimate_rate_revision": AipEstimateRateRevision;
   "anki.export_artifact": AnkiExportArtifact;
   "card.card": CardCard;
   "card.learning_item": CardLearningItem;
@@ -759,13 +1043,30 @@ export interface DB {
   "note.notebook": NoteNotebook;
   "note.outbox": NoteOutbox;
   "note.revision": NoteRevision;
+  "ops.admin_attempt_outcome": OpsAdminAttemptOutcome;
+  "ops.admin_audit": OpsAdminAudit;
+  "ops.admin_backup": OpsAdminBackup;
+  "ops.admin_counts": OpsAdminCounts;
+  "ops.admin_email": OpsAdminEmail;
+  "ops.admin_entitlement": OpsAdminEntitlement;
+  "ops.admin_operation": OpsAdminOperation;
+  "ops.admin_preference": OpsAdminPreference;
+  "ops.admin_privacy": OpsAdminPrivacy;
+  "ops.admin_processing": OpsAdminProcessing;
+  "ops.admin_request": OpsAdminRequest;
+  "ops.admin_source_readiness": OpsAdminSourceReadiness;
+  "ops.admin_task": OpsAdminTask;
+  "ops.admin_thread": OpsAdminThread;
+  "ops.admin_user": OpsAdminUser;
   "ops.database_backup": OpsDatabaseBackup;
   "ops.deletion_journal": OpsDeletionJournal;
+  "ops.task_preference": OpsTaskPreference;
   "org.class_session": OrgClassSession;
   "org.course": OrgCourse;
   "org.deletion_request": OrgDeletionRequest;
   "org.outbox": OrgOutbox;
   "org.unit": OrgUnit;
+  "plt.admin_owner": PltAdminOwner;
   "plt.audit_event": PltAuditEvent;
   "plt.idempotency_key": PltIdempotencyKey;
   "plt.job": PltJob;
@@ -779,10 +1080,12 @@ export interface DB {
   "proc.provider_attempt": ProcProviderAttempt;
   "proc.run_step": ProcRunStep;
   "proc.temporary_object": ProcTemporaryObject;
+  "quota.allocation_change": QuotaAllocationChange;
   "quota.cost_hold": QuotaCostHold;
   "quota.cost_policy": QuotaCostPolicy;
   "quota.entitlement": QuotaEntitlement;
   "quota.ledger": QuotaLedger;
+  "quota.pilot_revision": QuotaPilotRevision;
   "quota.provider_cost": QuotaProviderCost;
   "quota.reservation": QuotaReservation;
   "src.asset": SrcAsset;
@@ -800,4 +1103,11 @@ export interface DB {
   "srs.review_event": SrsReviewEvent;
   "srs.review_undo": SrsReviewUndo;
   "srs.settings": SrsSettings;
+  "support.activity": SupportActivity;
+  "support.email_draft": SupportEmailDraft;
+  "support.email_outbox": SupportEmailOutbox;
+  "support.message": SupportMessage;
+  "support.reply_draft": SupportReplyDraft;
+  "support.template_revision": SupportTemplateRevision;
+  "support.thread": SupportThread;
 }

@@ -1,3 +1,4 @@
+export { retryRunAsAdmin } from "./admin";
 export {
   completeAuxiliaryRun,
   executeAuxiliaryProviderStep,

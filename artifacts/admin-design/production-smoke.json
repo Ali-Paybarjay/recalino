@@ -1,0 +1,208 @@
+{
+  "checkedAt": "2026-10-05T21:04:15.471Z",
+  "origin": "https://recalino.vercel.app",
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "public, max-age=0, must-revalidate",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=settings",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/support",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/admin",
+      "status": 200,
+      "expected": [
+        200,
+        307
+      ],
+      "passed": true,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "location": null,
+      "streamedRedirect": true
+    },
+    {
+      "path": "/help",
+      "status": 200,
+      "expected": [
+        200,
+        307
+      ],
+      "passed": true,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "location": null,
+      "streamedRedirect": true
+    },
+    {
+      "path": "/dev/ui",
+      "status": 200,
+      "expected": [
+        200,
+        404
+      ],
+      "passed": true,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "location": null,
+      "streamedNotFound": true
+    },
+    {
+      "path": "/dev/auth/session",
+      "status": 404,
+      "expected": 404,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=overview",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=tasks",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=users",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=pilot",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=costs",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=rates",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=processing",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=feedback",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=templates",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=history",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=privacy",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=backups",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=audit",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/api/admin?view=settings",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-store",
+      "location": null
+    },
+    {
+      "path": "/admin",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "location": null
+    }
+  ],
+  "sentRealEmail": false,
+  "pilot": {
+    "capacity": 8,
+    "admitted": 0
+  },
+  "templateCount": 9,
+  "emailConfigured": false,
+  "browser": {
+    "url": "https://recalino.vercel.app/admin",
+    "direction": "rtl",
+    "pageErrorCount": 0,
+    "horizontalOverflow": false
+  },
+  "passed": true
+}

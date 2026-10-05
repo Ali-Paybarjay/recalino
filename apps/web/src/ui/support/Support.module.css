@@ -1,0 +1,122 @@
+.stack {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 760px;
+  margin-inline: auto;
+  width: 100%;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.form,
+.thread {
+  display: grid;
+  gap: var(--space-5);
+}
+.form textarea {
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.7;
+}
+.form select {
+  min-height: 48px;
+  width: 100%;
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  line-height: 1.6;
+  cursor: pointer;
+}
+.option input {
+  margin-top: 5px;
+  min-width: 20px;
+  min-height: 20px;
+  accent-color: var(--color-accent);
+}
+.muted {
+  color: var(--rc-text-muted);
+  line-height: 1.6;
+}
+.messages {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.item {
+  display: block;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+.item:hover {
+  border-color: var(--color-accent);
+}
+.item:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+.itemHead {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.item strong {
+  overflow-wrap: anywhere;
+}
+.body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.75;
+  margin: var(--space-3) 0 0;
+}
+.message {
+  padding: var(--space-5);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.admin {
+  background: var(--rc-surface-2);
+  border-inline-start: 3px solid var(--color-accent);
+}
+.status {
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
+.error {
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .stack {
+    gap: var(--space-4);
+  }
+  .actions > * {
+    width: 100%;
+  }
+  .message {
+    padding: var(--space-4);
+  }
+}

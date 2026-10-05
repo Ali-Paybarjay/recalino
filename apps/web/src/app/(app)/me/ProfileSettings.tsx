@@ -77,6 +77,12 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
       />
       <Row href="/me/data" label="Your data" value="Privacy and deletion" icon={UserCircle} />
       <Row
+        href="/help"
+        label="Feedback & help"
+        value="Questions, suggestions and replies"
+        icon={Lightbulb}
+      />
+      <Row
         href="/courses"
         label="Courses"
         value="Classes and learning materials"

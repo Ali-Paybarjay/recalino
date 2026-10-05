@@ -3,9 +3,12 @@ import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import {
   type AiProvider,
+  estimatedUsageCost,
+  estimateRatesSchema,
   maximumProviderCost,
   ProviderError,
   type ProviderResult,
+  readEstimateRates,
   requireProvider,
   transcriptSchema,
 } from "../aip";
@@ -147,6 +150,7 @@ export async function providerStep<T>(
   const prior = await cached(job.db, runId, step, schema);
   if (prior !== null) return prior;
   const maximumMicros = maximumProviderCost(provider.settings, model);
+  const estimateSchedule = await readEstimateRates(job.db);
   const attempt = await job.db.transaction().execute(async (tx) => {
     const run = await liveRun(tx, ctx, runId);
     const previous = await tx
@@ -183,6 +187,8 @@ export async function providerStep<T>(
         hold_id: hold.id,
         provider: provider.name,
         model,
+        estimate_rates: estimateSchedule ? JSON.stringify(estimateSchedule.rates) : null,
+        estimate_price_version: estimateSchedule?.version ?? null,
         started_at: job.now(),
       })
       .returningAll()
@@ -210,8 +216,22 @@ export async function providerStep<T>(
             model: result.model,
             currency: provider.settings.currency,
             actualMicros: result.actualMicros,
-            estimatedMicros: result.actualMicros === null ? maximumMicros : null,
-            priceVersion: provider.settings.priceVersion,
+            estimatedMicros:
+              result.actualMicros === null
+                ? ((attempt.estimate_rates
+                    ? estimatedUsageCost(
+                        estimateRatesSchema.parse(attempt.estimate_rates),
+                        result.model,
+                        result.usage,
+                        step.startsWith("stt:")
+                          ? "transcription"
+                          : step.startsWith("vision:")
+                            ? "vision"
+                            : "generation",
+                      )
+                    : null) ?? maximumMicros)
+                : null,
+            priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
             usage: result.usage,
             runId,
             attemptId: attempt.id,
@@ -270,8 +290,22 @@ export async function providerStep<T>(
             currency: provider.settings.currency,
             actualMicros:
               providerError.accounting?.actualMicros ?? (providerError.accounting ? null : 0),
-            estimatedMicros: providerError.accounting?.actualMicros === null ? maximumMicros : null,
-            priceVersion: provider.settings.priceVersion,
+            estimatedMicros:
+              providerError.accounting?.actualMicros === null
+                ? ((attempt.estimate_rates
+                    ? estimatedUsageCost(
+                        estimateRatesSchema.parse(attempt.estimate_rates),
+                        model,
+                        providerError.accounting.usage,
+                        step.startsWith("stt:")
+                          ? "transcription"
+                          : step.startsWith("vision:")
+                            ? "vision"
+                            : "generation",
+                      )
+                    : null) ?? maximumMicros)
+                : null,
+            priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
             usage: providerError.accounting?.usage ?? {},
             runId,
             attemptId: attempt.id,

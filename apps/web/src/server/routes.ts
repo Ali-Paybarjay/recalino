@@ -1,7 +1,7 @@
 import type { RateLimitClass } from "@recalino/core/plt";
 
 /** "system": only Vercel Cron and the app itself, with CRON_SECRET (FR-PLT-005). */
-export type Access = "public" | "learner" | "system";
+export type Access = "public" | "learner" | "admin" | "system";
 
 export interface RouteMeta {
   id: string;
@@ -22,6 +22,19 @@ export interface RouteMeta {
  * registered and for a learner route without a cross-account test (FR-PLT-002, NFR-01).
  */
 export const ROUTES = {
+  admin: { id: "admin", path: "/api/admin", access: "admin" },
+  supportFeedback: {
+    id: "supportFeedback",
+    path: "/api/support",
+    access: "learner",
+    rateLimit: "support",
+  },
+  supportThread: {
+    id: "supportThread",
+    path: "/api/support/[id]",
+    access: "learner",
+    rateLimit: "support",
+  },
   health: { id: "health", path: "/api/health", access: "public" },
   // M3: sign-in (FR-ACC-001, FR-ACC-002). Form posts and redirects, so errors go to a page.
   authStart: {

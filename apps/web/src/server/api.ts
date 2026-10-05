@@ -18,6 +18,7 @@ import {
   sha256Hex,
   toErrorResponse,
 } from "@recalino/core/plt";
+import { adminSessions, assertAdmin } from "./auth/admin";
 import { authSessions } from "./auth/learner";
 import { getDatabase } from "./db";
 import { previewApiResponse } from "./preview-mode";
@@ -52,6 +53,7 @@ export type Handler = (args: HandlerArgs) => Promise<ApiResult>;
 
 export interface RouteDeps {
   sessions: SessionProvider;
+  adminSessions?: SessionProvider;
   database: () => Database;
   log: Logger;
   settings: () => PltSettings;
@@ -71,6 +73,7 @@ function once<T>(read: () => T): () => T {
 
 const defaultDeps: RouteDeps = {
   sessions: authSessions(),
+  adminSessions: adminSessions(),
   database: getDatabase,
   log: createLogger(),
   settings: once(() => readPltSettings()),
@@ -109,6 +112,10 @@ export function defineRoute(
       if (meta.access === "learner") {
         userId = (await deps.sessions.getSession(request))?.userId ?? null;
         if (userId === null) throw errors.unauthenticated();
+      }
+      if (meta.access === "admin") {
+        userId = (await (deps.adminSessions ?? deps.sessions).getSession(request))?.userId ?? null;
+        await assertAdmin(deps.database(), userId);
       }
       if (meta.access === "system") assertSystemCaller(request, deps.cronSecret());
       const ctx: RequestContext = { requestId, route: meta.id, userId };
@@ -160,7 +167,7 @@ export function defineRoute(
 
     // Includes error responses and redirects, so a cached 401 cannot outlive sign-in and a
     // callback's new session cookies cannot be replayed to another visitor (FR-PLT-001).
-    if (meta.access === "learner" || meta.path.startsWith("/auth/")) {
+    if (meta.access === "learner" || meta.access === "admin" || meta.path.startsWith("/auth/")) {
       response.headers.set("cache-control", "private, no-store");
     }
 

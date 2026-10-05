@@ -13,4 +13,11 @@ export {
   usageSchema,
 } from "./contracts";
 export { OpenRouterProvider } from "./openrouter";
+export {
+  type EstimateRate,
+  estimatedUsageCost,
+  estimateRatesSchema,
+  readEstimateRates,
+  saveEstimateRates,
+} from "./pricing";
 export { structuredTransportSchema } from "./structured-schema";

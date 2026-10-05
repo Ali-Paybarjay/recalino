@@ -72,3 +72,22 @@ node --env-file=.env.auth-check.local tools/auth/check-google.mjs
 scopeهای فعلی Supabase فقط اطلاعات پایهٔ هویت‌اند؛ محدودیت Test users در حالت Testing برای آن‌ها اعمال نمی‌شود. تصمیم قبلی نداشتن allowlist ورود اپ حفظ شده است. افزودن محدودیت ورود جداگانه، تصمیم تازه‌ای می‌خواهد؛ سقف هشت نفر ابزار اپراتور به حساب‌های دارای سهمیه مربوط است.
 
 تا برند تأیید نشده، صفحه رضایت Google به‌جای نام Recalino دامنه Supabase را نشان می‌دهد. برای پایلوت مشکلی نیست.
+
+## بررسی نشست و مسیرهای محافظت‌شده (2026-10-04)
+
+مسیرهای خصوصی از قبل با `requireLearner` در صفحه‌ها و `authSessions` در APIها محافظت شده‌اند. هویت با `getUser` از سرور Auth تأیید می‌شود؛ `getClaims` در Proxy فقط برای تازه‌کردن نشست است. روش ورود پایلوت همچنان Google با PKCE و کوکی‌های `HttpOnly` است.
+
+بررسی تکمیلی دو اصلاح داشت: Proxy اکنون هدرهای جلوگیری از cache را که `@supabase/ssr` همراه نخستین `setAll` می‌فرستد حفظ می‌کند، همراه همهٔ کوکی‌های نوشته‌شده در فراخوانی‌های قبلی. پاسخ‌های Auth و APIهای خصوصی، شامل خطا و redirect، `Cache-Control: private, no-store` دارند. Gateway خروج از حساب نیز خطای بازگشتی Supabase را بررسی می‌کند و موفقیت نادرست اعلام نمی‌کند.
+
+آزمون‌های قابل تکرار با Node 24، وابستگی‌های نصب‌شده و Supabase محلی روشن:
+
+```powershell
+pnpm test:unit
+pnpm typecheck
+pnpm check:boundaries
+pnpm build
+pnpm exec vitest run --project integration apps/web/src/server/auth/flow.int.test.ts apps/web/src/server/auth/deletion-recovery.int.test.ts apps/web/src/server/cross-account/authSignOut.int.test.ts apps/web/src/server/api.int.test.ts
+pnpm --filter @recalino/web exec playwright test signin.spec.ts account.spec.ts --grep 'Continue stores|a page that needs|sign out ends' --workers=1 --timeout=120000
+```
+
+آزمون مرورگر، شروع PKCE، کوکی verifier، هدایت بازدیدکنندهٔ بدون نشست، خروج از حساب، و ردشدن کوکی‌های پیش از خروج در صفحه و API را می‌سنجد. حساب‌ها فقط در Supabase محلی ساخته می‌شوند و Google واقعی در این آزمون باز نمی‌شود. گزارش `artifacts/verification/supabase-auth-routes.json` نتیجهٔ بررسی فعلی و محدودیت فعال‌سازی Google ابری را ثبت می‌کند.

@@ -24,6 +24,7 @@
     "./anki": "./src/anki/index.ts",
     "./ops": "./src/ops/index.ts",
     "./eval": "./src/eval/index.ts",
+    "./support": "./src/support/index.ts",
     "./plt/vercel-blob": "./src/plt/storage-vercel-blob.ts"
   },
   "scripts": {

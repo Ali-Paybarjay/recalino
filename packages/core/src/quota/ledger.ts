@@ -3,10 +3,32 @@ import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import type { Database, Tx } from "../db";
 import { canonicalJson, errors, type LearnerContext, recordAudit } from "../plt";
+import { summarizeAllowanceLedger } from "./accounting";
 import { type Amounts, amountsSchema, DIMENSIONS, emptyAmounts } from "./amounts";
 
 type Connection = Database | Tx;
 const operationKey = z.string().min(8).max(200);
+
+/** Operator metadata for email previews; does not grant, consume or extend an entitlement. */
+export async function readLatestEntitlementPeriod(db: Connection, userId: string) {
+  z.uuid().parse(userId);
+  const row = await db
+    .selectFrom("quota.entitlement")
+    .select(["id", "starts_at", "ends_at", "closed_at"])
+    .where("user_id", "=", userId)
+    .orderBy("starts_at", "desc")
+    .orderBy("created_at", "desc")
+    .orderBy("id", "desc")
+    .executeTakeFirst();
+  return row
+    ? {
+        entitlementId: row.id,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+        closed: row.closed_at !== null,
+      }
+    : null;
+}
 
 export async function allowance(db: Connection, ctx: LearnerContext, now = new Date()) {
   const entitlement = await db
@@ -17,9 +39,7 @@ export async function allowance(db: Connection, ctx: LearnerContext, now = new D
     .where("ends_at", ">", now)
     .where("closed_at", "is", null)
     .executeTakeFirst();
-  const remaining = emptyAmounts();
-  const reserved = emptyAmounts();
-  const consumed = emptyAmounts();
+  let accounting = summarizeAllowanceLedger([]);
   if (entitlement) {
     const rows = await db
       .selectFrom("quota.ledger")
@@ -27,25 +47,14 @@ export async function allowance(db: Connection, ctx: LearnerContext, now = new D
       .where("entitlement_id", "=", entitlement.id)
       .where("user_id", "=", ctx.userId)
       .execute();
-    for (const row of rows) {
-      const dimension = z.enum(DIMENSIONS).parse(row.dimension);
-      remaining[dimension] += Number(row.balance_delta);
-      if (row.kind === "reserve") reserved[dimension] += Number(row.amount);
-      if (row.kind === "settle") {
-        consumed[dimension] += Number(row.amount);
-        reserved[dimension] -= Number(row.amount);
-      }
-      if (row.kind === "release") reserved[dimension] -= Number(row.amount);
-      if (row.kind === "adjust" && row.operation_key.startsWith("storage-return:"))
-        consumed[dimension] -= Number(row.amount);
-    }
+    accounting = summarizeAllowanceLedger(rows);
   }
   return {
     entitlementId: entitlement?.id ?? null,
     endsAt: entitlement?.ends_at ?? null,
-    remaining: amountsSchema.parse(remaining),
-    reserved: amountsSchema.parse(reserved),
-    consumed: amountsSchema.parse(consumed),
+    ...accounting,
+    remaining: accounting.available,
+    consumed: accounting.used,
   };
 }
 

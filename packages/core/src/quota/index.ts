@@ -1,3 +1,10 @@
+export type { AllowanceAccounting } from "./accounting";
+export {
+  type EntitlementAllocation,
+  readEntitlementAllocation,
+  type SetAllocationInput,
+  setAllowanceAllocation,
+} from "./allocations";
 export {
   type Amounts,
   amounts,
@@ -25,6 +32,7 @@ export {
   confirmedReservationAmounts,
   type GrantInput,
   grantEntitlement,
+  readLatestEntitlementPeriod,
   releaseStorage,
   reservationForOperation,
   reservationIsOpen,
@@ -33,9 +41,16 @@ export {
 } from "./ledger";
 export { providerCostSummary } from "./operations";
 export {
+  type AdminPilotGrantInput,
+  configurePilot,
+  grantAdminPilotEntitlement,
   grantPilotEntitlement,
+  type PilotConfiguration,
+  type PilotConfigurationInput,
   type PilotGrantInput,
   type PilotPolicy,
+  pilotConfigurationSchema,
   pilotGrantOperationKey,
   pilotPolicySchema,
+  readPilotConfiguration,
 } from "./pilot";

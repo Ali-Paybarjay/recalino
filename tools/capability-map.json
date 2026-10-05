@@ -18,7 +18,8 @@
     "anki": ["card", "media"],
     "pers": ["acc", "note", "card", "srs"],
     "priv": ["*"],
-    "ops": ["plt", "quota", "proc"],
+    "ops": ["plt", "quota", "proc", "support"],
+    "support": ["acc", "plt"],
     "eval": ["proc", "lkm", "card"]
   },
   "shared": ["db", "config"]

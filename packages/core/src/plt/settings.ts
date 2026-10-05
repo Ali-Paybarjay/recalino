@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type RateLimitClass = "auth" | "upload_url" | "ai_start" | "export";
+export type RateLimitClass = "auth" | "upload_url" | "ai_start" | "export" | "support";
 
 const rateLimitRuleSchema = z.strictObject({
   limit: z.int().positive(),
@@ -15,6 +15,7 @@ export const pltSettingsSchema = z.strictObject({
     upload_url: rateLimitRuleSchema,
     ai_start: rateLimitRuleSchema,
     export: rateLimitRuleSchema,
+    support: rateLimitRuleSchema.default({ limit: 20, windowSeconds: 60, scopes: ["user"] }),
   }),
   /** Hits beyond the limit in one window before a security event is recorded. */
   rateLimitRepeatThreshold: z.int().positive(),
@@ -56,6 +57,7 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
     upload_url: { limit: 60, windowSeconds: 60, scopes: ["user"] },
     ai_start: { limit: 10, windowSeconds: 60, scopes: ["user"] },
     export: { limit: 20, windowSeconds: 3600, scopes: ["user"] },
+    support: { limit: 20, windowSeconds: 60, scopes: ["user"] },
   },
   rateLimitRepeatThreshold: 5,
   studyDayStartHour: 4,
