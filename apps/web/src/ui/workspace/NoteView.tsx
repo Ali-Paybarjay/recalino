@@ -1,6 +1,7 @@
 "use client";
 import type { Claim, KnowledgeVersion } from "@recalino/core/lkm";
 import type { Notebook, NotebookRevision, PublishNotebookInput } from "@recalino/core/note";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
@@ -33,13 +34,16 @@ export function NoteView({
   initial,
   latest,
   readOnlyRevision,
+  embedded = false,
 }: {
   sessionId: string;
   userId: string;
   initial: Notebook | null;
   latest: KnowledgeVersion | null;
   readOnlyRevision?: NotebookRevision;
+  embedded?: boolean;
 }) {
+  const router = useRouter();
   const [notebook, setNotebook] = useState(initial),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
@@ -83,6 +87,7 @@ export function NoteView({
       setEditing(null);
       key.current = null;
       setNotice("Notes saved. Your earlier versions are still available.");
+      router.refresh();
     } catch (failure) {
       setProblem(failure instanceof Error ? failure.message : "Notes could not be saved.");
     } finally {
@@ -117,24 +122,26 @@ export function NoteView({
         </Status>
       )}
       {notice && <Status tone="success">{notice}</Status>}
-      <Actions>
-        <LinkButton disabled={busy} secondary href={`/classes/${sessionId}`}>
-          Back to class
-        </LinkButton>
-        <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes/versions`}>
-          Version history
-        </LinkButton>
-        {model && (
-          <LinkButton disabled={busy} href={`/classes/${sessionId}/cards`}>
-            Make flashcards
+      {!embedded && (
+        <Actions>
+          <LinkButton disabled={busy} secondary href={`/classes/${sessionId}`}>
+            Back to class
           </LinkButton>
-        )}
-        {model && (
-          <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/export`}>
-            Download notes and cards
+          <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes/versions`}>
+            Version history
           </LinkButton>
-        )}
-      </Actions>
+          {model && (
+            <LinkButton disabled={busy} href={`/classes/${sessionId}/cards`}>
+              Make flashcards
+            </LinkButton>
+          )}
+          {model && (
+            <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/export`}>
+              Download notes and cards
+            </LinkButton>
+          )}
+        </Actions>
+      )}
       {!model ? (
         <Panel title={latest ? "Your class notes are ready" : "Start with class material"}>
           <p>

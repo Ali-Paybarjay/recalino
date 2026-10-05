@@ -1,12 +1,15 @@
-import type { ClassSession, Course, Unit } from "@recalino/core/org";
-import { LinkButton } from "./primitives";
+import type { LearningSession } from "@recalino/core/note";
+import type { Course, Unit } from "@recalino/core/org";
+import Link from "next/link";
+import { Actions, LinkButton } from "./primitives";
+import { SessionLearningSummary } from "./SessionLearningSummary";
 
 export function ClassRows({
   sessions,
   courses,
   units,
 }: {
-  sessions: ClassSession[];
+  sessions: LearningSession[];
   courses: Course[];
   units: Unit[];
 }) {
@@ -18,19 +21,26 @@ export function ClassRows({
             <div>
               <h3 dir="auto">{item.displayTitle}</h3>
               <p className="preview-muted">
-                <bdi>{courses.find((course) => course.id === item.courseId)?.name}</bdi>
+                <Link href={`/courses/${item.courseId}`}>
+                  <bdi>{courses.find((course) => course.id === item.courseId)?.name}</bdi>
+                </Link>
                 {item.unitId ? (
                   <>
                     {" "}
                     · <bdi>{units.find((unit) => unit.id === item.unitId)?.name}</bdi>
                   </>
-                ) : null}{" "}
-                · {item.classDate}
+                ) : null}
               </p>
+              <SessionLearningSummary session={item} />
             </div>
-            <LinkButton secondary href={`/classes/${item.id}`}>
-              Open class
-            </LinkButton>
+            <Actions>
+              <LinkButton secondary href={`/classes/${item.id}`}>
+                Open class
+              </LinkButton>
+              <LinkButton secondary href={`/classes/${item.id}/notes`}>
+                Class notes
+              </LinkButton>
+            </Actions>
           </div>
         </li>
       ))}

@@ -3,6 +3,7 @@ import type { ClassSession, Course, Unit } from "@recalino/core/org";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
+import { courseCopy } from "../course-copy";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 
@@ -22,16 +23,30 @@ export function ClassForm({
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [date, setDate] = useState(initial?.classDate ?? today);
-  const [course, setCourse] = useState(initial?.courseId ?? courseId ?? "");
+  const [course, setCourse] = useState(
+    initial?.courseId ?? courseId ?? courses.find((item) => item.isDefault)?.id ?? "",
+  );
   const [unit, setUnit] = useState(initial?.unitId ?? "");
+  const [createdCourses, setCreatedCourses] = useState<Course[]>([]);
+  const [createCourseOpen, setCreateCourseOpen] = useState(false);
+  const [courseName, setCourseName] = useState("");
+  const [creatingCourse, setCreatingCourse] = useState(false);
+  const [courseError, setCourseError] = useState("");
+  const [courseNotice, setCourseNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState(false);
   const idempotency = useRef<{ payload: string; key: string } | null>(null);
+  const courseIdempotency = useRef<{ payload: string; key: string } | null>(null);
+  const availableCourses = [
+    ...courses,
+    ...createdCourses.filter((item) => !courses.some((saved) => saved.id === item.id)),
+  ];
+  const hasDefault = availableCourses.some((item) => item.isDefault);
   const destination = initial ? `/classes/${initial.id}` : "/classes";
 
   async function save() {
-    if (busy) return;
+    if (busy || creatingCourse) return;
     const body = {
       title: title.trim() || null,
       classDate: date,
@@ -54,6 +69,38 @@ export function ClassForm({
         failure instanceof Error ? failure.message : "Your class could not be saved. Try again.",
       );
       setBusy(false);
+    }
+  }
+
+  async function addCourse() {
+    if (busy || creatingCourse) return;
+    const body = { name: courseName.trim() };
+    if (!body.name) {
+      setCourseError("Enter a course name.");
+      return;
+    }
+    setCreatingCourse(true);
+    setCourseError("");
+    try {
+      const saved = await workspaceRequest<Course>(
+        "/api/courses",
+        "POST",
+        body,
+        requestKey(courseIdempotency, body),
+      );
+      setCreatedCourses((items) => [...items.filter((item) => item.id !== saved.id), saved]);
+      setCourse(saved.id);
+      setUnit("");
+      setCourseName("");
+      setCreateCourseOpen(false);
+      setCourseNotice("Course created and selected.");
+      courseIdempotency.current = null;
+    } catch (failure) {
+      setCourseError(
+        failure instanceof Error ? failure.message : "The course could not be created. Try again.",
+      );
+    } finally {
+      setCreatingCourse(false);
     }
   }
 
@@ -90,7 +137,7 @@ export function ClassForm({
         >
           <Field
             label="Class name (optional)"
-            hint="Leave it empty to use the class date as its name."
+            hint="Leave it empty to name the class from its learning material. Until the material is ready, its date is used."
           >
             <input
               autoComplete="off"
@@ -98,10 +145,22 @@ export function ClassForm({
               maxLength={200}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="For example, Present perfect"
+              placeholder="Automatic title from learning material"
               disabled={busy}
             />
           </Field>
+          {initial && title.trim() ? (
+            <Actions>
+              <Button secondary disabled={busy} onClick={() => setTitle("")}>
+                Use automatic title
+              </Button>
+            </Actions>
+          ) : null}
+          {initial && !title.trim() ? (
+            <p className="preview-muted">
+              Save changes to use the title from your learning material.
+            </p>
+          ) : null}
           <Field label="Class date">
             <input
               type="date"
@@ -111,26 +170,39 @@ export function ClassForm({
               disabled={busy}
             />
           </Field>
-          <Field
-            label="Course"
-            hint={!course ? "This class will go in your default course." : undefined}
-          >
+          <Field label="Course" hint={courseCopy.courseHelp}>
             <select
               value={course}
               disabled={busy}
               onChange={(event) => {
                 setCourse(event.target.value);
                 setUnit("");
+                setCourseNotice("");
               }}
             >
-              {!initial ? <option value="">Default course</option> : null}
-              {courses.map((item) => (
+              {!hasDefault && !initial ? <option value="">Default course</option> : null}
+              {availableCourses.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
+                  {item.isDefault ? " · Default" : ""}
                 </option>
               ))}
             </select>
           </Field>
+          <Actions>
+            <Button
+              secondary
+              disabled={busy}
+              onClick={() => {
+                setCourseError("");
+                setCourseNotice("");
+                setCreateCourseOpen(true);
+              }}
+            >
+              Create course
+            </Button>
+          </Actions>
+          {courseNotice ? <Status tone="success">{courseNotice}</Status> : null}
           {course && units.some((item) => item.courseId === course) ? (
             <Field label="Unit (optional)">
               <select
@@ -167,6 +239,42 @@ export function ClassForm({
           </Actions>
         ) : null}
       </Panel>
+      <Sheet
+        open={createCourseOpen}
+        onClose={() => {
+          if (!creatingCourse) setCreateCourseOpen(false);
+        }}
+        title="Create a course"
+      >
+        <p>{courseCopy.goalHelp}</p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void addCourse();
+          }}
+        >
+          <Field label="New course name" hint="For example, ESOL B1 or Business English.">
+            <input
+              autoComplete="off"
+              dir="auto"
+              required
+              maxLength={160}
+              value={courseName}
+              disabled={creatingCourse}
+              onChange={(event) => setCourseName(event.target.value)}
+            />
+          </Field>
+          {courseError ? <Status tone="error">{courseError}</Status> : null}
+          <Actions>
+            <Button type="submit" disabled={creatingCourse}>
+              {creatingCourse ? "Creating…" : "Create course"}
+            </Button>
+            <Button secondary disabled={creatingCourse} onClick={() => setCreateCourseOpen(false)}>
+              Cancel
+            </Button>
+          </Actions>
+        </form>
+      </Sheet>
       <Sheet
         open={confirm}
         onClose={() => {

@@ -1,10 +1,9 @@
-import { getSession } from "@recalino/core/org";
 import { listRuns } from "@recalino/core/proc";
 import { readInputContract } from "@recalino/core/src";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
 import { readProcessingEstimate } from "../../../../../server/processing-routes";
-import { workspaceActor } from "../../../../../server/workspace";
+import { workspaceActor, workspaceSession } from "../../../../../server/workspace";
 import { PageHeader } from "../../../../../ui/shell/AppShell";
 import { ProcessingView } from "../../../../../ui/workspace/ProcessingView";
 import { LearnerShell } from "../../../LearnerShell";
@@ -14,7 +13,7 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
   const learner = await requireLearner(`/classes/${id}/estimate`),
     actor = workspaceActor(learner),
     db = getDatabase();
-  const session = await getSession(db, actor, id);
+  const session = await workspaceSession(learner, id);
   const [estimate, runs, contract] = await Promise.all([
     readProcessingEstimate(db, actor, id).catch(() => null),
     listRuns(db, actor, id),
@@ -24,12 +23,7 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
     <LearnerShell
       learner={learner}
       current="classes"
-      header={
-        <PageHeader
-          title={session.title ?? "Class processing"}
-          subtitle="Selected sources and allowance"
-        />
-      }
+      header={<PageHeader title="Class processing" subtitle={session.displayTitle} />}
     >
       <ProcessingView
         sessionId={id}

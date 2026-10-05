@@ -1,4 +1,5 @@
 import "server-only";
+import { getLearningSession, listLearningSessions } from "@recalino/core/note";
 import {
   createCourse,
   createCourseSchema,
@@ -11,7 +12,6 @@ import {
   getCourse,
   getSession,
   listCourses,
-  listSessions,
   listUnits,
   renameCourse,
   renameCourseSchema,
@@ -105,8 +105,9 @@ export function classesHandler(): Handler {
         unitId: search.get("unitId") ?? undefined,
         limit: search.has("limit") ? Number(search.get("limit")) : undefined,
         offset: search.has("offset") ? Number(search.get("offset")) : undefined,
+        order: search.get("order") ?? undefined,
       });
-      return { body: await listSessions(db, actor, query) };
+      return { body: await listLearningSessions(db, actor, query) };
     }
     return {
       status: 201,
@@ -120,9 +121,10 @@ export function classSessionHandler(id: string): Handler {
   return async ({ request, input, ctx, db }) => {
     const actor = learner(ctx);
     idSchema.parse(id);
-    if (request.method === "GET") return { body: await getSession(db, actor, id) };
-    if (request.method === "PATCH")
+    if (request.method === "GET") return { body: await getLearningSession(db, actor, id) };
+    if (request.method === "PATCH") {
       return { body: await updateSession(db, actor, id, updateSessionSchema.parse(input)) };
+    }
     const deletionKey = request.headers.get("idempotency-key");
     if (!deletionKey) {
       await getSession(db, actor, id);

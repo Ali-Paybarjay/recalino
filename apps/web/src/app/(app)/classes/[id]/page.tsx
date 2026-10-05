@@ -4,6 +4,7 @@ import { workspaceGroups, workspaceSession } from "../../../../server/workspace"
 import { RecordLauncher } from "../../../../ui/recording/RecordingProvider";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
+import { SessionLearningSummary } from "../../../../ui/workspace/SessionLearningSummary";
 import { LearnerShell } from "../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function ClassPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,8 +26,8 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
       }
     >
       <div className="preview-stack">
-        <Link href="/classes" className="preview-back">
-          ← Back to classes
+        <Link href={`/courses/${session.courseId}`} className="preview-back">
+          ← Back to <bdi>{course?.name ?? "course"}</bdi>
         </Link>
         <Actions>
           <RecordLauncher sessionId={id} />
@@ -34,7 +35,35 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           <LinkButton secondary href={`/classes/${id}/options`}>
             Class options
           </LinkButton>
+          <LinkButton secondary href={`/courses/${session.courseId}/materials`}>
+            Course materials
+          </LinkButton>
         </Actions>
+        <section id="topics" aria-label="Topics covered">
+          <Panel title="Topics covered">
+            <SessionLearningSummary session={session} showTopics={false} />
+            {session.topics.length ? (
+              <>
+                <ul>
+                  {session.topics.map((topic) => (
+                    <li key={topic} dir="auto">
+                      {topic}
+                    </li>
+                  ))}
+                </ul>
+                <LinkButton secondary href={`/classes/${id}/notes`}>
+                  Read this lesson
+                </LinkButton>
+              </>
+            ) : (
+              <p>
+                {session.titleSource === "date"
+                  ? "Add your sources and process the class material to see the lesson title and topics here."
+                  : "Open class notes to explore this lesson. Topics will appear here when included in the learning material."}
+              </p>
+            )}
+          </Panel>
+        </section>
         <div className="preview-grid">
           <Panel title="Class material">
             <p>Keep this class’s recording, handouts and photos together.</p>

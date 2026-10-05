@@ -104,7 +104,28 @@ export function devSessionHandler(): Handler {
               schemaVersion: "1",
               title: "Synthetic notes for local testing",
               summary: [claim("summary", "This is local synthetic test content.")],
-              topics: [],
+              topics: [
+                {
+                  id: "travel-questions",
+                  title: "Travel questions",
+                  claims: [claim("travel-questions-claim", "Ask where a train leaves from.")],
+                },
+                {
+                  id: "present-simple",
+                  title: "Present simple",
+                  claims: [claim("present-simple-claim", "Use the present simple for timetables.")],
+                },
+                {
+                  id: "station-vocabulary",
+                  title: "Station vocabulary",
+                  claims: [claim("station-vocabulary-claim", "A platform is where a train stops.")],
+                },
+                {
+                  id: "polite-requests",
+                  title: "Polite requests",
+                  claims: [claim("polite-requests-claim", "Ask for help with a polite question.")],
+                },
+              ],
               learningItems: [
                 {
                   id: "word",

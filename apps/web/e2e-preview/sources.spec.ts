@@ -191,7 +191,7 @@ test("uploaded durations and pages require explicit confirmation and a job keeps
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name", { exact: true }).fill("Explicit metadata");
+  await page.getByLabel("Class name (optional)", { exact: true }).fill("Explicit metadata");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles([

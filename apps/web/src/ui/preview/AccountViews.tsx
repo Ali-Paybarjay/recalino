@@ -10,6 +10,7 @@ import { LegalDocument } from "../components/LegalDocument";
 import { ListPicker, type PickerOption } from "../components/ListPicker";
 import { RadioCards } from "../components/RadioCards";
 import { ConfirmDialog } from "../components/Sheet";
+import { courseCopy } from "../course-copy";
 import { strings } from "../strings";
 import styles from "./AccountViews.module.css";
 import { type PreviewState, usePreview } from "./PreviewContext";
@@ -184,6 +185,7 @@ function ProfileView() {
     <>
       <PageHeader title={copy.profile} description={copy.profileHelp} />
       <Panel title={copy.learning}>
+        <p className="preview-muted">{courseCopy.goalHelp}</p>
         <div className={styles.rows}>
           {rows.map((row) => (
             <Link key={row.to} href={`/preview/${row.to}`} className={styles.row}>
@@ -199,6 +201,7 @@ function ProfileView() {
       <Panel title={copy.space}>
         <div className={styles.rows}>
           {[
+            { label: "Courses and classes", to: "classes" },
             { label: copy.progress, to: "progress" },
             { label: copy.preferences, to: "preferences" },
             { label: copy.allowance, to: "allowance" },
@@ -543,6 +546,7 @@ function GoalEditor({ setup = false }: { setup?: boolean }) {
       </Panel>
       <Panel title={copy.chooseGoal}>
         <p>{copy.goalHelp}</p>
+        <p className="preview-muted">{courseCopy.goalHelp}</p>
         <RadioCards
           name="sample-goal"
           label={copy.chooseGoal}

@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { z } from "zod";
+import { PREPARED_SAMPLE_MATERIAL, type SampleMaterialMetadata } from "./sample-material";
 
 export type SampleCard = {
   id: string;
@@ -38,6 +39,7 @@ export type PreviewState = {
   classes: {
     id: string;
     title: string;
+    customTitle?: string | null;
     course: string;
     unit: string;
     date: string;
@@ -51,6 +53,7 @@ export type PreviewState = {
   recording: { elapsed: number; photos: number; paused: boolean; active: boolean };
   classWorkspaces: Record<string, SampleWorkspace>;
   noteText: string;
+  materialMetadata?: SampleMaterialMetadata | null;
   noteHistory: { id: string; text: string; label: string }[];
   transcript: string;
   cards: SampleCard[];
@@ -78,6 +81,7 @@ export type PreviewState = {
 export type SampleWorkspace = {
   sources: SampleSource[];
   noteText: string;
+  materialMetadata?: SampleMaterialMetadata | null;
   noteHistory: { id: string; text: string; label: string }[];
   transcript: string;
   processing: string;
@@ -87,6 +91,7 @@ function workspace(state: PreviewState): SampleWorkspace {
   return {
     sources: state.sources,
     noteText: state.noteText,
+    materialMetadata: state.materialMetadata,
     noteHistory: state.noteHistory,
     transcript: state.transcript,
     processing: state.processing,
@@ -97,6 +102,7 @@ function emptyWorkspace(): SampleWorkspace {
   return {
     sources: [],
     noteText: "",
+    materialMetadata: null,
     noteHistory: [],
     transcript: "",
     processing: "idle",
@@ -130,6 +136,7 @@ export function createSampleState(): PreviewState {
       {
         id: "present-perfect",
         title: "Present perfect",
+        customTitle: null,
         course: "ESOL B1",
         unit: "Everyday English",
         date: "2026-10-02",
@@ -138,6 +145,7 @@ export function createSampleState(): PreviewState {
       {
         id: "travel",
         title: "Talking about travel",
+        customTitle: "Talking about travel",
         course: "ESOL B1",
         unit: "Everyday English",
         date: "2026-09-30",
@@ -192,6 +200,7 @@ export function createSampleState(): PreviewState {
     recording: { elapsed: 756, photos: 0, paused: false, active: false },
     classWorkspaces: {},
     noteText,
+    materialMetadata: PREPARED_SAMPLE_MATERIAL,
     noteHistory: [{ id: "original", text: noteText, label: "Original sample notes" }],
     transcript:
       "Teacher: We use already when something happened earlier than expected.\nLearner: I have already finished my homework.",
@@ -337,6 +346,10 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
 }
 const text = z.string().max(20000);
 const number = z.number().finite().nonnegative();
+const materialMetadataSchema = z
+  .object({ title: z.string().trim().min(1).max(200), topics: z.array(text).max(100) })
+  .nullable()
+  .optional();
 const sourceSchema = z.object({
   id: text,
   name: text,
@@ -352,6 +365,7 @@ const sourceSchema = z.object({
 const workspaceSchema = z.object({
   sources: z.array(sourceSchema).max(1000),
   noteText: text,
+  materialMetadata: materialMetadataSchema,
   noteHistory: z.array(z.object({ id: text, text, label: text })).max(1000),
   transcript: text,
   processing: text,
@@ -359,7 +373,17 @@ const workspaceSchema = z.object({
 });
 const sampleSchema = z.object({
   classes: z
-    .array(z.object({ id: text, title: text, course: text, unit: text, date: text, status: text }))
+    .array(
+      z.object({
+        id: text,
+        title: text,
+        customTitle: z.string().max(200).nullable().optional(),
+        course: text,
+        unit: text,
+        date: text,
+        status: text,
+      }),
+    )
     .max(1000),
   courses: z.array(z.object({ id: text, name: text, units: z.array(text).max(1000) })).max(1000),
   sources: z
@@ -389,6 +413,7 @@ const sampleSchema = z.object({
   }),
   classWorkspaces: z.record(text, workspaceSchema),
   noteText: text,
+  materialMetadata: materialMetadataSchema,
   noteHistory: z.array(z.object({ id: text, text, label: text })).max(1000),
   transcript: text,
   cards: z

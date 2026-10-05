@@ -1,8 +1,9 @@
-import { listSessions } from "@recalino/core/org";
+import { listLearningSessions } from "@recalino/core/note";
 import Link from "next/link";
 import { requireLearner } from "../../../server/auth/learner";
 import { getDatabase } from "../../../server/db";
 import { workspaceActor, workspaceCourse, workspaceGroups } from "../../../server/workspace";
+import { courseCopy } from "../../../ui/course-copy";
 import { PageHeader } from "../../../ui/shell/AppShell";
 import { ClassRows } from "../../../ui/workspace/ClassRows";
 import { Actions, LinkButton, Panel } from "../../../ui/workspace/primitives";
@@ -22,7 +23,7 @@ export default async function ClassesPage({
   const course = query.courseId ? await workspaceCourse(learner, query.courseId) : null;
   const [groups, sessions] = await Promise.all([
     workspaceGroups(learner),
-    listSessions(getDatabase(), workspaceActor(learner), {
+    listLearningSessions(getDatabase(), workspaceActor(learner), {
       courseId: course?.id,
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
@@ -49,9 +50,13 @@ export default async function ClassesPage({
           <LinkButton secondary href="/classes/organize">
             Manage courses and units
           </LinkButton>
+          <LinkButton secondary href="/courses">
+            Courses
+          </LinkButton>
         </Actions>
         {groups.courses.length ? (
           <Panel title="Your courses">
+            <p className="preview-muted">{courseCopy.courseHelp}</p>
             <nav aria-label="Filter classes by course" className="preview-actions">
               <Link
                 href="/classes"
@@ -66,6 +71,7 @@ export default async function ClassesPage({
                   className="preview-index-link"
                   key={item.id}
                   dir="auto"
+                  aria-current={course?.id === item.id ? "page" : undefined}
                 >
                   {item.name}
                   {item.isDefault ? " · Default" : ""}
@@ -76,6 +82,11 @@ export default async function ClassesPage({
         ) : null}
         <Panel title={course ? "Classes in this course" : "All classes"}>
           {sessions.items.length ? (
+            <p className="preview-muted">
+              Newest class first · Titles and topics come from your lesson material.
+            </p>
+          ) : null}
+          {sessions.items.length ? (
             <ClassRows sessions={sessions.items} {...groups} />
           ) : (
             <div className="preview-empty">
@@ -83,7 +94,9 @@ export default async function ClassesPage({
                 {sessions.total ? "No classes on this page" : "Your first class starts here."}
               </h3>
               <p>Create a class, then add a recording, handout, photo or notes.</p>
-              <LinkButton href="/classes/new">Create a class</LinkButton>
+              <LinkButton href={course ? `/classes/new?courseId=${course.id}` : "/classes/new"}>
+                Create a class
+              </LinkButton>
             </div>
           )}
           {sessions.total > PAGE_SIZE ? (

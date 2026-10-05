@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { accountCopy } from "../../../../../ui/account-copy";
 import { Icon } from "../../../../../ui/components/Icon";
+import { courseCopy } from "../../../../../ui/course-copy";
 import { CaretLeft } from "../../../../../ui/icons";
 import { Wordmark } from "../../../../../ui/shell/Wordmark";
 import { type SavedProfile, saveProfile } from "../../../../setup/api";
@@ -82,7 +83,14 @@ export function EditField({
             onCancel={cancel}
             level={state.profile.level}
             goal={state.profile.goal}
-            note={note}
+            note={
+              <>
+                <p className={styles.note}>
+                  {courseCopy.goalHelp} <Link href="/courses">Courses</Link>
+                </p>
+                {note}
+              </>
+            }
             onSubmit={({ level, goal }) => done(saveProfile({ field: "level_goal", level, goal }))}
           />
         ) : null}

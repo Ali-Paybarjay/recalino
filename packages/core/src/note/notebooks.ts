@@ -6,6 +6,7 @@ import {
   getVersion,
   type KnowledgeModel,
   knowledgeModelSchema,
+  listAvailableKnowledgeReferences,
   listVersions,
 } from "../lkm";
 import { assertSessionOwner, getSession } from "../org";
@@ -55,6 +56,60 @@ function revision(row: Selectable<DB["note.revision"]>, sessionId: string): Note
     edits: notebookEditsSchema.parse(row.edits),
     createdAt: row.created_at.toISOString(),
   };
+}
+
+/** Internal bulk reader: publication models remain immutable, with learner edits and provenance. */
+export async function listPublishedNotebooks(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<Map<string, Notebook>> {
+  const published = new Map<string, Notebook>();
+  if (!sessionIds.length) return published;
+  const [notebooks, references] = await Promise.all([
+    db
+      .selectFrom("note.notebook")
+      .selectAll()
+      .where("user_id", "=", ctx.userId)
+      .where("session_id", "in", [...sessionIds])
+      .where("current_revision_id", "is not", null)
+      .execute(),
+    listAvailableKnowledgeReferences(db, ctx, sessionIds),
+  ]);
+  const currentIds = notebooks.flatMap((item) =>
+    item.current_revision_id ? [item.current_revision_id] : [],
+  );
+  if (!currentIds.length) return published;
+  const rows = await db
+    .selectFrom("note.revision")
+    .selectAll()
+    .where("user_id", "=", ctx.userId)
+    .where("id", "in", currentIds)
+    .execute();
+  const revisions = new Map(rows.map((row) => [row.id, row]));
+  const available = new Map(references.map((item) => [item.id, item.sessionId]));
+  const latest = new Map<string, string>();
+  // LKM supplies descending version order, so the first available version is the proposal.
+  for (const item of references)
+    if (!latest.has(item.sessionId)) latest.set(item.sessionId, item.id);
+  for (const notebook of notebooks) {
+    const row = notebook.current_revision_id ? revisions.get(notebook.current_revision_id) : null;
+    if (
+      !row ||
+      row.notebook_id !== notebook.id ||
+      available.get(row.knowledge_version_id) !== notebook.session_id
+    )
+      continue;
+    const proposed = latest.get(notebook.session_id);
+    published.set(notebook.session_id, {
+      id: notebook.id,
+      sessionId: notebook.session_id,
+      current: revision(row, notebook.session_id),
+      proposedKnowledgeVersionId:
+        proposed && proposed !== row.knowledge_version_id ? proposed : null,
+    });
+  }
+  return published;
 }
 export async function getNotebook(
   db: Database | Tx,

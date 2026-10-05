@@ -10,6 +10,7 @@ import { Banner } from "../../ui/components/Feedback";
 import { Icon } from "../../ui/components/Icon";
 import { ListPicker, type PickerOption } from "../../ui/components/ListPicker";
 import { RadioCards } from "../../ui/components/RadioCards";
+import { courseCopy } from "../../ui/course-copy";
 import {
   Buildings,
   Check,
@@ -389,6 +390,7 @@ export function LevelGoalStep({
         />
       </div>
       <h2 className={styles.subtitle}>{strings.setup.goal}</h2>
+      {mode === "setup" ? <p className={styles.help}>{courseCopy.goalHelp}</p> : null}
       <div role="radiogroup" aria-label={strings.setup.goal} className={styles.goals}>
         {(Object.keys(GOAL_LABELS) as Goal[]).map((value) => (
           <Tile

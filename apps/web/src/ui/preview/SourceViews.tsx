@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
 import { createSampleState, type SampleSource, usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { PREPARED_SAMPLE_MATERIAL, sampleClassSummary } from "./sample-material";
 import {
   confirmedSources,
   selectedCost,
@@ -225,11 +226,20 @@ export function SourceViews({ screen }: { screen: string }) {
       const hasNotes = !!previous.noteText.trim();
       const hasCards = previous.cards.some((card) => card.classId === classId);
       const completed = new Set(previous.processingSnapshot.map((source) => source.id));
+      const materialMetadata = hasNotes
+        ? (previous.materialMetadata ?? null)
+        : PREPARED_SAMPLE_MATERIAL;
       return {
         ...previous,
         processing: "ready",
         classes: previous.classes.map((lesson, index) =>
-          index === 0 ? { ...lesson, status: "Ready" } : lesson,
+          index === 0
+            ? {
+                ...lesson,
+                title: sampleClassSummary(lesson, materialMetadata).title,
+                status: "Ready",
+              }
+            : lesson,
         ),
         processingSnapshot: previous.processingSnapshot.map((source) => ({
           ...source,
@@ -241,6 +251,7 @@ export function SourceViews({ screen }: { screen: string }) {
             : source,
         ),
         noteText: hasNotes ? previous.noteText : template.noteText,
+        materialMetadata,
         noteHistory: hasNotes
           ? previous.noteHistory
           : [
@@ -1001,6 +1012,14 @@ export function SourceViews({ screen }: { screen: string }) {
                     index === 0
                       ? {
                           ...lesson,
+                          title: sampleClassSummary(
+                            lesson,
+                            prev.noteText
+                              ? prev.materialMetadata
+                              : prev.processingSnapshot.length > 1
+                                ? PREPARED_SAMPLE_MATERIAL
+                                : null,
+                          ).title,
                           status: prev.processingSnapshot.length > 1 ? "Partly ready" : "Failed",
                         }
                       : lesson,
@@ -1015,6 +1034,11 @@ export function SourceViews({ screen }: { screen: string }) {
                   ),
                   noteText:
                     prev.noteText || (prev.processingSnapshot.length > 1 ? template.noteText : ""),
+                  materialMetadata: prev.noteText
+                    ? prev.materialMetadata
+                    : prev.processingSnapshot.length > 1
+                      ? PREPARED_SAMPLE_MATERIAL
+                      : null,
                   noteHistory:
                     prev.noteText || prev.processingSnapshot.length <= 1
                       ? prev.noteHistory

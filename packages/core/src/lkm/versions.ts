@@ -1,6 +1,6 @@
 import type { Selectable } from "kysely";
 import type { Database, DB, Tx } from "../db";
-import { assertSessionOwner, getSession } from "../org";
+import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import { assertOwner, errors, type LearnerContext } from "../plt";
 import {
   type EvidenceSource,
@@ -19,6 +19,52 @@ export interface KnowledgeVersion {
   model: KnowledgeModel;
   generation: unknown;
   createdAt: string;
+}
+
+export interface KnowledgeVersionReference {
+  id: string;
+  sessionId: string;
+  version: number;
+}
+
+/** A bounded read projection for publication checks; no generated or source text is copied. */
+export async function listAvailableKnowledgeReferences(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<KnowledgeVersionReference[]> {
+  const live = await filterLiveSessionIds(db, ctx, sessionIds);
+  if (!live.length) return [];
+  const rows = await db
+    .selectFrom("lkm.knowledge_version")
+    .select(["id", "session_id", "version"])
+    .where("user_id", "=", ctx.userId)
+    .where("session_id", "in", live)
+    .where("tombstoned_at", "is", null)
+    .orderBy("version", "desc")
+    .execute();
+  return rows.map((row) => ({ id: row.id, sessionId: row.session_id, version: row.version }));
+}
+
+/** Latest validated model per live owned session, for learning overviews before publication. */
+export async function listLatestAvailableKnowledgeVersions(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<KnowledgeVersion[]> {
+  const live = await filterLiveSessionIds(db, ctx, sessionIds);
+  if (!live.length) return [];
+  const rows = await db
+    .selectFrom("lkm.knowledge_version")
+    .distinctOn("session_id")
+    .selectAll()
+    .where("user_id", "=", ctx.userId)
+    .where("session_id", "in", live)
+    .where("tombstoned_at", "is", null)
+    .orderBy("session_id", "asc")
+    .orderBy("version", "desc")
+    .execute();
+  return rows.map(view);
 }
 function view(row: Selectable<DB["lkm.knowledge_version"]>): KnowledgeVersion {
   return {

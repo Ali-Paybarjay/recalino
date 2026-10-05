@@ -43,6 +43,7 @@ export {
   deleteSessionInTransaction,
   getDeletionRequest,
   getSession,
+  getSessionsByIds,
   listSessions,
   sessionDisplayTitle,
   tombstoneRestoredSession,

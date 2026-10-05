@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "../../../ui/components/Button";
 import { Icon, type IconComponent } from "../../../ui/components/Icon";
+import { courseCopy } from "../../../ui/course-copy";
 import {
   CaretRight,
   ChalkboardSimple,
@@ -75,6 +76,12 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
         icon={Lightbulb}
       />
       <Row href="/me/data" label="Your data" value="Privacy and deletion" icon={UserCircle} />
+      <Row
+        href="/courses"
+        label="Courses"
+        value="Classes and learning materials"
+        icon={ChalkboardSimple}
+      />
       <section className={styles.summary} aria-labelledby="learning-profile-title">
         <div className={styles.summaryHeading}>
           <span className={styles.summaryIcon}>
@@ -98,6 +105,7 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
           <div className={styles.attribute}>
             <dt>{strings.setup.goal}</dt>
             <dd className={styles.attributeValue}>{goal}</dd>
+            <dd className={styles.attributeNote}>{courseCopy.goalHelp}</dd>
           </div>
           <div className={styles.attribute}>
             <dt>{strings.settings.explanationsIn}</dt>

@@ -1,26 +1,35 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Sheet } from "../components/Sheet";
+import { courseCopy } from "../course-copy";
 import { Cards, FileText, Folders, Microphone } from "../icons";
+import learningStyles from "./LearningViews.module.css";
 import { usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { sampleClassSummary, sampleCustomTitle } from "./sample-material";
 
 export function WorkspaceViews({ screen }: { screen: string }) {
   const { state, setState, announce } = usePreview();
   const router = useRouter();
   const lesson = state.classes[0];
   const [search, setSearch] = useState("");
-  const [name, setName] = useState(screen === "organize" ? (lesson?.title ?? "") : "");
+  const [name, setName] = useState(
+    screen === "organize" && lesson ? (sampleCustomTitle(lesson) ?? "") : "",
+  );
   const [course, setCourse] = useState(lesson?.course ?? "My classes");
   const [unit, setUnit] = useState(screen === "organize" ? (lesson?.unit ?? "") : "");
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
   const [courseName, setCourseName] = useState("");
+  const [createCourseOpen, setCreateCourseOpen] = useState(false);
+  const [classDate, setClassDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [unitName, setUnitName] = useState("");
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [materialsPage, setMaterialsPage] = useState(0);
+  const initializedCourseScreen = useRef<string | null>(null);
   useEffect(() => {
     if (screen !== "organize") return;
     if (!lesson?.id) {
@@ -29,24 +38,62 @@ export function WorkspaceViews({ screen }: { screen: string }) {
       setUnit("");
       return;
     }
-    setName(lesson?.title ?? "");
+    setName(
+      sampleCustomTitle({
+        title: lesson.title,
+        date: lesson.date,
+        customTitle: lesson.customTitle,
+      }) ?? "",
+    );
     setCourse(lesson?.course ?? "My classes");
     setUnit(lesson?.unit ?? "");
-  }, [screen, lesson?.id, lesson?.title, lesson?.course, lesson?.unit]);
+  }, [
+    screen,
+    lesson?.id,
+    lesson?.title,
+    lesson?.date,
+    lesson?.customTitle,
+    lesson?.course,
+    lesson?.unit,
+  ]);
   useEffect(() => {
     if (!["new-class", "classes", "course"].includes(screen)) return;
     const requested = new URLSearchParams(window.location.search).get("course");
     const available = state.courses.find((item) => item.name === requested);
     const current = state.courses.find((item) => item.name === lesson?.course);
     const fallback = state.courses.find((item) => item.name === "My classes") ?? state.courses[0];
-    setCourse(available?.name ?? current?.name ?? fallback?.name ?? "My classes");
+    const initialize = initializedCourseScreen.current !== screen;
+    setCourse((selected) =>
+      screen === "new-class" && !initialize && state.courses.some((item) => item.name === selected)
+        ? selected
+        : (available?.name ?? current?.name ?? fallback?.name ?? "My classes"),
+    );
+    initializedCourseScreen.current = screen;
   }, [screen, lesson?.course, state.courses]);
   const filteredCourse = screen === "course" ? course : courseFilter;
+  function summaryFor(item: (typeof state.classes)[number]) {
+    const content = item.id === lesson?.id ? state : state.classWorkspaces[item.id];
+    return sampleClassSummary(item, content?.materialMetadata);
+  }
+  const titleStatus = (source: "manual" | "material" | "date") =>
+    source === "manual"
+      ? "Custom title"
+      : source === "material"
+        ? "Title from material"
+        : "Waiting for material";
   const visible = state.classes.filter(
     (item) =>
       (filteredCourse === null || item.course === filteredCourse) &&
-      `${item.title} ${item.course} ${item.unit}`.toLowerCase().includes(search.toLowerCase()),
+      `${summaryFor(item).title} ${summaryFor(item).topics.join(" ")} ${item.course} ${item.unit}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
   );
+  visible.sort(
+    (left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id),
+  );
+  const courseSessions = state.classes
+    .filter((item) => item.course === course)
+    .sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
   const notesAvailable = state.noteText.trim().length > 0;
   const due = state.cards.filter((card) => card.status === "active").length;
   const countClasses = (selectedCourse: string) => {
@@ -66,20 +113,17 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     return true;
   }
   function createClass() {
-    if (!name.trim()) {
-      setError("Give your class a name.");
-      return;
-    }
     if (!validDestination()) return;
     setState((prev) => ({
       ...prev,
       classes: [
         {
           id: crypto.randomUUID(),
-          title: name.trim(),
+          title: name.trim() || classDate,
+          customTitle: name.trim() || null,
           course,
           unit,
-          date: new Date().toISOString().slice(0, 10),
+          date: classDate,
           status: "New",
         },
         ...prev.classes,
@@ -104,8 +148,16 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     setCourse(courseName.trim());
     setUnit("");
     setCourseName("");
+    setCreateCourseOpen(false);
     setError("");
     announce("Sample course created.");
+  }
+  function openClass(item: (typeof state.classes)[number], destination: string) {
+    setState((previous) => ({
+      ...previous,
+      classes: [item, ...previous.classes.filter((other) => other.id !== item.id)],
+    }));
+    router.push(`/preview/${destination}`);
   }
   function addUnit() {
     if (!unitName.trim()) {
@@ -136,15 +188,22 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   }
   function moveClass() {
     if (!lesson) return;
-    if (!name.trim()) {
-      setError("Give your class a name.");
-      return;
-    }
     if (!validDestination()) return;
     setState((prev) => ({
       ...prev,
       classes: prev.classes.map((item) =>
-        item.id === lesson.id ? { ...item, course, unit, title: name.trim() } : item,
+        item.id === lesson.id
+          ? {
+              ...item,
+              course,
+              unit,
+              customTitle: name.trim() || null,
+              title: sampleClassSummary(
+                { ...item, customTitle: name.trim() || null },
+                prev.materialMetadata,
+              ).title,
+            }
+          : item,
       ),
     }));
     announce("Sample class updated.");
@@ -201,32 +260,37 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   }
   const rows = (items: typeof state.classes) => (
     <ul className="preview-list">
-      {items.map((item) => (
-        <li key={item.id}>
-          <div className="preview-row">
-            <div>
-              <h3>{item.title}</h3>
-              <p className="preview-muted">
-                {item.course}
-                {item.unit ? ` · ${item.unit}` : ""} · {item.date}
-              </p>
-              <span className="preview-chip">{item.status}</span>
+      {items.map((item) => {
+        const summary = summaryFor(item);
+        return (
+          <li key={item.id}>
+            <div className="preview-row">
+              <div>
+                <h3 dir="auto">{summary.title}</h3>
+                <p className="preview-muted">
+                  <time dateTime={item.date}>{item.date}</time> · {titleStatus(summary.titleSource)}
+                </p>
+                <p className="preview-muted">
+                  {item.course}
+                  {item.unit ? ` · ${item.unit}` : ""}
+                </p>
+                {summary.topics.length ? (
+                  <p className="preview-muted">Topics: {summary.topics.slice(0, 3).join(" · ")}</p>
+                ) : null}
+                {summary.topics.length > 3 ? (
+                  <Button secondary onClick={() => openClass(item, "class")}>
+                    More topics
+                  </Button>
+                ) : null}
+                <span className="preview-chip">{item.status}</span>
+              </div>
+              <Button secondary onClick={() => openClass(item, "class")}>
+                Open class
+              </Button>
             </div>
-            <Button
-              secondary
-              onClick={() => {
-                setState((prev) => ({
-                  ...prev,
-                  classes: [item, ...prev.classes.filter((other) => other.id !== item.id)],
-                }));
-                router.push("/preview/class");
-              }}
-            >
-              Open class
-            </Button>
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
   if (screen === "today")
@@ -303,7 +367,16 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           <LinkButton secondary to="organize">
             Manage courses and units
           </LinkButton>
+          {screen === "course" ? (
+            <LinkButton
+              secondary
+              to={`course?course=${encodeURIComponent(course)}#course-materials`}
+            >
+              Course materials
+            </LinkButton>
+          ) : null}
         </Actions>
+        <p className="preview-muted">{courseCopy.courseHelp}</p>
         {screen === "course" ? (
           <Field label="Course">
             <select
@@ -312,6 +385,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 const selected = event.target.value;
                 setCourse(selected);
                 setPage(0);
+                setMaterialsPage(0);
                 router.replace(`/preview/course?course=${encodeURIComponent(selected)}`);
               }}
             >
@@ -411,6 +485,92 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             </Actions>
           ) : null}
         </Panel>
+        {screen === "course" ? (
+          <div id="course-materials">
+            <Panel title="Course materials">
+              <p className="preview-muted">
+                Current sample notes from each class, from earliest to latest.
+              </p>
+              {courseSessions.length ? (
+                courseSessions.slice(materialsPage * 5, materialsPage * 5 + 5).map((item) => {
+                  const content = item.id === lesson?.id ? state : state.classWorkspaces[item.id];
+                  return (
+                    <article className="preview-panel" key={item.id}>
+                      <p className="preview-muted">
+                        <time dateTime={item.date}>{item.date}</time>
+                      </p>
+                      <h3 dir="auto">{summaryFor(item).title}</h3>
+                      <p className="preview-muted">{titleStatus(summaryFor(item).titleSource)}</p>
+                      {content?.materialMetadata ? (
+                        <>
+                          <p dir="auto">Material title: {content.materialMetadata.title}</p>
+                          <p dir="auto">Topics: {content.materialMetadata.topics.join(" · ")}</p>
+                        </>
+                      ) : null}
+                      {content?.noteText.trim() ? (
+                        <>
+                          <p className="preview-muted">
+                            Current sample notes · Version {content.noteHistory.length}
+                            {content.noteHistory.at(-1)?.label
+                              ? ` · ${content.noteHistory.at(-1)?.label}`
+                              : ""}
+                          </p>
+                          <p dir="auto" className={learningStyles.edited}>
+                            {content.noteText}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="preview-muted">
+                          No notes yet. Open this class to add material.
+                        </p>
+                      )}
+                      {content?.sources.length ? (
+                        <p className="preview-muted">
+                          Sample sources: {content.sources.map((source) => source.name).join(" · ")}
+                        </p>
+                      ) : null}
+                      <Actions>
+                        <Button secondary onClick={() => openClass(item, "class")}>
+                          Open class
+                        </Button>
+                        <Button secondary onClick={() => openClass(item, "notes")}>
+                          Class notes
+                        </Button>
+                        <Button secondary onClick={() => openClass(item, "cards")}>
+                          Cards
+                        </Button>
+                        <Button secondary onClick={() => openClass(item, "upload")}>
+                          Sources
+                        </Button>
+                      </Actions>
+                    </article>
+                  );
+                })
+              ) : (
+                <p>Add a class to this course to start collecting its materials.</p>
+              )}
+              {courseSessions.length > 5 ? (
+                <Actions>
+                  <Button
+                    secondary
+                    disabled={materialsPage === 0}
+                    onClick={() => setMaterialsPage((value) => value - 1)}
+                  >
+                    Previous materials
+                  </Button>
+                  <p className="preview-muted">Page {materialsPage + 1}</p>
+                  <Button
+                    secondary
+                    disabled={(materialsPage + 1) * 5 >= courseSessions.length}
+                    onClick={() => setMaterialsPage((value) => value + 1)}
+                  >
+                    Next materials
+                  </Button>
+                </Actions>
+              ) : null}
+            </Panel>
+          </div>
+        ) : null}
       </>
     );
   if (screen === "new-class")
@@ -418,7 +578,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
       <div className="preview-reader">
         <PageHeader
           title="New class"
-          description="Give this class a useful name. You can change it later."
+          description="Choose a course and date for this class. The name is optional."
           back="classes"
         />
         <form
@@ -427,16 +587,28 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             createClass();
           }}
         >
-          <Field label="Class name">
+          <Field
+            label="Class name (optional)"
+            hint="Leave it empty for a title from class material. The date is shown until material is ready."
+          >
             <input
               autoComplete="off"
+              dir="auto"
               maxLength={100}
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="For example, Present perfect"
             />
           </Field>
-          <Field label="Course">
+          <Field label="Class date">
+            <input
+              type="date"
+              required
+              value={classDate}
+              onChange={(event) => setClassDate(event.target.value)}
+            />
+          </Field>
+          <Field label="Course" hint={courseCopy.courseHelp}>
             <select
               value={course}
               onChange={(event) => {
@@ -449,6 +621,17 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               ))}
             </select>
           </Field>
+          <Actions>
+            <Button
+              secondary
+              onClick={() => {
+                setError("");
+                setCreateCourseOpen(true);
+              }}
+            >
+              Create course
+            </Button>
+          </Actions>
           <Field label="Unit (optional)">
             <select value={unit} onChange={(event) => setUnit(event.target.value)}>
               <option value="">No unit</option>
@@ -467,13 +650,44 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             </LinkButton>
           </Actions>
         </form>
+        <Sheet
+          open={createCourseOpen}
+          onClose={() => setCreateCourseOpen(false)}
+          title="Create a course"
+        >
+          <p>{courseCopy.goalHelp}</p>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              addCourse();
+            }}
+          >
+            <Field label="New course name">
+              <input
+                dir="auto"
+                required
+                autoComplete="off"
+                maxLength={160}
+                value={courseName}
+                onChange={(event) => setCourseName(event.target.value)}
+              />
+            </Field>
+            {error ? <Status tone="error">{error}</Status> : null}
+            <Actions>
+              <Button type="submit">Create course</Button>
+              <Button secondary onClick={() => setCreateCourseOpen(false)}>
+                Cancel
+              </Button>
+            </Actions>
+          </form>
+        </Sheet>
       </div>
     );
   if (screen === "class")
     return (
       <>
         <PageHeader
-          title={lesson?.title ?? "Your class"}
+          title={lesson ? summaryFor(lesson).title : "Your class"}
           description={
             lesson
               ? `${lesson.course} · ${lesson.unit || "No unit"} · ${lesson.date}`
@@ -493,6 +707,29 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             <LinkButton to="new-class">New class</LinkButton>
           )}
         </Actions>
+        {lesson ? (
+          <Panel title="Session overview">
+            <p className="preview-muted">
+              <time dateTime={lesson.date}>{lesson.date}</time> ·{" "}
+              {titleStatus(summaryFor(lesson).titleSource)}
+            </p>
+            {state.materialMetadata ? (
+              <>
+                <p dir="auto">Material title: {state.materialMetadata.title}</p>
+                <p>Topics covered in this sample material:</p>
+                <ul>
+                  {[...new Set(state.materialMetadata.topics)].map((topic) => (
+                    <li key={topic} dir="auto">
+                      {topic}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="preview-muted">Topics appear when class material is ready.</p>
+            )}
+          </Panel>
+        ) : null}
         <div className="preview-grid">
           <Panel title="Class material">
             {state.sources.length ? (
@@ -600,7 +837,10 @@ export function WorkspaceViews({ screen }: { screen: string }) {
         />
         <div className="preview-grid">
           <Panel title="Class details">
-            <Field label="Class name">
+            <Field
+              label="Class name"
+              hint="Optional custom title. Clear it to use the material title, or the date before material is ready."
+            >
               <input
                 maxLength={100}
                 value={name}

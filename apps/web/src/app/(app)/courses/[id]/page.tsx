@@ -1,10 +1,11 @@
-import { listSessions } from "@recalino/core/org";
+import { listLearningSessions } from "@recalino/core/note";
 import Link from "next/link";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
 import { workspaceActor, workspaceCourse, workspaceGroups } from "../../../../server/workspace";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { ClassRows } from "../../../../ui/workspace/ClassRows";
+import { CourseNavigation } from "../../../../ui/workspace/CourseNavigation";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
 import { LearnerShell } from "../../LearnerShell";
 
@@ -25,7 +26,7 @@ export default async function CoursePage({
     ? query.unitId
     : undefined;
   const page = /^\d{1,6}$/.test(query.page ?? "") ? Math.max(1, Number(query.page)) : 1;
-  const sessions = await listSessions(getDatabase(), workspaceActor(learner), {
+  const sessions = await listLearningSessions(getDatabase(), workspaceActor(learner), {
     courseId: id,
     unitId,
     limit: 20,
@@ -40,18 +41,20 @@ export default async function CoursePage({
       header={
         <PageHeader
           title={course.name}
-          subtitle={
-            course.isDefault ? "Your default course." : "Keep this course’s classes together."
-          }
+          subtitle="Dated classes and learning material for this course."
         />
       }
     >
       <div className="preview-stack">
-        <Link href="/classes" className="preview-back">
-          ← Back to classes
+        <Link href="/courses" className="preview-back">
+          ← Back to courses
         </Link>
+        <CourseNavigation course={course} courses={groups.courses} current="classes" />
         <Actions>
           <LinkButton href={`/classes/new?courseId=${id}`}>New class</LinkButton>
+          <LinkButton secondary href={`/courses/${id}/materials`}>
+            Read course materials
+          </LinkButton>
           <LinkButton secondary href={`/classes/organize?courseId=${id}`}>
             Manage this course
           </LinkButton>
@@ -83,6 +86,11 @@ export default async function CoursePage({
           </Panel>
         ) : null}
         <Panel title="Your classes">
+          {sessions.items.length ? (
+            <p className="preview-muted">
+              Newest class first · Follow the dates and topics of your lessons.
+            </p>
+          ) : null}
           {sessions.items.length ? (
             <ClassRows {...groups} sessions={sessions.items} />
           ) : (

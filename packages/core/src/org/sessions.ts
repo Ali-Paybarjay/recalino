@@ -77,6 +77,24 @@ export async function getSession(
   return assertOwner(row ? session(row) : undefined, ctx);
 }
 
+/** Scoped bulk read for learning projections; foreign and deleted identifiers are omitted. */
+export async function getSessionsByIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<ClassSession[]> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return [];
+  const rows = await db
+    .selectFrom("org.class_session")
+    .selectAll()
+    .where("id", "in", unique)
+    .where("owner_id", "=", ctx.userId)
+    .where("deleted_at", "is", null)
+    .execute();
+  return rows.map(session);
+}
+
 /** SRC/PROC call within their transaction: deletion cannot race a publish or attachment. */
 export async function assertSessionOwner(
   db: Database | Tx,
@@ -213,8 +231,8 @@ export async function listSessions(
     .executeTakeFirstOrThrow();
   const rows = await query
     .selectAll()
-    .orderBy("class_date", "desc")
-    .orderBy("id", "desc")
+    .orderBy("class_date", parsed.order === "oldest" ? "asc" : "desc")
+    .orderBy("id", parsed.order === "oldest" ? "asc" : "desc")
     .limit(parsed.limit ?? 30)
     .offset(parsed.offset ?? 0)
     .execute();

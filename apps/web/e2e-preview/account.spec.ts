@@ -106,7 +106,7 @@ test("destructive data choices explain consequences, focus the safe action, and 
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name", { exact: true }).fill("My changed sample");
+  await page.getByLabel("Class name (optional)", { exact: true }).fill("My changed sample");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await page.goto("/preview/data-controls");
   await expect(

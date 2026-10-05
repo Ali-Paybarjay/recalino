@@ -17,6 +17,7 @@ export function CourseManager({
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState(courseId ?? courses[0]?.id ?? "");
+  const [createdCourses, setCreatedCourses] = useState<Course[]>([]);
   const [courseName, setCourseName] = useState("");
   const [unitName, setUnitName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,7 +30,11 @@ export function CourseManager({
   } | null>(null);
   const courseKey = useRef<{ payload: string; key: string } | null>(null);
   const unitKey = useRef<{ payload: string; key: string } | null>(null);
-  const course = courses.find((item) => item.id === selected) ?? courses[0];
+  const availableCourses = [
+    ...courses,
+    ...createdCourses.filter((item) => !courses.some((saved) => saved.id === item.id)),
+  ];
+  const course = availableCourses.find((item) => item.id === selected) ?? availableCourses[0];
   const courseUnits = units.filter((item) => item.courseId === course?.id);
 
   async function change<T>(
@@ -58,8 +63,13 @@ export function CourseManager({
   }
   async function addCourse() {
     const body = { name: courseName.trim() };
+    if (!body.name) {
+      setError("Enter a course name.");
+      return;
+    }
     const result = await change<Course>("/api/courses", "POST", body, requestKey(courseKey, body));
     if (result) {
+      setCreatedCourses((items) => [...items.filter((item) => item.id !== result.id), result]);
       setCourseName("");
       setSelected(result.id);
       courseKey.current = null;
@@ -86,7 +96,10 @@ export function CourseManager({
       "DELETE",
     );
     if (result) {
-      if (confirm.kind === "course") setSelected("");
+      if (confirm.kind === "course") {
+        setSelected("");
+        setCreatedCourses((items) => items.filter((item) => item.id !== confirm.id));
+      }
       setConfirm(null);
     }
   }
@@ -119,7 +132,7 @@ export function CourseManager({
             </Button>
           </form>
         </Panel>
-        <Panel title="Your courses">
+        <Panel title="Course settings">
           {course ? (
             <>
               <Field label="Selected course">
@@ -132,7 +145,7 @@ export function CourseManager({
                     setNotice("");
                   }}
                 >
-                  {courses.map((item) => (
+                  {availableCourses.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                       {item.isDefault ? " · Default" : ""}
@@ -167,6 +180,12 @@ export function CourseManager({
               <Actions>
                 <LinkButton secondary href={`/courses/${course.id}`}>
                   View course
+                </LinkButton>
+                <LinkButton secondary href={`/courses/${course.id}/materials`}>
+                  Course materials
+                </LinkButton>
+                <LinkButton secondary href={`/classes/new?courseId=${course.id}`}>
+                  New class in this course
                 </LinkButton>
                 {!course.isDefault ? (
                   <Button

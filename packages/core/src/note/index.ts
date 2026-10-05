@@ -1,5 +1,17 @@
 export { noteEditActivity } from "./activity";
 export {
+  type CourseMaterials,
+  type CourseMaterialsInput,
+  courseMaterialsSchema,
+  listCourseMaterials,
+} from "./course-materials";
+export {
+  enrichLearningSessions,
+  getLearningSession,
+  type LearningSession,
+  listLearningSessions,
+} from "./learning-sessions";
+export {
   getNotebook,
   getNotebookRevision,
   listNotebookRevisions,

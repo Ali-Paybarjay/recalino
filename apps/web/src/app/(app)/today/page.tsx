@@ -1,4 +1,4 @@
-import { listSessions } from "@recalino/core/org";
+import { listLearningSessions } from "@recalino/core/note";
 import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
 import { getDatabase } from "../../../server/db";
@@ -28,7 +28,7 @@ export default async function TodayPage() {
   const learner = await requireLearner("/today");
   const [groups, sessions, review] = await Promise.all([
     workspaceGroups(learner),
-    listSessions(getDatabase(), workspaceActor(learner), { limit: 3 }),
+    listLearningSessions(getDatabase(), workspaceActor(learner), { limit: 3 }),
     getReviewQueue(getDatabase(), workspaceActor(learner)),
   ]);
   return (

@@ -1,5 +1,6 @@
 import "server-only";
-import { getCourse, getSession, listCourses, listUnits } from "@recalino/core/org";
+import { getLearningSession } from "@recalino/core/note";
+import { getCourse, listCourses, listUnits } from "@recalino/core/org";
 import { AppError, errors, type LearnerContext } from "@recalino/core/plt";
 import { notFound } from "next/navigation";
 import type { Learner } from "./auth/learner";
@@ -40,7 +41,7 @@ function validId(id: string) {
 export function workspaceSession(learner: Learner, id: string) {
   return found(async () => {
     validId(id);
-    return getSession(getDatabase(), workspaceActor(learner), id);
+    return getLearningSession(getDatabase(), workspaceActor(learner), id);
   });
 }
 export function workspaceCourse(learner: Learner, id: string) {

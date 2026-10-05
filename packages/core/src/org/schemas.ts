@@ -45,6 +45,7 @@ export const updateSessionSchema = z
 export const sessionListSchema = z.strictObject({
   courseId: uuid.optional(),
   unitId: uuid.nullable().optional(),
+  order: z.enum(["newest", "oldest"]).optional(),
   limit: z.int().min(1).max(100).optional(),
   offset: z.int().nonnegative().optional(),
 });

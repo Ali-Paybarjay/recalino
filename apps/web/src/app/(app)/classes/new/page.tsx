@@ -20,7 +20,7 @@ export default async function NewClassPage({
       header={
         <PageHeader
           title="New class"
-          subtitle="Give this class a useful name. You can change it later."
+          subtitle="Choose a course and date. The title will come from your learning material."
         />
       }
     >
