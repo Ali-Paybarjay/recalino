@@ -18,7 +18,7 @@
 
 کد فعلی PLT، jobهای تمام‌شده را پس از ۳۰ روز، کلیدهای idempotency منقضی را با کار ساعتی و bucketهای rate limit را پس از پایان بازهٔ لازم پاک می‌کند. رکوردهای audit و security اپ در جدول‌های جدا هستند؛ مدت نگهداری نهایی آن‌ها از این مدت jobها نتیجه نمی‌شود و نباید وعدهٔ یکسان داده شود.
 
-Vercel برای دسترسی به Runtime Logs، مدت وابسته به پلن اعلام می‌کند: Hobby یک ساعت، Pro یک روز و Pro همراه Observability Plus سی روز. این عدد تضمین حذف تمام رکوردهای امنیتی شرکت نیست. در 2026-10-05 متادیتای واقعی پلن Pro و صفر drain تأیید شد؛ وضعیت Plus و Data Preferences صریح از خروجی نتیجه نمی‌شود. [Runtime Logs](https://vercel.com/docs/logs/runtime)، [شاهد متادیتا](../../artifacts/verification/g11-cloud-metadata-2026-10-05.json)
+Vercel برای دسترسی به Runtime Logs، مدت وابسته به پلن اعلام می‌کند: Hobby یک ساعت، Pro یک روز و Pro همراه Observability Plus سی روز. این عدد تضمین حذف تمام رکوردهای امنیتی شرکت نیست. در 2026-10-05 متادیتای واقعی پلن Pro و صفر drain تأیید شد؛ مالک در تصویر تنظیمات نشان داد گزینهٔ `Improve models with my data` خاموش است. [Runtime Logs](https://vercel.com/docs/logs/runtime)، [شاهد متادیتا](../../artifacts/verification/g11-cloud-metadata-2026-10-05.json)
 
 Supabase دو محل برای Auth audit معرفی می‌کند: سرویس logs و، در صورت فعال‌بودن، جدول `auth.audit_log_entries`. مدت دسترسی داشبورد نباید با نگهداری جدول دیتابیس برابر فرض شود. [Auth Audit Logs](https://supabase.com/docs/guides/auth/audit-logs)، [محدودیت دسترسی logs در پلن‌ها](https://supabase.com/docs/guides/troubleshooting/check-usage-for-monthly-active-users-mau-MwZaBs)
 
@@ -27,7 +27,7 @@ Supabase دو محل برای Auth audit معرفی می‌کند: سرویس lo
 ## اطلاعاتی که از مالک لازم است
 
 - طرف واقعی حساب‌های سرویس و شرایط commercial/organizational برای applicability DPA؛ نام مسئول Ali Paybarjay و نشانی تماس معلوم‌اند. نام برای deployment بعدی نیز در env محلی و production ثبت شد.
-- بررسی Data Preferences واقعی Vercel؛ تأیید مالک دربارهٔ دو گزینهٔ OpenRouter ثبت شده و دوباره درخواست نمی‌شود. API request به‌تنهایی وضعیت opt-in حساب سرویس را ثابت نمی‌کند.
+- وضعیت Data Preferences واقعی Vercel با تصویر مالک ثبت شد: `Improve models with my data` خاموش است. تأییدهای قبلی مالک دربارهٔ دو گزینهٔ OpenRouter جداست و دوباره درخواست نمی‌شود.
 - قواعد واقعی کالج و اجازهٔ ضبط اشخاص حاضر؛ ارزیابی ضرورت DPIA و مبنای قانونی با شرایط واقعی پایلوت انجام می‌شود. [راهنمای ICO درباره ارزیابی AI](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/artificial-intelligence/guidance-on-ai-and-data-protection/what-are-the-accountability-and-governance-implications-of-ai/)
 
 تأیید مالک برای پیش‌نویس‌ها و خاموش‌بودن دو تنظیم حساب OpenRouter ثبت‌شده است؛ این شاهد فنی درخواست تأیید مجدد همان متن نیست. مسئول پایلوت Ali Paybarjay است و حساب مالک فعلاً برای آزمون استفاده می‌شود و می‌تواند یکی از هشت جایگاه پایلوت باشد. `dataContractApproved:true` اکنون فقط برای مسیرهای OpenRouter اعمال شده و سایر بررسی‌های G11 همچنان باید با اطلاعات واقعی کامل شوند.

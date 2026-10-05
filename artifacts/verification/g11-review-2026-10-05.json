@@ -52,10 +52,16 @@
     "learnerContentRead": false
   },
   "cloudMetadataEvidence": "artifacts/verification/g11-cloud-metadata-2026-10-05.json",
+  "vercelDataPreferences": {
+    "improveModelsWithMyData": "off",
+    "evidence": "owner-supplied screenshot 2026-10-05",
+    "scope": "future data for projects owned by this team",
+    "historicalDataErasure": "not implied"
+  },
   "ownerFactsRequested": [
     "College, class, ages and permission for recording and AI processing",
     "ICO registration or fee-checker result and intended commercial scope",
-    "Actual Vercel Data Preferences opt-out settings"
+    "No further Vercel Data Preferences action; keep the saved opt-out setting"
   ],
   "remainingControls": [
     "Confirm applicable processor agreements and transfer assessment",
