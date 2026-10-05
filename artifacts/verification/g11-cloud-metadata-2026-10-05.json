@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-05T14:42:50.993Z",
+  "teamId": "team_8WX5ZTQoGLK3XQim9CHcQ350",
+  "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+  "scope": "Read-only metadata; no environment values or user content",
+  "team": {
+    "readable": true,
+    "id": "team_8WX5ZTQoGLK3XQim9CHcQ350",
+    "plan": "pro",
+    "preferenceFlags": {
+      "billing.trial": null,
+      "billing.invoiceItems.observabilityEvent.hidden": false
+    }
+  },
+  "drains": {
+    "readable": true,
+    "teamDrainCount": 0,
+    "applicableProjectCount": 0
+  }
+}

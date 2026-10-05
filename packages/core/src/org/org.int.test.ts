@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { sql } from "kysely";
 import { afterAll, describe, expect, it } from "vitest";
 import { createAuthUser } from "../../test/auth-users";
 import { testDatabaseUrl } from "../../test/local-db";
@@ -7,10 +8,13 @@ import {
   CURRENT_VERSIONS,
   completeSignIn,
   createSignupIntent,
+  tombstoneAccount,
   updateProfile,
 } from "../acc";
 import { createDatabase } from "../db";
 import {
+  cleanupAccountOrg,
+  cleanupSessionOrg,
   createCourse,
   createSession,
   createUnit,
@@ -123,5 +127,111 @@ describe("ORG ownership, default creation and deletion on Postgres", () => {
     expect(
       await db.selectFrom("org.outbox").select("id").where("session_id", "=", item.id).execute(),
     ).toHaveLength(1);
+  });
+  it("PRD-DEL-01 and FR-PLT-002: queued session cleanup erases personal context only after its tombstone", async () => {
+    const a = await learner();
+    const b = await learner();
+    const course = await createCourse(db, a, { name: "Private synthetic course" }, options());
+    const unit = await createUnit(
+      db,
+      a,
+      { courseId: course.id, name: "Private synthetic unit" },
+      options(),
+    );
+    const item = await createSession(
+      db,
+      a,
+      {
+        courseId: course.id,
+        unitId: unit.id,
+        title: "Private class title",
+        classDate: "2026-10-01",
+      },
+      options(),
+    );
+    const other = await createSession(
+      db,
+      b,
+      { title: "Other learner title", classDate: "2026-10-02" },
+      options(),
+    );
+    await expect(cleanupSessionOrg(db, a, item.id)).rejects.toMatchObject({ code: "conflict" });
+    const receipt = await deleteSession(db, a, item.id);
+    await expect(cleanupSessionOrg(db, b, item.id)).rejects.toMatchObject({ code: "not_found" });
+    await cleanupSessionOrg(db, a, item.id);
+    await cleanupSessionOrg(db, a, item.id);
+    expect(
+      await db
+        .selectFrom("org.class_session")
+        .select([
+          "title",
+          "course_id",
+          "unit_id",
+          "deletion_request_id",
+          sql<string>`class_date::text`.as("classDate"),
+        ])
+        .where("id", "=", item.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({
+      title: null,
+      course_id: null,
+      unit_id: null,
+      deletion_request_id: receipt.id,
+      classDate: "1970-01-01",
+    });
+    expect(await deleteSession(db, a, item.id)).toEqual(receipt);
+    expect((await getSession(db, b, other.id)).title).toBe("Other learner title");
+    expect((await listCourses(db, a)).map((row) => row.name)).toContain(course.name);
+    expect((await listUnits(db, a, course.id)).map((row) => row.name)).toContain(unit.name);
+  });
+  it("PRD-DEL-01: account cleanup removes personal container names while preserving deletion receipts", async () => {
+    const a = await learner();
+    const b = await learner();
+    const course = await createCourse(db, a, { name: "Private account course" }, options());
+    const unit = await createUnit(
+      db,
+      a,
+      { courseId: course.id, name: "Private account unit" },
+      options(),
+    );
+    await createCourse(db, a, { name: "Private empty course" }, options());
+    const item = await createSession(
+      db,
+      a,
+      {
+        courseId: course.id,
+        unitId: unit.id,
+        title: "Private account title",
+        classDate: "2026-10-01",
+      },
+      options(),
+    );
+    const other = await createSession(db, b, { title: "Keep other owner context" }, options());
+    const now = new Date();
+    const receipt = await deleteSession(db, a, item.id);
+    await expect(cleanupAccountOrg(db, a)).rejects.toMatchObject({ code: "conflict" });
+    await db.transaction().execute((tx) => tombstoneAccount(tx, a, now));
+    await cleanupAccountOrg(db, a, now);
+    await cleanupAccountOrg(db, a, now);
+    expect(await listCourses(db, a)).toHaveLength(0);
+    expect(
+      await db.selectFrom("org.unit").select("id").where("owner_id", "=", a.userId).execute(),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .selectFrom("org.class_session")
+        .select(["title", "course_id", "unit_id", sql<string>`class_date::text`.as("classDate")])
+        .where("id", "=", item.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ title: null, course_id: null, unit_id: null, classDate: "1970-01-01" });
+    expect(
+      await db
+        .selectFrom("org.deletion_request")
+        .select("id")
+        .where("session_id", "=", item.id)
+        .execute(),
+    ).toEqual([{ id: receipt.id }]);
+    expect((await getSession(db, b, other.id)).title).toBe("Keep other owner context");
+    expect(await listCourses(db, b)).toHaveLength(1);
   });
 });

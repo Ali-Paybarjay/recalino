@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup, purgeAccountProfile, tombstoneAccount } from "../acc";
 import type { Database, Tx } from "../db";
-import { deleteSessionInTransaction, listSessions } from "../org";
+import {
+  cleanupAccountOrg,
+  cleanupSessionOrg,
+  deleteSessionInTransaction,
+  listSessions,
+} from "../org";
 import {
   AppError,
   assertOwner,
@@ -403,6 +408,13 @@ export function privacyCleanupJob(
             .values({ request_id: request.id, module, completed_at: job.now() })
             .onConflict((oc) => oc.doNothing())
             .execute();
+        }
+        // PRD-DEL-01: finalize ORG even for older requests whose captured registry predates it.
+        if (request.kind === "session")
+          await cleanupSessionOrg(job.db, ctx, request.subjectId, job.now());
+        else if (request.kind === "account") {
+          if (request.subjectId !== ctx.userId) throw errors.notFound();
+          await cleanupAccountOrg(job.db, ctx, job.now());
         }
         if (request.kind === "account" && authentication) {
           await job.db.transaction().execute((tx) => purgeAccountProfile(tx, ctx));

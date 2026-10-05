@@ -6,7 +6,7 @@ import { getHtmlExport, htmlExportJob, requestHtmlExport } from "@recalino/core/
 import { getVersion } from "@recalino/core/lkm";
 import { createImageMedia, getMediaAsset, mediaReadLink } from "@recalino/core/media";
 import { getNotebookRevision, publishNotebook } from "@recalino/core/note";
-import { getSession } from "@recalino/core/org";
+import { createCourse, createUnit, getSession, updateSession } from "@recalino/core/org";
 import {
   DEFAULT_PLT_SETTINGS,
   type JobContext,
@@ -33,6 +33,7 @@ import {
   uploadPartLink,
   verifyUpload,
 } from "@recalino/core/src";
+import { sql } from "kysely";
 import { afterAll, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
@@ -60,7 +61,25 @@ const unusedJob = {
 
 async function fixture() {
   const study = await studyFixture(db, { count: 1, autoAdd: true });
-  await grantEntitlement(db, {
+  const course = await createCourse(
+    db,
+    study.ctx,
+    { name: "Private synthetic course name" },
+    { key: randomUUID() },
+  );
+  const unit = await createUnit(
+    db,
+    study.ctx,
+    { courseId: course.id, name: "Private synthetic unit name" },
+    { key: randomUUID() },
+  );
+  const session = await updateSession(db, study.ctx, study.session.id, {
+    courseId: course.id,
+    unitId: unit.id,
+    title: "Private synthetic class title",
+    classDate: "2026-09-30",
+  });
+  const entitlementId = await grantEntitlement(db, {
     userId: study.ctx.userId,
     startsAt: new Date(Date.now() - 1000),
     endsAt: new Date(Date.now() + 86400000),
@@ -170,6 +189,10 @@ async function fixture() {
   await ankiExportJob(store).run({ userId: study.ctx.userId, artifactId: anki.id }, job);
   return {
     ...study,
+    course,
+    unit,
+    session,
+    entitlementId,
     imageId,
     textId,
     media,
@@ -183,8 +206,8 @@ async function fixture() {
   };
 }
 
-it.each(["source", "account"] as const)(
-  "the actual server privacy composition cleans %s content in dependency order",
+it.each(["source", "session", "account"] as const)(
+  "the actual server privacy composition cleans %s content with a captured registry predating ORG",
   async (kind) => {
     const fixtureData = await fixture();
     const other = await studyFixture(db, { count: 1 });
@@ -192,6 +215,12 @@ it.each(["source", "account"] as const)(
     const recordJournal = vi.fn(async () => {});
     dependencies.deletionJournal = { record: recordJournal };
     const now = new Date();
+    const originalGrants = await db
+      .selectFrom("quota.ledger")
+      .selectAll()
+      .where("entitlement_id", "=", fixtureData.entitlementId)
+      .where("kind", "=", "grant")
+      .execute();
     let requestId: string;
     if (kind === "source") {
       await deleteSource(db, fixtureData.ctx, fixtureData.imageId, "all", now, {
@@ -207,10 +236,27 @@ it.each(["source", "account"] as const)(
           .where("kind", "=", "source")
           .executeTakeFirstOrThrow()
       ).id;
-    } else
+    } else if (kind === "session")
+      requestId = (
+        await requestSessionDeletion(
+          db,
+          fixtureData.ctx,
+          fixtureData.session.id,
+          randomUUID(),
+          dependencies,
+          now,
+        )
+      ).id;
+    else
       requestId = (
         await requestAccountDeletion(db, fixtureData.ctx, randomUUID(), dependencies, now)
       ).id;
+    const captured = await db
+      .selectFrom("priv.deletion_request")
+      .select("modules")
+      .where("id", "=", requestId)
+      .executeTakeFirstOrThrow();
+    expect(captured.modules).not.toContain("org");
     await expect(
       getNotebookRevision(db, fixtureData.ctx, fixtureData.notebook.current.id),
     ).rejects.toMatchObject({ code: "not_found" });
@@ -297,8 +343,8 @@ it.each(["source", "account"] as const)(
       expect((await getSource(db, fixtureData.ctx, fixtureData.textId)).display_name).toBe(
         "private.text",
       );
-      expect((await getSession(db, fixtureData.ctx, fixtureData.session.id)).id).toBe(
-        fixtureData.session.id,
+      expect((await getSession(db, fixtureData.ctx, fixtureData.session.id)).title).toBe(
+        "Private synthetic class title",
       );
     } else {
       expect(
@@ -308,11 +354,68 @@ it.each(["source", "account"] as const)(
           .where("user_id", "=", fixtureData.ctx.userId)
           .execute(),
       ).toHaveLength(0);
-      expect(deleteIdentity).toHaveBeenCalledWith(fixtureData.ctx.userId, true);
+      expect(
+        await db
+          .selectFrom("org.class_session")
+          .select(["title", "course_id", "unit_id", sql<string>`class_date::text`.as("classDate")])
+          .where("id", "=", fixtureData.session.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ title: null, course_id: null, unit_id: null, classDate: "1970-01-01" });
+      expect(
+        await db
+          .selectFrom("org.deletion_request")
+          .select("id")
+          .where("session_id", "=", fixtureData.session.id)
+          .execute(),
+      ).toHaveLength(1);
+      if (kind === "account") {
+        expect(deleteIdentity).toHaveBeenCalledWith(fixtureData.ctx.userId, true);
+        expect(
+          await db
+            .selectFrom("org.course")
+            .select("id")
+            .where("owner_id", "=", fixtureData.ctx.userId)
+            .execute(),
+        ).toHaveLength(0);
+        expect(
+          await db
+            .selectFrom("org.unit")
+            .select("id")
+            .where("owner_id", "=", fixtureData.ctx.userId)
+            .execute(),
+        ).toHaveLength(0);
+      }
+    }
+    if (kind !== "account") {
+      expect(
+        await db
+          .selectFrom("org.course")
+          .select("name")
+          .where("id", "=", fixtureData.course.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ name: "Private synthetic course name" });
+      expect(
+        await db
+          .selectFrom("org.unit")
+          .select("name")
+          .where("id", "=", fixtureData.unit.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ name: "Private synthetic unit name" });
     }
     expect((await getNotebookRevision(db, other.ctx, other.notebook.current.id)).id).toBe(
       other.notebook.current.id,
     );
+    expect((await getSession(db, other.ctx, other.session.id)).courseId).toBe(
+      other.session.courseId,
+    );
+    expect(
+      await db
+        .selectFrom("quota.ledger")
+        .selectAll()
+        .where("entitlement_id", "=", fixtureData.entitlementId)
+        .where("kind", "=", "grant")
+        .execute(),
+    ).toEqual(originalGrants);
   },
   60000,
 );

@@ -1,0 +1,71 @@
+{
+  "reviewedAt": "2026-10-05T14:57:56Z",
+  "gate": "G11",
+  "status": "open_pending_owner_facts_and_remaining_controls",
+  "controller": "Ali Paybarjay",
+  "pilotParticipantCap": 8,
+  "operatorContactConfigured": true,
+  "operatorNameConfiguredLocalAndProductionEnvironment": true,
+  "operatorNameActiveOnExistingDeployment": false,
+  "legalRelease": {
+    "termsVersion": "0.1-draft",
+    "privacyVersion": "0.2-draft",
+    "version1Published": false,
+    "formalLegalReviewRecorded": false
+  },
+  "reviewDocuments": [
+    "docs/legal/G11_REVIEW.md",
+    "docs/legal/LIA_DPIA.md",
+    "docs/legal/CLASSROOM_NOTICE.md",
+    "docs/legal/PROCESSOR_REGISTER.md",
+    "docs/legal/G11_TEXT_CHANGES.md"
+  ],
+  "orgErasureFix": {
+    "implemented": true,
+    "deployed": false,
+    "migrationRequired": false,
+    "coversPendingHistoricalModuleRegistries": true,
+    "completedHistoricalReceiptsReprocessed": false,
+    "financialLedgerPreserved": true,
+    "sourceOnlyDeletionPreservesOrgContext": true,
+    "verification": {
+      "integrationFiles": 6,
+      "integrationTestsPassed": 21,
+      "coreTypecheck": "passed",
+      "webTypecheck": "passed",
+      "moduleBoundaries": "passed",
+      "modulesChecked": 681,
+      "productionBuild": "passed",
+      "biomeScoped": "passed",
+      "diffWhitespaceCheck": "passed",
+      "independentCodeReviewBlockingFindings": 0
+    }
+  },
+  "productionReadOnlyAggregate": {
+    "projectId": "twowhuzhvyuzjrpraikm",
+    "deletionRequestStates": [],
+    "completedSessionRequestsWithOrgResiduals": 0,
+    "completedAccountRequestsWithOrgResiduals": 0,
+    "authAuditRowCount": 0,
+    "authAuditWriteSettingVerified": false,
+    "productionRecordsDeleted": false,
+    "learnerContentRead": false
+  },
+  "cloudMetadataEvidence": "artifacts/verification/g11-cloud-metadata-2026-10-05.json",
+  "ownerFactsRequested": [
+    "College, class, ages and permission for recording and AI processing",
+    "ICO registration or fee-checker result and intended commercial scope",
+    "Actual Vercel Data Preferences opt-out settings"
+  ],
+  "remainingControls": [
+    "Confirm applicable processor agreements and transfer assessment",
+    "Decide and implement safe timed retention with financial reconciliation safeguards",
+    "Check Auth audit configuration independently of current row count",
+    "Add monitoring and recovery for overdue or exhausted deletion cleanup",
+    "Apply final legal text and acceptance versions consistently after unresolved facts are addressed",
+    "Verify final production deployment and published controller details"
+  ],
+  "supplierNoticesSubscribed": false,
+  "externalMessagesSent": false,
+  "productionDeploymentCreatedThisReview": false
+}
