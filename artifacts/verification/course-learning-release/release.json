@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-05",
+  "timezone": "Europe/London",
+  "authorization": "User explicitly requested push and deploy.",
+  "branch": "codex/ui-complete-redesign",
+  "sourceCommit": "1559f690a6f59baea5f30327059970f7d847ea31",
+  "sourcePushed": true,
+  "deployment": {
+    "project": "recalino",
+    "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+    "teamId": "team_8WX5ZTQoGLK3XQim9CHcQ350",
+    "id": "dpl_9UppZXuLWR5ZNGt7FKsDT18zjBjd",
+    "url": "https://recalino-qabmdhbtw-ali-paybarjay-s-projects.vercel.app",
+    "publicUrl": "https://recalino.vercel.app",
+    "target": "production",
+    "readyState": "READY",
+    "publicAliasConfirmed": true,
+    "source": "Clean git archive of sourceCommit; unrelated working tree changes excluded",
+    "payloadFiles": 725,
+    "localEnvironmentFilesIncluded": 0,
+    "databaseMigrationApplied": false,
+    "secretsChanged": false
+  },
+  "validation": {
+    "unit": {
+      "passed": 426,
+      "files": 56
+    },
+    "localIntegration": {
+      "passed": 252,
+      "skipped": 1,
+      "failed": 0,
+      "report": "../session-learning/integration-release-2026-10-05.json"
+    },
+    "typecheck": "passed",
+    "sourceLint": "passed",
+    "moduleBoundaries": "passed",
+    "productionBuild": "passed locally and on Vercel",
+    "nativeDependencies": "passed",
+    "browserSecretScan": "passed",
+    "localBrowserScenarios": 13,
+    "previewBrowserScenarios": 28,
+    "productionReadOnlySmoke": {
+      "passed": 10,
+      "failed": 0,
+      "report": "production-public-smoke.json"
+    }
+  },
+  "limitations": [
+    "Repository-wide pnpm verify stops at lint errors in unrelated generated artifacts/recalino-presentation files; application, packages and tools lint passes.",
+    "GitHub Actions run 37253755420 failed in both attempts at the unchanged afterAll db.destroy hook in apps/web/src/server/cross-account/study-support.ts:43 after 10000 ms. All 252 integration assertions passed. CI is not green.",
+    "Production smoke uses anonymous read-only requests; authenticated course workflows were verified with local test fixtures."
+  ],
+  "ciRunUrl": "https://github.com/Ali-Paybarjay/recalino/actions/runs/37253755420"
+}

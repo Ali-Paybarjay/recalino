@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-05",
+  "timezone": "Europe/London",
+  "command": "pnpm exec vitest run --project integration --pool=threads --maxWorkers=1",
+  "runtime": "Node 24.19.0",
+  "vitest": "5.0.3",
+  "database": "Existing local Supabase on loopback; app connection and transaction pooler verified",
+  "exitCode": 0,
+  "durationSeconds": 315.82,
+  "testFiles": {
+    "passed": 86,
+    "skipped": 1,
+    "total": 87
+  },
+  "tests": {
+    "passed": 252,
+    "skipped": 1,
+    "total": 253
+  },
+  "notes": [
+    "An earlier attempt was aborted because Docker was stopped and all database connections were refused.",
+    "Starting Docker Desktop automatically restored the existing containers and schema; no database reset, removal or migration was performed.",
+    "The previously failing audio concurrency test passed in this full run with its existing 3000 ms timeout unchanged.",
+    "No source, test, Git or deployment mutation was performed for this verification."
+  ]
+}
