@@ -24,7 +24,20 @@
   },
   "operatorContactConfigured": true,
   "operatorNameConfiguredLocalAndProductionEnvironment": true,
-  "operatorNameActiveOnExistingDeployment": false,
+  "operatorNameActiveOnExistingDeployment": true,
+  "pilotDeployment": {
+    "id": "dpl_FN6oCqzcrnH5XZE4RfyTDm1dSbWC",
+    "url": "https://recalino-derl4p0ev-ali-paybarjay-s-projects.vercel.app",
+    "stableAlias": "https://recalino.vercel.app",
+    "readyState": "READY",
+    "target": "production",
+    "verifiedRoutes": {
+      "/": 200,
+      "/api/health": 200,
+      "/classes": 200,
+      "/setup/consent": 200
+    }
+  },
   "legalRelease": {
     "termsVersion": "0.1-draft",
     "privacyVersion": "0.2-draft",
@@ -91,5 +104,5 @@
   ],
   "supplierNoticesSubscribed": false,
   "externalMessagesSent": false,
-  "productionDeploymentCreatedThisReview": false
+  "productionDeploymentCreatedThisReview": true
 }
