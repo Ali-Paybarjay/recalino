@@ -45,10 +45,16 @@ export default async function AllowancePage() {
     >
       <Panel title="Available now" tone="hero">
         {!balance.entitlementId ? (
-          <p>
-            No processing allowance is active. You can keep recording locally, read your notes and
-            review your saved cards.
-          </p>
+          <>
+            <p>
+              Your current processing allowance is <strong>zero</strong>. You can keep recording
+              locally, read your notes and review your saved cards.
+            </p>
+            <p>
+              To receive pilot permission and an allowance, contact the pilot operator
+              {email ? ` at ${email}` : " by email"}.
+            </p>
+          </>
         ) : (
           <p>
             Current period ends{" "}
