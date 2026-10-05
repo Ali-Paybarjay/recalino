@@ -1,6 +1,6 @@
 # Recalino: information for teachers and classmates
 
-Review copy — 5 October 2026. This copy is prepared for the ESOL pilot. The owner reports that permission for recording and AI submission was obtained, but the college name, final notice and permission record have not yet been added to this file. Publish/share only after the G11 review is complete.
+Review copy — 5 October 2026. This copy is prepared for the initial ESOL pilot with up to eight accounts. The owner reports that permission for recording and AI submission will be obtained verbally from the teacher and people present before each recording. This is a limited product test, not a public or commercial college launch. Formal college approval and the final legal release are deferred to the later launch stage.
 
 ## What is the pilot?
 

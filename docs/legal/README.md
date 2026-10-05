@@ -11,7 +11,7 @@
 | [privacy-notice.md](privacy-notice.md) | اطلاعیه حریم خصوصی | برگه از A1، لینک A3 | FR-ACC-001، FR-ACC-007، FR-SRC-015 |
 | [consents.md](consents.md) | متن کوتاه اعلام‌ها: ۱۸+ و پذیرش شرایط (A1)، رضایت ضبط (A2.7)، اعلان منابع (A3)؛ جدول نسخه‌ها | — | FR-ACC-001، FR-ACC-003، FR-SRC-015 |
 
-شواهد فنی در [PILOT_TECHNICAL_FACTS.md](PILOT_TECHNICAL_FACTS.md) و [پردازش دادهٔ OpenRouter](../runbooks/OPENROUTER_DATA_HANDLING.md) ثبت شده‌اند. مالک نام Ali Paybarjay، کلاس ESOL، بزرگسال‌بودن اشخاص قابل‌ضبط، اجازهٔ ضبط و ارسال به AI، و خاموش‌بودن دو تنظیم محتوایی OpenRouter را تأیید کرده است. [ارزیابی LIA/DPIA](LIA_DPIA.md)، [دفتر پردازشگران](PROCESSOR_REGISTER.md) و [اعلان کلاس](CLASSROOM_NOTICE.md) برای تکمیل موارد باقی‌مانده آماده‌اند؛ نام کالج، سابقهٔ مستند اجازه و نتیجهٔ fee checker هنوز در پرونده نیست.
+شواهد فنی در [PILOT_TECHNICAL_FACTS.md](PILOT_TECHNICAL_FACTS.md) و [پردازش دادهٔ OpenRouter](../runbooks/OPENROUTER_DATA_HANDLING.md) ثبت شده‌اند. مالک نام Ali Paybarjay، کلاس ESOL، بزرگسال‌بودن اشخاص قابل‌ضبط، اجازهٔ شفاهی پیش از ضبط و ارسال به AI، و خاموش‌بودن دو تنظیم محتوایی OpenRouter را تأیید کرده است. این بسته برای پایلوت اولیهٔ حداکثر هشت حساب آماده است؛ بررسی رسمی کالج و ICO برای عرضهٔ عمومی/تجاری مرحلهٔ بعد است.
 
 ## اصول نگارش
 

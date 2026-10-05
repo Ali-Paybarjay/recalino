@@ -4,11 +4,16 @@
   "status": "open_pending_owner_facts_and_remaining_controls",
   "controller": "Ali Paybarjay",
   "pilotParticipantCap": 8,
+  "pilotStage": "initial_feedback_pilot",
+  "pilotStageFormalCollegeAndIcoReview": "deferred_until_public_or_commercial_launch",
+  "initialPilotCapacity": 8,
+  "capacityExpansion": "later_stage_after_feedback_and_formal_review",
   "classFacts": {
     "classType": "ESOL",
     "collegeName": null,
     "allRecordablePeopleAdults": true,
     "recordingAndAiPermissionOwnerReported": true,
+    "permissionModeForInitialPilot": "verbal_before_each_recording",
     "permissionEvidenceRecorded": false
   },
   "ico": {
