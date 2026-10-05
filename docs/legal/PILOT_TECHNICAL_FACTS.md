@@ -30,4 +30,4 @@ Supabase دو محل برای Auth audit معرفی می‌کند: سرویس lo
 - تطبیق تنظیمات حریم خصوصی حساب OpenRouter با شاهد فنی، به‌ویژه logging محتوای ورودی/خروجی و استفاده از آن؛ API request به‌تنهایی وضعیت opt-in حساب را ثابت نمی‌کند.
 - قواعد واقعی کالج و اجازهٔ ضبط اشخاص حاضر؛ ارزیابی ضرورت DPIA و مبنای قانونی با شرایط واقعی پایلوت انجام می‌شود. [راهنمای ICO درباره ارزیابی AI](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/artificial-intelligence/guidance-on-ai-and-data-protection/what-are-the-accountability-and-governance-implications-of-ai/)
 
-تأیید مالک برای پیش‌نویس‌ها ثبت‌شده است؛ این شاهد فنی درخواست تأیید مجدد همان متن نیست. اطلاعات نامشخص به‌عنوان واقعیت پر نشده‌اند و `dataContractApproved:false` تا تکمیل وضعیت واقعی حفظ شده است.
+تأیید مالک برای پیش‌نویس‌ها و خاموش‌بودن دو تنظیم حساب OpenRouter ثبت‌شده است؛ این شاهد فنی درخواست تأیید مجدد همان متن نیست. اطلاعات نامشخص به‌عنوان واقعیت پر نشده‌اند. `dataContractApproved:true` اکنون فقط برای مسیرهای OpenRouter اعمال شده و نام مسئول داده و سایر بررسی‌های G11 همچنان باید با اطلاعات واقعی کامل شوند.

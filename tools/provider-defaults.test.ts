@@ -68,7 +68,7 @@ it("covers Haiku's complete input context plus configured output at every curren
   expect(settings.maximumMicros).toBeGreaterThanOrEqual(
     maximumProviderCost(settings, settings.llmModel),
   );
-  expect(settings.dataContractApproved).toBe(false);
+  expect(settings.dataContractApproved).toBe(true);
 });
 
 it("reserves enough for a full five-minute STT chunk at every currently listed endpoint rate", () => {
@@ -87,5 +87,5 @@ it("reserves enough for a full five-minute STT chunk at every currently listed e
     expect(heldMicros).toBeGreaterThanOrEqual(actualMicros);
   }
   expect(heldMicros).toBeLessThanOrEqual(settings.maximumMicros);
-  expect(settings.dataContractApproved).toBe(false);
+  expect(settings.dataContractApproved).toBe(true);
 });

@@ -2,7 +2,7 @@
 
 شاهد فنی خواندنی · 2026-10-04 · پیکربندی `openrouter-2026-10-04-2`
 
-این سند رفتار adapter و metadata عمومی را ثبت می‌کند. بررسی با کلید API، درخواست inference یا محتوای زبان‌آموز انجام نشده است. وضعیت واقعی تنظیمات حساب OpenRouter از این بررسی قابل اثبات نیست؛ `dataContractApproved:false` در تنظیم محصول باقی می‌ماند.
+این سند رفتار adapter و metadata عمومی را ثبت می‌کند. در 2026-10-05 مالک محصول تأیید کرد که Private Input & Output Logging و OpenRouter Use of Inputs/Outputs در workspace مربوط به کلید خاموش‌اند. `dataContractApproved:true` اکنون در تنظیم production ثبت می‌شود؛ این تأیید جای بررسی دوره‌ای تنظیمات حساب و سیاست‌های مسیرهای provider را نمی‌گیرد.
 
 ## داده‌ای که adapter می‌فرستد
 
@@ -41,7 +41,7 @@
 
 ZDR درخواست، مسیر inference را به endpoints با سیاست واجد ZDR محدود می‌کند. OpenRouter cache موقت داخل حافظهٔ بعضی مدل‌ها را retention محسوب نمی‌کند. ZDR ابزارها یا plugins جدا را پوشش نمی‌دهد. [ZDR](https://openrouter.ai/docs/guides/features/zdr)
 
-OpenRouter نگهداری محتوای ورودی/خروجی را در حالت عادی opt-in اعلام می‌کند، اما private I/O logging و استفادهٔ OpenRouter از ورودی/خروجی تنظیمات جدا دارند. metadata درخواست همچنان نگهداری می‌شود و دسته‌بندی ناشناس نمونه‌های ورودی نیز توضیح داده شده است. `provider.zdr` و `data_collection` وضعیت این opt-inها را اثبات نمی‌کنند. پیش از فعال‌سازی داده واقعی، private logging، استفادهٔ محتوایی، broadcast و plugins/defaults مرتبط باید برای حساب و workspace مورد استفاده بررسی و ثبت شوند. [data collection](https://openrouter.ai/docs/guides/privacy/data-collection)
+OpenRouter نگهداری محتوای ورودی/خروجی را در حالت عادی opt-in اعلام می‌کند، اما private I/O logging و استفادهٔ OpenRouter از ورودی/خروجی تنظیمات جدا دارند. metadata درخواست همچنان نگهداری می‌شود و دسته‌بندی ناشناس نمونه‌های ورودی نیز توضیح داده شده است. `provider.zdr` و `data_collection` وضعیت این opt-inها را اثبات نمی‌کنند. تأیید مالک این پروژه دربارهٔ خاموش‌بودن دو گزینه در 2026-10-05 ثبت شده است؛ private logging، استفادهٔ محتوایی، broadcast و plugins/defaults مرتبط باید برای حساب و workspace مورد استفاده دوره‌ای بررسی شوند. [data collection](https://openrouter.ai/docs/guides/privacy/data-collection)
 
 نشانی‌های فعلی مستندات برای workspace پیش‌فرض: [Private I/O Logging در Observability](https://openrouter.ai/workspaces/default/observability) و [OpenRouter Use of Inputs/Outputs در Workspace Settings](https://openrouter.ai/workspaces/default/settings). کنترل ZDR جدا در [Privacy Settings](https://openrouter.ai/settings/privacy) است. اگر کلید به workspace دیگری تعلق دارد، تنظیمات همان workspace بررسی می‌شوند؛ این صفحه‌ها به ورود مالک حساب نیاز دارند. [data collection](https://openrouter.ai/docs/guides/privacy/data-collection)، [ZDR](https://openrouter.ai/docs/guides/features/zdr)
 
@@ -51,7 +51,7 @@ DPA عمومی فعلی، به‌روزشده در 2026-08-26، حذف prompt/ou
 
 Terms بند ۱۰٫۲، DPA را برای نمایندگی سازمان یا استفادهٔ تجاریِ انتفاعی به قرارداد ارجاع می‌دهد؛ وجود DPA عمومی به معنی الزام خودکار خرید پلن Enterprise نیست. مشخص‌کردن هویت طرف حساب و انطباق شرایط آن با این پایلوت، بررسی انتقال و نهایی‌کردن اطلاعیهٔ اپ هنوز جدا از این شاهد فنی هستند. DPA بند ۲٫۶، دسترسی به Sensitive Data را بدون توافق مربوط محدود می‌کند؛ مواد آموزشی باید در این بررسی لحاظ شوند. این سند نظر حقوقی یا رسید انعقاد قرارداد نیست. [Terms](https://openrouter.ai/terms)، [DPA](https://openrouter.ai/data-processing-agreement)
 
-هر تغییر مدل یا مسیر باید با registry جاری، سقف هزینه و شرایط داده دوباره بررسی شود. تأیید ورود Google یا بودجه جای این بررسی را نمی‌گیرد. این تغییر به تنظیمات حساب یا cloud دست نزده و مجوز تماس واقعی با دادهٔ زبان‌آموز را فعال نکرده است.
+هر تغییر مدل یا مسیر باید با registry جاری، سقف هزینه و شرایط داده دوباره بررسی شود. تأیید ورود Google یا بودجه جای این بررسی را نمی‌گیرد. فعال‌سازی امروز فقط پس از تأیید مالکِ دو تنظیم حساب انجام شد و تماس provider را ممکن می‌کند؛ پیش از پردازش دادهٔ واقعی، مسئول داده و قواعد واقعی پایلوت باید تکمیل شوند.
 
 ## آزمون فنی
 

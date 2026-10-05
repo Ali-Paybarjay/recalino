@@ -20,5 +20,5 @@
   "charactersPerPage": 3000,
   "audioUrlSupported": false,
   "sttProviderOptions": {},
-  "dataContractApproved": false
+  "dataContractApproved": true
 }

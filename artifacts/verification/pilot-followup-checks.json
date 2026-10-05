@@ -36,12 +36,16 @@
   "privacyVersion": "0.2",
   "privacyStatus": "draft",
   "pilotMaximumParticipants": 8,
-  "dataContractApproved": false,
+  "dataContractApproved": true,
+  "ownerOpenRouterPrivacyConfirmation": {
+    "privateInputOutputLogging": "off",
+    "openRouterUseOfInputsOutputs": "off",
+    "confirmedAt": "2026-10-05"
+  },
   "paidCallsDuringFollowup": 0,
   "pilotGrantsPerformedDuringFollowup": 0,
   "remainingOwnerInformation": [
     "Actual controller identity",
-    "OpenRouter workspace private I/O logging and input/output use settings",
     "Whether the owner account should occupy one approved participant slot"
   ],
   "backupLimitations": "Existing Windows host online, owner logged on, Docker available and Supabase CLI sign-in valid; no overnight availability SLA asserted.",
