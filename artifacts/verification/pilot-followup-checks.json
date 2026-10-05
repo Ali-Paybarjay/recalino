@@ -45,9 +45,9 @@
   "paidCallsDuringFollowup": 0,
   "pilotGrantsPerformedDuringFollowup": 0,
   "remainingOwnerInformation": [
-    "Actual controller identity",
-    "Whether the owner account should occupy one approved participant slot"
   ],
+  "pilotOperator": "Ali Paybarjay",
+  "ownerAccountRole": "test account; may also occupy one of the eight pilot participant slots",
   "backupLimitations": "Existing Windows host online, owner logged on, Docker available and Supabase CLI sign-in valid; no overnight availability SLA asserted.",
   "ownerLoginConfirmation": "Separate human confirmation on the earlier bzf44bkg0 deployment. This reviewed deployment has automatic OAuth start/form checks only."
 }

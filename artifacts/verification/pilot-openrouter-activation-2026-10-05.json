@@ -4,6 +4,8 @@
   "deployment": "https://recalino-dn67co1df-ali-paybarjay-s-projects.vercel.app",
   "deploymentId": "dpl_6VS3xJL5GEwEa4AhnT5NKGaShx6d",
   "publicUrl": "https://recalino.vercel.app",
+  "pilotOperator": "Ali Paybarjay",
+  "ownerAccountRole": "test account; may also occupy one of the eight pilot participant slots",
   "dataContractApproved": true,
   "ownerOpenRouterPrivacyConfirmation": {
     "privateInputOutputLogging": "off",
@@ -27,8 +29,5 @@
   "paidCallsDuringActivation": 0,
   "learnerSessionUsed": false,
   "pilotMaximumParticipants": 8,
-  "remainingOwnerInformation": [
-    "Actual controller identity",
-    "Whether the owner account should occupy one approved participant slot"
-  ]
+  "remainingOwnerInformation": []
 }
