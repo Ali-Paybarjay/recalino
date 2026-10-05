@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-10-04T18:14:57.005Z",
+  "checkedAt": "2026-10-05T12:44:12.048Z",
   "projectRef": "twowhuzhvyuzjrpraikm",
-  "deployment": "https://recalino-lgjhd697s-ali-paybarjay-s-projects.vercel.app",
+  "deployment": "https://recalino-dn67co1df-ali-paybarjay-s-projects.vercel.app",
   "scope": "Real app OAuth start and Google page only. No Google credentials entered, account created, learner session, class data or AI cost.",
   "settings": {
-    "checkedAt": "2026-10-04T18:14:49.977Z",
+    "checkedAt": "2026-10-05T12:44:06.628Z",
     "status": 200,
     "googleEnabled": true,
     "projectHost": "twowhuzhvyuzjrpraikm.supabase.co",
