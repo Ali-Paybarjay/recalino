@@ -4,6 +4,19 @@
   "status": "open_pending_owner_facts_and_remaining_controls",
   "controller": "Ali Paybarjay",
   "pilotParticipantCap": 8,
+  "classFacts": {
+    "classType": "ESOL",
+    "collegeName": null,
+    "allRecordablePeopleAdults": true,
+    "recordingAndAiPermissionOwnerReported": true,
+    "permissionEvidenceRecorded": false
+  },
+  "ico": {
+    "registered": false,
+    "exemptionChecked": false,
+    "commercialIntent": true,
+    "feeCheckerCompleted": false
+  },
   "operatorContactConfigured": true,
   "operatorNameConfiguredLocalAndProductionEnvironment": true,
   "operatorNameActiveOnExistingDeployment": false,
@@ -59,8 +72,8 @@
     "historicalDataErasure": "not implied"
   },
   "ownerFactsRequested": [
-    "College, class, ages and permission for recording and AI processing",
-    "ICO registration or fee-checker result and intended commercial scope",
+    "College name and evidence/method/date/scope of recording and AI permission",
+    "ICO fee-checker result and any required payment or documented exemption",
     "No further Vercel Data Preferences action; keep the saved opt-out setting"
   ],
   "remainingControls": [

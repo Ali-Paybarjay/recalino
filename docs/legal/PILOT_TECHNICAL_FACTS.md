@@ -29,5 +29,7 @@ Supabase دو محل برای Auth audit معرفی می‌کند: سرویس lo
 - طرف واقعی حساب‌های سرویس و شرایط commercial/organizational برای applicability DPA؛ نام مسئول Ali Paybarjay و نشانی تماس معلوم‌اند. نام برای deployment بعدی نیز در env محلی و production ثبت شد.
 - وضعیت Data Preferences واقعی Vercel با تصویر مالک ثبت شد: `Improve models with my data` خاموش است. تأییدهای قبلی مالک دربارهٔ دو گزینهٔ OpenRouter جداست و دوباره درخواست نمی‌شود.
 - قواعد واقعی کالج و اجازهٔ ضبط اشخاص حاضر؛ ارزیابی ضرورت DPIA و مبنای قانونی با شرایط واقعی پایلوت انجام می‌شود. [راهنمای ICO درباره ارزیابی AI](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/artificial-intelligence/guidance-on-ai-and-data-protection/what-are-the-accountability-and-governance-implications-of-ai/)
+- مالک در 2026-10-05 اعلام کرد کلاس ESOL است، همهٔ اشخاص قابل‌ضبط بالای ۱۸ سال‌اند و اجازهٔ ضبط و ارسال به AI گرفته شده است. نام کالج و شاهد/روش ثبت اجازه هنوز ارائه نشده است.
+- مالک اعلام کرد نزد ICO ثبت نشده و معافیت را بررسی نکرده، اما قصد تجاری‌سازی Recalino را دارد. اجرای fee checker و تعیین تکلیف fee/معافیت پیش از عرضهٔ تجاری باز است.
 
 تأیید مالک برای پیش‌نویس‌ها و خاموش‌بودن دو تنظیم حساب OpenRouter ثبت‌شده است؛ این شاهد فنی درخواست تأیید مجدد همان متن نیست. مسئول پایلوت Ali Paybarjay است و حساب مالک فعلاً برای آزمون استفاده می‌شود و می‌تواند یکی از هشت جایگاه پایلوت باشد. `dataContractApproved:true` اکنون فقط برای مسیرهای OpenRouter اعمال شده و سایر بررسی‌های G11 همچنان باید با اطلاعات واقعی کامل شوند.
