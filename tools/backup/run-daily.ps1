@@ -92,9 +92,16 @@ try {
   $ErrorActionPreference = $previousErrorPreference
 }
 $backupResult = $null
+$backupChildFailure = $null
+$backupAllowedChildStages = @('arguments','environment_file','configuration','settings_validation','tools_validation','key_validation','linked_credentials','manifest_connection','archive_and_manifest','journal_read','isolated_restore')
+$backupAllowedChildErrors = @('backup_arguments_invalid','backup_configuration_required','backup_linked_configuration_invalid','backup_linked_identity_invalid','backup_linked_generator_invalid','backup_linked_tls_required','backup_linked_cli_unavailable','backup_native_failed','backup_native_timeout','backup_catalog_invalid','backup_recovery_key_required','backup_integrity_failed','restore_local_target_required','restore_admin_database_required','restore_constraints_invalid','journal_integrity_failed','journal_recovery_key_required','backup_archive_invalid','backup_size_limit','backup_key_invalid','backup_native_server_version','backup_native_permission_denied','backup_native_tls_failed','backup_native_connection_failed','backup_native_dns_failed','backup_native_auth_failed','backup_native_connection_refused','backup_native_network_timeout','backup_native_network_unreachable','backup_native_tenant_failed','backup_operator_action_failed')
 foreach ($backupLine in $backupOutput) {
   try {
     $backupCandidate = $backupLine.ToString() | ConvertFrom-Json -ErrorAction Stop
+    # The CLI already sanitizes errors; accept only exact fixed enums here too.
+    if ($backupAllowedChildStages -contains $backupCandidate.stage -and $backupAllowedChildErrors -contains $backupCandidate.error) {
+      $backupChildFailure = [ordered]@{ stage=$backupCandidate.stage; error=$backupCandidate.error }
+    }
     if ($backupCandidate.state -eq 'ready' -and $backupCandidate.id -match '^[a-fA-F0-9-]{36}$' -and $backupCandidate.keyId -match '^[a-zA-Z0-9_.-]{1,100}$' -and $backupCandidate.encryptedBytes -is [ValueType] -and $backupCandidate.encryptedBytes -gt 0) {
       $backupResult = [ordered]@{
         id=$backupCandidate.id
@@ -114,6 +121,7 @@ $backupStatus = [ordered]@{
   exitCode=$backupExitCode
   result=if ($backupExitCode -eq 0) { $backupResult } else { $null }
   error=if ($backupExitCode -eq 0) { $null } else { $backupFailure }
+  childFailure=if ($backupExitCode -eq 0) { $null } else { $backupChildFailure }
 }
 Write-BackupTaskStatus $backupStatus
 exit $backupExitCode

@@ -51,7 +51,8 @@ $powershellExecutable = Join-Path ([Environment]::GetFolderPath('System')) 'Wind
 if (!(Test-Path -LiteralPath $powershellExecutable -PathType Leaf)) { throw 'backup_powershell_required' }
 $action = New-ScheduledTaskAction -Execute $powershellExecutable -Argument $arguments -WorkingDirectory $workspace
 $trigger = New-ScheduledTaskTrigger -Daily -At $LocalTime
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+# Same-day backup creation is idempotent. Bounded scheduler retries recover transient failures.
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 1) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 10)
 if ($existingTask) {
   Set-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings | Select-Object TaskName, State
 } else {

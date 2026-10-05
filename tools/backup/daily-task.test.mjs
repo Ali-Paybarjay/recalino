@@ -142,6 +142,35 @@ test(
 );
 
 test(
+  "a failed child retains only fixed diagnostic enums and drops arbitrary private fields",
+  windowsOnly,
+  () => {
+    const f = fixture();
+    try {
+      writeFileSync(
+        path.join(f.folder, "fake-pnpm.cjs"),
+        `process.stderr.write(JSON.stringify({error:'backup_native_dns_failed',stage:'archive_and_manifest',detail:'synthetic-secret-marker'}) + '\\n');
+process.stderr.write(JSON.stringify({error:'synthetic-secret-marker',stage:'linked_credentials'}) + '\\n');
+process.exitCode = 1;`,
+      );
+      const result = f.run();
+      assert.equal(result.status, 1);
+      const status = f.status();
+      assert.equal(status.error, "backup_schedule_execution_failed");
+      assert.deepEqual(status.childFailure, {
+        stage: "archive_and_manifest",
+        error: "backup_native_dns_failed",
+      });
+      assert.ok(!JSON.stringify(status).includes("synthetic-secret-marker"));
+      assert.ok(!result.stdout.includes("synthetic-secret-marker"));
+      assert.ok(!result.stderr.includes("synthetic-secret-marker"));
+    } finally {
+      f.cleanup();
+    }
+  },
+);
+
+test(
   "a different declared Windows owner is refused before decrypting or starting a child",
   windowsOnly,
   () => {
