@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import pg from "pg";
 import { LOCAL_ADMIN_DATABASE_URL } from "../../../packages/core/test/local-db";
-import type { AdminSnapshot } from "../src/ui/admin/contracts";
+import type { AdminEmail, AdminSnapshot } from "../src/ui/admin/contracts";
 import { expectNoAxeViolations, VIEWPORTS } from "./helpers";
 import { signInAsNewLearner } from "./learner";
 
@@ -378,6 +378,163 @@ test.describe("Owner administration", () => {
       expect(requests[1]?.localizedVariables?.fa?.next_step_text?.trim().length).toBeGreaterThan(0);
       expect(requests[1]?.localizedVariables?.en?.next_step_text?.trim().length).toBeGreaterThan(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
+      const outbox = await db.query<{ count: string }>(
+        "select count(*) from support.email_outbox where user_id=$1",
+        [userId],
+      );
+      expect(Number(outbox.rows[0]?.count)).toBe(0);
+    });
+  });
+  test("approved email results refresh delivery states and explain Gmail failure without resending", async ({
+    page,
+  }) => {
+    await withLocalOwner(page, async (userId, db) => {
+      const user = (await (
+        await page.request.get(`/api/admin?view=user&userId=${userId}`)
+      ).json()) as AdminSnapshot;
+      let scenario = "sent";
+      let polls = 0;
+      let badStatusRead = false;
+      const actions: string[] = [];
+      const queued: AdminEmail = {
+        id: "07b37693-5a53-4632-9fdd-d470b95aa21e",
+        userId,
+        email: user.user?.email ?? "synthetic@example.test",
+        subject: "Synthetic tracked invitation",
+        state: "queued",
+        createdAt: new Date().toISOString(),
+        lastError: null,
+        retryAllowed: false,
+      };
+      await page.route("**/api/admin**", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (request.method() === "GET" && url.searchParams.has("emailIds")) {
+          expect(url.searchParams.get("view")).toBe("history");
+          expect(url.searchParams.get("emailIds")).toBe(queued.id);
+          polls++;
+          if (badStatusRead)
+            return route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: "invalid-json",
+            });
+          const state = scenario === "sent" && polls === 1 ? "sending" : scenario;
+          return route.fulfill({
+            json: {
+              view: "history",
+              emails: [
+                {
+                  ...queued,
+                  state,
+                  lastError:
+                    state === "failed"
+                      ? "smtp_authentication_rejected"
+                      : state === "unknown"
+                        ? "smtp_result_unverified"
+                        : null,
+                  retryAllowed: state === "failed",
+                },
+              ],
+            },
+          });
+        }
+        if (request.method() !== "POST") return route.continue();
+        const payload = request.postDataJSON() as { action: string };
+        actions.push(payload.action);
+        if (payload.action === "email.preview")
+          return route.fulfill({
+            json: {
+              preview: {
+                previewId: "d045a1d0-0e0a-4f7d-bd4f-3e831cb702b2:1",
+                expiresAt: new Date(Date.now() + 600_000).toISOString(),
+                recipients: [
+                  {
+                    userId,
+                    name: "Synthetic learner",
+                    email: queued.email,
+                    language: "en",
+                    subject: queued.subject,
+                    body: "An approved synthetic invitation.",
+                  },
+                ],
+                excluded: [],
+              },
+            },
+          });
+        expect(payload.action).toBe("email.send");
+        return route.fulfill({ status: 202, json: { ok: true, emails: [queued] } });
+      });
+      for (const state of ["sent", "failed", "unknown"]) {
+        scenario = state;
+        polls = 0;
+        await page.goto(`/admin#view=user&userId=${userId}`);
+        await page.getByRole("button", { name: "Send email", exact: true }).click();
+        await page.getByRole("button", { name: "Preview email", exact: true }).click();
+        await page.getByRole("button", { name: /Approve & send to/ }).click();
+        await expect(
+          page.getByRole("heading", { name: "Approved email results", exact: true }),
+        ).toBeVisible();
+        const row = page.getByRole("row").filter({ hasText: queued.subject });
+        await expect(
+          row.getByText(state === "sent" ? "Sent" : state === "failed" ? "Failed" : "Unconfirmed", {
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(page.getByText("Updating email status…", { exact: true })).toHaveCount(0);
+        expect(polls).toBe(state === "sent" ? 2 : 1);
+        if (state === "failed") {
+          const failure = page.getByRole("alert").filter({ hasText: queued.email });
+          await expect(failure.getByText(/Gmail rejected the sender’s sign-in/)).toBeVisible();
+          await expect(
+            failure.getByRole("button", { name: "Review retry", exact: true }),
+          ).toBeVisible();
+          await page.getByRole("button", { name: "فارسی", exact: true }).last().click();
+          await expect(failure.getByText(/این ایمیل ارسال نشد/)).toBeVisible();
+          await expect(
+            failure.getByText("smtp_authentication_rejected", { exact: true }),
+          ).toHaveCount(0);
+          await page.setViewportSize(VIEWPORTS.mobile);
+          await expectNoAxeViolations(page);
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+          ).toBe(true);
+          const screenshotPath = test
+            .info()
+            .outputPath("email-delivery-auth-failure-fa-mobile.png");
+          await page.screenshot({ path: screenshotPath, fullPage: true });
+          await test.info().attach("email-delivery-auth-failure-fa-mobile", {
+            path: screenshotPath,
+            contentType: "image/png",
+          });
+          await page.setViewportSize(VIEWPORTS.desktop);
+          await page.getByRole("button", { name: "English", exact: true }).last().click();
+          badStatusRead = true;
+          await page.getByRole("button", { name: "Refresh email status", exact: true }).click();
+          await expect(page.getByText(/The status could not be refreshed/)).toBeVisible();
+          await expect(failure.getByText(/this email was not sent/)).toBeVisible();
+          await expect(row.getByText("Failed", { exact: true })).toBeVisible();
+          badStatusRead = false;
+        }
+        if (state === "unknown") {
+          await expect(page.getByText(/There is no automatic retry/)).toBeVisible();
+          await expect(page.getByRole("button", { name: "Review retry", exact: true })).toHaveCount(
+            0,
+          );
+          await page.getByRole("button", { name: "Refresh email status", exact: true }).click();
+          await expect.poll(() => polls).toBe(2);
+          await expect(page.getByText("Updating email status…", { exact: true })).toHaveCount(0);
+          expect(polls).toBe(2);
+        }
+      }
+      expect(actions).toEqual([
+        "email.preview",
+        "email.send",
+        "email.preview",
+        "email.send",
+        "email.preview",
+        "email.send",
+      ]);
       const outbox = await db.query<{ count: string }>(
         "select count(*) from support.email_outbox where user_id=$1",
         [userId],

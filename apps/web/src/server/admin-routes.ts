@@ -114,6 +114,15 @@ export function adminHandler(): Handler {
     if (request.method === "GET") {
       const params = new URL(request.url).searchParams;
       const view: AdminView = views.parse(params.get("view") ?? "overview");
+      const emailIds = params.get("emailIds");
+      if (emailIds !== null) {
+        if (view !== "history")
+          throw errors.validationFailed({ emailIds: ["history_view_required"] });
+        const ids = z.array(z.uuid()).min(1).max(50).parse(emailIds.split(","));
+        return {
+          body: { view, emails: await readApprovedEmailResults(db, [...new Set(ids)]) },
+        };
+      }
       const userId = params.get("userId") || undefined,
         threadId = params.get("threadId") || undefined;
       if (userId) z.uuid().parse(userId);

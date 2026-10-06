@@ -80,7 +80,7 @@
 | `feedback` | `threads` با مشخصات حساب و metadata ارتباط |
 | `thread` | `thread` با پیام‌های ارتباط پشتیبانی و replyDraft پنهان برای زبان‌آموز |
 | `templates` | `templates` فارسی/انگلیسی و نسخه‌دار |
-| `history` | `emails` شامل تماس/موضوع/وضعیت/کد خطا؛ بدون body یا metadata تأمین‌کننده |
+| `history` | `emails` شامل تماس/موضوع/وضعیت/کد خطا؛ بدون body یا metadata تأمین‌کننده. پارامتر اختیاری `emailIds`، فهرست ۱ تا ۵۰ UUID جداشده با ویرگول، فقط metadata همان شناسه‌ها را برای پیگیری زنده برمی‌گرداند؛ حساب tombstoned همچنان پنهان می‌ماند. این پارامتر فقط در همین view معتبر است و نبودش فهرست معمول تاریخچه را نگه می‌دارد. |
 | `privacy` | `privacy` شامل شناسه، نوع، وضعیت، زمان و کد خطا |
 | `backups` | `backups` شامل وضعیت، createdAt، verifiedAt و restoreDrillAt؛ بدون key یا فایل |
 | `audit` | `audit` شامل action، actorId، دلیل، شناسهٔ subject و زمان |

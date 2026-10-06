@@ -1,5 +1,12 @@
 import { AdminRequestError } from "./api";
-import type { AdminLocale, AdminView, Dimension, LocalizedText, PriceRate } from "./contracts";
+import type {
+  AdminEmail,
+  AdminLocale,
+  AdminView,
+  Dimension,
+  LocalizedText,
+  PriceRate,
+} from "./contracts";
 
 export const viewNames: Record<AdminView, LocalizedText> = {
   overview: { en: "Overview", fa: "نمای کلی" },
@@ -58,7 +65,7 @@ const statuses: Record<string, LocalizedText> = {
   delivered: { en: "Delivered", fa: "تحویل شد" },
   bounced: { en: "Bounced", fa: "برگشت خورده" },
   failed: { en: "Failed", fa: "ناموفق" },
-  unknown: { en: "Checking status", fa: "در حال بررسی وضعیت" },
+  unknown: { en: "Unconfirmed", fa: "نامشخص" },
   not_sent: { en: "Not sent", fa: "ارسال نشده" },
   cancelled: { en: "Cancelled", fa: "لغو شده" },
   ready: { en: "Ready", fa: "آماده" },
@@ -92,6 +99,17 @@ export function statusName(value: string, locale: AdminLocale): string {
 }
 export function localized(value: string | LocalizedText, locale: AdminLocale): string {
   return typeof value === "string" ? value : value[locale];
+}
+export function emailDeliveryExplanation(email: AdminEmail, locale: AdminLocale): string | null {
+  if (email.state === "unknown")
+    return locale === "fa"
+      ? "نتیجهٔ ارسال تأیید نشده است. پیش از ارسال دوباره، پوشهٔ ارسالی یا پیام برگشت در حساب فرستنده را بررسی کنید. تلاش مجدد خودکار انجام نمی‌شود."
+      : "The send result is unconfirmed. Check the sender’s Sent folder or rejection notice before sending again. There is no automatic retry.";
+  if (email.lastError === "smtp_authentication_rejected")
+    return locale === "fa"
+      ? "Gmail ورود حساب فرستنده را نپذیرفت و این ایمیل ارسال نشد. اتصال حساب Gmail فرستنده را اصلاح کنید، سپس همین ایمیل تأییدشده را دوباره ارسال کنید."
+      : "Gmail rejected the sender’s sign-in, so this email was not sent. Reconnect the sender’s Gmail account, then retry this approved email.";
+  return email.lastError;
 }
 export function errorMessage(error: unknown, locale: AdminLocale): string {
   const en = locale === "en";

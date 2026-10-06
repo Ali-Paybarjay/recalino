@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./Admin.module.css";
 import type { AdminScreenProps } from "./AdminScreenProps";
+import { emailStatusPending, refreshEmailStatuses } from "./api";
 import { dateLabel } from "./CoreScreens";
 import type {
   AdminEmail,
@@ -13,6 +14,7 @@ import type {
   EmailPreview,
   EmailTemplate,
 } from "./contracts";
+import { emailDeliveryExplanation } from "./copy";
 import {
   emailBodyWithNote,
   formatNumber,
@@ -294,19 +296,42 @@ function MessageTabs({ props, active }: { props: AdminScreenProps; active: strin
 function EmailRows({ rows, props }: { rows: AdminEmail[]; props: AdminScreenProps }) {
   const { t, locale, act, busy, reload } = props;
   const [retry, setRetry] = useState<string | null>(null);
+  const [currentRows, setCurrentRows] = useState(rows);
+  const [refreshRevision, setRefreshRevision] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  useEffect(() => {
+    setCurrentRows(rows);
+  }, [rows]);
+  useEffect(() => {
+    setRefreshFailed(false);
+    if (!emailStatusPending(rows) && refreshRevision === 0) {
+      setRefreshing(false);
+      return;
+    }
+    const controller = new AbortController();
+    setRefreshing(true);
+    void refreshEmailStatuses(rows, setCurrentRows, controller.signal, refreshRevision > 0)
+      .catch(() => {
+        if (!controller.signal.aborted) setRefreshFailed(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRefreshing(false);
+      });
+    return () => controller.abort();
+  }, [rows, refreshRevision]);
   return (
     <>
-      {rows.length ? (
+      {currentRows.length ? (
         <Table
           columns={[
             t("Recipient", "گیرنده"),
             t("Subject", "موضوع"),
             t("Status", "وضعیت"),
             t("Time", "زمان"),
-            t("Action", "اقدام"),
           ]}
         >
-          {rows.map((email) => (
+          {currentRows.map((email) => (
             <tr key={email.id}>
               <td>
                 <bdi>{email.email}</bdi>
@@ -316,25 +341,60 @@ function EmailRows({ rows, props }: { rows: AdminEmail[]; props: AdminScreenProp
               </td>
               <td>
                 <Badge state={email.state} locale={locale} />
-                {email.lastError && (
-                  <small className={styles.muted} style={{ display: "block" }}>
-                    <bdi>{email.lastError}</bdi>
-                  </small>
-                )}
               </td>
               <td>{dateLabel(email.createdAt, locale)}</td>
-              <td>
-                {email.retryAllowed && (
-                  <Button disabled={busy} onClick={() => setRetry(email.id)}>
-                    {t("Review retry", "بازبینی تلاش مجدد")}
-                  </Button>
-                )}
-              </td>
             </tr>
           ))}
         </Table>
       ) : (
         <Empty>{t("No emails have been recorded.", "هنوز ایمیلی ثبت نشده است.")}</Empty>
+      )}
+      {currentRows.map((email) => {
+        const explanation = emailDeliveryExplanation(email, locale);
+        if (!explanation && !email.retryAllowed) return null;
+        return (
+          <div key={email.id} role={email.state === "failed" ? "alert" : "status"}>
+            <Notice error={email.state === "failed"} warning={email.state === "unknown"}>
+              <p>
+                <Badge state={email.state} locale={locale} /> · <bdi>{email.email}</bdi>
+              </p>
+              <p dir="auto">{email.subject}</p>
+              {explanation && <p>{explanation}</p>}
+              {email.retryAllowed && (
+                <div className={styles.actions}>
+                  <Button disabled={busy} onClick={() => setRetry(email.id)}>
+                    {t("Review retry", "بازبینی تلاش مجدد")}
+                  </Button>
+                </div>
+              )}
+            </Notice>
+          </div>
+        );
+      })}
+      <div role="status" aria-live="polite">
+        {refreshing && (
+          <p className={styles.help}>
+            {t("Updating email status…", "در حال تازه‌سازی وضعیت ایمیل…")}
+          </p>
+        )}
+      </div>
+      {refreshFailed && (
+        <Notice warning>
+          {t(
+            "The status could not be refreshed. Your approved email is preserved; refresh the status to check again.",
+            "وضعیت تازه‌سازی نشد. ایمیل تأییدشدهٔ شما حفظ شده است؛ برای بررسی دوباره، وضعیت را تازه‌سازی کنید.",
+          )}
+        </Notice>
+      )}
+      {currentRows.length > 0 && (
+        <div className={styles.actions}>
+          <Button
+            disabled={busy || refreshing}
+            onClick={() => setRefreshRevision((value) => value + 1)}
+          >
+            {t("Refresh email status", "تازه‌سازی وضعیت ایمیل")}
+          </Button>
+        </div>
       )}
       <p className={styles.help}>
         {t(
@@ -362,6 +422,7 @@ function EmailRows({ rows, props }: { rows: AdminEmail[]; props: AdminScreenProp
                 ).then((result) => {
                   if (result) {
                     setRetry(null);
+                    setRefreshRevision((value) => value + 1);
                     reload();
                   }
                 });

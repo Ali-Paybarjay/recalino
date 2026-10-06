@@ -145,6 +145,22 @@ describe("verified single-owner admin boundary (ADM-I01)", () => {
     expect(approved.emails[0]).not.toHaveProperty("body");
     expect(JSON.stringify(approved)).not.toContain(body);
     const emailId = approved.emails[0].id;
+    const statusPath = `/api/admin?view=history&emailIds=${emailId},${randomUUID()}`;
+    const tracked = await route(requestAs(owner, statusPath, "GET"));
+    expect(tracked.status).toBe(200);
+    expect(await tracked.json()).toEqual({ view: "history", emails: approved.emails });
+    for (const [actor, expected] of [
+      [null, 401],
+      [learner, 404],
+    ] as const)
+      expect((await route(requestAs(actor, statusPath, "GET"))).status).toBe(expected);
+    for (const path of [
+      "/api/admin?view=history&emailIds=invalid",
+      "/api/admin?view=history&emailIds=",
+      `/api/admin?view=overview&emailIds=${emailId}`,
+      `/api/admin?view=history&emailIds=${Array.from({ length: 51 }, () => randomUUID()).join(",")}`,
+    ])
+      expect((await route(requestAs(owner, path, "GET"))).status).toBe(400);
     const receipt = await db
       .selectFrom("ops.admin_operation")
       .select("result")
@@ -218,6 +234,9 @@ describe("verified single-owner admin boundary (ADM-I01)", () => {
     expect(deletedReplay.status).toBe(202);
     const hidden = await deletedReplay.json();
     expect(hidden).toEqual({ ok: true, emails: [] });
+    const deletedStatus = await route(requestAs(owner, statusPath, "GET"));
+    expect(deletedStatus.status).toBe(200);
+    expect(await deletedStatus.json()).toEqual({ view: "history", emails: [] });
     for (const privateValue of [address, subject, body]) {
       expect(JSON.stringify(hidden)).not.toContain(privateValue);
     }

@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-06T14:29:25.167Z",
+  "passed": true,
+  "candidateDeploymentId": "dpl_ARt9oPjGGbQFMdwQBxNDgM75VgaA",
+  "baselineDeploymentId": "dpl_AwSK7UYjkyuZxNmBDuEhNjroca7z",
+  "sourceFilesVerified": 771,
+  "protectedLatestProductionFiles": 761,
+  "health": "ok",
+  "emailPatchMatchesFullVerification": true,
+  "aliasChangePending": true
+}
