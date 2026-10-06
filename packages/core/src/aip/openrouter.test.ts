@@ -23,6 +23,113 @@ const settings: ProviderSettings = {
   dataContractApproved: true,
 };
 describe("AIP OpenRouter boundary", () => {
+  it.each([
+    { label: "valid complete JSON", content: '{"answer":"Hello"}' },
+    { label: "truncated JSON", content: '{"answer":"Incomplete' },
+    { label: "invalid schema", content: '{"wrong":"shape"}' },
+    { label: "empty message", content: null },
+  ])(
+    "reports known output truncation before parsing $label and preserves accounting",
+    async ({ content }) => {
+      const request = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "synthetic-truncated-knowledge",
+            model: "anthropic/claude-haiku-4.5",
+            choices: [{ finish_reason: "length", message: { content } }],
+            usage: { prompt_tokens: 37340, completion_tokens: 6144, cost: 0.06806 },
+          }),
+        ),
+      );
+      const provider = new OpenRouterProvider(
+        "synthetic-private-key",
+        { ...settings, maxOutputTokens: 6144 },
+        request,
+      );
+      await expect(
+        provider.structured({
+          operationKey: "synthetic-length-response",
+          model: "anthropic/claude-haiku-4.5",
+          schema: z.strictObject({ answer: z.string() }),
+          schemaName: "test",
+          system: "Synthetic test",
+          input: "Synthetic fixture",
+        }),
+      ).rejects.toMatchObject({
+        code: "provider_output_truncated",
+        retryable: false,
+        uncertain: false,
+        accounting: {
+          requestId: "synthetic-truncated-knowledge",
+          provider: "openrouter",
+          model: "anthropic/claude-haiku-4.5",
+          usage: { inputTokens: 37340, outputTokens: 6144 },
+          actualMicros: 68060,
+        },
+      });
+      expect(request).toHaveBeenCalledOnce();
+      const body = JSON.parse(String(request.mock.calls[0]?.[1]?.body));
+      expect(body.max_tokens).toBe(6144);
+    },
+  );
+
+  it.each(['{"answer":"Incomplete', '{"wrong":"shape"}'])(
+    "keeps a genuinely malformed completed output distinct from truncation: %s",
+    async (content) => {
+      const request = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "synthetic-malformed-knowledge",
+            model: settings.llmModel,
+            choices: [{ finish_reason: "stop", message: { content } }],
+            usage: { prompt_tokens: 30, completion_tokens: 20, cost: 0.000007 },
+          }),
+        ),
+      );
+      const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+      await expect(
+        provider.structured({
+          operationKey: "synthetic-completed-malformed",
+          model: settings.llmModel,
+          schema: z.strictObject({ answer: z.string() }),
+          schemaName: "test",
+          system: "Synthetic test",
+          input: "Synthetic fixture",
+        }),
+      ).rejects.toMatchObject({
+        code: "provider_schema_invalid",
+        retryable: false,
+        uncertain: false,
+        accounting: {
+          requestId: "synthetic-malformed-knowledge",
+          usage: { inputTokens: 30, outputTokens: 20 },
+          actualMicros: 7,
+        },
+      });
+    },
+  );
+
+  it("keeps a truncated HTTP envelope uncertain instead of mistaking it for a known output limit", async () => {
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response('{"id":"incomplete-envelope","choices":['));
+    const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+    await expect(
+      provider.structured({
+        operationKey: "synthetic-incomplete-envelope",
+        model: settings.llmModel,
+        schema: z.strictObject({ answer: z.string() }),
+        schemaName: "test",
+        system: "Synthetic test",
+        input: "Synthetic fixture",
+      }),
+    ).rejects.toMatchObject({
+      code: "provider_response_invalid",
+      retryable: false,
+      uncertain: true,
+    });
+  });
+
   it("sends supported Anthropic union grammar while preserving local union and length validation", async () => {
     const schema = z.strictObject({
       locator: z.discriminatedUnion("kind", [
@@ -164,6 +271,114 @@ describe("AIP OpenRouter boundary", () => {
       expect(body.provider).toEqual({ zdr: true, data_collection: "deny", options: {} });
       expect(body.input_audio).toEqual({ data: "AQI=", format: "mp3" });
     }
+  });
+  it.each([
+    { label: "outside the chunk", segment: { start: 299, end: 300.01, text: "Last words" } },
+    { label: "zero length", segment: { start: 1, end: 1, text: "Last words" } },
+    { label: "reversed", segment: { start: 2, end: 1, text: "Last words" } },
+    {
+      label: "rounded to zero length",
+      segment: { start: 1.0001, end: 1.0002, text: "Last words" },
+    },
+    { label: "negative", segment: { start: -1, end: 1, text: "Last words" } },
+    { label: "nonnumeric", segment: { start: "unknown", end: 1, text: "Last words" } },
+    { label: "missing", segment: { end: 1, text: "Last words" } },
+    { label: "malformed segment", segment: null },
+    { label: "malformed segment text", segment: { start: 0, end: 1, text: 123 } },
+  ])("preserves full transcription and accounting when timing is $label", async ({ segment }) => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          text: "First words and last words are all retained.",
+          language: "en",
+          segments: [{ start: 0, end: 1, text: "First words" }, segment],
+          usage: { seconds: 300.1, input_tokens: 10, output_tokens: 20, cost: 0.000017 },
+        }),
+        { headers: { "X-Generation-Id": "synthetic-stt-complete" } },
+      ),
+    );
+    const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+    const result = await provider.transcribe({
+      operationKey: "synthetic-bad-timing",
+      model: settings.sttModel,
+      audio: { bytes: new Uint8Array([1]), format: "mp3" },
+      durationMs: 300000,
+      offsetMs: 900000,
+    });
+    expect(result).toEqual({
+      output: {
+        text: "First words and last words are all retained.",
+        language: "en",
+        segments: [],
+      },
+      requestId: "synthetic-stt-complete",
+      provider: "openrouter",
+      model: settings.sttModel,
+      usage: { audioSeconds: 301, inputTokens: 10, outputTokens: 20 },
+      actualMicros: 17,
+    });
+    expect(request).toHaveBeenCalledOnce();
+  });
+  it("retains exact native segment offsets when timing is valid", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          text: "Native timing",
+          segments: [{ start: 1.234, end: 2.345, text: "Native timing", speaker: "native-2" }],
+        }),
+      ),
+    );
+    const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+    expect(
+      (
+        await provider.transcribe({
+          operationKey: "synthetic-native-timing",
+          model: settings.sttModel,
+          audio: { bytes: new Uint8Array([1]), format: "mp3" },
+          durationMs: 300000,
+          offsetMs: 900000,
+        })
+      ).output.segments,
+    ).toEqual([
+      {
+        id: "0",
+        text: "Native timing",
+        startMs: 901234,
+        endMs: 902345,
+        speakerId: "native-2",
+        speakerRole: "unknown",
+      },
+    ]);
+  });
+  it.each([
+    { segments: [] },
+    { text: 123, usage: { cost: 0.000017 } },
+    { text: "Invalid usage", usage: { seconds: -1 } },
+    { text: "Invalid cost", usage: { cost: -1 } },
+    { text: "Invalid language", language: 12 },
+  ])("keeps malformed transcription response uncertain: %j", async (body) => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(body)));
+    const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+    await expect(
+      provider.transcribe({
+        operationKey: "synthetic-malformed-response",
+        model: settings.sttModel,
+        audio: { bytes: new Uint8Array([1]), format: "mp3" },
+        durationMs: 1000,
+      }),
+    ).rejects.toMatchObject({ code: "provider_response_invalid", uncertain: true });
+  });
+  it("keeps truncated transcription JSON uncertain", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('{"text":"Incomplete"'));
+    const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+    await expect(
+      provider.transcribe({
+        operationKey: "synthetic-truncated-response",
+        model: settings.sttModel,
+        audio: { bytes: new Uint8Array([1]), format: "mp3" },
+        durationMs: 1000,
+      }),
+    ).rejects.toMatchObject({ code: "provider_response_invalid", uncertain: true });
   });
   it("requests ZDR and disables response caching for speech synthesis", async () => {
     const audio = new Uint8Array([0x49, 0x44, 0x33]);

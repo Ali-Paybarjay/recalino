@@ -32,6 +32,7 @@ import {
 import { after } from "next/server";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
+import { notifyAutomaticLearning } from "./automatic-learning-notifications";
 import { runJobsSoon } from "./jobs";
 import { privacyDependencies } from "./privacy";
 import { sourceAudioJobDefinition, sourceUploadJobDefinition } from "./source-jobs";
@@ -79,13 +80,14 @@ export function sourcesHandler(): Handler {
     if (fields.kind !== "audio") store();
     const operationKey = request.headers.get("idempotency-key");
     if (!operationKey) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
-    return {
-      status: 201,
-      body: await createSource(db, actor(ctx), {
-        ...(input as Record<string, unknown>),
-        operationKey,
-      }),
-    };
+    const learner = actor(ctx);
+    const body = await createSource(db, learner, {
+      ...(input as Record<string, unknown>),
+      operationKey,
+    });
+    const sessionId = (input as Record<string, unknown>).sessionId;
+    if (typeof sessionId === "string") await notifyAutomaticLearning(db, learner, sessionId);
+    return { status: 201, body };
   };
 }
 export function sourceHandler(id: string): Handler {
@@ -128,7 +130,10 @@ export function classSourcesHandler(id: string): Handler {
     z.uuid().parse(id);
     if (request.method === "GET") return { body: await sessionSources(db, actor(ctx), id) };
     const fields = z.strictObject({ assetId: z.uuid() }).parse(input);
-    return { body: { linkId: await attachSource(db, actor(ctx), id, fields.assetId) } };
+    const learner = actor(ctx);
+    const linkId = await attachSource(db, learner, id, fields.assetId);
+    await notifyAutomaticLearning(db, learner, id);
+    return { body: { linkId } };
   };
 }
 export function classSourceHandler(id: string, sourceId: string): Handler {
@@ -139,7 +144,10 @@ export function classSourceHandler(id: string, sourceId: string): Handler {
       await detachSource(db, actor(ctx), id, sourceId);
       return { body: { removed: true } };
     }
-    return { body: await updateSourceSelection(db, actor(ctx), id, sourceId, input) };
+    const learner = actor(ctx);
+    const body = await updateSourceSelection(db, learner, id, sourceId, input);
+    await notifyAutomaticLearning(db, learner, id);
+    return { body };
   };
 }
 export function sourceUploadHandler(id: string): Handler {

@@ -28,6 +28,7 @@ import { z } from "zod";
 import type { Handler } from "./api";
 import { runJobsSoon } from "./jobs";
 import { spikeJobDefinitions } from "./spike-jobs";
+import { checkVoiceRuntime } from "./voice-engine";
 
 // SPIKE-05 only (M4, T3 to T5): measurements on the protected cloud deployment. Answers 404
 // unless RECALINO_SPIKE=1 and the caller sends SPIKE_TOKEN. Synthetic data only. Removed in T6.
@@ -39,6 +40,20 @@ function guard(request: Request): void {
   const token = process.env.SPIKE_TOKEN ?? "";
   const given = request.headers.get("x-spike-token") ?? "";
   const digest = (value: string) => createHash("sha256").update(value).digest();
+  // A staged release can prove its packaged native runtime without changing the operator token.
+  // This short-lived credential authorizes only internal synthetic inference, never another spike.
+  const releaseToken = process.env.VOICE_RELEASE_CHECK_TOKEN ?? "";
+  const expiresAt = Date.parse(process.env.VOICE_RELEASE_CHECK_EXPIRES_AT ?? "");
+  const now = Date.now();
+  if (
+    new URL(request.url).pathname.split("/").at(-1) === "voice-runtime" &&
+    releaseToken.length >= 32 &&
+    Number.isFinite(expiresAt) &&
+    expiresAt > now &&
+    expiresAt - now <= 6 * 60 * 60 * 1000 &&
+    timingSafeEqual(digest(given), digest(releaseToken))
+  )
+    return;
   if (
     process.env.RECALINO_SPIKE !== "1" ||
     token.length < 32 ||
@@ -115,6 +130,13 @@ export function spikeHandler(): Handler {
     guard(request);
     const action = new URL(request.url).pathname.split("/").at(-1);
     const body = (input ?? {}) as Record<string, unknown>;
+    if (action === "voice-runtime") {
+      z.strictObject({}).parse(body);
+      const result = await checkVoiceRuntime();
+      return {
+        body: { passed: true, modelRevision: result.modelRevision, elapsedMs: result.durationMs },
+      };
+    }
     const settings = readPltSettings();
     const now = new Date();
 

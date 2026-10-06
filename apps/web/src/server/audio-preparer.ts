@@ -128,6 +128,57 @@ export function audioVerifier(): AudioVerifier {
     },
   };
 }
+/** PCM exists only during this invocation; class confirmation playback stays on the device. */
+export async function decodeVoiceAudio(
+  bytes: Uint8Array,
+  maxDurationMs: number,
+): Promise<{
+  samples: Float32Array;
+  sampleRate: 16000;
+  durationMs: number;
+}> {
+  if (!Number.isSafeInteger(maxDurationMs) || maxDurationMs <= 0)
+    throw errors.validationFailed({ audio: ["invalid_duration"] });
+  return withAudioFile(bytes, async (path, directory) => {
+    const outputPath = join(directory, "voice.pcm");
+    await ffmpeg(
+      [
+        "-i",
+        path,
+        "-t",
+        String((maxDurationMs + 1000) / 1000),
+        "-map",
+        "0:a:0",
+        "-vn",
+        "-sn",
+        "-dn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        "-f",
+        "s16le",
+        "-y",
+        outputPath,
+      ],
+      120000,
+    );
+    const pcm = await readFile(outputPath);
+    try {
+      const durationMs = Math.ceil(pcm.length / 32);
+      if (!pcm.length || pcm.length % 2 || durationMs > maxDurationMs)
+        throw errors.validationFailed({ audio: ["voice_duration_invalid"] });
+      const samples = new Float32Array(pcm.length / 2);
+      for (let index = 0; index < samples.length; index++)
+        samples[index] = pcm.readInt16LE(index * 2) / 32768;
+      return { samples, sampleRate: 16000, durationMs };
+    } finally {
+      pcm.fill(0);
+    }
+  });
+}
 function selectedRanges(ranges: { start: number; end: number }[], durationMs: number) {
   const ordered = (ranges.length ? ranges : [{ start: 0, end: durationMs }])
     .map((range) => ({ ...range }))
@@ -197,7 +248,8 @@ export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, sourc
             },
           });
           created.push({
-            id: `${runId}-${created.length}`,
+            // A class run can contain several independently recorded audio sources.
+            id: `${runId}-${source.sourceId}-${created.length}`,
             sourceId: source.sourceId,
             objectId,
             offsetMs,

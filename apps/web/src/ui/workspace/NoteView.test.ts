@@ -4,6 +4,7 @@ import { type ButtonHTMLAttributes, createElement, type MouseEvent } from "react
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NoteView } from "./NoteView";
+import type { NoteSourceIssue } from "./note-source-issues";
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -116,7 +117,7 @@ beforeEach(() => {
   mocks.buttons.clear();
 });
 
-describe("notes before saving", () => {
+describe("generated previews and automatic preparation", () => {
   it("shows the complete generated preview without enabling edits, cards, or exports", () => {
     const html = render();
     for (const text of [
@@ -129,10 +130,9 @@ describe("notes before saving", () => {
       "Preview homework",
       "Preview uncertainty",
       "AI expansion",
-      "Some class material is missing.",
+      "Some source details need checking.",
       "Read-only preview",
-      "Save class notes",
-      "Save notes and make flashcards",
+      "New uploads automatically save your notes and flashcards.",
     ])
       expect(html).toContain(text);
     expect(html).not.toContain("Edit this note");
@@ -140,101 +140,72 @@ describe("notes before saving", () => {
     expect(html).not.toContain("Edit answer");
     expect(html).not.toContain(`href="/classes/${sessionId}/cards"`);
     expect(html).not.toContain(`href="/classes/${sessionId}/export"`);
+    expect(html).not.toContain("Version history");
+    expect(html).not.toContain("Your class notes are ready");
+    expect(html).not.toContain("Save notes and make flashcards");
+    expect(html).not.toContain(">Save notes<");
+    expect(html).toMatch(/<details[^>]*><summary>AI explanation<\/summary>/);
     expect(mocks.request).not.toHaveBeenCalled();
   });
 
-  it("offers processing saved material or changing sources when no notes exist", () => {
+  it("offers material upload without a manual creation step when no notes exist", () => {
     const html = render({ latest: null });
     expect(html).toContain("Start with class material");
-    expect(html).toContain("Create class notes");
-    expect(html).toContain(`href="/classes/${sessionId}/estimate"`);
-    expect(html).toContain("Add or change material");
+    expect(html).not.toContain("Create class notes");
+    expect(html).not.toContain(`href="/classes/${sessionId}/estimate"`);
+    expect(html).toContain("Add material");
+    expect(html).toContain("Notes and flashcards are created and saved automatically.");
     expect(html).toContain(`href="/classes/${sessionId}/sources"`);
-    expect(html).not.toContain("Save class notes");
+    expect(html).not.toContain(">Save notes<");
     expect(mocks.request).not.toHaveBeenCalled();
   });
 
-  it("saves the preview through the existing API with a first-revision concurrency check", async () => {
-    mocks.request.mockResolvedValue(notebook);
-    render();
-    await click("Save class notes");
-    expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
-      `/api/classes/${sessionId}/notes`,
-      "POST",
-      { expectedRevisionId: null, knowledgeVersionId: latest.id },
-      expect.any(String),
-    );
-    expect(mocks.refresh).toHaveBeenCalledOnce();
-    expect(mocks.push).not.toHaveBeenCalled();
-  });
-
-  it("opens cards only after saving succeeds and ignores a second click while saving", async () => {
-    let resolveSave: ((value: Notebook) => void) | undefined;
-    const pending = new Promise<Notebook>((resolve) => {
-      resolveSave = resolve;
+  it("shows the selected filenames and truthful upload status before creation", () => {
+    const html = render({
+      latest: null,
+      materialSources: [
+        { sourceId: "audio", name: "Class recording", order: 1, status: "local-audio" },
+        { sourceId: "pdf", name: "Worksheet.pdf", order: 2, status: "ready" },
+        { sourceId: "image", name: "Board.jpeg", order: 3, status: "needs-upload" },
+        { sourceId: "pending", name: "Handout.pdf", order: 4, status: "uploading" },
+      ],
     });
-    mocks.request.mockReturnValue(pending);
-    render();
-    const saving = click("Save notes and make flashcards");
-    await click("Save class notes");
-    expect(mocks.request).toHaveBeenCalledOnce();
-    expect(mocks.push).not.toHaveBeenCalled();
-    resolveSave?.(notebook);
-    await saving;
-    expect(mocks.request).toHaveBeenCalledWith(
-      `/api/classes/${sessionId}/notes`,
-      "POST",
-      { expectedRevisionId: null, knowledgeVersionId: latest.id },
-      expect.any(String),
-    );
-    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(`/classes/${sessionId}/cards`);
-    expect(mocks.refresh).toHaveBeenCalledOnce();
-  });
-
-  it("keeps the idempotency key after a failed save and never navigates on failure", async () => {
-    mocks.request.mockRejectedValueOnce(new Error("Synthetic connection failure"));
-    render();
-    await click("Save notes and make flashcards");
-    const firstKey = mocks.request.mock.calls[0]?.[3];
-    expect(mocks.push).not.toHaveBeenCalled();
-    expect(mocks.refresh).not.toHaveBeenCalled();
-    mocks.request.mockResolvedValue(notebook);
-    await click("Save notes and make flashcards");
-    expect(mocks.request.mock.calls[1]?.[3]).toBe(firstKey);
-    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(`/classes/${sessionId}/cards`);
+    expect(html).toContain("File 1 · <bdi>Class recording</bdi>");
+    expect(html).toContain("Saved on this device · automatic upload pending");
+    expect(html).toContain("Worksheet.pdf");
+    expect(html).toContain("Ready");
+    expect(html).toContain("Upload file 3 again");
+    expect(html).toContain("Uploading…");
+    expect(html).not.toContain("Upload file 1 again");
+    expect(html).not.toContain("Create class notes");
+    expect(html).toContain("Add material");
   });
 });
 
 describe("saved notes and revisions", () => {
-  it("preserves saved edits while giving an explicit next action and newer-version choice", () => {
-    const html = render({ initial: notebook });
+  it("opens saved notes in reading mode with optional tools after the content", () => {
+    const html = render({ initial: notebook, courseId: "course-1" });
     expect(html).toContain("Saved learner notes");
     expect(html).toContain("Saved learner edit");
     expect(html).not.toContain(model.title);
-    expect(html).toContain("Edit this note");
-    expect(html).toContain("Next: make flashcards");
-    expect(html).toContain("Make flashcards");
+    expect(html).not.toContain("Edit this note");
+    expect(html).not.toContain("Edit question");
+    expect(html).not.toContain("Edit answer");
+    expect(html).toContain("Edit notes");
+    expect(html).not.toContain("Next: make flashcards");
+    expect(html).toContain("Flashcards");
+    expect(html).not.toContain("Make flashcards");
     expect(html).toContain(`href="/classes/${sessionId}/cards"`);
     expect(html).toContain(`href="/classes/${sessionId}/export"`);
-    expect(html).toContain("Apply newer version");
-    expect(html).not.toContain("Save class notes");
+    expect(html).toContain('href="/courses/course-1/materials"');
+    expect(html).not.toContain("Apply newer version");
+    expect(html).not.toContain(">Save notes<");
+    expect(html.indexOf("Preview uncertainty")).toBeLessThan(html.indexOf("<footer"));
+    expect(html).toContain("Add material");
+    expect(html.match(/Back to class/g)).toHaveLength(1);
+    expect(html).not.toContain("Back to course");
+    expect(html).not.toContain("Version history");
     expect(mocks.request).not.toHaveBeenCalled();
-  });
-
-  it("applies a proposed version only on an explicit action with the saved revision check", async () => {
-    mocks.request.mockResolvedValue(notebook);
-    render({ initial: notebook });
-    await click("Apply newer version");
-    expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
-      `/api/classes/${sessionId}/notes`,
-      "POST",
-      {
-        expectedRevisionId: revision.id,
-        knowledgeVersionId: notebook.proposedKnowledgeVersionId,
-      },
-      expect.any(String),
-    );
-    expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it("keeps an explicitly opened older revision read-only instead of showing the latest preview", () => {
@@ -244,7 +215,227 @@ describe("saved notes and revisions", () => {
     expect(html).not.toContain("Read-only preview");
     expect(html).not.toContain("Edit this note");
     expect(html).not.toContain("Apply newer version");
-    expect(html).not.toContain("Save class notes");
+    expect(html).not.toContain(">Save notes<");
+    expect(html).not.toContain("Edit notes");
+    expect(html).toContain("Current notes");
     expect(mocks.request).not.toHaveBeenCalled();
+  });
+
+  it("offers history only when an earlier saved revision exists", () => {
+    expect(render({ initial: notebook, hasEarlierVersions: true })).toContain("Version history");
+    expect(render({ initial: notebook, hasEarlierVersions: false })).not.toContain(
+      "Version history",
+    );
+    expect(render({ initial: { ...notebook, current: { ...revision, number: 2 } } })).toContain(
+      "Version history",
+    );
+  });
+});
+
+describe("class material diagnostics", () => {
+  const recovery = {
+    sourceId: userId,
+    contentVersionId: "10000000-0000-4000-8000-000000000009",
+    knowledgeVersionId: latest.id,
+    expectedSourcesVersion: latest.sourcesVersion,
+  };
+  const failedSource: NoteSourceIssue = {
+    sourceId: userId,
+    name: "Worksheet 2.pdf",
+    order: 2,
+    kind: "extraction",
+    message: "The file is saved, but its text could not be read.",
+    details: "The previous text extraction failed.",
+    locator: "Pages 1–2",
+    action: "retry",
+    recovery,
+  };
+
+  it("names affected material, keeps details collapsed, and gives the correct recovery action", () => {
+    const html = render({ sourceIssues: [failedSource] });
+    expect(html).toContain("File 2 · <bdi>Worksheet 2.pdf</bdi>");
+    expect(html).toContain(failedSource.message);
+    expect(html).toContain("Pages 1–2");
+    expect(html).toContain("Retry file 2");
+    expect(html).toMatch(/<details[^>]*><summary>Details<\/summary>/);
+    expect(html).not.toContain("Some class material is missing");
+    expect(html).not.toContain("Upload file 2 again");
+  });
+
+  it("retries only the named saved source and resumes automatic preparation", async () => {
+    mocks.request.mockResolvedValue({ next: `/classes/${sessionId}/estimate` });
+    render({ sourceIssues: [failedSource] });
+    await click("Retry file 2");
+    expect(mocks.request).toHaveBeenNthCalledWith(
+      1,
+      `/api/classes/${sessionId}/notes/recovery`,
+      "POST",
+      recovery,
+      expect.any(String),
+    );
+    expect(mocks.request).toHaveBeenNthCalledWith(
+      2,
+      `/api/classes/${sessionId}/learning`,
+      "POST",
+      { action: "retry" },
+      expect.any(String),
+    );
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(`/classes/${sessionId}/processing`);
+  });
+
+  it("preserves a recovery request key on failure and prevents duplicate retries", async () => {
+    mocks.request.mockRejectedValueOnce(new Error("Synthetic retry failure"));
+    render({ sourceIssues: [failedSource] });
+    await click("Retry file 2");
+    const firstKey = mocks.request.mock.calls[0]?.[3];
+    expect(mocks.push).not.toHaveBeenCalled();
+    let resolveRecovery: ((value: { next: string }) => void) | undefined;
+    mocks.request.mockReturnValue(
+      new Promise<{ next: string }>((resolve) => {
+        resolveRecovery = resolve;
+      }),
+    );
+    const pending = click("Retry file 2");
+    await click("Retry file 2");
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+    expect(mocks.request.mock.calls[1]?.[3]).toBe(firstKey);
+    resolveRecovery?.({ next: `/classes/${sessionId}/estimate` });
+    mocks.request.mockResolvedValue({});
+    await pending;
+  });
+
+  it("asks for a re-upload only when the source is unavailable", () => {
+    const html = render({
+      sourceIssues: [
+        {
+          ...failedSource,
+          kind: "upload",
+          action: "upload",
+          recovery: undefined,
+          message: "This file was not uploaded.",
+        },
+      ],
+    });
+    expect(html).toContain("Upload file 2 again");
+    expect(html).toContain(`href="/classes/${sessionId}/sources"`);
+    expect(html).not.toContain("Retry file 2");
+  });
+
+  it("retains the automatic retry key without resetting extraction again after a lost retry acknowledgement", async () => {
+    mocks.request
+      .mockResolvedValueOnce({ next: `/classes/${sessionId}/estimate` })
+      .mockRejectedValueOnce(new TypeError("Lost retry acknowledgement"));
+    render({ sourceIssues: [failedSource] });
+    await click("Retry file 2");
+    const retryKey = mocks.request.mock.calls[1]?.[3];
+    expect(mocks.push).not.toHaveBeenCalled();
+    mocks.request.mockResolvedValue({});
+    await click("Retry file 2");
+    expect(
+      mocks.request.mock.calls.filter((call) => call[0].endsWith("/notes/recovery")),
+    ).toHaveLength(1);
+    expect(mocks.request.mock.calls[2]).toEqual([
+      `/api/classes/${sessionId}/learning`,
+      "POST",
+      { action: "retry" },
+      retryKey,
+    ]);
+    expect(mocks.push).toHaveBeenCalledOnce();
+  });
+
+  it("treats timestamp issues as review rather than a missing upload", () => {
+    const html = render({
+      sourceIssues: [
+        {
+          ...failedSource,
+          kind: "timing",
+          action: "review",
+          recovery: undefined,
+          message: "The text is available; some timestamps need checking.",
+        },
+      ],
+    });
+    expect(html).toContain("The text is available; some timestamps need checking.");
+    expect(html).toContain("Review class material");
+    expect(html).not.toContain("Upload file 2 again");
+    expect(html).not.toContain("Some class material is missing");
+  });
+});
+
+describe("class note content direction", () => {
+  const persianModel: KnowledgeModel = {
+    ...model,
+    title: "خلاصهٔ درس",
+    language: { learning: "en", explanation: "fa-IR" },
+    summary: [claim("summary", "already یعنی قبلاً")],
+    topics: [
+      { id: "topic", title: "کاربرد زمان‌ها", claims: [claim("topic-claim", "توضیح موضوع")] },
+    ],
+    learningItems: [
+      {
+        id: "item",
+        kind: "vocabulary",
+        front: "already",
+        back: "already در این جمله به معنی قبلاً است.",
+        claim: claim("item-claim", "توضیح واژه"),
+      },
+    ],
+    homework: [claim("homework", "تمرین بعد از کلاس")],
+    uncertainties: [claim("uncertain", "بخش نیازمند بررسی")],
+  };
+  const persianRevision: NotebookRevision = { ...revision, model: persianModel };
+
+  it.each(["preview", "saved", "history"] as const)(
+    "renders English-leading Persian notes RTL in the %s with English learning fronts LTR",
+    (surface) => {
+      const html = render({
+        latest: { ...latest, model: surface === "preview" ? persianModel : model },
+        initial: surface === "saved" ? { ...notebook, current: persianRevision } : null,
+        readOnlyRevision: surface === "history" ? persianRevision : undefined,
+      });
+      for (const text of [
+        "already یعنی قبلاً",
+        "توضیح موضوع",
+        "already در این جمله به معنی قبلاً است.",
+        "تمرین بعد از کلاس",
+        "بخش نیازمند بررسی",
+      ]) {
+        const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        expect(html).toMatch(
+          new RegExp(`<p lang="fa-IR" dir="rtl"[^>]*><span[^>]*>${escaped}</span></p>`),
+        );
+      }
+      expect(html).toMatch(/<h3 lang="en" dir="ltr"[^>]*>already<\/h3>/);
+      expect(html).toMatch(/<h2 lang="fa-IR" dir="auto"[^>]*>خلاصهٔ درس<\/h2>/);
+      expect(html).toMatch(/<h3 lang="fa-IR" dir="auto"[^>]*>کاربرد زمان‌ها<\/h3>/);
+      expect(html).toContain("<h3>Class summary</h3>");
+      expect(html).not.toMatch(/<article[^>]*dir="rtl"/);
+    },
+  );
+
+  it("keeps English class content left to right", () => {
+    const html = render();
+    expect(html).toMatch(
+      /<p lang="en" dir="ltr"[^>]*><span[^>]*>Preview summary text<\/span><\/p>/,
+    );
+    expect(html).not.toContain('dir="rtl"');
+  });
+
+  it("lets earlier edits follow their own text when their original language is unknown", () => {
+    const html = render({
+      initial: {
+        ...notebook,
+        current: {
+          ...persianRevision,
+          edits: {
+            claims: { removed: "یادداشت قدیمی" },
+            items: { removedItem: { front: "Earlier question", back: "پاسخ قدیمی" } },
+          },
+        },
+      },
+    });
+    expect(html).toMatch(/<p dir="auto"[^>]*><span[^>]*>یادداشت قدیمی<\/span><\/p>/);
+    expect(html).toMatch(/<h3 dir="auto"[^>]*>Earlier question<\/h3>/);
+    expect(html).toMatch(/<p dir="auto"[^>]*><span[^>]*>پاسخ قدیمی<\/span><\/p>/);
   });
 });

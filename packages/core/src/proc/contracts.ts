@@ -21,6 +21,7 @@ export const createRunSchema = z.strictObject({
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
   expectedSourcesVersion: z.number().int().nonnegative().optional(),
+  automaticRequestVersion: z.number().int().positive().optional(),
 });
 export const snapshotSourceSchema = z.strictObject({
   sourceId: z.uuid(),

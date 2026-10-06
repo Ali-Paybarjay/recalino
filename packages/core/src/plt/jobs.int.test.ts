@@ -24,7 +24,10 @@ import { DEFAULT_PLT_SETTINGS } from "./settings";
 
 const CONNECTIONS = {
   direct: testDatabaseUrl(),
-  pooler: process.env.POOLER_DATABASE_URL ?? LOCAL_POOLER_DATABASE_URL,
+  pooler:
+    process.env.LOCAL_TEST_POOLER_DATABASE_URL !== undefined
+      ? LOCAL_POOLER_DATABASE_URL
+      : (process.env.POOLER_DATABASE_URL ?? LOCAL_POOLER_DATABASE_URL),
 };
 const T0 = new Date("2026-10-02T10:00:00Z");
 const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);

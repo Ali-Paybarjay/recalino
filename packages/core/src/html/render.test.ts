@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { parse } from "parse5";
 import { expect, it } from "vitest";
+import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { syntheticKnowledge } from "../../test/study-fixture";
+import { renderClassNotesHtml } from "../lkm";
 import { renderNotebookHtml } from "./render";
 
 it("renders passive self-contained text with CSP, native exercises and immutable revision labels", () => {
@@ -36,4 +38,26 @@ it("renders passive self-contained text with CSP, native exercises and immutable
   expect(tags).not.toContain("iframe");
   expect(tags).not.toContain("img");
   expect(tags).not.toContain("form");
+});
+
+it("downloads exactly the same reference document as the frame and preserves requested media", () => {
+  const model = referenceStudyModel();
+  const input = { revisionId: randomUUID(), revisionNumber: 2, model, createdAt: "2026-10-05" };
+  expect(new TextDecoder().decode(renderNotebookHtml(input))).toBe(renderClassNotesHtml(model));
+  const image = {
+    media: {
+      id: "image",
+      sessionId: "session",
+      objectId: "object",
+      sourceId: null,
+      kind: "image" as const,
+      mimeType: "image/png",
+      byteLength: 3,
+    },
+    bytes: new Uint8Array([1, 2, 3]),
+  };
+  const withMedia = new TextDecoder().decode(renderNotebookHtml(input, [image]));
+  expect(withMedia).toContain('id="selected-images"');
+  expect(withMedia).toContain('src="data:image/png;base64,AQID"');
+  expect(withMedia).toContain('id="core"');
 });

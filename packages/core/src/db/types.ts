@@ -126,6 +126,7 @@ export interface CardCard {
   provenance: Json;
   quality_confirmed: Generated<boolean>;
   status: Generated<string>;
+  study_metadata: Json | null;
   template: string;
   updated_at: Generated<Timestamp>;
   user_id: string;
@@ -149,6 +150,7 @@ export interface CardProposal {
   note_revision_id: string;
   provenance: Json;
   status: Generated<string>;
+  study_metadata: Json | null;
   user_id: string;
 }
 
@@ -585,6 +587,20 @@ export interface PrivDeletionRequest {
   requested_at: Generated<Timestamp>;
   state: Generated<string>;
   subject_id: string;
+  user_id: string;
+}
+
+export interface ProcAutomaticSession {
+  batch_id: string | null;
+  batch_started_at: Timestamp | null;
+  enabled_at: Generated<Timestamp>;
+  last_batch_id: string | null;
+  last_error: string | null;
+  request_version: Generated<number>;
+  run_id: string | null;
+  session_id: string;
+  state: Generated<string>;
+  updated_at: Generated<Timestamp>;
   user_id: string;
 }
 
@@ -1031,6 +1047,75 @@ export interface SupportThread {
   user_id: string;
 }
 
+export interface VocAnalysis {
+  candidate_id: string | null;
+  candidates: Generated<Json>;
+  created_at: Generated<Timestamp>;
+  embeddings_expire_at: Timestamp;
+  id: Generated<string>;
+  mistakes: Generated<Json>;
+  model_version: string;
+  private_embeddings: Generated<Json>;
+  profile_version: number;
+  reason: string | null;
+  rejected_ids: Generated<Json>;
+  run_id: string;
+  session_id: string;
+  source_id: string;
+  source_version_id: string;
+  status: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  utterances: Generated<Json>;
+  verification_method: string | null;
+  verified_speaker_id: string | null;
+  version: Generated<number>;
+}
+
+export interface VocEnrollmentRequest {
+  attempt_id: string | null;
+  created_at: Generated<Timestamp>;
+  lease_expires_at: Timestamp | null;
+  profile_version: number;
+  request_hash: string | null;
+  request_key: string;
+  state: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface VocFeedback {
+  accepted: boolean;
+  analysis_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  margin: number | null;
+  model_version: string;
+  score: number | null;
+  speaker_id: string;
+  user_id: string;
+}
+
+export interface VocProfile {
+  consent_version: string | null;
+  consented_at: Timestamp | null;
+  embeddings: Generated<Json>;
+  enabled: Generated<boolean>;
+  model_version: string | null;
+  sample_duration_ms: number | null;
+  sample_object_id: string | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  version: Generated<number>;
+}
+
+export interface VocSampleObject {
+  created_at: Generated<Timestamp>;
+  object_id: string;
+  retired_at: Timestamp | null;
+  user_id: string;
+}
+
 export interface DB {
   "acc.consent": AccConsent;
   "acc.learning_profile": AccLearningProfile;
@@ -1084,6 +1169,7 @@ export interface DB {
   "plt.storage_object": PltStorageObject;
   "priv.cleanup_step": PrivCleanupStep;
   "priv.deletion_request": PrivDeletionRequest;
+  "proc.automatic_session": ProcAutomaticSession;
   "proc.processing_run": ProcProcessingRun;
   "proc.provider_attempt": ProcProviderAttempt;
   "proc.run_step": ProcRunStep;
@@ -1118,4 +1204,9 @@ export interface DB {
   "support.reply_draft": SupportReplyDraft;
   "support.template_revision": SupportTemplateRevision;
   "support.thread": SupportThread;
+  "voc.analysis": VocAnalysis;
+  "voc.enrollment_request": VocEnrollmentRequest;
+  "voc.feedback": VocFeedback;
+  "voc.profile": VocProfile;
+  "voc.sample_object": VocSampleObject;
 }

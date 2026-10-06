@@ -59,6 +59,8 @@ export const ROUTES = {
   },
   // M3: learning profile and acceptances (FR-ACC-003 to FR-ACC-007).
   profile: { id: "profile", path: "/api/profile", access: "learner" },
+  voiceProfile: { id: "voiceProfile", path: "/api/me/voice", access: "learner" },
+  classVoice: { id: "classVoice", path: "/api/classes/[id]/voice", access: "learner" },
   consents: { id: "consents", path: "/api/consents", access: "learner" },
   // ORG resource creation uses domain-owned atomic idempotency.
   courses: { id: "courses", path: "/api/courses", access: "learner" },
@@ -94,6 +96,11 @@ export const ROUTES = {
     path: "/api/classes/[id]/processing",
     access: "learner",
   },
+  classLearning: {
+    id: "classLearning",
+    path: "/api/classes/[id]/learning",
+    access: "learner",
+  },
   processingEstimate: {
     id: "processingEstimate",
     path: "/api/classes/[id]/estimate",
@@ -101,6 +108,12 @@ export const ROUTES = {
   },
   processingRun: { id: "processingRun", path: "/api/runs/[id]", access: "learner" },
   noteNotebook: { id: "noteNotebook", path: "/api/classes/[id]/notes", access: "learner" },
+  noteSourceRecovery: {
+    id: "noteSourceRecovery",
+    path: "/api/classes/[id]/notes/recovery",
+    access: "learner",
+    idempotency: "handler",
+  },
   noteVersions: { id: "noteVersions", path: "/api/classes/[id]/notes/versions", access: "learner" },
   noteRevision: { id: "noteRevision", path: "/api/notes/[id]", access: "learner" },
   classCards: { id: "classCards", path: "/api/classes/[id]/cards", access: "learner" },

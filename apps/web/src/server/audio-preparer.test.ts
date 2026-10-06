@@ -1,7 +1,17 @@
 import { spawnSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { MemoryObjectStore } from "@recalino/core/plt";
+import type { AudioPreparer } from "@recalino/core/proc";
 import ffmpegPath from "ffmpeg-static";
-import { expect, it } from "vitest";
-import { audioVerifier } from "./audio-preparer";
+import { expect, it, vi } from "vitest";
+import { audioVerifier, decodeVoiceAudio, prepareAudio } from "./audio-preparer";
+
+const storage = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn() }));
+vi.mock("@recalino/core/plt", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@recalino/core/plt")>()),
+  readOwnedObject: storage.read,
+  writeOwnedObject: storage.write,
+}));
 
 function syntheticWav(seconds: number) {
   const samples = 16000 * seconds;
@@ -37,6 +47,17 @@ it("decodes actual synthetic audio duration and rejects spoofed or corrupt conta
   await expect(
     verifier.inspect(new Uint8Array([82, 73, 70, 70]), "audio/wav"),
   ).rejects.toMatchObject({ code: "unsupported_media" });
+}, 30000);
+
+it("decodes bounded mono PCM for the real voice engine without changing its duration or amplitude", async () => {
+  const decoded = await decodeVoiceAudio(syntheticWav(2), 2000);
+  expect(decoded.sampleRate).toBe(16000);
+  expect(decoded.durationMs).toBe(2000);
+  expect(decoded.samples.length).toBe(32000);
+  expect(Math.max(...decoded.samples)).toBeCloseTo(2000 / 32768, 4);
+  await expect(decodeVoiceAudio(syntheticWav(2), 1000)).rejects.toMatchObject({
+    code: "validation_failed",
+  });
 }, 30000);
 
 it.each([
@@ -109,4 +130,56 @@ it("recognizes a mobile MP4 container without accepting its video track", async 
   const result = await audioVerifier().inspect(encoded.stdout, "audio/mp4");
   expect(result.durationMs).toBeGreaterThanOrEqual(990);
   expect(result.audioOnly).toBe(false);
+}, 30000);
+
+it("keeps transcription checkpoints distinct for independent audio sources in the same run", async () => {
+  const original = syntheticWav(4);
+  storage.read.mockResolvedValue(original);
+  storage.write.mockImplementation(async () => randomUUID());
+  const source: Parameters<AudioPreparer>[0]["source"] = {
+    sourceId: randomUUID(),
+    kind: "audio",
+    sha256: createHash("sha256").update(original).digest("hex"),
+    mimeType: "audio/wav",
+    durationMs: 4000,
+    pageCount: null,
+    objectId: randomUUID(),
+    contentVersionId: null,
+    captureAnchor: null,
+    ranges: [
+      { start: 0, end: 1000 },
+      { start: 2000, end: 4000 },
+    ],
+    units: [],
+    blocks: [],
+  };
+  const input: Parameters<AudioPreparer>[0] = {
+    db: {} as Parameters<AudioPreparer>[0]["db"],
+    store: new MemoryObjectStore(),
+    ctx: { userId: randomUUID(), requestId: randomUUID() },
+    runId: randomUUID(),
+    source,
+    now: new Date("2026-10-06T14:00:00Z"),
+  };
+  const first = await prepareAudio(input);
+  const second = await prepareAudio({
+    ...input,
+    source: { ...source, sourceId: randomUUID(), objectId: randomUUID() },
+  });
+  expect(first).toHaveLength(2);
+  expect(second).toHaveLength(2);
+  for (const chunks of [first, second])
+    expect(chunks.map(({ offsetMs, durationMs }) => ({ offsetMs, durationMs }))).toEqual([
+      { offsetMs: 0, durationMs: 1000 },
+      { offsetMs: 2000, durationMs: 2000 },
+    ]);
+  // These are the actual worker's durable STT keys: an existing first-source checkpoint
+  // must never cause a different recording source to skip its own transcription.
+  const firstCheckpoints = new Set(first.map((chunk) => `stt:${chunk.id}`));
+  expect(new Set([...first, ...second].map((chunk) => `stt:${chunk.id}`)).size).toBe(4);
+  expect(second.every((chunk) => !firstCheckpoints.has(`stt:${chunk.id}`))).toBe(true);
+  expect(first.every((chunk) => chunk.id.length <= 100)).toBe(true);
+  const retry = await prepareAudio(input);
+  expect(retry.map((chunk) => chunk.id)).toEqual(first.map((chunk) => chunk.id));
+  expect(retry.map((chunk) => chunk.objectId)).not.toEqual(first.map((chunk) => chunk.objectId));
 }, 30000);

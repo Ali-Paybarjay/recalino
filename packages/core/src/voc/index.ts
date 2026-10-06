@@ -1,0 +1,8 @@
+export * from "./analysis";
+export * from "./contracts";
+export * from "./enrollment";
+export * from "./matching";
+export * from "./privacy";
+export * from "./profile";
+export * from "./projection";
+export { findRepeatedVoiceEvidence } from "./spoken-evidence";

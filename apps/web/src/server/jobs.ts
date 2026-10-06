@@ -15,9 +15,11 @@ import {
 } from "@recalino/core/plt";
 import { processingPeriodicJobs } from "@recalino/core/proc";
 import { runEmailOutbox } from "@recalino/core/support";
+import { voicePeriodicJobs } from "@recalino/core/voc";
 import { after } from "next/server";
 import { adminDirectory } from "./admin-directory";
 import type { Handler } from "./api";
+import { automaticLearningJob, automaticLearningPeriodicJobs } from "./automatic-learning";
 import { getDatabase } from "./db";
 import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
 import { getMediaJobDefinition } from "./media-jobs";
@@ -26,6 +28,7 @@ import { getProcessingDefinition } from "./processing-jobs";
 import { sourceJobDefinitions, sourcePeriodicJobs } from "./source-jobs";
 import { spikeJobDefinitions } from "./spike-jobs";
 import { getObjectStore } from "./storage";
+import { getVoiceAnalysisDefinition } from "./voice-processing";
 
 /** The runner route's limit (ADR-0001: up to 800 seconds); `maxDuration` in its route file. */
 export const RUNNER_MAX_SECONDS = 800;
@@ -38,11 +41,13 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
   return [
     ...pltPeriodicJobs(settings),
     ...(store ? storagePeriodicJobs(store, settings) : []),
+    ...(store ? voicePeriodicJobs(store) : []),
     ...(store ? [databaseBackupMaintenanceJob(store)] : []),
     ...accPeriodicJobs(),
     ...sourcePeriodicJobs(),
     ...exportPeriodicJobs(),
     ...processingPeriodicJobs(),
+    ...automaticLearningPeriodicJobs(),
   ];
 }
 
@@ -50,10 +55,13 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
 export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
   const processing = getProcessingDefinition();
   const media = getMediaJobDefinition();
+  const voice = getVoiceAnalysisDefinition();
   return [
     ...periodicJobs(settings).map((job) => job.definition),
     ...sourceJobDefinitions(),
     ...(processing ? [processing] : []),
+    ...(voice ? [voice] : []),
+    automaticLearningJob(),
     ...(media ? [media] : []),
     getPrivacyJobDefinition(),
     ...exportJobDefinitions(),

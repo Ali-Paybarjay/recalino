@@ -34,6 +34,7 @@ export {
   teachingPreferenceKeys,
 } from "./preferences";
 export { type ProfileChange, profileChangeSchema, updateProfile } from "./profile";
+export { liveAccountIdsQuery } from "./projections";
 export {
   type AccSettings,
   accSettingsSchema,

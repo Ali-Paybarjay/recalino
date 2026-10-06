@@ -9,6 +9,7 @@ import {
   ChalkboardSimple,
   GlobeHemisphereWest,
   Lightbulb,
+  Microphone,
   SunHorizon,
   UserCircle,
 } from "../../../ui/icons";
@@ -76,6 +77,12 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
         icon={Lightbulb}
       />
       <Row href="/me/data" label="Your data" value="Privacy and deletion" icon={UserCircle} />
+      <Row
+        href="/me/voice"
+        label="Your voice"
+        value="Optional voice identification"
+        icon={Microphone}
+      />
       <Row
         href="/help"
         label="Feedback & help"

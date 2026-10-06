@@ -29,8 +29,14 @@ import {
   type GenerateCardsInput,
   generateCardsSchema,
 } from "./schema";
+import {
+  readStudyMetadata,
+  type StudyMetadata,
+  savedStudyMetadata,
+  studyCardContent,
+} from "./study-content";
 
-export interface StudyCard {
+export interface StudyCard extends Partial<StudyMetadata> {
   id: string;
   ownerId: string;
   learningItemId: string;
@@ -49,7 +55,7 @@ export interface StudyCard {
   createdAt: string;
   updatedAt: string;
 }
-export interface CardProposal {
+export interface CardProposal extends Partial<StudyMetadata> {
   id: string;
   cardId: string;
   noteRevisionId: string;
@@ -58,9 +64,9 @@ export interface CardProposal {
   provenance: Claim;
   createdAt: string;
 }
-function fingerprint(front: string, back: string): string {
+export function fingerprint(front: string, back: string, lessonScope?: string): string {
   return sha256Hex(
-    `${front.trim().toLocaleLowerCase("en")}\n${back.trim().toLocaleLowerCase("en")}`,
+    `${front.trim().toLocaleLowerCase("en")}\n${back.trim().toLocaleLowerCase("en")}${lessonScope ? `\nlesson:${lessonScope}` : ""}`,
   );
 }
 async function requireUniqueContent(
@@ -81,6 +87,7 @@ async function requireUniqueContent(
 }
 function view(row: Selectable<DB["card.card"]>, sessionIds: string[]): StudyCard {
   return {
+    ...readStudyMetadata(row.study_metadata),
     id: row.id,
     ownerId: row.user_id,
     learningItemId: row.learning_item_id,
@@ -201,14 +208,24 @@ export async function listCards(
     values.push(link.session_id);
     sessions.set(link.card_id, values);
   }
-  return rows.flatMap((row) => {
-    const ids = sessions.get(row.id) ?? [];
-    return ids.length && (!options.sessionId || ids.includes(options.sessionId))
-      ? [view(row, ids)]
-      : [];
-  });
+  return rows
+    .flatMap((row) => {
+      const ids = sessions.get(row.id) ?? [];
+      return ids.length && (!options.sessionId || ids.includes(options.sessionId))
+        ? [view(row, ids)]
+        : [];
+    })
+    .sort((a, b) => {
+      if (
+        a.sessionIds[0] !== b.sessionIds[0] ||
+        a.studyPosition === undefined ||
+        b.studyPosition === undefined
+      )
+        return 0;
+      return a.studyPosition - b.studyPosition;
+    });
 }
-async function saveRevision(
+export async function saveRevision(
   tx: Tx,
   ctx: LearnerContext,
   id: string,
@@ -314,9 +331,13 @@ export async function generateCards(
             })
             .returningAll()
             .executeTakeFirstOrThrow();
-        const front = parsed.reverse ? item.back : item.front;
-        const back = parsed.reverse ? item.front : item.back;
-        const hash = fingerprint(front, back);
+        // Rich items have exactly one tested direction, including when legacy callers ask for reverse.
+        const reverse = parsed.reverse && !item.study;
+        const content = studyCardContent(item, notebook.current.model);
+        const front = reverse ? content.back : content.front;
+        const back = reverse ? content.front : content.back;
+        // Rich cards carry the lesson's order/date/tags and must not inherit another lesson's metadata.
+        const hash = fingerprint(front, back, item.study ? sessionId : undefined);
         const duplicate = await tx
           .selectFrom("card.card")
           .selectAll()
@@ -333,7 +354,7 @@ export async function generateCards(
             .where("user_id", "=", ctx.userId)
             .where("learning_item_id", "=", learning.id)
             .where("deleted_at", "is", null)
-            .where("direction", "=", parsed.reverse ? "reverse" : "forward")
+            .where("direction", "=", reverse ? "reverse" : "forward")
             .executeTakeFirst());
         if (sameDirection) {
           await tx
@@ -355,6 +376,7 @@ export async function generateCards(
                 note_revision_id: notebook.current.id,
                 front,
                 back,
+                study_metadata: content.study_metadata,
                 provenance: JSON.stringify(item.claim),
                 fingerprint: hash,
                 created_at: now,
@@ -365,7 +387,24 @@ export async function generateCards(
               .returning("id")
               .executeTakeFirst();
             if (added) proposedUpdates++;
-          } else duplicates++;
+          } else {
+            if (
+              canonicalJson(readStudyMetadata(sameDirection.study_metadata)) !==
+              canonicalJson(readStudyMetadata(content.study_metadata))
+            ) {
+              await tx
+                .updateTable("card.card")
+                .set({
+                  study_metadata: content.study_metadata,
+                  content_version: sameDirection.content_version + 1,
+                  updated_at: now,
+                })
+                .where("id", "=", sameDirection.id)
+                .execute();
+              await saveRevision(tx, ctx, sameDirection.id, "study_metadata", now);
+            }
+            duplicates++;
+          }
           cards.push(await getCard(tx, ctx, sameDirection.id));
           continue;
         }
@@ -375,7 +414,7 @@ export async function generateCards(
           .values({
             user_id: ctx.userId,
             learning_item_id: learning.id,
-            direction: parsed.reverse ? "reverse" : "forward",
+            direction: reverse ? "reverse" : "forward",
             template:
               item.kind === "vocabulary"
                 ? "vocabulary"
@@ -384,6 +423,7 @@ export async function generateCards(
                   : "basic",
             front,
             back,
+            study_metadata: content.study_metadata,
             provenance: JSON.stringify(item.claim),
             status: parsed.autoAdd && quality ? "active" : "candidate",
             quality_confirmed: quality,
@@ -461,6 +501,7 @@ export async function editCard(
       .set({
         front: parsed.front,
         back: parsed.back,
+        study_metadata: null,
         provenance: JSON.stringify(provenance),
         content_version: card.contentVersion + 1,
         dedupe_key: fingerprint(parsed.front, parsed.back),
@@ -521,13 +562,18 @@ export async function changeCard(
         .set({
           front: prior.front,
           back: prior.back,
+          study_metadata: savedStudyMetadata(prior),
           provenance: JSON.stringify(prior.provenance),
           status: prior.status,
           important: prior.important,
           quality_confirmed: prior.qualityConfirmed,
           front_media_id: prior.frontMediaId,
           back_media_id: prior.backMediaId,
-          dedupe_key: fingerprint(prior.front, prior.back),
+          dedupe_key: fingerprint(
+            prior.front,
+            prior.back,
+            prior.contentFormat === "lesson_html" ? prior.sessionIds[0] : undefined,
+          ),
           content_version: card.contentVersion + 1,
           updated_at: now,
         })
@@ -585,6 +631,7 @@ export async function listCardProposals(
     .orderBy("created_at", "desc")
     .execute();
   return rows.map((row) => ({
+    ...readStudyMetadata(row.study_metadata),
     id: row.id,
     cardId,
     noteRevisionId: row.note_revision_id,
@@ -659,6 +706,7 @@ export async function resolveCardProposal(
             template: card.template === "listening" ? "basic" : card.template,
             front: proposed.front,
             back: proposed.back,
+            study_metadata: proposed.study_metadata,
             provenance: JSON.stringify(provenance),
             dedupe_key: proposed.fingerprint,
             quality_confirmed: !provenance.uncertain,
@@ -679,6 +727,7 @@ export async function resolveCardProposal(
           .set({
             front: proposed.front,
             back: proposed.back,
+            study_metadata: proposed.study_metadata,
             provenance: JSON.stringify(provenance),
             dedupe_key: proposed.fingerprint,
             content_version: card.contentVersion + 1,

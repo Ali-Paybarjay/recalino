@@ -34,8 +34,11 @@ import {
 import {
   DEFAULT_REVIEW_SETTINGS,
   type ReviewInput,
+  type ReviewQueueQuery,
   type ReviewSettings,
+  type ReviewStudySet,
   reviewInputSchema,
+  reviewQueueQuerySchema,
   reviewSettingsSchema,
 } from "./schema";
 
@@ -49,6 +52,9 @@ export interface CardSchedule {
 }
 export interface ReviewQueue {
   cards: { card: StudyCard; schedule: CardSchedule }[];
+  /** Active reviewable groups before quota selection and truncation, including future cards. */
+  availableStudySets: ReviewStudySet[];
+  studySet?: ReviewStudySet;
   dueCount: number;
   newRemaining: number;
   buriedSiblings: number;
@@ -196,11 +202,15 @@ async function todayEvents(db: Database | Tx, ctx: LearnerContext, day: string) 
 export async function getReviewQueue(
   db: Database | Tx,
   ctx: LearnerContext,
-  options: { sessionId?: string; now?: Date; limit?: number } = {},
+  options: ReviewQueueQuery & { now?: Date; limit?: number } = {},
 ): Promise<ReviewQueue> {
+  const selection = reviewQueueQuerySchema.parse({
+    sessionId: options.sessionId,
+    studySet: options.studySet,
+  });
   const now = options.now ?? new Date();
   const [cards, rows, settings, local] = await Promise.all([
-    listCards(db, ctx, { sessionId: options.sessionId, status: "active" }),
+    listCards(db, ctx, { sessionId: selection.sessionId, status: "active" }),
     db.selectFrom("srs.card_state").selectAll().where("user_id", "=", ctx.userId).execute(),
     getReviewSettings(db, ctx),
     dayContext(db, ctx, now),
@@ -220,9 +230,14 @@ export async function getReviewQueue(
   const due: ReviewQueue["cards"] = [];
   const newCards: ReviewQueue["cards"] = [];
   const future: number[] = [];
+  const available = new Set<ReviewStudySet>();
   let buriedSiblings = 0;
   for (const card of cards) {
     if (!(await isCardReviewable(db, ctx, card))) continue;
+    const studySet = card.studySet ?? "legacy";
+    available.add(studySet);
+    // Choose the set before applying the shared daily new-card allowance or the page limit.
+    if (selection.studySet && studySet !== selection.studySet) continue;
     const current = schedules.get(card.id) ?? fresh(card);
     const siblings = reviewedItems.get(card.learningItemId);
     if (siblings && [...siblings].some((id) => id !== card.id)) {
@@ -254,6 +269,10 @@ export async function getReviewQueue(
   }
   return {
     cards: queue.slice(0, Math.min(100, Math.max(1, options.limit ?? 30))),
+    availableStudySets: (["production", "recognition", "legacy"] as const).filter((set) =>
+      available.has(set),
+    ),
+    ...(selection.studySet ? { studySet: selection.studySet } : {}),
     dueCount: due.length,
     newRemaining,
     buriedSiblings,

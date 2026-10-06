@@ -1,5 +1,6 @@
 import { getNotebookRevision, type NotebookRevision } from "@recalino/core/note";
 import { AppError } from "@recalino/core/plt";
+import { getNoteSourceStatus } from "@recalino/core/proc";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireLearner } from "../../../../server/auth/learner";
@@ -20,6 +21,12 @@ export default async function NoteVersionPage({ params }: { params: Promise<{ id
     if (failure instanceof AppError && failure.code === "not_found") notFound();
     throw failure;
   }
+  const status = await getNoteSourceStatus(
+    getDatabase(),
+    workspaceActor(learner),
+    revision.sessionId,
+    revision.knowledgeVersionId,
+  );
   return (
     <LearnerShell
       learner={learner}
@@ -37,6 +44,11 @@ export default async function NoteVersionPage({ params }: { params: Promise<{ id
         initial={null}
         latest={null}
         readOnlyRevision={revision}
+        sourceIssues={status.issues.map((issue) => ({
+          ...issue,
+          action: "none",
+          recovery: undefined,
+        }))}
       />
     </LearnerShell>
   );

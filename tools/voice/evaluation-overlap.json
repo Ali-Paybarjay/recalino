@@ -1,0 +1,48 @@
+{
+  "modelRevision": "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+  "sourceFiles": ["1089-134686-0005.flac", "121-121726-0010.flac"],
+  "license": "CC-BY-4.0",
+  "attribution": "LibriSpeech (c) 2014 Vassil Panayotov",
+  "methodology": "Two separate held-out LibriSpeech speakers, then an eight-second arithmetic mixture at 0.45 amplitude each, then separate turns. Interval overlap is measured against the known mixing interval; this is a synthetic overlap stress test, not real classroom accuracy.",
+  "elapsedMs": 13156,
+  "durationMs": 52890,
+  "overlap": {
+    "startMs": 22445,
+    "endMs": 30445,
+    "durationMs": 8000,
+    "detectedMs": 5839,
+    "recall": 0.729875
+  },
+  "detectedSpeakerIds": ["speaker_0", "speaker_1", "speaker_5", "speaker_4"],
+  "flaggedIntervals": [
+    {
+      "speakerId": "speaker_0",
+      "startMs": 22829,
+      "endMs": 30035,
+      "overlap": true,
+      "boundaryUnsafe": false
+    },
+    {
+      "speakerId": "speaker_1",
+      "startMs": 23015,
+      "endMs": 23892,
+      "overlap": true,
+      "boundaryUnsafe": true
+    },
+    {
+      "speakerId": "speaker_5",
+      "startMs": 25073,
+      "endMs": 28027,
+      "overlap": true,
+      "boundaryUnsafe": false
+    },
+    {
+      "speakerId": "speaker_4",
+      "startMs": 28027,
+      "endMs": 30490,
+      "overlap": true,
+      "boundaryUnsafe": false
+    }
+  ],
+  "automaticIdentityAcceptanceEnabled": false
+}

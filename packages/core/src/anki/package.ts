@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { zipSync } from "fflate";
 import type { StudyCard } from "../card";
+import { safeCardHtml } from "../lkm";
 import { type ExportMediaBytes, errors, escapeExportHtml } from "../plt";
 
 const runtimeTemporaryDirectory = tmpdir.bind(undefined);
@@ -20,6 +21,9 @@ export type AnkiCardSnapshot = Pick<
   | "contentVersion"
   | "frontMediaId"
   | "backMediaId"
+  | "contentFormat"
+  | "studySet"
+  | "studyTags"
 >;
 export interface AnkiPackageInput {
   sessionId: string;
@@ -61,7 +65,7 @@ function model(id: number, cloze: boolean, did: number, mod: number) {
     did,
     tmpls: [template(cloze)],
     flds: [field(cloze ? "Text" : "Front", 0), field("Back", 1), field("Provenance", 2)],
-    css: ".card{font:20px/1.5 Arial,sans-serif;text-align:start;color:#242624;background:white}small{display:block;font-size:12px;color:#555;margin-top:18px}img{max-width:100%;height:auto}.cloze{font-weight:bold;color:#23654d}",
+    css: '.card{font-family:Vazirmatn,Tahoma,sans-serif;font-size:20px;line-height:1.7;text-align:center}.card [dir=ltr]{font-family:Lora,Georgia,Vazirmatn,Tahoma,serif}.ipa{font-family:"Noto Serif","Charis SIL","Gentium Plus","Times New Roman","DejaVu Serif",serif}hr{border:0;border-top:1px solid currentColor;opacity:.15;margin:1em 0}small{display:block;font-size:12px;opacity:.7;margin-top:18px}img{max-width:100%;height:auto}.cloze{font-weight:bold}',
     latexPre: "",
     latexPost: "",
     latexsvg: false,
@@ -155,6 +159,18 @@ export async function buildAnkiPackage(
       lrnToday: [0, 0],
       timeToday: [0, 0],
     };
+    const groupDecks = new Map(
+      (["production", "recognition"] as const)
+        .filter((set) => input.cards.some((card) => card.studySet === set))
+        .map((set) => [
+          set,
+          {
+            ...deck,
+            id: stableInteger(`deck:${input.sessionId}:${set}`),
+            name: `${deck.name}::${set === "production" ? "Core" : "Supplementary"}`,
+          },
+        ]),
+    );
     const deckConf = {
       id: 1,
       name: "Default",
@@ -200,7 +216,10 @@ export async function buildAnkiPackage(
         [BASIC]: model(BASIC, false, did, mod),
         [CLOZE]: model(CLOZE, true, did, mod),
       }),
-      JSON.stringify({ [did]: deck }),
+      JSON.stringify({
+        [did]: deck,
+        ...Object.fromEntries([...groupDecks.values()].map((group) => [group.id, group])),
+      }),
       JSON.stringify({ 1: deckConf }),
       "{}",
     );
@@ -226,13 +245,19 @@ export async function buildAnkiPackage(
           ? `<br>[sound:${name}]`
           : `<br><img src="${name}" alt="Card material">`;
       };
-      const front = safeField(card.front) + attach(card.frontMediaId);
-      const back = safeField(card.back) + attach(card.backMediaId);
+      const face = (value: string) =>
+        card.contentFormat === "lesson_html"
+          ? safeCardHtml(value).replaceAll("[", "&#91;").replaceAll("]", "&#93;")
+          : safeField(value);
+      const front = face(card.front) + attach(card.frontMediaId);
+      const back = face(card.back) + attach(card.backMediaId);
       const tags = [
         "Recalino",
         `Recalino::${card.template}`,
         card.provenance.origin,
         ...input.tags,
+        ...(card.studyTags ?? []),
+        ...(card.studySet ? [card.studySet] : []),
       ];
       const checksum = Number.parseInt(
         createHash("sha1").update(card.front).digest("hex").slice(0, 8),
@@ -255,7 +280,14 @@ export async function buildAnkiPackage(
         const cid = stableInteger(`card:${card.id}:${ordinal}`);
         if (seenIds.has(cid)) throw errors.conflict();
         seenIds.add(cid);
-        cardInsert.run(cid, id, did, ordinal, mod, ++position);
+        cardInsert.run(
+          cid,
+          id,
+          card.studySet ? (groupDecks.get(card.studySet)?.id ?? did) : did,
+          ordinal,
+          mod,
+          ++position,
+        );
       }
     }
     sqlite.close();

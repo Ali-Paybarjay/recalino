@@ -32,6 +32,7 @@ export {
 } from "./jobs";
 export { unlockPdf } from "./pdf-unlock";
 export { cleanupAccountSources, cleanupDeletedSource, cleanupSessionSources } from "./privacy";
+export { ownedSourceAvailability, verifiedUploadSessionIds } from "./projections";
 export {
   automaticSourceRole,
   type SourceClassification,
@@ -52,6 +53,7 @@ export {
   deleteSource,
   detachSource,
   getSource,
+  resetSourceExtractionSelection,
   type SourceSelection,
   type SourceVerifier,
   selectSourceSnapshot,

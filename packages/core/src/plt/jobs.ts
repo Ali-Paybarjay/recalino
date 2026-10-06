@@ -81,7 +81,7 @@ export interface EnqueueRequest<P> {
  */
 export async function enqueueJob<P>(
   tx: Tx,
-  definition: JobDefinition<P>,
+  definition: Pick<JobDefinition<P>, "kind" | "version" | "payload" | "options">,
   request: EnqueueRequest<P>,
 ): Promise<string | null> {
   if (!KIND.test(definition.kind)) throw new Error(`Invalid job kind: ${definition.kind}`);

@@ -1,5 +1,10 @@
 import type { Database, Tx } from "../db";
 import type { LearnerContext } from "../plt";
+/** Identifiers only; internal reconciliation can filter live classes before pagination. */
+export function liveSessionIdsQuery(db: Database | Tx) {
+  return db.selectFrom("org.class_session").select("id").where("deleted_at", "is", null);
+}
+
 /** Identifiers only: modules can filter their links without reading ORG's private rows. */
 export async function filterLiveSessionIds(
   db: Database | Tx,

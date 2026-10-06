@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { errors } from "../plt";
+import { normalizeGeneratedStudyModel, persianStudyFields } from "./study-policy";
+import { classNotesSchema, studyContentSchema } from "./study-schema";
 
 export const LKM_SCHEMA_VERSION = "1";
 const id = z.string().min(1).max(100);
@@ -33,6 +35,7 @@ export const learningItemSchema = z.strictObject({
   front: text,
   back: text,
   claim: claimSchema,
+  study: studyContentSchema.optional(),
 });
 export type LearningItem = z.infer<typeof learningItemSchema>;
 export const knowledgeModelSchema = z.strictObject({
@@ -53,6 +56,7 @@ export const knowledgeModelSchema = z.strictObject({
   homework: z.array(claimSchema).max(100),
   uncertainties: z.array(claimSchema).max(100),
   coverage: z.strictObject({ complete: z.boolean(), missingSourceIds: z.array(z.uuid()).max(100) }),
+  classNotes: classNotesSchema.optional(),
 });
 export type KnowledgeModel = z.infer<typeof knowledgeModelSchema>;
 export interface EvidenceSource {
@@ -158,6 +162,57 @@ export function validateKnowledgeModel(
   for (const item of model.learningItems) {
     if (ids.has(`item:${item.id}`)) fail("duplicate_item_id");
     ids.add(`item:${item.id}`);
+    const study = item.study;
+    if (study?.set === "production") {
+      if (model.language.explanation.split("-")[0] !== "fa") fail("study_language_invalid");
+      if (study.kind === "grammar") {
+        if (!study.taskFa || !study.prompt) fail("study_grammar_prompt_missing");
+        if (
+          study.prompt?.trim().toLocaleLowerCase("en") ===
+            study.fullSentence.trim().toLocaleLowerCase("en") ||
+          study.taskFa
+            ?.toLocaleLowerCase("en")
+            .includes(study.fullSentence.trim().toLocaleLowerCase("en"))
+        )
+          fail("study_answer_exposed");
+      } else {
+        const gap = study.gapSentence;
+        if (!gap?.includes("______")) fail("study_gap_missing");
+        const sentence = gap as string;
+        if (/[A-Za-z_]______|______[A-Za-z_]/u.test(sentence)) fail("study_gap_hint");
+        const pieces = sentence.trim().split("______");
+        if (pieces.length > 4) fail("study_gap_invalid");
+        const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const skeleton = new RegExp(`^${pieces.map(escapePattern).join("[\\s\\S]+?")}$`, "u");
+        if (study.fullSentence.includes("______") || !skeleton.test(study.fullSentence.trim()))
+          fail("study_sentence_mismatch");
+        const exactAnswer = new RegExp(
+          `(?:^|[^A-Za-z])${escapePattern(study.en)}(?:$|[^A-Za-z])`,
+          "iu",
+        );
+        if (exactAnswer.test(study.faMeaning) || exactAnswer.test(sentence))
+          fail("study_answer_exposed");
+        const target = study.en
+          .replace(/\([^)]*\)/g, "")
+          .split(/\s+\/\s+/)[0]
+          ?.trim();
+        if (target && !/\b(?:sb|sth|someone|something)\b/i.test(target)) {
+          const answer = new RegExp(`(?:^|[^A-Za-z])${escapePattern(target)}(?:$|[^A-Za-z])`, "iu");
+          if (answer.test(study.faMeaning) || answer.test(sentence)) fail("study_answer_exposed");
+        }
+      }
+    }
+  }
+  if (model.learningItems.filter((item) => item.study?.set === "production").length > 18)
+    fail("study_core_limit");
+  for (const mistake of model.classNotes?.mistakes?.items ?? []) {
+    if (
+      mistake.itemId &&
+      !model.learningItems.some(
+        (item) => item.id === mistake.itemId && item.study?.set === "production",
+      )
+    )
+      fail("study_mistake_item_missing");
   }
   if (new Set(model.topics.map((topic) => topic.id)).size !== model.topics.length)
     fail("duplicate_topic_id");
@@ -173,7 +228,17 @@ export function validateKnowledgeModel(
     .join(" ");
   if (explanation && !matchesExplanationScript(explanation, explanationLanguage))
     fail("language_script_mismatch");
-  return model;
+  if (
+    explanationLanguage.split("-")[0] === "fa" &&
+    persianStudyFields(model).some(
+      (field) => !matchesExplanationScript(field.text, explanationLanguage),
+    )
+  )
+    fail("language_script_mismatch");
+  return normalizeGeneratedStudyModel(
+    model,
+    sources.some((source) => source.kind === "audio"),
+  );
 }
 
 /** D31: reject clear script mismatches; language fluency still requires human EVAL. */

@@ -49,6 +49,10 @@ export default async function ExportPage({ params }: { params: Promise<{ id: str
             back: c.back,
             status: c.status,
             contentVersion: c.contentVersion,
+            contentFormat: c.contentFormat,
+            studySet: c.studySet,
+            studyTags: c.studyTags,
+            studyPosition: c.studyPosition,
           }))}
         images={media
           .filter((m) => m.kind === "image")

@@ -18,6 +18,9 @@
 **/.agents
 docs/design
 artifacts
+tools/voice/models
+tools/voice/evaluation-data
+.pnpm-store
 test-results
 playwright-report
 apps/web/test-results

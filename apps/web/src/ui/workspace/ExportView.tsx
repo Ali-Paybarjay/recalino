@@ -1,8 +1,11 @@
 "use client";
+import { cardHtmlToText } from "@recalino/core/card-html";
 import type { ExportArtifact, ExportSettings } from "@recalino/core/plt";
+import { buildStudyAnkiText, studyExportFilename } from "@recalino/core/study-export";
 import { useEffect, useRef, useState } from "react";
 import styles from "../preview/LearningViews.module.css";
 import { requestKey, workspaceRequest } from "./api";
+import { CardFace } from "./CardFace";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export interface ExportRevision {
   id: string;
@@ -18,6 +21,10 @@ export interface ExportCard {
   back: string;
   status: string;
   contentVersion: number;
+  contentFormat?: "lesson_html";
+  studySet?: "production" | "recognition";
+  studyTags?: string[];
+  studyPosition?: number;
 }
 export interface ExportImage {
   id: string;
@@ -67,6 +74,35 @@ export function ExportView({
     [problem, setProblem] = useState(""),
     [notice, setNotice] = useState("");
   const key = useRef<{ payload: string; key: string } | null>(null);
+  const [deckName, setDeckName] = useState("Recalino"),
+    [courseTag, setCourseTag] = useState("");
+  const studyCards = cards
+    .filter(
+      (card) =>
+        card.contentFormat === "lesson_html" &&
+        card.studySet &&
+        !["rejected", "deleted"].includes(card.status),
+    )
+    .sort((left, right) => (left.studyPosition ?? 0) - (right.studyPosition ?? 0));
+  function downloadStudySet(set: "production" | "recognition") {
+    try {
+      const text = buildStudyAnkiText(studyCards, { set, deckName, courseTag });
+      const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = studyExportFilename(studyCards, set);
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setProblem("");
+      setNotice(`${set === "production" ? "Core" : "Supplementary"} Anki text download started.`);
+    } catch (error) {
+      setProblem(
+        error instanceof Error ? error.message : "The Anki text file could not be prepared.",
+      );
+    }
+  }
   const revision = revisions.find((r) => r.id === revisionId),
     available = Boolean(settings && storageConfigured),
     queued = [...history.html, ...history.anki].some((a) => a.state === "queued");
@@ -226,9 +262,52 @@ export function ExportView({
       {notice && <Status tone="success">{notice}</Status>}
       {!available && (
         <Status>
-          Exports are not configured yet. Your notes and cards are saved; downloading will be
-          available after export storage and limits are configured.
+          Stored HTML and Anki package downloads will be available after export storage and limits
+          are configured. Your notes and cards are saved.
         </Status>
+      )}
+      {!!studyCards.length && (
+        <Panel title="Lesson cards · Anki text">
+          <p>
+            Download the same card faces you study here. Import the UTF-8 text file into Anki; the
+            core and supplementary sets stay separate.
+          </p>
+          <p className="preview-muted">
+            Each text file includes all remaining cards in that set, including cards awaiting
+            confirmation or paused from review. Rejected and deleted cards are excluded. The package
+            selection below applies only to the Anki package download.
+          </p>
+          <Field label="Anki deck name">
+            <input
+              value={deckName}
+              maxLength={100}
+              onChange={(event) => setDeckName(event.target.value)}
+            />
+          </Field>
+          <Field label="Course tag" hint="Optional. Use one word, such as cambria.">
+            <input
+              value={courseTag}
+              maxLength={100}
+              onChange={(event) => setCourseTag(event.target.value)}
+            />
+          </Field>
+          <Actions>
+            {(["production", "recognition"] as const).map((set) => {
+              const count = studyCards.filter((card) => card.studySet === set).length;
+              return count ? (
+                <Button
+                  key={set}
+                  secondary={set === "recognition"}
+                  disabled={!deckName.trim() || busy}
+                  onClick={() => downloadStudySet(set)}
+                >
+                  {set === "production" ? "Download core cards" : "Download supplementary cards"}{" "}
+                  (.txt) · {count}
+                </Button>
+              ) : null;
+            })}
+          </Actions>
+        </Panel>
       )}
       <fieldset className={styles.tabs}>
         <legend>Download format</legend>
@@ -358,7 +437,9 @@ export function ExportView({
                       }}
                     />
                     <span>
-                      {card.front}
+                      {card.contentFormat === "lesson_html"
+                        ? cardHtmlToText(card.front)
+                        : card.front}
                       <small className={styles.muted}>
                         {" "}
                         · {card.template} · {card.status}
@@ -429,8 +510,7 @@ export function ExportView({
               .slice(0, 3)
               .map((card) => (
                 <article key={card.id} className="preview-list-item">
-                  <strong>{card.front}</strong>
-                  <p>{card.back}</p>
+                  <CardFace card={card} revealed />
                 </article>
               ))
           )}

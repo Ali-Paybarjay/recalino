@@ -1,5 +1,8 @@
 # Dependencies & build output
 node_modules/
+.pnpm-store/
+tools/voice/models/
+tools/voice/evaluation-data/
 .next/
 out/
 dist/

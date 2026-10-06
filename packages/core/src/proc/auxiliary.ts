@@ -109,6 +109,7 @@ export async function executeAuxiliaryProviderStep<T>(
     provider: AiProvider;
     schema: z.ZodType<T>;
     effect: (operationKey: string) => Promise<ProviderResult<T>>;
+    onCommit?: (tx: Tx, output: T) => Promise<void>;
   },
 ): Promise<T> {
   await job.db.transaction().execute(async (tx) => {
@@ -131,6 +132,7 @@ export async function executeAuxiliaryProviderStep<T>(
     input.provider,
     input.schema,
     input.effect,
+    { onCommit: input.onCommit },
   );
 }
 export async function completeAuxiliaryRun(

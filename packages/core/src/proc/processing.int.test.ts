@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createAuthUser } from "../../test/auth-users";
 import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
+import { cleanupFixtureProcessingJobs, runFixtureProcessingJobs } from "../../test/processing-jobs";
 import {
   acceptDocuments,
   CURRENT_VERSIONS,
@@ -26,7 +27,7 @@ import {
 import { createDatabase } from "../db";
 import { getLatestVersion, type KnowledgeModel, listVersions } from "../lkm";
 import { createSession, deleteSession } from "../org";
-import { MemoryObjectStore, runDueJobs, sha256Hex, writeOwnedObject } from "../plt";
+import { MemoryObjectStore, sha256Hex, writeOwnedObject } from "../plt";
 import { allowance, amounts, configureCostPolicy, grantEntitlement } from "../quota";
 import {
   appendContentVersion,
@@ -50,7 +51,25 @@ import {
 import { processingJob } from "./worker";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
-afterAll(() => db.destroy());
+const fixtureSubjects: { userId: string; sessionId: string }[] = [];
+afterAll(async () => {
+  try {
+    for (const subject of fixtureSubjects) {
+      const runs = await db
+        .selectFrom("proc.processing_run")
+        .select("id")
+        .where("user_id", "=", subject.userId)
+        .where("session_id", "=", subject.sessionId)
+        .execute();
+      await cleanupFixtureProcessingJobs(
+        db,
+        runs.map((run) => run.id),
+      );
+    }
+  } finally {
+    await db.destroy();
+  }
+});
 const settings: ProviderSettings = {
   version: "fixture",
   llmModel: "synthetic/llm",
@@ -102,6 +121,16 @@ class FixtureProvider implements AiProvider {
     this.inputs.push(JSON.parse(input.input));
     await this.beforeResult?.();
     if (this.failure) throw this.failure;
+    // These refusal fixtures deliberately return a known invalid correction.
+    // Keyed repair input is not the original sources.blocks transport.
+    if (input.schemaName === "class_knowledge_repair")
+      throw new ProviderError("provider_schema_invalid", false, false, {
+        requestId: "synthetic-invalid-repair",
+        provider: this.name,
+        model: input.model,
+        actualMicros: this.actualMicros,
+        usage: { inputTokens: 10, outputTokens: 10 },
+      });
     const data = z
       .object({
         sources: z.array(
@@ -192,6 +221,7 @@ async function fixture(grant = true) {
   const ctx = await learner();
   const now = new Date();
   const session = await createSession(db, ctx, {}, { key: randomUUID() });
+  fixtureSubjects.push({ userId: ctx.userId, sessionId: session.id });
   const asset = await db
     .insertInto("src.asset")
     .values({
@@ -265,7 +295,7 @@ async function fixture(grant = true) {
       { provider, job },
     );
   const work = () =>
-    runDueJobs(db, [job], { kinds: [job.kind], deadline: new Date(Date.now() + 5000) });
+    runFixtureProcessingJobs(db, job, { userId: ctx.userId, sessionId: session.id });
   return { ctx, session, asset, provider, job, start, work };
 }
 describe("durable processing, atomic quota and provenance on Postgres", () => {
@@ -362,7 +392,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       attempt < 4 && (await getRun(db, f.ctx, run.id)).state !== "ready";
       attempt++
     )
-      await runDueJobs(db, [job], { kinds: [job.kind], deadline: new Date(Date.now() + 5000) });
+      await runFixtureProcessingJobs(db, job, { userId: f.ctx.userId, sessionId: f.session.id });
     expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
     expect(f.provider.calls).toBe(2);
     expect((await selectSourceSnapshot(db, f.ctx, f.session.id)).sources[0]?.role).toBe(
@@ -659,7 +689,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       { sessionId: f.session.id, operationKey: randomUUID() },
       { provider, job },
     );
-    await runDueJobs(db, [job], { kinds: [job.kind], deadline: new Date(Date.now() + 5000) });
+    await runFixtureProcessingJobs(db, job, { userId: f.ctx.userId, sessionId: f.session.id });
     expect((await getRun(db, f.ctx, pending.id)).state).toBe("ready");
     expect(provider.calls).toBe(1);
   });
@@ -818,7 +848,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       invocation < 4 && (await getRun(db, f.ctx, run.id)).state !== "ready";
       invocation++
     )
-      await runDueJobs(db, [job], { kinds: [job.kind], deadline: new Date(Date.now() + 5000) });
+      await runFixtureProcessingJobs(db, job, { userId: f.ctx.userId, sessionId: f.session.id });
     expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
     expect(rendered).toEqual([2]);
     expect(f.provider.calls).toBe(2);
@@ -890,7 +920,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
         .execute(),
     ).toHaveLength(1);
   });
-  it("rejects invalid evidence, releases quota and records actual provider cost", async () => {
+  it("rejects invalid evidence and its failed bounded correction without consuming allowance", async () => {
     const f = await fixture();
     f.provider.invalidEvidence = true;
     const run = await f.start();
@@ -899,13 +929,29 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(await getLatestVersion(db, f.ctx, f.session.id)).toBe(null);
     expect((await allowance(db, f.ctx)).reserved.document).toBe(0);
     expect((await allowance(db, f.ctx)).consumed.document).toBe(0);
+    const costs = await db
+      .selectFrom("quota.provider_cost")
+      .select("amount_micros")
+      .where("run_id", "=", run.id)
+      .execute();
+    expect(costs).toHaveLength(2);
+    expect(costs.reduce((sum, cost) => sum + Number(cost.amount_micros), 0)).toBe(2);
+    expect(f.provider.calls).toBe(2);
     expect(
       await db
-        .selectFrom("quota.provider_cost")
-        .select("id")
+        .selectFrom("proc.provider_attempt")
+        .select(["step", "state", "provider_request_id"])
         .where("run_id", "=", run.id)
+        .orderBy("step")
         .execute(),
-    ).toHaveLength(1);
+    ).toEqual([
+      { step: "knowledge", state: "succeeded", provider_request_id: "synthetic-generation" },
+      {
+        step: "knowledge:repair",
+        state: "failed",
+        provider_request_id: "synthetic-invalid-repair",
+      },
+    ]);
   });
   it("does not repeat ambiguous provider calls automatically or upon retry", async () => {
     const f = await fixture();

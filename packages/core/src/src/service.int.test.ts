@@ -14,6 +14,7 @@ import { createSession } from "../org";
 import { DEFAULT_PLT_SETTINGS, MemoryObjectStore } from "../plt";
 import { allowance, amounts, grantEntitlement } from "../quota";
 import { cleanupDeletedSource } from "./privacy";
+import { ownedSourceAvailability, verifiedUploadSessionIds } from "./projections";
 import {
   acceptSourceNotice,
   appendContentVersion,
@@ -111,6 +112,45 @@ async function upload(
   return { ctx, session, source, store, raw, bytes };
 }
 describe("source ownership history and private originals (FR-SRC-001,004,005,009,010,013)", () => {
+  it("projects verified original availability without exposing foreign or revoked files", async () => {
+    const x = await upload();
+    const foreign = await fixture();
+    const expected = {
+      sourceId: x.source.assetId,
+      displayName: x.raw.displayName,
+      originalAvailable: true,
+    };
+    expect(await ownedSourceAvailability(db, x.ctx, [x.source.assetId, randomUUID()])).toEqual([
+      expected,
+    ]);
+    expect(await ownedSourceAvailability(db, foreign.ctx, [x.source.assetId])).toEqual([]);
+    await deleteSource(db, x.ctx, x.source.assetId, "original");
+    expect(await ownedSourceAvailability(db, x.ctx, [x.source.assetId])).toEqual([
+      { ...expected, originalAvailable: false },
+    ]);
+  });
+
+  it("projects only verified uploads and their owner's active class links", async () => {
+    const x = await upload();
+    const foreign = await fixture();
+    if (!x.source.uploadId) throw new Error("missing upload");
+    expect(await verifiedUploadSessionIds(db, x.ctx, x.source.uploadId)).toEqual([x.session.id]);
+    expect(await verifiedUploadSessionIds(db, foreign.ctx, x.source.uploadId)).toEqual([]);
+    await db
+      .updateTable("src.upload_session")
+      .set({ state: "verifying" })
+      .where("id", "=", x.source.uploadId)
+      .execute();
+    expect(await verifiedUploadSessionIds(db, x.ctx, x.source.uploadId)).toEqual([]);
+    await db
+      .updateTable("src.upload_session")
+      .set({ state: "verified" })
+      .where("id", "=", x.source.uploadId)
+      .execute();
+    await detachSource(db, x.ctx, x.session.id, x.source.assetId);
+    expect(await verifiedUploadSessionIds(db, x.ctx, x.source.uploadId)).toEqual([]);
+  });
+
   it.each([
     {
       kind: "text" as const,

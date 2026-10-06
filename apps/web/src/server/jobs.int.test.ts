@@ -1,6 +1,7 @@
 import { createDatabase } from "@recalino/core/db";
 import { DEFAULT_PLT_SETTINGS } from "@recalino/core/plt";
 import { afterAll, describe, expect, it } from "vitest";
+import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
 import { defineRoute } from "./api";
 import { periodicJobs, runJobsHandler } from "./jobs";
 import { ROUTES } from "./routes";
@@ -8,11 +9,7 @@ import { routeDeps } from "./test-support";
 
 // The cron route end to end on the local database (FR-PLT-005, M4).
 
-const db = createDatabase(
-  process.env.DATABASE_URL ??
-    "postgresql://recalino_app:recalino-local-only@127.0.0.1:54322/postgres",
-  { maxConnections: 2 },
-);
+const db = createDatabase(testDatabaseUrl(), { maxConnections: 2 });
 afterAll(() => db.destroy());
 
 const SECRET = "cron-secret-for-tests-0123456789abcdef";
@@ -49,7 +46,8 @@ describe("GET /api/jobs/run", () => {
     expect(summary).toMatchObject({ failed: 0, retried: 0 });
     expect(summary.succeeded).toBeGreaterThanOrEqual(kinds.length);
 
-    const again = await cronRun(new Date(hour.getTime() + 60_000));
+    // Repeat inside the same period, including the one-minute automatic-learning sweep.
+    const again = await cronRun(new Date(hour.getTime() + 1_000));
     expect(await again.json()).toMatchObject({ succeeded: 0 });
 
     const rows = await db
@@ -60,5 +58,26 @@ describe("GET /api/jobs/run", () => {
       .execute();
     expect(rows.map((row) => row.kind).sort()).toEqual([...kinds].sort());
     expect(new Set(rows.map((row) => row.state))).toEqual(new Set(["succeeded"]));
+
+    const nextMinute = new Date(hour.getTime() + 60_000);
+    const next = await cronRun(nextMinute);
+    expect(await next.json()).toMatchObject({
+      failed: 0,
+      retried: 0,
+      succeeded: periodicJobs(DEFAULT_PLT_SETTINGS).filter((job) => job.everySeconds === 60).length,
+    });
+    const nextRows = await db
+      .selectFrom("plt.job")
+      .select(["kind", "state"])
+      .where("kind", "in", kinds)
+      .where("created_at", "=", nextMinute)
+      .execute();
+    expect(nextRows.map((row) => row.kind).sort()).toEqual(
+      periodicJobs(DEFAULT_PLT_SETTINGS)
+        .filter((job) => job.everySeconds === 60)
+        .map((job) => job.definition.kind)
+        .sort(),
+    );
+    expect(new Set(nextRows.map((row) => row.state))).toEqual(new Set(["succeeded"]));
   });
 });

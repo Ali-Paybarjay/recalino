@@ -21,7 +21,11 @@ export {
 export {
   DEFAULT_REVIEW_SETTINGS,
   type ReviewInput,
+  type ReviewQueueQuery,
   type ReviewSettings,
+  type ReviewStudySet,
   reviewInputSchema,
+  reviewQueueQuerySchema,
   reviewSettingsSchema,
+  reviewStudySetSchema,
 } from "./schema";

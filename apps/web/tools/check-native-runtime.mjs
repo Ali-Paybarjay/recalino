@@ -8,6 +8,12 @@ import executable from "ffmpeg-static";
 import sharp from "sharp";
 
 const require = createRequire(import.meta.url);
+const voiceRuntime = require("sherpa-onnx-node");
+if (
+  typeof voiceRuntime.OfflineSpeakerDiarization !== "function" ||
+  typeof voiceRuntime.SpeakerEmbeddingExtractor !== "function"
+)
+  throw new Error("native_voice_runtime_unusable");
 if (!executable || !existsSync(executable)) throw new Error("native_audio_binary_missing");
 const ffmpeg = spawnSync(executable, ["-nostdin", "-version"], {
   shell: false,
@@ -55,6 +61,7 @@ console.log(
       pdfResources: "present",
       pdfCanvas: "passed",
       sharp: "passed",
+      voice: "loaded",
     },
   }),
 );

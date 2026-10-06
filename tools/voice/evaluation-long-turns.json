@@ -1,0 +1,166 @@
+{
+  "modelRevision": "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+  "generatedAt": "2026-10-06T17:48:00.348Z",
+  "machine": {
+    "platform": "win32",
+    "arch": "x64",
+    "cpu": "Intel(R) Core(TM) i7-7700K CPU @ 4.20GHz",
+    "logicalCores": 8,
+    "inferenceThreads": 2
+  },
+  "dataset": {
+    "name": "LibriSpeech test-clean",
+    "url": "https://www.openslr.org/12/",
+    "license": "CC-BY-4.0",
+    "attribution": "LibriSpeech (c) 2014 Vassil Panayotov",
+    "sourceFiles": {
+      "121": {
+        "enrollment": ["121-121726-0000.flac", "121-121726-0001.flac", "121-121726-0002.flac"],
+        "evaluation": [
+          "121-121726-0010.flac",
+          "121-123852-0000.flac",
+          "121-123852-0002.flac",
+          "121-123852-0003.flac",
+          "121-123852-0004.flac",
+          "121-123859-0000.flac",
+          "121-123859-0001.flac",
+          "121-123859-0002.flac"
+        ]
+      },
+      "237": {
+        "enrollment": ["237-126133-0000.flac", "237-126133-0001.flac", "237-126133-0002.flac"],
+        "evaluation": [
+          "237-126133-0007.flac",
+          "237-126133-0015.flac",
+          "237-126133-0024.flac",
+          "237-134493-0002.flac",
+          "237-134493-0003.flac",
+          "237-134493-0005.flac",
+          "237-134493-0016.flac",
+          "237-134493-0017.flac"
+        ]
+      },
+      "1089": {
+        "enrollment": ["1089-134686-0000.flac", "1089-134686-0001.flac", "1089-134686-0002.flac"],
+        "evaluation": [
+          "1089-134686-0005.flac",
+          "1089-134686-0006.flac",
+          "1089-134686-0009.flac",
+          "1089-134686-0011.flac",
+          "1089-134686-0012.flac",
+          "1089-134686-0017.flac",
+          "1089-134686-0018.flac",
+          "1089-134686-0019.flac"
+        ]
+      }
+    }
+  },
+  "methodology": "Three deterministic concatenations of held-out utterances from three known speakers. The learner is not the dominant speaker. Enrollment uses separate utterances from the same speakers. Real ONNX inference, no mocked vectors. These are clean read-speech simulations, not classroom recordings and not threshold calibration.",
+  "autoAcceptanceEnabled": false,
+  "realClassroomRecordingsTested": 0,
+  "recordings": [
+    {
+      "fixture": "synthetic-librispeech-long-1",
+      "learner": "1089",
+      "teacher": "121",
+      "durationMs": 122965,
+      "elapsedMs": 56660,
+      "realTimeFactor": 0.46078498434513887,
+      "diarizedSpeakers": 3,
+      "candidates": [
+        {
+          "speakerId": "speaker_3",
+          "knownSpeaker": "1089",
+          "cleanSpeechMs": 27066,
+          "score": 0.928160417367653
+        },
+        {
+          "speakerId": "speaker_0",
+          "knownSpeaker": "121",
+          "cleanSpeechMs": 41628.18181818182,
+          "score": 0.479787367996534
+        },
+        {
+          "speakerId": "speaker_1",
+          "knownSpeaker": "237",
+          "cleanSpeechMs": 15062,
+          "score": 0.3920473837374972
+        }
+      ],
+      "firstCandidateCorrect": true,
+      "margin": 0.448373049371119,
+      "overlapFlaggedSegments": 0
+    },
+    {
+      "fixture": "synthetic-librispeech-long-2",
+      "learner": "121",
+      "teacher": "237",
+      "durationMs": 131140,
+      "elapsedMs": 39540,
+      "realTimeFactor": 0.30151218926338264,
+      "diarizedSpeakers": 3,
+      "candidates": [
+        {
+          "speakerId": "speaker_6",
+          "knownSpeaker": "121",
+          "cleanSpeechMs": 30000,
+          "score": 0.819982939455931
+        },
+        {
+          "speakerId": "speaker_0",
+          "knownSpeaker": "237",
+          "cleanSpeechMs": 54085,
+          "score": 0.7535681539401344
+        },
+        {
+          "speakerId": "speaker_5",
+          "knownSpeaker": "1089",
+          "cleanSpeechMs": 19235,
+          "score": 0.3946276703736797
+        }
+      ],
+      "firstCandidateCorrect": true,
+      "margin": 0.0664147855157966,
+      "overlapFlaggedSegments": 2
+    },
+    {
+      "fixture": "synthetic-librispeech-long-3",
+      "learner": "237",
+      "teacher": "1089",
+      "durationMs": 131465,
+      "elapsedMs": 48727,
+      "realTimeFactor": 0.370644300764462,
+      "diarizedSpeakers": 4,
+      "candidates": [
+        {
+          "speakerId": "speaker_3",
+          "knownSpeaker": "237",
+          "cleanSpeechMs": 29995,
+          "score": 0.8199936657644163
+        },
+        {
+          "speakerId": "speaker_2",
+          "knownSpeaker": "121",
+          "cleanSpeechMs": 20000,
+          "score": 0.6174254070246267
+        },
+        {
+          "speakerId": "speaker_4",
+          "knownSpeaker": "1089",
+          "cleanSpeechMs": 2992,
+          "score": 0.30783152021301513
+        },
+        {
+          "speakerId": "speaker_0",
+          "knownSpeaker": "1089",
+          "cleanSpeechMs": 50278.71428571428,
+          "score": 0.2945729665934493
+        }
+      ],
+      "firstCandidateCorrect": true,
+      "margin": 0.20256825873978968,
+      "overlapFlaggedSegments": 0
+    }
+  ],
+  "correctFirstCandidates": 3
+}

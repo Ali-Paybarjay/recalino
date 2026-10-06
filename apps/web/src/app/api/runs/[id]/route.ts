@@ -18,4 +18,5 @@ export async function POST(request: Request, context: Context) {
     processingRunHandler(id),
   )(request);
 }
-export const maxDuration = 120;
+// A retried processing job can include whole-source acoustic analysis in after().
+export const maxDuration = 800;

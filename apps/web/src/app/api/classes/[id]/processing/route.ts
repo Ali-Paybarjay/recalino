@@ -14,4 +14,5 @@ export async function POST(request: Request, context: Context) {
     classProcessingHandler(id),
   )(request);
 }
-export const maxDuration = 120;
+// after() can run one whole-source acoustic analysis; match the background runner's ceiling.
+export const maxDuration = 800;

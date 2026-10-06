@@ -248,21 +248,81 @@ describe("processing next actions", () => {
     expect(buttons(html)).not.toContain("Confirm and process");
   });
 
-  it("blocks another attempt while an operator is checking the provider result", () => {
-    const html = render([run("needs_input", { lastError: "provider_outcome_unresolved" })]);
+  it("explains invalid transcription timestamps without claiming an ongoing check", () => {
+    const html = render([run("needs_input", { lastError: "provider_timestamps_invalid" })]);
+    expect(html).toContain("The transcription service returned invalid timing information.");
+    expect(html).toContain("Processing has stopped.");
+    expect(html).toContain("Contact the operator to review this attempt before retrying.");
+    expect(html).not.toContain("still being checked");
+    expect(html).not.toContain("Check before processing");
+    expect(buttons(html)).not.toContain("Confirm and process");
+    expect(buttons(html)).not.toContain("Review and retry");
+    expect(buttons(html)).not.toContain("Retry processing");
+  });
+
+  it.each(["provider_outcome_unknown", "provider_outcome_unresolved"])(
+    "blocks another attempt until operator review after %s",
+    (lastError) => {
+      const html = render([run("needs_input", { lastError })]);
+      expect(buttons(html)).not.toContain("Confirm and process");
+      expect(buttons(html)).not.toContain("Retry processing");
+      expect(buttons(html)).not.toContain("Review and confirm");
+      expect(html).toContain("The result of a processing request could not be confirmed.");
+      expect(html).toContain("Processing is paused.");
+      expect(html).toContain("Contact the operator before retrying.");
+      expect(html).not.toContain("still being checked");
+    },
+  );
+
+  it("describes other provider problems as paused for operator review", () => {
+    const html = render([run("needs_input", { lastError: "provider_http_502" })]);
+    expect(html).toContain("Processing is paused and needs an operator review before retrying.");
+    expect(html).not.toContain("still being checked");
     expect(buttons(html)).not.toContain("Confirm and process");
     expect(buttons(html)).not.toContain("Retry processing");
     expect(buttons(html)).not.toContain("Review and confirm");
-    expect(html).toContain("Contact the operator before retrying.");
   });
 
-  it("keeps an unresolved provider result visible even after the selection changes", () => {
-    const html = render([run("needs_input", { lastError: "provider_outcome_unresolved" })], {
+  it.each([
+    "output_language_mismatch",
+    "output_time_reference_invalid",
+    "knowledge_repair_exhausted",
+  ])(
+    "explains a stopped generated-note failure without blaming uploaded files after %s",
+    (lastError) => {
+      const html = render([run("failed", { lastError })]);
+      expect(html).toContain("The generated notes could not be verified");
+      expect(html).toContain("No new notes were saved.");
+      expect(buttons(html)).toContain("Retry processing");
+      expect(html).not.toContain("Check your sources");
+      expect(html).not.toContain("still being checked");
+      expect(html).not.toContain("Contact the operator");
+    },
+  );
+
+  it("explains an incomplete provider response without claiming that notes were created", () => {
+    const html = render([run("failed", { lastError: "provider_output_truncated" })]);
+    expect(html).toContain("The generated response was incomplete.");
+    expect(html).toContain("No new class notes were saved.");
+    expect(buttons(html)).toContain("Retry processing");
+    expect(html).not.toContain("Class notes created");
+    expect(html).not.toContain("still being checked");
+  });
+
+  it.each([
+    "provider_timestamps_invalid",
+    "provider_outcome_unknown",
+    "provider_outcome_unresolved",
+  ])("keeps %s visible and blocked even after the selection changes", (lastError) => {
+    const html = render([run("needs_input", { lastError })], {
       ...estimate,
       snapshot: { ...estimate.snapshot, sourcesVersion: estimate.snapshot.sourcesVersion + 1 },
     });
-    expect(html).toContain("Contact the operator before retrying.");
+    expect(html).toContain("before retrying.");
     expect(html).not.toContain("Previous attempt");
+    expect(html).not.toContain("still being checked");
     expect(buttons(html)).not.toContain("Confirm and process");
+    expect(buttons(html)).not.toContain("Retry processing");
+    expect(buttons(html)).not.toContain("Review and retry");
   });
 });

@@ -7,7 +7,7 @@ import {
   lockAccount,
   lockAccountForCleanup,
 } from "../acc";
-import { type AiProvider, requireProvider } from "../aip";
+import { type AiProvider, ProviderError, requireProvider } from "../aip";
 import type { Database, DB, Tx } from "../db";
 import { getLatestVersion, tombstoneKnowledge } from "../lkm";
 import { assertSessionOwner, getSession } from "../org";
@@ -42,6 +42,7 @@ import {
   runSettingsSchema,
   sourceSnapshotSchema,
 } from "./contracts";
+import { buildKnowledgeInput } from "./knowledge-input";
 import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
@@ -92,6 +93,33 @@ export async function getRun(
   const row = await ownedRun(db, ctx, id);
   await getSession(db, ctx, row.session_id);
   return runView(row);
+}
+/** Exact reserved input for resumable uploads; never substitute a newer class selection. */
+export async function getProcessingRunSnapshot(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  id: string,
+): Promise<RunSnapshot> {
+  const row = await ownedRun(db, ctx, id);
+  await getSession(db, ctx, row.session_id);
+  return sourceSnapshotSchema.parse(row.input_snapshot);
+}
+/** Reconcile a lost automatic acknowledgement against its original immutable run. */
+export async function findProcessingRunByOperationKey(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  operationKey: string,
+): Promise<ProcessingRun | null> {
+  await getSession(db, ctx, sessionId);
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .selectAll()
+    .where("user_id", "=", ctx.userId)
+    .where("session_id", "=", sessionId)
+    .where("operation_key", "=", operationKey)
+    .executeTakeFirst();
+  return row ? runView(row) : null;
 }
 export async function listRuns(
   db: Database | Tx,
@@ -168,7 +196,7 @@ export function assertKnownSourceInputBound(
   snapshot: RunSnapshot,
   maxInputCharacters: number,
 ): void {
-  const sources = snapshot.sources.map(({ objectId: _objectId, sha256: _sha256, ...source }) => {
+  const sources = snapshot.sources.map((source) => {
     const units = source.ranges.length
       ? source.units.filter((unit) =>
           source.ranges.some((range) =>
@@ -186,11 +214,21 @@ export function assertKnownSourceInputBound(
       blocks: source.blocks.filter((block) => units.some((unit) => unit.id === block.unitId)),
     };
   });
-  if (
-    JSON.stringify({ explanationLanguage: "", sources, missingSourceIds: [] }).length >
-    maxInputCharacters
-  )
-    throw errors.validationFailed({ sources: ["selected_text_too_large"] });
+  try {
+    buildKnowledgeInput(
+      {
+        explanationLanguage: "",
+        teachingPreferences: { shorterExamples: false },
+        sources,
+        missingSourceIds: [],
+      },
+      maxInputCharacters,
+    );
+  } catch (error) {
+    if (error instanceof ProviderError && error.code === "provider_input_too_large")
+      throw errors.validationFailed({ sources: ["selected_text_too_large"] });
+    throw error;
+  }
 }
 /** AC-13: reservation, immutable inputs, run and job share a single commit. */
 export async function createProcessingRun(
@@ -219,6 +257,16 @@ export async function createProcessingRun(
     if (previous) {
       if (previous.request_hash !== hash) throw errors.idempotencyMismatch();
       return runView(previous);
+    }
+    if (input.automaticRequestVersion !== undefined) {
+      const intent = await tx
+        .selectFrom("proc.automatic_session")
+        .select(["request_version", "batch_id"])
+        .where("session_id", "=", session.id)
+        .where("user_id", "=", ctx.userId)
+        .executeTakeFirst();
+      if (!intent || intent.batch_id || intent.request_version !== input.automaticRequestVersion)
+        throw errors.validationFailed({ sources: ["changed_after_estimate"] });
     }
     const account = await getAccountState(tx, ctx.userId);
     if (!account?.setupComplete || account.pending.terms)

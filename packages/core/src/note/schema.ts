@@ -39,6 +39,12 @@ export function applyNotebookEdits(original: KnowledgeModel, edits: NotebookEdit
     learningItems: model.learningItems.map((item) => ({
       ...item,
       ...edits.items[item.id],
+      // A plain front/back edit cannot safely rewrite the matching cloze and full sentence.
+      // Preserve the learner's exact edit as a legacy item rather than showing stale rich fields.
+      ...(edits.items[item.id] &&
+      (edits.items[item.id]?.front !== undefined || edits.items[item.id]?.back !== undefined)
+        ? { study: undefined }
+        : {}),
       claim: edits.items[item.id]
         ? { ...editClaim(item.claim), creation: "user_edit" }
         : editClaim(item.claim),

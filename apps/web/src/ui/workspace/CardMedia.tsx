@@ -13,7 +13,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
     [selected, setSelected] = useState(""),
     [side, setSide] = useState<"front" | "back">("front"),
     [listening, setListening] = useState(card.template === "listening"),
-    [text, setText] = useState(card.front),
+    [text, setText] = useState(card.contentFormat === "lesson_html" ? "" : card.front),
     [sourceId, setSourceId] = useState(""),
     [crop, setCrop] = useState(false),
     [bounds, setBounds] = useState({ left: 0, top: 0, width: 200, height: 200 }),

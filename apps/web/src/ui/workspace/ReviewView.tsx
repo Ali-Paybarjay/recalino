@@ -3,8 +3,19 @@ import type { MediaAsset } from "@recalino/core/media";
 import type { ReviewInput, ReviewQueue, ReviewReceipt } from "@recalino/core/srs";
 import { useEffect, useRef, useState } from "react";
 import { workspaceRequest } from "./api";
+import { CardFace } from "./CardFace";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+
+type StudySet = "production" | "recognition" | "legacy";
+function preferredStudySet(queue: ReviewQueue): StudySet {
+  return queue.studySet ?? queue.availableStudySets?.[0] ?? "legacy";
+}
+function reviewQueuePath(sessionId: string | undefined, studySet: StudySet): string {
+  const query = new URLSearchParams({ studySet });
+  if (sessionId) query.set("sessionId", sessionId);
+  return `/api/review?${query}`;
+}
 
 export function ReviewView({
   initial,
@@ -17,7 +28,10 @@ export function ReviewView({
 }) {
   const [queue, setQueue] = useState(initial),
     [shown, setShown] = useState(false),
-    [busy, setBusy] = useState(false),
+    [busy, setBusy] = useState(
+      () =>
+        !initial.studySet && initial.availableStudySets?.some((set) => set !== "legacy") === true,
+    ),
     [problem, setProblem] = useState(""),
     [receipt, setReceipt] = useState<ReviewReceipt | null>(null),
     [reviewed, setReviewed] = useState(0),
@@ -35,7 +49,39 @@ export function ReviewView({
     started = useRef(Date.now()),
     cardStarted = useRef(Date.now()),
     softBudget = useRef(initial.settings.timeBudgetMinutes * 60000);
-  const current = queue.cards[0];
+  const [selectedSet, setSelectedSet] = useState<StudySet>(() => preferredStudySet(initial));
+  const requestInFlight = useRef(false);
+  const availableSets = queue.availableStudySets ?? initial.availableStudySets ?? [];
+  const grouped = availableSets.some((set) => set !== "legacy");
+  const queueMatchesSelection = !grouped || queue.studySet === selectedSet;
+  const current = queueMatchesSelection ? queue.cards[0] : undefined;
+  useEffect(() => {
+    if (initial.studySet || !initial.availableStudySets?.some((set) => set !== "legacy")) return;
+    let active = true;
+    const studySet = preferredStudySet(initial);
+    setBusy(true);
+    requestInFlight.current = true;
+    void workspaceRequest<ReviewQueue>(reviewQueuePath(sessionId, studySet), "GET")
+      .then((value) => {
+        if (!active) return;
+        setQueue(value);
+        setSelectedSet(studySet);
+        setShown(false);
+        cardStarted.current = Date.now();
+      })
+      .catch(() => {
+        if (active) setProblem("Could not load this review set. Reload review to try again.");
+      })
+      .finally(() => {
+        if (active) {
+          setBusy(false);
+          requestInFlight.current = false;
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [initial, sessionId]);
   useEffect(() => {
     setFrontMedia(null);
     setBackMedia(null);
@@ -85,17 +131,35 @@ export function ReviewView({
       </div>
     );
   }
-  async function refresh() {
-    const value = await workspaceRequest<ReviewQueue>(
-      `/api/review${sessionId ? `?sessionId=${sessionId}` : ""}`,
-      "GET",
-    );
+  async function refresh(studySet = selectedSet) {
+    const value = await workspaceRequest<ReviewQueue>(reviewQueuePath(sessionId, studySet), "GET");
     setQueue(value);
     setShown(false);
     cardStarted.current = Date.now();
   }
+  async function changeStudySet(studySet: StudySet) {
+    if (busy || pending.current || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setBusy(true);
+    setProblem("");
+    setSelectedSet(studySet);
+    setShown(false);
+    try {
+      await refresh(studySet);
+    } catch {
+      setProblem("Could not load this review set. Reload review to try again.");
+    } finally {
+      requestInFlight.current = false;
+      setBusy(false);
+    }
+  }
   async function grade(choice: ReviewInput["choice"]) {
-    if (!current || busy) return;
+    if (!current || busy || requestInFlight.current) return;
+    if (pending.current && pending.current.cardId !== current.card.id) {
+      setProblem("Reload review before answering another card.");
+      return;
+    }
+    requestInFlight.current = true;
     setBusy(true);
     setProblem("");
     if (!pending.current)
@@ -126,6 +190,7 @@ export function ReviewView({
           : "Your answer could not be saved. Retry the same answer.",
       );
     } finally {
+      requestInFlight.current = false;
       setBusy(false);
     }
   }
@@ -164,9 +229,35 @@ export function ReviewView({
         {reviewed} reviewed · {queue.dueCount} due · Up to {queue.newRemaining} new today ·{" "}
         {queue.timezone}
       </p>
+      {grouped && (
+        <Actions>
+          {(["production", "recognition", "legacy"] as const).map((set) => {
+            if (!availableSets.includes(set) && selectedSet !== set) return null;
+            return (
+              <Button
+                key={set}
+                secondary
+                disabled={busy || !!pending.current}
+                aria-pressed={selectedSet === set}
+                onClick={() => void changeStudySet(set)}
+              >
+                {set === "production"
+                  ? "Core · production"
+                  : set === "recognition"
+                    ? "Supplementary · recognition"
+                    : "Other cards"}
+              </Button>
+            );
+          })}
+        </Actions>
+      )}
       {problem && <Status tone="error">{problem}</Status>}
       {mediaProblem && <Status>{mediaProblem}</Status>}
-      {softStop ? (
+      {!queueMatchesSelection ? (
+        <Panel title="Your review cards">
+          <p>{busy ? "Loading this set…" : "Reload review to load this set."}</p>
+        </Panel>
+      ) : softStop ? (
         <Panel title="A little practice goes a long way">
           <p>
             You reached your {queue.settings.timeBudgetMinutes}-minute target. Take a break, or
@@ -200,7 +291,7 @@ export function ReviewView({
               <p>Loading listening audio…</p>
             )
           ) : (
-            <h2 style={{ whiteSpace: "pre-wrap" }}>{current.card.front}</h2>
+            <CardFace card={current.card} revealed={shown} />
           )}
           {current.card.template !== "listening" && frontMedia && media(frontMedia)}
           {!shown ? (
@@ -209,7 +300,12 @@ export function ReviewView({
             </Button>
           ) : (
             <div className="preview-stack">
-              <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
+              {current.card.template === "listening" &&
+                (current.card.contentFormat === "lesson_html" ? (
+                  <CardFace card={current.card} revealed />
+                ) : (
+                  <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
+                ))}
               {backMedia && media(backMedia)}
               <ClaimEvidence claim={current.card.provenance} userId={userId} />
               <Actions>
@@ -239,7 +335,13 @@ export function ReviewView({
         </Panel>
       ) : (
         <Panel title="You’re ready for a break">
-          <p>{reviewed ? `You reviewed ${reviewed} cards.` : "No cards are due right now."}</p>
+          <p>
+            {grouped && availableSets.some((set) => set !== selectedSet)
+              ? "This set is finished for now. Choose another set above to keep practising."
+              : reviewed
+                ? `You reviewed ${reviewed} cards.`
+                : "No cards are due right now."}
+          </p>
           {queue.nextDueAt && (
             <p>
               Next scheduled review:{" "}
@@ -256,7 +358,7 @@ export function ReviewView({
         <Status tone="success">
           Answer saved. Next review:{" "}
           {new Date(receipt.dueAt).toLocaleString("en-GB", { timeZone: queue.timezone })}{" "}
-          <Button secondary disabled={busy} onClick={undo}>
+          <Button secondary disabled={busy || !!pending.current} onClick={undo}>
             Undo last answer
           </Button>
         </Status>
@@ -266,12 +368,18 @@ export function ReviewView({
           secondary
           disabled={busy}
           onClick={async () => {
-            pending.current = null;
+            if (requestInFlight.current) return;
+            requestInFlight.current = true;
+            setBusy(true);
             setProblem("");
             try {
               await refresh();
+              pending.current = null;
             } catch {
               setProblem("Could not reload review. Try again.");
+            } finally {
+              requestInFlight.current = false;
+              setBusy(false);
             }
           }}
         >

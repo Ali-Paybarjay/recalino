@@ -1,0 +1,30 @@
+.face {
+  font-family: Vazirmatn, Tahoma, sans-serif;
+  font-size: 20px;
+  line-height: 1.7;
+  text-align: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: inherit;
+  padding-block: 16px;
+}
+
+.face [dir="ltr"] {
+  font-family: Lora, Georgia, Vazirmatn, Tahoma, serif;
+}
+
+.face :global(.ipa) {
+  font-family: "Noto Serif", "Charis SIL", "Gentium Plus", "Times New Roman", "DejaVu Serif", serif;
+}
+
+.face hr {
+  border: 0;
+  border-top: 1px solid currentColor;
+  opacity: 0.15;
+  margin: 1em 0;
+}
+
+.plain {
+  white-space: pre-wrap;
+  text-align: start;
+}

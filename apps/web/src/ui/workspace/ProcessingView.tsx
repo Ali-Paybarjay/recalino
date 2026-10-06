@@ -5,6 +5,7 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { pendingClassRecordings } from "../recording/processing-readiness";
 import { IndexedRecordingStore } from "../recording/store";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
@@ -73,6 +74,25 @@ export function ProcessingView({
     [progressError, setProgressError] = useState<string | null>(null),
     [message, setMessage] = useState<string | null>(null);
   const latest = runs[0];
+  const [pendingRecordings, setPendingRecordings] = useState(0);
+  useEffect(() => {
+    let disposed = false;
+    const local = new IndexedRecordingStore();
+    const check = async () => {
+      try {
+        const rows = await local.list(userId);
+        if (!disposed) setPendingRecordings(pendingClassRecordings(rows, sessionId).length);
+      } catch {
+        /* Confirmation rechecks local readiness before making a server request. */
+      }
+    };
+    void check();
+    const timer = setInterval(() => void check(), 2000);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [sessionId, userId]);
   const active = latest && ["awaiting_upload", "queued", "processing"].includes(latest.state);
   const completed = latest && ["ready", "partial_ready"].includes(latest.state);
   const selectionChanged =
@@ -84,6 +104,21 @@ export function ProcessingView({
   const awaitingOperator =
     latest?.state === "needs_input" &&
     !["new_confirmation_required", "audio_upload_rejected"].includes(latest.lastError ?? "");
+  const operatorMessage =
+    latest?.lastError === "provider_timestamps_invalid"
+      ? "The transcription service returned invalid timing information. Processing has stopped. Your saved class and earlier notes are available. Contact the operator to review this attempt before retrying."
+      : ["provider_outcome_unknown", "provider_outcome_unresolved"].includes(
+            latest?.lastError ?? "",
+          )
+        ? "The result of a processing request could not be confirmed. Processing is paused. Contact the operator before retrying."
+        : "Processing is paused and needs an operator review before retrying. Your saved class and earlier notes are available.";
+  const outputMessage =
+    latest?.lastError === "provider_output_truncated"
+      ? "The generated response was incomplete. No new class notes were saved. Retry processing to create a complete result."
+      : latest?.lastError?.startsWith("output_") ||
+          latest?.lastError === "knowledge_repair_exhausted"
+        ? "The generated notes could not be verified against your chosen language and selected sources. No new notes were saved. Retry processing to create a new result."
+        : null;
   const showConfirmation = !active && !awaitingOperator && (!completed || selectionChanged);
   const audioUploaded = !!latest && uploaded.current.has(latest.id);
   const previousSelection =
@@ -324,6 +359,31 @@ export function ProcessingView({
   }
   async function confirm() {
     if (!estimate) return;
+    const pending = pendingClassRecordings(
+      await new IndexedRecordingStore().list(userId),
+      sessionId,
+    );
+    setPendingRecordings(pending.length);
+    if (pending.length) {
+      setError(
+        "Wait for every recorded part to finish saving and be added to this class before confirming processing.",
+      );
+      return;
+    }
+    const current = await workspaceRequest<ProcessingEstimate>(
+      `/api/classes/${sessionId}/estimate`,
+      "GET",
+    );
+    if (
+      current.snapshot.fingerprint !== estimate.snapshot.fingerprint ||
+      current.snapshot.sourcesVersion !== estimate.snapshot.sourcesVersion
+    ) {
+      setEstimate(current);
+      setError(
+        "The class sources have changed. Review the updated estimate and confirm again to include the saved recording parts.",
+      );
+      return;
+    }
     const body = {
       expectedFingerprint: estimate.snapshot.fingerprint,
       expectedSourcesVersion: estimate.snapshot.sourcesVersion,
@@ -395,14 +455,15 @@ export function ProcessingView({
           {latest.lastError && !previousSelection ? (
             <Status tone={verifiedAudioNeedsConfirmation ? "neutral" : "error"}>
               {awaitingOperator || latest.lastError === "provider_outcome_unresolved"
-                ? "A provider result is still being checked. Contact the operator before retrying."
+                ? operatorMessage
                 : latest.lastError === "new_confirmation_required"
                   ? verifiedAudioNeedsConfirmation
                     ? "Your audio is uploaded and verified. Note creation has not started. Review the allowance below and confirm to create your class notes; you do not need to upload the audio again."
                     : "The verified source has changed. Review the selected sources and allowance before confirming again."
                   : latest.lastError === "audio_upload_rejected"
                     ? "The audio could not be verified. Review the selected audio, then retry with the saved original on this device or replace it."
-                    : "The selected material could not finish processing. Check your sources, then confirm a new attempt."}
+                    : (outputMessage ??
+                      "The selected material could not finish processing. Check your sources, then confirm a new attempt.")}
             </Status>
           ) : null}
           <Actions>
@@ -468,6 +529,12 @@ export function ProcessingView({
         </Panel>
       ) : showConfirmation ? (
         <Panel tone="hero" title="Check before processing">
+          {pendingRecordings > 0 ? (
+            <Status>
+              {pendingRecordings} recorded parts are still being saved or added to this class. Stop
+              the active recording and wait for all parts before confirming processing.
+            </Status>
+          ) : null}
           {!estimate ? (
             <>
               <p role="status">
@@ -545,7 +612,13 @@ export function ProcessingView({
               ) : null}
               <Actions>
                 <Button
-                  disabled={busy || !estimate.providerConfigured || !enough || awaitingOperator}
+                  disabled={
+                    busy ||
+                    !estimate.providerConfigured ||
+                    !enough ||
+                    awaitingOperator ||
+                    pendingRecordings > 0
+                  }
                   onClick={() => void action(confirm)}
                 >
                   {busy

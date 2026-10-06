@@ -8,11 +8,30 @@ import {
   sourceVerificationJob,
 } from "@recalino/core/src";
 import { audioVerifier } from "./audio-preparer";
+import {
+  notifyAutomaticLearningForRun,
+  notifyAutomaticLearningForVerifiedUpload,
+} from "./automatic-learning-notifications";
 import { getProcessingDefinition } from "./processing-jobs";
 import { getObjectStore } from "./storage";
 export function sourceUploadJobDefinition() {
   const store = getObjectStore();
-  return store ? sourceVerificationJob(store, new DefaultSourceVerifier()) : null;
+  if (!store) return null;
+  const definition = sourceVerificationJob(store, new DefaultSourceVerifier());
+  return {
+    ...definition,
+    async run(
+      input: Parameters<typeof definition.run>[0],
+      job: Parameters<typeof definition.run>[1],
+    ) {
+      await definition.run(input, job);
+      await notifyAutomaticLearningForVerifiedUpload(
+        job.db,
+        { userId: input.userId, requestId: job.job.id },
+        input.uploadId,
+      );
+    },
+  };
 }
 export function sourceAudioJobDefinition() {
   const store = getObjectStore();
@@ -24,6 +43,7 @@ export function sourceAudioJobDefinition() {
         async (db, ctx, runId) => {
           try {
             await activateProcessingRun(db, ctx, runId, processing);
+            await notifyAutomaticLearningForRun(db, ctx, runId);
           } catch (failure) {
             const fields = failure instanceof AppError ? failure.details?.fields : undefined;
             const problems =

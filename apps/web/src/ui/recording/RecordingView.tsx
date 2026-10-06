@@ -3,10 +3,11 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { workspaceRequest } from "../workspace/api";
+import { notifyAutomaticLearning, uploadAutomaticPhoto } from "../workspace/automatic-learning";
 import { Actions, Button, Panel, Status } from "../workspace/primitives";
-import { uploadWithConfirmation } from "../workspace/upload";
 import styles from "./Recording.module.css";
-import { ensureRecordingClass, RecordLauncher, useRecording } from "./RecordingProvider";
+import { RecordLauncher, useRecording } from "./RecordingProvider";
+import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 
 function duration(ms: number) {
@@ -21,42 +22,52 @@ function download(blob: Blob, name: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
-async function digest(blob: Blob) {
-  return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())),
-    (n) => n.toString(16).padStart(2, "0"),
-  ).join("");
-}
-
 export function RecordingView({ sessionId }: { sessionId?: string }) {
-  const { controller, state, store, userId } = useRecording();
+  const { controller, state, store, userId, sourceSync, syncState } = useRecording();
   const [rows, setRows] = useState<Recording[]>([]);
-  const [elapsed, setElapsed] = useState(0);
+  const [time, setTime] = useState({ elapsed: 0, segmentElapsed: 0 });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [player, setPlayer] = useState<{ id: string; url: string } | null>(null);
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
+  const [sourceNotice, setSourceNotice] = useState<{
+    contract: InputContract;
+    noticeAccepted: boolean;
+  } | null>(null);
+  const [noticeConfirmed, setNoticeConfirmed] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
-  const captureAnchor = useRef<{ offsetMs: number; captureState: "recording" | "paused" } | null>(
-    null,
-  );
+  const reloadVersion = useRef(0);
+  const captureAnchor = useRef<{
+    recordingId: string;
+    offsetMs: number;
+    captureState: "recording" | "paused";
+  } | null>(null);
   const reload = useCallback(async () => {
+    const version = ++reloadVersion.current;
     try {
       const next = (await store.list(userId)).filter(
         (row) => !sessionId || row.sessionId === sessionId,
       );
+      const nextPhotos = (
+        await Promise.all(next.map((row) => store.photos(userId, row.id)))
+      ).flat();
+      if (version !== reloadVersion.current) return;
       setRows(next);
-      setPhotos((await Promise.all(next.map((row) => store.photos(userId, row.id)))).flat());
+      setPhotos(nextPhotos);
     } catch {
+      if (version !== reloadVersion.current) return;
       setError("Local recordings could not be opened. Keep this device's site data and try again.");
     }
   }, [store, userId, sessionId]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: finishing capture refreshes manifests after the durable final chunk commit.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: capture updates also refresh older parts after late final audio is committed.
   useEffect(() => {
     void reload();
-  }, [reload, state.phase]);
+  }, [reload, state, syncState]);
   useEffect(() => {
-    const timer = setInterval(() => setElapsed(controller.elapsed()), 250);
+    const timer = setInterval(
+      () => setTime({ elapsed: controller.elapsed(), segmentElapsed: controller.segmentElapsed() }),
+      250,
+    );
     return () => clearInterval(timer);
   }, [controller]);
   useEffect(
@@ -66,15 +77,53 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     [player],
   );
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (["recording", "paused", "saving"].includes(controller.state.phase)) {
-        event.preventDefault();
-      }
+    const abort = new AbortController();
+    const load = () => {
+      void workspaceRequest<{ contract: InputContract; noticeAccepted: boolean }>(
+        "/api/sources/contract",
+        "GET",
+        undefined,
+        undefined,
+        { signal: abort.signal },
+      )
+        .then((value) => {
+          if (!abort.signal.aborted) setSourceNotice(value);
+        })
+        .catch((failure) => {
+          if (!abort.signal.aborted)
+            setError(
+              failure instanceof Error
+                ? failure.message
+                : "The material notice could not be opened.",
+            );
+        });
     };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [controller]);
+    load();
+    window.addEventListener("online", load);
+    return () => {
+      abort.abort();
+      window.removeEventListener("online", load);
+    };
+  }, []);
+  async function acceptSourceNotice() {
+    if (!sourceNotice || !noticeConfirmed) return;
+    await workspaceRequest("/api/sources/notice", "POST", {
+      version: sourceNotice.contract.noticeVersion,
+      confirmed: noticeConfirmed,
+    });
+    setSourceNotice({ ...sourceNotice, noticeAccepted: true });
+    sourceSync.retry();
+    for (const id of new Set(rows.flatMap((row) => (row.sessionId ? [row.sessionId] : []))))
+      notifyAutomaticLearning(id);
+  }
   async function operation(id: string, action: () => Promise<void>) {
+    if (
+      id === controller.state.recording?.id &&
+      ["starting", "recording", "recovering", "paused", "saving"].includes(controller.state.phase)
+    ) {
+      setError("Stop and save this part before opening or changing it.");
+      return;
+    }
     setBusy(id);
     setError(null);
     try {
@@ -87,37 +136,16 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     }
   }
   async function attach(row: Recording) {
-    const blob = await store.blob(userId, row.id);
-    if (!blob.size) throw new Error("No audio was saved in this recording.");
-    const classId = await ensureRecordingClass(row, store);
-    const current = await store.get(userId, row.id);
-    if (!current) throw new Error("Recording is missing.");
-    if (current.sourceAssetId) return;
-    const result = await workspaceRequest<{ assetId: string }>(
-      "/api/recordings",
-      "POST",
-      {
-        sessionId: classId,
-        kind: "audio",
-        mimeType: row.mimeType.split(";")[0],
-        sizeBytes: blob.size,
-        sha256: await digest(blob),
-        displayName: `Class recording ${row.createdAt.slice(0, 10)}`,
-        durationMs: Math.max(1, Math.ceil(row.activeMs) + 1000),
-        parts: [],
-      },
-      `recorded-source:${row.id}`,
-    );
-    await store.put({ ...current, sourceAssetId: result.assetId });
+    await registerRecordingRow(row, store, controller);
   }
   async function savePhoto(file: File) {
-    const recording = controller.state.recording;
-    if (!recording || !captureAnchor.current) return;
+    const anchor = captureAnchor.current;
+    captureAnchor.current = null;
+    if (!anchor) return;
     const photo: LocalPhoto = {
       id: crypto.randomUUID(),
       userId,
-      recordingId: recording.id,
-      ...captureAnchor.current,
+      ...anchor,
       blob: file,
       createdAt: new Date().toISOString(),
       sourceAssetId: null,
@@ -138,66 +166,18 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     );
     if (!config.noticeAccepted)
       throw new Error(
-        "Accept the source notice on the class Sources page, then return to add this photo.",
+        `Board photo at ${duration(photo.offsetMs)} is saved on this device. Accept the material notice below to resume its upload.`,
       );
-    const parts: { index: number; sizeBytes: number; sha256: string }[] = [];
-    for (let offset = 0; offset < photo.blob.size; offset += config.contract.partBytes) {
-      const part = photo.blob.slice(offset, offset + config.contract.partBytes);
-      parts.push({ index: parts.length, sizeBytes: part.size, sha256: await digest(part) });
-    }
-    const source = await workspaceRequest<{ assetId: string; uploadId: string }>(
-      "/api/sources",
-      "POST",
-      {
-        sessionId: recording.sessionId,
-        kind: "image",
-        mimeType: photo.blob.type,
-        sizeBytes: photo.blob.size,
-        sha256: await digest(photo.blob),
-        displayName: `Board photo at ${duration(photo.offsetMs)}`,
-        captureAnchor: {
-          sourceId: recording.sourceAssetId,
-          offsetMs: Math.ceil(photo.offsetMs),
-          state: photo.captureState,
-        },
-        parts,
+    await uploadAutomaticPhoto(recording, photo, config.contract, {
+      store,
+      checkAllowed: () => {
+        if (controller.snapshot().accountDeletionBlocked)
+          throw new DOMException("Account deletion is in progress.", "AbortError");
       },
-      `recorded-photo:${photo.id}`,
-    );
-    const manifest = await workspaceRequest<{
-      parts: { index: number; verifiedAt: string | null }[];
-    }>(`/api/sources/uploads/${source.uploadId}`, "GET");
-    for (const part of parts) {
-      if (manifest.parts.some((stored) => stored.index === part.index && stored.verifiedAt))
-        continue;
-      const link = await workspaceRequest<{ url: string }>(
-        `/api/sources/uploads/${source.uploadId}/parts/${part.index}`,
-        "GET",
-      );
-      await uploadWithConfirmation(
-        () =>
-          fetch(link.url, {
-            method: "PUT",
-            headers: { "content-type": photo.blob.type },
-            body: photo.blob.slice(
-              part.index * config.contract.partBytes,
-              (part.index + 1) * config.contract.partBytes,
-            ),
-          }),
-        () =>
-          workspaceRequest(`/api/sources/uploads/${source.uploadId}/parts/${part.index}`, "POST"),
-        "Photo upload interrupted. The local copy is still saved.",
-      );
-    }
-    await workspaceRequest(
-      `/api/sources/uploads/${source.uploadId}/complete`,
-      "POST",
-      {},
-      `photo-complete:${photo.id}`,
-    );
-    await store.savePhoto({ ...photo, sourceAssetId: source.assetId });
+    });
+    notifyAutomaticLearning(recording.sessionId);
   }
-  const active = ["starting", "recording", "paused", "saving"].includes(state.phase);
+  const active = ["starting", "recording", "recovering", "paused", "saving"].includes(state.phase);
   const currentId = state.recording?.id;
   return (
     <div className="preview-stack">
@@ -208,17 +188,23 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
         {active ? (
           <>
             <p role="timer" className="preview-rec-time" aria-label="Active recording time">
-              {duration(elapsed)}
+              {duration(time.elapsed)}
             </p>
             <p>
               {state.phase === "paused"
                 ? "Paused. The microphone is not being recorded."
                 : state.phase === "saving"
                   ? "Saving the final audio parts…"
-                  : "You can move around Recalino while recording continues."}
+                  : state.phase === "recovering"
+                    ? "Reconnecting the microphone automatically. Audio already saved is kept as a separate part."
+                    : "Recording continues in ten-minute parts, saved on this device."}
+            </p>
+            <p className="preview-muted">
+              Recording and lock-screen controls depend on your browser. Keep Recalino open and the
+              screen on for reliable capture.
             </p>
             <Actions>
-              {state.phase === "recording" ? (
+              {["recording", "recovering"].includes(state.phase) ? (
                 <Button secondary onClick={() => controller.pause()}>
                   Pause recording
                 </Button>
@@ -236,9 +222,13 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
               {["recording", "paused"].includes(state.phase) ? (
                 <Button
                   secondary
+                  disabled={!sourceNotice?.noticeAccepted}
                   onClick={() => {
+                    const recording = controller.state.recording;
+                    if (!recording) return;
                     captureAnchor.current = {
-                      offsetMs: controller.elapsed(),
+                      recordingId: recording.id,
+                      offsetMs: controller.segmentElapsed(),
                       captureState: state.phase === "paused" ? "paused" : "recording",
                     };
                     photoInput.current?.click();
@@ -264,12 +254,19 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
               {photos.filter((photo) => photo.recordingId === currentId).length} board photos saved
               on this device
             </p>
+            {sourceNotice && !sourceNotice.noticeAccepted ? (
+              <p>
+                <a href="#recording-material-notice">
+                  Accept the material notice to add board photos.
+                </a>
+              </p>
+            ) : null}
           </>
         ) : (
           <>
             <p>
-              Audio is saved on this device. It is sent for transcription only after you confirm
-              processing.
+              After Stop, all recorded parts are saved on this device, then uploaded automatically
+              to prepare and save your class notes and flashcards.
             </p>
             <RecordLauncher sessionId={sessionId} />
           </>
@@ -277,26 +274,48 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
         {state.error ? <Status tone="error">{state.error}</Status> : null}
       </Panel>
       {error ? <Status tone="error">{error}</Status> : null}
+      {syncState.pending > 0 ? (
+        <Panel title="Adding recorded parts to your class">
+          <p role={syncState.phase === "failed" ? "alert" : "status"}>
+            {syncState.phase === "syncing"
+              ? `${syncState.count} parts added · ${syncState.pending} remaining`
+              : syncState.error}
+          </p>
+          {syncState.phase === "failed" ? (
+            <Button onClick={() => sourceSync.retry()}>Retry adding class sources</Button>
+          ) : null}
+        </Panel>
+      ) : null}
       <Panel title="Saved and recoverable recordings">
         {!rows.length ? (
           <p className="preview-muted">No recordings on this device yet.</p>
         ) : (
           rows.map((row) => (
             <article key={row.id} className="preview-panel">
-              <h3>{new Date(row.createdAt).toLocaleString()}</h3>
+              <h3>
+                {new Date(row.createdAt).toLocaleString()}
+                {(row.segment ?? 1) > 1 ? ` · Part ${row.segment}` : null}
+              </h3>
               <p>
-                {duration(row.id === currentId && active ? elapsed : row.activeMs)} ·{" "}
+                {duration(row.id === currentId && active ? time.segmentElapsed : row.activeMs)} ·{" "}
                 {Math.ceil(row.bytes / 1024)} KB
               </p>
               {row.id === currentId && active ? (
-                <p>Recording in progress</p>
+                <p>
+                  {state.phase === "recovering"
+                    ? "Recording interrupted; automatic recovery in progress"
+                    : "Recording in progress"}
+                </p>
               ) : (
                 <>
                   <p>
-                    {row.status === "saved"
-                      ? "Saved on this device"
-                      : "Recording was interrupted. Check and export the saved parts."}
+                    {row.awaitingFinalData
+                      ? "Recovering the final audio for this part… You can export the parts already saved."
+                      : row.status === "saved"
+                        ? "Saved on this device"
+                        : "Recording was interrupted. Check and export the saved parts."}
                   </p>
+                  {row.syncError ? <Status tone="error">{row.syncError}</Status> : null}
                   <Actions>
                     <Button
                       secondary
@@ -326,7 +345,11 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                     </Button>
                     {!row.sourceAssetId ? (
                       <Button
-                        disabled={busy !== null}
+                        disabled={
+                          busy !== null ||
+                          row.awaitingFinalData ||
+                          (row.autoRegister && !row.completedAt)
+                        }
                         onClick={() => void operation(row.id, () => attach(row))}
                       >
                         Add to class sources
@@ -346,6 +369,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                     recordingId={row.id}
                     onAttach={(photo) => void operation(photo.id, () => attachPhoto(photo))}
                     disabled={busy !== null}
+                    automatic={Boolean(row.autoGenerate)}
                   />
                   <details>
                     <summary>Remove from this device</summary>
@@ -355,7 +379,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                     </p>
                     <Button
                       secondary
-                      disabled={busy !== null}
+                      disabled={busy !== null || row.awaitingFinalData}
                       onClick={() => void operation(row.id, () => store.remove(userId, row.id))}
                     >
                       Confirm local removal
@@ -367,6 +391,43 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
           ))
         )}
       </Panel>
+      {sourceNotice && !sourceNotice.noticeAccepted ? (
+        <section id="recording-material-notice">
+          <Panel title="Before adding class material">
+            <p>
+              After you stop recording, saved audio and board photos automatically create and save
+              your class notes and flashcards. Audio stays on this device, with a temporary copy
+              uploaded for transcription. Board photos are stored privately.
+            </p>
+            <p>Follow your institution’s rules for recording and using class materials.</p>
+            {photos.some((photo) => !photo.sourceAssetId) ? (
+              <p>
+                {photos
+                  .filter((photo) => !photo.sourceAssetId)
+                  .map((photo) => `Board photo at ${duration(photo.offsetMs)}`)
+                  .join(", ")}{" "}
+                · saved on this device, waiting for this notice.
+              </p>
+            ) : null}
+            <label className="preview-check">
+              <input
+                type="checkbox"
+                checked={noticeConfirmed}
+                onChange={(event) => setNoticeConfirmed(event.target.checked)}
+              />
+              I have the right to use these materials for private study.
+            </label>
+            <Actions>
+              <Button
+                disabled={!noticeConfirmed || busy !== null}
+                onClick={() => void operation("notice", acceptSourceNotice)}
+              >
+                Accept and continue
+              </Button>
+            </Actions>
+          </Panel>
+        </section>
+      ) : null}
       <p className="preview-muted">
         Clearing this browser's site data removes local audio. Keep a copy of recordings you need.
       </p>
@@ -379,11 +440,13 @@ function PhotoGallery({
   recordingId,
   onAttach,
   disabled,
+  automatic,
 }: {
   photos: LocalPhoto[];
   recordingId: string;
   onAttach: (photo: LocalPhoto) => void;
   disabled: boolean;
+  automatic: boolean;
 }) {
   const photos = useMemo(
     () => allPhotos.filter((photo) => photo.recordingId === recordingId),
@@ -411,9 +474,12 @@ function PhotoGallery({
               : "Estimated capture position"}
           </figcaption>
           {!photo.sourceAssetId ? (
-            <Button secondary disabled={disabled} onClick={() => onAttach(photo)}>
-              Add photo to class
-            </Button>
+            <>
+              {automatic ? <p>Uploads automatically after the recording is saved.</p> : null}
+              <Button secondary disabled={disabled} onClick={() => onAttach(photo)}>
+                {automatic ? "Retry photo upload" : "Add photo to class"}
+              </Button>
+            </>
           ) : (
             <p>Added to class sources</p>
           )}

@@ -16,7 +16,7 @@ export {
   updateUnit,
 } from "./courses";
 export { cleanupAccountOrg, cleanupSessionOrg } from "./privacy";
-export { filterLiveSessionIds } from "./projections";
+export { filterLiveSessionIds, liveSessionIdsQuery } from "./projections";
 export {
   type CreateCourseInput,
   type CreateSessionInput,

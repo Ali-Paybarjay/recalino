@@ -13,8 +13,27 @@ export const recordingSchema = z.strictObject({
   bytes: z.int().nonnegative(),
   creationKey: z.uuid(),
   sourceAssetId: z.uuid().nullable().default(null),
+  // Optional for recordings made before automatic recovery was introduced.
+  captureId: z.uuid().optional(),
+  segment: z.int().positive().optional(),
+  awaitingFinalData: z.boolean().optional(),
+  autoRegister: z.boolean().optional(),
+  // Only captures made after automatic learning was introduced authorize paid preparation.
+  autoGenerate: z.boolean().optional(),
+  completedAt: z.string().datetime().optional(),
+  syncError: z.string().max(1000).nullable().optional(),
 });
 export type Recording = z.infer<typeof recordingSchema>;
+export type RegistrationPatch = Partial<
+  Pick<Recording, "sessionId" | "sourceAssetId" | "syncError">
+>;
+const registrationPatchSchema = recordingSchema
+  .pick({
+    sessionId: true,
+    sourceAssetId: true,
+    syncError: true,
+  })
+  .partial();
 export interface RecordingStore {
   put(manifest: Recording): Promise<void>;
   append(manifest: Recording, chunk: Blob): Promise<Recording>;
@@ -22,6 +41,11 @@ export interface RecordingStore {
   list(userId: string): Promise<Recording[]>;
   blob(userId: string, id: string): Promise<Blob>;
   remove(userId: string, id: string): Promise<void>;
+  updateRegistration(
+    userId: string,
+    id: string,
+    patch: RegistrationPatch,
+  ): Promise<Recording | null>;
 }
 
 const DB_NAME = "recalino-recordings-v1";
@@ -123,6 +147,9 @@ export class IndexedRecordingStore implements RecordingStore {
             ...manifest,
             sessionId: previous.sessionId ?? manifest.sessionId,
             sourceAssetId: previous.sourceAssetId ?? manifest.sourceAssetId,
+            completedAt: previous.completedAt ?? manifest.completedAt,
+            autoRegister: previous.autoRegister ?? manifest.autoRegister,
+            syncError: previous.syncError === undefined ? manifest.syncError : previous.syncError,
             chunks: previous.chunks + 1,
             bytes: previous.bytes + blob.size,
           });
@@ -140,6 +167,38 @@ export class IndexedRecordingStore implements RecordingStore {
     });
     await done;
     if (!next) throw new Error("Local recording is missing");
+    return next;
+  }
+  /** Merge synchronization acknowledgements with the latest durable counters. */
+  async updateRegistration(
+    userId: string,
+    id: string,
+    patch: RegistrationPatch,
+  ): Promise<Recording | null> {
+    registrationPatchSchema.parse(patch);
+    const db = await this.open();
+    const tx = db.transaction(["recordings", "deletedAccounts"], "readwrite", {
+      durability: "strict",
+    });
+    const done = committed(tx);
+    let next: Recording | null = null;
+    unlessAccountDeleted(tx, userId, () => {
+      const request = tx.objectStore("recordings").get([userId, id]);
+      request.onsuccess = () => {
+        if (request.result === undefined) return;
+        try {
+          next = recordingSchema.parse({
+            ...request.result,
+            ...patch,
+            updatedAt: new Date().toISOString(),
+          });
+          tx.objectStore("recordings").put(next);
+        } catch {
+          tx.abort();
+        }
+      };
+    });
+    await done;
     return next;
   }
   async get(userId: string, id: string) {

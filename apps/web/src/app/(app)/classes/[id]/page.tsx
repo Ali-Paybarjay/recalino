@@ -3,6 +3,7 @@ import { requireLearner } from "../../../../server/auth/learner";
 import { workspaceGroups, workspaceSession } from "../../../../server/workspace";
 import { RecordLauncher } from "../../../../ui/recording/RecordingProvider";
 import { PageHeader } from "../../../../ui/shell/AppShell";
+import { AutomaticLearningNotice } from "../../../../ui/workspace/AutomaticLearningView";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
 import { SessionLearningSummary } from "../../../../ui/workspace/SessionLearningSummary";
 import { LearnerShell } from "../../LearnerShell";
@@ -31,7 +32,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
         </Link>
         <Actions>
           <RecordLauncher sessionId={id} />
-          <LinkButton href={`/classes/${id}/sources`}>Add sources</LinkButton>
+          <LinkButton href={`/classes/${id}/sources`}>Add material</LinkButton>
           <LinkButton secondary href={`/classes/${id}/options`}>
             Class options
           </LinkButton>
@@ -39,6 +40,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
             Course materials
           </LinkButton>
         </Actions>
+        <AutomaticLearningNotice sessionId={id} />
         <section id="topics" aria-label="Topics covered">
           <Panel title="Topics covered">
             <SessionLearningSummary session={session} showTopics={false} />
@@ -58,7 +60,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
             ) : (
               <p>
                 {session.titleSource === "date"
-                  ? "Add your sources and process the class material to see the lesson title and topics here."
+                  ? "Add class material. The lesson title, notes and flashcards will appear automatically."
                   : "Open class notes to explore this lesson. Topics will appear here when included in the learning material."}
               </p>
             )}
@@ -72,14 +74,17 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
             </LinkButton>
           </Panel>
           <Panel title="Your learning">
-            <p>Make class notes, choose useful cards, and practise at your own pace.</p>
+            <p>
+              Your uploaded material becomes notes and flashcards automatically. Practise at your
+              own pace.
+            </p>
             <Actions>
               <LinkButton href={`/classes/${id}/notes`}>Class notes</LinkButton>
               <LinkButton secondary href={`/classes/${id}/cards`}>
                 Flashcards
               </LinkButton>
               <LinkButton secondary href={`/classes/${id}/estimate`}>
-                Process class material
+                View progress
               </LinkButton>
               <LinkButton secondary href={`/classes/${id}/export`}>
                 Download notes and cards

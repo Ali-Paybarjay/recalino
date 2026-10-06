@@ -1,8 +1,10 @@
 "use client";
 import type { CardActionInput, CardProposal, StudyCard } from "@recalino/core/card";
+import { cardHtmlToText } from "@recalino/core/card-html";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { requestKey, workspaceRequest } from "./api";
+import { CardFace } from "./CardFace";
 import { CardMedia } from "./CardMedia";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
@@ -18,13 +20,21 @@ export function CardEditor({
   const router = useRouter(),
     [card, setCard] = useState(initial),
     [proposals, setProposals] = useState(initialProposals),
-    [front, setFront] = useState(initial.front),
-    [back, setBack] = useState(initial.back),
+    [front, setFront] = useState(
+      initial.contentFormat === "lesson_html" ? cardHtmlToText(initial.front) : initial.front,
+    ),
+    [back, setBack] = useState(
+      initial.contentFormat === "lesson_html" ? cardHtmlToText(initial.back) : initial.back,
+    ),
     [newGoal, setNewGoal] = useState(false),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
     [notice, setNotice] = useState("");
   const key = useRef<{ payload: string; key: string } | null>(null);
+  const dirty =
+    newGoal ||
+    front !== (card.contentFormat === "lesson_html" ? cardHtmlToText(card.front) : card.front) ||
+    back !== (card.contentFormat === "lesson_html" ? cardHtmlToText(card.back) : card.back);
   async function mutate(path: string, method: string, body: unknown) {
     setBusy(true);
     setProblem("");
@@ -46,8 +56,10 @@ export function CardEditor({
         return;
       }
       setCard(result);
-      setFront(result.front);
-      setBack(result.back);
+      setFront(
+        result.contentFormat === "lesson_html" ? cardHtmlToText(result.front) : result.front,
+      );
+      setBack(result.contentFormat === "lesson_html" ? cardHtmlToText(result.back) : result.back);
       setNotice("Card saved.");
       return result;
     } catch (failure) {
@@ -81,9 +93,18 @@ export function CardEditor({
           {card.status} · {card.template} · Version {card.contentVersion}
         </p>
         <ClaimEvidence claim={card.provenance} userId={userId} />
+        {card.contentFormat === "lesson_html" && (
+          <>
+            <CardFace card={card} revealed />
+            <p className="preview-muted">
+              Saving text changes replaces the lesson formatting with your wording.
+            </p>
+          </>
+        )}
         <form
           onSubmit={(event) => {
             event.preventDefault();
+            if (!dirty) return;
             void mutate(`/api/cards/${card.id}`, "PATCH", {
               expectedVersion: card.contentVersion,
               front,
@@ -122,7 +143,7 @@ export function CardEditor({
               <option value="new">New learning goal</option>
             </select>
           </Field>
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy || !dirty}>
             Save card
           </Button>
         </form>
@@ -178,10 +199,8 @@ export function CardEditor({
         <Panel title="Suggested updates from newer notes">
           {proposals.map((proposal) => (
             <article key={proposal.id} className="preview-list-item">
-              <h3>Proposed question</h3>
-              <p>{proposal.front}</p>
-              <h3>Proposed answer</h3>
-              <p>{proposal.back}</p>
+              <h3>Proposed card</h3>
+              <CardFace card={proposal} revealed />
               <ClaimEvidence claim={proposal.provenance} userId={userId} />
               <p>Your current card and review history stay intact until you choose.</p>
               <Actions>

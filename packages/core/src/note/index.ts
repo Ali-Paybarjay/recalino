@@ -1,4 +1,11 @@
 export { noteEditActivity } from "./activity";
+export { automaticPublishNotebook } from "./automatic";
+export {
+  automaticLearningGoalKey,
+  automaticLearningGoalStem,
+  automaticLearningGoalsMatch,
+  reconcileAutomaticEdits,
+} from "./automatic-identity";
 export {
   type CourseMaterials,
   type CourseMaterialsInput,

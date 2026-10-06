@@ -1092,6 +1092,67 @@ export async function updateSourceSelection(
   });
 }
 
+/** Reset one selected extraction after processing has verified its immutable failed-version pin. */
+export async function resetSourceExtractionSelection(
+  tx: Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  assetId: string,
+  expected: {
+    contentVersionId: string;
+    sourcesVersion: number;
+    ranges: readonly { start: number; end: number }[];
+  },
+  now = new Date(),
+): Promise<number> {
+  await lockOwner(tx, ctx);
+  const session = await assertSessionOwner(tx, ctx, sessionId);
+  if (session.sourcesVersion !== expected.sourcesVersion)
+    throw errors.validationFailed({ source: ["retry_selection_changed"] });
+  const source = await assetRow(tx, ctx, z.uuid().parse(assetId));
+  const link = await tx
+    .selectFrom("src.session_source")
+    .selectAll()
+    .where("session_id", "=", sessionId)
+    .where("asset_id", "=", assetId)
+    .where("user_id", "=", ctx.userId)
+    .where("active", "=", true)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!link) throw errors.notFound();
+  if (
+    !link.selected ||
+    link.selected_content_version_id !== expected.contentVersionId ||
+    canonicalJson(link.ranges) !== canonicalJson(expected.ranges)
+  )
+    throw errors.validationFailed({ source: ["retry_selection_changed"] });
+  if (!["audio", "image", "pdf"].includes(source.kind))
+    throw errors.validationFailed({ source: ["retry_requires_replacement"] });
+  let objectId =
+    source.verified_at && !source.original_deleted_at ? source.original_object_id : null;
+  if (source.kind === "audio") {
+    const audio = await tx
+      .selectFrom("src.audio_upload")
+      .select("object_id")
+      .where("asset_id", "=", assetId)
+      .where("user_id", "=", ctx.userId)
+      .where("state", "=", "verified")
+      .where("expires_at", ">", now)
+      .orderBy("created_at", "desc")
+      .executeTakeFirst();
+    objectId = audio?.object_id ?? null;
+  }
+  if (!objectId || (await ownedObjectMetadata(tx, ctx, objectId)).state !== "verified")
+    throw errors.validationFailed({ source: ["original_unavailable"] });
+  await tx
+    .updateTable("src.session_source")
+    .set({ selected_content_version_id: null, changed_at: now })
+    .where("id", "=", link.id)
+    .execute();
+  await snapshot(tx, ctx, sessionId, now);
+  return expected.sourcesVersion + 1;
+}
+
 export async function detachSource(
   db: Database,
   ctx: LearnerContext,

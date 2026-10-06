@@ -27,7 +27,8 @@ export function findSchemaNameViolations(
   const violations: SchemaNameViolation[] = [];
   for (const file of files) {
     // Tests may read any table to observe effects; the rule protects production code.
-    if (/\.(test|spec)\.tsx?$/.test(file.path)) continue;
+    if (/\.(test|spec)\.tsx?$/.test(file.path) || /^packages\/[^/]+\/test\//.test(file.path))
+      continue;
     for (const table of tables) {
       const schema = table.split(".")[0];
       const ownFolder = `packages/core/src/${schema}/`;

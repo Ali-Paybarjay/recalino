@@ -59,6 +59,12 @@ import {
   tombstoneSessionSrs,
 } from "@recalino/core/srs";
 import { purgeSupportUser } from "@recalino/core/support";
+import {
+  cleanupAccountVoice,
+  removeSessionVoice,
+  removeSourceVoice,
+  revokeVoiceData,
+} from "@recalino/core/voc";
 import { createAuthAdmin } from "./auth/supabase";
 import { privacyDeletionJournal } from "./privacy-journal";
 import { getObjectStore } from "./storage";
@@ -79,6 +85,15 @@ export function privacyDependencies(): PrivacyDependencies {
     authentication: { revokeSessions: removeIdentity, deleteIdentity: removeIdentity },
     deletionJournal: privacyDeletionJournal(),
     hooks: [
+      {
+        module: "voc",
+        tombstoneSession: (tx, ctx, id) => removeSessionVoice(tx, ctx, id),
+        tombstoneAccount: revokeVoiceData,
+        tombstoneSource: (tx, ctx, id) => removeSourceVoice(tx, ctx, id),
+        cleanupSession: (db, ctx, id) => removeSessionVoice(db, ctx, id),
+        cleanupSource: (db, ctx, id) => removeSourceVoice(db, ctx, id),
+        cleanupAccount: (db, ctx, now) => cleanupAccountVoice(db, storage(), ctx, now),
+      },
       {
         module: "support",
         tombstoneSession: async () => {},

@@ -11,6 +11,7 @@ import {
   listCards,
   resolveCardProposal,
   setCardMedia,
+  synchronizeAutomaticCards,
 } from "@recalino/core/card";
 import { getLatestVersion } from "@recalino/core/lkm";
 import {
@@ -21,10 +22,12 @@ import {
   publishNotebookSchema,
 } from "@recalino/core/note";
 import { errors, type LearnerContext } from "@recalino/core/plt";
+import { getAutomaticLearningSession } from "@recalino/core/proc";
 import {
   getReviewQueue,
   getReviewSettings,
   reviewInputSchema,
+  reviewQueueQuerySchema,
   reviewSettingsSchema,
   submitReview,
   undoReview,
@@ -56,12 +59,18 @@ export function notebookHandler(sessionId: string): Handler {
       ]);
       return { body: { notebook, latestKnowledge } };
     }
-    return {
-      status: 201,
-      body: await publishNotebook(db, learner, sessionId, publishNotebookSchema.parse(input), {
-        key: key(request),
-      }),
-    };
+    const notebook = await publishNotebook(
+      db,
+      learner,
+      sessionId,
+      publishNotebookSchema.parse(input),
+      { key: key(request) },
+    );
+    if (await getAutomaticLearningSession(db, learner, sessionId))
+      await synchronizeAutomaticCards(db, learner, sessionId, {
+        key: `automatic-cards:${notebook.current.id}`,
+      });
+    return { status: 201, body: notebook };
   };
 }
 export function noteVersionsHandler(sessionId: string): Handler {
@@ -150,9 +159,12 @@ export function cardMediaHandler(id: string): Handler {
 }
 export function reviewQueueHandler(): Handler {
   return async ({ request, db, ctx }) => {
-    const value = new URL(request.url).searchParams.get("sessionId");
-    if (value) valid(value);
-    return { body: await getReviewQueue(db, actor(ctx), { sessionId: value ?? undefined }) };
+    const query = new URL(request.url).searchParams;
+    const selection = reviewQueueQuerySchema.parse({
+      sessionId: query.get("sessionId") ?? undefined,
+      studySet: query.get("studySet") ?? undefined,
+    });
+    return { body: await getReviewQueue(db, actor(ctx), selection) };
   };
 }
 export function reviewEventHandler(): Handler {

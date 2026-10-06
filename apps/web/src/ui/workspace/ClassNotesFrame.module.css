@@ -1,0 +1,15 @@
+.frame {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: max(420px, calc(100dvh - 220px));
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+@media (max-width: 767px) {
+  .frame {
+    height: max(420px, calc(100dvh - 190px));
+  }
+}

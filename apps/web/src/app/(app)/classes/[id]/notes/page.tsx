@@ -1,11 +1,12 @@
 import { getLatestVersion } from "@recalino/core/lkm";
 import { getNotebook } from "@recalino/core/note";
+import { getNoteSourceStatus } from "@recalino/core/proc";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
 import { workspaceActor, workspaceSession } from "../../../../../server/workspace";
 import { PageHeader } from "../../../../../ui/shell/AppShell";
+import { VoiceConfirmation } from "../../../../../ui/voice/VoiceConfirmation";
 import { NoteView } from "../../../../../ui/workspace/NoteView";
-import { Actions, LinkButton } from "../../../../../ui/workspace/primitives";
 import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function NotesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,22 +19,26 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
     getNotebook(db, ctx, id),
     getLatestVersion(db, ctx, id),
   ]);
+  const sourceStatus = await getNoteSourceStatus(
+    db,
+    ctx,
+    id,
+    initial?.current.knowledgeVersionId ?? latest?.id,
+  );
   return (
-    <LearnerShell
-      learner={learner}
-      current="classes"
-      header={<PageHeader title="Class notes" subtitle={session.displayTitle} />}
-    >
+    <LearnerShell learner={learner} current="classes" header={<PageHeader title="Class notes" />}>
       <div className="preview-stack">
-        <Actions>
-          <LinkButton secondary href={`/courses/${session.courseId}`}>
-            Back to course
-          </LinkButton>
-          <LinkButton secondary href={`/courses/${session.courseId}/materials`}>
-            Read course materials
-          </LinkButton>
-        </Actions>
-        <NoteView sessionId={id} userId={learner.userId} initial={initial} latest={latest} />
+        <VoiceConfirmation sessionId={id} userId={learner.userId}>
+          <NoteView
+            sessionId={id}
+            userId={learner.userId}
+            initial={initial}
+            latest={latest}
+            courseId={session.courseId}
+            sourceIssues={sourceStatus.issues}
+            materialSources={sourceStatus.materials}
+          />
+        </VoiceConfirmation>
       </div>
     </LearnerShell>
   );

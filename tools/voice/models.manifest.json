@@ -1,0 +1,21 @@
+{
+  "revision": "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+  "runtime": { "package": "sherpa-onnx-node", "version": "1.13.8", "license": "Apache-2.0" },
+  "segmentation": {
+    "path": "sherpa-onnx-pyannote-segmentation-3-0/model.onnx",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2",
+    "archiveSha256": "24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488",
+    "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079",
+    "license": "MIT",
+    "attribution": "CNRS, pyannote/segmentation-3.0 (2022); ONNX conversion by k2-fsa/sherpa-onnx",
+    "source": "https://huggingface.co/pyannote/segmentation-3.0"
+  },
+  "embedding": {
+    "path": "wespeaker_en_voxceleb_resnet34_LM.onnx",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx",
+    "sha256": "e9848563da86f263117134dfd7ad63c92355b37de492b55e325400c9d9c39012",
+    "license": "CC-BY-4.0",
+    "attribution": "WeSpeaker team, wespeaker-voxceleb-resnet34-LM; trained on VoxCeleb2. ONNX metadata conversion by k2-fsa/sherpa-onnx; no changes to weights by Recalino.",
+    "source": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM"
+  }
+}

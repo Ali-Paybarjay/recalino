@@ -1,16 +1,31 @@
 "use client";
 import type { StudyCard } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, workspaceRequest } from "./api";
+import { CardFace } from "./CardFace";
 import { ClaimEvidence } from "./NoteView";
-import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
+import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+
+function CardPreview({ card, userId }: { card: StudyCard; userId: string }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <>
+      <CardFace card={card} revealed={revealed} />
+      <Button secondary aria-expanded={revealed} onClick={() => setRevealed(!revealed)}>
+        {revealed ? "Hide answer" : "Show answer"}
+      </Button>
+      {revealed && <ClaimEvidence claim={card.provenance} userId={userId} collapsed />}
+    </>
+  );
+}
+
 export function CardsView({
   sessionId,
   userId,
   initial,
   notebook,
-  hasGeneratedNotes = false,
 }: {
   sessionId: string;
   userId: string;
@@ -19,41 +34,28 @@ export function CardsView({
   hasGeneratedNotes?: boolean;
 }) {
   const [cards, setCards] = useState(initial),
-    [reverse, setReverse] = useState(false),
-    [autoAdd, setAutoAdd] = useState(false),
-    [selected, setSelected] = useState<string[]>(
-      notebook?.current.model.learningItems.map((item) => item.id) ?? [],
-    ),
     [busy, setBusy] = useState(false),
-    [problem, setProblem] = useState(""),
-    [notice, setNotice] = useState("");
+    [problem, setProblem] = useState("");
   const key = useRef<{ payload: string; key: string } | null>(null);
-  async function generate() {
-    const body = { itemIds: selected, reverse, autoAdd };
-    setBusy(true);
-    setProblem("");
-    try {
-      const result = await workspaceRequest<{
-        cards: StudyCard[];
-        proposedUpdates: number;
-        duplicates: number;
-      }>(`/api/classes/${sessionId}/cards`, "POST", body, requestKey(key, body));
-      setCards(
-        await workspaceRequest<{ cards: StudyCard[] }>(
-          `/api/classes/${sessionId}/cards`,
-          "GET",
-        ).then((value) => value.cards),
-      );
-      key.current = null;
-      setNotice(
-        `${result.cards.length} cards prepared. ${result.duplicates} already existed; ${result.proposedUpdates} updates await your decision.`,
-      );
-    } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Cards could not be prepared.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [selectedSet, setSelectedSet] = useState<"production" | "recognition" | "legacy">(
+    initial.some((card) => card.studySet === "production")
+      ? "production"
+      : initial.some((card) => card.studySet === "recognition")
+        ? "recognition"
+        : "legacy",
+  );
+  const grouped = cards.some((card) => card.studySet);
+  const groups = (["production", "recognition", "legacy"] as const).map((set) => ({
+    set,
+    cards: cards
+      .filter((card) => (card.studySet ?? "legacy") === set)
+      .sort((a, b) => (a.studyPosition ?? 0) - (b.studyPosition ?? 0)),
+  }));
+  const activeGroup =
+    groups.find((group) => group.set === selectedSet && group.cards.length) ??
+    groups.find((group) => group.cards.length);
+  const visibleCards = grouped ? (activeGroup?.cards ?? []) : cards;
+  useEffect(() => setCards(initial), [initial]);
   async function accept(card: StudyCard, action: "activate" | "reject") {
     const body = { expectedVersion: card.contentVersion, action, confirmQuality: true };
     setBusy(true);
@@ -84,95 +86,50 @@ export function CardsView({
             Review this class
           </LinkButton>
         ) : null}
+        <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+          Add material
+        </LinkButton>
       </Actions>
+      <AutomaticLearningNotice sessionId={sessionId} />
       {problem && <Status tone="error">{problem}</Status>}
-      {notice && <Status>{notice}</Status>}
-      <Panel title="Turn useful moments into cards">
-        {notebook ? (
-          <>
-            <p>
-              Choose the learning items you want to practise, then select Prepare cards. Review each
-              prepared card and select Confirm and add to include it in your daily review, or
-              explicitly choose automatic addition.
-            </p>
-            <fieldset>
-              <legend>Learning items</legend>
-              {notebook.current.model.learningItems.map((item) => (
-                <label key={item.id} className="preview-choice">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(item.id)}
-                    onChange={(event) =>
-                      setSelected((ids) =>
-                        event.target.checked
-                          ? [...ids, item.id]
-                          : ids.filter((id) => id !== item.id),
-                      )
-                    }
-                  />{" "}
-                  {item.front}
-                </label>
-              ))}
-            </fieldset>
-            <Field label="Card direction">
-              <select
-                value={reverse ? "reverse" : "forward"}
-                onChange={(event) => setReverse(event.target.value === "reverse")}
-              >
-                <option value="forward">Question → answer</option>
-                <option value="reverse">Answer → question (separate review schedule)</option>
-              </select>
-            </Field>
-            <Field label="Adding cards">
-              <select
-                value={autoAdd ? "auto" : "review"}
-                onChange={(event) => setAutoAdd(event.target.value === "auto")}
-              >
-                <option value="review">Review before adding</option>
-                <option value="auto">Auto-add checked cards</option>
-              </select>
-            </Field>
-            <p className="preview-muted">Uncertain cards always need your confirmation.</p>
-            {!notebook.current.model.learningItems.length ? (
-              <Status>
-                These notes have no learning items to turn into cards. Read your class notes or
-                process more material first.
-              </Status>
-            ) : null}
-            <Button disabled={busy || !selected.length} onClick={generate}>
-              Prepare cards
-            </Button>
-          </>
-        ) : (
-          <>
-            <p>
-              {hasGeneratedNotes
-                ? "Your class notes are ready. Read and save them first, then prepare flashcards from their learning items."
-                : "Create class notes from your saved material first. Then save the notes and prepare flashcards from their learning items."}
-            </p>
-            <LinkButton href={`/classes/${sessionId}/${hasGeneratedNotes ? "notes" : "estimate"}`}>
-              {hasGeneratedNotes ? "Read and save notes" : "Create class notes"}
-            </LinkButton>
-          </>
-        )}
-      </Panel>
       <Panel title={`Your cards (${cards.length})`}>
+        {grouped && (
+          <Actions>
+            {groups
+              .filter((group) => group.cards.length)
+              .map((group) => (
+                <Button
+                  key={group.set}
+                  secondary
+                  aria-pressed={activeGroup?.set === group.set}
+                  onClick={() => setSelectedSet(group.set)}
+                >
+                  {group.set === "production"
+                    ? "Core · production"
+                    : group.set === "recognition"
+                      ? "Supplementary · recognition"
+                      : "Other cards"}
+                  {` (${group.cards.length})`}
+                </Button>
+              ))}
+          </Actions>
+        )}
         {!cards.length ? (
           <p>
             {notebook
-              ? "No cards yet. Choose learning items above and select Prepare cards."
-              : "Your flashcards will appear here after you save the class notes and prepare cards."}
+              ? notebook.current.model.learningItems.length
+                ? "Flashcards are being saved automatically. They will appear here shortly."
+                : "These notes contain no learning items for flashcards. Add more material to update this class."
+              : "Upload class material. Your flashcards will appear here automatically with your notes."}
           </p>
         ) : (
-          cards.map((card) => (
+          visibleCards.map((card) => (
             <article key={card.id} className="preview-list-item">
-              <h3>{card.front}</h3>
-              <p>{card.back}</p>
+              <CardPreview card={card} userId={userId} />
               <p className="preview-muted">
                 {card.status} · {card.direction} · {card.template}
                 {card.important ? " · Important" : ""}
               </p>
-              <ClaimEvidence claim={card.provenance} userId={userId} />
               <Actions>
                 <LinkButton secondary href={`/cards/${card.id}`}>
                   Edit card

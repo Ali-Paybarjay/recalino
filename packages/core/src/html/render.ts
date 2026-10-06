@@ -1,4 +1,4 @@
-import type { Claim, KnowledgeModel, SourceRef } from "../lkm";
+import { type Claim, type KnowledgeModel, renderClassNotesHtml, type SourceRef } from "../lkm";
 import { type ExportMediaBytes, escapeExportHtml as htmlEscape } from "../plt";
 
 function locator(ref: SourceRef): string {
@@ -22,6 +22,14 @@ export function renderNotebookHtml(
   media: readonly ExportMediaBytes[] = [],
 ): Uint8Array {
   const model = input.model;
+  if (model.classNotes) {
+    let document = renderClassNotesHtml(model);
+    if (media.length) {
+      const selectedImages = `<section id="selected-images"><h2>تصاویر انتخاب‌شده</h2>${media.map(({ media: asset, bytes }) => `<figure><img style="max-width:100%;height:auto" alt="Selected class material" src="data:${htmlEscape(asset.mimeType)};base64,${Buffer.from(bytes).toString("base64")}"><figcaption>Exported with permission</figcaption></figure>`).join("")}<a class="top" href="#top">↑ بالا</a></section>`;
+      document = document.replace("</main>", `${selectedImages}</main>`);
+    }
+    return new TextEncoder().encode(document);
+  }
   const rtl = ["fa", "ar", "ur", "ps"].includes(model.language.explanation.split("-")[0] ?? "");
   const sections = [
     model.summary.length

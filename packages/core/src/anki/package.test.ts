@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { unzipSync } from "fflate";
 import { expect, it } from "vitest";
+import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { syntheticKnowledge } from "../../test/study-fixture";
+import { renderStudyCard } from "../lkm";
 import { type AnkiCardSnapshot, ankiGuid, buildAnkiPackage, clozeOrdinals } from "./package";
 
 function card(template: AnkiCardSnapshot["template"] = "basic"): AnkiCardSnapshot {
@@ -108,4 +110,47 @@ it("rejects malformed cloze syntax instead of silently exporting broken cards", 
     "{{c1000::unsupported}}",
   ])
     expect(() => clozeOrdinals(value)).toThrow();
+});
+
+it("retains reference faces and group tags in APKG while neutralizing forged active HTML", async () => {
+  const item = referenceStudyModel().learningItems[0];
+  if (!item) throw new Error("Missing reference item");
+  const rich = {
+    ...card(),
+    ...renderStudyCard(item),
+    contentFormat: "lesson_html" as const,
+    studySet: "production" as const,
+    studyTags: ["2026-10-05", "cambria"],
+  };
+  const forged = { ...card(), contentFormat: "lesson_html" as const };
+  const files = unzipSync(
+    await buildAnkiPackage({
+      sessionId: randomUUID(),
+      title: "Reference",
+      cards: [rich, forged],
+      tags: [],
+      createdAt: "2026-10-06T00:00:00Z",
+    }),
+  );
+  const collection = files["collection.anki2"];
+  if (!collection) throw new Error("Missing collection");
+  const directory = await mkdtemp(join(tmpdir(), "recalino-rich-anki-"));
+  const path = join(directory, "collection.anki2");
+  let sqlite: DatabaseSync | undefined;
+  try {
+    await writeFile(path, collection);
+    sqlite = new DatabaseSync(path, { readOnly: true });
+    const notes = sqlite.prepare("SELECT guid, flds, tags FROM notes").all();
+    const exported = notes.find((note) => note.guid === ankiGuid(rich.id));
+    expect(String(exported?.flds).split("\u001f").slice(0, 2)).toEqual([rich.front, rich.back]);
+    expect(exported?.tags).toContain("production");
+    expect(exported?.tags).toContain("cambria");
+    const untrusted = notes.find((note) => note.guid === ankiGuid(forged.id));
+    expect(untrusted?.flds).not.toContain("<script>");
+    expect(untrusted?.flds).not.toContain("[sound:evil.mp3]");
+  } finally {
+    sqlite?.close();
+    await unlink(path);
+    await rmdir(directory);
+  }
 });

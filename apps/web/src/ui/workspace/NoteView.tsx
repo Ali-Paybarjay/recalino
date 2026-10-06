@@ -1,15 +1,40 @@
 "use client";
 import type { Claim, KnowledgeVersion } from "@recalino/core/lkm";
 import type { Notebook, NotebookRevision, PublishNotebookInput } from "@recalino/core/note";
+import { renderClassNotesHtml } from "@recalino/core/study-render";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import { requestKey, workspaceRequest } from "./api";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ContentBlock } from "../components/ContentBlock";
+import { directionOf } from "../direction";
+import { AutomaticLearningNotice } from "./AutomaticLearningView";
+import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { notifyAutomaticLearning } from "./automatic-learning";
+import { ClassNotesFrame } from "./ClassNotesFrame";
+import styles from "./NoteView.module.css";
+import type { NoteMaterialSource, NoteSourceIssue } from "./note-source-issues";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import { SourceRefViewer } from "./SourceRefViewer";
 
-export function ClaimEvidence({ claim, userId }: { claim: Claim; userId: string }) {
+function NoteText({ text, lang }: { text: string; lang?: string }) {
   return (
-    <div className="preview-stack">
+    <ContentBlock as="p" lang={lang} reading>
+      <span style={{ whiteSpace: "pre-wrap" }}>{text}</span>
+    </ContentBlock>
+  );
+}
+
+export function ClaimEvidence({
+  claim,
+  userId,
+  collapsed = false,
+}: {
+  claim: Claim;
+  userId: string;
+  collapsed?: boolean;
+}) {
+  const evidence = (
+    <>
       <p className="preview-muted">
         {claim.origin === "from_class" ? "From class" : "AI expansion"}
         {claim.creation === "user_edit" ? " · Edited by you" : ""}
@@ -25,9 +50,43 @@ export function ClaimEvidence({ claim, userId }: { claim: Claim; userId: string 
           userId={userId}
         />
       ))}
-    </div>
+    </>
+  );
+  return collapsed ? (
+    <details className={styles.evidence}>
+      <summary>
+        {claim.origin === "from_class" ? "Class sources" : "AI explanation"}
+        {claim.uncertain ? " · Check this" : ""}
+      </summary>
+      <div className={styles.evidenceBody}>{evidence}</div>
+    </details>
+  ) : (
+    <div className="preview-stack">{evidence}</div>
   );
 }
+
+function QuietLink({
+  href,
+  disabled,
+  children,
+}: {
+  href: string;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      prefetch={false}
+      href={href}
+      className={styles.quietLink}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? (event) => event.preventDefault() : undefined}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function NoteView({
   sessionId,
   userId,
@@ -35,6 +94,10 @@ export function NoteView({
   latest,
   readOnlyRevision,
   embedded = false,
+  courseId,
+  hasEarlierVersions,
+  sourceIssues = [],
+  materialSources = [],
 }: {
   sessionId: string;
   userId: string;
@@ -42,6 +105,10 @@ export function NoteView({
   latest: KnowledgeVersion | null;
   readOnlyRevision?: NotebookRevision;
   embedded?: boolean;
+  courseId?: string;
+  hasEarlierVersions?: boolean;
+  sourceIssues?: readonly NoteSourceIssue[];
+  materialSources?: readonly NoteMaterialSource[];
 }) {
   const router = useRouter();
   const [notebook, setNotebook] = useState(initial),
@@ -50,12 +117,31 @@ export function NoteView({
     [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<string | null>(null),
     [text, setText] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [recovering, setRecovering] = useState<string | null>(null);
+  const notesStart = useRef<HTMLDivElement | null>(null);
   const key = useRef<{ payload: string; key: string } | null>(null);
+  const recoveryKey = useRef<{ payload: string; key: string } | null>(null);
+  const learningRetryKey = useRef<{ payload: string; key: string } | null>(null);
+  const preparedRecovery = useRef<{ payload: string; next: string } | null>(null);
+  const recoveryInFlight = useRef(false);
   const saving = useRef(false);
+  useEffect(() => {
+    if (!saving.current && !editing)
+      setNotebook((previous) =>
+        initial && previous && initial.current.number < previous.current.number
+          ? previous
+          : initial,
+      );
+  }, [initial, editing]);
   const current = readOnlyRevision ?? notebook?.current,
     preview = current ? null : latest,
     model = current?.model ?? preview?.model;
   const canEdit = !!notebook && !readOnlyRevision;
+  const showHistory = hasEarlierVersions ?? (current?.number ?? 0) > 1;
+  const explanationLanguage = model?.language.explanation;
+  const learningLanguage = model?.language.learning;
+  const editingLanguage = editing?.startsWith("front:") ? learningLanguage : explanationLanguage;
   const claimIds = new Set(
     model
       ? [
@@ -74,11 +160,107 @@ export function NoteView({
   const unmatchedItems = Object.entries(current?.edits.items ?? {}).filter(
     ([id]) => !itemIds.has(id),
   );
-  async function save(
-    change: Omit<PublishNotebookInput, "expectedRevisionId">,
-    makeFlashcards = false,
-  ) {
-    if (saving.current) return;
+  async function recoverSource(issue: NoteSourceIssue) {
+    if (!issue.recovery || recoveryInFlight.current || saving.current) return;
+    recoveryInFlight.current = true;
+    setRecovering(issue.sourceId);
+    setProblem("");
+    try {
+      const payload = JSON.stringify(issue.recovery);
+      if (preparedRecovery.current?.payload !== payload) {
+        const value = await workspaceRequest<{ next: string }>(
+          `/api/classes/${sessionId}/notes/recovery`,
+          "POST",
+          issue.recovery,
+          requestKey(recoveryKey, issue.recovery),
+        );
+        preparedRecovery.current = { payload, next: value.next };
+      }
+      await workspaceRequest(
+        `/api/classes/${sessionId}/learning`,
+        "POST",
+        { action: "retry" },
+        requestKey(learningRetryKey, issue.recovery),
+      );
+      recoveryKey.current = null;
+      learningRetryKey.current = null;
+      preparedRecovery.current = null;
+      notifyAutomaticLearning(sessionId);
+      router.push(`/classes/${sessionId}/processing`);
+    } catch (failure) {
+      const reasons =
+        failure instanceof WorkspaceRequestError ? Object.values(failure.fields ?? {}).flat() : [];
+      const message = reasons.includes("original_unavailable")
+        ? `${issue.name}: the original file is no longer available. Open class material to upload it again or recover the recording on its original device.`
+        : reasons.includes("retry_selection_changed") || reasons.includes("retry_issue_changed")
+          ? `${issue.name}: class material has changed. Refresh the notes and review the current files before retrying.`
+          : reasons.includes("provider_outcome_unresolved")
+            ? `${issue.name}: an earlier processing attempt still needs checking. Open class processing before starting another attempt.`
+            : failure instanceof Error
+              ? failure.message
+              : `${issue.name} could not be retried.`;
+      setProblem(message);
+    } finally {
+      recoveryInFlight.current = false;
+      setRecovering(null);
+    }
+  }
+
+  function materialIssues() {
+    if (!sourceIssues.length) {
+      return model && !model.coverage.complete ? (
+        <aside className={styles.issues} aria-label="Source details need checking">
+          <p>Some source details need checking. Open class material to review them.</p>
+          <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
+            Review class material
+          </QuietLink>
+        </aside>
+      ) : null;
+    }
+    return (
+      <aside className={styles.issues} aria-label="Class material needs attention">
+        <p>Some class material needs attention.</p>
+        <ul>
+          {sourceIssues.map((issue) => (
+            <li key={`${issue.sourceId}-${issue.kind}-${issue.locator ?? ""}`}>
+              <p className={styles.issueName}>
+                <strong>
+                  File {issue.order} · <bdi>{issue.name}</bdi>
+                </strong>
+              </p>
+              <p>{issue.message}</p>
+              {(issue.details || issue.locator) && (
+                <details className={styles.evidence}>
+                  <summary>Details</summary>
+                  {issue.locator && <p>{issue.locator}</p>}
+                  {issue.details && <p>{issue.details}</p>}
+                </details>
+              )}
+              {issue.action === "retry" && issue.recovery ? (
+                <Button
+                  secondary
+                  className={styles.quiet}
+                  disabled={busy || !!recovering}
+                  onClick={() => recoverSource(issue)}
+                >
+                  {recovering === issue.sourceId ? "Retrying…" : `Retry file ${issue.order}`}
+                </Button>
+              ) : issue.action !== "none" ? (
+                <QuietLink disabled={busy || !!recovering} href={`/classes/${sessionId}/sources`}>
+                  {issue.action === "upload"
+                    ? `Upload file ${issue.order} again`
+                    : "Review class material"}
+                </QuietLink>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </aside>
+    );
+  }
+
+  async function save(change: Omit<PublishNotebookInput, "expectedRevisionId">) {
+    if (saving.current || recoveryInFlight.current) return;
     saving.current = true;
     const body = { expectedRevisionId: notebook?.current.id ?? null, ...change };
     setBusy(true);
@@ -94,11 +276,8 @@ export function NoteView({
       setNotebook(value);
       setEditing(null);
       key.current = null;
-      setNotice(
-        "Notes saved. You can now make flashcards. Your earlier versions are still available.",
-      );
+      setNotice("Notes saved.");
       router.refresh();
-      if (makeFlashcards) router.push(`/classes/${sessionId}/cards`);
     } catch (failure) {
       setProblem(failure instanceof Error ? failure.message : "Notes could not be saved.");
     } finally {
@@ -106,12 +285,52 @@ export function NoteView({
       setBusy(false);
     }
   }
+  function editForm() {
+    return (
+      <form
+        className={styles.editor}
+        onSubmit={(event) => {
+          event.preventDefault();
+          const [kind, id] = editing?.split(":") ?? [];
+          if (!id) return;
+          void save({
+            edits:
+              kind === "claim"
+                ? { claims: { [id]: text } }
+                : { items: { [id]: { [kind as "front" | "back"]: text } } },
+          });
+        }}
+      >
+        <Field label="Your text">
+          <textarea
+            lang={editingLanguage}
+            dir={editingLanguage ? directionOf(editingLanguage) : "auto"}
+            style={{ textAlign: "start" }}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            maxLength={20000}
+            required
+            rows={5}
+          />
+        </Field>
+        <Actions>
+          <Button type="submit" disabled={busy}>
+            Save edit
+          </Button>
+          <Button secondary disabled={busy} onClick={() => setEditing(null)}>
+            Cancel
+          </Button>
+        </Actions>
+      </form>
+    );
+  }
+
   function claim(claim: Claim) {
     return (
       <article key={claim.id} className="preview-list-item">
-        <p style={{ whiteSpace: "pre-wrap" }}>{claim.text}</p>
-        <ClaimEvidence claim={claim} userId={userId} />
-        {canEdit && (
+        <NoteText text={claim.text} lang={explanationLanguage} />
+        <ClaimEvidence claim={claim} userId={userId} collapsed />
+        {canEdit && editMode && (
           <Button
             secondary
             disabled={busy}
@@ -123,153 +342,157 @@ export function NoteView({
             Edit this note
           </Button>
         )}
+        {canEdit && editing === `claim:${claim.id}` && editForm()}
       </article>
     );
   }
   return (
-    <div className="preview-stack">
-      {problem && (
-        <Status tone="error">
-          {problem} Refresh the page if another tab has changed these notes.
-        </Status>
-      )}
-      {notice && <Status tone="success">{notice}</Status>}
+    <div className={styles.layout} ref={notesStart}>
       {!embedded && (
-        <Actions>
-          <LinkButton disabled={busy} secondary href={`/classes/${sessionId}`}>
-            Back to class
-          </LinkButton>
-          <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes/versions`}>
-            Version history
-          </LinkButton>
-          {notebook && readOnlyRevision && (
-            <LinkButton disabled={busy} href={`/classes/${sessionId}/cards`}>
-              Make flashcards
-            </LinkButton>
-          )}
-          {notebook && (
-            <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/export`}>
-              Download notes and cards
-            </LinkButton>
-          )}
-        </Actions>
+        <Link prefetch={false} href={`/classes/${sessionId}`} className={styles.back}>
+          ← Back to class
+        </Link>
       )}
-      {preview && (
-        <Panel title="Your class notes are ready">
-          <p>
-            Read the preview below. Save these notes to edit them, make flashcards, or download
-            them.
-          </p>
-          <Actions>
-            <Button disabled={busy} onClick={() => save({ knowledgeVersionId: preview.id }, true)}>
-              {busy ? "Saving notes…" : "Save notes and make flashcards"}
-            </Button>
-            <Button
-              secondary
-              disabled={busy}
-              onClick={() => save({ knowledgeVersionId: preview.id })}
-            >
-              {busy ? "Saving notes…" : "Save class notes"}
-            </Button>
-          </Actions>
-        </Panel>
-      )}
-      {notebook && !readOnlyRevision && !embedded && (
-        <Panel title="Next: make flashcards">
-          <p>Your class notes are saved. Choose the learning items you want to practise.</p>
-          <LinkButton disabled={busy} href={`/classes/${sessionId}/cards`}>
-            Make flashcards
-          </LinkButton>
-        </Panel>
-      )}
+      {problem && <Status tone="error">{problem}</Status>}
+      {notice && <Status tone="success">{notice}</Status>}
       {!model ? (
         <Panel title="Start with class material">
-          <p>Create notes from your saved class material, or add and change material first.</p>
-          <Actions>
-            <LinkButton href={`/classes/${sessionId}/estimate`}>Create class notes</LinkButton>
-            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
-              Add or change material
-            </LinkButton>
-          </Actions>
+          <p>Add your class material. Notes and flashcards are created and saved automatically.</p>
+          {materialSources.length ? (
+            <ul className={styles.materials} aria-label="Selected class material">
+              {materialSources.map((source) => (
+                <li key={source.sourceId}>
+                  <p className={styles.issueName}>
+                    <strong>
+                      File {source.order} · <bdi>{source.name}</bdi>
+                    </strong>
+                  </p>
+                  <p className="preview-muted">
+                    {source.status === "ready"
+                      ? "Ready"
+                      : source.status === "uploading"
+                        ? "Uploading…"
+                        : source.status === "local-audio"
+                          ? "Saved on this device · automatic upload pending"
+                          : "Upload not completed"}
+                  </p>
+                  {source.status === "needs-upload" && (
+                    <QuietLink href={`/classes/${sessionId}/sources`}>
+                      Upload file {source.order} again
+                    </QuietLink>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            materialIssues()
+          )}
+          <div className={styles.save}>
+            <LinkButton href={`/classes/${sessionId}/sources`}>Add material</LinkButton>
+          </div>
         </Panel>
       ) : (
         <>
-          {!readOnlyRevision && notebook?.proposedKnowledgeVersionId && (
-            <Panel title="A newer class version is ready">
-              <p>
-                Your current notes and edits are preserved. Apply the new version when you are
-                ready; your text edits carry forward.
-              </p>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  save({ knowledgeVersionId: notebook.proposedKnowledgeVersionId ?? undefined })
-                }
-              >
-                Apply newer version
-              </Button>
-            </Panel>
-          )}
-          <Panel title={model.title}>
-            <p className="preview-muted">
-              {current
-                ? `Note version ${current.number} · ${new Date(current.createdAt).toLocaleString("en-GB")}`
-                : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
-            </p>
-            {!model.coverage.complete && (
-              <Status>
-                Some class material is missing. Review the coverage before trusting these notes.
-              </Status>
-            )}
-            <h3>Class summary</h3>
-            {model.summary.map(claim)}
-            {model.topics.map((topic) => (
-              <section key={topic.id}>
-                <h3>{topic.title}</h3>
-                {topic.claims.map(claim)}
-              </section>
-            ))}
-          </Panel>
-          <Panel title="Useful things to learn">
-            {model.learningItems.length ? (
-              model.learningItems.map((item) => (
-                <article className="preview-list-item" key={item.id}>
-                  <h3>{item.front}</h3>
-                  <p style={{ whiteSpace: "pre-wrap" }}>{item.back}</p>
-                  <ClaimEvidence claim={item.claim} userId={userId} />
-                  {canEdit && (
-                    <Actions>
-                      <Button
-                        secondary
-                        disabled={busy}
-                        onClick={() => {
-                          setEditing(`front:${item.id}`);
-                          setText(item.front);
-                        }}
-                      >
-                        Edit question
-                      </Button>
-                      <Button
-                        secondary
-                        disabled={busy}
-                        onClick={() => {
-                          setEditing(`back:${item.id}`);
-                          setText(item.back);
-                        }}
-                      >
-                        Edit answer
-                      </Button>
-                    </Actions>
-                  )}
-                </article>
-              ))
-            ) : (
-              <p>No learning items were found in this version.</p>
-            )}
-          </Panel>
-          {!!model.homework.length && <Panel title="Homework">{model.homework.map(claim)}</Panel>}
-          {!!model.uncertainties.length && (
-            <Panel title="Things to check">{model.uncertainties.map(claim)}</Panel>
+          {model.classNotes && !editMode ? (
+            <>
+              {materialIssues()}
+              <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
+              <details className={styles.evidence}>
+                <summary>Class sources and explanations</summary>
+                <div className={styles.evidenceBody}>
+                  {[
+                    ...model.summary,
+                    ...model.topics.flatMap((topic) => topic.claims),
+                    ...model.learningItems.map((item) => item.claim),
+                    ...model.homework,
+                    ...model.uncertainties,
+                  ].map((item) => (
+                    <div key={item.id}>
+                      <NoteText text={item.text} lang={explanationLanguage} />
+                      <ClaimEvidence claim={item} userId={userId} collapsed />
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </>
+          ) : (
+            <>
+              {model.classNotes && editMode && (
+                <Status>
+                  Edit the saved notes below. Editing a study item's question or answer turns it
+                  into a plain-text item; its original structured card remains in version history.
+                </Status>
+              )}
+              <Panel>
+                <ContentBlock as="h2" lang={explanationLanguage} dir="auto">
+                  {model.title}
+                </ContentBlock>
+                <p className="preview-muted">
+                  {current
+                    ? `Note version ${current.number} · ${new Date(current.createdAt).toLocaleString("en-GB")}`
+                    : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
+                </p>
+                {materialIssues()}
+                <h3>Class summary</h3>
+                {model.summary.map(claim)}
+                {model.topics.map((topic) => (
+                  <section key={topic.id}>
+                    <ContentBlock as="h3" lang={explanationLanguage} dir="auto">
+                      {topic.title}
+                    </ContentBlock>
+                    {topic.claims.map(claim)}
+                  </section>
+                ))}
+              </Panel>
+              <Panel title="Useful things to learn">
+                {model.learningItems.length ? (
+                  model.learningItems.map((item) => (
+                    <article className="preview-list-item" key={item.id}>
+                      <ContentBlock as="h3" lang={learningLanguage}>
+                        {item.front}
+                      </ContentBlock>
+                      <NoteText text={item.back} lang={explanationLanguage} />
+                      <ClaimEvidence claim={item.claim} userId={userId} collapsed />
+                      {canEdit && editMode && (
+                        <Actions>
+                          <Button
+                            secondary
+                            disabled={busy}
+                            onClick={() => {
+                              setEditing(`front:${item.id}`);
+                              setText(item.front);
+                            }}
+                          >
+                            Edit question
+                          </Button>
+                          <Button
+                            secondary
+                            disabled={busy}
+                            onClick={() => {
+                              setEditing(`back:${item.id}`);
+                              setText(item.back);
+                            }}
+                          >
+                            Edit answer
+                          </Button>
+                        </Actions>
+                      )}
+                      {canEdit &&
+                        (editing === `front:${item.id}` || editing === `back:${item.id}`) &&
+                        editForm()}
+                    </article>
+                  ))
+                ) : (
+                  <p>No learning items were found in this version.</p>
+                )}
+              </Panel>
+              {!!model.homework.length && (
+                <Panel title="Homework">{model.homework.map(claim)}</Panel>
+              )}
+              {!!model.uncertainties.length && (
+                <Panel title="Things to check">{model.uncertainties.map(claim)}</Panel>
+              )}
+            </>
           )}
           {!!(unmatchedClaims.length + unmatchedItems.length) && (
             <Panel title="Your saved edits from earlier material">
@@ -279,56 +502,83 @@ export function NoteView({
               </p>
               {unmatchedClaims.map(([id, value]) => (
                 <article key={id} className="preview-list-item">
-                  <p>{value}</p>
+                  <NoteText text={value} />
                   <p className="preview-muted">Edited by you · Earlier item {id}</p>
                 </article>
               ))}
               {unmatchedItems.map(([id, value]) => (
                 <article key={id} className="preview-list-item">
-                  <h3>{value.front ?? "Earlier question"}</h3>
-                  <p>{value.back ?? "No answer edit"}</p>
+                  <ContentBlock as="h3" dir="auto">
+                    {value.front ?? "Earlier question"}
+                  </ContentBlock>
+                  <NoteText text={value.back ?? "No answer edit"} />
                   <p className="preview-muted">Edited by you · Earlier item {id}</p>
                 </article>
               ))}
             </Panel>
           )}
-          {editing && canEdit && (
-            <Panel title="Edit your notes">
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const [kind, id] = editing.split(":");
-                  if (!id) return;
-                  void save({
-                    edits:
-                      kind === "claim"
-                        ? { claims: { [id]: text } }
-                        : { items: { [id]: { [kind as "front" | "back"]: text } } },
-                  });
-                }}
-              >
-                <Field label="Your text">
-                  <textarea
-                    value={text}
-                    onChange={(event) => setText(event.target.value)}
-                    maxLength={20000}
-                    required
-                    rows={5}
-                  />
-                </Field>
-                <Actions>
-                  <Button type="submit" disabled={busy}>
-                    Save edit
-                  </Button>
-                  <Button secondary disabled={busy} onClick={() => setEditing(null)}>
-                    Cancel
-                  </Button>
-                </Actions>
-              </form>
-            </Panel>
+          {preview && (
+            <div className={styles.save}>
+              <p>
+                This generated preview is available. New uploads automatically save your notes and
+                flashcards.
+              </p>
+            </div>
           )}
         </>
       )}
+      {!embedded && (canEdit || courseId || readOnlyRevision || showHistory) && (
+        <footer>
+          <nav className={styles.footer} aria-label="Note tools">
+            {canEdit && (
+              <Button
+                secondary
+                className={styles.quiet}
+                disabled={busy}
+                aria-pressed={editMode}
+                onClick={() => {
+                  setEditMode(!editMode);
+                  setEditing(null);
+                  if (!editMode) notesStart.current?.scrollIntoView({ block: "start" });
+                }}
+              >
+                {editMode ? "Done editing" : "Edit notes"}
+              </Button>
+            )}
+            {courseId && (
+              <QuietLink disabled={busy} href={`/courses/${courseId}/materials`}>
+                Course materials
+              </QuietLink>
+            )}
+            {notebook && !readOnlyRevision && (
+              <>
+                <QuietLink disabled={busy} href={`/classes/${sessionId}/cards`}>
+                  Flashcards
+                </QuietLink>
+                <QuietLink disabled={busy} href={`/classes/${sessionId}/export`}>
+                  Download notes
+                </QuietLink>
+              </>
+            )}
+            {readOnlyRevision && (
+              <QuietLink disabled={busy} href={`/classes/${sessionId}/notes`}>
+                Current notes
+              </QuietLink>
+            )}
+            {model && !readOnlyRevision && (
+              <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
+                Add material
+              </QuietLink>
+            )}
+            {showHistory && (
+              <QuietLink disabled={busy} href={`/classes/${sessionId}/notes/versions`}>
+                Version history
+              </QuietLink>
+            )}
+          </nav>
+        </footer>
+      )}
+      {!embedded && !readOnlyRevision && <AutomaticLearningNotice sessionId={sessionId} />}
     </div>
   );
 }

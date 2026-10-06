@@ -1,5 +1,16 @@
 export { retryRunAsAdmin } from "./admin";
 export {
+  type AutomaticLearningSession,
+  type AutomaticLearningState,
+  automaticLearningStates,
+  beginAutomaticLearningBatch,
+  completeAutomaticLearningBatch,
+  getAutomaticLearningSession,
+  listPendingAutomaticLearning,
+  requestAutomaticLearning,
+  updateAutomaticLearningProgress,
+} from "./automatic-state";
+export {
   completeAuxiliaryRun,
   executeAuxiliaryProviderStep,
   failAuxiliaryRun,
@@ -17,6 +28,13 @@ export {
 export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
 export { processingOperationalSummary } from "./operations";
 export {
+  prepareSourceExtractionRetry,
+  readKnowledgeSourceSnapshot,
+  type SourceExtractionRetryInput,
+  type SourceExtractionRetryResult,
+  sourceExtractionRetrySchema,
+} from "./recovery";
+export {
   activateProcessingRun,
   assertKnownSourceInputBound,
   cancelAccountRuns,
@@ -28,6 +46,8 @@ export {
   createProcessingRun,
   estimateRunAmounts,
   failAwaitingUploadRun,
+  findProcessingRunByOperationKey,
+  getProcessingRunSnapshot,
   getRun,
   listRuns,
   markSourceProcessingForCleanup,
@@ -38,6 +58,28 @@ export {
   validateAudioUploadRun,
 } from "./runs";
 export { processingSelectionFingerprint } from "./selection";
+export {
+  describeSourceIssues,
+  getNoteSourceStatus,
+  type NoteMaterialSource,
+  type NoteSourceIssue,
+} from "./source-issues";
+export {
+  scheduleVoiceReanalysis,
+  type VoiceJobDependencies,
+  voiceAnalysisJob,
+  voiceProcessingStatus,
+} from "./voice-jobs";
+export {
+  alignVoiceUtterances,
+  buildVoiceAnalysis,
+  correctVoiceCandidates,
+  processVoiceSource,
+  scopedVoiceSpeakerId,
+  type VoiceCorrectionExecutor,
+  type VoiceDiarization,
+  type VoiceDiarizer,
+} from "./voice-processing";
 export {
   type AudioChunk,
   type AudioPreparer,

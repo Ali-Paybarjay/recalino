@@ -1,11 +1,9 @@
-import { listRuns } from "@recalino/core/proc";
-import { readInputContract } from "@recalino/core/src";
 import { requireLearner } from "../../../../../server/auth/learner";
+import { readAutomaticLearning } from "../../../../../server/automatic-learning";
 import { getDatabase } from "../../../../../server/db";
-import { readProcessingEstimateState } from "../../../../../server/processing-estimate-state";
 import { workspaceActor, workspaceSession } from "../../../../../server/workspace";
 import { PageHeader } from "../../../../../ui/shell/AppShell";
-import { ProcessingView } from "../../../../../ui/workspace/ProcessingView";
+import { AutomaticLearningView } from "../../../../../ui/workspace/AutomaticLearningView";
 import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function EstimatePage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,26 +12,14 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
     actor = workspaceActor(learner),
     db = getDatabase();
   const session = await workspaceSession(learner, id);
-  const [estimateState, runs, contract] = await Promise.all([
-    readProcessingEstimateState(db, actor, id),
-    listRuns(db, actor, id),
-    readInputContract(db).catch(() => null),
-  ]);
+  const automatic = await readAutomaticLearning(db, actor, id);
   return (
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Class processing" subtitle={session.displayTitle} />}
+      header={<PageHeader title="Class progress" subtitle={session.displayTitle} />}
     >
-      <ProcessingView
-        sessionId={id}
-        userId={learner.userId}
-        initialEstimate={estimateState.estimate}
-        initialEstimateProblem={estimateState.problem}
-        sourcesVersion={session.sourcesVersion}
-        initialRuns={runs}
-        contract={contract}
-      />
+      <AutomaticLearningView sessionId={id} initial={automatic} />
     </LearnerShell>
   );
 }

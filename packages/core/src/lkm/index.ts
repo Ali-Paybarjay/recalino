@@ -1,3 +1,4 @@
+export { safeCardHtml } from "./card-html";
 export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
 export {
   type Claim,
@@ -15,6 +16,28 @@ export {
   sourceRefSchema,
   validateKnowledgeModel,
 } from "./schema";
+export {
+  normalizeGeneratedStudyModel,
+  persianStudyFields,
+  type StudyLessonContext,
+  visibleMistakePatterns,
+  writtenMistakePatterns,
+} from "./study-policy";
+export { renderClassNotesHtml, renderStudyCard } from "./study-render";
+export {
+  type ClassNotes,
+  classNotesSchema,
+  type ProductionStudyContent,
+  productionStudySchema,
+  type RecognitionStudyContent,
+  recognitionStudySchema,
+  type StudyContent,
+  studyContentSchema,
+  type TaskBlock,
+  type TaskGroup,
+  taskBlockSchema,
+  taskGroupSchema,
+} from "./study-schema";
 export {
   cleanupAccountKnowledge,
   cleanupSessionKnowledge,

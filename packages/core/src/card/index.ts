@@ -1,3 +1,4 @@
+export { type AutomaticCardSyncResult, synchronizeAutomaticCards } from "./automatic";
 export {
   type CardProposal,
   changeCard,

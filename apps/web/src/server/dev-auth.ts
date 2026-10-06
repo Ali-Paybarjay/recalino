@@ -7,9 +7,12 @@ import {
   createSignupIntent,
   updateProfile,
 } from "@recalino/core/acc";
+import { synchronizeAutomaticCards } from "@recalino/core/card";
 import { publishKnowledgeVersion } from "@recalino/core/lkm";
+import { automaticPublishNotebook } from "@recalino/core/note";
 import { createSession } from "@recalino/core/org";
 import { errors } from "@recalino/core/plt";
+import { requestAutomaticLearning, updateAutomaticLearningProgress } from "@recalino/core/proc";
 import { z } from "zod";
 import type { Handler } from "./api";
 import { createAuthAdmin, createAuthClient } from "./auth/supabase";
@@ -26,6 +29,7 @@ const sessionSchema = z.object({
   setup: z.enum(["none", "complete"]).default("none"),
   firstLanguage: z.string().default("fa"),
   studyFixture: z.boolean().default(false),
+  automaticStudyFixture: z.boolean().default(false),
   /** Pretend the learner accepted older texts, to test asking again (FR-ACC-007, D33). */
   acceptedVersions: z
     .object({ terms: z.string(), privacy: z.string(), "recording-consent": z.string() })
@@ -88,7 +92,7 @@ export function devSessionHandler(): Handler {
         speakerRole: "unknown",
         uncertain: false,
       });
-      await db.transaction().execute((tx) =>
+      const knowledge = await db.transaction().execute((tx) =>
         publishKnowledgeVersion(
           tx,
           ctx,
@@ -144,6 +148,28 @@ export function devSessionHandler(): Handler {
           now,
         ),
       );
+      if (options.automaticStudyFixture) {
+        const notebook = await automaticPublishNotebook(db, ctx, session.id, knowledge.id, {
+          key: `synthetic-automatic-notes:${knowledge.id}`,
+          now,
+        });
+        await synchronizeAutomaticCards(db, ctx, session.id, {
+          key: `synthetic-automatic-cards:${notebook.current.id}`,
+          now,
+        });
+        const automatic = await requestAutomaticLearning(db, ctx, session.id, {
+          changed: false,
+          now,
+        });
+        await updateAutomaticLearningProgress(
+          db,
+          ctx,
+          session.id,
+          automatic.requestVersion,
+          { state: "ready", lastError: null },
+          now,
+        );
+      }
     }
     const signIn = await (await createAuthClient()).auth.signInWithPassword({ email, password });
     if (signIn.error) throw new Error("Test sign-in failed");

@@ -71,22 +71,23 @@ function render(overrides: Partial<Parameters<typeof CardsView>[0]> = {}) {
   );
 }
 describe("flashcard next actions", () => {
-  it("points to processing before notes have been generated", () => {
+  it("points to adding material and explains automatic creation for an empty class", () => {
     const html = render();
-    expect(html).toContain(`/classes/${sessionId}/estimate`);
-    expect(html).toContain("Create class notes");
+    expect(html).toContain(`/classes/${sessionId}/sources`);
+    expect(html).toContain("automatically with your notes");
+    expect(html).not.toContain("Prepare cards");
     expect(html).not.toContain("Review this class");
     expect(html).not.toContain("Publish class notes");
   });
-  it("points to the ready notes before saving and making cards", () => {
+  it("does not ask the learner to save notes or prepare cards when output is pending", () => {
     const html = render({ hasGeneratedNotes: true });
-    expect(html).toContain("Read and save notes");
-    expect(html).toContain("Your class notes are ready.");
+    expect(html).toContain("Class notes");
+    expect(html).not.toContain("Read and save notes");
     expect(html).not.toContain(`/classes/${sessionId}/estimate`);
   });
-  it("explains both preparing cards and adding them to daily review", () => {
+  it("only asks for confirmation for cards that still need checking", () => {
     const html = render({ notebook, initial: [candidate] });
-    expect(html).toContain("then select Prepare cards.");
+    expect(html).not.toContain("Prepare cards");
     expect(html).toContain("Confirm and add");
     expect(html).not.toContain("Review this class");
   });
@@ -102,7 +103,7 @@ describe("flashcard next actions", () => {
         current: { ...notebook.current, model: { ...model, learningItems: [] } },
       },
     });
-    expect(html).toContain("These notes have no learning items to turn into cards.");
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>Prepare cards<\/button>/);
+    expect(html).toContain("These notes contain no learning items for flashcards.");
+    expect(html).not.toContain("Prepare cards");
   });
 });

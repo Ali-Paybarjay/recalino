@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UploadProgress } from "../components/UploadProgress";
 import { IndexedRecordingStore } from "../recording/store";
+import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { workspaceRequest } from "./api";
+import {
+  inAutomaticLearningBatch,
+  notifyAutomaticLearning,
+  pendingLearningBatch,
+} from "./automatic-learning";
 import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import { uploadWithConfirmation } from "./upload";
@@ -128,6 +134,11 @@ export function SourcesView({
     fileInput = useRef<HTMLInputElement>(null),
     uploadList = useRef<HTMLUListElement>(null),
     lock = useRef(false);
+  const learning = useAutomaticLearning(sessionId);
+  const [interruptedBatch, setInterruptedBatch] = useState(false);
+  useEffect(() => {
+    setInterruptedBatch(!!pendingLearningBatch(userId, sessionId));
+  }, [userId, sessionId]);
   const [accepted, setAccepted] = useState(initiallyAccepted),
     [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
@@ -426,7 +437,9 @@ export function SourcesView({
       await local.append(manifest, file);
       setLocalAudio((previous) => new Set([...(previous ?? []), created.assetId]));
       updateUpload(fileId, { phase: "complete", sentBytes: file.size, finishedAt: Date.now() });
-      setMessage("Audio saved on this device. It will be sent only after you confirm processing.");
+      setMessage(
+        "Audio saved on this device. Upload and note creation start automatically after all files are added.",
+      );
       return;
     }
     if (!created.uploadId) throw new Error("The upload could not be created.");
@@ -482,6 +495,13 @@ export function SourcesView({
     setMessage("File uploaded. Server verification is in progress.");
   }
   async function addFiles(files: File[]) {
+    try {
+      await inAutomaticLearningBatch(userId, sessionId, () => uploadFiles(files));
+    } finally {
+      setInterruptedBatch(Boolean(pendingLearningBatch(userId, sessionId)));
+    }
+  }
+  async function uploadFiles(files: File[]) {
     let failed = 0;
     setBatch({ total: files.length, current: 1, active: true });
     try {
@@ -534,11 +554,13 @@ export function SourcesView({
       contentVersionId: source.contentVersionId,
       ...patch,
     });
+    await workspaceRequest(`/api/classes/${sessionId}/learning`, "POST", { action: "sync" });
+    notifyAutomaticLearning(sessionId);
     if (patch.ranges)
       setMessage(
         patch.ranges.length
-          ? "Selected range saved for the next processing run."
-          : "The whole file will be used for the next processing run.",
+          ? "Selected range saved. Your notes and flashcards will update automatically."
+          : "The whole file will be used. Your notes and flashcards will update automatically.",
       );
   }
   return (
@@ -579,9 +601,9 @@ export function SourcesView({
       {!accepted ? (
         <Panel title="Before adding sources">
           <p>
-            Sources are used to create notes and cards for your private study. Audio stays on this
-            device; a temporary server copy is used only for transcription. Other files are stored
-            privately.
+            Adding material automatically creates and saves your class notes and flashcards. Audio
+            remains on this device, with a temporary copy uploaded for transcription. Other files
+            are stored privately.
           </p>
           <p>Follow your institution’s rules for recording and using class materials.</p>
           <label className="preview-check">
@@ -620,9 +642,9 @@ export function SourcesView({
             disabled={busy || !reuse}
             onClick={() =>
               action(async () => {
-                await workspaceRequest(`/api/classes/${sessionId}/sources`, "POST", {
-                  assetId: reuse,
-                });
+                await inAutomaticLearningBatch(userId, sessionId, () =>
+                  workspaceRequest(`/api/classes/${sessionId}/sources`, "POST", { assetId: reuse }),
+                );
                 setPrevious([]);
                 setReuse("");
                 setMessage("Source added without uploading it again.");
@@ -765,23 +787,36 @@ export function SourcesView({
           </ul>
         )}
       </Panel>
-      <p>
-        Next: continue to processing and confirm to create class notes. After the notes are ready,
-        save them and prepare your flashcards.
-      </p>
-      <Actions>
-        <LinkButton
-          href={`/classes/${sessionId}/estimate`}
-          disabled={busy || unsavedSelections.size > 0}
-        >
-          Continue to processing
-        </LinkButton>
-      </Actions>
+      {learning.status && learning.status.state !== "idle" && (
+        <Status tone={learning.status.state === "blocked" ? "error" : "neutral"}>
+          {learning.status.message}
+        </Status>
+      )}
+      {learning.problem && <Status tone="error">{learning.problem}</Status>}
+      {interruptedBatch && (
+        <Status>
+          An earlier upload was interrupted. Add the remaining files or choose the same file again
+          to resume. Notes will be prepared when the batch is complete.
+        </Status>
+      )}
+      {learning.status?.notesReady && (
+        <nav aria-label="Class learning" className="preview-actions">
+          <Link href={`/classes/${sessionId}/notes`} className="preview-index-link">
+            Read class notes
+          </Link>
+          {learning.status.cardsReady && (
+            <Link href={`/classes/${sessionId}/cards`} className="preview-index-link">
+              Flashcards
+            </Link>
+          )}
+        </nav>
+      )}
       {unsavedSelections.size > 0 ? (
-        <Status>Save your file selection before continuing to processing.</Status>
+        <Status>Save your file selection to use it in the automatic update.</Status>
       ) : null}
       <p className="preview-muted">
-        Changing sources creates a new source version. Existing notes and cards stay as they are.
+        Notes and flashcards are prepared automatically after uploads finish. Your earlier notes
+        stay available while added material is processed.
       </p>
     </div>
   );

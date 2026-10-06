@@ -21,7 +21,13 @@ describe("FR-PLT-009 password rotation with a SCRAM-SHA-256 verifier, on local P
     await admin.query(`create role ${role} login`);
     await admin.query(alterRoleStatement(role, verifier));
 
-    const local = { user: role, host: "127.0.0.1", port: 54322, database: "postgres" };
+    const adminUrl = new URL(LOCAL_ADMIN_DATABASE_URL);
+    const local = {
+      user: role,
+      host: adminUrl.hostname,
+      port: Number(adminUrl.port || 5432),
+      database: decodeURIComponent(adminUrl.pathname.slice(1)),
+    };
     const client = new pg.Client({ connectionString: connectionString(password, local) });
     await client.connect();
     try {

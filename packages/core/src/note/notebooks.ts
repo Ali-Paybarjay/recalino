@@ -20,6 +20,7 @@ import {
   runIdempotent,
   sha256Hex,
 } from "../plt";
+import { projectVerifiedSpeech } from "../voc";
 import {
   applyNotebookEdits,
   type NotebookEdits,
@@ -137,7 +138,10 @@ export async function getNotebook(
   return {
     id: notebook.id,
     sessionId,
-    current: revision(row, sessionId),
+    current: {
+      ...revision(row, sessionId),
+      model: await projectVerifiedSpeech(db, ctx, sessionId, revision(row, sessionId).model),
+    },
     proposedKnowledgeVersionId: latest && latest.id !== row.knowledge_version_id ? latest.id : null,
   };
 }
@@ -160,7 +164,15 @@ export async function getNotebookRevision(
     .where("id", "=", row.notebook_id)
     .executeTakeFirstOrThrow();
   await getSession(db, ctx, notebook.session_id);
-  return revision(row, notebook.session_id);
+  return {
+    ...revision(row, notebook.session_id),
+    model: await projectVerifiedSpeech(
+      db,
+      ctx,
+      notebook.session_id,
+      revision(row, notebook.session_id).model,
+    ),
+  };
 }
 export async function listNotebookRevisions(
   db: Database | Tx,

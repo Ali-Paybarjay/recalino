@@ -175,6 +175,19 @@
   line-height: 1.6;
   color: var(--rc-text-muted);
 }
+@media (max-width: 767px) {
+  .shell {
+    height: 100dvh;
+  }
+  .main {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .bottomNav {
+    position: relative;
+    flex-shrink: 0;
+  }
+}
 @media (min-width: 768px) {
   .shell {
     --rc-snackbar-offset: 0px;

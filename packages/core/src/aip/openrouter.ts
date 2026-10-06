@@ -33,19 +33,11 @@ const chatResponse = z.object({
     .optional(),
 });
 const sttResponse = z.object({
-  text: z.string(),
+  text: transcriptSchema.shape.text,
   language: z.string().optional(),
-  segments: z
-    .array(
-      z.object({
-        id: z.union([z.string(), z.number()]).optional(),
-        text: z.string(),
-        start: z.number().nonnegative(),
-        end: z.number().positive(),
-        speaker: z.union([z.string(), z.number()]).optional(),
-      }),
-    )
-    .optional(),
+  // Timing is optional evidence. A complete text/usage response remains usable
+  // when its segment metadata cannot establish reliable native time spans.
+  segments: z.unknown().optional(),
   usage: z
     .object({
       seconds: z.number().nonnegative().optional(),
@@ -55,6 +47,17 @@ const sttResponse = z.object({
     })
     .optional(),
 });
+const sttSegments = z
+  .array(
+    z.object({
+      id: z.union([z.string(), z.number()]).optional(),
+      text: z.string(),
+      start: z.number().nonnegative(),
+      end: z.number().positive(),
+      speaker: z.union([z.string(), z.number()]).optional(),
+    }),
+  )
+  .max(100000);
 type Fetch = typeof fetch;
 
 /** Only the fixed HTTPS OpenRouter API receives credentials; provider errors never contain content. */
@@ -150,6 +153,8 @@ export class OpenRouterProvider implements AiProvider {
       },
       actualMicros: cost(data.usage?.cost),
     };
+    if (data.choices[0]?.finish_reason === "length")
+      throw new ProviderError("provider_output_truncated", false, false, accounting);
     const contentValue = data.choices[0]?.message.content;
     let raw: unknown;
     try {
@@ -158,7 +163,7 @@ export class OpenRouterProvider implements AiProvider {
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
     }
     const output = input.schema.safeParse(raw);
-    if (!output.success || data.choices[0]?.finish_reason === "length")
+    if (!output.success)
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
     return {
       output: output.data,
@@ -189,21 +194,30 @@ export class OpenRouterProvider implements AiProvider {
     if (!result.success) throw new ProviderError("provider_response_invalid", false, true);
     const data = result.data;
     const offset = input.offsetMs ?? 0;
-    const segments = (data.segments ?? []).map((segment, index) => ({
-      id: String(segment.id ?? index),
-      text: segment.text,
-      startMs: Math.round(segment.start * 1000) + offset,
-      endMs: Math.round(segment.end * 1000) + offset,
-      speakerId: segment.speaker === undefined ? null : String(segment.speaker),
-      speakerRole: "unknown" as const,
-    }));
-    if (
-      segments.some(
-        (segment) => segment.endMs <= segment.startMs || segment.endMs > input.durationMs + offset,
+    const nativeSegments = sttSegments.safeParse(data.segments ?? []);
+    const mappedSegments = (nativeSegments.success ? nativeSegments.data : []).map(
+      (segment, index) => ({
+        id: String(segment.id ?? index),
+        text: segment.text,
+        startMs: Math.round(segment.start * 1000) + offset,
+        endMs: Math.round(segment.end * 1000) + offset,
+        speakerId: segment.speaker === undefined ? null : String(segment.speaker),
+        speakerRole: "unknown" as const,
+      }),
+    );
+    const checkedSegments = transcriptSchema.shape.segments.safeParse(mappedSegments);
+    const segments =
+      checkedSegments.success &&
+      checkedSegments.data.every(
+        (segment) =>
+          segment.startMs >= offset &&
+          segment.endMs > segment.startMs &&
+          segment.endMs <= input.durationMs + offset,
       )
-    )
-      throw new ProviderError("provider_timestamps_invalid", false, true);
-    // Missing native timestamps are retained as text, never fabricated as precise class evidence.
+        ? checkedSegments.data
+        : [];
+    // Keep all returned text if any span is unreliable. Filtering individual spans
+    // would discard their words downstream; clamping would invent precise evidence.
     return {
       output: transcriptSchema.parse({
         text: data.text,

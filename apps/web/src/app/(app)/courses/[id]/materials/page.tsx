@@ -112,8 +112,8 @@ export default async function CourseMaterialsPage({
             ) : (
               <Panel>
                 <p>
-                  No published notes for this class yet. Open class notes to prepare or publish its
-                  material.
+                  No notes for this class yet. Add class material; its notes will appear
+                  automatically.
                 </p>
               </Panel>
             )}
@@ -124,7 +124,7 @@ export default async function CourseMaterialsPage({
             <p>
               {materials.total
                 ? "Choose an earlier page to keep reading."
-                : "Create a dated class, add its sources and publish its notes. They will appear here in course order."}
+                : "Create a dated class and add its material. Its notes will appear here automatically in course order."}
             </p>
             <LinkButton
               secondary

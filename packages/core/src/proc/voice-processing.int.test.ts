@@ -1,0 +1,386 @@
+import { randomUUID } from "node:crypto";
+import { afterAll, expect, it, vi } from "vitest";
+import { testDatabaseUrl } from "../../test/local-db";
+import { cleanupFixtureProcessingJobs, runFixtureProcessingStep } from "../../test/processing-jobs";
+import { studyFixture, syntheticKnowledge } from "../../test/study-fixture";
+import type { AiProvider, ProviderResult, ProviderSettings, StructuredInput } from "../aip";
+import { createDatabase } from "../db";
+import { getLatestVersion } from "../lkm";
+import { MemoryObjectStore } from "../plt";
+import { amounts, configureCostPolicy, grantEntitlement } from "../quota";
+import { appendContentVersion } from "../src";
+import {
+  changeVoiceIdentity,
+  enableVoice,
+  getClassVoice,
+  revokeVoiceData,
+  VOICE_CONSENT_VERSION,
+} from "../voc";
+import { sourceSnapshotSchema } from "./contracts";
+import { createProcessingRun, getRun } from "./runs";
+import { scheduleVoiceReanalysis, voiceAnalysisJob, voiceProcessingStatus } from "./voice-jobs";
+import { processingJob } from "./worker";
+
+const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
+const fixtureRunIds: string[] = [];
+afterAll(async () => {
+  try {
+    await cleanupFixtureProcessingJobs(db, fixtureRunIds);
+  } finally {
+    await db.destroy();
+  }
+});
+const settings: ProviderSettings = {
+  version: "voice-pipeline-fixture",
+  llmModel: "synthetic/llm",
+  visionModel: "synthetic/vision",
+  sttModel: "synthetic/stt",
+  ttsModel: "synthetic/tts",
+  voice: "synthetic",
+  promptVersion: "1",
+  maxInputCharacters: 120000,
+  maxOutputTokens: 6144,
+  timeoutMs: 1000,
+  maximumMicros: 1000,
+  currency: "USD",
+  priceVersion: "fixture",
+  charactersPerPage: 3000,
+  audioUrlSupported: false,
+  sttProviderOptions: {},
+  dataContractApproved: true,
+};
+class VoiceProvider implements AiProvider {
+  readonly name = "synthetic";
+  readonly mode = "mock";
+  readonly settings = settings;
+  onReply?: () => Promise<void>;
+  calls = vi.fn((input: StructuredInput<unknown>) => {
+    if (input.schemaName === "spoken_mistake_candidates") {
+      const data = JSON.parse(input.input);
+      const learner = data.utterances.find((item: { text: string }) =>
+        item.text.includes("am agree"),
+      );
+      return {
+        candidates: [
+          {
+            speakerId: learner.speakerId,
+            mistakes: [
+              {
+                utteranceId: learner.id,
+                said: "I am agree with you.",
+                correct: "I agree with you.",
+                whyFa: "فعل agree به am نیاز ندارد.",
+                kind: "grammar",
+                teacherCorrected: false,
+              },
+            ],
+          },
+        ],
+      };
+    }
+    throw new Error("Only private corrections may dispatch in this fixture");
+  });
+  async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
+    const output = input.schema.parse(this.calls(input));
+    await this.onReply?.();
+    return {
+      output,
+      requestId: "synthetic-voice-correction",
+      provider: this.name,
+      model: input.model,
+      actualMicros: 10,
+      usage: { inputTokens: 20, outputTokens: 20 },
+    };
+  }
+  async transcribe(): Promise<never> {
+    throw new Error("Cached fixture cannot transcribe");
+  }
+  async speech(): Promise<never> {
+    throw new Error("No TTS in voice matching");
+  }
+}
+async function fixture(enabled: boolean) {
+  const x = await studyFixture(db);
+  if (enabled) await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const source = await db
+    .insertInto("src.asset")
+    .values({
+      user_id: x.ctx.userId,
+      kind: "audio",
+      declared_mime: "audio/mpeg",
+      verified_mime: "audio/mpeg",
+      duration_ms: 60000,
+      size_bytes: 1000,
+      sha256: "a".repeat(64),
+      display_name: "Synthetic two speakers",
+      contract_version: "1",
+      retention: "device_only",
+      operation_key: randomUUID(),
+      request_hash: randomUUID(),
+      verified_at: new Date(),
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  await db
+    .insertInto("src.session_source")
+    .values({
+      user_id: x.ctx.userId,
+      session_id: x.session.id,
+      asset_id: source.id,
+      role: "class_audio",
+      selected: true,
+    })
+    .execute();
+  await db.transaction().execute((tx) =>
+    appendContentVersion(tx, x.ctx, source.id, {
+      schemaVersion: "1",
+      provenance: "machine_extraction",
+      originKey: `voice-fixture:${source.id}`,
+      settings: { ranges: [] },
+      units: [
+        { id: "teacher", kind: "time", start: 1000, end: 15000, status: "extracted" },
+        { id: "learner", kind: "time", start: 22000, end: 29000, status: "extracted" },
+        { id: "learner-repeat", kind: "time", start: 44000, end: 51000, status: "extracted" },
+      ],
+      blocks: [
+        {
+          id: "teacher-text",
+          kind: "transcript",
+          unitId: "teacher",
+          text: "Today we will review natural spoken English.",
+        },
+        { id: "learner-text", kind: "transcript", unitId: "learner", text: "I am agree with you." },
+        {
+          id: "learner-repeat-text",
+          kind: "transcript",
+          unitId: "learner-repeat",
+          text: "I am agree with you.",
+        },
+      ],
+    }),
+  );
+  await grantEntitlement(db, {
+    userId: x.ctx.userId,
+    startsAt: new Date(Date.now() - 1000),
+    endsAt: new Date(Date.now() + 3600000),
+    amounts: amounts({ audio: 2000, document: 100, regeneration: 10 }),
+    operationKey: randomUUID(),
+    actorId: "fixture",
+    reason: "Synthetic voice integration",
+  });
+  await configureCostPolicy(
+    db,
+    {
+      version: "voice-pipeline-fixture",
+      currency: "USD",
+      killSwitch: false,
+      limits: {
+        session: 100000000,
+        userMonth: 100000000,
+        systemDay: 100000000,
+        systemMonth: 100000000,
+      },
+    },
+    { actorId: "fixture", reason: "Synthetic voice integration" },
+  );
+  const provider = new VoiceProvider();
+  const diarize = vi.fn(async () => ({
+    modelRevision: "synthetic-two-voices",
+    segments: [
+      { speakerId: "0", startMs: 0, endMs: 20000, overlap: false, boundaryUnsafe: false },
+      { speakerId: "1", startMs: 20000, endMs: 60000, overlap: false, boundaryUnsafe: false },
+    ],
+    speakers: [0, 1].map((speaker) => ({
+      speakerId: String(speaker),
+      cleanSpeechMs: 21000,
+      embedding: Array.from({ length: 16 }, (_, i) => (i === speaker ? 1 : 0)),
+    })),
+  }));
+  const definition = processingJob({
+    provider,
+    store: new MemoryObjectStore(),
+    diarizeVoice: diarize,
+  });
+  const run = await createProcessingRun(
+    db,
+    x.ctx,
+    { sessionId: x.session.id, operationKey: randomUUID() },
+    { provider, job: definition },
+  );
+  fixtureRunIds.push(run.id);
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .select("input_snapshot")
+    .where("id", "=", run.id)
+    .executeTakeFirstOrThrow();
+  const snapshot = sourceSnapshotSchema.parse(row.input_snapshot);
+  // The fake diarizer consumes no bytes; this private cached original ID proves the orchestration path.
+  const cachedSource = snapshot.sources[0];
+  if (!cachedSource) throw new Error("Synthetic audio source missing");
+  cachedSource.objectId = randomUUID();
+  await db
+    .insertInto("proc.run_step")
+    .values({
+      run_id: run.id,
+      step: `source:${source.id}`,
+      output: JSON.stringify(cachedSource),
+      completed_at: new Date(),
+    })
+    .execute();
+  await db
+    .insertInto("proc.run_step")
+    .values({
+      run_id: run.id,
+      step: "knowledge",
+      output: JSON.stringify({
+        ...syntheticKnowledge(1),
+        sourceClassifications: [
+          { sourceId: source.id, classification: { role: "class_material", confidence: "high" } },
+        ],
+      }),
+      completed_at: new Date(),
+    })
+    .execute();
+  const step = () =>
+    runFixtureProcessingStep(db, definition, { runId: run.id, userId: x.ctx.userId });
+  return { ...x, source, run, provider, diarize, step };
+}
+
+it("stages private speaker analysis and billed corrections before ordinary notes, keeping only a receipt in proc", async () => {
+  const x = await fixture(true);
+  await x.step();
+  expect(x.diarize).toHaveBeenCalledTimes(1);
+  expect(x.provider.calls).not.toHaveBeenCalled();
+  await x.step();
+  expect(x.provider.calls).toHaveBeenCalledTimes(1);
+  const rows = await db
+    .selectFrom("voc.analysis")
+    .selectAll()
+    .where("user_id", "=", x.ctx.userId)
+    .execute();
+  expect(rows).toHaveLength(1);
+  const analysis = rows[0];
+  if (!analysis) throw new Error("Synthetic voice analysis missing");
+  expect(analysis.status).toBe("unverified");
+  expect(JSON.stringify(analysis.mistakes)).toContain("I agree with you.");
+  const receipt = await db
+    .selectFrom("proc.run_step")
+    .select("output")
+    .where("run_id", "=", x.run.id)
+    .where("step", "like", "voice:%")
+    .executeTakeFirstOrThrow();
+  expect(receipt.output).toEqual({ analysisId: analysis.id, complete: true });
+  const attempts = await db
+    .selectFrom("proc.provider_attempt")
+    .select(["state", "step"])
+    .where("run_id", "=", x.run.id)
+    .execute();
+  expect(attempts).toEqual([{ state: "succeeded", step: `voice:corrections:${analysis.id}` }]);
+  await x.step();
+  expect((await getRun(db, x.ctx, x.run.id)).state).toBe("ready");
+  expect(x.diarize).toHaveBeenCalledTimes(1);
+  expect(x.provider.calls).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify((await getLatestVersion(db, x.ctx, x.session.id))?.model)).not.toContain(
+    "I agree with you.",
+  );
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.status).toBe("unverified");
+});
+
+it("does not infer voices or dispatch private analysis unless the learner opted in", async () => {
+  const x = await fixture(false);
+  await x.step();
+  expect((await getRun(db, x.ctx, x.run.id)).state).toBe("ready");
+  expect(x.diarize).not.toHaveBeenCalled();
+  expect(x.provider.calls).not.toHaveBeenCalled();
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses).toEqual([]);
+});
+
+it("charges a known provider result after consent is revoked in flight without restoring private data or blocking notes", async () => {
+  const x = await fixture(true);
+  await x.step();
+  x.provider.onReply = () => revokeVoiceData(db, x.ctx);
+  await x.step();
+  expect((await getRun(db, x.ctx, x.run.id)).state).toBe("ready");
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses).toEqual([]);
+  const attempt = await db
+    .selectFrom("proc.provider_attempt")
+    .select(["state", "error_code"])
+    .where("run_id", "=", x.run.id)
+    .executeTakeFirstOrThrow();
+  expect(attempt).toEqual({ state: "failed", error_code: "provider_output_commit_failed" });
+  expect(
+    await db
+      .selectFrom("proc.run_step")
+      .select("step")
+      .where("run_id", "=", x.run.id)
+      .where("step", "like", "voice:%")
+      .execute(),
+  ).toEqual([]);
+  expect(x.provider.calls).toHaveBeenCalledTimes(1);
+});
+
+it("does not regenerate rejected text or loop when identity changes between correction and publication checkpoints", async () => {
+  const x = await fixture(true);
+  await x.step();
+  await x.step();
+  const row = await db
+    .selectFrom("voc.analysis")
+    .selectAll()
+    .where("user_id", "=", x.ctx.userId)
+    .executeTakeFirstOrThrow();
+  const mistakes = row.mistakes as Record<string, unknown[]>;
+  const speakerId = Object.keys(mistakes).find((id) => mistakes[id]?.length);
+  if (!speakerId) throw new Error("Synthetic corrected speaker missing");
+  await changeVoiceIdentity(db, x.ctx, x.session.id, {
+    action: "reject",
+    analysisId: row.id,
+    expectedVersion: row.version,
+    speakerId,
+  });
+  await x.step();
+  expect((await getRun(db, x.ctx, x.run.id)).state).toBe("ready");
+  expect(x.provider.calls).toHaveBeenCalledTimes(1);
+  const after = await db
+    .selectFrom("voc.analysis")
+    .select("mistakes")
+    .where("id", "=", row.id)
+    .executeTakeFirstOrThrow();
+  expect(after.mistakes).not.toHaveProperty(speakerId);
+});
+
+it("deduplicates the same explicit analysis request after completion and exposes queued processing", async () => {
+  const x = await fixture(false);
+  await x.step();
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const dependencies = { provider: x.provider, diarize: x.diarize };
+  const operationKey = randomUUID();
+  const runId = await scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies, {
+    operationKey,
+  });
+  fixtureRunIds.push(runId);
+  expect(await voiceProcessingStatus(db, x.ctx, x.session.id)).toBe(true);
+  expect(
+    await scheduleVoiceReanalysis(
+      db,
+      { ...x.ctx, requestId: randomUUID() },
+      x.session.id,
+      dependencies,
+      { operationKey },
+    ),
+  ).toBe(runId);
+  const definition = voiceAnalysisJob(dependencies);
+  for (let index = 0; index < 2; index++)
+    await runFixtureProcessingStep(db, definition, { runId, userId: x.ctx.userId });
+  expect((await getRun(db, x.ctx, runId)).state).toBe("ready");
+  expect(await voiceProcessingStatus(db, x.ctx, x.session.id)).toBe(false);
+  expect(
+    await scheduleVoiceReanalysis(
+      db,
+      { ...x.ctx, requestId: randomUUID() },
+      x.session.id,
+      dependencies,
+      { operationKey },
+    ),
+  ).toBe(runId);
+  expect(x.provider.calls).not.toHaveBeenCalled();
+});
