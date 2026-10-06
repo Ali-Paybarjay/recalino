@@ -22,5 +22,6 @@ test-results
 playwright-report
 apps/web/test-results
 apps/web/test-results-preview
+**/test-results*/
 supabase/.temp
 supabase/.branches

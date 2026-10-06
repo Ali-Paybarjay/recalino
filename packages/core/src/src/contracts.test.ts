@@ -19,6 +19,44 @@ describe("passive source handling (FR-SRC-002,005,006)", () => {
     );
     expect(detectBinaryMime(new TextEncoder().encode("%PDF-1.7"))).toBe("application/pdf");
   });
+  it("recognizes mobile MP4 major and compatible brands within the complete ftyp box", () => {
+    const ftyp = (major: string, compatible: string[] = []) => {
+      const bytes = Buffer.alloc(16 + compatible.length * 4);
+      bytes.writeUInt32BE(bytes.length, 0);
+      bytes.write("ftyp", 4);
+      bytes.write(major, 8);
+      compatible.forEach((brand, index) => {
+        bytes.write(brand, 16 + index * 4);
+      });
+      return bytes;
+    };
+    // This is the exact mobile header shape which was incorrectly rejected in production.
+    expect(detectBinaryMime(ftyp("3gp4", ["isom", "3gp4"]))).toBe("audio/mp4");
+    expect(detectBinaryMime(ftyp("mp41"))).toBe("audio/mp4");
+    expect(detectBinaryMime(ftyp("iso6", ["isom", "mp42"]))).toBe("audio/mp4");
+    expect(detectBinaryMime(ftyp("avif", ["mif1"]))).toBeNull();
+    expect(detectBinaryMime(ftyp("none", ["isom"]).subarray(0, 18))).toBeNull();
+    // Brands outside the declared box cannot establish a supported container.
+    expect(detectBinaryMime(Buffer.concat([ftyp("none"), Buffer.from("isom")]))).toBeNull();
+    const oversized = ftyp("3gp4");
+    oversized.writeUInt32BE(4097, 0);
+    expect(detectBinaryMime(oversized)).toBeNull();
+    const misaligned = ftyp("3gp4");
+    misaligned.writeUInt32BE(15, 0);
+    expect(detectBinaryMime(misaligned)).toBeNull();
+  });
+  it("bounds extended-size MP4 brand boxes before reading their brands", () => {
+    const bytes = Buffer.alloc(28);
+    bytes.writeUInt32BE(1, 0);
+    bytes.write("ftyp", 4);
+    bytes.writeBigUInt64BE(28n, 8);
+    bytes.write("iso6", 16);
+    bytes.write("isom", 24);
+    expect(detectBinaryMime(bytes)).toBe("audio/mp4");
+    expect(detectBinaryMime(bytes.subarray(0, 20))).toBeNull();
+    bytes.writeBigUInt64BE(0x10000001cn, 8);
+    expect(detectBinaryMime(bytes)).toBeNull();
+  });
   it("accepts UTF8 and BOM UTF16 but rejects binary and malformed encodings", () => {
     expect(decodeSourceText(new TextEncoder().encode("فارسی English 日本語"))).toContain("日本語");
     expect(decodeSourceText(new Uint8Array([255, 254, 65, 0]))).toBe("A");

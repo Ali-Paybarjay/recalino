@@ -2,11 +2,14 @@
 import type { InputContract, SourceKind } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { UploadProgress } from "../components/UploadProgress";
 import { IndexedRecordingStore } from "../recording/store";
 import { workspaceRequest } from "./api";
+import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import { uploadWithConfirmation } from "./upload";
+import { uploadWithProgress } from "./upload-progress";
 
 export interface SourceRow {
   assetId: string;
@@ -37,6 +40,18 @@ interface OwnSource {
   uploadId: string | null;
   uploadState: string | null;
   original_deleted_at: string | null;
+}
+interface FileUpload {
+  id: string;
+  displayName: string;
+  sizeBytes: number;
+  phase: "checking" | "uploading" | "saving" | "verifying" | "complete" | "failed";
+  sentBytes: number;
+  startedAt: number;
+  finishedAt?: number;
+  problem?: string;
+  source?: SourceRow;
+  serverSeen: boolean;
 }
 async function checksum(blob: Blob) {
   const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
@@ -111,6 +126,7 @@ export function SourcesView({
 }) {
   const router = useRouter(),
     fileInput = useRef<HTMLInputElement>(null),
+    uploadList = useRef<HTMLUListElement>(null),
     lock = useRef(false);
   const [accepted, setAccepted] = useState(initiallyAccepted),
     [confirmed, setConfirmed] = useState(false),
@@ -120,6 +136,75 @@ export function SourcesView({
     [previous, setPrevious] = useState<OwnSource[]>([]),
     [reuse, setReuse] = useState("");
   const [localAudio, setLocalAudio] = useState<Set<string> | null>(null);
+  const localOriginalUrls = useRef(new Map<string, string>());
+  const originalViewActive = useRef(true);
+  const [originalLink, setOriginalLink] = useState<{ url: string; name: string } | null>(null);
+  useEffect(() => {
+    originalViewActive.current = true;
+    const urls = localOriginalUrls.current;
+    return () => {
+      originalViewActive.current = false;
+      for (const url of urls.values()) URL.revokeObjectURL(url);
+      urls.clear();
+    };
+  }, []);
+  const [fileUploads, setFileUploads] = useState<FileUpload[]>([]);
+  const [batch, setBatch] = useState<{ total: number; current: number; active: boolean } | null>(
+    null,
+  );
+  const updateUpload = useCallback((id: string, patch: Partial<FileUpload>) => {
+    setFileUploads((previous) =>
+      previous.map((file) => (file.id === id ? { ...file, ...patch } : file)),
+    );
+  }, []);
+  useEffect(() => {
+    setFileUploads((previous) => {
+      let changed = false;
+      const next = previous.map((file) => {
+        if (
+          file.serverSeen ||
+          !file.source ||
+          !sources.some((source) => source.assetId === file.source?.assetId)
+        )
+          return file;
+        changed = true;
+        return { ...file, serverSeen: true };
+      });
+      return changed ? next : previous;
+    });
+  }, [sources]);
+  const visibleSources = [
+    ...sources,
+    ...fileUploads.flatMap((file) =>
+      file.source &&
+      !file.serverSeen &&
+      !sources.some((source) => source.assetId === file.source?.assetId)
+        ? [file.source]
+        : [],
+    ),
+  ];
+  const pendingFiles = fileUploads.filter((file) => {
+    if (["checking", "uploading", "saving", "failed"].includes(file.phase)) return true;
+    if (file.phase === "complete") return false;
+    const source = visibleSources.find((source) => source.assetId === file.source?.assetId);
+    return (
+      !!source && !source.verifiedAt && !source.rejectionReason && source.uploadState !== "rejected"
+    );
+  });
+  const recentSources = new Map(fileUploads.map((file, index) => [file.source?.assetId, index]));
+  const listedSources = visibleSources
+    .filter((source) => !pendingFiles.some((file) => file.source?.assetId === source.assetId))
+    .sort((a, b) => (recentSources.get(b.assetId) ?? -1) - (recentSources.get(a.assetId) ?? -1));
+  const [unsavedSelections, setUnsavedSelections] = useState(() => new Set<string>());
+  const selectionDirty = useCallback((assetId: string, dirty: boolean) => {
+    setUnsavedSelections((previous) => {
+      if (previous.has(assetId) === dirty) return previous;
+      const next = new Set(previous);
+      if (dirty) next.add(assetId);
+      else next.delete(assetId);
+      return next;
+    });
+  }, []);
   useEffect(() => {
     let active = true;
     new IndexedRecordingStore()
@@ -134,11 +219,13 @@ export function SourcesView({
       active = false;
     };
   }, [userId]);
-  const waiting = sources.some(
-    (source) =>
-      ["pending", "verifying"].includes(source.uploadState ?? "") ||
-      ["needs_password", "wrong_password"].includes(source.rejectionReason ?? ""),
-  );
+  const waiting =
+    batch?.active ||
+    visibleSources.some(
+      (source) =>
+        ["pending", "verifying"].includes(source.uploadState ?? "") ||
+        ["needs_password", "wrong_password"].includes(source.rejectionReason ?? ""),
+    );
   useEffect(() => {
     if (!waiting) return;
     const timer = setInterval(() => router.refresh(), 3000);
@@ -149,6 +236,7 @@ export function SourcesView({
     lock.current = true;
     setBusy(true);
     setProblem("");
+    setOriginalLink(null);
     try {
       await effect();
       router.refresh();
@@ -167,7 +255,42 @@ export function SourcesView({
     setAccepted(true);
     setMessage("Source notice accepted.");
   }
-  async function upload(file: File) {
+  function openOriginal(source: SourceRow) {
+    return action(async () => {
+      setMessage("Opening original…");
+      const result = await openOriginalTab(async () => {
+        if (source.kind === "audio") {
+          const store = new IndexedRecordingStore();
+          const recordings = await store.list(userId);
+          if (!originalViewActive.current) throw new Error("Original opening was cancelled.");
+          const recording = recordings.find(
+            (row) => (row.sourceAssetId ?? row.id) === source.assetId,
+          );
+          if (!recording)
+            throw new Error(
+              "The original audio is not on this device. Open the device that saved it to play the original.",
+            );
+          const existing = localOriginalUrls.current.get(source.assetId);
+          if (existing) return existing;
+          const blob = await store.blob(userId, recording.id);
+          if (!originalViewActive.current) throw new Error("Original opening was cancelled.");
+          const url = URL.createObjectURL(blob);
+          localOriginalUrls.current.set(source.assetId, url);
+          return url;
+        }
+        const link = await workspaceRequest<{ url: string }>(
+          `/api/sources/${source.assetId}/read`,
+          "GET",
+        );
+        return link.url;
+      });
+      if (!result.opened) {
+        setOriginalLink({ url: result.url, name: source.displayName });
+        setMessage("Your original is ready. Select Open file below to open it.");
+      } else setMessage("Original opened in a new tab.");
+    });
+  }
+  async function upload(file: File, fileId: string) {
     if (/\.(heic|heif)$/i.test(file.name) || ["image/heic", "image/heif"].includes(file.type)) {
       if (file.size > contract.formats.image.maxBytes)
         throw new Error("This image exceeds the source size limit.");
@@ -251,7 +374,38 @@ export function SourcesView({
       await workspaceRequest(`/api/classes/${sessionId}/sources`, "POST", {
         assetId: created.assetId,
       });
+    const added: SourceRow = {
+      assetId: created.assetId,
+      displayName: file.name,
+      kind,
+      mimeType,
+      sizeBytes: file.size,
+      durationMs: durationMs ?? null,
+      pageCount: null,
+      verifiedAt: null,
+      originalDeletedAt: null,
+      selected: kind === "audio",
+      role: kind === "audio" ? "class_audio" : "class_material",
+      ranges: [],
+      timeStatus: "unknown",
+      contentVersionId: null,
+      uploadId: created.uploadId,
+      uploadState: kind === "audio" ? null : "pending",
+      rejectionReason: null,
+      anchorSourceId: null,
+      captureOffsetMs: null,
+      captureState: null,
+    };
+    setFileUploads((previous) =>
+      previous
+        .filter((entry) => entry.id === fileId || entry.source?.assetId !== created.assetId)
+        .map((entry) =>
+          entry.id === fileId ? { ...entry, source: added, sizeBytes: file.size } : entry,
+        ),
+    );
+    router.refresh();
     if (kind === "audio") {
+      updateUpload(fileId, { phase: "saving" });
       const local = new IndexedRecordingStore(),
         now = new Date().toISOString();
       const manifest = {
@@ -271,6 +425,7 @@ export function SourcesView({
       await local.put(manifest);
       await local.append(manifest, file);
       setLocalAudio((previous) => new Set([...(previous ?? []), created.assetId]));
+      updateUpload(fileId, { phase: "complete", sentBytes: file.size, finishedAt: Date.now() });
       setMessage("Audio saved on this device. It will be sent only after you confirm processing.");
       return;
     }
@@ -279,29 +434,96 @@ export function SourcesView({
     const manifest = await workspaceRequest<{
       parts: { index: number; verifiedAt: string | null }[];
     }>(`/api/sources/uploads/${uploadId}`, "GET");
+    let confirmedBytes = parts.reduce(
+      (sum, part) =>
+        sum +
+        (manifest.parts.find((value) => value.index === part.index)?.verifiedAt
+          ? part.sizeBytes
+          : 0),
+      0,
+    );
+    updateUpload(fileId, { phase: "uploading", sentBytes: confirmedBytes });
     for (const part of parts) {
       if (manifest.parts.find((value) => value.index === part.index)?.verifiedAt) continue;
-      setMessage(`Uploading part ${part.index + 1} of ${parts.length}…`);
+      setMessage(`Uploading ${file.name}…`);
       const link = await workspaceRequest<{ url: string }>(
         `/api/sources/uploads/${uploadId}/parts/${part.index}`,
         "GET",
       );
       await uploadWithConfirmation(
-        () =>
-          fetch(link.url, {
-            method: "PUT",
-            headers: { "Content-Type": mimeType },
-            body: file.slice(
-              part.index * contract.partBytes,
-              (part.index + 1) * contract.partBytes,
-            ),
-          }),
-        () => workspaceRequest(`/api/sources/uploads/${uploadId}/parts/${part.index}`, "POST"),
+        (signal) =>
+          uploadWithProgress(
+            link.url,
+            file.slice(part.index * contract.partBytes, (part.index + 1) * contract.partBytes),
+            mimeType,
+            (sentBytes) => updateUpload(fileId, { sentBytes: confirmedBytes + sentBytes }),
+            signal,
+          ),
+        (signal) =>
+          workspaceRequest(
+            `/api/sources/uploads/${uploadId}/parts/${part.index}`,
+            "POST",
+            undefined,
+            undefined,
+            { signal },
+          ),
         "Upload interrupted. Select the same file to resume.",
       );
+      confirmedBytes += part.sizeBytes;
+      updateUpload(fileId, { sentBytes: confirmedBytes });
     }
     await workspaceRequest(`/api/sources/uploads/${uploadId}/complete`, "POST");
+    updateUpload(fileId, {
+      phase: "verifying",
+      sentBytes: file.size,
+      finishedAt: Date.now(),
+      source: { ...added, uploadState: "verifying" },
+    });
     setMessage("File uploaded. Server verification is in progress.");
+  }
+  async function addFiles(files: File[]) {
+    let failed = 0;
+    setBatch({ total: files.length, current: 1, active: true });
+    try {
+      for (const [index, file] of files.entries()) {
+        const id = crypto.randomUUID();
+        setBatch({ total: files.length, current: index + 1, active: true });
+        setFileUploads((previous) => [
+          ...previous,
+          {
+            id,
+            displayName: file.name,
+            sizeBytes: file.size,
+            phase: "checking",
+            sentBytes: 0,
+            startedAt: Date.now(),
+            serverSeen: false,
+          },
+        ]);
+        requestAnimationFrame(() =>
+          uploadList.current?.firstElementChild?.scrollIntoView({ block: "nearest" }),
+        );
+        try {
+          await upload(file, id);
+        } catch (error) {
+          failed++;
+          updateUpload(id, {
+            phase: "failed",
+            problem:
+              error instanceof Error ? error.message : "This file could not be added. Try again.",
+            finishedAt: Date.now(),
+          });
+        }
+        router.refresh();
+      }
+      setMessage(
+        failed
+          ? `${files.length - failed} files added. ${failed} need attention; check their status below.`
+          : `${files.length} ${files.length === 1 ? "file added" : "files added"}. You can add more files here.`,
+      );
+    } finally {
+      setBatch((previous) => (previous ? { ...previous, active: false } : null));
+    }
   }
   async function change(source: SourceRow, patch: Partial<SourceRow>) {
     await workspaceRequest(`/api/classes/${sessionId}/sources/${source.assetId}`, "PATCH", {
@@ -312,6 +534,12 @@ export function SourcesView({
       contentVersionId: source.contentVersionId,
       ...patch,
     });
+    if (patch.ranges)
+      setMessage(
+        patch.ranges.length
+          ? "Selected range saved for the next processing run."
+          : "The whole file will be used for the next processing run.",
+      );
   }
   return (
     <div className="preview-stack">
@@ -321,7 +549,7 @@ export function SourcesView({
       <Actions>
         <LinkButton href={`/classes/${sessionId}/record`}>Record class</LinkButton>
         <Button secondary disabled={busy || !accepted} onClick={() => fileInput.current?.click()}>
-          Add files
+          {visibleSources.length ? "Add More Files" : "Add Files"}
         </Button>
         <Button
           secondary
@@ -345,9 +573,7 @@ export function SourcesView({
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           event.target.value = "";
-          void action(async () => {
-            for (const file of files) await upload(file);
-          });
+          if (files.length) void action(() => addFiles(files));
         }}
       />
       {!accepted ? (
@@ -412,19 +638,71 @@ export function SourcesView({
       ) : message ? (
         <Status>{message}</Status>
       ) : null}
+      {originalLink ? (
+        <Actions>
+          <a
+            className="btn btn-secondary rc-btn-lg"
+            href={originalLink.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open file: ${originalLink.name}`}
+          >
+            Open file
+          </a>
+        </Actions>
+      ) : null}
       <Panel title="Class sources">
-        {!sources.length ? (
+        <p className="preview-muted">
+          File formats are detected automatically. During processing, Recalino identifies class
+          audio, board photos, class material and notes from their content. Use the whole file or
+          choose part of a PDF or audio recording.
+        </p>
+        {batch?.active ? (
+          <Status>
+            Adding file {batch.current} of {batch.total}. Keep this page open until the files
+            finish.
+          </Status>
+        ) : null}
+        {!visibleSources.length && !pendingFiles.length ? (
           <div className="preview-empty">
             <h3>Add your first source</h3>
             <p>Bring together your recording, handouts, photos and notes.</p>
           </div>
         ) : (
-          <ul className="preview-list">
-            {sources.map((source) => (
+          <ul className="preview-list" ref={uploadList}>
+            {pendingFiles
+              .slice()
+              .reverse()
+              .map((file) => (
+                <FileUploadItem
+                  key={file.id}
+                  file={file}
+                  busy={busy}
+                  remove={() => {
+                    if (!file.source) {
+                      setFileUploads((previous) =>
+                        previous.filter((entry) => entry.id !== file.id),
+                      );
+                      return;
+                    }
+                    void action(async () => {
+                      await workspaceRequest(
+                        `/api/classes/${sessionId}/sources/${file.source?.assetId}`,
+                        "DELETE",
+                      );
+                      setFileUploads((previous) =>
+                        previous.filter((entry) => entry.id !== file.id),
+                      );
+                    });
+                  }}
+                />
+              ))}
+            {listedSources.map((source) => (
               <SourceItem
                 key={source.assetId}
                 source={source}
                 busy={busy}
+                selectionDirty={selectionDirty}
                 localAvailable={localAudio === null ? null : localAudio.has(source.assetId)}
                 unlock={(password) =>
                   action(async () => {
@@ -437,6 +715,14 @@ export function SourcesView({
                 deleteSource={(mode) =>
                   action(async () => {
                     await workspaceRequest(`/api/sources/${source.assetId}`, "DELETE", { mode });
+                    if (mode === "all") {
+                      const url = localOriginalUrls.current.get(source.assetId);
+                      if (url) URL.revokeObjectURL(url);
+                      localOriginalUrls.current.delete(source.assetId);
+                    }
+                    setFileUploads((previous) =>
+                      previous.filter((file) => file.source?.assetId !== source.assetId),
+                    );
                     if (mode === "all" && ["audio", "image"].includes(source.kind)) {
                       const local = new IndexedRecordingStore();
                       const recordings = await local.list(userId);
@@ -467,30 +753,98 @@ export function SourcesView({
                       `/api/classes/${sessionId}/sources/${source.assetId}`,
                       "DELETE",
                     );
+                    setFileUploads((previous) =>
+                      previous.filter((file) => file.source?.assetId !== source.assetId),
+                    );
                     setMessage("Source removed from this class.");
                   })
                 }
-                read={() =>
-                  action(async () => {
-                    const link = await workspaceRequest<{ url: string }>(
-                      `/api/sources/${source.assetId}/read`,
-                      "GET",
-                    );
-                    window.open(link.url, "_blank", "noopener,noreferrer");
-                  })
-                }
+                read={() => openOriginal(source)}
               />
             ))}
           </ul>
         )}
       </Panel>
+      <p>
+        Next: continue to processing and confirm to create class notes. After the notes are ready,
+        save them and prepare your flashcards.
+      </p>
       <Actions>
-        <LinkButton href={`/classes/${sessionId}/estimate`}>Continue to processing</LinkButton>
+        <LinkButton
+          href={`/classes/${sessionId}/estimate`}
+          disabled={busy || unsavedSelections.size > 0}
+        >
+          Continue to processing
+        </LinkButton>
       </Actions>
+      {unsavedSelections.size > 0 ? (
+        <Status>Save your file selection before continuing to processing.</Status>
+      ) : null}
       <p className="preview-muted">
         Changing sources creates a new source version. Existing notes and cards stay as they are.
       </p>
     </div>
+  );
+}
+function FileUploadItem({
+  file,
+  busy,
+  remove,
+}: {
+  file: FileUpload;
+  busy: boolean;
+  remove: () => void;
+}) {
+  const active = ["checking", "uploading", "saving"].includes(file.phase);
+  const status =
+    file.phase === "checking"
+      ? "Checking file…"
+      : file.phase === "saving"
+        ? "Saving on this device…"
+        : file.phase === "verifying"
+          ? "Uploaded — checking file"
+          : file.phase === "failed"
+            ? "File needs attention"
+            : file.sentBytes >= file.sizeBytes
+              ? "Finishing upload…"
+              : "Uploading…";
+  const measured = ["uploading", "verifying"].includes(file.phase);
+  return (
+    <li aria-busy={active || undefined} className="preview-upload-file">
+      <div className="preview-row">
+        <strong dir="auto">{file.displayName}</strong>
+        <span className="preview-muted">{(file.sizeBytes / 1_000_000).toFixed(1)} MB</span>
+      </div>
+      <UploadProgress
+        label={`Upload progress for ${file.displayName}`}
+        status={status}
+        value={
+          measured || file.phase === "failed"
+            ? file.sizeBytes > 0
+              ? (file.sentBytes / file.sizeBytes) * 100
+              : 0
+            : undefined
+        }
+        detail={
+          measured
+            ? `${(file.sentBytes / 1_000_000).toFixed(2)} of ${(file.sizeBytes / 1_000_000).toFixed(2)} MB`
+            : undefined
+        }
+        startedAt={file.startedAt}
+        finishedAt={file.finishedAt}
+        active={active}
+      />
+      {file.problem ? (
+        <>
+          <Status tone="error">{file.problem}</Status>
+          <Actions>
+            <Button secondary disabled={busy} onClick={remove}>
+              {file.source ? "Remove from class" : "Dismiss"}
+            </Button>
+          </Actions>
+        </>
+      ) : null}
+    </li>
   );
 }
 function SourceItem({
@@ -502,6 +856,7 @@ function SourceItem({
   unlock,
   localAvailable,
   deleteSource,
+  selectionDirty,
 }: {
   source: SourceRow;
   busy: boolean;
@@ -511,34 +866,46 @@ function SourceItem({
   unlock: (password: string) => Promise<void>;
   localAvailable: boolean | null;
   deleteSource: (mode: "original" | "all") => Promise<void>;
+  selectionDirty: (assetId: string, dirty: boolean) => void;
 }) {
   const [password, setPassword] = useState("");
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const needsPassword = ["needs_password", "wrong_password"].includes(source.rejectionReason ?? "");
-  const [start, setStart] = useState(
-      String(
-        source.kind === "audio"
-          ? (source.ranges[0]?.start ?? 0) / 1000
-          : (source.ranges[0]?.start ?? 1),
-      ),
-    ),
-    [end, setEnd] = useState(
-      String(
-        (source.ranges[0]?.end ??
-          (source.kind === "audio"
-            ? (source.durationMs ?? 0)
-            : (source.pageCount ?? (source.kind === "image" ? 1 : 0)))) /
-          (source.kind === "audio" ? 1000 : 1),
-      ),
-    );
-  const status = source.originalDeletedAt
-    ? "Original file is no longer kept"
-    : source.kind === "audio"
-      ? localAvailable === null
-        ? "Checking this device…"
-        : localAvailable
-          ? "On this device — not sent for processing"
-          : "Original audio is not on this device"
+  const isAudio = source.kind === "audio";
+  const supportsRange = isAudio || source.kind === "pdf";
+  const factor = isAudio ? 1000 : 1;
+  const maximum = (isAudio ? (source.durationMs ?? 0) : (source.pageCount ?? 0)) / factor;
+  const savedStart = (source.ranges[0]?.start ?? (isAudio ? 0 : 1)) / factor;
+  const savedEnd = (source.ranges[0]?.end ?? maximum * factor) / factor;
+  const savedPartial = source.ranges.length > 0;
+  const [partial, setPartial] = useState(savedPartial);
+  const [start, setStart] = useState(String(savedStart));
+  const [end, setEnd] = useState(String(savedEnd));
+  useEffect(() => {
+    setPartial(savedPartial);
+    setStart(String(savedStart));
+    setEnd(String(savedEnd));
+  }, [savedPartial, savedStart, savedEnd]);
+  const dirty =
+    supportsRange &&
+    (partial !== savedPartial ||
+      (partial &&
+        (!start.trim() ||
+          !end.trim() ||
+          Number(start) !== savedStart ||
+          Number(end) !== savedEnd)));
+  useEffect(() => {
+    selectionDirty(source.assetId, dirty);
+  }, [selectionDirty, source.assetId, dirty]);
+  useEffect(() => () => selectionDirty(source.assetId, false), [selectionDirty, source.assetId]);
+  const status = isAudio
+    ? localAvailable === null
+      ? "Checking this device…"
+      : localAvailable
+        ? "Original audio is saved on this device"
+        : "Original audio is not on this device"
+    : source.originalDeletedAt
+      ? "Original file is no longer kept"
       : needsPassword
         ? source.rejectionReason === "wrong_password"
           ? "Incorrect password — try again or upload an unlocked copy"
@@ -564,7 +931,14 @@ function SourceItem({
           <strong dir="auto">{source.displayName}</strong>
         </label>
         <span className="preview-muted">
-          {source.kind} · {(source.sizeBytes / 1_000_000).toFixed(1)} MB
+          {source.kind === "audio"
+            ? "Class audio"
+            : source.role === "board_photo"
+              ? "Board photo"
+              : source.role === "user_notes"
+                ? "Notes"
+                : source.kind}{" "}
+          · {(source.sizeBytes / 1_000_000).toFixed(1)} MB
         </span>
       </div>
       <p className="preview-muted">{status}</p>
@@ -611,62 +985,91 @@ function SourceItem({
           </Actions>
         </>
       ) : null}
-      <div className="preview-grid">
-        <Field label="Source role">
-          <select
-            value={source.role}
-            disabled={busy}
-            onChange={(event) => void change({ role: event.target.value })}
-          >
-            <option value="class_audio">Class teaching</option>
-            <option value="board_photo">Board photo</option>
-            <option value="class_material">Class material</option>
-            <option value="user_notes">My notes</option>
-          </select>
-        </Field>
-        {ready && ["audio", "pdf"].includes(source.kind) ? (
-          <>
-            <Field label={source.kind === "audio" ? "Start (seconds)" : "Start page"}>
-              <input
-                type="number"
-                min={source.kind === "audio" ? 0 : 1}
-                step={source.kind === "audio" ? 0.1 : 1}
-                value={start}
-                onChange={(event) => setStart(event.target.value)}
-              />
-            </Field>
-            <Field label={source.kind === "audio" ? "End (seconds)" : "End page"}>
-              <input
-                type="number"
-                min={source.kind === "audio" ? 0.1 : 1}
-                step={source.kind === "audio" ? 0.1 : 1}
-                value={end}
-                onChange={(event) => setEnd(event.target.value)}
-              />
-            </Field>
-          </>
-        ) : null}
-      </div>
+      {ready && supportsRange ? (
+        <form
+          className="preview-stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void change({
+              ranges: partial
+                ? [
+                    {
+                      start: Math.round(Number(start) * factor),
+                      end: Math.round(Number(end) * factor),
+                    },
+                  ]
+                : [],
+            });
+          }}
+        >
+          <fieldset disabled={busy} className="preview-source-selection preview-stack">
+            <legend>Use for processing</legend>
+            <div className="preview-row">
+              <label className="preview-check">
+                <input
+                  type="radio"
+                  name={`extent-${source.assetId}`}
+                  checked={!partial}
+                  onChange={() => setPartial(false)}
+                />
+                Whole file
+              </label>
+              <label className="preview-check">
+                <input
+                  type="radio"
+                  name={`extent-${source.assetId}`}
+                  checked={partial}
+                  onChange={() => setPartial(true)}
+                />
+                Part of file
+              </label>
+            </div>
+            {partial ? (
+              <div className="preview-grid">
+                <Field label={isAudio ? "Start (seconds)" : "Start page"}>
+                  <input
+                    type="number"
+                    min={isAudio ? 0 : 1}
+                    max={maximum}
+                    step={isAudio ? 0.001 : 1}
+                    required
+                    value={start}
+                    onChange={(event) => setStart(event.target.value)}
+                  />
+                </Field>
+                <Field
+                  label={isAudio ? "End (seconds)" : "End page"}
+                  hint={
+                    isAudio
+                      ? "Only this time range will be processed."
+                      : "Includes the start and end pages."
+                  }
+                >
+                  <input
+                    type="number"
+                    min={isAudio ? Number(start) + 0.001 : Math.max(1, Number(start))}
+                    max={maximum}
+                    step={isAudio ? 0.001 : 1}
+                    required
+                    value={end}
+                    onChange={(event) => setEnd(event.target.value)}
+                  />
+                </Field>
+              </div>
+            ) : null}
+          </fieldset>
+          <Actions>
+            <Button secondary disabled={busy || !dirty} type="submit">
+              Save selection
+            </Button>
+          </Actions>
+          <p className="preview-muted">
+            This saves what to use for your next processing run. The original file stays intact.
+          </p>
+        </form>
+      ) : null}
       <Actions>
-        {ready && ["audio", "pdf"].includes(source.kind) ? (
-          <Button
-            secondary
-            disabled={busy}
-            onClick={() =>
-              void change({
-                ranges: [
-                  {
-                    start: Math.round(Number(start) * (source.kind === "audio" ? 1000 : 1)),
-                    end: Math.round(Number(end) * (source.kind === "audio" ? 1000 : 1)),
-                  },
-                ],
-              })
-            }
-          >
-            Save range
-          </Button>
-        ) : null}
-        {source.verifiedAt && !source.originalDeletedAt ? (
+        {(isAudio ? localAvailable === true : source.verifiedAt && !source.originalDeletedAt) ? (
           <Button secondary disabled={busy} onClick={() => void read()}>
             Open original
           </Button>

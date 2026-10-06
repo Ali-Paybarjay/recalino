@@ -1,4 +1,5 @@
 import { listCards } from "@recalino/core/card";
+import { getLatestVersion } from "@recalino/core/lkm";
 import { getNotebook } from "@recalino/core/note";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
@@ -13,9 +14,10 @@ export default async function ClassCardsPage({ params }: { params: Promise<{ id:
   const session = await workspaceSession(learner, id);
   const db = getDatabase(),
     ctx = workspaceActor(learner);
-  const [cards, notebook] = await Promise.all([
+  const [cards, notebook, latest] = await Promise.all([
     listCards(db, ctx, { sessionId: id }),
     getNotebook(db, ctx, id),
+    getLatestVersion(db, ctx, id),
   ]);
   return (
     <LearnerShell
@@ -23,7 +25,13 @@ export default async function ClassCardsPage({ params }: { params: Promise<{ id:
       current="classes"
       header={<PageHeader title="Class flashcards" subtitle={session.displayTitle} />}
     >
-      <CardsView sessionId={id} userId={learner.userId} initial={cards} notebook={notebook} />
+      <CardsView
+        sessionId={id}
+        userId={learner.userId}
+        initial={cards}
+        notebook={notebook}
+        hasGeneratedNotes={!!latest}
+      />
     </LearnerShell>
   );
 }

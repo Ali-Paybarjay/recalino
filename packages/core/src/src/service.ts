@@ -39,14 +39,20 @@ import {
   validateFileDeclaration,
 } from "./contracts";
 import { extractHtml, extractPlainText } from "./extract";
+import {
+  automaticSourceRole,
+  type SourceRole,
+  sourceClassificationSchema,
+  sourceRoleSchema,
+} from "./roles";
+import { audioSelectionMatchesCache, extractionSettings } from "./selection-cache";
 
 type Connection = Database | Tx;
-const roles = ["class_audio", "board_photo", "class_material", "user_notes"] as const;
 const rangesSchema = z.array(
   z.strictObject({ start: z.number().int().nonnegative(), end: z.number().int().positive() }),
 );
 export const sourceSelectionSchema = z.strictObject({
-  role: z.enum(roles),
+  role: sourceRoleSchema,
   selected: z.boolean(),
   ranges: rangesSchema,
   timeStatus: z.enum(["exact", "estimated", "user_confirmed", "unknown"]),
@@ -947,7 +953,13 @@ export async function appendContentVersion(
     await assertSessionOwner(tx, ctx, link.session_id);
     await tx
       .updateTable("src.session_source")
-      .set({ selected_content_version_id: row.id, changed_at: now })
+      .set({
+        selected_content_version_id: row.id,
+        ...(input.provenance === "machine_extraction" && input.settings.sourceClassification
+          ? { role: automaticSourceRole(source.kind, input.settings.sourceClassification) }
+          : {}),
+        changed_at: now,
+      })
       .where("id", "=", link.id)
       .execute();
     await snapshot(tx, ctx, link.session_id, now);
@@ -967,6 +979,36 @@ export async function sourceContentVersions(db: Connection, ctx: LearnerContext,
 }
 export async function getSource(db: Connection, ctx: LearnerContext, assetId: string) {
   return assetRow(db, ctx, assetId);
+}
+
+/** Persist inferred categories only on the learner's active class links. */
+export async function updateAutomaticSourceRoles(
+  tx: Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  sources: readonly { sourceId: string; role: SourceRole }[],
+  now = new Date(),
+) {
+  await lockOwner(tx, ctx);
+  await assertSessionOwner(tx, ctx, sessionId);
+  let changed = false;
+  for (const source of sources) {
+    const asset = await assetRow(tx, ctx, source.sourceId);
+    const role = asset.kind === "audio" ? "class_audio" : sourceRoleSchema.parse(source.role);
+    if (role === "class_audio" && asset.kind !== "audio") throw errors.conflict();
+    if (role === "board_photo" && asset.kind !== "image") throw errors.conflict();
+    const updated = await tx
+      .updateTable("src.session_source")
+      .set({ role, changed_at: now })
+      .where("user_id", "=", ctx.userId)
+      .where("session_id", "=", sessionId)
+      .where("asset_id", "=", source.sourceId)
+      .where("active", "=", true)
+      .where("role", "!=", role)
+      .executeTakeFirst();
+    changed ||= Number(updated.numUpdatedRows) > 0;
+  }
+  if (changed) await snapshot(tx, ctx, sessionId, now);
 }
 
 export async function updateSourceSelection(
@@ -1026,8 +1068,8 @@ export async function updateSourceSelection(
         .executeTakeFirst();
       if (!version) throw errors.notFound();
     }
+    // Categories come from processing; an older browser payload cannot replace them.
     const same =
-      link.role === input.role &&
       link.selected === input.selected &&
       canonicalJson(link.ranges) === canonicalJson(input.ranges) &&
       link.time_status === input.timeStatus &&
@@ -1036,7 +1078,6 @@ export async function updateSourceSelection(
       await tx
         .updateTable("src.session_source")
         .set({
-          role: input.role,
           selected: input.selected,
           ranges: JSON.stringify(input.ranges),
           time_status: input.timeStatus,
@@ -1096,7 +1137,11 @@ export async function sourceReadLink(
       source.kind === "audio"
     )
       throw errors.notFound();
-    return issueReadLink(tx, store, ctx, source.original_object_id, { settings, now });
+    return issueReadLink(tx, store, ctx, source.original_object_id, {
+      settings,
+      now,
+      download: source.kind === "text" || source.kind === "html",
+    });
   });
 }
 
@@ -1182,7 +1227,17 @@ export async function deleteSource(
   });
 }
 
-export async function selectSourceSnapshot(tx: Connection, ctx: LearnerContext, sessionId: string) {
+export async function selectSourceSnapshot(
+  tx: Connection,
+  ctx: LearnerContext,
+  sessionId: string,
+  confirmedSnapshot?: {
+    sources: readonly { sourceId: string; contentVersionId: string | null; role?: SourceRole }[];
+  },
+  providers: {
+    legacyAudioRanges?: (originKey: string, sourceId: string) => Promise<unknown>;
+  } = {},
+) {
   const session = await assertSessionOwner(tx, ctx, sessionId);
   const links = await sessionSources(tx, ctx, sessionId);
   const sources = await Promise.all(
@@ -1192,7 +1247,7 @@ export async function selectSourceSnapshot(tx: Connection, ctx: LearnerContext, 
         const asset = await assetRow(tx, ctx, link.assetId);
         if (!asset.verified_at && asset.kind !== "audio")
           throw errors.validationFailed({ sources: ["not_verified"] });
-        const content = link.contentVersionId
+        let content = link.contentVersionId
           ? await tx
               .selectFrom("src.content_version")
               .selectAll()
@@ -1200,6 +1255,38 @@ export async function selectSourceSnapshot(tx: Connection, ctx: LearnerContext, 
               .where("user_id", "=", ctx.userId)
               .executeTakeFirst()
           : undefined;
+        // Activation preserves the exact content version already confirmed for an older run.
+        const confirmedSource = confirmedSnapshot?.sources.find(
+          (source) => source.sourceId === asset.id,
+        );
+        const preserveConfirmedContent =
+          content && confirmedSource?.contentVersionId === content.id;
+        if (
+          !preserveConfirmedContent &&
+          content?.provenance === "machine_extraction" &&
+          asset.kind === "image" &&
+          !asset.original_deleted_at &&
+          asset.original_object_id &&
+          !sourceClassificationSchema.safeParse(
+            extractionSettings(content.extraction_settings).sourceClassification,
+          ).success
+        )
+          content = undefined;
+        if (content && asset.kind === "audio" && !preserveConfirmedContent) {
+          const settings = extractionSettings(content.extraction_settings);
+          let extractedRanges = rangesSchema.safeParse(settings.ranges);
+          if (!extractedRanges.success && content.origin_key.startsWith("processing:")) {
+            extractedRanges = rangesSchema.safeParse(
+              await providers.legacyAudioRanges?.(content.origin_key, asset.id),
+            );
+          }
+          if (
+            content.origin_key.startsWith("processing:") &&
+            (!extractedRanges.success ||
+              !audioSelectionMatchesCache(rangesSchema.parse(link.ranges), extractedRanges.data))
+          )
+            content = undefined;
+        }
         const audio =
           asset.kind === "audio"
             ? await tx
@@ -1215,7 +1302,15 @@ export async function selectSourceSnapshot(tx: Connection, ctx: LearnerContext, 
         return {
           sourceId: asset.id,
           kind: asset.kind,
-          role: link.role,
+          role:
+            confirmedSource?.role ??
+            automaticSourceRole(
+              asset.kind,
+              extractionSettings(content?.extraction_settings).sourceClassification ??
+                (asset.kind !== "image" || content?.provenance === "user_correction"
+                  ? { role: link.role, confidence: "high" }
+                  : undefined),
+            ),
           sha256: asset.sha256,
           mimeType: asset.verified_mime ?? asset.declared_mime,
           durationMs: audio?.actual_duration_ms

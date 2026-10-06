@@ -211,8 +211,30 @@ export function detectBinaryMime(bytes: Uint8Array): string | null {
   if (ascii(0, 4) === "OggS" && ascii(0, Math.min(bytes.length, 256)).includes("OpusHead"))
     return "audio/ogg";
   if (starts(0x1a, 0x45, 0xdf, 0xa3)) return "audio/webm";
-  if (ascii(4, 8) === "ftyp" && ["M4A ", "M4B ", "isom", "mp42"].includes(ascii(8, 12)))
-    return "audio/mp4";
+  if (bytes.length >= 16 && ascii(4, 8) === "ftyp") {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let boxBytes = view.getUint32(0);
+    let brandOffset = 8;
+    if (boxBytes === 1) {
+      // Extended-size boxes include an unsigned 64-bit size. A bounded signature
+      // probe has no reason to accept a high 32-bit word or a truncated header.
+      if (bytes.length < 24 || view.getUint32(8) !== 0) return null;
+      boxBytes = view.getUint32(12);
+      brandOffset = 16;
+    }
+    if (
+      boxBytes < brandOffset + 8 ||
+      boxBytes > Math.min(bytes.length, 4096) ||
+      (boxBytes - brandOffset) % 4 !== 0
+    )
+      return null;
+    const supportedBrands = ["M4A ", "M4B ", "isom", "mp41", "mp42", "3gp4"];
+    // Mobile recordings may use 3GP as the major brand with MP4-compatible brands.
+    // This identifies a container only; decoding still proves it contains audio alone.
+    if (supportedBrands.includes(ascii(brandOffset, brandOffset + 4))) return "audio/mp4";
+    for (let offset = brandOffset + 8; offset < boxBytes; offset += 4)
+      if (supportedBrands.includes(ascii(offset, offset + 4))) return "audio/mp4";
+  }
   return null;
 }
 

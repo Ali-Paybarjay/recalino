@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { createAuthUser } from "../../test/auth-users";
 import { testDatabaseUrl } from "../../test/local-db";
 import {
@@ -67,16 +67,28 @@ async function fixture() {
   return { ctx, session };
 }
 const hash = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
-async function upload() {
+async function upload(
+  file: {
+    kind: "text" | "html" | "pdf" | "image";
+    mimeType: string;
+    displayName: string;
+    bytes: Uint8Array;
+  } = {
+    kind: "text",
+    mimeType: "text/plain",
+    displayName: "lesson.txt",
+    bytes: new TextEncoder().encode("Synthetic lesson\n\nA second paragraph."),
+  },
+) {
   const { ctx, session } = await fixture(),
-    bytes = new TextEncoder().encode("Synthetic lesson\n\nA second paragraph."),
+    bytes = file.bytes,
     raw = {
       sessionId: session.id,
-      kind: "text",
-      mimeType: "text/plain",
+      kind: file.kind,
+      mimeType: file.mimeType,
       sizeBytes: bytes.length,
       sha256: hash(bytes),
-      displayName: "lesson.txt",
+      displayName: file.displayName,
       parts: [{ index: 0, sizeBytes: bytes.length, sha256: hash(bytes) }],
       operationKey: randomUUID(),
     };
@@ -91,12 +103,80 @@ async function upload() {
     0,
     DEFAULT_PLT_SETTINGS.storage,
   );
-  expect(store.upload(link.url, bytes, "text/plain")).toBe(200);
+  expect(store.upload(link.url, bytes, file.mimeType)).toBe(200);
   await confirmUploadPart(db, store, ctx, source.uploadId, 0);
-  await verifyUpload(db, store, ctx, source.uploadId);
+  await verifyUpload(db, store, ctx, source.uploadId, {
+    verifier: { inspect: async () => ({ pageCount: 1, width: 1, height: 1 }) },
+  });
   return { ctx, session, source, store, raw, bytes };
 }
 describe("source ownership history and private originals (FR-SRC-001,004,005,009,010,013)", () => {
+  it.each([
+    {
+      kind: "text" as const,
+      mimeType: "text/plain",
+      displayName: "original.txt",
+      bytes: new TextEncoder().encode("Synthetic plain text original"),
+      download: true,
+    },
+    {
+      kind: "html" as const,
+      mimeType: "text/html",
+      displayName: "original.html",
+      bytes: new TextEncoder().encode("<p>Synthetic HTML original</p>"),
+      download: true,
+    },
+    {
+      kind: "pdf" as const,
+      mimeType: "application/pdf",
+      displayName: "original.pdf",
+      bytes: new TextEncoder().encode("%PDF-1.7\nSynthetic PDF original"),
+      download: false,
+    },
+    {
+      kind: "image" as const,
+      mimeType: "image/png",
+      displayName: "original.png",
+      bytes: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]),
+      download: false,
+    },
+  ])("issues the expected private original disposition for $kind (FR-SRC-012)", async (file) => {
+    const x = await upload(file);
+    const signRead = vi.spyOn(x.store, "signRead");
+    const link = await sourceReadLink(
+      db,
+      x.store,
+      x.ctx,
+      x.source.assetId,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    expect(x.store.download(link.url)).toEqual({ status: 200, bytes: file.bytes });
+    expect(signRead).toHaveBeenCalledExactlyOnceWith(expect.any(String), link.validUntil, {
+      download: file.download,
+    });
+    signRead.mockRestore();
+  });
+  it("does not issue a server original link for audio kept on the device (FR-SRC-012)", async () => {
+    const x = await fixture();
+    const source = await createSource(db, x.ctx, {
+      sessionId: x.session.id,
+      kind: "audio",
+      mimeType: "audio/mpeg",
+      sizeBytes: 3,
+      sha256: hash(new Uint8Array([0x49, 0x44, 0x33])),
+      displayName: "local-original.mp3",
+      durationMs: 4000,
+      parts: [],
+      operationKey: randomUUID(),
+    });
+    const store = new MemoryObjectStore();
+    const signRead = vi.spyOn(store, "signRead");
+    await expect(
+      sourceReadLink(db, store, x.ctx, source.assetId, DEFAULT_PLT_SETTINGS.storage),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(signRead).not.toHaveBeenCalled();
+    signRead.mockRestore();
+  });
   it("confirms an existing pending generic part while keeping expired and foreign requests denied", async () => {
     const x = await fixture(),
       foreign = await fixture(),

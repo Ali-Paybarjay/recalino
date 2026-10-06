@@ -25,10 +25,16 @@ import {
   approveReply,
   createEmailDraft,
   createReplyDraft,
+  type EmailDraftInput,
+  type EmailPresentationSnapshot,
   type EmailRecipient,
   emailConfigStatus,
+  emailPresentationInputSchema,
+  emailPreviewHtml,
   getEmailDraft,
+  getReplyDraft,
   getSupportThread,
+  localizedEmailPresentationInputSchema,
   retryEmail,
   runEmailOutbox,
   saveEmailTemplate,
@@ -38,7 +44,7 @@ import {
 import { after } from "next/server";
 import { z } from "zod";
 import pilotDefaults from "../../../../config/pilot-defaults.json";
-import type { AdminResult, AdminView } from "../ui/admin/contracts";
+import type { AdminResult, AdminView, EmailPresentationPreview } from "../ui/admin/contracts";
 import { readAdminSnapshot } from "./admin-data";
 import { adminDirectory } from "./admin-directory";
 import { adminEmailValues } from "./admin-email-values";
@@ -68,6 +74,21 @@ const views = z.enum([
   "audit",
   "settings",
 ]);
+function presentationPreview(
+  value: EmailPresentationSnapshot | null | undefined,
+): EmailPresentationPreview | null {
+  if (!value) return null;
+  return {
+    previewHtml: emailPreviewHtml(value),
+    text: value.text,
+    designVersion: value.designVersion,
+    logoVersion: value.logoVersion,
+    variant: value.variant,
+    headline: value.headline,
+    preheader: value.preheader,
+    action: value.action,
+  };
+}
 function key(request: Request) {
   const value = request.headers.get("idempotency-key");
   if (!value || !isValidIdempotencyKey(value))
@@ -229,9 +250,9 @@ export function adminHandler(): Handler {
         };
       }
       case "email.preview": {
-        const content = z.object({
-          subject: z.string().trim().min(1).max(300),
-          body: z.string().trim().min(1).max(20000),
+        const content = z.strictObject({
+          subject: z.string().trim().max(300),
+          body: z.string().trim().max(20000),
         });
         const variables = z.record(z.string().regex(/^[a-z_][a-z0-9_]*$/), z.string().max(4000));
         const p = z
@@ -239,10 +260,21 @@ export function adminHandler(): Handler {
             userIds: z.array(z.uuid()).min(1).max(1000),
             templateId: z.enum(templateIds).nullable(),
             language: z.enum(["en", "fa", "recipient"]),
-            subject: content.shape.subject,
-            body: content.shape.body,
-            localizedContent: z.object({ en: content, fa: content }).optional(),
-            localizedVariables: z.object({ en: variables, fa: variables }).optional(),
+            subject: content.shape.subject.optional(),
+            body: content.shape.body.optional(),
+            localizedContent: z
+              .strictObject({ en: content.optional(), fa: content.optional() })
+              .optional(),
+            localizedVariables: z
+              .strictObject({ en: variables.optional(), fa: variables.optional() })
+              .optional(),
+            presentation: emailPresentationInputSchema.optional(),
+            localizedPresentation: z
+              .strictObject({
+                en: localizedEmailPresentationInputSchema.optional(),
+                fa: localizedEmailPresentationInputSchema.optional(),
+              })
+              .optional(),
             reason: reasonSchema.default("Prepare an email for owner review"),
           })
           .parse(value);
@@ -293,9 +325,7 @@ export function adminHandler(): Handler {
         }
         if (!recipients.length)
           throw errors.validationFailed({ userIds: ["no_available_recipient"] });
-        if (!config.appLink && /{{\s*app_link\s*}}/.test(p.body))
-          throw errors.validationFailed({ appLink: ["not_configured"] });
-        const draft = await createEmailDraft(db, actor, {
+        const draftInput: EmailDraftInput = {
           operationKey: op,
           recipients,
           templateId: p.templateId,
@@ -303,12 +333,14 @@ export function adminHandler(): Handler {
           subject: p.subject,
           body: p.body,
           localizedContent: p.localizedContent,
+          presentation: p.presentation,
+          localizedPresentation: p.localizedPresentation,
           variables: config.appLink ? { app_link: config.appLink } : {},
           recipientVariables,
           reason: p.reason,
-        });
-        if (draft.recipients.some((r) => r.missingVariables.length))
-          throw errors.validationFailed({ body: ["unresolved_template_variable"] });
+        };
+        // Validate before insertion while retaining the exact snapshot on an idempotent retry.
+        const draft = await createEmailDraft(db, actor, draftInput, { requireResolved: true });
         const preview: AdminResult["preview"] = {
           previewId: `${draft.draftId}:${draft.revision}`,
           expiresAt: new Date(new Date(draft.createdAt).getTime() + 30 * 60_000).toISOString(),
@@ -319,6 +351,7 @@ export function adminHandler(): Handler {
             language: r.language,
             subject: r.subject,
             body: r.body,
+            presentation: presentationPreview(r.presentation),
           })),
           excluded,
         };
@@ -398,6 +431,9 @@ export function adminHandler(): Handler {
             expectedVersion: z.string(),
             subject: text,
             body: text,
+            presentation: z
+              .strictObject({ en: emailPresentationInputSchema, fa: emailPresentationInputSchema })
+              .optional(),
             reason: reasonSchema,
           })
           .parse(value);
@@ -405,8 +441,16 @@ export function adminHandler(): Handler {
           id: p.templateId,
           expectedVersion: p.expectedVersion,
           content: {
-            en: { subject: p.subject.en, body: p.body.en },
-            fa: { subject: p.subject.fa, body: p.body.fa },
+            en: {
+              subject: p.subject.en,
+              body: p.body.en,
+              ...(p.presentation?.en ? { presentation: p.presentation.en } : {}),
+            },
+            fa: {
+              subject: p.subject.fa,
+              body: p.body.fa,
+              ...(p.presentation?.fa ? { presentation: p.presentation.fa } : {}),
+            },
           },
           reason: p.reason,
         });
@@ -417,18 +461,79 @@ export function adminHandler(): Handler {
         const draft = await createReplyDraft(db, actor, { ...p, operationKey: op });
         return { body: { body: draft.body, source: "template" } };
       }
-      case "feedback.reply": {
+      case "feedback.preview": {
         const p = z
           .strictObject({
             threadId: z.uuid(),
             body: z.string().trim().min(1).max(10000),
             language: locale,
             notifyByEmail: z.boolean(),
-            close: z.boolean().default(false),
+            presentation: emailPresentationInputSchema.optional(),
           })
           .parse(value);
         const thread = await getSupportThread(db, actor, p.threadId),
           contact = await directory.getUser(thread.userId);
+        if (p.notifyByEmail && !thread.emailNotification)
+          throw errors.validationFailed({ notifyByEmail: ["learner_did_not_opt_in"] });
+        if (p.notifyByEmail && !contact.email)
+          throw errors.validationFailed({ recipient: ["email_unavailable"] });
+        const recipient: EmailRecipient | undefined =
+          p.notifyByEmail && contact.email
+            ? {
+                userId: thread.userId,
+                email: contact.email,
+                firstName: contact.name ?? undefined,
+                language: p.language,
+              }
+            : undefined;
+        const config = emailConfigStatus();
+        const draft = await createReplyDraft(db, actor, {
+          threadId: p.threadId,
+          body: p.body,
+          language: p.language,
+          operationKey: op,
+          ...(p.notifyByEmail
+            ? {
+                recipient,
+                appLink: config.appLink ?? undefined,
+                presentation: p.presentation,
+              }
+            : {}),
+        });
+        const replyPreview: AdminResult["replyPreview"] = {
+          draftId: draft.id,
+          revision: draft.revision,
+          threadId: draft.threadId,
+          language: draft.language,
+          body: draft.body,
+          emailPreview:
+            p.notifyByEmail && draft.emailPreview && recipient
+              ? {
+                  email: recipient.email,
+                  subject: draft.emailPreview.subject,
+                  body: draft.emailPreview.body,
+                  presentation: presentationPreview(draft.emailPreview.presentation),
+                }
+              : null,
+        };
+        return { body: { replyPreview } };
+      }
+      case "feedback.reply": {
+        const p = z
+          .strictObject({
+            threadId: z.uuid(),
+            draftId: z.uuid(),
+            revision: z.int().positive(),
+            notifyByEmail: z.boolean(),
+            close: z.boolean().default(false),
+          })
+          .parse(value);
+        const draft = await getReplyDraft(db, actor, p.draftId);
+        if (draft.threadId !== p.threadId || draft.revision !== p.revision) throw errors.conflict();
+        const thread = await getSupportThread(db, actor, p.threadId),
+          contact = await directory.getUser(thread.userId);
+        if (p.notifyByEmail && (!thread.emailNotification || !draft.emailPreview?.recipient))
+          throw errors.validationFailed({ notifyByEmail: ["prepare_exact_email_preview"] });
         await adminOperation(
           db,
           actorId,
@@ -437,13 +542,6 @@ export function adminHandler(): Handler {
           "admin.reply_approve",
           "Owner approved this reply",
           async (tx) => {
-            const draft = await createReplyDraft(tx, actor, {
-              threadId: p.threadId,
-              body: p.body,
-              language: p.language,
-              operationKey: op,
-            });
-            const config = emailConfigStatus();
             await approveReply(tx, actor, {
               draftId: draft.id,
               revision: draft.revision,
@@ -454,10 +552,9 @@ export function adminHandler(): Handler {
                     userId: thread.userId,
                     email: contact.email,
                     firstName: contact.name ?? undefined,
-                    language: p.language,
+                    language: draft.language,
                   }
                 : undefined,
-              appLink: config.appLink ?? undefined,
               reason: "Owner approved this reply",
             });
             return { ok: true };

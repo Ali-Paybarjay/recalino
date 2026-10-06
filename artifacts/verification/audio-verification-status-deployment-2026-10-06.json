@@ -1,0 +1,49 @@
+{
+  "publishedAt": "2026-10-06T00:12:03.924Z",
+  "domain": "https://recalino.vercel.app",
+  "deploymentId": "dpl_Am3y4Q5JQ9mVPrU5yan9a7y27LSf",
+  "deploymentUrl": "https://recalino-3dvh0cjbd-ali-paybarjay-s-projects.vercel.app",
+  "baselineDeploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+  "promotionConfirmed": true,
+  "sourceAudit": {
+    "deploymentId": "dpl_Am3y4Q5JQ9mVPrU5yan9a7y27LSf",
+    "baselineDeploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+    "expectedSourceFiles": 826,
+    "deployedSourceFiles": 826,
+    "matchedSourceFiles": 826,
+    "unchangedBaselineSourceFiles": 821,
+    "changedSourceFiles": [
+      {
+        "path": "apps/web/src/app/(app)/classes/[id]/estimate/page.tsx",
+        "sha1": "c578e9363fff4a745f5ee8db43a9f39841eda84e"
+      },
+      {
+        "path": "apps/web/src/ui/workspace/ProcessingView.test.ts",
+        "sha1": "a8429da7ac3205b21d2fec0b93148fc9617d0cd6"
+      },
+      {
+        "path": "apps/web/src/ui/workspace/ProcessingView.tsx",
+        "sha1": "69436b0663b6b93451dc4b25ff4305646515cc7e"
+      }
+    ],
+    "addedSourceFiles": [
+      {
+        "path": "apps/web/src/server/processing-estimate-state.test.ts",
+        "sha1": "f3a8e80cf59053df4a5957fd4b29faeccb77d1cb"
+      },
+      {
+        "path": "apps/web/src/server/processing-estimate-state.ts",
+        "sha1": "680e57463603797a8727a078e8eb1c870ef3f123"
+      }
+    ],
+    "fiveChangesVerified": true,
+    "sensitiveFileCount": 0,
+    "unexpectedFileCount": 0,
+    "missingFileCount": 0,
+    "mismatchedFileCount": 0,
+    "matchesReviewedSnapshot": true
+  },
+  "stagedChecks": 12,
+  "protectionChanged": false,
+  "dataMutation": "Human-authorized reattachment of one existing audio and six existing images only; processing runs and reservations unchanged"
+}

@@ -1,6 +1,6 @@
 import type { EmailTemplate } from "./contracts";
 
-export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
+const BASE_EMAIL_TEMPLATES: EmailTemplate[] = [
   {
     id: "pilot_welcome",
     version: "2026-10-05.1",
@@ -173,3 +173,77 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
     requiredVariables: ["first_name", "issue_summary", "current_status_text", "user_action_text"],
   },
 ];
+
+const ROUTINE_VARIABLE_DEFAULTS: Partial<
+  Record<EmailTemplate["id"], NonNullable<EmailTemplate["variableDefaults"]>>
+> = {
+  pilot_invitation: {
+    en: {
+      next_step_text:
+        "Sign in with your registered email. If you need help getting started, reply to this email.",
+    },
+    fa: {
+      next_step_text:
+        "با ایمیل ثبت‌شدهٔ خود وارد شوید. اگر برای شروع به کمک نیاز دارید، به همین ایمیل پاسخ دهید.",
+    },
+  },
+  pilot_complete: {
+    en: {
+      next_step_text:
+        "Open Recalino to view your current access and allowance. If you have a question about the next step, reply to this email.",
+    },
+    fa: {
+      next_step_text:
+        "برای مشاهدهٔ وضعیت دسترسی و سهمیهٔ فعلی، ریکالینو را باز کنید. اگر دربارهٔ گام بعدی سؤالی دارید، به همین ایمیل پاسخ دهید.",
+    },
+  },
+  feedback_thanks: {
+    en: {
+      acknowledgement_text:
+        "Your feedback helps us understand what is useful and where Recalino can improve.",
+    },
+    fa: {
+      acknowledgement_text:
+        "بازخورد شما به ما کمک می‌کند بدانیم چه چیزی مفید است و ریکالینو در چه بخش‌هایی می‌تواند بهتر شود.",
+    },
+  },
+  service_notice: {
+    en: { user_action_text: "If you have a question or need help, reply to this email." },
+    fa: { user_action_text: "اگر سؤالی دارید یا به کمک نیاز دارید، به همین ایمیل پاسخ دهید." },
+  },
+};
+/** New draft defaults are visible to the editor. Previously approved rows retain their stored presentation. */
+export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = BASE_EMAIL_TEMPLATES.map((template) => {
+  const conversation = [
+    "feedback_thanks",
+    "support_reply",
+    "pilot_followup",
+    "pilot_complete",
+  ].includes(template.id);
+  const link = conversation ? "{{conversation_link}}" : "{{app_link}}";
+  return {
+    ...template,
+    version: "2026-10-06.1",
+    variableDefaults: ROUTINE_VARIABLE_DEFAULTS[template.id],
+    content: {
+      en: {
+        ...template.content.en,
+        presentation: {
+          action:
+            template.id === "service_notice"
+              ? null
+              : { label: conversation ? "View conversation" : "Open Recalino", url: link },
+        },
+      },
+      fa: {
+        ...template.content.fa,
+        presentation: {
+          action:
+            template.id === "service_notice"
+              ? null
+              : { label: conversation ? "مشاهدهٔ گفت‌وگو" : "ورود به ریکالینو", url: link },
+        },
+      },
+    },
+  };
+});

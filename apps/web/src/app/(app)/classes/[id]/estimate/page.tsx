@@ -2,7 +2,7 @@ import { listRuns } from "@recalino/core/proc";
 import { readInputContract } from "@recalino/core/src";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
-import { readProcessingEstimate } from "../../../../../server/processing-routes";
+import { readProcessingEstimateState } from "../../../../../server/processing-estimate-state";
 import { workspaceActor, workspaceSession } from "../../../../../server/workspace";
 import { PageHeader } from "../../../../../ui/shell/AppShell";
 import { ProcessingView } from "../../../../../ui/workspace/ProcessingView";
@@ -14,8 +14,8 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
     actor = workspaceActor(learner),
     db = getDatabase();
   const session = await workspaceSession(learner, id);
-  const [estimate, runs, contract] = await Promise.all([
-    readProcessingEstimate(db, actor, id).catch(() => null),
+  const [estimateState, runs, contract] = await Promise.all([
+    readProcessingEstimateState(db, actor, id),
     listRuns(db, actor, id),
     readInputContract(db).catch(() => null),
   ]);
@@ -28,7 +28,9 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
       <ProcessingView
         sessionId={id}
         userId={learner.userId}
-        initialEstimate={estimate}
+        initialEstimate={estimateState.estimate}
+        initialEstimateProblem={estimateState.problem}
+        sourcesVersion={session.sourcesVersion}
         initialRuns={runs}
         contract={contract}
       />

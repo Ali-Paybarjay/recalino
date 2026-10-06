@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { EmailDraftInput, OutboundEmail } from "./contracts";
 import { renderEmailRecipients } from "./email";
+import { getEmailLogo } from "./email-logo";
 import { routineReply } from "./feedback";
+import { renderEmailPresentation } from "./presentation";
 import { createResendProvider, emailConfigStatus } from "./provider";
 import { DEFAULT_EMAIL_TEMPLATES } from "./templates";
 
@@ -77,6 +79,128 @@ describe("AC-ADM-008/009 rendered approval snapshots", () => {
       body: "متن فارسی تأییدشده",
     });
   });
+  it("renders routine templates immediately with localized prose while retaining truthful required data", () => {
+    for (const template of DEFAULT_EMAIL_TEMPLATES)
+      for (const language of ["en", "fa"] as const) {
+        const input = welcomeInput();
+        input.templateId = template.id;
+        input.language = language;
+        input.variables = {
+          app_link: "https://example.invalid",
+          conversation_link: "https://example.invalid/help",
+          conversation_subject: "Synthetic reviewed question",
+          reply_text: "Synthetic reviewed response",
+          quota_summary: "Synthetic allocation: 10 minutes",
+          period_text: "2040-01-01 — 2040-01-31 (UTC)",
+          pilot_end_date: "2040-01-31",
+          issue_summary: "Synthetic maintenance notice",
+          current_status_text: "Synthetic reviewed status",
+        };
+        const recipient = renderEmailRecipients(input, template)[0];
+        expect(recipient?.missingVariables).toEqual([]);
+        expect(recipient?.body).not.toContain("{{");
+        for (const value of Object.values(template.variableDefaults?.[language] ?? {}))
+          expect(recipient?.body).toContain(value);
+      }
+  });
+  it("keeps optional routine defaults editable and leaves custom and factual placeholders required", () => {
+    const invitation = DEFAULT_EMAIL_TEMPLATES.find((item) => item.id === "pilot_invitation");
+    const notice = DEFAULT_EMAIL_TEMPLATES.find((item) => item.id === "service_notice");
+    if (!invitation || !notice) throw new Error("Routine template missing");
+    const input = welcomeInput();
+    input.templateId = invitation.id;
+    input.language = "fa";
+    input.variables = {
+      app_link: "https://example.invalid",
+      next_step_text: "گام بعدی بازبینی‌شده",
+    };
+    expect(renderEmailRecipients(input, invitation)[0]?.body).toContain("گام بعدی بازبینی‌شده");
+    input.variables.next_step_text = " ";
+    expect(renderEmailRecipients(input, invitation)[0]?.body).toContain(
+      invitation.variableDefaults?.fa?.next_step_text,
+    );
+    input.body = "{{custom_note2}}";
+    input.variables.custom_note2 = " ";
+    expect(renderEmailRecipients(input, invitation)[0]?.missingVariables).toEqual(["custom_note2"]);
+    delete input.body;
+    input.templateId = notice.id;
+    expect(renderEmailRecipients(input, notice)[0]?.missingVariables).toEqual([
+      "current_status_text",
+      "issue_summary",
+    ]);
+  });
+  it("validates only actual recipient languages and falls back to the verified unedited translation", () => {
+    const input = welcomeInput();
+    input.language = "recipient";
+    const first = input.recipients[0];
+    if (!first) throw new Error("Recipient missing");
+    first.language = "fa";
+    input.subject = "";
+    input.body = "";
+    input.localizedContent = {
+      fa: { subject: "موضوع بازبینی‌شده", body: "متن بازبینی‌شده" },
+      en: { subject: "", body: "" },
+    };
+    expect(renderEmailRecipients(input, welcome)[0]).toMatchObject({
+      language: "fa",
+      subject: "موضوع بازبینی‌شده",
+      body: "متن بازبینی‌شده",
+    });
+    delete input.localizedContent.en;
+    input.recipients.push({ userId: randomUUID(), email: "en@example.invalid", language: "en" });
+    expect(renderEmailRecipients(input, welcome)[1]?.subject).toBe("Welcome to Recalino, there");
+    expect(() =>
+      renderEmailRecipients(input, {
+        ...welcome,
+        id: null,
+        content: { en: { subject: "", body: "" }, fa: { subject: "", body: "" } },
+      }),
+    ).toThrow();
+  });
+  it("ignores incomplete unused locale presentation while enforcing its bounds and actual recipient fields", () => {
+    const input = welcomeInput();
+    input.language = "recipient";
+    input.localizedContent = {
+      en: { subject: "Reviewed English subject", body: "Reviewed English body" },
+      fa: { subject: "", body: "" },
+    };
+    input.localizedPresentation = {
+      en: { action: null },
+      fa: { action: { label: "", url: "" } },
+    };
+    expect(renderEmailRecipients(input, welcome)[0]?.subject).toBe("Reviewed English subject");
+    const recipient = input.recipients[0];
+    if (!recipient) throw new Error("Synthetic recipient missing");
+    recipient.language = "fa";
+    expect(() => renderEmailRecipients(input, welcome)).toThrowError(
+      expect.objectContaining({
+        details: { fields: { "localizedContent.fa.subject": ["required"] } },
+      }),
+    );
+    input.localizedContent.fa = { subject: "موضوع آماده", body: "متن آماده" };
+    expect(() => renderEmailRecipients(input, welcome)).toThrowError(
+      expect.objectContaining({
+        details: {
+          fields: {
+            "localizedPresentation.fa.action.label": ["too_small"],
+            "localizedPresentation.fa.action.url": ["too_small"],
+          },
+        },
+      }),
+    );
+    input.localizedPresentation.fa = { action: { label: "ورود", url: "javascript:alert(1)" } };
+    expect(() => renderEmailRecipients(input, welcome)).toThrowError(
+      expect.objectContaining({
+        details: {
+          fields: { "localizedPresentation.fa.action.url": ["https_action_url_required"] },
+        },
+      }),
+    );
+    recipient.language = "en";
+    expect(renderEmailRecipients(input, welcome)[0]?.missingVariables).toEqual([]);
+    input.localizedPresentation.fa = { action: { label: "ورود", url: "x".repeat(2049) } };
+    expect(() => renderEmailRecipients(input, welcome)).toThrow();
+  });
   it("shows unresolved variables and rejects duplicate recipients or multiline subject", () => {
     const input = welcomeInput();
     input.variables = {};
@@ -99,6 +223,7 @@ describe("AC-ADM-008/009 rendered approval snapshots", () => {
   it("renders digit-suffixed manual variable keys and rejects malformed record fields", () => {
     const input = welcomeInput();
     input.body = "Reviewed note: {{custom_note2}}";
+    input.presentation = { action: null };
     input.variables = { custom_note2: "Routine owner text" };
     expect(renderEmailRecipients(input, welcome)[0]).toMatchObject({
       body: "Reviewed note: Routine owner text",
@@ -162,6 +287,76 @@ describe("AC-ADM-011 email provider outcomes", () => {
     const args = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     expect((args[1].headers as Record<string, string>)["idempotency-key"]).toBe("same-key");
     expect(JSON.parse(args[1].body as string).to).toEqual([message.email]);
+    expect(JSON.parse(args[1].body as string)).not.toHaveProperty("html");
+    expect(JSON.parse(args[1].body as string)).not.toHaveProperty("attachments");
+  });
+  it("rejects a malformed branded snapshot without contacting Resend", async () => {
+    const fetcher = vi.fn(async () => Response.json({ id: "provider-test" }));
+    const adapter = createResendProvider(
+      "test",
+      {
+        provider: "resend",
+        from: "Sender <sender@example.invalid>",
+        appLink: "https://example.invalid",
+      },
+      fetcher as typeof fetch,
+    );
+    const malformed = {
+      ...message,
+      presentation: { html: '<img src="https://private.invalid">', text: "Unapproved" },
+    } as unknown as OutboundEmail;
+    expect(await adapter.send(malformed, "same-key")).toEqual({
+      state: "failed",
+      error: "email_presentation_invalid",
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("sends the frozen HTML and fallback text with the exact versioned in-memory logo to Resend", async () => {
+    const presentation = renderEmailPresentation({
+      language: message.language,
+      subject: message.subject,
+      body: message.body,
+      templateId: "pilot_welcome",
+      presentation: {
+        headline: "Reviewed welcome",
+        preheader: "Approved preview",
+        action: { label: "Open Recalino", url: "https://approved.example.invalid" },
+      },
+    });
+    const fetcher = vi.fn(async () => Response.json({ id: "provider-test" }));
+    const adapter = createResendProvider(
+      "test",
+      {
+        provider: "resend",
+        from: "Sender <sender@example.invalid>",
+        replyTo: "Replies <reply@example.invalid>",
+        appLink: "https://changed.example.invalid",
+      },
+      fetcher as typeof fetch,
+    );
+    expect(await adapter.send({ ...message, presentation }, "same-key")).toEqual({
+      state: "sent",
+      providerId: "provider-test",
+    });
+    const args = fetcher.mock.calls[0] as unknown as [string, RequestInit];
+    const logo = getEmailLogo(presentation.logoVersion);
+    expect(JSON.parse(args[1].body as string)).toEqual({
+      from: "Sender <sender@example.invalid>",
+      to: [message.email],
+      subject: message.subject,
+      text: presentation.text,
+      html: presentation.html,
+      reply_to: "Replies <reply@example.invalid>",
+      attachments: [
+        {
+          filename: logo.filename,
+          content: logo.contentBase64,
+          content_type: logo.contentType,
+          content_id: logo.cid,
+        },
+      ],
+    });
+    expect((args[1].headers as Record<string, string>)["idempotency-key"]).toBe("same-key");
   });
   it("does not call a timeout or ambiguous server response failed/delivered", async () => {
     const config = {

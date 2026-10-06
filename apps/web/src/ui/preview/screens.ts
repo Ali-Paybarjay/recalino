@@ -85,8 +85,8 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "source-settings",
-    title: "Choose what to use",
-    description: "Use only the useful part of this source.",
+    title: "Class sources",
+    description: "Use the whole file or choose a part when you need it.",
     active: "classes",
     focused: true,
   },

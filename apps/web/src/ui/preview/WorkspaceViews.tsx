@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { DateInput } from "../components/DateInput";
 import { Icon } from "../components/Icon";
 import { Sheet } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
@@ -9,6 +10,8 @@ import learningStyles from "./LearningViews.module.css";
 import { usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
 import { sampleClassSummary, sampleCustomTitle } from "./sample-material";
+
+const CREATE_NEW_COURSE = "";
 
 export function WorkspaceViews({ screen }: { screen: string }) {
   const { state, setState, announce } = usePreview();
@@ -600,38 +603,30 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               placeholder="For example, Present perfect"
             />
           </Field>
-          <Field label="Class date">
-            <input
-              type="date"
-              required
-              value={classDate}
-              onChange={(event) => setClassDate(event.target.value)}
-            />
+          <Field label="Class date" hint="Day / Month / Year">
+            <DateInput required value={classDate} onChange={setClassDate} />
           </Field>
           <Field label="Course" hint={courseCopy.courseHelp}>
             <select
               value={course}
               onChange={(event) => {
+                if (event.target.value === CREATE_NEW_COURSE) {
+                  setError("");
+                  setCreateCourseOpen(true);
+                  return;
+                }
                 setCourse(event.target.value);
                 setUnit("");
               }}
             >
               {state.courses.map((item) => (
-                <option key={item.id}>{item.name}</option>
+                <option key={item.id} value={item.name}>
+                  {item.name}
+                </option>
               ))}
+              <option value={CREATE_NEW_COURSE}>Create New Course</option>
             </select>
           </Field>
-          <Actions>
-            <Button
-              secondary
-              onClick={() => {
-                setError("");
-                setCreateCourseOpen(true);
-              }}
-            >
-              Create course
-            </Button>
-          </Actions>
           <Field label="Unit (optional)">
             <select value={unit} onChange={(event) => setUnit(event.target.value)}>
               <option value="">No unit</option>

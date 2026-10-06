@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-06",
+  "timezone": "Europe/London",
+  "scope": "local synthetic study flow only",
+  "nodeVersion": "24.19.0",
+  "baseUrl": "http://localhost:3000",
+  "productionWrites": false,
+  "realAiCalls": false,
+  "desktop": {
+    "test": "note preview, saved edits, flashcards, review and undo use real owner APIs",
+    "result": "passed",
+    "durationReported": "1.1m",
+    "checks": {
+      "noteTextReadableBeforeSaving": true,
+      "notebookAbsentBeforeExplicitSave": true,
+      "saveAndMakeFlashcardsNavigatesToCards": true,
+      "noCardsCreatedWithoutExplicitPrepareAction": true,
+      "savedNotesVisibleAfterReload": true,
+      "editedNotesAndEarlierVersionContentPreserved": true,
+      "preparedCardIsCandidateAndAbsentFromReview": true,
+      "activationResponseMatchesPreparedCardAndRequestUrlCardId": true,
+      "cardApiAndClassCardsApiReturnSameActiveCard": true,
+      "activationPersistsAfterReload": true,
+      "activatedCardVisibleInReviewWithEditedAnswer": true,
+      "answerAndUndoPersistWithScheduleVersionTwo": true,
+      "axeWcag22AaPassesOnPreviewNotesCardsAndReview": true
+    },
+    "resultDirectory": "artifacts/verification/study-flow-final-v3-results"
+  },
+  "mobile": {
+    "test": "study pages fit and are accessible: mobile",
+    "result": "passed",
+    "durationReported": "28.9s",
+    "viewport": { "width": 390, "height": 844 },
+    "checks": {
+      "unpublishedPreviewReadable": true,
+      "bothSaveActionsVisible": true,
+      "primarySaveAndMakeFlashcardsAboveSecondarySaveAction": true,
+      "primaryActionVisibleAboveFixedBottomNavigation": true,
+      "noHorizontalOverflow": true,
+      "axeWcag22AaPasses": true
+    },
+    "screenshot": "artifacts/verification/study-flow-final-v2-results/study-study-pages-fit-and-are-accessible-mobile-chromium/notes-preview-mobile.png"
+  },
+  "separateObservation": {
+    "scope": "local Next development server historical-note client navigation",
+    "result": "unresolved outside current task",
+    "details": "Read version 1 client navigation stayed on the history route for 45 seconds even though its RSC response returned 200 with the correct prior note content. The final test verifies history content by navigating directly to the rendered version link href; it does not claim this client-side link navigation passed.",
+    "trace": "artifacts/verification/study-flow-final-v2-results/study-note-preview-saved-e-0f223-nd-undo-use-real-owner-APIs-chromium/trace.zip",
+    "errorContext": "artifacts/verification/study-flow-final-v2-results/study-note-preview-saved-e-0f223-nd-undo-use-real-owner-APIs-chromium/error-context.md"
+  }
+}

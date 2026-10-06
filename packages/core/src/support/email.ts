@@ -19,11 +19,18 @@ import {
   type EmailTemplate,
   type EmailTemplateId,
   emailDraftInputSchema,
+  emailPresentationInputSchema,
   type OutboundEmail,
   type OutboxState,
   type RenderedEmail,
   templateIds,
 } from "./contracts";
+import {
+  defaultEmailAction,
+  renderEmailPresentation,
+  safeEmailActionUrl,
+  validateEmailPresentation,
+} from "./presentation";
 import { DEFAULT_EMAIL_TEMPLATES } from "./templates";
 
 interface DraftRow {
@@ -57,6 +64,7 @@ export interface OutboxRow {
   sent_at: Date | null;
   created_at: Date;
   attempted_at: Date | null;
+  presentation?: unknown;
 }
 function draft(row: DraftRow): EmailDraft {
   return {
@@ -66,7 +74,12 @@ function draft(row: DraftRow): EmailDraft {
     templateId: row.template_id === "freeform" ? null : row.template_id,
     templateVersion: row.template_version,
     input: row.input,
-    recipients: row.recipients,
+    recipients: row.recipients.map((recipient) => ({
+      ...recipient,
+      ...(recipient.presentation
+        ? { presentation: validateEmailPresentation(recipient.presentation) }
+        : {}),
+    })),
     approvedAt: row.approved_at ? iso(row.approved_at) : null,
     createdAt: iso(row.created_at),
   };
@@ -87,6 +100,7 @@ export function outbound(row: OutboxRow): OutboundEmail {
     lastError: row.last_error,
     sentAt: row.sent_at ? iso(row.sent_at) : null,
     createdAt: iso(row.created_at),
+    presentation: row.presentation == null ? null : validateEmailPresentation(row.presentation),
   };
 }
 export async function listEmailTemplates(db?: SupportDb): Promise<EmailTemplate[]> {
@@ -126,10 +140,12 @@ export async function saveEmailTemplate(
         en: z.strictObject({
           subject: z.string().trim().min(1).max(300),
           body: z.string().trim().min(1).max(20000),
+          presentation: emailPresentationInputSchema.optional(),
         }),
         fa: z.strictObject({
           subject: z.string().trim().min(1).max(300),
           body: z.string().trim().min(1).max(20000),
+          presentation: emailPresentationInputSchema.optional(),
         }),
       }),
       reason: z.string().trim().min(1).max(1000),
@@ -151,7 +167,7 @@ export async function saveEmailTemplate(
     return { ...current, version: `custom:${revision}`, content: input.content };
   });
 }
-/** Plain text substitution only. Recipient variables cannot replace trusted recipient identity. */
+/** Plain text substitution and escaped presentation only. Recipient identity remains trusted. */
 export function renderEmailRecipients(
   value: EmailDraftInput,
   template: Omit<EmailTemplate, "id"> & { id: EmailTemplateId | null },
@@ -167,7 +183,9 @@ export function renderEmailRecipients(
     const locale = input.language === "recipient" ? recipient.language : input.language;
     const localized = input.localizedContent?.[locale];
     const content = localized ?? template.content[locale];
-    const override = input.language === "recipient" ? locale === "en" : true;
+    // A partial localized edit leaves other recipients on the verified template translation.
+    const override =
+      input.language === "recipient" ? !input.localizedContent && locale === "en" : true;
     const subject = localized
       ? localized.subject
       : override
@@ -178,9 +196,19 @@ export function renderEmailRecipients(
       : override
         ? (input.body ?? content.body)
         : content.body;
-    const variables = {
+    const defaults = template.variableDefaults?.[locale] ?? {};
+    const manualVariables = {
       ...input.variables,
       ...input.recipientVariables[recipient.userId ?? recipient.email],
+    };
+    // Clearing optional routine prose restores its visible default; actual custom data stays required.
+    const variables = {
+      ...defaults,
+      ...Object.fromEntries(
+        Object.entries(manualVariables).filter(
+          ([key, value]) => !Object.hasOwn(defaults, key) || value.trim(),
+        ),
+      ),
       first_name: recipient.firstName?.trim() || (locale === "fa" ? "دوست عزیز" : "there"),
       account_email: recipient.email,
     };
@@ -190,7 +218,7 @@ export function renderEmailRecipients(
         if (
           !/^[a-z_][a-z0-9_]*$/.test(key) ||
           !Object.hasOwn(variables, key) ||
-          !variables[key as keyof typeof variables]
+          !String(variables[key as keyof typeof variables]).trim()
         ) {
           missing.add(key);
           return `{{${key}}}`;
@@ -199,12 +227,62 @@ export function renderEmailRecipients(
       });
     const renderedSubject = substitute(subject);
     const renderedBody = substitute(body);
-    if (!renderedSubject.trim() || !renderedBody.trim())
-      throw errors.validationFailed({ body: ["content_required_for_each_language"] });
+    if (!renderedSubject.trim())
+      throw errors.validationFailed({ [`localizedContent.${locale}.subject`]: ["required"] });
+    if (!renderedBody.trim())
+      throw errors.validationFailed({ [`localizedContent.${locale}.body`]: ["required"] });
     if (/[\r\n]/.test(renderedSubject))
       throw errors.validationFailed({ subject: ["single_line_required"] });
     if (renderedSubject.length > 300 || renderedBody.length > 24000)
       throw errors.validationFailed({ body: ["rendered_text_too_long"] });
+    const sourcePresentation =
+      input.localizedPresentation?.[locale] ??
+      (input.language === "recipient" && (input.localizedPresentation || input.localizedContent)
+        ? undefined
+        : input.presentation) ??
+      content.presentation;
+    const visual = {
+      ...(sourcePresentation?.headline
+        ? { headline: substitute(sourcePresentation.headline) }
+        : {}),
+      ...(sourcePresentation?.preheader !== undefined
+        ? { preheader: substitute(sourcePresentation.preheader) }
+        : {}),
+      action:
+        sourcePresentation?.action === null
+          ? null
+          : sourcePresentation?.action
+            ? {
+                label: substitute(sourcePresentation.action.label),
+                url: substitute(sourcePresentation.action.url),
+              }
+            : defaultEmailAction(template.id, locale, variables),
+    };
+    // Unresolved tokens remain visible in the draft; no unresolved URL can become an active link.
+    if (visual.action && /\{\{/.test(visual.action.url)) visual.action = null;
+    const visualValidation = emailPresentationInputSchema.safeParse(visual);
+    if (!visualValidation.success) {
+      const fields: Record<string, string[]> = {};
+      for (const issue of visualValidation.error.issues)
+        fields[`localizedPresentation.${locale}.${issue.path.join(".")}`] = [issue.code];
+      throw errors.validationFailed(fields);
+    }
+    if (visual.action) {
+      try {
+        visual.action.url = safeEmailActionUrl(visual.action.url);
+      } catch {
+        throw errors.validationFailed({
+          [`localizedPresentation.${locale}.action.url`]: ["https_action_url_required"],
+        });
+      }
+    }
+    const presentation = renderEmailPresentation({
+      language: locale,
+      subject: renderedSubject,
+      body: renderedBody,
+      templateId: template.id,
+      presentation: visual,
+    });
     return {
       userId: recipient.userId,
       email: recipient.email,
@@ -212,8 +290,26 @@ export function renderEmailRecipients(
       subject: renderedSubject,
       body: renderedBody,
       missingVariables: [...missing].sort(),
+      presentation,
     };
   });
+}
+function previewJson(previews: RenderedEmail[]): string {
+  const value = JSON.stringify(previews);
+  if (Buffer.byteLength(value, "utf8") > 12 * 1024 * 1024)
+    throw errors.validationFailed({ recipients: ["preview_batch_too_large"] });
+  return value;
+}
+function requireResolved(previews: RenderedEmail[]): void {
+  const fields: Record<string, string[]> = {};
+  for (const recipient of previews)
+    for (const name of recipient.missingVariables)
+      fields[
+        /^[a-z_][a-z0-9_]*$/.test(name)
+          ? `localizedVariables.${recipient.language}.${name}`
+          : "body"
+      ] = ["required_template_variable"];
+  if (Object.keys(fields).length) throw errors.validationFailed(fields);
 }
 async function resolveTemplate(
   db: SupportDb,
@@ -235,6 +331,7 @@ export async function createEmailDraft(
   db: SupportDb,
   ctx: AdminSupportContext,
   value: EmailDraftInput,
+  options: { requireResolved?: boolean } = {},
 ): Promise<EmailDraft> {
   requireActor(ctx);
   const input = emailDraftInputSchema.parse(value);
@@ -250,14 +347,16 @@ export async function createEmailDraft(
     ).rows[0];
     if (old) {
       ensureHash(old.request_hash, hash);
+      if (options.requireResolved) requireResolved(old.recipients);
       return draft(old);
     }
     const template = await resolveTemplate(tx, input);
     for (const recipient of input.recipients)
       if (recipient.userId) await requireAccount(tx, recipient.userId);
     const previews = renderEmailRecipients(input, template);
+    if (options.requireResolved) requireResolved(previews);
     const saved = (
-      await sql<DraftRow>`insert into support.email_draft(id,actor_id,operation_key,request_hash,template_id,template_version,input,recipients) values(${randomUUID()}::uuid,${ctx.actorId},${input.operationKey},${hash},${template.id ?? "freeform"},${template.version},${JSON.stringify(input)}::jsonb,${JSON.stringify(previews)}::jsonb) returning *`.execute(
+      await sql<DraftRow>`insert into support.email_draft(id,actor_id,operation_key,request_hash,template_id,template_version,input,recipients) values(${randomUUID()}::uuid,${ctx.actorId},${input.operationKey},${hash},${template.id ?? "freeform"},${template.version},${JSON.stringify(input)}::jsonb,${previewJson(previews)}::jsonb) returning *`.execute(
         tx,
       )
     ).rows[0];
@@ -320,7 +419,7 @@ export async function updateEmailDraft(
       if (recipient.userId) await requireAccount(tx, recipient.userId);
     const previews = renderEmailRecipients(input, template);
     const saved = (
-      await sql<DraftRow>`update support.email_draft set revision=revision+1,input=${JSON.stringify(input)}::jsonb,recipients=${JSON.stringify(previews)}::jsonb,template_id=${template.id ?? "freeform"},template_version=${template.version} where id=${id}::uuid returning *`.execute(
+      await sql<DraftRow>`update support.email_draft set revision=revision+1,input=${JSON.stringify(input)}::jsonb,recipients=${previewJson(previews)}::jsonb,template_id=${template.id ?? "freeform"},template_version=${template.version} where id=${id}::uuid returning *`.execute(
         tx,
       )
     ).rows[0];
@@ -370,6 +469,13 @@ export async function approveEmailDraft(
     }
     if (current.recipients.some((recipient) => recipient.missingVariables.length))
       throw errors.validationFailed({ variables: ["unresolved_variables"] });
+    for (const recipient of current.recipients) {
+      if (recipient.presentation) {
+        const snapshot = validateEmailPresentation(recipient.presentation);
+        if (snapshot.body !== recipient.body || snapshot.language !== recipient.language)
+          throw errors.conflict();
+      }
+    }
     // Stable ordering prevents competing multi-recipient welcome approvals from deadlocking.
     if (current.template_id === "pilot_welcome")
       for (const purpose of [...purposes].sort())
@@ -399,7 +505,7 @@ export async function approveEmailDraft(
         if (previous[0]) purpose = `${prefix}${previous[0].id}`;
       }
       const saved = (
-        await sql<OutboxRow>`insert into support.email_outbox(id,draft_id,user_id,purpose_key,template_id,email,subject,body,language) values(${randomUUID()}::uuid,${current.id}::uuid,${recipient.userId}::uuid,${purpose},${current.template_id},${recipient.email},${recipient.subject},${recipient.body},${recipient.language}) returning *`.execute(
+        await sql<OutboxRow>`insert into support.email_outbox(id,draft_id,user_id,purpose_key,template_id,email,subject,body,language,presentation) values(${randomUUID()}::uuid,${current.id}::uuid,${recipient.userId}::uuid,${purpose},${current.template_id},${recipient.email},${recipient.subject},${recipient.body},${recipient.language},${recipient.presentation ? JSON.stringify(recipient.presentation) : null}::jsonb) returning *`.execute(
           tx,
         )
       ).rows[0];

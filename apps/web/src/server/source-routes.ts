@@ -273,7 +273,9 @@ export function sourceAudioHandler(assetId: string): Handler {
         fields.uploadId,
         fields.index,
       );
-      if (result !== "verified") throw errors.validationFailed({ audio: ["part_not_verified"] });
+      if (result === "missing") return { body: { confirmed: false } };
+      if (result !== "verified")
+        throw errors.validationFailed({ audio: ["part_integrity_mismatch"] });
       return { body: { confirmed: true } };
     }
     const definition = sourceAudioJobDefinition();
@@ -286,7 +288,8 @@ export function sourceAudioHandler(assetId: string): Handler {
         defaults: readPltSettings().jobs,
       }),
     );
-    runJobsSoon(["src.verify_audio"], 90);
+    // Verification activates the confirmed run; keep its processing jobs moving immediately.
+    runJobsSoon(["src.verify_audio", "proc.process"], 90);
     return { status: 202, body: { ...manifest, jobId } };
   };
 }

@@ -16,7 +16,9 @@ import {
 } from "./common";
 import {
   type AdminSupportContext,
+  type EmailPresentationInput,
   type EmailRecipient,
+  emailPresentationInputSchema,
   type FeedbackInput,
   type FeedbackMessage,
   type FeedbackSummary,
@@ -24,8 +26,15 @@ import {
   feedbackInputSchema,
   type ReplyDraft,
   type ReplyDraftInput,
+  type ReplyEmailPreview,
+  recipientSchema,
   replyDraftInputSchema,
 } from "./contracts";
+import {
+  renderEmailPresentation,
+  safeEmailActionUrl,
+  validateEmailPresentation,
+} from "./presentation";
 
 interface ThreadRow {
   id: string;
@@ -53,6 +62,7 @@ interface ReplyRow {
   approved_at: Date | null;
   approved_message_id: string | null;
   request_hash: string;
+  email_preview?: unknown;
 }
 function summary(row: ThreadRow): FeedbackSummary {
   return {
@@ -77,6 +87,83 @@ function reply(row: ReplyRow): ReplyDraft {
     source: row.source,
     state: row.state,
     approvedAt: row.approved_at ? iso(row.approved_at) : null,
+    emailPreview: row.email_preview == null ? null : readReplyEmailPreview(row.email_preview),
+  };
+}
+function readReplyEmailPreview(value: unknown): ReplyEmailPreview {
+  const preview = z
+    .strictObject({
+      subject: z.string().min(1).max(300),
+      body: z.string().min(1).max(24000),
+      presentation: z.unknown(),
+      recipient: z.strictObject({ userId: z.uuid(), email: z.email().max(320) }).optional(),
+    })
+    .parse(value);
+  const presentation = validateEmailPresentation(preview.presentation);
+  if (presentation.body !== preview.body) throw errors.conflict();
+  return { ...preview, presentation };
+}
+function makeReplyEmailPreview(
+  thread: ThreadRow,
+  language: "en" | "fa",
+  responseBody: string,
+  value: { recipient?: EmailRecipient; appLink?: string; presentation?: EmailPresentationInput },
+): ReplyEmailPreview {
+  const recipient = value.recipient;
+  if (recipient && recipient.userId !== thread.user_id)
+    throw errors.validationFailed({ recipient: ["verified_account_email_required"] });
+  const link = value.appLink
+    ? safeEmailActionUrl(new URL(`/help/${thread.id}`, safeEmailActionUrl(value.appLink)).href)
+    : "";
+  const subject = `${language === "fa" ? "پاسخ: " : "Re: "}${thread.subject}`;
+  const body = responseBody + (link ? `\n\n${link}` : "");
+  const variables: Record<string, string> = {
+    first_name: recipient?.firstName?.trim() || (language === "fa" ? "دوست عزیز" : "there"),
+    account_email: recipient?.email ?? "",
+    conversation_subject: thread.subject,
+    reply_text: responseBody,
+    app_link: value.appLink ?? "",
+    conversation_link: link,
+  };
+  const substitute = (text: string) =>
+    text.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, key: string) => {
+      if (!/^[a-z_][a-z0-9_]*$/.test(key) || !Object.hasOwn(variables, key) || !variables[key])
+        throw errors.validationFailed({ variables: ["unresolved_variables"] });
+      return variables[key];
+    });
+  const action =
+    value.presentation?.action === null
+      ? null
+      : value.presentation?.action
+        ? {
+            label: substitute(value.presentation.action.label),
+            url: substitute(value.presentation.action.url),
+          }
+        : link
+          ? { label: language === "fa" ? "مشاهدهٔ پاسخ" : "View reply", url: link }
+          : null;
+  const presentation = renderEmailPresentation({
+    language,
+    subject,
+    body,
+    templateId: "support_reply",
+    presentation: {
+      ...(value.presentation?.headline
+        ? { headline: substitute(value.presentation.headline) }
+        : {}),
+      ...(value.presentation?.preheader !== undefined
+        ? { preheader: substitute(value.presentation.preheader) }
+        : {}),
+      action,
+    },
+  });
+  return {
+    subject,
+    body,
+    presentation,
+    ...(recipient?.userId
+      ? { recipient: { userId: recipient.userId, email: recipient.email } }
+      : {}),
   };
 }
 async function threadRow(db: SupportDb, id: string, lock = false): Promise<ThreadRow> {
@@ -278,8 +365,9 @@ export async function createReplyDraft(
       return reply(old);
     }
     const body = input.body ?? routineReply(thread.category, input.language);
+    const preview = makeReplyEmailPreview(thread, input.language, body, input);
     const row = (
-      await sql<ReplyRow>`insert into support.reply_draft(id,thread_id,actor_id,operation_key,request_hash,body,language,source) values(${randomUUID()}::uuid,${thread.id}::uuid,${ctx.actorId},${input.operationKey},${hash},${body},${input.language},${input.body ? "manual" : "routine"}) returning *`.execute(
+      await sql<ReplyRow>`insert into support.reply_draft(id,thread_id,actor_id,operation_key,request_hash,body,language,source,email_preview) values(${randomUUID()}::uuid,${thread.id}::uuid,${ctx.actorId},${input.operationKey},${hash},${body},${input.language},${input.body ? "manual" : "routine"},${JSON.stringify(preview)}::jsonb) returning *`.execute(
         tx,
       )
     ).rows[0];
@@ -304,24 +392,43 @@ async function replyRow(
   if (row.actor_id !== ctx.actorId) throw errors.ownershipDenied();
   return row;
 }
+export async function getReplyDraft(
+  db: SupportDb,
+  ctx: AdminSupportContext,
+  id: string,
+): Promise<ReplyDraft> {
+  return reply(await replyRow(db, ctx, id));
+}
 export async function updateReplyDraft(
   db: SupportDb,
   ctx: AdminSupportContext,
   id: string,
-  value: { revision: number; body: string; language: "en" | "fa" },
+  value: {
+    revision: number;
+    body: string;
+    language: "en" | "fa";
+    recipient?: EmailRecipient;
+    appLink?: string;
+    presentation?: EmailPresentationInput;
+  },
 ): Promise<ReplyDraft> {
   const input = z
     .strictObject({
       revision: z.int().positive(),
       body: z.string().trim().min(1).max(10000),
       language: z.enum(["en", "fa"]),
+      recipient: recipientSchema.optional(),
+      appLink: z.string().max(2048).optional(),
+      presentation: emailPresentationInputSchema.optional(),
     })
     .parse(value);
   return transaction(db, async (tx) => {
     const row = await replyRow(tx, ctx, id, true);
     if (row.state !== "draft" || row.revision !== input.revision) throw errors.conflict();
+    const thread = await threadRow(tx, row.thread_id, true);
+    const preview = makeReplyEmailPreview(thread, input.language, input.body, input);
     const saved = (
-      await sql<ReplyRow>`update support.reply_draft set body=${input.body},language=${input.language},source='manual',revision=revision+1 where id=${id}::uuid returning *`.execute(
+      await sql<ReplyRow>`update support.reply_draft set body=${input.body},language=${input.language},source='manual',email_preview=${JSON.stringify(preview)}::jsonb,revision=revision+1 where id=${id}::uuid returning *`.execute(
         tx,
       )
     ).rows[0];
@@ -382,6 +489,16 @@ export async function approveReply(
     const recipient = value.recipient;
     if (notify && (!recipient || recipient.userId !== thread.user_id))
       throw errors.validationFailed({ recipient: ["verified_account_email_required"] });
+    const preview = draft.email_preview == null ? null : readReplyEmailPreview(draft.email_preview);
+    if (preview && preview.presentation.language !== draft.language) throw errors.conflict();
+    if (
+      notify &&
+      preview?.recipient &&
+      (!recipient ||
+        preview.recipient.userId !== recipient.userId ||
+        preview.recipient.email.toLowerCase() !== recipient.email.toLowerCase())
+    )
+      throw errors.conflict();
     const id = randomUUID();
     await sql`insert into support.message(id,thread_id,author,actor_id,operation_key,request_hash,body) values(${id}::uuid,${thread.id}::uuid,'admin',${ctx.actorId},${`reply:${draft.id}`},${fingerprint({ body: draft.body, language: draft.language, revision: draft.revision })},${draft.body})`.execute(
       tx,
@@ -391,10 +508,11 @@ export async function approveReply(
     );
     if (notify && recipient) {
       const email = z.email().parse(recipient.email);
-      const subject = `${draft.language === "fa" ? "پاسخ: " : "Re: "}${thread.subject}`;
+      const subject =
+        preview?.subject ?? `${draft.language === "fa" ? "پاسخ: " : "Re: "}${thread.subject}`;
       const link = input.appLink ? `${input.appLink.replace(/\/$/, "")}/help/${thread.id}` : "";
-      const body = draft.body + (link ? `\n\n${link}` : "");
-      await sql`insert into support.email_outbox(id,thread_id,user_id,purpose_key,template_id,email,subject,body,language) values(${randomUUID()}::uuid,${thread.id}::uuid,${thread.user_id}::uuid,${`reply:${draft.id}`},'support_reply',${email},${subject},${body},${draft.language}) on conflict(purpose_key) do nothing`.execute(
+      const body = preview?.body ?? draft.body + (link ? `\n\n${link}` : "");
+      await sql`insert into support.email_outbox(id,thread_id,user_id,purpose_key,template_id,email,subject,body,language,presentation) values(${randomUUID()}::uuid,${thread.id}::uuid,${thread.user_id}::uuid,${`reply:${draft.id}`},'support_reply',${email},${subject},${body},${draft.language},${preview ? JSON.stringify(preview.presentation) : null}::jsonb) on conflict(purpose_key) do nothing`.execute(
         tx,
       );
     }

@@ -1,0 +1,15 @@
+{
+  "restoredAt": "2026-10-06T00:08:23.53048Z",
+  "humanAuthorized": true,
+  "activeSources": 7,
+  "selectedSources": 7,
+  "audio": 1,
+  "images": 6,
+  "sourcesVersion": 25,
+  "snapshotSources": 7,
+  "sourceChangeOutboxVerified": true,
+  "duplicateAudioRestored": false,
+  "processingStarted": false,
+  "oldRunsRewritten": false,
+  "method": "Owner-scoped transaction with account, owner advisory and class locks; restored existing links; created new source snapshot and change outbox event"
+}

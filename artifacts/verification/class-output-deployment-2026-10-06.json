@@ -1,0 +1,125 @@
+{
+  "publishedAt": "2026-10-06T01:09:15.068Z",
+  "domain": "https://recalino.vercel.app",
+  "deploymentId": "dpl_2YuexL795mTpcqAAn4x5jfqzfttz",
+  "deploymentUrl": "https://recalino-p643q0lv2-ali-paybarjay-s-projects.vercel.app",
+  "baselineDeploymentId": "dpl_GyRv86JKzk9KnGUWKRc2LUvPkyNd",
+  "promotionConfirmed": true,
+  "sourceAudit": {
+    "checkedAt": "2026-10-06T01:05:32.413Z",
+    "deploymentId": "dpl_2YuexL795mTpcqAAn4x5jfqzfttz",
+    "deploymentUrl": "https://recalino-p643q0lv2-ali-paybarjay-s-projects.vercel.app",
+    "reviewedFileCount": 840,
+    "deployedFileCount": 840,
+    "mismatchCount": 0,
+    "matchesReviewedSnapshot": true
+  },
+  "browserVerification": {
+    "checkedAt": "2026-10-06T01:08:57.348Z",
+    "passed": true,
+    "authenticatedProductionSession": false,
+    "productionRuntimeMatchesBrowserTestedCode": true,
+    "codeChecks": [
+      {
+        "path": "apps/web/src/app/(app)/classes/[id]/cards/page.tsx",
+        "reviewedSha1": "5634e8dc5e16cf7d55a761304fce91de81cd5c96",
+        "testedSha1": "5634e8dc5e16cf7d55a761304fce91de81cd5c96",
+        "passed": true
+      },
+      {
+        "path": "apps/web/src/ui/workspace/ProcessingView.tsx",
+        "reviewedSha1": "3ad28489ef8543530343ebc2130684d4d3aa8e14",
+        "testedSha1": "3ad28489ef8543530343ebc2130684d4d3aa8e14",
+        "passed": true
+      },
+      {
+        "path": "apps/web/src/ui/workspace/NoteView.tsx",
+        "reviewedSha1": "7a1b36f7b536aec1a979face28208d4c285a0567",
+        "testedSha1": "7a1b36f7b536aec1a979face28208d4c285a0567",
+        "passed": true
+      },
+      {
+        "path": "apps/web/src/ui/workspace/CardsView.tsx",
+        "reviewedSha1": "16c1d16167a155cfe2a3c20a67c2f3f5d0a3f82b",
+        "testedSha1": "16c1d16167a155cfe2a3c20a67c2f3f5d0a3f82b",
+        "passed": true
+      },
+      {
+        "path": "apps/web/src/ui/workspace/SourcesView.tsx",
+        "reviewedSha1": "b8cd5f320e383262d460e43ba7f3c8e12d5a21e4",
+        "testedSha1": "b8cd5f320e383262d460e43ba7f3c8e12d5a21e4",
+        "passed": true
+      },
+      {
+        "path": "packages/core/src/proc/runs.ts",
+        "reviewedSha1": "cdb98ccee4a0497377a55feaa8f8029fd8d86905",
+        "testedSha1": "cdb98ccee4a0497377a55feaa8f8029fd8d86905",
+        "passed": true
+      }
+    ],
+    "browserEvidence": {
+      "date": "2026-10-06",
+      "timezone": "Europe/London",
+      "scope": "local synthetic study flow only",
+      "nodeVersion": "24.19.0",
+      "baseUrl": "http://localhost:3000",
+      "productionWrites": false,
+      "realAiCalls": false,
+      "desktop": {
+        "test": "note preview, saved edits, flashcards, review and undo use real owner APIs",
+        "result": "passed",
+        "durationReported": "1.1m",
+        "checks": {
+          "noteTextReadableBeforeSaving": true,
+          "notebookAbsentBeforeExplicitSave": true,
+          "saveAndMakeFlashcardsNavigatesToCards": true,
+          "noCardsCreatedWithoutExplicitPrepareAction": true,
+          "savedNotesVisibleAfterReload": true,
+          "editedNotesAndEarlierVersionContentPreserved": true,
+          "preparedCardIsCandidateAndAbsentFromReview": true,
+          "activationResponseMatchesPreparedCardAndRequestUrlCardId": true,
+          "cardApiAndClassCardsApiReturnSameActiveCard": true,
+          "activationPersistsAfterReload": true,
+          "activatedCardVisibleInReviewWithEditedAnswer": true,
+          "answerAndUndoPersistWithScheduleVersionTwo": true,
+          "axeWcag22AaPassesOnPreviewNotesCardsAndReview": true
+        },
+        "resultDirectory": "artifacts/verification/study-flow-final-v3-results"
+      },
+      "mobile": {
+        "test": "study pages fit and are accessible: mobile",
+        "result": "passed",
+        "durationReported": "28.9s",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "checks": {
+          "unpublishedPreviewReadable": true,
+          "bothSaveActionsVisible": true,
+          "primarySaveAndMakeFlashcardsAboveSecondarySaveAction": true,
+          "primaryActionVisibleAboveFixedBottomNavigation": true,
+          "noHorizontalOverflow": true,
+          "axeWcag22AaPasses": true
+        },
+        "screenshot": "artifacts/verification/study-flow-final-v2-results/study-study-pages-fit-and-are-accessible-mobile-chromium/notes-preview-mobile.png"
+      },
+      "separateObservation": {
+        "scope": "local Next development server historical-note client navigation",
+        "result": "unresolved outside current task",
+        "details": "Read version 1 client navigation stayed on the history route for 45 seconds even though its RSC response returned 200 with the correct prior note content. The final test verifies history content by navigating directly to the rendered version link href; it does not claim this client-side link navigation passed.",
+        "trace": "artifacts/verification/study-flow-final-v2-results/study-note-preview-saved-e-0f223-nd-undo-use-real-owner-APIs-chromium/trace.zip",
+        "errorContext": "artifacts/verification/study-flow-final-v2-results/study-note-preview-saved-e-0f223-nd-undo-use-real-owner-APIs-chromium/error-context.md"
+      }
+    },
+    "testHarness": {
+      "path": "apps/web/e2e/study.spec.ts",
+      "snapshotSha1": "3a6e4f6e0d23c0e404a45e8861ba4a4ca28156ff",
+      "finalLocalSha1": "9e29a6ad6ace292dc98994d3dc279ea22589bba5",
+      "adjustmentAfterSnapshot": "Local browser harness follows the rendered historical-version href directly for the separately documented development navigation stall. Product runtime code is unchanged."
+    }
+  },
+  "stagedChecks": 12,
+  "cloudDataChanged": false,
+  "stoppedLearnerRunRequiresConfirmation": true
+}

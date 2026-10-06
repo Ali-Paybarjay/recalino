@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-10-06T00:18:52.075Z",
+  "origin": "https://recalino.vercel.app",
+  "applicationSession": false,
+  "productionWrites": 0,
+  "checks": [
+    {
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "cache": "public, max-age=0, must-revalidate",
+      "passed": true
+    },
+    {
+      "path": "/api/sources/contract",
+      "method": "GET",
+      "status": 401,
+      "expected": 401,
+      "cache": "private, no-store",
+      "passed": true
+    },
+    {
+      "path": "/api/sources/00000000-0000-4000-8000-000000000001/read",
+      "method": "GET",
+      "status": 401,
+      "expected": 401,
+      "cache": "private, no-store",
+      "passed": true
+    },
+    {
+      "path": "/api/classes",
+      "method": "GET",
+      "status": 401,
+      "expected": 401,
+      "cache": "private, no-store",
+      "passed": true
+    },
+    {
+      "path": "/classes/00000000-0000-4000-8000-000000000001/sources",
+      "method": "GET",
+      "status": 200,
+      "expected": "sign-in redirect",
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "streamedRedirect": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

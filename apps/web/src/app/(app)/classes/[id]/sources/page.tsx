@@ -31,6 +31,7 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
       header={<PageHeader title="Sources" subtitle={session.displayTitle} />}
     >
       <SourcesView
+        key={`${learner.userId}:${id}`}
         sessionId={id}
         userId={learner.userId}
         sources={sources}

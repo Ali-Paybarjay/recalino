@@ -6,7 +6,13 @@ import { Icon, type IconComponent } from "../components/Icon";
 import { Cards, CircleDashed, CircleHalf, FileText, Queue, UserCircle } from "../icons";
 import styles from "./Admin.module.css";
 import type { AdminScreenProps, PanelMode } from "./AdminScreenProps";
-import { adminAction, adminQuery, releaseSubmissionKey, submissionKey } from "./api";
+import {
+  AdminRequestError,
+  adminAction,
+  adminQuery,
+  releaseSubmissionKey,
+  submissionKey,
+} from "./api";
 import { CommunicationScreens } from "./CommunicationScreens";
 import { CoreScreens } from "./CoreScreens";
 import type { AdminLocale, AdminResult, AdminSnapshot, AdminView } from "./contracts";
@@ -190,6 +196,7 @@ export function AdminPanel() {
     action: string,
     input: unknown,
     success?: string,
+    onValidation?: (fields: Record<string, string[]>) => boolean,
   ): Promise<AdminResult | null> {
     if (busy) return null;
     setBusy(true);
@@ -202,7 +209,14 @@ export function AdminPanel() {
       setAnnouncement(success ?? "");
       return result;
     } catch (failure) {
-      setError(failure);
+      if (
+        !(
+          failure instanceof AdminRequestError &&
+          failure.code === "validation_failed" &&
+          onValidation?.(failure.fields)
+        )
+      )
+        setError(failure);
       return null;
     } finally {
       setBusy(false);

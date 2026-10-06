@@ -4,6 +4,7 @@
 export { ArrowClockwiseIcon as ArrowClockwise } from "@phosphor-icons/react/dist/ssr/ArrowClockwise";
 export { ArrowsClockwiseIcon as ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
 export { BuildingsIcon as Buildings } from "@phosphor-icons/react/dist/ssr/Buildings";
+export { CalendarBlankIcon as CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
 export { CardsIcon as Cards } from "@phosphor-icons/react/dist/ssr/Cards";
 export { CaretLeftIcon as CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
 export { CaretRightIcon as CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";

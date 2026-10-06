@@ -5,6 +5,7 @@ export class AdminRequestError extends Error {
     readonly code: string,
     readonly reasons: string[] = [],
     readonly requestId?: string,
+    readonly fields: Record<string, string[]> = {},
   ) {
     super(code);
   }
@@ -30,6 +31,7 @@ async function read<T>(response: Response): Promise<T> {
       error?.code ?? "internal",
       Object.values(error?.details?.fields ?? {}).flat(),
       error?.request_id,
+      error?.details?.fields ?? {},
     );
   }
   return value as T;

@@ -1,6 +1,22 @@
 /** Browser-safe DTOs shared by the admin gateway and its user interface. */
 export type AdminLocale = "en" | "fa";
 export type LocalizedText = Record<AdminLocale, string>;
+export type EmailPresentationSettings = {
+  headline?: string;
+  preheader?: string;
+  action?: { label: string; url: string } | null;
+};
+/** Server-rendered, frozen output. UI never accepts or composes arbitrary HTML. */
+export type EmailPresentationPreview = {
+  previewHtml: string;
+  text: string;
+  designVersion: string;
+  logoVersion: string;
+  variant: string;
+  headline: string;
+  preheader: string;
+  action?: { label: string; url: string } | null;
+};
 export type AdminView =
   | "overview"
   | "tasks"
@@ -97,6 +113,8 @@ export type EmailTemplate = {
   name: LocalizedText;
   subject: LocalizedText;
   body: LocalizedText;
+  presentation?: Partial<Record<AdminLocale, EmailPresentationSettings>>;
+  variableDefaults?: Partial<Record<AdminLocale, Record<string, string>>>;
 };
 export type AdminEmail = {
   id: string;
@@ -158,6 +176,7 @@ export type AdminSettings = {
   language: AdminLocale;
   theme: "system" | "light" | "dark";
   senderConfigured: boolean;
+  emailProvider: "resend" | "gmail" | null;
   senderEmail: string | null;
   replyTo: string | null;
   appLink: string | null;
@@ -197,6 +216,7 @@ export type EmailPreview = {
     language: AdminLocale;
     subject: string;
     body: string;
+    presentation?: EmailPresentationPreview | null;
   }[];
   excluded: { userId: string; reason: string }[];
 };
@@ -206,6 +226,19 @@ export type AdminResult = {
   preview?: EmailPreview;
   body?: string;
   source?: "ai" | "template";
+  replyPreview?: {
+    draftId: string;
+    revision: number;
+    threadId: string;
+    language: AdminLocale;
+    body: string;
+    emailPreview?: {
+      email: string;
+      subject: string;
+      body: string;
+      presentation?: EmailPresentationPreview | null;
+    } | null;
+  };
   emails?: AdminEmail[];
   thread?: FeedbackThread;
 };

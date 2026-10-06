@@ -1,0 +1,42 @@
+[
+  {
+    "path": "packages/core/src/support/presentation.ts",
+    "sha256": "68f50d91bd53fa15d21248c293889365594db7b53e287ca943f5d8a9fd4bf87f"
+  },
+  {
+    "path": "packages/core/src/support/email-logo.ts",
+    "sha256": "874e951e4dcde9448b12606a3e7a2d5a88bb79b843d2060c9c703da958574552"
+  },
+  {
+    "path": "packages/core/src/support/email.ts",
+    "sha256": "ee8af3b508086a7dc251897530d37b087f233395a096cee13ba209e33f04e86f"
+  },
+  {
+    "path": "packages/core/src/support/feedback.ts",
+    "sha256": "97db5dfef20f8601e043f3559e61e965157a4564fbc8b00e669feeeda88141c7"
+  },
+  {
+    "path": "packages/core/src/support/provider.ts",
+    "sha256": "9a5214d7b18e4dd5a7d11a68a16d3bdb776c6df14a8f230942a6f1fd9209d97e"
+  },
+  {
+    "path": "packages/core/src/support/contracts.ts",
+    "sha256": "59ed3b477a1d7f1ba404d816679d9b83c9692347258b2a500879cc35962bbd8c"
+  },
+  {
+    "path": "packages/core/src/support/templates.ts",
+    "sha256": "eb9d2938e4239e517829d81dbf301af12c50e5a4f18d91c2b3f597411141ac3b"
+  },
+  {
+    "path": "apps/web/src/ui/admin/CommunicationScreens.tsx",
+    "sha256": "85b962361b5fd9793fabaade3ba1e30f769abca12e16f94eb5791a99956c2e14"
+  },
+  {
+    "path": "apps/web/src/server/admin-routes.ts",
+    "sha256": "35bf95fbd13e4d0dd610a9cc0785563e04044bfef23c5db177c4231fd311338c"
+  },
+  {
+    "path": "supabase/migrations/20261005234639_branded_email_snapshots.sql",
+    "sha256": "4c09946b2af116dca1266df0254202a55cba7fd921fa43a7cb14b2ffcd8e5db3"
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "investigatedAt": "2026-10-06T00:52:00Z",
+  "runState": "needs_input",
+  "runError": "new_confirmation_required",
+  "processingJobCreated": false,
+  "knowledgeVersionCreated": false,
+  "audioUploadState": "verified",
+  "audioPartsVerified": 15,
+  "cause": "Raw millisecond duration growth rejected verification even though confirmed usage was unchanged.",
+  "fix": "Permit measured duration changes within the existing reserved usage; preserve source identity, ranges, checksum and allowance bounds.",
+  "flow": [
+    "Review and confirm processing (verified audio reused)",
+    "Read class notes, including generated preview before saving",
+    "Save notes and make flashcards",
+    "Prepare cards",
+    "Confirm and add",
+    "Review this class"
+  ],
+  "localChecks": {
+    "node": "24.19.0",
+    "unit": {
+      "files": 4,
+      "passed": 39
+    },
+    "audioIntegration": {
+      "files": 2,
+      "passed": 13
+    },
+    "workerIntegration": {
+      "passed": 3,
+      "scope": "atomic publication, evidence rejection and provider configuration"
+    },
+    "webTypeScript": "passed",
+    "coreTypeScript": "passed",
+    "dependencyBoundaries": "passed"
+  },
+  "productionDataChanged": false,
+  "stoppedProductionRunNeedsLearnerConfirmation": true,
+  "authenticatedProductionFlowTested": false,
+  "browserVerificationReport": "class-output-browser-2026-10-06.json",
+  "deploymentReport": "class-output-deployment-2026-10-06.json",
+  "publication": {
+    "publishedAt": "2026-10-06T01:09:15.068Z",
+    "domain": "https://recalino.vercel.app",
+    "deploymentId": "dpl_2YuexL795mTpcqAAn4x5jfqzfttz",
+    "sourceFilesAudited": 840,
+    "runtimeMatchesBrowserTestedCode": true,
+    "browserDesktop": "passed",
+    "browserMobile": "passed",
+    "publicChecks": {
+      "passed": 12,
+      "checkedAt": "2026-10-06T01:10:20.434Z"
+    }
+  },
+  "decoderPaddingDifferenceMs": 120,
+  "sameRoundedAllowance": true
+}

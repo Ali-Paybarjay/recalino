@@ -46,13 +46,17 @@ async function grant(userId: string) {
     reason: "Synthetic read test",
   });
 }
-async function email(userId: string, templateId: string, state: string) {
+async function email(
+  userId: string,
+  templateId: string,
+  state: string,
+  contact = `${userId}@example.test`,
+  subject = "Synthetic operational message",
+) {
   const id = randomUUID();
   await sql`insert into support.email_outbox(id,user_id,purpose_key,template_id,email,subject,body,language,state)
-    values(${id}::uuid,${userId}::uuid,${randomUUID()},${templateId},${`${userId}@example.test`},
-      'Synthetic operational message','Authorized support communication body','en',${state})`.execute(
-    db,
-  );
+    values(${id}::uuid,${userId}::uuid,${randomUUID()},${templateId},${contact},
+      ${subject},'Authorized support communication body','en',${state})`.execute(db);
   return id;
 }
 
@@ -259,14 +263,9 @@ describe("admin metadata snapshots (ADM-I02/I03/I07/I12/I13)", () => {
 
   it("hides deleted-account contacts and subjects before asynchronous email purge", async () => {
     const ctx = await learner();
-    const emailId = await email(ctx.userId, "service_notice", "failed");
     const contact = `DELETED_CONTACT_${randomUUID()}@example.test`;
     const subject = `DELETED_SUBJECT_${randomUUID()}`;
-    await db
-      .updateTable("support.email_outbox")
-      .set({ email: contact, subject })
-      .where("id", "=", emailId)
-      .execute();
+    const emailId = await email(ctx.userId, "service_notice", "failed", contact, subject);
     const before = await readAdminSnapshot(db, { view: "overview", actorId }, directory, {});
     const history = await readAdminSnapshot(db, { view: "history", actorId }, directory, {});
     expect(history.emails).toContainEqual(
@@ -489,12 +488,40 @@ describe("admin metadata snapshots (ADM-I02/I03/I07/I12/I13)", () => {
       language: "en",
       theme: "dark",
       senderConfigured: true,
+      emailProvider: "resend",
       senderEmail: "Recalino <team@example.test>",
       aiConfigured: false,
     });
     for (const secret of [env.RESEND_API_KEY, env.OPENROUTER_API_KEY]) {
       expect(JSON.stringify(snapshot)).not.toContain(secret);
     }
+    const gmailEnv = {
+      ...env,
+      RECALINO_EMAIL_PROVIDER: "gmail",
+      RECALINO_GMAIL_USER: "synthetic-pilot@gmail.com",
+      RECALINO_GMAIL_APP_PASSWORD: "abcd efgh ijkl mnop",
+      RECALINO_EMAIL_FROM: "Recalino <synthetic-pilot@gmail.com>",
+    };
+    const gmail = await readAdminSnapshot(db, { view: "settings", actorId }, directory, gmailEnv);
+    expect(gmail.settings).toMatchObject({
+      emailProvider: "gmail",
+      senderConfigured: true,
+      senderEmail: "Recalino <synthetic-pilot@gmail.com>",
+    });
+    for (const secret of [
+      gmailEnv.RECALINO_GMAIL_APP_PASSWORD,
+      "abcdefghijklmnop",
+      env.RESEND_API_KEY,
+    ])
+      expect(JSON.stringify(gmail)).not.toContain(secret);
+    const pendingGmail = await readAdminSnapshot(db, { view: "settings", actorId }, directory, {
+      ...gmailEnv,
+      RECALINO_GMAIL_APP_PASSWORD: undefined,
+    });
+    expect(pendingGmail.settings).toMatchObject({
+      emailProvider: "gmail",
+      senderConfigured: false,
+    });
     const other = await createAuthUser();
     expect(
       (await readAdminSnapshot(db, { view: "settings", actorId: other }, directory, {})).settings,

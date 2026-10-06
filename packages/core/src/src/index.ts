@@ -33,6 +33,14 @@ export {
 export { unlockPdf } from "./pdf-unlock";
 export { cleanupAccountSources, cleanupDeletedSource, cleanupSessionSources } from "./privacy";
 export {
+  automaticSourceRole,
+  type SourceClassification,
+  type SourceRole,
+  sourceClassificationPrompt,
+  sourceClassificationSchema,
+  sourceRoleSchema,
+} from "./roles";
+export {
   acceptSourceNotice,
   appendContentVersion,
   assertSourcesLive,
@@ -57,6 +65,7 @@ export {
   tombstoneAccountSources,
   tombstoneSessionSources,
   tombstoneSourceForReplay,
+  updateAutomaticSourceRoles,
   updateSourceSelection,
   uploadManifest,
   uploadPartLink,

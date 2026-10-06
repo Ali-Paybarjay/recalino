@@ -17,40 +17,79 @@ test("a learning goal stays separate while new courses preserve and organize dat
 
   await page.goto("/classes/new");
   await page.getByLabel("Class name (optional)").fill("گفت‌وگو دربارهٔ سفر");
-  await page.getByLabel("Class date").fill("2026-09-28");
-  await page.getByRole("button", { name: "Create course", exact: true }).click();
+  await page.getByLabel("Class date", { exact: true }).fill("28/09/2026");
+  const course = page.getByLabel("Course", { exact: true });
+  await expect(course.locator("option").last()).toHaveText("Create New Course");
+  await expect(page.getByRole("button", { name: "Create course", exact: true })).toHaveCount(0);
+  await course.focus();
+  await course.selectOption({ label: "Create New Course" });
   const dialog = page.getByRole("dialog", { name: "Create a course" });
   await dialog.getByLabel("New course name").fill("ESOL at college");
   await expectNoAxeViolations(page);
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  const course = page.getByLabel("Course", { exact: true });
+  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(course).toBeFocused();
   await expect(course.locator("option:checked")).toHaveText("ESOL at college");
+  await expect(course.locator("option").last()).toHaveText("Create New Course");
   const esolId = await course.inputValue();
   await expect(page.getByLabel("Class name (optional)")).toHaveValue("گفت‌وگو دربارهٔ سفر");
-  await expect(page.getByLabel("Class date")).toHaveValue("2026-09-28");
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("28/09/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "گفت‌وگو دربارهٔ سفر" })).toBeVisible();
   const esolClassUrl = page.url();
 
+  const createdUnit = await page.request.post(`/api/courses/${esolId}/units`, {
+    headers: { "idempotency-key": crypto.randomUUID() },
+    data: { name: "Travel" },
+  });
+  expect(createdUnit.status(), await createdUnit.text()).toBe(201);
+  const { id: unitId } = (await createdUnit.json()) as { id: string };
+
   await page.goto("/classes/new");
-  await page.getByLabel("Class date").fill("2026-09-29");
-  await page.getByRole("button", { name: "Create course", exact: true }).click();
+  await page.getByLabel("Class name (optional)").fill("Draft second class");
+  await page.getByLabel("Class date", { exact: true }).fill("29/09/2026");
+  await course.selectOption(esolId);
+  const unit = page.getByLabel("Unit (optional)");
+  await unit.selectOption(unitId);
+  await course.focus();
+  await course.selectOption({ label: "Create New Course" });
+  await dialog.getByLabel("New course name").fill("Unsubmitted course");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(course).toBeFocused();
+  await expect(course).toHaveValue(esolId);
+  await expect(unit).toHaveValue(unitId);
+  await expect(page.getByLabel("Class name (optional)")).toHaveValue("Draft second class");
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("29/09/2026");
+
+  await course.selectOption({ label: "Create New Course" });
   await dialog.getByLabel("New course name").fill("ESOL at college");
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(dialog.getByRole("alert")).toHaveText(
     "That name already exists. Choose a different name.",
   );
-  await expect(page.getByLabel("Class date")).toHaveValue("2026-09-29");
+  await expect(course).toHaveValue(esolId);
+  await expect(unit).toHaveValue(unitId);
+  await expect(page.getByLabel("Class name (optional)")).toHaveValue("Draft second class");
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("29/09/2026");
   await dialog.getByLabel("New course name").fill("Spanish evening course");
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(course).toBeFocused();
   await expect(course.locator("option:checked")).toHaveText("Spanish evening course");
+  await expect(course.locator("option").last()).toHaveText("Create New Course");
+  await expect(unit).toHaveCount(0);
+  await expect(page.getByLabel("Class name (optional)")).toHaveValue("Draft second class");
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("29/09/2026");
   const spanishId = await course.inputValue();
   expect(spanishId).not.toBe(esolId);
   const created = await page.request.get("/api/courses");
   expect(created.status()).toBe(200);
   expect(await created.json()).toHaveLength(2);
+  await page.getByLabel("Class name (optional)").fill("");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page).toHaveURL(/\/classes\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("29 Sept 2026");
@@ -58,7 +97,7 @@ test("a learning goal stays separate while new courses preserve and organize dat
 
   await page.goto("/classes/new");
   await course.selectOption(esolId);
-  await page.getByLabel("Class date").fill("2026-10-01");
+  await page.getByLabel("Class date", { exact: true }).fill("01/10/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page).toHaveURL(/\/classes\/[0-9a-f-]+$/);
   const secondEsolClassUrl = page.url();
@@ -115,7 +154,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.getByRole("main").getByRole("link", { name: "New class", exact: true }).click();
   await expect(page.getByLabel("Course", { exact: true })).toContainText("English B1");
   await page.getByLabel("Class name (optional)").fill("کلاس سفر 日本語");
-  await page.getByLabel("Class date").fill("2026-09-30");
+  await page.getByLabel("Class date", { exact: true }).fill("30/09/2026");
   await page.getByLabel("Unit (optional)").selectOption({ label: "Travel" });
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "کلاس سفر 日本語" })).toBeVisible();

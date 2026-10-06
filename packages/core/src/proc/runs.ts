@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Selectable } from "kysely";
+import { z } from "zod";
 import {
   getAccountState,
   listTeachingPreferences,
@@ -41,6 +42,7 @@ import {
   runSettingsSchema,
   sourceSnapshotSchema,
 } from "./contracts";
+import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
   id: string;
@@ -48,18 +50,23 @@ export interface ProcessingRun {
   state: RunState;
   reservationId: string;
   sourcesVersion: number;
+  selectionFingerprint?: string;
   lastError: string | null;
   outputVersionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 export function runView(row: Selectable<DB["proc.processing_run"]>): ProcessingRun {
+  const snapshot = sourceSnapshotSchema.safeParse(row.input_snapshot);
   return {
     id: row.id,
     sessionId: row.session_id,
     state: row.state as RunState,
     reservationId: row.reservation_id,
     sourcesVersion: row.sources_version,
+    ...(snapshot.success
+      ? { selectionFingerprint: processingSelectionFingerprint(snapshot.data) }
+      : {}),
     lastError: row.last_error,
     outputVersionId: row.output_version_id,
     createdAt: row.created_at.toISOString(),
@@ -102,6 +109,31 @@ export async function listRuns(
     .limit(50)
     .execute();
   return rows.map(runView);
+}
+
+/** Processing owns historical run provenance; sources own selection and cache validity. */
+export function selectProcessingSourceSnapshot(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  confirmedSnapshot?: Parameters<typeof selectSourceSnapshot>[3],
+) {
+  return selectSourceSnapshot(db, ctx, sessionId, confirmedSnapshot, {
+    async legacyAudioRanges(originKey, sourceId) {
+      const runId = z.uuid().safeParse(originKey.split(":")[1]);
+      if (!runId.success) return undefined;
+      const priorRun = await db
+        .selectFrom("proc.processing_run")
+        .select("input_snapshot")
+        .where("id", "=", runId.data)
+        .where("user_id", "=", ctx.userId)
+        .executeTakeFirst();
+      const prior = sourceSnapshotSchema.safeParse(priorRun?.input_snapshot);
+      return prior.success
+        ? prior.data.sources.find((source) => source.sourceId === sourceId)?.ranges
+        : undefined;
+    },
+  });
 }
 export function estimateRunAmounts(
   snapshot: RunSnapshot,
@@ -208,7 +240,9 @@ export async function createProcessingRun(
       .where("proc.provider_attempt.state", "in", ["started", "uncertain"])
       .executeTakeFirst();
     if (unresolved) throw errors.validationFailed({ retry: ["provider_outcome_unresolved"] });
-    const snapshot = sourceSnapshotSchema.parse(await selectSourceSnapshot(tx, ctx, session.id));
+    const snapshot = sourceSnapshotSchema.parse(
+      await selectProcessingSourceSnapshot(tx, ctx, session.id),
+    );
     assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
     if (
       (input.expectedFingerprint !== undefined &&
@@ -286,14 +320,15 @@ export async function activateProcessingRun(
     await assertSessionOwner(tx, ctx, run.session_id);
     if (run.state !== "awaiting_upload") return runView(run);
     const original = sourceSnapshotSchema.parse(run.input_snapshot);
-    const current = sourceSnapshotSchema.parse(await selectSourceSnapshot(tx, ctx, run.session_id));
+    const current = sourceSnapshotSchema.parse(
+      await selectProcessingSourceSnapshot(tx, ctx, run.session_id, original),
+    );
     const stable = (snapshot: RunSnapshot) =>
       snapshot.sources.map((source) => ({
         sourceId: source.sourceId,
         kind: source.kind,
         sha256: source.sha256,
         contentVersionId: source.contentVersionId,
-        role: source.role,
         ranges: source.ranges,
         captureAnchor: source.captureAnchor,
       }));
@@ -305,7 +340,6 @@ export async function activateProcessingRun(
         source.kind === "audio" &&
         (!confirmed?.durationMs ||
           !source.durationMs ||
-          source.durationMs > confirmed.durationMs ||
           source.ranges.some((range) => range.end > (source.durationMs ?? 0)))
       )
         throw errors.validationFailed({ audio: ["new_confirmation_required"] });
@@ -316,6 +350,8 @@ export async function activateProcessingRun(
       runSettingsSchema.parse(run.settings).provider.charactersPerPage,
       held.regeneration > 0,
     );
+    // Decoding can add codec padding milliseconds. The confirmed selection must stay
+    // valid, and its measured, rounded usage must still fit the original reservation.
     if (
       Object.keys(actual).some(
         (dimension) => actual[dimension as keyof Amounts] > held[dimension as keyof Amounts],

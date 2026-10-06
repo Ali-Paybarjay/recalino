@@ -1,0 +1,56 @@
+{
+  "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+  "teamId": "team_8WX5ZTQoGLK3XQim9CHcQ350",
+  "previousProductionId": "dpl_5XUc8rsPyg62zWBa6NNeJ3NgiGXg",
+  "domain": "recalino.vercel.app",
+  "baseCommit": "d441367136acb9386506dc9090c9d4fc12920f09",
+  "sourceHashes": {
+    "apps/web/src/server/auth/gateway.ts": "f03a48b7bd0766e1a5c77d93f977e6ec94ef3296",
+    "apps/web/src/server/auth/gateway.test.ts": "c8724c4f7e2a039989b0779eb12d069e316c91ec",
+    "apps/web/e2e/signin.spec.ts": "a30b10fc7ffd8197c6d8d894bc418f1525a42320"
+  },
+  "fileCount": 803,
+  "localSecretsExcluded": true,
+  "stagedSmoke": {
+    "origin": "https://recalino-duknyc7xj-ali-paybarjay-s-projects.vercel.app",
+    "healthStatus": 200,
+    "signInPageStatus": 200,
+    "authStartStatus": 303,
+    "accountChooser": "select_account",
+    "pkce": true,
+    "callbackOrigin": "https://recalino-duknyc7xj-ali-paybarjay-s-projects.vercel.app",
+    "privateNoStore": true
+  },
+  "deploymentId": "dpl_3SrVXQAHhW7tbkPXhFAs94t2PPEd",
+  "deploymentUrl": "https://recalino-duknyc7xj-ali-paybarjay-s-projects.vercel.app",
+  "publicSmoke": {
+    "origin": "https://recalino.vercel.app",
+    "healthStatus": 200,
+    "signInPageStatus": 200,
+    "authStartStatus": 303,
+    "accountChooser": "select_account",
+    "pkce": true,
+    "callbackOrigin": "https://recalino.vercel.app",
+    "privateNoStore": true,
+    "googleRedirectStatus": 302,
+    "googleHost": "accounts.google.com",
+    "googleAccountChooser": "select_account"
+  },
+  "readyState": "READY",
+  "promotionConfirmed": true,
+  "publicDomainDeploymentId": "dpl_3SrVXQAHhW7tbkPXhFAs94t2PPEd",
+  "verificationCompletedAt": "2026-10-05T22:27:16.985Z",
+  "errorScan": {
+    "deploymentId": "dpl_3SrVXQAHhW7tbkPXhFAs94t2PPEd",
+    "since": "10m",
+    "records": 0
+  },
+  "validation": {
+    "unitTestsPassed": 3,
+    "integrationTestsPassed": 11,
+    "browserTestsPassed": 2,
+    "webTypecheck": "passed",
+    "changedFileBiome": "passed",
+    "googleUI": "not automated; Google redirect parameter verified"
+  }
+}

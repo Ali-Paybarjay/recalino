@@ -3,11 +3,12 @@ import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
 import { createDatabase } from "../db";
-import { DEFAULT_PLT_SETTINGS, MemoryObjectStore, sha256Hex } from "../plt";
+import { AppError, DEFAULT_PLT_SETTINGS, MemoryObjectStore, sha256Hex } from "../plt";
 import {
   amounts,
   emptyAmounts,
   grantEntitlement,
+  reservationIsOpen,
   reserveAllowance,
   settleAllowance,
 } from "../quota";
@@ -89,6 +90,29 @@ async function fixture(multipart = false, storage = 0) {
     DEFAULT_PLT_SETTINGS.storage,
   );
   return { ...x, bytes, source, hold, parts, upload, store, link, contract };
+}
+async function uploadAudioParts(x: Awaited<ReturnType<typeof fixture>>) {
+  for (const part of x.parts) {
+    const link = await temporaryAudioPartLink(
+      db,
+      x.store,
+      x.ctx,
+      x.source.assetId,
+      x.upload.uploadId,
+      part.index,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    expect(
+      x.store.upload(
+        link.url,
+        x.bytes.subarray(
+          part.index * x.contract.partBytes,
+          (part.index + 1) * x.contract.partBytes,
+        ),
+        "audio/mpeg",
+      ),
+    ).toBe(200);
+  }
 }
 it("keeps original audio device-only, freezes the upload manifest and snapshots measured duration", async () => {
   const x = await fixture();
@@ -308,6 +332,99 @@ it("refund callback runs only after deterministic audio rejection, not before mi
   expect((await temporaryAudioManifest(db, x.ctx, x.source.assetId, x.upload.uploadId)).state).toBe(
     "rejected",
   );
+});
+it("FR-SRC-007 preserves multipart audio and its hold after an operational verifier failure so a retry can succeed", async () => {
+  const x = await fixture(true);
+  await uploadAudioParts(x);
+  const operationalFailure = new AppError("internal");
+  const compose = vi.spyOn(x.store, "compose");
+  const inspect = vi
+    .fn()
+    .mockRejectedValueOnce(operationalFailure)
+    .mockResolvedValueOnce({ durationMs: 3200, audioOnly: true });
+  const verified = vi.fn(async () => undefined),
+    rejected = vi.fn(async () => undefined);
+  const job = sourceAudioVerificationJob(x.store, { inspect }, verified, rejected);
+  const jobId = randomUUID(),
+    runId = randomUUID();
+  const input = {
+    userId: x.ctx.userId,
+    assetId: x.source.assetId,
+    uploadId: x.upload.uploadId,
+    runId,
+  };
+  const context = {
+    db,
+    now: () => new Date(),
+    job: { id: jobId, attempt: 1 },
+    step: async () => "ran" as const,
+  };
+  await expect(job.run(input, context)).rejects.toBe(operationalFailure);
+  expect((await temporaryAudioManifest(db, x.ctx, x.source.assetId, x.upload.uploadId)).state).toBe(
+    "pending",
+  );
+  expect(await reservationIsOpen(db, x.ctx, x.hold.id)).toBe(true);
+  expect((await x.store.list("")).objects).toHaveLength(x.parts.length + 1);
+  expect(verified).not.toHaveBeenCalled();
+  expect(rejected).not.toHaveBeenCalled();
+
+  await job.run(input, { ...context, job: { id: jobId, attempt: 2 } });
+  expect((await temporaryAudioManifest(db, x.ctx, x.source.assetId, x.upload.uploadId)).state).toBe(
+    "verified",
+  );
+  expect(inspect).toHaveBeenCalledTimes(2);
+  expect(compose).toHaveBeenCalledOnce();
+  expect(verified).toHaveBeenCalledExactlyOnceWith(
+    db,
+    { userId: x.ctx.userId, requestId: jobId },
+    runId,
+  );
+  expect(rejected).not.toHaveBeenCalled();
+});
+it("FR-SRC-007 retries a multipart composition outage using the registered pending destination", async () => {
+  const x = await fixture(true);
+  await uploadAudioParts(x);
+  const failure = new Error("Synthetic composition response was interrupted");
+  const compose = x.store.compose.bind(x.store);
+  const composing = vi.spyOn(x.store, "compose").mockImplementationOnce(async (...args) => {
+    await compose(...args);
+    throw failure;
+  });
+  const inspect = vi.fn(async () => ({ durationMs: 3200, audioOnly: true }));
+  const verified = vi.fn(async () => undefined),
+    rejected = vi.fn(async () => undefined);
+  const job = sourceAudioVerificationJob(x.store, { inspect }, verified, rejected);
+  const jobId = randomUUID();
+  const input = {
+    userId: x.ctx.userId,
+    assetId: x.source.assetId,
+    uploadId: x.upload.uploadId,
+    runId: randomUUID(),
+  };
+  const context = {
+    db,
+    now: () => new Date(),
+    job: { id: jobId, attempt: 1 },
+    step: async () => "ran" as const,
+  };
+  await expect(job.run(input, context)).rejects.toBe(failure);
+  expect((await temporaryAudioManifest(db, x.ctx, x.source.assetId, x.upload.uploadId)).state).toBe(
+    "pending",
+  );
+  expect(await reservationIsOpen(db, x.ctx, x.hold.id)).toBe(true);
+  expect(inspect).not.toHaveBeenCalled();
+  expect(rejected).not.toHaveBeenCalled();
+  expect(verified).not.toHaveBeenCalled();
+  expect((await x.store.list("")).objects).toHaveLength(x.parts.length);
+
+  await job.run(input, { ...context, job: { id: jobId, attempt: 2 } });
+  expect((await temporaryAudioManifest(db, x.ctx, x.source.assetId, x.upload.uploadId)).state).toBe(
+    "verified",
+  );
+  expect(composing).toHaveBeenCalledTimes(2);
+  expect(inspect).toHaveBeenCalledOnce();
+  expect(verified).toHaveBeenCalledOnce();
+  expect(rejected).not.toHaveBeenCalled();
 });
 it("waits for assembly before deletion and never republishes audio after physical cleanup", async () => {
   const x = await fixture(true);

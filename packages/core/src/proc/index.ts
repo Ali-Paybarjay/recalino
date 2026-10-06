@@ -34,8 +34,10 @@ export {
   type ProcessingRun,
   registerProcessingTemporaryObject,
   retryRun,
+  selectProcessingSourceSnapshot,
   validateAudioUploadRun,
 } from "./runs";
+export { processingSelectionFingerprint } from "./selection";
 export {
   type AudioChunk,
   type AudioPreparer,

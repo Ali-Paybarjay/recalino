@@ -37,7 +37,9 @@ test("Terms and Privacy open in a sheet and the ticks stay", async ({ page }) =>
   await expect(adult).toBeChecked();
 });
 
-test("Continue stores the declarations and goes to Google through Supabase", async ({ page }) => {
+test("Continue stores the declarations and requests Google account selection through Supabase", async ({
+  page,
+}) => {
   // The form post is caught so the browser never leaves for Google; the server's own answer is
   // checked instead: a redirect to Supabase's Google sign-in, with the declarations' cookie.
   let location: URL | undefined;
@@ -60,6 +62,7 @@ test("Continue stores the declarations and goes to Google through Supabase", asy
   await expect(page.getByText("Google sign-in")).toBeVisible();
   expect(location?.pathname).toBe("/auth/v1/authorize");
   expect(location?.searchParams.get("provider")).toBe("google");
+  expect(location?.searchParams.get("prompt")).toBe("select_account");
   expect(location?.searchParams.get("redirect_to")).toMatch(/\/auth\/callback$/);
   expect(location?.searchParams.get("code_challenge")).toBeTruthy();
   expect(cacheControl).toContain("private");

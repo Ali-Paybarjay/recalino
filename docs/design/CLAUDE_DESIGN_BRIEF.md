@@ -194,8 +194,8 @@ For each screen, show the **default** state plus the listed states. Every list a
     - Audio statuses: "On this device", "Sending for processing…", "Sent for processing", "Server copy deleted", and on other devices "Original audio isn't on this device".
     - File statuses: "Uploading 3/10", "Checking…", "Received", "Not accepted" with a reason, "Needs your action" (for example "Upload a copy without a password").
   - **Add sources:** Record, Add audio file, Add photos/PDF/HTML/text, and Use a previous source (a picker inside this dialog, not a library page).
-  - **Source role:** Class audio, Board photo, Class material or My notes.
-  - **Audio range selection:** a timeline where the learner can pick one or more ranges. Playback comes from the local copy.
+  - **Source role:** Automatically identify class audio, board photos, class material or notes during processing. Do not ask the learner to classify the file (D43).
+  - **File selection:** Default to Whole file. For PDF and audio, offer Whole file / Part of file choices; show Start/End only for Part of file, using page numbers or labelled audio time units. Save selection records the extent for the next processing run without starting processing or editing the original (D43).
   - A banner when sources changed after notes were made: "New sources since your notes were made", with an option to update affected parts. The update is never automatic.
   - A **Processing** section (C5–C7) and, when ready, entry points to **Notes** and **Cards**.
 - **C2. Recording** (full-screen focus mode):
@@ -208,7 +208,7 @@ For each screen, show the **default** state plus the listed states. Every list a
     - The allowance estimate (C5 or C6).
     - "Save a copy to this device".
 - **C3. Recovery:** "We found an unfinished recording from 30 Sep, 10:05 (1 h 12 min)", with Recover, Save a copy and Discard. Discard needs a clear confirmation.
-- **C4. File upload:** per-file progress, network lost and resumed, "Received" only after checking, and one bad file not blocking the others.
+- **C4. File upload:** use Add Files for an empty class and Add More Files after its first source is added. Show each file in the list as its upload begins, with a progress bar based on transmitted bytes and elapsed time. Keep new files near the top and refresh each completed file while later files continue. Support network loss and resume, label "Received" only after server checking, and let later files continue when one file fails. Audio saved locally is labelled as device storage rather than a server upload.
 - **C5. Processing estimate and confirm:** what will be processed (audio minutes, pages, photos), "Uses 46 min of 4 h 20 min", allowance left afterwards, and a Confirm button. "Nothing is sent until you confirm."
 - **C6. Not enough allowance:** "This class needs 2 h 40 min. You have 1 h left." Four choices:
   - Keep for later (audio stays on this device).

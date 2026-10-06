@@ -134,12 +134,31 @@ const automaticVariables = new Set([
   "quota_summary",
   "period_text",
 ]);
-export function manualTemplateVariables(subject: string, body: string): string[] {
+export function manualTemplateVariables(
+  subject: string,
+  body: string,
+  defaults: Record<string, string> = {},
+): string[] {
   return [
     ...new Set(
       [...`${subject}\n${body}`.matchAll(/{{\s*([a-z_][a-z0-9_]*)\s*}}/g)].map(
         (match) => match[1] ?? "",
       ),
     ),
-  ].filter((name) => name && !automaticVariables.has(name));
+  ].filter((name) => name && !automaticVariables.has(name) && !defaults[name]?.trim());
+}
+/** Show ready template prose while keeping recipient-specific substitutions for the server. */
+export function readableTemplateText(text: string, defaults: Record<string, string> = {}): string {
+  return text.replace(/{{\s*([a-z_][a-z0-9_]*)\s*}}/g, (placeholder, name: string) =>
+    defaults[name]?.trim() ? defaults[name] : placeholder,
+  );
+}
+/** Keep an optional owner note above the template's existing team sign-off. */
+export function emailBodyWithNote(body: string, note: string): string {
+  const text = note.trim();
+  if (!text) return body;
+  const signOff = body.lastIndexOf("\n\n");
+  if (signOff >= 0 && /(?:The Recalino team|تیم ریکالینو)\s*$/.test(body))
+    return `${body.slice(0, signOff)}\n\n${text}${body.slice(signOff)}`;
+  return `${body}\n\n${text}`;
 }

@@ -255,6 +255,14 @@ export async function confirmTemporaryAudioPart(
 export interface AudioVerifier {
   inspect(bytes: Uint8Array, mimeType: string): Promise<{ durationMs: number; audioOnly: boolean }>;
 }
+function rejectsTemporaryAudio(failure: unknown): failure is AppError {
+  if (!(failure instanceof AppError)) return false;
+  const fields = failure.details?.fields as Record<string, unknown> | undefined;
+  return (
+    failure.code === "unsupported_media" ||
+    (failure.code === "validation_failed" && fields?.audio !== undefined)
+  );
+}
 async function verifyPendingTemporaryAudio(
   db: Database,
   store: ObjectStore,
@@ -376,7 +384,10 @@ async function verifyPendingTemporaryAudio(
       return temporaryAudioManifest(tx, ctx, assetId, uploadId);
     });
   } catch (failure) {
-    if (stagedObjectId) await deleteObject(db, store, ctx, stagedObjectId, now);
+    // Decoder availability/timeouts are retryable operational failures. Keep the verified
+    // assembled object and its durable upload pointer so a later attempt can inspect it.
+    if (stagedObjectId && rejectsTemporaryAudio(failure))
+      await deleteObject(db, store, ctx, stagedObjectId, now);
     throw failure;
   }
 }
@@ -393,15 +404,7 @@ export async function verifyTemporaryAudio(
   try {
     return await verifyPendingTemporaryAudio(db, store, ctx, assetId, uploadId, verifier, now);
   } catch (failure) {
-    const fields =
-      failure instanceof AppError
-        ? (failure.details?.fields as Record<string, unknown> | undefined)
-        : undefined;
-    if (
-      failure instanceof AppError &&
-      (failure.code === "unsupported_media" ||
-        (failure.code === "validation_failed" && fields?.audio))
-    ) {
+    if (rejectsTemporaryAudio(failure)) {
       await db
         .updateTable("src.audio_upload")
         .set({ state: "rejected", expires_at: now })

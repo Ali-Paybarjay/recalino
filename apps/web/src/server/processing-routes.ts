@@ -11,11 +11,12 @@ import {
   estimateRunAmounts,
   getRun,
   listRuns,
+  processingSelectionFingerprint,
   retryRun,
+  selectProcessingSourceSnapshot,
   sourceSnapshotSchema,
 } from "@recalino/core/proc";
 import { allowance } from "@recalino/core/quota";
-import { selectSourceSnapshot } from "@recalino/core/src";
 import { z } from "zod";
 import { getAiProvider } from "./ai";
 import type { Handler, RequestContext } from "./api";
@@ -69,7 +70,9 @@ export async function readProcessingEstimate(
   sessionId: string,
 ) {
   z.uuid().parse(sessionId);
-  const snapshot = sourceSnapshotSchema.parse(await selectSourceSnapshot(db, learner, sessionId));
+  const snapshot = sourceSnapshotSchema.parse(
+    await selectProcessingSourceSnapshot(db, learner, sessionId),
+  );
   const provider = getAiProvider();
   const balance = await allowance(db, learner);
   if (provider) assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
@@ -79,6 +82,7 @@ export async function readProcessingEstimate(
     : null;
   return {
     snapshot,
+    selectionFingerprint: processingSelectionFingerprint(snapshot),
     requested,
     allowance: balance,
     providerConfigured: provider?.settings.dataContractApproved === true,

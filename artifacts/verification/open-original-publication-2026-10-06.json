@@ -1,0 +1,49 @@
+{
+  "checkedAt": "2026-10-06T00:19:32.400Z",
+  "deploymentId": "dpl_GyRv86JKzk9KnGUWKRc2LUvPkyNd",
+  "deploymentUrl": "https://recalino-gszoiw4bu-ali-paybarjay-s-projects.vercel.app",
+  "publicAlias": "https://recalino.vercel.app",
+  "status": "READY",
+  "includedInLatestRelease": true,
+  "additionalDeploymentCreated": false,
+  "reason": "The latest release was promoted during preflight and already contains all six final tested Open Original files.",
+  "deployedSourceAudit": [
+    {
+      "path": "apps/web/src/ui/workspace/SourcesView.tsx",
+      "expectedSha1": "8f59afacaab05acf647fa8a1316e8dc8e34b7d54",
+      "deployedSha1": "8f59afacaab05acf647fa8a1316e8dc8e34b7d54"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/open-original.ts",
+      "expectedSha1": "530ead567016956ae310d68e8804e14ab8e0a2e7",
+      "deployedSha1": "530ead567016956ae310d68e8804e14ab8e0a2e7"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/open-original.test.ts",
+      "expectedSha1": "c85a792c1e2d5225a1c1cf2fc2d0545257a14824",
+      "deployedSha1": "c85a792c1e2d5225a1c1cf2fc2d0545257a14824"
+    },
+    {
+      "path": "apps/web/e2e/source-original.spec.ts",
+      "expectedSha1": "a0c02b6befaecf088ddb794be1410f02bb8a7903",
+      "deployedSha1": "a0c02b6befaecf088ddb794be1410f02bb8a7903"
+    },
+    {
+      "path": "packages/core/src/src/service.ts",
+      "expectedSha1": "727068daf2faad579c40f5fbc5a2c9c214ffad45",
+      "deployedSha1": "727068daf2faad579c40f5fbc5a2c9c214ffad45"
+    },
+    {
+      "path": "packages/core/src/src/service.int.test.ts",
+      "expectedSha1": "1d8b71cb7870093c09ec6ab766b24ba107159eb3",
+      "deployedSha1": "1d8b71cb7870093c09ec6ab766b24ba107159eb3"
+    }
+  ],
+  "publicSmokePassed": true,
+  "productionWritesByThisTask": 0,
+  "publicBrowser": {
+    "passed": true,
+    "artifact": "artifacts/verification/open-original-public-browser-2026-10-06.json",
+    "scope": "Public loading, anonymous Sources sign-in gate, preserved return path, client hydration; zero writes."
+  }
+}

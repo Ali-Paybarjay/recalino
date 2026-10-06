@@ -12,7 +12,12 @@ export type AdminScreenProps = {
   setSelected: (ids: string[]) => void;
   navigate: (view: PanelMode, id?: string) => void;
   compose: (ids: string[]) => void;
-  act: (action: string, input: unknown, success?: string) => Promise<AdminResult | null>;
+  act: (
+    action: string,
+    input: unknown,
+    success?: string,
+    onValidation?: (fields: Record<string, string[]>) => boolean,
+  ) => Promise<AdminResult | null>;
   busy: boolean;
   search: string;
   setSearch: (search: string) => void;

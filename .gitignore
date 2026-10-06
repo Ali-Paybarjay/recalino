@@ -13,10 +13,16 @@ coverage/
 !.env.example
 
 # Test artifacts
+artifacts/**/unit-results.json
+artifacts/verification/preview-upload-*-results/
+artifacts/verification/open-original-browser*/
+artifacts/verification/study-flow-*-results/
+artifacts/verification/verify-source-upload.mjs
 artifacts/verification/python/
 artifacts/verification/anki-profile/
 playwright-report/
 test-results/
+test-results*/
 test-results-preview/
 
 # Logs & OS files

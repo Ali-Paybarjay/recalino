@@ -214,7 +214,7 @@ test("unavailable browser storage explains the limit while local interactions st
 
 test("D39: a class without a title uses its selected date", async ({ page }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class date", { exact: true }).fill("2026-10-03");
+  await page.getByLabel("Class date", { exact: true }).fill("03/10/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2026-10-03");
   await page.reload();
@@ -228,20 +228,53 @@ test("D39: creating a course inside New class preserves the session and selects 
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class");
   await page.getByLabel("Class name (optional)", { exact: true }).fill("جلسهٔ عصر 日本語");
-  await page.getByLabel("Class date", { exact: true }).fill("2026-10-01");
-  await page.getByRole("button", { name: "Create course", exact: true }).click();
+  await page.getByLabel("Class date", { exact: true }).fill("01/10/2026");
+  const course = page.getByLabel("Course", { exact: true });
+  const unit = page.getByLabel("Unit (optional)", { exact: true });
+  await course.selectOption("ESOL B1");
+  await unit.selectOption("Everyday English");
+  await expect(course.locator("option").last()).toHaveText("Create New Course");
+  await expect(page.getByRole("button", { name: "Create course", exact: true })).toHaveCount(0);
+  await course.focus();
+  await course.selectOption({ label: "Create New Course" });
   const dialog = page.getByRole("dialog", { name: "Create a course", exact: true });
   await expect(dialog.getByText(/Your goal guides explanations/)).toBeVisible();
+  await dialog.getByLabel("New course name", { exact: true }).fill("Unsubmitted course");
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/preview\/new-class$/);
+  await expect(course).toBeFocused();
+  await expect(course).toHaveValue("ESOL B1");
+  await expect(unit).toHaveValue("Everyday English");
+  await expect(page.getByLabel("Class name (optional)", { exact: true })).toHaveValue(
+    "جلسهٔ عصر 日本語",
+  );
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("01/10/2026");
+
+  await course.selectOption({ label: "Create New Course" });
+  await dialog.getByLabel("New course name", { exact: true }).fill("ESOL B1");
+  await dialog.getByRole("button", { name: "Create course", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("That course already exists.");
+  await expect(course).toHaveValue("ESOL B1");
+  await expect(unit).toHaveValue("Everyday English");
+  await expect(page.getByLabel("Class name (optional)", { exact: true })).toHaveValue(
+    "جلسهٔ عصر 日本語",
+  );
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("01/10/2026");
+
   await dialog.getByLabel("New course name", { exact: true }).fill("ESOL evening");
   await expectNoAxeViolations(page);
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  await expect(page.getByLabel("Course", { exact: true })).toHaveValue("ESOL evening");
+  await expect(page).toHaveURL(/\/preview\/new-class$/);
+  await expect(course).toBeFocused();
+  await expect(course).toHaveValue("ESOL evening");
+  await expect(course.locator("option").last()).toHaveText("Create New Course");
   await expect(page.getByLabel("Class name (optional)", { exact: true })).toHaveValue(
     "جلسهٔ عصر 日本語",
   );
-  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("2026-10-01");
-  await expect(page.getByLabel("Unit (optional)", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("01/10/2026");
+  await expect(unit).toHaveValue("");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسهٔ عصر 日本語");
   await page.goto("/preview/course?course=ESOL%20evening");
@@ -260,7 +293,7 @@ test("D39: course materials keep each session's current notes, dates and course 
   const notes = "Travel notes from this session. <script>window.courseInjected = true</script>";
   await page.goto("/preview/new-class?course=ESOL%20B1");
   await page.getByLabel("Class name (optional)", { exact: true }).fill("Travel notebook");
-  await page.getByLabel("Class date", { exact: true }).fill("2026-09-29");
+  await page.getByLabel("Class date", { exact: true }).fill("29/09/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await page.goto("/preview/edit-notes");
   await page.getByLabel("Your explanation", { exact: true }).fill(notes);
@@ -313,7 +346,7 @@ test("D40: prepared sample material names an automatic session and shows its dat
   test.setTimeout(120_000);
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class?course=ESOL%20B1");
-  await page.getByLabel("Class date", { exact: true }).fill("2026-09-29");
+  await page.getByLabel("Class date", { exact: true }).fill("29/09/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2026-09-29");
   await expect(page.getByText(/Waiting for material/)).toBeVisible();
@@ -323,6 +356,7 @@ test("D40: prepared sample material names an automatic session and shows its dat
     mimeType: "image/png",
     buffer: Buffer.from("synthetic example"),
   });
+  await expect(page.getByText("unknown-topic.png", { exact: true })).toBeVisible();
   await page.goto("/preview/estimate");
   await page.getByRole("button", { name: "Process selected sources", exact: true }).click();
   await page.getByRole("button", { name: "Complete sample processing", exact: true }).click();
@@ -359,7 +393,7 @@ test("D40: a custom title survives sample processing and can be cleared to use t
   test.setTimeout(120_000);
   await page.goto("/preview/new-class");
   await page.getByLabel("Class name (optional)", { exact: true }).fill("My evening session");
-  await page.getByLabel("Class date", { exact: true }).fill("2026-10-03");
+  await page.getByLabel("Class date", { exact: true }).fill("03/10/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles({
@@ -367,6 +401,7 @@ test("D40: a custom title survives sample processing and can be cleared to use t
     mimeType: "image/png",
     buffer: Buffer.from("synthetic example"),
   });
+  await expect(page.getByText("sample-board.png", { exact: true })).toBeVisible();
   await page.goto("/preview/estimate");
   await page.getByRole("button", { name: "Process selected sources", exact: true }).click();
   await page.getByRole("button", { name: "Complete sample processing", exact: true }).click();

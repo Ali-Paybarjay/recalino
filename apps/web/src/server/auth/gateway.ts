@@ -30,7 +30,12 @@ export const supabaseAuth: AuthGateway = {
     const auth = (await createAuthClient()).auth;
     const { data, error } = await auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: callbackUrl, skipBrowserRedirect: true },
+      options: {
+        redirectTo: callbackUrl,
+        skipBrowserRedirect: true,
+        // Recalino sign-out leaves Google's browser session active; let the learner choose.
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error || !data.url) throw new Error("Google sign-in could not start");
     return data.url;

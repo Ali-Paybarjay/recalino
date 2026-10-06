@@ -1,0 +1,126 @@
+{
+  "checkedAt": "2026-10-06T00:10:08.722Z",
+  "feature": "Open Original",
+  "status": "published in latest production deployment; source audit and public smoke verified",
+  "baselineDeploymentId": "dpl_Am3y4Q5JQ9mVPrU5yan9a7y27LSf",
+  "changes": [
+    "Reserve isolated original tab synchronously on click before private read lookup.",
+    "Show actionable native link when popup blocked or closed.",
+    "Open audio originals from owner-scoped local IndexedDB, release cached URLs on unmount/delete.",
+    "Serve private plain-text and HTML originals as downloads."
+  ],
+  "validation": {
+    "unit": {
+      "passed": 614,
+      "files": 73
+    },
+    "localSourceIntegration": {
+      "passed": 11
+    },
+    "chromium": {
+      "passed": 6,
+      "coverage": [
+        "Delayed private read",
+        "Blocked popup fallback",
+        "Failure cleanup",
+        "Duplicate click guard",
+        "Real local WAV playback",
+        "Delete cached audio URL"
+      ]
+    },
+    "typescript": "passed",
+    "productionBuild": "passed",
+    "nativeRuntime": "passed",
+    "nativeDependencyTrace": "passed",
+    "dependencyBoundaries": "passed",
+    "biome": "passed",
+    "diffCheck": "passed",
+    "clientBundleSecretScan": "passed",
+    "finalReview": "clear"
+  },
+  "release": {
+    "preparedSourceRoot": "D:\\Claude Projects\\Recalino\\.vercel\\open-original-source",
+    "baselineFiles": 826,
+    "sourceFiles": 829,
+    "ownedDifferences": [
+      "apps/web/src/ui/workspace/SourcesView.tsx",
+      "packages/core/src/src/service.int.test.ts",
+      "packages/core/src/src/service.ts",
+      "apps/web/src/ui/workspace/open-original.ts",
+      "apps/web/src/ui/workspace/open-original.test.ts",
+      "apps/web/e2e/source-original.spec.ts"
+    ],
+    "manifestHash": "2c5d58e43ceecb57a08c496ee2f14f08ddbd0cf08c77ecd00c27052bbe7c0b7c",
+    "productionWrites": 0,
+    "preservedLatestAudioRecovery": [
+      "apps/web/src/app/(app)/classes/[id]/estimate/page.tsx",
+      "apps/web/src/server/processing-estimate-state.test.ts",
+      "apps/web/src/server/processing-estimate-state.ts",
+      "apps/web/src/ui/workspace/ProcessingView.test.ts",
+      "apps/web/src/ui/workspace/ProcessingView.tsx"
+    ]
+  },
+  "sourceHashes": {
+    "apps/web/src/ui/workspace/SourcesView.tsx": "8eff7a5faf9c994f04c36961bd061e27aabbd67cceba2f6f416fa6bf7c3ede1a",
+    "apps/web/src/ui/workspace/open-original.ts": "58b8adbe3f220eb17e4983da6db2ad483eefcb655b8f8d5b8d6274ff349f0d69",
+    "apps/web/src/ui/workspace/open-original.test.ts": "4f779e5f5c0e990e69af07a6894c4679eb0031ec98ad4fc9806cfd78dc94dc43",
+    "apps/web/e2e/source-original.spec.ts": "5aaedee5c233ea69e98f17b56eb5e2eaf9b9bb510b8e008117324de8956bfc35",
+    "packages/core/src/src/service.ts": "d614c601fd897f682564b19f180cc64280229fda4f2a019affbd10e4f447105e",
+    "packages/core/src/src/service.int.test.ts": "ffc3ce85a4c10279d552985a1d46e1bcc8407f71d2ef978726f376d3a2525fd7"
+  },
+  "browserArtifacts": "artifacts/verification/open-original-browser-lifecycle-2026-10-06",
+  "deploymentApproval": {
+    "approved": true,
+    "scope": "Publish tested Open Original fix",
+    "at": "2026-10-06T00:13:21.413Z"
+  },
+  "publication": {
+    "checkedAt": "2026-10-06T00:19:32.400Z",
+    "deploymentId": "dpl_GyRv86JKzk9KnGUWKRc2LUvPkyNd",
+    "deploymentUrl": "https://recalino-gszoiw4bu-ali-paybarjay-s-projects.vercel.app",
+    "publicAlias": "https://recalino.vercel.app",
+    "status": "READY",
+    "includedInLatestRelease": true,
+    "additionalDeploymentCreated": false,
+    "reason": "The latest release was promoted during preflight and already contains all six final tested Open Original files.",
+    "deployedSourceAudit": [
+      {
+        "path": "apps/web/src/ui/workspace/SourcesView.tsx",
+        "expectedSha1": "8f59afacaab05acf647fa8a1316e8dc8e34b7d54",
+        "deployedSha1": "8f59afacaab05acf647fa8a1316e8dc8e34b7d54"
+      },
+      {
+        "path": "apps/web/src/ui/workspace/open-original.ts",
+        "expectedSha1": "530ead567016956ae310d68e8804e14ab8e0a2e7",
+        "deployedSha1": "530ead567016956ae310d68e8804e14ab8e0a2e7"
+      },
+      {
+        "path": "apps/web/src/ui/workspace/open-original.test.ts",
+        "expectedSha1": "c85a792c1e2d5225a1c1cf2fc2d0545257a14824",
+        "deployedSha1": "c85a792c1e2d5225a1c1cf2fc2d0545257a14824"
+      },
+      {
+        "path": "apps/web/e2e/source-original.spec.ts",
+        "expectedSha1": "a0c02b6befaecf088ddb794be1410f02bb8a7903",
+        "deployedSha1": "a0c02b6befaecf088ddb794be1410f02bb8a7903"
+      },
+      {
+        "path": "packages/core/src/src/service.ts",
+        "expectedSha1": "727068daf2faad579c40f5fbc5a2c9c214ffad45",
+        "deployedSha1": "727068daf2faad579c40f5fbc5a2c9c214ffad45"
+      },
+      {
+        "path": "packages/core/src/src/service.int.test.ts",
+        "expectedSha1": "1d8b71cb7870093c09ec6ab766b24ba107159eb3",
+        "deployedSha1": "1d8b71cb7870093c09ec6ab766b24ba107159eb3"
+      }
+    ],
+    "publicSmokePassed": true,
+    "productionWritesByThisTask": 0,
+    "publicBrowser": {
+      "passed": true,
+      "artifact": "artifacts/verification/open-original-public-browser-2026-10-06.json",
+      "scope": "Public loading, anonymous Sources sign-in gate, preserved return path, client hydration; zero writes."
+    }
+  }
+}

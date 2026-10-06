@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-05T23:30:50.236Z",
+  "origin": "https://recalino.vercel.app",
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "passed": true,
+      "cache": "public, max-age=0, must-revalidate"
+    },
+    {
+      "path": "/api/admin?view=settings",
+      "status": 401,
+      "passed": true,
+      "cache": "private, no-store"
+    },
+    {
+      "path": "/api/admin?view=settings",
+      "status": 200,
+      "passed": true,
+      "cache": "private, no-store"
+    },
+    {
+      "path": "/api/admin?view=templates",
+      "status": 200,
+      "passed": true,
+      "cache": "private, no-store"
+    },
+    {
+      "path": "/admin",
+      "status": 200,
+      "passed": true,
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate"
+    }
+  ],
+  "sentRealEmail": false,
+  "email": {
+    "provider": "gmail",
+    "configured": true,
+    "sender": "Recalino <recalino.pilot@gmail.com>",
+    "replyTo": "recalino.pilot@gmail.com",
+    "appLink": "https://recalino.vercel.app"
+  },
+  "passed": true
+}

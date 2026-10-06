@@ -26,9 +26,15 @@ import {
 import { createDatabase } from "../db";
 import { getLatestVersion, type KnowledgeModel, listVersions } from "../lkm";
 import { createSession, deleteSession } from "../org";
-import { MemoryObjectStore, runDueJobs, writeOwnedObject } from "../plt";
+import { MemoryObjectStore, runDueJobs, sha256Hex, writeOwnedObject } from "../plt";
 import { allowance, amounts, configureCostPolicy, grantEntitlement } from "../quota";
-import { appendContentVersion, readInputContract } from "../src";
+import {
+  appendContentVersion,
+  readInputContract,
+  type SourceClassification,
+  selectSourceSnapshot,
+  updateSourceSelection,
+} from "../src";
 import { expireAwaitingUploads } from "./maintenance";
 import {
   cancelRun,
@@ -39,6 +45,7 @@ import {
   listRuns,
   registerProcessingTemporaryObject,
   retryRun,
+  selectProcessingSourceSnapshot,
 } from "./runs";
 import { processingJob } from "./worker";
 
@@ -74,13 +81,17 @@ class FixtureProvider implements AiProvider {
   actualMicros: number | null = 1;
   prompts: string[] = [];
   inputs: unknown[] = [];
+  sourceClassifications: { sourceId: string; classification: SourceClassification }[] = [];
+  evidence: "material" | "user_notes" | "board" = "material";
+  visualClassification?: SourceClassification;
   async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
     this.calls++;
     this.prompts.push(input.system);
-    if (input.schemaName === "pdf_page_extraction")
+    if (input.schemaName === "pdf_page_extraction" || input.schemaName === "source_extraction")
       return {
         output: input.schema.parse({
           blocks: [{ id: "ocr-1", text: "Synthetic selected PDF text" }],
+          classification: this.visualClassification,
         }),
         requestId: "synthetic-ocr",
         model: input.model,
@@ -115,7 +126,7 @@ class FixtureProvider implements AiProvider {
           text: "A synthetic class example.",
           origin: "from_class",
           creation: "ai_generation",
-          evidence: "material",
+          evidence: this.evidence,
           sourceRefs: [
             {
               sourceId: this.invalidEvidence ? randomUUID() : source.sourceId,
@@ -139,7 +150,7 @@ class FixtureProvider implements AiProvider {
       coverage: { complete: true, missingSourceIds: [] },
     };
     return {
-      output: input.schema.parse(model),
+      output: input.schema.parse({ ...model, sourceClassifications: this.sourceClassifications }),
       requestId: "synthetic-generation",
       model: input.model,
       provider: this.name,
@@ -258,6 +269,232 @@ async function fixture(grant = true) {
   return { ctx, session, asset, provider, job, start, work };
 }
 describe("durable processing, atomic quota and provenance on Postgres", () => {
+  it("classifies personal notes during the existing knowledge call without assigning authorship", async () => {
+    const f = await fixture();
+    f.provider.sourceClassifications = [
+      { sourceId: f.asset.id, classification: { role: "user_notes", confidence: "high" } },
+    ];
+    f.provider.evidence = "user_notes";
+    const run = await f.start();
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.calls).toBe(1);
+    expect((await getLatestVersion(db, f.ctx, f.session.id))?.model.summary[0]).toMatchObject({
+      evidence: "user_notes",
+      speakerRole: "unknown",
+    });
+    expect(
+      await db
+        .selectFrom("src.session_source")
+        .select("role")
+        .where("asset_id", "=", f.asset.id)
+        .executeTakeFirst(),
+    ).toEqual({ role: "user_notes" });
+    const source = (await selectSourceSnapshot(db, f.ctx, f.session.id)).sources[0];
+    expect(source?.role).toBe("user_notes");
+    await updateSourceSelection(db, f.ctx, f.session.id, f.asset.id, {
+      role: "class_material",
+      selected: true,
+      ranges: [],
+      timeStatus: "unknown",
+      contentVersionId: source?.contentVersionId,
+    });
+    expect((await selectSourceSnapshot(db, f.ctx, f.session.id)).sources[0]?.role).toBe(
+      "user_notes",
+    );
+    // Older cached provider output may omit categories; retain the accepted source category.
+    f.provider.sourceClassifications = [];
+    const compatible = await f.start();
+    await f.work();
+    expect((await getRun(db, f.ctx, compatible.id)).state).toBe("ready");
+  });
+  it("detects a legacy board image in the existing vision step and preserves corrected content and confirmed versions", async () => {
+    const f = await fixture();
+    const store = new MemoryObjectStore();
+    const bytes = Buffer.from("Synthetic board photo bytes");
+    const objectId = await writeOwnedObject(db, store, f.ctx, {
+      module: "src",
+      retention: "durable",
+      contentType: "image/jpeg",
+      bytes,
+      now: new Date(),
+    });
+    await db
+      .updateTable("src.asset")
+      .set({
+        kind: "image",
+        declared_mime: "image/jpeg",
+        verified_mime: "image/jpeg",
+        size_bytes: bytes.length,
+        sha256: sha256Hex(bytes),
+        original_object_id: objectId,
+      })
+      .where("id", "=", f.asset.id)
+      .execute();
+    const priorLink = await db
+      .selectFrom("src.session_source")
+      .select("selected_content_version_id")
+      .where("asset_id", "=", f.asset.id)
+      .executeTakeFirstOrThrow();
+    expect(
+      (await selectSourceSnapshot(db, f.ctx, f.session.id)).sources[0]?.contentVersionId,
+    ).toBeNull();
+    expect(
+      (
+        await selectSourceSnapshot(db, f.ctx, f.session.id, {
+          sources: [
+            { sourceId: f.asset.id, contentVersionId: priorLink.selected_content_version_id },
+          ],
+        })
+      ).sources[0]?.contentVersionId,
+    ).toBe(priorLink.selected_content_version_id);
+    f.provider.visualClassification = { role: "board_photo", confidence: "high" };
+    f.provider.evidence = "board";
+    const job = processingJob({ provider: f.provider, store });
+    const run = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      { provider: f.provider, job },
+    );
+    for (
+      let attempt = 0;
+      attempt < 4 && (await getRun(db, f.ctx, run.id)).state !== "ready";
+      attempt++
+    )
+      await runDueJobs(db, [job], { kinds: [job.kind], deadline: new Date(Date.now() + 5000) });
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.calls).toBe(2);
+    expect((await selectSourceSnapshot(db, f.ctx, f.session.id)).sources[0]?.role).toBe(
+      "board_photo",
+    );
+    const correctedId = await db.transaction().execute((tx) =>
+      appendContentVersion(tx, f.ctx, f.asset.id, {
+        originKey: "corrected-board",
+        schemaVersion: "1",
+        provenance: "user_correction",
+        settings: {},
+        units: [{ id: "image", kind: "document", start: 1 }],
+        blocks: [
+          {
+            id: "corrected",
+            kind: "paragraph",
+            unitId: "image",
+            text: "Learner corrected board text",
+          },
+        ],
+      }),
+    );
+    expect((await selectSourceSnapshot(db, f.ctx, f.session.id)).sources[0]).toMatchObject({
+      contentVersionId: correctedId,
+      role: "board_photo",
+      blocks: [{ text: "Learner corrected board text" }],
+    });
+  });
+  it("falls back to class material for uncertain notes and refuses foreign category IDs", async () => {
+    const f = await fixture();
+    f.provider.sourceClassifications = [
+      { sourceId: f.asset.id, classification: { role: "user_notes", confidence: "uncertain" } },
+    ];
+    const run = await f.start();
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(
+      await db
+        .selectFrom("src.session_source")
+        .select("role")
+        .where("asset_id", "=", f.asset.id)
+        .executeTakeFirst(),
+    ).toEqual({ role: "class_material" });
+    f.provider.sourceClassifications = [
+      { sourceId: randomUUID(), classification: { role: "user_notes", confidence: "high" } },
+    ];
+    const invalid = await f.start();
+    await f.work();
+    expect((await getRun(db, f.ctx, invalid.id)).state).toBe("failed");
+    expect(await listVersions(db, f.ctx, f.session.id)).toHaveLength(1);
+  });
+  it("invalidates a legacy partial transcript when switching to whole audio and preserves historical input", async () => {
+    const f = await fixture();
+    await db
+      .updateTable("src.session_source")
+      .set({ selected: false })
+      .where("asset_id", "=", f.asset.id)
+      .execute();
+    const audio = await db
+      .insertInto("src.asset")
+      .values({
+        user_id: f.ctx.userId,
+        kind: "audio",
+        declared_mime: "audio/mpeg",
+        size_bytes: 100,
+        duration_ms: 4000,
+        sha256: "c".repeat(64),
+        display_name: "Partial.mp3",
+        contract_version: "1",
+        retention: "device_only",
+        operation_key: randomUUID(),
+        request_hash: randomUUID(),
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto("src.session_source")
+      .values({
+        user_id: f.ctx.userId,
+        session_id: f.session.id,
+        asset_id: audio.id,
+        role: "class_audio",
+        selected: true,
+        ranges: JSON.stringify([{ start: 1000, end: 2000 }]),
+      })
+      .execute();
+    const historical = await f.start();
+    await cancelRun(db, f.ctx, historical.id);
+    const before = await db
+      .selectFrom("proc.processing_run")
+      .select("input_snapshot")
+      .where("id", "=", historical.id)
+      .executeTakeFirstOrThrow();
+    const contentId = await db.transaction().execute((tx) =>
+      appendContentVersion(tx, f.ctx, audio.id, {
+        originKey: `processing:${historical.id}:${audio.id}`,
+        schemaVersion: "1",
+        provenance: "machine_extraction",
+        settings: {},
+        units: [{ id: "partial", kind: "time", start: 1000, end: 2000 }],
+        blocks: [
+          {
+            id: "partial-text",
+            kind: "transcript",
+            unitId: "partial",
+            text: "Only part of the lecture",
+          },
+        ],
+      }),
+    );
+    expect(
+      (await selectProcessingSourceSnapshot(db, f.ctx, f.session.id)).sources[0]?.contentVersionId,
+    ).toBe(contentId);
+    await db
+      .updateTable("src.session_source")
+      .set({ ranges: JSON.stringify([]) })
+      .where("asset_id", "=", audio.id)
+      .execute();
+    const complete = await selectProcessingSourceSnapshot(db, f.ctx, f.session.id);
+    expect(complete.sources[0]).toMatchObject({ ranges: [], contentVersionId: null, blocks: [] });
+    const next = await f.start();
+    expect(next.state).toBe("awaiting_upload");
+    expect((await allowance(db, f.ctx)).reserved.audio).toBe(4);
+    expect(
+      await db
+        .selectFrom("proc.processing_run")
+        .select("input_snapshot")
+        .where("id", "=", historical.id)
+        .executeTakeFirstOrThrow(),
+    ).toEqual(before);
+    await cancelRun(db, f.ctx, next.id);
+  });
   it("snapshots estimate rates before provider dispatch while later attempts use the new revision and retain hard holds", async () => {
     const f = await fixture();
     const localAdmin = createDatabase(LOCAL_ADMIN_DATABASE_URL, { maxConnections: 1 });

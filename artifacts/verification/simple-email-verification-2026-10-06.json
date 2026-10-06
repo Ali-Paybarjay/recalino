@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-10-06T01:23:08.417Z",
+  "scope": "Reviewed pending changes and simplified approved branded email sending",
+  "command": "pnpm verify",
+  "passed": true,
+  "verification": {
+    "lint": true,
+    "typecheck": true,
+    "moduleBoundaries": true,
+    "testFilesPassed": 174,
+    "testFilesSkipped": 1,
+    "testsPassed": 963,
+    "testsSkipped": 1,
+    "durationSeconds": 345.06
+  },
+  "browser": {
+    "uniqueAdminScenarios": 7,
+    "apiModelUnitTests": 14,
+    "actualRecipientLocaleValidation": true,
+    "readyInvitationWithoutManualNextStep": true,
+    "persianRTL": true,
+    "widths": [
+      1440,
+      390
+    ],
+    "noHorizontalOverflow": true,
+    "previewRequiresApproval": true
+  },
+  "codeReview": {
+    "openPullRequestComments": 0,
+    "credentialShapedLiterals": 0,
+    "stagedTextFilesChecked": 164,
+    "customerMetadataSanitized": true,
+    "rawBrowserTracesExcluded": true
+  },
+  "deployment": {
+    "id": "dpl_H4AmPN43QiuABvFu1K2D2b1yDzLt",
+    "uniqueURL": "https://recalino-qjel3ignj-ali-paybarjay-s-projects.vercel.app",
+    "liveURL": "https://recalino.vercel.app",
+    "state": "READY",
+    "sourceMatchesFrozenFiles": 753,
+    "currentRuntimeChanges": 0,
+    "nativeRuntimePassed": true,
+    "nativeDependencyTraceManifests": 104,
+    "productionSmokePassed": true
+  },
+  "sentRealEmail": false
+}

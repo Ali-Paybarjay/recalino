@@ -48,6 +48,7 @@ export interface AdminReadConfiguration {
   };
   email: {
     configured: boolean;
+    provider?: "resend" | "gmail" | null;
     sender: string | null;
     replyTo: string | null;
     appLink: string | null;
@@ -219,6 +220,11 @@ export async function readAdminSnapshot(
           name: template.label,
           subject: { en: template.content.en.subject, fa: template.content.fa.subject },
           body: { en: template.content.en.body, fa: template.content.fa.body },
+          variableDefaults: template.variableDefaults,
+          presentation: {
+            en: template.content.en.presentation,
+            fa: template.content.fa.presentation,
+          },
         })),
       };
     }
@@ -616,6 +622,7 @@ async function readSettings(
     theme:
       preference?.theme === "light" || preference?.theme === "dark" ? preference.theme : "system",
     senderConfigured: status.configured,
+    emailProvider: status.provider ?? null,
     senderEmail: status.sender,
     replyTo: status.replyTo,
     appLink: status.appLink,

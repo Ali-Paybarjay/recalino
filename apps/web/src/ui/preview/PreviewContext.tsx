@@ -34,6 +34,7 @@ export type SampleSource = {
   status: string;
   rangeStart: number;
   rangeEnd: number;
+  selectionMode?: "whole" | "part";
 };
 export type PreviewState = {
   classes: {
@@ -361,6 +362,7 @@ const sourceSchema = z.object({
   status: text,
   rangeStart: number,
   rangeEnd: number,
+  selectionMode: z.enum(["whole", "part"]).optional(),
 });
 const workspaceSchema = z.object({
   sources: z.array(sourceSchema).max(1000),
@@ -399,6 +401,7 @@ const sampleSchema = z.object({
         status: text,
         rangeStart: number,
         rangeEnd: number,
+        selectionMode: z.enum(["whole", "part"]).optional(),
       }),
     )
     .max(1000),

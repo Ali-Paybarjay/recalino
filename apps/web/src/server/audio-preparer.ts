@@ -4,7 +4,13 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
-import { deleteObject, errors, readOwnedObject, writeOwnedObject } from "@recalino/core/plt";
+import {
+  AppError,
+  deleteObject,
+  errors,
+  readOwnedObject,
+  writeOwnedObject,
+} from "@recalino/core/plt";
 import {
   type AudioChunk,
   type AudioPreparer,
@@ -23,7 +29,8 @@ async function ffmpeg(
   binaryOutput = false,
 ): Promise<{ progress: string; info: string; outputBytes: number }> {
   const executable = ffmpegPath;
-  if (!executable) throw errors.validationFailed({ audio: ["decoder_unavailable"] });
+  if (!executable)
+    throw new AppError("internal", { details: { reason: "audio_decoder_unavailable" } });
   return new Promise((accept, reject) => {
     const child = spawn(
       executable,
@@ -50,11 +57,17 @@ async function ffmpeg(
     });
     child.on("error", () => {
       clearTimeout(timer);
-      reject(errors.unsupportedMedia());
+      reject(new AppError("internal", { details: { reason: "audio_decoder_unavailable" } }));
     });
-    child.on("close", (code) => {
+    child.on("close", (code, signal) => {
       clearTimeout(timer);
-      if (code !== 0 || timedOut) reject(errors.unsupportedMedia());
+      // Host failures say nothing about the uploaded bytes. Keep the upload pending so
+      // the worker can retry instead of permanently rejecting a valid original.
+      if (timedOut)
+        reject(new AppError("internal", { details: { reason: "audio_decoder_timeout" } }));
+      else if (signal || code === null)
+        reject(new AppError("internal", { details: { reason: "audio_decoder_interrupted" } }));
+      else if (code !== 0) reject(errors.unsupportedMedia());
       else accept({ progress, info, outputBytes });
     });
   });

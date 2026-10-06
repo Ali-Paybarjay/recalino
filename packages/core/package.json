@@ -34,6 +34,7 @@
     "@vercel/blob": "2.8.0",
     "fflate": "0.8.3",
     "kysely": "0.29.6",
+    "nodemailer": "10.0.15",
     "parse5": "8.0.1",
     "pdfjs-dist": "6.4.299",
     "pg": "8.23.1",

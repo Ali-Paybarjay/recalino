@@ -3,6 +3,7 @@ import type { PriceRate } from "./contracts";
 import {
   availableQuota,
   dollarsToMicros,
+  emailBodyWithNote,
   exactQuotaUnits,
   friendlyQuotaUnits,
   manualTemplateVariables,
@@ -10,6 +11,7 @@ import {
   type QuotaUnitConfig,
   quotaFields,
   rateConfigurationProblem,
+  readableTemplateText,
   switchQuotaFieldUnit,
 } from "./model";
 
@@ -130,5 +132,42 @@ describe("routine email variables", () => {
       ),
     ).toEqual(["issue_summary", "next_step_text", "custom_note"]);
     expect(manualTemplateVariables("Plain subject", "Plain message")).toEqual([]);
+  });
+  it("treats only the selected template's ready nonempty details as optional", () => {
+    expect(
+      manualTemplateVariables("Invitation", "{{next_step_text}} {{custom_note}}", {
+        next_step_text: "Open the app to begin.",
+      }),
+    ).toEqual(["custom_note"]);
+    expect(
+      manualTemplateVariables("Invitation", "{{next_step_text}}", { next_step_text: " " }),
+    ).toEqual(["next_step_text"]);
+    expect(
+      manualTemplateVariables("Custom", "{{reply_text}} {{next_step_text}}", {
+        acknowledgement_text: "Thank you.",
+      }),
+    ).toEqual(["reply_text", "next_step_text"]);
+  });
+  it("shows ready routine paragraphs without substituting private recipient details", () => {
+    expect(
+      readableTemplateText("Hello {{first_name}}\n{{ next_step_text }}\n{{app_link}}", {
+        next_step_text: "Open the app to begin.",
+      }),
+    ).toBe("Hello {{first_name}}\nOpen the app to begin.\n{{app_link}}");
+    expect(readableTemplateText("{{reply_text}}", { acknowledgement_text: "Thank you." })).toBe(
+      "{{reply_text}}",
+    );
+  });
+  it("puts optional notes above the existing English or Persian sign-off without replacing the message", () => {
+    expect(
+      emailBodyWithNote("Hello\n\nThank you,\nThe Recalino team", "  Personal detail.  "),
+    ).toBe("Hello\n\nPersonal detail.\n\nThank you,\nThe Recalino team");
+    expect(emailBodyWithNote("سلام\n\nتیم ریکالینو", "یادداشت شخصی")).toBe(
+      "سلام\n\nیادداشت شخصی\n\nتیم ریکالینو",
+    );
+    expect(emailBodyWithNote("A custom message.", "Extra detail.")).toBe(
+      "A custom message.\n\nExtra detail.",
+    );
+    expect(emailBodyWithNote("Hello\n\nThe Recalino team", " ")).toBe("Hello\n\nThe Recalino team");
   });
 });

@@ -1,0 +1,40 @@
+{
+  "deploymentId": "dpl_GyRv86JKzk9KnGUWKRc2LUvPkyNd",
+  "deploymentUrl": "https://recalino-gszoiw4bu-ali-paybarjay-s-projects.vercel.app",
+  "verifiedFixFileCount": 5,
+  "expectedFixFileCount": 5,
+  "exactFixPreserved": true,
+  "method": "Authenticated read-only Vercel source inventory SHA1 comparison",
+  "checks": [
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/estimate/page.tsx",
+      "expectedSha1": "c578e9363fff4a745f5ee8db43a9f39841eda84e",
+      "deployedSha1": "c578e9363fff4a745f5ee8db43a9f39841eda84e",
+      "matchesReviewedFix": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ProcessingView.test.ts",
+      "expectedSha1": "a8429da7ac3205b21d2fec0b93148fc9617d0cd6",
+      "deployedSha1": "a8429da7ac3205b21d2fec0b93148fc9617d0cd6",
+      "matchesReviewedFix": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ProcessingView.tsx",
+      "expectedSha1": "69436b0663b6b93451dc4b25ff4305646515cc7e",
+      "deployedSha1": "69436b0663b6b93451dc4b25ff4305646515cc7e",
+      "matchesReviewedFix": true
+    },
+    {
+      "path": "apps/web/src/server/processing-estimate-state.ts",
+      "expectedSha1": "680e57463603797a8727a078e8eb1c870ef3f123",
+      "deployedSha1": "680e57463603797a8727a078e8eb1c870ef3f123",
+      "matchesReviewedFix": true
+    },
+    {
+      "path": "apps/web/src/server/processing-estimate-state.test.ts",
+      "expectedSha1": "f3a8e80cf59053df4a5957fd4b29faeccb77d1cb",
+      "deployedSha1": "f3a8e80cf59053df4a5957fd4b29faeccb77d1cb",
+      "matchesReviewedFix": true
+    }
+  ]
+}

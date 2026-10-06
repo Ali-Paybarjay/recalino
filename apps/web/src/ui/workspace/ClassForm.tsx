@@ -2,10 +2,13 @@
 import type { ClassSession, Course, Unit } from "@recalino/core/org";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { DateInput } from "../components/DateInput";
 import { Sheet } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
+
+const CREATE_NEW_COURSE = "__create_new_course__";
 
 export function ClassForm({
   courses,
@@ -161,20 +164,20 @@ export function ClassForm({
               Save changes to use the title from your learning material.
             </p>
           ) : null}
-          <Field label="Class date">
-            <input
-              type="date"
-              required
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              disabled={busy}
-            />
+          <Field label="Class date" hint="Day / Month / Year">
+            <DateInput required value={date} onChange={setDate} disabled={busy} />
           </Field>
           <Field label="Course" hint={courseCopy.courseHelp}>
             <select
               value={course}
               disabled={busy}
               onChange={(event) => {
+                if (event.target.value === CREATE_NEW_COURSE) {
+                  setCourseError("");
+                  setCourseNotice("");
+                  setCreateCourseOpen(true);
+                  return;
+                }
                 setCourse(event.target.value);
                 setUnit("");
                 setCourseNotice("");
@@ -187,21 +190,9 @@ export function ClassForm({
                   {item.isDefault ? " · Default" : ""}
                 </option>
               ))}
+              <option value={CREATE_NEW_COURSE}>Create New Course</option>
             </select>
           </Field>
-          <Actions>
-            <Button
-              secondary
-              disabled={busy}
-              onClick={() => {
-                setCourseError("");
-                setCourseNotice("");
-                setCreateCourseOpen(true);
-              }}
-            >
-              Create course
-            </Button>
-          </Actions>
           {courseNotice ? <Status tone="success">{courseNotice}</Status> : null}
           {course && units.some((item) => item.courseId === course) ? (
             <Field label="Unit (optional)">

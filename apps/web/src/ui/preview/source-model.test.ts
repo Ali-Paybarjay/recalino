@@ -5,7 +5,9 @@ import {
   selectedCost,
   sourceHasDetails,
   sourceIsReady,
-  withSampleCount,
+  sourceUsesPart,
+  withFullExtent,
+  withPreparedSampleDetails,
 } from "./source-model";
 
 function source(patch: Partial<SampleSource> = {}): SampleSource {
@@ -25,34 +27,49 @@ function source(patch: Partial<SampleSource> = {}): SampleSource {
 }
 
 describe("confirmed sample source inputs", () => {
-  it("leaves unknown or invalid counts unconfirmed and outside the estimate", () => {
+  it("leaves unknown or invalid counts outside the estimate", () => {
     for (const count of [0, -10, Number.NaN, Number.POSITIVE_INFINITY]) {
-      const unknown = withSampleCount(source(), count);
-      expect(unknown.durationMinutes).toBe(0);
-      expect(unknown.status).toBe("Needs details");
-      expect(unknown.selected).toBe(false);
+      const unknown = source({ durationMinutes: count, selectionMode: "whole" });
       expect(sourceHasDetails(unknown)).toBe(false);
       expect(sourceIsReady(unknown)).toBe(false);
       expect(selectedCost([{ ...unknown, selected: true }])).toEqual({ minutes: 0, pages: 0 });
     }
   });
 
-  it("clamps editable counts and ranges while requiring confirmation again", () => {
-    const audio = withSampleCount(source(), 10001);
-    expect(audio.durationMinutes).toBe(10000);
-    expect(audio.rangeEnd).toBeLessThanOrEqual(audio.durationMinutes);
-    expect(audio.status).toBe("Needs details");
-    expect(sourceIsReady(audio)).toBe(false);
-
-    const pdf = withSampleCount(
-      source({ kind: "pdf", durationMinutes: 0, pages: 20, rangeStart: 8, rangeEnd: 15 }),
-      3.9,
+  it("assigns prepared demo details automatically and keeps protected PDFs pending", () => {
+    const audio = withPreparedSampleDetails(
+      source({ durationMinutes: 0, status: "Needs details" }),
     );
-    expect(pdf.pages).toBe(3);
-    expect(pdf.rangeStart).toBe(3);
-    expect(pdf.rangeEnd).toBe(3);
-    expect(sourceHasDetails(pdf)).toBe(true);
-    expect(pdf.selected).toBe(false);
+    expect(audio).toMatchObject({
+      durationMinutes: 10,
+      rangeStart: 0,
+      rangeEnd: 10,
+      selectionMode: "whole",
+      selected: true,
+    });
+    expect(sourceIsReady(audio)).toBe(true);
+    const pdf = withPreparedSampleDetails(source({ kind: "pdf", status: "Needs password" }));
+    expect(pdf).toMatchObject({
+      durationMinutes: 0,
+      pages: 4,
+      rangeStart: 1,
+      rangeEnd: 4,
+      selectionMode: "whole",
+    });
+    expect(sourceIsReady(pdf)).toBe(false);
+    expect(selectedCost([pdf])).toEqual({ minutes: 0, pages: 0 });
+  });
+
+  it("uses the full extent when whole file is chosen and preserves an explicit part choice", () => {
+    const part = source({ selectionMode: "part", rangeStart: 2, rangeEnd: 8 });
+    expect(sourceUsesPart(part)).toBe(true);
+    expect(selectedCost([part])).toEqual({ minutes: 6, pages: 0 });
+    const whole = withFullExtent(part);
+    expect(sourceUsesPart(whole)).toBe(false);
+    expect(whole).toMatchObject({ rangeStart: 0, rangeEnd: 20, selectionMode: "whole" });
+    expect(selectedCost([{ ...part, selectionMode: "whole" }])).toEqual({ minutes: 20, pages: 0 });
+    expect(sourceUsesPart({ ...whole, selectionMode: "part" })).toBe(true);
+    expect(sourceUsesPart(source({ rangeStart: 2, rangeEnd: 8 }))).toBe(true);
   });
 
   it("counts fractional audio ranges and both ends of a PDF range", () => {

@@ -1,12 +1,273 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./Admin.module.css";
 import type { AdminScreenProps } from "./AdminScreenProps";
 import { dateLabel } from "./CoreScreens";
-import type { AdminEmail, AdminLocale, EmailPreview, EmailTemplate } from "./contracts";
-import { formatNumber, manualTemplateVariables } from "./model";
+import type {
+  AdminEmail,
+  AdminLocale,
+  AdminResult,
+  EmailPresentationPreview,
+  EmailPresentationSettings,
+  EmailPreview,
+  EmailTemplate,
+} from "./contracts";
+import {
+  emailBodyWithNote,
+  formatNumber,
+  manualTemplateVariables,
+  readableTemplateText,
+} from "./model";
 import { Badge, Button, Empty, Field, Notice, Panel, Table } from "./primitives";
+
+function presentationInput(value: EmailPresentationSettings): EmailPresentationSettings {
+  return {
+    ...(value.headline?.trim() ? { headline: value.headline.trim() } : {}),
+    ...(value.preheader?.trim() ? { preheader: value.preheader.trim() } : {}),
+    action: value.action
+      ? { label: value.action.label.trim(), url: value.action.url.trim() }
+      : null,
+  };
+}
+function templatePresentation(
+  template: EmailTemplate | undefined,
+  language: AdminLocale,
+): EmailPresentationSettings {
+  if (template?.presentation?.[language]) return template.presentation[language];
+  if (!template || template.id === "service_notice") return { action: null };
+  const conversation = [
+    "feedback_thanks",
+    "support_reply",
+    "pilot_followup",
+    "pilot_complete",
+  ].includes(template.id);
+  return {
+    action: {
+      label: conversation
+        ? language === "fa"
+          ? "مشاهدهٔ گفت‌وگو"
+          : "View conversation"
+        : language === "fa"
+          ? "ورود به ریکالینو"
+          : "Open Recalino",
+      url: conversation ? "{{conversation_link}}" : "{{app_link}}",
+    },
+  };
+}
+function validPresentation(value: EmailPresentationSettings): boolean {
+  if (!value.action) return true;
+  if (!value.action.label.trim()) return false;
+  if (/^{{\s*(app_link|conversation_link)\s*}}(?:\/[\w/?#=.&%-]*)?$/.test(value.action.url.trim()))
+    return true;
+  try {
+    const url = new URL(value.action.url.trim());
+    return (
+      url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !Array.from(value.action.url.trim()).some(
+        (character) =>
+          character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127 || character === "\\",
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+function PresentationFields({
+  value,
+  onChange,
+  language,
+  t,
+  busy,
+  problem,
+}: {
+  value: EmailPresentationSettings;
+  onChange: (value: EmailPresentationSettings) => void;
+  language: AdminLocale;
+  t: AdminScreenProps["t"];
+  busy: boolean;
+  problem?: "actionLabel" | "actionUrl";
+}) {
+  return (
+    <div className={styles.emailDesignFields}>
+      <h3>{t("Email appearance", "ظاهر ایمیل")}</h3>
+      <p className={styles.help}>
+        {t(
+          "The Recalino logo, colours and footer are included automatically. The final design is shown before approval.",
+          "لوگو، رنگ‌ها و امضای ریکالینو خودکار اضافه می‌شوند. طرح نهایی پیش از تأیید نمایش داده می‌شود.",
+        )}
+      </p>
+      <div className={styles.split}>
+        <Field
+          label={t("Email heading (optional)", "عنوان داخل ایمیل (اختیاری)")}
+          help={t("Uses the subject when empty.", "اگر خالی باشد، موضوع استفاده می‌شود.")}
+        >
+          <input
+            className={styles.input}
+            disabled={busy}
+            maxLength={300}
+            lang={language}
+            dir={language === "fa" ? "rtl" : "ltr"}
+            value={value.headline ?? ""}
+            onChange={(event) => onChange({ ...value, headline: event.target.value })}
+          />
+        </Field>
+        <Field label={t("Inbox preview line (optional)", "خط پیش‌نمایش صندوق ایمیل (اختیاری)")}>
+          <input
+            className={styles.input}
+            disabled={busy}
+            maxLength={200}
+            lang={language}
+            dir={language === "fa" ? "rtl" : "ltr"}
+            value={value.preheader ?? ""}
+            onChange={(event) => onChange({ ...value, preheader: event.target.value })}
+          />
+        </Field>
+      </div>
+      <label className={styles.checkbox}>
+        <input
+          type="checkbox"
+          className={styles.check}
+          disabled={busy}
+          checked={Boolean(value.action)}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              action: event.target.checked
+                ? {
+                    label: language === "fa" ? "ورود به ریکالینو" : "Open Recalino",
+                    url: "{{app_link}}",
+                  }
+                : null,
+            })
+          }
+        />
+        {t("Include an action button", "افزودن دکمهٔ اقدام")}
+      </label>
+      {value.action && (
+        <div className={styles.split}>
+          <Field
+            label={t("Button text", "متن دکمه")}
+            help={
+              problem === "actionLabel"
+                ? t("Enter the button text.", "متن دکمه را وارد کنید.")
+                : undefined
+            }
+          >
+            <input
+              className={styles.input}
+              disabled={busy}
+              maxLength={100}
+              lang={language}
+              dir={language === "fa" ? "rtl" : "ltr"}
+              value={value.action.label}
+              data-compose-field="actionLabel"
+              aria-invalid={problem === "actionLabel" || undefined}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  action: { label: event.target.value, url: value.action?.url ?? "" },
+                })
+              }
+            />
+          </Field>
+          <Field
+            label={t("Button link", "لینک دکمه")}
+            help={t(
+              problem === "actionUrl"
+                ? "Use a complete HTTPS link, or keep the automatic app link."
+                : "The app link is filled automatically. You can use a different HTTPS link.",
+              problem === "actionUrl"
+                ? "لینک کامل HTTPS وارد کنید یا لینک خودکار اپ را نگه دارید."
+                : "لینک اپ خودکار تکمیل می‌شود. می‌توانید لینک HTTPS دیگری وارد کنید.",
+            )}
+          >
+            <input
+              className={styles.input}
+              disabled={busy}
+              maxLength={2000}
+              dir="ltr"
+              value={value.action.url}
+              data-compose-field="actionUrl"
+              aria-invalid={problem === "actionUrl" || undefined}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  action: { label: value.action?.label ?? "", url: event.target.value },
+                })
+              }
+            />
+          </Field>
+        </div>
+      )}
+    </div>
+  );
+}
+function BrandedPreview({
+  presentation,
+  body,
+  language,
+  t,
+}: {
+  presentation?: EmailPresentationPreview | null;
+  body: string;
+  language: AdminLocale;
+  t: AdminScreenProps["t"];
+}) {
+  const [mode, setMode] = useState<"desktop" | "mobile" | "text">("desktop");
+  return (
+    <div className={styles.emailPreview}>
+      {presentation && (
+        <div className={styles.tabs}>
+          {(
+            [
+              ["desktop", t("Desktop preview", "پیش‌نمایش دسکتاپ")],
+              ["mobile", t("Mobile preview", "پیش‌نمایش موبایل")],
+              ["text", t("Plain text", "متن ساده")],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              className={styles.button}
+              aria-pressed={mode === value}
+              onClick={() => setMode(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {presentation && mode !== "text" ? (
+        <div
+          className={`${styles.emailPreviewCanvas} ${mode === "mobile" ? styles.emailPreviewMobile : ""}`}
+        >
+          <iframe
+            title={t("Approved email design preview", "پیش‌نمایش طرح ایمیل برای تأیید")}
+            className={styles.emailPreviewFrame}
+            sandbox=""
+            referrerPolicy="no-referrer"
+            srcDoc={presentation.previewHtml}
+          />
+        </div>
+      ) : (
+        <div className={styles.emailBody} lang={language} dir="auto">
+          {presentation?.text ?? body}
+        </div>
+      )}
+      <p className={styles.help}>
+        {presentation
+          ? t(
+              "This is the saved design for this recipient. Images, spacing and fonts may vary slightly between email apps. Buttons are inactive in the preview.",
+              "این طرح ذخیره‌شده برای همین گیرنده است. تصویر، فاصله و فونت ممکن است در برنامه‌های ایمیل کمی متفاوت باشند. دکمه‌ها در پیش‌نمایش غیرفعال‌اند.",
+            )
+          : t("This saved message uses plain text.", "این پیام ذخیره‌شده به‌صورت متن ساده است.")}
+      </p>
+    </div>
+  );
+}
 
 function MessageTabs({ props, active }: { props: AdminScreenProps; active: string }) {
   const { t, navigate } = props;
@@ -121,77 +382,219 @@ function Composer(props: AdminScreenProps) {
   const [templateId, setTemplateId] = useState(
     templates.find((item) => item.id === "pilot_welcome")?.id ?? templates[0]?.id ?? "",
   );
-  const [language, setLanguage] = useState<AdminLocale | "recipient">("en");
-  const [editLanguage, setEditLanguage] = useState<AdminLocale>("en");
+  const [language, setLanguage] = useState<AdminLocale | "recipient">("recipient");
+  const [editLanguage, setEditLanguage] = useState<AdminLocale>(locale);
   const initial = templates.find((item) => item.id === templateId);
+  const template = templates.find((item) => item.id === templateId);
   const [subjects, setSubjects] = useState({
-    en: initial?.subject.en ?? "",
-    fa: initial?.subject.fa ?? "",
+    en: readableTemplateText(initial?.subject.en ?? "", initial?.variableDefaults?.en),
+    fa: readableTemplateText(initial?.subject.fa ?? "", initial?.variableDefaults?.fa),
   });
-  const [bodies, setBodies] = useState({ en: initial?.body.en ?? "", fa: initial?.body.fa ?? "" });
+  const [bodies, setBodies] = useState({
+    en: readableTemplateText(initial?.body.en ?? "", initial?.variableDefaults?.en),
+    fa: readableTemplateText(initial?.body.fa ?? "", initial?.variableDefaults?.fa),
+  });
+  const [presentations, setPresentations] = useState<
+    Record<AdminLocale, EmailPresentationSettings>
+  >({
+    en: templatePresentation(initial, "en"),
+    fa: templatePresentation(initial, "fa"),
+  });
   const [variables, setVariables] = useState<Record<AdminLocale, Record<string, string>>>({
-    en: {},
-    fa: {},
+    en: initial?.variableDefaults?.en ?? {},
+    fa: initial?.variableDefaults?.fa ?? {},
   });
+  const [note, setNote] = useState("");
+  const [advanced, setAdvanced] = useState(false);
   const detectedVariables = {
-    en: manualTemplateVariables(subjects.en, bodies.en),
-    fa: manualTemplateVariables(subjects.fa, bodies.fa),
+    en: manualTemplateVariables(
+      subjects.en,
+      [
+        bodies.en,
+        presentations.en.headline,
+        presentations.en.preheader,
+        presentations.en.action?.label,
+        presentations.en.action?.url,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      template?.variableDefaults?.en,
+    ),
+    fa: manualTemplateVariables(
+      subjects.fa,
+      [
+        bodies.fa,
+        presentations.fa.headline,
+        presentations.fa.preheader,
+        presentations.fa.action?.label,
+        presentations.fa.action?.url,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      template?.variableDefaults?.fa,
+    ),
   };
+  const editableVariables = manualTemplateVariables(
+    subjects[editLanguage],
+    [
+      bodies[editLanguage],
+      presentations[editLanguage].headline,
+      presentations[editLanguage].preheader,
+      presentations[editLanguage].action?.label,
+      presentations[editLanguage].action?.url,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  );
   const [reason, setReason] = useState("");
   const [preview, setPreview] = useState<EmailPreview | null>(null);
   const [recipientIndex, setRecipientIndex] = useState(0);
   const [acceptExcluded, setAcceptExcluded] = useState(false);
   const [sent, setSent] = useState<AdminEmail[] | null>(null);
-  const [invalid, setInvalid] = useState(false);
+  const [problem, setProblem] = useState<{
+    language: AdminLocale;
+    field: string;
+    message: string;
+  } | null>(null);
+  const form = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (problem)
+      form.current?.querySelector<HTMLElement>(`[data-compose-field="${problem.field}"]`)?.focus();
+  }, [problem]);
   function chooseTemplate(id: string) {
     setTemplateId(id);
-    const template = templates.find((item) => item.id === id);
-    setSubjects(template?.subject ?? { en: "", fa: "" });
-    setBodies(template?.body ?? { en: "", fa: "" });
-    setVariables({ en: {}, fa: {} });
+    const next = templates.find((item) => item.id === id);
+    setSubjects({
+      en: readableTemplateText(next?.subject.en ?? "", next?.variableDefaults?.en),
+      fa: readableTemplateText(next?.subject.fa ?? "", next?.variableDefaults?.fa),
+    });
+    setBodies({
+      en: readableTemplateText(next?.body.en ?? "", next?.variableDefaults?.en),
+      fa: readableTemplateText(next?.body.fa ?? "", next?.variableDefaults?.fa),
+    });
+    setPresentations({
+      en: templatePresentation(next, "en"),
+      fa: templatePresentation(next, "fa"),
+    });
+    setVariables({ en: next?.variableDefaults?.en ?? {}, fa: next?.variableDefaults?.fa ?? {} });
+    setNote("");
+    setAdvanced(false);
+    setProblem(null);
     setPreview(null);
     setSent(null);
   }
   async function prepare() {
-    const required = language === "recipient" ? (["en", "fa"] as const) : [language];
-    const valid =
-      selected.length > 0 &&
-      required.every(
-        (key) =>
-          subjects[key].trim() &&
-          bodies[key].trim() &&
-          detectedVariables[key].every((name) => variables[key][name]?.trim()),
-      );
-    setInvalid(!valid);
-    if (!valid) return;
-    const result = await act("email.preview", {
-      userIds: selected,
-      templateId: templateId || null,
-      language,
-      subject: subjects[editLanguage],
-      body: bodies[editLanguage],
-      ...(language === "recipient"
-        ? {
-            localizedContent: {
-              en: { subject: subjects.en, body: bodies.en },
-              fa: { subject: subjects.fa, body: bodies.fa },
-            },
-          }
-        : {}),
-      ...(required.some((key) => detectedVariables[key].length > 0)
-        ? {
-            localizedVariables: Object.fromEntries(
-              (["en", "fa"] as const).map((key) => [
-                key,
-                Object.fromEntries(
-                  detectedVariables[key].map((name) => [name, variables[key][name] ?? ""]),
-                ),
-              ]),
-            ),
-          }
-        : {}),
-      reason: reason.trim() || "Owner-reviewed user communication",
-    });
+    const active = language === "recipient" ? editLanguage : language;
+    const missingVariable = detectedVariables[active].find(
+      (name) => !variables[active][name]?.trim(),
+    );
+    const field =
+      language === "recipient"
+        ? null
+        : !subjects[active].trim()
+          ? "subject"
+          : !bodies[active].trim()
+            ? "body"
+            : missingVariable
+              ? `variable-${missingVariable}`
+              : !presentations[active].action?.label.trim() && presentations[active].action
+                ? "actionLabel"
+                : !validPresentation(presentations[active])
+                  ? "actionUrl"
+                  : null;
+    if (field) {
+      const message =
+        field === "subject"
+          ? t("Enter a subject for this email.", "موضوع این ایمیل را وارد کنید.")
+          : field === "body"
+            ? t("Enter the email message.", "متن ایمیل را وارد کنید.")
+            : missingVariable
+              ? `${templateVariableLabel(missingVariable, t)}: ${t("Add the detail used in this message, or remove its placeholder from the message.", "این بخش پیام را تکمیل کنید یا جای آن را از متن حذف کنید.")}`
+              : field === "actionLabel"
+                ? t(
+                    "Enter the button text, or turn off the action button.",
+                    "متن دکمه را وارد کنید یا دکمهٔ اقدام را بردارید.",
+                  )
+                : t(
+                    "Use a complete HTTPS button link, or keep the automatic app link.",
+                    "لینک کامل HTTPS برای دکمه وارد کنید یا لینک خودکار اپ را نگه دارید.",
+                  );
+      setEditLanguage(active);
+      setAdvanced(field.startsWith("variable-") || field.startsWith("action"));
+      setProblem({ language: active, field, message });
+      return;
+    }
+    setProblem(null);
+    const contentLanguages = language === "recipient" ? (["en", "fa"] as const) : [language];
+    const explicitVariables = Object.fromEntries(
+      contentLanguages.map((key) => [
+        key,
+        Object.fromEntries(Object.entries(variables[key]).filter(([, value]) => value.trim())),
+      ]),
+    );
+    const result = await act(
+      "email.preview",
+      {
+        userIds: selected,
+        templateId: templateId || null,
+        language,
+        ...(language === "recipient"
+          ? {
+              localizedContent: Object.fromEntries(
+                contentLanguages.map((key) => [
+                  key,
+                  { subject: subjects[key], body: emailBodyWithNote(bodies[key], note) },
+                ]),
+              ),
+              localizedPresentation: Object.fromEntries(
+                contentLanguages.map((key) => [key, presentationInput(presentations[key])]),
+              ),
+            }
+          : {
+              subject: subjects[active],
+              body: emailBodyWithNote(bodies[active], note),
+              presentation: presentationInput(presentations[active]),
+            }),
+        localizedVariables: explicitVariables,
+        reason: reason.trim() || "Owner-reviewed user communication",
+      },
+      undefined,
+      (fields) => {
+        for (const path of Object.keys(fields)) {
+          const content = /^localizedContent\.(en|fa)\.(subject|body)$/.exec(path);
+          const variable = /^localizedVariables\.(en|fa)\.([a-z_][a-z0-9_]*)$/.exec(path);
+          const action = /^localizedPresentation\.(en|fa)\.action\.(label|url)$/.exec(path);
+          const matched = content ?? variable ?? action;
+          if (!matched) continue;
+          const locale = matched[1] as AdminLocale;
+          const field = content
+            ? (matched[2] ?? "body")
+            : variable
+              ? `variable-${matched[2]}`
+              : matched[2] === "label"
+                ? "actionLabel"
+                : "actionUrl";
+          const label = content
+            ? matched[2] === "subject"
+              ? t("Subject", "موضوع")
+              : t("Message", "متن پیام")
+            : variable
+              ? templateVariableLabel(matched[2] ?? "", t)
+              : matched[2] === "label"
+                ? t("Button text", "متن دکمه")
+                : t("Button link", "لینک دکمه");
+          setEditLanguage(locale);
+          setAdvanced(Boolean(variable || action));
+          setProblem({
+            language: locale,
+            field,
+            message: `${locale === "fa" ? "فارسی" : "English"} · ${label}: ${action && matched[2] === "url" ? t("Use a complete HTTPS link, or keep the automatic app link.", "لینک کامل HTTPS وارد کنید یا لینک خودکار اپ را نگه دارید.") : t("Complete this field for the selected recipient's language.", "این فیلد را برای زبان گیرندهٔ انتخاب‌شده تکمیل کنید.")}`,
+          });
+          return true;
+        }
+        return false;
+      },
+    );
     if (result?.preview) {
       setPreview(result.preview);
       setRecipientIndex(0);
@@ -225,6 +628,7 @@ function Composer(props: AdminScreenProps) {
     );
   const recipient = preview?.recipients[recipientIndex];
   const expired = preview ? Date.parse(preview.expiresAt) <= Date.now() : false;
+  const currentProblem = problem?.language === editLanguage ? problem : null;
   return (
     <>
       <Notice>
@@ -250,158 +654,250 @@ function Composer(props: AdminScreenProps) {
             </Button>
           </div>
         </Panel>
-      ) : (
-        <Panel title={t("Message details", "جزئیات پیام")}>
-          <div className={styles.split}>
-            <Field label={t("Template", "قالب")}>
-              <select
-                disabled={busy}
-                className={styles.select}
-                value={templateId}
-                onChange={(e) => chooseTemplate(e.target.value)}
-              >
-                <option value="">{t("Blank message", "متن آزاد")}</option>
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name[locale]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label={t("Email language", "زبان ایمیل")}>
-              <select
-                disabled={busy}
-                className={styles.select}
-                value={language}
-                onChange={(e) => {
-                  const value = e.target.value as AdminLocale | "recipient";
-                  setLanguage(value);
-                  if (value !== "recipient") setEditLanguage(value);
-                  setPreview(null);
-                }}
-              >
-                <option value="en">English</option>
-                <option value="fa">فارسی</option>
-                <option value="recipient">
-                  {t("Use each recipient's preference", "طبق ترجیح هر گیرنده")}
-                </option>
-              </select>
-            </Field>
-          </div>
-          {language === "recipient" && (
-            <div className={styles.tabs}>
-              {(["en", "fa"] as const).map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={styles.button}
-                  aria-pressed={editLanguage === value}
-                  onClick={() => setEditLanguage(value)}
+      ) : preview === null ? (
+        <div ref={form}>
+          <Panel title={t("Message details", "جزئیات پیام")}>
+            <p className={styles.help}>
+              {t(
+                "Routine templates are ready to use. Check the preview, then approve sending.",
+                "قالب‌های روتین آمادهٔ استفاده‌اند. پیش‌نمایش را بررسی کنید و ارسال را تأیید کنید.",
+              )}
+            </p>
+            <div className={styles.split}>
+              <Field label={t("Template", "قالب")}>
+                <select
+                  disabled={busy}
+                  className={styles.select}
+                  value={templateId}
+                  onChange={(e) => chooseTemplate(e.target.value)}
                 >
-                  {value === "en" ? "English" : "فارسی"}
-                </button>
-              ))}
+                  <option value="">{t("Blank message", "متن آزاد")}</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name[locale]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t("Email language", "زبان ایمیل")}>
+                <select
+                  disabled={busy}
+                  className={styles.select}
+                  value={language}
+                  onChange={(e) => {
+                    const value = e.target.value as AdminLocale | "recipient";
+                    setLanguage(value);
+                    if (value !== "recipient") setEditLanguage(value);
+                    setPreview(null);
+                    setProblem(null);
+                  }}
+                >
+                  <option value="en">English</option>
+                  <option value="fa">فارسی</option>
+                  <option value="recipient">
+                    {t("Use each recipient's preference", "طبق ترجیح هر گیرنده")}
+                  </option>
+                </select>
+              </Field>
             </div>
-          )}
-          <Field label={t("Subject", "موضوع")}>
-            <input
-              disabled={busy}
-              className={styles.input}
-              lang={editLanguage}
-              dir={editLanguage === "fa" ? "rtl" : "ltr"}
-              value={subjects[editLanguage]}
-              onChange={(e) => {
-                setSubjects({ ...subjects, [editLanguage]: e.target.value });
-                setPreview(null);
-              }}
-            />
-          </Field>
-          <Field
-            label={t("Message", "متن پیام")}
-            help={t(
-              "Supported variables: {{first_name}}, {{app_link}}, {{pilot_end_date}}. Review every resolved value before sending.",
-              "متغیرهای مجاز: {{first_name}}، {{app_link}}، {{pilot_end_date}}. مقدارهای پرشده را پیش از ارسال بررسی کنید.",
-            )}
-          >
-            <textarea
-              disabled={busy}
-              className={styles.input}
-              lang={editLanguage}
-              dir={editLanguage === "fa" ? "rtl" : "ltr"}
-              value={bodies[editLanguage]}
-              onChange={(e) => {
-                setBodies({ ...bodies, [editLanguage]: e.target.value });
-                setPreview(null);
-              }}
-            />
-          </Field>
-          {detectedVariables[editLanguage].length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <h3>{t("Complete template fields", "تکمیل فیلدهای قالب")}</h3>
-              <p className={styles.help}>
-                {t(
-                  "These details fill the selected message. Account, allowance and application-link values are filled securely by the server.",
-                  "این جزئیات در متن انتخابی قرار می‌گیرند. اطلاعات حساب، سهمیه و لینک اپ به‌صورت امن از سرور پر می‌شوند.",
-                )}
-              </p>
-              <div className={styles.split}>
-                {detectedVariables[editLanguage].map((name) => (
-                  <Field key={name} label={templateVariableLabel(name, t)} help={`{{${name}}}`}>
-                    <textarea
-                      disabled={busy}
-                      className={styles.input}
-                      style={{ minHeight: 96 }}
-                      lang={editLanguage}
-                      dir={editLanguage === "fa" ? "rtl" : "ltr"}
-                      value={variables[editLanguage][name] ?? ""}
-                      onChange={(e) => {
-                        setVariables({
-                          ...variables,
-                          [editLanguage]: { ...variables[editLanguage], [name]: e.target.value },
-                        });
-                        setPreview(null);
-                      }}
-                    />
-                  </Field>
+            {language === "recipient" && (
+              <div className={styles.tabs}>
+                {(["en", "fa"] as const).map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={styles.button}
+                    aria-pressed={editLanguage === value}
+                    onClick={() => {
+                      setEditLanguage(value);
+                      setProblem(null);
+                    }}
+                  >
+                    {value === "en"
+                      ? t("Edit English", "ویرایش انگلیسی")
+                      : t("Edit Persian", "ویرایش فارسی")}
+                  </button>
                 ))}
               </div>
-            </div>
-          )}
-          <Field label={t("Internal reason (optional)", "دلیل داخلی (اختیاری)")}>
-            <input
-              disabled={busy}
-              className={styles.input}
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                setPreview(null);
-              }}
-            />
-          </Field>
-          {invalid && (
-            <Notice error>
-              {t(
-                "Complete the subject, message and template fields for the chosen language. Recipient preference needs both language versions.",
-                "موضوع، متن و فیلدهای قالبِ زبان انتخابی را کامل کنید. گزینهٔ ترجیح گیرنده به هر دو نسخهٔ زبانی نیاز دارد.",
-              )}
-            </Notice>
-          )}
-          <div className={styles.actions}>
-            <Button
-              primary
-              disabled={busy}
-              onClick={() => {
-                void prepare();
-              }}
+            )}
+            <Field
+              label={t("Subject", "موضوع")}
+              help={currentProblem?.field === "subject" ? currentProblem.message : undefined}
             >
-              {t("Prepare exact preview", "آماده‌کردن پیش‌نمایش دقیق")}
-            </Button>
-            <Button onClick={() => navigate("users")}>
-              {t("Change recipients", "تغییر گیرندگان")}
-            </Button>
-          </div>
-        </Panel>
-      )}
+              <input
+                disabled={busy}
+                className={styles.input}
+                lang={editLanguage}
+                dir={editLanguage === "fa" ? "rtl" : "ltr"}
+                value={subjects[editLanguage]}
+                data-compose-field="subject"
+                aria-invalid={currentProblem?.field === "subject" || undefined}
+                onChange={(e) => {
+                  setSubjects({ ...subjects, [editLanguage]: e.target.value });
+                  setPreview(null);
+                  setProblem(null);
+                }}
+              />
+            </Field>
+            <Field
+              label={t("Message", "متن پیام")}
+              help={
+                currentProblem?.field === "body"
+                  ? currentProblem.message
+                  : t(
+                      "Personal details and the app link are filled automatically in the preview. You can edit the message.",
+                      "اطلاعات شخصی و لینک اپ در پیش‌نمایش خودکار تکمیل می‌شوند. می‌توانید متن را ویرایش کنید.",
+                    )
+              }
+            >
+              <textarea
+                disabled={busy}
+                className={styles.input}
+                lang={editLanguage}
+                dir={editLanguage === "fa" ? "rtl" : "ltr"}
+                value={bodies[editLanguage]}
+                data-compose-field="body"
+                aria-invalid={currentProblem?.field === "body" || undefined}
+                onChange={(e) => {
+                  setBodies({ ...bodies, [editLanguage]: e.target.value });
+                  setPreview(null);
+                  setProblem(null);
+                }}
+              />
+            </Field>
+            <Field
+              label={t("Additional message (optional)", "پیام تکمیلی (اختیاری)")}
+              help={t(
+                "Added to every selected recipient's message. Leave empty to use the ready template.",
+                "این توضیح به پیام همهٔ گیرندگان انتخاب‌شده اضافه می‌شود. برای استفاده از قالب آماده خالی بگذارید.",
+              )}
+            >
+              <textarea
+                disabled={busy}
+                className={styles.input}
+                style={{ minHeight: 96 }}
+                dir="auto"
+                maxLength={4000}
+                value={note}
+                onChange={(event) => {
+                  setNote(event.target.value);
+                  setPreview(null);
+                }}
+              />
+            </Field>
+            <details
+              className={styles.emailAdvanced}
+              open={advanced}
+              onToggle={(event) => setAdvanced(event.currentTarget.open)}
+            >
+              <summary>{t("Advanced options", "تنظیمات بیشتر")}</summary>
+              <p className={styles.help}>
+                {t(
+                  "Optional changes to the design and template details. Recalino branding is already included.",
+                  "تغییرات اختیاری در ظاهر و جزئیات قالب. برندینگ ریکالینو از قبل اضافه شده است.",
+                )}
+              </p>
+              <PresentationFields
+                value={presentations[editLanguage]}
+                language={editLanguage}
+                t={t}
+                busy={busy}
+                onChange={(value) => {
+                  setPresentations({ ...presentations, [editLanguage]: value });
+                  setPreview(null);
+                  setProblem(null);
+                }}
+                problem={
+                  currentProblem?.field === "actionLabel" || currentProblem?.field === "actionUrl"
+                    ? currentProblem.field
+                    : undefined
+                }
+              />
+              {editableVariables.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <h3>{t("Template details", "جزئیات قالب")}</h3>
+                  <p className={styles.help}>
+                    {t(
+                      "Ready details can be changed here. Custom placeholders need their message-specific text.",
+                      "جزئیات آماده را می‌توانید اینجا تغییر دهید. بخش‌های سفارشی به متن مخصوص همان پیام نیاز دارند.",
+                    )}
+                  </p>
+                  <div className={styles.split}>
+                    {editableVariables.map((name) => (
+                      <Field
+                        key={name}
+                        label={templateVariableLabel(name, t)}
+                        help={
+                          currentProblem?.field === `variable-${name}`
+                            ? currentProblem.message
+                            : template?.variableDefaults?.[editLanguage]?.[name]
+                              ? t(
+                                  "Leave empty to use the ready template text.",
+                                  "اگر خالی باشد، متن آمادهٔ قالب استفاده می‌شود.",
+                                )
+                              : undefined
+                        }
+                      >
+                        <textarea
+                          disabled={busy}
+                          className={styles.input}
+                          style={{ minHeight: 96 }}
+                          lang={editLanguage}
+                          dir={editLanguage === "fa" ? "rtl" : "ltr"}
+                          value={variables[editLanguage][name] ?? ""}
+                          data-compose-field={`variable-${name}`}
+                          aria-invalid={currentProblem?.field === `variable-${name}` || undefined}
+                          onChange={(e) => {
+                            setVariables({
+                              ...variables,
+                              [editLanguage]: {
+                                ...variables[editLanguage],
+                                [name]: e.target.value,
+                              },
+                            });
+                            setPreview(null);
+                            setProblem(null);
+                          }}
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Field label={t("Internal reason (optional)", "دلیل داخلی (اختیاری)")}>
+                <input
+                  disabled={busy}
+                  className={styles.input}
+                  value={reason}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    setPreview(null);
+                  }}
+                />
+              </Field>
+            </details>
+            {problem && (
+              <p className={styles.composeError} role="alert">
+                {problem.message}
+              </p>
+            )}
+            <div className={styles.actions}>
+              <Button
+                primary
+                disabled={busy}
+                onClick={() => {
+                  void prepare();
+                }}
+              >
+                {t("Preview email", "پیش‌نمایش ایمیل")}
+              </Button>
+              <Button onClick={() => navigate("users")}>
+                {t("Change recipients", "تغییر گیرندگان")}
+              </Button>
+            </div>
+          </Panel>
+        </div>
+      ) : null}
       {preview && (
         <Panel title={t("Review & approve", "بازبینی و تأیید")}>
           <Table
@@ -463,11 +959,17 @@ function Composer(props: AdminScreenProps) {
             >
               <p>
                 <bdi>{recipient.email}</bdi>
+                <span className={styles.badge}>
+                  {recipient.language === "fa" ? "فارسی · RTL" : "English · LTR"}
+                </span>
               </p>
               <h3>{recipient.subject}</h3>
-              <div className={styles.emailBody} dir="auto">
-                {recipient.body}
-              </div>
+              <BrandedPreview
+                presentation={recipient.presentation}
+                body={recipient.body}
+                language={recipient.language}
+                t={t}
+              />
             </div>
           )}
           {expired && (
@@ -627,6 +1129,19 @@ function Templates(props: AdminScreenProps) {
               }}
             />
           </Field>
+          <PresentationFields
+            value={templatePresentation(editing, editLanguage)}
+            language={editLanguage}
+            t={t}
+            busy={busy}
+            onChange={(value) => {
+              setEditing({
+                ...editing,
+                presentation: { ...editing.presentation, [editLanguage]: value },
+              });
+              setReview(false);
+            }}
+          />
           <Field label={t("Reason", "دلیل")}>
             <input
               className={styles.input}
@@ -656,7 +1171,8 @@ function Templates(props: AdminScreenProps) {
                   (lang) =>
                     editing.name[lang].trim() &&
                     editing.subject[lang].trim() &&
-                    editing.body[lang].trim(),
+                    editing.body[lang].trim() &&
+                    validPresentation(templatePresentation(editing, lang)),
                 )
               }
               onClick={() => {
@@ -669,6 +1185,10 @@ function Templates(props: AdminScreenProps) {
                       expectedVersion: editing.version,
                       subject: editing.subject,
                       body: editing.body,
+                      presentation: {
+                        en: presentationInput(templatePresentation(editing, "en")),
+                        fa: presentationInput(templatePresentation(editing, "fa")),
+                      },
                       reason,
                     },
                     t("Template version saved.", "نسخهٔ قالب ذخیره شد."),
@@ -780,7 +1300,15 @@ function Thread(props: AdminScreenProps) {
   const [language, setLanguage] = useState<AdminLocale>("en");
   const [source, setSource] = useState<"ai" | "template" | null>(null);
   const [notify, setNotify] = useState(thread?.notifyByEmail ?? false);
-  const [review, setReview] = useState(false);
+  const [replyPresentations, setReplyPresentations] = useState<
+    Record<AdminLocale, EmailPresentationSettings>
+  >({
+    en: { action: { label: "View conversation", url: "{{conversation_link}}" } },
+    fa: { action: { label: "مشاهدهٔ گفت‌وگو", url: "{{conversation_link}}" } },
+  });
+  const replyPresentation = replyPresentations[language];
+  const [replyPreview, setReplyPreview] = useState<AdminResult["replyPreview"] | null>(null);
+  const [invalidPresentation, setInvalidPresentation] = useState(false);
   if (!thread)
     return <Empty>{t("This conversation is unavailable.", "این گفت‌وگو در دسترس نیست.")}</Empty>;
   return (
@@ -825,7 +1353,7 @@ function Thread(props: AdminScreenProps) {
                 if (result?.body) {
                   setBody(result.body);
                   setSource(result.source ?? "template");
-                  setReview(false);
+                  setReplyPreview(null);
                 }
               });
             }}
@@ -853,7 +1381,7 @@ function Thread(props: AdminScreenProps) {
             value={language}
             onChange={(e) => {
               setLanguage(e.target.value as AdminLocale);
-              setReview(false);
+              setReplyPreview(null);
             }}
           >
             <option value="en">English</option>
@@ -869,7 +1397,7 @@ function Thread(props: AdminScreenProps) {
             value={body}
             onChange={(e) => {
               setBody(e.target.value);
-              setReview(false);
+              setReplyPreview(null);
             }}
           />
         </Field>
@@ -881,7 +1409,7 @@ function Thread(props: AdminScreenProps) {
             disabled={busy || !thread.notifyByEmail}
             onChange={(e) => {
               setNotify(e.target.checked);
-              setReview(false);
+              setReplyPreview(null);
             }}
           />
           {t("Also email the approved reply", "ارسال ایمیلی پاسخ تأییدشده")}
@@ -897,14 +1425,35 @@ function Thread(props: AdminScreenProps) {
                 "زبان‌آموز اعلان ایمیلی نخواسته است. پاسخ داخل اپ ثبت می‌شود.",
               )}
         </p>
-        {review && (
+        {notify && (
+          <PresentationFields
+            value={replyPresentation}
+            onChange={(value) => {
+              setReplyPresentations({ ...replyPresentations, [language]: value });
+              setReplyPreview(null);
+              setInvalidPresentation(false);
+            }}
+            language={language}
+            t={t}
+            busy={busy}
+          />
+        )}
+        {invalidPresentation && (
+          <Notice error>
+            {t(
+              "A button needs text and a valid HTTPS link.",
+              "دکمه به متن و لینک معتبر HTTPS نیاز دارد.",
+            )}
+          </Notice>
+        )}
+        {replyPreview && (
           <Notice>
             <strong>{t("Ready for your approval", "آمادهٔ تأیید شما")}</strong>
             <p>
               <bdi>{thread.email}</bdi>
             </p>
             <div className={styles.emailBody} dir="auto">
-              {body}
+              {replyPreview.body}
             </div>
             <p>
               {notify
@@ -913,16 +1462,51 @@ function Thread(props: AdminScreenProps) {
             </p>
           </Notice>
         )}
+        {replyPreview?.emailPreview && (
+          <div
+            className={styles.panel}
+            lang={replyPreview.language}
+            dir={replyPreview.language === "fa" ? "rtl" : "ltr"}
+          >
+            <p>
+              <bdi>{replyPreview.emailPreview.email}</bdi>
+            </p>
+            <h3>{replyPreview.emailPreview.subject}</h3>
+            <BrandedPreview
+              presentation={replyPreview.emailPreview.presentation}
+              body={replyPreview.emailPreview.body}
+              language={replyPreview.language}
+              t={t}
+            />
+          </div>
+        )}
         <div className={styles.actions}>
           <Button
             primary
             disabled={busy || !body.trim()}
             onClick={() => {
-              if (!review) setReview(true);
-              else
+              if (!replyPreview) {
+                const valid = !notify || validPresentation(replyPresentation);
+                setInvalidPresentation(!valid);
+                if (valid)
+                  void act("feedback.preview", {
+                    threadId: thread.id,
+                    body,
+                    language,
+                    notifyByEmail: notify,
+                    ...(notify ? { presentation: presentationInput(replyPresentation) } : {}),
+                  }).then((result) => {
+                    if (result?.replyPreview) setReplyPreview(result.replyPreview);
+                  });
+              } else
                 void act(
                   "feedback.reply",
-                  { threadId: thread.id, body, language, notifyByEmail: notify },
+                  {
+                    threadId: thread.id,
+                    draftId: replyPreview.draftId,
+                    revision: replyPreview.revision,
+                    notifyByEmail: notify,
+                  },
                   t(
                     "The approved reply was recorded. Check email history for any notification delivery.",
                     "پاسخ تأییدشده ثبت شد. وضعیت تحویل اعلان را در تاریخچهٔ ایمیل بررسی کنید.",
@@ -930,14 +1514,14 @@ function Thread(props: AdminScreenProps) {
                 ).then((result) => {
                   if (result) {
                     setBody("");
-                    setReview(false);
+                    setReplyPreview(null);
                     setSource(null);
                     reload();
                   }
                 });
             }}
           >
-            {review
+            {replyPreview
               ? t("Approve & send reply", "تأیید و ارسال پاسخ")
               : t("Review reply", "بازبینی پاسخ")}
           </Button>

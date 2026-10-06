@@ -1,8 +1,15 @@
+import { createHash } from "node:crypto";
 import { sql } from "kysely";
+import { createTransport } from "nodemailer";
+import type { SendMailOptions } from "nodemailer/lib/mailer";
+import type { SMTPTransportOptions } from "nodemailer/lib/smtp-transport";
+import { z } from "zod";
 import { accountExists } from "../acc";
 import { type SupportDb, transaction } from "./common";
 import type { OutboundEmail } from "./contracts";
 import { type OutboxRow, outbound } from "./email";
+import { getEmailLogo } from "./email-logo";
+import { validateEmailPresentation } from "./presentation";
 
 export interface EmailProvider {
   send(
@@ -13,38 +20,265 @@ export interface EmailProvider {
   >;
 }
 export interface EmailConfiguration {
-  provider: "resend";
+  provider: "resend" | "gmail";
   from: string;
   replyTo?: string;
   appLink: string;
 }
+export interface GmailEmailConfiguration extends EmailConfiguration {
+  provider: "gmail";
+  user: string;
+  appPassword: string;
+}
+export interface GmailTransport {
+  sendMail(message: SendMailOptions): Promise<unknown>;
+  close(): void;
+}
+export type GmailTransportFactory = (options: SMTPTransportOptions) => GmailTransport;
+
+/** Read only the approved content; presentation changes never re-render an existing outbox row. */
+function frozenEmailContent(message: OutboundEmail): {
+  text: string;
+  html?: string;
+  logo?: ReturnType<typeof getEmailLogo>;
+} {
+  if (message.presentation == null) return { text: message.body };
+  const snapshot = validateEmailPresentation(message.presentation);
+  if (snapshot.language !== message.language || snapshot.body !== message.body)
+    throw new Error("email_presentation_invalid");
+  return { text: snapshot.text, html: snapshot.html, logo: getEmailLogo(snapshot.logoVersion) };
+}
+
+function hasHeaderControls(value: string): boolean {
+  return [...value].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
+}
+const mailboxSchema = z.email().max(320);
+function parseMailbox(value: string | undefined): { address: string; name?: string } | null {
+  if (!value || value.length > 500 || hasHeaderControls(value)) return null;
+  const raw = value.trim();
+  if (mailboxSchema.safeParse(raw).success) return { address: raw };
+  const match = /^([^<>]+)<([^<>]+)>$/.exec(raw);
+  const address = match?.[2]?.trim();
+  const name = match?.[1]?.trim().replace(/^"(.*)"$/, "$1");
+  return address && name && mailboxSchema.safeParse(address).success ? { address, name } : null;
+}
+function gmailUser(value: string | undefined): string | null {
+  const raw = value?.trim().toLowerCase();
+  return raw && mailboxSchema.safeParse(raw).success && /@(gmail|googlemail)\.com$/.test(raw)
+    ? raw
+    : null;
+}
+function gmailPassword(value: string | undefined): string | null {
+  // Google displays app passwords in four space-separated groups. Reject other whitespace.
+  const password = value?.replace(/ /g, "");
+  return password && /^[a-zA-Z0-9]{16}$/.test(password) ? password : null;
+}
+function validAppLink(value: string | undefined): boolean {
+  if (!value || hasHeaderControls(value)) return false;
+  try {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) && !!url.hostname && !url.username && !url.password
+    );
+  } catch {
+    return false;
+  }
+}
 export function emailConfigStatus(env: Record<string, string | undefined> = process.env): {
   configured: boolean;
-  provider: "resend";
+  provider: "resend" | "gmail" | null;
   sender: string | null;
   replyTo: string | null;
   appLink: string | null;
   missing: string[];
 } {
   const missing: string[] = [];
-  if (!env.RESEND_API_KEY?.trim()) missing.push("RESEND_API_KEY");
-  if (
-    !env.RECALINO_EMAIL_FROM ||
-    !/@/.test(env.RECALINO_EMAIL_FROM) ||
-    /[\r\n]/.test(env.RECALINO_EMAIL_FROM)
-  )
-    missing.push("RECALINO_EMAIL_FROM");
-  if (!env.RECALINO_PUBLIC_APP_URL || !/^https?:\/\//.test(env.RECALINO_PUBLIC_APP_URL))
-    missing.push("RECALINO_PUBLIC_APP_URL");
+  const selected = env.RECALINO_EMAIL_PROVIDER?.trim() ?? "resend";
+  const provider = selected === "resend" || selected === "gmail" ? selected : null;
+  const from = parseMailbox(env.RECALINO_EMAIL_FROM);
+  const replyTo = parseMailbox(env.RECALINO_EMAIL_REPLY_TO);
+  if (!provider) missing.push("RECALINO_EMAIL_PROVIDER");
+  if (provider === "resend" && !env.RESEND_API_KEY?.trim()) missing.push("RESEND_API_KEY");
+  if (provider === "gmail") {
+    const user = gmailUser(env.RECALINO_GMAIL_USER);
+    if (!user) missing.push("RECALINO_GMAIL_USER");
+    if (!gmailPassword(env.RECALINO_GMAIL_APP_PASSWORD))
+      missing.push("RECALINO_GMAIL_APP_PASSWORD");
+    if (from && user && from.address.toLowerCase() !== user) missing.push("RECALINO_EMAIL_FROM");
+  }
+  if (!from) missing.push("RECALINO_EMAIL_FROM");
+  if (env.RECALINO_EMAIL_REPLY_TO?.trim() && !replyTo) missing.push("RECALINO_EMAIL_REPLY_TO");
+  if (!validAppLink(env.RECALINO_PUBLIC_APP_URL)) missing.push("RECALINO_PUBLIC_APP_URL");
   return {
     configured: missing.length === 0,
-    provider: "resend",
-    sender: missing.includes("RECALINO_EMAIL_FROM") ? null : (env.RECALINO_EMAIL_FROM ?? null),
-    replyTo: env.RECALINO_EMAIL_REPLY_TO ?? null,
+    provider,
+    sender: missing.includes("RECALINO_EMAIL_FROM")
+      ? null
+      : (env.RECALINO_EMAIL_FROM?.trim() ?? null),
+    replyTo: replyTo ? (env.RECALINO_EMAIL_REPLY_TO?.trim() ?? null) : null,
     appLink: missing.includes("RECALINO_PUBLIC_APP_URL")
       ? null
       : (env.RECALINO_PUBLIC_APP_URL ?? null),
     missing,
+  };
+}
+
+const smtpReceiptSchema = z.object({
+  accepted: z.array(z.union([z.string(), z.object({ address: z.string() })])),
+  rejected: z.array(z.unknown()),
+  pending: z.array(z.unknown()).optional(),
+  response: z.string(),
+  messageId: z.string(),
+});
+function smtpFailure(error: unknown): Awaited<ReturnType<EmailProvider["send"]>> {
+  // Never persist raw SMTP responses: they may echo message content or credentials.
+  const detail = z
+    .object({
+      code: z.string().optional(),
+      command: z.string().optional(),
+      responseCode: z.number().optional(),
+    })
+    .safeParse(error);
+  if (detail.success) {
+    const { code, command, responseCode } = detail.data;
+    const rejected = responseCode !== undefined && responseCode >= 400 && responseCode <= 599;
+    if (code === "EAUTH" && command?.startsWith("AUTH") && rejected)
+      return { state: "failed", error: "smtp_authentication_rejected" };
+    if (code === "EENVELOPE" && /^(MAIL FROM|RCPT TO)$/.test(command ?? "") && rejected)
+      return { state: "failed", error: "smtp_envelope_rejected" };
+  }
+  return { state: "unknown", error: "smtp_result_unverified" };
+}
+
+/** Gmail has no idempotency API; ambiguous results require reconciliation, never automatic retry. */
+export function createGmailProvider(
+  config: GmailEmailConfiguration,
+  transportFactory: GmailTransportFactory = (options) => createTransport(options),
+): EmailProvider {
+  const user = gmailUser(config.user);
+  const password = gmailPassword(config.appPassword);
+  const from = parseMailbox(config.from);
+  const replyTo = parseMailbox(config.replyTo);
+  if (
+    !user ||
+    !password ||
+    !from ||
+    from.address.toLowerCase() !== user ||
+    (config.replyTo && !replyTo) ||
+    !validAppLink(config.appLink)
+  )
+    throw new Error("invalid_gmail_configuration");
+  return {
+    async send(message, key) {
+      const recipient = mailboxSchema.safeParse(message.email);
+      if (
+        !recipient.success ||
+        hasHeaderControls(message.subject) ||
+        !message.subject.trim() ||
+        message.subject.length > 300 ||
+        !message.body.trim() ||
+        message.body.length > 24000 ||
+        message.body.includes("\0") ||
+        !key
+      )
+        return { state: "failed", error: "smtp_message_invalid" };
+      let content: ReturnType<typeof frozenEmailContent>;
+      try {
+        content = frozenEmailContent(message);
+      } catch {
+        return { state: "failed", error: "email_presentation_invalid" };
+      }
+      const messageId = `<recalino.${createHash("sha256").update(key).digest("hex")}@${user.split("@")[1]}>`;
+      let transport: GmailTransport;
+      try {
+        transport = transportFactory({
+          host: "smtp.gmail.com",
+          port: 465,
+          secure: true,
+          forceAuth: true,
+          auth: { user, pass: password },
+          tls: { minVersion: "TLSv1.2", rejectUnauthorized: true, servername: "smtp.gmail.com" },
+          dnsTimeout: 5000,
+          connectionTimeout: 5000,
+          greetingTimeout: 5000,
+          socketTimeout: 10000,
+          logger: false,
+          debug: false,
+          transactionLog: false,
+          disableFileAccess: true,
+          disableUrlAccess: true,
+          maxRecipients: 1,
+        });
+      } catch {
+        return { state: "failed", error: "smtp_initialization_failed" };
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const timeout = new Promise<Awaited<ReturnType<EmailProvider["send"]>>>((resolve) => {
+          timer = setTimeout(
+            () => resolve({ state: "unknown", error: "smtp_result_unverified" }),
+            15000,
+          );
+        });
+        const sending = transport
+          .sendMail({
+            from: { ...from, address: user },
+            to: { address: recipient.data },
+            envelope: { from: user, to: [recipient.data] },
+            ...(replyTo ? { replyTo } : {}),
+            subject: message.subject,
+            text: content.text,
+            ...(content.html && content.logo
+              ? {
+                  html: content.html,
+                  encoding: "base64",
+                  attachments: [
+                    {
+                      filename: content.logo.filename,
+                      content: Buffer.from(content.logo.contentBase64, "base64"),
+                      contentType: content.logo.contentType,
+                      contentDisposition: "inline",
+                      cid: content.logo.cid,
+                    },
+                  ],
+                }
+              : {}),
+            textEncoding: "base64",
+            messageId,
+            disableFileAccess: true,
+            disableUrlAccess: true,
+          })
+          .then((receipt): Awaited<ReturnType<EmailProvider["send"]>> => {
+            const parsed = smtpReceiptSchema.safeParse(receipt);
+            if (parsed.success) {
+              const info = parsed.data;
+              const accepted = info.accepted[0];
+              const address = typeof accepted === "string" ? accepted : accepted?.address;
+              if (
+                info.accepted.length === 1 &&
+                address?.toLowerCase() === recipient.data.toLowerCase() &&
+                info.rejected.length === 0 &&
+                !info.pending?.length &&
+                /^2\d\d\b/.test(info.response) &&
+                info.messageId === messageId
+              )
+                return { state: "sent", providerId: messageId };
+            }
+            return { state: "unknown", error: "smtp_response_unverified" };
+          })
+          .catch(smtpFailure);
+        return await Promise.race([sending, timeout]);
+      } catch (error) {
+        return smtpFailure(error);
+      } finally {
+        clearTimeout(timer);
+        try {
+          transport.close();
+        } catch {
+          // A cleanup failure cannot change an already verified SMTP result.
+        }
+      }
+    },
   };
 }
 export function createResendProvider(
@@ -54,6 +288,12 @@ export function createResendProvider(
 ): EmailProvider {
   return {
     async send(message, key) {
+      let content: ReturnType<typeof frozenEmailContent>;
+      try {
+        content = frozenEmailContent(message);
+      } catch {
+        return { state: "failed", error: "email_presentation_invalid" };
+      }
       try {
         const response = await fetcher("https://api.resend.com/emails", {
           method: "POST",
@@ -66,7 +306,20 @@ export function createResendProvider(
             from: config.from,
             to: [message.email],
             subject: message.subject,
-            text: message.body,
+            text: content.text,
+            ...(content.html && content.logo
+              ? {
+                  html: content.html,
+                  attachments: [
+                    {
+                      filename: content.logo.filename,
+                      content: content.logo.contentBase64,
+                      content_type: content.logo.contentType,
+                      content_id: content.logo.cid,
+                    },
+                  ],
+                }
+              : {}),
             ...(config.replyTo ? { reply_to: config.replyTo } : {}),
           }),
           signal: AbortSignal.timeout(15000),
@@ -89,6 +342,15 @@ export function getEmailProvider(
 ): EmailProvider | null {
   const status = emailConfigStatus(env);
   if (!status.configured) return null;
+  if (status.provider === "gmail")
+    return createGmailProvider({
+      provider: "gmail",
+      user: env.RECALINO_GMAIL_USER ?? "",
+      appPassword: env.RECALINO_GMAIL_APP_PASSWORD ?? "",
+      from: status.sender ?? "",
+      appLink: status.appLink ?? "",
+      ...(status.replyTo ? { replyTo: status.replyTo } : {}),
+    });
   return createResendProvider(env.RESEND_API_KEY ?? "", {
     provider: "resend",
     from: status.sender ?? "",
@@ -117,17 +379,7 @@ export async function runEmailOutbox(
   cancelled: number;
 }> {
   const env = options.env ?? process.env;
-  const status = emailConfigStatus(env);
-  const provider =
-    options.provider ??
-    (status.configured
-      ? createResendProvider(env.RESEND_API_KEY ?? "", {
-          provider: "resend",
-          from: status.sender ?? "",
-          appLink: status.appLink ?? "",
-          ...(status.replyTo ? { replyTo: status.replyTo } : {}),
-        })
-      : null);
+  const provider = options.provider ?? getEmailProvider(env);
   const result = {
     configured: !!provider,
     processed: 0,
@@ -210,8 +462,20 @@ export async function runEmailOutbox(
       }
     }
     let attempt: Awaited<ReturnType<EmailProvider["send"]>>;
+    let message: OutboundEmail;
     try {
-      attempt = await provider.send(outbound(row), `recalino-email/${row.id}`);
+      message = outbound(row);
+      // Deterministic snapshot validation fails before dispatch. It is not an ambiguous delivery.
+      frozenEmailContent(message);
+    } catch {
+      await sql`update support.email_outbox set state='failed',last_error='email_presentation_invalid' where id=${row.id}::uuid and state='sending'`.execute(
+        db,
+      );
+      result.failed++;
+      continue;
+    }
+    try {
+      attempt = await provider.send(message, `recalino-email/${row.id}`);
     } catch {
       attempt = { state: "unknown", error: "provider_result_unverified" };
     }

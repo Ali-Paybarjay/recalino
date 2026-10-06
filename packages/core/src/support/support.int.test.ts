@@ -186,6 +186,97 @@ describe("AC-FBK-001/002/003/004 ownership, idempotency and approval", () => {
   });
 });
 describe("AC-ADM-008/009/010/011 durable immutable mail approval", () => {
+  it("copies exactly reviewed branded HTML/text to the outbox and prevents mutations of approved content", async () => {
+    const alice = await learner();
+    const draft = await createEmailDraft(db, owner, {
+      ...emailInput(alice.userId),
+      presentation: {
+        headline: "Reviewed welcome",
+        preheader: "The exact approved design",
+        action: { label: "Open your learning space", url: "{{app_link}}" },
+      },
+    });
+    const preview = draft.recipients[0]?.presentation;
+    expect(preview).toBeTruthy();
+    const approved = await approveEmailDraft(db, owner, { draftId: draft.draftId, revision: 1 });
+    expect(approved.emails[0]?.presentation).toEqual(preview);
+    expect((await getEmailDraft(db, owner, draft.draftId)).recipients[0]?.presentation).toEqual(
+      preview,
+    );
+    const id = approved.emails[0]?.id;
+    if (!id) throw new Error("Missing synthetic approved email");
+    await expect(
+      sql`update support.email_outbox set body='Unreviewed changed content' where id=${id}::uuid`.execute(
+        db,
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
+    expect((await listEmails(db, owner, { draftId: draft.draftId }))[0]?.presentation).toEqual(
+      preview,
+    );
+  });
+  it("keeps a legacy plain-text draft plain when approved after the branded renderer release", async () => {
+    const alice = await learner();
+    const draft = await createEmailDraft(db, owner, {
+      ...emailInput(alice.userId),
+      templateId: null,
+      subject: "Legacy synthetic subject",
+      body: "Original legacy plain text",
+    });
+    const legacyRecipients = draft.recipients.map(
+      ({ presentation: _presentation, ...recipient }) => recipient,
+    );
+    await sql`update support.email_draft set recipients=${JSON.stringify(legacyRecipients)}::jsonb where id=${draft.draftId}::uuid`.execute(
+      db,
+    );
+    const approved = await approveEmailDraft(db, owner, { draftId: draft.draftId, revision: 1 });
+    expect(approved.emails[0]?.presentation).toBeNull();
+    expect(approved.emails[0]?.body).toBe("Original legacy plain text");
+  });
+  it("freezes the reply email, its conversation CTA and verified recipient at preview time", async () => {
+    const alice = await learner();
+    const thread = await submitFeedback(db, alice, input());
+    const recipient = {
+      userId: alice.userId,
+      email: `${alice.userId}@example.test`,
+      firstName: "Sample learner",
+      language: "en" as const,
+    };
+    const draft = await createReplyDraft(db, owner, {
+      threadId: thread.id,
+      operationKey: randomUUID(),
+      body: "Reviewed response",
+      language: "en",
+      appLink: "https://example.invalid",
+      recipient,
+      presentation: {
+        headline: "Hello {{first_name}}",
+        action: { label: "View reply", url: "{{conversation_link}}" },
+      },
+    });
+    expect(draft.emailPreview?.presentation.action?.url).toBe(
+      `https://example.invalid/help/${thread.id}`,
+    );
+    await expect(
+      approveReply(db, owner, {
+        draftId: draft.id,
+        revision: 1,
+        reason: "Stale synthetic address",
+        recipient: { ...recipient, email: "changed@example.test" },
+      }),
+    ).rejects.toMatchObject({ code: "conflict" });
+    expect((await getFeedbackThread(db, alice, thread.id)).messages).toHaveLength(1);
+    await approveReply(db, owner, {
+      draftId: draft.id,
+      revision: 1,
+      reason: "Reviewed synthetic branded reply",
+      recipient,
+      appLink: "https://changed.invalid",
+    });
+    const email = (await listEmails(db, owner, { userId: alice.userId }))[0];
+    expect(email?.presentation).toEqual(draft.emailPreview?.presentation);
+    expect(email?.body).toBe(draft.emailPreview?.body);
+    expect(email?.presentation?.html).not.toContain("https://changed.invalid");
+  });
   it("supports exact freeform snapshots without creating a welcome send", async () => {
     const alice = await learner();
     const request = emailInput(alice.userId);

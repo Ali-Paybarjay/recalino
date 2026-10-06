@@ -87,6 +87,13 @@ function Settings(props: AdminScreenProps) {
                 </td>
                 <td>
                   <bdi>{data.settings.senderEmail ?? "—"}</bdi>
+                  <small className={styles.muted}>
+                    {data.settings.emailProvider === "gmail"
+                      ? "Gmail"
+                      : data.settings.emailProvider === "resend"
+                        ? "Resend"
+                        : t("No provider selected", "سرویس مشخص نشده است")}
+                  </small>
                 </td>
               </tr>
               <tr>
@@ -118,12 +125,28 @@ function Settings(props: AdminScreenProps) {
             </Table>
             {!data.settings.senderConfigured && (
               <Notice warning>
-                {t(
-                  "Email delivery needs a verified sender and secure provider configuration. Drafts and previews can still be prepared; delivery status is shown honestly.",
-                  "ارسال ایمیل به فرستندهٔ تأییدشده و تنظیم امن سرویس نیاز دارد. پیش‌نویس و پیش‌نمایش آماده می‌شوند و وضعیت تحویل دقیق نمایش داده می‌شود.",
-                )}
+                {data.settings.emailProvider === "gmail"
+                  ? t(
+                      "Gmail setup is incomplete. Connect the sender account with an App Password stored securely on the server. Approved messages stay queued until setup is complete.",
+                      "تنظیم Gmail کامل نشده است. حساب فرستنده باید با App Password ذخیره‌شدهٔ امن روی سرور متصل شود. پیام‌های تأییدشده تا تکمیل تنظیمات در صف می‌مانند.",
+                    )
+                  : data.settings.emailProvider === "resend"
+                    ? t(
+                        "Email setup is incomplete. Resend needs a verified sending domain and secure provider configuration. Approved messages stay queued until setup is complete.",
+                        "تنظیم ایمیل کامل نشده است. Resend به دامنهٔ فرستندهٔ تأییدشده و تنظیم امن سرویس نیاز دارد. پیام‌های تأییدشده تا تکمیل تنظیمات در صف می‌مانند.",
+                      )
+                    : t(
+                        "Select and configure an email service before sending. Approved messages stay queued until setup is complete.",
+                        "سرویس ایمیل باید پیش از ارسال انتخاب و تنظیم شود. پیام‌های تأییدشده تا تکمیل تنظیمات در صف می‌مانند.",
+                      )}
               </Notice>
             )}
+            <p className={styles.help}>
+              {t(
+                "Readiness reports configuration only. Each approved message has its own sending result in Email history.",
+                "آمادگی فقط وضعیت تنظیمات را نشان می‌دهد. نتیجهٔ ارسال هر پیام تأییدشده در تاریخچهٔ ایمیل‌ها ثبت می‌شود.",
+              )}
+            </p>
           </>
         ) : (
           <Empty>

@@ -14,6 +14,8 @@ export type {
   AuditItem,
   BackupItem,
   Dimension,
+  EmailPresentationPreview,
+  EmailPresentationSettings,
   EmailPreview,
   EmailTemplate,
   FeedbackMessage,

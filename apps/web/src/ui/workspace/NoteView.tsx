@@ -51,8 +51,11 @@ export function NoteView({
   const [editing, setEditing] = useState<string | null>(null),
     [text, setText] = useState("");
   const key = useRef<{ payload: string; key: string } | null>(null);
+  const saving = useRef(false);
   const current = readOnlyRevision ?? notebook?.current,
-    model = current?.model;
+    preview = current ? null : latest,
+    model = current?.model ?? preview?.model;
+  const canEdit = !!notebook && !readOnlyRevision;
   const claimIds = new Set(
     model
       ? [
@@ -71,7 +74,12 @@ export function NoteView({
   const unmatchedItems = Object.entries(current?.edits.items ?? {}).filter(
     ([id]) => !itemIds.has(id),
   );
-  async function save(change: Omit<PublishNotebookInput, "expectedRevisionId">) {
+  async function save(
+    change: Omit<PublishNotebookInput, "expectedRevisionId">,
+    makeFlashcards = false,
+  ) {
+    if (saving.current) return;
+    saving.current = true;
     const body = { expectedRevisionId: notebook?.current.id ?? null, ...change };
     setBusy(true);
     setProblem("");
@@ -86,11 +94,15 @@ export function NoteView({
       setNotebook(value);
       setEditing(null);
       key.current = null;
-      setNotice("Notes saved. Your earlier versions are still available.");
+      setNotice(
+        "Notes saved. You can now make flashcards. Your earlier versions are still available.",
+      );
       router.refresh();
+      if (makeFlashcards) router.push(`/classes/${sessionId}/cards`);
     } catch (failure) {
       setProblem(failure instanceof Error ? failure.message : "Notes could not be saved.");
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
@@ -99,7 +111,7 @@ export function NoteView({
       <article key={claim.id} className="preview-list-item">
         <p style={{ whiteSpace: "pre-wrap" }}>{claim.text}</p>
         <ClaimEvidence claim={claim} userId={userId} />
-        {!readOnlyRevision && (
+        {canEdit && (
           <Button
             secondary
             disabled={busy}
@@ -130,32 +142,55 @@ export function NoteView({
           <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes/versions`}>
             Version history
           </LinkButton>
-          {model && (
+          {notebook && readOnlyRevision && (
             <LinkButton disabled={busy} href={`/classes/${sessionId}/cards`}>
               Make flashcards
             </LinkButton>
           )}
-          {model && (
+          {notebook && (
             <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/export`}>
               Download notes and cards
             </LinkButton>
           )}
         </Actions>
       )}
-      {!model ? (
-        <Panel title={latest ? "Your class notes are ready" : "Start with class material"}>
+      {preview && (
+        <Panel title="Your class notes are ready">
           <p>
-            {latest
-              ? "Publish these notes to begin. You can edit them and make cards afterwards."
-              : "Add class sources, then process the material to create notes."}
+            Read the preview below. Save these notes to edit them, make flashcards, or download
+            them.
           </p>
-          {latest ? (
-            <Button disabled={busy} onClick={() => save({ knowledgeVersionId: latest.id })}>
-              Publish notes
+          <Actions>
+            <Button disabled={busy} onClick={() => save({ knowledgeVersionId: preview.id }, true)}>
+              {busy ? "Saving notes…" : "Save notes and make flashcards"}
             </Button>
-          ) : (
-            <LinkButton href={`/classes/${sessionId}/sources`}>Add sources</LinkButton>
-          )}
+            <Button
+              secondary
+              disabled={busy}
+              onClick={() => save({ knowledgeVersionId: preview.id })}
+            >
+              {busy ? "Saving notes…" : "Save class notes"}
+            </Button>
+          </Actions>
+        </Panel>
+      )}
+      {notebook && !readOnlyRevision && !embedded && (
+        <Panel title="Next: make flashcards">
+          <p>Your class notes are saved. Choose the learning items you want to practise.</p>
+          <LinkButton disabled={busy} href={`/classes/${sessionId}/cards`}>
+            Make flashcards
+          </LinkButton>
+        </Panel>
+      )}
+      {!model ? (
+        <Panel title="Start with class material">
+          <p>Create notes from your saved class material, or add and change material first.</p>
+          <Actions>
+            <LinkButton href={`/classes/${sessionId}/estimate`}>Create class notes</LinkButton>
+            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+              Add or change material
+            </LinkButton>
+          </Actions>
         </Panel>
       ) : (
         <>
@@ -177,7 +212,9 @@ export function NoteView({
           )}
           <Panel title={model.title}>
             <p className="preview-muted">
-              Note version {current.number} · {new Date(current.createdAt).toLocaleString("en-GB")}
+              {current
+                ? `Note version ${current.number} · ${new Date(current.createdAt).toLocaleString("en-GB")}`
+                : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
             </p>
             {!model.coverage.complete && (
               <Status>
@@ -200,7 +237,7 @@ export function NoteView({
                   <h3>{item.front}</h3>
                   <p style={{ whiteSpace: "pre-wrap" }}>{item.back}</p>
                   <ClaimEvidence claim={item.claim} userId={userId} />
-                  {!readOnlyRevision && (
+                  {canEdit && (
                     <Actions>
                       <Button
                         secondary
@@ -255,7 +292,7 @@ export function NoteView({
               ))}
             </Panel>
           )}
-          {editing && (
+          {editing && canEdit && (
             <Panel title="Edit your notes">
               <form
                 onSubmit={(event) => {

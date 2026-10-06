@@ -1,21 +1,31 @@
 import type { SampleSource } from "./PreviewContext";
 
 export function sourceHasDetails(source: SampleSource) {
-  if (!Number.isFinite(source.rangeStart) || !Number.isFinite(source.rangeEnd)) return false;
   if (source.kind === "photo") return source.pages === 1;
   const total = source.kind === "audio" ? source.durationMinutes : source.pages;
+  if (!Number.isFinite(total) || total <= 0 || (source.kind === "pdf" && !Number.isInteger(total)))
+    return false;
+  if (!sourceUsesPart(source)) return true;
   return (
-    Number.isFinite(total) &&
-    total > 0 &&
+    Number.isFinite(source.rangeStart) &&
+    Number.isFinite(source.rangeEnd) &&
     (source.kind === "audio" ||
-      (Number.isInteger(total) &&
-        Number.isInteger(source.rangeStart) &&
-        Number.isInteger(source.rangeEnd))) &&
+      (Number.isInteger(source.rangeStart) && Number.isInteger(source.rangeEnd))) &&
     source.rangeStart >= (source.kind === "audio" ? 0 : 1) &&
     source.rangeEnd <= total &&
     (source.kind === "audio"
       ? source.rangeEnd > source.rangeStart
       : source.rangeEnd >= source.rangeStart)
+  );
+}
+
+export function sourceUsesPart(source: SampleSource) {
+  return (
+    source.kind !== "photo" &&
+    (source.selectionMode === "part" ||
+      (source.selectionMode === undefined &&
+        (source.rangeStart !== (source.kind === "audio" ? 0 : 1) ||
+          source.rangeEnd !== (source.kind === "audio" ? source.durationMinutes : source.pages))))
   );
 }
 
@@ -28,7 +38,10 @@ export function confirmedSources(sources: SampleSource[]) {
     ...new Map(
       sources
         .filter((source) => source.selected && sourceIsReady(source))
-        .map((source) => [source.id, { ...source }]),
+        .map((source) => [
+          source.id,
+          sourceUsesPart(source) ? { ...source } : withFullExtent(source),
+        ]),
     ).values(),
   ];
 }
@@ -49,32 +62,22 @@ export function selectedCost(sources: SampleSource[]) {
   );
 }
 
-export function withSampleCount(source: SampleSource, count: number): SampleSource {
-  const total = Number.isFinite(count)
-    ? Math.max(0, Math.min(10000, source.kind === "pdf" ? Math.floor(count) : count))
-    : 0;
-  const minimum = source.kind === "audio" ? 0 : 1;
-  const start =
-    total > 0
-      ? Math.min(
-          Math.max(minimum, source.rangeStart),
-          source.kind === "audio" ? Math.max(0, total - 0.01) : total,
-        )
-      : minimum;
-  const end =
-    total > 0
-      ? Math.max(
-          source.kind === "audio" ? start + 0.01 : start,
-          Math.min(total, source.rangeEnd || total),
-        )
-      : 0;
+export function withFullExtent(source: SampleSource): SampleSource {
   return {
     ...source,
-    durationMinutes: source.kind === "audio" ? total : 0,
-    pages: source.kind === "audio" ? 0 : total,
-    rangeStart: start,
-    rangeEnd: end,
-    status: "Needs details",
-    selected: false,
+    selectionMode: "whole",
+    rangeStart: source.kind === "audio" ? 0 : 1,
+    rangeEnd: source.kind === "audio" ? source.durationMinutes : source.pages,
   };
+}
+
+export function withPreparedSampleDetails(source: SampleSource): SampleSource {
+  return withFullExtent({
+    ...source,
+    durationMinutes: source.kind === "audio" ? 10 : 0,
+    pages: source.kind === "audio" ? 0 : source.kind === "pdf" ? 4 : 1,
+    role: source.kind === "audio" ? "Class teaching" : "Class material",
+    status: source.status === "Needs password" ? "Needs password" : "Received",
+    selected: true,
+  });
 }

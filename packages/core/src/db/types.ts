@@ -962,6 +962,10 @@ export interface SupportEmailOutbox {
   id: string;
   language: string;
   last_error: string | null;
+  /**
+   * Immutable supported-version HTML/text/logo snapshot; null denotes a legacy plain-text approval.
+   */
+  presentation: Json | null;
   provider_id: string | null;
   purpose_key: string;
   sent_at: Timestamp | null;
@@ -989,6 +993,10 @@ export interface SupportReplyDraft {
   approved_message_id: string | null;
   body: string;
   created_at: Generated<Timestamp>;
+  /**
+   * Exact email preview frozen for a reply revision and copied to the outbox only after owner approval.
+   */
+  email_preview: Json | null;
   id: string;
   language: string;
   operation_key: string;

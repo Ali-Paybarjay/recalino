@@ -10,11 +10,13 @@ export function CardsView({
   userId,
   initial,
   notebook,
+  hasGeneratedNotes = false,
 }: {
   sessionId: string;
   userId: string;
   initial: StudyCard[];
   notebook: Notebook | null;
+  hasGeneratedNotes?: boolean;
 }) {
   const [cards, setCards] = useState(initial),
     [reverse, setReverse] = useState(false),
@@ -77,9 +79,11 @@ export function CardsView({
         <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes`}>
           Class notes
         </LinkButton>
-        <LinkButton disabled={busy} href={`/review?sessionId=${sessionId}`}>
-          Review this class
-        </LinkButton>
+        {cards.some((card) => card.status === "active") ? (
+          <LinkButton disabled={busy} href={`/review?sessionId=${sessionId}`}>
+            Review this class
+          </LinkButton>
+        ) : null}
       </Actions>
       {problem && <Status tone="error">{problem}</Status>}
       {notice && <Status>{notice}</Status>}
@@ -87,7 +91,8 @@ export function CardsView({
         {notebook ? (
           <>
             <p>
-              Choose the learning items you want to practise. Review cards before adding them, or
+              Choose the learning items you want to practise, then select Prepare cards. Review each
+              prepared card and select Confirm and add to include it in your daily review, or
               explicitly choose automatic addition.
             </p>
             <fieldset>
@@ -128,20 +133,36 @@ export function CardsView({
               </select>
             </Field>
             <p className="preview-muted">Uncertain cards always need your confirmation.</p>
+            {!notebook.current.model.learningItems.length ? (
+              <Status>
+                These notes have no learning items to turn into cards. Read your class notes or
+                process more material first.
+              </Status>
+            ) : null}
             <Button disabled={busy || !selected.length} onClick={generate}>
               Prepare cards
             </Button>
           </>
         ) : (
           <>
-            <p>Publish class notes before making cards.</p>
-            <LinkButton href={`/classes/${sessionId}/notes`}>Open notes</LinkButton>
+            <p>
+              {hasGeneratedNotes
+                ? "Your class notes are ready. Read and save them first, then prepare flashcards from their learning items."
+                : "Create class notes from your saved material first. Then save the notes and prepare flashcards from their learning items."}
+            </p>
+            <LinkButton href={`/classes/${sessionId}/${hasGeneratedNotes ? "notes" : "estimate"}`}>
+              {hasGeneratedNotes ? "Read and save notes" : "Create class notes"}
+            </LinkButton>
           </>
         )}
       </Panel>
       <Panel title={`Your cards (${cards.length})`}>
         {!cards.length ? (
-          <p>No cards yet. Choose a few useful items above.</p>
+          <p>
+            {notebook
+              ? "No cards yet. Choose learning items above and select Prepare cards."
+              : "Your flashcards will appear here after you save the class notes and prepare cards."}
+          </p>
         ) : (
           cards.map((card) => (
             <article key={card.id} className="preview-list-item">

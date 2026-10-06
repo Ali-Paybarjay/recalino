@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
+import { UploadProgress } from "../components/UploadProgress";
 import { createSampleState, type SampleSource, usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
 import { PREPARED_SAMPLE_MATERIAL, sampleClassSummary } from "./sample-material";
@@ -10,7 +11,9 @@ import {
   selectedCost,
   sourceHasDetails,
   sourceIsReady,
-  withSampleCount,
+  sourceUsesPart,
+  withFullExtent,
+  withPreparedSampleDetails,
 } from "./source-model";
 
 export { selectedCost } from "./source-model";
@@ -22,6 +25,20 @@ export function SourceViews({ screen }: { screen: string }) {
   const [problem, setProblem] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const uploadFeedback = useRef<HTMLDivElement>(null);
+  const addingLock = useRef(false);
+  const [upload, setUpload] = useState<{
+    total: number;
+    completed: number;
+    currentFile: string;
+    percent: number;
+    startedAt: number;
+  } | null>(null);
+  const uploading = upload !== null;
+  useEffect(() => {
+    if (uploading) uploadFeedback.current?.scrollIntoView({ block: "center" });
+  }, [uploading]);
   const savingLock = useRef(false);
   const processingLock = useRef(false);
   const mounted = useRef(true);
@@ -64,8 +81,9 @@ export function SourceViews({ screen }: { screen: string }) {
       ...prev,
       sources: prev.sources.map((source) => (source.id === id ? { ...source, ...patch } : source)),
     }));
-  function addFiles(files: FileList | null) {
-    if (!files) return;
+  async function addFiles(files: FileList | null) {
+    if (!files?.length || addingLock.current) return;
+    setProblem("");
     const next: SampleSource[] = [];
     for (const file of Array.from(files)) {
       const kind = /\.pdf$/i.test(file.name)
@@ -79,27 +97,78 @@ export function SourceViews({ screen }: { screen: string }) {
         setProblem(`“${file.name}” is not a supported sample file. Choose audio, PDF or a photo.`);
         continue;
       }
-      next.push({
-        id: crypto.randomUUID(),
-        name: file.name,
-        kind,
-        durationMinutes: 0,
-        pages: kind === "photo" ? 1 : 0,
-        selected: kind === "photo",
-        role: "Class material",
-        status:
-          kind === "pdf" && /password|locked/i.test(file.name)
-            ? "Needs password"
-            : kind === "photo"
-              ? "Received"
-              : "Needs details",
-        rangeStart: kind === "audio" ? 0 : 1,
-        rangeEnd: kind === "photo" ? 1 : 0,
-      });
+      next.push(
+        withPreparedSampleDetails({
+          id: crypto.randomUUID(),
+          name: file.name,
+          kind,
+          durationMinutes: 0,
+          pages: kind === "photo" ? 1 : 0,
+          selected: kind === "photo",
+          role: "Class material",
+          status:
+            kind === "pdf" && /password|locked/i.test(file.name)
+              ? "Needs password"
+              : kind === "photo"
+                ? "Received"
+                : "Needs details",
+          rangeStart: kind === "audio" ? 0 : 1,
+          rangeEnd: kind === "photo" ? 1 : 0,
+        }),
+      );
     }
-    setState((prev) => ({ ...prev, sources: [...prev.sources, ...next] }));
-    if (next.length)
-      announce("File names added to this sample. File bytes have not been uploaded.");
+    if (!next.length) return;
+    addingLock.current = true;
+    const classId = state.classes[0]?.id;
+    const startedAt = Date.now();
+    setUpload({
+      total: next.length,
+      completed: 0,
+      currentFile: next[0]?.name ?? "",
+      percent: 0,
+      startedAt,
+    });
+    announce("Upload demonstration started. File bytes stay on your device.");
+    for (const [index, source] of next.entries()) {
+      for (let step = 1; step <= 4; step += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        if (mounted.current)
+          setUpload({
+            total: next.length,
+            completed: index,
+            currentFile: source.name,
+            percent: Math.round(((index + step / 4) / next.length) * 100),
+            startedAt,
+          });
+      }
+      setState((previous) =>
+        previous.classes[0]?.id !== classId
+          ? classId && previous.classWorkspaces[classId]
+            ? {
+                ...previous,
+                classWorkspaces: {
+                  ...previous.classWorkspaces,
+                  [classId]: {
+                    ...previous.classWorkspaces[classId],
+                    sources: [source, ...previous.classWorkspaces[classId].sources],
+                  },
+                },
+              }
+            : previous
+          : { ...previous, sources: [source, ...previous.sources] },
+      );
+      if (mounted.current)
+        setUpload({
+          total: next.length,
+          completed: index + 1,
+          currentFile: next[index + 1]?.name ?? source.name,
+          percent: Math.round(((index + 1) / next.length) * 100),
+          startedAt,
+        });
+    }
+    addingLock.current = false;
+    if (mounted.current) setUpload(null);
+    announce("File names added to this sample. File bytes have not been uploaded.");
   }
   async function saveRecording() {
     if (savingLock.current) return;
@@ -190,31 +259,6 @@ export function SourceViews({ screen }: { screen: string }) {
     );
     setProblem("");
     router.push("/preview/processing");
-  }
-  function selectAvailablePart() {
-    let audio = state.allowance.minutes,
-      pages = state.allowance.pages;
-    const sources = state.sources.map((source) => {
-      if (!source.selected || !sourceIsReady(source)) return source;
-      if (source.kind === "audio") {
-        const used = Math.min(audio, Math.max(0, source.rangeEnd - source.rangeStart));
-        audio -= used;
-        return { ...source, selected: used > 0, rangeEnd: source.rangeStart + used };
-      }
-      const used = Math.min(
-        pages,
-        source.kind === "photo" ? 1 : Math.max(0, source.rangeEnd - source.rangeStart + 1),
-      );
-      pages -= used;
-      return {
-        ...source,
-        selected: used > 0,
-        rangeEnd: Math.max(source.rangeStart, source.rangeStart + used - 1),
-      };
-    });
-    setState((prev) => ({ ...prev, sources }));
-    announce("Selection reduced to the available sample allowance.");
-    router.push("/preview/estimate");
   }
   function completeJob() {
     if (!state.processingSnapshot.length || !["queued", "retrying"].includes(state.processing))
@@ -542,24 +586,47 @@ export function SourceViews({ screen }: { screen: string }) {
           back="class"
         />
         <Panel title="Choose files">
-          <Field
-            label="Add sample file names"
-            hint="Supported examples: M4A, MP3, WAV, WEBM, OGG, PDF, JPG, PNG and WEBP. File content stays untouched."
-          >
+          <Actions>
+            <Button disabled={!!upload} onClick={() => fileInput.current?.click()}>
+              {state.sources.length ? "Add More Files" : "Add Files"}
+            </Button>
             <input
+              ref={fileInput}
               type="file"
+              hidden
+              aria-label="Add sample file names"
+              disabled={!!upload}
               multiple
               accept=".m4a,.mp3,.wav,.webm,.ogg,.pdf,.jpg,.jpeg,.png,.webp"
-              onChange={(event) => addFiles(event.target.files)}
+              onChange={(event) => {
+                void addFiles(event.target.files);
+                event.target.value = "";
+              }}
             />
-          </Field>
+          </Actions>
           <p className="preview-muted">
-            Durations and page counts are editable sample metadata; they are not measured from the
-            file.
+            Supported examples: M4A, MP3, WAV, WEBM, OGG, PDF, JPG, PNG and WEBP. File content stays
+            untouched.
+          </p>
+          <p className="preview-muted">
+            File formats are identified from their names. Prepared sample durations and page counts
+            are assigned automatically; this preview does not inspect file contents.
           </p>
           {statusProblem}
         </Panel>
         <Panel title="Your sources">
+          {upload ? (
+            <div ref={uploadFeedback}>
+              <UploadProgress
+                label="Upload demonstration progress"
+                status={`Upload demonstration · ${upload.completed} of ${upload.total} files added`}
+                value={upload.percent}
+                detail={`Adding ${upload.currentFile}. Simulated progress; no file bytes are uploaded.`}
+                startedAt={upload.startedAt}
+                active
+              />
+            </div>
+          ) : null}
           <ul className="preview-list">
             {state.sources.map((source) => (
               <li key={source.id}>
@@ -630,6 +697,7 @@ export function SourceViews({ screen }: { screen: string }) {
           <Actions>
             <Button
               secondary
+              disabled={!!upload}
               onClick={() => {
                 setState((prev) => ({
                   ...prev,
@@ -655,6 +723,7 @@ export function SourceViews({ screen }: { screen: string }) {
             </Button>
             <Button
               secondary
+              disabled={!!upload}
               onClick={() => {
                 setState((prev) => ({
                   ...prev,
@@ -669,7 +738,7 @@ export function SourceViews({ screen }: { screen: string }) {
           </Actions>
         </Panel>
         <Actions>
-          <LinkButton to="source-settings">Choose what to use</LinkButton>
+          <LinkButton to="source-settings">Review sources</LinkButton>
           <LinkButton secondary to="class">
             Done
           </LinkButton>
@@ -680,8 +749,8 @@ export function SourceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title="Choose what to use"
-          description="Include the useful parts. Your originals remain unchanged."
+          title="Class sources"
+          description="Use each whole file, or choose a part when you need it."
           back="class"
         />
         <div className="preview-stack">
@@ -699,109 +768,110 @@ export function SourceViews({ screen }: { screen: string }) {
                   Include this source · {source.status}
                 </label>
               </div>
-              <div className="preview-grid">
-                <Field label="Source role">
-                  <select
-                    value={source.role}
-                    onChange={(event) => patchSource(source.id, { role: event.target.value })}
-                  >
-                    <option>Class teaching</option>
-                    <option>Class material</option>
-                    <option>My own notes</option>
-                  </select>
-                </Field>
-                <Field
-                  label={
-                    source.kind === "audio"
-                      ? "Sample duration (minutes)"
-                      : source.kind === "photo"
-                        ? "Photo count"
-                        : "Sample page count"
-                  }
-                >
-                  <input
-                    type="number"
-                    min={0}
-                    max={10000}
-                    step={source.kind === "audio" ? "0.01" : "1"}
-                    disabled={source.kind === "photo"}
-                    value={source.kind === "audio" ? source.durationMinutes : source.pages}
-                    onChange={(event) => {
-                      patchSource(source.id, withSampleCount(source, Number(event.target.value)));
-                    }}
-                  />
-                </Field>
-              </div>
+              <p className="preview-muted">
+                {source.kind === "audio"
+                  ? `${source.durationMinutes} sample audio minutes in this file`
+                  : source.kind === "photo"
+                    ? "1 sample photo · entire source"
+                    : `${source.pages} sample pages in this file`}
+              </p>
               {source.kind !== "photo" ? (
-                <div className="preview-grid">
-                  <Field label={source.kind === "audio" ? "Start minute" : "First page"}>
+                <fieldset className="preview-source-selection">
+                  <legend>Material to process</legend>
+                  <div className="preview-check">
                     <input
-                      type="number"
-                      min={source.kind === "audio" ? 0 : 1}
-                      max={
-                        source.kind === "audio"
-                          ? Math.max(0, source.rangeEnd - 0.01)
-                          : source.rangeEnd
-                      }
-                      step={source.kind === "audio" ? "0.01" : "1"}
+                      id={`whole-${source.id}`}
+                      name={`extent-${source.id}`}
+                      type="radio"
+                      checked={!sourceUsesPart(source)}
+                      onChange={() => patchSource(source.id, withFullExtent(source))}
+                    />
+                    <label htmlFor={`whole-${source.id}`}>Whole file</label>
+                  </div>
+                  <div className="preview-check">
+                    <input
+                      id={`part-${source.id}`}
+                      name={`extent-${source.id}`}
+                      type="radio"
+                      checked={sourceUsesPart(source)}
                       disabled={!sourceHasDetails(source)}
-                      value={source.rangeStart}
-                      onChange={(event) =>
-                        patchSource(source.id, {
-                          rangeStart: Math.min(
+                      onChange={() => patchSource(source.id, { selectionMode: "part" })}
+                    />
+                    <label htmlFor={`part-${source.id}`}>Part of file</label>
+                  </div>
+                  {sourceUsesPart(source) ? (
+                    <div className="preview-grid">
+                      <Field label={source.kind === "audio" ? "Start minute" : "First page"}>
+                        <input
+                          type="number"
+                          min={source.kind === "audio" ? 0 : 1}
+                          max={
                             source.kind === "audio"
                               ? Math.max(0, source.rangeEnd - 0.01)
-                              : source.rangeEnd,
-                            Math.max(
-                              source.kind === "audio" ? 0 : 1,
-                              Number(event.target.value) || 0,
-                            ),
-                          ),
-                        })
-                      }
-                    />
-                  </Field>
-                  <Field label={source.kind === "audio" ? "End minute" : "Last page"}>
-                    <input
-                      type="number"
-                      min={source.kind === "audio" ? source.rangeStart + 0.01 : source.rangeStart}
-                      max={source.kind === "audio" ? source.durationMinutes : source.pages}
-                      step={source.kind === "audio" ? "0.01" : "1"}
-                      disabled={!sourceHasDetails(source)}
-                      value={source.rangeEnd}
-                      onChange={(event) =>
-                        patchSource(source.id, {
-                          rangeEnd: Math.max(
-                            source.kind === "audio" ? source.rangeStart + 0.01 : source.rangeStart,
-                            Math.min(
-                              source.kind === "audio" ? source.durationMinutes : source.pages,
-                              Number(event.target.value) || 1,
-                            ),
-                          ),
-                        })
-                      }
-                    />
-                  </Field>
-                </div>
-              ) : (
-                <p className="preview-muted">
-                  Whiteboard photo · linked to the class moment. One photo counts as one page.
-                </p>
-              )}
+                              : source.rangeEnd
+                          }
+                          step={source.kind === "audio" ? "0.01" : "1"}
+                          value={source.rangeStart}
+                          onChange={(event) =>
+                            patchSource(source.id, {
+                              rangeStart: Math.min(
+                                source.kind === "audio"
+                                  ? Math.max(0, source.rangeEnd - 0.01)
+                                  : source.rangeEnd,
+                                Math.max(
+                                  source.kind === "audio" ? 0 : 1,
+                                  source.kind === "audio"
+                                    ? Number(event.target.value) || 0
+                                    : Math.floor(Number(event.target.value)) || 1,
+                                ),
+                              ),
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label={source.kind === "audio" ? "End minute" : "Last page"}>
+                        <input
+                          type="number"
+                          min={
+                            source.kind === "audio" ? source.rangeStart + 0.01 : source.rangeStart
+                          }
+                          max={source.kind === "audio" ? source.durationMinutes : source.pages}
+                          step={source.kind === "audio" ? "0.01" : "1"}
+                          value={source.rangeEnd}
+                          onChange={(event) =>
+                            patchSource(source.id, {
+                              rangeEnd: Math.max(
+                                source.kind === "audio"
+                                  ? source.rangeStart + 0.01
+                                  : source.rangeStart,
+                                Math.min(
+                                  source.kind === "audio" ? source.durationMinutes : source.pages,
+                                  source.kind === "audio"
+                                    ? Number(event.target.value) || 1
+                                    : Math.floor(Number(event.target.value)) || 1,
+                                ),
+                              ),
+                            })
+                          }
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
+                </fieldset>
+              ) : null}
               {source.status === "Needs details" ? (
                 <div className="preview-stack">
                   <p className="preview-muted">
-                    These are counts you provide for the demonstration. This preview has not
+                    Use prepared sample details for this older preview entry. This preview has not
                     measured or checked the file.
                   </p>
                   <Button
-                    disabled={!sourceHasDetails(source)}
                     onClick={() => {
-                      patchSource(source.id, { status: "Received", selected: true });
-                      announce("Sample details confirmed. No file was uploaded or read.");
+                      patchSource(source.id, withPreparedSampleDetails(source));
+                      announce("Prepared sample details applied. No file was uploaded or read.");
                     }}
                   >
-                    Confirm sample details
+                    Apply prepared sample details
                   </Button>
                 </div>
               ) : null}
@@ -818,8 +888,12 @@ export function SourceViews({ screen }: { screen: string }) {
             </Panel>
           ))}
         </div>
+        <p className="preview-muted">
+          These are prepared sample details. This preview stores file names and does not classify or
+          measure uploaded contents.
+        </p>
         <Actions>
-          <LinkButton to="estimate">Save source choices</LinkButton>
+          <LinkButton to="estimate">Continue to estimate</LinkButton>
           <LinkButton secondary to="class">
             Cancel
           </LinkButton>
@@ -831,7 +905,7 @@ export function SourceViews({ screen }: { screen: string }) {
       <>
         <PageHeader
           title="Check before processing"
-          description="This estimate follows only the selected sample sources and ranges."
+          description="This estimate follows the selected sample files and any parts you chose."
           back="source-settings"
         />
         <div className="preview-grid">
@@ -849,10 +923,14 @@ export function SourceViews({ screen }: { screen: string }) {
                   <li key={s.id}>
                     {s.name} ·{" "}
                     {s.kind === "audio"
-                      ? `${s.rangeStart}–${s.rangeEnd} min`
+                      ? sourceUsesPart(s)
+                        ? `${s.rangeStart}–${s.rangeEnd} min`
+                        : `${s.durationMinutes} min · whole file`
                       : s.kind === "photo"
                         ? "1 photo"
-                        : `pages ${s.rangeStart}–${s.rangeEnd}`}
+                        : sourceUsesPart(s)
+                          ? `pages ${s.rangeStart}–${s.rangeEnd}`
+                          : `${s.pages} pages · whole file`}
                   </li>
                 ))}
             </ul>
@@ -908,7 +986,7 @@ export function SourceViews({ screen }: { screen: string }) {
       <>
         <PageHeader
           title="Choose what to process"
-          description="Keep the useful parts without losing the originals."
+          description="Choose sources or file portions within your allowance."
           back="estimate"
         />
         <Panel title="Your selection is too large">
@@ -921,13 +999,9 @@ export function SourceViews({ screen }: { screen: string }) {
           </p>
           <Actions>
             <LinkButton to="class">Keep for later</LinkButton>
-            <Button
-              secondary
-              disabled={state.allowance.minutes === 0 && state.allowance.pages === 0}
-              onClick={selectAvailablePart}
-            >
-              Choose an available part
-            </Button>
+            <LinkButton secondary to="source-settings">
+              Choose sources or file portions
+            </LinkButton>
             <Button
               secondary
               onClick={() =>
