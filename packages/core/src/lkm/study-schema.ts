@@ -12,9 +12,7 @@ export const studyKindSchema = z.enum([
 ]);
 const common = {
   en: shortText.describe("English item including the grammar frame needed to use it; plain text."),
-  faMeaning: shortText.describe(
-    "Natural meaning in language.explanation, not a literal dictionary gloss.",
-  ),
+  faMeaning: shortText.describe("Natural conversational meaning in language.explanation."),
   topic: z.string().min(1).max(150).describe("One or two topic tag words."),
   kind: studyKindSchema.optional(),
 };
@@ -23,31 +21,29 @@ export const productionStudySchema = z.strictObject({
   ...common,
   ipa: shortText.describe("British non-rhotic IPA, with slashes, stress and natural weak forms."),
   faApprox: optionalText.describe(
-    "Persian pronunciation approximation with vowel marks, required only when language.explanation is fa; omit for every other language.",
+    "Persian vowel-marked pronunciation; required for fa, omitted for other explanation languages.",
   ),
   trap: optionalText.describe("Only a genuine misleading spelling or pronunciation trap."),
   gapSentence: optionalText.describe(
-    "Full sentence with the whole target replaced by ______; separable verbs have two blanks. Omit for grammar tasks.",
+    "Copy fullSentence exactly, replacing only target span(s) with ______; keep all other characters unchanged. Separable targets may use 2–3 blanks. Omit for grammar.",
   ),
   fullSentence: shortText.describe(
-    "Complete British English example, normally 8–15 words, or corrected grammar task.",
+    "Complete British English example (8–15 words), identical to the filled gapSentence, or a corrected grammar task.",
   ),
   collocations: z
     .array(shortText)
     .max(3)
     .describe("Two or three frequent collocations when relevant."),
   noteFa: prose.describe(
-    "Usage/register/nuance note in language.explanation, including a supported correction where relevant.",
+    "Usage/register/nuance in language.explanation, including evidenced corrections.",
   ),
   imageFa: shortText.describe(
     "One concrete mental image, never an invented fact about the learner.",
   ),
   sourceFa: shortText.describe(
-    "Honest source label in language.explanation; do not claim learner authorship or teacher speech without evidence.",
+    "Source label in language.explanation; authorship and teacher speech require evidence.",
   ),
-  taskFa: optionalText.describe(
-    "Instruction in language.explanation for a grammar task; paired with prompt instead of gapSentence.",
-  ),
+  taskFa: optionalText.describe("Grammar instruction in language.explanation, paired with prompt."),
   prompt: optionalText.describe("English grammar task prompt without the corrected answer."),
 });
 export const recognitionStudySchema = z.strictObject({

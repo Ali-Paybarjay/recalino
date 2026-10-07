@@ -15,7 +15,7 @@ const emptyProfile: VoiceProfileView = {
   version: 0,
 };
 
-test("optional voice setup records a preview and completes only after an explicit, retryable save", async ({
+test("optional voice setup shows processing and success before the learner chooses Continue", async ({
   page,
 }) => {
   await signInAsNewLearner(page, { setup: "complete" });
@@ -69,19 +69,32 @@ test("optional voice setup records a preview and completes only after an explici
   await page.clock.install();
   await record.click();
   await expect(page.getByRole("timer")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
   await page.clock.fastForward(30_100);
   await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
   expect(await microphoneStats(page)).toEqual({ requests: 1, stopped: 1 });
   expect(writes).toEqual([]);
   const save = page.getByRole("button", { name: "Save voice sample", exact: true });
   await save.click();
-  await expect(page.getByText("Please retry the saved sample.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Voice processing could not be completed. Try saving again, or record another voice sample.",
+  );
   await expect(page).toHaveURL(/\/setup\/voice$/);
   await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
   await save.click();
+  await expect(
+    page.getByRole("status").filter({ hasText: /^Processing your voice…$/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Processing your voice…", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
   await expect(later).toBeDisabled();
   await expect(page).toHaveURL(/\/setup\/voice$/);
-  expect(writes).toHaveLength(2);
+  await expect.poll(() => writes.length).toBe(2);
   expect(writes[1]).toEqual(writes[0]);
   expect(writes[0]?.body).toMatchObject({
     consent: true,
@@ -90,6 +103,17 @@ test("optional voice setup records a preview and completes only after an explici
     mimeType: "audio/webm",
   });
   releaseSave?.();
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: /^Processing your voice…$/ }),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(/\/setup\/voice$/);
+  await expect(page.getByLabel("Your voice sample preview")).toHaveCount(0);
+  const proceed = page.getByRole("button", { name: "Continue", exact: true });
+  await expect(proceed).toBeEnabled();
+  await proceed.click();
   await expect(page).toHaveURL(/\/today$/);
 });
 

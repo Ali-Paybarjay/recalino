@@ -14,8 +14,8 @@ import {
 } from "./automatic-learning";
 import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
-import { uploadWithConfirmation } from "./upload";
-import { uploadWithProgress } from "./upload-progress";
+import { createSourceUploadRequest, uploadSourceFileParts } from "./source-upload";
+import type { UploadRecovery } from "./upload";
 
 export interface SourceRow {
   assetId: string;
@@ -134,6 +134,8 @@ export function SourcesView({
     fileInput = useRef<HTMLInputElement>(null),
     uploadList = useRef<HTMLUListElement>(null),
     lock = useRef(false);
+  const uploadController = useRef<AbortController | null>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
   const learning = useAutomaticLearning(sessionId);
   const [interruptedBatch, setInterruptedBatch] = useState(false);
   useEffect(() => {
@@ -301,7 +303,9 @@ export function SourcesView({
       } else setMessage("Original opened in a new tab.");
     });
   }
-  async function upload(file: File, fileId: string) {
+  async function upload(file: File, fileId: string, recovery: UploadRecovery) {
+    recovery.signal?.throwIfAborted();
+    const request = createSourceUploadRequest(recovery);
     if (/\.(heic|heif)$/i.test(file.name) || ["image/heic", "image/heif"].includes(file.type)) {
       if (file.size > contract.formats.image.maxBytes)
         throw new Error("This image exceeds the source size limit.");
@@ -356,17 +360,17 @@ export function SourcesView({
         const part = file.slice(start, start + contract.partBytes);
         parts.push({ index: parts.length, sizeBytes: part.size, sha256: await checksum(part) });
       }
-    const matches = await workspaceRequest<OwnSource[]>(`/api/sources?checksum=${sha256}`, "GET");
+    const matches = await request<OwnSource[]>(`/api/sources?checksum=${sha256}`, "GET");
     const resumable = matches.find(
       (source) =>
         source.kind === kind &&
-        source.uploadState === "pending" &&
+        ["pending", "verifying"].includes(source.uploadState ?? "") &&
         source.uploadId &&
         !source.original_deleted_at,
     );
     const created = resumable
       ? { assetId: resumable.id, uploadId: resumable.uploadId }
-      : await workspaceRequest<{ assetId: string; uploadId: string | null }>(
+      : await request<{ assetId: string; uploadId: string | null }>(
           "/api/sources",
           "POST",
           {
@@ -382,7 +386,7 @@ export function SourcesView({
           crypto.randomUUID(),
         );
     if (resumable)
-      await workspaceRequest(`/api/classes/${sessionId}/sources`, "POST", {
+      await request(`/api/classes/${sessionId}/sources`, "POST", {
         assetId: created.assetId,
       });
     const added: SourceRow = {
@@ -444,48 +448,19 @@ export function SourcesView({
     }
     if (!created.uploadId) throw new Error("The upload could not be created.");
     const uploadId = created.uploadId;
-    const manifest = await workspaceRequest<{
-      parts: { index: number; verifiedAt: string | null }[];
-    }>(`/api/sources/uploads/${uploadId}`, "GET");
-    let confirmedBytes = parts.reduce(
-      (sum, part) =>
-        sum +
-        (manifest.parts.find((value) => value.index === part.index)?.verifiedAt
-          ? part.sizeBytes
-          : 0),
-      0,
+    updateUpload(fileId, { phase: "uploading", sentBytes: 0 });
+    setMessage(`Uploading ${file.name}…`);
+    await uploadSourceFileParts(
+      {
+        uploadId,
+        file,
+        mimeType,
+        partBytes: contract.partBytes,
+        parts,
+        onProgress: (sentBytes) => updateUpload(fileId, { sentBytes }),
+      },
+      recovery,
     );
-    updateUpload(fileId, { phase: "uploading", sentBytes: confirmedBytes });
-    for (const part of parts) {
-      if (manifest.parts.find((value) => value.index === part.index)?.verifiedAt) continue;
-      setMessage(`Uploading ${file.name}…`);
-      const link = await workspaceRequest<{ url: string }>(
-        `/api/sources/uploads/${uploadId}/parts/${part.index}`,
-        "GET",
-      );
-      await uploadWithConfirmation(
-        (signal) =>
-          uploadWithProgress(
-            link.url,
-            file.slice(part.index * contract.partBytes, (part.index + 1) * contract.partBytes),
-            mimeType,
-            (sentBytes) => updateUpload(fileId, { sentBytes: confirmedBytes + sentBytes }),
-            signal,
-          ),
-        (signal) =>
-          workspaceRequest(
-            `/api/sources/uploads/${uploadId}/parts/${part.index}`,
-            "POST",
-            undefined,
-            undefined,
-            { signal },
-          ),
-        "Upload interrupted. Select the same file to resume.",
-      );
-      confirmedBytes += part.sizeBytes;
-      updateUpload(fileId, { sentBytes: confirmedBytes });
-    }
-    await workspaceRequest(`/api/sources/uploads/${uploadId}/complete`, "POST");
     updateUpload(fileId, {
       phase: "verifying",
       sentBytes: file.size,
@@ -495,17 +470,32 @@ export function SourcesView({
     setMessage("File uploaded. Server verification is in progress.");
   }
   async function addFiles(files: File[]) {
+    const controller = new AbortController();
+    uploadController.current = controller;
+    const recovery: UploadRecovery = {
+      attempts: 3,
+      signal: controller.signal,
+      onRetry: (attempt) => setMessage(`Retrying upload (${attempt} of 3)…`),
+      onOffline: () => setMessage("Upload paused while offline. It resumes when you reconnect."),
+    };
     try {
-      await inAutomaticLearningBatch(userId, sessionId, () => uploadFiles(files));
+      await inAutomaticLearningBatch(
+        userId,
+        sessionId,
+        () => uploadFiles(files, recovery),
+        createSourceUploadRequest(recovery),
+      );
     } finally {
+      if (uploadController.current === controller) uploadController.current = null;
       setInterruptedBatch(Boolean(pendingLearningBatch(userId, sessionId)));
     }
   }
-  async function uploadFiles(files: File[]) {
+  async function uploadFiles(files: File[], recovery: UploadRecovery) {
     let failed = 0;
     setBatch({ total: files.length, current: 1, active: true });
     try {
       for (const [index, file] of files.entries()) {
+        recovery.signal?.throwIfAborted();
         const id = crypto.randomUUID();
         setBatch({ total: files.length, current: index + 1, active: true });
         setFileUploads((previous) => [
@@ -524,8 +514,9 @@ export function SourcesView({
           uploadList.current?.firstElementChild?.scrollIntoView({ block: "nearest" }),
         );
         try {
-          await upload(file, id);
+          await upload(file, id, recovery);
         } catch (error) {
+          recovery.signal?.throwIfAborted();
           failed++;
           updateUpload(id, {
             phase: "failed",

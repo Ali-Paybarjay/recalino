@@ -9,6 +9,19 @@ export interface ExtractedTextBlock {
   text: string;
   level?: number;
 }
+
+/** Match the content schema without cutting a UTF-16 surrogate pair in two. */
+export const MAX_EXTRACTED_BLOCK_LENGTH = 100_000;
+function textChunks(text: string): string[] {
+  const chunks: string[] = [];
+  for (let start = 0; start < text.length; ) {
+    let end = Math.min(start + MAX_EXTRACTED_BLOCK_LENGTH, text.length);
+    if (end < text.length && /[\uD800-\uDBFF]/.test(text.charAt(end - 1))) end--;
+    chunks.push(text.slice(start, end));
+    start = end;
+  }
+  return chunks;
+}
 type Node = DefaultTreeAdapterMap["node"];
 const OMIT = new Set([
   "script",
@@ -94,12 +107,13 @@ export function extractHtml(
   const push = (kind: ExtractedTextBlock["kind"], text: string, level?: number) => {
     const clean = normalized(text);
     if (!clean) return;
-    blocks.push({
-      id: `block-${blocks.length + 1}`,
-      kind,
-      text: clean,
-      ...(level === undefined ? {} : { level }),
-    });
+    for (const text of textChunks(clean))
+      blocks.push({
+        id: `block-${blocks.length + 1}`,
+        kind,
+        text,
+        ...(level === undefined ? {} : { level }),
+      });
   };
   function visit(node: Node): void {
     const name = tag(node);
@@ -139,5 +153,6 @@ export function extractPlainText(bytes: Uint8Array): ExtractedTextBlock[] {
     .split(/(?:\r?\n){2,}/)
     .map((text) => text.trim())
     .filter(Boolean)
+    .flatMap(textChunks)
     .map((text, index) => ({ id: `block-${index + 1}`, kind: "paragraph", text }));
 }

@@ -38,7 +38,7 @@ import {
   sourceFileSchema,
   validateFileDeclaration,
 } from "./contracts";
-import { extractHtml, extractPlainText } from "./extract";
+import { extractHtml, extractPlainText, MAX_EXTRACTED_BLOCK_LENGTH } from "./extract";
 import {
   automaticSourceRole,
   type SourceRole,
@@ -516,6 +516,8 @@ export async function confirmUploadPart(
       !(await reservationIsOpen(tx, ctx, current.reservation_id))
     )
       throw errors.conflict();
+    // Resumption probes run before a PUT; absent bytes are not a corrupt upload attempt.
+    if (result === "missing") return result;
     await tx
       .updateTable("src.upload_part")
       .set(
@@ -586,17 +588,14 @@ export async function verifyUpload(
   now = new Date(),
 ) {
   let stagedObjectId: string | undefined;
-  try {
-    const manifest = await verifyPendingUpload(db, store, ctx, uploadId, providers, now, (id) => {
-      stagedObjectId = id;
-    });
-    if (manifest.state === "rejected" && stagedObjectId)
-      await deleteObject(db, store, ctx, stagedObjectId, now);
-    return manifest;
-  } catch (failure) {
-    if (stagedObjectId) await deleteObject(db, store, ctx, stagedObjectId, now);
-    throw failure;
-  }
+  // The durable source pointer makes pending/verified staging safe to retain on transient
+  // storage or database failure. Deleting it would make the next worker retry unrecoverable.
+  const manifest = await verifyPendingUpload(db, store, ctx, uploadId, providers, now, (id) => {
+    stagedObjectId = id;
+  });
+  if (manifest.state === "rejected" && stagedObjectId)
+    await deleteObject(db, store, ctx, stagedObjectId, now);
+  return manifest;
 }
 async function verifyPendingUpload(
   db: Database,
@@ -723,12 +722,30 @@ async function verifyPendingUpload(
     height?: number;
     passwordRequired?: boolean;
   } = {};
+  let extractedContent: z.infer<typeof sourceContentSchema> | undefined;
   try {
     const binaryMime = detectBinaryMime(bytes);
     if (source.kind === "text" || source.kind === "html") {
       if (binaryMime) throw errors.unsupportedMedia();
       metadata.pageCount = Math.max(1, Math.ceil(decodeSourceText(bytes).length / 3000));
-      if (source.kind === "html") extractHtml(bytes, contract);
+      const blocks =
+        source.kind === "html" ? extractHtml(bytes, contract) : extractPlainText(bytes);
+      extractedContent = sourceContentSchema.parse({
+        originKey: `upload:${uploadId}`,
+        schemaVersion: "1",
+        provenance: "machine_extraction",
+        settings: { method: "passive_text", contractVersion: contract.version },
+        units: [
+          {
+            id: "document-1",
+            kind: "document",
+            start: 1,
+            status: blocks.length ? "extracted" : "failed",
+            ...(blocks.length ? {} : { reason: "no_text" }),
+          },
+        ],
+        blocks: blocks.map((block) => ({ ...block, unitId: "document-1" })),
+      });
     } else {
       if (binaryMime !== source.declared_mime) throw errors.unsupportedMedia();
       if (!providers.verifier) throw errors.validationFailed({ upload: ["verifier_unavailable"] });
@@ -821,35 +838,10 @@ async function verifyPendingUpload(
         .execute();
       await snapshot(tx, ctx, link.session_id, now);
     }
+    // FR-SRC-005/010: verification, quota settlement and passive extraction commit together.
+    // A retried worker must never observe a verified text source with its content missing.
+    if (extractedContent) await appendContentVersion(tx, ctx, source.id, extractedContent, now);
   });
-  if (source.kind === "html" || source.kind === "text") {
-    const blocks = source.kind === "html" ? extractHtml(bytes, contract) : extractPlainText(bytes);
-    await db.transaction().execute(async (tx) => {
-      await lockOwner(tx, ctx);
-      await appendContentVersion(
-        tx,
-        ctx,
-        source.id,
-        {
-          originKey: `upload:${uploadId}`,
-          schemaVersion: "1",
-          provenance: "machine_extraction",
-          settings: { method: "passive_text", contractVersion: contract.version },
-          units: [
-            {
-              id: "document-1",
-              kind: "document",
-              start: 1,
-              status: blocks.length ? "extracted" : "failed",
-              ...(blocks.length ? {} : { reason: "no_text" }),
-            },
-          ],
-          blocks: blocks.map((block) => ({ ...block, unitId: "document-1" })),
-        },
-        now,
-      );
-    });
-  }
   return uploadManifest(db, ctx, uploadId);
 }
 
@@ -875,7 +867,7 @@ export const sourceContentSchema = z.strictObject({
       z.strictObject({
         id: z.string().min(1).max(100),
         kind: z.enum(["heading", "paragraph", "list_item", "table", "transcript"]),
-        text: z.string().max(100000),
+        text: z.string().max(MAX_EXTRACTED_BLOCK_LENGTH),
         unitId: z.string().min(1).max(100),
         level: z.number().int().min(1).max(6).optional(),
         speakerRole: z.enum(["teacher", "student", "unknown"]).optional(),

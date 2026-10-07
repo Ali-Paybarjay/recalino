@@ -31,6 +31,9 @@ export function VoiceProfileForm({
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState("");
   const [notice, setNotice] = useState("");
+  const [sampleState, setSampleState] = useState<"idle" | "processing" | "succeeded" | "failed">(
+    "idle",
+  );
   const [deleting, setDeleting] = useState(false);
   const [capture, setCapture] = useState<VoiceCaptureState>({
     phase: "idle",
@@ -102,6 +105,7 @@ export function VoiceProfileForm({
     setBusy(true);
     setProblem("");
     setNotice("");
+    setSampleState(withSample ? "processing" : "idle");
     try {
       const payload = {
         consent: true,
@@ -114,16 +118,32 @@ export function VoiceProfileForm({
             }
           : {}),
       };
-      await workspaceRequest("/api/me/voice", "PUT", payload, requestKey(key, payload));
-      await load();
+      // Enrollment processes and stores the sample before returning this profile.
+      // A second settings read must not turn a completed save into a reported failure.
+      const result = await workspaceRequest<VoiceProfileView>(
+        "/api/me/voice",
+        "PUT",
+        payload,
+        requestKey(key, payload),
+      );
+      if (
+        withSample &&
+        (!result.enabled ||
+          !result.enrolled ||
+          typeof result.sampleDurationMs !== "number" ||
+          result.sampleDurationMs <= 0)
+      )
+        throw new Error("The processed voice sample could not be confirmed.");
+      setProfile(result);
+      setConsent(result.enabled && result.consentVersion === VOICE_CONSENT_VERSION);
       key.current = null;
       setCapture({ phase: "idle", elapsedMs: 0, sample: null, error: null });
+      setSampleState(withSample ? "succeeded" : "idle");
       setNotice(
         withSample
-          ? "Your voice sample is saved. Confirm your voice in the first class before spoken mistakes are shown."
+          ? "Your voice has been processed successfully."
           : "Voice confirmation is enabled. You can identify your voice in each class without a saved sample.",
       );
-      if (withSample) onComplete?.();
     } catch (error) {
       if (
         error instanceof WorkspaceRequestError &&
@@ -133,8 +153,28 @@ export function VoiceProfileForm({
       ) {
         await load().catch(() => {});
         key.current = null;
+        setSampleState("idle");
         setProblem(
           "Your voice settings changed. Review the current consent choice before saving again.",
+        );
+        return;
+      }
+      if (withSample) {
+        setSampleState("failed");
+        const sampleRejected =
+          error instanceof WorkspaceRequestError &&
+          (error.code === "unsupported_media" ||
+            ["audio", "audioBase64", "mimeType"].some(
+              (field) => (error.fields?.[field]?.length ?? 0) > 0,
+            ));
+        if (sampleRejected) {
+          key.current = null;
+          setCapture({ phase: "idle", elapsedMs: 0, sample: null, error: null });
+        }
+        setProblem(
+          sampleRejected
+            ? "Your voice could not be processed. Please record another voice sample and try again."
+            : "Voice processing could not be completed. Try saving again, or record another voice sample.",
         );
         return;
       }
@@ -148,12 +188,44 @@ export function VoiceProfileForm({
       setBusy(false);
     }
   }
+  async function recordSample() {
+    if (!consent || inFlight.current || captureBlocked || capturing) return;
+    if (sampleState === "failed") {
+      // Enrollment can advance the profile version before audio processing fails.
+      // Refresh only when replacing the draft; retrying it must retain its original payload/key.
+      inFlight.current = true;
+      setBusy(true);
+      try {
+        const current = await load();
+        if (!current.enabled || current.consentVersion !== VOICE_CONSENT_VERSION) {
+          setSampleState("idle");
+          setProblem(
+            "Your voice settings changed. Review the current consent choice before recording again.",
+          );
+          return;
+        }
+        if (!current.engineAvailable) return;
+      } catch {
+        setProblem("Your voice settings could not be loaded. Try recording again.");
+        return;
+      } finally {
+        inFlight.current = false;
+        setBusy(false);
+      }
+    }
+    setProblem("");
+    setNotice("");
+    setSampleState("idle");
+    key.current = null;
+    void recorder.start(() => blocked.current);
+  }
   async function remove() {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setProblem("");
     setNotice("");
+    setSampleState("idle");
     try {
       const payload = { action: "delete_voice" };
       await workspaceRequest("/api/me/voice", "DELETE", undefined, requestKey(key, payload));
@@ -176,7 +248,7 @@ export function VoiceProfileForm({
   }
   return (
     <div className={styles.stack}>
-      {onComplete ? (
+      {onComplete && sampleState !== "succeeded" ? (
         <Actions>
           <Button
             secondary
@@ -202,8 +274,19 @@ export function VoiceProfileForm({
           turn this off and delete the voice data {onComplete ? "in Settings" : "here"} at any time.
         </p>
         {loading ? <Status>Loading voice settings…</Status> : null}
-        {problem && !deleting ? <Status tone="error">{problem}</Status> : null}
-        {notice ? <Status tone="success">{notice}</Status> : null}
+        {problem && !deleting && (sampleState !== "failed" || !profile?.engineAvailable) ? (
+          <Status tone="error">{problem}</Status>
+        ) : null}
+        {notice && (sampleState !== "succeeded" || onComplete || !profile?.engineAvailable) ? (
+          <Status tone="success">{notice}</Status>
+        ) : null}
+        {onComplete && sampleState === "succeeded" ? (
+          <Actions>
+            <Button disabled={busy} onClick={onComplete}>
+              Continue
+            </Button>
+          </Actions>
+        ) : null}
         {!loading && !profile ? (
           <Button
             secondary
@@ -220,7 +303,7 @@ export function VoiceProfileForm({
             Retry loading settings
           </Button>
         ) : null}
-        {profile ? (
+        {profile && (!onComplete || sampleState !== "succeeded") ? (
           <div className={styles.stack}>
             {profile.enabled ? (
               <Status tone="success">
@@ -325,21 +408,31 @@ export function VoiceProfileForm({
                       </>
                     ) : null}
                     {captureError ? <Status tone="error">{captureError}</Status> : null}
+                    {sampleState === "processing" ? <Status>Processing your voice…</Status> : null}
+                    {sampleState === "failed" ? <Status tone="error">{problem}</Status> : null}
+                    {sampleState === "succeeded" ? (
+                      <>
+                        <Status tone="success">{notice}</Status>
+                        <p>
+                          Confirm your voice in the first class before spoken mistakes are shown.
+                        </p>
+                      </>
+                    ) : null}
                     <Actions>
                       <Button
                         secondary
                         disabled={!consent || busy || captureBlocked}
-                        onClick={() => {
-                          setProblem("");
-                          setNotice("");
-                          void recorder.start(() => blocked.current);
-                        }}
+                        onClick={() => void recordSample()}
                       >
-                        {capture.sample ? "Record again" : "Record voice sample"}
+                        {capture.sample || sampleState === "failed"
+                          ? "Record again"
+                          : "Record voice sample"}
                       </Button>
                       {capture.sample ? (
                         <Button disabled={!consent || busy} onClick={() => void save(true)}>
-                          {busy ? "Saving…" : "Save voice sample"}
+                          {sampleState === "processing"
+                            ? "Processing your voice…"
+                            : "Save voice sample"}
                         </Button>
                       ) : null}
                     </Actions>

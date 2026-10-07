@@ -3,7 +3,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createAuthUser } from "../../test/auth-users";
 import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
-import { cleanupFixtureProcessingJobs, runFixtureProcessingJobs } from "../../test/processing-jobs";
+import {
+  cleanupFixtureProcessingJobs,
+  runFixtureProcessingJobs,
+  runFixtureProcessingStep,
+} from "../../test/processing-jobs";
 import {
   acceptDocuments,
   CURRENT_VERSIONS,
@@ -299,6 +303,172 @@ async function fixture(grant = true) {
   return { ctx, session, asset, provider, job, start, work };
 }
 describe("durable processing, atomic quota and provenance on Postgres", () => {
+  it("FR-PROC-003 preserves a changed provider configuration diagnostic without dispatching", async () => {
+    const f = await fixture();
+    const run = await f.start();
+    const changed: AiProvider = {
+      name: f.provider.name,
+      mode: f.provider.mode,
+      settings: { ...f.provider.settings, promptVersion: "changed" },
+      structured: (input) => f.provider.structured(input),
+      transcribe: (input) => f.provider.transcribe(input),
+      speech: () => f.provider.speech(),
+    };
+    const job = processingJob({ provider: changed, store: new MemoryObjectStore() });
+    await runFixtureProcessingStep(db, job, { runId: run.id, userId: f.ctx.userId });
+    expect(await getRun(db, f.ctx, run.id)).toMatchObject({
+      state: "failed",
+      lastError: "settings_changed",
+    });
+    expect(f.provider.calls).toBe(0);
+    expect((await allowance(db, f.ctx)).reserved.document).toBe(0);
+  });
+
+  it.each([false, true])(
+    "FR-PROC-003 checkpoints knowledge stages before optional voice (%s)",
+    async (withVoice) => {
+      const f = await fixture();
+      await updateProfile(
+        db,
+        f.ctx,
+        { field: "explanation_language", explanationLanguage: "first_language" },
+        { now: new Date() },
+      );
+      const calls: string[] = [];
+      let primaryContext: unknown;
+      f.provider.structured = async <T>(input: StructuredInput<T>): Promise<ProviderResult<T>> => {
+        calls.push(input.schemaName);
+        const encoded = JSON.parse(input.input);
+        if (input.schemaName === "class_knowledge") primaryContext = encoded.lessonContext;
+        let output: unknown;
+        if (input.schemaName === "class_knowledge_translation") {
+          output = {
+            language: "fa",
+            translations: encoded.targets.map((target: { key: string }) => ({
+              key: target.key,
+              text: "این توضیح آموزشی فارسی است.",
+            })),
+          };
+        } else {
+          const claim =
+            input.schemaName === "class_knowledge_repair"
+              ? {
+                  id: "claim-1",
+                  text: "This explanation still needs Persian translation.",
+                  evidenceKey: encoded.sources[0].evidence[0][0],
+                  uncertain: false,
+                }
+              : {
+                  id: "claim-1",
+                  text: "This explanation needs Persian translation.",
+                  origin: "from_class",
+                  creation: "ai_generation",
+                  evidence: "material",
+                  sourceRefs: [encoded.sources[0].allowedSourceRefs[0]],
+                  speakerRole: "unknown",
+                  uncertain: false,
+                };
+          output = {
+            schemaVersion: "1",
+            title: "Present perfect",
+            language: { learning: "en", explanation: "fa" },
+            summary: [claim],
+            topics: [],
+            learningItems: [],
+            homework: [],
+            uncertainties: [],
+            coverage: { complete: true, missingSourceIds: [] },
+          };
+        }
+        return {
+          output: input.schema.parse(output),
+          requestId: `synthetic-separated-${calls.length}`,
+          model: input.model,
+          provider: f.provider.name,
+          actualMicros: 1,
+          usage: { inputTokens: 10, outputTokens: 10 },
+        };
+      };
+      const run = await f.start();
+      const job = withVoice
+        ? processingJob({
+            provider: f.provider,
+            store: new MemoryObjectStore(),
+            diarizeVoice: async () => {
+              throw new Error("Text sources must not request voice analysis");
+            },
+          })
+        : f.job;
+      const subject = { runId: run.id, userId: f.ctx.userId };
+      const snapshots: unknown[] = [];
+      let contextSnapshot: unknown;
+      for (const [index, stage] of [
+        "knowledge",
+        "knowledge:repair",
+        "knowledge:repair-language",
+      ].entries()) {
+        const before = await db
+          .selectFrom("proc.processing_run")
+          .select("job_id")
+          .where("id", "=", run.id)
+          .executeTakeFirstOrThrow();
+        expect(await runFixtureProcessingStep(db, job, subject)).toBe(true);
+        expect(calls).toHaveLength(index + 1);
+        const steps = await db
+          .selectFrom("proc.run_step")
+          .selectAll()
+          .where("run_id", "=", run.id)
+          .where("step", "like", "knowledge%")
+          .orderBy("completed_at")
+          .execute();
+        const expectedPaidSteps = [
+          "knowledge",
+          "knowledge:repair",
+          "knowledge:repair-language",
+        ].slice(0, index + 1);
+        expect(steps.map((step) => step.step).sort()).toEqual(
+          ["knowledge:input-context", ...expectedPaidSteps].sort(),
+        );
+        const context = steps.find((step) => step.step === "knowledge:input-context");
+        expect(primaryContext).toEqual({ date: f.session.classDate });
+        expect(context?.output).toEqual({ version: 1, date: f.session.classDate });
+        if (index === 0) contextSnapshot = context;
+        else expect(context).toEqual(contextSnapshot);
+        const paidSteps = steps.filter((step) => step.step !== "knowledge:input-context");
+        expect(paidSteps.map((step) => step.step)).toEqual(expectedPaidSteps);
+        expect(paidSteps.slice(0, index)).toEqual(snapshots);
+        snapshots.push(paidSteps[index]);
+        const after = await getRun(db, f.ctx, run.id);
+        if (stage !== "knowledge:repair-language" || withVoice) {
+          expect(after.state).toBe("processing");
+          const continued = await db
+            .selectFrom("proc.processing_run")
+            .select("job_id")
+            .where("id", "=", run.id)
+            .executeTakeFirstOrThrow();
+          expect(continued.job_id).not.toBe(before.job_id);
+          expect(await getLatestVersion(db, f.ctx, f.session.id)).toBeNull();
+          expect((await allowance(db, f.ctx)).reserved.document).toBeGreaterThan(0);
+        } else expect(after.state).toBe("ready");
+      }
+      expect(calls).toEqual([
+        "class_knowledge",
+        "class_knowledge_repair",
+        "class_knowledge_translation",
+      ]);
+      if (withVoice) {
+        expect(await runFixtureProcessingStep(db, job, subject)).toBe(true);
+        expect(calls).toHaveLength(3);
+      }
+      expect(await runFixtureProcessingStep(db, job, subject)).toBe(false);
+      expect(await listVersions(db, f.ctx, f.session.id)).toHaveLength(1);
+      expect((await allowance(db, f.ctx)).reserved.document).toBe(0);
+      expect((await getLatestVersion(db, f.ctx, f.session.id))?.model.summary[0]?.text).toBe(
+        "این توضیح آموزشی فارسی است.",
+      );
+    },
+  );
+
   it("classifies personal notes during the existing knowledge call without assigning authorship", async () => {
     const f = await fixture();
     f.provider.sourceClassifications = [

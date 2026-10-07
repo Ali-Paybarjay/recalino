@@ -49,15 +49,32 @@ test("voice consent gates microphone; sample auto-stops and retries the same exp
   let profile = { ...emptyProfile };
   const writes: { body: unknown; key: string | undefined }[] = [];
   let deleted = false;
+  let reads = 0;
+  let releaseSave: (() => void) | undefined;
+  const saving = new Promise<void>((resolve) => {
+    releaseSave = resolve;
+  });
   await page.route("**/api/me/voice", async (route) => {
     const request = route.request();
+    if (request.method() === "GET") {
+      reads++;
+      if (profile.enrolled)
+        return route.fulfill({
+          status: 503,
+          json: {
+            error: { code: "unavailable", message: "Voice settings could not be refreshed." },
+          },
+        });
+    }
     if (request.method() === "PUT") {
       writes.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] });
-      if (writes.length === 1)
+      if (writes.length === 1) {
+        await saving;
         return route.fulfill({
           status: 503,
           json: { error: { code: "unavailable", message: "Please retry the saved sample." } },
         });
+      }
       profile = {
         ...profile,
         enabled: true,
@@ -88,13 +105,36 @@ test("voice consent gates microphone; sample auto-stops and retries the same exp
   await page.clock.install();
   await record.click();
   await expect(page.getByRole("timer")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
   await page.clock.fastForward(30_100);
   await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
   expect(await stats()).toEqual({ requests: 1, stopped: 1 });
   await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
-  await expect(page.getByText("Please retry the saved sample.", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: /^Processing your voice…$/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Processing your voice…", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Record again", exact: true })).toBeDisabled();
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toHaveCount(0);
+  releaseSave?.();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Voice processing could not be completed. Try saving again, or record another voice sample.",
+  );
+  await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: /^Processing your voice…$/ }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
-  await expect(page.getByText(/Your voice sample is saved/)).toBeVisible();
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Voice confirmation is on · Voice sample saved/)).toBeVisible();
+  await expect(page.getByLabel("Your voice sample preview")).toHaveCount(0);
+  expect(reads).toBe(1);
   expect(writes).toHaveLength(2);
   expect(writes[1]).toEqual(writes[0]);
   expect(writes[0]?.body).toMatchObject({
@@ -113,6 +153,152 @@ test("voice consent gates microphone; sample auto-stops and retries the same exp
   await page.getByRole("button", { name: "Delete voice data", exact: true }).click();
   await expect(page.getByText(/Voice confirmation is off/)).toBeVisible();
   expect(deleted).toBe(true);
+});
+
+test("an unusable voice sample asks for a new recording and gives that save a fresh key", async ({
+  page,
+}) => {
+  await mockMicrophone(page);
+  let profile = { ...emptyProfile, version: 0 };
+  const writes: { body: unknown; key: string | undefined }[] = [];
+  await page.route("**/api/me/voice", async (route) => {
+    const request = route.request();
+    if (request.method() === "PUT") {
+      writes.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] });
+      if (writes.length === 1) {
+        profile = { ...profile, version: 1, enabled: true, consentVersion: "voice-v1" };
+        return route.fulfill({
+          status: 422,
+          json: {
+            error: {
+              code: "validation_failed",
+              message: "A clear recording with one speaker is required.",
+              details: { fields: { audio: ["one_clear_voice_required"] } },
+            },
+          },
+        });
+      }
+      return route.fulfill({
+        json: {
+          ...profile,
+          version: 2,
+          enabled: true,
+          consentVersion: "voice-v1",
+          enrolled: true,
+          sampleDurationMs: 30000,
+        },
+      });
+    }
+    await route.fulfill({ json: profile });
+  });
+  await page.goto("/dev/ui/voice");
+  await page.getByRole("checkbox").check();
+  await page.clock.install();
+  await page.getByRole("button", { name: "Record voice sample", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
+  await page.clock.fastForward(30_100);
+  await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
+  await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Your voice could not be processed. Please record another voice sample and try again.",
+  );
+  await expect(page.getByLabel("Your voice sample preview")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save voice sample", exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Record again", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
+  await page.clock.fastForward(30_100);
+  await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[0]?.key).toBeTruthy();
+  expect(writes[1]?.key).toBeTruthy();
+  expect(writes[1]?.key).not.toBe(writes[0]?.key);
+  expect(writes[0]?.body).toMatchObject({ expectedVersion: 0 });
+  expect(writes[1]?.body).toMatchObject({ expectedVersion: 1 });
+});
+
+test("replacing a sample after a transient failure uses current voice settings and a fresh key", async ({
+  page,
+}) => {
+  await mockMicrophone(page);
+  let profile = { ...emptyProfile, version: 0 };
+  const writes: { body: unknown; key: string | undefined }[] = [];
+  await page.route("**/api/me/voice", async (route) => {
+    const request = route.request();
+    if (request.method() === "PUT") {
+      writes.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] });
+      if (writes.length === 1) {
+        profile = { ...profile, version: 1, enabled: true, consentVersion: "voice-v1" };
+        return route.fulfill({
+          status: 503,
+          json: {
+            error: { code: "unavailable", message: "The voice processor needs another try." },
+          },
+        });
+      }
+      profile = { ...profile, version: 2, enrolled: true, sampleDurationMs: 30000 };
+    }
+    await route.fulfill({ json: profile });
+  });
+  await page.goto("/dev/ui/voice");
+  await page.getByRole("checkbox").check();
+  await page.clock.install();
+  await page.getByRole("button", { name: "Record voice sample", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
+  await page.clock.fastForward(30_100);
+  await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Voice processing could not be completed. Try saving again, or record another voice sample.",
+  );
+  await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
+  await page.getByRole("button", { name: "Record again", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
+  await page.clock.fastForward(30_100);
+  await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[0]?.key).toBeTruthy();
+  expect(writes[1]?.key).toBeTruthy();
+  expect(writes[1]?.key).not.toBe(writes[0]?.key);
+  expect(writes[0]?.body).toMatchObject({ expectedVersion: 0 });
+  expect(writes[1]?.body).toMatchObject({ expectedVersion: 1 });
+});
+
+test("a save response without a processed sample cannot show a success message", async ({
+  page,
+}) => {
+  await mockMicrophone(page);
+  await page.route("**/api/me/voice", (route) =>
+    route.fulfill({
+      json:
+        route.request().method() === "PUT"
+          ? { ...emptyProfile, enabled: true, consentVersion: "voice-v1" }
+          : emptyProfile,
+    }),
+  );
+  await page.goto("/dev/ui/voice");
+  await page.getByRole("checkbox").check();
+  await page.clock.install();
+  await page.getByRole("button", { name: "Record voice sample", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Stop sample", exact: true })).toBeVisible();
+  await page.clock.fastForward(30_100);
+  await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Voice processing could not be completed. Try saving again, or record another voice sample.",
+  );
+  await expect(
+    page.getByText("Your voice has been processed successfully.", { exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save voice sample", exact: true })).toBeEnabled();
 });
 
 test("class confirmation is per source, retries safely, and offers correction and none", async ({

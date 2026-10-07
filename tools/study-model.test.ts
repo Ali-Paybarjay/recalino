@@ -257,7 +257,8 @@ describe("shared structured lesson model", () => {
     expect(prompt).toContain("Persian (Farsi)");
     expect(prompt).toContain("each claim.text explains in the resolved explanation language");
     expect(prompt).toContain("one shared source");
-    expect(prompt).toContain("10–18 production items");
+    expect(prompt).toContain("at most 4 complete production items");
+    expect(studyPrompt("fa", 24576)).toContain("10–18 production items");
     expect(prompt).toContain("NO verified learner voice");
     expect(prompt).toContain("hard limit of 6144 output tokens");
     expect(prompt).toContain("classNotes.sourceNote");

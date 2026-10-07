@@ -227,7 +227,7 @@ it("publishes representative notes from all seven complete long-class sources in
     seen.push(body);
     expect(body.max_tokens).toBe(6144);
     expect(body.messages[0].content).toContain("hard limit of 6144 output tokens");
-    expect(body.messages[0].content).toContain("Aim below 5222");
+    expect(body.messages[0].content).toContain("Aim below 4608");
     expect(body.messages[0].content).toContain("populate classNotes and each learningItem.study");
     expect(body.messages[0].content).toContain("one shared source");
     expect(body.messages[0].content).toContain("The learner prefers shorter examples");
@@ -262,7 +262,7 @@ it("scales the instruction down while preserving a smaller configured hard limit
     const body = JSON.parse(String(init?.body));
     expect(body.max_tokens).toBe(2048);
     expect(body.messages[0].content).toContain("hard limit of 2048 output tokens");
-    expect(body.messages[0].content).toContain("Aim below 1740");
+    expect(body.messages[0].content).toContain("Aim below 1536");
     expect(body.messages[0].content).toContain("finish the entire valid JSON object");
     expect(body.messages[0].content).toContain(
       "Budget for complete production fields and evidence",
@@ -275,34 +275,47 @@ it("scales the instruction down while preserving a smaller configured hard limit
   expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "ready", lastError: null });
 });
 
-it("persists a returned request ID and actual cost when structured output is truncated", async () => {
-  const request = vi.fn<typeof fetch>(
-    async () =>
-      new Response(
-        JSON.stringify({
-          id: "synthetic-budget-truncated",
-          model: settings.llmModel,
-          choices: [{ finish_reason: "length", message: { content: '{"schemaVersion":"1",' } }],
-          usage: { cost: 0.06806, prompt_tokens: 37340, completion_tokens: 6144 },
-        }),
-      ),
-  );
+it("settles each truncated request exactly once while checkpointing one bounded compact recovery", async () => {
+  const seen: ReturnType<typeof JSON.parse>[] = [];
+  const request = vi.fn<typeof fetch>(async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    seen.push(body);
+    return new Response(
+      JSON.stringify({
+        id: `synthetic-budget-truncated-${seen.length}`,
+        model: settings.llmModel,
+        choices: [{ finish_reason: "length", message: { content: '{"schemaVersion":"1",' } }],
+        usage: { cost: 0.06806, prompt_tokens: 37340, completion_tokens: 6144 },
+      }),
+    );
+  });
   const f = await fixture(request);
   await f.work();
+  expect(request).toHaveBeenCalledTimes(1);
   expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
-    state: "failed",
-    lastError: "provider_output_truncated",
+    state: "processing",
+    lastError: null,
   });
   const attempt = await db
     .selectFrom("proc.provider_attempt")
-    .select(["state", "error_code", "provider_request_id"])
+    .select(["id", "hold_id", "state", "error_code", "provider_request_id"])
     .where("run_id", "=", f.run.id)
+    .where("step", "=", "knowledge")
     .executeTakeFirstOrThrow();
-  expect(attempt).toEqual({
+  expect(attempt).toMatchObject({
     state: "failed",
     error_code: "provider_output_truncated",
-    provider_request_id: "synthetic-budget-truncated",
+    provider_request_id: "synthetic-budget-truncated-1",
   });
+  expect(
+    (
+      await db
+        .selectFrom("quota.cost_hold")
+        .select("closed_at")
+        .where("id", "=", attempt.hold_id)
+        .executeTakeFirstOrThrow()
+    ).closed_at,
+  ).toBeInstanceOf(Date);
   const cost = await db
     .selectFrom("quota.provider_cost")
     .select(["amount_micros", "estimated_micros", "usage"])
@@ -311,6 +324,80 @@ it("persists a returned request ID and actual cost when structured output is tru
   expect(Number(cost.amount_micros)).toBe(68060);
   expect(cost.estimated_micros).toBeNull();
   expect(cost.usage).toEqual({ inputTokens: 37340, outputTokens: 6144 });
+  expect(
+    (
+      await db
+        .selectFrom("proc.run_step")
+        .select("output")
+        .where("run_id", "=", f.run.id)
+        .where("step", "=", "knowledge:truncated")
+        .executeTakeFirstOrThrow()
+    ).output,
+  ).toEqual({
+    reason: "provider_output_truncated",
+    attemptId: attempt.id,
+  });
+  expect(
+    await db
+      .selectFrom("proc.run_step")
+      .select("step")
+      .where("run_id", "=", f.run.id)
+      .where("step", "in", ["knowledge", "knowledge:compact", "knowledge:input-context"])
+      .execute(),
+  ).toEqual([]);
+  expect(
+    (
+      await db
+        .selectFrom("quota.reservation")
+        .select("closed_at")
+        .where("id", "=", f.run.reservationId)
+        .executeTakeFirstOrThrow()
+    ).closed_at,
+  ).toBeNull();
+
+  await f.work();
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(seen[1].max_tokens).toBe(6144);
+  expect(seen[1].messages[1]).toEqual(seen[0].messages[1]);
+  expect(seen[1].messages[0].content).toContain("hard limit of 2048 output tokens");
+  expect(seen[1].messages[0].content).toContain("at most ONE complete learning item");
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+    state: "failed",
+    lastError: "provider_output_truncated",
+    outputVersionId: null,
+  });
+  const attempts = await db
+    .selectFrom("proc.provider_attempt")
+    .select(["step", "state", "error_code", "provider_request_id"])
+    .where("run_id", "=", f.run.id)
+    .orderBy("step")
+    .execute();
+  expect(attempts).toEqual([
+    {
+      step: "knowledge",
+      state: "failed",
+      error_code: "provider_output_truncated",
+      provider_request_id: "synthetic-budget-truncated-1",
+    },
+    {
+      step: "knowledge:compact",
+      state: "failed",
+      error_code: "provider_output_truncated",
+      provider_request_id: "synthetic-budget-truncated-2",
+    },
+  ]);
+  const costs = await db
+    .selectFrom("quota.provider_cost")
+    .select(["amount_micros", "estimated_micros", "usage"])
+    .where("run_id", "=", f.run.id)
+    .execute();
+  expect(costs).toHaveLength(2);
+  expect(costs.map((row) => Number(row.amount_micros))).toEqual([68060, 68060]);
+  expect(costs.every((row) => row.estimated_micros === null)).toBe(true);
+  expect(costs.map((row) => row.usage)).toEqual([
+    { inputTokens: 37340, outputTokens: 6144 },
+    { inputTokens: 37340, outputTokens: 6144 },
+  ]);
   const reservation = await db
     .selectFrom("quota.reservation")
     .select(["settled_amounts", "closed_at"])
@@ -324,8 +411,16 @@ it("persists a returned request ID and actual cost when structured output is tru
     storage: 0,
   });
   expect(reservation.closed_at).toBeInstanceOf(Date);
+  await f.work();
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(
+    await db
+      .selectFrom("quota.provider_cost")
+      .select("id")
+      .where("run_id", "=", f.run.id)
+      .execute(),
+  ).toHaveLength(2);
 });
-
 it("leaves an unknown network outcome without an invented request ID or settled provider cost", async () => {
   const request = vi.fn<typeof fetch>(async () => {
     throw new Error("Synthetic interrupted provider connection");
