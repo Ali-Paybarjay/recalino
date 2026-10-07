@@ -1,11 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import type {
   ClassVoiceView,
   VoiceAnalysisView,
   VoiceProfileView,
 } from "@recalino/core/voice-contracts";
+import { mockMicrophone } from "./voice-capture";
 
 const output = resolve(import.meta.dirname, "../../../artifacts/verification");
 const emptyProfile: VoiceProfileView = {
@@ -41,48 +42,6 @@ function analysis(source = 1): VoiceAnalysisView {
     })),
   };
 }
-async function mockMicrophone(page: Page) {
-  await page.addInitScript(() => {
-    const stats = { requests: 0, stopped: 0 };
-    Object.assign(window, { voiceCaptureStats: stats });
-    Object.defineProperty(navigator, "mediaDevices", {
-      configurable: true,
-      value: {
-        getUserMedia: async () => {
-          stats.requests++;
-          return {
-            getTracks: () => [
-              {
-                stop: () => {
-                  stats.stopped++;
-                },
-              },
-            ],
-          };
-        },
-      },
-    });
-    class FakeRecorder {
-      static isTypeSupported() {
-        return true;
-      }
-      mimeType = "audio/webm;codecs=opus";
-      state = "inactive";
-      ondataavailable: ((event: { data: Blob }) => void) | null = null;
-      onstop: (() => void) | null = null;
-      start() {
-        this.state = "recording";
-      }
-      stop() {
-        this.state = "inactive";
-        this.ondataavailable?.({ data: new Blob(["synthetic voice"], { type: this.mimeType }) });
-        this.onstop?.();
-      }
-    }
-    Object.defineProperty(window, "MediaRecorder", { configurable: true, value: FakeRecorder });
-  });
-}
-
 test("voice consent gates microphone; sample auto-stops and retries the same explicit save", async ({
   page,
 }) => {

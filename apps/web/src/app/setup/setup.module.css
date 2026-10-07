@@ -147,6 +147,25 @@
   padding-top: 8px;
 }
 
+.voiceStep {
+  display: grid;
+  gap: 20px;
+  padding: 8px 20px 24px;
+  min-width: 0;
+}
+
+.voiceStep :global(.preview-panel) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (min-width: 768px) {
+  .voiceStep {
+    padding: 12px 32px 32px;
+  }
+}
+
 .stepTight {
   gap: 14px;
 }

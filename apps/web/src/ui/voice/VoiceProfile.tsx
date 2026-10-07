@@ -17,7 +17,14 @@ export function VoiceProfile() {
 }
 
 /** The standalone form also powers the guarded synthetic browser fixture. */
-export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: boolean }) {
+export function VoiceProfileForm({
+  captureBlocked = false,
+  onComplete,
+}: {
+  captureBlocked?: boolean;
+  /** Optional onboarding: save a sample or skip without changing voice consent. */
+  onComplete?: () => void;
+}) {
   const [profile, setProfile] = useState<VoiceProfileView | null>(null);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -38,6 +45,10 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
   const inFlight = useRef(false);
   const key = useRef<{ payload: string; key: string } | null>(null);
   const capturing = capture.phase === "recording" || capture.phase === "requesting";
+  const captureError =
+    onComplete && capture.error?.startsWith("Microphone access was not allowed.")
+      ? 'Microphone access was not allowed. You can try again or choose "Do this later".'
+      : capture.error;
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const result = await workspaceRequest<VoiceProfileView>(
@@ -112,6 +123,7 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
           ? "Your voice sample is saved. Confirm your voice in the first class before spoken mistakes are shown."
           : "Voice confirmation is enabled. You can identify your voice in each class without a saved sample.",
       );
+      if (withSample) onComplete?.();
     } catch (error) {
       if (
         error instanceof WorkspaceRequestError &&
@@ -164,7 +176,22 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
   }
   return (
     <div className={styles.stack}>
-      <Panel title="Your voice · Optional">
+      {onComplete ? (
+        <Actions>
+          <Button
+            secondary
+            disabled={busy}
+            onClick={() => {
+              if (inFlight.current) return;
+              recorder.cancel();
+              onComplete();
+            }}
+          >
+            Do this later
+          </Button>
+        </Actions>
+      ) : null}
+      <Panel title={onComplete ? undefined : "Your voice · Optional"}>
         <p>
           Help Recalino tell your speech apart from your teacher’s and classmates’. Spoken mistakes
           appear only after your voice is verified.
@@ -172,7 +199,7 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
         <p className="preview-muted">
           A voice sample is optional. If you save one, the audio and voice patterns are kept
           privately for your account. Confirmed class samples can improve future matches. You can
-          turn this off and delete the voice data here at any time.
+          turn this off and delete the voice data {onComplete ? "in Settings" : "here"} at any time.
         </p>
         {loading ? <Status>Loading voice settings…</Status> : null}
         {problem && !deleting ? <Status tone="error">{problem}</Status> : null}
@@ -211,8 +238,14 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
             ) : null}
             {!profile.engineAvailable ? (
               <Status>
-                Audio voice matching is not available yet. You can enable confirmation for
-                transcripts that already identify separate speakers.
+                {onComplete ? (
+                  'Audio voice matching is not available yet. Choose "Do this later" and try again in Settings → Your voice.'
+                ) : (
+                  <>
+                    Audio voice matching is not available yet. You can enable confirmation for
+                    transcripts that already identify separate speakers.
+                  </>
+                )}
               </Status>
             ) : null}
             <label className={styles.consent}>
@@ -291,7 +324,7 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
                         />
                       </>
                     ) : null}
-                    {capture.error ? <Status tone="error">{capture.error}</Status> : null}
+                    {captureError ? <Status tone="error">{captureError}</Status> : null}
                     <Actions>
                       <Button
                         secondary
@@ -314,21 +347,23 @@ export function VoiceProfileForm({ captureBlocked = false }: { captureBlocked?: 
                 )}
               </div>
             ) : null}
-            <Actions>
-              {!profile.enabled ? (
-                <Button disabled={!consent || busy || capturing} onClick={() => void save(false)}>
-                  {busy ? "Saving…" : "Enable without a sample"}
-                </Button>
-              ) : null}
-              {profile.enabled ? (
-                <Button secondary disabled={busy || capturing} onClick={() => setDeleting(true)}>
-                  Turn off and delete voice data
-                </Button>
-              ) : null}
-              <LinkButton secondary href="/me">
-                Back to settings
-              </LinkButton>
-            </Actions>
+            {!onComplete ? (
+              <Actions>
+                {!profile.enabled ? (
+                  <Button disabled={!consent || busy || capturing} onClick={() => void save(false)}>
+                    {busy ? "Saving…" : "Enable without a sample"}
+                  </Button>
+                ) : null}
+                {profile.enabled ? (
+                  <Button secondary disabled={busy || capturing} onClick={() => setDeleting(true)}>
+                    Turn off and delete voice data
+                  </Button>
+                ) : null}
+                <LinkButton secondary href="/me">
+                  Back to settings
+                </LinkButton>
+              </Actions>
+            ) : null}
           </div>
         ) : null}
       </Panel>
