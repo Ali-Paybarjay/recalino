@@ -83,7 +83,7 @@ function note(value: string | undefined, ctx: RenderContext): string {
 
 /** The same two fields are consumed by the application and the Anki text export. */
 export function renderStudyCard(
-  item: Pick<LearningItem, "study" | "front" | "back">,
+  item: Pick<LearningItem, "study" | "front" | "back"> & { claim?: Pick<Claim, "origin"> },
   explanationLanguage = "fa",
 ): {
   front: string;
@@ -100,7 +100,7 @@ export function renderStudyCard(
   if (value.set === "recognition")
     return {
       front: `<div ${ctx.englishAttrs}><b>${text(value.en)}</b><br><br><i>${text(value.example)}</i></div>`,
-      back: `<div ${ctx.explanatoryAttrs} style="font-size:1.1em">${prose(value.faMeaning)}</div>${value.ipa ? `<br><div ${ctx.englishAttrs}><span class="ipa">${text(value.ipa)}</span></div>` : ""}${value.noteFa ? `<br><div ${ctx.explanatoryAttrs}>📝 ${prose(value.noteFa)}</div>` : ""}`,
+      back: `<div ${ctx.explanatoryAttrs} style="font-size:1.1em">${prose(value.faMeaning)}</div>${value.ipa ? `<br><div ${ctx.englishAttrs}><span class="ipa">${text(value.ipa)}</span></div>` : ""}${value.noteFa ? `<br><div ${ctx.explanatoryAttrs}>📝 ${prose(value.noteFa)}</div>` : ""}${item.claim?.origin === "ai_expansion" ? `<br><div ${ctx.explanatoryAttrs}><b>${ctx.label("aiExpansion")}</b></div>` : ""}`,
     };
   if (value.kind === "grammar" && value.taskFa && value.prompt)
     return {
@@ -152,7 +152,11 @@ function entry(item: LearningItem, ctx: RenderContext, index?: number): string {
   if (!value) return "";
   const production = value.set === "production";
   const example = production ? value.fullSentence : value.example;
-  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en">${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${prose(value.sourceFa)}</p>` : ""}\n</article>`;
+  const expansion =
+    !production && item.claim.origin === "ai_expansion"
+      ? `<p class="src">${ctx.label("aiExpansion")}</p>`
+      : "";
+  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en">${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${prose(value.sourceFa)}</p>` : ""}\n${expansion}</article>`;
 }
 
 function table(
@@ -396,7 +400,7 @@ export function renderClassNotesHtml(model: KnowledgeModel): string {
             ? [
                 [
                   `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
-                  `<td>${prose(item.study.faMeaning)}</td>`,
+                  `<td>${prose(item.study.faMeaning)}${item.claim.origin === "ai_expansion" ? `<p class="src">${ctx.label("aiExpansion")}</p>` : ""}</td>`,
                   `<td ${ctx.englishAttrs}><i>${text(item.study.example)}</i></td>`,
                 ],
               ]

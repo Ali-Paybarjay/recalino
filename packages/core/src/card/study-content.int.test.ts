@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, expect, it } from "vitest";
+import { lexicalFrameModel } from "../../test/lexical-frame-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../test/local-db";
 import {
   MULTILINGUAL_STUDY_CASES,
@@ -25,6 +26,46 @@ import {
 
 const db = createDatabase(LOCAL_APP_DATABASE_URL, { maxConnections: 3 });
 afterAll(() => db.destroy());
+
+it("AC-D46-01 never publishes a complement-only cloze and saves the lexical pronunciation of a valid frame", async () => {
+  const x = await studyFixture(db, { count: 0 });
+  const publish = (model: ReturnType<typeof lexicalFrameModel>) =>
+    db.transaction().execute((tx) =>
+      publishKnowledgeVersion(tx, x.ctx, {
+        sessionId: x.session.id,
+        runId: randomUUID(),
+        sourcesVersion: 0,
+        sourceFingerprint: "lexical-frame-regression",
+        model,
+        sources: [],
+        explanationLanguage: "en",
+        generation: { mode: "mock", provider: "synthetic-frame-regression" },
+      }),
+    );
+  await expect(
+    publish(lexicalFrameModel({ gapSentence: "I look forward to ______ my new neighbours." })),
+  ).rejects.toMatchObject({ details: { fields: { output: ["study_answer_exposed"] } } });
+  const valid = await publish(lexicalFrameModel());
+  await publishNotebook(
+    db,
+    x.ctx,
+    x.session.id,
+    { expectedRevisionId: x.notebook.current.id, knowledgeVersionId: valid.id },
+    { key: randomUUID() },
+  );
+  const generated = await generateCards(
+    db,
+    x.ctx,
+    x.session.id,
+    { autoAdd: true },
+    { key: randomUUID() },
+  );
+  expect(generated.cards[0]?.pronunciationTarget).toBe("look forward to");
+  expect(generated.cards[0]?.pronunciationTarget).not.toBe("meeting");
+  const card = generated.cards[0];
+  if (!card) throw new Error("Missing frame card");
+  expect((await getCard(db, x.ctx, card.id)).pronunciationTarget).toBe("look forward to");
+});
 
 it("stores one reference card per shared item, preserves rich metadata through sync/proposal/undo, and keeps edits plain", async () => {
   const x = await studyFixture(db, { count: 0 });

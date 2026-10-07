@@ -3,6 +3,7 @@ import { FIRST_LANGUAGES } from "../acc";
 import { errors } from "../plt";
 import { explanationStudyFields, normalizeGeneratedStudyModel } from "./study-policy";
 import { classNotesSchema, studyContentSchema } from "./study-schema";
+import { studyLexicalTarget, studyLexicalTargetMatches } from "./study-target";
 
 export const LKM_SCHEMA_VERSION = "1";
 const id = z.string().min(1).max(100);
@@ -200,14 +201,13 @@ export function validateKnowledgeModel(
         );
         if (exactAnswer.test(study.faMeaning) || exactAnswer.test(sentence))
           fail("study_answer_exposed");
-        const target = study.en
-          .replace(/\([^)]*\)/g, "")
-          .split(/\s+\/\s+/)[0]
-          ?.trim();
-        if (target && !/\b(?:sb|sth|someone|something)\b/i.test(target)) {
-          const answer = new RegExp(`(?:^|[^A-Za-z])${escapePattern(target)}(?:$|[^A-Za-z])`, "iu");
-          if (answer.test(study.faMeaning) || answer.test(sentence)) fail("study_answer_exposed");
-        }
+        const target = studyLexicalTarget(study.en);
+        if (!target) fail("study_target_unsupported");
+        else if (
+          studyLexicalTargetMatches(target, study.faMeaning) ||
+          studyLexicalTargetMatches(target, sentence)
+        )
+          fail("study_answer_exposed");
       }
     }
   }

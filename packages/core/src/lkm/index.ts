@@ -51,6 +51,11 @@ export {
   taskGroupSchema,
 } from "./study-schema";
 export {
+  type StudyLexicalTarget,
+  studyLexicalTarget,
+  studyLexicalTargetMatches,
+} from "./study-target";
+export {
   cleanupAccountKnowledge,
   cleanupSessionKnowledge,
   getLatestVersion,

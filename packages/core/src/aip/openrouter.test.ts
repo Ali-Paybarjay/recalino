@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { type ProviderSettings, requireProvider } from "./contracts";
+import { type ProviderSettings, providerSettingsSchema, requireProvider } from "./contracts";
 import { OpenRouterProvider } from "./openrouter";
 import { createJsonFallbackTransport } from "./structured-schema";
 
@@ -49,6 +49,55 @@ describe("AIP OpenRouter boundary", () => {
   afterEach(() => {
     warning.mockRestore();
   });
+
+  it.each([undefined, 0, 0.2])(
+    "AC-D46-07 preserves optional structured temperature %s through schema and JSON fallback",
+    async (structuredTemperature) => {
+      const configured = providerSettingsSchema.parse({
+        ...settings,
+        ...(structuredTemperature === undefined ? {} : { structuredTemperature }),
+      });
+      const request = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(grammarRejection())
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              model: settings.llmModel,
+              choices: [{ finish_reason: "stop", message: { content: '{"answer":"hello"}' } }],
+            }),
+          ),
+        );
+      const provider = new OpenRouterProvider("synthetic-key", configured, request);
+      const result = await provider.structured({
+        operationKey: "synthetic-temperature",
+        model: settings.llmModel,
+        schema: z.strictObject({ answer: z.string() }),
+        schemaName: "test",
+        system: "Synthetic test",
+        input: "Synthetic fixture",
+      });
+      expect(result.output).toEqual({ answer: "hello" });
+      expect(request).toHaveBeenCalledTimes(2);
+      for (const [, init] of request.mock.calls) {
+        const body = JSON.parse(String(init?.body));
+        if (structuredTemperature === undefined) expect(body).not.toHaveProperty("temperature");
+        else expect(body.temperature).toBe(structuredTemperature);
+        expect(body.max_tokens).toBe(settings.maxOutputTokens);
+      }
+      if (structuredTemperature === undefined)
+        expect(configured).not.toHaveProperty("structuredTemperature");
+    },
+  );
+
+  it.each([-0.1, 1.1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid structured temperature %s",
+    (structuredTemperature) => {
+      expect(providerSettingsSchema.safeParse({ ...settings, structuredTemperature }).success).toBe(
+        false,
+      );
+    },
+  );
 
   it("logs only bounded declared-schema paths and codes, never rejected keys, values, messages or private names", async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(

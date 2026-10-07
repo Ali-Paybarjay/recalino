@@ -37,7 +37,7 @@ it.each(MULTILINGUAL_STUDY_CASES)(
 it("AC-D46-01 extracts only the structured target and preserves old metadata", () => {
   const model = referenceStudyModel();
   const item = model.learningItems[0];
-  if (!item?.study) throw new Error("Missing reference target");
+  if (item?.study?.set !== "production") throw new Error("Missing reference target");
   expect(studyPronunciationTarget(item)).toBe("wear and tear");
   expect(readStudyMetadata(studyCardContent(item, model).study_metadata).pronunciationTarget).toBe(
     "wear and tear",
@@ -69,4 +69,26 @@ it("AC-D46-01 extracts only the structured target and preserves old metadata", (
     }),
   ).toBeUndefined();
   expect(studyPronunciationTarget(model.learningItems[3] as typeof item)).toBeUndefined();
+  expect(
+    studyPronunciationTarget({
+      ...item,
+      study: {
+        ...item.study,
+        en: "look forward to + -ing / noun",
+        gapSentence: "I look forward to ______ my new neighbours.",
+        fullSentence: "I look forward to meeting my new neighbours.",
+      },
+    }),
+  ).toBe("look forward to");
+  expect(
+    studyPronunciationTarget({
+      ...separable,
+      study: {
+        ...separable.study,
+        en: "kit sb/sth out",
+        gapSentence: "We need to kit it out before ______.",
+        fullSentence: "We need to kit it out before Monday.",
+      },
+    }),
+  ).toBeUndefined();
 });

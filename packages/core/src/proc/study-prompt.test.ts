@@ -4,6 +4,29 @@ import { personalisedTeachingPrompt, studyPrompt } from "./study-prompt";
 import { knowledgePrompt } from "./worker";
 
 describe("AC-D46-06 friendly declared-level teaching", () => {
+  it.each([false, true])(
+    "preserves the live-quality corrections in primary/repair mode %s",
+    (usesEvidenceKeys) => {
+      const prompt = knowledgePrompt("fa", false, 6144, usesEvidenceKeys, {
+        version: 1,
+        declaredLevel: "A2",
+        goal: "general",
+      });
+      expect(prompt).toContain("same subject, verb, meaning, tense and time clues");
+      expect(prompt).toContain(
+        "Never pair a past-simple prompt with yesterday with a present-perfect answer",
+      );
+      expect(prompt).toContain('gapSentence="I ______ meeting my new neighbours."');
+      expect(prompt).toContain("Return classNotes.gapfill as an empty array []");
+      expect(prompt).toContain("only from exact cited class examples after validation");
+      expect(prompt).toContain("Do not generate gapfill questions");
+      expect(prompt).toContain("Prefer exact supplied class examples");
+      expect(prompt).toContain("narrow the claim to what its single cited block actually supports");
+      expect(prompt).toContain("Escape all quotation marks and line breaks inside JSON strings");
+      expect(prompt).toContain("حال کامل, not گذشته نزدیک");
+      expect(prompt).toContain("not extra lesson facts");
+    },
+  );
   it.each([
     ["A1", "short, concrete steps"],
     ["A2", "short, concrete steps"],
@@ -78,7 +101,7 @@ describe("Persian lesson response budget", () => {
     const prompt = studyPrompt("fa", 6144);
     expect(prompt).toContain("at most 4 complete production items");
     expect(prompt).toContain("at most 2 recognition items");
-    expect(prompt).toContain("gapfill has at most 4 NEW sentences");
+    expect(prompt).toContain("Return classNotes.gapfill as an empty array []");
     expect(prompt).toContain("at most 1 short task groups");
     expect(prompt).toContain("Aim below 4608");
     expect(prompt).toContain("At most 2 mistakes");
@@ -107,7 +130,7 @@ describe("Persian lesson response budget", () => {
     const prompt = studyPrompt("fa", 3072);
     expect(prompt).toContain("at most 2 complete production items");
     expect(prompt).toContain("at most 1 recognition items");
-    expect(prompt).toContain("gapfill has at most 2 NEW sentences");
+    expect(prompt).toContain("Return classNotes.gapfill as an empty array []");
     expect(prompt).toContain("at most 0 short task groups");
     expect(prompt).toContain("always include this Persian sourceNote");
     expect(prompt).toContain("empty arrays are valid");
@@ -116,7 +139,7 @@ describe("Persian lesson response budget", () => {
   it("retains richer lesson targets when enough output capacity is configured", () => {
     const prompt = studyPrompt("fa", 24576);
     expect(prompt).toContain("Normally select 10–18 production items");
-    expect(prompt).toContain("gapfill normally has 8–12 NEW sentences");
+    expect(prompt).toContain("Return classNotes.gapfill as an empty array []");
     expect(prompt).toContain("one to three sentences in the resolved explanation language");
     expect(prompt).not.toContain("always include this Persian sourceNote");
     expect(prompt).toContain(

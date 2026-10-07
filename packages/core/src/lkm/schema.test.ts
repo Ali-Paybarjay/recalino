@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { lexicalFrameModel } from "../../test/lexical-frame-fixture";
 import {
   type EvidenceSource,
   type KnowledgeModel,
@@ -101,4 +102,65 @@ describe("PRD-LKM-01..07 and AC-08..10 evidence validation", () => {
     expect(matchesExplanationScript("توضیح فارسی", "fa")).toBe(true);
     expect(matchesExplanationScript("中文", "zh")).toBe(true);
   });
+});
+
+it("AC-D46-01 rejects an exposed lexical target hidden by grammatical complement notation", () => {
+  for (const en of [
+    "look forward to + -ing / noun",
+    "look forward to + noun or -ing",
+    "get on with + person",
+  ]) {
+    const value = lexicalFrameModel(
+      en.startsWith("get")
+        ? {
+            en,
+            gapSentence: "I get on with ______ in my new class.",
+            fullSentence: "I get on with everyone in my new class.",
+          }
+        : { en, gapSentence: "I look forward to ______ my new neighbours." },
+    );
+    let failure: unknown;
+    try {
+      validateKnowledgeModel(value, [], "en");
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({ details: { fields: { output: ["study_answer_exposed"] } } });
+  }
+  expect(validateKnowledgeModel(lexicalFrameModel(), [], "en").learningItems).toHaveLength(1);
+});
+
+it("AC-D46-01 preserves separable frames, rejects ambiguous notation, and leaves grammar tasks valid", () => {
+  const separated = lexicalFrameModel({
+    en: "kit sb/sth out",
+    gapSentence: "We need to ______ it ______ before our next class.",
+    fullSentence: "We need to kit it out before our next class.",
+  });
+  expect(validateKnowledgeModel(separated, [], "en").learningItems).toHaveLength(1);
+  const exposed = lexicalFrameModel({
+    en: "kit sb/sth out",
+    gapSentence: "We need to kit ______ out before our next class.",
+    fullSentence: "We need to kit it out before our next class.",
+  });
+  expect(() => validateKnowledgeModel(exposed, [], "en")).toThrow();
+  const unsupported = lexicalFrameModel({ en: "look forward to + mystery" });
+  let failure: unknown;
+  try {
+    validateKnowledgeModel(unsupported, [], "en");
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toMatchObject({ details: { fields: { output: ["study_target_unsupported"] } } });
+  const grammar = lexicalFrameModel({ en: "have/has + past participle" });
+  const item = grammar.learningItems[0];
+  if (item?.study?.set !== "production") throw new Error("Missing grammar fixture");
+  item.kind = "grammar";
+  item.study = {
+    ...item.study,
+    kind: "grammar",
+    taskFa: "Complete the sentence with the present perfect.",
+    prompt: "She ... this film twice this week.",
+    fullSentence: "She has seen this film twice this week.",
+  };
+  expect(validateKnowledgeModel(grammar, [], "en").learningItems).toHaveLength(1);
 });

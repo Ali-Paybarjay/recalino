@@ -60,6 +60,7 @@ import {
   sourceSnapshotSchema,
 } from "./contracts";
 import { generatedKnowledgeSchema } from "./generated-knowledge";
+import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
 import {
   compactKnowledgeBudget,
   compactKnowledgeInstruction,
@@ -1147,10 +1148,14 @@ export function processingJob(
           }
         }
         const { classified } = validated;
-        const model = normalizeGeneratedStudyModel(
-          validated.model,
-          extracted.some((source) => source.kind === "audio"),
-          lessonContext,
+        const { model, audit: practiceAudit } = finalizeGeneratedStudyPractice(
+          normalizeGeneratedStudyModel(
+            validated.model,
+            extracted.some((source) => source.kind === "audio"),
+            lessonContext,
+          ),
+          classified,
+          settings.learnerContext,
         );
         if (dependencies.diarizeVoice) {
           // Optional correction must not share a job with a newly paid knowledge stage.
@@ -1236,6 +1241,7 @@ export function processingJob(
                 settings: settings.provider,
                 profileVersion: settings.profileVersion,
                 teachingPreferences: settings.teachingPreferences,
+                ...(practiceAudit.applied ? { studyPractice: practiceAudit } : {}),
               },
             },
             job.now(),
@@ -1321,6 +1327,7 @@ const repairableKnowledgeProblems = new Set([
   "study_gap_invalid",
   "study_sentence_mismatch",
   "study_answer_exposed",
+  "study_target_unsupported",
   "study_core_limit",
   "study_mistake_item_missing",
 ]);

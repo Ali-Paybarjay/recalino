@@ -121,6 +121,9 @@ export class OpenRouterProvider implements AiProvider {
       model: input.model,
       provider: privacy,
       max_tokens: this.settings.maxOutputTokens,
+      ...(this.settings.structuredTemperature === undefined
+        ? {}
+        : { temperature: this.settings.structuredTemperature }),
       messages: [
         { role: "system", content: input.system },
         { role: "user", content },

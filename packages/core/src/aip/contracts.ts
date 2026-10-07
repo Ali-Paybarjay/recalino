@@ -11,6 +11,7 @@ export const providerSettingsSchema = z.strictObject({
   promptVersion: z.string().min(1).max(100),
   maxInputCharacters: z.number().int().positive(),
   maxOutputTokens: z.number().int().positive(),
+  structuredTemperature: z.number().min(0).max(1).optional(),
   timeoutMs: z.number().int().positive().max(600000),
   maximumMicros: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   modelMaximumMicros: z

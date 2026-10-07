@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import { type DefaultTreeAdapterMap, parse, parseFragment, serialize } from "parse5";
 import { expect, it } from "vitest";
 import { referenceStudyModel } from "../../test/reference-study-fixture";
+import { safeCardHtml } from "./card-html";
+import { buildStudyAnkiText } from "./study-export";
+import { studyMessage } from "./study-locale";
 import {
   CLASS_NOTES_STYLES,
   renderClassNotesHtml,
@@ -53,7 +56,12 @@ const cardReference = parse(
 
 it("copies the reference stylesheet verbatim and reproduces reference sections from structured items", () => {
   expect(CLASS_NOTES_STYLES).toBe(/<style>([\s\S]*?)<\/style>/.exec(notesReference)?.[1]);
-  const actual = parse(renderClassNotesHtml(referenceStudyModel()));
+  const model = referenceStudyModel();
+  // The archived visual reference predates AI labels; its class-sourced rendering stays identical.
+  for (const item of model.learningItems) {
+    if (item.study?.set === "recognition") item.claim.origin = "from_class";
+  }
+  const actual = parse(renderClassNotesHtml(model));
   const reference = parse(notesReference);
   for (const id of ["core", "chunks", "tasks", "extra", "register", "gap", "pron"]) {
     expect(normalized(byId(actual, id)), id).toEqual(normalized(byId(reference, id)));
@@ -81,7 +89,8 @@ it("produces the exact reference production, separable, grammar and recognition 
     (node) => attribute(node, "class") === "fc-face",
   );
   for (const [index, item] of [first, second, grammar, recognition].entries()) {
-    const fields = renderStudyCard(item);
+    const { claim: _, ...legacyFields } = item;
+    const fields = renderStudyCard(legacyFields);
     const front = referenceFaces[index * 2];
     const revealed = referenceFaces[index * 2 + 1];
     if (!front || !revealed) throw new Error("Missing reference card");
@@ -93,6 +102,52 @@ it("produces the exact reference production, separable, grammar and recognition 
     );
   }
 });
+
+it.each(["en", "fa"])(
+  "AC-D46 labels AI recognition notes and exported card backs in %s without changing class or legacy faces",
+  (language) => {
+    const model = referenceStudyModel();
+    model.language.explanation = language;
+    const item = model.learningItems.find((entry) => entry.study?.set === "recognition");
+    if (item?.study?.set !== "recognition") throw new Error("Missing recognition fixture");
+    item.study.spoken = false;
+    item.claim = {
+      ...item.claim,
+      origin: "ai_expansion",
+      evidence: "ai",
+      sourceRefs: [],
+      speakerRole: "unknown",
+    };
+    const label = studyMessage(language, "aiExpansion").text;
+    const recognitionRow = (document: Node): Element => {
+      const row = elements(byId(document, "extra"), "tr").find((candidate) =>
+        elements(candidate, "b").some((entry) => serialize(entry) === item.study?.en),
+      );
+      if (!row) throw new Error("Missing recognition table row");
+      return row;
+    };
+    const notes = parse(renderClassNotesHtml(model));
+    expect(serialize(recognitionRow(notes))).toContain(label);
+    item.study.spoken = true;
+    expect(serialize(byId(parse(renderClassNotesHtml(model)), item.id))).toContain(label);
+    item.study.spoken = false;
+    const ai = renderStudyCard(item, language);
+    expect(ai.back).toContain(label);
+    expect(ai.front).not.toContain(label);
+    expect(safeCardHtml(ai.back)).toBe(ai.back);
+    const exported = buildStudyAnkiText(
+      [{ ...ai, contentFormat: "lesson_html", studySet: "recognition" }],
+      { set: "recognition", deckName: "Synthetic recognition" },
+    );
+    expect(exported).toContain(label);
+    expect(exported).not.toContain("&lt;div");
+    const { claim: _, ...legacy } = item;
+    const legacyFaces = renderStudyCard(legacy, language);
+    item.claim = { ...item.claim, origin: "from_class", evidence: "material" };
+    expect(renderStudyCard(item, language)).toEqual(legacyFaces);
+    expect(serialize(recognitionRow(parse(renderClassNotesHtml(model))))).not.toContain(label);
+  },
+);
 
 it("omits empty sections and pills, renumbers headings, and keeps all jumps inside the document", () => {
   const model = referenceStudyModel();
