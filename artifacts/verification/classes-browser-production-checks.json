@@ -1,0 +1,247 @@
+{
+  "checkedAt": "2026-10-07T18:27:28.332Z",
+  "origin": "https://recalino.vercel.app",
+  "label": "production",
+  "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+  "teamId": "team_8WX5ZTQoGLK3XQim9CHcQ350",
+  "checks": [
+    {
+      "name": "linked project and team",
+      "passed": true,
+      "required": true,
+      "projectName": "recalino",
+      "scope": "ali-paybarjay-s-projects"
+    },
+    {
+      "name": "deployment project and owner",
+      "passed": true,
+      "required": true,
+      "projectMatched": true,
+      "ownerMatched": true
+    },
+    {
+      "name": "ready production deployment",
+      "passed": true,
+      "required": true
+    },
+    {
+      "name": "GET /signin",
+      "passed": true,
+      "required": true,
+      "path": "/signin",
+      "method": "GET",
+      "status": 404,
+      "streamedNotFound": false,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /preview/classes",
+      "passed": true,
+      "required": true,
+      "path": "/preview/classes",
+      "method": "GET",
+      "status": 200,
+      "sampleMarkup": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /",
+      "passed": true,
+      "required": true,
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /classes",
+      "passed": true,
+      "required": true,
+      "path": "/classes",
+      "method": "GET",
+      "status": 200,
+      "matched": true,
+      "streamedRedirect": true,
+      "redirectPath": "/",
+      "nextPath": "/classes",
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /api/health",
+      "passed": true,
+      "required": true,
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200,
+      "normalProductionMode": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /classes?scope=all",
+      "passed": true,
+      "required": true,
+      "path": "/classes?scope=all",
+      "method": "GET",
+      "status": 200,
+      "matched": true,
+      "streamedRedirect": true,
+      "redirectPath": "/",
+      "nextPath": "/classes",
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /classes/new",
+      "passed": true,
+      "required": true,
+      "path": "/classes/new",
+      "method": "GET",
+      "status": 200,
+      "matched": true,
+      "streamedRedirect": true,
+      "redirectPath": "/",
+      "nextPath": "/classes/new",
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /classes/00000000-0000-4000-8000-000000000001",
+      "passed": true,
+      "required": true,
+      "path": "/classes/00000000-0000-4000-8000-000000000001",
+      "method": "GET",
+      "status": 200,
+      "matched": true,
+      "streamedRedirect": true,
+      "redirectPath": "/",
+      "nextPath": "/classes/00000000-0000-4000-8000-000000000001",
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /courses",
+      "passed": true,
+      "required": true,
+      "path": "/courses",
+      "method": "GET",
+      "status": 200,
+      "matched": true,
+      "streamedRedirect": true,
+      "redirectPath": "/",
+      "nextPath": "/courses",
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /courses/00000000-0000-4000-8000-000000000001",
+      "passed": true,
+      "required": true,
+      "path": "/courses/00000000-0000-4000-8000-000000000001",
+      "method": "GET",
+      "status": 200,
+      "matched": true,
+      "streamedRedirect": true,
+      "redirectPath": "/",
+      "nextPath": "/courses/00000000-0000-4000-8000-000000000001",
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /api/courses",
+      "passed": true,
+      "required": true,
+      "path": "/api/courses",
+      "method": "GET",
+      "status": 401,
+      "applicationAuthError": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /api/classes/00000000-0000-4000-8000-000000000001/notes",
+      "passed": true,
+      "required": true,
+      "path": "/api/classes/00000000-0000-4000-8000-000000000001/notes",
+      "method": "GET",
+      "status": 401,
+      "applicationAuthError": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /dev/ui",
+      "passed": true,
+      "required": true,
+      "path": "/dev/ui",
+      "method": "GET",
+      "status": 200,
+      "streamedNotFound": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /api/classes",
+      "passed": true,
+      "required": true,
+      "path": "/api/classes",
+      "method": "GET",
+      "status": 401,
+      "applicationAuthError": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "GET /api/classes/00000000-0000-4000-8000-000000000001/cards",
+      "passed": true,
+      "required": true,
+      "path": "/api/classes/00000000-0000-4000-8000-000000000001/cards",
+      "method": "GET",
+      "status": 401,
+      "applicationAuthError": true,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "POST /dev/auth/session",
+      "passed": true,
+      "required": true,
+      "path": "/dev/auth/session",
+      "method": "POST",
+      "status": 404,
+      "streamedNotFound": false,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "POST /dev/spike/health",
+      "passed": true,
+      "required": true,
+      "path": "/dev/spike/health",
+      "method": "POST",
+      "status": 404,
+      "streamedNotFound": false,
+      "learnerSessionCookie": false
+    },
+    {
+      "name": "optional compiled class UI labels",
+      "passed": true,
+      "required": false,
+      "optional": true,
+      "available": false,
+      "assetsChecked": 0,
+      "goToClass": false,
+      "chooseCourse": false,
+      "sampleBanner": false,
+      "skipped": "Deployment inspection did not expose class-related static outputs."
+    }
+  ],
+  "staticAssets": [],
+  "authenticatedLearnerDataAccessed": false,
+  "learnerSessionCreated": false,
+  "applicationDataChanged": false,
+  "paidProviderCalls": false,
+  "passed": true,
+  "deploymentId": "dpl_3RsJKPnVWCUDGmqxJEDsVWR5P5NW",
+  "deployment": {
+    "name": "recalino",
+    "target": "production",
+    "readyState": "READY"
+  },
+  "compiledClassUi": {
+    "available": false,
+    "assetsChecked": 0,
+    "goToClass": false,
+    "chooseCourse": false,
+    "sampleBanner": false
+  },
+  "completedAt": "2026-10-07T18:27:44.683Z"
+}
