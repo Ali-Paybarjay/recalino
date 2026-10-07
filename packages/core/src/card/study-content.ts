@@ -33,7 +33,7 @@ export function savedStudyMetadata(value: Partial<StudyMetadata>): string | null
 
 export function studyCardContent(item: LearningItem, model: KnowledgeModel) {
   if (!item.study) return { front: item.front, back: item.back, study_metadata: null };
-  const faces = renderStudyCard(item);
+  const faces = renderStudyCard(item, model.language.explanation);
   const studyTags = [
     model.classNotes?.date,
     model.classNotes?.course?.replace(/\s+/g, "_"),

@@ -373,7 +373,10 @@ it("repairs an immutable invalid full-schema cache once using all 1469 blocks an
   expect(call?.schemaName).toBe("class_knowledge_repair");
   expect(call?.operationKey).toBe(`${f.run.id}:knowledge:repair:1`);
   expect(call?.system).toContain('language.explanation must be exactly "fa"');
-  expect(call?.system).toContain("each claim.text explains in Persian");
+  expect(call?.system).toContain("each claim.text explains in the resolved explanation language");
+  expect(call?.system).toContain("All explanation prose must use Persian (Farsi)");
+  expect(call?.system).toContain("Every claim text");
+  expect(call?.system).toContain("real Persian explanation in Arabic script");
   expect(call?.system).toContain("hard limit of 6144 output tokens");
   expect(call?.system).not.toContain("Return every required sourceClassifications entry");
   expect(call?.system).not.toContain("From-class claims require real sourceId/contentVersionId");

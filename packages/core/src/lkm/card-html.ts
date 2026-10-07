@@ -16,6 +16,7 @@ export function isStudyCardHtml(value: string): boolean {
       seen.add(name);
       if (name === "dir" && (content === "ltr" || content === "rtl" || content === "auto"))
         continue;
+      if (name === "lang" && /^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/.test(content ?? "")) continue;
       if (name === "class" && content === "ipa") continue;
       if (name === "style" && /^font-size:(?:1\.1|1\.25)em$/.test(content ?? "")) continue;
       return false;

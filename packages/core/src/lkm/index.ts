@@ -4,6 +4,7 @@ export {
   type Claim,
   claimSchema,
   type EvidenceSource,
+  isExplanationLanguage,
   type KnowledgeModel,
   knowledgeModelSchema,
   type LearningItem,
@@ -16,7 +17,18 @@ export {
   sourceRefSchema,
   validateKnowledgeModel,
 } from "./schema";
+export { buildStudyAnkiText } from "./study-export";
 export {
+  resolveStudyLocale,
+  type StudyLabelKey,
+  type StudyLocale,
+  studyMessage,
+  studyNumber,
+  studyText,
+  studyWeekday,
+} from "./study-locale";
+export {
+  explanationStudyFields,
   normalizeGeneratedStudyModel,
   persianStudyFields,
   type StudyLessonContext,

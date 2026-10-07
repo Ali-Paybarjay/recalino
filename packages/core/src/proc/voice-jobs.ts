@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { lockAccount } from "../acc";
+import { getAccountState, lockAccount } from "../acc";
 import { type AiProvider, ProviderError, providerSettingsSchema, requireProvider } from "../aip";
 import type { Database } from "../db";
+import { getLatestVersion, isExplanationLanguage } from "../lkm";
 import { assertSessionOwner } from "../org";
 import {
   AppError,
@@ -29,6 +30,7 @@ const payloadSchema = z.strictObject({ runId: z.uuid(), userId: z.uuid(), subjec
 const settingsSchema = z.strictObject({
   provider: providerSettingsSchema,
   profileVersion: z.int().nonnegative(),
+  explanationLanguage: z.string().min(2).max(35).refine(isExplanationLanguage).default("fa"),
 });
 const snapshotSchema = z.strictObject({ subjectId: z.uuid(), request: sourceSnapshotSchema });
 export interface VoiceJobDependencies {
@@ -61,6 +63,13 @@ export async function scheduleVoiceReanalysis(
     );
     if (!snapshot.sources.some((source) => source.kind === "audio" && source.contentVersionId))
       throw errors.validationFailed({ voice: ["transcript_required"] });
+    const knowledge = await getLatestVersion(tx, ctx, sessionId);
+    const account = knowledge ? null : await getAccountState(tx, ctx.userId);
+    const explanationLanguage =
+      knowledge?.model.language.explanation ??
+      (account?.profile.explanationLanguage === "english" ? "en" : account?.profile.firstLanguage);
+    if (!explanationLanguage)
+      throw errors.validationFailed({ voice: ["explanation_language_missing"] });
     const active = await tx
       .selectFrom("proc.processing_run")
       .select(["id", "kind", "settings", "input_snapshot", "operation_key"])
@@ -76,6 +85,7 @@ export async function scheduleVoiceReanalysis(
         priorSnapshot.success &&
         active.operation_key === operationKey &&
         priorSettings.data.profileVersion === enrollment.version &&
+        priorSettings.data.explanationLanguage === explanationLanguage &&
         canonicalJson(priorSettings.data.provider) === canonicalJson(provider.settings) &&
         priorSnapshot.data.subjectId === sessionId &&
         canonicalJson(priorSnapshot.data.request) === canonicalJson(snapshot)
@@ -91,7 +101,11 @@ export async function scheduleVoiceReanalysis(
         subjectId: sessionId,
         requested: amounts({ regeneration: 1 }),
         request: snapshot,
-        settings: { provider: provider.settings, profileVersion: enrollment.version },
+        settings: {
+          provider: provider.settings,
+          profileVersion: enrollment.version,
+          explanationLanguage,
+        },
         job: voiceAnalysisJob(dependencies),
       },
       now,
@@ -135,6 +149,9 @@ export function voiceAnalysisJob(
         if (run.session_id !== payload.subjectId) throw errors.notFound();
         const provider = requireProvider(dependencies.provider);
         const settings = settingsSchema.parse(run.settings);
+        // Pre-upgrade jobs never snapshotted language: retry rather than bill Persian output.
+        if (!Object.hasOwn(run.settings as object, "explanationLanguage"))
+          throw errors.validationFailed({ voice: ["explanation_language_snapshot_missing"] });
         if (canonicalJson(settings.provider) !== canonicalJson(provider.settings))
           throw errors.validationFailed({ voice: ["provider_settings_changed"] });
         const enrollment = await getVoiceEnrollment(job.db, ctx);
@@ -149,6 +166,7 @@ export function voiceAnalysisJob(
             sessionId: run.session_id,
             source,
             diarize: dependencies.diarize,
+            explanationLanguage: settings.explanationLanguage,
             now: job.now,
             correct: (analysis) =>
               correctVoiceCandidates({
@@ -156,6 +174,7 @@ export function voiceAnalysisJob(
                 ctx,
                 analysis,
                 provider,
+                explanationLanguage: settings.explanationLanguage,
                 referenceTexts: snapshot.sources
                   .filter((item) => item.kind !== "audio" && item.role !== "user_notes")
                   .flatMap((item) => item.blocks.map((block) => block.text)),

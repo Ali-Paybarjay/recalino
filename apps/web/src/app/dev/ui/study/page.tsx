@@ -1,8 +1,12 @@
 import type { StudyCard } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
 import type { ReviewQueue } from "@recalino/core/srs";
-import { renderStudyCard } from "@recalino/core/study-render";
+import { renderClassNotesHtml, renderStudyCard } from "@recalino/core/study-render";
 import Link from "next/link";
+import {
+  MULTILINGUAL_STUDY_CASES,
+  multilingualStudyModel,
+} from "../../../../../../../packages/core/test/multilingual-study-fixture";
 import { referenceStudyModel } from "../../../../../../../packages/core/test/reference-study-fixture";
 import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { CardsView } from "../../../../ui/workspace/CardsView";
@@ -15,10 +19,17 @@ import "../../../../ui/preview/preview.css";
 export default async function StudyReferencePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; language?: string | string[] }>;
 }) {
-  const { view } = await searchParams;
-  const model = referenceStudyModel();
+  const { view, language } = await searchParams;
+  const languageCase = MULTILINGUAL_STUDY_CASES.find((value) => value.language === language);
+  const model = languageCase ? multilingualStudyModel(languageCase) : referenceStudyModel();
+  const referenceHref = (nextView?: string): string => {
+    const query = new URLSearchParams();
+    if (languageCase) query.set("language", languageCase.language);
+    if (nextView) query.set("view", nextView);
+    return `/dev/ui/study${query.size ? `?${query.toString()}` : ""}`;
+  };
   // Phase one has no voice verification. Synthetic spoken examples stay withheld too.
   if (model.classNotes?.mistakes) model.classNotes.mistakes.speechStatus = "unverified";
   const sessionId = "10000000-0000-4000-8000-000000000001";
@@ -48,7 +59,7 @@ export default async function StudyReferencePage({
       sessionIds: [sessionId],
       template: "basic",
       direction: "forward",
-      ...renderStudyCard(item),
+      ...renderStudyCard(item, model.language.explanation),
       provenance: item.claim,
       status: "active",
       contentVersion: 1,
@@ -103,10 +114,10 @@ export default async function StudyReferencePage({
       <AppShell
         current="classes"
         hrefs={{
-          today: "/dev/ui/study",
-          classes: "/dev/ui/study",
-          review: "/dev/ui/study?view=review",
-          me: "/dev/ui/study",
+          today: referenceHref(),
+          classes: referenceHref(),
+          review: referenceHref("review"),
+          me: referenceHref(),
         }}
       >
         <PageHeader
@@ -117,14 +128,28 @@ export default async function StudyReferencePage({
                 ? "Class flashcards"
                 : "Class notes"
           }
-          subtitle="Synthetic reference lesson · 5 October 2026"
+          subtitle={
+            languageCase
+              ? `Synthetic multilingual lesson · ${languageCase.language}`
+              : "Synthetic reference lesson · 5 October 2026"
+          }
         />
         <nav aria-label="Reference views" style={{ display: "flex", gap: 20, marginBottom: 16 }}>
-          <Link href="/dev/ui/study">Notes</Link>
-          <Link href="/dev/ui/study?view=cards">Cards</Link>
-          <Link href="/dev/ui/study?view=review">Review</Link>
-          <Link href="/dev/ui/study?view=export">Export</Link>
+          <Link href={referenceHref()}>Notes</Link>
+          <Link href={referenceHref("cards")}>Cards</Link>
+          <Link href={referenceHref("review")}>Review</Link>
+          <Link href={referenceHref("export")}>Export</Link>
         </nav>
+        {languageCase && (
+          <p>
+            <a
+              href={`data:text/html;charset=utf-8,${encodeURIComponent(renderClassNotesHtml(model))}`}
+              download={`class-${languageCase.language}.html`}
+            >
+              Download synthetic HTML
+            </a>
+          </p>
+        )}
         {view === "export" ? (
           <ExportView
             sessionId={sessionId}

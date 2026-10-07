@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Database, Tx } from "../db";
-import { type KnowledgeModel, visibleMistakePatterns } from "../lkm";
+import { type KnowledgeModel, matchesExplanationScript, visibleMistakePatterns } from "../lkm";
 import type { LearnerContext } from "../plt";
 import { currentVoiceRows } from "./analysis";
 import { spokenMistakeSchema, voiceUtteranceSchema } from "./contracts";
@@ -24,6 +24,15 @@ export async function projectVerifiedSpeech(
       const utterances = z.array(voiceUtteranceSchema).parse(row.utterances);
       const mistakes = z.record(z.string(), z.array(spokenMistakeSchema)).parse(row.mistakes);
       return (mistakes[row.verified_speaker_id ?? ""] ?? []).flatMap((mistake) => {
+        // Legacy corrections were Persian. A historical notebook must never receive a different locale.
+        const storedLanguage = mistake.explanationLanguage ?? "fa";
+        const expectedLanguage = model.language.explanation;
+        if (
+          storedLanguage.toLowerCase() !== expectedLanguage.toLowerCase() &&
+          !(mistake.explanationLanguage === undefined && expectedLanguage.split("-")[0] === "fa")
+        )
+          return [];
+        if (!matchesExplanationScript(mistake.whyFa, expectedLanguage)) return [];
         const utterance = utterances.find(
           (item) =>
             item.id === mistake.utteranceId &&
@@ -39,7 +48,7 @@ export async function projectVerifiedSpeech(
                 whyFa: mistake.whyFa,
                 kind: mistake.kind,
                 teacherCorrected: false,
-                where: `صوت · ${timestamp(utterance.startMs)}–${timestamp(utterance.endMs)}`,
+                where: `${model.language.explanation.split("-")[0] === "fa" ? "صوت" : "Audio"} · ${timestamp(utterance.startMs)}–${timestamp(utterance.endMs)}`,
                 voiceEvidence: {
                   analysisId: row.id,
                   version: row.version,
@@ -69,7 +78,7 @@ export async function projectVerifiedSpeech(
             ? "unverified"
             : "no_audio",
         pendingSpeech: rows.some((row) => row.status !== "verified"),
-        patterns: visibleMistakePatterns(visible),
+        patterns: visibleMistakePatterns(visible, model.language.explanation),
         items: visible,
       },
     },

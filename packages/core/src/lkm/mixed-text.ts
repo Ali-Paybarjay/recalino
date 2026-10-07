@@ -83,3 +83,49 @@ export function renderStudyEnglish(value: string): string {
     .map((part, index) => (index % 2 ? `<b>${escapeStudyText(part)}</b>` : escapeStudyText(part)))
     .join("");
 }
+
+/** Mixed-script explanations follow the selected language, never a Persian-only direction.
+ * LTR prose is left intact; opposite-direction runs and IPA receive isolated containers. */
+export function renderMixedStudy(
+  value: string,
+  direction: "ltr" | "rtl" | "auto",
+  isPersian = false,
+): string {
+  if (isPersian) return renderMixedPersian(value);
+  const rtlBreak =
+    /((?:[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Thaana}\p{Script=Adlam}\u060C\u061B\u061F«»]|\u200C|\u200D)+)/u;
+  const firstStrong = value.match(/[\p{L}]/u)?.[0] ?? "";
+  const actualDirection =
+    direction === "auto"
+      ? /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Thaana}\p{Script=Adlam}]/u.test(firstStrong)
+        ? "rtl"
+        : "ltr"
+      : direction;
+  return value
+    .split("**")
+    .map((part, index) => {
+      const html = part
+        .split(rtlBreak)
+        .map((piece, pieceIndex) => {
+          if (actualDirection === "rtl") {
+            return pieceIndex % 2
+              ? escapeStudyText(piece)
+              : isolateSegment(piece).replaceAll("<bdi", '<bdi dir="ltr"');
+          }
+          if (pieceIndex % 2) return `<bdi dir="rtl">${escapeStudyText(piece)}</bdi>`;
+          // Only slash-delimited pronunciation runs get IPA styling in LTR prose.
+          const ipa = /(\/[\p{L}\p{M}\u02C8\u02CC\u02D0\u02D1\u02DE. ]+\/)/u;
+          return piece
+            .split(ipa)
+            .map((run, runIndex) =>
+              runIndex % 2
+                ? `<bdi dir="ltr" class="ipa">${escapeStudyText(run)}</bdi>`
+                : escapeStudyText(run),
+            )
+            .join("");
+        })
+        .join("");
+      return index % 2 ? `<b>${html}</b>` : html;
+    })
+    .join("");
+}

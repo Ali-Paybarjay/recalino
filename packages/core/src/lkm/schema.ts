@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { FIRST_LANGUAGES } from "../acc";
 import { errors } from "../plt";
-import { normalizeGeneratedStudyModel, persianStudyFields } from "./study-policy";
+import { explanationStudyFields, normalizeGeneratedStudyModel } from "./study-policy";
 import { classNotesSchema, studyContentSchema } from "./study-schema";
 
 export const LKM_SCHEMA_VERSION = "1";
@@ -90,7 +91,11 @@ export function validateKnowledgeModel(
   const fail = (reason: string): never => {
     throw errors.validationFailed({ output: [reason] });
   };
-  if (model.language.explanation !== explanationLanguage) fail("language_mismatch");
+  if (
+    model.language.explanation !== explanationLanguage ||
+    !isExplanationLanguage(explanationLanguage)
+  )
+    fail("language_mismatch");
   const ids = new Set<string>();
   for (const claim of modelClaims(model)) {
     if (ids.has(claim.id)) fail("duplicate_claim_id");
@@ -163,8 +168,11 @@ export function validateKnowledgeModel(
     if (ids.has(`item:${item.id}`)) fail("duplicate_item_id");
     ids.add(`item:${item.id}`);
     const study = item.study;
+    if (study?.faApprox && explanationLanguage.split("-")[0] !== "fa")
+      fail("study_approximation_unsupported");
     if (study?.set === "production") {
-      if (model.language.explanation.split("-")[0] !== "fa") fail("study_language_invalid");
+      if (explanationLanguage.split("-")[0] === "fa" && !study.faApprox)
+        fail("study_approximation_missing");
       if (study.kind === "grammar") {
         if (!study.taskFa || !study.prompt) fail("study_grammar_prompt_missing");
         if (
@@ -223,15 +231,18 @@ export function validateKnowledgeModel(
     model.coverage.complete !== (missing.length === 0)
   )
     fail("coverage_invalid");
-  const explanation = modelClaims(model)
-    .map((c) => c.text)
-    .join(" ");
-  if (explanation && !matchesExplanationScript(explanation, explanationLanguage))
-    fail("language_script_mismatch");
   if (
-    explanationLanguage.split("-")[0] === "fa" &&
-    persianStudyFields(model).some(
+    modelClaims(model).some(
+      (claim) => !matchesExplanationScript(claim.text, explanationLanguage),
+    ) ||
+    model.learningItems.some(
+      (item) => !item.study && !matchesExplanationScript(item.back, explanationLanguage),
+    ) ||
+    explanationStudyFields(model).some(
       (field) => !matchesExplanationScript(field.text, explanationLanguage),
+    ) ||
+    model.learningItems.some(
+      (item) => item.study?.faApprox && !matchesExplanationScript(item.study.faApprox, "fa"),
     )
   )
     fail("language_script_mismatch");
@@ -241,16 +252,98 @@ export function validateKnowledgeModel(
   );
 }
 
-/** D31: reject clear script mismatches; language fluency still requires human EVAL. */
+/** D31: supported account codes, English explanations and existing regional revisions. */
+export function isExplanationLanguage(language: string): boolean {
+  if (language === "en" || FIRST_LANGUAGES.includes(language)) return true;
+  try {
+    const locale = new Intl.Locale(language);
+    if (locale.toString() !== language) return false;
+    const code = locale.language;
+    // Chinese writing-system choice is explicit in the first-language catalog.
+    return code === "zh"
+      ? FIRST_LANGUAGES.includes(`zh-${locale.script}`)
+      : code === "en" || FIRST_LANGUAGES.includes(code);
+  } catch {
+    return false;
+  }
+}
+
+const scriptPatterns: Record<string, RegExp> = {
+  Latn: /\p{Script=Latin}/u,
+  Cyrl: /\p{Script=Cyrillic}/u,
+  Arab: /\p{Script=Arabic}/u,
+  Deva: /\p{Script=Devanagari}/u,
+  Beng: /\p{Script=Bengali}/u,
+  Grek: /\p{Script=Greek}/u,
+  Armn: /\p{Script=Armenian}/u,
+  Geor: /\p{Script=Georgian}/u,
+  Hebr: /\p{Script=Hebrew}/u,
+  Ethi: /\p{Script=Ethiopic}/u,
+  Tibt: /\p{Script=Tibetan}/u,
+  Gujr: /\p{Script=Gujarati}/u,
+  Thaa: /\p{Script=Thaana}/u,
+  Guru: /\p{Script=Gurmukhi}/u,
+  Taml: /\p{Script=Tamil}/u,
+  Telu: /\p{Script=Telugu}/u,
+  Knda: /\p{Script=Kannada}/u,
+  Mlym: /\p{Script=Malayalam}/u,
+  Sinh: /\p{Script=Sinhala}/u,
+  Thai: /\p{Script=Thai}/u,
+  Laoo: /\p{Script=Lao}/u,
+  Mymr: /\p{Script=Myanmar}/u,
+  Khmr: /\p{Script=Khmer}/u,
+  Orya: /\p{Script=Oriya}/u,
+  Hans: /\p{Script=Han}/u,
+  Hant: /\p{Script=Han}/u,
+  Jpan: /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u,
+  Kore: /\p{Script=Hangul}/u,
+  Cans: /\p{Script=Canadian_Aboriginal}/u,
+  Yiii: /\p{Script=Yi}/u,
+  Mong: /\p{Script=Mongolian}/u,
+};
+// Some selectable languages have more than one established writing system.
+const alternateScripts: Record<string, readonly string[]> = {
+  az: ["Cyrl", "Arab"],
+  bs: ["Cyrl"],
+  cr: ["Latn"],
+  ff: ["Adlm"],
+  ha: ["Arab"],
+  iu: ["Latn"],
+  kk: ["Latn", "Arab"],
+  ks: ["Deva"],
+  ku: ["Arab"],
+  mn: ["Mong"],
+  pa: ["Arab"],
+  sd: ["Deva"],
+  sr: ["Latn"],
+  tg: ["Arab"],
+  uz: ["Cyrl", "Arab"],
+};
+scriptPatterns.Adlm = /\p{Script=Adlam}/u;
+
+/** Reject clear script mismatches; same-script language fluency still needs EVAL. */
 export function matchesExplanationScript(textValue: string, language: string): boolean {
-  const expected = language.split("-")[0];
-  if (["fa", "ar", "ur", "ps"].includes(expected ?? ""))
-    return /\p{Script=Arabic}/u.test(textValue);
-  if (["zh", "ja"].includes(expected ?? ""))
-    return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(textValue);
-  if (expected === "ko") return /\p{Script=Hangul}/u.test(textValue);
-  if (["ru", "uk", "bg"].includes(expected ?? "")) return /\p{Script=Cyrillic}/u.test(textValue);
-  if (expected === "hi") return /\p{Script=Devanagari}/u.test(textValue);
-  if (expected === "en") return /\p{Script=Latin}/u.test(textValue);
-  return true;
+  try {
+    const locale = new Intl.Locale(language);
+    if (!isExplanationLanguage(language) && locale.language !== "zh") return false;
+    const primary = locale.maximize().script;
+    const explanation = textValue.replace(/\/[\p{Script=Latin}ɐ-ʯθβχˈˌːˑ .…~-]+\//gu, " ");
+    const scripts = [primary, ...(alternateScripts[locale.language] ?? [])];
+    const patterns = scripts.flatMap((script) =>
+      script && scriptPatterns[script] ? [scriptPatterns[script]] : [],
+    );
+    if (!patterns.length || !patterns.some((pattern) => pattern.test(explanation))) return false;
+    // English targets are allowed inside explanations, but a quoted English term
+    // must not make Persian/Hebrew/etc prose pass a Latin-language check.
+    return Array.from(explanation).every(
+      (character) =>
+        !/\p{Letter}/u.test(character) ||
+        /\p{Script=Latin}/u.test(character) ||
+        /\p{Script=Common}/u.test(character) ||
+        /\p{Script=Inherited}/u.test(character) ||
+        patterns.some((pattern) => pattern.test(character)),
+    );
+  } catch {
+    return false;
+  }
 }

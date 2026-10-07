@@ -3,6 +3,7 @@ import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { cleanupFixtureProcessingJobs, runFixtureProcessingStep } from "../../test/processing-jobs";
 import { studyFixture, syntheticKnowledge } from "../../test/study-fixture";
+import { updateProfile } from "../acc";
 import type { AiProvider, ProviderResult, ProviderSettings, StructuredInput } from "../aip";
 import { createDatabase } from "../db";
 import { getLatestVersion } from "../lkm";
@@ -69,7 +70,10 @@ class VoiceProvider implements AiProvider {
                 utteranceId: learner.id,
                 said: "I am agree with you.",
                 correct: "I agree with you.",
-                whyFa: "فعل agree به am نیاز ندارد.",
+                whyFa:
+                  data.explanationLanguage === "fa"
+                    ? "فعل agree به am نیاز ندارد."
+                    : "The verb agree does not need am.",
                 kind: "grammar",
                 teacherCorrected: false,
               },
@@ -263,6 +267,9 @@ it("stages private speaker analysis and billed corrections before ordinary notes
   if (!analysis) throw new Error("Synthetic voice analysis missing");
   expect(analysis.status).toBe("unverified");
   expect(JSON.stringify(analysis.mistakes)).toContain("I agree with you.");
+  expect(JSON.stringify(analysis.mistakes)).toContain('"explanationLanguage":"en"');
+  const correctionInput = x.provider.calls.mock.calls[0]?.[0];
+  expect(JSON.parse(correctionInput?.input ?? "{}").explanationLanguage).toBe("en");
   const receipt = await db
     .selectFrom("proc.run_step")
     .select("output")
@@ -352,12 +359,35 @@ it("deduplicates the same explicit analysis request after completion and exposes
   const x = await fixture(false);
   await x.step();
   await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+
+  // An existing notebook keeps its explanation language after the account changes.
+  await updateProfile(
+    db,
+    x.ctx,
+    { field: "first_language", firstLanguage: "es" },
+    { now: new Date() },
+  );
+  await updateProfile(
+    db,
+    x.ctx,
+    {
+      field: "explanation_language",
+      explanationLanguage: "first_language",
+    },
+    { now: new Date() },
+  );
   const dependencies = { provider: x.provider, diarize: x.diarize };
   const operationKey = randomUUID();
   const runId = await scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies, {
     operationKey,
   });
   fixtureRunIds.push(runId);
+  const queued = await db
+    .selectFrom("proc.processing_run")
+    .select("settings")
+    .where("id", "=", runId)
+    .executeTakeFirstOrThrow();
+  expect(queued.settings).toMatchObject({ explanationLanguage: "en" });
   expect(await voiceProcessingStatus(db, x.ctx, x.session.id)).toBe(true);
   expect(
     await scheduleVoiceReanalysis(
@@ -383,4 +413,37 @@ it("deduplicates the same explicit analysis request after completion and exposes
     ),
   ).toBe(runId);
   expect(x.provider.calls).not.toHaveBeenCalled();
+});
+
+it("fails a legacy queued voice request without a language snapshot before private inference or correction billing", async () => {
+  const x = await fixture(false);
+  await x.step();
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const dependencies = { provider: x.provider, diarize: x.diarize };
+  const runId = await scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies, {
+    operationKey: randomUUID(),
+  });
+  fixtureRunIds.push(runId);
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .select("settings")
+    .where("id", "=", runId)
+    .executeTakeFirstOrThrow();
+  const legacy = { ...(row.settings as Record<string, unknown>) };
+  delete legacy.explanationLanguage;
+  await db
+    .updateTable("proc.processing_run")
+    .set({ settings: JSON.stringify(legacy) })
+    .where("id", "=", runId)
+    .execute();
+  await runFixtureProcessingStep(db, voiceAnalysisJob(dependencies), {
+    runId,
+    userId: x.ctx.userId,
+  });
+  expect((await getRun(db, x.ctx, runId)).state).toBe("failed");
+  expect(x.diarize).not.toHaveBeenCalled();
+  expect(x.provider.calls).not.toHaveBeenCalled();
+  expect(
+    await db.selectFrom("proc.provider_attempt").select("id").where("run_id", "=", runId).execute(),
+  ).toEqual([]);
 });

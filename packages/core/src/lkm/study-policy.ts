@@ -1,3 +1,4 @@
+import { studyText } from "./study-locale";
 import type { ClassNotes, StudyContent, TaskGroup } from "./study-schema";
 
 export interface StudyLessonContext {
@@ -5,8 +6,8 @@ export interface StudyLessonContext {
   course?: string;
 }
 
-/** Explicit Persian prose paths; English examples, IPA, labels and IDs are never translated. */
-export function persianStudyFields(model: {
+/** Explanation prose paths; legacy fa* names remain stable for stored revisions. */
+export function explanationStudyFields(model: {
   learningItems: readonly { study?: StudyContent }[];
   classNotes?: ClassNotes;
 }): { path: (string | number)[]; text: string }[] {
@@ -24,7 +25,7 @@ export function persianStudyFields(model: {
   model.learningItems.forEach((item, index) => {
     const study = item.study;
     if (!study) return;
-    for (const key of ["faMeaning", "faApprox", "trap", "noteFa"] as const)
+    for (const key of ["faMeaning", "trap", "noteFa"] as const)
       add(["learningItems", index, "study", key], study[key]);
     if (study.set === "production") {
       for (const key of ["imageFa", "sourceFa", "taskFa"] as const)
@@ -68,17 +69,23 @@ export function persianStudyFields(model: {
   return fields;
 }
 
+/** Backward-compatible public alias; pronunciation approximations are never translation targets. */
+export const persianStudyFields = explanationStudyFields;
+
 /** Derive aggregates only from correction items the caller has authorized for display. */
-export function visibleMistakePatterns(visible: NonNullable<ClassNotes["mistakes"]>["items"]) {
+export function visibleMistakePatterns(
+  visible: NonNullable<ClassNotes["mistakes"]>["items"],
+  explanationLanguage = "fa",
+) {
   const labels = {
-    grammar: "گرامر",
-    "word-choice": "انتخاب واژه",
-    collocation: "هم‌آیی واژه‌ها",
-    preposition: "حرف اضافه",
-    "word-order": "ترتیب کلمات",
-    pronunciation: "تلفظ",
-    spelling: "املا",
-    register: "لحن",
+    grammar: studyText(explanationLanguage, "mistakeGrammar"),
+    "word-choice": studyText(explanationLanguage, "mistakeWordChoice"),
+    collocation: studyText(explanationLanguage, "mistakeCollocation"),
+    preposition: studyText(explanationLanguage, "mistakePreposition"),
+    "word-order": studyText(explanationLanguage, "mistakeWordOrder"),
+    pronunciation: studyText(explanationLanguage, "mistakePronunciation"),
+    spelling: studyText(explanationLanguage, "mistakeSpelling"),
+    register: studyText(explanationLanguage, "mistakeRegister"),
   };
   return Object.entries(labels).flatMap(([kind, labelFa]) => {
     const pairs = new Set<string>();
@@ -103,16 +110,20 @@ export function visibleMistakePatterns(visible: NonNullable<ClassNotes["mistakes
             ruleFa:
               new Set(items.map((item) => item.whyFa)).size === 1
                 ? (items[0]?.whyFa ?? "")
-                : "به شکل درستِ نمونه‌های بالا دقت کن.",
+                : studyText(explanationLanguage, "patternRule"),
           },
         ];
   });
 }
 
 /** Provider aggregates may contain hidden speech; generated output authorizes writing only. */
-export function writtenMistakePatterns(mistakes: ClassNotes["mistakes"]) {
+export function writtenMistakePatterns(
+  mistakes: ClassNotes["mistakes"],
+  explanationLanguage = "fa",
+) {
   return visibleMistakePatterns(
     (mistakes?.items ?? []).filter((item) => item.source === "handwriting"),
+    explanationLanguage,
   );
 }
 
@@ -129,13 +140,6 @@ export function normalizeGeneratedStudyModel<
     classNotes?: ClassNotes;
   },
 >(model: T, hasAudio: boolean, context?: StudyLessonContext): T {
-  if (model.language.explanation.split("-")[0] !== "fa") {
-    const { classNotes: _classNotes, ...legacy } = model;
-    return {
-      ...legacy,
-      learningItems: model.learningItems.map(({ study: _study, ...item }) => item),
-    } as T;
-  }
   return {
     ...model,
     learningItems: model.learningItems.map((item) => {
@@ -160,7 +164,10 @@ export function normalizeGeneratedStudyModel<
               speechStatus: hasAudio ? "unverified" : "no_audio",
               pendingSpeech: undefined,
               // An aggregate can reveal a withheld utterance even if its individual item is hidden.
-              patterns: writtenMistakePatterns(model.classNotes.mistakes),
+              patterns: writtenMistakePatterns(
+                model.classNotes.mistakes,
+                model.language.explanation,
+              ),
               items: (model.classNotes.mistakes?.items ?? []).filter(
                 (item) => item.source === "handwriting",
               ),

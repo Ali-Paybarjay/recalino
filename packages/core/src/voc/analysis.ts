@@ -2,6 +2,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
+import { isExplanationLanguage, matchesExplanationScript } from "../lkm";
 import { assertSessionOwner } from "../org";
 import { errors, type LearnerContext } from "../plt";
 import { getSource, sessionSources, sourceContentVersions } from "../src";
@@ -197,33 +198,47 @@ const normalizedQuote = (value: string) => value.replaceAll("**", "").replace(/\
 export function validatedSpokenMistakes(
   analysis: Pick<PrivateVoiceAnalysis, "candidates" | "utterances">,
   raw: Record<string, SpokenMistake[]>,
+  explanationLanguage = "fa",
 ): Record<string, SpokenMistake[]> {
+  if (!isExplanationLanguage(explanationLanguage))
+    throw errors.validationFailed({ voice: ["explanation_language_invalid"] });
   const value = mistakesSchema.parse(raw),
     result: Record<string, SpokenMistake[]> = {};
   for (const candidate of analysis.candidates) {
-    result[candidate.id] = (value[candidate.id] ?? []).filter((mistake) => {
-      const utterance = analysis.utterances.find(
-        (item) =>
-          item.id === mistake.utteranceId && item.speakerId === candidate.id && item.eligible,
+    result[candidate.id] = (value[candidate.id] ?? [])
+      .filter((mistake) => {
+        const utterance = analysis.utterances.find(
+          (item) =>
+            item.id === mistake.utteranceId && item.speakerId === candidate.id && item.eligible,
+        );
+        if (!utterance || utterance.endMs - utterance.startMs < 2000) return false;
+        const said = normalizedQuote(mistake.said),
+          original = normalizedQuote(utterance.text);
+        return (
+          (!mistake.explanationLanguage ||
+            mistake.explanationLanguage.toLowerCase() === explanationLanguage.toLowerCase()) &&
+          said.length > 0 &&
+          original.includes(said) &&
+          said !== normalizedQuote(mistake.correct) &&
+          matchesExplanationScript(mistake.whyFa, explanationLanguage) &&
+          Boolean(findRepeatedVoiceEvidence(analysis.utterances, mistake, candidate.id))
+        );
+      })
+      .map((mistake) =>
+        explanationLanguage === "fa" ? mistake : { ...mistake, explanationLanguage },
       );
-      if (!utterance || utterance.endMs - utterance.startMs < 2000) return false;
-      const said = normalizedQuote(mistake.said),
-        original = normalizedQuote(utterance.text);
-      return (
-        said.length > 0 &&
-        original.includes(said) &&
-        said !== normalizedQuote(mistake.correct) &&
-        /[\u0600-\u06ff]/u.test(mistake.whyFa) &&
-        Boolean(findRepeatedVoiceEvidence(analysis.utterances, mistake, candidate.id))
-      );
-    });
   }
   return result;
 }
 export async function saveVoiceCandidateMistakes(
   db: Database | Tx,
   ctx: LearnerContext,
-  input: { analysisId: string; profileVersion: number; mistakes: Record<string, SpokenMistake[]> },
+  input: {
+    analysisId: string;
+    profileVersion: number;
+    mistakes: Record<string, SpokenMistake[]>;
+    explanationLanguage?: string;
+  },
   now = new Date(),
 ): Promise<void> {
   await voiceTransaction(db, async (tx) => {
@@ -232,7 +247,11 @@ export async function saveVoiceCandidateMistakes(
     if (row.profile_version !== input.profileVersion) throw errors.conflict();
     if (row.status === "none") return;
     const rejected = z.array(z.string()).parse(row.rejected_ids);
-    const mistakes = validatedSpokenMistakes(privateView(row), input.mistakes);
+    const mistakes = validatedSpokenMistakes(
+      privateView(row),
+      input.mistakes,
+      input.explanationLanguage,
+    );
     for (const id of rejected) delete mistakes[id];
     await tx
       .updateTable("voc.analysis")

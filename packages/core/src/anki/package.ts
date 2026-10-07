@@ -65,7 +65,7 @@ function model(id: number, cloze: boolean, did: number, mod: number) {
     did,
     tmpls: [template(cloze)],
     flds: [field(cloze ? "Text" : "Front", 0), field("Back", 1), field("Provenance", 2)],
-    css: '.card{font-family:Vazirmatn,Tahoma,sans-serif;font-size:20px;line-height:1.7;text-align:center}.card [dir=ltr]{font-family:Lora,Georgia,Vazirmatn,Tahoma,serif}.ipa{font-family:"Noto Serif","Charis SIL","Gentium Plus","Times New Roman","DejaVu Serif",serif}hr{border:0;border-top:1px solid currentColor;opacity:.15;margin:1em 0}small{display:block;font-size:12px;opacity:.7;margin-top:18px}img{max-width:100%;height:auto}.cloze{font-weight:bold}',
+    css: '.card{font-family:system-ui,"Noto Sans",Tahoma,sans-serif;font-size:20px;line-height:1.7;text-align:center}.card :lang(en),.card [dir=ltr]:not([lang]){font-family:Lora,Georgia,"Noto Serif",serif}.card :is(:lang(fa),:lang(ar),:lang(ur),:lang(ps)),.card [dir=rtl]:not([lang]){font-family:Vazirmatn,"Noto Sans Arabic",Tahoma,sans-serif}.card :is(:lang(zh),:lang(ja),:lang(ko)){font-family:system-ui,"Noto Sans CJK SC","Noto Sans CJK TC","Noto Sans CJK JP","Noto Sans CJK KR",sans-serif}.ipa{font-family:"Noto Serif","Charis SIL","Gentium Plus","Times New Roman","DejaVu Serif",serif}hr{border:0;border-top:1px solid currentColor;opacity:.15;margin:1em 0}small{display:block;font-size:12px;opacity:.7;margin-top:18px}img{max-width:100%;height:auto}.cloze{font-weight:bold}',
     latexPre: "",
     latexPost: "",
     latexsvg: false,

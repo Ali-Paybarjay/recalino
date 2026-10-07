@@ -12,7 +12,9 @@ export const studyKindSchema = z.enum([
 ]);
 const common = {
   en: shortText.describe("English item including the grammar frame needed to use it; plain text."),
-  faMeaning: shortText.describe("Natural Persian meaning, not a literal dictionary gloss."),
+  faMeaning: shortText.describe(
+    "Natural meaning in language.explanation, not a literal dictionary gloss.",
+  ),
   topic: z.string().min(1).max(150).describe("One or two topic tag words."),
   kind: studyKindSchema.optional(),
 };
@@ -20,7 +22,9 @@ export const productionStudySchema = z.strictObject({
   set: z.literal("production"),
   ...common,
   ipa: shortText.describe("British non-rhotic IPA, with slashes, stress and natural weak forms."),
-  faApprox: shortText.describe("Persian pronunciation approximation with vowel marks."),
+  faApprox: optionalText.describe(
+    "Persian pronunciation approximation with vowel marks, required only when language.explanation is fa; omit for every other language.",
+  ),
   trap: optionalText.describe("Only a genuine misleading spelling or pronunciation trap."),
   gapSentence: optionalText.describe(
     "Full sentence with the whole target replaced by ______; separable verbs have two blanks. Omit for grammar tasks.",
@@ -33,16 +37,16 @@ export const productionStudySchema = z.strictObject({
     .max(3)
     .describe("Two or three frequent collocations when relevant."),
   noteFa: prose.describe(
-    "Persian usage/register/nuance note, including a supported correction where relevant.",
+    "Usage/register/nuance note in language.explanation, including a supported correction where relevant.",
   ),
   imageFa: shortText.describe(
     "One concrete mental image, never an invented fact about the learner.",
   ),
   sourceFa: shortText.describe(
-    "Honest Persian source label; do not claim learner authorship or teacher speech without evidence.",
+    "Honest source label in language.explanation; do not claim learner authorship or teacher speech without evidence.",
   ),
   taskFa: optionalText.describe(
-    "Persian instruction for a grammar task; paired with prompt instead of gapSentence.",
+    "Instruction in language.explanation for a grammar task; paired with prompt instead of gapSentence.",
   ),
   prompt: optionalText.describe("English grammar task prompt without the corrected answer."),
 });

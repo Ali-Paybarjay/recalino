@@ -4,8 +4,6 @@ import {
   assignGeneratedKnowledgeIds,
   type Claim,
   knowledgeModelSchema,
-  matchesExplanationScript,
-  modelClaims,
   normalizeGeneratedStudyModel,
   type SourceRef,
   type StudyLessonContext,
@@ -232,16 +230,6 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
   function decode(raw: unknown) {
     const model = expand(raw);
     const validated = validateKnowledgeModel(model, data.sources, data.explanationLanguage);
-    if (
-      data.explanationLanguage.split("-")[0] === "fa" &&
-      (modelClaims(model).some(
-        (item) => !matchesExplanationScript(item.text, data.explanationLanguage),
-      ) ||
-        model.learningItems.some(
-          (item) => !matchesExplanationScript(item.back, data.explanationLanguage),
-        ))
-    )
-      throw errors.validationFailed({ output: ["language_script_mismatch"] });
     return {
       ...validated,
       sourceClassifications: data.sources.map((source) => ({

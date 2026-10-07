@@ -240,3 +240,47 @@ it("Part6: repeated patterns include only currently authorized writing and speec
   expect(revoked.classNotes?.mistakes?.patterns).toEqual([]);
   expect(renderClassNotesHtml(revoked)).not.toContain("I went home.");
 });
+
+it("speech prose follows its language snapshot and legacy Persian cannot leak into another locale", async () => {
+  const x = await voiceFixture(db);
+  await changeVoiceIdentity(db, x.ctx, x.session.id, {
+    action: "confirm",
+    analysisId: x.analysis.id,
+    expectedVersion: 1,
+    speakerId: "learner",
+  });
+  const spanish = referenceStudyModel();
+  spanish.language.explanation = "es";
+  expect(
+    (
+      await projectVerifiedSpeech(db, x.ctx, x.session.id, spanish)
+    ).classNotes?.mistakes?.items.filter((item) => item.source === "speech"),
+  ).toEqual([]);
+  await saveVoiceCandidateMistakes(db, x.ctx, {
+    analysisId: x.analysis.id,
+    profileVersion: x.input.profileVersion,
+    explanationLanguage: "es",
+    mistakes: {
+      learner: [
+        {
+          utteranceId: "u1",
+          said: "I **goed** home.",
+          correct: "I went home.",
+          whyFa: "El pasado de go es went.",
+          kind: "grammar",
+          teacherCorrected: false,
+        },
+      ],
+    },
+  });
+  const visible = await projectVerifiedSpeech(db, x.ctx, x.session.id, spanish);
+  expect(
+    visible.classNotes?.mistakes?.items.filter((item) => item.source === "speech"),
+  ).toMatchObject([{ whyFa: "El pasado de go es went.", where: "Audio · 0:01–0:09" }]);
+  const persian = referenceStudyModel();
+  expect(
+    (
+      await projectVerifiedSpeech(db, x.ctx, x.session.id, persian)
+    ).classNotes?.mistakes?.items.filter((item) => item.source === "speech"),
+  ).toEqual([]);
+});

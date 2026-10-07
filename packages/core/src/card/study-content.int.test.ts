@@ -1,10 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, expect, it } from "vitest";
 import { LOCAL_APP_DATABASE_URL } from "../../test/local-db";
+import {
+  MULTILINGUAL_STUDY_CASES,
+  multilingualStudyModel,
+} from "../../test/multilingual-study-fixture";
 import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { studyFixture } from "../../test/study-fixture";
+import { updateProfile } from "../acc";
 import { createDatabase } from "../db";
-import { publishKnowledgeVersion, renderStudyCard } from "../lkm";
+import { buildStudyAnkiText, publishKnowledgeVersion, renderStudyCard } from "../lkm";
 import { publishNotebook } from "../note";
 import { createSession } from "../org";
 import { synchronizeAutomaticCards } from "./automatic";
@@ -242,3 +247,84 @@ it("automatic publication creates rich faces directly and keeps recognition sepa
   expect(reorderedCards[0]?.id).toBe(nextCards[2]?.id);
   expect(reorderedCards[0]?.studyTags).toContain("Updated_course");
 });
+
+it.each(MULTILINGUAL_STUDY_CASES)(
+  "persists $language rich cards for both goals and keeps historical language after preference changes",
+  async (value) => {
+    const x = await studyFixture(db, { count: 0 });
+    await updateProfile(
+      db,
+      x.ctx,
+      { field: "first_language", firstLanguage: value.firstLanguage },
+      { now: x.now },
+    );
+    await updateProfile(
+      db,
+      x.ctx,
+      {
+        field: "explanation_language",
+        explanationLanguage: value.language === "en" ? "english" : "first_language",
+      },
+      { now: x.now },
+    );
+    const model = multilingualStudyModel(value);
+    const knowledge = await db.transaction().execute((tx) =>
+      publishKnowledgeVersion(tx, x.ctx, {
+        sessionId: x.session.id,
+        runId: randomUUID(),
+        sourcesVersion: 0,
+        sourceFingerprint: `synthetic-${value.language}`,
+        model,
+        sources: [],
+        explanationLanguage: value.language,
+        generation: { mode: "mock", provider: "multilingual-consumer-test" },
+      }),
+    );
+    await publishNotebook(
+      db,
+      x.ctx,
+      x.session.id,
+      { expectedRevisionId: x.notebook.current.id, knowledgeVersionId: knowledge.id },
+      { key: randomUUID() },
+    );
+    await generateCards(db, x.ctx, x.session.id, { autoAdd: true }, { key: randomUUID() });
+    const saved = await listCards(db, x.ctx, { sessionId: x.session.id });
+    expect(saved).toHaveLength(2);
+    for (const entry of saved) {
+      const face = entry.studySet === "production" ? entry.front : entry.back;
+      expect(entry.contentFormat).toBe("lesson_html");
+      expect(face).toContain(value.meaning);
+      expect(face).toContain(`lang="${value.language}"`);
+      expect(face).toContain(`dir="${value.dir}"`);
+    }
+    for (const set of ["production", "recognition"] as const) {
+      const text = buildStudyAnkiText(saved, { set, deckName: "Synthetic multilingual class" });
+      expect(text).toContain(value.meaning);
+      expect(text).toContain(`lang="${value.language}"`);
+      expect(text).not.toMatch(/معنی|استهلاک|فارسی/);
+    }
+    await updateProfile(
+      db,
+      x.ctx,
+      { field: "first_language", firstLanguage: "de" },
+      { now: x.now },
+    );
+    await updateProfile(
+      db,
+      x.ctx,
+      {
+        field: "explanation_language",
+        explanationLanguage: "english",
+      },
+      { now: x.now },
+    );
+    await synchronizeAutomaticCards(db, x.ctx, x.session.id, { key: randomUUID() });
+    expect(
+      (await listCards(db, x.ctx, { sessionId: x.session.id })).map(({ id, front, back }) => ({
+        id,
+        front,
+        back,
+      })),
+    ).toEqual(saved.map(({ id, front, back }) => ({ id, front, back })));
+  },
+);

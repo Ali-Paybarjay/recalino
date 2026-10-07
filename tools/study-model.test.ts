@@ -9,7 +9,7 @@ import { normalizeGeneratedStudyModel } from "../packages/core/src/lkm/study-pol
 import type { ProductionStudyContent } from "../packages/core/src/lkm/study-schema";
 import { applyNotebookEdits, notebookEditsSchema } from "../packages/core/src/note/schema";
 import { buildKnowledgeTranslationInput } from "../packages/core/src/proc/knowledge-translation";
-import { persianStudyPrompt } from "../packages/core/src/proc/study-prompt";
+import { studyPrompt } from "../packages/core/src/proc/study-prompt";
 import { referenceStudyModel } from "../packages/core/test/reference-study-fixture";
 
 const study: ProductionStudyContent = {
@@ -253,7 +253,9 @@ describe("shared structured lesson model", () => {
   });
 
   it("instructs generation to share items, suppress unverified speech and disclose budget limits", () => {
-    const prompt = persianStudyPrompt(6144);
+    const prompt = studyPrompt("fa", 6144);
+    expect(prompt).toContain("Persian (Farsi)");
+    expect(prompt).toContain("each claim.text explains in the resolved explanation language");
     expect(prompt).toContain("one shared source");
     expect(prompt).toContain("10–18 production items");
     expect(prompt).toContain("NO verified learner voice");

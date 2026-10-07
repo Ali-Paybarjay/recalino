@@ -17,6 +17,17 @@ describe("study card faces", () => {
     const revealed = renderToStaticMarkup(createElement(CardFace, { card, revealed: true }));
     expect(revealed).toContain(`${card.front}<hr>${card.back}`);
   });
+  it.each([
+    ["es", "ltr", "Desgaste"],
+    ["ar", "rtl", "التآكل"],
+    ["he", "rtl", "בלאי"],
+    ["zh-Hans", "ltr", "损耗"],
+  ])("retains language and direction of safe %s rich faces", (language, direction, meaning) => {
+    const face = `<div lang="${language}" dir="${direction}">${meaning}</div>`;
+    const html = renderToStaticMarkup(createElement(CardFace, { card: { ...card, front: face } }));
+    expect(html).toContain(face);
+    expect(html).not.toContain("&lt;div");
+  });
   it("escapes older plain text and rejects active markup even with a rich discriminator", () => {
     expect(
       renderToStaticMarkup(

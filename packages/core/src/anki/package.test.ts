@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { unzipSync } from "fflate";
 import { expect, it } from "vitest";
+import {
+  MULTILINGUAL_STUDY_CASES,
+  multilingualStudyModel,
+} from "../../test/multilingual-study-fixture";
 import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { syntheticKnowledge } from "../../test/study-fixture";
 import { renderStudyCard } from "../lkm";
@@ -148,6 +152,55 @@ it("retains reference faces and group tags in APKG while neutralizing forged act
     const untrusted = notes.find((note) => note.guid === ankiGuid(forged.id));
     expect(untrusted?.flds).not.toContain("<script>");
     expect(untrusted?.flds).not.toContain("[sound:evil.mp3]");
+  } finally {
+    sqlite?.close();
+    await unlink(path);
+    await rmdir(directory);
+  }
+});
+
+it("exports each rich card's own explanation language into one mixed-language Anki package", async () => {
+  const cases = MULTILINGUAL_STUDY_CASES.map((value) => {
+    const item = multilingualStudyModel(value).learningItems[0];
+    if (!item) throw new Error("Missing multilingual item");
+    return {
+      value,
+      snapshot: {
+        ...card(),
+        ...renderStudyCard(item, value.language),
+        contentFormat: "lesson_html" as const,
+        studySet: "production" as const,
+      },
+    };
+  });
+  const files = unzipSync(
+    await buildAnkiPackage({
+      sessionId: randomUUID(),
+      title: "Multilingual class",
+      cards: cases.map(({ snapshot }) => snapshot),
+      tags: [],
+      createdAt: "2026-10-07T00:00:00Z",
+    }),
+  );
+  const collection = files["collection.anki2"];
+  if (!collection) throw new Error("Missing collection");
+  const directory = await mkdtemp(join(tmpdir(), "recalino-multilingual-anki-"));
+  const path = join(directory, "collection.anki2");
+  let sqlite: DatabaseSync | undefined;
+  try {
+    await writeFile(path, collection);
+    sqlite = new DatabaseSync(path, { readOnly: true });
+    const notes = sqlite.prepare("SELECT guid, flds FROM notes").all();
+    expect(notes).toHaveLength(cases.length);
+    for (const { value, snapshot } of cases) {
+      const exported = notes.find((entry) => entry.guid === ankiGuid(snapshot.id));
+      expect(String(exported?.flds).split("\u001f").slice(0, 2)).toEqual([
+        snapshot.front,
+        snapshot.back,
+      ]);
+      expect(exported?.flds).toContain(value.meaning);
+      expect(exported?.flds).toContain(`lang="${value.language}"`);
+    }
   } finally {
     sqlite?.close();
     await unlink(path);

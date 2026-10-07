@@ -202,3 +202,75 @@ describe("private correction evidence", () => {
     ).toEqual({ [speakerId]: [] });
   });
 });
+
+describe("correction explanation language", () => {
+  const prepared = buildVoiceAnalysis(
+    base,
+    source([
+      { start: 1000, end: 8000, text: "I am agree with you.", speaker: "0" },
+      { start: 30000, end: 38000, text: "I am agree with you.", speaker: "0" },
+    ]),
+    diarization([segment("0", 0, 40000)]),
+    "es",
+  );
+  const speakerId = prepared.candidates[0]?.id ?? "missing";
+  const mistake = {
+    utteranceId: "b0",
+    said: "I am agree with you.",
+    correct: "I agree with you.",
+    whyFa: "El verbo agree no necesita am.",
+    kind: "grammar" as const,
+    teacherCorrected: false,
+  };
+  it("keeps English evidence and stamps the requested explanation locale", () => {
+    expect(prepared.candidates[0]?.label).toBe("Voice 1");
+    expect(
+      validateVoiceCorrections(
+        prepared,
+        { candidates: [{ speakerId, mistakes: [mistake] }] },
+        [],
+        "es",
+      )[speakerId],
+    ).toEqual([{ ...mistake, explanationLanguage: "es" }]);
+  });
+  it.each([
+    ["en", "The verb agree does not need am."],
+    ["ar", "الفعل agree لا يحتاج إلى am."],
+    ["he", "הפועל agree אינו צריך am."],
+    ["zh-Hans", "动词 agree 不需要 am。"],
+    ["hi", "क्रिया agree के साथ am की जरूरत नहीं है।"],
+  ])("accepts the configured %s script without assuming Persian", (language, explanation) => {
+    expect(
+      validateVoiceCorrections(
+        prepared,
+        {
+          candidates: [{ speakerId, mistakes: [{ ...mistake, whyFa: explanation }] }],
+        },
+        [],
+        language,
+      )[speakerId],
+    ).toEqual([{ ...mistake, whyFa: explanation, explanationLanguage: language }]);
+  });
+  it("rejects Persian text for a Spanish explanation and provider-selected locale metadata", () => {
+    expect(() =>
+      validateVoiceCorrections(
+        prepared,
+        {
+          candidates: [{ speakerId, mistakes: [{ ...mistake, whyFa: "توضیح فارسی" }] }],
+        },
+        [],
+        "es",
+      ),
+    ).toThrow();
+    expect(() =>
+      validateVoiceCorrections(
+        prepared,
+        {
+          candidates: [{ speakerId, mistakes: [{ ...mistake, explanationLanguage: "es" }] }],
+        },
+        [],
+        "es",
+      ),
+    ).toThrow();
+  });
+});

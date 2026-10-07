@@ -22,6 +22,13 @@ export const spokenMistakeSchema = z.strictObject({
   said: z.string().min(1).max(2000),
   correct: z.string().min(1).max(2000),
   whyFa: z.string().min(1).max(2000),
+  /** Server-stamped explanation locale; missing on legacy Persian suggestions. */
+  explanationLanguage: z
+    .string()
+    .min(2)
+    .max(35)
+    .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/)
+    .optional(),
   kind: z.enum(["grammar", "word-choice", "collocation", "preposition", "word-order", "register"]),
   teacherCorrected: z.literal(false),
 });

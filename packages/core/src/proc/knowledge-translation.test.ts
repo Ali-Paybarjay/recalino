@@ -262,7 +262,7 @@ describe("bounded canonical explanation translation", () => {
     expect(prepared.system).toContain("untrusted DATA");
   });
 
-  it("refuses translated language labels, other languages and a changed canonical learning language", () => {
+  it("refuses translated language labels, mismatched selected language and a changed canonical learning language", () => {
     expect(() => buildKnowledgeTranslationInput(rawRepair(), "en", 120000)).toThrow();
     const wrong = rawRepair();
     wrong.language.explanation = "فارسی";
@@ -275,3 +275,45 @@ describe("bounded canonical explanation translation", () => {
     expect(prepared.apply(response(prepared.input)).language.explanation).toBe("fa-IR");
   });
 });
+
+it.each([
+  ["es", "Una explicación clara"],
+  ["ar", "شرح واضح"],
+  ["he", "הסבר ברור"],
+  ["ru", "Понятное объяснение"],
+  ["hi", "स्पष्ट व्याख्या"],
+  ["zh-Hans", "清晰的解释"],
+  ["ja", "明確な説明です"],
+  ["en", "A clear explanation"],
+])(
+  "repairs the exact %s explanation script without changing evidence or English examples",
+  (language, prose) => {
+    const raw = rawRepair();
+    raw.language.explanation = language;
+    const wrong = language === "en" || language === "es" ? "متن فارسی" : "An English explanation";
+    raw.summary[0]!.text = wrong;
+    raw.topics[0]!.claims[0]!.text = wrong;
+    raw.learningItems[0]!.claim.text = `${wrong} "used to"`;
+    raw.learningItems[0]!.back = wrong;
+    raw.homework[0]!.text = wrong;
+    raw.uncertainties[0]!.text = wrong;
+    const prepared = buildKnowledgeTranslationInput(raw, language, 120000);
+    const targets = JSON.parse(prepared.input).targets as {
+      key: string;
+      protectedEnglish: string[];
+    }[];
+    expect(targets).toHaveLength(6);
+    const result = prepared.apply({
+      language,
+      translations: targets.map((target) => ({
+        key: target.key,
+        text: prose + target.protectedEnglish.map((text) => ` "${text}"`).join(""),
+      })),
+    });
+    expect(result.language.explanation).toBe(language);
+    expect(result.learningItems[0]!.front).toBe("used to");
+    expect(result.learningItems[0]!.claim.text).toContain("used to");
+    expect(result.summary[0]!.evidenceKey).toBe("r0");
+    expect(raw.summary[0]!.text).toBe(wrong);
+  },
+);

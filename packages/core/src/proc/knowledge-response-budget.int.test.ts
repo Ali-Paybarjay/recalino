@@ -175,10 +175,37 @@ function completeResponse(body: ReturnType<typeof JSON.parse>) {
                   front: "When do we use the present perfect?",
                   back: "For a past action connected with the present.",
                   claim: claim("c2", "The present perfect connects past and present."),
+                  study: {
+                    set: "production",
+                    en: "present perfect",
+                    kind: "grammar",
+                    ipa: "/ˌprezənt ˈpɜːfɪkt/",
+                    faMeaning: "A past action connected with the present",
+                    topic: "grammar",
+                    taskFa: "Rewrite the first clause using the tense from class.",
+                    prompt: "I lost my keys, so I cannot get in.",
+                    fullSentence: "I have lost my keys, so I cannot get in.",
+                    collocations: [],
+                    noteFa: "Use have or has with the past participle.",
+                    imageFa: "A missing key beside a locked door.",
+                    sourceFa: "Class grammar explanation; the practice example is generated.",
+                  },
                 },
               ],
               homework: [],
               uncertainties: [],
+              classNotes: {
+                date: input.lessonContext.date,
+                course: input.lessonContext.course,
+                coverage: "Present perfect and present relevance",
+                chunks: [],
+                board: [],
+                tasks: [],
+                register: [],
+                gapfill: [],
+                sourceNote:
+                  "These are selected study points; further lesson details are not included.",
+              },
               coverage: { complete: true, missingSourceIds: [] },
               sourceClassifications: input.sources.map((selected: { sourceId: string }) => ({
                 sourceId: selected.sourceId,
@@ -200,16 +227,12 @@ it("publishes representative notes from all seven complete long-class sources in
     seen.push(body);
     expect(body.max_tokens).toBe(6144);
     expect(body.messages[0].content).toContain("hard limit of 6144 output tokens");
-    expect(body.messages[0].content).toContain("at most 4608 output tokens");
-    expect(body.messages[0].content).toContain("at most 18 claims in total");
-    expect(body.messages[0].content).toContain("topics 4, with at most one claim each");
-    expect(body.messages[0].content).toContain("learningItems 6");
-    expect(body.messages[0].content).toContain(
-      "The learner explicitly prefers shorter educational examples",
-    );
-    expect(body.messages[0].content).toContain(
-      "never claim these representative notes exhaust every topic",
-    );
+    expect(body.messages[0].content).toContain("Aim below 5222");
+    expect(body.messages[0].content).toContain("populate classNotes and each learningItem.study");
+    expect(body.messages[0].content).toContain("one shared source");
+    expect(body.messages[0].content).toContain("The learner prefers shorter examples");
+    expect(body.messages[0].content).toContain("keep fewer complete items");
+    expect(body.messages[0].content).toContain("Never silently claim exhaustive coverage");
     return completeResponse(body);
   });
   const f = await fixture(request, 7);
@@ -227,17 +250,24 @@ it("publishes representative notes from all seven complete long-class sources in
   expect(latest?.model.topics[0]?.claims[0]?.sourceRefs[0]?.sourceId).toBe(
     input.sources[0].sourceId,
   );
-  expect(latest?.model.learningItems[0]?.front).toBe("When do we use the present perfect?");
+  expect(latest?.model.learningItems[0]?.front).toBe("present perfect");
+  expect(latest?.model.learningItems[0]?.study?.set).toBe("production");
+  expect(latest?.model.learningItems[0]?.study?.faApprox).toBeUndefined();
+  expect(latest?.model.classNotes?.date).toBe(f.x.session.classDate);
+  expect(latest?.model.classNotes?.sourceNote).toContain("selected study points");
 });
 
 it("scales the instruction down while preserving a smaller configured hard limit and the full output schema", async () => {
   const request = vi.fn<typeof fetch>(async (_url, init) => {
     const body = JSON.parse(String(init?.body));
     expect(body.max_tokens).toBe(2048);
-    expect(body.messages[0].content).toContain("at most 1536 output tokens");
-    expect(body.messages[0].content).toContain("summary 1 claims; topics 1");
-    expect(body.messages[0].content).toContain("learningItems 2");
-    expect(body.messages[0].content).toContain("at most 6 claims in total");
+    expect(body.messages[0].content).toContain("hard limit of 2048 output tokens");
+    expect(body.messages[0].content).toContain("Aim below 1740");
+    expect(body.messages[0].content).toContain("finish the entire valid JSON object");
+    expect(body.messages[0].content).toContain(
+      "Budget for complete production fields and evidence",
+    );
+    expect(body.messages[0].content).toContain("keep fewer complete items");
     return completeResponse(body);
   });
   const f = await fixture(request, 1, 2048);
