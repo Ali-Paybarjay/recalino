@@ -1,4 +1,4 @@
-import type { StudyCard } from "@recalino/core/card";
+import { type StudyCard, studyPronunciationTarget } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
 import type { ReviewQueue } from "@recalino/core/srs";
 import { renderClassNotesHtml, renderStudyCard } from "@recalino/core/study-render";
@@ -73,6 +73,7 @@ export default async function StudyReferencePage({
       studySet: item.study?.set,
       studyPosition: index,
       studyTags: ["2026-10-05", "binomials", item.study?.set ?? "production"],
+      pronunciationTarget: studyPronunciationTarget(item),
     }));
   const firstCard = cards[0];
   if (!firstCard) throw new Error("The reference lesson must contain a study card.");

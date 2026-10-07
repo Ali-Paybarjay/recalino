@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ProviderError } from "../aip";
 import type { KnowledgeModel } from "../lkm";
 import { errors } from "../plt";
+import type { LearnerTeachingContext } from "./learner-context";
 
 const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -42,6 +43,7 @@ function wordBoundary(text: string, offset: number): boolean {
 export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
   original: T,
   maxInputCharacters: number,
+  learnerContext?: LearnerTeachingContext,
 ) {
   const model = structuredClone(original);
   const targets = model.learningItems.flatMap((item, index) => {
@@ -74,6 +76,7 @@ export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
   const input = JSON.stringify({
     format: "study_answer_parts_v1",
     items: targets.map(({ index: _index, ...item }) => item),
+    ...(learnerContext ? { learnerContext } : {}),
   });
   if (Array.from(input).length > maxInputCharacters)
     throw new ProviderError("provider_input_too_large", false, false);
@@ -82,6 +85,7 @@ export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
     "Return exactly one item for each supplied itemId and no other IDs. Copy one to three exact, case-sensitive, nonempty answerParts substrings from that item's fullSentence, in their original order. Each part must occur exactly once, without overlap, and contain complete words. Do not return offsets or generate a sentence.",
     "Select the whole taught target as it appears in the sentence, including its inflected form and necessary particles. Target labels may contain grammar frames, sb/sth placeholders or explanatory annotations: those annotations are not literal answer words. Use one part for an uninterrupted target phrase, and separate parts only for a genuinely separated construction such as a separable phrasal verb. Do not hide unrelated surrounding words, partial words, or the whole sentence.",
     "The server copies the fullSentence unchanged and replaces only these exact answer parts with blanks. Preserve item IDs exactly. Return only the small complete JSON response, with no explanations, Markdown or lesson regeneration.",
+    "learnerContext is declared profile metadata only. Preserve the existing personalised lesson; never change its level, goal, examples or explanations during answer-span repair.",
   ].join(" ");
 
   function apply(raw: unknown): T {

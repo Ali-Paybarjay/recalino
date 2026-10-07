@@ -8,6 +8,7 @@ import {
   type StudyContent,
 } from "../lkm";
 import { errors } from "../plt";
+import type { LearnerTeachingContext } from "./learner-context";
 
 interface TranslationClaim {
   text: string;
@@ -68,6 +69,7 @@ export function buildKnowledgeTranslationInput<T extends TranslationSource>(
   rawCanonicalRepair: T,
   explanationLanguage: string,
   maxInputCharacters: number,
+  learnerContext?: LearnerTeachingContext,
 ) {
   if (
     !isExplanationLanguage(explanationLanguage) ||
@@ -184,6 +186,7 @@ export function buildKnowledgeTranslationInput<T extends TranslationSource>(
     format: "knowledge_explanation_translation_v1",
     language: explanationLanguage,
     targets: targets.map(({ read: _read, write: _write, ...target }) => target),
+    ...(learnerContext ? { learnerContext } : {}),
   });
   if (Array.from(input).length > maxInputCharacters)
     throw new ProviderError("provider_input_too_large", false, false);
@@ -200,6 +203,7 @@ export function buildKnowledgeTranslationInput<T extends TranslationSource>(
     `Return only the strict translation schema with language exactly ${JSON.stringify(explanationLanguage)}. Return exactly one translation for every supplied target key, with no omitted, repeated or extra keys. Translate the complete meaning of each target text into concise prose in the requested explanation language, preserving its facts, uncertainty and attribution. Do not add explanations, examples, facts, assignments or instructions, and do not summarize away any information.`,
     "Every returned text must contain a real explanation in the requested language and its normal script. Keep English target terms, quoted class examples and every supplied protectedEnglish fragment exactly as written inside the explanation. English fronts are context only and are never translation targets. Do not return fronts, IDs, citations, evidence keys, metadata or a new knowledge model; the server fills only the existing selected text fields.",
     "Finish complete compact JSON within the existing output budget. Text already in the requested language and every field not listed as a target remain unchanged on the server.",
+    "learnerContext is declared profile metadata only. Preserve the existing personalised teaching intent, difficulty and friendly tone while translating; never regenerate, simplify or expand the lesson to match that metadata.",
   ].join(" ");
   const metadataBytes = (value: T) => {
     const masked = structuredClone(value);

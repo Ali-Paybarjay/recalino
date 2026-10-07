@@ -108,10 +108,15 @@ class SyntheticSpeech implements AiProvider {
   readonly mode = "mock";
   readonly settings = providerSettings;
   calls = 0;
+  speechInputs: Array<{ voice?: string; model?: string }> = [];
   beforeResult?: () => Promise<void>;
   invalidAudio = false;
-  async speech(): Promise<ProviderResult<{ bytes: Uint8Array; mimeType: "audio/mpeg" }>> {
+  async speech(input: {
+    voice?: string;
+    model?: string;
+  }): Promise<ProviderResult<{ bytes: Uint8Array; mimeType: "audio/mpeg" }>> {
     this.calls++;
+    this.speechInputs.push(input);
     await this.beforeResult?.();
     return {
       output: {
@@ -590,6 +595,59 @@ describe("explicit media and privacy publication", () => {
     await expect(
       getMediaAsset(db, { ...f.ctx, userId: randomUUID() }, first.id),
     ).rejects.toMatchObject({ code: "not_found" });
+  });
+  it("AC-D46-02/04 snapshots British pronunciation, executes once and separates voices in cache", async () => {
+    const f = await fixture();
+    const input = {
+      sessionId: f.session.id,
+      text: "A short sentence.",
+      operationKey: randomUUID(),
+      exportAllowed: false,
+      purpose: "pronunciation" as const,
+    };
+    await expect(requestTts(db, f.ctx, input, f.dependencies)).rejects.toMatchObject({
+      code: "validation_failed",
+    });
+    f.dependencies.settings.pronunciationVoice = "bf_emma";
+    const first = await requestTts(db, f.ctx, input, f.dependencies);
+    const row = await db
+      .selectFrom("media.asset")
+      .selectAll()
+      .where("id", "=", first.id)
+      .executeTakeFirstOrThrow();
+    const snapshot = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", row.run_id as string)
+      .executeTakeFirstOrThrow();
+    expect(snapshot.settings).toMatchObject({ voice: "bf_emma" });
+    await run(db, mediaTtsJob(f.dependencies));
+    expect((await getMediaAsset(db, f.ctx, first.id)).state).toBe("ready");
+    expect(
+      (await requestTts(db, f.ctx, { ...input, operationKey: randomUUID() }, f.dependencies)).id,
+    ).toBe(first.id);
+    expect(f.provider.calls).toBe(1);
+    expect(f.provider.speechInputs).toEqual([expect.objectContaining({ voice: "bf_emma" })]);
+    expect(f.provider.settings.voice).toBe("synthetic");
+    const ordinary = await requestTts(
+      db,
+      f.ctx,
+      { ...input, purpose: undefined, operationKey: randomUUID() },
+      f.dependencies,
+    );
+    expect(ordinary.id).not.toBe(first.id);
+    await run(db, mediaTtsJob(f.dependencies));
+    expect(f.provider.speechInputs[1]?.voice).toBe("synthetic");
+    f.dependencies.settings.pronunciationVoice = "bf_isabella";
+    const changedVoice = await requestTts(
+      db,
+      f.ctx,
+      { ...input, operationKey: randomUUID() },
+      f.dependencies,
+    );
+    expect(changedVoice.id).not.toBe(first.id);
+    await run(db, mediaTtsJob(f.dependencies));
+    expect(f.provider.speechInputs[2]?.voice).toBe("bf_isabella");
   });
   it("rejects a false audio response while preserving actual cost and refunding unpublished quota", async () => {
     const f = await fixture();

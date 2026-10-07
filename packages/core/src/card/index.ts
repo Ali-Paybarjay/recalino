@@ -33,3 +33,4 @@ export {
   type GenerateCardsInput,
   generateCardsSchema,
 } from "./schema";
+export { studyPronunciationTarget } from "./study-content";

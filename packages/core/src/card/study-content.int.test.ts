@@ -73,6 +73,7 @@ it("stores one reference card per shared item, preserves rich metadata through s
     ...renderStudyCard(firstItem),
     contentFormat: "lesson_html",
     studySet: "production",
+    pronunciationTarget: "wear and tear",
     direction: "forward",
   });
   expect(first.cards.find((card) => card.studySet === "recognition")?.studyTags).toContain(
@@ -91,6 +92,23 @@ it("stores one reference card per shared item, preserves rich metadata through s
   );
   const card = first.cards[0];
   if (!card) throw new Error("Missing generated card");
+  const { pronunciationTarget: _, ...legacyMetadata } = card;
+  await db
+    .updateTable("card.card")
+    .set({
+      study_metadata: JSON.stringify({
+        contentFormat: legacyMetadata.contentFormat,
+        studySet: legacyMetadata.studySet,
+        studyTags: legacyMetadata.studyTags,
+        studyPosition: legacyMetadata.studyPosition,
+      }),
+    })
+    .where("id", "=", card.id)
+    .execute();
+  expect((await getCard(db, x.ctx, card.id)).pronunciationTarget).toBe("wear and tear");
+  expect((await listCards(db, x.ctx, { sessionId: x.session.id }))[0]?.pronunciationTarget).toBe(
+    "wear and tear",
+  );
   const edited = await editCard(
     db,
     x.ctx,
@@ -104,6 +122,7 @@ it("stores one reference card per shared item, preserves rich metadata through s
     { key: randomUUID() },
   );
   expect(edited.contentFormat).toBeUndefined();
+  expect(edited.pronunciationTarget).toBeUndefined();
   const undone = await changeCard(
     db,
     x.ctx,
@@ -115,6 +134,7 @@ it("stores one reference card per shared item, preserves rich metadata through s
     contentFormat: "lesson_html",
     studySet: "production",
     front: card.front,
+    pronunciationTarget: "wear and tear",
   });
   note = await publishNotebook(
     db,

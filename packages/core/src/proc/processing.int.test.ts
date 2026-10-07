@@ -929,6 +929,69 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(f.provider.prompts[0]).toContain("explicitly prefers shorter");
     expect(f.provider.inputs[0]).toMatchObject({ teachingPreferences: { shorterExamples: true } });
   });
+  it("AC-D46-05 snapshots declared level and goal before later profile edits without an extra AI call", async () => {
+    const f = await fixture();
+    await updateProfile(
+      db,
+      f.ctx,
+      { field: "level_goal", level: "A2", goal: "esol" },
+      { now: new Date() },
+    );
+    const run = await f.start();
+    const saved = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", run.id)
+      .executeTakeFirstOrThrow();
+    expect(saved.settings).toMatchObject({
+      learnerContext: { version: 1, declaredLevel: "A2", goal: "esol" },
+    });
+    await updateProfile(
+      db,
+      f.ctx,
+      { field: "level_goal", level: "C1", goal: "ielts" },
+      { now: new Date() },
+    );
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.inputs[0]).toMatchObject({
+      learnerContext: { version: 1, declaredLevel: "A2", goal: "esol" },
+    });
+    expect(f.provider.prompts[0]).toContain("short, concrete steps");
+    expect(f.provider.prompts[0]).toContain("declared ESOL goal");
+    expect(f.provider.prompts[0]).not.toContain("declared IELTS goal");
+    expect(f.provider.calls).toBe(1);
+  });
+  it("AC-D46-05 processes legacy run settings with absent learner context without inferring current profile choices", async () => {
+    const f = await fixture();
+    await updateProfile(
+      db,
+      f.ctx,
+      { field: "level_goal", level: "C1", goal: "ielts" },
+      { now: new Date() },
+    );
+    const run = await f.start();
+    const saved = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", run.id)
+      .executeTakeFirstOrThrow();
+    const { learnerContext: _learnerContext, ...legacy } = saved.settings as Record<
+      string,
+      unknown
+    >;
+    await db
+      .updateTable("proc.processing_run")
+      .set({ settings: JSON.stringify(legacy) })
+      .where("id", "=", run.id)
+      .execute();
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.inputs[0]).not.toHaveProperty("learnerContext");
+    expect(f.provider.prompts[0]).toContain("without guessing or assigning a level");
+    expect(f.provider.prompts[0]).not.toContain("declared IELTS goal");
+    expect(f.provider.calls).toBe(1);
+  });
   it("OCRs only selected PDF pages through durable vision steps and deletes temporary page images", async () => {
     const f = await fixture();
     const store = new MemoryObjectStore();

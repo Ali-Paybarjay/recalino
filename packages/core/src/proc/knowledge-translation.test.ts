@@ -51,6 +51,23 @@ function response(input: string) {
 }
 
 describe("bounded canonical explanation translation", () => {
+  it("AC-D46-05 forwards declared context without regenerating personalised examples or metadata", () => {
+    const raw = rawRepair();
+    const learnerContext = {
+      version: 1 as const,
+      declaredLevel: "C1" as const,
+      goal: "ielts" as const,
+    };
+    const prepared = buildKnowledgeTranslationInput(raw, "fa", 120000, learnerContext);
+    expect(JSON.parse(prepared.input).learnerContext).toEqual(learnerContext);
+    expect(prepared.system).toContain("Preserve the existing personalised teaching intent");
+    expect(prepared.system).toContain("never regenerate, simplify or expand");
+    const translated = prepared.apply(response(prepared.input));
+    expect(translated.learningItems[0]?.front).toBe(raw.learningItems[0]?.front);
+    expect(translated.learningItems[0]?.back).toBe(raw.learningItems[0]?.back);
+    expect(translated.coverage).toEqual(raw.coverage);
+    expect(translated).not.toHaveProperty("learnerContext");
+  });
   it("translates only the exact selected texts and preserves every ID, key, front and other metadata byte-for-byte", () => {
     const raw = rawRepair();
     const before = JSON.stringify(raw);

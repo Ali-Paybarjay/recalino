@@ -33,6 +33,26 @@ function input(sources: RunSource[], missingSourceIds: string[] = []) {
 }
 
 describe("knowledge input evidence transport", () => {
+  it("AC-D46-05 retains declared learner context in full and compact transport with all source text", () => {
+    const original = source();
+    const learnerContext = {
+      version: 1 as const,
+      declaredLevel: "A2" as const,
+      goal: "esol" as const,
+    };
+    const data = { ...input([original]), learnerContext };
+    const full = buildKnowledgeInput(data, 100000);
+    const compact = buildKnowledgeInput(data, Array.from(full.input).length - 1);
+    expect(compact.format).toBe("compact");
+    for (const prepared of [full, compact]) {
+      const parsed = JSON.parse(prepared.input);
+      expect(parsed.learnerContext).toEqual(learnerContext);
+      expect(prepared.input).toContain(JSON.stringify(original.blocks[0]?.text));
+    }
+    expect(JSON.parse(buildKnowledgeInput(input([original]), 100000).input)).not.toHaveProperty(
+      "learnerContext",
+    );
+  });
   it("keeps the original full format at and below the provider's Unicode character bound", () => {
     const original = source();
     const data = input([original]);

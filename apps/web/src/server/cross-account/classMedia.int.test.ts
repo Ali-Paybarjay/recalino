@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, it } from "vitest";
+import { studyFixture } from "../../../../../packages/core/test/study-fixture";
 import { classMediaHandler } from "../media-routes";
 import { ROUTES } from "../routes";
 import { orgCall, orgFixture, orgTestDatabase, unauthenticatedOrg } from "./org-support";
@@ -24,4 +25,20 @@ it("denies foreign identifiers before reading storage or dispatching providers",
     );
     expect(response.status).toBe(404);
   }
+});
+it("AC-D46-02 denies a foreign pronunciation card in an owned class before provider configuration", async () => {
+  const [alice, bob] = await Promise.all([studyFixture(db), studyFixture(db)]);
+  const card = bob.cards[0];
+  if (!card) throw new Error("Missing synthetic card");
+  const response = await orgCall(
+    db,
+    ROUTES.classMedia,
+    classMediaHandler(alice.session.id),
+    alice.ctx.userId,
+    ROUTES.classMedia.path.replace("[id]", alice.session.id),
+    "POST",
+    { kind: "pronunciation", cardId: card.id, expectedContentVersion: 1 },
+    randomUUID(),
+  );
+  expect(response.status).toBe(404);
 });

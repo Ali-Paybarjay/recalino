@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { providerSettingsSchema } from "../aip";
 import { sourceContentSchema } from "../src";
+import { learnerTeachingContextSchema } from "./learner-context";
 
 export const runStates = [
   "awaiting_upload",
@@ -59,6 +60,7 @@ export const runSettingsSchema = z.strictObject({
   provider: providerSettingsSchema,
   explanationLanguage: z.string(),
   profileVersion: z.number().int().nonnegative(),
+  learnerContext: learnerTeachingContextSchema.optional(),
   teachingPreferences: z
     .strictObject({ shorterExamples: z.boolean() })
     .default({ shorterExamples: false }),

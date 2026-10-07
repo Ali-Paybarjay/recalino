@@ -1,7 +1,55 @@
 import { describe, expect, it } from "vitest";
 import { FIRST_LANGUAGES } from "../acc";
-import { studyPrompt } from "./study-prompt";
+import { personalisedTeachingPrompt, studyPrompt } from "./study-prompt";
 import { knowledgePrompt } from "./worker";
+
+describe("AC-D46-06 friendly declared-level teaching", () => {
+  it.each([
+    ["A1", "short, concrete steps"],
+    ["A2", "short, concrete steps"],
+    ["B1", "Connect each explanation to its use"],
+    ["B2", "Connect each explanation to its use"],
+    ["C1", "useful nuance, register and contrasts"],
+    ["C2", "useful nuance, register and contrasts"],
+  ] as const)(
+    "adapts newly written teaching to declared %s without changing source evidence",
+    (declaredLevel, instruction) => {
+      const learnerContext = { version: 1 as const, declaredLevel, goal: "ielts" as const };
+      for (const usesEvidenceKeys of [false, true]) {
+        const prompt = knowledgePrompt("en", false, 6144, usesEvidenceKeys, learnerContext);
+        expect(prompt).toContain(instruction);
+        expect(prompt).toContain("declared IELTS goal");
+        expect(prompt).toContain("warm, calm, friendly and non-judgmental");
+        expect(prompt).toContain("explain the idea, show how it is used");
+        expect(prompt).toContain("Preserve exact class quotations");
+        expect(prompt).toContain("Never claim complete knowledge of the learner, proven mastery");
+        expect(prompt).toContain("Aim below 4608");
+        expect(prompt).toContain("at most 4 complete production items");
+      }
+    },
+  );
+
+  it.each([
+    undefined,
+    { version: 1 as const },
+    { version: 1 as const, declaredLevel: "not_sure" as const, goal: "none" as const },
+  ])("does not infer unknown level or goal from sources: %j", (context) => {
+    const prompt = personalisedTeachingPrompt(context);
+    expect(prompt).toContain("without guessing or assigning a level");
+    expect(prompt).toContain("do not infer an exam or personal goal");
+  });
+
+  it.each(["esol", "general"] as const)(
+    "uses the declared %s goal only for relevant new examples",
+    (goal) => {
+      const prompt = personalisedTeachingPrompt({ version: 1, declaredLevel: "A2", goal });
+      expect(prompt).toContain(
+        goal === "esol" ? "declared ESOL goal" : "declared general-English goal",
+      );
+      expect(prompt).toContain("when space is tight, prefer fewer complete teaching points");
+    },
+  );
+});
 
 describe("Persian lesson response budget", () => {
   it.each(["fa", "en"])(

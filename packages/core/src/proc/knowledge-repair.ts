@@ -14,6 +14,7 @@ import { AppError, errors } from "../plt";
 import type { SourceClassification } from "../src";
 import type { RunSource } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
+import type { LearnerTeachingContext } from "./learner-context";
 
 interface RepairInput {
   sources: readonly RunSource[];
@@ -21,6 +22,7 @@ interface RepairInput {
   teachingPreferences: { shorterExamples: boolean };
   missingSourceIds: readonly string[];
   lessonContext?: StudyLessonContext;
+  learnerContext?: LearnerTeachingContext;
 }
 interface Evidence {
   reference: SourceRef;
@@ -111,6 +113,7 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
     sources,
     missingSourceIds: data.missingSourceIds,
     ...(data.lessonContext ? { lessonContext: data.lessonContext } : {}),
+    ...(data.learnerContext ? { learnerContext: data.learnerContext } : {}),
   });
   if (Array.from(input).length > maxInputCharacters)
     throw new ProviderError("provider_input_too_large", false, false);

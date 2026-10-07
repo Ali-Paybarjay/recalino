@@ -6,6 +6,7 @@ import { workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+import { RecallPronunciation } from "./RecallPronunciation";
 
 type StudySet = "production" | "recognition" | "legacy";
 function preferredStudySet(queue: ReviewQueue): StudySet {
@@ -307,6 +308,15 @@ export function ReviewView({
                   <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
                 ))}
               {backMedia && media(backMedia)}
+              {current.card.pronunciationTarget && current.card.sessionIds[0] && (
+                <RecallPronunciation
+                  key={`${selectedSet}:${current.card.id}:${current.card.contentVersion}`}
+                  cardId={current.card.id}
+                  contentVersion={current.card.contentVersion}
+                  sessionId={sessionId ?? current.card.sessionIds[0]}
+                  target={current.card.pronunciationTarget}
+                />
+              )}
               <ClaimEvidence claim={current.card.provenance} userId={userId} />
               <Actions>
                 {(queue.settings.mode === "simple"

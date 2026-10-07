@@ -51,6 +51,26 @@ function model(
 const answer = (...answerParts: string[]) => ({ items: [{ itemId: "item-1", answerParts }] });
 
 describe("bounded production sentence repair", () => {
+  it("AC-D46-05 forwards declared context but preserves personalised teaching during answer-span repair", () => {
+    const original = model();
+    const learnerContext = {
+      version: 1 as const,
+      declaredLevel: "A2" as const,
+      goal: "general" as const,
+    };
+    const prepared = buildKnowledgeStudyRepairInput(original, 10000, learnerContext);
+    expect(JSON.parse(prepared.input).learnerContext).toEqual(learnerContext);
+    expect(prepared.system).toContain("never change its level, goal, examples or explanations");
+    const repaired = prepared.apply(answer("clamped down on"));
+    expect(repaired.learningItems[0]?.study).toMatchObject({
+      fullSentence:
+        original.learningItems[0]?.study?.set === "production"
+          ? original.learningItems[0].study.fullSentence
+          : undefined,
+      noteFa: original.learningItems[0]?.study?.noteFa,
+    });
+    expect(repaired.learningItems[0]?.claim).toEqual(original.learningItems[0]?.claim);
+  });
   it("repairs an inflected target while preserving every original field except its gap", () => {
     const original = model();
     const before = structuredClone(original);

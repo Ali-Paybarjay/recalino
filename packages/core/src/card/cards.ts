@@ -34,6 +34,7 @@ import {
   type StudyMetadata,
   savedStudyMetadata,
   studyCardContent,
+  studyPronunciationTarget,
 } from "./study-content";
 
 export interface StudyCard extends Partial<StudyMetadata> {
@@ -124,6 +125,50 @@ async function sessionsFor(
     links.map((link) => link.session_id),
   );
 }
+
+/** Older lesson metadata stays readable; resolve a target only while its saved faces match. */
+async function withPronunciationTargets(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  cards: StudyCard[],
+): Promise<StudyCard[]> {
+  const missing = cards.filter(
+    (card) => card.contentFormat === "lesson_html" && card.pronunciationTarget === undefined,
+  );
+  if (!missing.length) return cards;
+  const links = await db
+    .selectFrom("card.learning_item")
+    .select(["id", "logical_key"])
+    .where("user_id", "=", ctx.userId)
+    .where(
+      "id",
+      "in",
+      missing.map((card) => card.learningItemId),
+    )
+    .execute();
+  const keys = new Map(links.map((link) => [link.id, link.logical_key]));
+  for (const sessionId of new Set(missing.flatMap((card) => card.sessionIds))) {
+    let notebook: Awaited<ReturnType<typeof getNotebook>>;
+    try {
+      notebook = await getNotebook(db, ctx, sessionId);
+    } catch (failure) {
+      if (failure instanceof AppError && failure.code === "not_found") continue;
+      throw failure;
+    }
+    if (!notebook) continue;
+    for (const card of missing) {
+      if (!card.sessionIds.includes(sessionId) || card.pronunciationTarget) continue;
+      const item = notebook.current.model.learningItems.find(
+        (entry) => keys.get(card.learningItemId) === `${sessionId}:${entry.id}`,
+      );
+      if (!item?.study) continue;
+      const content = studyCardContent(item, notebook.current.model);
+      if (content.front === card.front && content.back === card.back)
+        card.pronunciationTarget = studyPronunciationTarget(item);
+    }
+  }
+  return cards;
+}
 export async function getCard(
   db: Database | Tx,
   ctx: LearnerContext,
@@ -141,7 +186,7 @@ export async function getCard(
   if (!row) throw errors.notFound();
   const sessionIds = await sessionsFor(db, ctx, id);
   if (!sessionIds.length) throw errors.notFound();
-  return view(row, sessionIds);
+  return (await withPronunciationTargets(db, ctx, [view(row, sessionIds)]))[0] as StudyCard;
 }
 export async function getActiveCard(
   db: Database | Tx,
@@ -208,7 +253,7 @@ export async function listCards(
     values.push(link.session_id);
     sessions.set(link.card_id, values);
   }
-  return rows
+  const cards = rows
     .flatMap((row) => {
       const ids = sessions.get(row.id) ?? [];
       return ids.length && (!options.sessionId || ids.includes(options.sessionId))
@@ -224,6 +269,7 @@ export async function listCards(
         return 0;
       return a.studyPosition - b.studyPosition;
     });
+  return withPronunciationTargets(db, ctx, cards);
 }
 export async function saveRevision(
   tx: Tx,

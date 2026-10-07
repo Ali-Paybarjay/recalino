@@ -1,4 +1,5 @@
 import "server-only";
+import { getCard } from "@recalino/core/card";
 import {
   createImageMedia,
   getMediaAsset,
@@ -42,6 +43,11 @@ export function classMediaHandler(sessionId: string): Handler {
       .discriminatedUnion("kind", [
         z.strictObject({ kind: z.literal("tts"), text: z.string(), exportAllowed: z.boolean() }),
         z.strictObject({
+          kind: z.literal("pronunciation"),
+          cardId: z.uuid(),
+          expectedContentVersion: z.number().int().positive(),
+        }),
+        z.strictObject({
           kind: z.literal("image"),
           sourceId: z.uuid(),
           crop: z.unknown().optional(),
@@ -56,12 +62,26 @@ export function classMediaHandler(sessionId: string): Handler {
         body: await createImageMedia(db, store(), learner, { ...image, sessionId, operationKey }),
       };
     }
+    let speech: { text: string; exportAllowed: boolean; purpose?: "pronunciation" };
+    if (fields.kind === "pronunciation") {
+      const card = await getCard(db, learner, fields.cardId);
+      if (!card.sessionIds.includes(sessionId)) throw errors.notFound();
+      if (card.contentVersion !== fields.expectedContentVersion)
+        throw errors.validationFailed({ pronunciation: ["card_changed"] });
+      if (!card.pronunciationTarget)
+        throw errors.validationFailed({ pronunciation: ["target_unavailable"] });
+      speech = {
+        text: card.pronunciationTarget,
+        exportAllowed: false,
+        purpose: "pronunciation" as const,
+      };
+    } else speech = { text: fields.text, exportAllowed: fields.exportAllowed };
     const dependencies = getMediaDependencies();
     if (!dependencies) throw errors.validationFailed({ media: ["not_configured"] });
     const media = await requestTts(
       db,
       learner,
-      { sessionId, text: fields.text, exportAllowed: fields.exportAllowed, operationKey },
+      { sessionId, ...speech, operationKey },
       dependencies,
     );
     if (media.state === "queued") runJobsSoon(["media.tts"], 90);

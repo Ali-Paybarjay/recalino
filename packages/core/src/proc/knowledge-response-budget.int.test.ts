@@ -230,7 +230,7 @@ it("publishes representative notes from all seven complete long-class sources in
     expect(body.messages[0].content).toContain("Aim below 4608");
     expect(body.messages[0].content).toContain("populate classNotes and each learningItem.study");
     expect(body.messages[0].content).toContain("one shared source");
-    expect(body.messages[0].content).toContain("The learner prefers shorter examples");
+    expect(body.messages[0].content).toContain("The learner explicitly prefers shorter examples");
     expect(body.messages[0].content).toContain("keep fewer complete items");
     expect(body.messages[0].content).toContain("Never silently claim exhaustive coverage");
     return completeResponse(body);

@@ -42,6 +42,7 @@ import {
 export const mediaSettingsSchema = z.strictObject({
   maxTtsCharacters: z.number().int().positive(),
   maxTtsBytes: z.number().int().positive(),
+  pronunciationVoice: z.string().trim().min(1).max(200).optional(),
 });
 export type MediaSettings = z.infer<typeof mediaSettingsSchema>;
 export interface MediaAsset {
@@ -396,7 +397,16 @@ const ttsRequest = z.strictObject({
   text: z.string().trim().min(1),
   operationKey: z.string().min(8).max(200),
   exportAllowed: z.boolean(),
+  purpose: z.literal("pronunciation").optional(),
 });
+
+function ttsGeneration(dependencies: MediaDependencies, pronunciation: boolean) {
+  const provider = requireProvider(dependencies.provider);
+  if (!pronunciation) return provider.settings;
+  const voice = mediaSettingsSchema.parse(dependencies.settings).pronunciationVoice;
+  if (!voice) throw errors.validationFailed({ media: ["pronunciation_not_configured"] });
+  return { ...provider.settings, voice };
+}
 const ttsPayload = z.strictObject({ runId: z.uuid(), userId: z.uuid(), subjectId: z.uuid() });
 const audioOutput = z.strictObject({
   bytesBase64: z.string().min(1),
@@ -412,7 +422,7 @@ export async function requestTts(
 ): Promise<MediaAsset> {
   const input = ttsRequest.parse(raw);
   input.text = input.text.normalize("NFC").replace(/\s+/g, " ");
-  const provider = requireProvider(dependencies.provider);
+  const generation = ttsGeneration(dependencies, input.purpose === "pronunciation");
   const limits = mediaSettingsSchema.parse(dependencies.settings);
   const characters = Array.from(input.text).length;
   if (
@@ -425,9 +435,9 @@ export async function requestTts(
   const cacheKey = sha256Hex(
     canonicalJson({
       text: input.text,
-      model: provider.settings.ttsModel,
-      voice: provider.settings.voice,
-      version: provider.settings.version,
+      model: generation.ttsModel,
+      voice: generation.voice,
+      version: generation.version,
     }),
   );
   return db.transaction().execute(async (tx) => {
@@ -463,7 +473,7 @@ export async function requestTts(
         subjectId: id,
         requested: amounts({ tts: characters, storage: limits.maxTtsBytes }),
         request: { text: input.text },
-        settings: provider.settings,
+        settings: generation,
         job,
       },
       now,
@@ -482,7 +492,7 @@ export async function requestTts(
         request_hash: hash,
         cache_key: cacheKey,
         request: JSON.stringify(input),
-        generation: JSON.stringify(provider.settings),
+        generation: JSON.stringify(generation),
         run_id: runId,
         reservation_id: (await reservationForOperation(tx, ctx, `auxiliary:${runId}`))?.id ?? null,
         created_at: now,
@@ -508,9 +518,10 @@ export function mediaTtsJob(
         if (row.state === "ready" || row.state === "deleted") return;
         if (!["queued", "processing"].includes(row.state) || row.run_id !== payload.runId)
           throw errors.conflict();
-        if (canonicalJson(row.generation) !== canonicalJson(provider.settings))
-          throw errors.validationFailed({ provider: ["settings_changed"] });
         const request = ttsRequest.parse(row.request);
+        const generation = ttsGeneration(dependencies, request.purpose === "pronunciation");
+        if (canonicalJson(row.generation) !== canonicalJson(generation))
+          throw errors.validationFailed({ provider: ["settings_changed"] });
         const limits = mediaSettingsSchema.parse(dependencies.settings);
         await job.db
           .updateTable("media.asset")
@@ -524,7 +535,12 @@ export function mediaTtsJob(
           provider,
           schema: audioOutput,
           effect: async (operationKey) => {
-            const result = await provider.speech({ operationKey, text: request.text });
+            const result = await provider.speech({
+              operationKey,
+              text: request.text,
+              model: generation.ttsModel,
+              voice: generation.voice,
+            });
             return {
               ...result,
               output: {

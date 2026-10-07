@@ -1,13 +1,47 @@
 import { z } from "zod";
 import { type KnowledgeModel, type LearningItem, renderStudyCard } from "../lkm";
 
+const pronunciationTargetSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .refine(
+    (text) =>
+      /\p{Script=Latin}/u.test(text) &&
+      !/[^\p{Script=Latin}\p{Number}\p{Punctuation}\p{Separator}\p{Mark}]/u.test(text) &&
+      !/[<>{}[\]\\]|&(?:#\d+|[a-z]+);/iu.test(text),
+  );
 const metadataSchema = z.strictObject({
   contentFormat: z.literal("lesson_html"),
   studySet: z.enum(["production", "recognition"]),
   studyTags: z.array(z.string().min(1).max(100)).max(20),
   studyPosition: z.number().int().nonnegative(),
+  pronunciationTarget: pronunciationTargetSchema.nullable().optional(),
 });
 export type StudyMetadata = z.infer<typeof metadataSchema>;
+
+/** AC-D46-01: only a structured English headword/frame can become speech, never card HTML. */
+export function studyPronunciationTarget(item: LearningItem): string | undefined {
+  const result = pronunciationTargetSchema.safeParse(
+    item.study?.en.normalize("NFC").replace(/\s+/g, " "),
+  );
+  if (!result.success || !item.study) return undefined;
+  const lexical = (text: string) =>
+    /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’-]+$/u.test(text) &&
+    !/\b(?:sb|sth|noun|verb|adj|adv|ing)\b/iu.test(text);
+  if (lexical(result.data)) return result.data;
+  // A separable frame can be pronounced naturally only when both saved sentences agree.
+  if (item.study.set !== "production" || !item.study.gapSentence) return undefined;
+  const parts = item.study.gapSentence.split("______");
+  if (parts.length < 2 || parts.length > 4) return undefined;
+  const escaped = parts.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const full = item.study.fullSentence;
+  if (!new RegExp(`^${escaped.join("(.+?)")}$`, "u").test(full)) return undefined;
+  const target = full.slice(parts[0]?.length ?? 0, full.length - (parts.at(-1)?.length ?? 0));
+  const spoken = pronunciationTargetSchema.safeParse(target);
+  return spoken.success && lexical(spoken.data) ? spoken.data : undefined;
+}
 
 export function readStudyMetadata(value: unknown): Partial<StudyMetadata> {
   if (typeof value === "string") {
@@ -27,6 +61,7 @@ export function savedStudyMetadata(value: Partial<StudyMetadata>): string | null
     studySet: value.studySet,
     studyTags: value.studyTags,
     studyPosition: value.studyPosition,
+    pronunciationTarget: value.pronunciationTarget,
   });
   return result.success ? JSON.stringify(result.data) : null;
 }
@@ -50,6 +85,7 @@ export function studyCardContent(item: LearningItem, model: KnowledgeModel) {
       studySet: item.study.set,
       studyTags: [...new Set(studyTags)],
       studyPosition: model.learningItems.findIndex((entry) => entry.id === item.id),
+      pronunciationTarget: studyPronunciationTarget(item) ?? null,
     } satisfies StudyMetadata),
   };
 }

@@ -3,8 +3,14 @@ import {
   MULTILINGUAL_STUDY_CASES,
   multilingualStudyModel,
 } from "../../test/multilingual-study-fixture";
+import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { safeCardHtml } from "../lkm";
-import { readStudyMetadata, studyCardContent } from "./study-content";
+import {
+  readStudyMetadata,
+  savedStudyMetadata,
+  studyCardContent,
+  studyPronunciationTarget,
+} from "./study-content";
 
 it.each(MULTILINGUAL_STUDY_CASES)(
   "prepares $language faces in the immutable notebook explanation language",
@@ -27,3 +33,40 @@ it.each(MULTILINGUAL_STUDY_CASES)(
     }
   },
 );
+
+it("AC-D46-01 extracts only the structured target and preserves old metadata", () => {
+  const model = referenceStudyModel();
+  const item = model.learningItems[0];
+  if (!item?.study) throw new Error("Missing reference target");
+  expect(studyPronunciationTarget(item)).toBe("wear and tear");
+  expect(readStudyMetadata(studyCardContent(item, model).study_metadata).pronunciationTarget).toBe(
+    "wear and tear",
+  );
+  const legacy = {
+    contentFormat: "lesson_html" as const,
+    studySet: "production" as const,
+    studyTags: [],
+    studyPosition: 0,
+  };
+  expect(readStudyMetadata(savedStudyMetadata(legacy))).toEqual(legacy);
+  expect(studyPronunciationTarget({ ...item, study: undefined })).toBeUndefined();
+  for (const en of [
+    "واژه",
+    "wear <b>and</b> tear",
+    "wear &amp; tear",
+    "{{c1::hidden}}",
+    "x".repeat(501),
+  ]) {
+    expect(studyPronunciationTarget({ ...item, study: { ...item.study, en } })).toBeUndefined();
+  }
+  const separable = model.learningItems[1];
+  if (separable?.study?.set !== "production") throw new Error("Missing frame");
+  expect(studyPronunciationTarget(separable)).toBe("kit it out");
+  expect(
+    studyPronunciationTarget({
+      ...separable,
+      study: { ...separable.study, fullSentence: "A mismatched answer." },
+    }),
+  ).toBeUndefined();
+  expect(studyPronunciationTarget(model.learningItems[3] as typeof item)).toBeUndefined();
+});

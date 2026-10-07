@@ -1,8 +1,42 @@
+import type { LearnerTeachingContext } from "./learner-context";
+
+/** AC-D46-06: declared preferences guide teaching, never assert measured mastery. */
+export function personalisedTeachingPrompt(learnerContext?: LearnerTeachingContext): string {
+  const level = learnerContext?.declaredLevel;
+  const levelInstruction =
+    level === "A1" || level === "A2"
+      ? "Use short, concrete steps and familiar vocabulary in new examples. Explain necessary grammar terms plainly before using them."
+      : level === "B1" || level === "B2"
+        ? "Connect each explanation to its use, with clear examples and a brief contrast when it resolves a lesson difficulty."
+        : level === "C1" || level === "C2"
+          ? "Keep explanations concise and precise; explain useful nuance, register and contrasts when supported by the lesson."
+          : "The declared level is unknown or not_sure. Use accessible explanations without guessing or assigning a level.";
+  const goal = learnerContext?.goal;
+  const goalInstruction =
+    goal === "esol"
+      ? "When the lesson allows a new example, favour practical everyday communication and life in the UK for the declared ESOL goal."
+      : goal === "ielts"
+        ? "When relevant to the lesson, favour examples useful for speaking or writing for the declared IELTS goal. Never invent exam tasks, requirements, scores or predicted results."
+        : goal === "general"
+          ? "When the lesson allows a new example, favour useful everyday, work and social communication for the declared general-English goal."
+          : "No specific learning goal is declared. Stay with the lesson content; do not infer an exam or personal goal.";
+  return [
+    "Teach with a warm, calm, friendly and non-judgmental tone in the resolved explanation language. Use direct, helpful explanations without generic praise or invented familiarity.",
+    "learnerContext contains only the learner's declared level and goal, not a diagnostic result. Never claim complete knowledge of the learner, proven mastery, a remembered difficulty or a personal fact absent from the sources.",
+    levelInstruction,
+    goalInstruction,
+    "Within existing classNotes and study fields, teach selected points in a useful sequence: explain the idea, show how it is used, then connect it to the example or existing practice. Use coreIntro for a short lesson orientation and noteFa/chunks for the teaching point; do not add fields or a second copy of the lesson.",
+    "Adapt newly written explanations and AI examples only. Preserve exact class quotations, target expressions, source examples, task order and evidence. If a class point exceeds the declared level, scaffold its explanation rather than remove or misrepresent it. New examples remain AI Expansion and are never attributed to the class.",
+    "Keep the existing item counts, concise-field rules and output budget; when space is tight, prefer fewer complete teaching points over a longer introduction.",
+  ].join(" ");
+}
+
 /** Shared rich study content in the resolved language, preserving complete-item response budgets. */
 export function studyPrompt(
   explanationLanguage: string,
   maxOutputTokens: number,
   usesEvidenceKeys = false,
+  learnerContext?: LearnerTeachingContext,
 ): string {
   const persian = explanationLanguage.split("-")[0] === "fa";
   const language = persian
@@ -39,10 +73,11 @@ export function studyPrompt(
   return [
     `The resolved explanationLanguage is exactly ${JSON.stringify(explanationLanguage)}. It follows the learner's choice of English explanations or their selected first language; never assume their first language is Persian. All explanation prose must use ${language} in its normal writing system. Legacy schema keys faMeaning, noteFa, imageFa, sourceFa, taskFa, textFa, whyFa, labelFa and ruleFa are stable field names, not instructions to write Persian. Keep these keys unchanged.`,
     pronunciation,
+    personalisedTeachingPrompt(learnerContext),
     `For this English-learning learner populate classNotes and each learningItem.study. These are the one shared source for the Class Notes document and flashcards, never separate copies of core/extra items. Return plain text structured fields only, no HTML, scripts, or Markdown except **bold** around exact mistaken/corrected words. Keep schemaVersion the string "1". Set language.learning to en and language.explanation to the exact requested code. Keep legacy learningItem.front equal to study.en and back equal to study.faMeaning. Every item retains its own evidence claim; each claim.text explains in the resolved explanation language. ${usesEvidenceKeys ? "Each claim has exactly id, text, evidenceKey and uncertain; all attribution metadata is added by the server. Do not add creation, origin, evidence, speakerRole or sourceRefs to claims." : "All generated claims have creation ai_generation."}`,
     "All notebook sections belong inside the classNotes object: date, institution, course, sourceNote, coreIntro, oralIntro, chunks, board, tasks, mistakes, register, gapfill and culture. Never place any of these sections at the top level. Notebook coverage prose belongs in classNotes.coverage. The separate top-level coverage object remains required with complete and missingSourceIds; it is not the notebook coverage text. In particular, mistakes is classNotes.mistakes, never a sibling of classNotes. All production and recognition fields belong in learningItems[].study.",
     "Use a specific short educational title naming the concepts actually taught, in English or the explanation language · English. Copy classNotes.date and course from lessonContext, never guess institution, profile, date, or a course name. classNotes.coverage is one concise line about the lesson. Use empty arrays for unsupported sections. Keep summary/topics/homework/uncertainties for supported facts that do not duplicate the rich sections. Homework must be an actual assignment in a source.",
-    `Selection priority: clearly attributed teacher oral explanations, evidenced corrections of this learner's own sentences, board/slides, underlined handout chunks, then quiz/task wording. Prefer useful multi-word phrases, collocations and testable grammar patterns over A2 words, proper nouns and one-off technical terms. ${selectionCount}, and fewer when the evidence offers fewer useful items. Include at most ${recognitionLimit} recognition items; never make a reverse production card or repeat a production item in recognition. Keep order stable in learningItems: production first, then recognition.`,
+    `Selection priority: clearly attributed teacher oral explanations, evidenced corrections of this learner's own sentences, board/slides, underlined handout chunks, then quiz/task wording. Prioritise lesson-relevant vocabulary, multi-word phrases, collocations and testable grammar patterns; avoid proper nouns and one-off technical terms unless essential to the class. ${selectionCount}, and fewer when the evidence offers fewer useful items. Include at most ${recognitionLimit} recognition items; never make a reverse production card or repeat a production item in recognition. Keep order stable in learningItems: production first, then recognition.`,
     `For production, en contains the grammar frame (of + -ing / noun, sb/sth). faMeaning is natural conversational prose in the resolved explanation language. fullSentence uses the actual class example where available; otherwise use ordinary everyday/work/social life in the UK, normally 8–15 words, with no unfamiliar words except the target. Never invent personal facts. gapSentence is exactly fullSentence with the entire target replaced by ______; a separable phrasal verb uses one blank per separated part, e.g. We need to ______ it ______. Do not leak the answer, a first letter, a hint, or its spelling anywhere on the front. For grammar kind, taskFa plus prompt replaces gapSentence; fullSentence is the corrected form and noteFa states the concise rule. Include ${compact ? "two frequent collocations when relevant, one short sentence in the resolved explanation language for register/nuance/usage in noteFa" : "two or three frequent collocations when relevant, one to three sentences in the resolved explanation language for register/nuance/usage in noteFa"}, and one vivid concrete mental image in imageFa. sourceFa states only what the evidence proves.`,
     'For each non-grammar production item, fullSentence and gapSentence are ONE paired sentence, never two different examples. Write fullSentence first, copy it exactly, then replace only the exact target span(s) with ______ to make gapSentence. Every other word, space, capital letter and punctuation mark stays identical. For example: en="get on with sb"; fullSentence="I get on with my neighbours very well."; gapSentence="I ______ my neighbours very well." Placeholder frames such as sb/sth and -ing describe usage; replace the target as actually realised in fullSentence, not the literal placeholder. A separable target can use two or at most three blanks, but filling each blank with its exact removed text must reproduce fullSentence byte for byte. Never compose gapSentence independently or change its subject, tense, object or ending.',
     'learningItems[].kind and learningItems[].study.kind are different fields. Choose study.kind="grammar" ONLY for a grammar task and then always provide both nonempty study.taskFa (task instruction in the resolved explanation language) and nonempty study.prompt (English task without its answer); study.fullSentence is the corrected answer. Never omit these fields or use null/empty strings for them. For ordinary vocabulary, expressions and collocations use the appropriate study kind or omit the optional kind instead of labelling it grammar; then a nonempty study.gapSentence paired with study.fullSentence is mandatory. Before finishing, check every production item has its complete question: taskFa plus prompt for grammar, or gapSentence for every other kind.',

@@ -44,6 +44,7 @@ import {
 } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
 import { reuseCompletedKnowledge } from "./knowledge-reuse";
+import { snapshotLearnerTeachingContext } from "./learner-context";
 import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
@@ -317,6 +318,7 @@ export async function createProcessingRun(
       explanationLanguage:
         account.profile.explanationLanguage === "english" ? "en" : account.profile.firstLanguage,
       profileVersion: account.profile.version,
+      learnerContext: snapshotLearnerTeachingContext(account.profile),
       teachingPreferences: {
         shorterExamples: (await listTeachingPreferences(tx, ctx)).some(
           (preference) =>

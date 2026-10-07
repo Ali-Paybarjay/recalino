@@ -53,6 +53,23 @@ function output(key: string | null) {
   };
 }
 
+it("AC-D46-05 keeps declared learner context in evidence repair without altering evidence", () => {
+  const original = source();
+  const learnerContext = {
+    version: 1 as const,
+    declaredLevel: "B1" as const,
+    goal: "ielts" as const,
+  };
+  const prepared = buildKnowledgeRepairInput({ ...input([original]), learnerContext }, 120000);
+  const encoded = JSON.parse(prepared.input);
+  expect(encoded.learnerContext).toEqual(learnerContext);
+  expect(prepared.input).toContain(JSON.stringify(original.blocks[0]?.text));
+  expect(encoded.sources[0].evidence[0][0]).toBe("r0");
+  expect(JSON.parse(buildKnowledgeRepairInput(input([original]), 120000).input)).not.toHaveProperty(
+    "learnerContext",
+  );
+});
+
 describe("bounded knowledge repair evidence keys", () => {
   it("expands one exact native key, retains full text and derives machine-only audio attribution", () => {
     const audio = source("audio");

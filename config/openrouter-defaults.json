@@ -1,11 +1,11 @@
 {
-  "version": "openrouter-2026-10-04-2",
+  "version": "openrouter-2026-10-07-1",
   "llmModel": "anthropic/claude-haiku-4.5",
   "visionModel": "anthropic/claude-haiku-4.5",
   "sttModel": "openai/whisper-large-v3-turbo",
   "ttsModel": "hexgrad/kokoro-82m",
   "voice": "af_heart",
-  "promptVersion": "recalino-knowledge-1",
+  "promptVersion": "recalino-knowledge-2",
   "maxInputCharacters": 120000,
   "maxOutputTokens": 6144,
   "timeoutMs": 90000,
