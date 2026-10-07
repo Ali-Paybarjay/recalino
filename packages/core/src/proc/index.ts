@@ -67,6 +67,7 @@ export {
 export {
   scheduleVoiceReanalysis,
   type VoiceJobDependencies,
+  voiceAnalysisBlockedReason,
   voiceAnalysisJob,
   voiceProcessingStatus,
 } from "./voice-jobs";

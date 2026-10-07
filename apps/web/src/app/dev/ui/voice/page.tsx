@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
+import { voiceSettingsReturnHref } from "../../../../ui/voice/navigation";
 import { VoiceConfirmation } from "../../../../ui/voice/VoiceConfirmation";
 import { VoiceProfileForm } from "../../../../ui/voice/VoiceProfile";
 import "../../../../ui/preview/preview.css";
@@ -8,9 +9,9 @@ import "../../../../ui/preview/preview.css";
 export default async function VoiceReferencePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; blocked?: string }>;
+  searchParams: Promise<{ view?: string; blocked?: string; returnTo?: string | string[] }>;
 }) {
-  const { view, blocked } = await searchParams;
+  const { view, blocked, returnTo } = await searchParams;
   return (
     <div className="preview-root">
       <AppShell
@@ -45,7 +46,10 @@ export default async function VoiceReferencePage({
               </section>
             </VoiceConfirmation>
           ) : (
-            <VoiceProfileForm captureBlocked={blocked === "1"} />
+            <VoiceProfileForm
+              captureBlocked={blocked === "1"}
+              returnHref={voiceSettingsReturnHref(returnTo)}
+            />
           )}
         </div>
       </AppShell>

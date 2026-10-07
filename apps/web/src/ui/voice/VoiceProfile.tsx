@@ -8,22 +8,24 @@ import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primiti
 import { sampleBase64, type VoiceCaptureState, VoiceSampleCapture } from "./sample-capture";
 import styles from "./Voice.module.css";
 
-export function VoiceProfile() {
+export function VoiceProfile({ returnHref = "/me" }: { returnHref?: string }) {
   const { state } = useRecording();
   const captureBlocked =
     state.accountDeletionBlocked ||
     ["starting", "recording", "recovering", "paused", "saving"].includes(state.phase);
-  return <VoiceProfileForm captureBlocked={captureBlocked} />;
+  return <VoiceProfileForm captureBlocked={captureBlocked} returnHref={returnHref} />;
 }
 
 /** The standalone form also powers the guarded synthetic browser fixture. */
 export function VoiceProfileForm({
   captureBlocked = false,
   onComplete,
+  returnHref = "/me",
 }: {
   captureBlocked?: boolean;
   /** Optional onboarding: save a sample or skip without changing voice consent. */
   onComplete?: () => void;
+  returnHref?: string;
 }) {
   const [profile, setProfile] = useState<VoiceProfileView | null>(null);
   const [consent, setConsent] = useState(false);
@@ -452,8 +454,8 @@ export function VoiceProfileForm({
                     Turn off and delete voice data
                   </Button>
                 ) : null}
-                <LinkButton secondary href="/me">
-                  Back to settings
+                <LinkButton secondary href={returnHref}>
+                  {returnHref === "/me" ? "Back to settings" : "Back to class notes"}
                 </LinkButton>
               </Actions>
             ) : null}

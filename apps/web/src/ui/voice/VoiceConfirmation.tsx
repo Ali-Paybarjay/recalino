@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
+import { voiceSettingsHref } from "./navigation";
 import styles from "./Voice.module.css";
 import { useLocalVoiceAudio, VoiceClips } from "./VoiceClips";
 
@@ -126,8 +127,10 @@ export function VoiceConfirmation({
     setPending(payload);
     setNotesSafe(false);
     playing.current?.pause();
+    let submitted = false;
     try {
       await workspaceRequest(endpoint, "POST", payload, requestKey(key, payload));
+      submitted = true;
       await load();
       if (payload.action === "reject" || payload.action === "revoke")
         setChoosing((current) => new Set(current).add(payload.analysisId));
@@ -138,6 +141,33 @@ export function VoiceConfirmation({
       setProblem(
         error instanceof Error ? error.message : "Your choice could not be saved. Try again.",
       );
+      if (
+        payload.action === "analyze" &&
+        !submitted &&
+        error instanceof WorkspaceRequestError &&
+        error.status !== undefined &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        ![408, 409, 429].includes(error.status)
+      ) {
+        // A rejected check changed no attribution. Do not treat it as an uncertain voice choice.
+        if (!pending) {
+          setPending(null);
+          key.current = null;
+          setNotesSafe(true);
+          await load().catch(() => {});
+        } else {
+          // An earlier interrupted attempt may have been accepted. Reconcile its notes first.
+          try {
+            await load();
+            setPending(null);
+            key.current = null;
+            refreshNotes();
+          } catch {
+            /* Keep the uncertain request until the server can be read again. */
+          }
+        }
+      }
       if (error instanceof WorkspaceRequestError && error.status === 409) {
         try {
           await load();
@@ -145,7 +175,9 @@ export function VoiceConfirmation({
           key.current = null;
           refreshNotes();
           setProblem(
-            "These voice excerpts have changed. Please check the current excerpts before choosing again.",
+            payload.action === "analyze"
+              ? "The class changed or is already being processed. Check its current sources and voice status before trying again."
+              : "These voice excerpts have changed. Please check the current excerpts before choosing again.",
           );
         } catch {
           /* Keep the same pending request and notes hidden until recovery succeeds. */
@@ -169,11 +201,12 @@ export function VoiceConfirmation({
         {pending && !busy ? (
           <>
             <p>
-              Your last choice still needs to be confirmed by the server. The notes stay hidden
-              until this is resolved.
+              {pending.action === "analyze"
+                ? "The server has not confirmed your voice check yet. Retry to resolve it before showing the notes."
+                : "Your last choice still needs to be confirmed by the server. The notes stay hidden until this is resolved."}
             </p>
             <Button disabled={busy} onClick={() => void act(pending)}>
-              Retry voice choice
+              {pending.action === "analyze" ? "Retry voice check" : "Retry voice choice"}
             </Button>
           </>
         ) : !view && !loading ? (
@@ -223,7 +256,7 @@ export function VoiceConfirmation({
               Voice identification is optional. Enable it to identify your speech before Recalino
               includes your spoken mistakes.
             </p>
-            <LinkButton secondary href="/me/voice">
+            <LinkButton secondary href={voiceSettingsHref(sessionId)}>
               Set up your voice
             </LinkButton>
           </>
@@ -257,22 +290,46 @@ export function VoiceConfirmation({
             {!view.analyses.length && !processing ? (
               <p>No speaker excerpts have been prepared for this class yet.</p>
             ) : null}
+            <p className="preview-muted">
+              Check the selected class recordings for speakers, then identify which voice is yours.
+              A saved voice sample can help suggest a match.
+            </p>
+            {!processing &&
+              (view.analysisBlockedReason === "transcript_required" ||
+              view.analysisBlockedReason === "sources_unavailable" ? (
+                <Status>
+                  Select a class recording in Sources and process it before checking class voices.
+                  <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+                    Open class sources
+                  </LinkButton>
+                </Status>
+              ) : view.analysisBlockedReason === "explanation_language_missing" ? (
+                <Status>
+                  Choose your explanation language in your profile before checking class voices.
+                </Status>
+              ) : null)}
             <Actions>
               <Button
                 secondary
-                disabled={locked || processing}
+                disabled={locked || Boolean(view.analysisBlockedReason)}
                 onClick={() => void act({ action: "analyze" })}
               >
                 {processing ? "Checking class voices…" : "Check class voices"}
               </Button>
-              <LinkButton secondary href="/me/voice">
+              <LinkButton secondary href={voiceSettingsHref(sessionId)}>
                 Voice settings
               </LinkButton>
             </Actions>
           </div>
         ) : null}
         {busy || refreshing ? (
-          <Status>{busy ? "Saving your voice choice…" : "Refreshing your class notes…"}</Status>
+          <Status>
+            {busy
+              ? pending?.action === "analyze"
+                ? "Requesting a class voice check…"
+                : "Saving your voice choice…"
+              : "Refreshing your class notes…"}
+          </Status>
         ) : null}
       </Panel>
       {children ? (

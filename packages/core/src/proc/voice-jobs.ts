@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getAccountState, lockAccount } from "../acc";
 import { type AiProvider, ProviderError, providerSettingsSchema, requireProvider } from "../aip";
-import type { Database } from "../db";
+import type { Database, Tx } from "../db";
 import { getLatestVersion, isExplanationLanguage } from "../lkm";
 import { assertSessionOwner } from "../org";
 import {
@@ -15,7 +15,7 @@ import {
   sha256Hex,
 } from "../plt";
 import { amounts, amountsSchema, emptyAmounts } from "../quota";
-import { getVoiceEnrollment } from "../voc";
+import { getVoiceEnrollment, type VoiceAnalysisBlockedReason } from "../voc";
 import {
   completeAuxiliaryRun,
   executeAuxiliaryProviderStep,
@@ -38,6 +38,54 @@ export interface VoiceJobDependencies {
   diarize: VoiceDiarizer;
 }
 
+async function voiceReanalysisInput(db: Database | Tx, ctx: LearnerContext, sessionId: string) {
+  const enrollment = await getVoiceEnrollment(db, ctx);
+  if (!enrollment.enabled) throw errors.validationFailed({ voice: ["consent_required"] });
+  const snapshot = sourceSnapshotSchema.parse(
+    await selectProcessingSourceSnapshot(db, ctx, sessionId),
+  );
+  if (!snapshot.sources.some((source) => source.kind === "audio" && source.contentVersionId))
+    throw errors.validationFailed({ voice: ["transcript_required"] });
+  const knowledge = await getLatestVersion(db, ctx, sessionId);
+  const account = knowledge ? null : await getAccountState(db, ctx.userId);
+  const explanationLanguage =
+    knowledge?.model.language.explanation ??
+    (account?.profile.explanationLanguage === "english" ? "en" : account?.profile.firstLanguage);
+  if (!explanationLanguage)
+    throw errors.validationFailed({ voice: ["explanation_language_missing"] });
+  return { enrollment, snapshot, explanationLanguage };
+}
+
+/** A read-only preflight shares the queue's source selection and cache validity checks. */
+export async function voiceAnalysisBlockedReason(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+): Promise<VoiceAnalysisBlockedReason | null> {
+  await assertSessionOwner(db, ctx, sessionId);
+  try {
+    await voiceReanalysisInput(db, ctx, sessionId);
+    return null;
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== "validation_failed") throw error;
+    const fields = z.record(z.string(), z.array(z.string())).safeParse(error.details?.fields);
+    if (!fields.success) throw error;
+    for (const reason of [
+      "consent_required",
+      "transcript_required",
+      "explanation_language_missing",
+    ] as const)
+      if (fields.data.voice?.includes(reason)) return reason;
+    if (
+      fields.data.sources?.some((reason) =>
+        ["select_at_least_one", "not_verified"].includes(reason),
+      )
+    )
+      return "sources_unavailable";
+    throw error;
+  }
+}
+
 /** Explicit retry/enabling on an existing class uses the standard reservation and cost ledger. */
 export async function scheduleVoiceReanalysis(
   db: Database,
@@ -54,22 +102,13 @@ export async function scheduleVoiceReanalysis(
     .parse(options.operationKey ?? ctx.requestId);
   const operationKey = `voice:${sessionId}:${sha256Hex(requestKey)}`;
   const provider = requireProvider(dependencies.provider);
-  const enrollment = await getVoiceEnrollment(db, ctx);
-  if (!enrollment.enabled) throw errors.validationFailed({ voice: ["consent_required"] });
   return db.transaction().execute(async (tx) => {
     await lockAccount(tx, ctx.userId);
-    const snapshot = sourceSnapshotSchema.parse(
-      await selectProcessingSourceSnapshot(tx, ctx, sessionId),
+    const { enrollment, snapshot, explanationLanguage } = await voiceReanalysisInput(
+      tx,
+      ctx,
+      sessionId,
     );
-    if (!snapshot.sources.some((source) => source.kind === "audio" && source.contentVersionId))
-      throw errors.validationFailed({ voice: ["transcript_required"] });
-    const knowledge = await getLatestVersion(tx, ctx, sessionId);
-    const account = knowledge ? null : await getAccountState(tx, ctx.userId);
-    const explanationLanguage =
-      knowledge?.model.language.explanation ??
-      (account?.profile.explanationLanguage === "english" ? "en" : account?.profile.firstLanguage);
-    if (!explanationLanguage)
-      throw errors.validationFailed({ voice: ["explanation_language_missing"] });
     const active = await tx
       .selectFrom("proc.processing_run")
       .select(["id", "kind", "settings", "input_snapshot", "operation_key"])

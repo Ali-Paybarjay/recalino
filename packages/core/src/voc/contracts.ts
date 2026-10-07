@@ -66,10 +66,17 @@ export interface VoiceAnalysisView {
 }
 export interface ClassVoiceView {
   processing?: boolean;
+  /** The same input prerequisites checked before an explicit voice analysis is queued. */
+  analysisBlockedReason?: VoiceAnalysisBlockedReason | null;
   enabled: boolean;
   engineAvailable: boolean;
   analyses: VoiceAnalysisView[];
 }
+export type VoiceAnalysisBlockedReason =
+  | "consent_required"
+  | "transcript_required"
+  | "sources_unavailable"
+  | "explanation_language_missing";
 export const voiceActionSchema = z.strictObject({
   action: z.enum(["confirm", "reject", "none", "revoke"]),
   analysisId: z.uuid(),

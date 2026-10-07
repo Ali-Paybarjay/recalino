@@ -120,6 +120,21 @@ export async function workspaceRequest<T>(
     if (reasons.includes("part_integrity_mismatch"))
       message =
         "The uploaded audio part did not match the saved recording. Keep the local original and check the selected audio before trying again.";
+    if (/^\/api\/classes\/[^/]+\/voice$/.test(path)) {
+      if (
+        reasons.includes("transcript_required") ||
+        fields?.sources?.some((reason) => ["select_at_least_one", "not_verified"].includes(reason))
+      )
+        message =
+          "Select a class recording in Sources and process it before checking class voices.";
+      if (reasons.includes("consent_required") || reasons.includes("consent_changed"))
+        message = "Enable voice identification in Voice settings, then check the class again.";
+      if (
+        reasons.includes("explanation_language_missing") ||
+        reasons.includes("explanation_language_invalid")
+      )
+        message = "Choose your explanation language in your profile before checking class voices.";
+    }
     throw new WorkspaceRequestError(
       message,
       failure.success ? failure.data.error.code : undefined,

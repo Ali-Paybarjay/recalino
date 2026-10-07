@@ -383,6 +383,178 @@ test("class confirmation is per source, retries safely, and offers correction an
   await expect(source.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(2);
 });
 
+test("class voices explain missing transcripts before a check can be submitted", async ({
+  page,
+}) => {
+  let writes = 0;
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") writes++;
+    return route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        analyses: [],
+        analysisBlockedReason: "transcript_required",
+      } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await expect(
+    page.getByRole("button", { name: "Check class voices", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByText(/Select a class recording in Sources and process it/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open class sources" })).toHaveAttribute(
+    "href",
+    "/classes/10000000-0000-4000-8000-000000000001/sources",
+  );
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  expect(writes).toBe(0);
+});
+
+test("a rejected voice check keeps notes visible and permits a fresh request after recovery", async ({
+  page,
+}) => {
+  const writes: { key: string | undefined; body: unknown }[] = [];
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      writes.push({
+        key: route.request().headers()["idempotency-key"],
+        body: route.request().postDataJSON(),
+      });
+      if (writes.length === 1)
+        return route.fulfill({
+          status: 400,
+          json: {
+            error: {
+              code: "validation_failed",
+              message: "Some information is missing or not valid.",
+              details: { fields: { voice: ["transcript_required"] } },
+            },
+          },
+        });
+    }
+    return route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [] } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Select a class recording in Sources and process it before checking class voices.",
+  );
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Retry voice/ })).toHaveCount(0);
+  await expect(page.getByText(/Your last choice still needs to be confirmed/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Refresh voice status" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[0]?.body).toEqual({ action: "analyze" });
+  expect(writes[1]?.key).toBeTruthy();
+  expect(writes[1]?.key).not.toBe(writes[0]?.key);
+});
+
+test("an uncertain voice check retries the same request with voice-check copy", async ({
+  page,
+}) => {
+  const writes: { key: string | undefined; body: unknown }[] = [];
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      writes.push({
+        key: route.request().headers()["idempotency-key"],
+        body: route.request().postDataJSON(),
+      });
+      if (writes.length === 1)
+        return route.fulfill({
+          status: 503,
+          json: { error: { code: "unavailable", message: "The voice check needs another try." } },
+        });
+    }
+    return route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [] } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Retry voice check", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Retry voice choice", exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[1]).toEqual(writes[0]);
+});
+
+test("an accepted voice check with a failed status read stays pending until reconciled", async ({
+  page,
+}) => {
+  const keys: (string | undefined)[] = [];
+  let reads = 0;
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      keys.push(route.request().headers()["idempotency-key"]);
+      return route.fulfill({ status: 202, json: {} });
+    }
+    reads++;
+    if (reads === 2)
+      return route.fulfill({
+        status: 400,
+        json: {
+          error: { code: "validation_failed", message: "Voice status could not be loaded." },
+        },
+      });
+    return route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [] } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Retry voice check", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBeTruthy();
+  expect(keys[1]).toBe(keys[0]);
+});
+
+test("a rejected retry cannot release notes while an earlier voice check remains uncertain", async ({
+  page,
+}) => {
+  let writes = 0;
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      writes++;
+      if (writes <= 2)
+        return route.fulfill({
+          status: writes === 1 ? 503 : 400,
+          json: {
+            error: { code: writes === 1 ? "unavailable" : "validation_failed", message: "Retry." },
+          },
+        });
+    } else if (writes === 2) {
+      return route.fulfill({
+        status: 503,
+        json: { error: { code: "unavailable", message: "Voice status is unavailable." } },
+      });
+    }
+    return route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [] } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Retry voice check", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  expect(writes).toBe(3);
+});
+
 test("unavailable engine supports consent without a sample and active class capture blocks microphone", async ({
   page,
 }) => {

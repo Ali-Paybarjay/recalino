@@ -19,7 +19,12 @@ import {
 } from "../voc";
 import { sourceSnapshotSchema } from "./contracts";
 import { createProcessingRun, getRun } from "./runs";
-import { scheduleVoiceReanalysis, voiceAnalysisJob, voiceProcessingStatus } from "./voice-jobs";
+import {
+  scheduleVoiceReanalysis,
+  voiceAnalysisBlockedReason,
+  voiceAnalysisJob,
+  voiceProcessingStatus,
+} from "./voice-jobs";
 import { processingJob } from "./worker";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
@@ -103,7 +108,7 @@ class VoiceProvider implements AiProvider {
     throw new Error("No TTS in voice matching");
   }
 }
-async function fixture(enabled: boolean) {
+async function fixture(enabled: boolean, options: { processingOrigin?: boolean } = {}) {
   const x = await studyFixture(db);
   if (enabled) await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
   const source = await db
@@ -139,7 +144,9 @@ async function fixture(enabled: boolean) {
     appendContentVersion(tx, x.ctx, source.id, {
       schemaVersion: "1",
       provenance: "machine_extraction",
-      originKey: `voice-fixture:${source.id}`,
+      originKey: options.processingOrigin
+        ? `processing:${randomUUID()}:audio:${source.id}`
+        : `voice-fixture:${source.id}`,
       settings: { ranges: [] },
       units: [
         { id: "teacher", kind: "time", start: 1000, end: 15000, status: "extracted" },
@@ -300,6 +307,91 @@ it("does not infer voices or dispatch private analysis unless the learner opted 
   expect(x.diarize).not.toHaveBeenCalled();
   expect(x.provider.calls).not.toHaveBeenCalled();
   expect((await getClassVoice(db, x.ctx, x.session.id)).analyses).toEqual([]);
+});
+
+it("reports missing consent, transcript and selected sources before creating an analysis run", async () => {
+  const x = await fixture(false);
+  await x.step();
+  const dependencies = { provider: x.provider, diarize: x.diarize };
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id)).toBe("consent_required");
+  await expect(
+    scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies),
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { voice: ["consent_required"] } },
+  });
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  await db
+    .updateTable("src.session_source")
+    .set({ selected_content_version_id: null })
+    .where("session_id", "=", x.session.id)
+    .where("user_id", "=", x.ctx.userId)
+    .execute();
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id)).toBe("transcript_required");
+  await expect(
+    scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies),
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { voice: ["transcript_required"] } },
+  });
+  await db
+    .updateTable("src.session_source")
+    .set({ selected: false })
+    .where("session_id", "=", x.session.id)
+    .where("user_id", "=", x.ctx.userId)
+    .execute();
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id)).toBe("sources_unavailable");
+  await expect(
+    scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies),
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { sources: ["select_at_least_one"] } },
+  });
+  expect(
+    await db
+      .selectFrom("proc.processing_run")
+      .select("id")
+      .where("session_id", "=", x.session.id)
+      .where("user_id", "=", x.ctx.userId)
+      .execute(),
+  ).toEqual([{ id: x.run.id }]);
+  expect(x.diarize).not.toHaveBeenCalled();
+  expect(x.provider.calls).not.toHaveBeenCalled();
+  const other = await studyFixture(db);
+  await expect(voiceAnalysisBlockedReason(db, other.ctx, x.session.id)).rejects.toMatchObject({
+    code: "not_found",
+  });
+});
+
+it("preflights cached audio with the same selected ranges as the queue and permits transcript fallback", async () => {
+  const x = await fixture(false, { processingOrigin: true });
+  await x.step();
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  await db
+    .updateTable("src.session_source")
+    .set({ ranges: JSON.stringify([{ start: 0, end: 30000 }]) })
+    .where("session_id", "=", x.session.id)
+    .where("user_id", "=", x.ctx.userId)
+    .execute();
+  const dependencies = { provider: x.provider, diarize: x.diarize };
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id)).toBe("transcript_required");
+  await expect(
+    scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies),
+  ).rejects.toMatchObject({ details: { fields: { voice: ["transcript_required"] } } });
+  await db
+    .updateTable("src.session_source")
+    .set({ ranges: "[]" })
+    .where("session_id", "=", x.session.id)
+    .where("user_id", "=", x.ctx.userId)
+    .execute();
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id)).toBeNull();
+  const runId = await scheduleVoiceReanalysis(db, x.ctx, x.session.id, dependencies, {
+    operationKey: randomUUID(),
+  });
+  fixtureRunIds.push(runId);
+  expect((await getRun(db, x.ctx, runId)).state).toBe("queued");
+  expect(x.diarize).not.toHaveBeenCalled();
+  expect(x.provider.calls).not.toHaveBeenCalled();
 });
 
 it("charges a known provider result after consent is revoked in flight without restoring private data or blocking notes", async () => {

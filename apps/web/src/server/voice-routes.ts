@@ -13,7 +13,7 @@ import {
   type LearnerContext,
   runIdempotent,
 } from "@recalino/core/plt";
-import { voiceProcessingStatus } from "@recalino/core/proc";
+import { voiceAnalysisBlockedReason, voiceProcessingStatus } from "@recalino/core/proc";
 import {
   beginVoiceEnrollment,
   changeVoiceIdentity,
@@ -144,6 +144,7 @@ export function classVoiceHandler(sessionId: string): Handler {
       return {
         body: {
           ...(await getClassVoice(db, learner, sessionId, await voiceEngineAvailable())),
+          analysisBlockedReason: await voiceAnalysisBlockedReason(db, learner, sessionId),
           processing: await voiceProcessingStatus(db, learner, sessionId),
         },
       };
@@ -179,6 +180,11 @@ export function classVoiceHandler(sessionId: string): Handler {
         learner,
         change.action === "confirm" ? { sessionId } : {},
       );
-    return { body: await getClassVoice(db, learner, sessionId, await voiceEngineAvailable()) };
+    return {
+      body: {
+        ...(await getClassVoice(db, learner, sessionId, await voiceEngineAvailable())),
+        analysisBlockedReason: await voiceAnalysisBlockedReason(db, learner, sessionId),
+      },
+    };
   };
 }
