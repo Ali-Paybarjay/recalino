@@ -89,6 +89,14 @@ export function automaticLearningMessage(
     return "Processing is paused while a provider result is checked. Your earlier notes and cards are available. Contact the operator before retrying.";
   if (["configuration_unavailable", "storage_unavailable", "settings_changed"].includes(code ?? ""))
     return "Your material is saved. Automatic creation is waiting for the service to become available.";
+  if (
+    [
+      "provider_http_400",
+      "provider_request_schema_too_complex",
+      "provider_schema_unsupported",
+    ].includes(code ?? "")
+  )
+    return "Your material was uploaded, but the AI service rejected a processing request. The service needs a fix before retrying. You do not need to upload the same files again; earlier notes and cards are saved.";
   if (code === "upload_needs_attention")
     return "An upload needs attention. Check the named files in Add material; your earlier notes and cards are available.";
   if (code === "batch_open")
@@ -247,7 +255,12 @@ export async function automaticLearningSync(
         expectedSourcesVersion: snapshot.sourcesVersion,
         automaticRequestVersion: intent.requestVersion,
       },
-      { provider: deps.provider(), job: processing, now: deps.now() },
+      {
+        provider: deps.provider(),
+        job: processing,
+        now: deps.now(),
+        reuseCompletedKnowledge: !!options.retryKey,
+      },
     );
     // Replayed operations after a lost acknowledgement can already be terminal.
     if (completedStates.has(run.state) && run.outputVersionId) {

@@ -18,7 +18,7 @@ import { amounts, configureCostPolicy, grantEntitlement } from "../quota";
 import { appendContentVersion, sourceClassificationSchema } from "../src";
 import { sourceSnapshotSchema } from "./contracts";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
-import { createProcessingRun, getRun } from "./runs";
+import { cancelRun, createProcessingRun, getRun } from "./runs";
 import { processingJob, providerStep } from "./worker";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
@@ -332,9 +332,275 @@ async function fixture(options: { seedOriginal?: boolean; originalValid?: boolea
         actualMicros: 54724,
       }),
     );
-  const work = () => job.run({ runId: run.id, userId: x.ctx.userId }, jobContext());
-  return { x, run, snapshot, repair, provider, jobContext, work };
+  const work = async () => {
+    for (let step = 0; step < 4; step++) {
+      if (!["queued", "processing"].includes((await getRun(db, x.ctx, run.id)).state)) return;
+      await job.run({ runId: run.id, userId: x.ctx.userId }, jobContext());
+    }
+    throw new Error("Synthetic knowledge repair exceeded its bounded continuations");
+  };
+  const workStep = () => job.run({ runId: run.id, userId: x.ctx.userId }, jobContext());
+  return { x, run, snapshot, repair, provider, jobContext, work, workStep, original };
 }
+
+function knownTruncation(): ProviderError {
+  return new ProviderError("provider_output_truncated", false, false, {
+    requestId: "synthetic-truncated-knowledge",
+    provider: "synthetic",
+    model: settings.llmModel,
+    actualMicros: 68060,
+    usage: { inputTokens: 37340, outputTokens: 6144 },
+  });
+}
+
+it("checkpoints a paid known truncation then generates one compact complete result with unchanged input and cost limit", async () => {
+  const f = await fixture({ seedOriginal: false, originalValid: true });
+  f.provider.response = (input) => {
+    if (input.operationKey === `${f.run.id}:knowledge:1`) throw knownTruncation();
+    return f.original;
+  };
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "processing" });
+  const marker = await db
+    .selectFrom("proc.run_step")
+    .select("output")
+    .where("run_id", "=", f.run.id)
+    .where("step", "=", "knowledge:truncated")
+    .executeTakeFirstOrThrow();
+  expect(marker.output).toMatchObject({ reason: "provider_output_truncated" });
+  expect(
+    await db
+      .selectFrom("proc.run_step")
+      .select("step")
+      .where("run_id", "=", f.run.id)
+      .where("step", "=", "knowledge")
+      .execute(),
+  ).toHaveLength(0);
+  const firstCost = await db
+    .selectFrom("quota.provider_cost")
+    .select("amount_micros")
+    .where("run_id", "=", f.run.id)
+    .executeTakeFirstOrThrow();
+  expect(Number(firstCost.amount_micros)).toBe(68060);
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(2);
+  const first = f.provider.structuredCalls.mock.calls[0]?.[0];
+  const compact = f.provider.structuredCalls.mock.calls[1]?.[0];
+  expect(compact?.operationKey).toBe(`${f.run.id}:knowledge:compact:1`);
+  expect(compact?.input).toBe(first?.input);
+  expect(compact?.schema).toBe(first?.schema);
+  expect(compact?.model).toBe(first?.model);
+  expect(compact?.system).toContain("at most ONE complete learning item");
+  expect(compact?.system).toContain("hard limit of 2048 output tokens");
+  expect(compact?.system).toContain("این نسخه گزیده‌ای از درس است");
+  expect(f.provider.settings.maxOutputTokens).toBe(6144);
+  const outputs = await db
+    .selectFrom("proc.run_step")
+    .select(["step", "output"])
+    .where("run_id", "=", f.run.id)
+    .where("step", "in", ["knowledge", "knowledge:compact"])
+    .execute();
+  expect(outputs).toHaveLength(2);
+  expect(outputs[0]?.output).toEqual(outputs[1]?.output);
+  expect(
+    (
+      await db
+        .selectFrom("proc.run_step")
+        .select("output")
+        .where("run_id", "=", f.run.id)
+        .where("step", "=", "knowledge:input-context")
+        .executeTakeFirstOrThrow()
+    ).output,
+  ).toEqual({ version: 1, date: f.x.session.classDate });
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "partial_ready" });
+  const costs = await db
+    .selectFrom("quota.provider_cost")
+    .select("amount_micros")
+    .where("run_id", "=", f.run.id)
+    .execute();
+  expect(costs.map((row) => Number(row.amount_micros)).sort((a, b) => a - b)).toEqual([
+    59000, 68060,
+  ]);
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "queued" })
+    .where("id", "=", f.run.id)
+    .execute();
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(2);
+});
+
+it("never repeats a failed compact generation even after its job is replayed", async () => {
+  const f = await fixture({ seedOriginal: false });
+  f.provider.response = () => {
+    throw knownTruncation();
+  };
+  await f.workStep();
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(2);
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+    state: "failed",
+    lastError: "provider_output_truncated",
+  });
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "queued" })
+    .where("id", "=", f.run.id)
+    .execute();
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(2);
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+    state: "failed",
+    lastError: "knowledge_repair_exhausted",
+  });
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .select("id")
+      .where("run_id", "=", f.run.id)
+      .where("step", "=", "knowledge:compact")
+      .execute(),
+  ).toHaveLength(1);
+});
+
+it.each([
+  new ProviderError("provider_outcome_unknown", false, true),
+  new ProviderError("provider_http_503", false, true),
+  new ProviderError("provider_http_400", false, false),
+  new ProviderError("provider_schema_invalid", false, false),
+  new ProviderError("provider_output_truncated", false, false),
+  new ProviderError("provider_output_truncated", false, true, knownTruncation().accounting),
+])(
+  "never creates compact recovery for an unproven or unrelated failure: $code",
+  async (failure) => {
+    const f = await fixture({ seedOriginal: false });
+    f.provider.failure = failure;
+    await f.workStep();
+    expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);
+    expect(
+      await db
+        .selectFrom("proc.run_step")
+        .select("step")
+        .where("run_id", "=", f.run.id)
+        .where("step", "in", ["knowledge:truncated", "knowledge:compact"])
+        .execute(),
+    ).toHaveLength(0);
+    expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+      state: failure.uncertain ? "needs_input" : "failed",
+      lastError: failure.code,
+    });
+  },
+);
+
+it("records the exact server lesson context for a successful primary response", async () => {
+  const f = await fixture({ seedOriginal: false, originalValid: true });
+  f.provider.response = () => f.original;
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);
+  expect(
+    (
+      await db
+        .selectFrom("proc.run_step")
+        .select("output")
+        .where("run_id", "=", f.run.id)
+        .where("step", "=", "knowledge:input-context")
+        .executeTakeFirstOrThrow()
+    ).output,
+  ).toEqual({ version: 1, date: f.x.session.classDate });
+});
+
+it("resumes the compact step when a worker stops after saving truncation accounting but before scheduling", async () => {
+  const f = await fixture({ seedOriginal: false, originalValid: true });
+  await expect(
+    providerStep(
+      f.jobContext(),
+      f.x.ctx,
+      f.run.id,
+      "knowledge",
+      settings.llmModel,
+      f.provider,
+      generatedSchema,
+      async () => {
+        throw knownTruncation();
+      },
+    ),
+  ).rejects.toMatchObject({ code: "provider_output_truncated" });
+  f.provider.response = () => f.original;
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);
+  expect(f.provider.structuredCalls.mock.calls[0]?.[0].operationKey).toBe(
+    `${f.run.id}:knowledge:compact:1`,
+  );
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "partial_ready" });
+});
+
+it("preserves an unresolved compact hold and never dispatches it again", async () => {
+  const f = await fixture({ seedOriginal: false });
+  f.provider.response = (input) => {
+    if (input.operationKey === `${f.run.id}:knowledge:1`) throw knownTruncation();
+    throw new ProviderError("provider_outcome_unknown", false, true);
+  };
+  await f.workStep();
+  await f.workStep();
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+    state: "needs_input",
+    lastError: "provider_outcome_unknown",
+  });
+  const attempt = await db
+    .selectFrom("proc.provider_attempt")
+    .selectAll()
+    .where("run_id", "=", f.run.id)
+    .where("step", "=", "knowledge:compact")
+    .executeTakeFirstOrThrow();
+  expect(attempt.state).toBe("uncertain");
+  expect(
+    (
+      await db
+        .selectFrom("quota.cost_hold")
+        .select("closed_at")
+        .where("id", "=", attempt.hold_id)
+        .executeTakeFirstOrThrow()
+    ).closed_at,
+  ).toBeNull();
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "queued" })
+    .where("id", "=", f.run.id)
+    .execute();
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(2);
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+    state: "needs_input",
+    lastError: "provider_outcome_unresolved",
+  });
+});
+
+it("settles a finished truncated response after cancellation without dispatching compact recovery", async () => {
+  const f = await fixture({ seedOriginal: false });
+  f.provider.response = async () => {
+    await cancelRun(db, f.x.ctx, f.run.id);
+    throw knownTruncation();
+  };
+  await f.workStep();
+  await f.workStep();
+  expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "cancelled" });
+  const cost = await db
+    .selectFrom("quota.provider_cost")
+    .select("amount_micros")
+    .where("run_id", "=", f.run.id)
+    .executeTakeFirstOrThrow();
+  expect(Number(cost.amount_micros)).toBe(68060);
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .select("id")
+      .where("run_id", "=", f.run.id)
+      .where("step", "=", "knowledge:compact")
+      .execute(),
+  ).toHaveLength(0);
+});
 
 async function originalEvidence(runId: string) {
   const attempt = await db
@@ -679,7 +945,7 @@ it("does not treat changed provider settings as a semantic repair opportunity", 
   expect(f.provider.structuredCalls).not.toHaveBeenCalled();
   expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
     state: "failed",
-    lastError: "validation_failed",
+    lastError: "settings_changed",
   });
   expect(
     await db

@@ -22,7 +22,6 @@ import {
   processingJob,
   requestAutomaticLearning,
   selectProcessingSourceSnapshot,
-  updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
 import { amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
@@ -413,14 +412,14 @@ it("acknowledges the same retry key after extraction fingerprint changes without
   expect(f.provider.calls).toBe(calls);
 });
 
-it("retries only explicit recoverable diagnostics once and leaves generic failures paused", async () => {
+it("FR-PROC-003 automatically recovers a provider configuration interruption without rewriting its diagnostic", async () => {
   const f = await fixture();
   await f.addText("Recoverable configuration material");
   await f.sync();
   f.setWorkerProvider(false);
   await f.work();
   const failed = await getAutomaticLearningSession(db, f.ctx, f.session.id);
-  expect(failed).toMatchObject({ state: "blocked", lastError: "validation_failed" });
+  expect(failed).toMatchObject({ state: "blocked", lastError: "configuration_unavailable" });
   expect(f.provider.calls).toBe(0);
   f.setWorkerProvider(true);
   const recovery = automaticLearningJob({ provider: () => f.provider, processing: () => f.job });
@@ -435,21 +434,6 @@ it("retries only explicit recoverable diagnostics once and leaves generic failur
     job: { id: randomUUID(), attempt: 1 },
     step: async () => "ran" as const,
   };
-  await recovery.run(payload, context);
-  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
-  expect(f.provider.calls).toBe(0);
-  if (!failed?.runId) throw new Error("Missing failed fixture run");
-  // A legacy or operator diagnostic must be explicit; the adapter never guesses a generic cause.
-  await db
-    .updateTable("proc.processing_run")
-    .set({ last_error: "configuration_unavailable" })
-    .where("id", "=", failed.runId)
-    .execute();
-  await updateAutomaticLearningProgress(db, f.ctx, f.session.id, failed.requestVersion, {
-    state: "blocked",
-    lastError: "configuration_unavailable",
-    runId: failed.runId,
-  });
   await Promise.all([recovery.run(payload, context), recovery.run(payload, context)]);
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(2);
   await f.work();

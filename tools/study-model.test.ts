@@ -255,7 +255,8 @@ describe("shared structured lesson model", () => {
   it("instructs generation to share items, suppress unverified speech and disclose budget limits", () => {
     const prompt = persianStudyPrompt(6144);
     expect(prompt).toContain("one shared source");
-    expect(prompt).toContain("10–18 production items");
+    expect(prompt).toContain("at most 4 complete production items");
+    expect(persianStudyPrompt(24576)).toContain("10–18 production items");
     expect(prompt).toContain("NO verified learner voice");
     expect(prompt).toContain("hard limit of 6144 output tokens");
     expect(prompt).toContain("classNotes.sourceNote");

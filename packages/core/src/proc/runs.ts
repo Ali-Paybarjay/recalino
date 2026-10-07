@@ -43,6 +43,7 @@ import {
   sourceSnapshotSchema,
 } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
+import { reuseCompletedKnowledge } from "./knowledge-reuse";
 import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
@@ -239,6 +240,8 @@ export async function createProcessingRun(
     provider?: AiProvider;
     job: JobDefinition<{ runId: string; userId: string }>;
     now?: Date;
+    /** Internal retry path only; ordinary regeneration always requests new knowledge. */
+    reuseCompletedKnowledge?: boolean;
   },
 ): Promise<ProcessingRun> {
   const input = createRunSchema.parse(raw);
@@ -352,6 +355,15 @@ export async function createProcessingRun(
       })
       .returningAll()
       .executeTakeFirstOrThrow();
+    if (options.reuseCompletedKnowledge && !awaiting)
+      await reuseCompletedKnowledge(tx, ctx, {
+        runId: id,
+        sessionId: session.id,
+        snapshot,
+        settings,
+        provider,
+        now,
+      });
     return runView(row);
   });
 }
@@ -500,7 +512,15 @@ export async function retryRun(
     .where("state", "in", ["started", "uncertain"])
     .executeTakeFirst();
   if (unresolved) throw errors.validationFailed({ retry: ["provider_outcome_unresolved"] });
-  return createProcessingRun(db, ctx, { sessionId: prior.sessionId, operationKey }, options);
+  return createProcessingRun(
+    db,
+    ctx,
+    { sessionId: prior.sessionId, operationKey },
+    {
+      ...options,
+      reuseCompletedKnowledge: true,
+    },
+  );
 }
 export async function cancelSessionRuns(
   tx: Tx,

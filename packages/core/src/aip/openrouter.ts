@@ -10,7 +10,8 @@ import {
   type TranscriptionInput,
   transcriptSchema,
 } from "./contracts";
-import { structuredTransportSchema } from "./structured-schema";
+import { providerHttpErrorCode } from "./provider-http-error";
+import { createJsonFallbackTransport, createStructuredTransport } from "./structured-schema";
 
 const privacy = { zdr: true, data_collection: "deny", require_parameters: true };
 const chatResponse = z.object({
@@ -96,7 +97,7 @@ export class OpenRouterProvider implements AiProvider {
     if (!response.ok) {
       const retryable = response.status === 429;
       throw new ProviderError(
-        `provider_http_${response.status}`,
+        await providerHttpErrorCode(response),
         retryable,
         response.status >= 500,
       );
@@ -107,6 +108,7 @@ export class OpenRouterProvider implements AiProvider {
     if (Array.from(input.input).length > this.settings.maxInputCharacters)
       throw new ProviderError("provider_input_too_large", false, false);
     const content: unknown[] = [{ type: "text", text: input.input }];
+    const transport = createStructuredTransport(input.schema, input.model);
     for (const url of input.imageUrls ?? []) {
       if (
         !/^https:\/\//.test(url) &&
@@ -115,27 +117,61 @@ export class OpenRouterProvider implements AiProvider {
         throw new ProviderError("provider_url_invalid", false, false);
       content.push({ type: "image_url", image_url: { url } });
     }
-    const response = await this.post(
-      "chat/completions",
-      {
-        model: input.model,
-        provider: privacy,
-        max_tokens: this.settings.maxOutputTokens,
-        messages: [
-          { role: "system", content: input.system },
-          { role: "user", content },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: input.schemaName,
-            strict: true,
-            schema: structuredTransportSchema(input.schema, input.model),
+    const body = {
+      model: input.model,
+      provider: privacy,
+      max_tokens: this.settings.maxOutputTokens,
+      messages: [
+        { role: "system", content: input.system },
+        { role: "user", content },
+      ],
+    };
+    let response: Response;
+    let jsonFallback: ReturnType<typeof createJsonFallbackTransport> | undefined;
+    try {
+      response = await this.post(
+        "chat/completions",
+        {
+          ...body,
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: input.schemaName,
+              strict: true,
+              schema: transport.schema,
+            },
           },
         },
-      },
-      input.operationKey,
-    );
+        input.operationKey,
+      );
+    } catch (error) {
+      // A recognized HTTP 400 grammar rejection happened before generation. One
+      // JSON-mode attempt bypasses only the remote grammar compiler; every local
+      // schema/evidence validator still applies. Unknown outcomes never retry.
+      if (!(error instanceof ProviderError) || error.code !== "provider_request_schema_too_complex")
+        throw error;
+      jsonFallback = createJsonFallbackTransport(input.schema);
+      response = await this.post(
+        "chat/completions",
+        {
+          ...body,
+          messages: [
+            {
+              role: "system",
+              content: [
+                input.system,
+                "Return exactly one complete JSON object conforming to the following JSON Schema. Do not include Markdown fences or surrounding prose. All required fields, types, constraints and evidence rules still apply. Finish the entire object within the output token budget.",
+                "Omit inapplicable optional fields. Null and empty-string absence values are permitted only where this schema explicitly declares them; never use them for required fields.",
+                JSON.stringify(jsonFallback.schema),
+              ].join("\n\n"),
+            },
+            { role: "user", content },
+          ],
+          response_format: { type: "json_object" },
+        },
+        `${input.operationKey}:json`,
+      );
+    }
     const parsed = chatResponse.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new ProviderError("provider_response_invalid", false, true);
     const data = parsed.data;
@@ -158,13 +194,18 @@ export class OpenRouterProvider implements AiProvider {
     const contentValue = data.choices[0]?.message.content;
     let raw: unknown;
     try {
-      raw = JSON.parse(contentValue ?? "");
+      raw = parseStructuredContent(contentValue, !!jsonFallback);
     } catch {
+      reportSchemaFailure(input.schemaName, "json_parse", input.schema);
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
     }
-    const output = input.schema.safeParse(raw);
-    if (!output.success)
+    const output = input.schema.safeParse(
+      jsonFallback ? jsonFallback.decode(raw) : transport.decode(raw),
+    );
+    if (!output.success) {
+      reportSchemaFailure(input.schemaName, "zod", input.schema, output.error.issues);
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
+    }
     return {
       output: output.data,
       ...accounting,
@@ -269,6 +310,98 @@ export class OpenRouterProvider implements AiProvider {
       usage: { characters: Array.from(input.text).length },
       actualMicros: null,
     };
+  }
+}
+const diagnosticSchemas = new Set([
+  "source_extraction",
+  "pdf_page_extraction",
+  "class_knowledge",
+  "class_knowledge_repair",
+  "class_study_sentence_repair",
+  "class_knowledge_translation",
+  "spoken_mistake_candidates",
+]);
+const diagnosticIssueCodes = new Set([
+  "invalid_type",
+  "too_big",
+  "too_small",
+  "invalid_format",
+  "not_multiple_of",
+  "unrecognized_keys",
+  "invalid_union",
+  "invalid_key",
+  "invalid_element",
+  "invalid_value",
+  "custom",
+]);
+/** Only code-owned schema names/paths and validation codes reach logs, never rejected values or messages. */
+function reportSchemaFailure(
+  schemaName: string,
+  stage: "json_parse" | "zod",
+  schema: z.ZodType,
+  issues: z.ZodError["issues"] = [],
+): void {
+  try {
+    const properties = new Set<string>();
+    const visit = (value: unknown): void => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return;
+      const node = value as Record<string, unknown>;
+      for (const key of ["properties", "$defs", "definitions"] as const) {
+        const children = node[key];
+        if (!children || typeof children !== "object" || Array.isArray(children)) continue;
+        for (const [name, child] of Object.entries(children)) {
+          if (key === "properties" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name))
+            properties.add(name);
+          visit(child);
+        }
+      }
+      for (const key of ["items", "additionalProperties"]) visit(node[key]);
+      for (const key of ["anyOf", "oneOf", "allOf"]) {
+        if (Array.isArray(node[key])) for (const child of node[key]) visit(child);
+      }
+    };
+    visit(z.toJSONSchema(schema, { reused: "ref" }));
+    const bounded = [...issues.slice(0, 12)];
+    for (let index = 0; index < bounded.length && bounded.length < 12; index++) {
+      const issue = bounded[index];
+      if (issue?.code === "invalid_union")
+        bounded.push(...issue.errors.flat().slice(0, 12 - bounded.length));
+    }
+    console.warn("recalino.provider_schema_invalid", {
+      schema: diagnosticSchemas.has(schemaName) ? schemaName : "other",
+      stage,
+      issues: bounded.map((issue) => ({
+        code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
+        path: issue.path
+          .slice(0, 12)
+          .map((part) =>
+            typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
+              ? part
+              : typeof part === "string" && properties.has(part)
+                ? part
+                : "[unknown]",
+          ),
+      })),
+    });
+  } catch {
+    // Diagnostic failure must never alter the provider outcome or trigger another request.
+  }
+}
+function parseStructuredContent(
+  content: string | null | undefined,
+  allowJsonFence: boolean,
+): unknown {
+  const text = content ?? "";
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    // Some JSON-mode endpoints wrap an otherwise complete JSON document in one
+    // Markdown fence. Accept only that whole envelope, never prose or a fragment.
+    const fenced = allowJsonFence
+      ? /^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i.exec(text.trim())
+      : null;
+    if (!fenced) throw error;
+    return JSON.parse(fenced[1] ?? "");
   }
 }
 function cost(value: number | undefined): number | null {

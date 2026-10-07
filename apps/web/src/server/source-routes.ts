@@ -162,6 +162,7 @@ export function sourcePartHandler(id: string, index: string): Handler {
     const partIndex = z.coerce.number().int().nonnegative().parse(index);
     if (request.method === "POST") {
       const result = await confirmUploadPart(db, store(), learner, id, partIndex);
+      if (result === "missing") return { body: { confirmed: false } };
       if (result !== "verified") throw errors.validationFailed({ upload: ["part_not_verified"] });
       return { body: { confirmed: true } };
     }

@@ -1,5 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { expectNoAxeViolations, VIEWPORTS } from "./helpers";
+
+// Chromium supports secure cookies on loopback HTTP; Playwright's Node request client does not.
+// Exercise the same authenticated request path as the UI, including a local production build.
+async function browserGet(page: Page, path: string) {
+  const result = await page.evaluate(async (url) => {
+    const response = await fetch(url);
+    return { status: response.status, body: await response.json() };
+  }, path);
+  return { status: () => result.status, json: async () => result.body };
+}
 
 test("automatic saved notes, edits, flashcards, review and undo use real owner APIs", async ({
   page,
@@ -27,14 +37,14 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   await attribution.locator("summary").click();
   await expect(attribution.getByText("AI expansion", { exact: true })).toBeVisible();
   await attribution.locator("summary").click();
-  const preview = await page.request.get(`/api/classes/${sessionId}/notes`);
+  const preview = await browserGet(page, `/api/classes/${sessionId}/notes`);
   expect(preview.status()).toBe(200);
   expect((await preview.json()).notebook.current.number).toBe(1);
   await expectNoAxeViolations(page);
 
   await expect(page.getByRole("button", { name: "Save notes", exact: true })).toHaveCount(0);
   await expect(page.getByText(/^Note version 1 ·/)).toBeVisible();
-  const beforePreparing = await page.request.get(`/api/classes/${sessionId}/cards`);
+  const beforePreparing = await browserGet(page, `/api/classes/${sessionId}/cards`);
   expect(beforePreparing.status()).toBe(200);
   expect((await beforePreparing.json()).cards[0].status).toBe("active");
   const noteTools = page.getByRole("navigation", { name: "Note tools", exact: true });
@@ -82,21 +92,21 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   await expect(page).toHaveURL(`/classes/${sessionId}/cards`);
   await expect(page.getByRole("button", { name: "Prepare cards", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Confirm and add", exact: true })).toHaveCount(0);
-  const prepared = await page.request.get(`/api/classes/${sessionId}/cards`);
+  const prepared = await browserGet(page, `/api/classes/${sessionId}/cards`);
   expect(prepared.status()).toBe(200);
   const preparedCard = (await prepared.json()).cards[0];
   expect(preparedCard.status).toBe("active");
   expect(preparedCard.back).toBe("A trip on a train");
-  const beforeAdding = await page.request.get(`/api/review?sessionId=${sessionId}`);
+  const beforeAdding = await browserGet(page, `/api/review?sessionId=${sessionId}`);
   expect(beforeAdding.status()).toBe(200);
   expect((await beforeAdding.json()).cards[0].card.id).toBe(preparedCard.id);
   await expectNoAxeViolations(page);
-  const savedCardResponse = await page.request.get(`/api/cards/${preparedCard.id}`);
+  const savedCardResponse = await browserGet(page, `/api/cards/${preparedCard.id}`);
   expect(savedCardResponse.status()).toBe(200);
   const savedCard = await savedCardResponse.json();
   expect(savedCard.id).toBe(preparedCard.id);
   expect(savedCard.status).toBe("active");
-  const savedCards = await page.request.get(`/api/classes/${sessionId}/cards`);
+  const savedCards = await browserGet(page, `/api/classes/${sessionId}/cards`);
   expect(savedCards.status()).toBe(200);
   const listedCard = (await savedCards.json()).cards[0];
   expect(listedCard.id).toBe(preparedCard.id);
@@ -115,7 +125,7 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   await expect(page.getByRole("heading", { name: "You’re ready for a break" })).toBeVisible();
   await page.getByRole("button", { name: "Undo last answer", exact: true }).click();
   await expect(page.getByRole("button", { name: "Show answer", exact: true })).toBeVisible();
-  const events = await page.request.get(`/api/review?sessionId=${sessionId}`);
+  const events = await browserGet(page, `/api/review?sessionId=${sessionId}`);
   expect(events.status()).toBe(200);
   const queue = await events.json();
   expect(queue.cards[0].schedule.version).toBe(2);
@@ -159,7 +169,7 @@ for (const [name, viewport] of Object.entries(VIEWPORTS))
         path: testInfo.outputPath("notes-preview-mobile.png"),
         fullPage: true,
       });
-    const generated = await page.request.get(`/api/classes/${sessionId}/cards`);
+    const generated = await browserGet(page, `/api/classes/${sessionId}/cards`);
     expect(generated.status()).toBe(200);
     const cards = await generated.json();
     const cardId = cards.cards[0].id;

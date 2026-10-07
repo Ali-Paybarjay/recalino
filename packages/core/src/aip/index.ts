@@ -20,4 +20,8 @@ export {
   readEstimateRates,
   saveEstimateRates,
 } from "./pricing";
-export { structuredTransportSchema } from "./structured-schema";
+export {
+  createStructuredTransport,
+  structuredSchemaComplexity,
+  structuredTransportSchema,
+} from "./structured-schema";

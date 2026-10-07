@@ -23,10 +23,10 @@ export const productionStudySchema = z.strictObject({
   faApprox: shortText.describe("Persian pronunciation approximation with vowel marks."),
   trap: optionalText.describe("Only a genuine misleading spelling or pronunciation trap."),
   gapSentence: optionalText.describe(
-    "Full sentence with the whole target replaced by ______; separable verbs have two blanks. Omit for grammar tasks.",
+    "Copy fullSentence exactly, replacing only target span(s) with ______; keep all other characters unchanged. Separable targets may use 2–3 blanks. Omit for grammar.",
   ),
   fullSentence: shortText.describe(
-    "Complete British English example, normally 8–15 words, or corrected grammar task.",
+    "Complete British English example (8–15 words), identical to the filled gapSentence, or a corrected grammar task.",
   ),
   collocations: z
     .array(shortText)

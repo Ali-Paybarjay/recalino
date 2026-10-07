@@ -1,7 +1,8 @@
 import { createDatabase } from "@recalino/core/db";
 import { errors, MemoryObjectStore } from "@recalino/core/plt";
 import { afterAll, beforeEach, expect, it, vi } from "vitest";
-import { sourceAudioHandler } from "./source-routes";
+import { uploadWithConfirmation } from "../ui/workspace/upload";
+import { sourceAudioHandler, sourcePartHandler } from "./source-routes";
 
 const mocks = vi.hoisted(() => ({
   source: vi.fn(),
@@ -9,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   manifest: vi.fn(),
   validateRun: vi.fn(),
   confirmPart: vi.fn(),
+  uploadManifest: vi.fn(),
+  confirmUploadPart: vi.fn(),
   enqueue: vi.fn(),
   runJobsSoon: vi.fn(),
   audioJob: vi.fn(),
@@ -22,6 +25,8 @@ vi.mock("@recalino/core/src", async (original) => ({
   getSource: mocks.source,
   temporaryAudioManifest: mocks.manifest,
   confirmTemporaryAudioPart: mocks.confirmPart,
+  uploadManifest: mocks.uploadManifest,
+  confirmUploadPart: mocks.confirmUploadPart,
 }));
 vi.mock("@recalino/core/proc", async (original) => ({
   ...(await original<object>()),
@@ -63,6 +68,47 @@ function confirm() {
     input: { action: "confirm_part", runId, uploadId, index: 3 },
   });
 }
+
+function confirmPhotoPart() {
+  return sourcePartHandler(
+    uploadId,
+    "0",
+  )({
+    db,
+    ctx,
+    request: new Request(`https://recalino.test/api/sources/uploads/${uploadId}/parts/0`, {
+      method: "POST",
+    }),
+    input: undefined,
+  });
+}
+
+it("FR-SRC-004 permits a new board photo PUT after its preflight finds no stored bytes", async () => {
+  mocks.confirmUploadPart.mockResolvedValueOnce("missing").mockResolvedValueOnce("verified");
+  const write = vi.fn().mockResolvedValue({ ok: true, status: 201 });
+  await uploadWithConfirmation(
+    write,
+    async () => (await confirmPhotoPart()).body,
+    "Synthetic photo upload interrupted",
+    { attempts: 3, confirmBeforeWrite: true, confirmSuccess: true },
+  );
+  expect(write).toHaveBeenCalledTimes(1);
+  expect(mocks.confirmUploadPart).toHaveBeenCalledTimes(2);
+  expect(mocks.confirmUploadPart.mock.invocationCallOrder[0]).toBeLessThan(
+    write.mock.invocationCallOrder[0] ?? 0,
+  );
+});
+
+it.each(["size_mismatch", "type_mismatch", "checksum_mismatch"])(
+  "FR-SRC-004 keeps a photo %s distinct from absent bytes",
+  async (result) => {
+    mocks.confirmUploadPart.mockResolvedValue(result);
+    await expect(confirmPhotoPart()).rejects.toMatchObject({
+      code: "validation_failed",
+      details: { fields: { upload: ["part_not_verified"] } },
+    });
+  },
+);
 
 it("FR-SRC-004 distinguishes an absent audio part from a verified part for safe retries", async () => {
   mocks.confirmPart.mockResolvedValueOnce("missing").mockResolvedValueOnce("verified");

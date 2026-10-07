@@ -395,7 +395,7 @@ it.each([false, true])(
       expect(request).not.toHaveBeenCalled();
       expect(await getRun(db, x.ctx, run.id)).toMatchObject({
         state: "failed",
-        lastError: "validation_failed",
+        lastError: "integrity_mismatch",
       });
     } else {
       await job.run(
