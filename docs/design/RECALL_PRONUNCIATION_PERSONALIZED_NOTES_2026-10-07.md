@@ -142,4 +142,19 @@ pnpm verify --maxWorkers=2 --reporter=default
 - build نهایی، runtime و tracing وابستگی‌های native، و بررسی نبود secret در client bundle موفق بودند.
 - پذیرش آموزشی در `artifacts/verification/d46-live-teaching/2026-10-07T22-08-56-007Z/acceptance-review.json` و هزینهٔ زنده در receiptهای جدا ثبت شده‌اند؛ replay نهایی هزینه یا شبکهٔ تازه نداشت و raw responseهای پولی قبلی را عوض نکرد.
 
-وضعیت انتشار: نسخهٔ بررسی‌شده آمادهٔ ثبت، ادغام و استقرار است. نتیجهٔ انتشار در ادامه ثبت می‌شود.
+### انتشار تکمیل‌شده
+
+در 2026-10-07 تغییرها از برنچ قابلیت به `codex/ui-complete-redesign` به‌صورت fast-forward ادغام و هر دو برنچ به GitHub push شدند. commit منتشرشده `80b1bfbf9e7716d2338528f439e4bf6e95c1fbe5` است؛ commit اولیهٔ قابلیت `068c3d6` در تاریخچهٔ آن قرار دارد.
+
+- نشانی عمومی: https://recalino.vercel.app
+- deployment: `dpl_CxBVRvc2yt2pHVYEaemQAmcZAwQ4`؛ وضعیت READY و target production؛ ابتدا با `--skip-domain` بررسی و سپس همان deployment promote شد.
+- هر 1044 فایل ارسالی با snapshot ثابتِ commit تطابق SHA-1 داشتند؛ SHA-256 فهرست منبع `3e19685d2db3f92512365b5fbf4f4bc3d02a438ce994abf1bf83885e150ce554` بود. baseline و تغییرات production پیش از انتشار تطبیق داده شدند؛ فایل محیط، cache، artifact و secret بارگذاری نشد.
+- تنها `OPENROUTER_SETTINGS_JSON` و `RECALINO_MEDIA_SETTINGS_JSON` production با حفظ نوع sensitive به‌روز شدند؛ credential و تنظیمات دیگر تغییر داده نشدند. نسخهٔ provider و prompt مطابق بخش بالا، و صدای تلفظ `bf_emma` است.
+- 15 بررسی روی deployment محافظت‌شده و 15 بررسی روی دامنهٔ عمومی موفق شدند: سلامت، صفحه و فایل‌های عمومی، احراز هویت مسیرهای خصوصی، رد تلفظ بدون حساب و نبود رابط تست. دسترسی موجود protection استفاده شد؛ قانون یا token تازه ساخته نشد. این بررسی‌ها فراخوان AI یا دسترسی به دادهٔ زبان‌آموز نداشتند.
+- گزارش درخواست‌های deployment از زمان ساخت تا `2026-10-07T22:32:47Z` خطای 5xx نداشت؛ این فقط بازهٔ مشاهده‌شده است.
+
+CLI هنگام تشخیص lockfile دو-documentِ pnpm 12، یک warning پیش از JSON در stdout نوشت و parser ابزار انتشار نتوانست شناسه را بخواند. بررسی readonly نشان داد ساخت همان deployment شروع شده بود؛ شناسه با commit و hash دقیق منبع بازیابی و همان ساخت بررسی/منتشر شد. deployment تکراری، تغییر lockfile یا تغییر dependency انجام نشد.
+
+در پایان 22٪ سهمیهٔ هفتگی Codex باقی ماند؛ آستانهٔ توقف 5٪ فعال نشد و کار پیاده‌سازی باقی نماند. گزارش مستنداتِ پس از انتشار commit جداگانه دارد و کد برنامه را تغییر نمی‌دهد.
+
+برای دیدن تدریس تازه، کلاس/Run تازه پردازش شود یا بازتولید مجاز انجام شود؛ یادداشت‌های قبلی خودکار بازنویسی نمی‌شوند. تلفظ در Recall پس از آشکارشدن جوابِ کارت واجد هدف معتبر قابل استفاده است.
