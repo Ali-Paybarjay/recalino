@@ -79,6 +79,45 @@ describe("automatic result refresh", () => {
 });
 
 describe("automatic upload batch boundaries", () => {
+  it("reports the acknowledged processing status only after closing and clearing the batch", async () => {
+    const status: AutomaticLearningStatus = {
+      state: "waiting_sources",
+      revision: 4,
+      batchId: null,
+      run: null,
+      snapshot: null,
+      lastError: null,
+      message: "Verifying files",
+      notesReady: false,
+      cardsReady: false,
+    };
+    const onCompleted = vi.fn((result: AutomaticLearningStatus) => {
+      expect(pendingLearningBatch(userId, sessionId)).toBeNull();
+      expect(result).toBe(status);
+    });
+    const request = vi.fn().mockResolvedValueOnce({}).mockResolvedValueOnce(status);
+    const result = await inAutomaticLearningBatch(
+      userId,
+      sessionId,
+      async () => "files added",
+      request,
+      { onCompleted },
+    );
+    expect(result).toBe("files added");
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith(status);
+  });
+  it("does not report completion when the server closure is interrupted", async () => {
+    const onCompleted = vi.fn();
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new TypeError("Connection lost"));
+    await expect(
+      inAutomaticLearningBatch(userId, sessionId, async () => {}, request, { onCompleted }),
+    ).rejects.toThrow("Connection lost");
+    expect(onCompleted).not.toHaveBeenCalled();
+    expect(pendingLearningBatch(userId, sessionId)).toBeTruthy();
+  });
   it("begins before uploads and closes only after every picker file settles", async () => {
     const events: string[] = [];
     const request = vi.fn(async (_path, _method, body: { action: string }) => {

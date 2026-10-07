@@ -1,23 +1,38 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DateInput } from "../components/DateInput";
 import { Icon } from "../components/Icon";
 import { Sheet } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
-import { Cards, FileText, Folders, Microphone } from "../icons";
+import { Cards, ChalkboardSimple, FileText, Microphone } from "../icons";
+import directoryStyles from "../workspace/ClassDirectory.module.css";
+import classStyles from "../workspace/ClassRows.module.css";
 import learningStyles from "./LearningViews.module.css";
 import { usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
 import { sampleClassSummary, sampleCustomTitle } from "./sample-material";
 
 const CREATE_NEW_COURSE = "";
+const ALL_COURSES = "__all__";
+const CLASS_BATCH_SIZE = 20;
+const classDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function displayClassDate(value: string) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? value : classDateFormatter.format(date);
+}
 
 export function WorkspaceViews({ screen }: { screen: string }) {
   const { state, setState, announce } = usePreview();
   const router = useRouter();
   const lesson = state.classes[0];
-  const [search, setSearch] = useState("");
   const [name, setName] = useState(
     screen === "organize" && lesson ? (sampleCustomTitle(lesson) ?? "") : "",
   );
@@ -30,9 +45,11 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   const [unitName, setUnitName] = useState("");
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(CLASS_BATCH_SIZE);
   const [materialsPage, setMaterialsPage] = useState(0);
   const initializedCourseScreen = useRef<string | null>(null);
+  const classSentinel = useRef<HTMLDivElement>(null);
+  const courseTools = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     if (screen !== "organize") return;
     if (!lesson?.id) {
@@ -66,6 +83,23 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     const current = state.courses.find((item) => item.name === lesson?.course);
     const fallback = state.courses.find((item) => item.name === "My classes") ?? state.courses[0];
     const initialize = initializedCourseScreen.current !== screen;
+    if (screen !== "new-class") {
+      setCourseFilter((selected) => {
+        if (
+          !initialize &&
+          (selected === ALL_COURSES || state.courses.some((item) => item.name === selected))
+        )
+          return selected;
+        return (
+          available?.name ??
+          (requested === ALL_COURSES
+            ? ALL_COURSES
+            : state.courses.length === 1
+              ? (state.courses[0]?.name ?? null)
+              : null)
+        );
+      });
+    }
     setCourse((selected) =>
       screen === "new-class" && !initialize && state.courses.some((item) => item.name === selected)
         ? selected
@@ -73,7 +107,24 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     );
     initializedCourseScreen.current = screen;
   }, [screen, lesson?.course, state.courses]);
-  const filteredCourse = screen === "course" ? course : courseFilter;
+  const selectedCourse =
+    state.courses.length === 1
+      ? state.courses[0]
+      : state.courses.find((item) => item.name === courseFilter);
+  const allCourses = courseFilter === ALL_COURSES;
+  const hasSelection = Boolean(selectedCourse || allCourses);
+  useEffect(() => {
+    if (
+      screen === "course" &&
+      selectedCourse?.id &&
+      window.location.hash === "#course-materials" &&
+      courseTools.current
+    )
+      courseTools.current.open = true;
+  }, [screen, selectedCourse?.id]);
+  const newClassTo = selectedCourse
+    ? `new-class?course=${encodeURIComponent(selectedCourse.name)}`
+    : "new-class";
   function summaryFor(item: (typeof state.classes)[number]) {
     const content = item.id === lesson?.id ? state : state.classWorkspaces[item.id];
     return sampleClassSummary(item, content?.materialMetadata);
@@ -84,19 +135,35 @@ export function WorkspaceViews({ screen }: { screen: string }) {
       : source === "material"
         ? "Title from material"
         : "Waiting for material";
-  const visible = state.classes.filter(
-    (item) =>
-      (filteredCourse === null || item.course === filteredCourse) &&
-      `${summaryFor(item).title} ${summaryFor(item).topics.join(" ")} ${item.course} ${item.unit}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
-  visible.sort(
-    (left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id),
+  const newestFirst = (
+    left: (typeof state.classes)[number],
+    right: (typeof state.classes)[number],
+  ) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id);
+  const recentClasses = [...state.classes].sort(newestFirst);
+  const visible = recentClasses.filter(
+    (item) => allCourses || item.course === selectedCourse?.name,
   );
   const courseSessions = state.classes
-    .filter((item) => item.course === course)
+    .filter((item) => item.course === selectedCourse?.name)
     .sort((left, right) => left.date.localeCompare(right.date) || left.id.localeCompare(right.id));
+  useEffect(() => {
+    if (
+      !["classes", "course"].includes(screen) ||
+      visibleCount >= visible.length ||
+      !classSentinel.current ||
+      !window.IntersectionObserver
+    )
+      return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting))
+          setVisibleCount((count) => Math.min(count + CLASS_BATCH_SIZE, visible.length));
+      },
+      { rootMargin: "0px 0px 200px 0px" },
+    );
+    observer.observe(classSentinel.current);
+    return () => observer.disconnect();
+  }, [screen, visibleCount, visible.length]);
   const notesAvailable = state.noteText.trim().length > 0;
   const due = state.cards.filter((card) => card.status === "active").length;
   const countClasses = (selectedCourse: string) => {
@@ -262,35 +329,74 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     announce("Sample unit renamed.");
   }
   const rows = (items: typeof state.classes) => (
-    <ul className="preview-list">
+    <ul className={classStyles.list}>
       {items.map((item) => {
         const summary = summaryFor(item);
         return (
-          <li key={item.id}>
-            <div className="preview-row">
-              <div>
-                <h3 dir="auto">{summary.title}</h3>
-                <p className="preview-muted">
-                  <time dateTime={item.date}>{item.date}</time> · {titleStatus(summary.titleSource)}
-                </p>
-                <p className="preview-muted">
-                  {item.course}
-                  {item.unit ? ` · ${item.unit}` : ""}
-                </p>
-                {summary.topics.length ? (
-                  <p className="preview-muted">Topics: {summary.topics.slice(0, 3).join(" · ")}</p>
-                ) : null}
-                {summary.topics.length > 3 ? (
-                  <Button secondary onClick={() => openClass(item, "class")}>
-                    More topics
+          <li key={item.id} className={classStyles.item}>
+            <details className={classStyles.classDetails}>
+              <summary className={classStyles.row}>
+                <time className={classStyles.date} dateTime={item.date}>
+                  {displayClassDate(item.date)}
+                </time>
+                <span className={classStyles.title} dir="auto">
+                  {summary.title}
+                </span>
+                <svg
+                  className={classStyles.chevron}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </summary>
+              <div className={classStyles.content}>
+                <div className={classStyles.information}>
+                  <h3 dir="auto">{summary.title}</h3>
+                  <dl className={classStyles.metadata}>
+                    <div>
+                      <dt>Course</dt>
+                      <dd>
+                        <bdi>{item.course}</bdi>
+                      </dd>
+                    </div>
+                    {item.unit ? (
+                      <div>
+                        <dt>Unit</dt>
+                        <dd>
+                          <bdi>{item.unit}</bdi>
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  <p className="preview-muted">
+                    <time dateTime={item.date}>{displayClassDate(item.date)}</time> ·{" "}
+                    {titleStatus(summary.titleSource)} · {item.status}
+                  </p>
+                  {summary.topics.length ? (
+                    <p>
+                      <strong>Topics: </strong>
+                      <bdi>{summary.topics.slice(0, 3).join(" · ")}</bdi>
+                    </p>
+                  ) : null}
+                </div>
+                <div className={classStyles.action}>
+                  <Button className="rc-btn-block" onClick={() => openClass(item, "class")}>
+                    Go to class
                   </Button>
-                ) : null}
-                <span className="preview-chip">{item.status}</span>
+                </div>
               </div>
-              <Button secondary onClick={() => openClass(item, "class")}>
-                Open class
-              </Button>
-            </div>
+            </details>
           </li>
         );
       })}
@@ -333,7 +439,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
         </div>
         <Panel title="Your recent classes">
           {state.classes.length ? (
-            rows(state.classes.slice(0, 2))
+            rows(recentClasses.slice(0, 2))
           ) : (
             <div className="preview-empty">
               <p>Your first class starts here.</p>
@@ -355,225 +461,220 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title={screen === "course" ? course : "Your classes"}
-          description="Keep each lesson and its useful material together."
+          title={screen === "course" ? (selectedCourse?.name ?? "Your classes") : "Your classes"}
+          description="Choose a course, then select a class to see its details."
           back={screen === "course" ? "classes" : undefined}
         />
-        <Actions>
-          <LinkButton
-            to={
-              screen === "course" ? `new-class?course=${encodeURIComponent(course)}` : "new-class"
-            }
-          >
-            New class
-          </LinkButton>
-          <LinkButton secondary to="organize">
-            Manage courses and units
-          </LinkButton>
-          {screen === "course" ? (
-            <LinkButton
-              secondary
-              to={`course?course=${encodeURIComponent(course)}#course-materials`}
-            >
-              Course materials
-            </LinkButton>
-          ) : null}
-        </Actions>
-        <p className="preview-muted">{courseCopy.courseHelp}</p>
-        {screen === "course" ? (
-          <Field label="Course">
-            <select
-              value={course}
-              onChange={(event) => {
-                const selected = event.target.value;
-                setCourse(selected);
-                setPage(0);
-                setMaterialsPage(0);
-                router.replace(`/preview/course?course=${encodeURIComponent(selected)}`);
-              }}
-            >
-              {state.courses.map((item) => (
-                <option key={item.id} value={item.name}>
-                  {item.name} · {countClasses(item.name)}
-                </option>
-              ))}
-            </select>
-          </Field>
-        ) : null}
-        <Field label="Search classes">
-          <input
-            className="input"
-            type="search"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(0);
-            }}
-            placeholder="Class, course or unit"
-          />
-        </Field>
-        {screen === "classes" ? (
-          <div className="preview-row">
-            {state.courses.map((item) => (
-              <Button
-                key={item.id}
-                secondary
-                onClick={() => {
-                  setCourseFilter(item.name);
-                  setPage(0);
-                }}
-                aria-pressed={courseFilter === item.name}
-              >
-                <Icon icon={Folders} />
-                {item.name} · {countClasses(item.name)}
-              </Button>
-            ))}
-            <Button
-              secondary
-              aria-pressed={courseFilter === null}
-              onClick={() => {
-                setCourseFilter(null);
-                setPage(0);
-              }}
-            >
-              All classes
-            </Button>
-            {courseFilter ? (
-              <LinkButton to={`course?course=${encodeURIComponent(courseFilter)}`} secondary>
-                Open course
-              </LinkButton>
-            ) : null}
-          </div>
-        ) : null}
-        <Panel
-          title={
-            visible.length
-              ? `${visible.length} ${visible.length === 1 ? "class" : "classes"}`
-              : "No classes here yet"
-          }
-        >
-          {visible.length ? (
-            rows(visible.slice(page * 5, page * 5 + 5))
+        <div className={directoryStyles.directory}>
+          <section className={directoryStyles.courseBar} aria-label="Choose your course">
+            <div className={directoryStyles.courseIcon}>
+              <Icon icon={ChalkboardSimple} size={28} />
+            </div>
+            <div className={directoryStyles.courseControl}>
+              {state.courses.length > 1 ? (
+                <Field label="Course">
+                  <select
+                    className="input"
+                    value={courseFilter ?? ""}
+                    onChange={(event) => {
+                      const selected = event.target.value;
+                      setCourseFilter(selected || null);
+                      if (selected !== ALL_COURSES) setCourse(selected);
+                      setVisibleCount(CLASS_BATCH_SIZE);
+                      setMaterialsPage(0);
+                      router.replace(`/preview/${screen}?course=${encodeURIComponent(selected)}`, {
+                        scroll: false,
+                      });
+                    }}
+                  >
+                    <option value="" disabled>
+                      Choose a course
+                    </option>
+                    {state.courses.map((item) => (
+                      <option key={item.id} value={item.name}>
+                        {item.name} · {countClasses(item.name)}
+                      </option>
+                    ))}
+                    <option value={ALL_COURSES}>All classes</option>
+                  </select>
+                </Field>
+              ) : (
+                <div>
+                  <p className={directoryStyles.courseLabel}>Course</p>
+                  <h2 className={directoryStyles.courseName} dir="auto">
+                    {selectedCourse?.name ?? "Your courses"}
+                  </h2>
+                </div>
+              )}
+            </div>
+          </section>
+          {hasSelection ? (
+            <section className={directoryStyles.classes} aria-label="Class list">
+              <div className={directoryStyles.listHeading}>
+                <h2>{allCourses ? "All classes" : "Classes"}</h2>
+                <p className="preview-muted">Most recent first · Select a class to see more</p>
+              </div>
+              {visible.length ? (
+                rows(visible.slice(0, visibleCount))
+              ) : (
+                <div className={directoryStyles.empty}>
+                  <h3>Your first class starts here</h3>
+                  <p>Add a class, then keep its notes and flashcards together.</p>
+                  <LinkButton to={newClassTo}>Create a class</LinkButton>
+                </div>
+              )}
+              {visible.length ? (
+                <div className={directoryStyles.listFooter}>
+                  <p className="preview-muted" role="status" aria-live="polite">
+                    {Math.min(visibleCount, visible.length)} of {visible.length}{" "}
+                    {visible.length === 1 ? "class" : "classes"}
+                  </p>
+                  {visibleCount < visible.length ? (
+                    <div ref={classSentinel}>
+                      <Button
+                        secondary
+                        onClick={() => setVisibleCount((count) => count + CLASS_BATCH_SIZE)}
+                      >
+                        Load more classes
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
           ) : (
-            <div className="preview-empty">
+            <div className={directoryStyles.empty}>
+              <h2>
+                {state.courses.length
+                  ? "Choose a course to see its classes"
+                  : "Add your first course"}
+              </h2>
               <p>
-                {search
-                  ? "Try a different search or add a class."
-                  : "Add a lesson and keep its material in one place."}
+                {state.courses.length
+                  ? "Your classes will appear here, ordered by date."
+                  : "Keep each subject and its classes together in a course."}
               </p>
-              <LinkButton
-                to={
-                  filteredCourse
-                    ? `new-class?course=${encodeURIComponent(filteredCourse)}`
-                    : "new-class"
-                }
-              >
-                New class
-              </LinkButton>
+              {!state.courses.length ? (
+                <LinkButton to="organize">Create a course</LinkButton>
+              ) : null}
             </div>
           )}
-          {visible.length > 5 ? (
-            <Actions>
-              <Button secondary disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                Previous
-              </Button>
-              <span>Page {page + 1}</span>
-              <Button
-                secondary
-                disabled={(page + 1) * 5 >= visible.length}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </Actions>
-          ) : null}
-        </Panel>
-        {screen === "course" ? (
-          <div id="course-materials">
-            <Panel title="Course materials">
-              <p className="preview-muted">
-                Current sample notes from each class, from earliest to latest.
-              </p>
-              {courseSessions.length ? (
-                courseSessions.slice(materialsPage * 5, materialsPage * 5 + 5).map((item) => {
-                  const content = item.id === lesson?.id ? state : state.classWorkspaces[item.id];
-                  return (
-                    <article className="preview-panel" key={item.id}>
-                      <p className="preview-muted">
-                        <time dateTime={item.date}>{item.date}</time>
-                      </p>
-                      <h3 dir="auto">{summaryFor(item).title}</h3>
-                      <p className="preview-muted">{titleStatus(summaryFor(item).titleSource)}</p>
-                      {content?.materialMetadata ? (
-                        <>
-                          <p dir="auto">Material title: {content.materialMetadata.title}</p>
-                          <p dir="auto">Topics: {content.materialMetadata.topics.join(" · ")}</p>
-                        </>
-                      ) : null}
-                      {content?.noteText.trim() ? (
-                        <>
-                          <p className="preview-muted">
-                            Current sample notes · Version {content.noteHistory.length}
-                            {content.noteHistory.at(-1)?.label
-                              ? ` · ${content.noteHistory.at(-1)?.label}`
-                              : ""}
-                          </p>
-                          <p dir="auto" className={learningStyles.edited}>
-                            {content.noteText}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="preview-muted">
-                          No notes yet. Open this class to add material.
-                        </p>
-                      )}
-                      {content?.sources.length ? (
-                        <p className="preview-muted">
-                          Sample sources: {content.sources.map((source) => source.name).join(" · ")}
-                        </p>
-                      ) : null}
+          <footer className={directoryStyles.tools}>
+            {hasSelection ? (
+              <Link className={directoryStyles.newClass} href={`/preview/${newClassTo}`}>
+                + New class
+              </Link>
+            ) : null}
+            <details ref={courseTools} className={directoryStyles.manage}>
+              <summary>Course tools</summary>
+              <Actions>
+                <LinkButton secondary to="organize">
+                  Manage courses and units
+                </LinkButton>
+                {selectedCourse && screen !== "course" ? (
+                  <LinkButton
+                    secondary
+                    to={`course?course=${encodeURIComponent(selectedCourse.name)}#course-materials`}
+                  >
+                    Course materials
+                  </LinkButton>
+                ) : null}
+              </Actions>
+              {screen === "course" && selectedCourse ? (
+                <div id="course-materials">
+                  <Panel title="Course materials">
+                    <p className="preview-muted">
+                      Current sample notes from each class, from earliest to latest.
+                    </p>
+                    {courseSessions.length ? (
+                      courseSessions.slice(materialsPage * 5, materialsPage * 5 + 5).map((item) => {
+                        const content =
+                          item.id === lesson?.id ? state : state.classWorkspaces[item.id];
+                        return (
+                          <article className="preview-panel" key={item.id}>
+                            <p className="preview-muted">
+                              <time dateTime={item.date}>{item.date}</time>
+                            </p>
+                            <h3 dir="auto">{summaryFor(item).title}</h3>
+                            <p className="preview-muted">
+                              {titleStatus(summaryFor(item).titleSource)}
+                            </p>
+                            {content?.materialMetadata ? (
+                              <>
+                                <p dir="auto">Material title: {content.materialMetadata.title}</p>
+                                <p dir="auto">
+                                  Topics: {content.materialMetadata.topics.join(" · ")}
+                                </p>
+                              </>
+                            ) : null}
+                            {content?.noteText.trim() ? (
+                              <>
+                                <p className="preview-muted">
+                                  Current sample notes · Version {content.noteHistory.length}
+                                  {content.noteHistory.at(-1)?.label
+                                    ? ` · ${content.noteHistory.at(-1)?.label}`
+                                    : ""}
+                                </p>
+                                <p dir="auto" className={learningStyles.edited}>
+                                  {content.noteText}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="preview-muted">
+                                No notes yet. Open this class to add material.
+                              </p>
+                            )}
+                            {content?.sources.length ? (
+                              <p className="preview-muted">
+                                Sample sources:{" "}
+                                {content.sources.map((source) => source.name).join(" · ")}
+                              </p>
+                            ) : null}
+                            <Actions>
+                              <Button secondary onClick={() => openClass(item, "class")}>
+                                Open class
+                              </Button>
+                              <Button secondary onClick={() => openClass(item, "notes")}>
+                                Class notes
+                              </Button>
+                              <Button secondary onClick={() => openClass(item, "cards")}>
+                                Cards
+                              </Button>
+                              <Button secondary onClick={() => openClass(item, "upload")}>
+                                Sources
+                              </Button>
+                            </Actions>
+                          </article>
+                        );
+                      })
+                    ) : (
+                      <p>Add a class to this course to start collecting its materials.</p>
+                    )}
+                    {courseSessions.length > 5 ? (
                       <Actions>
-                        <Button secondary onClick={() => openClass(item, "class")}>
-                          Open class
+                        <Button
+                          secondary
+                          disabled={materialsPage === 0}
+                          onClick={() => setMaterialsPage((value) => value - 1)}
+                        >
+                          Previous materials
                         </Button>
-                        <Button secondary onClick={() => openClass(item, "notes")}>
-                          Class notes
-                        </Button>
-                        <Button secondary onClick={() => openClass(item, "cards")}>
-                          Cards
-                        </Button>
-                        <Button secondary onClick={() => openClass(item, "upload")}>
-                          Sources
+                        <p className="preview-muted">Page {materialsPage + 1}</p>
+                        <Button
+                          secondary
+                          disabled={(materialsPage + 1) * 5 >= courseSessions.length}
+                          onClick={() => setMaterialsPage((value) => value + 1)}
+                        >
+                          Next materials
                         </Button>
                       </Actions>
-                    </article>
-                  );
-                })
-              ) : (
-                <p>Add a class to this course to start collecting its materials.</p>
-              )}
-              {courseSessions.length > 5 ? (
-                <Actions>
-                  <Button
-                    secondary
-                    disabled={materialsPage === 0}
-                    onClick={() => setMaterialsPage((value) => value - 1)}
-                  >
-                    Previous materials
-                  </Button>
-                  <p className="preview-muted">Page {materialsPage + 1}</p>
-                  <Button
-                    secondary
-                    disabled={(materialsPage + 1) * 5 >= courseSessions.length}
-                    onClick={() => setMaterialsPage((value) => value + 1)}
-                  >
-                    Next materials
-                  </Button>
-                </Actions>
+                    ) : null}
+                  </Panel>
+                </div>
               ) : null}
-            </Panel>
-          </div>
-        ) : null}
+            </details>
+          </footer>
+        </div>
       </>
     );
   if (screen === "new-class")
@@ -690,42 +791,83 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           }
           back="classes"
         />
-        <Actions>
-          {lesson ? (
-            <>
-              {state.sources.length ? <LinkButton to="first-upload">Add sources</LinkButton> : null}
-              <LinkButton secondary to="organize">
-                Class options
-              </LinkButton>
-            </>
-          ) : (
-            <LinkButton to="new-class">New class</LinkButton>
-          )}
-        </Actions>
         {lesson ? (
-          <Panel title="Session overview">
-            <p className="preview-muted">
-              <time dateTime={lesson.date}>{lesson.date}</time> ·{" "}
-              {titleStatus(summaryFor(lesson).titleSource)}
-            </p>
-            {state.materialMetadata ? (
+          <div className="preview-grid">
+            <Panel tone="hero" title="Class notes">
+              <Icon icon={FileText} size={32} />
+              {notesAvailable ? (
+                <>
+                  <p dir="auto">
+                    {state.noteText.slice(0, 180)}
+                    {state.noteText.length > 180 ? "…" : ""}
+                  </p>
+                  <Actions>
+                    <LinkButton to="notes">Read class notes</LinkButton>
+                  </Actions>
+                </>
+              ) : (
+                <>
+                  <p>Your notes will appear here when class material is ready.</p>
+                  <Actions>
+                    <LinkButton to={state.sources.length ? "estimate" : "first-upload"}>
+                      {state.sources.length ? "Prepare class notes" : "Add class material"}
+                    </LinkButton>
+                  </Actions>
+                </>
+              )}
+            </Panel>
+            <Panel title="Flashcards">
+              <Icon icon={Cards} size={32} />
+              <p>
+                {state.cards.some((card) => card.classId === lesson.id)
+                  ? "Practise the vocabulary and key ideas from this class."
+                  : "Flashcards appear when this class has learning material."}
+              </p>
+              <Actions>
+                <LinkButton to="cards">Open flashcards</LinkButton>
+              </Actions>
+            </Panel>
+          </div>
+        ) : null}
+        <details className={directoryStyles.manage} open={!lesson}>
+          <summary>Class tools and sources</summary>
+          <Actions>
+            {lesson ? (
               <>
-                <p dir="auto">Material title: {state.materialMetadata.title}</p>
-                <p>Topics covered in this sample material:</p>
-                <ul>
-                  {[...new Set(state.materialMetadata.topics)].map((topic) => (
-                    <li key={topic} dir="auto">
-                      {topic}
-                    </li>
-                  ))}
-                </ul>
+                {state.sources.length ? (
+                  <LinkButton to="first-upload">Add sources</LinkButton>
+                ) : null}
+                <LinkButton secondary to="organize">
+                  Class options
+                </LinkButton>
               </>
             ) : (
-              <p className="preview-muted">Topics appear when class material is ready.</p>
+              <LinkButton to="new-class">New class</LinkButton>
             )}
-          </Panel>
-        ) : null}
-        <div className="preview-grid">
+          </Actions>
+          {lesson ? (
+            <Panel title="Session overview">
+              <p className="preview-muted">
+                <time dateTime={lesson.date}>{lesson.date}</time> ·{" "}
+                {titleStatus(summaryFor(lesson).titleSource)}
+              </p>
+              {state.materialMetadata ? (
+                <>
+                  <p dir="auto">Material title: {state.materialMetadata.title}</p>
+                  <p>Topics covered in this sample material:</p>
+                  <ul>
+                    {[...new Set(state.materialMetadata.topics)].map((topic) => (
+                      <li key={topic} dir="auto">
+                        {topic}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="preview-muted">Topics appear when class material is ready.</p>
+              )}
+            </Panel>
+          ) : null}
           <Panel title="Class material">
             {state.sources.length ? (
               <>
@@ -767,59 +909,20 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               </div>
             )}
           </Panel>
-          <Panel title="Your learning">
-            {notesAvailable ? (
-              <>
-                <p
-                  className={
-                    state.noteHistory.length > 1
-                      ? "preview-provenance-edit"
-                      : "preview-provenance-class"
-                  }
-                >
-                  {state.noteHistory.length > 1 ? "Edited by you" : "From this class"}
-                </p>
-                <div className="preview-note-preview">
-                  <p>
-                    {state.noteText.slice(0, 220)}
-                    {state.noteText.length > 220 ? "…" : ""}
-                  </p>
-                </div>
-                <p className="preview-muted">
-                  These notes belong to this sample class. Check explanations against your class
-                  material.
-                </p>
-                <Actions>
-                  <LinkButton to="notes">Read notes</LinkButton>
-                  <LinkButton secondary to="cards">
-                    Suggested cards
-                  </LinkButton>
-                </Actions>
-              </>
-            ) : (
-              <div className="preview-empty">
-                <p>Your notes will appear here.</p>
-                <p className="preview-muted">
-                  Add class material, then process it to prepare notes for this class.
-                </p>
-                {state.sources.length ? <LinkButton to="estimate">Prepare notes</LinkButton> : null}
-              </div>
-            )}
-          </Panel>
-        </div>
-        {notesAvailable ? (
-          <Panel title="Ready to continue">
-            <p>Keep your own edits and check where each explanation came from.</p>
-            <Actions>
-              <LinkButton secondary to="history">
-                Note history
-              </LinkButton>
-              <LinkButton secondary to="export">
-                Export learning
-              </LinkButton>
-            </Actions>
-          </Panel>
-        ) : null}
+          {notesAvailable ? (
+            <Panel title="Ready to continue">
+              <p>Keep your own edits and check where each explanation came from.</p>
+              <Actions>
+                <LinkButton secondary to="history">
+                  Note history
+                </LinkButton>
+                <LinkButton secondary to="export">
+                  Export learning
+                </LinkButton>
+              </Actions>
+            </Panel>
+          ) : null}
+        </details>
       </>
     );
   if (screen === "organize")

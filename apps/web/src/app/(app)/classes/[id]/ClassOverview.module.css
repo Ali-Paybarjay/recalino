@@ -1,0 +1,244 @@
+.overview {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  min-height: var(--rc-target);
+  color: var(--rc-primary-text);
+  font-size: var(--rc-text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.learning {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.destination {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-content: start;
+  gap: 20px 16px;
+  padding: 28px;
+  border: 1px solid var(--destination-border);
+  border-radius: var(--rc-card-radius);
+  background: var(--destination-bg);
+  color: var(--destination-text);
+  text-decoration: none;
+  transition:
+    background var(--rc-dur-fast),
+    border-color var(--rc-dur-fast);
+}
+
+.notes {
+  --destination-bg: var(--rc-primary-tint);
+  --destination-text: var(--rc-primary-text);
+  --destination-border: color-mix(in srgb, var(--rc-primary-text) 24%, transparent);
+  --destination-hover: var(--rc-primary-tint-2);
+}
+
+.cards {
+  --destination-bg: var(--rc-prov-ai-tint);
+  --destination-text: var(--rc-prov-ai);
+  --destination-border: var(--rc-prov-ai-border);
+  --destination-hover: color-mix(in srgb, var(--rc-prov-ai) 10%, var(--rc-prov-ai-tint));
+}
+
+.destination:hover {
+  border-color: var(--destination-text);
+  background: var(--destination-hover);
+}
+
+.destination:active {
+  border-color: var(--destination-text);
+  filter: brightness(0.97);
+}
+
+.destinationIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+}
+
+.destinationBody {
+  min-width: 0;
+}
+
+.destinationBody h2 {
+  margin: 0 0 8px;
+  color: inherit;
+  font-size: var(--rc-text-xl);
+  line-height: 1.25;
+}
+
+.destinationBody p {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--color-text);
+  font-size: var(--rc-text-md);
+  line-height: 1.5;
+}
+
+.destinationAction {
+  display: inline-flex;
+  grid-column: 2;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--rc-text-sm);
+  font-weight: 700;
+}
+
+.topics {
+  padding: 4px 0;
+  scroll-margin-top: 24px;
+}
+
+.topics h2,
+.material h2 {
+  margin: 0 0 12px;
+  color: var(--color-text);
+  font-size: var(--rc-text-lg);
+  line-height: 1.4;
+}
+
+.topics p,
+.material p {
+  max-width: 65ch;
+  margin: 0;
+  color: var(--rc-text-muted);
+  font-size: var(--rc-text-md);
+  line-height: 1.6;
+}
+
+.topicList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.topics .titleSource {
+  margin-bottom: 12px;
+  font-size: var(--rc-text-sm);
+}
+
+.topicList li {
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--rc-text-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.material {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  background: var(--color-surface);
+}
+
+.material h2 {
+  margin-bottom: 6px;
+}
+
+.tools {
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.tools summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 12px 4px;
+  color: var(--rc-primary-text);
+  font-size: var(--rc-text-md);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tools summary::-webkit-details-marker {
+  display: none;
+}
+
+.tools summary:hover {
+  background: var(--rc-surface-2);
+}
+
+.toolsCaret {
+  flex-shrink: 0;
+  transition: transform var(--rc-dur-fast);
+}
+
+.tools[open] .toolsCaret {
+  transform: rotate(90deg);
+}
+
+.toolsContent {
+  padding: 4px 4px 20px;
+}
+
+.back:focus-visible,
+.destination:focus-visible,
+.tools summary:focus-visible {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 4px;
+}
+
+@media (max-width: 767px) {
+  .overview {
+    gap: 20px;
+  }
+
+  .learning {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .destination {
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .destinationBody h2 {
+    font-size: var(--rc-text-lg);
+  }
+
+  .material {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .destination,
+  .toolsCaret {
+    transition: none;
+  }
+}

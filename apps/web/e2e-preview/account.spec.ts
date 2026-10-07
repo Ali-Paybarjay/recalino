@@ -141,5 +141,8 @@ test("destructive data choices explain consequences, focus the safe action, and 
   await expect(page.getByRole("heading", { name: "My changed sample", exact: true })).toHaveCount(
     0,
   );
-  await expect(page.getByRole("heading", { name: "Present perfect", exact: true })).toBeVisible();
+  await page.getByLabel("Course", { exact: true }).selectOption("ESOL B1");
+  await expect(
+    page.locator("section[aria-label='Class list'] > ul > li").first().locator("summary"),
+  ).toContainText("Present perfect");
 });

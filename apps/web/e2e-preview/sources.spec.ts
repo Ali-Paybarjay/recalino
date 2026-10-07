@@ -1,6 +1,6 @@
 import { expect, STORAGE_KEY, test } from "./helpers";
 
-test("sample uploads show progress, add files one by one, and invite more files", async ({
+test("sample files accumulate before explicit upload and show progress and completion", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
@@ -12,23 +12,50 @@ test("sample uploads show progress, add files one by one, and invite more files"
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1_000));
 
-  await page.getByLabel("Add sample file names", { exact: true }).setInputFiles([
-    { name: "first-handout.pdf", mimeType: "application/pdf", buffer: Buffer.from("sample") },
-    { name: "second-board.png", mimeType: "image/png", buffer: Buffer.from("sample") },
-  ]);
+  const files = page.getByLabel("Add sample file names", { exact: true });
+  const submit = page.getByRole("button", { name: /^(Upload & Process|Uploading…)$/ });
+  const sourcePanel = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Your sources", exact: true }),
+  });
+  await expect(submit).toBeDisabled();
+  await files.setInputFiles({
+    name: "first-handout.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("sample"),
+  });
+  await files.setInputFiles({
+    name: "second-board.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("sample"),
+  });
+  await expect(page.getByText("first-handout.pdf", { exact: true })).toBeVisible();
+  await expect(page.getByText("second-board.png", { exact: true })).toBeVisible();
+  await expect(sourcePanel.getByRole("listitem")).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key) ?? "{}").sources,
+      STORAGE_KEY,
+    ),
+  ).toEqual([]);
+  await expect(submit).toBeEnabled();
   const progress = page.getByRole("progressbar", {
     name: "Upload demonstration progress",
     exact: true,
   });
-  const first = page.getByRole("listitem").filter({ hasText: "first-handout.pdf" });
-  const second = page.getByRole("listitem").filter({ hasText: "second-board.png" });
+  const first = sourcePanel.getByRole("listitem").filter({ hasText: "first-handout.pdf" });
+  const second = sourcePanel.getByRole("listitem").filter({ hasText: "second-board.png" });
+  await expect(progress).toHaveCount(0);
+  await page.clock.runFor(1_000);
+  await expect(sourcePanel.getByRole("listitem")).toHaveCount(0);
+  await submit.click();
   await expect(progress).toBeVisible();
   await expect(progress).toBeInViewport();
   await expect(
     page.getByText("Upload demonstration · 0 of 2 files added", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/Simulated progress; no file bytes are uploaded/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Files", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add More Files", exact: true })).toBeDisabled();
+  await expect(submit).toBeDisabled();
   await expect(first).toHaveCount(0);
   await expect(second).toHaveCount(0);
 
@@ -46,6 +73,7 @@ test("sample uploads show progress, add files one by one, and invite more files"
   await expect(second).toBeVisible();
   await expect(progress).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add More Files", exact: true })).toBeEnabled();
+  await expect(page.getByText(/Sample upload successful/)).toBeVisible();
 
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Add More Files", exact: true }).click();
@@ -54,9 +82,14 @@ test("sample uploads show progress, add files one by one, and invite more files"
     mimeType: "audio/wav",
     buffer: Buffer.from("sample"),
   });
+  await expect(progress).toHaveCount(0);
+  await expect(sourcePanel.getByText("third-recording.wav", { exact: true })).toHaveCount(0);
+  await submit.click();
   await expect(progress).toBeVisible();
   await page.clock.runFor(1_000);
-  await expect(page.getByRole("listitem").filter({ hasText: "third-recording.wav" })).toBeVisible();
+  await expect(
+    sourcePanel.getByRole("listitem").filter({ hasText: "third-recording.wav" }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Add More Files", exact: true })).toBeEnabled();
   await page.reload();
   await expect(page.getByRole("button", { name: "Add More Files", exact: true })).toBeEnabled();
@@ -75,9 +108,8 @@ test("source permission, file metadata and password examples stay local", async 
     buffer: Buffer.from("Synthetic file metadata test; not a real document."),
   });
   await expect(page.getByText("lesson-handout.pdf", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("File names added to this sample. File bytes have not been uploaded."),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Upload & Process", exact: true }).click();
+  await expect(page.getByText(/Sample upload successful/)).toBeVisible();
   await files.setInputFiles({
     name: "unsupported.exe",
     mimeType: "application/octet-stream",
@@ -86,6 +118,11 @@ test("source permission, file metadata and password examples stay local", async 
   await expect(
     page.getByRole("alert").filter({ hasText: "not a supported sample file" }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload & Process", exact: true })).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Remove selected file: unsupported.exe", exact: true })
+    .click();
+  await expect(page.getByText("unsupported.exe", { exact: true })).toHaveCount(0);
 
   await page.goto("/preview/source-settings");
   const addedPdf = page.locator("section").filter({
@@ -322,6 +359,8 @@ test("demo uploads receive prepared extents automatically and a job keeps its co
       buffer: Buffer.from("synthetic metadata"),
     },
   ]);
+  await page.getByRole("button", { name: "Upload & Process", exact: true }).click();
+  await expect(page.getByText(/Sample upload successful/)).toBeVisible();
   await expect(page.getByText("my-lesson.wav", { exact: true })).toBeVisible();
   await expect(page.getByText("my-handout.pdf", { exact: true })).toBeVisible();
   await expect(

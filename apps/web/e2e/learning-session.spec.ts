@@ -75,7 +75,9 @@ test("material titles and topics appear automatically, while a learner can keep 
   await expect(page.getByRole("region", { name: "Topics covered", exact: true })).toContainText(
     "Title from material",
   );
+  await page.locator("summary").filter({ hasText: "More class tools" }).click();
   await page.getByRole("link", { name: "Class options", exact: true }).click();
+  await expect(page).toHaveURL(`/classes/${fixture.sessionId}/options`, { timeout: 30_000 });
   await expect(page.getByLabel("Class name (optional)")).toHaveValue("");
   await page.getByLabel("Class name (optional)").fill("My train conversation lesson");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -93,7 +95,9 @@ test("material titles and topics appear automatically, while a learner can keep 
   await expect(
     page.getByRole("heading", { level: 1, name: "My train conversation lesson" }),
   ).toBeVisible();
+  await page.locator("summary").filter({ hasText: "More class tools" }).click();
   await page.getByRole("link", { name: "Class options", exact: true }).click();
+  await expect(page).toHaveURL(`/classes/${fixture.sessionId}/options`, { timeout: 30_000 });
   await page.getByRole("button", { name: "Use automatic title", exact: true }).click();
   await expect(page.getByLabel("Class name (optional)")).toHaveValue("");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -130,14 +134,17 @@ test("each course lists generated topics and dated sessions in the appropriate r
   });
 
   await page.goto(`/courses/${fixture.courseId}`);
-  const rows = page.getByRole("listitem");
+  const rows = page
+    .getByRole("main")
+    .getByRole("listitem")
+    .filter({ has: page.locator("details") });
   await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0).locator("summary")).toContainText("Speaking practice");
+  await expect(rows.nth(1).locator("summary")).toContainText(PUBLISHED_TITLE);
   await expect(
-    rows.nth(0).getByRole("heading", { name: "Speaking practice", exact: true }),
-  ).toBeVisible();
-  await expect(
-    rows.nth(1).getByRole("heading", { name: PUBLISHED_TITLE, exact: true }),
-  ).toBeVisible();
+    rows.nth(1).getByRole("link", { name: "See all 4 topics", exact: true }),
+  ).toBeHidden();
+  await rows.nth(1).locator("summary").click();
   await expect(rows.nth(1)).toContainText(`Topics: ${TOPIC}`);
   await expect(rows.nth(1)).toContainText("Present simple");
   await expect(rows.nth(1)).toContainText("Station vocabulary");
@@ -152,6 +159,7 @@ test("each course lists generated topics and dated sessions in the appropriate r
   await rows.nth(1).getByRole("link", { name: "See all 4 topics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Topics covered", exact: true })).toBeVisible();
   for (const topic of TOPICS) await expect(page.getByText(topic, { exact: true })).toBeVisible();
+  await page.locator("summary").filter({ hasText: "More class tools" }).click();
   await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
   expect(

@@ -88,18 +88,24 @@ export async function inAutomaticLearningBatch<T>(
   sessionId: string,
   upload: () => Promise<T>,
   request: typeof workspaceRequest = workspaceRequest,
+  options?: { onCompleted?: (status: AutomaticLearningStatus) => void },
 ) {
   const batchId = await openAutomaticBatch(sessionId, batchStorageKey(userId, sessionId), request);
   try {
     return await upload();
   } finally {
-    await request(`/api/classes/${sessionId}/learning`, "POST", { action: "complete", batchId });
+    const status = await request<AutomaticLearningStatus>(
+      `/api/classes/${sessionId}/learning`,
+      "POST",
+      { action: "complete", batchId },
+    );
     try {
       localStorage.removeItem(batchStorageKey(userId, sessionId));
     } catch {
       /* Replayed completion is safe. */
     }
     notifyAutomaticLearning(sessionId);
+    options?.onCompleted?.(status);
   }
 }
 

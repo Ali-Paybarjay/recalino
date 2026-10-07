@@ -1,8 +1,10 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { FileSelectionQueue } from "../components/FileSelectionQueue";
 import { Sheet } from "../components/Sheet";
 import { UploadProgress } from "../components/UploadProgress";
+import { appendSelectedFiles, type SelectedFile } from "../workspace/file-selection";
 import { createSampleState, type SampleSource, usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
 import { PREPARED_SAMPLE_MATERIAL, sampleClassSummary } from "./sample-material";
@@ -25,6 +27,8 @@ export function SourceViews({ screen }: { screen: string }) {
   const [problem, setProblem] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [uploadComplete, setUploadComplete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const uploadFeedback = useRef<HTMLDivElement>(null);
   const addingLock = useRef(false);
@@ -36,6 +40,15 @@ export function SourceViews({ screen }: { screen: string }) {
     startedAt: number;
   } | null>(null);
   const uploading = upload !== null;
+  useEffect(() => {
+    if (!selectedFiles.length && !uploading) return;
+    const preventLosingSelection = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", preventLosingSelection);
+    return () => window.removeEventListener("beforeunload", preventLosingSelection);
+  }, [selectedFiles.length, uploading]);
   useEffect(() => {
     if (uploading) uploadFeedback.current?.scrollIntoView({ block: "center" });
   }, [uploading]);
@@ -81,11 +94,28 @@ export function SourceViews({ screen }: { screen: string }) {
       ...prev,
       sources: prev.sources.map((source) => (source.id === id ? { ...source, ...patch } : source)),
     }));
-  async function addFiles(files: FileList | null) {
+  function selectFiles(files: FileList | null) {
     if (!files?.length || addingLock.current) return;
+    const picked = Array.from(files);
+    setSelectedFiles((previous) =>
+      appendSelectedFiles(previous, picked).map((item) => ({
+        ...item,
+        problem: /\.(pdf|jpe?g|png|webp|m4a|mp3|wav|webm|ogg)$/i.test(item.file.name)
+          ? item.problem
+          : `“${item.file.name}” is not a supported sample file. Remove it and choose audio, PDF or a photo.`,
+      })),
+    );
     setProblem("");
+    setUploadComplete(false);
+  }
+  async function addFiles() {
+    if (!selectedFiles.length || selectedFiles.some((item) => item.problem) || addingLock.current)
+      return;
+    const submittedIds = new Set(selectedFiles.map((item) => item.id));
+    setProblem("");
+    setUploadComplete(false);
     const next: SampleSource[] = [];
-    for (const file of Array.from(files)) {
+    for (const { file } of selectedFiles) {
       const kind = /\.pdf$/i.test(file.name)
         ? "pdf"
         : /\.(jpe?g|png|webp)$/i.test(file.name)
@@ -167,7 +197,11 @@ export function SourceViews({ screen }: { screen: string }) {
         });
     }
     addingLock.current = false;
-    if (mounted.current) setUpload(null);
+    if (mounted.current) {
+      setUpload(null);
+      setSelectedFiles((previous) => previous.filter((item) => !submittedIds.has(item.id)));
+      setUploadComplete(true);
+    }
     announce("File names added to this sample. File bytes have not been uploaded.");
   }
   async function saveRecording() {
@@ -588,7 +622,7 @@ export function SourceViews({ screen }: { screen: string }) {
         <Panel title="Choose files">
           <Actions>
             <Button disabled={!!upload} onClick={() => fileInput.current?.click()}>
-              {state.sources.length ? "Add More Files" : "Add Files"}
+              {state.sources.length || selectedFiles.length ? "Add More Files" : "Add Files"}
             </Button>
             <input
               ref={fileInput}
@@ -599,7 +633,7 @@ export function SourceViews({ screen }: { screen: string }) {
               multiple
               accept=".m4a,.mp3,.wav,.webm,.ogg,.pdf,.jpg,.jpeg,.png,.webp"
               onChange={(event) => {
-                void addFiles(event.target.files);
+                selectFiles(event.target.files);
                 event.target.value = "";
               }}
             />
@@ -612,6 +646,22 @@ export function SourceViews({ screen }: { screen: string }) {
             File formats are identified from their names. Prepared sample durations and page counts
             are assigned automatically; this preview does not inspect file contents.
           </p>
+          <FileSelectionQueue
+            files={selectedFiles}
+            busy={uploading}
+            disabled={selectedFiles.some((item) => !!item.problem)}
+            remove={(id) =>
+              setSelectedFiles((previous) => previous.filter((item) => item.id !== id))
+            }
+            submit={() => void addFiles()}
+            description="Choose files one at a time or together, then select Upload & Process to run the sample. File bytes stay on your device; no AI service is called."
+          />
+          {uploadComplete ? (
+            <Status tone="success">
+              Sample upload successful. File names added to this sample. File bytes have not been
+              uploaded.
+            </Status>
+          ) : null}
           {statusProblem}
         </Panel>
         <Panel title="Your sources">

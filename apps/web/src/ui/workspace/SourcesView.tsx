@@ -3,15 +3,19 @@ import type { InputContract, SourceKind } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FileSelectionQueue } from "../components/FileSelectionQueue";
 import { UploadProgress } from "../components/UploadProgress";
 import { IndexedRecordingStore } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
-import { workspaceRequest } from "./api";
+import { requestKey, workspaceRequest } from "./api";
 import {
+  type AutomaticLearningStatus,
   inAutomaticLearningBatch,
   notifyAutomaticLearning,
   pendingLearningBatch,
 } from "./automatic-learning";
+import { type FileProcessingReceipt, fileProcessingFeedback } from "./file-processing";
+import { appendSelectedFiles, type SelectedFile, selectedFileProblem } from "./file-selection";
 import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import { createSourceUploadRequest, uploadSourceFileParts } from "./source-upload";
@@ -135,6 +139,8 @@ export function SourcesView({
     uploadList = useRef<HTMLUListElement>(null),
     lock = useRef(false);
   const uploadController = useRef<AbortController | null>(null);
+  const sourceCreationKeys = useRef(new Map<string, string>());
+  const processingRetryKey = useRef<{ payload: string; key: string } | null>(null);
   useEffect(() => () => uploadController.current?.abort(), []);
   const learning = useAutomaticLearning(sessionId);
   const [interruptedBatch, setInterruptedBatch] = useState(false);
@@ -162,6 +168,8 @@ export function SourcesView({
     };
   }, []);
   const [fileUploads, setFileUploads] = useState<FileUpload[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [receipt, setReceipt] = useState<FileProcessingReceipt | null>(null);
   const [batch, setBatch] = useState<{ total: number; current: number; active: boolean } | null>(
     null,
   );
@@ -196,7 +204,13 @@ export function SourcesView({
         : [],
     ),
   ];
+  const feedback = receipt
+    ? fileProcessingFeedback(receipt, learning.status, visibleSources)
+    : null;
+  const processingBatch = feedback?.state === "processing";
   const pendingFiles = fileUploads.filter((file) => {
+    if (file.phase === "failed" && selectedFiles.some((selected) => selected.id === file.id))
+      return false;
     if (["checking", "uploading", "saving", "failed"].includes(file.phase)) return true;
     if (file.phase === "complete") return false;
     const source = visibleSources.find((source) => source.assetId === file.source?.assetId);
@@ -207,6 +221,15 @@ export function SourcesView({
   const recentSources = new Map(fileUploads.map((file, index) => [file.source?.assetId, index]));
   const listedSources = visibleSources
     .filter((source) => !pendingFiles.some((file) => file.source?.assetId === source.assetId))
+    .filter(
+      (source) =>
+        !fileUploads.some(
+          (file) =>
+            file.phase === "failed" &&
+            file.source?.assetId === source.assetId &&
+            selectedFiles.some((selected) => selected.id === file.id),
+        ),
+    )
     .sort((a, b) => (recentSources.get(b.assetId) ?? -1) - (recentSources.get(a.assetId) ?? -1));
   const [unsavedSelections, setUnsavedSelections] = useState(() => new Set<string>());
   const selectionDirty = useCallback((assetId: string, dirty: boolean) => {
@@ -234,6 +257,7 @@ export function SourcesView({
   }, [userId]);
   const waiting =
     batch?.active ||
+    processingBatch ||
     visibleSources.some(
       (source) =>
         ["pending", "verifying"].includes(source.uploadState ?? "") ||
@@ -244,6 +268,12 @@ export function SourcesView({
     const timer = setInterval(() => router.refresh(), 3000);
     return () => clearInterval(timer);
   }, [waiting, router]);
+  useEffect(() => {
+    if (!selectedFiles.length && !batch?.active) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [selectedFiles.length, batch?.active]);
   async function action(effect: () => Promise<void>) {
     if (lock.current) return;
     lock.current = true;
@@ -361,6 +391,8 @@ export function SourcesView({
         parts.push({ index: parts.length, sizeBytes: part.size, sha256: await checksum(part) });
       }
     const matches = await request<OwnSource[]>(`/api/sources?checksum=${sha256}`, "GET");
+    const creationKey = sourceCreationKeys.current.get(fileId) ?? crypto.randomUUID();
+    sourceCreationKeys.current.set(fileId, creationKey);
     const resumable = matches.find(
       (source) =>
         source.kind === kind &&
@@ -383,7 +415,7 @@ export function SourcesView({
             ...(durationMs ? { durationMs } : {}),
             parts,
           },
-          crypto.randomUUID(),
+          creationKey,
         );
     if (resumable)
       await request(`/api/classes/${sessionId}/sources`, "POST", {
@@ -444,7 +476,7 @@ export function SourcesView({
       setMessage(
         "Audio saved on this device. Upload and note creation start automatically after all files are added.",
       );
-      return;
+      return created.assetId;
     }
     if (!created.uploadId) throw new Error("The upload could not be created.");
     const uploadId = created.uploadId;
@@ -468,10 +500,23 @@ export function SourcesView({
       source: { ...added, uploadState: "verifying" },
     });
     setMessage("File uploaded. Server verification is in progress.");
+    return created.assetId;
   }
-  async function addFiles(files: File[]) {
+  async function addFiles(files: SelectedFile[]) {
+    if (!files.length || files.some((file) => file.invalid)) return;
     const controller = new AbortController();
     uploadController.current = controller;
+    setBatch({ total: files.length, current: 1, active: true });
+    setMessage("");
+    setReceipt({
+      revision: null,
+      previousRunId: null,
+      sourceIds: [],
+      total: files.length,
+      failed: 0,
+      startedAt: Date.now(),
+    });
+    setSelectedFiles((previous) => previous.map((file) => ({ ...file, problem: undefined })));
     const recovery: UploadRecovery = {
       attempts: 3,
       signal: controller.signal,
@@ -479,27 +524,57 @@ export function SourcesView({
       onOffline: () => setMessage("Upload paused while offline. It resumes when you reconnect."),
     };
     try {
+      const before = await createSourceUploadRequest(recovery)<AutomaticLearningStatus>(
+        `/api/classes/${sessionId}/learning`,
+        "GET",
+      );
+      setReceipt((previous) =>
+        previous ? { ...previous, previousRunId: before.run?.id ?? null } : previous,
+      );
       await inAutomaticLearningBatch(
         userId,
         sessionId,
         () => uploadFiles(files, recovery),
         createSourceUploadRequest(recovery),
+        {
+          onCompleted: (status) =>
+            setReceipt((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    revision: status.revision,
+                    confirmedRunId: status.state === "ready" ? status.run?.id : null,
+                  }
+                : previous,
+            ),
+        },
+      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "The upload could not finish.";
+      setReceipt((previous) =>
+        previous
+          ? {
+              ...previous,
+              problem: `${detail} Retry the files still selected below. If all files were sent, choose Resume processing.`,
+            }
+          : previous,
       );
     } finally {
       if (uploadController.current === controller) uploadController.current = null;
       setInterruptedBatch(Boolean(pendingLearningBatch(userId, sessionId)));
+      setBatch((previous) => (previous ? { ...previous, active: false } : null));
     }
   }
-  async function uploadFiles(files: File[], recovery: UploadRecovery) {
+  async function uploadFiles(files: SelectedFile[], recovery: UploadRecovery) {
     let failed = 0;
     setBatch({ total: files.length, current: 1, active: true });
     try {
-      for (const [index, file] of files.entries()) {
+      for (const [index, entry] of files.entries()) {
         recovery.signal?.throwIfAborted();
-        const id = crypto.randomUUID();
+        const { file, id } = entry;
         setBatch({ total: files.length, current: index + 1, active: true });
         setFileUploads((previous) => [
-          ...previous,
+          ...previous.filter((file) => file.id !== id),
           {
             id,
             displayName: file.name,
@@ -514,14 +589,25 @@ export function SourcesView({
           uploadList.current?.firstElementChild?.scrollIntoView({ block: "nearest" }),
         );
         try {
-          await upload(file, id, recovery);
+          const assetId = await upload(file, id, recovery);
+          setReceipt((previous) =>
+            previous
+              ? { ...previous, sourceIds: [...new Set([...previous.sourceIds, assetId])] }
+              : previous,
+          );
+          setSelectedFiles((previous) => previous.filter((file) => file.id !== id));
         } catch (error) {
           recovery.signal?.throwIfAborted();
           failed++;
+          const problem =
+            error instanceof Error ? error.message : "This file could not be added. Try again.";
+          setSelectedFiles((previous) =>
+            previous.map((file) => (file.id === id ? { ...file, problem } : file)),
+          );
+          setReceipt((previous) => (previous ? { ...previous, failed } : previous));
           updateUpload(id, {
             phase: "failed",
-            problem:
-              error instanceof Error ? error.message : "This file could not be added. Try again.",
+            problem,
             finishedAt: Date.now(),
           });
         }
@@ -530,11 +616,95 @@ export function SourcesView({
       setMessage(
         failed
           ? `${files.length - failed} files added. ${failed} need attention; check their status below.`
-          : `${files.length} ${files.length === 1 ? "file added" : "files added"}. You can add more files here.`,
+          : "Upload complete. Server verification and processing are in progress.",
       );
     } finally {
       setBatch((previous) => (previous ? { ...previous, active: false } : null));
     }
+  }
+  async function resumeProcessing() {
+    if (selectedFiles.length) return addFiles(selectedFiles);
+    setReceipt((previous) => (previous ? { ...previous, problem: undefined } : null));
+    setMessage(
+      "Resuming your upload. Verification and processing progress will update automatically.",
+    );
+    try {
+      await inAutomaticLearningBatch(userId, sessionId, async () => {}, workspaceRequest, {
+        onCompleted: (status) =>
+          setReceipt((previous) =>
+            previous
+              ? {
+                  ...previous,
+                  revision: status.revision,
+                  confirmedRunId: status.state === "ready" ? status.run?.id : null,
+                }
+              : previous,
+          ),
+      });
+    } catch (error) {
+      setReceipt((previous) =>
+        previous
+          ? {
+              ...previous,
+              problem:
+                "Processing could not be resumed. Check your connection, then choose Resume processing again.",
+            }
+          : previous,
+      );
+      throw error;
+    } finally {
+      setInterruptedBatch(Boolean(pendingLearningBatch(userId, sessionId)));
+    }
+  }
+  async function retryProcessing() {
+    const body = { action: "retry" };
+    const status = await workspaceRequest<AutomaticLearningStatus>(
+      `/api/classes/${sessionId}/learning`,
+      "POST",
+      body,
+      requestKey(processingRetryKey, body),
+    );
+    processingRetryKey.current = null;
+    setReceipt((previous) =>
+      previous
+        ? {
+            ...previous,
+            revision: status.revision,
+            confirmedRunId: status.state === "ready" ? status.run?.id : null,
+            problem: undefined,
+          }
+        : previous,
+    );
+    notifyAutomaticLearning(sessionId);
+  }
+  function forgetSource(assetId: string) {
+    setReceipt((previous) => {
+      if (!previous?.sourceIds.includes(assetId)) return previous;
+      const sourceIds = previous.sourceIds.filter((id) => id !== assetId);
+      return sourceIds.length ? { ...previous, sourceIds, total: previous.total - 1 } : null;
+    });
+  }
+  function removeSelectedFile(id: string) {
+    const entry = fileUploads.find((file) => file.id === id);
+    const remove = () => {
+      setSelectedFiles((previous) => previous.filter((file) => file.id !== id));
+      setFileUploads((previous) => previous.filter((file) => file.id !== id));
+      setReceipt((previous) => {
+        if (!previous || entry?.phase !== "failed") return previous;
+        return previous.sourceIds.length
+          ? { ...previous, failed: Math.max(0, previous.failed - 1), total: previous.total - 1 }
+          : null;
+      });
+    };
+    if (entry?.source)
+      void action(async () => {
+        await workspaceRequest(
+          `/api/classes/${sessionId}/sources/${entry.source?.assetId}`,
+          "DELETE",
+        );
+        remove();
+      });
+    else remove();
   }
   async function change(source: SourceRow, patch: Partial<SourceRow>) {
     await workspaceRequest(`/api/classes/${sessionId}/sources/${source.assetId}`, "PATCH", {
@@ -562,7 +732,7 @@ export function SourcesView({
       <Actions>
         <LinkButton href={`/classes/${sessionId}/record`}>Record class</LinkButton>
         <Button secondary disabled={busy || !accepted} onClick={() => fileInput.current?.click()}>
-          {visibleSources.length ? "Add More Files" : "Add Files"}
+          {visibleSources.length || selectedFiles.length ? "Add More Files" : "Add Files"}
         </Button>
         <Button
           secondary
@@ -581,18 +751,26 @@ export function SourcesView({
         ref={fileInput}
         type="file"
         hidden
+        aria-label="Choose class files"
+        disabled={busy || !accepted}
         multiple
-        accept=".m4a,.mp3,.wav,.webm,.ogg,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.html,.htm,.txt"
+        accept=".m4a,.mp3,.wav,.webm,.ogg,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.html,.htm,.xhtml,.txt"
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           event.target.value = "";
-          if (files.length) void action(() => addFiles(files));
+          if (files.length)
+            setSelectedFiles((previous) =>
+              appendSelectedFiles(previous, files).map((entry) => {
+                const problem = selectedFileProblem(entry.file, contract);
+                return problem ? { ...entry, problem, invalid: true } : entry;
+              }),
+            );
         }}
       />
       {!accepted ? (
         <Panel title="Before adding sources">
           <p>
-            Adding material automatically creates and saves your class notes and flashcards. Audio
+            Choosing Upload &amp; Process creates and saves your class notes and flashcards. Audio
             remains on this device, with a temporary copy uploaded for transcription. Other files
             are stored privately.
           </p>
@@ -617,6 +795,81 @@ export function SourcesView({
           Private file storage is being configured. Audio can still be saved on this device.
         </Status>
       ) : null}
+      {receipt && feedback && (
+        <Panel title={batch?.active ? "Uploading your files" : "File processing"}>
+          {batch?.active || processingBatch ? (
+            <div aria-busy="true">
+              <UploadProgress
+                label="Class file processing progress"
+                status={
+                  batch?.active
+                    ? `Uploading file ${batch.current} of ${batch.total}…`
+                    : feedback.message
+                }
+                detail={
+                  batch?.active
+                    ? "Keep this page open while files are sent. Processing starts after your upload finishes."
+                    : feedback.detail
+                }
+                startedAt={receipt.startedAt}
+              />
+              {batch?.active && message && <Status>{message}</Status>}
+            </div>
+          ) : (
+            <>
+              <Status tone={feedback.state === "success" ? "success" : "error"}>
+                {feedback.message} {feedback.detail}
+              </Status>
+              <Actions>
+                {feedback.state === "success" ? (
+                  <>
+                    <LinkButton href={`/classes/${sessionId}/notes`}>Read class notes</LinkButton>
+                    <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+                      Flashcards
+                    </LinkButton>
+                  </>
+                ) : (
+                  <>
+                    {feedback.retry && (
+                      <Button disabled={busy} onClick={() => void action(retryProcessing)}>
+                        Retry processing
+                      </Button>
+                    )}
+                    <LinkButton secondary href={`/classes/${sessionId}/estimate`}>
+                      Review processing
+                    </LinkButton>
+                  </>
+                )}
+              </Actions>
+            </>
+          )}
+          {learning.problem && (
+            <>
+              <Status tone="error">
+                Progress could not be checked. Your files are saved. Check your connection and try
+                again.
+              </Status>
+              <Button secondary disabled={busy} onClick={() => void action(learning.refresh)}>
+                Check progress again
+              </Button>
+            </>
+          )}
+        </Panel>
+      )}
+      {accepted && (
+        <FileSelectionQueue
+          files={selectedFiles}
+          busy={busy}
+          disabled={!!batch?.active || unsavedSelections.size > 0}
+          label={
+            selectedFiles.some((file) => file.problem && !file.invalid)
+              ? "Retry Upload & Process"
+              : "Upload & Process"
+          }
+          remove={removeSelectedFile}
+          submit={() => void action(() => addFiles(selectedFiles))}
+        />
+      )}
       {previous.length ? (
         <Panel title="Your existing sources">
           <Field label="Source">
@@ -648,7 +901,7 @@ export function SourcesView({
       ) : null}
       {problem ? (
         <Status tone="error">{problem}</Status>
-      ) : message ? (
+      ) : message && !receipt ? (
         <Status>{message}</Status>
       ) : null}
       {originalLink ? (
@@ -692,6 +945,10 @@ export function SourcesView({
                   file={file}
                   busy={busy}
                   remove={() => {
+                    if (selectedFiles.some((entry) => entry.id === file.id)) {
+                      removeSelectedFile(file.id);
+                      return;
+                    }
                     if (!file.source) {
                       setFileUploads((previous) =>
                         previous.filter((entry) => entry.id !== file.id),
@@ -703,6 +960,7 @@ export function SourcesView({
                         `/api/classes/${sessionId}/sources/${file.source?.assetId}`,
                         "DELETE",
                       );
+                      if (file.source) forgetSource(file.source.assetId);
                       setFileUploads((previous) =>
                         previous.filter((entry) => entry.id !== file.id),
                       );
@@ -728,6 +986,7 @@ export function SourcesView({
                 deleteSource={(mode) =>
                   action(async () => {
                     await workspaceRequest(`/api/sources/${source.assetId}`, "DELETE", { mode });
+                    if (mode === "all") forgetSource(source.assetId);
                     if (mode === "all") {
                       const url = localOriginalUrls.current.get(source.assetId);
                       if (url) URL.revokeObjectURL(url);
@@ -766,6 +1025,7 @@ export function SourcesView({
                       `/api/classes/${sessionId}/sources/${source.assetId}`,
                       "DELETE",
                     );
+                    forgetSource(source.assetId);
                     setFileUploads((previous) =>
                       previous.filter((file) => file.source?.assetId !== source.assetId),
                     );
@@ -778,17 +1038,25 @@ export function SourcesView({
           </ul>
         )}
       </Panel>
-      {learning.status && learning.status.state !== "idle" && (
+      {!receipt && learning.status && learning.status.state !== "idle" && (
         <Status tone={learning.status.state === "blocked" ? "error" : "neutral"}>
           {learning.status.message}
         </Status>
       )}
-      {learning.problem && <Status tone="error">{learning.problem}</Status>}
+      {!receipt && learning.problem && <Status tone="error">{learning.problem}</Status>}
       {interruptedBatch && (
-        <Status>
-          An earlier upload was interrupted. Add the remaining files or choose the same file again
-          to resume. Notes will be prepared when the batch is complete.
-        </Status>
+        <Panel title="Resume an interrupted upload">
+          <Status>
+            An earlier upload was interrupted. Select any remaining files, then choose Resume
+            processing. If every file was sent, resume without selecting them again.
+          </Status>
+          <Button
+            disabled={busy || selectedFiles.some((file) => file.invalid)}
+            onClick={() => void action(resumeProcessing)}
+          >
+            Resume processing
+          </Button>
+        </Panel>
       )}
       {learning.status?.notesReady && (
         <nav aria-label="Class learning" className="preview-actions">
@@ -806,8 +1074,8 @@ export function SourcesView({
         <Status>Save your file selection to use it in the automatic update.</Status>
       ) : null}
       <p className="preview-muted">
-        Notes and flashcards are prepared automatically after uploads finish. Your earlier notes
-        stay available while added material is processed.
+        Choose Upload &amp; Process when all your files are selected. Your earlier notes stay
+        available while added material is processed.
       </p>
     </div>
   );

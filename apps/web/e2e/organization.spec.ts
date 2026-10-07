@@ -123,8 +123,15 @@ test("a learning goal stays separate while new courses preserve and organize dat
   ).toHaveAttribute("href", `/courses/${esolId}/materials`);
   await expectNoAxeViolations(page);
   await esolRow.getByRole("link", { name: "View classes", exact: true }).click();
-  await expect(page.locator(`a[href="${new URL(esolClassUrl).pathname}"]`)).toBeVisible();
-  await expect(page.locator(`a[href="${new URL(secondEsolClassUrl).pathname}"]`)).toBeVisible();
+  const classes = page
+    .getByRole("main")
+    .getByRole("listitem")
+    .filter({ has: page.locator("details") });
+  await expect(classes).toHaveCount(2);
+  for (const row of await classes.all()) await row.locator("summary").click();
+  await expect(classes.getByRole("link", { name: "Go to class", exact: true })).toHaveCount(2);
+  await expect(classes.locator(`a[href="${new URL(esolClassUrl).pathname}"]`)).toBeVisible();
+  await expect(classes.locator(`a[href="${new URL(secondEsolClassUrl).pathname}"]`)).toBeVisible();
   await expect(page.locator(`a[href="${new URL(spanishClassUrl).pathname}"]`)).toHaveCount(0);
 });
 
@@ -151,7 +158,8 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await expectNoAxeViolations(page);
   await page.getByRole("link", { name: "View course", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "English B1" })).toBeVisible();
-  await page.getByRole("main").getByRole("link", { name: "New class", exact: true }).click();
+  await page.getByRole("main").getByRole("link", { name: "+ New class", exact: true }).click();
+  await expect(page).toHaveURL(/\/classes\/new\?courseId=[0-9a-f-]+$/, { timeout: 30_000 });
   await expect(page.getByLabel("Course", { exact: true })).toContainText("English B1");
   await page.getByLabel("Class name (optional)").fill("کلاس سفر 日本語");
   await page.getByLabel("Class date", { exact: true }).fill("30/09/2026");
@@ -160,10 +168,19 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await expect(page.getByRole("heading", { level: 1, name: "کلاس سفر 日本語" })).toBeVisible();
   const classUrl = page.url();
   await expectNoAxeViolations(page);
+  await page.locator("summary").filter({ hasText: "More class tools" }).click();
   await page.getByRole("link", { name: "Class options", exact: true }).click();
+  await expect(page).toHaveURL(`${classUrl}/options`, { timeout: 30_000 });
   await page.getByLabel("Class name (optional)").fill("Renamed lesson");
   await page.getByLabel("Unit (optional)").selectOption("");
+  const renamedClass = page.waitForResponse(
+    (response) =>
+      response.url() === classUrl.replace("/classes/", "/api/classes/") &&
+      response.request().method() === "PATCH",
+  );
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  expect((await renamedClass).status()).toBe(200);
+  await expect(page).toHaveURL(classUrl, { timeout: 30_000 });
   await expect(page.getByRole("heading", { level: 1, name: "Renamed lesson" })).toBeVisible();
   await page.goto("/classes/organize");
   await page.getByRole("button", { name: "Delete empty course", exact: true }).click();

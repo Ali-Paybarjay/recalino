@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import {
   expect,
   expectNoAxeViolations,
@@ -6,6 +7,21 @@ import {
   test,
   VIEWPORTS,
 } from "./helpers";
+
+function classRows(page: Page) {
+  return page.locator("section[aria-label='Class list'] > ul > li");
+}
+
+async function openClassTools(page: Page) {
+  await page.locator("summary").filter({ hasText: "Class tools and sources" }).click();
+}
+
+async function openListedClass(page: Page, title: string) {
+  const row = classRows(page).filter({ hasText: title });
+  await expect(row).toHaveCount(1);
+  await row.locator("summary").click();
+  await row.getByRole("button", { name: "Go to class", exact: true }).click();
+}
 
 test("a global review source opens the card's own class after another class is selected", async ({
   page,
@@ -38,6 +54,7 @@ test("a global review source opens the card's own class after another class is s
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("From your class");
   await page.goto("/preview/class");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
+  await openClassTools(page);
   await expect(page.getByText("Class recording", { exact: true })).toBeVisible();
   await expect(page.getByText("Present perfect handout.pdf", { exact: true })).toBeVisible();
 });
@@ -55,9 +72,10 @@ test("a new class begins empty and opening an existing class restores its own ma
   await expect(page.getByText("AI explanation · sample", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Audio 18:42/ })).toHaveCount(0);
   await page.goto("/preview/classes");
-  await page.getByLabel("Search classes").fill("Present perfect");
-  await page.getByRole("button", { name: "Open class", exact: true }).click();
+  await page.getByLabel("Course", { exact: true }).selectOption("ESOL B1");
+  await openListedClass(page, "Present perfect");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
+  await openClassTools(page);
   await expect(page.getByText("Class recording", { exact: true })).toBeVisible();
   await page.goto("/preview/notes");
   await expect(page.getByText("AI explanation · sample", { exact: true })).toBeVisible();
@@ -90,11 +108,12 @@ test("a class can be created, found after refresh, and reset without a backend",
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).not.toBeNull();
 
   await page.goto("/preview/classes");
-  await page.getByLabel("Search classes").fill("No such class");
-  await expect(page.getByRole("heading", { name: "No classes here yet" })).toBeVisible();
-  await page.getByLabel("Search classes").fill("Bus journeys");
-  await expect(page.getByRole("heading", { name: "Bus journeys", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Open class", exact: true }).click();
+  await expect(page.getByLabel("Course", { exact: true })).toHaveValue("");
+  await expect(classRows(page)).toHaveCount(0);
+  await page.getByLabel("Course", { exact: true }).selectOption("My classes");
+  await expect(classRows(page)).toHaveCount(1);
+  await expect(classRows(page).locator("summary")).toContainText("Bus journeys");
+  await openListedClass(page, "Bus journeys");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bus journeys");
 
   const reset = page.getByRole("button", { name: "Reset sample", exact: true });
@@ -111,7 +130,8 @@ test("a class can be created, found after refresh, and reset without a backend",
   await expect(page.getByText(SAMPLE_BANNER, { exact: true })).toBeVisible();
   await page.goto("/preview/classes");
   await expect(page.getByRole("heading", { name: "Bus journeys", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Present perfect", exact: true })).toBeVisible();
+  await page.getByLabel("Course", { exact: true }).selectOption("ESOL B1");
+  await expect(classRows(page).first().locator("summary")).toContainText("Present perfect");
 });
 
 test("courses and units can be created and a class moved, while nonempty deletion stays blocked", async ({
@@ -279,6 +299,7 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسهٔ عصر 日本語");
   await page.goto("/preview/course?course=ESOL%20evening");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ESOL evening");
+  await page.locator("footer summary").filter({ hasText: "Course tools" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "Course materials" })).toBeVisible();
   await expectNoAxeViolations(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
@@ -331,6 +352,7 @@ test("D39: course materials keep each session's current notes, dates and course 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Travel notebook");
   await expect(page.getByText(notes, { exact: true })).toBeVisible();
   await page.goto("/preview/class");
+  await openClassTools(page);
   await page.getByRole("link", { name: "Class options", exact: true }).click();
   await page.getByLabel("Move to course").selectOption("My classes");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -349,6 +371,7 @@ test("D40: prepared sample material names an automatic session and shows its dat
   await page.getByLabel("Class date", { exact: true }).fill("29/09/2026");
   await page.getByRole("button", { name: "Create class", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2026-09-29");
+  await openClassTools(page);
   await expect(page.getByText(/Waiting for material/)).toBeVisible();
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles({
@@ -356,12 +379,15 @@ test("D40: prepared sample material names an automatic session and shows its dat
     mimeType: "image/png",
     buffer: Buffer.from("synthetic example"),
   });
+  await page.getByRole("button", { name: "Upload & Process", exact: true }).click();
+  await expect(page.getByText(/Sample upload successful/)).toBeVisible();
   await expect(page.getByText("unknown-topic.png", { exact: true })).toBeVisible();
   await page.goto("/preview/estimate");
   await page.getByRole("button", { name: "Process selected sources", exact: true }).click();
   await page.getByRole("button", { name: "Complete sample processing", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
   await page.goto("/preview/class");
+  await openClassTools(page);
   const overview = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Session overview", exact: true }) });
@@ -401,6 +427,8 @@ test("D40: a custom title survives sample processing and can be cleared to use t
     mimeType: "image/png",
     buffer: Buffer.from("synthetic example"),
   });
+  await page.getByRole("button", { name: "Upload & Process", exact: true }).click();
+  await expect(page.getByText(/Sample upload successful/)).toBeVisible();
   await expect(page.getByText("sample-board.png", { exact: true })).toBeVisible();
   await page.goto("/preview/estimate");
   await page.getByRole("button", { name: "Process selected sources", exact: true }).click();

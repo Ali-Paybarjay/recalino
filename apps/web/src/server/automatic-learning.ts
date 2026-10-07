@@ -181,7 +181,12 @@ export async function automaticLearningSync(
   const materials = await sessionSources(db, ctx, sessionId);
   if (
     materials.some(
-      (source) => source.selected && ["pending", "verifying"].includes(source.uploadState ?? ""),
+      (source) =>
+        // New documents are selected by verification, so their pending state must fence
+        // processing before that selection exists. Previously verified, deselected sources
+        // can still be intentionally excluded from this run.
+        (source.selected || !source.verifiedAt) &&
+        ["pending", "verifying"].includes(source.uploadState ?? ""),
     )
   )
     return progress("waiting_sources", null, null);

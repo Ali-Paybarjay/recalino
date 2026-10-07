@@ -6,6 +6,7 @@ import { expect, expectNoAxeViolations, SAMPLE_BANNER, test, VIEWPORTS } from ".
 const capture = process.env.RECALINO_PREVIEW_SCREENSHOTS === "1";
 const screenshotDirectory = resolve(process.cwd(), "../../artifacts/ui-redesign/complete");
 const initialHeadings: Readonly<Record<string, string>> = {
+  course: "Your classes",
   "processing-result": "No processing result yet",
   "review-card": "A moment to remember",
   "review-answer": "Compare your answer",
