@@ -206,6 +206,72 @@ function taskGroups(groups: readonly TaskGroup[], ctx: RenderContext): string {
     .join("\n");
 }
 
+/** Bold the exact span(s) a gap sentence removes, only when the pair aligns exactly. */
+function revealedSentence(gapSentence: string, fullSentence: string): string {
+  const parts = gapSentence.split("______");
+  if (parts.length < 2 || parts.length > 4) return text(fullSentence);
+  const escaped = parts.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const match = new RegExp(`^${escaped.join("(.+?)")}$`, "su").exec(fullSentence);
+  if (!match) return text(fullSentence);
+  return parts
+    .map((part, index) =>
+      index === 0 ? text(part) : `<b>${text(match[index] ?? "")}</b>${text(part)}`,
+    )
+    .join("");
+}
+
+/**
+ * D48 retrieval check: each core item asks the same question as its flashcard front
+ * (renderStudyCard), so notes and cards stay one canonical source. Answers stay hidden until
+ * opened; a gap already practised in the gap-fill section is not asked twice.
+ */
+function checkYourself(
+  core: readonly LearningItem[],
+  gapfill: ClassNotes["gapfill"],
+  ctx: RenderContext,
+): string {
+  const prose = ctx.prose;
+  const practised = new Set(gapfill.map((item) => item.sentence.trim()));
+  const questions = core.flatMap((item, index) => {
+    const study = item.study;
+    if (study?.set !== "production") return [];
+    if (study.kind === "grammar") {
+      if (!study.taskFa || !study.prompt) return [];
+      return [
+        {
+          item,
+          index,
+          instruction: prose(study.taskFa),
+          question: text(study.prompt),
+          answer: text(study.fullSentence),
+          key: study.fullSentence,
+        },
+      ];
+    }
+    const gapSentence = study.gapSentence;
+    if (!gapSentence?.includes("______") || practised.has(gapSentence.trim())) return [];
+    return [
+      {
+        item,
+        index,
+        instruction: prose(study.faMeaning),
+        question: gap(gapSentence),
+        answer: revealedSentence(gapSentence, study.fullSentence),
+        key: study.fullSentence,
+      },
+    ];
+  });
+  if (!questions.length) return "";
+  return `${labelNote("checkNote", ctx)}${questions
+    .map(
+      (question, position) =>
+        `<div class="sc">\n<p class="mean">${question.instruction}</p>\n<p class="q" ${ctx.englishAttrs}><b>${position + 1}.</b> ${question.question}</p>\n<details><summary>${ctx.label("answer")}</summary><p class="model" ${ctx.englishAttrs}>✓ ${question.answer}</p><p class="src"><a href="#${attr(encodeURIComponent(question.item.id))}">↩ ${ctx.label("card")} ${ctx.number(question.index + 1)}</a></p></details>\n</div>`,
+    )
+    .join(
+      "\n",
+    )}\n<p class="key">${ctx.label("answers")} <bdi ${ctx.englishAttrs}>${questions.map((question, position) => `${position + 1}. ${text(question.key)}`).join(" · ")}</bdi></p>`;
+}
+
 /** Preserve supported notebook content that is not represented by a reference section. */
 function additionalLessonNotes(model: KnowledgeModel, ctx: RenderContext): string {
   const prose = ctx.prose;
@@ -469,6 +535,12 @@ export function renderClassNotesHtml(model: KnowledgeModel): string {
         true,
       )}`,
     );
+  add(
+    "check",
+    ctx.label("checkPill"),
+    ctx.label("checkHeading"),
+    checkYourself(core, notes?.gapfill ?? [], ctx),
+  );
   const plainItems = model.learningItems.filter((item) => !item.study);
   if (plainItems.length)
     add(

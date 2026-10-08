@@ -7,6 +7,7 @@ import { getVersion } from "@recalino/core/lkm";
 import { createImageMedia, getMediaAsset, mediaReadLink } from "@recalino/core/media";
 import { getNotebookRevision, publishNotebook } from "@recalino/core/note";
 import { createCourse, createUnit, getSession, updateSession } from "@recalino/core/org";
+import { recordItemFeedback } from "@recalino/core/pers";
 import {
   DEFAULT_PLT_SETTINGS,
   type JobContext,
@@ -145,6 +146,13 @@ async function fixture() {
     { expectedVersion: card.contentVersion, side: "front", mediaId: media.id },
     { key: randomUUID() },
   );
+  // D48: a learner correction about this class's goal is deleted with the class or account.
+  await recordItemFeedback(
+    db,
+    study.ctx,
+    { learningItemId: card.learningItemId, kind: "explain_simpler", active: true },
+    { key: randomUUID() },
+  );
   const noteKey = randomUUID();
   const noteInput = {
     expectedRevisionId: study.notebook.current.id,
@@ -211,6 +219,14 @@ it.each(["source", "session", "account"] as const)(
   async (kind) => {
     const fixtureData = await fixture();
     const other = await studyFixture(db, { count: 1 });
+    const otherCard = other.cards[0];
+    if (!otherCard) throw new Error("Other fixture card is missing");
+    await recordItemFeedback(
+      db,
+      other.ctx,
+      { learningItemId: otherCard.learningItemId, kind: "not_a_difficulty", active: true },
+      { key: randomUUID() },
+    );
     const dependencies = privacyDependencies();
     const recordJournal = vi.fn(async () => {});
     dependencies.deletionJournal = { record: recordJournal };
@@ -333,6 +349,10 @@ it.each(["source", "session", "account"] as const)(
         .where("asset_id", "=", fixtureData.imageId)
         .execute(),
     ).toHaveLength(0);
+    const feedbackOf = (userId: string) =>
+      db.selectFrom("pers.item_feedback").select("id").where("user_id", "=", userId).execute();
+    expect(await feedbackOf(fixtureData.ctx.userId)).toHaveLength(0);
+    expect(await feedbackOf(other.ctx.userId)).toHaveLength(1);
     const run = await db
       .selectFrom("proc.processing_run")
       .select(["state", "input_snapshot", "settings"])

@@ -128,7 +128,9 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await page.emulateMedia({ media: "print" });
   await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(frame.locator("nav")).toBeHidden();
-  await expect(frame.locator(".key")).toBeVisible();
+  // Print replaces each hidden-answer toggle group with its key: the gap-fill and D48 check.
+  await expect(frame.locator("#gap .key")).toBeVisible();
+  await expect(frame.locator("#check .key")).toBeVisible();
   await expect(frame.locator("ol.gaps details").first()).toBeHidden();
 });
 

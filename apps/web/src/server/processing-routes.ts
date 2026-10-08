@@ -23,6 +23,7 @@ import { getAiProvider } from "./ai";
 import type { Handler, RequestContext } from "./api";
 import { runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
+import { practiceCandidatesBeforeRun } from "./teaching-memory";
 
 function actor(ctx: RequestContext): LearnerContext {
   if (!ctx.userId) throw errors.unauthenticated();
@@ -50,11 +51,18 @@ export function classProcessingHandler(sessionId: string): Handler {
         expectedSourcesVersion: z.number().int().nonnegative(),
       })
       .parse(input);
+    // D48: bounded practice points, read before the run transaction and frozen with the run.
+    const practiceCandidates = await practiceCandidatesBeforeRun(
+      db,
+      learner,
+      sessionId,
+      new Date(),
+    );
     const run = await createProcessingRun(
       db,
       learner,
       { sessionId, operationKey: operationKey(request), ...expected },
-      options(),
+      { ...options(), practiceCandidates: async () => practiceCandidates },
     );
     if (run.state === "queued") runJobsSoon(["proc.process"], 90);
     return { status: 202, body: run };

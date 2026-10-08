@@ -1200,6 +1200,140 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(f.provider.prompts[0]).not.toContain("declared IELTS goal");
     expect(f.provider.calls).toBe(1);
   });
+  it("D48 freezes bounded memory at run start and sends only matched points to the one generation", async () => {
+    const f = await fixture();
+    await saveTeachingPreference(db, f.ctx, {
+      key: "simpler_explanations",
+      origin: "explicit",
+      value: true,
+    });
+    const candidate = (target: string, scope: "this_class" | "same_course") => ({
+      target,
+      reason: "recall_difficulty" as const,
+      scope,
+      againCount: 3,
+      lastEvidenceDate: "2026-10-06",
+    });
+    const supplied = [
+      candidate("be pressed for time", "this_class"),
+      candidate("present perfect", "same_course"),
+      candidate("get on with sb", "same_course"),
+    ];
+    let snapshotCalls = 0;
+    const run = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      {
+        provider: f.provider,
+        job: f.job,
+        practiceCandidates: async (_tx, input) => {
+          snapshotCalls++;
+          expect(input.sessionId).toBe(f.session.id);
+          return supplied;
+        },
+      },
+    );
+    expect(snapshotCalls).toBe(1);
+    const saved = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", run.id)
+      .executeTakeFirstOrThrow();
+    expect(saved.settings).toMatchObject({
+      learnerContext: { version: 2, simplerExplanations: true, practiceCandidates: supplied },
+    });
+    // Later choices and evidence do not redefine the queued request.
+    await saveTeachingPreference(db, f.ctx, {
+      key: "simpler_explanations",
+      origin: "explicit",
+      value: false,
+    });
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.calls).toBe(1);
+    expect(f.provider.inputs[0]).toMatchObject({
+      learnerContext: {
+        version: 2,
+        simplerExplanations: true,
+        practiceFocus: [
+          { target: "be pressed for time", reason: "recall_difficulty" },
+          { target: "present perfect", reason: "recall_difficulty" },
+        ],
+      },
+    });
+    expect(JSON.stringify(f.provider.inputs[0])).not.toMatch(/get on with|againCount|2026-10-06/);
+    expect(f.provider.prompts[0]).toContain("explicitly chose simpler explanations");
+    expect(f.provider.prompts[0]).toContain("learnerContext.practiceFocus lists");
+    const version = await getLatestVersion(db, f.ctx, f.session.id);
+    expect(version?.generation).toMatchObject({
+      teachingAdaptation: {
+        version: 1,
+        simplerExplanations: true,
+        shorterExamples: false,
+        focus: [supplied[0], supplied[1]],
+        linkedItemIds: [],
+      },
+    });
+  });
+  it("D48 recovery runs keep the recovered run's memory points instead of fresher evidence", async () => {
+    const f = await fixture();
+    const original = [
+      {
+        target: "present perfect",
+        reason: "asked_simpler" as const,
+        scope: "this_class" as const,
+        againCount: 0,
+        lastEvidenceDate: "2026-10-05",
+      },
+    ];
+    const first = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      { provider: f.provider, job: f.job, practiceCandidates: async () => original },
+    );
+    await f.work();
+    expect((await getRun(db, f.ctx, first.id)).state).toBe("ready");
+    const recovery = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      {
+        provider: f.provider,
+        job: f.job,
+        reuseCompletedKnowledge: true,
+        practiceCandidates: async () => {
+          throw new Error("A recovery run must not take a fresh memory snapshot");
+        },
+      },
+    );
+    const saved = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", recovery.id)
+      .executeTakeFirstOrThrow();
+    expect(saved.settings).toMatchObject({
+      learnerContext: { version: 2, practiceCandidates: original },
+    });
+  });
+  it("D48 without memory or a simpler choice keeps the version 1 snapshot and no extra call", async () => {
+    const f = await fixture();
+    const run = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      { provider: f.provider, job: f.job, practiceCandidates: async () => [] },
+    );
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.inputs[0]).toMatchObject({ learnerContext: { version: 1 } });
+    expect(f.provider.prompts[0]).not.toContain("practiceFocus lists");
+    expect(f.provider.calls).toBe(1);
+    expect((await getLatestVersion(db, f.ctx, f.session.id))?.generation).toMatchObject({
+      teachingAdaptation: { version: 1, focus: [], simplerExplanations: false },
+    });
+  });
   it.each(["single", "batch"] as const)(
     "OCRs only selected PDF pages with the %s renderer, preserves paid step boundaries and deletes temporary images",
     async (renderer) => {

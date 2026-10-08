@@ -8,7 +8,7 @@ import {
   type StudyContent,
 } from "../lkm";
 import { errors } from "../plt";
-import type { LearnerTeachingContext } from "./learner-context";
+import type { ModelTeachingContext } from "./learner-context";
 
 interface TranslationClaim {
   text: string;
@@ -69,7 +69,7 @@ export function buildKnowledgeTranslationInput<T extends TranslationSource>(
   rawCanonicalRepair: T,
   explanationLanguage: string,
   maxInputCharacters: number,
-  learnerContext?: LearnerTeachingContext,
+  learnerContext?: ModelTeachingContext,
 ) {
   if (
     !isExplanationLanguage(explanationLanguage) ||

@@ -31,7 +31,11 @@ import { buildKnowledgeInput } from "../../packages/core/src/proc/knowledge-inpu
 import { buildKnowledgeRepairInput } from "../../packages/core/src/proc/knowledge-repair";
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "../../packages/core/src/proc/knowledge-translation";
-import { snapshotLearnerTeachingContext } from "../../packages/core/src/proc/learner-context";
+import {
+  modelTeachingContext,
+  selectPracticeFocus,
+  snapshotLearnerTeachingContext,
+} from "../../packages/core/src/proc/learner-context";
 import { knowledgePrompt } from "../../packages/core/src/proc/worker";
 import { automaticSourceRole, sourceClassificationPrompt } from "../../packages/core/src/src";
 
@@ -47,9 +51,11 @@ const levelIndex = process.argv.indexOf("--level");
 const selectedLevel = levelIndex < 0 ? undefined : process.argv[levelIndex + 1];
 if (selectedLevel !== undefined && selectedLevel !== "A2" && selectedLevel !== "B2")
   throw new Error("The synthetic evaluation level must be A2 or B2.");
+// D48: opt-in memory case — an explicit simpler-explanation choice plus synthetic practice points.
+const memory = process.argv.includes("--memory");
 const startedAt = new Date().toISOString();
 const directory = resolve(
-  "artifacts/verification/d46-live-teaching",
+  memory ? "artifacts/verification/d48-live-teaching" : "artifacts/verification/d46-live-teaching",
   startedAt.replace(/[:.]/g, "-"),
 );
 const settings = providerSettingsSchema.parse(
@@ -100,10 +106,40 @@ const source: RunSource = {
 const cases = (["A2", "B2"] as const)
   .filter((level) => selectedLevel === undefined || selectedLevel === level)
   .map((declaredLevel) => {
-    const learnerContext = snapshotLearnerTeachingContext({
-      level: declaredLevel,
-      goal: "general",
-    });
+    const snapshot = snapshotLearnerTeachingContext(
+      { level: declaredLevel, goal: "general" },
+      memory
+        ? {
+            simplerExplanations: true,
+            // Synthetic points only. "be pressed for time" is absent from the lesson and must
+            // be filtered out before the model sees anything.
+            practiceCandidates: [
+              {
+                target: "look forward to + -ing / noun",
+                reason: "recall_difficulty",
+                scope: "same_course",
+                againCount: 3,
+                lastEvidenceDate: "2026-10-06",
+              },
+              {
+                target: "get on with sb",
+                reason: "asked_simpler",
+                scope: "this_class",
+                againCount: 0,
+                lastEvidenceDate: "2026-10-05",
+              },
+              {
+                target: "be pressed for time",
+                reason: "recall_difficulty",
+                scope: "same_course",
+                againCount: 2,
+                lastEvidenceDate: "2026-10-04",
+              },
+            ],
+          }
+        : {},
+    );
+    const learnerContext = modelTeachingContext(snapshot, selectPracticeFocus(snapshot, [source]));
     const data = {
       explanationLanguage: "fa",
       teachingPreferences: { shorterExamples: false },
@@ -120,7 +156,7 @@ const cases = (["A2", "B2"] as const)
   });
 if (!live && !replayFrom) {
   process.stdout.write(
-    `${JSON.stringify({ live: false, model: settings.llmModel, plannedGenerations: cases.length, maxOutputTokens: settings.maxOutputTokens, cases: cases.map((item) => ({ declaredLevel: item.declaredLevel, inputCharacters: item.prepared.input.length })), command: "pnpm exec tsx tools/eval/personalized-teaching-live.ts --run-live" })}\n`,
+    `${JSON.stringify({ live: false, model: settings.llmModel, plannedGenerations: cases.length, maxOutputTokens: settings.maxOutputTokens, cases: cases.map((item) => ({ declaredLevel: item.declaredLevel, inputCharacters: item.prepared.input.length })), command: `pnpm exec tsx tools/eval/personalized-teaching-live.ts --run-live${memory ? " --memory" : ""}`, memory, learnerContext: cases.map((item) => item.data.learnerContext) })}\n`,
   );
   process.exit(0);
 }

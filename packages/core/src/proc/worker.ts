@@ -69,7 +69,12 @@ import {
 } from "./knowledge-compact";
 import { buildKnowledgeInput } from "./knowledge-input";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
-import type { LearnerTeachingContext } from "./learner-context";
+import {
+  type ModelTeachingContext,
+  modelTeachingContext,
+  selectPracticeFocus,
+  teachingAdaptation,
+} from "./learner-context";
 
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
@@ -938,11 +943,15 @@ export function processingJob(
           date: lesson.classDate,
           ...(course.isDefault ? {} : { course: course.name }),
         };
+        // D48: memory points were frozen at run start; only those this class's extracted text
+        // supports reach the model, without counts or dates.
+        const practiceFocus = selectPracticeFocus(settings.learnerContext, extracted);
+        const teaching = modelTeachingContext(settings.learnerContext, practiceFocus);
         const knowledgeInput = buildKnowledgeInput(
           {
             explanationLanguage: settings.explanationLanguage,
             teachingPreferences: settings.teachingPreferences,
-            ...(settings.learnerContext ? { learnerContext: settings.learnerContext } : {}),
+            ...(teaching ? { learnerContext: teaching } : {}),
             sources: extracted,
             missingSourceIds: missing,
             lessonContext,
@@ -987,7 +996,7 @@ export function processingJob(
                         ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
                         : settings.provider.maxOutputTokens,
                       false,
-                      settings.learnerContext,
+                      teaching,
                     ),
                     knowledgeInput.sourceRefPrompt,
                     "Return one sourceClassifications entry per source, using the exact sourceId. " +
@@ -1053,7 +1062,7 @@ export function processingJob(
             const studyRepair = buildKnowledgeStudyRepairInput(
               generated,
               settings.provider.maxInputCharacters,
-              settings.learnerContext,
+              teaching,
             );
             const priorStudyRepair = await cached(
               job.db,
@@ -1096,7 +1105,7 @@ export function processingJob(
                 sources: extracted,
                 explanationLanguage: settings.explanationLanguage,
                 teachingPreferences: settings.teachingPreferences,
-                ...(settings.learnerContext ? { learnerContext: settings.learnerContext } : {}),
+                ...(teaching ? { learnerContext: teaching } : {}),
                 missingSourceIds: missing,
                 lessonContext,
               },
@@ -1130,7 +1139,7 @@ export function processingJob(
                         settings.teachingPreferences.shorterExamples,
                         settings.provider.maxOutputTokens,
                         true,
-                        settings.learnerContext,
+                        teaching,
                       ),
                       repair.system,
                     ].join(" "),
@@ -1154,7 +1163,7 @@ export function processingJob(
                 corrected,
                 settings.explanationLanguage,
                 settings.provider.maxInputCharacters,
-                settings.learnerContext,
+                teaching,
               );
               const priorTranslation = await cached(
                 job.db,
@@ -1289,6 +1298,16 @@ export function processingJob(
                 profileVersion: settings.profileVersion,
                 teachingPreferences: settings.teachingPreferences,
                 ...(practiceAudit.applied ? { studyPractice: practiceAudit } : {}),
+                ...(settings.learnerContext
+                  ? {
+                      teachingAdaptation: teachingAdaptation({
+                        context: settings.learnerContext,
+                        shorterExamples: settings.teachingPreferences.shorterExamples,
+                        focus: practiceFocus,
+                        items: model.learningItems,
+                      }),
+                    }
+                  : {}),
               },
             },
             job.now(),
@@ -1493,7 +1512,7 @@ export function knowledgePrompt(
   shorterExamples: boolean,
   maxOutputTokens: number,
   usesEvidenceKeys = false,
-  learnerContext?: LearnerTeachingContext,
+  learnerContext?: ModelTeachingContext,
 ): string {
   const referenceBudget = usesEvidenceKeys
     ? "Use one best exact evidenceKey per from-class claim. The server expands its authoritative source reference and classification."

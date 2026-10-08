@@ -2,6 +2,8 @@
 import type { LearningOverview } from "@recalino/core/pers";
 import { useState } from "react";
 import { workspaceRequest } from "./api";
+import { LearningMemoryPanel, NextStepPanel } from "./LearningMemory";
+import { learningMemoryCopy } from "./learning-memory-copy";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export function LearningProfile({ initial }: { initial: LearningOverview }) {
   const [overview, setOverview] = useState(initial),
@@ -23,10 +25,26 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
       setBusy(false);
     }
   }
+  async function feedback(body: unknown, key: string) {
+    setBusy(true);
+    setProblem("");
+    setNotice("");
+    try {
+      setOverview(
+        await workspaceRequest<LearningOverview>("/api/learning/feedback", "POST", body, key),
+      );
+      setNotice(learningMemoryCopy.saved);
+    } catch (failure) {
+      setProblem(failure instanceof Error ? failure.message : learningMemoryCopy.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <div className="preview-stack">
       {problem && <Status tone="error">{problem}</Status>}
       {notice && <Status tone="success">{notice}</Status>}
+      <NextStepPanel memory={overview.memory} timeZone={overview.timezone} />
       <Panel title="Your practice in the last 30 days">
         <dl className="preview-metrics">
           <div>
@@ -60,40 +78,29 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
           </LinkButton>
         </Actions>
       </Panel>
-      <div className="preview-grid">
-        <Panel title="Your English level">
-          <h3>
-            {overview.profile.level === "not_sure"
-              ? "Not sure"
-              : (overview.profile.level ?? "Not chosen")}
-          </h3>
-          <p>Chosen by you · Goal: {overview.profile.goal ?? "Not chosen"}</p>
-          <p>Estimated support level: Unknown.</p>
-          <p className="preview-muted">
-            {overview.supportEstimate.evidenceCount} review answers in the last 30 days. Flashcard
-            answers alone cannot establish a CEFR level. Speaking is unknown without an appropriate
-            assessment.
-          </p>
-          <LinkButton secondary href="/me/edit/level-goal">
-            Edit level and goal
-          </LinkButton>
-        </Panel>
-        <Panel title="Topics to practise again">
-          {overview.repeatedMistakes.length ? (
-            overview.repeatedMistakes.map((item) => (
-              <article key={item.cardId} className="preview-list-item">
-                <p>{item.front}</p>
-                <p>{item.again} answers marked Again or Forgot.</p>
-                <LinkButton secondary href={`/cards/${item.cardId}`}>
-                  Check this card
-                </LinkButton>
-              </article>
-            ))
-          ) : (
-            <p>No repeated difficulties identified in the last 30 days.</p>
-          )}
-        </Panel>
-      </div>
+      <Panel title="Your English level">
+        <h3>
+          {overview.profile.level === "not_sure"
+            ? "Not sure"
+            : (overview.profile.level ?? "Not chosen")}
+        </h3>
+        <p>Chosen by you · Goal: {overview.profile.goal ?? "Not chosen"}</p>
+        <p>Estimated support level: Unknown.</p>
+        <p className="preview-muted">
+          {overview.supportEstimate.evidenceCount} review answers in the last 30 days. Flashcard
+          answers alone cannot establish a CEFR level. Speaking is unknown without an appropriate
+          assessment.
+        </p>
+        <LinkButton secondary href="/me/edit/level-goal">
+          Edit level and goal
+        </LinkButton>
+      </Panel>
+      <LearningMemoryPanel
+        memory={overview.memory}
+        timeZone={overview.timezone}
+        busy={busy}
+        onFeedback={(body, key) => void feedback(body, key)}
+      />
       <Panel title="Your practice over time">
         {overview.activity.history.length ? (
           <table>
@@ -135,6 +142,18 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
           >
             <option value="no">Standard examples</option>
             <option value="yes">Shorter examples</option>
+          </select>
+        </Field>
+        <Field label={learningMemoryCopy.simplerLabel} hint={learningMemoryCopy.simplerHint}>
+          <select
+            disabled={busy}
+            value={overview.simplerExplanations ? "yes" : "no"}
+            onChange={(event) =>
+              change({ action: "set_simpler_explanations", value: event.target.value === "yes" })
+            }
+          >
+            <option value="no">{learningMemoryCopy.simplerStandard}</option>
+            <option value="yes">{learningMemoryCopy.simplerOn}</option>
           </select>
         </Field>
         {overview.suggestion ? (

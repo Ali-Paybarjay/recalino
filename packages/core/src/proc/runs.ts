@@ -44,7 +44,7 @@ import {
 } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
 import { reuseCompletedKnowledge } from "./knowledge-reuse";
-import { snapshotLearnerTeachingContext } from "./learner-context";
+import { type PracticeCandidate, snapshotLearnerTeachingContext } from "./learner-context";
 import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
@@ -246,6 +246,16 @@ export async function createProcessingRun(
     reuseCompletedKnowledge?: boolean;
     /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
     expectedLatestClassRunId?: string;
+    /** D48: bounded memory points supplied by PERS inside this transaction (dependency inversion). */
+    practiceCandidates?: (
+      tx: Tx,
+      input: { sessionId: string; now: Date },
+    ) => Promise<readonly PracticeCandidate[]>;
+    /**
+     * D48: a recovery run reuses the memory points snapshotted by the run it recovers;
+     * `reuseCompletedKnowledge` alone recovers the class's newest run.
+     */
+    inheritPracticeCandidatesFrom?: string;
   },
 ): Promise<ProcessingRun> {
   const input = createRunSchema.parse(raw);
@@ -345,20 +355,35 @@ export async function createProcessingRun(
     const awaiting = snapshot.sources.some(
       (source) => source.kind === "audio" && !source.contentVersionId && !source.objectId,
     );
+    const preferences = await listTeachingPreferences(tx, ctx);
+    const explicit = (key: (typeof preferences)[number]["key"]) =>
+      preferences.some(
+        (preference) =>
+          preference.key === key && preference.origin === "explicit" && preference.value === true,
+      );
+    // D48: memory is frozen with the run. A recovery run keeps its original points, so later
+    // reviews neither redefine the request nor void reuse of an already paid response.
+    const practiceCandidates =
+      options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
+        ? await inheritedPracticeCandidates(
+            tx,
+            ctx,
+            session.id,
+            options.inheritPracticeCandidatesFrom,
+          )
+        : options.practiceCandidates
+          ? await options.practiceCandidates(tx, { sessionId: session.id, now })
+          : [];
     const settings = runSettingsSchema.parse({
       provider: provider.settings,
       explanationLanguage:
         account.profile.explanationLanguage === "english" ? "en" : account.profile.firstLanguage,
       profileVersion: account.profile.version,
-      learnerContext: snapshotLearnerTeachingContext(account.profile),
-      teachingPreferences: {
-        shorterExamples: (await listTeachingPreferences(tx, ctx)).some(
-          (preference) =>
-            preference.key === "shorter_examples" &&
-            preference.origin === "explicit" &&
-            preference.value === true,
-        ),
-      },
+      learnerContext: snapshotLearnerTeachingContext(account.profile, {
+        simplerExplanations: explicit("simpler_explanations"),
+        practiceCandidates,
+      }),
+      teachingPreferences: { shorterExamples: explicit("shorter_examples") },
     });
     const jobId = awaiting
       ? null
@@ -559,15 +584,44 @@ export async function retryRun(
     .where("state", "in", ["started", "uncertain"])
     .executeTakeFirst();
   if (unresolved) throw errors.validationFailed({ retry: ["provider_outcome_unresolved"] });
+  const { practiceCandidates: _fresh, ...recovery } = options;
   return createProcessingRun(
     db,
     ctx,
     { sessionId: prior.sessionId, operationKey },
     {
-      ...options,
+      ...recovery,
       reuseCompletedKnowledge: true,
+      inheritPracticeCandidatesFrom: prior.id,
     },
   );
+}
+
+/**
+ * Points of the owned class run being recovered (the given run, else the class's newest run);
+ * legacy or unreadable settings contribute none.
+ */
+async function inheritedPracticeCandidates(
+  tx: Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  runId?: string,
+): Promise<PracticeCandidate[]> {
+  const row = runId
+    ? await ownedRun(tx, ctx, runId)
+    : await tx
+        .selectFrom("proc.processing_run")
+        .selectAll()
+        .where("user_id", "=", ctx.userId)
+        .where("session_id", "=", sessionId)
+        .where("kind", "=", "class")
+        .orderBy("created_at", "desc")
+        .orderBy("id", "desc")
+        .executeTakeFirst();
+  if (!row || row.session_id !== sessionId) return [];
+  const settings = runSettingsSchema.safeParse(row.settings);
+  const context = settings.success ? settings.data.learnerContext : undefined;
+  return context?.version === 2 ? [...(context.practiceCandidates ?? [])] : [];
 }
 export async function cancelSessionRuns(
   tx: Tx,

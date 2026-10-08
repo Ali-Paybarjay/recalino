@@ -1,7 +1,7 @@
-import type { LearnerTeachingContext } from "./learner-context";
+import type { ModelTeachingContext } from "./learner-context";
 
-/** AC-D46-06: declared preferences guide teaching, never assert measured mastery. */
-export function personalisedTeachingPrompt(learnerContext?: LearnerTeachingContext): string {
+/** AC-D46-06, D48: declared choices and matched practice evidence guide teaching, never assert mastery. */
+export function personalisedTeachingPrompt(learnerContext?: ModelTeachingContext): string {
   const level = learnerContext?.declaredLevel;
   const levelInstruction =
     level === "A1" || level === "A2"
@@ -20,15 +20,27 @@ export function personalisedTeachingPrompt(learnerContext?: LearnerTeachingConte
         : goal === "general"
           ? "When the lesson allows a new example, favour useful everyday, work and social communication for the declared general-English goal."
           : "No specific learning goal is declared. Stay with the lesson content; do not infer an exam or personal goal.";
+  const simpler =
+    learnerContext?.simplerExplanations === true
+      ? "The learner explicitly chose simpler explanations: use short sentences, everyday words and one idea per sentence, and explain a difficult point step by step. This changes only how you explain; keep every lesson point, example and evidence."
+      : "";
+  const focus = learnerContext?.practiceFocus?.length
+    ? "learnerContext.practiceFocus lists lesson items this learner recently found hard to recall in their own flashcard practice (recall_difficulty) or asked to have explained more simply (asked_simpler). It is practice evidence about recall, not a diagnosis, level or mistake. Use it only for an item that this lesson's sources actually teach with the same meaning: give that item a clearer step-by-step noteFa and, when the sources or standard usage clearly support it, one short contrast or common confusion. Never add an item, example, claim or section because it is listed; never mention practice history, counts, weakness or forgetting to the learner."
+    : "";
   return [
     "Teach with a warm, calm, friendly and non-judgmental tone in the resolved explanation language. Use direct, helpful explanations without generic praise or invented familiarity.",
-    "learnerContext contains only the learner's declared level and goal, not a diagnostic result. Never claim complete knowledge of the learner, proven mastery, a remembered difficulty or a personal fact absent from the sources.",
+    "learnerContext contains only the learner's declared level and goal and, when present, their explicit explanation choice and practiceFocus; none of it is a diagnostic result. Never claim complete knowledge of the learner, proven mastery, a remembered difficulty or a personal fact absent from the sources.",
     levelInstruction,
     goalInstruction,
-    "Within existing classNotes and study fields, teach selected points in a useful sequence: explain the idea, show how it is used, then connect it to the example or existing practice. Use coreIntro for a short lesson orientation and noteFa/chunks for the teaching point; do not add fields or a second copy of the lesson.",
+    simpler,
+    focus,
+    "Within existing classNotes and study fields, teach selected points in a useful sequence: explain the idea, show how it is used, then connect it to the example or existing practice. Use coreIntro for a short orientation: what this lesson teaches and when it is useful. Use noteFa/chunks for the teaching point; do not add fields or a second copy of the lesson.",
+    "In each production noteFa, when fullSentence shows the point, name the exact words of that sentence that carry the meaning or rule, so the learner sees why the example works. Add a comparison, condition of use or common confusion only when the lesson or standard British usage clearly supports it; never invent a mistake, nuance or contrast to fill the note.",
     "Adapt newly written explanations and AI examples only. Preserve exact class quotations, target expressions, source examples, task order and evidence. If a class point exceeds the declared level, scaffold its explanation rather than remove or misrepresent it. New examples remain AI Expansion and are never attributed to the class.",
     "Keep the existing item counts, concise-field rules and output budget; when space is tight, prefer fewer complete teaching points over a longer introduction.",
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Shared rich study content in the resolved language, preserving complete-item response budgets. */
@@ -36,7 +48,7 @@ export function studyPrompt(
   explanationLanguage: string,
   maxOutputTokens: number,
   usesEvidenceKeys = false,
-  learnerContext?: LearnerTeachingContext,
+  learnerContext?: ModelTeachingContext,
 ): string {
   const persian = explanationLanguage.split("-")[0] === "fa";
   const language = persian

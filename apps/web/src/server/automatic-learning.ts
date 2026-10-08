@@ -46,6 +46,7 @@ import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
 import { getProcessingDefinition } from "./processing-jobs";
 import { getObjectStore } from "./storage";
+import { practiceCandidatesBeforeRun } from "./teaching-memory";
 
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
@@ -296,6 +297,10 @@ export async function automaticLearningSync(
   }
   const processing = deps.processing();
   if (!processing) return progress("blocked", "storage_unavailable", null);
+  // Read outside the run transaction; a recovery run inherits the recovered run's points.
+  const practiceCandidates = options.retryKey
+    ? []
+    : await practiceCandidatesBeforeRun(db, ctx, sessionId, deps.now());
   try {
     const run = await createProcessingRun(
       db,
@@ -312,6 +317,8 @@ export async function automaticLearningSync(
         job: processing,
         now: deps.now(),
         reuseCompletedKnowledge: !!options.retryKey,
+        // D48: bounded practice points frozen with the run; a retry keeps the original points.
+        practiceCandidates: async () => practiceCandidates,
       },
     );
     // Replayed operations after a lost acknowledgement can already be terminal.

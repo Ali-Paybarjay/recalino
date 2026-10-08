@@ -1,4 +1,4 @@
-export { safeCardHtml } from "./card-html";
+export { cardHtmlToText, safeCardHtml } from "./card-html";
 export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
 export {
   type Claim,

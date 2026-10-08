@@ -38,6 +38,12 @@ import {
   tombstoneSessionNotes,
   tombstoneSourceNotes,
 } from "@recalino/core/note";
+import {
+  cleanupAccountPers,
+  cleanupSessionPers,
+  tombstoneAccountPers,
+  tombstoneSessionPers,
+} from "@recalino/core/pers";
 import { clearAccountNotifications, clearSessionNotifications, errors } from "@recalino/core/plt";
 import { type PrivacyDependencies, privacyCleanupJob } from "@recalino/core/priv";
 import {
@@ -146,6 +152,14 @@ export function privacyDependencies(): PrivacyDependencies {
           cleanupAccountProcessing(db, ctx, { store: storage(), now }),
         cleanupSource: (db, ctx, sourceId, _ids, now) =>
           cleanupSourceProcessing(db, ctx, sourceId, { store: storage(), now }),
+      },
+      {
+        // D48 learner corrections reference card goals; clean them before card purges.
+        module: "pers",
+        tombstoneSession: tombstoneSessionPers,
+        tombstoneAccount: tombstoneAccountPers,
+        cleanupSession: cleanupSessionPers,
+        cleanupAccount: cleanupAccountPers,
       },
       {
         module: "srs",
