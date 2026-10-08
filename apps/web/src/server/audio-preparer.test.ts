@@ -145,6 +145,58 @@ it("keeps excerpts from a browser recording whose packet clock jitters, cut exac
   decoded.samples.fill(0);
 }, 30000);
 
+/**
+ * Phone recorders write AAC frame durations from rounded capture timestamps; some frames are one
+ * tick short, so the container clock trails the samples. The production class (audio/mp4, 2 h 8 min)
+ * declares 7,675,763 ms but decodes 7,675,883 ms: the same ~15 ppm lag reproduced here.
+ */
+function phoneClockM4a(seconds: number) {
+  if (!ffmpegPath) throw new Error("Synthetic decoder is unavailable");
+  const encoded = spawnSync(
+    ffmpegPath,
+    [
+      "-nostdin",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      "pipe:0",
+      "-ar",
+      "48000",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "64k",
+      "-bsf:a",
+      "setts=ts=PTS-floor(N/64)",
+      "-movflags",
+      "frag_keyframe+empty_moov",
+      "-f",
+      "mp4",
+      "pipe:1",
+    ],
+    { input: syntheticWav(seconds), windowsHide: true, timeout: 20000, maxBuffer: 20000000 },
+  );
+  expect(encoded.status, encoded.stderr.toString()).toBe(0);
+  return encoded.stdout;
+}
+
+// FR-VOC-002: the observed Android class recording failed every window of its check this way.
+it("keeps excerpts from a phone recording whose container clock trails its samples", async () => {
+  // Every container-time window here decodes slightly over its span; each once rejected the check.
+  const decoded = await decodeVoiceAudioWindows(phoneClockM4a(40), [
+    { start: 2000, end: 12000 },
+    { start: 20000, end: 30000 },
+  ]);
+  expect(decoded.windows).toEqual([
+    { sourceStartMs: 2000, compositeStartMs: 0, compositeEndMs: 10000 },
+    { sourceStartMs: 20000, compositeStartMs: 12000, compositeEndMs: 22000 },
+  ]);
+  expect(decoded.partial).toBe(false);
+  expect(decoded.samples.length).toBe(22000 * 16);
+  decoded.samples.fill(0);
+}, 30000);
+
 // FR-VOC-002
 it("skips an excerpt that cannot hold a turn and discloses the partial coverage", async () => {
   const decoded = await decodeVoiceAudioWindows(syntheticWav(8), [
