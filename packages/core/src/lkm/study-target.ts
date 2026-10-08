@@ -6,6 +6,8 @@ export interface StudyLexicalTarget {
 }
 
 const placeholder = /^(?:sb|sth|someone|somebody|something)$/iu;
+// A spelled-out slot word standing alone cannot be a slot: it is the taught word itself.
+const literalPronoun = /^(?:someone|somebody|something)$/iu;
 const lexical = /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’-]+$/u;
 const grammarWord = /\b(?:noun|verb|adjective|adverb|adj|adv|participle|ing)\b/iu;
 const complement =
@@ -42,6 +44,8 @@ export function studyLexicalTarget(en: string): StudyLexicalTarget | undefined {
     /\s+\((?:pronunciation|sl|n|v|adj|adv|noun|noun phrase|formal|informal|British English|separable phrasal verb)\)$/iu,
     "",
   );
+  // Checked before slot unwrapping, so "(somebody)", "sb" and "sth" alone stay unsupported.
+  if (!separable && literalPronoun.test(value)) return { text: value, parts: [value] };
   value = value.replace(
     /\((sb|sth|someone|somebody|something)(?:\s*\/\s*(?:sb|sth|someone|somebody|something))?\)/giu,
     "$1",
