@@ -1,5 +1,6 @@
 export {
   type AiProvider,
+  effectiveStructuredMaxOutputTokens,
   maximumProviderCost,
   ProviderError,
   type ProviderResult,
@@ -21,6 +22,7 @@ export {
   saveEstimateRates,
 } from "./pricing";
 export {
+  createJsonFallbackTransport,
   createStructuredTransport,
   structuredSchemaComplexity,
   structuredTransportSchema,

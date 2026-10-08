@@ -156,7 +156,15 @@ function entry(item: LearningItem, ctx: RenderContext, index?: number): string {
     !production && item.claim.origin === "ai_expansion"
       ? `<p class="src">${ctx.label("aiExpansion")}</p>`
       : "";
-  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en">${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${prose(value.sourceFa)}</p>` : ""}\n${expansion}</article>`;
+  const sourceKey = item.claim.origin === "from_class" ? "fromClass" : "aiExpansion";
+  const sourceLabel = studyMessage(ctx.locale.language, sourceKey);
+  const sourceHtml =
+    production && value.sourceFa === sourceLabel.text
+      ? ctx.label(sourceKey)
+      : production
+        ? prose(value.sourceFa)
+        : "";
+  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en">${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${sourceHtml}</p>` : ""}\n${expansion}</article>`;
 }
 
 function table(
@@ -400,7 +408,7 @@ export function renderClassNotesHtml(model: KnowledgeModel): string {
             ? [
                 [
                   `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
-                  `<td>${prose(item.study.faMeaning)}${item.claim.origin === "ai_expansion" ? `<p class="src">${ctx.label("aiExpansion")}</p>` : ""}</td>`,
+                  `<td>${prose(item.study.faMeaning)}${item.study.noteFa ? `<p ${ctx.explanatoryAttrs}>📝 ${prose(item.study.noteFa)}</p>` : ""}${item.claim.origin === "ai_expansion" ? `<p class="src">${ctx.label("aiExpansion")}</p>` : ""}</td>`,
                   `<td ${ctx.englishAttrs}><i>${text(item.study.example)}</i></td>`,
                 ],
               ]

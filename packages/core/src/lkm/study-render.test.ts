@@ -149,6 +149,76 @@ it.each(["en", "fa"])(
   },
 );
 
+it.each([
+  ["en", "Use the base form **like** after don't; the quoted example is incorrect.", "ltr"],
+  ["fa", "بعد از don't فعل **like** می‌آید؛ جملهٔ نقل‌شده نادرست است.", "rtl"],
+] as const)(
+  "shows escaped recognition correction context below its meaning in %s notes",
+  (language, explanation, direction) => {
+    const model = referenceStudyModel();
+    model.language.explanation = language;
+    const item = model.learningItems.find((entry) => entry.study?.set === "recognition");
+    if (item?.study?.set !== "recognition") throw new Error("Missing recognition fixture");
+    item.study.spoken = false;
+    item.study.example = "I don't likes coffee.";
+    item.study.noteFa = `${explanation} <img src=x onerror="alert(1)"><script>alert(1)</script>&`;
+    item.claim = { ...item.claim, origin: "ai_expansion", evidence: "ai", sourceRefs: [] };
+    const document = parse(renderClassNotesHtml(model));
+    const row = elements(byId(document, "extra"), "tr").find((candidate) =>
+      elements(candidate, "b").some((entry) => serialize(entry) === item.study?.en),
+    );
+    if (!row) throw new Error("Missing recognition row");
+    const cells = elements(row, "td");
+    expect(cells).toHaveLength(3);
+    const meaning = cells[1];
+    if (!meaning) throw new Error("Missing recognition meaning");
+    const paragraphs = elements(meaning, "p");
+    expect(paragraphs).toHaveLength(2);
+    const correction = paragraphs[0];
+    if (!correction) throw new Error("Missing recognition correction");
+    expect(attribute(correction, "dir")).toBe(direction);
+    if (language === "en") expect(attribute(correction, "lang")).toBe("en");
+    expect(serialize(correction)).toContain("📝");
+    expect(
+      elements(correction, "b")
+        .map((entry) => serialize(entry))
+        .join(""),
+    ).toContain("like");
+    if (language === "fa")
+      expect(
+        elements(correction, "bdi")
+          .map((entry) => serialize(entry))
+          .join(""),
+      ).toContain("don't");
+    expect(serialize(correction)).toContain("&lt;");
+    expect(serialize(correction)).toContain("&amp;");
+    expect(
+      elements(row).some((node) => ["img", "script", "iframe", "object"].includes(node.tagName)),
+    ).toBe(false);
+    expect(
+      elements(row)
+        .flatMap((node) => node.attrs)
+        .some((attr) => attr.name.startsWith("on")),
+    ).toBe(false);
+    expect(serialize(paragraphs[1] as Element)).toContain(
+      studyMessage(language, "aiExpansion").text,
+    );
+    expect(serialize(cells[2] as Element)).toContain("I don't likes coffee.");
+  },
+);
+
+it("leaves recognition rows without explanatory notes unchanged", () => {
+  const model = referenceStudyModel();
+  const item = model.learningItems.find((entry) => entry.study?.set === "recognition");
+  if (item?.study?.set !== "recognition") throw new Error("Missing recognition fixture");
+  item.study.spoken = false;
+  item.claim = { ...item.claim, origin: "from_class", evidence: "material" };
+  delete item.study.noteFa;
+  const withoutNote = renderClassNotesHtml(model);
+  item.study.noteFa = "";
+  expect(renderClassNotesHtml(model)).toBe(withoutNote);
+});
+
 it("omits empty sections and pills, renumbers headings, and keeps all jumps inside the document", () => {
   const model = referenceStudyModel();
   if (!model.classNotes) throw new Error("fixture");

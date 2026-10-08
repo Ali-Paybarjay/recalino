@@ -67,6 +67,11 @@ import {
   compactKnowledgeInstruction,
   knowledgeTruncationSchema,
 } from "./knowledge-compact";
+import { buildKnowledgeGenerationInput } from "./knowledge-generation";
+import {
+  generateCanonicalKnowledge,
+  knowledgeSchemaFailureSchema,
+} from "./knowledge-generation-step";
 import { buildKnowledgeInput } from "./knowledge-input";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
 import type { LearnerTeachingContext } from "./learner-context";
@@ -398,6 +403,24 @@ export async function providerStep<T>(
           "knowledge:truncated",
           knowledgeTruncationSchema.parse({
             reason: "provider_output_truncated",
+            attemptId: attempt.id,
+          }),
+          job.now(),
+        );
+      }
+      if (
+        step === "knowledge" &&
+        model === "anthropic/claude-haiku-5.5" &&
+        providerError.code === "provider_schema_invalid" &&
+        !providerError.uncertain &&
+        providerError.accounting
+      ) {
+        await saveStep(
+          tx,
+          runId,
+          "knowledge:schema-invalid",
+          knowledgeSchemaFailureSchema.parse({
+            reason: "provider_schema_invalid",
             attemptId: attempt.id,
           }),
           job.now(),
@@ -938,15 +961,18 @@ export function processingJob(
           date: lesson.classDate,
           ...(course.isDefault ? {} : { course: course.name }),
         };
+        const generationData = {
+          explanationLanguage: settings.explanationLanguage,
+          teachingPreferences: settings.teachingPreferences,
+          ...(settings.learnerContext ? { learnerContext: settings.learnerContext } : {}),
+          sources: extracted,
+          missingSourceIds: missing,
+          lessonContext,
+        };
+        // Legacy snapshots retain their original wire contract and rollback behavior.
+        const compactGeneration = settings.provider.llmModel === "anthropic/claude-haiku-5.5";
         const knowledgeInput = buildKnowledgeInput(
-          {
-            explanationLanguage: settings.explanationLanguage,
-            teachingPreferences: settings.teachingPreferences,
-            ...(settings.learnerContext ? { learnerContext: settings.learnerContext } : {}),
-            sources: extracted,
-            missingSourceIds: missing,
-            lessonContext,
-          },
+          generationData,
           settings.provider.maxInputCharacters,
         );
         const priorKnowledge = await cached(
@@ -964,39 +990,66 @@ export function processingJob(
             "knowledge:truncated",
             knowledgeTruncationSchema,
           );
+          const schemaFailure = compactGeneration
+            ? await cached(
+                job.db,
+                payload.runId,
+                "knowledge:schema-invalid",
+                knowledgeSchemaFailureSchema,
+              )
+            : null;
+          // Deterministic request validation runs before reserving a paid attempt.
+          const generation = compactGeneration
+            ? buildKnowledgeGenerationInput(generationData, settings.provider.maxInputCharacters, {
+                maxOutputTokens: compact
+                  ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
+                  : settings.provider.maxOutputTokens,
+                compact: Boolean(compact),
+                ...(schemaFailure ? { repairReason: schemaFailure.reason } : {}),
+              })
+            : undefined;
           try {
             generated = await providerStep(
               job,
               ctx,
               payload.runId,
-              compact ? "knowledge:compact" : "knowledge",
+              compact ? "knowledge:compact" : schemaFailure ? "knowledge:repair" : "knowledge",
               settings.provider.llmModel,
               provider,
               generatedKnowledgeSchema,
               (operationKey) =>
-                provider.structured({
-                  operationKey,
-                  model: settings.provider.llmModel,
-                  schema: generatedKnowledgeSchema,
-                  schemaName: "class_knowledge",
-                  system: [
-                    knowledgePrompt(
-                      settings.explanationLanguage,
-                      settings.teachingPreferences.shorterExamples,
-                      compact
-                        ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
-                        : settings.provider.maxOutputTokens,
-                      false,
-                      settings.learnerContext,
-                    ),
-                    knowledgeInput.sourceRefPrompt,
-                    "Return one sourceClassifications entry per source, using the exact sourceId. " +
-                      sourceClassificationPrompt +
-                      " Audio always uses evidence audio; use class_material as its classification placeholder. Images already have an automatically detected role from vision: preserve that category. Use the detected category when choosing claim evidence, but never treat personal notes as proof of authorship or a speaker's identity.",
-                    ...(compact ? [compactKnowledgeInstruction(settings.explanationLanguage)] : []),
-                  ].join(" "),
-                  input: knowledgeInput.input,
-                }),
+                generation
+                  ? generateCanonicalKnowledge(
+                      provider,
+                      settings.provider.llmModel,
+                      operationKey,
+                      generation,
+                    )
+                  : provider.structured({
+                      operationKey,
+                      model: settings.provider.llmModel,
+                      schema: generatedKnowledgeSchema,
+                      schemaName: "class_knowledge",
+                      system: [
+                        knowledgePrompt(
+                          settings.explanationLanguage,
+                          settings.teachingPreferences.shorterExamples,
+                          compact
+                            ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
+                            : settings.provider.maxOutputTokens,
+                          false,
+                          settings.learnerContext,
+                        ),
+                        knowledgeInput.sourceRefPrompt,
+                        "Return one sourceClassifications entry per source, using the exact sourceId. " +
+                          sourceClassificationPrompt +
+                          " Audio always uses evidence audio; use class_material as its classification placeholder. Images already have an automatically detected role from vision: preserve that category. Use the detected category when choosing claim evidence, but never treat personal notes as proof of authorship or a speaker's identity.",
+                        ...(compact
+                          ? [compactKnowledgeInstruction(settings.explanationLanguage)]
+                          : []),
+                      ].join(" "),
+                      input: knowledgeInput.input,
+                    }),
               {
                 onCommit: async (tx, output) => {
                   await saveStep(
@@ -1006,7 +1059,7 @@ export function processingJob(
                     knowledgeInputContextSchema.parse({ version: 1, ...lessonContext }),
                     job.now(),
                   );
-                  if (compact) {
+                  if (compact || schemaFailure) {
                     await saveStep(tx, payload.runId, "knowledge", output, job.now());
                   }
                 },
@@ -1015,16 +1068,25 @@ export function processingJob(
           } catch (error) {
             if (
               !compact &&
+              !schemaFailure &&
               error instanceof ProviderError &&
-              error.code === "provider_output_truncated" &&
               !error.uncertain &&
               error.accounting &&
-              (await cached(
-                job.db,
-                payload.runId,
-                "knowledge:truncated",
-                knowledgeTruncationSchema,
-              ))
+              ((error.code === "provider_output_truncated" &&
+                (await cached(
+                  job.db,
+                  payload.runId,
+                  "knowledge:truncated",
+                  knowledgeTruncationSchema,
+                ))) ||
+                (compactGeneration &&
+                  error.code === "provider_schema_invalid" &&
+                  (await cached(
+                    job.db,
+                    payload.runId,
+                    "knowledge:schema-invalid",
+                    knowledgeSchemaFailureSchema,
+                  ))))
             ) {
               await checkpointAndContinue(job, ctx, payload.runId, definition);
               return;
@@ -1044,6 +1106,24 @@ export function processingJob(
           // Only a complete, saved response with a known semantic failure permits repair.
           // Provider uncertainty, changed settings and account/source failures never enter here.
           if (!semanticRepairReason(error)) throw error;
+          // A known invalid response or truncation and its recovery consume both
+          // 5.5 attempts. Never buy a third generation after semantic validation.
+          if (
+            compactGeneration &&
+            ((await cached(
+              job.db,
+              payload.runId,
+              "knowledge:truncated",
+              knowledgeTruncationSchema,
+            )) ||
+              (await cached(
+                job.db,
+                payload.runId,
+                "knowledge:schema-invalid",
+                knowledgeSchemaFailureSchema,
+              )))
+          )
+            throw error;
           // Persist each paid result before the next provider call gets its own job budget.
           if (!priorKnowledge) {
             await checkpointAndContinue(job, ctx, payload.runId, definition);
@@ -1086,6 +1166,48 @@ export function processingJob(
             // it never triggers a second repair or regenerates the saved lesson.
             validated = validateGeneratedKnowledge(
               studyRepair.apply(answerParts),
+              extracted,
+              missing,
+              settings.explanationLanguage,
+            );
+          } else if (compactGeneration) {
+            const repair = buildKnowledgeGenerationInput(
+              generationData,
+              settings.provider.maxInputCharacters,
+              {
+                maxOutputTokens: settings.provider.maxOutputTokens,
+                repairReason: semanticRepairReason(error) ?? undefined,
+              },
+            );
+            const priorRepair = await cached(
+              job.db,
+              payload.runId,
+              "knowledge:repair",
+              generatedKnowledgeSchema,
+            );
+            const repaired =
+              priorRepair ??
+              (await providerStep(
+                job,
+                ctx,
+                payload.runId,
+                "knowledge:repair",
+                settings.provider.llmModel,
+                provider,
+                generatedKnowledgeSchema,
+                (operationKey) =>
+                  generateCanonicalKnowledge(
+                    provider,
+                    settings.provider.llmModel,
+                    operationKey,
+                    repair,
+                    "class_knowledge_content_repair",
+                  ),
+              ));
+            if (!priorRepair) knowledgeDispatched = true;
+            // A complete second response is final: no recursive regeneration or translation.
+            validated = validateGeneratedKnowledge(
+              repaired,
               extracted,
               missing,
               settings.explanationLanguage,
@@ -1443,7 +1565,7 @@ function processingFailureCode(error: AppError): string | null {
   return null;
 }
 
-function validateGeneratedKnowledge(
+export function validateGeneratedKnowledge(
   generated: z.infer<typeof generatedKnowledgeSchema>,
   extracted: readonly RunSource[],
   missing: string[],

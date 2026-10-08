@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   type AiProvider,
+  effectiveStructuredMaxOutputTokens,
   ProviderError,
   type ProviderResult,
   type ProviderSettings,
@@ -77,6 +78,16 @@ export class OpenRouterProvider implements AiProvider {
       throw new ProviderError("provider_contract_missing", false, false);
   }
   private async post(path: string, body: unknown, operationKey: string): Promise<Response> {
+    const serialized = JSON.stringify(body);
+    const model =
+      typeof body === "object" && body !== null && "model" in body ? body.model : undefined;
+    const maximumBytes =
+      path === "chat/completions" && typeof model === "string"
+        ? this.settings.structuredModelOverrides?.[model]?.maxRequestBytes
+        : undefined;
+    // Check the complete wire body, including schema/system overhead, before any dispatch.
+    if (maximumBytes !== undefined && Buffer.byteLength(serialized, "utf8") > maximumBytes)
+      throw new ProviderError("provider_request_too_large", false, false);
     let response: Response;
     try {
       response = await this.request(`https://openrouter.ai/api/v1/${path}`, {
@@ -88,7 +99,7 @@ export class OpenRouterProvider implements AiProvider {
           "Idempotency-Key": operationKey,
           "X-OpenRouter-Cache": "false",
         },
-        body: JSON.stringify(body),
+        body: serialized,
         signal: AbortSignal.timeout(this.settings.timeoutMs),
       });
     } catch {
@@ -107,8 +118,15 @@ export class OpenRouterProvider implements AiProvider {
   async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
     if (Array.from(input.input).length > this.settings.maxInputCharacters)
       throw new ProviderError("provider_input_too_large", false, false);
+    const controls = this.settings.structuredModelOverrides?.[input.model];
+    // A URL's byte length cannot bound the image's token usage. This bound is text-only.
+    if (controls?.maxRequestBytes !== undefined && input.imageUrls?.length)
+      throw new ProviderError("provider_bounded_images_unsupported", false, false);
     const content: unknown[] = [{ type: "text", text: input.input }];
-    const transport = createStructuredTransport(input.schema, input.model);
+    const transport =
+      controls?.structuredOutputMode === "json_object"
+        ? undefined
+        : createStructuredTransport(input.schema, input.model);
     for (const url of input.imageUrls ?? []) {
       if (
         !/^https:\/\//.test(url) &&
@@ -120,8 +138,16 @@ export class OpenRouterProvider implements AiProvider {
     const body = {
       model: input.model,
       provider: privacy,
-      max_tokens: this.settings.maxOutputTokens,
-      ...(this.settings.structuredTemperature === undefined
+      max_tokens: effectiveStructuredMaxOutputTokens(this.settings, input.model),
+      ...(controls?.reasoningEffort === undefined
+        ? {}
+        : {
+            reasoning: {
+              effort: controls.reasoningEffort,
+            },
+          }),
+      ...(this.settings.structuredTemperature === undefined ||
+      input.model === "anthropic/claude-haiku-5.5"
         ? {}
         : { temperature: this.settings.structuredTemperature }),
       messages: [
@@ -131,30 +157,11 @@ export class OpenRouterProvider implements AiProvider {
     };
     let response: Response;
     let jsonFallback: ReturnType<typeof createJsonFallbackTransport> | undefined;
-    try {
-      response = await this.post(
-        "chat/completions",
-        {
-          ...body,
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: input.schemaName,
-              strict: true,
-              schema: transport.schema,
-            },
-          },
-        },
-        input.operationKey,
-      );
-    } catch (error) {
-      // A recognized HTTP 400 grammar rejection happened before generation. One
-      // JSON-mode attempt bypasses only the remote grammar compiler; every local
-      // schema/evidence validator still applies. Unknown outcomes never retry.
-      if (!(error instanceof ProviderError) || error.code !== "provider_request_schema_too_complex")
-        throw error;
-      jsonFallback = createJsonFallbackTransport(input.schema);
-      response = await this.post(
+    const postJson = (
+      jsonTransport: ReturnType<typeof createJsonFallbackTransport>,
+      operationKey: string,
+    ) =>
+      this.post(
         "chat/completions",
         {
           ...body,
@@ -164,16 +171,49 @@ export class OpenRouterProvider implements AiProvider {
               content: [
                 input.system,
                 "Return exactly one complete JSON object conforming to the following JSON Schema. Do not include Markdown fences or surrounding prose. All required fields, types, constraints and evidence rules still apply. Finish the entire object within the output token budget.",
-                "Omit inapplicable optional fields. Null and empty-string absence values are permitted only where this schema explicitly declares them; never use them for required fields.",
-                JSON.stringify(jsonFallback.schema),
+                "Omit inapplicable optional fields. Every required property must be present. Absence values null or empty string are allowed only where this schema explicitly permits them; never substitute absence for a field constrained to nonempty content.",
+                JSON.stringify(jsonTransport.schema),
               ].join("\n\n"),
             },
             { role: "user", content },
           ],
           response_format: { type: "json_object" },
         },
-        `${input.operationKey}:json`,
+        operationKey,
       );
+    if (!transport) {
+      // Explicit JSON mode skips native compilation, never local schema validation.
+      jsonFallback = createJsonFallbackTransport(input.schema);
+      response = await postJson(jsonFallback, input.operationKey);
+    } else {
+      try {
+        response = await this.post(
+          "chat/completions",
+          {
+            ...body,
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: input.schemaName,
+                strict: true,
+                schema: transport.schema,
+              },
+            },
+          },
+          input.operationKey,
+        );
+      } catch (error) {
+        // A recognized HTTP 400 grammar rejection happened before generation. One
+        // JSON-mode attempt bypasses only the remote grammar compiler; every local
+        // schema/evidence validator still applies. Unknown outcomes never retry.
+        if (
+          !(error instanceof ProviderError) ||
+          error.code !== "provider_request_schema_too_complex"
+        )
+          throw error;
+        jsonFallback = createJsonFallbackTransport(input.schema);
+        response = await postJson(jsonFallback, `${input.operationKey}:json`);
+      }
     }
     const parsed = chatResponse.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new ProviderError("provider_response_invalid", false, true);
@@ -202,9 +242,10 @@ export class OpenRouterProvider implements AiProvider {
       reportSchemaFailure(input.schemaName, "json_parse", input.schema);
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
     }
-    const output = input.schema.safeParse(
-      jsonFallback ? jsonFallback.decode(raw) : transport.decode(raw),
-    );
+    const outputTransport = jsonFallback ?? transport;
+    if (!outputTransport)
+      throw new ProviderError("provider_schema_invalid", false, false, accounting);
+    const output = input.schema.safeParse(outputTransport.decode(raw));
     if (!output.success) {
       reportSchemaFailure(input.schemaName, "zod", input.schema, output.error.issues);
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
