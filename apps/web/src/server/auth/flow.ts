@@ -6,7 +6,7 @@ import {
   createSignupIntent,
   readAccSettings,
 } from "@recalino/core/acc";
-import { errors } from "@recalino/core/plt";
+import { errors, removeBrowserPushSubscription } from "@recalino/core/plt";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import type { Handler } from "../api";
@@ -109,7 +109,16 @@ export function callbackHandler(deps: FlowDeps = defaultFlowDeps): Handler {
 
 /** FR-ACC-002 (POST /auth/sign-out): end the session on the server. */
 export function signOutHandler(deps: FlowDeps = defaultFlowDeps): Handler {
-  return async () => {
+  return async ({ db, ctx, input }) => {
+    const { pushEndpoint } = z
+      .object({ pushEndpoint: z.string().max(4096).optional() })
+      .parse(input ?? {});
+    if (ctx.userId && pushEndpoint)
+      await removeBrowserPushSubscription(
+        db,
+        { userId: ctx.userId, requestId: ctx.requestId },
+        pushEndpoint,
+      );
     await deps.auth.signOut();
     return { redirect: "/" };
   };

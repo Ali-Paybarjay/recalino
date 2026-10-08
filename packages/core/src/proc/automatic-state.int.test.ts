@@ -13,10 +13,14 @@ import { createDatabase, type Database } from "../db";
 import { createSession } from "../org";
 import {
   beginAutomaticLearningBatch,
+  cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
   getAutomaticLearningSession,
   listPendingAutomaticLearning,
+  reconcileAutomaticLearningBatch,
+  registerAutomaticLearningFile,
   requestAutomaticLearning,
+  skipAutomaticLearningFile,
   updateAutomaticLearningProgress,
 } from "./automatic-state";
 
@@ -61,6 +65,283 @@ it("leaves historical classes disabled until a learner expresses intent", async 
   const poll = await requestAutomaticLearning(db, x.ctx, x.session.id, { changed: false });
   expect(first.requestVersion).toBe(1);
   expect(poll).toEqual(first);
+});
+
+async function batchSource(
+  x: Awaited<ReturnType<typeof studyFixture>>,
+  state: "pending" | "verified" | "rejected" | "audio",
+) {
+  const asset = await db
+    .insertInto("src.asset")
+    .values({
+      user_id: x.ctx.userId,
+      kind: state === "audio" ? "audio" : "text",
+      declared_mime: state === "audio" ? "audio/webm" : "text/plain",
+      size_bytes: 3,
+      sha256: "a".repeat(64),
+      display_name: "Synthetic batch file",
+      contract_version: "1",
+      retention: state === "audio" ? "device_only" : "persistent",
+      duration_ms: state === "audio" ? 1000 : null,
+      verified_at: state === "verified" ? new Date() : null,
+      operation_key: randomUUID(),
+      request_hash: randomUUID(),
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  await db
+    .insertInto("src.session_source")
+    .values({
+      user_id: x.ctx.userId,
+      session_id: x.session.id,
+      asset_id: asset.id,
+      role: state === "audio" ? "class_audio" : "class_material",
+      selected: state === "verified" || state === "audio",
+    })
+    .execute();
+  if (state !== "audio")
+    await db
+      .insertInto("src.upload_session")
+      .values({
+        user_id: x.ctx.userId,
+        asset_id: asset.id,
+        reservation_id: randomUUID(),
+        state,
+        expires_at: new Date(Date.now() + 60_000),
+      })
+      .execute();
+  return asset.id;
+}
+
+it("durably declares the immutable group, rejects missing files, and seals server receipts once without client completion", async () => {
+  const x = await studyFixture(db);
+  const batchId = randomUUID(),
+    firstId = randomUUID(),
+    secondId = randomUUID();
+  const initial = await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [
+    firstId,
+    secondId,
+  ]);
+  expect(initial.batchFiles).toEqual([
+    { fileId: firstId, sourceId: null, skipped: false, acknowledged: false },
+    { fileId: secondId, sourceId: null, skipped: false, acknowledged: false },
+  ]);
+  await expect(
+    beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [firstId]),
+  ).rejects.toMatchObject({ code: "conflict" });
+  const one = await batchSource(x, "verified"),
+    two = await batchSource(x, "pending");
+  await registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+    batchId,
+    fileId: firstId,
+    sourceId: one,
+  });
+  expect((await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id))?.batchId).toBe(batchId);
+  await expect(
+    completeAutomaticLearningBatch(db, x.ctx, x.session.id, batchId),
+  ).rejects.toMatchObject({ code: "validation_failed" });
+  await registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+    batchId,
+    fileId: secondId,
+    sourceId: two,
+  });
+  expect((await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id))?.batchId).toBe(batchId);
+  await db
+    .updateTable("src.asset")
+    .set({ verified_at: new Date() })
+    .where("id", "=", two)
+    .execute();
+  await db
+    .updateTable("src.upload_session")
+    .set({ state: "verified" })
+    .where("asset_id", "=", two)
+    .execute();
+  const [sealed, replay] = await Promise.all([
+    reconcileAutomaticLearningBatch(db, x.ctx, x.session.id),
+    reconcileAutomaticLearningBatch(db, x.ctx, x.session.id),
+  ]);
+  expect(sealed).toEqual(replay);
+  expect(sealed).toMatchObject({ batchId: null, lastBatchId: batchId, requestVersion: 2 });
+  expect(await completeAutomaticLearningBatch(db, x.ctx, x.session.id, batchId)).toEqual(sealed);
+  expect(
+    await registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+      batchId,
+      fileId: secondId,
+      sourceId: two,
+    }),
+  ).toEqual(sealed);
+});
+
+it("retains rejected entries until the learner explicitly skips them and detaches their blocking source", async () => {
+  const x = await studyFixture(db),
+    batchId = randomUUID(),
+    goodId = randomUUID(),
+    badId = randomUUID();
+  await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [goodId, badId]);
+  const good = await batchSource(x, "verified"),
+    bad = await batchSource(x, "rejected");
+  await registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+    batchId,
+    fileId: goodId,
+    sourceId: good,
+  });
+  await registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+    batchId,
+    fileId: badId,
+    sourceId: bad,
+  });
+  expect(await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id)).toMatchObject({
+    batchId,
+    lastError: "upload_needs_attention",
+  });
+  await skipAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId: badId });
+  expect(
+    await db
+      .selectFrom("src.session_source")
+      .select("active")
+      .where("asset_id", "=", bad)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({ active: false });
+  const sealed = await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id);
+  expect(sealed).toMatchObject({ batchId: null, lastError: null });
+  expect(
+    await skipAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId: badId }),
+  ).toEqual(sealed);
+});
+
+it("keeps declared batches visible to recovery and permits saved audio to enter its guarded awaiting-upload workflow", async () => {
+  const x = await studyFixture(db),
+    batchId = randomUUID(),
+    fileId = randomUUID();
+  await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [fileId]);
+  expect(
+    (await listPendingAutomaticLearning(db, 250)).some((row) => row.sessionId === x.session.id),
+  ).toBe(true);
+  await expect(
+    skipAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId }),
+  ).rejects.toMatchObject({ code: "validation_failed" });
+  const sourceId = await batchSource(x, "audio");
+  await registerAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId, sourceId });
+  expect(await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id)).toMatchObject({
+    batchId: null,
+  });
+});
+
+it("cannot acknowledge foreign or undeclared sources and bounds declared groups by the active input contract", async () => {
+  const x = await studyFixture(db),
+    other = await studyFixture(db),
+    batchId = randomUUID(),
+    fileId = randomUUID();
+  await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [fileId]);
+  const ownSource = await batchSource(x, "verified"),
+    foreignSource = await batchSource(other, "verified");
+  await expect(
+    registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+      batchId,
+      fileId,
+      sourceId: foreignSource,
+    }),
+  ).rejects.toMatchObject({ code: "not_found" });
+  await expect(
+    registerAutomaticLearningFile(db, x.ctx, x.session.id, {
+      batchId,
+      fileId: randomUUID(),
+      sourceId: ownSource,
+    }),
+  ).rejects.toMatchObject({ code: "conflict" });
+  await expect(
+    registerAutomaticLearningFile(db, other.ctx, x.session.id, {
+      batchId,
+      fileId,
+      sourceId: foreignSource,
+    }),
+  ).rejects.toMatchObject({ code: "not_found" });
+  await expect(
+    beginAutomaticLearningBatch(
+      db,
+      other.ctx,
+      other.session.id,
+      randomUUID(),
+      new Date(),
+      Array.from({ length: 31 }, () => randomUUID()),
+    ),
+  ).rejects.toMatchObject({ code: "validation_failed" });
+});
+
+it("provisionally binds audio without authorizing upload, cancels once, and fences late receipts while allowing a new group", async () => {
+  const x = await studyFixture(db),
+    batchId = randomUUID(),
+    fileId = randomUUID();
+  await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [fileId]);
+  const sourceId = await batchSource(x, "audio");
+  await registerAutomaticLearningFile(
+    db,
+    x.ctx,
+    x.session.id,
+    { batchId, fileId, sourceId },
+    new Date(),
+    false,
+  );
+  expect((await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id))?.batchId).toBe(batchId);
+  const cancelled = await cancelAutomaticLearningBatch(db, x.ctx, x.session.id, batchId);
+  expect(cancelled).toMatchObject({
+    batchId: null,
+    lastBatchId: batchId,
+    state: "blocked",
+    lastError: "upload_batch_cancelled",
+  });
+  expect(await cancelAutomaticLearningBatch(db, x.ctx, x.session.id, batchId)).toEqual(cancelled);
+  expect(await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId)).toEqual(cancelled);
+  await expect(
+    registerAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId, sourceId }),
+  ).rejects.toMatchObject({ code: "conflict" });
+  expect(
+    await db
+      .selectFrom("src.session_source")
+      .select("active")
+      .where("asset_id", "=", sourceId)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({ active: false });
+  expect(
+    (await listPendingAutomaticLearning(db, 250)).some((row) => row.sessionId === x.session.id),
+  ).toBe(false);
+  const replacement = await beginAutomaticLearningBatch(
+    db,
+    x.ctx,
+    x.session.id,
+    randomUUID(),
+    new Date(),
+    [randomUUID()],
+  );
+  expect(replacement).toMatchObject({ state: "waiting_sources", lastError: null });
+  expect(replacement.batchId).not.toBe(batchId);
+});
+
+it("keeps a reused source attached and selected when only one of its declared file receipts is skipped", async () => {
+  const x = await studyFixture(db),
+    batchId = randomUUID(),
+    firstId = randomUUID(),
+    secondId = randomUUID();
+  await beginAutomaticLearningBatch(db, x.ctx, x.session.id, batchId, new Date(), [
+    firstId,
+    secondId,
+  ]);
+  const sourceId = await batchSource(x, "verified");
+  for (const fileId of [firstId, secondId])
+    await registerAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId, sourceId });
+  await skipAutomaticLearningFile(db, x.ctx, x.session.id, { batchId, fileId: firstId });
+  expect(
+    await db
+      .selectFrom("src.session_source")
+      .select(["active", "selected"])
+      .where("asset_id", "=", sourceId)
+      .where("session_id", "=", x.session.id)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({ active: true, selected: true });
+  expect(await reconcileAutomaticLearningBatch(db, x.ctx, x.session.id)).toMatchObject({
+    batchId: null,
+    lastError: null,
+  });
 });
 
 it("serializes a batch, replays lost acknowledgements and cannot silently seal another batch", async () => {

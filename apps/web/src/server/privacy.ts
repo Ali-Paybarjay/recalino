@@ -38,7 +38,7 @@ import {
   tombstoneSessionNotes,
   tombstoneSourceNotes,
 } from "@recalino/core/note";
-import { errors } from "@recalino/core/plt";
+import { clearAccountNotifications, clearSessionNotifications, errors } from "@recalino/core/plt";
 import { type PrivacyDependencies, privacyCleanupJob } from "@recalino/core/priv";
 import {
   cleanupAccountProcessing,
@@ -85,6 +85,13 @@ export function privacyDependencies(): PrivacyDependencies {
     authentication: { revokeSessions: removeIdentity, deleteIdentity: removeIdentity },
     deletionJournal: privacyDeletionJournal(),
     hooks: [
+      {
+        module: "plt",
+        tombstoneSession: clearSessionNotifications,
+        tombstoneAccount: clearAccountNotifications,
+        cleanupSession: clearSessionNotifications,
+        cleanupAccount: clearAccountNotifications,
+      },
       {
         module: "voc",
         tombstoneSession: (tx, ctx, id) => removeSessionVoice(tx, ctx, id),

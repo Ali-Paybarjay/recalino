@@ -5,7 +5,13 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { createCanvas } from "@napi-rs/canvas";
 import { errors, readOwnedObject, writeOwnedObject } from "@recalino/core/plt";
-import { type PdfPagePreparer, registerProcessingTemporaryObject } from "@recalino/core/proc";
+import {
+  PDF_PAGE_PREPARATION_BATCH_SIZE,
+  type PdfPageImage,
+  type PdfPagePreparer,
+  type PdfPagesPreparer,
+  registerProcessingTemporaryObject,
+} from "@recalino/core/proc";
 import { getSource, readInputContract } from "@recalino/core/src";
 import {
   getDocument,
@@ -80,13 +86,20 @@ export function readPdfRenderSettings(env: Record<string, string | undefined> = 
   );
 }
 /** Passive owned PDF rasterization: no URLs, scripting, attachments, annotation actions or fonts fetched. */
-export const preparePdfPage: PdfPagePreparer = async ({
+export const preparePdfPage: PdfPagePreparer = async ({ page, ...input }) => {
+  const [image] = await preparePdfPages({ ...input, pages: [page] });
+  if (!image) throw errors.validationFailed({ pdf: ["page_manifest_invalid"] });
+  return image;
+};
+
+/** Download and open once for a bounded batch; one shared timeout covers every page. */
+export const preparePdfPages: PdfPagesPreparer = async ({
   db,
   store,
   ctx,
   runId,
   source,
-  page,
+  pages,
   now,
 }) => {
   const settings = readPdfRenderSettings();
@@ -95,11 +108,17 @@ export const preparePdfPage: PdfPagePreparer = async ({
     source.kind !== "pdf" ||
     !source.objectId ||
     !source.pageCount ||
-    !Number.isSafeInteger(page) ||
-    page < 1 ||
-    page > source.pageCount ||
-    (source.ranges.length &&
-      !source.ranges.some((range) => page >= range.start && page <= range.end))
+    !pages.length ||
+    pages.length > PDF_PAGE_PREPARATION_BATCH_SIZE ||
+    new Set(pages).size !== pages.length ||
+    pages.some(
+      (page) =>
+        !Number.isSafeInteger(page) ||
+        page < 1 ||
+        page > (source.pageCount ?? 0) ||
+        (source.ranges.length &&
+          !source.ranges.some((range) => page >= range.start && page <= range.end)),
+    )
   )
     throw errors.validationFailed({ pdf: ["selected_owned_page_required"] });
   const asset = await getSource(db, ctx, source.sourceId);
@@ -115,6 +134,7 @@ export const preparePdfPage: PdfPagePreparer = async ({
   let task: PDFDocumentLoadingTask | undefined;
   let render: RenderTask | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const prepared: PdfPageImage[] = [];
   try {
     const timeout = new Promise<never>((_accept, reject) => {
       timer = setTimeout(() => {
@@ -140,47 +160,57 @@ export const preparePdfPage: PdfPagePreparer = async ({
     const document = await Promise.race([task.promise, timeout]);
     if (document.numPages !== source.pageCount)
       throw errors.validationFailed({ pdf: ["page_count_changed"] });
-    const pdfPage = await Promise.race([document.getPage(page), timeout]);
-    try {
-      const initial = pdfPage.getViewport({ scale: 1 });
-      if (
-        !Number.isFinite(initial.width) ||
-        !Number.isFinite(initial.height) ||
-        initial.width <= 0 ||
-        initial.height <= 0
-      )
-        throw errors.unsupportedMedia();
-      const scale = Math.min(
-        settings.maxSide / Math.max(initial.width, initial.height),
-        Math.sqrt(settings.maxPixels / (initial.width * initial.height)),
-      );
-      const viewport = pdfPage.getViewport({ scale });
-      const width = Math.max(1, Math.floor(viewport.width));
-      const height = Math.max(1, Math.floor(viewport.height));
-      if (width * height > settings.maxPixels) throw errors.payloadTooLarge();
-      const canvas = createCanvas(width, height);
-      render = pdfPage.render({
-        canvas: null,
-        canvasContext: canvas.getContext("2d") as unknown as CanvasRenderingContext2D,
-        viewport,
-        annotationMode: 0,
-        background: "rgb(255,255,255)",
-      });
-      await Promise.race([render.promise, timeout]);
-      const image = await canvas.encode("jpeg", 85);
-      if (!image.length || image.length > settings.maxBytes) throw errors.payloadTooLarge();
-      const objectId = await writeOwnedObject(db, store, ctx, {
-        module: "proc",
-        retention: "temporary",
-        contentType: "image/jpeg",
-        bytes: image,
-        now,
-        onRegistered: (id) => registerProcessingTemporaryObject(db, ctx, runId, id, now),
-      });
-      return { page, objectId, mimeType: "image/jpeg" };
-    } finally {
-      pdfPage.cleanup();
+    for (const page of pages) {
+      try {
+        const pdfPage = await Promise.race([document.getPage(page), timeout]);
+        try {
+          const initial = pdfPage.getViewport({ scale: 1 });
+          if (
+            !Number.isFinite(initial.width) ||
+            !Number.isFinite(initial.height) ||
+            initial.width <= 0 ||
+            initial.height <= 0
+          )
+            throw errors.unsupportedMedia();
+          const scale = Math.min(
+            settings.maxSide / Math.max(initial.width, initial.height),
+            Math.sqrt(settings.maxPixels / (initial.width * initial.height)),
+          );
+          const viewport = pdfPage.getViewport({ scale });
+          const width = Math.max(1, Math.floor(viewport.width));
+          const height = Math.max(1, Math.floor(viewport.height));
+          if (width * height > settings.maxPixels) throw errors.payloadTooLarge();
+          const canvas = createCanvas(width, height);
+          render = pdfPage.render({
+            canvas: null,
+            canvasContext: canvas.getContext("2d") as unknown as CanvasRenderingContext2D,
+            viewport,
+            annotationMode: 0,
+            background: "rgb(255,255,255)",
+          });
+          await Promise.race([render.promise, timeout]);
+          const image = await canvas.encode("jpeg", 85);
+          if (!image.length || image.length > settings.maxBytes) throw errors.payloadTooLarge();
+          const objectId = await writeOwnedObject(db, store, ctx, {
+            module: "proc",
+            retention: "temporary",
+            contentType: "image/jpeg",
+            bytes: image,
+            now,
+            onRegistered: (id) => registerProcessingTemporaryObject(db, ctx, runId, id, now),
+          });
+          prepared.push({ page, objectId, mimeType: "image/jpeg" });
+        } finally {
+          pdfPage.cleanup();
+        }
+      } catch (error) {
+        // Speculative later pages must not prevent the current page's durable OCR.
+        // The next invocation retries the unprepared page under its own timeout.
+        if (prepared.length) break;
+        throw error;
+      }
     }
+    return prepared;
   } catch (error) {
     if (error instanceof Error && error.name === "PasswordException")
       throw errors.validationFailed({ pdf: ["password_render_required"] });

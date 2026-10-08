@@ -65,8 +65,9 @@ export function FileSelectionQueue({
         <p className="preview-muted">Remove or replace the files marked above before uploading.</p>
       )}
       <p className="preview-muted">
-        Keep this page open until upload finishes. Files waiting here need to be selected again if
-        you leave or reload.
+        Choose Upload &amp; Process to save these files on this device. You can then use other pages
+        while they upload. If your browser pauses, upload resumes when you return. Files that have
+        not been submitted still need to be selected again after leaving or reloading.
       </p>
     </Panel>
   );

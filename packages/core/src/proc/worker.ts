@@ -115,11 +115,20 @@ export type PdfPagePreparer = (input: {
   page: number;
   now: Date;
 }) => Promise<PdfPageImage>;
+/** Bound speculative page rendering without increasing paid provider calls per invocation. */
+export const PDF_PAGE_PREPARATION_BATCH_SIZE = 3;
+export type PdfPagesPreparer = (
+  input: Omit<Parameters<PdfPagePreparer>[0], "page"> & {
+    pages: number[];
+  },
+) => Promise<PdfPageImage[]>;
 export interface ProcessingDependencies {
   provider?: AiProvider;
   store: ObjectStore;
   prepareAudio?: AudioPreparer;
   preparePdfPage?: PdfPagePreparer;
+  /** May return a prepared prefix when a later page cannot be rendered. */
+  preparePdfPages?: PdfPagesPreparer;
   prepareImage?: (input: { bytes: Uint8Array; mimeType: string }) => Promise<{
     bytes: Uint8Array;
     mimeType: "image/jpeg" | "image/png" | "image/webp";
@@ -699,26 +708,63 @@ export function processingJob(
                 pageOutputs.set(unit.id, prior);
                 continue;
               }
-              if (!dependencies.preparePdfPage)
+              if (!dependencies.preparePdfPage && !dependencies.preparePdfPages)
                 throw errors.validationFailed({ pdf: ["page_renderer_unavailable"] });
               if (!image) {
-                image = pdfPageImageSchema.parse(
-                  await dependencies.preparePdfPage({
-                    db: job.db,
-                    store: dependencies.store,
-                    ctx,
-                    runId: payload.runId,
-                    source,
-                    page: unit.start,
-                    now: job.now(),
-                  }),
-                );
-                if (image.page !== unit.start)
+                const input = {
+                  db: job.db,
+                  store: dependencies.store,
+                  ctx,
+                  runId: payload.runId,
+                  source,
+                  now: job.now(),
+                };
+                const pages = [unit.start];
+                if (dependencies.preparePdfPages) {
+                  for (const candidate of ocr) {
+                    if (pages.length >= PDF_PAGE_PREPARATION_BATCH_SIZE) break;
+                    if (candidate.start === unit.start) continue;
+                    const priorOutput = await cached(
+                      job.db,
+                      payload.runId,
+                      `vision:pdf:${source.sourceId}:${candidate.start}`,
+                      extractionSchema,
+                    );
+                    const priorImage = await cached(
+                      job.db,
+                      payload.runId,
+                      `pdf:image:${source.sourceId}:${candidate.start}`,
+                      pdfPageImageSchema,
+                    );
+                    if (!priorOutput && !priorImage) pages.push(candidate.start);
+                  }
+                }
+                const rendered = z
+                  .array(pdfPageImageSchema)
+                  .min(1)
+                  .max(pages.length)
+                  .parse(
+                    dependencies.preparePdfPages
+                      ? await dependencies.preparePdfPages({ ...input, pages })
+                      : [await dependencies.preparePdfPage?.({ ...input, page: unit.start })],
+                  );
+                if (
+                  rendered.some((page, index) => page.page !== pages[index]) ||
+                  new Set(rendered.map((page) => page.objectId)).size !== rendered.length
+                )
                   throw errors.validationFailed({ pdf: ["page_manifest_invalid"] });
-                const rendered = image;
+                image = rendered[0] ?? null;
+                if (!image) throw errors.validationFailed({ pdf: ["page_manifest_invalid"] });
                 await job.db.transaction().execute(async (tx) => {
                   await liveRun(tx, ctx, payload.runId);
-                  await saveStep(tx, payload.runId, imageStep, rendered, job.now());
+                  for (const page of rendered)
+                    await saveStep(
+                      tx,
+                      payload.runId,
+                      `pdf:image:${source.sourceId}:${page.page}`,
+                      page,
+                      job.now(),
+                    );
                 });
               }
               const pageBytes = await readOwnedObject(

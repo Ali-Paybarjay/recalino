@@ -90,7 +90,7 @@ for (const scheme of ["light", "dark"] as const) {
     ["mobile", VIEWPORTS.mobile],
     ["desktop", VIEWPORTS.desktop],
   ] as const) {
-    test(`all five setup screens remain readable and accessible: ${scheme}, ${name}`, async ({
+    test(`all five core setup screens remain readable and accessible: ${scheme}, ${name}`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport);
@@ -106,7 +106,7 @@ for (const scheme of ["light", "dark"] as const) {
       const nav = page.getByRole("navigation", { name: "Preview setup screens" });
       for (const [index, screen] of screens.entries()) {
         await nav.getByRole("link", { name: screen, exact: true }).click();
-        await expect(page.getByText(`${index + 1} of 5`, { exact: true })).toBeVisible();
+        await expect(page.getByText(`${index + 1} of 6`, { exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
@@ -136,7 +136,7 @@ test("setup keeps the chosen language on Back and requires recording consent", a
     "true",
   );
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByText("2 of 5", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 of 6", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page.getByRole("option", { name: /Persian/ })).toHaveAttribute(
@@ -148,7 +148,7 @@ test("setup keeps the chosen language on Back and requires recording consent", a
   const consent = page.getByRole("checkbox", {
     name: "I understand that I must ask the people in my class before I record.",
   });
-  const finish = page.getByRole("button", { name: "Finish setup" });
+  const finish = page.getByRole("button", { name: "Continue", exact: true });
   await expect(consent).not.toBeChecked();
   await expect(finish).toHaveAttribute("aria-disabled", "true");
   await consent.focus();

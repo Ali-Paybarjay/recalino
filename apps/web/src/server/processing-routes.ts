@@ -9,6 +9,7 @@ import {
   cancelRun,
   createProcessingRun,
   estimateRunAmounts,
+  getProcessingRunSnapshot,
   getRun,
   listRuns,
   processingSelectionFingerprint,
@@ -99,7 +100,20 @@ export function processingRunHandler(id: string): Handler {
   return async ({ db, ctx, request, input }) => {
     z.uuid().parse(id);
     const learner = actor(ctx);
-    if (request.method === "GET") return { body: await getRun(db, learner, id) };
+    if (request.method === "GET") {
+      const run = await getRun(db, learner, id);
+      if (new URL(request.url).searchParams.get("includeSnapshot") === "1")
+        return {
+          body: {
+            run,
+            snapshot:
+              run.state === "awaiting_upload"
+                ? await getProcessingRunSnapshot(db, learner, id)
+                : null,
+          },
+        };
+      return { body: run };
+    }
     if (request.method === "DELETE") return { body: await cancelRun(db, learner, id) };
     await getRun(db, learner, id);
     const fields = z.strictObject({ action: z.enum(["retry", "activate"]) }).parse(input);

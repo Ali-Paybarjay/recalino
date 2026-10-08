@@ -59,6 +59,8 @@ export const ROUTES = {
   },
   // M3: learning profile and acceptances (FR-ACC-003 to FR-ACC-007).
   profile: { id: "profile", path: "/api/profile", access: "learner" },
+  notifications: { id: "notifications", path: "/api/notifications", access: "learner" },
+  notificationPush: { id: "notificationPush", path: "/api/notifications/push", access: "learner" },
   voiceProfile: { id: "voiceProfile", path: "/api/me/voice", access: "learner" },
   classVoice: { id: "classVoice", path: "/api/classes/[id]/voice", access: "learner" },
   consents: { id: "consents", path: "/api/consents", access: "learner" },

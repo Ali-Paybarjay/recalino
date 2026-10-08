@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
 import { useRecording } from "../recording/RecordingProvider";
 import { type PendingDeletion, requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { IndexedManualAudioStore } from "./manual-audio-store";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import {
   DeletionOutcomeUnknownError,
   type DeletionReceipt,
   submitAccountDeletion,
 } from "./privacy-actions";
+import { IndexedUploadStore } from "./upload-store";
 
 export function PrivacyView({
   initialPending = null,
@@ -80,7 +82,24 @@ export function PrivacyView({
   async function clearDeviceData() {
     setDeviceCleanup("pending");
     try {
-      await store.removeAccount(userId);
+      const results = await Promise.allSettled([
+        store.removeAccount(userId),
+        new IndexedUploadStore().removeAccount(userId),
+        new IndexedManualAudioStore().removeAccount(userId),
+        Promise.resolve().then(() => {
+          const prefixes = ["batch", "photos", "recording"].map(
+            (kind) => `recalino:learning-${kind}:${userId}:`,
+          );
+          const keys = Array.from({ length: localStorage.length }, (_, index) =>
+            localStorage.key(index),
+          );
+          for (const key of keys)
+            if (key && prefixes.some((prefix) => key.startsWith(prefix)))
+              localStorage.removeItem(key);
+        }),
+      ]);
+      if (results.some((result) => result.status === "rejected"))
+        throw new Error("Device cleanup failed");
       setDeviceCleanup("complete");
     } catch {
       setDeviceCleanup("failed");
@@ -93,15 +112,18 @@ export function PrivacyView({
         <p>Request reference: {receipt.id}</p>
         {deviceCleanup === "complete" ? (
           <Status>
-            Saved recordings and photos for this account were removed from this browser.
+            Saved recordings, photos and pending uploads for this account were removed from this
+            browser.
           </Status>
         ) : deviceCleanup === "pending" ? (
-          <Status>Removing this account’s saved recordings and photos from this browser…</Status>
+          <Status>
+            Removing this account’s saved recordings, photos and pending uploads from this browser…
+          </Status>
         ) : (
           <>
             <Status tone="error">
               Your server deletion request was accepted, but this browser could not clear its saved
-              recordings and photos.
+              recordings, photos and pending uploads.
             </Status>
             <Button secondary onClick={() => void clearDeviceData()}>
               Retry device cleanup

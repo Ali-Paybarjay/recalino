@@ -162,7 +162,7 @@ describe("truthful file processing feedback", () => {
       source({ uploadState: "rejected" }),
     ]);
     expect(feedback.state).toBe("error");
-    expect(feedback.detail).toMatch(/Class notes.pdf.*Remove or replace/);
+    expect(feedback.detail).toMatch(/Class notes.pdf.*Skip this file.*cancel the upload group/);
   });
 
   it("does not surface rejection of unrelated class files as this batch's error", () => {

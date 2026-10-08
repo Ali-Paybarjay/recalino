@@ -223,7 +223,7 @@ async function attach(
 
 /** FR-SRC-001, 003, 004, 007: metadata and reservation commit before any write URL. */
 export async function createSource(
-  db: Database,
+  db: Connection,
   ctx: LearnerContext,
   raw: unknown,
   now = new Date(),
@@ -232,7 +232,7 @@ export async function createSource(
   const input = sourceFileSchema.parse(raw);
   input.displayName = cleanDisplayName(input.displayName);
   const hash = sha256Hex(canonicalJson(input));
-  return db.transaction().execute(async (tx) => {
+  const create = async (tx: Tx) => {
     await lockOwner(tx, ctx);
     await assertSessionOwner(tx, ctx, input.sessionId);
     const previous = await tx
@@ -343,20 +343,22 @@ export async function createSource(
     }
     await attach(tx, ctx, input.sessionId, source.id, contract, now, input.captureAnchor);
     return { assetId: source.id, uploadId, replayed: false };
-  });
+  };
+  return db.isTransaction ? create(db as Tx) : db.transaction().execute(create);
 }
 
 export async function attachSource(
-  db: Database,
+  db: Connection,
   ctx: LearnerContext,
   sessionId: string,
   assetId: string,
   now = new Date(),
 ) {
-  return db.transaction().execute(async (tx) => {
+  const attachOwned = async (tx: Tx) => {
     await lockOwner(tx, ctx);
     return attach(tx, ctx, sessionId, assetId, await readInputContract(tx), now);
-  });
+  };
+  return db.isTransaction ? attachOwned(db as Tx) : db.transaction().execute(attachOwned);
 }
 
 export function createRecordedSource(
@@ -1146,13 +1148,13 @@ export async function resetSourceExtractionSelection(
 }
 
 export async function detachSource(
-  db: Database,
+  db: Connection,
   ctx: LearnerContext,
   sessionId: string,
   assetId: string,
   now = new Date(),
 ) {
-  await db.transaction().execute(async (tx) => {
+  const detach = async (tx: Tx) => {
     await lockOwner(tx, ctx);
     await assertSessionOwner(tx, ctx, sessionId);
     await assetRow(tx, ctx, assetId);
@@ -1170,7 +1172,8 @@ export async function detachSource(
       .where("id", "=", row.id)
       .execute();
     await snapshot(tx, ctx, sessionId, now);
-  });
+  };
+  return db.isTransaction ? detach(db as Tx) : db.transaction().execute(detach);
 }
 export async function sourceReadLink(
   db: Database,

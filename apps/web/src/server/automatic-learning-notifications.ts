@@ -2,7 +2,7 @@ import "server-only";
 import type { Database } from "@recalino/core/db";
 import { AppError, createLogger, type LearnerContext } from "@recalino/core/plt";
 import { getAutomaticLearningSession, getRun } from "@recalino/core/proc";
-import { verifiedUploadSessionIds } from "@recalino/core/src";
+import { uploadSessionIds, verifiedUploadSessionIds } from "@recalino/core/src";
 import { scheduleAutomaticLearning } from "./automatic-learning";
 
 function logFailure(ctx: LearnerContext): void {
@@ -38,6 +38,20 @@ export async function notifyAutomaticLearningForVerifiedUpload(
   try {
     const sessionIds = await verifiedUploadSessionIds(db, ctx, uploadId);
     for (const sessionId of sessionIds) await notifyAutomaticLearning(db, ctx, sessionId, false);
+  } catch {
+    logFailure(ctx);
+  }
+}
+
+/** A durable part receipt or rejection recovers declared batches without changing an HTTP outcome. */
+export async function notifyAutomaticLearningForUpload(
+  db: Database,
+  ctx: LearnerContext,
+  uploadId: string,
+): Promise<void> {
+  try {
+    for (const sessionId of await uploadSessionIds(db, ctx, uploadId))
+      await notifyAutomaticLearning(db, ctx, sessionId, false);
   } catch {
     logFailure(ctx);
   }
