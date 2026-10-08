@@ -29,7 +29,7 @@ const settings: ProviderSettings = {
   sttModel: "synthetic/stt",
   ttsModel: "synthetic/tts",
   voice: "synthetic",
-  promptVersion: "recalino-knowledge-6",
+  promptVersion: "recalino-knowledge-7",
   maxInputCharacters: 120000,
   maxOutputTokens: 6144,
   structuredTemperature: 0,
@@ -236,7 +236,7 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
       });
       expect(body).not.toHaveProperty("temperature");
       const input = JSON.parse(body.messages[1].content[0].text);
-      expect(input.format).toBe("knowledge_generation_keys_v4");
+      expect(input.format).toBe("knowledge_generation_keys_v5");
       expect(input.sources[0].evidence[0]).toContain(sourceText);
       expect(body.messages[0].content).toContain("Write lessonPlan FIRST");
       expect(body.messages[0].content).not.toContain(

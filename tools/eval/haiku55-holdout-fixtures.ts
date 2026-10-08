@@ -31,12 +31,15 @@ const courseNames: Record<string, string> = {
   N12: "Advanced Writing",
 };
 
-function withRole(source: RunSource, role: NonNullable<RunSource["role"]>): RunSource {
+export function holdoutWithRole(
+  source: RunSource,
+  role: NonNullable<RunSource["role"]>,
+): RunSource {
   return snapshotSourceSchema.parse({ ...source, role });
 }
 
 /** A PDF whose listed pages failed extraction: no text exists for them anywhere in the input. */
-function pdfWithFailedPages(
+export function holdoutPdfWithFailedPages(
   caseNo: number,
   pages: ({ id: string; text: string } | { failed: string })[],
 ): RunSource {
@@ -61,7 +64,7 @@ function pdfWithFailedPages(
   });
 }
 
-function holdout(
+export function holdoutFixture(
   id: string,
   level: MigrationFixture["declaredLevel"],
   goal: MigrationFixture["goal"],
@@ -70,13 +73,14 @@ function holdout(
   concepts: ReturnType<typeof migrationConcept>[],
   extra: Record<string, unknown> = {},
   missingSourceIds: string[] = [],
+  course = courseNames[id] ?? "Evening English",
 ): MigrationFixture {
   return migrationFixtureSchema.parse({
     id,
     declaredLevel: level,
     goal,
     explanationLanguage: language,
-    lessonContext: { date: "2026-10-08", course: courseNames[id] ?? "Evening English" },
+    lessonContext: { date: "2026-10-08", course },
     teachingPreferences: { shorterExamples: level === "A1" || level === "A2" },
     sources,
     missingSourceIds,
@@ -196,7 +200,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
       text: "For goes with a period of time, for example for three years. Since goes with a starting point, for example since 2021. Class models: I have lived here for three years. I have lived here since 2021.",
     },
   ]);
-  const n05Notes = withRole(
+  const n05Notes = holdoutWithRole(
     migrationSource(
       25,
       [
@@ -224,7 +228,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
       text: "A lot of and lots of mean a large number or amount, and both work with countable and uncountable nouns. Lots of is a little more informal. Class examples: A lot of people came to the party. We have lots of time.",
     },
   ]);
-  const n07Pdf = pdfWithFailedPages(27, [
+  const n07Pdf = holdoutPdfWithFailedPages(27, [
     {
       id: "passive-present",
       text: "The passive is formed with be + past participle. Use it when the action matters more than who did it. Class model: English is spoken in many countries. Printed transformation: People grow coffee in Brazil. Begin Coffee is.",
@@ -321,7 +325,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
     },
   ]);
   return [
-    holdout(
+    holdoutFixture(
       "N01",
       "A1",
       "esol",
@@ -355,7 +359,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         ),
       ],
     ),
-    holdout(
+    holdoutFixture(
       "N02",
       "A2",
       "general",
@@ -385,7 +389,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         ),
       ],
     ),
-    holdout(
+    holdoutFixture(
       "N03",
       "A2",
       "general",
@@ -428,7 +432,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         },
       },
     ),
-    holdout(
+    holdoutFixture(
       "N04",
       "B1",
       "general",
@@ -461,7 +465,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         ),
       ],
     ),
-    holdout(
+    holdoutFixture(
       "N05",
       "B1",
       "ielts",
@@ -496,7 +500,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         permittedGeneralCorrection: "I saw that film yesterday.",
       },
     ),
-    holdout(
+    holdoutFixture(
       "N06",
       "B1",
       "general",
@@ -530,7 +534,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
       ],
       { prohibitedLanguageFields: ["Persian explanatory prose", "faApprox on any item"] },
     ),
-    holdout(
+    holdoutFixture(
       "N07",
       "B2",
       "general",
@@ -570,7 +574,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
       },
       [n07Pdf.sourceId],
     ),
-    holdout(
+    holdoutFixture(
       "N08",
       "B2",
       "general",
@@ -614,7 +618,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         },
       },
     ),
-    holdout(
+    holdoutFixture(
       "N09",
       "C1",
       "general",
@@ -667,7 +671,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         },
       },
     ),
-    holdout(
+    holdoutFixture(
       "N10",
       "A2",
       "esol",
@@ -712,7 +716,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         },
       },
     ),
-    holdout(
+    holdoutFixture(
       "N11",
       "B1",
       "general",
@@ -744,7 +748,7 @@ export function holdoutMigrationFixtures(): MigrationFixture[] {
         ),
       ],
     ),
-    holdout(
+    holdoutFixture(
       "N12",
       "C1",
       "general",

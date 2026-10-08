@@ -35,7 +35,13 @@ import {
   holdoutRepeatIds,
 } from "./haiku55-holdout-fixtures";
 import {
+  holdout3FixtureSetId,
+  holdout3MigrationFixtures,
+  holdout3RepeatIds,
+} from "./haiku55-holdout3-fixtures";
+import {
   freshMigrationFixtures,
+  type MigrationFixture,
   migrationFixtureSchema,
   migrationInputData,
 } from "./haiku55-migration-fixtures";
@@ -76,10 +82,18 @@ const save = async (path: string, value: unknown) => {
   await writeFile(temporary, JSON.stringify(value, null, 2));
   await rename(temporary, path);
 };
-const fixtureSet = option("--fixture-set", "migration-14");
+const fixtureSet = option("--fixture-set", "migration-14") ?? "migration-14";
+// Each holdout set is written before any candidate runs against it and is evaluated once.
+const holdoutSets: Record<
+  string,
+  { fixtures: () => MigrationFixture[]; repeatIds: readonly string[] }
+> = {
+  [holdoutFixtureSetId]: { fixtures: holdoutMigrationFixtures, repeatIds: holdoutRepeatIds },
+  [holdout3FixtureSetId]: { fixtures: holdout3MigrationFixtures, repeatIds: holdout3RepeatIds },
+};
 assert.ok(
-  fixtureSet === "migration-14" || fixtureSet === holdoutFixtureSetId,
-  `Unknown fixture set; use migration-14 or ${holdoutFixtureSetId}`,
+  fixtureSet === "migration-14" || fixtureSet in holdoutSets,
+  `Unknown fixture set; use migration-14, ${Object.keys(holdoutSets).join(" or ")}`,
 );
 const ledgerPath = resolve("artifacts/verification/haiku55-evaluation-ledger.json");
 const qualityReviewPath = option("--quality-review-file");
@@ -165,9 +179,10 @@ assert.equal(
 const historical = z
   .object({ cases: z.array(migrationFixtureSchema), repeatCaseIds: z.array(z.string()) })
   .parse(await json("tools/eval/haiku55-migration-regression-fixtures.json"));
-const holdout = fixtureSet === holdoutFixtureSetId;
+const holdoutSet = holdoutSets[fixtureSet];
+const holdout = holdoutSet !== undefined;
 const fixtures = holdout
-  ? holdoutMigrationFixtures()
+  ? holdoutSet.fixtures()
   : [...historical.cases, ...freshMigrationFixtures()];
 const repeated = (ids: readonly string[], source: typeof fixtures) =>
   ids.map((id) => {
@@ -177,7 +192,7 @@ const repeated = (ids: readonly string[], source: typeof fixtures) =>
   });
 const originalSchedule = (
   holdout
-    ? [...fixtures, ...repeated(holdoutRepeatIds, fixtures)]
+    ? [...fixtures, ...repeated(holdoutSet.repeatIds, fixtures)]
     : [
         ...historical.cases,
         ...repeated(historical.repeatCaseIds, historical.cases),
@@ -215,6 +230,7 @@ for (const path of [
   "tools/eval/haiku55-migration-live.ts",
   "tools/eval/haiku55-migration-fixtures.ts",
   "tools/eval/haiku55-holdout-fixtures.ts",
+  "tools/eval/haiku55-holdout3-fixtures.ts",
   "tools/eval/haiku55-migration-gold.ts",
   "tools/eval/haiku55-migration-guards.ts",
   "tools/eval/haiku55-migration-quality.ts",
@@ -331,7 +347,7 @@ const plan = {
   evaluationProvenance: holdout
     ? {
         holdoutFixtureIds: fixtures.map((fixture) => fixture.id),
-        holdoutRepeatIds,
+        holdoutRepeatIds: holdoutSet.repeatIds,
         writtenAfterFailedFourteenCaseRound: true,
         disjointFromRegressionFixturesAndPromptExamples: true,
         everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,

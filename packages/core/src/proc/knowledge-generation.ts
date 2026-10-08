@@ -22,7 +22,7 @@ import { errors } from "../plt";
 import { buildKnowledgeEvidenceInput, type KnowledgeEvidenceInput } from "./knowledge-evidence";
 import { personalisedTeachingPrompt } from "./study-prompt";
 
-export const knowledgeGenerationFormat = "knowledge_generation_keys_v4";
+export const knowledgeGenerationFormat = "knowledge_generation_keys_v5";
 
 export interface KnowledgeGenerationInput extends KnowledgeEvidenceInput {
   lessonContext: StudyLessonContext;
@@ -62,6 +62,12 @@ const repairGuidance: Record<string, string> = {
   study_gap_invalid: "A practice.gapSentence had too many blanks; use at most three.",
   study_gap_partial:
     "A practice.gapSentence left part of its target visible beside a blank. Blank the complete target span, including particles and inflected forms.",
+  study_gap_overhidden:
+    "A practice.gapSentence also hid words that are not part of the target, so its answer was not recoverable. Use one blank per target part and keep complements and objects visible.",
+  study_ipa_chunk_invalid:
+    "A grammar pronunciation.spokenChunk was not consecutive words copied exactly from practice.fullSentence.",
+  study_plan_uncovered:
+    "A lessonPlan concept was never stated by a claim citing its keys. Teach every planned concept, or remove it from the plan only if the sources do not teach it.",
   study_sentence_mismatch:
     "A practice.gapSentence was not an exact copy of practice.fullSentence with only the target replaced.",
   study_answer_exposed:
@@ -127,26 +133,34 @@ const gapStopWords = new Set(
 const gapWords = (value: string) => value.toLocaleLowerCase("en").match(/[\p{L}\p{N}'’-]+/gu) ?? [];
 
 /**
- * A lexical gap must hide the whole target: no literal target occurrence may straddle a blank,
- * and no visible word beside a blank may be the target's edge word or one of its content stems.
+ * A lexical gap must hide exactly the target: no literal target occurrence may straddle a blank,
+ * no visible word beside a blank may be the target's edge word or one of its content stems, and
+ * the blanks may not also hide a complement or object (one blank per target part, no extra words).
  * Unsupported targets, missing blanks and mismatched copies are reported by canonical validation.
  */
-export function gapHidesWholeTarget(
+export function lexicalGapProblem(
   en: string,
   fullSentence: string,
   gapSentence: string,
-): boolean {
+): "study_gap_partial" | "study_gap_overhidden" | undefined {
   const target = studyLexicalTarget(en);
   const pieces = gapSentence.trim().split(blank);
-  if (!target || pieces.length < 2) return true;
+  if (!target || pieces.length < 2) return undefined;
   const sentence = fullSentence.trim();
   const match = new RegExp(`^${pieces.map(escapePattern).join("([\\s\\S]+?)")}$`, "du").exec(
     sentence,
   );
-  if (!match?.indices) return true;
+  if (!match?.indices) return undefined;
   const hidden = match.indices
     .slice(1)
     .filter((span): span is [number, number] => span !== undefined);
+  const targetWordCount = gapWords(target.text).length;
+  const hiddenWordCount = hidden.reduce(
+    (total, [from, to]) => total + gapWords(sentence.slice(from, to)).length,
+    0,
+  );
+  if (hidden.length > target.parts.length || hiddenWordCount > targetWordCount)
+    return "study_gap_overhidden";
   for (const part of target.parts) {
     const occurrence = new RegExp(
       `(?<![\\p{L}\\p{N}])${escapePattern(part)}(?![\\p{L}\\p{N}])`,
@@ -157,7 +171,7 @@ export function gapHidesWholeTarget(
       const end = start + found[0].length;
       const overlaps = hidden.some(([from, to]) => start < to && from < end);
       const inside = hidden.some(([from, to]) => from <= start && end <= to);
-      if (overlaps && !inside) return false;
+      if (overlaps && !inside) return "study_gap_partial";
     }
   }
   const words = gapWords(target.text);
@@ -171,11 +185,16 @@ export function gapHidesWholeTarget(
     ];
     for (const [neighbour, edge] of neighbours) {
       if (!neighbour) continue;
-      if (words.length > 1 && neighbour === edge) return false;
-      if (content.some((word) => neighbour.startsWith(word))) return false;
+      if (words.length > 1 && neighbour === edge) return "study_gap_partial";
+      if (content.some((word) => neighbour.startsWith(word))) return "study_gap_partial";
     }
   }
-  return true;
+  return undefined;
+}
+
+/** True when the gap hides exactly the whole target; see lexicalGapProblem. */
+export function gapHidesWholeTarget(en: string, fullSentence: string, gapSentence: string) {
+  return lexicalGapProblem(en, fullSentence, gapSentence) === undefined;
 }
 
 /** Content-only wire contract. Metadata and canonical LKM validation remain server controlled. */
@@ -246,7 +265,7 @@ export function buildKnowledgeGenerationInput(
     trap,
   });
   const productionTeaching = z.strictObject({
-    collocations: z.array(required).max(3),
+    collocations: z.array(required).max(3).optional(),
     noteFa: explanation,
     imageFa: required.describe(`One concrete mental image. ${explanationDescription}`),
   });
@@ -273,7 +292,13 @@ export function buildKnowledgeGenerationInput(
     type: z.literal("grammar"),
     claim,
     meaning,
-    pronunciation: productionPronunciation,
+    pronunciation: productionPronunciation.extend({
+      spokenChunk: required
+        .max(120)
+        .describe(
+          "2 to 6 consecutive words copied exactly from practice.fullSentence that carry the pattern; pronunciation.ipa transcribes exactly these words. Never a grammar label or placeholder.",
+        ),
+    }),
     practice: z.strictObject({
       taskFa: required.describe(
         `${explanationDescription} Instruction only: explain the requested operation and scope, without a worked answer or solution hints.`,
@@ -370,7 +395,7 @@ export function buildKnowledgeGenerationInput(
       .max(40),
     title: knowledgeModelSchema.shape.title,
     learningItems: z.array(itemSchema).min(1).max(24),
-    summary: z.array(claim).max(100),
+    summary: z.array(claim).max(100).optional(),
     topics: z
       .array(
         z.strictObject({
@@ -378,29 +403,37 @@ export function buildKnowledgeGenerationInput(
           claims: z.array(claim).max(300),
         }),
       )
-      .max(100),
-    homework: z.array(sourcedClaim).max(100),
-    uncertainties: z.array(sourcedClaim).max(100),
+      .max(100)
+      .optional(),
+    homework: z.array(sourcedClaim).max(100).optional(),
+    uncertainties: z.array(sourcedClaim).max(100).optional(),
     classNotes: z.strictObject({
       coverage: z.string().min(1).max(2000).describe(explanationDescription),
-      orientation: z.strictObject({
-        sourceNote: explanation.optional(),
-        coreIntro: explanation.optional(),
-        oralIntro: explanation.optional(),
-      }),
-      activities: z.strictObject({
-        chunks: z
-          .array(z.strictObject({ pattern: required, classSentence: required, noteFa: required }))
-          .max(100),
-        board: z
-          .array(z.strictObject({ text: required, evidenceKeys: z.array(key).min(1).max(30) }))
-          .max(100),
-        tasks: z.array(taskGroup).max(30),
-        culture: z.array(taskGroup).max(30),
-        register: z
-          .array(z.strictObject({ notThis: required, sayThis: required, whyFa: required }))
-          .max(100),
-      }),
+      orientation: z
+        .strictObject({
+          sourceNote: explanation.optional(),
+          coreIntro: explanation.optional(),
+          oralIntro: explanation.optional(),
+        })
+        .optional(),
+      activities: z
+        .strictObject({
+          chunks: z
+            .array(z.strictObject({ pattern: required, classSentence: required, noteFa: required }))
+            .max(100)
+            .optional(),
+          board: z
+            .array(z.strictObject({ text: required, evidenceKeys: z.array(key).min(1).max(30) }))
+            .max(100)
+            .optional(),
+          tasks: z.array(taskGroup).max(30).optional(),
+          culture: z.array(taskGroup).max(30).optional(),
+          register: z
+            .array(z.strictObject({ notThis: required, sayThis: required, whyFa: required }))
+            .max(100)
+            .optional(),
+        })
+        .optional(),
       // Written mistakes exist in the contract only with server-confirmed handwriting.
       ...(handwriting.size
         ? {
@@ -420,7 +453,7 @@ export function buildKnowledgeGenerationInput(
     `${knowledgeGenerationFormat} evidence rows are [key,"time",startMs,endMs,text,metadata], [key,"page",page,blockId,text,metadata], or [key,"text",blockId,start,end,text,metadata]. Read all supplied text, native locators, incomplete units and source roles. Keys select exact immutable source blocks; never invent a key or cite an empty row.`,
     "For every sourced claim use evidenceKeys containing ALL essential supporting rows. Prefer one atomic fact per claim. A joint claim or source conflict requires every essential key, not a convenient unrelated row. Never combine user_notes rows with other rows in one claim. An empty evidenceKeys array means an explicitly additional AI illustration; never use it for class facts, homework or a source conflict.",
     "Only teaching content belongs in output. Do not generate IDs, sourceRefs, schemaVersion, language, coverage availability, source classifications, speaker identities, attribution, creation, dates, courses, sourceFa, voiceEvidence, mistake patterns or gapfill: the server constructs these. Each object allows only the properties its schema lists; optional properties are omitted when they have no real content, and a property that is present must contain real content.",
-    `Write lessonPlan FIRST. Read ALL evidence rows and list every distinct taught concept, each side of a taught contrast, each condition or exception, each source assignment and each unresolved source conflict, with its supporting keys and teachAs. Mark at most ${productionLimit + recognitionLimit} concepts as card and teach the rest as notes. Then write the lesson from that plan: every card concept gets exactly one complete learning item, no two learning items teach the same point, and every notes concept is explained in teaching notes, chunks or tasks. Core rules, both sides of a taught contrast, conditions and conflicts come before optional recognition items or duplicate summaries.`,
+    `Write lessonPlan FIRST. Read ALL evidence rows and list every distinct taught concept, each separate sense or use that the source teaches with its own example, each side of a taught contrast, each condition or exception, each source assignment and each unresolved source conflict, with its supporting keys and teachAs. Mark at most ${productionLimit + recognitionLimit} concepts as card and teach the rest as notes. Then write the lesson from that plan: every card concept gets exactly one complete learning item, no two learning items teach the same point, and every notes concept is explained in teaching notes, chunks or tasks. The server rejects a plan concept that no claim states with at least one of its keys: state it in its card's claim or in a summary or topic claim. Core rules, both sides of a taught contrast, conditions and conflicts come before optional recognition items or duplicate summaries.`,
     'Each learningItem has type lexical, grammar or recognition, with only that type\'s properties. lexical: a word or phrase the learner must produce, practised by practice.fullSentence and practice.gapSentence. grammar: a structure practised by practice.taskFa, practice.prompt and its answer practice.fullSentence. recognition: an optional item to recognise, shown by practice.example. A pattern with dots, brackets, grammar labels or separated parts such as "X ... Y" is grammar, not lexical.',
     `Explain in exactly ${JSON.stringify(data.explanationLanguage)} using its normal writing system. faMeaning, noteFa, imageFa, taskFa and other legacy fa suffixes name fields, not the requested language. English targets/examples remain English. Keep source examples, use plain accurate grammar terms, and never put an English lexical answer in faMeaning.`,
     isPersian
@@ -432,15 +465,16 @@ export function buildKnowledgeGenerationInput(
     data.teachingPreferences.shorterExamples
       ? "The learner requests shorter examples. Use the shortest complete natural new examples; preserve exact class examples unchanged."
       : "Use complete natural examples, normally 8–15 words; preserve exact class examples unchanged.",
-    `Each production item has one standard British non-rhotic IPA transcription with slashes, stress and natural weak forms, two or three frequent collocations when relevant, a concise correct usage/register note and one concrete mental image.${isPersian ? " Persian production items also need pronunciation.faApprox." : ""}`,
+    `Each production item has one standard British non-rhotic IPA transcription with slashes, stress and natural weak forms, two or three frequent collocations when relevant (omit collocations otherwise), a concise correct usage/register note and one concrete mental image.${isPersian ? " Persian production items also need pronunciation.faApprox." : ""}`,
+    "For grammar items, first copy pronunciation.spokenChunk: 2 to 6 consecutive words exactly as written in practice.fullSentence that carry the pattern, such as an auxiliary with its verb. pronunciation.ipa then transcribes exactly those words. Never transcribe a grammar label, a placeholder word such as subject or verb, a whole sentence, or words that are not in the chunk.",
     "Check pronunciation word by word against the actual term: pronunciation.ipa (and faApprox) represent exactly the target or representative grammatical form in meaning.en, with the same auxiliaries, particles and participle. Placeholder notation is not spoken. Do not reuse IPA from another item or give only an unrelated fragment of practice.fullSentence. IPA contains phonetic notation, not prose.",
     "pronunciation.trap is optional: include it only for a well-known sound, stress or spelling trap of that exact target. Many words have more than one accepted pronunciation. Never call a pronunciation wrong, never claim that two forms must sound different, and never reject a variant; every variant given in the sources stays correct. Put comparisons in teaching.noteFa. When unsure, omit trap.",
     "Recognition practice.example must be a correct usable English example. For an explicitly incorrect source exercise or quotation, use the corrected form in practice.example; the original may appear only as an explicitly labelled incorrect/correction contrast in teaching.noteFa. Keep its anonymous or quoted provenance clear and never imply that the account owner made the error. Do not turn a correct source example into an error for practice.",
     `Prefer exact supplied class examples. A lexical meaning.en contains only Latin letters, digits, spaces, apostrophes and hyphens: the spoken headword as taught, optionally with sb/sth object slots (for example "kit sth out") or one complement after " + " chosen ONLY from ${notations}, with alternatives joined by " / " or "or". No other notation, such as "+ time" or "+ to + verb", and no brackets or definitions; if a usage needs another complement, write only the headword and explain the complement in teaching.noteFa.`,
-    `Write practice.fullSentence first, then copy it exactly into practice.gapSentence and replace the complete target span with ${blank}: every word of the headword as it appears in the sentence, including inflections and particles. For an sb/sth frame, blank each lexical part and keep the object visible. Never leave a word of the target beside a blank, never blank only the complement, and never add a first-letter hint.`,
-    'For grammar, taskFa explains the instruction without a worked answer and prompt is the English task item without its completed answer. Solve the exact prompt before writing fullSentence: keep the same subject, verb, meaning, tense and time clues, changing only what the instruction asks. A formatting example only: prompt="Join with because: I stayed in. It was raining." and fullSentence="I stayed in because it was raining.". Do not introduce that content unless supported by the class.',
+    `Write practice.fullSentence first, then copy it exactly into practice.gapSentence and replace the complete target span with ${blank}: every word of the headword as it appears in the sentence, including inflections and particles. For an sb/sth frame, blank each lexical part and keep the object visible. Never leave a word of the target beside a blank, never blank only the complement, never also blank a complement or object that is not part of the target, and never add a first-letter hint. Keep enough sentence context that the target is the natural answer.`,
+    'For grammar, taskFa explains the instruction without a worked answer and prompt is the English task item without its completed answer. Solve the exact prompt before writing fullSentence: keep the same subject, verb, meaning, tense and time clues, changing only what the instruction asks. taskFa describes the prompt exactly as written: never mention brackets, options or blanks that it lacks, and never ask the learner to correct a sentence that is already correct. A formatting example only: prompt="Join with because: I stayed in. It was raining." and fullSentence="I stayed in because it was raining.". Do not introduce that content unless supported by the class.',
     'Cross-check the same grammatical relationship across claim.text, meaning.faMeaning, teaching.noteFa and every English example. Preserve the source syntax/order and conditions consistently: if X takes complement Y, an explicit X + Y schematic is safer than an ambiguous translated before/after statement. When the source says X is followed by Y or X + Y, quote that exact English left-to-right pattern. For Persian explanations, use "پس از X، Y می‌آید". NEVER explain X + Y as "X بعد از Y می‌آید", which reverses the source order. These are abstract X/Y placeholders, not lesson facts. All claim, meaning and note descriptions must agree with the supplied English examples and the completed task.',
-    "classNotes has coverage (one short description of taught concepts), orientation {sourceNote, coreIntro, oralIntro} with each property omitted when absent, and activities {chunks, board, tasks, culture, register}, where an unsupported activity is []. Board entries must copy exact text from a cited board_photo row. Do not create solved gapfill; server practice uses validated source examples.",
+    "classNotes has coverage (one short description of taught concepts), optional orientation {sourceNote, coreIntro, oralIntro} and optional activities {chunks, board, tasks, culture, register}; omit any property, list or group that has no real content. Board entries must copy exact text from a cited board_photo row. Do not create solved gapfill; server practice uses validated source examples.",
     'Tasks and culture preserve exercise order as groups {title, blocks}. A block is {type:"text", text} for explanation prose, {type:"quote", text} for an exact English quotation, {type:"table", headers, rows}, or {type:"items", items}, where each exercise item has prompt and model, plus whyFa when explained.',
     handwriting.size
       ? `Only these server-confirmed handwriting keys authorize the learner's own written mistakes or a verbatim learnerAnswer: ${JSON.stringify([...handwriting])}. Quote exact original text, mark only wrong words with **bold**, and cite the authorized keys. learningItemIndex is zero-based, may be omitted, and may link only a production item. The server alone supplies teacherCorrected.`
@@ -521,6 +555,29 @@ export function buildKnowledgeGenerationInput(
   function assemble(raw: unknown) {
     const wire = schema.parse(raw);
     const notes = wire.classNotes;
+    // Omitted optional groups and lists are absent content, never an error or invented value.
+    const orientation = notes.orientation ?? {};
+    const activities = notes.activities ?? {};
+    const summary = wire.summary ?? [];
+    const topics = wire.topics ?? [];
+    const homework = wire.homework ?? [];
+    const uncertainties = wire.uncertainties ?? [];
+    // Every planned concept must be stated by a claim citing at least one of its keys.
+    const cited = new Set(
+      [
+        ...wire.learningItems.map((item) => item.claim),
+        ...summary,
+        ...topics.flatMap((topic) => topic.claims),
+        ...homework,
+        ...uncertainties,
+      ].flatMap((entry) => entry.evidenceKeys),
+    );
+    if (
+      wire.lessonPlan.some(
+        (entry) => !entry.evidenceKeys.some((evidenceKey) => cited.has(evidenceKey)),
+      )
+    )
+      throw errors.validationFailed({ output: ["study_plan_uncovered"] });
     const learningItems = wire.learningItems.map((item, index) => {
       const expanded = expandClaim(item.claim, `item-claim-${index}`);
       // faApprox exists in the schema only for Persian explanations.
@@ -555,13 +612,20 @@ export function buildKnowledgeGenerationInput(
           set: "production" as const,
           ipa: item.pronunciation.ipa,
           fullSentence: item.practice.fullSentence,
-          collocations: item.teaching.collocations,
+          collocations: item.teaching.collocations ?? [],
           noteFa: item.teaching.noteFa,
           imageFa: item.teaching.imageFa,
           sourceFa: labels[expanded.origin === "from_class" ? "fromClass" : "aiExpansion"],
         };
         if (item.type === "grammar") {
           kind = "grammar";
+          const chunk = new RegExp(
+            `(?<![\\p{L}\\p{N}])${escapePattern(item.pronunciation.spokenChunk.trim())}(?![\\p{L}\\p{N}])`,
+            "iu",
+          );
+          const chunkWords = gapWords(item.pronunciation.spokenChunk).length;
+          if (chunkWords < 1 || chunkWords > 6 || !chunk.test(item.practice.fullSentence))
+            throw errors.validationFailed({ output: ["study_ipa_chunk_invalid"] });
           study = productionStudySchema.parse({
             ...content,
             kind: "grammar",
@@ -570,14 +634,12 @@ export function buildKnowledgeGenerationInput(
           });
         } else {
           kind = item.kind;
-          if (
-            !gapHidesWholeTarget(
-              item.meaning.en,
-              item.practice.fullSentence,
-              item.practice.gapSentence,
-            )
-          )
-            throw errors.validationFailed({ output: ["study_gap_partial"] });
+          const gapProblem = lexicalGapProblem(
+            item.meaning.en,
+            item.practice.fullSentence,
+            item.practice.gapSentence,
+          );
+          if (gapProblem) throw errors.validationFailed({ output: [gapProblem] });
           study = productionStudySchema.parse({
             ...content,
             gapSentence: item.practice.gapSentence,
@@ -594,7 +656,7 @@ export function buildKnowledgeGenerationInput(
         study,
       };
     });
-    const board = notes.activities.board.map((entry) => {
+    const board = (activities.board ?? []).map((entry) => {
       const text = entry.text.trim();
       // A board line is exact board text at word boundaries, never a fragment or whitespace.
       const exact = new RegExp(`(?<![\\p{L}\\p{N}])${escapePattern(text)}(?![\\p{L}\\p{N}])`, "u");
@@ -610,8 +672,8 @@ export function buildKnowledgeGenerationInput(
         throw errors.validationFailed({ output: ["board_evidence_invalid"] });
       return text;
     });
-    const tasks = expandTaskGroups(notes.activities.tasks);
-    const culture = expandTaskGroups(notes.activities.culture);
+    const tasks = expandTaskGroups(activities.tasks ?? []);
+    const culture = expandTaskGroups(activities.culture ?? []);
     const { mistakes } = notes as {
       mistakes?: { noteFa?: string; items: z.infer<typeof mistake>[] };
     };
@@ -641,8 +703,8 @@ export function buildKnowledgeGenerationInput(
       schemaVersion: "1",
       title: wire.title,
       language: { learning: "en", explanation: data.explanationLanguage },
-      summary: wire.summary.map((entry, index) => expandClaim(entry, `summary-${index}`)),
-      topics: wire.topics.map((topic, index) => ({
+      summary: summary.map((entry, index) => expandClaim(entry, `summary-${index}`)),
+      topics: topics.map((topic, index) => ({
         id: `topic-${index}`,
         title: topic.title,
         claims: topic.claims.map((entry, claimIndex) =>
@@ -650,8 +712,8 @@ export function buildKnowledgeGenerationInput(
         ),
       })),
       learningItems,
-      homework: wire.homework.map((entry, index) => expandClaim(entry, `homework-${index}`)),
-      uncertainties: wire.uncertainties.map((entry, index) =>
+      homework: homework.map((entry, index) => expandClaim(entry, `homework-${index}`)),
+      uncertainties: uncertainties.map((entry, index) =>
         expandClaim({ ...entry, uncertain: true }, `uncertainty-${index}`),
       ),
       coverage: {
@@ -660,22 +722,16 @@ export function buildKnowledgeGenerationInput(
       },
       classNotes: {
         coverage: notes.coverage,
-        ...(notes.orientation.sourceNote === undefined
-          ? {}
-          : { sourceNote: notes.orientation.sourceNote }),
-        ...(notes.orientation.coreIntro === undefined
-          ? {}
-          : { coreIntro: notes.orientation.coreIntro }),
-        ...(notes.orientation.oralIntro === undefined
-          ? {}
-          : { oralIntro: notes.orientation.oralIntro }),
+        ...(orientation.sourceNote === undefined ? {} : { sourceNote: orientation.sourceNote }),
+        ...(orientation.coreIntro === undefined ? {} : { coreIntro: orientation.coreIntro }),
+        ...(orientation.oralIntro === undefined ? {} : { oralIntro: orientation.oralIntro }),
         date: context.date,
         ...(context.course ? { course: context.course } : {}),
-        chunks: notes.activities.chunks,
+        chunks: activities.chunks ?? [],
         board,
         tasks,
         culture,
-        register: notes.activities.register,
+        register: activities.register ?? [],
         gapfill: [],
         mistakes: {
           ...(mistakes?.noteFa === undefined ? {} : { noteFa: mistakes.noteFa }),

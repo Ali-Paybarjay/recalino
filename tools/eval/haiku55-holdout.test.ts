@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
 import { holdoutMigrationFixtures, holdoutRepeatIds } from "./haiku55-holdout-fixtures";
+import { holdout3MigrationFixtures, holdout3RepeatIds } from "./haiku55-holdout3-fixtures";
 import {
   freshMigrationFixtures,
   migrationFixtureSchema,
@@ -50,15 +51,27 @@ describe("PRD-COST-02 cross-round migration ledger", () => {
   });
 });
 
-describe("PRD-QA-01 independent holdout fixtures", () => {
-  const fixtures = holdoutMigrationFixtures();
-  it("has twelve distinct lessons and two repeats, disjoint from earlier fixtures", async () => {
+describe.each([
+  {
+    name: "holdout-2",
+    prefix: "N",
+    fixtures: holdoutMigrationFixtures(),
+    repeatIds: holdoutRepeatIds,
+    before: [],
+  },
+  {
+    name: "holdout-3",
+    prefix: "P",
+    fixtures: holdout3MigrationFixtures(),
+    repeatIds: holdout3RepeatIds,
+    before: holdoutMigrationFixtures(),
+  },
+])("PRD-QA-01 independent $name fixtures", ({ prefix, fixtures, repeatIds, before }) => {
+  it("has twelve distinct lessons and two repeats, disjoint from every earlier fixture set", async () => {
     expect(fixtures.map((fixture) => fixture.id)).toEqual(
-      Array.from({ length: 12 }, (_, index) => `N${String(index + 1).padStart(2, "0")}`),
+      Array.from({ length: 12 }, (_, index) => `${prefix}${String(index + 1).padStart(2, "0")}`),
     );
-    expect(holdoutRepeatIds.every((id) => fixtures.some((fixture) => fixture.id === id))).toBe(
-      true,
-    );
+    expect(repeatIds.every((id) => fixtures.some((fixture) => fixture.id === id))).toBe(true);
     const regression = JSON.parse(
       await readFile(
         new URL("./haiku55-migration-regression-fixtures.json", import.meta.url),
@@ -68,6 +81,7 @@ describe("PRD-QA-01 independent holdout fixtures", () => {
     const earlier = [
       ...regression.cases.map((entry) => migrationFixtureSchema.parse(entry)),
       ...freshMigrationFixtures(),
+      ...before,
     ];
     const earlierIds = new Set(
       earlier.flatMap((fixture) => fixture.sources.map((source) => source.sourceId)),
@@ -114,7 +128,7 @@ describe("PRD-QA-01 independent holdout fixtures", () => {
       for (const marker of [
         "criticalFacts",
         "forbiddenErrors",
-        "expected",
+        '"expected":',
         "holdout",
         "Holdout",
         "synthetic",

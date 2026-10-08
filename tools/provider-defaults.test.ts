@@ -83,7 +83,7 @@ it("bounds Haiku 5.5 text requests including long-context regional prices and re
   const model = "anthropic/claude-haiku-5.5";
   expect(settings.llmModel).toBe(model);
   expect(settings.maxOutputTokens).toBe(6144);
-  expect(settings.promptVersion).toBe("recalino-knowledge-6");
+  expect(settings.promptVersion).toBe("recalino-knowledge-7");
   expect(settings.structuredModelOverrides?.[model]).toEqual({
     maxOutputTokens: 12000,
     reasoningEffort: "low",

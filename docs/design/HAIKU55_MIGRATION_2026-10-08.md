@@ -158,7 +158,37 @@ Claude Code کد و شواهد Codex را مستقل بازبینی کرد (سه
 - worker integration روی دیتابیس ایزولهٔ 55322: ۱۶ آزمون موفق، از جمله «سقف دو generation پس از commit ناموفق و retry»
 - verify کامل: نتیجه در `artifacts/verification/haiku55-claude-verify.log`
 
-ارزیابی واقعی holdout تا تأیید هزینه توسط مالک محصول اجرا نشده است. تا عبور واقعی از دروازه‌ها، production روی 4.5 می‌ماند.
+verify کامل همین commit (`4da724d`) پس از reset دیتابیس ایزوله: lint، typecheck، مرزها و ۲۸۵۱ آزمون موفق، ۱ آزمون اختیاری skip و صفر شکست (`artifacts/verification/haiku55-claude-verify-final.log`). verify قبلی همان کد روی دیتابیس انباشته فقط در `jobs.int.test.ts` به timeout خورد. آن آزمون صف jobهای دیگر را هم تخلیه می‌کند و به‌تنهایی موفق بود.
+
+### نتیجهٔ holdout-2 (اجرای پولی مجاز، 2026-10-08) — FAIL
+
+- مالک محصول یک اجرای holdout را تأیید کرد. freeze برابر `9b6c92310ab245f461b1716e5d6638fa1d6c732f615eabb2c05ca2c77ca285d3` (commit `4da724d`، config `openrouter-2026-10-08-2`، prompt `recalino-knowledge-6`) بود. شواهد در `artifacts/verification/haiku55-holdout2-acceptance/` و ledger در `haiku55-evaluation-ledger.json` است.
+- run پس از ۱۲ مورد با `first_generation_gate_unreachable` متوقف شد: 12/12 خروجی نهایی معتبر، 10/12 تلاش اول. هر ۱۲ مورد کنترل خودکار gold را عبور کردند. 14 پاسخ پولی با 14 HTTP، بدون unknown یا fallback و بدون تکمیل closer.
+- هزینهٔ این round 0.0500627 دلار است. کل QA مهاجرت اکنون 0.2149157 دلار است.
+- N04/N08 تکراری اجرا نشدند. freeze مصرف شده است و ledger اجرای دوباره را رد می‌کند.
+- علت هر دو شکست تلاش اول (N11 و N12) یک تناقض قرارداد v4 بود: prompt گفته بود ویژگی بی‌محتوا را حذف کن، ولی `teaching.collocations` الزامی مانده بود. مدل آن را در آیتم grammar حذف کرد. diagnostic کدمحور به regeneration رسید و پاسخ دوم معتبر شد.
+- بازبینی کیفیت توسط سه عامل مستقل (آگاه از نامزد، نه معلم انسانی): ۷ از ۱۲ مورد بدون خطای مهم، ۵ مورد با خطای مهم. assessment رسمی `adoptionEligible=false` دارد و ۶ خطای مهم را ثبت کرده است (`manual-quality-holdout2.json` و `quality-review-summary.json`).
+  - N01: معنای دوم busy تدریس نشد.
+  - N02: stress اشتباه در IPA جملهٔ ساختگی hotel.
+  - N08: schedule و variantهای either/neither نیامدند.
+  - N09: IPA برچسب grammar، «another» را «the other» نوشت.
+  - N11: دو cloze که پاسخشان از جلو قابل بازیابی نبود.
+- مشکل‌های غیرمهم: مثال AI زیر برچسب «از کلاس»، gapfill سروری که فقط یک حرف اضافه را می‌پرسد، و تقریب‌های فارسی ضعیف.
+
+### نامزد بعدی v5 (ارزیابی‌نشده)
+
+اصلاح‌های عمومی برای همان خانواده‌های شکست؛ هیچ‌کدام نکتهٔ درس خاصی را hardcode نمی‌کند:
+
+- **فهرست‌ها و گروه‌های اختیاری:** `teaching.collocations`، summary/topics/homework/uncertainties، orientation و activities اختیاری‌اند. حذفشان یعنی خالی و سرور `[]` canonical می‌سازد.
+- **IPA در grammar:** `pronunciation.spokenChunk` (wire-only) باید ۲ تا ۶ کلمهٔ پیوسته از `fullSentence` باشد و IPA همان را آوانویسی کند. برچسب، placeholder و کلمهٔ بیرون از جمله با `study_ipa_chunk_invalid` رد می‌شوند.
+- **gap بیش از هدف:** `study_gap_overhidden` بررسی می‌کند که تعداد blank از بخش‌های هدف و تعداد کلمهٔ پنهان از کلمه‌های هدف بیشتر نباشد. complement و مفعول نباید پنهان شوند.
+- **پوشش plan:** `study_plan_uncovered` بررسی می‌کند که هر مفهوم `lessonPlan` دست‌کم با یک claim با کلید خودش بیان شده باشد. prompt هر معنا یا کاربرد جداگانهٔ دارای مثال را مفهوم جدا می‌شمارد.
+- **prompt:** `taskFa` باید دقیقاً همان prompt را توصیف کند، بدون پرانتز یا گزینه‌ای که در prompt نیست و بدون «اصلاح» جملهٔ درست. cloze باید پاسخ طبیعی و قابل بازیابی داشته باشد.
+- **نسخه‌ها:** `knowledge_generation_keys_v5`، `openrouter-2026-10-08-3` و `recalino-knowledge-7`.
+
+**holdout-3 (`haiku55-holdout-3`):** ۱۲ درس تازه (P01 تا P12) و تکرار P04/P08. پس از توقف holdout-2 نوشته شد و با همهٔ مجموعه‌های قبلی و مثال‌های prompt جملهٔ مشترک ندارد (آزمون خودکار). اجرای آن به تأیید جداگانهٔ مالک محصول نیاز دارد.
+
+**نتیجهٔ صادقانه:** Haiku 5.5 با این pipeline روی holdout مستقل هم دروازهٔ فنی و هم دروازهٔ کیفیت را رد کرد. تا عبور واقعی، production روی 4.5 می‌ماند. موفقیت v5 ثابت نشده است. چند دور prompt/contract، خطاهای تازه‌ای در تلفظ، پوشش و cloze نشان داده‌اند؛ ممکن است مدل کوچک بدون کنترل مرحلهٔ دوم به دروازهٔ «صفر خطای مهم» نرسد.
 
 ## rollout قابل بازبینی
 

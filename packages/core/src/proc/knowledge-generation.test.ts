@@ -16,6 +16,7 @@ import {
   buildKnowledgeGenerationInput,
   gapHidesWholeTarget,
   type KnowledgeGenerationInput,
+  lexicalGapProblem,
 } from "./knowledge-generation";
 
 function first<T>(values: readonly T[]): T {
@@ -94,6 +95,7 @@ function grammar() {
     kind: "grammar",
     gapSentence: "",
     en: "third-person positive simple present",
+    spokenChunk: "She walks",
     fullSentence: "She walks to the small shop every morning.",
     taskFa: "فعل جمله را درست کنید.",
     prompt: "Correct the verb: She walk to the small shop every morning.",
@@ -192,10 +194,13 @@ function wireGroups(groups: unknown): unknown {
 function wire(raw: unknown): unknown {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
   const value = raw as Record<string, unknown>;
+  const citedKey = JSON.stringify(value).match(/"evidenceKeys":\["(r[0-9a-z]+)"/)?.[1] ?? "r0";
   const result: Record<string, unknown> = {
     ...("lessonPlan" in value
       ? {}
-      : { lessonPlan: [{ concept: "planned concept", evidenceKeys: ["r0"], teachAs: "card" }] }),
+      : {
+          lessonPlan: [{ concept: "planned concept", evidenceKeys: [citedKey], teachAs: "card" }],
+        }),
     ...value,
   };
   if (Array.isArray(value.learningItems))
@@ -214,6 +219,7 @@ function wire(raw: unknown): unknown {
         ipa,
         faApprox,
         trap,
+        spokenChunk,
         fullSentence,
         gapSentence,
         taskFa,
@@ -233,7 +239,7 @@ function wire(raw: unknown): unknown {
           ...present({ studyKind }),
           claim,
           meaning,
-          pronunciation: present({ ipa, faApprox, trap }),
+          pronunciation: present({ ipa, faApprox, trap, spokenChunk }),
           practice: { example, ...present({ fullSentence, gapSentence, taskFa, prompt }) },
           teaching: present({ noteFa, imageFa, collocations }),
         };
@@ -247,7 +253,7 @@ function wire(raw: unknown): unknown {
           ...present({ studyKind }),
           claim,
           meaning,
-          pronunciation,
+          pronunciation: { ...pronunciation, spokenChunk },
           practice: { taskFa, prompt, fullSentence, ...present({ gapSentence, example }) },
           teaching,
         };
@@ -258,7 +264,7 @@ function wire(raw: unknown): unknown {
         ...present({ studyKind }),
         claim,
         meaning,
-        pronunciation,
+        pronunciation: { ...pronunciation, ...present({ spokenChunk }) },
         practice: { fullSentence, gapSentence, ...present({ taskFa, prompt, example }) },
         teaching,
       };
@@ -440,7 +446,7 @@ describe("FR-PROC-004 compact knowledge generation", () => {
   it("strictly requires all v4 groups and refuses flat, missing or additional properties", () => {
     const prepared = prepare();
     const grouped = prepared.schema.parse(wire(output()));
-    expect(JSON.parse(prepared.input).format).toBe("knowledge_generation_keys_v4");
+    expect(JSON.parse(prepared.input).format).toBe("knowledge_generation_keys_v5");
     expect(() => prepared.schema.parse(output())).toThrow();
     expect(Object.keys(first(grouped.learningItems))).toEqual([
       "type",
@@ -457,11 +463,24 @@ describe("FR-PROC-004 compact knowledge generation", () => {
         Object.assign(first(changed.learningItems), { [key]: replacement });
         expect(() => prepared.assemble(changed)).toThrow();
       }
+    // Omitted optional groups are absent content: the server supplies empty canonical lists.
+    const {
+      orientation: _orientation,
+      activities: _activities,
+      ...minimalNotes
+    } = grouped.classNotes;
+    expect(prepared.assemble({ ...grouped, classNotes: minimalNotes }).classNotes).toMatchObject({
+      chunks: [],
+      board: [],
+      tasks: [],
+      register: [],
+      gapfill: [],
+    });
     for (const key of ["orientation", "activities"])
       expect(() =>
         prepared.assemble({
           ...grouped,
-          classNotes: { ...grouped.classNotes, [key]: undefined },
+          classNotes: { ...grouped.classNotes, [key]: { invented: "content" } },
         }),
       ).toThrow();
     // The plan is required and precedes the lesson so every taught point is allocated first.
@@ -574,10 +593,12 @@ describe("FR-PROC-004 compact knowledge generation", () => {
 
   it("preserves AI expansion and rejects invented AI homework or sourceless conflicts", () => {
     const prepared = prepare();
+    // A sourced summary states the planned class concept; the card itself is AI expansion.
     const result = prepared.decode(
       wire({
         ...output(),
         learningItems: [{ ...lexical(), claim: claim([]) }],
+        summary: [claim(["r0"])],
       }),
     );
     expect(result.learningItems[0]?.claim).toMatchObject({
@@ -1569,5 +1590,104 @@ describe("FR-PROC-004 v4 contract: whole-target gaps, planning and evidence inte
       buildKnowledgeGenerationInput(input(), 120000, { maxOutputTokens: 4096, compact: true })
         .system,
     ).toContain("further lesson details are omitted");
+  });
+});
+
+describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and planned coverage", () => {
+  const failure = (code: string) =>
+    expect.objectContaining({ details: { fields: { output: [code] } } });
+  it.each([
+    ["enjoy + -ing form", "I enjoy cooking for my friends.", "I ______ ______ for my friends."],
+    ["stop + -ing", "He stopped smoking.", "He ______ ______."],
+    ["do homework", "I do my homework after dinner.", "I ______ my ______ after dinner."],
+    ["look forward to", "I look forward to meeting you.", "I ______ you."],
+  ])("rejects a gap for %s that also hides words outside the target", (en, full, gap) => {
+    expect(lexicalGapProblem(en, full, gap)).toBe("study_gap_overhidden");
+    expect(() =>
+      prepare().assemble(
+        wire({
+          ...output(),
+          learningItems: [
+            { ...lexical(), en, fullSentence: full, gapSentence: gap, faMeaning: "معنی" },
+          ],
+        }),
+      ),
+    ).toThrow(failure("study_gap_overhidden"));
+  });
+
+  it("accepts inflected or separated targets whose blanks hide only the target", () => {
+    for (const [en, full, gap] of [
+      ["make a mistake", "Everyone makes mistakes sometimes.", "Everyone ______ sometimes."],
+      ["kit sth out", "We need to kit the office out.", "We need to ______ the office ______."],
+      ["a lot of", "A lot of people came.", "______ people came."],
+    ] as const)
+      expect(lexicalGapProblem(en, full, gap)).toBeUndefined();
+  });
+
+  it("ties grammar IPA to exact consecutive words of the answer, never a label", () => {
+    const prepared = prepare();
+    expect(
+      prepared.assemble(wire({ ...output(), learningItems: [grammar()] })).learningItems[0]?.study,
+    ).toMatchObject({ ipa: grammar().ipa });
+    for (const spokenChunk of [
+      "third person + verb + s",
+      "subject verb",
+      "She walks to the small shop every",
+      "walks every",
+    ])
+      expect(() =>
+        prepared.assemble(wire({ ...output(), learningItems: [{ ...grammar(), spokenChunk }] })),
+      ).toThrow(failure("study_ipa_chunk_invalid"));
+    const { spokenChunk: _chunk, ...missing } = grammar();
+    expect(() => prepared.assemble(wire({ ...output(), learningItems: [missing] }))).toThrow();
+    // The chunk is a wire-only scope control; canonical study content is unchanged.
+    expect(
+      prepared.assemble(wire({ ...output(), learningItems: [grammar()] })).learningItems[0]?.study,
+    ).not.toHaveProperty("spokenChunk");
+  });
+
+  it("rejects a planned concept that no claim states with its evidence", () => {
+    const data = input([source(), source()]);
+    const prepared = prepare(data);
+    const planned = (keys: string[]) =>
+      wire({
+        ...output(),
+        lessonPlan: keys.map((key) => ({ concept: key, evidenceKeys: [key], teachAs: "notes" })),
+      });
+    expect(() => prepared.assemble(planned(["r0", "r1"]))).toThrow(failure("study_plan_uncovered"));
+    expect(prepared.assemble(planned(["r0"])).learningItems).toHaveLength(1);
+    expect(
+      prepared.assemble(
+        wire({
+          ...output(),
+          lessonPlan: [
+            { concept: "r0", evidenceKeys: ["r0"], teachAs: "card" },
+            { concept: "r1", evidenceKeys: ["r1"], teachAs: "notes" },
+          ],
+          summary: [{ ...claim(["r1"]), text: "نکتهٔ دوم در یادداشت آمده است." }],
+        }),
+      ).summary,
+    ).toHaveLength(1);
+  });
+
+  it("treats omitted optional lists as empty, never as an error or invented content", () => {
+    const prepared = prepare();
+    const grouped = prepared.schema.parse(wire({ ...output(), learningItems: [grammar()] })) as {
+      learningItems: { teaching: Record<string, unknown> }[];
+      [key: string]: unknown;
+    };
+    const item = first(grouped.learningItems);
+    const { collocations: _collocations, ...teaching } = item.teaching;
+    const {
+      summary: _summary,
+      topics: _topics,
+      homework: _homework,
+      uncertainties: _uncertainties,
+      ...rest
+    } = grouped;
+    const assembled = prepared.assemble({ ...rest, learningItems: [{ ...item, teaching }] });
+    expect(assembled.learningItems[0]?.study).toMatchObject({ collocations: [] });
+    expect(assembled).toMatchObject({ summary: [], topics: [], homework: [], uncertainties: [] });
+    expect(prepared.system).toContain("omit collocations otherwise");
   });
 });
