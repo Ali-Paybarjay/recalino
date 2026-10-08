@@ -60,7 +60,7 @@ export function ClaimEvidence({
   return collapsed ? (
     <details className={styles.evidence}>
       <summary>
-        {claim.origin === "from_class" ? "Class sources" : "AI explanation"}
+        {claim.origin === "from_class" ? "Session sources" : "AI explanation"}
         {claim.uncertain ? " · Check this" : ""}
       </summary>
       <div className={styles.evidenceBody}>{evidence}</div>
@@ -208,11 +208,11 @@ export function NoteView({
       const reasons =
         failure instanceof WorkspaceRequestError ? Object.values(failure.fields ?? {}).flat() : [];
       const message = reasons.includes("original_unavailable")
-        ? `${issue.name}: the original file is no longer available. Open class material to upload it again or recover the recording on its original device.`
+        ? `${issue.name}: the original file is no longer available. Open session material to upload it again or recover the recording on its original device.`
         : reasons.includes("retry_selection_changed") || reasons.includes("retry_issue_changed")
-          ? `${issue.name}: class material has changed. Refresh the notes and review the current files before retrying.`
+          ? `${issue.name}: session material has changed. Refresh the notes and review the current files before retrying.`
           : reasons.includes("provider_outcome_unresolved")
-            ? `${issue.name}: an earlier processing attempt still needs checking. Open class processing before starting another attempt.`
+            ? `${issue.name}: an earlier processing attempt still needs checking. Open session processing before starting another attempt.`
             : failure instanceof Error
               ? failure.message
               : `${issue.name} could not be retried.`;
@@ -227,16 +227,16 @@ export function NoteView({
     if (!sourceIssues.length) {
       return model && !model.coverage.complete ? (
         <aside className={styles.issues} aria-label="Source details need checking">
-          <p>Some source details need checking. Open class material to review them.</p>
+          <p>Some source details need checking. Open session material to review them.</p>
           <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
-            Review class material
+            Review session material
           </QuietLink>
         </aside>
       ) : null;
     }
     return (
-      <aside className={styles.issues} aria-label="Class material needs attention">
-        <p>Some class material needs attention.</p>
+      <aside className={styles.issues} aria-label="Session material needs attention">
+        <p>Some session material needs attention.</p>
         <ul>
           {sourceIssues.map((issue) => (
             <li key={`${issue.sourceId}-${issue.kind}-${issue.locator ?? ""}`}>
@@ -266,7 +266,7 @@ export function NoteView({
                 <QuietLink disabled={busy || !!recovering} href={`/classes/${sessionId}/sources`}>
                   {issue.action === "upload"
                     ? `Upload file ${issue.order} again`
-                    : "Review class material"}
+                    : "Review session material"}
                 </QuietLink>
               ) : null}
             </li>
@@ -367,16 +367,18 @@ export function NoteView({
     <div className={styles.layout} ref={notesStart}>
       {!embedded && (
         <Link prefetch={false} href={`/classes/${sessionId}`} className={styles.back}>
-          ← Back to class
+          ← Back to session
         </Link>
       )}
       {problem && <Status tone="error">{problem}</Status>}
       {notice && <Status tone="success">{notice}</Status>}
       {!model ? (
-        <Panel title="Start with class material">
-          <p>Add your class material. Notes and flashcards are created and saved automatically.</p>
+        <Panel title="Start with session material">
+          <p>
+            Add your session material. Notes and flashcards are created and saved automatically.
+          </p>
           {materialSources.length ? (
-            <ul className={styles.materials} aria-label="Selected class material">
+            <ul className={styles.materials} aria-label="Selected session material">
               {materialSources.map((source) => (
                 <li key={source.sourceId}>
                   <p className={styles.issueName}>
@@ -424,7 +426,7 @@ export function NoteView({
                 <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
               )}
               <details className={styles.evidence}>
-                <summary>Class sources and explanations</summary>
+                <summary>Session sources and explanations</summary>
                 <div className={styles.evidenceBody}>
                   {[
                     ...model.summary,
@@ -570,7 +572,7 @@ export function NoteView({
           {!!(unmatchedClaims.length + unmatchedItems.length) && (
             <Panel title="Your saved edits from earlier material">
               <p>
-                These edits did not match an item in the latest class version. They remain saved
+                These edits did not match an item in the latest session version. They remain saved
                 here and in version history.
               </p>
               {unmatchedClaims.map(([id, value]) => (

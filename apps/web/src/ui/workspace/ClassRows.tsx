@@ -86,7 +86,7 @@ export function ClassRows({
                   <SessionLearningSummary session={item} />
                 </div>
                 <div className={styles.action}>
-                  <LinkButton href={`/classes/${item.id}`}>Go to class</LinkButton>
+                  <LinkButton href={`/classes/${item.id}`}>Go to session</LinkButton>
                 </div>
               </div>
             </details>

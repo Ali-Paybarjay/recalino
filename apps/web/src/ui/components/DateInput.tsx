@@ -72,7 +72,7 @@ export function DateInput({
       <button
         type="button"
         className={styles.open}
-        aria-label="Choose class date"
+        aria-label="Choose session date"
         disabled={disabled || !interactive}
         onClick={() => {
           const picker = pickerRef.current;

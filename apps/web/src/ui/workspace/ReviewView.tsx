@@ -222,7 +222,7 @@ export function ReviewView({
         </LinkButton>
         {sessionId && (
           <LinkButton secondary href={`/classes/${sessionId}/cards`}>
-            Class cards
+            Session cards
           </LinkButton>
         )}
       </Actions>
@@ -390,7 +390,7 @@ export function ReviewView({
           {queue.buriedSiblings > 0 && (
             <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
           )}
-          <LinkButton href="/classes">Open your classes</LinkButton>
+          <LinkButton href="/classes">Open your courses</LinkButton>
         </Panel>
       )}
       {receipt && (

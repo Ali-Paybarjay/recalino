@@ -67,7 +67,7 @@ it("treats an unreadable success response as an interrupted gateway response", a
 });
 
 it.each([
-  ["transcript_required", "Select a class recording in Sources and process it"],
+  ["transcript_required", "Select a session recording in Sources and process it"],
   ["consent_required", "Enable voice identification in Voice settings"],
   ["explanation_language_missing", "Choose your explanation language in your profile"],
 ])("explains the class voice prerequisite %s", async (reason, message) => {
@@ -112,7 +112,8 @@ it.each(["select_at_least_one", "not_verified"])(
       ),
     );
     await expect(workspaceRequest("/api/classes/class-id/voice", "POST")).rejects.toMatchObject({
-      message: "Select a class recording in Sources and process it before checking class voices.",
+      message:
+        "Select a session recording in Sources and process it before checking session voices.",
     });
   },
 );

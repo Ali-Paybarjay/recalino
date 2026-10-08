@@ -93,7 +93,7 @@ describe("processing next actions", () => {
     "keeps %s processing visible without offering another confirmation",
     (state) => {
       const html = render([run(state)]);
-      expect(html).toContain("Preparing your class");
+      expect(html).toContain("Preparing your session");
       expect(buttons(html)).not.toContain("Confirm and process");
       expect(buttons(html)).toContain("Cancel processing");
       expect(notesAction(html)).toBeUndefined();
@@ -107,13 +107,13 @@ describe("processing next actions", () => {
       const html = render([run(state)]);
       expect(buttons(html)).not.toContain("Confirm and process");
       expect(html).not.toContain("Check before processing");
-      expect(notesAction(html)).toBe("Read class notes");
+      expect(notesAction(html)).toBe("Read session notes");
       expect(html).toContain("Step 3 of 3");
-      expect(html).toContain("Next, read and save your class notes.");
+      expect(html).toContain("Next, read and save your session notes.");
       expect(html).toContain(`/classes/${sessionId}/cards`);
       expect(html).toContain(
         state === "ready"
-          ? "Your class is ready."
+          ? "Your session is ready."
           : "A partial result is ready. Some selected material could not be extracted.",
       );
     },
@@ -125,7 +125,7 @@ describe("processing next actions", () => {
       snapshot: { ...estimate.snapshot, sourcesVersion: estimate.snapshot.sourcesVersion + 1 },
     });
     expect(buttons(html)).toContain("Confirm and process");
-    expect(notesAction(html)).toBe("Read class notes");
+    expect(notesAction(html)).toBe("Read session notes");
   });
 
   it("keeps notes after verification changes the version but keeps the selected material", () => {
@@ -137,7 +137,7 @@ describe("processing next actions", () => {
     });
     expect(buttons(html)).not.toContain("Confirm and process");
     expect(html).not.toContain("Check before processing");
-    expect(notesAction(html)).toBe("Read class notes");
+    expect(notesAction(html)).toBe("Read session notes");
   });
 
   it("asks for confirmation when the selected material changes even at the same version", () => {
@@ -146,14 +146,14 @@ describe("processing next actions", () => {
       selectionFingerprint: "new-selection",
     });
     expect(buttons(html)).toContain("Confirm and process");
-    expect(notesAction(html)).toBe("Read class notes");
+    expect(notesAction(html)).toBe("Read session notes");
   });
 
   it("keeps a successful result available when the current source estimate is unavailable", () => {
     const html = render([run("ready")], null);
     expect(buttons(html)).not.toContain("Confirm and process");
-    expect(notesAction(html)).toBe("Read class notes");
-    expect(html).toContain("Your class is ready.");
+    expect(notesAction(html)).toBe("Read session notes");
+    expect(html).toContain("Your session is ready.");
   });
 
   it.each(["failed", "cancelled"] as const)(
@@ -165,7 +165,7 @@ describe("processing next actions", () => {
       expect(html).toContain(
         state === "cancelled"
           ? "Processing cancelled. Unused allowance was released."
-          : "Processing needs attention. Your saved class and earlier notes are available.",
+          : "Processing needs attention. Your saved session and earlier notes are available.",
       );
     },
   );
@@ -212,7 +212,7 @@ describe("processing next actions", () => {
     expect(html).toContain("Previous attempt");
     expect(html).toContain("Your sources have changed since this attempt.");
     expect(html).not.toContain("The audio could not be verified.");
-    expect(html).toContain("No material is selected for this class.");
+    expect(html).toContain("No material is selected for this session.");
     expect(html).toContain("Add or select material");
     expect(buttons(html)).not.toContain("Review and retry");
     expect(buttons(html)).not.toContain("Check again");
@@ -303,9 +303,9 @@ describe("processing next actions", () => {
   it("explains an incomplete provider response without claiming that notes were created", () => {
     const html = render([run("failed", { lastError: "provider_output_truncated" })]);
     expect(html).toContain("The generated response was incomplete.");
-    expect(html).toContain("No new class notes were saved.");
+    expect(html).toContain("No new session notes were saved.");
     expect(buttons(html)).toContain("Retry processing");
-    expect(html).not.toContain("Class notes created");
+    expect(html).not.toContain("Session notes created");
     expect(html).not.toContain("still being checked");
   });
 

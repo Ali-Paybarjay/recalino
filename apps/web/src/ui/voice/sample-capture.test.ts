@@ -83,7 +83,7 @@ describe("optional voice sample capture", () => {
     const f = fixture();
     await f.capture.start(() => true);
     expect(f.requestStream).not.toHaveBeenCalled();
-    expect(f.states.at(-1)?.error).toContain("class recording");
+    expect(f.states.at(-1)?.error).toContain("session recording");
   });
   it("discards interrupted recording data instead of saving a partial sample", async () => {
     const f = fixture();

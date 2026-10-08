@@ -256,7 +256,7 @@ export function ExportView({
       </Actions>
       {problem && (
         <Status tone="error">
-          {problem} Check your selection or refresh if another tab changed the class.
+          {problem} Check your selection or refresh if another tab changed the session.
         </Status>
       )}
       {notice && <Status tone="success">{notice}</Status>}
@@ -339,11 +339,11 @@ export function ExportView({
           {kind === "html" ? (
             <>
               <p>
-                A readable copy with summaries, class material, practice answers and source
+                A readable copy with summaries, session material, practice answers and source
                 locations. It opens without an account or internet connection.
               </p>
               {!revisions.length ? (
-                <Status>Publish your class notes before exporting.</Status>
+                <Status>Publish your session notes before exporting.</Status>
               ) : (
                 <Field label="Notebook revision">
                   <select
@@ -476,7 +476,7 @@ export function ExportView({
                 Include ready card media with explicit export permission
               </label>
               <p className={styles.muted}>
-                Listening cards need their permitted audio. Class recordings are excluded.
+                Listening cards need their permitted audio. Session recordings are excluded.
               </p>
             </>
           )}

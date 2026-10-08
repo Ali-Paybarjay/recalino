@@ -1,9 +1,9 @@
 // Background completion copy approved by the user's 2026-10-08 implementation request.
 export const notificationCopy = {
   title: "Notifications",
-  ready: "Your class materials are ready.",
-  partial: "Your class materials are partly ready. Check the missing materials.",
-  failed: "Your class materials need your attention. Open processing for the next step.",
+  ready: "Your session materials are ready.",
+  partial: "Your session materials are partly ready. Check the missing materials.",
+  failed: "Your session materials need your attention. Open processing for the next step.",
   openResult: "Open result",
   openProcessing: "Open processing",
   newAlert: "New notification",
@@ -14,7 +14,7 @@ export const notificationCopy = {
   pushEnabled:
     "Notifications are enabled on this device. You can close the app after upload finishes.",
   pushHint:
-    "Receive a notification when processing finishes, even after closing the app. Class names and contents stay private on the lock screen.",
+    "Receive a notification when processing finishes, even after closing the app. Session names and contents stay private on the lock screen.",
   pushUnsupported:
     "This browser does not support notifications. On iPhone or iPad, add Recalino to the Home Screen and open it there. Results stay in this inbox.",
   pushUnavailable: "Device notifications are not available yet. Results stay in this inbox.",

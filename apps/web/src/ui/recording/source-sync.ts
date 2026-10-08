@@ -52,7 +52,7 @@ function earlierPendingPart(rows: readonly Recording[], recording: Recording) {
   );
 }
 const waitingForEarlierParts =
-  "Waiting for earlier recorded parts to finish saving and be added to this class.";
+  "Waiting for earlier recorded parts to finish saving and be added to this session.";
 function permanentlyRejected(error: unknown) {
   return (
     error instanceof WorkspaceRequestError &&
@@ -87,10 +87,10 @@ export async function registerRecordingRow(
   const request = async <T>(path: string, body: unknown, key: string) => {
     check();
     if (!deps.online())
-      throw new TypeError("An internet connection is needed to add class sources.");
+      throw new TypeError("An internet connection is needed to add session sources.");
     const result = await retryUploadRequest(
       (signal) => deps.request<T>(path, "POST", body, key, { signal }),
-      "Adding class sources was interrupted. The recording remains saved on this device.",
+      "Adding session sources was interrupted. The recording remains saved on this device.",
       { attempts: 1, signal: deps.signal, timeoutMs: 30000 },
     );
     check();
@@ -144,7 +144,7 @@ export async function registerRecordingRow(
       mimeType: current.mimeType.split(";")[0],
       sizeBytes: blob.size,
       sha256,
-      displayName: `Class recording ${current.createdAt.slice(0, 10)}${current.autoRegister || (current.segment ?? 1) > 1 ? ` · Part ${current.segment ?? 1}` : ""}`,
+      displayName: `Session recording ${current.createdAt.slice(0, 10)}${current.autoRegister || (current.segment ?? 1) > 1 ? ` · Part ${current.segment ?? 1}` : ""}`,
       durationMs: Math.max(1, Math.ceil(current.activeMs) + 1000),
       parts: [],
     },
@@ -365,7 +365,7 @@ export class RecordingSourceSync {
         return;
       }
       const message =
-        error instanceof Error ? error.message : "Class sources could not be updated.";
+        error instanceof Error ? error.message : "Session sources could not be updated.";
       if (current) {
         await this.store
           .updateRegistration(this.userId, current.id, { syncError: message })
@@ -384,8 +384,8 @@ export class RecordingSourceSync {
       this.update({
         phase: this.blockedFailure ? "failed" : "waiting",
         error: this.permanentFailure
-          ? `${message} Audio is still saved on this device. Resolve this issue and retry adding class sources.`
-          : "Class source registration was interrupted. Audio is saved on this device; it will retry when connected.",
+          ? `${message} Audio is still saved on this device. Resolve this issue and retry adding session sources.`
+          : "Session source registration was interrupted. Audio is saved on this device; it will retry when connected.",
       });
       if (!this.blockedFailure && this.deps.online()) {
         this.retryTimer = setTimeout(
@@ -399,7 +399,7 @@ export class RecordingSourceSync {
     }
   }
   private failureMessage() {
-    return `${this.failedRows.values().next().value?.message ?? "Some recorded parts could not be added."} Audio is saved on this device. Resolve this issue and retry adding class sources.`;
+    return `${this.failedRows.values().next().value?.message ?? "Some recorded parts could not be added."} Audio is saved on this device. Resolve this issue and retry adding session sources.`;
   }
   dispose() {
     this.started = false;

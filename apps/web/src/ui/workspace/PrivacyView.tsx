@@ -108,7 +108,7 @@ export function PrivacyView({
   if (receipt)
     return (
       <Panel title="Account deletion requested">
-        <Status>Your account and classes are hidden. Server cleanup has been queued.</Status>
+        <Status>Your account and sessions are hidden. Server cleanup has been queued.</Status>
         <p>Request reference: {receipt.id}</p>
         {deviceCleanup === "complete" ? (
           <Status>
@@ -142,8 +142,8 @@ export function PrivacyView({
       <Panel title="Finish account deletion">
         <Status tone="error">
           {initialPending
-            ? "Your account and classes are already hidden. Confirm the request to finish deletion on this browser."
-            : "Your account and classes are already hidden. The deletion receipt still needs to be saved."}
+            ? "Your account and sessions are already hidden. Confirm the request to finish deletion on this browser."
+            : "Your account and sessions are already hidden. The deletion receipt still needs to be saved."}
         </Status>
         <p>Request reference: {pending.requestId}</p>
         <p>
@@ -177,21 +177,21 @@ export function PrivacyView({
     <div className="preview-stack">
       <Panel title="Your data, your choices">
         <p>
-          You can remove an individual class from its Class options page, or remove a source from
-          its Sources page.
+          You can remove an individual session from its Session options page, or remove a source
+          from its Sources page.
         </p>
         <p>
-          Removing a source from one class keeps its other uses. Deleting its original file keeps
+          Removing a source from one session keeps its other uses. Deleting its original file keeps
           saved extraction and derived notes. Complete deletion removes derived content from every
-          affected class.
+          affected session.
         </p>
         <p>
-          Shared cards and source files are checked before class cleanup. Files already downloaded
+          Shared cards and source files are checked before session cleanup. Files already downloaded
           cannot be removed from your devices by Recalino.
         </p>
         <Actions>
           <LinkButton secondary href="/classes">
-            Choose a class
+            Choose a session
           </LinkButton>
           <LinkButton secondary href="/me">
             Back to settings
@@ -200,7 +200,7 @@ export function PrivacyView({
       </Panel>
       <Panel title="Delete your account">
         <p>
-          This immediately hides your account and every class, stops processing, and queues server
+          This immediately hides your account and every session, stops processing, and queues server
           files, notes, cards, review history and learning preferences for removal. Account deletion
           cannot be undone.
         </p>
@@ -236,7 +236,7 @@ export function PrivacyView({
         }}
       >
         <p>
-          All your classes and account data will disappear immediately, and server cleanup will
+          All your sessions and account data will disappear immediately, and server cleanup will
           begin. This cannot be undone.
         </p>
         <Field label="I understand that account deletion cannot be undone">

@@ -12,7 +12,7 @@ export function SessionLearningSummary({
   return (
     <div>
       <p className="preview-muted">
-        Class date: <time dateTime={session.classDate}>{session.classDate}</time>
+        Session date: <time dateTime={session.classDate}>{session.classDate}</time>
         {" · "}
         {session.titleSource === "manual"
           ? "Custom title"

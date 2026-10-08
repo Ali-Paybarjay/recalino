@@ -76,12 +76,12 @@ describe("flashcard next actions", () => {
     expect(html).toContain(`/classes/${sessionId}/sources`);
     expect(html).toContain("automatically with your notes");
     expect(html).not.toContain("Prepare cards");
-    expect(html).not.toContain("Review this class");
-    expect(html).not.toContain("Publish class notes");
+    expect(html).not.toContain("Review this session");
+    expect(html).not.toContain("Publish session notes");
   });
   it("does not ask the learner to save notes or prepare cards when output is pending", () => {
     const html = render({ hasGeneratedNotes: true });
-    expect(html).toContain("Class notes");
+    expect(html).toContain("Session notes");
     expect(html).not.toContain("Read and save notes");
     expect(html).not.toContain(`/classes/${sessionId}/estimate`);
   });
@@ -89,11 +89,11 @@ describe("flashcard next actions", () => {
     const html = render({ notebook, initial: [candidate] });
     expect(html).not.toContain("Prepare cards");
     expect(html).toContain("Confirm and add");
-    expect(html).not.toContain("Review this class");
+    expect(html).not.toContain("Review this session");
   });
   it("offers review once cards have been added", () => {
     const html = render({ notebook, initial: [{ ...candidate, status: "active" }] });
-    expect(html).toContain("Review this class");
+    expect(html).toContain("Review this session");
     expect(html).toContain(`/review?sessionId=${sessionId}`);
   });
   it("explains the absence of learning items instead of an unexplained disabled action", () => {

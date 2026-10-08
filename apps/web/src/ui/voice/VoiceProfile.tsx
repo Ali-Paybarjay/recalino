@@ -97,7 +97,7 @@ export function VoiceProfileForm({
     if (captureBlocked && capturing) {
       recorder.cancel();
       setCapture({ phase: "idle", elapsedMs: 0, sample: null, error: null });
-      setProblem("Finish your class recording before recording a voice sample.");
+      setProblem("Finish your session recording before recording a voice sample.");
     }
   }, [captureBlocked, capturing, recorder]);
 
@@ -144,7 +144,7 @@ export function VoiceProfileForm({
       setNotice(
         withSample
           ? "Your voice has been processed successfully."
-          : "Voice confirmation is enabled. You can identify your voice in each class without a saved sample.",
+          : "Voice confirmation is enabled. You can identify your voice in each session without a saved sample.",
       );
     } catch (error) {
       if (
@@ -272,7 +272,7 @@ export function VoiceProfileForm({
         </p>
         <p className="preview-muted">
           A voice sample is optional. If you save one, the audio and voice patterns are kept
-          privately for your account. Confirmed class samples can improve future matches. You can
+          privately for your account. Confirmed session samples can improve future matches. You can
           turn this off and delete the voice data {onComplete ? "in Settings" : "here"} at any time.
         </p>
         {loading ? <Status>Loading voice settings…</Status> : null}
@@ -313,12 +313,12 @@ export function VoiceProfileForm({
                 {profile.sampleDurationMs !== null
                   ? " · Voice sample saved"
                   : profile.enrolled
-                    ? " · Voice patterns learned from confirmed classes"
+                    ? " · Voice patterns learned from confirmed sessions"
                     : " · No sample saved"}
                 .{" "}
                 {profile.confirmedLessons > 0
-                  ? `${profile.confirmedLessons} confirmed ${profile.confirmedLessons === 1 ? "class" : "classes"}.`
-                  : "Your first class always needs your confirmation."}
+                  ? `${profile.confirmedLessons} confirmed ${profile.confirmedLessons === 1 ? "session" : "sessions"}.`
+                  : "Your first session always needs your confirmation."}
               </Status>
             ) : null}
             {!profile.engineAvailable ? (
@@ -360,7 +360,7 @@ export function VoiceProfileForm({
                   mistake helps me understand what to work on next.”
                 </p>
                 {captureBlocked ? (
-                  <Status>Finish your class recording before recording a voice sample.</Status>
+                  <Status>Finish your session recording before recording a voice sample.</Status>
                 ) : null}
                 {capturing ? (
                   <>
@@ -416,7 +416,7 @@ export function VoiceProfileForm({
                       <>
                         <Status tone="success">{notice}</Status>
                         <p>
-                          Confirm your voice in the first class before spoken mistakes are shown.
+                          Confirm your voice in the first session before spoken mistakes are shown.
                         </p>
                       </>
                     ) : null}
@@ -455,7 +455,7 @@ export function VoiceProfileForm({
                   </Button>
                 ) : null}
                 <LinkButton secondary href={returnHref}>
-                  {returnHref === "/me" ? "Back to settings" : "Back to class notes"}
+                  {returnHref === "/me" ? "Back to settings" : "Back to session notes"}
                 </LinkButton>
               </Actions>
             ) : null}

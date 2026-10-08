@@ -69,7 +69,7 @@ export function ClassForm({
       router.refresh();
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "Your class could not be saved. Try again.",
+        failure instanceof Error ? failure.message : "Your session could not be saved. Try again.",
       );
       setBusy(false);
     }
@@ -122,7 +122,7 @@ export function ClassForm({
       router.refresh();
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "The class could not be deleted. Try again.",
+        failure instanceof Error ? failure.message : "The session could not be deleted. Try again.",
       );
       setBusy(false);
       setConfirm(false);
@@ -131,7 +131,7 @@ export function ClassForm({
 
   return (
     <div className="preview-reader">
-      <Panel title={initial ? "Class details" : undefined}>
+      <Panel title={initial ? "Session details" : undefined}>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -139,8 +139,8 @@ export function ClassForm({
           }}
         >
           <Field
-            label="Class name (optional)"
-            hint="Leave it empty to name the class from its learning material. Until the material is ready, its date is used."
+            label="Session name (optional)"
+            hint="Leave it empty to name the session from its learning material. Until the material is ready, its date is used."
           >
             <input
               autoComplete="off"
@@ -164,7 +164,7 @@ export function ClassForm({
               Save changes to use the title from your learning material.
             </p>
           ) : null}
-          <Field label="Class date" hint="Day / Month / Year">
+          <Field label="Session date" hint="Day / Month / Year">
             <DateInput required value={date} onChange={setDate} disabled={busy} />
           </Field>
           <Field label="Course" hint={courseCopy.courseHelp}>
@@ -215,7 +215,7 @@ export function ClassForm({
           {error ? <Status tone="error">{error}</Status> : null}
           <Actions>
             <Button type="submit" disabled={busy}>
-              {busy ? "Saving…" : initial ? "Save changes" : "Create class"}
+              {busy ? "Saving…" : initial ? "Save changes" : "Create session"}
             </Button>
             <LinkButton href={destination} secondary>
               Cancel
@@ -225,7 +225,7 @@ export function ClassForm({
         {initial ? (
           <Actions>
             <Button secondary disabled={busy} onClick={() => setConfirm(true)}>
-              Delete class
+              Delete session
             </Button>
           </Actions>
         ) : null}
@@ -271,20 +271,20 @@ export function ClassForm({
         onClose={() => {
           if (!busy) setConfirm(false);
         }}
-        title="Delete this class?"
+        title="Delete this session?"
       >
         <p>
-          The class will disappear immediately. Its server files, notes and cards used only by this
-          class, including their review history, are queued for removal. Items linked to other
-          classes are checked before removal.
+          The session will disappear immediately. Its server files, notes and cards used only by
+          this session, including their review history, are queued for removal. Items linked to
+          other sessions are checked before removal.
         </p>
         <p>
-          Recordings saved on this device and files you downloaded are separate copies. Class
+          Recordings saved on this device and files you downloaded are separate copies. Session
           deletion does not remove them.
         </p>
         <Actions>
           <Button disabled={busy} onClick={() => void remove()}>
-            {busy ? "Deleting…" : "Delete class"}
+            {busy ? "Deleting…" : "Delete session"}
           </Button>
           <Button secondary disabled={busy} onClick={() => setConfirm(false)}>
             Keep it

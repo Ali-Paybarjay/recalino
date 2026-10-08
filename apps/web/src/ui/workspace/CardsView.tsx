@@ -79,11 +79,11 @@ export function CardsView({
     <div className="preview-stack">
       <Actions>
         <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes`}>
-          Class notes
+          Session notes
         </LinkButton>
         {cards.some((card) => card.status === "active") ? (
           <LinkButton disabled={busy} href={`/review?sessionId=${sessionId}`}>
-            Review this class
+            Review this session
           </LinkButton>
         ) : null}
         <LinkButton secondary href={`/classes/${sessionId}/sources`}>
@@ -119,8 +119,8 @@ export function CardsView({
             {notebook
               ? notebook.current.model.learningItems.length
                 ? "Flashcards are being saved automatically. They will appear here shortly."
-                : "These notes contain no learning items for flashcards. Add more material to update this class."
-              : "Upload class material. Your flashcards will appear here automatically with your notes."}
+                : "These notes contain no learning items for flashcards. Add more material to update this session."
+              : "Upload session material. Your flashcards will appear here automatically with your notes."}
           </p>
         ) : (
           visibleCards.map((card) => (

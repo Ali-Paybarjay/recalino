@@ -159,7 +159,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     await attach(row);
     const recording = await store.get(userId, row.id);
     if (!recording?.sourceAssetId || !recording.sessionId)
-      throw new Error("Add the recording to its class first.");
+      throw new Error("Add the recording to its session first.");
     const config = await workspaceRequest<{ contract: InputContract; noticeAccepted: boolean }>(
       "/api/sources/contract",
       "GET",
@@ -183,7 +183,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     <div className="preview-stack">
       <Panel
         tone="hero"
-        title={active ? "Your class is being recorded" : "Recordings on this device"}
+        title={active ? "Your session is being recorded" : "Recordings on this device"}
       >
         {active ? (
           <>
@@ -266,7 +266,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
           <>
             <p>
               After Stop, all recorded parts are saved on this device, then uploaded automatically
-              to prepare and save your class notes and flashcards.
+              to prepare and save your session notes and flashcards.
             </p>
             <RecordLauncher sessionId={sessionId} />
           </>
@@ -275,14 +275,14 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
       </Panel>
       {error ? <Status tone="error">{error}</Status> : null}
       {syncState.pending > 0 ? (
-        <Panel title="Adding recorded parts to your class">
+        <Panel title="Adding recorded parts to your session">
           <p role={syncState.phase === "failed" ? "alert" : "status"}>
             {syncState.phase === "syncing"
               ? `${syncState.count} parts added · ${syncState.pending} remaining`
               : syncState.error}
           </p>
           {syncState.phase === "failed" ? (
-            <Button onClick={() => sourceSync.retry()}>Retry adding class sources</Button>
+            <Button onClick={() => sourceSync.retry()}>Retry adding session sources</Button>
           ) : null}
         </Panel>
       ) : null}
@@ -352,11 +352,11 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                         }
                         onClick={() => void operation(row.id, () => attach(row))}
                       >
-                        Add to class sources
+                        Add to session sources
                       </Button>
                     ) : null}
                     {row.sessionId ? (
-                      <Link href={`/classes/${row.sessionId}/sources`}>Open class sources</Link>
+                      <Link href={`/classes/${row.sessionId}/sources`}>Open session sources</Link>
                     ) : null}
                   </Actions>
                   {player?.id === row.id ? (
@@ -393,10 +393,10 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
       </Panel>
       {sourceNotice && !sourceNotice.noticeAccepted ? (
         <section id="recording-material-notice">
-          <Panel title="Before adding class material">
+          <Panel title="Before adding session material">
             <p>
               After you stop recording, saved audio and board photos automatically create and save
-              your class notes and flashcards. Audio stays on this device, with a temporary copy
+              your session notes and flashcards. Audio stays on this device, with a temporary copy
               uploaded for transcription. Board photos are stored privately.
             </p>
             <p>Follow your institution’s rules for recording and using class materials.</p>
@@ -477,11 +477,11 @@ function PhotoGallery({
             <>
               {automatic ? <p>Uploads automatically after the recording is saved.</p> : null}
               <Button secondary disabled={disabled} onClick={() => onAttach(photo)}>
-                {automatic ? "Retry photo upload" : "Add photo to class"}
+                {automatic ? "Retry photo upload" : "Add photo to session"}
               </Button>
             </>
           ) : (
-            <p>Added to class sources</p>
+            <p>Added to session sources</p>
           )}
         </figure>
       ))}

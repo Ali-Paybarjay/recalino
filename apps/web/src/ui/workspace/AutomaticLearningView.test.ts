@@ -267,7 +267,7 @@ describe("recovery actions match the processing blocker", () => {
     expect(mocks.buttons.size).toBe(0);
   });
   it.each([
-    ["awaiting_review", "Your request is recorded for this class"],
+    ["awaiting_review", "Your request is recorded for this session"],
     ["retrying", "Processing is continuing with your saved material"],
     ["resolved", "Processing has finished"],
   ] as const)("shows the actual %s review state and avoids repeated requests", (state, message) => {
@@ -308,7 +308,7 @@ describe("recovery actions match the processing blocker", () => {
     const html = render("progress");
     expect(html).toContain("notes and flashcards are available with some source limitations");
     expect(html).toContain(`href="/classes/${sessionId}/notes"`);
-    expect(html).toContain("Open class notes");
+    expect(html).toContain("Open session notes");
     expect(mocks.buttons.has("Request processing review")).toBe(false);
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
     expect(mocks.request).not.toHaveBeenCalled();

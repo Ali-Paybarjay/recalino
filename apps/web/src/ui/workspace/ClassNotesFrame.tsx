@@ -84,7 +84,7 @@ export function ClassNotesFrame({
       key={interactive && identity ? identity.channel : "passive"}
       ref={frame}
       className={styles.frame}
-      title={`Class notes: ${title}`}
+      title={`Session notes: ${title}`}
       srcDoc={frameDocument}
       sandbox={interactive ? "allow-scripts" : ""}
       referrerPolicy="no-referrer"

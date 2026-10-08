@@ -141,7 +141,7 @@ describe("generated previews and automatic preparation", () => {
     expect(html).not.toContain(`href="/classes/${sessionId}/cards"`);
     expect(html).not.toContain(`href="/classes/${sessionId}/export"`);
     expect(html).not.toContain("Version history");
-    expect(html).not.toContain("Your class notes are ready");
+    expect(html).not.toContain("Your session notes are ready");
     expect(html).not.toContain("Save notes and make flashcards");
     expect(html).not.toContain(">Save notes<");
     expect(html).toMatch(/<details[^>]*><summary>AI explanation<\/summary>/);
@@ -150,8 +150,8 @@ describe("generated previews and automatic preparation", () => {
 
   it("offers material upload without a manual creation step when no notes exist", () => {
     const html = render({ latest: null });
-    expect(html).toContain("Start with class material");
-    expect(html).not.toContain("Create class notes");
+    expect(html).toContain("Start with session material");
+    expect(html).not.toContain("Create session notes");
     expect(html).not.toContain(`href="/classes/${sessionId}/estimate"`);
     expect(html).toContain("Add material");
     expect(html).toContain("Notes and flashcards are created and saved automatically.");
@@ -177,7 +177,7 @@ describe("generated previews and automatic preparation", () => {
     expect(html).toContain("Upload file 3 again");
     expect(html).toContain("Uploading…");
     expect(html).not.toContain("Upload file 1 again");
-    expect(html).not.toContain("Create class notes");
+    expect(html).not.toContain("Create session notes");
     expect(html).toContain("Add material");
   });
 });
@@ -202,7 +202,7 @@ describe("saved notes and revisions", () => {
     expect(html).not.toContain(">Save notes<");
     expect(html.indexOf("Preview uncertainty")).toBeLessThan(html.indexOf("<footer"));
     expect(html).toContain("Add material");
-    expect(html.match(/Back to class/g)).toHaveLength(1);
+    expect(html.match(/Back to session/g)).toHaveLength(1);
     expect(html).not.toContain("Back to course");
     expect(html).not.toContain("Version history");
     expect(mocks.request).not.toHaveBeenCalled();
@@ -258,7 +258,7 @@ describe("class material diagnostics", () => {
     expect(html).toContain("Pages 1–2");
     expect(html).toContain("Retry file 2");
     expect(html).toMatch(/<details[^>]*><summary>Details<\/summary>/);
-    expect(html).not.toContain("Some class material is missing");
+    expect(html).not.toContain("Some session material is missing");
     expect(html).not.toContain("Upload file 2 again");
   });
 
@@ -356,9 +356,9 @@ describe("class material diagnostics", () => {
       ],
     });
     expect(html).toContain("The text is available; some timestamps need checking.");
-    expect(html).toContain("Review class material");
+    expect(html).toContain("Review session material");
     expect(html).not.toContain("Upload file 2 again");
-    expect(html).not.toContain("Some class material is missing");
+    expect(html).not.toContain("Some session material is missing");
   });
 });
 

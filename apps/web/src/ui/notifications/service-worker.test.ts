@@ -22,7 +22,7 @@ it("shows a silent tagged completion after the page closes and restricts click n
   const path = `/classes/${id}/notes`;
   const tasks: Promise<unknown>[] = [];
   listeners.get("push")?.({
-    data: { json: () => ({ id, href: path, body: "Your class materials are ready." }) },
+    data: { json: () => ({ id, href: path, body: "Your session materials are ready." }) },
     waitUntil: (promise: Promise<unknown>) => tasks.push(promise),
   });
   await Promise.all(tasks);

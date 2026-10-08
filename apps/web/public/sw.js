@@ -14,7 +14,7 @@ self.addEventListener("push", (event) => {
       : "/classes";
   event.waitUntil(
     self.registration.showNotification("Recalino", {
-      body: typeof payload.body === "string" ? payload.body : "Your class materials are ready.",
+      body: typeof payload.body === "string" ? payload.body : "Your session materials are ready.",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: payload.id,

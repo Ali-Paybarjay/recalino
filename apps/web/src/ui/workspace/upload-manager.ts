@@ -105,7 +105,7 @@ export class UploadManager {
     if (!files.length || files.some((file) => file.invalid))
       throw new Error("Choose valid files before uploading.");
     if (files.length > (contract.maxSourcesPerSession ?? 250))
-      throw new Error("This group exceeds the class file limit. Choose fewer files.");
+      throw new Error("This group exceeds the session file limit. Choose fewer files.");
     if (
       this.batches.some(
         (batch) =>
@@ -113,7 +113,7 @@ export class UploadManager {
       )
     )
       throw new Error(
-        "Finish or retry the saved upload for this class before adding another batch.",
+        "Finish or retry the saved upload for this session before adding another batch.",
       );
     if (this.deps.allowed?.() === false || this.disposed)
       throw new Error("Uploads are paused. Try again when the current operation finishes.");
