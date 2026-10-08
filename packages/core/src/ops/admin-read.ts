@@ -2,10 +2,13 @@ import { sql } from "kysely";
 import { z } from "zod";
 import { readEstimateRates } from "../aip";
 import type { Database } from "../db";
+import { getSession } from "../org";
 import { errors } from "../plt";
+import { readClassProcessingReview } from "../proc";
 import {
   emptyAmounts,
   providerCostSummary,
+  providerSessionCostSummary,
   readEntitlementAllocation,
   readPilotConfiguration,
 } from "../quota";
@@ -37,6 +40,7 @@ export interface AdminSnapshotParameters {
   threadId?: string;
   search?: string;
   cursor?: string;
+  runId?: string;
 }
 export interface AdminReadConfiguration {
   approvedPilot: {
@@ -170,7 +174,11 @@ export async function readAdminSnapshot(
       return { view: params.view, pilot: await pilotSummary(db, now, configuration.approvedPilot) };
     case "costs": {
       const costs = await costsSummary(db, now);
-      return { view: params.view, ...(costs ? { costs } : {}) };
+      return {
+        view: params.view,
+        ...(costs ? { costs } : {}),
+        ...(params.runId ? { runs: await readRuns(db, now, params.runId) } : {}),
+      };
     }
     case "rates": {
       const rates = await readEstimateRates(db);
@@ -181,7 +189,7 @@ export async function readAdminSnapshot(
       };
     }
     case "processing":
-      return { view: params.view, runs: await readRuns(db, now) };
+      return { view: params.view, runs: await readRuns(db, now, params.runId) };
     case "feedback":
       return { view: params.view, threads: await readThreads(db, cachedDirectory) };
     case "thread": {
@@ -553,10 +561,12 @@ async function readTasks(db: Database, now: Date, userId?: string): Promise<Admi
   }));
 }
 
-async function readRuns(db: Database, now: Date): Promise<AdminRun[]> {
+async function readRuns(db: Database, now: Date, runId?: string): Promise<AdminRun[]> {
+  if (runId) z.uuid().parse(runId);
   const { rows } = await sql<{
     id: string;
     user_id: string;
+    session_id: string;
     kind: string;
     state: string;
     last_error: string | null;
@@ -565,8 +575,11 @@ async function readRuns(db: Database, now: Date): Promise<AdminRun[]> {
     model: string | null;
     retry_allowed: boolean;
   }>`
-    select r.id,r.user_id,r.kind,r.state,r.last_error,r.created_at,r.step,r.model,
-      (r.state='failed' and not r.unresolved_attempt
+    select r.id,r.user_id,r.session_id,r.kind,r.state,r.last_error,r.created_at,r.step,r.model,
+      (r.kind='class' and r.state='failed' and not r.unresolved_attempt
+        and r.id=(select newest.id from ops.admin_processing newest
+          where newest.user_id=r.user_id and newest.session_id=r.session_id and newest.kind='class'
+          order by newest.created_at desc,newest.id desc limit 1)
         and exists(select 1 from ops.admin_source_readiness s where s.session_id=r.session_id)
         and not exists(select 1 from ops.admin_source_readiness s where s.session_id=r.session_id
           and (s.user_id<>r.user_id or not s.source_live or (
@@ -574,18 +587,36 @@ async function readRuns(db: Database, now: Date): Promise<AdminRun[]> {
               (s.original_available and (s.original_expires_at is null or s.original_expires_at>${now}))
               or s.audio_available_until>${now}),false))))) as retry_allowed
     from ops.admin_processing r
+    ${runId ? sql`where r.id=${runId}::uuid and r.kind='class'` : sql``}
     order by r.created_at desc,r.id desc limit ${PAGE_SIZE}`.execute(db);
-  return rows.map((row) => ({
-    id: row.id,
-    userId: row.user_id,
-    title: null,
-    stage: row.step ?? row.kind,
-    state: row.state,
-    lastError: errorCode(row.last_error),
-    createdAt: row.created_at.toISOString(),
-    retryAllowed: row.retry_allowed,
-    model: row.model,
-  }));
+  return Promise.all(
+    rows.map(async (row) => {
+      // Read one explicitly targeted class through its owner-aware public API. The general
+      // admin table continues to expose operational metadata only, never learning content.
+      const ctx = { userId: row.user_id, requestId: "admin-processing-review" };
+      const detail = runId
+        ? await Promise.all([
+            getSession(db, ctx, row.session_id),
+            providerSessionCostSummary(db, row.session_id, row.user_id),
+            readClassProcessingReview(db, ctx, row.session_id),
+          ])
+        : null;
+      return {
+        id: row.id,
+        userId: row.user_id,
+        kind: row.kind,
+        title: detail?.[0].displayTitle ?? null,
+        sessionId: row.session_id,
+        ...(detail ? { costs: detail[1], review: detail[2] } : {}),
+        stage: row.step ?? row.kind,
+        state: row.state,
+        lastError: errorCode(row.last_error),
+        createdAt: row.created_at.toISOString(),
+        retryAllowed: row.retry_allowed,
+        model: row.model,
+      };
+    }),
+  );
 }
 async function readAudit(db: Database): Promise<AuditItem[]> {
   const { rows } = await sql<{

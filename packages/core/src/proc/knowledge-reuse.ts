@@ -7,6 +7,7 @@ import { providerAccountingProvenanceQueries } from "../quota";
 import { type RunSnapshot, runSettingsSchema, sourceSnapshotSchema } from "./contracts";
 import { generatedKnowledgeSchema } from "./generated-knowledge";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
+import { buildKnowledgeRepairInput } from "./knowledge-repair";
 
 /**
  * Called inside createProcessingRun's owner/account lock. Only a completed, billed
@@ -83,6 +84,7 @@ export async function reuseCompletedKnowledge(
     .orderBy("run.created_at", "desc")
     .limit(50)
     .execute();
+  if (!candidates.length) return;
   const sameInput = canonicalJson(input.snapshot);
   const sameSettings = canonicalJson(input.settings);
   for (const candidate of candidates) {
@@ -125,8 +127,8 @@ export async function reuseCompletedKnowledge(
         continue;
       contextVerification = "legacy_output_fields";
     }
-    // Preserve the original response byte-for-byte as JSON data. Do not copy attempts,
-    // costs, repairs or reservations: the new run owns only its subsequent paid work.
+    // Preserve the original response byte-for-byte as JSON data. Never copy attempts,
+    // costs or reservations; a paid repair has its own validation below.
     await tx
       .insertInto("proc.run_step")
       .values([
@@ -164,6 +166,170 @@ export async function reuseCompletedKnowledge(
           completed_at: input.now,
         })
         .execute();
+    await reuseCompletedKnowledgeRepair(tx, ctx, input, candidate.output, currentContext);
+    return;
+  }
+}
+
+/** A completed repair is reusable only after its exact evidence-key response validates today. */
+async function reuseCompletedKnowledgeRepair(
+  tx: Tx,
+  ctx: LearnerContext,
+  input: {
+    runId: string;
+    sessionId: string;
+    snapshot: RunSnapshot;
+    settings: z.infer<typeof runSettingsSchema>;
+    provider: AiProvider;
+    now: Date;
+  },
+  knowledge: unknown,
+  context: z.infer<typeof knowledgeInputContextSchema>,
+): Promise<void> {
+  const accounting = providerAccountingProvenanceQueries(tx, ctx, input.sessionId);
+  const candidates = await tx
+    .selectFrom("proc.processing_run as run")
+    .innerJoin("proc.run_step as original", (join) =>
+      join.onRef("original.run_id", "=", "run.id").on("original.step", "=", "knowledge"),
+    )
+    .innerJoin("proc.run_step as checkpoint", (join) =>
+      join.onRef("checkpoint.run_id", "=", "run.id").on("checkpoint.step", "=", "knowledge:repair"),
+    )
+    .innerJoin("proc.provider_attempt as attempt", (join) =>
+      join.onRef("attempt.run_id", "=", "run.id").onRef("attempt.step", "=", "checkpoint.step"),
+    )
+    .innerJoin(accounting.costs.as("cost"), "cost.attempt_id", "attempt.id")
+    .innerJoin(accounting.closedHolds.as("hold"), "hold.id", "attempt.hold_id")
+    .select([
+      "run.id as run_id",
+      "run.input_snapshot",
+      "run.settings",
+      "original.output as knowledge",
+      "checkpoint.output",
+      "attempt.id as attempt_id",
+    ])
+    .where("run.user_id", "=", ctx.userId)
+    .where("run.session_id", "=", input.sessionId)
+    .where("run.kind", "=", "class")
+    .where("run.state", "in", ["failed", "needs_input"])
+    .where("run.id", "!=", input.runId)
+    .where("run.sources_version", "=", input.snapshot.sourcesVersion)
+    .where("run.source_fingerprint", "=", input.snapshot.fingerprint)
+    .where("attempt.user_id", "=", ctx.userId)
+    .where("attempt.state", "=", "succeeded")
+    .where("attempt.provider", "=", input.provider.name)
+    .where("attempt.model", "=", input.settings.provider.llmModel)
+    .where("attempt.finished_at", "is not", null)
+    .whereRef("cost.run_id", "=", "run.id")
+    .whereRef("cost.operation_key", "=", "attempt.operation_key")
+    .whereRef("hold.reservation_id", "=", "run.reservation_id")
+    .where((eb) =>
+      eb.not(
+        eb.exists(
+          eb
+            .selectFrom("proc.provider_attempt as unresolved")
+            .select("unresolved.id")
+            .whereRef("unresolved.run_id", "=", "run.id")
+            .where("unresolved.state", "in", ["started", "uncertain"]),
+        ),
+      ),
+    )
+    .orderBy("run.created_at", "desc")
+    .limit(50)
+    .execute();
+  if (!candidates.length) return;
+  const sameInput = canonicalJson(input.snapshot);
+  const sameSettings = canonicalJson(input.settings);
+  const sameKnowledge = canonicalJson(knowledge);
+  // Use the same selected native units as the worker; no locator is broadened.
+  const sources = input.snapshot.sources.map((source) => {
+    if (!source.ranges.length) return source;
+    const units = source.units.filter((unit) =>
+      source.ranges.some((range) =>
+        unit.kind === "page"
+          ? unit.start >= range.start && unit.start <= range.end
+          : unit.kind === "time"
+            ? unit.start >= range.start && (unit.end ?? unit.start) <= range.end
+            : true,
+      ),
+    );
+    return {
+      ...source,
+      units,
+      blocks: source.blocks.filter((block) => units.some((unit) => unit.id === block.unitId)),
+    };
+  });
+  const missingSourceIds = sources
+    .filter(
+      (source) => !source.blocks.length || source.units.some((unit) => unit.status !== "extracted"),
+    )
+    .map((source) => source.sourceId);
+  const repair = buildKnowledgeRepairInput(
+    {
+      sources,
+      explanationLanguage: input.settings.explanationLanguage,
+      teachingPreferences: input.settings.teachingPreferences,
+      ...(input.settings.learnerContext ? { learnerContext: input.settings.learnerContext } : {}),
+      missingSourceIds,
+      lessonContext: context,
+    },
+    input.settings.provider.maxInputCharacters,
+  );
+  for (const candidate of candidates) {
+    const snapshot = sourceSnapshotSchema.safeParse(candidate.input_snapshot);
+    const settings = runSettingsSchema.safeParse(candidate.settings);
+    if (
+      !snapshot.success ||
+      !settings.success ||
+      canonicalJson(snapshot.data) !== sameInput ||
+      canonicalJson(settings.data) !== sameSettings ||
+      canonicalJson(candidate.knowledge) !== sameKnowledge ||
+      !repair.schema.safeParse(candidate.output).success
+    )
+      continue;
+    const metadata = await tx
+      .selectFrom("proc.run_step")
+      .select("output")
+      .where("run_id", "=", candidate.run_id)
+      .where("step", "=", "knowledge:input-context")
+      .executeTakeFirst();
+    const checkedContext = knowledgeInputContextSchema.safeParse(metadata?.output);
+    if (!checkedContext.success || canonicalJson(checkedContext.data) !== canonicalJson(context))
+      continue;
+    try {
+      // A known paid result can become valid after a compatibility fix, but every
+      // evidence, language, identity and question/answer guard still applies.
+      repair.decode(candidate.output);
+    } catch {
+      continue;
+    }
+    await tx
+      .insertInto("proc.run_step")
+      .values([
+        {
+          run_id: input.runId,
+          step: "knowledge:repair",
+          output: JSON.stringify(candidate.output),
+          completed_at: input.now,
+        },
+        {
+          run_id: input.runId,
+          step: "knowledge:repair-reused",
+          output: JSON.stringify({
+            version: 1,
+            sourceRunId: candidate.run_id,
+            sourceAttemptId: candidate.attempt_id,
+            sourceStep: "knowledge:repair",
+            outputHash: sha256Hex(canonicalJson(candidate.output)),
+            knowledgeHash: sha256Hex(sameKnowledge),
+            snapshotHash: sha256Hex(sameInput),
+            settingsHash: sha256Hex(sameSettings),
+            context,
+          }),
+          completed_at: input.now,
+        },
+      ])
+      .execute();
     return;
   }
 }

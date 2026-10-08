@@ -1,4 +1,5 @@
 import "server-only";
+import { requestClassProcessingReview } from "@recalino/core/ops";
 import { errors, isValidIdempotencyKey, type LearnerContext } from "@recalino/core/plt";
 import {
   beginAutomaticLearningBatch,
@@ -33,6 +34,7 @@ const actions = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("complete"), batchId: z.uuid() }),
   z.strictObject({ action: z.literal("sync") }),
   z.strictObject({ action: z.literal("retry") }),
+  z.strictObject({ action: z.literal("request_review"), runId: z.uuid() }),
 ]);
 interface Dependencies {
   read: typeof readAutomaticLearning;
@@ -56,6 +58,17 @@ export function automaticLearningHandler(
     const learner: LearnerContext = { userId: ctx.userId, requestId: ctx.requestId };
     if (request.method === "GET") return { body: await deps.read(db, learner, sessionId) };
     const fields = actions.parse(input);
+    if (fields.action === "request_review") {
+      const requestId = request.headers.get("idempotency-key");
+      if (!requestId || !isValidIdempotencyKey(requestId))
+        throw errors.validationFailed({ "Idempotency-Key": [requestId ? "invalid" : "required"] });
+      await requestClassProcessingReview(db, learner, {
+        sessionId,
+        runId: fields.runId,
+        requestId,
+      });
+      return { body: await deps.read(db, learner, sessionId) };
+    }
     if (fields.action === "begin") {
       await beginAutomaticLearningBatch(
         db,

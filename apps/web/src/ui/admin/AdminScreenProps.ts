@@ -8,6 +8,7 @@ export type AdminScreenProps = {
   mode: PanelMode;
   userId: string;
   threadId: string;
+  runId?: string;
   selected: string[];
   setSelected: (ids: string[]) => void;
   navigate: (view: PanelMode, id?: string) => void;

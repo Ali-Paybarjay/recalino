@@ -12,6 +12,11 @@ it.each([
   ["kit sb/sth out", "kit out", ["kit", "out"]],
   ["kit sth out / kit sth out with", "kit out", ["kit", "out"]],
   ["manager (pronunciation)", "manager", ["manager"]],
+  ["sick and tired of + noun/-ing", "sick and tired of", ["sick and tired of"]],
+  ["be taken in by sb/sth", "be taken in by", ["be taken in by"]],
+  ["gig (noun)", "gig", ["gig"]],
+  ["donkey's years (noun phrase)", "donkey's years", ["donkey's years"]],
+  ["kit out (separable phrasal verb)", "kit out", ["kit", "out"]],
 ])("extracts a conservative lexical target from %s", (en, text, parts) => {
   expect(studyLexicalTarget(en as string)).toEqual({ text, parts });
 });
@@ -22,12 +27,28 @@ it.each([
   "kit sth out +",
   "lose (lost, lost)",
   "look forward to (preposition to + noun or -ing form)",
+  "gig (noun or verb)",
+  "donkey's years (British English: a very long time)",
+  "kit out (a separable phrasal verb)",
+  "look forward to (separable phrasal verb)",
+  "kit mystery (separable phrasal verb)",
   "past participle (lost, seen, gone, done)",
   "have/has + past participle",
   "look <b>forward</b> to",
   "واژه",
 ])("declines unsupported or ambiguous target notation: %s", (en) => {
   expect(studyLexicalTarget(en)).toBeUndefined();
+});
+
+it("keeps annotated dictionary targets hidden across separated object slots", () => {
+  const target = studyLexicalTarget("kit out (separable phrasal verb)");
+  const noun = studyLexicalTarget("gig (noun)");
+  if (!target || !noun) throw new Error("Missing dictionary-label fixture");
+  expect(studyLexicalTargetMatches(target, "They kit the office out.")).toBe(true);
+  expect(studyLexicalTargetMatches(target, "They kit ______ out.")).toBe(true);
+  expect(studyLexicalTargetMatches(target, "They ______ the office ______.")).toBe(false);
+  expect(studyLexicalTargetMatches(noun, "I have a gig on Saturday.")).toBe(true);
+  expect(studyLexicalTargetMatches(noun, "I have a ______ on Saturday.")).toBe(false);
 });
 
 it("detects exposed lexical chunks without mistaking an unrelated gap complement for the target", () => {

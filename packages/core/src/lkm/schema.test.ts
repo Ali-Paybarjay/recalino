@@ -164,3 +164,31 @@ it("AC-D46-01 preserves separable frames, rejects ambiguous notation, and leaves
   };
   expect(validateKnowledgeModel(grammar, [], "en").learningItems).toHaveLength(1);
 });
+
+it.each([
+  {
+    en: "kit out (separable phrasal verb)",
+    gapSentence: "We need to ______ it ______ before our next class.",
+    fullSentence: "We need to kit it out before our next class.",
+    exposed: "We need to kit ______ out before our next class.",
+  },
+  {
+    en: "gig (noun)",
+    gapSentence: "She has a ______ at the pub on Saturday.",
+    fullSentence: "She has a gig at the pub on Saturday.",
+    exposed: "She has a gig at the ______ on Saturday.",
+  },
+  {
+    en: "donkey's years (noun phrase)",
+    gapSentence: "We have lived here for ______ without any problems.",
+    fullSentence: "We have lived here for donkey's years without any problems.",
+    exposed: "We have lived here for donkey's years without any ______.",
+  },
+])("validates the paid dictionary label $en without exposing its lexical answer", (fields) => {
+  const valid = lexicalFrameModel(fields);
+  expect(validateKnowledgeModel(valid, [], "en").learningItems).toHaveLength(1);
+  const exposed = lexicalFrameModel({ ...fields, gapSentence: fields.exposed });
+  expect(() => validateKnowledgeModel(exposed, [], "en")).toThrowError(
+    expect.objectContaining({ details: { fields: { output: ["study_answer_exposed"] } } }),
+  );
+});

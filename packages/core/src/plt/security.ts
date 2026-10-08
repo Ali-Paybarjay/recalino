@@ -1,4 +1,4 @@
-import type { Database } from "../db";
+import type { Database, Tx } from "../db";
 import type { Logger } from "./log";
 
 export type SecurityEventKind =
@@ -54,4 +54,26 @@ export async function recordAudit(db: Database, entry: AuditInput): Promise<void
       request_id: entry.requestId ?? null,
     })
     .execute();
+}
+
+/** Metadata reader. Domain callers must authorize every subject before using this API. */
+export async function latestSubjectAudit(
+  db: Database | Tx,
+  input: Pick<AuditInput, "actorKind" | "actorId" | "action" | "subjectType"> & {
+    subjectIds: string[];
+  },
+) {
+  if (!input.subjectIds.length) return null;
+  const row = await db
+    .selectFrom("plt.audit_event")
+    .select(["subject_id", "occurred_at"])
+    .where("actor_kind", "=", input.actorKind)
+    .where("actor_id", "=", input.actorId)
+    .where("action", "=", input.action)
+    .where("subject_type", "=", input.subjectType)
+    .where("subject_id", "in", input.subjectIds)
+    .orderBy("occurred_at", "desc")
+    .orderBy("id", "desc")
+    .executeTakeFirst();
+  return row ? { subjectId: row.subject_id, occurredAt: row.occurred_at.toISOString() } : null;
 }

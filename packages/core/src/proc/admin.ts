@@ -37,7 +37,7 @@ export async function retryRunAsAdmin(
     { userId: row.user_id, requestId: input.requestId },
     row.id,
     input.operationKey,
-    options,
+    { ...options, expectedLatestClassRunId: row.id },
   );
   await recordAudit(db, {
     actorKind: "operator",

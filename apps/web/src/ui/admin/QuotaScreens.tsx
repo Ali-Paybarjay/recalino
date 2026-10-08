@@ -21,6 +21,7 @@ import {
   rateConfigurationProblem,
   switchQuotaFieldUnit,
 } from "./model";
+import { ProcessingReviewDetails } from "./ProcessingReviewDetails";
 import { Badge, Button, Empty, Field, Notice, Panel, Table } from "./primitives";
 
 const zero: QuotaAmounts = { audio: 0, document: 0, regeneration: 0, tts: 0, storage: 0 };
@@ -841,6 +842,9 @@ function Costs(props: AdminScreenProps) {
     );
   return (
     <>
+      {props.runId && data.runs?.[0] ? (
+        <ProcessingReviewDetails run={data.runs[0]} props={props} />
+      ) : null}
       <div className={`${styles.grid} ${styles.metrics}`}>
         {[
           [t("Actual charges", "هزینهٔ قطعی"), costs.actualMicros],

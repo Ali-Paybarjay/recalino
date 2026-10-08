@@ -276,14 +276,6 @@ test("an unresolved provider result keeps progress visible without offering retr
 for (const view of ["notice", "progress"] as const) {
   for (const recovery of [
     {
-      code: "processing_budget_session",
-      message:
-        "The next processing step does not fit within this class's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.",
-      label: "Get processing help",
-      href: "/help/new",
-      retry: "Retry after service update",
-    },
-    {
       code: "quota_insufficient",
       message:
         "This class needs more allowance than is currently available. Your material is saved.",

@@ -25,6 +25,10 @@ describe("AC-D46-06 friendly declared-level teaching", () => {
       expect(prompt).toContain("Escape all quotation marks and line breaks inside JSON strings");
       expect(prompt).toContain("حال کامل, not گذشته نزدیک");
       expect(prompt).toContain("not extra lesson facts");
+      expect(prompt).toContain("Prefer bare dictionary headwords in study.en");
+      expect(prompt).toContain("Put part-of-speech labels and explanations in noteFa");
+      expect(prompt).toContain('"We need to ______ it ______"');
+      expect(prompt).toContain("vocabulary and expression are never study.kind values");
     },
   );
   it.each([

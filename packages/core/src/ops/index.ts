@@ -40,3 +40,4 @@ export {
   readEncryptedDeletionJournals,
 } from "./deletion-journals";
 export { executeOperatorRequest, type OperatorRequest, operatorRequestSchema } from "./operator";
+export { requestClassProcessingReview } from "./processing-review";

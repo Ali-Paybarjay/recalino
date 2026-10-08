@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   runs: vi.fn(),
   acknowledged: vi.fn(),
   createRun: vi.fn(),
+  review: vi.fn(),
 }));
 vi.mock("@recalino/core/proc", async (original) => ({
   ...(await original<object>()),
@@ -23,6 +24,7 @@ vi.mock("@recalino/core/proc", async (original) => ({
   listRuns: mocks.runs,
   findProcessingRunByOperationKey: mocks.acknowledged,
   createProcessingRun: mocks.createRun,
+  readClassProcessingReview: mocks.review,
 }));
 vi.mock("@recalino/core/src", async (original) => ({
   ...(await original<object>()),
@@ -75,6 +77,7 @@ beforeEach(() => {
   mocks.runs.mockResolvedValue([]);
   mocks.acknowledged.mockResolvedValue(null);
   mocks.createRun.mockResolvedValue({ id: "new-run", state: "queued", lastError: null });
+  mocks.review.mockResolvedValue(null);
 });
 
 it.each(["pending", "verifying"])(

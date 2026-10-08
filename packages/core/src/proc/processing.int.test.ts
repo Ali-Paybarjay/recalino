@@ -40,6 +40,13 @@ import {
   selectSourceSnapshot,
   updateSourceSelection,
 } from "../src";
+import { retryRunAsAdmin } from "./admin";
+import {
+  beginAutomaticLearningBatch,
+  getAutomaticLearningSession,
+  requestAutomaticLearning,
+  updateAutomaticLearningProgress,
+} from "./automatic-state";
 import { expireAwaitingUploads } from "./maintenance";
 import {
   cancelRun,
@@ -303,6 +310,140 @@ async function fixture(grant = true) {
   return { ctx, session, asset, provider, job, start, work };
 }
 describe("durable processing, atomic quota and provenance on Postgres", () => {
+  it("operator retry replays one acknowledgement, binds blocked intent, and rejects a superseded class run", async () => {
+    const f = await fixture();
+    f.provider.failure = new ProviderError("provider_http_400", false, false);
+    const failed = await f.start();
+    await f.work();
+    expect((await getRun(db, f.ctx, failed.id)).state).toBe("failed");
+    const intent = await requestAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+    await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
+      state: "blocked",
+      runId: failed.id,
+      lastError: "quota_insufficient",
+    });
+    const historical = await db
+      .selectFrom("proc.processing_run")
+      .selectAll()
+      .where("id", "=", failed.id)
+      .executeTakeFirstOrThrow();
+    // An auxiliary operation can be newer without becoming this class's retry target.
+    await db
+      .insertInto("proc.processing_run")
+      .values({
+        ...historical,
+        id: randomUUID(),
+        kind: "auxiliary",
+        operation_key: randomUUID(),
+        request_hash: randomUUID(),
+        created_at: new Date(Date.now() + 1000),
+      })
+      .execute();
+    f.provider.failure = undefined;
+    const command = {
+      runId: failed.id,
+      actorId: randomUUID(),
+      operationKey: randomUUID(),
+      reason: "Synthetic operator reviewed the exact failed class",
+      requestId: randomUUID(),
+    };
+    const invoke = () => retryRunAsAdmin(db, command, { provider: f.provider, job: f.job });
+    const [first, replay] = await Promise.all([invoke(), invoke()]);
+    expect(replay.id).toBe(first.id);
+    expect(replay.reservationId).toBe(first.reservationId);
+    expect(await getAutomaticLearningSession(db, f.ctx, f.session.id)).toMatchObject({
+      requestVersion: intent.requestVersion,
+      state: "processing",
+      runId: first.id,
+      lastError: null,
+    });
+    expect((await allowance(db, f.ctx)).reserved.document).toBe(1);
+    await f.work();
+    expect((await getRun(db, f.ctx, first.id)).state).toBe("ready");
+    await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
+      state: "ready",
+      runId: first.id,
+      lastError: null,
+    });
+    expect(await getAutomaticLearningSession(db, f.ctx, f.session.id)).toMatchObject({
+      requestVersion: intent.requestVersion,
+      state: "ready",
+      runId: first.id,
+    });
+    const settled = await allowance(db, f.ctx);
+    const calls = f.provider.calls;
+    expect((await invoke()).id).toBe(first.id);
+    await expect(
+      retryRunAsAdmin(
+        db,
+        { ...command, operationKey: randomUUID() },
+        { provider: f.provider, job: f.job },
+      ),
+    ).rejects.toMatchObject({ code: "conflict" });
+    expect(await allowance(db, f.ctx)).toEqual(settled);
+    expect(f.provider.calls).toBe(calls);
+    expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(2);
+  });
+
+  it.each(["batch", "different_run"] as const)(
+    "operator retry preserves a newer automatic %s instead of attaching it to old work",
+    async (changed) => {
+      const f = await fixture();
+      f.provider.failure = new ProviderError("provider_http_400", false, false);
+      const failed = await f.start();
+      await f.work();
+      const intent = await requestAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+      await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
+        state: "blocked",
+        runId: failed.id,
+        lastError: "quota_insufficient",
+      });
+      if (changed === "batch")
+        await beginAutomaticLearningBatch(db, f.ctx, f.session.id, randomUUID());
+      else {
+        const row = await db
+          .selectFrom("proc.processing_run")
+          .selectAll()
+          .where("id", "=", failed.id)
+          .executeTakeFirstOrThrow();
+        const otherId = randomUUID();
+        await db
+          .insertInto("proc.processing_run")
+          .values({
+            ...row,
+            id: otherId,
+            operation_key: randomUUID(),
+            request_hash: randomUUID(),
+            created_at: new Date(row.created_at.getTime() - 1000),
+          })
+          .execute();
+        await db
+          .updateTable("proc.automatic_session")
+          .set({ run_id: otherId })
+          .where("user_id", "=", f.ctx.userId)
+          .where("session_id", "=", f.session.id)
+          .execute();
+      }
+      const before = await getAutomaticLearningSession(db, f.ctx, f.session.id);
+      const units = await allowance(db, f.ctx);
+      await expect(
+        retryRunAsAdmin(
+          db,
+          {
+            runId: failed.id,
+            actorId: randomUUID(),
+            operationKey: randomUUID(),
+            reason: "Synthetic stale retry must be rejected",
+            requestId: randomUUID(),
+          },
+          { provider: f.provider, job: f.job },
+        ),
+      ).rejects.toMatchObject({ code: "conflict" });
+      expect(await getAutomaticLearningSession(db, f.ctx, f.session.id)).toEqual(before);
+      expect(await allowance(db, f.ctx)).toEqual(units);
+    },
+  );
+
   it.each([
     ["session", "processing_budget_session"],
     ["userMonth", "processing_budget_user_month"],

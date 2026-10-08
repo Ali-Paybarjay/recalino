@@ -468,6 +468,7 @@ export async function updateAutomaticLearningProgress(
         .where("id", "=", input.runId)
         .where("user_id", "=", ctx.userId)
         .where("session_id", "=", sessionId)
+        .where("kind", "=", "class")
         .executeTakeFirst();
       if (!run) throw errors.notFound();
       const latest = await tx
@@ -475,7 +476,9 @@ export async function updateAutomaticLearningProgress(
         .select("id")
         .where("user_id", "=", ctx.userId)
         .where("session_id", "=", sessionId)
+        .where("kind", "=", "class")
         .orderBy("created_at", "desc")
+        .orderBy("id", "desc")
         .limit(1)
         .executeTakeFirst();
       if (latest?.id !== input.runId) return null;

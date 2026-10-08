@@ -124,9 +124,11 @@ export function adminHandler(): Handler {
         };
       }
       const userId = params.get("userId") || undefined,
-        threadId = params.get("threadId") || undefined;
+        threadId = params.get("threadId") || undefined,
+        runId = params.get("runId") || undefined;
       if (userId) z.uuid().parse(userId);
       if (threadId) z.uuid().parse(threadId);
+      if (runId) z.uuid().parse(runId);
       return {
         body: await readAdminSnapshot(
           db,
@@ -135,6 +137,7 @@ export function adminHandler(): Handler {
             actorId,
             userId,
             threadId,
+            runId,
             search: params.get("search") ?? undefined,
             cursor: params.get("cursor") ?? undefined,
           },
@@ -616,7 +619,7 @@ export function adminHandler(): Handler {
           { provider: getAiProvider(), job },
         );
         if (run.state === "queued") runJobsSoon(["proc.process"], 90);
-        return { status: 202, body: { ok: true } };
+        return { status: 202, body: { ok: true, runId: run.id } };
       }
       case "task.update": {
         const p = z

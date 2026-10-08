@@ -40,7 +40,7 @@ export {
   reserveAllowance,
   settleAllowance,
 } from "./ledger";
-export { providerCostSummary } from "./operations";
+export { providerCostSummary, providerSessionCostSummary } from "./operations";
 export {
   type AdminPilotGrantInput,
   configurePilot,

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { testDatabaseUrl } from "../../test/local-db";
+import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
 import { saveTeachingPreference, updateProfile } from "../acc";
 import {
@@ -18,7 +18,7 @@ import { amounts, configureCostPolicy, grantEntitlement } from "../quota";
 import { appendContentVersion, sourceClassificationSchema } from "../src";
 import { sourceSnapshotSchema } from "./contracts";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
-import { cancelRun, createProcessingRun, getRun } from "./runs";
+import { cancelRun, createProcessingRun, getRun, retryRun } from "./runs";
 import { processingJob, providerStep } from "./worker";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
@@ -340,8 +340,253 @@ async function fixture(options: { seedOriginal?: boolean; originalValid?: boolea
     throw new Error("Synthetic knowledge repair exceeded its bounded continuations");
   };
   const workStep = () => job.run({ runId: run.id, userId: x.ctx.userId }, jobContext());
-  return { x, run, snapshot, repair, provider, jobContext, work, workStep, original };
+  return { x, run, snapshot, repair, provider, job, jobContext, work, workStep, original };
 }
+
+async function failedWithPaidRepair() {
+  const f = await fixture();
+  await db
+    .insertInto("proc.run_step")
+    .values({
+      run_id: f.run.id,
+      step: "knowledge:input-context",
+      output: JSON.stringify({ version: 1, date: f.x.session.classDate }),
+      completed_at: new Date(),
+    })
+    .execute();
+  await cancelRun(db, f.x.ctx, f.run.id);
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "failed", last_error: "output_time_reference_invalid" })
+    .where("id", "=", f.run.id)
+    .execute();
+  const repairRun = await retryRun(db, f.x.ctx, f.run.id, randomUUID(), {
+    provider: f.provider,
+    job: f.job,
+  });
+  const output = repairedOutput(f.repair);
+  const item = output.learningItems[0];
+  if (!item) throw new Error("Missing synthetic repair item");
+  const paid = {
+    ...output,
+    learningItems: [
+      {
+        ...item,
+        kind: "vocabulary",
+        study: {
+          set: "production",
+          en: "gig (noun)",
+          faMeaning: "اجرای موسیقی",
+          topic: "music",
+          ipa: "/ɡɪɡ/",
+          faApprox: "گِگ",
+          gapSentence: "She has a ______ at the pub on Saturday.",
+          fullSentence: "She has a gig at the pub on Saturday.",
+          collocations: [],
+          noteFa: "برای اجرای موسیقی استفاده می‌شود.",
+          imageFa: "یک صحنهٔ موسیقی را تصور کن.",
+          sourceFa: "نمونهٔ آموزشی",
+        },
+      },
+    ],
+  };
+  await providerStep(
+    f.jobContext(),
+    f.x.ctx,
+    repairRun.id,
+    "knowledge:repair",
+    settings.llmModel,
+    f.provider,
+    f.repair.schema,
+    async () => ({
+      output: f.repair.schema.parse(paid),
+      requestId: "synthetic-paid-dictionary-repair",
+      provider: f.provider.name,
+      model: settings.llmModel,
+      usage: { inputTokens: 100, outputTokens: 100 },
+      actualMicros: 1000,
+    }),
+  );
+  // Reproduce the immutable historical failure from the pre-compatibility validator.
+  await cancelRun(db, f.x.ctx, repairRun.id);
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "failed", last_error: "output_study_target_unsupported" })
+    .where("id", "=", repairRun.id)
+    .execute();
+  return { ...f, run: repairRun, paid };
+}
+
+it("reuses a fully validated paid repair on explicit retry without another provider call or cost", async () => {
+  const f = await failedWithPaidRepair();
+  const historical = async () => ({
+    steps: await db
+      .selectFrom("proc.run_step")
+      .selectAll()
+      .where("run_id", "=", f.run.id)
+      .orderBy("step")
+      .execute(),
+    costs: await db
+      .selectFrom("quota.provider_cost")
+      .selectAll()
+      .where("run_id", "=", f.run.id)
+      .orderBy("id")
+      .execute(),
+  });
+  const before = await historical();
+  const retry = await retryRun(db, f.x.ctx, f.run.id, randomUUID(), {
+    provider: f.provider,
+    job: f.job,
+  });
+  const saved = await db
+    .selectFrom("proc.run_step")
+    .select(["step", "output"])
+    .where("run_id", "=", retry.id)
+    .where("step", "in", ["knowledge:repair", "knowledge:repair-reused"])
+    .execute();
+  expect(saved.find((row) => row.step === "knowledge:repair")?.output).toEqual(f.paid);
+  expect(saved.find((row) => row.step === "knowledge:repair-reused")?.output).toMatchObject({
+    sourceRunId: f.run.id,
+    sourceStep: "knowledge:repair",
+  });
+  await f.job.run({ runId: retry.id, userId: f.x.ctx.userId }, f.jobContext());
+  expect(await getRun(db, f.x.ctx, retry.id)).toMatchObject({ state: "partial_ready" });
+  expect(f.provider.structuredCalls).not.toHaveBeenCalled();
+  expect(
+    await db
+      .selectFrom("quota.provider_cost")
+      .select("id")
+      .where("run_id", "=", retry.id)
+      .execute(),
+  ).toEqual([]);
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .select("id")
+      .where("run_id", "=", retry.id)
+      .execute(),
+  ).toEqual([]);
+  expect(await historical()).toEqual(before);
+});
+
+it.each(["context", "knowledge", "schema", "answer", "cost", "attempt"] as const)(
+  "never reuses a paid repair after its %s proof is invalid",
+  async (changed) => {
+    const f = await failedWithPaidRepair();
+    if (changed === "context") {
+      await db
+        .deleteFrom("proc.run_step")
+        .where("run_id", "=", f.run.id)
+        .where("step", "=", "knowledge:input-context")
+        .execute();
+      await db
+        .insertInto("proc.run_step")
+        .values({
+          run_id: f.run.id,
+          step: "knowledge:input-context",
+          output: JSON.stringify({ version: 1, date: "2030-01-01" }),
+          completed_at: new Date(),
+        })
+        .execute();
+    }
+    if (changed === "knowledge") {
+      // A later repair cannot be attached to a different saved original response.
+      const other = await createProcessingRun(
+        db,
+        f.x.ctx,
+        { sessionId: f.x.session.id, operationKey: randomUUID() },
+        { provider: f.provider, job: f.job },
+      );
+      await providerStep(
+        f.jobContext(),
+        f.x.ctx,
+        other.id,
+        "knowledge",
+        settings.llmModel,
+        f.provider,
+        generatedSchema,
+        async () => ({
+          output: { ...f.original, title: "Different original" },
+          requestId: "synthetic-different-original",
+          provider: f.provider.name,
+          model: settings.llmModel,
+          usage: {},
+          actualMicros: 1000,
+        }),
+      );
+      await db
+        .insertInto("proc.run_step")
+        .values({
+          run_id: other.id,
+          step: "knowledge:input-context",
+          output: JSON.stringify({ version: 1, date: f.x.session.classDate }),
+          completed_at: new Date(),
+        })
+        .execute();
+      await cancelRun(db, f.x.ctx, other.id);
+      await db
+        .updateTable("proc.processing_run")
+        .set({ state: "failed" })
+        .where("id", "=", other.id)
+        .execute();
+    }
+    if (changed === "schema" || changed === "answer") {
+      const broken = structuredClone(f.paid);
+      if (changed === "schema") (broken as Record<string, unknown>).unknown = true;
+      else {
+        const item = broken.learningItems[0];
+        if (!item) throw new Error("Missing synthetic paid item");
+        item.study.gapSentence = "She has a gig at the ______ on Saturday.";
+      }
+      await db
+        .deleteFrom("proc.run_step")
+        .where("run_id", "=", f.run.id)
+        .where("step", "=", "knowledge:repair")
+        .execute();
+      await db
+        .insertInto("proc.run_step")
+        .values({
+          run_id: f.run.id,
+          step: "knowledge:repair",
+          output: JSON.stringify(broken),
+          completed_at: new Date(),
+        })
+        .execute();
+    }
+    if (changed === "cost") {
+      // Only this synthetic local fixture impersonates the database owner.
+      const localAdmin = createDatabase(LOCAL_ADMIN_DATABASE_URL, { maxConnections: 1 });
+      try {
+        await localAdmin
+          .deleteFrom("quota.provider_cost")
+          .where("run_id", "=", f.run.id)
+          .where("operation_key", "like", "%:knowledge:repair:%")
+          .execute();
+      } finally {
+        await localAdmin.destroy();
+      }
+    }
+    if (changed === "attempt")
+      await db
+        .updateTable("proc.provider_attempt")
+        .set({ state: "failed" })
+        .where("run_id", "=", f.run.id)
+        .where("step", "=", "knowledge:repair")
+        .execute();
+    const retry = await retryRun(db, f.x.ctx, f.run.id, randomUUID(), {
+      provider: f.provider,
+      job: f.job,
+    });
+    expect(
+      await db
+        .selectFrom("proc.run_step")
+        .select("step")
+        .where("run_id", "=", retry.id)
+        .where("step", "in", ["knowledge:repair", "knowledge:repair-reused"])
+        .execute(),
+    ).toEqual([]);
+  },
+);
 
 function knownTruncation(): ProviderError {
   return new ProviderError("provider_output_truncated", false, false, {

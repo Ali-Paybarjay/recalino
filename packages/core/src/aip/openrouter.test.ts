@@ -140,7 +140,7 @@ describe("AIP OpenRouter boundary", () => {
     const encoded = JSON.stringify(warning.mock.calls);
     expect(encoded).not.toContain("PRIVATE_");
     expect(encoded).not.toContain("Unrecognized");
-    const event = warning.mock.calls[0]?.[1] as {
+    const event = JSON.parse(String(warning.mock.calls[0]?.[1])) as {
       schema: string;
       stage: string;
       issues: { code: string; path: unknown[] }[];
@@ -186,11 +186,14 @@ describe("AIP OpenRouter boundary", () => {
           input: "Synthetic",
         }),
       ).rejects.toMatchObject({ code: "provider_schema_invalid", accounting: { actualMicros: 2 } });
-      expect(warning).toHaveBeenCalledWith("recalino.provider_schema_invalid", {
-        schema: schemaName,
-        stage: "zod",
-        issues: [{ code: "unrecognized_keys", path: [] }],
-      });
+      expect(warning).toHaveBeenCalledWith(
+        "recalino.provider_schema_invalid",
+        JSON.stringify({
+          schema: schemaName,
+          stage: "zod",
+          issues: [{ code: "unrecognized_keys", path: [] }],
+        }),
+      );
       expect(request).toHaveBeenCalledTimes(2);
     },
   );

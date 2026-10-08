@@ -7,6 +7,7 @@ import { adminQuery } from "./api";
 import type { AdminTask, AdminUser } from "./contracts";
 import { errorMessage, localized } from "./copy";
 import { formatMoney, formatNumber } from "./model";
+import { ProcessingReviewDetails } from "./ProcessingReviewDetails";
 import { Badge, Button, Empty, Field, Notice, Panel, Table } from "./primitives";
 
 export function dateLabel(value: string | null | undefined, locale: "en" | "fa"): string {
@@ -29,7 +30,8 @@ function TaskList(props: AdminScreenProps & { tasks: AdminTask[] }) {
       navigate("history");
     else if (/email|welcome|invitation|quota_updated|followup/.test(task.kind))
       compose(task.userIds);
-    else navigate(task.runId ? "processing" : "users");
+    else if (task.runId) navigate("processing", task.runId);
+    else navigate("users");
   }
   return tasks.length ? (
     tasks.map((task) => (
@@ -42,7 +44,9 @@ function TaskList(props: AdminScreenProps & { tasks: AdminTask[] }) {
           </div>
           <div className={styles.actions} style={{ marginTop: 0 }}>
             <Button onClick={() => open(task)} primary>
-              {t("Take action", "رسیدگی")}
+              {task.runId
+                ? t("Review and continue processing", "بررسی و ادامهٔ پردازش")
+                : t("Take action", "رسیدگی")}
             </Button>
             <Button
               onClick={() => {
@@ -304,12 +308,13 @@ function Users(props: AdminScreenProps) {
   );
 }
 function Processing(props: AdminScreenProps) {
-  const { data, t, locale, act, busy, reload, compose } = props;
+  const { data, t, locale, act, busy, reload, compose, navigate } = props;
   const [runId, setRunId] = useState("");
   const [reason, setReason] = useState("");
   const runs = data.runs ?? [];
   return (
     <>
+      {props.runId && runs[0] ? <ProcessingReviewDetails run={runs[0]} props={props} /> : null}
       <Panel title={t("Processing runs", "پردازش‌ها")}>
         {runs.length ? (
           <Table
@@ -324,7 +329,7 @@ function Processing(props: AdminScreenProps) {
             {runs.map((run) => (
               <tr key={run.id}>
                 <td>
-                  {run.title || t("Untitled class", "کلاس بدون عنوان")}
+                  {run.title || t("Class processing", "پردازش کلاس")}
                   <br />
                   <small className={styles.muted}>{dateLabel(run.createdAt, locale)}</small>
                 </td>
@@ -347,6 +352,11 @@ function Processing(props: AdminScreenProps) {
                     <Button onClick={() => compose([run.userId])}>
                       {t("Contact user", "تماس با کاربر")}
                     </Button>
+                    {!props.runId && run.kind === "class" ? (
+                      <Button onClick={() => navigate("processing", run.id)}>
+                        {t("Review and continue processing", "بررسی و ادامهٔ پردازش")}
+                      </Button>
+                    ) : null}
                     {run.retryAllowed && (
                       <Button
                         onClick={() => {
@@ -354,7 +364,7 @@ function Processing(props: AdminScreenProps) {
                           setReason("");
                         }}
                       >
-                        {t("Review retry", "بازبینی تلاش مجدد")}
+                        {t("Review and continue processing", "بررسی و ادامهٔ پردازش")}
                       </Button>
                     )}
                   </div>
@@ -367,7 +377,9 @@ function Processing(props: AdminScreenProps) {
         )}
       </Panel>
       {runId && (
-        <Panel title={t("Confirm retry", "تأیید تلاش مجدد")}>
+        <Panel
+          title={`${t("Continue processing", "ادامهٔ پردازش")} · ${runs.find((run) => run.id === runId)?.title ?? runId}`}
+        >
           <Notice>
             {t(
               "Only the permitted failed stage is retried. Existing results and usage are preserved. The server checks sources, unresolved charges and budget before starting.",
@@ -393,6 +405,7 @@ function Processing(props: AdminScreenProps) {
                 ).then((result) => {
                   if (result) {
                     setRunId("");
+                    if (result.runId) navigate("processing", result.runId);
                     reload();
                   }
                 });

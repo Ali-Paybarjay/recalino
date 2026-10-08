@@ -99,6 +99,7 @@ export type PriceRate = {
 export type AdminRun = {
   id: string;
   userId: string;
+  kind?: string;
   title: string | null;
   stage: string;
   state: string;
@@ -106,6 +107,16 @@ export type AdminRun = {
   createdAt: string;
   retryAllowed: boolean;
   model?: string | null;
+  sessionId?: string;
+  costs?: {
+    actualMicros: number;
+    estimatedMicros: number;
+    reservedMicros: number;
+    unknownCount: number;
+    limitMicros: number | null;
+    currency: string | null;
+  };
+  review?: { state: string; requestedAt: string | null; runId?: string } | null;
 };
 export type EmailTemplate = {
   id: string;
@@ -223,6 +234,7 @@ export type EmailPreview = {
 export type AdminResult = {
   ok?: boolean;
   message?: string;
+  runId?: string;
   preview?: EmailPreview;
   body?: string;
   source?: "ai" | "template";

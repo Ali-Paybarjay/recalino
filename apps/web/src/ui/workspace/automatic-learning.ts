@@ -1,4 +1,4 @@
-import type { ProcessingRun, RunSnapshot } from "@recalino/core/proc";
+import type { ProcessingReview, ProcessingRun, RunSnapshot } from "@recalino/core/proc";
 import type { InputContract } from "@recalino/core/src";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import type { LocalPhoto, Recording, RecordingStore } from "../recording/store";
@@ -17,6 +17,7 @@ export interface AutomaticLearningStatus {
   message: string;
   notesReady: boolean;
   cardsReady: boolean;
+  processingReview?: ProcessingReview | null;
 }
 
 export function automaticResultNeedsRefresh(

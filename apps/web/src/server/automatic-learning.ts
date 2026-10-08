@@ -22,9 +22,11 @@ import {
   getRun,
   listPendingAutomaticLearning,
   listRuns,
+  type ProcessingReview,
   type ProcessingRun,
   processingSelectionFingerprint,
   type RunSnapshot,
+  readClassProcessingReview,
   reconcileAutomaticLearningBatch,
   requestAutomaticLearning,
   selectProcessingSourceSnapshot,
@@ -55,6 +57,7 @@ export interface AutomaticLearningStatus {
   message: string;
   notesReady: boolean;
   cardsReady: boolean;
+  processingReview?: ProcessingReview | null;
 }
 type Progress = Pick<AutomaticLearningStatus, "state" | "lastError" | "run">;
 export interface AutomaticLearningDependencies {
@@ -178,6 +181,7 @@ async function view(
     message: automaticLearningMessage(state, code),
     notesReady: !!notebook,
     cardsReady: intent?.state === "ready" && !!notebook,
+    processingReview: await readClassProcessingReview(db, ctx, sessionId),
   };
 }
 /** Read-only polling never reserves allowance or starts provider work. */

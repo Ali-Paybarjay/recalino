@@ -370,22 +370,28 @@ function reportSchemaFailure(
       if (issue?.code === "invalid_union")
         bounded.push(...issue.errors.flat().slice(0, 12 - bounded.length));
     }
-    console.warn("recalino.provider_schema_invalid", {
-      schema: diagnosticSchemas.has(schemaName) ? schemaName : "other",
-      stage,
-      issues: bounded.map((issue) => ({
-        code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
-        path: issue.path
-          .slice(0, 12)
-          .map((part) =>
-            typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
-              ? part
-              : typeof part === "string" && properties.has(part)
+    // JSON preserves nested issue paths in deployed logs; console's default
+    // object inspection replaces deeper arrays with [Array]. The payload below
+    // contains only bounded code-owned paths/codes, never rejected source data.
+    console.warn(
+      "recalino.provider_schema_invalid",
+      JSON.stringify({
+        schema: diagnosticSchemas.has(schemaName) ? schemaName : "other",
+        stage,
+        issues: bounded.map((issue) => ({
+          code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
+          path: issue.path
+            .slice(0, 12)
+            .map((part) =>
+              typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
                 ? part
-                : "[unknown]",
-          ),
-      })),
-    });
+                : typeof part === "string" && properties.has(part)
+                  ? part
+                  : "[unknown]",
+            ),
+        })),
+      }),
+    );
   } catch {
     // Diagnostic failure must never alter the provider outcome or trigger another request.
   }

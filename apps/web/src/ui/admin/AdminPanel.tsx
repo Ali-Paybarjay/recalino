@@ -44,6 +44,7 @@ export function AdminPanel() {
   const [mode, setMode] = useState<PanelMode>("overview");
   const [userId, setUserId] = useState("");
   const [threadId, setThreadId] = useState("");
+  const [runId, setRunId] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [data, setData] = useState<AdminSnapshot | null>(null);
@@ -87,6 +88,7 @@ export function AdminPanel() {
       setMode(view as PanelMode);
       setUserId(params.get("userId") ?? "");
       setThreadId(params.get("threadId") ?? "");
+      setRunId(params.get("runId") ?? "");
     };
     readHash();
     window.addEventListener("hashchange", readHash);
@@ -148,6 +150,7 @@ export function AdminPanel() {
     const params: Record<string, string> = {};
     if (userId) params.userId = userId;
     if (threadId) params.threadId = threadId;
+    if (runId && (view === "processing" || view === "costs")) params.runId = runId;
     if (view === "users" && search) params.search = search;
     const queryKey = JSON.stringify({ view, params });
     setLoading(true);
@@ -172,7 +175,7 @@ export function AdminPanel() {
         }
       });
     return () => controller.abort();
-  }, [mode, userId, threadId, search, revision]);
+  }, [mode, userId, threadId, runId, search, revision]);
 
   function navigate(view: PanelMode, id?: string) {
     setMode(view);
@@ -180,11 +183,14 @@ export function AdminPanel() {
     else setUserId("");
     if (view === "thread") setThreadId(id ?? "");
     else setThreadId("");
+    const targetRun = view === "processing" || view === "costs" ? (id ?? "") : "";
+    setRunId(targetRun);
     setAnnouncement("");
     setError(null);
     const hash = new URLSearchParams({ view });
     if (view === "user" && id) hash.set("userId", id);
     if (view === "thread" && id) hash.set("threadId", id);
+    if (targetRun) hash.set("runId", targetRun);
     history.pushState(null, "", `#${hash}`);
     mainRef.current?.focus();
   }
@@ -235,6 +241,7 @@ export function AdminPanel() {
           mode,
           userId,
           threadId,
+          runId,
           selected,
           setSelected,
           navigate,

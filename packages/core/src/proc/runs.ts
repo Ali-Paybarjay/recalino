@@ -136,6 +136,7 @@ export async function listRuns(
     .where("session_id", "=", sessionId)
     .where("kind", "=", "class")
     .orderBy("created_at", "desc")
+    .orderBy("id", "desc")
     .limit(50)
     .execute();
   return rows.map(runView);
@@ -243,6 +244,8 @@ export async function createProcessingRun(
     now?: Date;
     /** Internal retry path only; ordinary regeneration always requests new knowledge. */
     reuseCompletedKnowledge?: boolean;
+    /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
+    expectedLatestClassRunId?: string;
   },
 ): Promise<ProcessingRun> {
   const input = createRunSchema.parse(raw);
@@ -262,6 +265,35 @@ export async function createProcessingRun(
       if (previous.request_hash !== hash) throw errors.idempotencyMismatch();
       return runView(previous);
     }
+    if (options.expectedLatestClassRunId !== undefined) {
+      const expected = z.uuid().parse(options.expectedLatestClassRunId);
+      const newest = await tx
+        .selectFrom("proc.processing_run")
+        .select("id")
+        .where("user_id", "=", ctx.userId)
+        .where("session_id", "=", session.id)
+        .where("kind", "=", "class")
+        .orderBy("created_at", "desc")
+        .orderBy("id", "desc")
+        .executeTakeFirst();
+      if (newest?.id !== expected) throw errors.conflict();
+    }
+    const operatorIntent = options.expectedLatestClassRunId
+      ? await tx
+          .selectFrom("proc.automatic_session")
+          .select(["run_id", "request_version", "batch_id"])
+          .where("user_id", "=", ctx.userId)
+          .where("session_id", "=", session.id)
+          .forUpdate()
+          .executeTakeFirst()
+      : undefined;
+    if (
+      operatorIntent &&
+      (operatorIntent.batch_id ||
+        (operatorIntent.run_id !== null &&
+          operatorIntent.run_id !== options.expectedLatestClassRunId))
+    )
+      throw errors.conflict();
     if (input.automaticRequestVersion !== undefined) {
       const intent = await tx
         .selectFrom("proc.automatic_session")
@@ -366,6 +398,19 @@ export async function createProcessingRun(
         provider,
         now,
       });
+    if (operatorIntent)
+      await tx
+        .updateTable("proc.automatic_session")
+        .set({
+          run_id: id,
+          state: awaiting ? "waiting_upload" : "processing",
+          last_error: null,
+          updated_at: now,
+        })
+        .where("user_id", "=", ctx.userId)
+        .where("session_id", "=", session.id)
+        .where("request_version", "=", operatorIntent.request_version)
+        .execute();
     return runView(row);
   });
 }

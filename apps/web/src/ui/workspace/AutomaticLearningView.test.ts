@@ -50,6 +50,15 @@ const blocked: AutomaticLearningStatus = {
   notesReady: true,
   cardsReady: false,
 };
+const pendingReview = {
+  state: "not_requested" as const,
+  runId: "20000000-0000-4000-8000-000000000001",
+  requestedRunId: null,
+  requestedAt: null,
+  updatedAt: "2026-10-08T10:00:00.000Z",
+  errorCode: "processing_budget_session",
+  canRequest: true,
+};
 function render(view: "notice" | "progress" = "notice") {
   return renderToStaticMarkup(
     view === "notice"
@@ -190,38 +199,48 @@ describe("recovery actions match the processing blocker", () => {
     "service_cost_unknown",
     "service_reservation_missing",
   ])(
-    "offers processing help for %s without suggesting learner quota or new uploads",
+    "offers a linked processing review for %s without suggesting learner quota or new uploads",
     (lastError) => {
-      mocks.status = { ...blocked, lastError, message: "Processing needs a service update." };
+      mocks.status = {
+        ...blocked,
+        lastError,
+        message: "Processing needs a service update.",
+        processingReview: pendingReview,
+      };
       const html = render("progress");
-      expect(html).toMatch(/href="\/help\/new"[^>]*>Get processing help<\/a>/);
+      expect(html).toContain('id="processing-review"');
+      expect(html).toContain("Request processing review");
+      expect(html).not.toContain("/help/new");
       expect(html).not.toContain("Review allowance");
       expect(html).not.toContain("Add material");
-      expect(html).toContain("After the Recalino team updates the service");
-      expect(mocks.buttons.has("Retry after service update")).toBe(true);
+      expect(mocks.buttons.has("Retry after service update")).toBe(false);
       expect(mocks.request).not.toHaveBeenCalled();
       expect(html).toContain(`href="/classes/${sessionId}/notes"`);
     },
   );
 
-  it("keeps service recovery available directly in the class notice with a guarded retry", async () => {
+  it("requests one exact class review from the class notice, without retrying paid processing", async () => {
     mocks.status = {
       ...blocked,
       lastError: "processing_budget_session",
       message: "The class processing budget needs attention from the Recalino team.",
+      processingReview: pendingReview,
     };
     const html = render();
-    expect(html).toContain("Get processing help");
+    expect(html).toContain("View processing review");
     expect(html).toContain(`href="/classes/${sessionId}/processing"`);
     expect(html).not.toContain("Review allowance");
-    mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
-    const click = mocks.buttons.get("Retry after service update");
+    mocks.request.mockResolvedValue({
+      ...mocks.status,
+      processingReview: { ...pendingReview, state: "awaiting_review", canRequest: false },
+    });
+    const click = mocks.buttons.get("Request processing review");
     expect(click).toBeDefined();
     await click?.();
     expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
       `/api/classes/${sessionId}/learning`,
       "POST",
-      { action: "retry" },
+      { action: "request_review", runId: pendingReview.runId },
       expect.any(String),
     );
   });
@@ -233,9 +252,9 @@ describe("recovery actions match the processing blocker", () => {
   ])("%s offers help without permitting another paid attempt", (lastError) => {
     mocks.status = { ...blocked, lastError };
     const html = render("progress");
-    expect(html).toContain("Get processing help");
+    expect(html).toContain("Processing review");
     expect(html).not.toContain("Add material");
-    expect(mocks.buttons.size).toBe(0);
+    expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
   });
 
   it("takes an upload error to its material review rather than a processing retry", () => {
@@ -246,5 +265,25 @@ describe("recovery actions match the processing blocker", () => {
     );
     expect(html).not.toContain("Add material");
     expect(mocks.buttons.size).toBe(0);
+  });
+  it.each([
+    ["awaiting_review", "Your request is recorded for this class"],
+    ["retrying", "Processing is continuing with your saved material"],
+    ["resolved", "Processing has finished"],
+  ] as const)("shows the actual %s review state and avoids repeated requests", (state, message) => {
+    mocks.status = {
+      ...blocked,
+      lastError: "processing_budget_session",
+      processingReview: {
+        ...pendingReview,
+        state,
+        requestedAt: "2026-10-08T10:01:00.000Z",
+        canRequest: false,
+      },
+    };
+    const html = render("progress");
+    expect(html).toContain(message);
+    expect(mocks.buttons.has("Request processing review")).toBe(false);
+    expect(mocks.buttons.has("Retry after service update")).toBe(false);
   });
 });

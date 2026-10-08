@@ -101,6 +101,7 @@ export {
 } from "./rate-limit";
 export {
   type AuditInput,
+  latestSubjectAudit,
   recordAudit,
   recordSecurityEvent,
   type SecurityEventInput,

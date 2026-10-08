@@ -34,9 +34,12 @@ export function studyLexicalTarget(en: string): StudyLexicalTarget | undefined {
   let value = en.normalize("NFC").trim().replace(/\s+/g, " ");
   if (!value || value.length > 500 || /[<>{}[\]\\]|&(?:#\d+|[a-z]+);/iu.test(value))
     return undefined;
+  // A complete dictionary label describes the headword, never adds answer words.
+  // Unknown annotations remain unsupported instead of silently losing their meaning.
+  const separable = /\s+\(separable phrasal verb\)$/iu.test(value);
   // These complete suffixes label usage; arbitrary parenthetical grammar/definitions are unsupported.
   value = value.replace(
-    /\s+\((?:pronunciation|sl|n|v|adj|adv|formal|informal|British English)\)$/iu,
+    /\s+\((?:pronunciation|sl|n|v|adj|adv|noun|noun phrase|formal|informal|British English|separable phrasal verb)\)$/iu,
     "",
   );
   value = value.replace(
@@ -50,6 +53,18 @@ export function studyLexicalTarget(en: string): StudyLexicalTarget | undefined {
   const alternatives = (plus[0] ?? "").split(/\s+\/\s+/u).map(headword);
   const first = alternatives[0];
   if (!first || alternatives.some((entry) => !entry)) return undefined;
+  if (separable) {
+    // A declared separable two-word verb needs both lexical parts hidden, even
+    // when an object occurs between them. No general grammar inference is made.
+    const words = first.text.split(" ");
+    if (
+      alternatives.length !== 1 ||
+      words.length !== 2 ||
+      !/^(?:away|back|down|in|off|on|out|over|up)$/iu.test(words[1] ?? "")
+    )
+      return undefined;
+    return { text: first.text, parts: words };
+  }
   for (const alternative of alternatives.slice(1)) {
     if (!alternative) return undefined;
     if (alternative.text === first.text) continue;

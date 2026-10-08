@@ -34,6 +34,11 @@ export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
 export {
+  type ProcessingReview,
+  processingReviewTarget,
+  readClassProcessingReview,
+} from "./processing-review";
+export {
   prepareSourceExtractionRetry,
   readKnowledgeSourceSnapshot,
   type SourceExtractionRetryInput,
