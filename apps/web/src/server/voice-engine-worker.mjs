@@ -14,7 +14,7 @@ try {
   const sherpa = require("sherpa-onnx-node");
   if (require("sherpa-onnx-node/package.json").version !== "1.13.8")
     throw new Error("voice_runtime_version_mismatch");
-  const { samples, configuration, operation, offsetMs } = workerData;
+  const { samples, configuration, operation, offsetMs, boundaries = [] } = workerData;
   const extractor = new sherpa.SpeakerEmbeddingExtractor({
     model: configuration.embeddingPath,
     numThreads: configuration.numThreads,
@@ -50,7 +50,12 @@ try {
       minDurationOff: 0,
     });
     if (diarizer.sampleRate !== 16000) throw new Error("voice_model_sample_rate_mismatch");
-    const segments = qualifySegments(diarizer.process(samples), samples.length / 16, offsetMs);
+    const segments = qualifySegments(
+      diarizer.process(samples),
+      samples.length / 16,
+      offsetMs,
+      boundaries,
+    );
     const speakers = [];
     for (const speakerId of new Set(segments.map((segment) => segment.speakerId))) {
       const spans = embeddingSpans(segments, speakerId);

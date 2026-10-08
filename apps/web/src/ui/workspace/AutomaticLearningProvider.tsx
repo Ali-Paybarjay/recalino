@@ -27,6 +27,7 @@ type Entry = { status: AutomaticLearningStatus | null; problem: string | null };
 const Context = createContext<{
   entries: Record<string, Entry>;
   refresh(sessionId: string): Promise<void>;
+  acceptStatus(sessionId: string, status: AutomaticLearningStatus): void;
 } | null>(null);
 
 export function useAutomaticLearning(sessionId: string) {
@@ -35,6 +36,7 @@ export function useAutomaticLearning(sessionId: string) {
     status: value?.entries[sessionId]?.status ?? null,
     problem: value?.entries[sessionId]?.problem ?? null,
     refresh: () => value?.refresh(sessionId) ?? Promise.resolve(),
+    acceptStatus: (status: AutomaticLearningStatus) => value?.acceptStatus(sessionId, status),
   };
 }
 
@@ -45,15 +47,9 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
   const path = useRef(pathname);
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const states = useRef(new Map<string, AutomaticLearningStatus>());
-  const refresh = useCallback(async (sessionId: string, signal?: AbortSignal) => {
-    const status = await workspaceRequest<AutomaticLearningStatus>(
-      `/api/classes/${sessionId}/learning`,
-      "GET",
-      undefined,
-      undefined,
-      { signal },
-    );
-    signal?.throwIfAborted();
+  const statusVersions = useRef(new Map<string, number>());
+  const acceptStatus = useCallback((sessionId: string, status: AutomaticLearningStatus) => {
+    statusVersions.current.set(sessionId, (statusVersions.current.get(sessionId) ?? 0) + 1);
     states.current.set(sessionId, status);
     setEntries((previous) =>
       JSON.stringify(previous[sessionId]) === JSON.stringify({ status, problem: null })
@@ -61,6 +57,24 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
         : { ...previous, [sessionId]: { status, problem: null } },
     );
   }, []);
+  const refresh = useCallback(
+    async (sessionId: string, signal?: AbortSignal) => {
+      const version = (statusVersions.current.get(sessionId) ?? 0) + 1;
+      statusVersions.current.set(sessionId, version);
+      const status = await workspaceRequest<AutomaticLearningStatus>(
+        `/api/classes/${sessionId}/learning`,
+        "GET",
+        undefined,
+        undefined,
+        { signal },
+      );
+      signal?.throwIfAborted();
+      // A read started before an acknowledged retry must not restore its old failure notice.
+      if (statusVersions.current.get(sessionId) !== version) return;
+      acceptStatus(sessionId, status);
+    },
+    [acceptStatus],
+  );
   useEffect(() => {
     path.current = pathname;
   }, [pathname]);
@@ -298,5 +312,5 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
       document.removeEventListener("visibilitychange", kick);
     };
   }, [userId, store, controller, refresh, router]);
-  return <Context.Provider value={{ entries, refresh }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ entries, refresh, acceptStatus }}>{children}</Context.Provider>;
 }

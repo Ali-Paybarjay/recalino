@@ -138,6 +138,21 @@ describe("speaker evidence alignment", () => {
     expect(result.embeddings).toEqual([]);
     expect(result.candidates[0]?.clips).toEqual([]);
   });
+  it("withholds labelled fallback utterances outside the selected recording range or measured duration", () => {
+    const scoped = scopedVoiceSpeakerId(sourceId, "chunk1", "0");
+    const selected = source([{ start: 10000, end: 18000, text: "I am agree.", speaker: scoped }]);
+    selected.ranges = [{ start: 20000, end: 30000 }];
+    expect(buildTranscriptVoiceAnalysis(base, selected).candidates).toEqual([]);
+    selected.ranges = [];
+    selected.durationMs = 15000;
+    expect(buildTranscriptVoiceAnalysis(base, selected).candidates).toEqual([]);
+  });
+  it("retains sampled acoustic coverage and original speaker timestamps without changing the embedding model", () => {
+    const sampled = buildVoiceAnalysis(base, source(), { ...diarization(), sampled: true });
+    expect(sampled.reason).toBe("sampled_audio");
+    expect(sampled.modelVersion).toBe("fixture");
+    expect(sampled.candidates[0]?.clips[0]).toMatchObject({ startMs: 1000, endMs: 8000 });
+  });
 });
 
 describe("private correction evidence", () => {

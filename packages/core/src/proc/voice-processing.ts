@@ -4,7 +4,7 @@ import type { AiProvider, ProviderResult } from "../aip";
 import { ProviderError } from "../aip";
 import type { Database, Tx } from "../db";
 import { isExplanationLanguage, matchesExplanationScript } from "../lkm";
-import { errors, type LearnerContext } from "../plt";
+import { AppError, errors, type LearnerContext } from "../plt";
 import {
   findRepeatedVoiceEvidence,
   findVoiceAnalysis,
@@ -23,6 +23,8 @@ import type { RunSource } from "./contracts";
 
 export interface VoiceDiarization {
   modelRevision: string;
+  /** A bounded composite covers distributed excerpts rather than the entire selection. */
+  sampled?: boolean;
   segments: {
     speakerId: string;
     startMs: number;
@@ -49,6 +51,33 @@ export function scopedVoiceSpeakerId(sourceId: string, namespace: string, label:
 const validInterval = (start: number, end: number) =>
   Number.isSafeInteger(start) && Number.isSafeInteger(end) && start >= 0 && end > start;
 
+function voicePreparationFailure(error: unknown, source: RunSource): string {
+  const details = z
+    .object({
+      fields: z.object({ voice: z.array(z.string()).optional() }).optional(),
+      reason: z.string().optional(),
+    })
+    .safeParse(error instanceof AppError ? error.details : undefined);
+  const fields = details.success ? (details.data.fields?.voice ?? []) : [];
+  if (!source.objectId || fields.includes("original_audio_unavailable"))
+    return "original_audio_unavailable";
+  if (fields.includes("source_integrity_mismatch")) return "voice_source_integrity_mismatch";
+  if (details.success && details.data.reason === "audio_decoder_timeout")
+    return "voice_decoder_timeout";
+  if (error instanceof Error) {
+    if (error.message === "voice_inference_timeout") return "voice_inference_timeout";
+    if (
+      [
+        "voice_models_not_configured",
+        "voice_model_integrity_mismatch",
+        "voice_worker_missing",
+      ].includes(error.message)
+    )
+      return "voice_engine_unavailable";
+  }
+  return "voice_analysis_failed";
+}
+
 /** Only wholly covered, clean single-speaker STT units become mistake evidence. */
 export function alignVoiceUtterances(
   source: RunSource,
@@ -66,6 +95,12 @@ export function alignVoiceUtterances(
       unit.status !== "extracted" ||
       unit.end === undefined ||
       !validInterval(unit.start, unit.end) ||
+      (source.durationMs !== null && unit.end > source.durationMs) ||
+      (source.ranges.length > 0 &&
+        !source.ranges.some(
+          (range) =>
+            unit.start >= range.start && (unit.end ?? Number.POSITIVE_INFINITY) <= range.end,
+        )) ||
       !block.text.trim() ||
       block.text.length > 10000
     )
@@ -137,6 +172,7 @@ export function buildVoiceAnalysis(
   });
   return {
     ...input,
+    ...(diarization.sampled ? { reason: "sampled_audio" } : {}),
     modelVersion: diarization.modelRevision,
     candidates,
     utterances,
@@ -333,12 +369,14 @@ export async function processVoiceSource(input: {
         diarization,
         input.explanationLanguage,
       );
-    } catch {
+    } catch (error) {
       prepared = buildTranscriptVoiceAnalysis(
         { ...key, profileVersion: enrollment.version },
         input.source,
         input.explanationLanguage,
       );
+      if (!prepared.candidates.length)
+        prepared.reason = voicePreparationFailure(error, input.source);
     }
     try {
       await saveVoiceAnalysis(input.db, input.ctx, prepared, input.now());
@@ -374,11 +412,7 @@ export async function processVoiceSource(input: {
 }
 
 /** Legacy bare numeric labels cannot be joined across chunks; only namespaced labels are safe. */
-export function buildTranscriptVoiceAnalysis(
-  input: Omit<VoiceAnalysisInput, "candidates" | "utterances" | "embeddings" | "modelVersion">,
-  source: RunSource,
-  explanationLanguage = "fa",
-): VoiceAnalysisInput {
+function transcriptVoiceUtterances(source: RunSource): VoiceUtterance[] {
   const units = new Map(source.units.map((unit) => [unit.id, unit]));
   const utterances = source.blocks.flatMap((block): VoiceUtterance[] => {
     const unit = units.get(block.unitId);
@@ -393,6 +427,12 @@ export function buildTranscriptVoiceAnalysis(
       unit.end === undefined ||
       unit.status !== "extracted" ||
       !validInterval(unit.start, unit.end) ||
+      (source.durationMs !== null && unit.end > source.durationMs) ||
+      (source.ranges.length > 0 &&
+        !source.ranges.some(
+          (range) =>
+            unit.start >= range.start && (unit.end ?? Number.POSITIVE_INFINITY) <= range.end,
+        )) ||
       !block.text.trim() ||
       block.text.length > 10000
     )
@@ -419,6 +459,19 @@ export function buildTranscriptVoiceAnalysis(
     )
       item.eligible = false;
   }
+  return utterances;
+}
+
+export function hasTranscriptVoiceEvidence(source: RunSource): boolean {
+  return transcriptVoiceUtterances(source).length > 0;
+}
+
+export function buildTranscriptVoiceAnalysis(
+  input: Omit<VoiceAnalysisInput, "candidates" | "utterances" | "embeddings" | "modelVersion">,
+  source: RunSource,
+  explanationLanguage = "fa",
+): VoiceAnalysisInput {
+  const utterances = transcriptVoiceUtterances(source);
   const ids = [...new Set(utterances.map((item) => item.speakerId))];
   return {
     ...input,

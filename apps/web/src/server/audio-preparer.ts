@@ -18,6 +18,12 @@ import {
 } from "@recalino/core/proc";
 import { type AudioVerifier, detectBinaryMime } from "@recalino/core/src";
 import ffmpegPath from "ffmpeg-static";
+import {
+  VOICE_CHECK_GAP_MS,
+  VOICE_CHECK_MAX_MS,
+  type VoiceSourceWindow,
+  type VoiceWindowMap,
+} from "./voice-source-windows";
 
 // These files are created during invocation; keep the build tracer out of the host temp directory.
 const runtimeTemporaryDirectory = tmpdir.bind(undefined);
@@ -176,6 +182,92 @@ export async function decodeVoiceAudio(
       return { samples, sampleRate: 16000, durationMs };
     } finally {
       pcm.fill(0);
+    }
+  });
+}
+
+/** Decode only bounded selected windows; long classes never allocate whole-recording PCM. */
+export async function decodeVoiceAudioWindows(
+  bytes: Uint8Array,
+  windows: readonly VoiceSourceWindow[],
+): Promise<{ samples: Float32Array; sampleRate: 16000; windows: VoiceWindowMap[] }> {
+  const maximumMs =
+    windows.reduce((sum, window) => sum + window.end - window.start, 0) +
+    Math.max(0, windows.length - 1) * VOICE_CHECK_GAP_MS;
+  if (
+    !windows.length ||
+    !Number.isSafeInteger(maximumMs) ||
+    maximumMs > VOICE_CHECK_MAX_MS ||
+    windows.some(
+      (window) =>
+        !Number.isSafeInteger(window.start) ||
+        !Number.isSafeInteger(window.end) ||
+        window.start < 0 ||
+        window.end <= window.start,
+    )
+  )
+    throw errors.validationFailed({ audio: ["voice_selection_invalid"] });
+  return withAudioFile(bytes, async (path, directory) => {
+    const samples = new Float32Array(maximumMs * 16);
+    const mapped: VoiceWindowMap[] = [];
+    let cursor = 0;
+    try {
+      for (const [index, window] of windows.entries()) {
+        const outputPath = join(directory, `voice-window-${index}.pcm`);
+        await ffmpeg(
+          [
+            "-ss",
+            String(window.start / 1000),
+            "-i",
+            path,
+            "-t",
+            String((window.end - window.start) / 1000),
+            "-map",
+            "0:a:0",
+            "-vn",
+            "-sn",
+            "-dn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "pcm_s16le",
+            "-f",
+            "s16le",
+            "-y",
+            outputPath,
+          ],
+          120000,
+        );
+        const pcm = await readFile(outputPath);
+        try {
+          const durationMs = Math.ceil(pcm.length / 32);
+          if (
+            !pcm.length ||
+            pcm.length % 2 ||
+            durationMs > window.end - window.start ||
+            durationMs < window.end - window.start - 100
+          )
+            throw errors.validationFailed({ audio: ["voice_duration_invalid"] });
+          const compositeStartMs = cursor / 16;
+          for (let sample = 0; sample < pcm.length / 2; sample++)
+            samples[cursor + sample] = pcm.readInt16LE(sample * 2) / 32768;
+          cursor += durationMs * 16;
+          mapped.push({
+            sourceStartMs: window.start,
+            compositeStartMs,
+            compositeEndMs: cursor / 16,
+          });
+          if (index < windows.length - 1) cursor += VOICE_CHECK_GAP_MS * 16;
+        } finally {
+          pcm.fill(0);
+        }
+      }
+      return { samples: samples.subarray(0, cursor), sampleRate: 16000, windows: mapped };
+    } catch (error) {
+      samples.fill(0);
+      throw error;
     }
   });
 }

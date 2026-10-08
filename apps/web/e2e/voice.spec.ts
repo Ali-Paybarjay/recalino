@@ -109,6 +109,8 @@ test("voice consent gates microphone; sample auto-stops and retries the same exp
   await page.clock.fastForward(30_100);
   await expect(page.getByLabel("Your voice sample preview")).toBeVisible();
   expect(await stats()).toEqual({ requests: 1, stopped: 1 });
+  const readsBeforeSave = reads;
+  expect(readsBeforeSave).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Save voice sample", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: /^Processing your voice…$/ }),
@@ -134,7 +136,7 @@ test("voice consent gates microphone; sample auto-stops and retries the same exp
   ).toBeVisible();
   await expect(page.getByText(/Voice confirmation is on · Voice sample saved/)).toBeVisible();
   await expect(page.getByLabel("Your voice sample preview")).toHaveCount(0);
-  expect(reads).toBe(1);
+  expect(reads).toBe(readsBeforeSave);
   expect(writes).toHaveLength(2);
   expect(writes[1]).toEqual(writes[0]);
   expect(writes[0]?.body).toMatchObject({
@@ -409,6 +411,213 @@ test("class voices explain missing transcripts before a check can be submitted",
   );
   await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
   expect(writes).toBe(0);
+});
+
+test("a completed voice check leads to an explicit speaker choice and the refreshed class notes", async ({
+  page,
+}) => {
+  let checked = false;
+  let poll = 0;
+  const result = analysis(1);
+  const writes: Record<string, unknown>[] = [];
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      writes.push(body);
+      if (body.action === "analyze") checked = true;
+      if (body.action === "confirm") {
+        result.status = "verified";
+        result.version++;
+        result.verifiedSpeakerId = String(body.speakerId);
+        result.verificationMethod = "manual";
+      }
+      return route.fulfill({ status: body.action === "analyze" ? 202 : 200, json: {} });
+    }
+    const processing = checked && poll++ === 0;
+    return route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        processing,
+        analyses: checked && !processing ? [result] : [],
+      } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Checking class voices…" })).toBeDisabled();
+  await expect(
+    page.getByText(/Voice check finished. Next, confirm which speaker is you/),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Yes, this is my voice", exact: true }).click();
+  await expect(page.getByText("Voice verified", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Your voice choices are saved/)).toBeVisible();
+  const continuation = page.getByRole("link", { name: "Read class notes", exact: true });
+  await expect(continuation).toHaveAttribute("href", "#class-notes");
+  await continuation.click();
+  await expect(page).toHaveURL(/#class-notes$/);
+  await expect(
+    page.locator("#class-notes").getByRole("region", { name: "Synthetic class notes" }),
+  ).toBeVisible();
+  expect(writes).toEqual([
+    { action: "analyze" },
+    { action: "confirm", analysisId: result.id, expectedVersion: 1, speakerId: "speaker-1" },
+  ]);
+});
+
+test("a check without usable excerpts reports its outcome and offers source material or class notes", async ({
+  page,
+}) => {
+  let checked = false;
+  let poll = 0;
+  const result: VoiceAnalysisView = {
+    ...analysis(1),
+    status: "unavailable",
+    candidateId: null,
+    candidates: [],
+    reason: "voice_engine_or_audio_unavailable",
+  };
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      checked = true;
+      return route.fulfill({ status: 202, json: {} });
+    }
+    const processing = checked && poll++ === 0;
+    return route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        processing,
+        analyses: checked && !processing ? [result] : [],
+      } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Checking class voices…" })).toBeDisabled();
+  const source = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await expect(source.getByText("No usable excerpts", { exact: true })).toBeVisible();
+  await expect(page.getByText("Needs confirmation", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText(/Voice check finished, but some recordings have no usable speaker excerpts/),
+  ).toBeVisible();
+  await expect(source.getByRole("link", { name: "Check source material" })).toHaveAttribute(
+    "href",
+    "/classes/10000000-0000-4000-8000-000000000001/sources",
+  );
+  await expect(page.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+});
+
+test("a failed class voice check offers a working retry instead of asking for confirmation", async ({
+  page,
+}) => {
+  let result: VoiceAnalysisView = { ...analysis(1), status: "failed", candidates: [] };
+  const writes: { body: unknown; key: string | undefined }[] = [];
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      writes.push({
+        body: route.request().postDataJSON(),
+        key: route.request().headers()["idempotency-key"],
+      });
+      result = analysis(1);
+    }
+    return route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [result] } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  const source = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await expect(source.getByText("Voice check failed", { exact: true })).toBeVisible();
+  await expect(source.getByText("Needs confirmation", { exact: true })).toHaveCount(0);
+  await source.getByRole("button", { name: "Retry class voice check", exact: true }).click();
+  await expect(
+    source.getByRole("button", { name: "Yes, this is my voice", exact: true }),
+  ).toBeVisible();
+  expect(writes).toHaveLength(1);
+  expect(writes[0]?.body).toEqual({ action: "analyze" });
+  expect(writes[0]?.key).toBeTruthy();
+});
+
+test("speaker labels without any excerpts offer recovery instead of asking for a blind confirmation", async ({
+  page,
+}) => {
+  const result = analysis(1);
+  result.candidates = result.candidates.map((candidate) => ({
+    ...candidate,
+    clips: [],
+    lines: [],
+  }));
+  await page.route("**/api/classes/*/voice", (route) =>
+    route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [result] } satisfies ClassVoiceView,
+    }),
+  );
+  await page.goto("/dev/ui/voice?view=class");
+  const source = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await expect(source.getByText("No usable excerpts", { exact: true })).toBeVisible();
+  await expect(source.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
+  await expect(source.getByRole("button", { name: "None of these voices is mine" })).toHaveCount(0);
+  await expect(source.getByRole("link", { name: "Check source material" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+});
+
+test("a saved personal sample does not hide the missing class recording or permit a no-op check", async ({
+  page,
+}) => {
+  let writes = 0;
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") writes++;
+    return route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        analyses: [],
+        analysisBlockedReason: "original_audio_required",
+      } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await expect(
+    page.getByRole("button", { name: "Check class voices", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(
+      /Checking class voices needs the original class recording, even if you have saved a personal voice sample/,
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Restore class recording" })).toHaveAttribute(
+    "href",
+    "/classes/10000000-0000-4000-8000-000000000001/sources",
+  );
+  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  expect(writes).toBe(0);
+});
+
+test("sampled voice checks disclose their coverage before and after speaker confirmation", async ({
+  page,
+}) => {
+  const result = { ...analysis(1), reason: "sampled_audio" };
+  await page.route("**/api/classes/*/voice", (route) => {
+    if (route.request().method() === "POST") {
+      result.status = "verified";
+      result.verifiedSpeakerId = "speaker-1";
+      result.verificationMethod = "manual";
+      result.version++;
+    }
+    return route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [result] } satisfies ClassVoiceView,
+    });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  await expect(page.getByText(/excerpts sampled across your selected class audio/)).toBeVisible();
+  await page.getByRole("button", { name: "Yes, this is my voice", exact: true }).click();
+  await expect(page.getByText("Voice verified", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/Only speech in those checked excerpts can contribute spoken mistakes/),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
 });
 
 test("a rejected voice check keeps notes visible and permits a fresh request after recovery", async ({

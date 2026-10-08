@@ -3,6 +3,7 @@ export {
   audioManifestSchema,
   beginTemporaryAudioUpload,
   confirmTemporaryAudioPart,
+  liveTemporaryAudioObject,
   markAudioTranscribed,
   markSourceAudioTranscribed,
   temporaryAudioManifest,

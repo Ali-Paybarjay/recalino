@@ -20,7 +20,7 @@ export interface VoiceEngine {
   readonly modelRevision: string;
   diarize(
     samples: Float32Array,
-    options?: { sampleRate?: number; offsetMs?: number },
+    options?: { sampleRate?: number; offsetMs?: number; boundaries?: number[] },
   ): Promise<VoiceDiarization>;
   embed(samples: Float32Array, sampleRate?: number): Promise<number[]>;
 }
@@ -62,6 +62,7 @@ function execute<T>(
   samples: Float32Array,
   configuration: Configuration,
   offsetMs = 0,
+  boundaries: number[] = [],
 ): Promise<T> {
   if (pending >= 2) return Promise.reject(new Error("voice_engine_busy"));
   pending++;
@@ -73,7 +74,7 @@ function execute<T>(
       () =>
         new Promise<T>((accept, reject) => {
           const worker = new Worker(workerPath(), {
-            workerData: { operation, samples: ownedSamples, configuration, offsetMs },
+            workerData: { operation, samples: ownedSamples, configuration, offsetMs, boundaries },
             transferList: [ownedSamples.buffer],
           });
           let finished = false;
@@ -150,7 +151,15 @@ export async function loadVoiceEngine(): Promise<VoiceEngine> {
       validateVoicePcm(samples, options.sampleRate);
       const offsetMs = options.offsetMs ?? 0;
       if (!Number.isSafeInteger(offsetMs) || offsetMs < 0) throw new Error("voice_offset_invalid");
-      return execute<VoiceDiarization>("diarize", samples, configuration, offsetMs);
+      const boundaries = options.boundaries ?? [];
+      if (
+        boundaries.some(
+          (boundary) =>
+            !Number.isSafeInteger(boundary) || boundary < 0 || boundary > samples.length / 16,
+        )
+      )
+        throw new Error("voice_boundary_invalid");
+      return execute<VoiceDiarization>("diarize", samples, configuration, offsetMs, boundaries);
     },
     embed(samples, sampleRate = 16000) {
       validateVoicePcm(samples, sampleRate);

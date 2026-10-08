@@ -12,6 +12,7 @@ export function qualifySegments(
   raw: { start: number; end: number; speaker: number }[],
   durationMs: number,
   offsetMs?: number,
+  boundaries?: number[],
 ): QualifiedVoiceSegment[];
 export function embeddingSpans(
   segments: QualifiedVoiceSegment[],

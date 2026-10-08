@@ -10,6 +10,7 @@ import {
   changeVoiceIdentity,
   findVoiceAnalysis,
   getClassVoice,
+  markVoiceAnalysisFailure,
   saveVoiceAnalysis,
   saveVoiceCandidateMistakes,
 } from "./analysis";
@@ -26,6 +27,24 @@ import { projectVerifiedSpeech } from "./projection";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
 afterAll(() => db.destroy());
+it("preserves sampled coverage through correction failures and later successful correction saves", async () => {
+  const x = await voiceFixture(db);
+  await db
+    .updateTable("voc.analysis")
+    .set({ reason: "sampled_audio" })
+    .where("id", "=", x.analysis.id)
+    .execute();
+  await markVoiceAnalysisFailure(db, x.ctx, x.analysis.id, "voice_correction_unavailable");
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.reason).toBe(
+    "voice_correction_sampled_audio_unavailable",
+  );
+  await saveVoiceCandidateMistakes(db, x.ctx, {
+    analysisId: x.analysis.id,
+    profileVersion: x.input.profileVersion,
+    mistakes: {},
+  });
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.reason).toBe("sampled_audio");
+});
 it("Part6: hidden suggestions reveal only for the confirmed voice; reject and stale writes cannot leak another speaker", async () => {
   const x = await voiceFixture(db),
     model = referenceStudyModel();

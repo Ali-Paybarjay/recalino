@@ -3,15 +3,19 @@ import { createHash } from "node:crypto";
 import type { Database } from "@recalino/core/db";
 import { errors, type LearnerContext, readOwnedObject } from "@recalino/core/plt";
 import { scheduleVoiceReanalysis, type VoiceDiarizer, voiceAnalysisJob } from "@recalino/core/proc";
+import { liveTemporaryAudioObject } from "@recalino/core/src";
 import { getAiProvider } from "./ai";
-import { decodeVoiceAudio } from "./audio-preparer";
+import { decodeVoiceAudioWindows } from "./audio-preparer";
 import { getObjectStore } from "./storage";
 import { loadVoiceEngine } from "./voice-engine";
+import { remapVoiceSegments, voiceSourceWindows } from "./voice-source-windows";
 
 /** The full original establishes one speaker namespace; five-minute STT chunks do not. */
 export const diarizeSourceVoice: VoiceDiarizer = async ({ db, ctx, source }) => {
   const store = getObjectStore();
   if (!store || !source.objectId || !source.durationMs)
+    throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
+  if (!(await liveTemporaryAudioObject(db, ctx, source.sourceId, source.objectId)))
     throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
   const engine = await loadVoiceEngine();
   const bytes = await readOwnedObject(db, store, ctx, source.objectId);
@@ -19,9 +23,18 @@ export const diarizeSourceVoice: VoiceDiarizer = async ({ db, ctx, source }) => 
   try {
     if (createHash("sha256").update(bytes).digest("hex") !== source.sha256)
       throw errors.validationFailed({ voice: ["source_integrity_mismatch"] });
-    const pcm = await decodeVoiceAudio(bytes, source.durationMs + 1000);
+    const selection = voiceSourceWindows(source.durationMs, source.ranges);
+    const pcm = await decodeVoiceAudioWindows(bytes, selection.windows);
     samples = pcm.samples;
-    return await engine.diarize(pcm.samples, { sampleRate: pcm.sampleRate });
+    const result = await engine.diarize(pcm.samples, {
+      sampleRate: pcm.sampleRate,
+      boundaries: pcm.windows.flatMap((window) => [window.compositeStartMs, window.compositeEndMs]),
+    });
+    return {
+      ...result,
+      segments: remapVoiceSegments(result.segments, pcm.windows),
+      ...(selection.sampled ? { sampled: true } : {}),
+    };
   } finally {
     samples?.fill(0);
     bytes.fill(0);

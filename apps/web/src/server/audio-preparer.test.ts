@@ -4,7 +4,12 @@ import { MemoryObjectStore } from "@recalino/core/plt";
 import type { AudioPreparer } from "@recalino/core/proc";
 import ffmpegPath from "ffmpeg-static";
 import { expect, it, vi } from "vitest";
-import { audioVerifier, decodeVoiceAudio, prepareAudio } from "./audio-preparer";
+import {
+  audioVerifier,
+  decodeVoiceAudio,
+  decodeVoiceAudioWindows,
+  prepareAudio,
+} from "./audio-preparer";
 
 const storage = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn() }));
 vi.mock("@recalino/core/plt", async (importOriginal) => ({
@@ -58,6 +63,24 @@ it("decodes bounded mono PCM for the real voice engine without changing its dura
   await expect(decodeVoiceAudio(syntheticWav(2), 1000)).rejects.toMatchObject({
     code: "validation_failed",
   });
+}, 30000);
+
+it("decodes selected original windows into bounded PCM with silent guards and rejects truncated windows", async () => {
+  const decoded = await decodeVoiceAudioWindows(syntheticWav(8), [
+    { start: 1000, end: 3000 },
+    { start: 5000, end: 7000 },
+  ]);
+  expect(decoded.windows).toEqual([
+    { sourceStartMs: 1000, compositeStartMs: 0, compositeEndMs: 2000 },
+    { sourceStartMs: 5000, compositeStartMs: 4000, compositeEndMs: 6000 },
+  ]);
+  expect(decoded.samples.length).toBe(6000 * 16);
+  expect(decoded.samples.subarray(2000 * 16, 4000 * 16).every((sample) => sample === 0)).toBe(true);
+  expect(Math.max(...decoded.samples.subarray(0, 32000))).toBeCloseTo(2000 / 32768, 4);
+  decoded.samples.fill(0);
+  await expect(
+    decodeVoiceAudioWindows(syntheticWav(8), [{ start: 7000, end: 10000 }]),
+  ).rejects.toMatchObject({ code: "validation_failed" });
 }, 30000);
 
 it.each([

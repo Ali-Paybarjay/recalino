@@ -15,6 +15,7 @@ import {
 import {
   beginTemporaryAudioUpload,
   confirmTemporaryAudioPart,
+  liveTemporaryAudioObject,
   temporaryAudioManifest,
   temporaryAudioPartLink,
   verifyTemporaryAudio,
@@ -131,6 +132,34 @@ it("keeps original audio device-only, freezes the upload manifest and snapshots 
   const source = snapshot.sources.find((s) => s.sourceId === x.source.assetId);
   expect(source?.durationMs).toBe(3200);
   expect(source?.objectId).toBeTruthy();
+});
+it("a voice check accepts only its exact verified, unexpired temporary source object", async () => {
+  const x = await fixture();
+  expect(x.store.upload(x.link.url, x.bytes, "audio/mpeg")).toBe(200);
+  await verifyTemporaryAudio(db, x.store, x.ctx, x.source.assetId, x.upload.uploadId, {
+    inspect: async () => ({ durationMs: 3200, audioOnly: true }),
+  });
+  const manifest = await temporaryAudioManifest(db, x.ctx, x.source.assetId, x.upload.uploadId);
+  const object = await db
+    .selectFrom("src.audio_upload")
+    .select("object_id")
+    .where("id", "=", x.upload.uploadId)
+    .executeTakeFirstOrThrow();
+  expect(await liveTemporaryAudioObject(db, x.ctx, x.source.assetId, object.object_id)).toBe(true);
+  expect(await liveTemporaryAudioObject(db, x.ctx, x.source.assetId, randomUUID())).toBe(false);
+  expect(
+    await liveTemporaryAudioObject(
+      db,
+      x.ctx,
+      x.source.assetId,
+      object.object_id,
+      new Date(manifest.expiresAt.getTime() + 1),
+    ),
+  ).toBe(false);
+  const foreign = await fixture();
+  await expect(
+    liveTemporaryAudioObject(db, foreign.ctx, x.source.assetId, object.object_id),
+  ).rejects.toMatchObject({ code: "not_found" });
 });
 it("authoritatively confirms existing audio parts and refuses missing, corrupt, expired, foreign or closed-hold parts", async () => {
   const x = await fixture(),

@@ -15,6 +15,7 @@ import {
   sha256Hex,
 } from "../plt";
 import { amounts, amountsSchema, emptyAmounts } from "../quota";
+import { liveTemporaryAudioObject } from "../src";
 import { getVoiceEnrollment, type VoiceAnalysisBlockedReason } from "../voc";
 import {
   completeAuxiliaryRun,
@@ -24,7 +25,12 @@ import {
 } from "./auxiliary";
 import { sourceSnapshotSchema } from "./contracts";
 import { ownedRun, selectProcessingSourceSnapshot } from "./runs";
-import { correctVoiceCandidates, processVoiceSource, type VoiceDiarizer } from "./voice-processing";
+import {
+  correctVoiceCandidates,
+  hasTranscriptVoiceEvidence,
+  processVoiceSource,
+  type VoiceDiarizer,
+} from "./voice-processing";
 
 const payloadSchema = z.strictObject({ runId: z.uuid(), userId: z.uuid(), subjectId: z.uuid() });
 const settingsSchema = z.strictObject({
@@ -46,6 +52,19 @@ async function voiceReanalysisInput(db: Database | Tx, ctx: LearnerContext, sess
   );
   if (!snapshot.sources.some((source) => source.kind === "audio" && source.contentVersionId))
     throw errors.validationFailed({ voice: ["transcript_required"] });
+  const availability = await Promise.all(
+    snapshot.sources
+      .filter((source) => source.kind === "audio" && source.contentVersionId)
+      .map(
+        async (source) =>
+          hasTranscriptVoiceEvidence(source) ||
+          (source.objectId
+            ? await liveTemporaryAudioObject(db, ctx, source.sourceId, source.objectId)
+            : false),
+      ),
+  );
+  if (!availability.some(Boolean))
+    throw errors.validationFailed({ voice: ["original_audio_required"] });
   const knowledge = await getLatestVersion(db, ctx, sessionId);
   const account = knowledge ? null : await getAccountState(db, ctx.userId);
   const explanationLanguage =
@@ -73,6 +92,7 @@ export async function voiceAnalysisBlockedReason(
     for (const reason of [
       "consent_required",
       "transcript_required",
+      "original_audio_required",
       "explanation_language_missing",
     ] as const)
       if (fields.data.voice?.includes(reason)) return reason;

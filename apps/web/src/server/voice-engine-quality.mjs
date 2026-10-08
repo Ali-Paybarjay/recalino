@@ -36,7 +36,7 @@ export function poolEmbeddings(entries) {
 }
 
 /** Any detected simultaneous speaker excludes the entire interval, including containment. */
-export function qualifySegments(raw, durationMs, offsetMs = 0) {
+export function qualifySegments(raw, durationMs, offsetMs = 0, boundaries = []) {
   durationMs = Math.floor(durationMs);
   const segments = raw
     .map((segment) => {
@@ -58,7 +58,11 @@ export function qualifySegments(raw, durationMs, offsetMs = 0) {
         endMs: end + offsetMs,
         overlap: false,
         // Edge-clipped or too short to keep two seconds after trimming both turn boundaries.
-        boundaryUnsafe: start < 200 || end > durationMs - 200 || end - start < 2400,
+        boundaryUnsafe:
+          start < 200 ||
+          end > durationMs - 200 ||
+          end - start < 2400 ||
+          boundaries.some((boundary) => start < boundary + 200 && end > boundary - 200),
       };
     })
     .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);

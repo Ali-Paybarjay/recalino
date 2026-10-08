@@ -174,7 +174,19 @@ export async function saveVoiceAnalysis(
         run_id: input.runId,
         profile_version: input.profileVersion,
         model_version: input.modelVersion,
-        status: accepted ? "verified" : candidates.length ? "unverified" : "unavailable",
+        status: accepted
+          ? "verified"
+          : candidates.length
+            ? "unverified"
+            : [
+                  "voice_analysis_failed",
+                  "voice_inference_timeout",
+                  "voice_engine_unavailable",
+                  "voice_decoder_timeout",
+                  "voice_source_integrity_mismatch",
+                ].includes(input.reason ?? "")
+              ? "failed"
+              : "unavailable",
         candidate_id: accepted ?? candidates[0]?.id ?? null,
         verified_speaker_id: accepted,
         verification_method: accepted ? "automatic" : null,
@@ -255,7 +267,15 @@ export async function saveVoiceCandidateMistakes(
     for (const id of rejected) delete mistakes[id];
     await tx
       .updateTable("voc.analysis")
-      .set({ mistakes: JSON.stringify(mistakes), reason: null, updated_at: now })
+      .set({
+        mistakes: JSON.stringify(mistakes),
+        reason: row.reason?.startsWith("voice_correction_")
+          ? row.reason.includes("sampled_audio")
+            ? "sampled_audio"
+            : null
+          : row.reason,
+        updated_at: now,
+      })
       .where("id", "=", row.id)
       .execute();
   });
@@ -276,7 +296,11 @@ export async function markVoiceAnalysisFailure(
         reason: z
           .string()
           .regex(/^[a-z0-9_]{1,100}$/)
-          .parse(reason),
+          .parse(
+            reason === "voice_correction_unavailable" && row.reason?.includes("sampled_audio")
+              ? "voice_correction_sampled_audio_unavailable"
+              : reason,
+          ),
         updated_at: now,
       })
       .where("id", "=", row.id)

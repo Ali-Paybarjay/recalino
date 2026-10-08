@@ -11,6 +11,22 @@ import {
 import { embeddingSpans, qualifySegments } from "./voice-engine-quality.mjs";
 
 describe("local speaker engine trust boundaries", () => {
+  it("excludes splice-adjacent and splice-crossing turns before acoustic embeddings are pooled", () => {
+    const segments = qualifySegments(
+      [
+        { start: 1, end: 7, speaker: 0 },
+        { start: 8, end: 14, speaker: 0 },
+        { start: 12.1, end: 16, speaker: 1 },
+        { start: 17, end: 23, speaker: 1 },
+      ],
+      25000,
+      0,
+      [10000, 12000],
+    );
+    expect(segments.map((segment) => segment.boundaryUnsafe)).toEqual([false, true, true, false]);
+    expect(embeddingSpans(segments, "speaker_0")).toEqual([{ startMs: 1200, endMs: 6800 }]);
+    expect(embeddingSpans(segments, "speaker_1")).toEqual([{ startMs: 17200, endMs: 22800 }]);
+  });
   it("marks overlapping and contained turns so neither can produce a voiceprint", () => {
     const segments = qualifySegments(
       [

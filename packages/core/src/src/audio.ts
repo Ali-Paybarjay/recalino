@@ -35,6 +35,34 @@ export const audioManifestSchema = z.strictObject({
     .min(1)
     .max(10000),
 });
+
+/** A queued acoustic check may use only its exact, still-live temporary class original. */
+export async function liveTemporaryAudioObject(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  assetId: string,
+  objectId: string,
+  now = new Date(),
+): Promise<boolean> {
+  const source = await getSource(db, ctx, assetId);
+  if (source.kind !== "audio" || source.original_deleted_at) return false;
+  const upload = await db
+    .selectFrom("src.audio_upload")
+    .select("id")
+    .where("asset_id", "=", assetId)
+    .where("user_id", "=", ctx.userId)
+    .where("object_id", "=", objectId)
+    .where("state", "=", "verified")
+    .where("expires_at", ">", now)
+    .executeTakeFirst();
+  if (!upload) return false;
+  try {
+    return (await ownedObjectMetadata(db, ctx, objectId)).state === "verified";
+  } catch (error) {
+    if (error instanceof AppError && error.code === "not_found") return false;
+    throw error;
+  }
+}
 export async function beginTemporaryAudioUpload(
   db: Database,
   ctx: LearnerContext,

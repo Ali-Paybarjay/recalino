@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { cleanupFixtureProcessingJobs, runFixtureProcessingStep } from "../../test/processing-jobs";
+import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { studyFixture, syntheticKnowledge } from "../../test/study-fixture";
 import { updateProfile } from "../acc";
 import type { AiProvider, ProviderResult, ProviderSettings, StructuredInput } from "../aip";
@@ -14,7 +15,10 @@ import {
   changeVoiceIdentity,
   enableVoice,
   getClassVoice,
+  getVoiceProfile,
+  projectVerifiedSpeech,
   revokeVoiceData,
+  saveVoiceSample,
   VOICE_CONSENT_VERSION,
 } from "../voc";
 import { sourceSnapshotSchema } from "./contracts";
@@ -25,6 +29,7 @@ import {
   voiceAnalysisJob,
   voiceProcessingStatus,
 } from "./voice-jobs";
+import { scopedVoiceSpeakerId, type VoiceDiarization } from "./voice-processing";
 import { processingJob } from "./worker";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
@@ -108,7 +113,10 @@ class VoiceProvider implements AiProvider {
     throw new Error("No TTS in voice matching");
   }
 }
-async function fixture(enabled: boolean, options: { processingOrigin?: boolean } = {}) {
+async function fixture(
+  enabled: boolean,
+  options: { processingOrigin?: boolean; labelledTranscript?: boolean } = {},
+) {
   const x = await studyFixture(db);
   if (enabled) await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
   const source = await db
@@ -159,13 +167,27 @@ async function fixture(enabled: boolean, options: { processingOrigin?: boolean }
           kind: "transcript",
           unitId: "teacher",
           text: "Today we will review natural spoken English.",
+          ...(options.labelledTranscript
+            ? { speakerId: scopedVoiceSpeakerId(source.id, "fixture", "teacher") }
+            : {}),
         },
-        { id: "learner-text", kind: "transcript", unitId: "learner", text: "I am agree with you." },
+        {
+          id: "learner-text",
+          kind: "transcript",
+          unitId: "learner",
+          text: "I am agree with you.",
+          ...(options.labelledTranscript
+            ? { speakerId: scopedVoiceSpeakerId(source.id, "fixture", "learner") }
+            : {}),
+        },
         {
           id: "learner-repeat-text",
           kind: "transcript",
           unitId: "learner-repeat",
           text: "I am agree with you.",
+          ...(options.labelledTranscript
+            ? { speakerId: scopedVoiceSpeakerId(source.id, "fixture", "learner") }
+            : {}),
         },
       ],
     }),
@@ -195,18 +217,20 @@ async function fixture(enabled: boolean, options: { processingOrigin?: boolean }
     { actorId: "fixture", reason: "Synthetic voice integration" },
   );
   const provider = new VoiceProvider();
-  const diarize = vi.fn(async () => ({
-    modelRevision: "synthetic-two-voices",
-    segments: [
-      { speakerId: "0", startMs: 0, endMs: 20000, overlap: false, boundaryUnsafe: false },
-      { speakerId: "1", startMs: 20000, endMs: 60000, overlap: false, boundaryUnsafe: false },
-    ],
-    speakers: [0, 1].map((speaker) => ({
-      speakerId: String(speaker),
-      cleanSpeechMs: 21000,
-      embedding: Array.from({ length: 16 }, (_, i) => (i === speaker ? 1 : 0)),
-    })),
-  }));
+  const diarize = vi.fn(
+    async (): Promise<VoiceDiarization> => ({
+      modelRevision: "synthetic-two-voices",
+      segments: [
+        { speakerId: "0", startMs: 0, endMs: 20000, overlap: false, boundaryUnsafe: false },
+        { speakerId: "1", startMs: 20000, endMs: 60000, overlap: false, boundaryUnsafe: false },
+      ],
+      speakers: [0, 1].map((speaker) => ({
+        speakerId: String(speaker),
+        cleanSpeechMs: 21000,
+        embedding: Array.from({ length: 16 }, (_, i) => (i === speaker ? 1 : 0)),
+      })),
+    }),
+  );
   const definition = processingJob({
     provider,
     store: new MemoryObjectStore(),
@@ -309,6 +333,81 @@ it("does not infer voices or dispatch private analysis unless the learner opted 
   expect((await getClassVoice(db, x.ctx, x.session.id)).analyses).toEqual([]);
 });
 
+it("uses the saved acoustic sample to rank a bounded class check, still asks on the first class, and preserves sampled coverage through corrections", async () => {
+  const x = await fixture(true);
+  await saveVoiceSample(db, new MemoryObjectStore(), x.ctx, {
+    profileVersion: (await getVoiceProfile(db, x.ctx)).version ?? 0,
+    bytes: new Uint8Array([1, 2, 3]),
+    mimeType: "audio/wav",
+    durationMs: 24660,
+    modelVersion: "synthetic-two-voices",
+    embedding: [0, 1, ...Array<number>(14).fill(0)],
+  });
+  const native = await x.diarize();
+  x.diarize.mockClear();
+  x.diarize.mockResolvedValue({ ...native, sampled: true });
+  await x.step();
+  let view = (await getClassVoice(db, x.ctx, x.session.id)).analyses[0];
+  expect(view).toMatchObject({ status: "unverified", reason: "sampled_audio" });
+  expect(view?.candidates[0]?.score).toBe(1);
+  expect(view?.candidates[1]?.score).toBe(0);
+  expect(view?.candidates[0]?.lines).toContain("I am agree with you.");
+  await x.step();
+  view = (await getClassVoice(db, x.ctx, x.session.id)).analyses[0];
+  expect(view?.reason).toBe("sampled_audio");
+  const model = referenceStudyModel();
+  model.language.explanation = "en";
+  expect(JSON.stringify(await projectVerifiedSpeech(db, x.ctx, x.session.id, model))).not.toContain(
+    "I agree with you.",
+  );
+  if (!view?.candidateId) throw new Error("Synthetic sample-ranked candidate missing");
+  await changeVoiceIdentity(db, x.ctx, x.session.id, {
+    action: "confirm",
+    analysisId: view.id,
+    expectedVersion: view.version,
+    speakerId: view.candidateId,
+  });
+  expect(JSON.stringify(await projectVerifiedSpeech(db, x.ctx, x.session.id, model))).toContain(
+    "I agree with you.",
+  );
+  expect(x.diarize).toHaveBeenCalledTimes(1);
+});
+
+it("refuses expired class audio with no usable speaker labels before creating another reservation or no-op check", async () => {
+  const x = await fixture(false);
+  await x.step();
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const before = await db
+    .selectFrom("quota.reservation")
+    .select("id")
+    .where("user_id", "=", x.ctx.userId)
+    .execute();
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id)).toBe("original_audio_required");
+  await expect(
+    scheduleVoiceReanalysis(
+      db,
+      x.ctx,
+      x.session.id,
+      { provider: x.provider, diarize: x.diarize },
+      { operationKey: randomUUID() },
+    ),
+  ).rejects.toMatchObject({ details: { fields: { voice: ["original_audio_required"] } } });
+  expect(
+    await db
+      .selectFrom("quota.reservation")
+      .select("id")
+      .where("user_id", "=", x.ctx.userId)
+      .execute(),
+  ).toEqual(before);
+  expect(
+    await db
+      .selectFrom("proc.processing_run")
+      .select("id")
+      .where("user_id", "=", x.ctx.userId)
+      .execute(),
+  ).toEqual([{ id: x.run.id }]);
+});
+
 it("reports missing consent, transcript and selected sources before creating an analysis run", async () => {
   const x = await fixture(false);
   await x.step();
@@ -364,7 +463,7 @@ it("reports missing consent, transcript and selected sources before creating an 
 });
 
 it("preflights cached audio with the same selected ranges as the queue and permits transcript fallback", async () => {
-  const x = await fixture(false, { processingOrigin: true });
+  const x = await fixture(false, { processingOrigin: true, labelledTranscript: true });
   await x.step();
   await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
   await db
@@ -448,7 +547,7 @@ it("does not regenerate rejected text or loop when identity changes between corr
 });
 
 it("deduplicates the same explicit analysis request after completion and exposes queued processing", async () => {
-  const x = await fixture(false);
+  const x = await fixture(false, { labelledTranscript: true });
   await x.step();
   await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
 
@@ -491,7 +590,7 @@ it("deduplicates the same explicit analysis request after completion and exposes
     ),
   ).toBe(runId);
   const definition = voiceAnalysisJob(dependencies);
-  for (let index = 0; index < 2; index++)
+  for (let index = 0; index < 3; index++)
     await runFixtureProcessingStep(db, definition, { runId, userId: x.ctx.userId });
   expect((await getRun(db, x.ctx, runId)).state).toBe("ready");
   expect(await voiceProcessingStatus(db, x.ctx, x.session.id)).toBe(false);
@@ -504,11 +603,11 @@ it("deduplicates the same explicit analysis request after completion and exposes
       { operationKey },
     ),
   ).toBe(runId);
-  expect(x.provider.calls).not.toHaveBeenCalled();
+  expect(x.provider.calls).toHaveBeenCalledTimes(1);
 });
 
 it("fails a legacy queued voice request without a language snapshot before private inference or correction billing", async () => {
-  const x = await fixture(false);
+  const x = await fixture(false, { labelledTranscript: true });
   await x.step();
   await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
   const dependencies = { provider: x.provider, diarize: x.diarize };

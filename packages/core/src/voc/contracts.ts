@@ -75,6 +75,7 @@ export interface ClassVoiceView {
 export type VoiceAnalysisBlockedReason =
   | "consent_required"
   | "transcript_required"
+  | "original_audio_required"
   | "sources_unavailable"
   | "explanation_language_missing";
 export const voiceActionSchema = z.strictObject({
