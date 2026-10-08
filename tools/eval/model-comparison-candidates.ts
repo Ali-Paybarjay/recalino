@@ -74,7 +74,12 @@ export function comparisonSettings(
 
 /** Highest price among the model's zero-retention endpoints, so a reserve never undercounts. */
 export function zdrEndpointMaximumRates(zdrEndpoints: unknown, model: string) {
-  const entries = (Array.isArray(zdrEndpoints) ? zdrEndpoints : []) as {
+  // The public list is { data: [...] }; accept a bare array as well.
+  const list =
+    zdrEndpoints && typeof zdrEndpoints === "object" && "data" in zdrEndpoints
+      ? (zdrEndpoints as { data: unknown }).data
+      : zdrEndpoints;
+  const entries = (Array.isArray(list) ? list : []) as {
     model_id?: string;
     pricing?: { prompt?: string; completion?: string };
   }[];
