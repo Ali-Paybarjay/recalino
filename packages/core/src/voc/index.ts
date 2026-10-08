@@ -5,4 +5,4 @@ export * from "./matching";
 export * from "./privacy";
 export * from "./profile";
 export * from "./projection";
-export { findRepeatedVoiceEvidence } from "./spoken-evidence";
+export { findRepeatedVoiceEvidence, hasRepeatableVoiceEvidence } from "./spoken-evidence";

@@ -15,6 +15,7 @@ import {
   type VoiceAnalysisView,
   voiceActionSchema,
   voiceCandidateSchema,
+  voiceCoverage,
   voiceEmbeddingSchema,
   voiceUtteranceSchema,
 } from "./contracts";
@@ -272,15 +273,19 @@ export async function saveVoiceCandidateMistakes(
       .set({
         mistakes: JSON.stringify(mistakes),
         reason: row.reason?.startsWith("voice_correction_")
-          ? row.reason.includes("sampled_audio")
-            ? "sampled_audio"
-            : null
+          ? voiceCoverage(row.reason)
           : row.reason,
         updated_at: now,
       })
       .where("id", "=", row.id)
       .execute();
   });
+}
+/** Keep the coverage disclosure through any correction failure, without doubling it. */
+export function correctionFailureReason(reason: string, previous: string | null): string {
+  const coverage = voiceCoverage(previous);
+  if (!reason.startsWith("voice_correction_") || !coverage || voiceCoverage(reason)) return reason;
+  return reason.replace("voice_correction_", `voice_correction_${coverage}_`);
 }
 export async function markVoiceAnalysisFailure(
   db: Database | Tx,
@@ -298,11 +303,7 @@ export async function markVoiceAnalysisFailure(
         reason: z
           .string()
           .regex(/^[a-z0-9_]{1,100}$/)
-          .parse(
-            reason === "voice_correction_unavailable" && row.reason?.includes("sampled_audio")
-              ? "voice_correction_sampled_audio_unavailable"
-              : reason,
-          ),
+          .parse(correctionFailureReason(reason, row.reason)),
         updated_at: now,
       })
       .where("id", "=", row.id)

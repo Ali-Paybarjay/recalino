@@ -5,10 +5,12 @@ import { ProviderError } from "../aip";
 import type { Database, Tx } from "../db";
 import { isExplanationLanguage, matchesExplanationScript } from "../lkm";
 import { AppError, errors, type LearnerContext } from "../plt";
+import { quotaProcessingFailureCode } from "../quota";
 import {
   findRepeatedVoiceEvidence,
   findVoiceAnalysis,
   getVoiceEnrollment,
+  hasRepeatableVoiceEvidence,
   markVoiceAnalysisFailure,
   type PrivateVoiceAnalysis,
   type SpokenMistake,
@@ -18,6 +20,7 @@ import {
   type VoiceAnalysisInput,
   type VoiceCandidate,
   type VoiceUtterance,
+  voiceCoverageReason,
 } from "../voc";
 import type { RunSource } from "./contracts";
 
@@ -25,6 +28,8 @@ export interface VoiceDiarization {
   modelRevision: string;
   /** A bounded composite covers distributed excerpts rather than the entire selection. */
   sampled?: boolean;
+  /** Planned excerpts were skipped or decoded short; disclosed apart from planned sampling. */
+  partial?: boolean;
   segments: {
     speakerId: string;
     startMs: number;
@@ -79,7 +84,9 @@ export function voicePreparationFailure(error: unknown, source: RunSource): stri
   if (!source.objectId || fields.includes("original_audio_unavailable"))
     return "original_audio_unavailable";
   if (fields.includes("source_integrity_mismatch")) return "voice_source_integrity_mismatch";
-  if (audio.includes("voice_audio_unusable")) return "voice_audio_unusable";
+  // Too many refused excerpts mean a damaged recording; the stored reason stays coarse.
+  if (audio.includes("voice_audio_unusable") || audio.includes("voice_audio_windows_refused"))
+    return "voice_audio_unusable";
   if (details.success && details.data.reason === "audio_decoder_timeout")
     return "voice_decoder_timeout";
   if (error instanceof Error) {
@@ -174,6 +181,7 @@ export function buildVoiceAnalysis(
   explanationLanguage = "fa",
 ): VoiceAnalysisInput {
   const utterances = alignVoiceUtterances(source, diarization);
+  const coverage = voiceCoverageReason(!!diarization.sampled, !!diarization.partial);
   const labels = [...new Set(diarization.segments.map((segment) => segment.speakerId))];
   const candidates = labels.map((label, index): VoiceCandidate => {
     const speaker = diarization.speakers.find((item) => item.speakerId === label);
@@ -191,7 +199,7 @@ export function buildVoiceAnalysis(
   });
   return {
     ...input,
-    ...(diarization.sampled ? { reason: "sampled_audio" } : {}),
+    ...(coverage ? { reason: coverage } : {}),
     modelVersion: diarization.modelRevision,
     candidates,
     utterances,
@@ -290,7 +298,9 @@ export async function correctVoiceCandidates(input: {
   if (analysis.candidates.every((candidate) => Object.hasOwn(analysis.mistakes, candidate.id)))
     return false;
   const eligible = analysis.utterances.filter((item) => item.eligible);
-  if (!eligible.length) {
+  // Every accepted mistake needs a second same-speaker occurrence; without one, a billable
+  // request can only return discarded suggestions. Record "no mistakes" for free instead.
+  if (!hasRepeatableVoiceEvidence(analysis.utterances)) {
     await saveVoiceCandidateMistakes(
       input.db,
       input.ctx,
@@ -350,6 +360,18 @@ export async function correctVoiceCandidates(input: {
     },
   });
   return pending !== undefined;
+}
+
+/**
+ * A service spending guard (class, monthly or system budget; paused or unpriced processing)
+ * is not fixed by retrying the voice check, so it keeps its own reason. Everything else
+ * stays the generic retryable correction failure.
+ */
+export function voiceCorrectionFailure(error: unknown): string {
+  const code = error instanceof AppError ? quotaProcessingFailureCode(error) : null;
+  return code && code !== "quota_insufficient"
+    ? "voice_correction_service_blocked"
+    : "voice_correction_unavailable";
 }
 
 export async function processVoiceSource(input: {
@@ -423,7 +445,7 @@ export async function processVoiceSource(input: {
       input.db,
       input.ctx,
       analysis.id,
-      "voice_correction_unavailable",
+      voiceCorrectionFailure(failure),
       input.now(),
     );
   }

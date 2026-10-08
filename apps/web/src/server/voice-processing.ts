@@ -10,8 +10,9 @@ import {
 } from "@recalino/core/plt";
 import { scheduleVoiceReanalysis, type VoiceDiarizer, voiceAnalysisJob } from "@recalino/core/proc";
 import { liveTemporaryAudioObject } from "@recalino/core/src";
+import { voiceCoverageReason } from "@recalino/core/voice-contracts";
 import { getAiProvider } from "./ai";
-import { decodeVoiceAudioWindows } from "./audio-preparer";
+import { decodeVoiceAudioWindows, type VoiceWindowCoverage } from "./audio-preparer";
 import { getObjectStore } from "./storage";
 import { loadVoiceEngine } from "./voice-engine";
 import { remapVoiceSegments, voiceSourceWindows } from "./voice-source-windows";
@@ -37,8 +38,16 @@ export function voiceFailureCode(error: unknown): string {
   return "unexpected";
 }
 
+type CheckedDiarization = Awaited<ReturnType<VoiceDiarizer>> & {
+  coverage?: VoiceWindowCoverage;
+};
+
 /** The full original establishes one speaker namespace; five-minute STT chunks do not. */
-const diarizeOriginal: VoiceDiarizer = async ({ db, ctx, source }) => {
+const diarizeOriginal = async ({
+  db,
+  ctx,
+  source,
+}: Parameters<VoiceDiarizer>[0]): Promise<CheckedDiarization> => {
   const store = getObjectStore();
   if (!store || !source.objectId || !source.durationMs)
     throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
@@ -60,8 +69,10 @@ const diarizeOriginal: VoiceDiarizer = async ({ db, ctx, source }) => {
     return {
       ...result,
       segments: remapVoiceSegments(result.segments, pcm.windows),
-      // Skipped or shortened excerpts are disclosed exactly like distributed sampling.
-      ...(selection.sampled || pcm.partial ? { sampled: true } : {}),
+      // Planned sampling and skipped or shortened excerpts are disclosed separately.
+      ...(selection.sampled ? { sampled: true } : {}),
+      ...(pcm.partial ? { partial: true } : {}),
+      coverage: pcm.coverage,
     };
   } finally {
     samples?.fill(0);
@@ -73,10 +84,17 @@ export const diarizeSourceVoice: VoiceDiarizer = async (input) => {
   const log = createLogger();
   const started = performance.now();
   try {
-    const result = await diarizeOriginal(input);
+    const { coverage, ...result } = await diarizeOriginal(input);
     log("info", "voice_check_diarized", {
-      code: result.sampled ? "sampled_audio" : "complete_audio",
+      code: voiceCoverageReason(!!result.sampled, !!result.partial) ?? "complete_audio",
       duration_ms: Math.round(performance.now() - started),
+      // Integer attrition only: how many excerpts were planned, used, refused or too short.
+      windows_planned: coverage?.plannedWindows,
+      windows_used: coverage?.usedWindows,
+      windows_refused: coverage?.refusedWindows,
+      windows_short: coverage?.shortWindows,
+      audio_planned_ms: coverage?.plannedMs,
+      audio_used_ms: coverage?.usedMs,
       request_id: input.ctx.requestId,
       user_id: input.ctx.userId,
       module: "voc",

@@ -102,19 +102,53 @@ it("checks a longer-than-two-hour source with one bounded native pass and restor
   expect(samples.every((sample) => sample === 0)).toBe(true);
 });
 
-// FR-VOC-002
-it("discloses skipped or shortened excerpts of a short recording as sampled coverage", async () => {
+// FR-VOC-002, PRD-PRIV-06
+it("discloses skipped excerpts of a short recording as partial, not sampled, and logs only counts", async () => {
+  const lines: string[] = [];
+  const spy = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+    lines.push(String(line));
+  });
   const samples = new Float32Array(10000 * 16).fill(0.1);
+  const coverage = {
+    plannedWindows: 2,
+    usedWindows: 1,
+    refusedWindows: 1,
+    shortWindows: 0,
+    plannedMs: 300000,
+    usedMs: 10000,
+  };
   mocks.decode.mockResolvedValue({
     samples,
     sampleRate: 16000,
     windows: [{ sourceStartMs: 0, compositeStartMs: 0, compositeEndMs: 10000 }],
     partial: true,
+    coverage,
   });
   mocks.diarize.mockResolvedValue({ modelRevision: "model", speakers: [], segments: [] });
-  const result = await diarizeSourceVoice({ ...input, source: { ...source, durationMs: 300000 } });
+  let result: Awaited<ReturnType<VoiceDiarizer>>;
+  try {
+    result = await diarizeSourceVoice({ ...input, source: { ...source, durationMs: 300000 } });
+  } finally {
+    spy.mockRestore();
+  }
   expect(mocks.decode.mock.calls[0]?.[1]).toEqual([{ start: 0, end: 300000 }]);
-  expect(result.sampled).toBe(true);
+  expect(result.sampled).toBeUndefined();
+  expect(result.partial).toBe(true);
+  // Diagnostics stay in the log; they are not part of the stored diarization.
+  expect(result).not.toHaveProperty("coverage");
+  expect(lines.map((line) => JSON.parse(line))).toEqual([
+    expect.objectContaining({
+      event: "voice_check_diarized",
+      code: "partial_audio",
+      windows_planned: 2,
+      windows_used: 1,
+      windows_refused: 1,
+      windows_short: 0,
+      audio_planned_ms: 300000,
+      audio_used_ms: 10000,
+    }),
+  ]);
+  expect(lines.join("\n")).not.toContain("dropped_fields");
 });
 
 // FR-VOC-002, PRD-PRIV-06
