@@ -76,6 +76,7 @@ it("decodes selected original windows into bounded PCM with silent guards and re
     { sourceStartMs: 5000, compositeStartMs: 4000, compositeEndMs: 6000 },
   ]);
   expect(decoded.partial).toBe(false);
+  expect(decoded.coverage).toMatchObject({ plannedWindows: 2, usedWindows: 2, refusedWindows: 0 });
   expect(decoded.samples.length).toBe(6000 * 16);
   expect(decoded.samples.subarray(2000 * 16, 4000 * 16).every((sample) => sample === 0)).toBe(true);
   expect(Math.max(...decoded.samples.subarray(0, 32000))).toBeCloseTo(2000 / 32768, 4);
@@ -207,8 +208,30 @@ it("skips an excerpt that cannot hold a turn and discloses the partial coverage"
     { sourceStartMs: 1000, compositeStartMs: 0, compositeEndMs: 3000 },
   ]);
   expect(decoded.partial).toBe(true);
+  expect(decoded.coverage).toEqual({
+    plannedWindows: 2,
+    usedWindows: 1,
+    refusedWindows: 0,
+    shortWindows: 1,
+    plannedMs: 6000,
+    usedMs: 3000,
+  });
   expect(decoded.samples.length).toBe(3000 * 16);
   decoded.samples.fill(0);
+}, 30000);
+
+// FR-VOC-002: a decoder refusing most excerpts means a damaged recording, not a drifted end.
+it("fails the check when the decoder refuses most planned excerpts", async () => {
+  const damaged = new Uint8Array(4096).fill(0x5a);
+  await expect(
+    decodeVoiceAudioWindows(damaged, [
+      { start: 1000, end: 4000 },
+      { start: 5000, end: 7000 },
+    ]),
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { audio: ["voice_audio_windows_refused"] } },
+  });
 }, 30000);
 
 it.each([

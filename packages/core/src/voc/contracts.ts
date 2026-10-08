@@ -53,6 +53,28 @@ export interface VoiceProfileView {
   confirmedLessons: number;
   engineAvailable: boolean;
 }
+/**
+ * Coverage a class voice check discloses: planned distributed sampling of a long selection,
+ * excerpts the decoder skipped or cut short, or both. Correction failures keep the marker
+ * inside their reason (`voice_correction_<coverage>_<cause>`).
+ */
+export type VoiceCoverage = "sampled_audio" | "partial_audio" | "sampled_partial_audio";
+export function voiceCoverage(reason: string | null | undefined): VoiceCoverage | null {
+  if (!reason) return null;
+  for (const marker of ["sampled_partial_audio", "sampled_audio", "partial_audio"] as const)
+    if (reason.includes(marker)) return marker;
+  return null;
+}
+export function voiceCoverageReason(sampled: boolean, partial: boolean): VoiceCoverage | null {
+  return sampled && partial
+    ? "sampled_partial_audio"
+    : sampled
+      ? "sampled_audio"
+      : partial
+        ? "partial_audio"
+        : null;
+}
+
 export interface VoiceAnalysisView {
   id: string;
   version: number;

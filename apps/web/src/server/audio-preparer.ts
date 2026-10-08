@@ -198,6 +198,17 @@ export const VOICE_WINDOW_MIN_MS = 2400;
 /** Decoded shortfall beyond this is reported as partial coverage rather than hidden. */
 const VOICE_WINDOW_PARTIAL_MS = 1000;
 
+export interface VoiceWindowCoverage {
+  plannedWindows: number;
+  usedWindows: number;
+  /** The decoder exited with an error for this window. */
+  refusedWindows: number;
+  /** Decoded, but too short to hold a turn. */
+  shortWindows: number;
+  plannedMs: number;
+  usedMs: number;
+}
+
 /** Decode only bounded selected windows; long classes never allocate whole-recording PCM. */
 export async function decodeVoiceAudioWindows(
   bytes: Uint8Array,
@@ -208,6 +219,8 @@ export async function decodeVoiceAudioWindows(
   windows: VoiceWindowMap[];
   /** True when a planned window was skipped or decoded materially shorter than planned. */
   partial: boolean;
+  /** Integer attrition counts only; safe to log (PRD-PRIV-06). */
+  coverage: VoiceWindowCoverage;
 }> {
   const maximumMs =
     windows.reduce((sum, window) => sum + window.end - window.start, 0) +
@@ -230,6 +243,14 @@ export async function decodeVoiceAudioWindows(
     const mapped: VoiceWindowMap[] = [];
     let cursor = 0;
     let partial = false;
+    const coverage: VoiceWindowCoverage = {
+      plannedWindows: windows.length,
+      usedWindows: 0,
+      refusedWindows: 0,
+      shortWindows: 0,
+      plannedMs: windows.reduce((sum, window) => sum + window.end - window.start, 0),
+      usedMs: 0,
+    };
     try {
       for (const [index, window] of windows.entries()) {
         const plannedMs = window.end - window.start;
@@ -265,8 +286,10 @@ export async function decodeVoiceAudioWindows(
         } catch (failure) {
           // A demuxer can refuse one estimated seek target (e.g. a drifted end). The other
           // windows still carry evidence. Host failures (timeouts, no decoder) stop the check.
+          // Any decoder error looks the same here, so the refusals are counted and bounded below.
           if (failure instanceof AppError && failure.code === "unsupported_media") {
             partial = true;
+            coverage.refusedWindows += 1;
             continue;
           }
           throw failure;
@@ -277,6 +300,7 @@ export async function decodeVoiceAudioWindows(
           const usableMs = Math.min(plannedMs, Math.floor(pcm.length / 32));
           if (usableMs <= 0 || usableMs < Math.min(VOICE_WINDOW_MIN_MS, plannedMs - 100)) {
             partial = true;
+            coverage.shortWindows += 1;
             continue;
           }
           if (usableMs < plannedMs - VOICE_WINDOW_PARTIAL_MS) partial = true;
@@ -286,6 +310,8 @@ export async function decodeVoiceAudioWindows(
           for (let sample = 0; sample < count; sample++)
             samples[cursor + sample] = pcm.readInt16LE(sample * 2) / 32768;
           cursor += count;
+          coverage.usedWindows += 1;
+          coverage.usedMs += usableMs;
           mapped.push({
             sourceStartMs: window.start,
             compositeStartMs,
@@ -296,10 +322,20 @@ export async function decodeVoiceAudioWindows(
           await rm(outputPath, { force: true });
         }
       }
+      // A drifted end costs one window; a decoder refusing most of the selection means the
+      // recording itself is damaged, and a check over the remainder would misrepresent it.
+      if (coverage.refusedWindows * 2 > coverage.plannedWindows)
+        throw errors.validationFailed({ audio: ["voice_audio_windows_refused"] });
       // The native engine needs at least two seconds of decoded speech to run at all.
       if (!mapped.length || cursor < 2000 * 16)
         throw errors.validationFailed({ audio: ["voice_audio_unusable"] });
-      return { samples: samples.subarray(0, cursor), sampleRate: 16000, windows: mapped, partial };
+      return {
+        samples: samples.subarray(0, cursor),
+        sampleRate: 16000,
+        windows: mapped,
+        partial,
+        coverage,
+      };
     } catch (error) {
       samples.fill(0);
       throw error;

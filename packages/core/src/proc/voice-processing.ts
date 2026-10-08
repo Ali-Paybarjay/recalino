@@ -20,6 +20,7 @@ import {
   type VoiceAnalysisInput,
   type VoiceCandidate,
   type VoiceUtterance,
+  voiceCoverageReason,
 } from "../voc";
 import type { RunSource } from "./contracts";
 
@@ -27,6 +28,8 @@ export interface VoiceDiarization {
   modelRevision: string;
   /** A bounded composite covers distributed excerpts rather than the entire selection. */
   sampled?: boolean;
+  /** Planned excerpts were skipped or decoded short; disclosed apart from planned sampling. */
+  partial?: boolean;
   segments: {
     speakerId: string;
     startMs: number;
@@ -81,7 +84,9 @@ export function voicePreparationFailure(error: unknown, source: RunSource): stri
   if (!source.objectId || fields.includes("original_audio_unavailable"))
     return "original_audio_unavailable";
   if (fields.includes("source_integrity_mismatch")) return "voice_source_integrity_mismatch";
-  if (audio.includes("voice_audio_unusable")) return "voice_audio_unusable";
+  // Too many refused excerpts mean a damaged recording; the stored reason stays coarse.
+  if (audio.includes("voice_audio_unusable") || audio.includes("voice_audio_windows_refused"))
+    return "voice_audio_unusable";
   if (details.success && details.data.reason === "audio_decoder_timeout")
     return "voice_decoder_timeout";
   if (error instanceof Error) {
@@ -176,6 +181,7 @@ export function buildVoiceAnalysis(
   explanationLanguage = "fa",
 ): VoiceAnalysisInput {
   const utterances = alignVoiceUtterances(source, diarization);
+  const coverage = voiceCoverageReason(!!diarization.sampled, !!diarization.partial);
   const labels = [...new Set(diarization.segments.map((segment) => segment.speakerId))];
   const candidates = labels.map((label, index): VoiceCandidate => {
     const speaker = diarization.speakers.find((item) => item.speakerId === label);
@@ -193,7 +199,7 @@ export function buildVoiceAnalysis(
   });
   return {
     ...input,
-    ...(diarization.sampled ? { reason: "sampled_audio" } : {}),
+    ...(coverage ? { reason: coverage } : {}),
     modelVersion: diarization.modelRevision,
     candidates,
     utterances,

@@ -153,6 +153,13 @@ describe("speaker evidence alignment", () => {
   it("retains sampled acoustic coverage and original speaker timestamps without changing the embedding model", () => {
     const sampled = buildVoiceAnalysis(base, source(), { ...diarization(), sampled: true });
     expect(sampled.reason).toBe("sampled_audio");
+    expect(buildVoiceAnalysis(base, source(), { ...diarization(), partial: true }).reason).toBe(
+      "partial_audio",
+    );
+    expect(
+      buildVoiceAnalysis(base, source(), { ...diarization(), sampled: true, partial: true }).reason,
+    ).toBe("sampled_partial_audio");
+    expect(buildVoiceAnalysis(base, source(), diarization()).reason).toBeUndefined();
     expect(sampled.modelVersion).toBe("fixture");
     expect(sampled.candidates[0]?.clips[0]).toMatchObject({ startMs: 1000, endMs: 8000 });
   });
@@ -299,6 +306,12 @@ describe("acoustic check failure reasons", () => {
   it("stores a precise failed reason for unusable audio and native worker outcomes", () => {
     expect(
       voicePreparationFailure(errors.validationFailed({ audio: ["voice_audio_unusable"] }), audio),
+    ).toBe("voice_audio_unusable");
+    expect(
+      voicePreparationFailure(
+        errors.validationFailed({ audio: ["voice_audio_windows_refused"] }),
+        audio,
+      ),
     ).toBe("voice_audio_unusable");
     for (const code of [
       "voice_inference_failed",

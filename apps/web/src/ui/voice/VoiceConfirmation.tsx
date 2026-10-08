@@ -1,8 +1,9 @@
 "use client";
-import type {
-  ClassVoiceView,
-  VoiceAnalysisView,
-  VoiceCandidate,
+import {
+  type ClassVoiceView,
+  type VoiceAnalysisView,
+  type VoiceCandidate,
+  voiceCoverage,
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
@@ -435,6 +436,7 @@ function Analysis({
   onPlayback: (element: HTMLAudioElement) => void;
 }) {
   const audio = useLocalVoiceAudio(userId, analysis.sourceId);
+  const coverage = voiceCoverage(analysis.reason);
   const verified = analysis.status === "verified";
   const available = analysis.candidates.filter(hasSpeakerExcerpts);
   const suggested = available.find((candidate) => candidate.id === analysis.candidateId);
@@ -464,11 +466,18 @@ function Analysis({
         <h3>Class source {index + 1}</h3>
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
-      {analysis.reason?.includes("sampled_audio") ? (
+      {coverage === "sampled_audio" || coverage === "sampled_partial_audio" ? (
         <p className="preview-muted">
           This long recording was checked using excerpts sampled across your selected class audio.
           Only speech in those checked excerpts can contribute spoken mistakes. Your full transcript
           and class notes remain available.
+        </p>
+      ) : null}
+      {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
+        <p className="preview-muted">
+          Some parts of this recording could not be read during the voice check and were skipped.
+          Speech in those parts cannot contribute spoken mistakes. Your full transcript and class
+          notes remain available.
         </p>
       ) : null}
       {isServiceBlocked(analysis) ? (
