@@ -252,7 +252,9 @@ async function selectAndSend(page: Page, sessionId: string, bytes: Buffer) {
     mimeType: "application/pdf",
     buffer: bytes,
   });
-  await page.getByRole("button", { name: "Upload & Process", exact: true }).click();
+  const submit = page.getByRole("button", { name: "Upload & Process", exact: true });
+  await expect(submit).toBeEnabled();
+  await submit.click();
 }
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },

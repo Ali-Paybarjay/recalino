@@ -110,9 +110,12 @@ test("account deletion waits for capture to stop and removes only its device cop
     .getByRole("button", { name: "Delete account", exact: true })
     .click();
   await expect(
-    page.getByText("Saved recordings and photos for this account were removed from this browser.", {
-      exact: true,
-    }),
+    page.getByText(
+      "Saved recordings, photos and pending uploads for this account were removed from this browser.",
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   const remaining = await page.evaluate(
     async ({ owner, other }) => {
@@ -236,7 +239,7 @@ for (const outcome of ["pending", "unknown"] as const) {
     await expect(page.getByRole("heading", { name: "Account deletion requested" })).toBeVisible();
     await expect(
       page.getByText(
-        "Saved recordings and photos for this account were removed from this browser.",
+        "Saved recordings, photos and pending uploads for this account were removed from this browser.",
         {
           exact: true,
         },

@@ -57,6 +57,8 @@ export function SourcesView({
   const processingRetryKey = useRef<{ payload: string; key: string } | null>(null);
   const learning = useAutomaticLearning(sessionId);
   const uploads = useUploads(sessionId);
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const managedBatch = uploads.batches.at(-1);
   const declaredBatch = uploads.batches.find(
     (row) => row.id === learning.status?.batchId && row.phase !== "cancelled",
@@ -412,12 +414,16 @@ export function SourcesView({
       </Link>
       <Actions>
         <LinkButton href={`/classes/${sessionId}/record`}>Record class</LinkButton>
-        <Button secondary disabled={busy || !accepted} onClick={() => fileInput.current?.click()}>
+        <Button
+          secondary
+          disabled={!interactive || busy || !accepted}
+          onClick={() => fileInput.current?.click()}
+        >
           {visibleSources.length || selectedFiles.length ? "Add More Files" : "Add Files"}
         </Button>
         <Button
           secondary
-          disabled={busy || !accepted}
+          disabled={!interactive || busy || !accepted}
           onClick={() =>
             action(async () => {
               setPrevious(await workspaceRequest<OwnSource[]>("/api/sources", "GET"));
@@ -433,7 +439,7 @@ export function SourcesView({
         type="file"
         hidden
         aria-label="Choose class files"
-        disabled={busy || !accepted}
+        disabled={!interactive || busy || !accepted}
         multiple
         accept=".m4a,.mp3,.wav,.webm,.ogg,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.html,.htm,.xhtml,.txt"
         onChange={(event) => {

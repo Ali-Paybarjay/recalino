@@ -713,6 +713,12 @@ test.describe("Owner administration", () => {
   }) => {
     await withLocalOwner(page, async (userId, db) => {
       await page.goto("/help/new");
+      // Wait for draft restoration/autosave before entering a new message.
+      await expect
+        .poll(() =>
+          page.evaluate((owner) => localStorage.getItem(`recalino:support:draft:${owner}`), userId),
+        )
+        .not.toBeNull();
       await page.getByLabel("Subject", { exact: true }).fill("Synthetic branded reply");
       await page.getByLabel("Your message", { exact: true }).fill("A local test question.");
       await page.getByLabel("Email me when there is a reply", { exact: false }).check();

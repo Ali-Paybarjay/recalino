@@ -5,6 +5,7 @@ import { signInAsNewLearner } from "./learner";
 async function expectDayFirstDate(page: Page) {
   const date = page.getByLabel("Class date", { exact: true });
   const picker = page.locator('input[type="date"]');
+  await expect(date).toBeEnabled();
   await expect(date).toHaveAttribute("type", "text");
   await expect(date).toHaveAccessibleDescription("Day / Month / Year");
   await expect(date).toHaveValue(/^\d{2}\/\d{2}\/\d{4}$/);
@@ -100,6 +101,7 @@ test("class date is validated and saves the same ISO day through create and edit
   await expect(page).toHaveURL(new RegExp(`/classes/${saved.id}$`));
 
   await page.goto(`/classes/${saved.id}/options`);
+  await expect(date).toBeEnabled();
   await expect(date).toHaveValue("03/04/2026");
   await expect(picker).toHaveValue("2026-04-03");
   await picker.fill("2026-12-05", { force: true });

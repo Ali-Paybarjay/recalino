@@ -35,6 +35,8 @@ export function DateInput({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
   const [draft, setDraft] = useState<{ date: string; text: string } | null>(null);
   const text = draft?.date === value ? draft.text : displayDate(value);
 
@@ -56,7 +58,7 @@ export function DateInput({
         maxLength={10}
         value={text}
         required={required}
-        disabled={disabled}
+        disabled={disabled || !interactive}
         aria-describedby={describedBy}
         aria-invalid={Boolean(text && !calendarDate(text)) || undefined}
         className={styles.text}
@@ -71,7 +73,7 @@ export function DateInput({
         type="button"
         className={styles.open}
         aria-label="Choose class date"
-        disabled={disabled}
+        disabled={disabled || !interactive}
         onClick={() => {
           const picker = pickerRef.current;
           if (!picker) return;
@@ -87,7 +89,7 @@ export function DateInput({
         type="date"
         tabIndex={-1}
         aria-hidden="true"
-        disabled={disabled}
+        disabled={disabled || !interactive}
         value={value}
         onChange={(event) => {
           setDraft(null);

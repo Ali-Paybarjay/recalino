@@ -155,8 +155,14 @@ describe("rate limiting through the wrapper (FR-PLT-006)", () => {
       access: "public",
       rateLimit: "auth",
     };
-    const route = defineRoute(meta, async () => ({ body: {} }), deps(settings));
-    const ip = `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
+    // A fresh fixture key keeps repeated local runs out of previously consumed buckets.
+    // Both requests still share the same key and canonical IP, as they do in production.
+    const fixtureIpKey = `${IP_KEY}-${randomUUID()}`;
+    const route = defineRoute(meta, async () => ({ body: {} }), {
+      ...deps(settings),
+      ipKey: () => fixtureIpKey,
+    });
+    const ip = "203.0.113.42";
     const first = await send(route, "", {}, { "x-forwarded-for": `${ip}, 10.0.0.1` });
     const second = await send(route, "", {}, { "x-forwarded-for": ip });
     expect([first.status, second.status]).toEqual([200, 429]);

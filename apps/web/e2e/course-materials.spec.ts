@@ -59,6 +59,7 @@ test("course materials keep published edits, dated lessons and class links when 
   const otherCourse = await createCourse(page, "Spanish evening course");
   const otherClass = await createClass(page, otherCourse.id, "2026-09-29", "Spanish lesson");
   await page.goto(`/courses/${fixture.courseId}`);
+  await page.getByText("Course tools", { exact: true }).click();
   await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
   const first = page.locator(`#class-${fixture.sessionId}`);
@@ -72,9 +73,7 @@ test("course materials keep published edits, dated lessons and class links when 
   await expect(first.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
   await expect(first.getByText("A rail trip", { exact: true })).toHaveCount(0);
   await expect(first.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
-  await expect(
-    next.getByText("No published notes for this class yet.", { exact: false }),
-  ).toBeVisible();
+  await expect(next.getByText("No notes for this class yet.", { exact: false })).toBeVisible();
   await expect(page.locator(`#class-${otherClass.id}`)).toHaveCount(0);
   expect(
     await page
@@ -94,7 +93,7 @@ test("course materials keep published edits, dated lessons and class links when 
   }
   await first.getByRole("link", { name: "Class notes", exact: true }).click();
   await expect(page.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Read course materials", exact: true }).click();
+  await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
 
   const moved = await page.request.patch(`/api/classes/${fixture.sessionId}`, {

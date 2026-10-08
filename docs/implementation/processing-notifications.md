@@ -17,7 +17,7 @@ pnpm db:types
 pnpm dev
 ```
 
-اسکریپت فقط `.env.local` ریشه و `apps/web/.env.local` را تکمیل می‌کند، کلید موجود را حفظ می‌کند و هیچ کلیدی چاپ نمی‌کند. سه متغیر لازم: `RECALINO_WEB_PUSH_PUBLIC_KEY`، `RECALINO_WEB_PUSH_PRIVATE_KEY` و `RECALINO_WEB_PUSH_SUBJECT`. کلید خصوصی فقط سمت سرور است. در production باید subject یک نشانی تماس HTTPS یا mailto واقعی باشد و همان جفت کلید در همهٔ اجرای سرور ثابت بماند؛ تولید مجدد کلید، اشتراک‌های موجود را نامعتبر می‌کند. استقرار، تنظیم متغیر ابری یا ارسال به کاربران واقعی در این تغییر انجام نشده است.
+اسکریپت فقط `.env.local` ریشه و `apps/web/.env.local` را تکمیل می‌کند، کلید موجود را حفظ می‌کند و هیچ کلیدی چاپ نمی‌کند. سه متغیر لازم: `RECALINO_WEB_PUSH_PUBLIC_KEY`، `RECALINO_WEB_PUSH_PRIVATE_KEY` و `RECALINO_WEB_PUSH_SUBJECT`. کلید خصوصی فقط سمت سرور است. در production باید subject یک نشانی تماس HTTPS یا mailto واقعی باشد و همان جفت کلید در همهٔ اجرای سرور ثابت بماند؛ تولید مجدد کلید، اشتراک‌های موجود را نامعتبر می‌کند. مالک در ادامه، push و deploy را صریحاً مجاز کرد. migrationها و سه متغیر sensitive فقط در پروژهٔ production مجاز تنظیم شدند؛ نتیجهٔ بررسی‌ها و انتشار در گزارش background-uploads-verification و artifact عملیاتی ثبت می‌شود. تست‌ها هیچ Push واقعی به کاربران ارسال نمی‌کنند.
 
 در iOS/iPadOS، Push برای وب‌اپ افزوده‌شده به Home Screen و با مجوز کاربر قابل استفاده است؛ مرورگر فاقد Push همچنان inbox دارد. این شرط و لزوم اقدام مستقیم کاربر در [راهنمای رسمی Apple](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers) آمده است. Push به سیاست و تنظیمات سیستم‌عامل، اتصال و اجازهٔ اعلان وابسته است؛ inbox منبع پایدار نتیجه است. آپلود ناتمام روی گوشی بسته‌شده ادامهٔ تضمین‌شده ندارد و با بازگشت از قطعهٔ باقی‌مانده از سر گرفته می‌شود.
 

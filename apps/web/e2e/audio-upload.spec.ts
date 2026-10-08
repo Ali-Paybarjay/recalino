@@ -4,7 +4,7 @@ import type { AiProvider } from "@recalino/core/aip";
 import { createDatabase } from "@recalino/core/db";
 import { createSession } from "@recalino/core/org";
 import { sha256Hex } from "@recalino/core/plt";
-import { createProcessingRun } from "@recalino/core/proc";
+import { createProcessingRun, getProcessingRunSnapshot } from "@recalino/core/proc";
 import { amounts, grantEntitlement } from "@recalino/core/quota";
 import { acceptSourceNotice, createSource, readInputContract } from "@recalino/core/src";
 import { z } from "zod";
@@ -155,7 +155,8 @@ async function fixture(page: Page) {
       },
       { owner: userId, sessionId: session.id, sourceId: source.assetId, size: sizeBytes },
     );
-    return { userId, sessionId: session.id, sourceId: source.assetId, run };
+    const snapshot = await getProcessingRunSnapshot(db, ctx, run.id);
+    return { userId, sessionId: session.id, sourceId: source.assetId, run, snapshot };
   } finally {
     await db.destroy();
   }
@@ -173,10 +174,36 @@ async function mockUpload(
   const leases: number[] = [];
   let failures = 0;
   let complete = 0;
+  let activations = 0;
+  let recovered = false;
+  let retriesObserved!: () => void;
+  const failedAttemptsObserved = new Promise<void>((resolve) => {
+    retriesObserved = resolve;
+  });
+  let completionObserved!: () => void;
+  const completed = new Promise<void>((resolve) => {
+    completionObserved = resolve;
+  });
   const baseURL = test.info().project.use.baseURL ?? "";
   await page.route(`**/api/classes/${seeded.sessionId}/processing`, (route) =>
     route.fulfill({ json: [{ ...seeded.run, state: complete ? "queued" : "awaiting_upload" }] }),
   );
+  await page.route(`**/api/runs/${seeded.run.id}`, async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        json: {
+          run: { ...seeded.run, state: complete ? "queued" : "awaiting_upload" },
+          snapshot: seeded.snapshot,
+        },
+      });
+      return;
+    }
+    expect(route.request().postDataJSON()).toEqual({ action: "activate" });
+    expect(confirmed.size).toBe(5);
+    expect(complete).toBe(1);
+    activations++;
+    await route.fulfill({ json: { ...seeded.run, state: "queued" } });
+  });
   await page.route(`**/api/sources/${seeded.sourceId}/audio*`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -221,25 +248,40 @@ async function mockUpload(
     } else if (body.action === "complete") {
       complete++;
       await route.fulfill({ status: 202, json: { uploadId, state: "pending" } });
+      completionObserved();
     } else throw new Error(`Unexpected synthetic audio action: ${body.action}`);
   });
   await page.route("**/__synthetic-audio/*", async (route) => {
     const url = new URL(route.request().url());
     const index = Number(url.pathname.split("/").at(-1));
     puts.push({ index, lease: url.searchParams.get("lease") ?? "" });
-    const fail = index === 3 && failures < (mode === "exhausted" ? 3 : 1);
+    const fail = index === 3 && (mode === "exhausted" ? !recovered : failures < 1);
     if (fail && mode !== "corrupt") {
       failures++;
       if (mode === "offline") {
         await connectivity(page, false);
         await route.abort("internetdisconnected");
-      } else await route.fulfill({ status: 503, body: "Temporary synthetic gateway failure" });
+      } else {
+        await route.fulfill({ status: 503, body: "Temporary synthetic gateway failure" });
+        if (mode === "exhausted" && failures >= 3) retriesObserved();
+      }
     } else {
       stored.add(index);
       await route.fulfill({ status: 200, body: "" });
     }
   });
-  return { puts, leases, confirmed, completions: () => complete };
+  return {
+    puts,
+    leases,
+    confirmed,
+    completions: () => complete,
+    waitForCompletion: () => completed,
+    activations: () => activations,
+    waitForFailedAttempts: () => failedAttemptsObserved,
+    recover: () => {
+      recovered = true;
+    },
+  };
 }
 
 async function connectivity(page: Page, online: boolean) {
@@ -258,17 +300,17 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "transient");
     await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await state.waitForCompletion();
     await expect.poll(state.completions).toBe(1);
-    expect(state.puts.map((part) => part.index)).toEqual([0, 1, 2, 3, 3, 4]);
+    expect(state.puts.map((part) => part.index).sort()).toEqual([0, 1, 2, 3, 3, 4]);
     expect(state.puts.filter((part) => part.index === 3).map((part) => part.lease)).toEqual([
       "1",
       "2",
     ]);
-    expect([...state.confirmed]).toEqual([0, 1, 2, 3, 4]);
+    expect([...state.confirmed].sort()).toEqual([0, 1, 2, 3, 4]);
     expect(state.completions()).toBe(1);
-    await expect(
-      page.getByText("Queued. You can leave this page; progress is saved."),
-    ).toBeVisible();
+    await expect.poll(state.activations).toBe(1);
+    await expect(page.getByRole("complementary", { name: "Saved audio uploads" })).toHaveCount(0);
     await expect(
       page.getByText(/Uploading audio part|Connection interrupted\. Retrying/),
     ).toHaveCount(0);
@@ -283,20 +325,22 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     await page.goto(`/classes/${seeded.sessionId}/processing`);
     await expect(
       page
-        .getByRole("alert")
+        .getByRole("complementary", { name: "Saved audio uploads" })
+        .getByRole("status")
         .filter({ hasText: "The uploaded audio part did not match the saved recording." }),
     ).toBeVisible();
-    expect(state.puts.map((part) => part.index)).toEqual([0, 1, 2, 3]);
+    expect(state.puts.map((part) => part.index).sort()).toEqual([0, 1, 2, 3, 4]);
     expect(state.completions()).toBe(0);
+    expect(state.activations()).toBe(0);
     await expect(
       page.getByText(/Uploading audio part|Connection interrupted\. Retrying/),
     ).toHaveCount(0);
     await connectivity(page, false);
     await connectivity(page, true);
     await expect(
-      page.getByRole("button", { name: "Resume audio upload", exact: true }),
+      page.getByRole("button", { name: "Retry saved audio upload", exact: true }),
     ).toBeEnabled();
-    expect(state.puts).toHaveLength(4);
+    expect(state.puts).toHaveLength(5);
   });
 
   test("waits through disconnection and resumes after reconnect without reuploading confirmed parts", async ({
@@ -306,15 +350,14 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     const state = await mockUpload(page, seeded, "offline");
     await page.goto(`/classes/${seeded.sessionId}/processing`);
     await expect(
-      page.getByText(
-        "You are offline. Your recording is saved; upload will resume when you reconnect.",
-      ),
+      page.getByText("Saved on this device. Upload resumes when you reconnect."),
     ).toBeVisible();
     expect(state.completions()).toBe(0);
     await connectivity(page, true);
     await expect.poll(state.completions).toBe(1);
-    expect(state.puts.map((part) => part.index)).toEqual([0, 1, 2, 3, 3, 4]);
+    expect(state.puts.map((part) => part.index).sort()).toEqual([0, 1, 2, 3, 3, 4]);
     expect(state.completions()).toBe(1);
+    await expect.poll(state.activations).toBe(1);
   });
 
   test("retries on return to the foreground after automatic attempts are exhausted", async ({
@@ -323,12 +366,20 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "exhausted");
     await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await state.waitForFailedAttempts();
     await expect(
-      page.getByRole("alert").filter({ hasText: "after automatic retries" }),
+      page
+        .getByRole("complementary", { name: "Saved audio uploads" })
+        .getByRole("status")
+        .filter({ hasText: "Audio upload was interrupted. The original is saved on this device." }),
     ).toBeVisible();
+    const failedAttempts = state.puts.filter((part) => part.index === 3).length;
+    expect(failedAttempts).toBeGreaterThanOrEqual(3);
+    expect(state.completions()).toBe(0);
     await expect(
       page.getByText(/Uploading audio part|Connection interrupted\. Retrying/),
     ).toHaveCount(0);
+    state.recover();
     await page.evaluate(() => {
       Object.defineProperty(document, "visibilityState", {
         configurable: true,
@@ -344,7 +395,14 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     await expect.poll(state.completions).toBe(1);
-    expect(state.puts.map((part) => part.index)).toEqual([0, 1, 2, 3, 3, 3, 3, 4]);
+    expect(
+      state.puts
+        .filter((part) => part.index !== 3)
+        .map((part) => part.index)
+        .sort(),
+    ).toEqual([0, 1, 2, 4]);
+    expect(state.puts.filter((part) => part.index === 3)).toHaveLength(failedAttempts + 1);
     expect(state.completions()).toBe(1);
+    await expect.poll(state.activations).toBe(1);
   });
 });
