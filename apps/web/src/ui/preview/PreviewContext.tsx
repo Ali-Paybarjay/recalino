@@ -160,7 +160,7 @@ export function createSampleState(): PreviewState {
     sources: [
       {
         id: "audio-1",
-        name: "Class recording",
+        name: "Session recording",
         kind: "audio",
         durationMinutes: 48,
         pages: 0,

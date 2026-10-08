@@ -106,8 +106,8 @@ test("destructive data choices explain consequences, focus the safe action, and 
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("My changed sample");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByLabel("Session name (optional)", { exact: true }).fill("My changed sample");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/data-controls");
   await expect(
     page.getByRole("button", { name: "Review source deletion", exact: true }),
@@ -143,6 +143,6 @@ test("destructive data choices explain consequences, focus the safe action, and 
   );
   await page.getByLabel("Course", { exact: true }).selectOption("ESOL B1");
   await expect(
-    page.locator("section[aria-label='Class list'] > ul > li").first().locator("summary"),
+    page.locator("section[aria-label='Session list'] > ul > li").first().locator("summary"),
   ).toContainText("Present perfect");
 });

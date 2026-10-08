@@ -5,8 +5,8 @@ test("sample files accumulate before explicit upload and show progress and compl
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Upload progress sample");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByLabel("Session name (optional)", { exact: true }).fill("Upload progress sample");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/upload");
   await expect(page.getByRole("button", { name: "Add Files", exact: true })).toBeEnabled();
   await page.clock.install();
@@ -144,7 +144,7 @@ test("source permission, file metadata and password examples stay local", async 
     samplePassword,
   );
 
-  const audio = page.getByRole("listitem").filter({ hasText: "Class recording" });
+  const audio = page.getByRole("listitem").filter({ hasText: "Session recording" });
   await audio.getByRole("button", { name: "Pause upload example" }).click();
   await page.goto("/preview/estimate");
   await expect(
@@ -156,7 +156,7 @@ test("source permission, file metadata and password examples stay local", async 
   await page.getByRole("link", { name: "Resolve source issues" }).click();
   await page
     .getByRole("listitem")
-    .filter({ hasText: "Class recording" })
+    .filter({ hasText: "Session recording" })
     .getByRole("button", { name: "Resume upload example" })
     .click();
   await page.goto("/preview/estimate");
@@ -173,7 +173,7 @@ test("selected ranges determine the estimate, processing deducts once, and a ret
   await expect(page.getByRole("spinbutton")).toHaveCount(0);
   const audio = page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Class recording", exact: true }) });
+    .filter({ has: page.getByRole("heading", { name: "Session recording", exact: true }) });
   const pdf = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Present perfect handout.pdf", exact: true }),
   });
@@ -208,7 +208,7 @@ test("selected ranges determine the estimate, processing deducts once, and a ret
   await page.getByRole("link", { name: "Read partial notes", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "The sample job is partly ready." }),
-  ).toContainText("Class recording needs another try.");
+  ).toContainText("Session recording needs another try.");
   await page.goto("/preview/processing-result");
   await page.getByRole("button", { name: "Retry failed source", exact: true }).click();
   await page.getByRole("button", { name: "Complete sample processing", exact: true }).click();
@@ -225,7 +225,7 @@ test("whole file restores the full estimate and hides range fields after a part 
   await page.goto("/preview/source-settings");
   const audio = page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Class recording", exact: true }) });
+    .filter({ has: page.getByRole("heading", { name: "Session recording", exact: true }) });
   const pdf = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Present perfect handout.pdf", exact: true }),
   });
@@ -261,7 +261,7 @@ test("an allowance shortfall can be reduced explicitly without exceeding the sam
   await expect(page.getByRole("spinbutton")).toHaveCount(0);
   const audio = page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Class recording", exact: true }) });
+    .filter({ has: page.getByRole("heading", { name: "Session recording", exact: true }) });
   const pdf = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Present perfect handout.pdf", exact: true }),
   });
@@ -296,7 +296,7 @@ test("recording controls demonstrate photo, pause, resume and save without captu
   await page.getByRole("link", { name: "Stop", exact: true }).click();
   await page.getByRole("button", { name: "Stop and keep recording", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your recording is ready");
-  await page.getByRole("link", { name: "Go to class", exact: true }).click();
+  await page.getByRole("link", { name: "Go to session", exact: true }).click();
   await expect(page.getByText("Sample recording", { exact: true })).toBeVisible();
 });
 
@@ -323,7 +323,7 @@ test("recording elapsed time and photos survive pause, resume and stop confirmat
   expect(seconds((await timer.textContent()) ?? "00:00")).toBe(paused);
   await expect(page.getByText("1 sample photos", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Resume", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Recording your class");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Recording your session");
   expect(seconds((await timer.textContent()) ?? "00:00")).toBeGreaterThanOrEqual(paused);
   await expect(page.getByText("1 sample photos", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Stop", exact: true }).click();
@@ -337,7 +337,7 @@ test("recording elapsed time and photos survive pause, resume and stop confirmat
   await page.getByRole("button", { name: "Stop and keep recording", exact: true }).click();
   await page.clock.runFor(1_000);
   await expect(page).toHaveURL(/\/preview\/saved$/);
-  await page.getByRole("link", { name: "Go to class", exact: true }).click();
+  await page.getByRole("link", { name: "Go to session", exact: true }).click();
   const recording = page.getByRole("listitem").filter({ hasText: "Sample recording" });
   const savedMinutes = Number((await recording.innerText()).match(/([\d.]+) audio minutes/)?.[1]);
   expect(Number.isFinite(savedMinutes)).toBe(true);
@@ -348,8 +348,10 @@ test("demo uploads receive prepared extents automatically and a job keeps its co
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Automatic sample metadata");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page
+    .getByLabel("Session name (optional)", { exact: true })
+    .fill("Automatic sample metadata");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles([
     { name: "my-lesson.wav", mimeType: "audio/wav", buffer: Buffer.from("synthetic metadata") },
