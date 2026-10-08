@@ -283,7 +283,34 @@ describe("recovery actions match the processing blocker", () => {
     };
     const html = render("progress");
     expect(html).toContain(message);
+    if (state === "awaiting_review") {
+      expect(html).toContain("Follow its status below");
+      expect(html).not.toContain("Request a review below");
+    }
     expect(mocks.buttons.has("Request processing review")).toBe(false);
     expect(mocks.buttons.has("Retry after service update")).toBe(false);
+  });
+  it("opens published partial notes and explains their limitations without requesting another attempt", () => {
+    mocks.status = {
+      ...blocked,
+      state: "ready",
+      lastError: null,
+      notesReady: true,
+      cardsReady: true,
+      processingReview: {
+        ...pendingReview,
+        state: "resolved",
+        partialResult: true,
+        requestedAt: "2026-10-08T10:01:00.000Z",
+        canRequest: false,
+      },
+    };
+    const html = render("progress");
+    expect(html).toContain("notes and flashcards are available with some source limitations");
+    expect(html).toContain(`href="/classes/${sessionId}/notes"`);
+    expect(html).toContain("Open class notes");
+    expect(mocks.buttons.has("Request processing review")).toBe(false);
+    expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
+    expect(mocks.request).not.toHaveBeenCalled();
   });
 });

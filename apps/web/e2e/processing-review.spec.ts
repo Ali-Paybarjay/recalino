@@ -107,12 +107,21 @@ for (const view of ["notice", "progress"] as const) {
         notesReady: true,
         cardsReady: true,
         message: "Your notes and flashcards are up to date.",
-        processingReview: { ...review, state: "resolved" },
+        processingReview: { ...review, state: "resolved", partialResult: true },
       };
       await page.getByRole("button", { name: "Check review status", exact: true }).click();
       await expect(
         page.getByRole("link", { name: "Open class notes", exact: true }),
       ).toHaveAttribute("href", `/classes/${sessionId}/notes`);
+      await expect(
+        page.getByText(/notes and flashcards are available with some source limitations/),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Request processing review", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Retry failed attempt", exact: true }),
+      ).toHaveCount(0);
     }
     expect(writes).toHaveLength(1);
     expect(unexpected).toEqual([]);

@@ -13,6 +13,7 @@ export interface ProcessingReview {
   updatedAt: string;
   errorCode: string | null;
   canRequest: boolean;
+  partialResult?: boolean;
 }
 
 export async function readClassProcessingReview(
@@ -37,10 +38,13 @@ export async function readClassProcessingReview(
   const failed = ["failed", "needs_input", "partial_ready"].includes(latest.state);
   if (!request && !failed && intent?.state !== "blocked") return null;
   const continuing = ["queued", "processing", "awaiting_upload"].includes(latest.state);
+  const partialResult = latest.state === "partial_ready";
+  // Partial source coverage remains historical. A review completes only after its
+  // current output has been published by automatic learning, not merely generated.
   const resolved =
-    latest.state === "ready" &&
+    (latest.state === "ready" || partialResult) &&
     !!latest.outputVersionId &&
-    (!intent || (intent.state === "ready" && intent.runId === latest.id));
+    ((!intent && !partialResult) || (intent?.state === "ready" && intent.runId === latest.id));
   const code = intent?.state === "blocked" ? intent.lastError : latest.lastError;
   return {
     state: resolved
@@ -55,7 +59,8 @@ export async function readClassProcessingReview(
     requestedAt: request?.occurredAt ?? null,
     updatedAt: latest.updatedAt,
     errorCode: code && /^[a-zA-Z0-9_.:-]{1,200}$/.test(code) ? code : null,
-    canRequest: failed && request?.subjectId !== latest.id,
+    canRequest: failed && !resolved && request?.subjectId !== latest.id,
+    partialResult,
   };
 }
 

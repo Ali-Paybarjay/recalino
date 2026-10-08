@@ -186,11 +186,29 @@ export async function decodeVoiceAudio(
   });
 }
 
+/**
+ * Browser recordings stamp each packet with the capture clock rather than its sample count:
+ * Chrome's 60 ms Opus packets arrive 51–69 ms apart. A seek by container time therefore yields
+ * a few milliseconds more or less than the requested span. Read past the end, then cut the
+ * window by decoded samples so the composite never depends on container timestamp precision.
+ */
+export const VOICE_WINDOW_READ_SLACK_MS = 1000;
+/** A turn must last 2.4 s after both 200 ms edge guards; a shorter excerpt cannot yield evidence. */
+export const VOICE_WINDOW_MIN_MS = 2400;
+/** Decoded shortfall beyond this is reported as partial coverage rather than hidden. */
+const VOICE_WINDOW_PARTIAL_MS = 1000;
+
 /** Decode only bounded selected windows; long classes never allocate whole-recording PCM. */
 export async function decodeVoiceAudioWindows(
   bytes: Uint8Array,
   windows: readonly VoiceSourceWindow[],
-): Promise<{ samples: Float32Array; sampleRate: 16000; windows: VoiceWindowMap[] }> {
+): Promise<{
+  samples: Float32Array;
+  sampleRate: 16000;
+  windows: VoiceWindowMap[];
+  /** True when a planned window was skipped or decoded materially shorter than planned. */
+  partial: boolean;
+}> {
   const maximumMs =
     windows.reduce((sum, window) => sum + window.end - window.start, 0) +
     Math.max(0, windows.length - 1) * VOICE_CHECK_GAP_MS;
@@ -211,60 +229,77 @@ export async function decodeVoiceAudioWindows(
     const samples = new Float32Array(maximumMs * 16);
     const mapped: VoiceWindowMap[] = [];
     let cursor = 0;
+    let partial = false;
     try {
       for (const [index, window] of windows.entries()) {
+        const plannedMs = window.end - window.start;
         const outputPath = join(directory, `voice-window-${index}.pcm`);
-        await ffmpeg(
-          [
-            "-ss",
-            String(window.start / 1000),
-            "-i",
-            path,
-            "-t",
-            String((window.end - window.start) / 1000),
-            "-map",
-            "0:a:0",
-            "-vn",
-            "-sn",
-            "-dn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-c:a",
-            "pcm_s16le",
-            "-f",
-            "s16le",
-            "-y",
-            outputPath,
-          ],
-          120000,
-        );
+        try {
+          await ffmpeg(
+            [
+              // Seek by container time, exactly as the transcript chunks were cut.
+              "-ss",
+              String(window.start / 1000),
+              "-i",
+              path,
+              "-t",
+              String((plannedMs + VOICE_WINDOW_READ_SLACK_MS) / 1000),
+              "-map",
+              "0:a:0",
+              "-vn",
+              "-sn",
+              "-dn",
+              "-ac",
+              "1",
+              "-ar",
+              "16000",
+              "-c:a",
+              "pcm_s16le",
+              "-f",
+              "s16le",
+              "-y",
+              outputPath,
+            ],
+            120000,
+          );
+        } catch (failure) {
+          // A demuxer can refuse one estimated seek target (e.g. a drifted end). The other
+          // windows still carry evidence. Host failures (timeouts, no decoder) stop the check.
+          if (failure instanceof AppError && failure.code === "unsupported_media") {
+            partial = true;
+            continue;
+          }
+          throw failure;
+        }
         const pcm = await readFile(outputPath);
         try {
-          const durationMs = Math.ceil(pcm.length / 32);
-          if (
-            !pcm.length ||
-            pcm.length % 2 ||
-            durationMs > window.end - window.start ||
-            durationMs < window.end - window.start - 100
-          )
-            throw errors.validationFailed({ audio: ["voice_duration_invalid"] });
+          // Whole milliseconds keep composite boundaries integral; never exceed the plan.
+          const usableMs = Math.min(plannedMs, Math.floor(pcm.length / 32));
+          if (usableMs <= 0 || usableMs < Math.min(VOICE_WINDOW_MIN_MS, plannedMs - 100)) {
+            partial = true;
+            continue;
+          }
+          if (usableMs < plannedMs - VOICE_WINDOW_PARTIAL_MS) partial = true;
+          if (mapped.length) cursor += VOICE_CHECK_GAP_MS * 16;
           const compositeStartMs = cursor / 16;
-          for (let sample = 0; sample < pcm.length / 2; sample++)
+          const count = usableMs * 16;
+          for (let sample = 0; sample < count; sample++)
             samples[cursor + sample] = pcm.readInt16LE(sample * 2) / 32768;
-          cursor += durationMs * 16;
+          cursor += count;
           mapped.push({
             sourceStartMs: window.start,
             compositeStartMs,
             compositeEndMs: cursor / 16,
           });
-          if (index < windows.length - 1) cursor += VOICE_CHECK_GAP_MS * 16;
         } finally {
           pcm.fill(0);
+          await rm(outputPath, { force: true });
         }
       }
-      return { samples: samples.subarray(0, cursor), sampleRate: 16000, windows: mapped };
+      // The native engine needs at least two seconds of decoded speech to run at all.
+      if (!mapped.length || cursor < 2000 * 16)
+        throw errors.validationFailed({ audio: ["voice_audio_unusable"] });
+      return { samples: samples.subarray(0, cursor), sampleRate: 16000, windows: mapped, partial };
     } catch (error) {
       samples.fill(0);
       throw error;

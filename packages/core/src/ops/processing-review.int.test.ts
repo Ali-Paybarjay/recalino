@@ -298,3 +298,104 @@ it("keeps an old failed task readable but disallows retry after a newer class fi
     runId: complete.id,
   });
 });
+
+it("resolves published partial class output with limitations while preserving source diagnostics and avoiding another provider attempt", async () => {
+  const x = await fixture();
+  await requestClassProcessingReview(db, x.ctx, x.request);
+  const snapshot = JSON.stringify({
+    sources: [
+      {
+        units: [
+          { id: "audio-unit", kind: "audio", status: "partial", reason: "timestamps_unavailable" },
+        ],
+        blocks: [{ id: "audio-text", text: "Fully retained synthetic class transcript." }],
+      },
+    ],
+  });
+  const partial = await db
+    .insertInto("proc.processing_run")
+    .values({
+      ...x.base,
+      state: "partial_ready",
+      last_error: null,
+      input_snapshot: snapshot,
+      output_version_id: x.knowledge.id,
+      operation_key: randomUUID(),
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  await db
+    .insertInto("proc.automatic_session")
+    .values({
+      user_id: x.ctx.userId,
+      session_id: x.session.id,
+      state: "blocked",
+      run_id: x.runId,
+      last_error: "processing_budget_session",
+    })
+    .execute();
+  expect(await readClassProcessingReview(db, x.ctx, x.session.id)).toMatchObject({
+    state: "awaiting_review",
+    runId: partial.id,
+    partialResult: true,
+  });
+  await db
+    .updateTable("proc.automatic_session")
+    .set({ state: "ready", last_error: null })
+    .where("session_id", "=", x.session.id)
+    .execute();
+  expect((await readClassProcessingReview(db, x.ctx, x.session.id))?.state).toBe("awaiting_review");
+  await db
+    .updateTable("proc.automatic_session")
+    .set({ state: "ready", run_id: partial.id, last_error: null })
+    .where("session_id", "=", x.session.id)
+    .execute();
+  const counts = async () => ({
+    audit: await db
+      .selectFrom("plt.audit_event")
+      .select("id")
+      .where("actor_id", "=", x.ctx.userId)
+      .where("action", "=", "processing.review_requested")
+      .execute(),
+    jobs: await db
+      .selectFrom("plt.job")
+      .select("id")
+      .where("payload", "@>", JSON.stringify({ userId: x.ctx.userId }))
+      .execute(),
+    attempts: await db
+      .selectFrom("proc.provider_attempt")
+      .select("id")
+      .where("user_id", "=", x.ctx.userId)
+      .execute(),
+    costs: await db
+      .selectFrom("quota.provider_cost")
+      .select("id")
+      .where("user_id", "=", x.ctx.userId)
+      .execute(),
+  });
+  const before = await counts();
+  expect(before.audit).toHaveLength(1);
+  for (const result of [
+    await readClassProcessingReview(db, x.ctx, x.session.id),
+    await requestClassProcessingReview(db, x.ctx, x.request),
+  ])
+    expect(result).toMatchObject({
+      state: "resolved",
+      runId: partial.id,
+      requestedRunId: x.runId,
+      partialResult: true,
+      canRequest: false,
+    });
+  expect(await counts()).toEqual(before);
+  expect(
+    await db
+      .selectFrom("proc.processing_run")
+      .select(["state", "input_snapshot", "output_version_id"])
+      .where("id", "=", partial.id)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({
+    state: "partial_ready",
+    input_snapshot: JSON.parse(snapshot),
+    output_version_id: x.knowledge.id,
+  });
+});

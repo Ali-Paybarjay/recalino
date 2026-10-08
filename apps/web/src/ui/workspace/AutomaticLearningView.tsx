@@ -259,7 +259,9 @@ export function AutomaticLearningView({
         {status.state === "blocked" ? (
           <p className="preview-muted">
             {recovery.kind === "service"
-              ? "The Recalino team needs to review this class's stopped processing. Request a review below; your saved material will be used when processing continues."
+              ? review?.requestedAt
+                ? "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
+                : "The Recalino team needs to review this class's stopped processing. Request a review below; your saved material will be used when processing continues."
               : recovery.retryLabel === "Retry after allowance changes"
                 ? "After your allowance is updated, retry using this class's saved material."
                 : "Your saved edits and card review history stay available."}
@@ -282,7 +284,9 @@ export function AutomaticLearningView({
           <Panel title="Processing review">
             <p role="status">
               {review?.state === "resolved"
-                ? "Processing has finished. Your class notes and flashcards are ready."
+                ? review.partialResult
+                  ? "Your class notes and flashcards are available with some source limitations. Open the notes to see what could not be processed."
+                  : "Processing has finished. Your class notes and flashcards are ready."
                 : review?.state === "retrying"
                   ? "Processing is continuing with your saved material. You will receive a notification when the result is ready."
                   : review?.requestedAt

@@ -70,13 +70,30 @@ test("a new learner completes core setup and skips optional voice setup without 
   await expect(page).toHaveURL(/\/setup\/voice$/);
   await expect(page.getByText("6 of 6")).toBeVisible();
   await expect(page.getByRole("checkbox")).not.toBeChecked();
-  await expect(page.getByText(/Audio voice matching is not available yet/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Record voice sample" })).toHaveCount(0);
+  // Provisioned native builds expose recording; consent must still gate microphone access.
+  const beforeVoice = await page.request.get("/api/me/voice");
+  expect(beforeVoice.status()).toBe(200);
+  const beforeProfile = await beforeVoice.json();
+  expect(beforeProfile).toMatchObject({
+    enabled: false,
+    enrolled: false,
+    consentVersion: null,
+  });
+  expect(typeof beforeProfile.engineAvailable).toBe("boolean");
+  const record = page.getByRole("button", { name: "Record voice sample", exact: true });
+  if (beforeProfile.engineAvailable) {
+    await expect(record).toBeVisible();
+    await expect(record).toBeDisabled();
+  } else {
+    await expect(page.getByText(/Audio voice matching is not available yet/)).toBeVisible();
+    await expect(record).toHaveCount(0);
+  }
   expect(await microphoneStats(page)).toEqual({ requests: 0, stopped: 0 });
   await expectNoAxeViolations(page);
   await page.getByRole("button", { name: "Do this later", exact: true }).click();
   await expect(page).toHaveURL(/\/today$/);
   expect(voiceWrites).toEqual([]);
+  expect(await microphoneStats(page)).toEqual({ requests: 0, stopped: 0 });
   const voice = await page.request.get("/api/me/voice");
   expect(voice.status()).toBe(200);
   expect(await voice.json()).toMatchObject({

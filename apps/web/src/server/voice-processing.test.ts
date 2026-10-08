@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { errors } from "@recalino/core/plt";
 import type { VoiceDiarizer } from "@recalino/core/proc";
 import { beforeEach, expect, it, vi } from "vitest";
 
@@ -20,7 +21,7 @@ vi.mock("@recalino/core/plt", async (original) => ({
   readOwnedObject: mocks.read,
 }));
 
-import { diarizeSourceVoice } from "./voice-processing";
+import { diarizeSourceVoice, voiceFailureCode } from "./voice-processing";
 
 const bytes = new Uint8Array([1, 2, 3]);
 const source: Parameters<VoiceDiarizer>[0]["source"] = {
@@ -99,6 +100,65 @@ it("checks a longer-than-two-hour source with one bounded native pass and restor
   ]);
   expect(result.modelRevision).toBe("same-enrollment-model");
   expect(samples.every((sample) => sample === 0)).toBe(true);
+});
+
+// FR-VOC-002
+it("discloses skipped or shortened excerpts of a short recording as sampled coverage", async () => {
+  const samples = new Float32Array(10000 * 16).fill(0.1);
+  mocks.decode.mockResolvedValue({
+    samples,
+    sampleRate: 16000,
+    windows: [{ sourceStartMs: 0, compositeStartMs: 0, compositeEndMs: 10000 }],
+    partial: true,
+  });
+  mocks.diarize.mockResolvedValue({ modelRevision: "model", speakers: [], segments: [] });
+  const result = await diarizeSourceVoice({ ...input, source: { ...source, durationMs: 300000 } });
+  expect(mocks.decode.mock.calls[0]?.[1]).toEqual([{ start: 0, end: 300000 }]);
+  expect(result.sampled).toBe(true);
+});
+
+// FR-VOC-002, PRD-PRIV-06
+it("logs one allow-listed failure code for a failed check and never audio, paths or text", async () => {
+  const lines: string[] = [];
+  const spy = vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+    lines.push(String(line));
+  });
+  try {
+    mocks.decode.mockRejectedValue(errors.validationFailed({ audio: ["voice_audio_unusable"] }));
+    await expect(diarizeSourceVoice(input)).rejects.toMatchObject({ code: "validation_failed" });
+    mocks.decode.mockResolvedValue({
+      samples: new Float32Array(5000 * 16),
+      sampleRate: 16000,
+      windows: [{ sourceStartMs: 0, compositeStartMs: 0, compositeEndMs: 5000 }],
+      partial: false,
+    });
+    mocks.diarize.mockRejectedValue(new Error("/var/task/native.so: undefined symbol"));
+    await expect(diarizeSourceVoice(input)).rejects.toThrow();
+  } finally {
+    spy.mockRestore();
+  }
+  const records = lines.map((line) => JSON.parse(line));
+  expect(records.map((record) => [record.event, record.code, record.module])).toEqual([
+    ["voice_check_failed", "voice_audio_unusable", "voc"],
+    ["voice_check_failed", "unexpected", "voc"],
+  ]);
+  expect(records.every((record) => record.request_id === input.ctx.requestId)).toBe(true);
+  expect(lines.join("\n")).not.toContain("/var/task");
+});
+
+// PRD-PRIV-06
+it("maps every decoder, engine and worker failure to a short safe code", () => {
+  expect(voiceFailureCode(errors.validationFailed({ voice: ["source_integrity_mismatch"] }))).toBe(
+    "source_integrity_mismatch",
+  );
+  expect(voiceFailureCode(errors.notFound())).toBe("not_found");
+  expect(voiceFailureCode(new Error("voice_diarization_output_invalid"))).toBe(
+    "voice_diarization_output_invalid",
+  );
+  expect(voiceFailureCode(new Error("ENOENT: /tmp/recalino-audio-x/input.audio"))).toBe(
+    "unexpected",
+  );
+  expect(voiceFailureCode("not an error")).toBe("unexpected");
 });
 
 it("refuses an expired exact class original before reading bytes or dispatching native inference", async () => {

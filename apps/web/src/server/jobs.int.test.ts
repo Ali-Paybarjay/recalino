@@ -1,16 +1,90 @@
+import { randomUUID } from "node:crypto";
+import { readdir, readFile } from "node:fs/promises";
 import { createDatabase } from "@recalino/core/db";
 import { DEFAULT_PLT_SETTINGS } from "@recalino/core/plt";
-import { afterAll, describe, expect, it } from "vitest";
-import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
+import { sql } from "kysely";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  LOCAL_ADMIN_DATABASE_URL,
+  LOCAL_APP_DATABASE_URL,
+} from "../../../../packages/core/test/local-db";
 import { defineRoute } from "./api";
 import { periodicJobs, runJobsHandler } from "./jobs";
 import { ROUTES } from "./routes";
 import { routeDeps } from "./test-support";
 
-// The cron route end to end on the local database (FR-PLT-005, M4).
+// The real cron route and every registered periodic definition (FR-PLT-005, M4).
+// Global recovery sweeps must not publish, expire or drain another test's fixtures.
+const databaseName = `recalino_cron_${randomUUID().replaceAll("-", "")}`;
+const databaseNamePattern = /^recalino_cron_[a-f0-9]{32}$/;
 
-const db = createDatabase(testDatabaseUrl(), { maxConnections: 2 });
-afterAll(() => db.destroy());
+function localDatabaseUrl(value: string, isolated = false): string {
+  const url = new URL(value);
+  if (
+    !["postgres:", "postgresql:"].includes(url.protocol) ||
+    !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
+    !databaseNamePattern.test(databaseName)
+  )
+    throw new Error("Invalid isolated cron test database configuration");
+  if (isolated) url.pathname = `/${databaseName}`;
+  return url.toString();
+}
+
+const provision = createDatabase(localDatabaseUrl(LOCAL_ADMIN_DATABASE_URL), {
+  maxConnections: 1,
+});
+const migrations = createDatabase(localDatabaseUrl(LOCAL_ADMIN_DATABASE_URL, true), {
+  maxConnections: 1,
+});
+const db = createDatabase(localDatabaseUrl(LOCAL_APP_DATABASE_URL, true), {
+  maxConnections: 2,
+});
+let created = false;
+let disposed = false;
+
+async function dropCreatedDatabase() {
+  if (!created) return;
+  if (!databaseNamePattern.test(databaseName)) throw new Error("Invalid cron database name");
+  await sql`drop database ${sql.id(databaseName)}`.execute(provision);
+  created = false;
+}
+
+async function disposeDatabase() {
+  if (disposed) return;
+  disposed = true;
+  try {
+    try {
+      await db.destroy();
+    } finally {
+      await migrations.destroy();
+    }
+  } finally {
+    try {
+      await dropCreatedDatabase();
+    } finally {
+      await provision.destroy();
+    }
+  }
+}
+
+beforeAll(async () => {
+  try {
+    await sql`create database ${sql.id(databaseName)} template template0`.execute(provision);
+    created = true;
+    // App migrations reference only Auth UUIDs. This cron fixture has no accounts or Auth calls.
+    await sql`create schema auth`.execute(migrations);
+    await sql`create table auth.users (id uuid primary key)`.execute(migrations);
+    const directory = new URL("../../../../supabase/migrations/", import.meta.url);
+    for (const filename of (await readdir(directory))
+      .filter((name) => name.endsWith(".sql"))
+      .sort())
+      await sql.raw(await readFile(new URL(filename, directory), "utf8")).execute(migrations);
+  } catch (error) {
+    await disposeDatabase();
+    throw error;
+  }
+}, 120_000);
+afterAll(disposeDatabase);
 
 const SECRET = "cron-secret-for-tests-0123456789abcdef";
 
@@ -34,17 +108,14 @@ function cronRun(now: Date) {
 
 describe("GET /api/jobs/run", () => {
   it("adds each periodic job once per period and runs it", async () => {
-    // A far-future hour that no earlier run used, so their periodic jobs can't interfere.
-    const hour = new Date(Date.UTC(2099, 0, 1) + Math.floor(Date.now() / 1000) * 3_600_000);
+    // The isolated database makes a fixed, valid period independent of wall-clock time.
+    const hour = new Date("2099-01-01T00:00:00Z");
     const kinds = periodicJobs(DEFAULT_PLT_SETTINGS).map((job) => job.definition.kind);
 
     const first = await cronRun(hour);
     expect(first.status).toBe(200);
     const summary = await first.json();
-    // The runner also completes retries already queued by other tests; inspect this
-    // period's rows below instead of assuming the shared queue was initially empty.
-    expect(summary).toMatchObject({ failed: 0, retried: 0 });
-    expect(summary.succeeded).toBeGreaterThanOrEqual(kinds.length);
+    expect(summary).toMatchObject({ failed: 0, retried: 0, succeeded: kinds.length });
 
     // Repeat inside the same period, including the one-minute automatic-learning sweep.
     const again = await cronRun(new Date(hour.getTime() + 1_000));

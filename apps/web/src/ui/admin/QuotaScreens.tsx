@@ -833,12 +833,17 @@ function Costs(props: AdminScreenProps) {
   ];
   if (!costs)
     return (
-      <Empty>
-        {t(
-          "Cost policy is not configured. No spending figures are assumed.",
-          "سیاست هزینه تنظیم نشده است. عدد مصرف فرضی نمایش داده نمی‌شود.",
-        )}
-      </Empty>
+      <>
+        {props.runId && data.runs?.[0] ? (
+          <ProcessingReviewDetails run={data.runs[0]} props={props} />
+        ) : null}
+        <Empty>
+          {t(
+            "Cost policy is not configured. No spending figures are assumed.",
+            "سیاست هزینه تنظیم نشده است. عدد مصرف فرضی نمایش داده نمی‌شود.",
+          )}
+        </Empty>
+      </>
     );
   return (
     <>

@@ -45,6 +45,23 @@ export function validateVoicePcm(samples: Float32Array, sampleRate = 16000) {
     if (!Number.isFinite(value) || value < -1 || value > 1) throw new Error("voice_pcm_invalid");
 }
 
+/** Fixed codes the worker and its quality helpers raise; anything else stays generic. */
+const WORKER_FAILURE_CODES = new Set([
+  "voice_runtime_version_mismatch",
+  "voice_model_sample_rate_mismatch",
+  "voice_diarization_output_invalid",
+  "voice_speech_too_short",
+  "voice_embedding_dimension_mismatch",
+  "voice_embedding_invalid",
+  "voice_embedding_empty",
+  "voice_embedding_pool_invalid",
+]);
+export function workerFailureCode(code: unknown): string {
+  return typeof code === "string" && WORKER_FAILURE_CODES.has(code)
+    ? code
+    : "voice_inference_failed";
+}
+
 let running: Promise<unknown> = Promise.resolve();
 let pending = 0;
 function workerPath(): string {
@@ -88,10 +105,10 @@ function execute<T>(
             clearTimeout(timer);
             void worker.terminate().finally(() => (error ? reject(error) : accept(value as T)));
           };
-          worker.once("message", (message: { ok: boolean; value?: T }) =>
+          worker.once("message", (message: { ok: boolean; value?: T; error?: unknown }) =>
             message.ok
               ? finish(undefined, message.value)
-              : finish(new Error("voice_inference_failed")),
+              : finish(new Error(workerFailureCode(message.error))),
           );
           worker.once("error", () => finish(new Error("voice_inference_failed")));
           worker.once("exit", () => {

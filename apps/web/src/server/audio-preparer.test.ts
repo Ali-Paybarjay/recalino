@@ -65,7 +65,8 @@ it("decodes bounded mono PCM for the real voice engine without changing its dura
   });
 }, 30000);
 
-it("decodes selected original windows into bounded PCM with silent guards and rejects truncated windows", async () => {
+// FR-VOC-002
+it("decodes selected original windows into bounded PCM with silent guards and rejects unusable audio", async () => {
   const decoded = await decodeVoiceAudioWindows(syntheticWav(8), [
     { start: 1000, end: 3000 },
     { start: 5000, end: 7000 },
@@ -74,13 +75,140 @@ it("decodes selected original windows into bounded PCM with silent guards and re
     { sourceStartMs: 1000, compositeStartMs: 0, compositeEndMs: 2000 },
     { sourceStartMs: 5000, compositeStartMs: 4000, compositeEndMs: 6000 },
   ]);
+  expect(decoded.partial).toBe(false);
   expect(decoded.samples.length).toBe(6000 * 16);
   expect(decoded.samples.subarray(2000 * 16, 4000 * 16).every((sample) => sample === 0)).toBe(true);
   expect(Math.max(...decoded.samples.subarray(0, 32000))).toBeCloseTo(2000 / 32768, 4);
   decoded.samples.fill(0);
   await expect(
     decodeVoiceAudioWindows(syntheticWav(8), [{ start: 7000, end: 10000 }]),
-  ).rejects.toMatchObject({ code: "validation_failed" });
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { audio: ["voice_audio_unusable"] } },
+  });
+}, 30000);
+
+/**
+ * MediaRecorder stamps each 60 ms Opus packet with its capture time, so packets in a real
+ * Chrome recording land 51–69 ms apart. This synthetic file reproduces that 52/68 ms pattern.
+ */
+function browserClockWebm(seconds: number) {
+  if (!ffmpegPath) throw new Error("Synthetic decoder is unavailable");
+  const encoded = spawnSync(
+    ffmpegPath,
+    [
+      "-nostdin",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      "pipe:0",
+      "-c:a",
+      "libopus",
+      "-b:a",
+      "48k",
+      "-frame_duration",
+      "60",
+      "-bsf:a",
+      "setts=ts=PTS+if(eq(mod(N\\,4)\\,1)\\,0.008/TB\\,if(eq(mod(N\\,4)\\,3)\\,-0.008/TB\\,0))",
+      "-live",
+      "1",
+      "-f",
+      "webm",
+      "pipe:1",
+    ],
+    { input: syntheticWav(seconds), windowsHide: true, timeout: 20000, maxBuffer: 20000000 },
+  );
+  expect(encoded.status, encoded.stderr.toString()).toBe(0);
+  return encoded.stdout;
+}
+
+// FR-VOC-002: browser-recorded classes must not fail the acoustic check.
+it("keeps excerpts from a browser recording whose packet clock jitters, cut exactly by samples", async () => {
+  // Container-time seeks here decode 10.009 s for a 10 s window; that once failed the whole check.
+  const decoded = await decodeVoiceAudioWindows(browserClockWebm(40), [
+    { start: 2000, end: 12000 },
+    { start: 20000, end: 30000 },
+  ]);
+  expect(decoded.windows).toEqual([
+    { sourceStartMs: 2000, compositeStartMs: 0, compositeEndMs: 10000 },
+    { sourceStartMs: 20000, compositeStartMs: 12000, compositeEndMs: 22000 },
+  ]);
+  expect(decoded.partial).toBe(false);
+  expect(decoded.samples.length).toBe(22000 * 16);
+  expect(decoded.samples.subarray(10000 * 16, 12000 * 16).every((sample) => sample === 0)).toBe(
+    true,
+  );
+  expect(
+    decoded.samples.subarray(0, 10000 * 16).reduce((peak, sample) => Math.max(peak, sample), 0),
+  ).toBeGreaterThan(0.01);
+  decoded.samples.fill(0);
+}, 30000);
+
+/**
+ * Phone recorders write AAC frame durations from rounded capture timestamps; some frames are one
+ * tick short, so the container clock trails the samples. The production class (audio/mp4, 2 h 8 min)
+ * declares 7,675,763 ms but decodes 7,675,883 ms: the same ~15 ppm lag reproduced here.
+ */
+function phoneClockM4a(seconds: number) {
+  if (!ffmpegPath) throw new Error("Synthetic decoder is unavailable");
+  const encoded = spawnSync(
+    ffmpegPath,
+    [
+      "-nostdin",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      "pipe:0",
+      "-ar",
+      "48000",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "64k",
+      "-bsf:a",
+      "setts=ts=PTS-floor(N/64)",
+      "-movflags",
+      "frag_keyframe+empty_moov",
+      "-f",
+      "mp4",
+      "pipe:1",
+    ],
+    { input: syntheticWav(seconds), windowsHide: true, timeout: 20000, maxBuffer: 20000000 },
+  );
+  expect(encoded.status, encoded.stderr.toString()).toBe(0);
+  return encoded.stdout;
+}
+
+// FR-VOC-002: the observed Android class recording failed every window of its check this way.
+it("keeps excerpts from a phone recording whose container clock trails its samples", async () => {
+  // Every container-time window here decodes slightly over its span; each once rejected the check.
+  const decoded = await decodeVoiceAudioWindows(phoneClockM4a(40), [
+    { start: 2000, end: 12000 },
+    { start: 20000, end: 30000 },
+  ]);
+  expect(decoded.windows).toEqual([
+    { sourceStartMs: 2000, compositeStartMs: 0, compositeEndMs: 10000 },
+    { sourceStartMs: 20000, compositeStartMs: 12000, compositeEndMs: 22000 },
+  ]);
+  expect(decoded.partial).toBe(false);
+  expect(decoded.samples.length).toBe(22000 * 16);
+  decoded.samples.fill(0);
+}, 30000);
+
+// FR-VOC-002
+it("skips an excerpt that cannot hold a turn and discloses the partial coverage", async () => {
+  const decoded = await decodeVoiceAudioWindows(syntheticWav(8), [
+    { start: 1000, end: 4000 },
+    { start: 6500, end: 9500 },
+  ]);
+  expect(decoded.windows).toEqual([
+    { sourceStartMs: 1000, compositeStartMs: 0, compositeEndMs: 3000 },
+  ]);
+  expect(decoded.partial).toBe(true);
+  expect(decoded.samples.length).toBe(3000 * 16);
+  decoded.samples.fill(0);
 }, 30000);
 
 it.each([

@@ -80,7 +80,12 @@ try {
       value: { modelRevision: configuration.modelRevision, segments, speakers },
     });
   }
-} catch {
+} catch (error) {
   // Native errors can contain absolute paths; neither diagnostics nor audio belongs in a response.
-  parentPort.postMessage({ ok: false, error: "voice_inference_failed" });
+  // Only this module's own fixed `voice_*` codes cross the boundary; anything else is generic.
+  const code =
+    error instanceof Error && /^voice_[a-z0-9_]{1,58}$/.test(error.message)
+      ? error.message
+      : "voice_inference_failed";
+  parentPort.postMessage({ ok: false, error: code });
 }
