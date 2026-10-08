@@ -4,12 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { IndexedRecordingStore } from "../recording/store";
 import { workspaceRequest } from "./api";
 import { Actions, Button, Status } from "./primitives";
+import { type ContentVersion, sourceRefText } from "./source-ref-text";
 
-interface ContentVersion {
-  id: string;
-  blocks: { id: string; text: string; unitId: string }[];
-  units: { id: string; kind: string; start: number; end?: number; status: string }[];
-}
 /** SourceRef uses a pinned immutable extraction; audio is played only from this account's device. */
 export function SourceRefViewer({ reference, userId }: { reference: SourceRef; userId: string }) {
   const [open, setOpen] = useState(false),
@@ -50,30 +46,7 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
         ),
         version = versions.find((item) => item.id === reference.contentVersionId);
       if (!version) throw new Error("The referenced extraction is no longer available.");
-      const blocks =
-        locator.kind === "text"
-          ? version.blocks.filter((block) => block.id === locator.blockId)
-          : locator.kind === "page"
-            ? version.blocks.filter((block) =>
-                version.units.some(
-                  (unit) =>
-                    unit.id === block.unitId && unit.kind === "page" && unit.start === locator.page,
-                ),
-              )
-            : version.blocks.filter((block) =>
-                version.units.some(
-                  (unit) =>
-                    unit.id === block.unitId &&
-                    unit.kind === "time" &&
-                    unit.start < locator.endMs &&
-                    (unit.end ?? unit.start) > locator.startMs,
-                ),
-              );
-      setText(
-        locator.kind === "text"
-          ? (blocks[0]?.text.slice(locator.start, locator.end) ?? "")
-          : blocks.map((block) => block.text).join("\n\n"),
-      );
+      setText(sourceRefText(version, locator));
       const source = await workspaceRequest<{
         kind: string;
         display_name: string;
