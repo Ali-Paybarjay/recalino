@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
-import { pendingCopy } from "./pending-copy";
+import { reviewVoiceCopy } from "./review-voice-copy";
 
 const register = readFileSync(
-  resolve(import.meta.dirname, "../../../../docs/design/UI_COPY_PENDING.md"),
+  resolve(import.meta.dirname, "../../../../docs/design/UI_COPY_2026-10-08.md"),
   "utf8",
 );
 
@@ -15,8 +15,8 @@ function leaves(node: unknown, path: string[] = []): Array<[string, string]> {
   );
 }
 
-// Text outside the design handoff must be visible to the product owner, never silently inline.
-it.each(leaves(pendingCopy))("%s is registered verbatim for owner approval", (key, text) => {
+// D48: the approved wording is used verbatim; any edit must go back through the register.
+it.each(leaves(reviewVoiceCopy))("%s matches its approved register entry", (key, text) => {
   expect(register).toContain(`\`${key}\``);
   expect(register).toContain(text);
 });

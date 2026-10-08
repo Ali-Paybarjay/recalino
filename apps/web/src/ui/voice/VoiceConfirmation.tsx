@@ -7,7 +7,7 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
-import { pendingCopy } from "../pending-copy";
+import { reviewVoiceCopy } from "../review-voice-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
@@ -365,7 +365,7 @@ export function VoiceConfirmation({
                   : hasFailedCheck
                     ? "Some recordings could not be checked. Retry the voice check below, or continue with your class notes."
                     : hasServiceBlock
-                      ? pendingCopy.voice.serviceBlockedSummary
+                      ? reviewVoiceCopy.voice.serviceBlockedSummary
                       : hasUnavailableExcerpts
                         ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
                         : "Your voice choices are saved. The class notes below reflect those choices."}
@@ -475,10 +475,10 @@ function Analysis({
         </p>
       ) : null}
       {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">{pendingCopy.voice.partialCoverage}</p>
+        <p className="preview-muted">{reviewVoiceCopy.voice.partialCoverage}</p>
       ) : null}
       {isServiceBlocked(analysis) ? (
-        <Status>{pendingCopy.voice.serviceBlockedDetail}</Status>
+        <Status>{reviewVoiceCopy.voice.serviceBlockedDetail}</Status>
       ) : analysis.reason?.startsWith("voice_correction_") ? (
         <Status tone="error">
           Speakers were prepared, but spoken mistakes could not be checked. You can confirm your

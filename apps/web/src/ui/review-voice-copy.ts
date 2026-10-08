@@ -1,9 +1,9 @@
 /**
- * Interface text added after the design handoff and not yet approved by the product owner.
- * Every entry is registered verbatim in docs/design/UI_COPY_PENDING.md; pending-copy.test.ts
- * keeps the two in step. Once approved, an entry moves to its screen's copy and the register.
+ * Processing-review and class voice-check text approved by the product owner on 2026-10-08
+ * (D48). Every entry is registered verbatim in docs/design/UI_COPY_2026-10-08.md;
+ * review-voice-copy.test.ts keeps the two in step, so wording changes need a new approval.
  */
-export const pendingCopy = {
+export const reviewVoiceCopy = {
   processingReview: {
     // A review is already recorded; asking to "request a review below" again would mislead.
     recorded:
