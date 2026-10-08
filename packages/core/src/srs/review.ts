@@ -209,12 +209,17 @@ export async function getReviewQueue(
     studySet: options.studySet,
   });
   const now = options.now ?? new Date();
-  const [cards, rows, settings, local] = await Promise.all([
+  // A rejected ownership read must not leave other reads queued when the caller closes its pool.
+  const reads = await Promise.allSettled([
     listCards(db, ctx, { sessionId: selection.sessionId, status: "active" }),
     db.selectFrom("srs.card_state").selectAll().where("user_id", "=", ctx.userId).execute(),
     getReviewSettings(db, ctx),
     dayContext(db, ctx, now),
   ]);
+  const cards = settledRead(reads[0]);
+  const rows = settledRead(reads[1]);
+  const settings = settledRead(reads[2]);
+  const local = settledRead(reads[3]);
   const events = await todayEvents(db, ctx, local.day);
   const newRemaining = Math.max(
     0,
@@ -281,6 +286,10 @@ export async function getReviewQueue(
     timezone: local.timezone,
     settings,
   };
+}
+function settledRead<T>(result: PromiseSettledResult<T>): T {
+  if (result.status === "rejected") throw result.reason;
+  return result.value;
 }
 export async function submitReview(
   db: Database,
