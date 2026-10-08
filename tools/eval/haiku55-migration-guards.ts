@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rmdir, writeFile } from "node:fs/promises";
 import { z } from "../../packages/core/node_modules/zod";
 
 export const migrationControls = {
@@ -8,8 +8,11 @@ export const migrationControls = {
   maximumHttpRequests: 56,
   softUsd: 0.5,
   hardUsd: 0.75,
-  // Every migration QA round together, including the 0.1648530 USD spent before the ledger.
-  cumulativeHardUsd: 0.5,
+  // Every migration QA round together, including all earlier spend (0.2370516 USD before the
+  // owner-approved cross-model comparison, which may add at most 5 USD).
+  cumulativeHardUsd: 5.237,
+  // A comparison round runs every case for decision data; it never stops on a first-pass gate.
+  comparison: { maximumPaidResponses: 44, maximumHttpRequests: 88, hardUsd: 1.6 },
   responseBytes: 1048576,
   // Captured regional endpoints can cost 10% more than the main model catalog.
   catalogMaximumRateMultiplier: 1.1,
@@ -42,17 +45,18 @@ export function assertMigrationDispatchAllowed(
   reserveUsd: number,
   generationsInCase: number,
   limits?: { maximumPaidResponses: number; maximumHttpRequests: number },
+  mode: "adoption" | "comparison" = "adoption",
 ) {
-  const maximumPaidResponses =
-    limits?.maximumPaidResponses ?? migrationControls.maximumPaidResponses;
-  const maximumHttpRequests = limits?.maximumHttpRequests ?? migrationControls.maximumHttpRequests;
+  const bounds = mode === "comparison" ? migrationControls.comparison : migrationControls;
+  const maximumPaidResponses = limits?.maximumPaidResponses ?? bounds.maximumPaidResponses;
+  const maximumHttpRequests = limits?.maximumHttpRequests ?? bounds.maximumHttpRequests;
   if (
     !Number.isInteger(maximumPaidResponses) ||
     maximumPaidResponses < 1 ||
-    maximumPaidResponses > migrationControls.maximumPaidResponses ||
+    maximumPaidResponses > bounds.maximumPaidResponses ||
     !Number.isInteger(maximumHttpRequests) ||
     maximumHttpRequests < 1 ||
-    maximumHttpRequests > migrationControls.maximumHttpRequests
+    maximumHttpRequests > bounds.maximumHttpRequests
   )
     throw new Error("invalid_dispatch_limits");
   if (requests.some((entry) => entry.state === "started" || entry.state === "uncertain"))
@@ -64,8 +68,7 @@ export function assertMigrationDispatchAllowed(
     throw new Error("case_generation_limit");
   if (!Number.isFinite(costUsd) || costUsd < 0 || !Number.isFinite(reserveUsd) || reserveUsd <= 0)
     throw new Error("invalid_cost_reservation");
-  if (costUsd + reserveUsd > migrationControls.hardUsd)
-    throw new Error("hard_budget_before_dispatch");
+  if (costUsd + reserveUsd > bounds.hardUsd) throw new Error("hard_budget_before_dispatch");
 }
 
 const catalogModelSchema = z.object({
@@ -217,6 +220,8 @@ export const migrationLedgerSchema = z.strictObject({
       directory: z.string().min(1),
       fixtureSet: z.string().min(1),
       spentUsd: z.number().nonnegative(),
+      // Reserve of this round's dispatch in progress; parallel rounds count it before dispatch.
+      inFlightUsd: z.number().nonnegative().optional(),
       status: z.enum(["running", "stopped", "completed"]),
     }),
   ),
@@ -247,7 +252,46 @@ export function migrationLedgerRound(
 
 export function assertMigrationCumulativeBudget(ledger: MigrationLedger, reserveUsd: number) {
   const spent =
-    ledger.priorUnledgeredUsd + ledger.rounds.reduce((total, round) => total + round.spentUsd, 0);
+    ledger.priorUnledgeredUsd +
+    ledger.rounds.reduce((total, round) => total + round.spentUsd + (round.inFlightUsd ?? 0), 0);
   if (!Number.isFinite(spent) || spent + reserveUsd > migrationControls.cumulativeHardUsd)
     throw new Error("cumulative_budget_before_dispatch");
+}
+
+/**
+ * Serialises every ledger read-modify-write across concurrent rounds with an exclusive lock
+ * directory, so parallel rounds can neither lose spend nor jointly exceed the cumulative cap.
+ */
+export async function withMigrationLedger<T>(
+  path: string,
+  update: (ledger: MigrationLedger) => T,
+): Promise<T> {
+  const lock = `${path}.lock`;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await mkdir(lock);
+      break;
+    } catch (error) {
+      if (!(error && typeof error === "object" && "code" in error && error.code === "EEXIST"))
+        throw error;
+      if (attempt >= 600) throw new Error("ledger_lock_timeout");
+      await new Promise((done) => setTimeout(done, 100));
+    }
+  }
+  try {
+    const ledger = migrationLedgerSchema.parse(
+      (await readMigrationRecordedJson(path)) ?? {
+        version: 1,
+        priorUnledgeredUsd: migrationUnledgeredPriorUsd,
+        rounds: [],
+      },
+    );
+    const result = update(ledger);
+    const temporary = `${path}.tmp`;
+    await writeFile(temporary, JSON.stringify(ledger, null, 2));
+    await rename(temporary, path);
+    return result;
+  } finally {
+    await rmdir(lock);
+  }
 }

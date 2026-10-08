@@ -55,14 +55,19 @@ import {
   migrationControls,
   migrationInitialRecovery,
   migrationLedgerRound,
-  migrationLedgerSchema,
   migrationRequestReserve,
   migrationRequestSchema,
-  migrationUnledgeredPriorUsd,
   readMigrationRecordedJson,
   selectMigrationDiagnosticCases,
+  withMigrationLedger,
 } from "./haiku55-migration-guards";
 import { assessMigrationQualityReview } from "./haiku55-migration-quality";
+import {
+  comparisonCandidates,
+  comparisonSettings,
+  zdrEndpointMaximumRates,
+} from "./model-comparison-candidates";
+import { comparisonFixtureSetId, comparisonFixtures } from "./model-comparison-fixtures";
 
 // This explicit CLI is never invoked by CI/Vitest and never touches database or learner data.
 const option = (name: string, fallback?: string) => {
@@ -91,10 +96,19 @@ const holdoutSets: Record<
   [holdoutFixtureSetId]: { fixtures: holdoutMigrationFixtures, repeatIds: holdoutRepeatIds },
   [holdout3FixtureSetId]: { fixtures: holdout3MigrationFixtures, repeatIds: holdout3RepeatIds },
 };
+const comparison = fixtureSet === comparisonFixtureSetId;
 assert.ok(
-  fixtureSet === "migration-14" || fixtureSet in holdoutSets,
-  `Unknown fixture set; use migration-14, ${Object.keys(holdoutSets).join(" or ")}`,
+  fixtureSet === "migration-14" || comparison || fixtureSet in holdoutSets,
+  `Unknown fixture set; use migration-14, ${comparisonFixtureSetId} or ${Object.keys(holdoutSets).join(" or ")}`,
 );
+const candidateId = option("--candidate");
+const candidate = candidateId === undefined ? undefined : comparisonCandidates[candidateId];
+assert.equal(
+  candidate !== undefined,
+  comparison,
+  "A comparison round names exactly one predeclared candidate; other rounds use production config",
+);
+const zdrEndpointPath = option("--zdr-endpoint-file");
 const ledgerPath = resolve("artifacts/verification/haiku55-evaluation-ledger.json");
 const qualityReviewPath = option("--quality-review-file");
 if (qualityReviewPath) {
@@ -164,16 +178,21 @@ if (qualityReviewPath) {
   process.exit(assessed.adoptionEligible ? 0 : 1);
 }
 const configText = await readFile("config/openrouter-defaults.json", "utf8");
-const settings = providerSettingsSchema.parse(JSON.parse(configText));
+const productionSettings = providerSettingsSchema.parse(JSON.parse(configText));
+// A comparison candidate changes only model, effort, physical cap and sampling.
+const settings = providerSettingsSchema.parse(
+  candidate && candidateId
+    ? comparisonSettings(productionSettings, candidateId, candidate)
+    : productionSettings,
+);
 const directJsonMode =
   settings.structuredModelOverrides?.[settings.llmModel]?.structuredOutputMode === "json_object";
 assert.ok(
   directJsonMode,
   "Final adoption evaluation requires the intentionally configured direct JSON transport",
 );
-assert.equal(
-  settings.llmModel,
-  "anthropic/claude-haiku-5.5",
+assert.ok(
+  comparison || settings.llmModel === "anthropic/claude-haiku-5.5",
   "Evaluate the actual migration production config, not an injected candidate",
 );
 const historical = z
@@ -181,9 +200,11 @@ const historical = z
   .parse(await json("tools/eval/haiku55-migration-regression-fixtures.json"));
 const holdoutSet = holdoutSets[fixtureSet];
 const holdout = holdoutSet !== undefined;
-const fixtures = holdout
-  ? holdoutSet.fixtures()
-  : [...historical.cases, ...freshMigrationFixtures()];
+const fixtures = comparison
+  ? comparisonFixtures()
+  : holdout
+    ? holdoutSet.fixtures()
+    : [...historical.cases, ...freshMigrationFixtures()];
 const repeated = (ids: readonly string[], source: typeof fixtures) =>
   ids.map((id) => {
     const entry = source.find((fixture) => fixture.id === id);
@@ -191,21 +212,26 @@ const repeated = (ids: readonly string[], source: typeof fixtures) =>
     return entry;
   });
 const originalSchedule = (
-  holdout
-    ? [...fixtures, ...repeated(holdoutSet.repeatIds, fixtures)]
-    : [
-        ...historical.cases,
-        ...repeated(historical.repeatCaseIds, historical.cases),
-        ...freshMigrationFixtures(),
-      ]
+  comparison
+    ? fixtures
+    : holdout
+      ? [...fixtures, ...repeated(holdoutSet.repeatIds, fixtures)]
+      : [
+          ...historical.cases,
+          ...repeated(historical.repeatCaseIds, historical.cases),
+          ...freshMigrationFixtures(),
+        ]
 ).map((fixture, ordinal) => ({
   caseId: `${fixture.id}-${ordinal + 1}`,
   fixture,
-  repeat: holdout ? ordinal >= 12 : ordinal >= 8 && ordinal < 10,
+  repeat: comparison ? false : holdout ? ordinal >= 12 : ordinal >= 8 && ordinal < 10,
 }));
-assert.equal(originalSchedule.length, 14);
+assert.equal(originalSchedule.length, comparison ? 20 : 14);
 const diagnosticIds = option("--diagnostic-only-case-ids");
-assert.ok(!holdout || diagnosticIds === undefined, "Holdout rounds have no diagnostic subset");
+assert.ok(
+  !(holdout || comparison) || diagnosticIds === undefined,
+  "Holdout and comparison rounds have no diagnostic subset",
+);
 const { diagnosticOnly, schedule } = selectMigrationDiagnosticCases(
   originalSchedule,
   diagnosticIds,
@@ -213,6 +239,7 @@ const { diagnosticOnly, schedule } = selectMigrationDiagnosticCases(
 const dispatchLimits = diagnosticOnly
   ? { maximumPaidResponses: 4, maximumHttpRequests: 4 }
   : undefined;
+const dispatchMode = comparison ? ("comparison" as const) : ("adoption" as const);
 const git = (args: string[]) =>
   execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 const paths = git([
@@ -231,6 +258,8 @@ for (const path of [
   "tools/eval/haiku55-migration-fixtures.ts",
   "tools/eval/haiku55-holdout-fixtures.ts",
   "tools/eval/haiku55-holdout3-fixtures.ts",
+  "tools/eval/model-comparison-candidates.ts",
+  "tools/eval/model-comparison-fixtures.ts",
   "tools/eval/haiku55-migration-gold.ts",
   "tools/eval/haiku55-migration-guards.ts",
   "tools/eval/haiku55-migration-quality.ts",
@@ -262,6 +291,10 @@ const preparedCases = schedule.map(({ caseId, fixture, repeat }) => {
   };
 });
 const catalog = catalogPath ? await json(resolve(catalogPath)) : undefined;
+const zdrEndpoints = zdrEndpointPath ? await json(resolve(zdrEndpointPath)) : undefined;
+assert.ok(!comparison || zdrEndpoints, "A comparison round needs the captured ZDR endpoint list");
+const comparisonRates =
+  comparison && zdrEndpoints ? zdrEndpointMaximumRates(zdrEndpoints, settings.llmModel) : undefined;
 const endpointCatalog = endpointPath ? await json(resolve(endpointPath)) : undefined;
 let primaryReference:
   | { freeze: string; completedCases: number; firstGenerationPasses: number }
@@ -344,28 +377,49 @@ const plan = {
   fixtureSet,
   nodeVersion: process.version,
   expectedKeysNeverSent: true,
-  evaluationProvenance: holdout
+  ...(comparison
     ? {
-        holdoutFixtureIds: fixtures.map((fixture) => fixture.id),
-        holdoutRepeatIds: holdoutSet.repeatIds,
-        writtenAfterFailedFourteenCaseRound: true,
-        disjointFromRegressionFixturesAndPromptExamples: true,
-        everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
-        automaticGoldChecksGateAdoption: true,
-        humanTeacherCertificationClaimed: false,
-        blindModelComparisonClaimed: false,
+        comparison: {
+          candidateId,
+          candidate,
+          zdrEndpointMaximumRates: comparisonRates,
+          zdrEndpointHash: sha256Hex(canonicalJson(zdrEndpoints)),
+          firstPassGateStopsRound: false,
+          blindReviewRequired: true,
+        },
       }
-    : {
-        historicalFixtureIds: historical.cases.map((fixture) => fixture.id),
-        historicalRepeatIds: historical.repeatCaseIds,
-        predeclaredAdditionalFixtureIds: ["M01", "M02", "M03", "M04"],
-        additionalFixturesExposedInStoppedPriorRound: ["M01", "M02"],
-        additionalFixturesStillUnseenAtThisFreeze: ["M03", "M04"],
-        allFourteenExposedInEarlierRounds: true,
+    : {}),
+  evaluationProvenance: comparison
+    ? {
+        comparisonFixtureIds: fixtures.map((fixture) => fixture.id),
+        explanationLanguages: [...new Set(fixtures.map((fixture) => fixture.explanationLanguage))],
+        writtenBeforeAnyCandidateRan: true,
+        sameContractTransportAndValidationForEveryCandidate: true,
         everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
         humanTeacherCertificationClaimed: false,
-        blindModelComparisonClaimed: false,
-      },
+      }
+    : holdout
+      ? {
+          holdoutFixtureIds: fixtures.map((fixture) => fixture.id),
+          holdoutRepeatIds: holdoutSet.repeatIds,
+          writtenAfterFailedFourteenCaseRound: true,
+          disjointFromRegressionFixturesAndPromptExamples: true,
+          everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
+          automaticGoldChecksGateAdoption: true,
+          humanTeacherCertificationClaimed: false,
+          blindModelComparisonClaimed: false,
+        }
+      : {
+          historicalFixtureIds: historical.cases.map((fixture) => fixture.id),
+          historicalRepeatIds: historical.repeatCaseIds,
+          predeclaredAdditionalFixtureIds: ["M01", "M02", "M03", "M04"],
+          additionalFixturesExposedInStoppedPriorRound: ["M01", "M02"],
+          additionalFixturesStillUnseenAtThisFreeze: ["M03", "M04"],
+          allFourteenExposedInEarlierRounds: true,
+          everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
+          humanTeacherCertificationClaimed: false,
+          blindModelComparisonClaimed: false,
+        },
   model: settings.llmModel,
   directJsonMode,
   nativeSchemaAcceptanceClaimed: false,
@@ -429,17 +483,17 @@ const state = stateSchema.parse(
 );
 assert.equal(state.freeze, freeze, "Never resume under changed production code or test fixtures");
 assert.ok(!state.stopped, `Evaluation stopped: ${state.stopReason}`);
-const ledger = migrationLedgerSchema.parse(
-  (await readMigrationRecordedJson(ledgerPath)) ?? {
-    version: 1,
-    priorUnledgeredUsd: migrationUnledgeredPriorUsd,
-    rounds: [],
-  },
-);
 const relativeDirectory = directory.replace(resolve("."), "").replace(/^[\\/]+/, "");
-const round = migrationLedgerRound(ledger, freeze, relativeDirectory, fixtureSet);
-assert.equal(round.spentUsd, state.spentUsd, "Ledger and round state disagree; recover offline");
-await save(ledgerPath, ledger);
+const roundSpent = await withMigrationLedger(
+  ledgerPath,
+  (ledger) => migrationLedgerRound(ledger, freeze, relativeDirectory, fixtureSet).spentUsd,
+);
+assert.equal(roundSpent, state.spentUsd, "Ledger and round state disagree; recover offline");
+const thisRound = (ledger: Parameters<Parameters<typeof withMigrationLedger>[1]>[0]) => {
+  const entry = ledger.rounds.find((value) => value.freeze === freeze);
+  assert.ok(entry, "Ledger round disappeared");
+  return entry;
+};
 assert.ok(
   !state.requests.some((request) => request.state === "started" || request.state === "uncertain"),
   "Unresolved dispatch must be recovered offline, never retried",
@@ -457,9 +511,15 @@ assert.ok(credential, "Existing API credential unavailable");
 const key = credential;
 const persist = async () => {
   await save(statePath, state);
-  round.spentUsd = state.spentUsd;
-  round.status = state.stopped ? "stopped" : "running";
-  await save(ledgerPath, ledger);
+  await withMigrationLedger(ledgerPath, (ledger) => {
+    const entry = thisRound(ledger);
+    entry.spentUsd = state.spentUsd;
+    entry.status = state.stopped ? "stopped" : "running";
+    // A dispatch that is still started keeps its reserve counted against the shared cap.
+    entry.inFlightUsd = state.requests
+      .filter((request) => request.state === "started")
+      .reduce((total, request) => total + request.reserveUsd, 0);
+  });
 };
 const stopRequested = () =>
   readFile(resolve(directory, "STOP_REQUESTED"), "utf8")
@@ -507,11 +567,12 @@ for (const task of schedule) {
     !state.requests.some((request) => request.caseId === task.caseId),
     "A captured dispatch without final result requires offline recovery, never repeating the call",
   );
-  const boundaryFailure = diagnosticOnly
-    ? state.results.some((result) => result.unexpectedTransportFallback)
-      ? "unexpected_transport_gate_failed"
-      : undefined
-    : migrationAutomaticGateFailure(state.results);
+  const boundaryFailure =
+    diagnosticOnly || comparison
+      ? state.results.some((result) => result.unexpectedTransportFallback)
+        ? "unexpected_transport_gate_failed"
+        : undefined
+      : migrationAutomaticGateFailure(state.results);
   if (boundaryFailure || state.stopped || (await stopRequested())) {
     state.stopped = true;
     state.stopReason ??= boundaryFailure ?? "operator_requested";
@@ -557,17 +618,27 @@ for (const task of schedule) {
       data_collection: "deny",
       require_parameters: true,
     });
-    assert.ok(
-      !["temperature", "top_p", "top_k"].some((name) => Object.hasOwn(body, name)),
-      "5.5 sampling parameters must be omitted",
-    );
     const overrides = settings.structuredModelOverrides?.[settings.llmModel];
+    const expectsTemperature =
+      settings.structuredTemperature !== undefined &&
+      !overrides?.omitTemperature &&
+      overrides?.reasoningEffort === undefined;
+    assert.ok(
+      !["top_p", "top_k"].some((name) => Object.hasOwn(body, name)) &&
+        (expectsTemperature
+          ? body.temperature === settings.structuredTemperature
+          : !Object.hasOwn(body, "temperature")),
+      "Sampling must match the candidate exactly",
+    );
     assert.equal(
       body.max_tokens,
       overrides?.maxOutputTokens ?? settings.maxOutputTokens,
       "Physical token cap must come from the real production adapter",
     );
-    assert.deepEqual(body.reasoning, { effort: "low" });
+    assert.deepEqual(
+      body.reasoning,
+      overrides?.reasoningEffort ? { effort: overrides.reasoningEffort } : undefined,
+    );
     unexpectedTransport ||= body.response_format.type !== "json_object";
     const serialized = String(init?.body);
     assert.ok(
@@ -575,7 +646,16 @@ for (const task of schedule) {
         Buffer.byteLength(serialized, "utf8") <= overrides.maxRequestBytes,
       "Physical request bytes must fit the actual production cap",
     );
-    const reserve = migrationRequestReserve(catalog, body.model, serialized, body.max_tokens);
+    // Comparison reserves use the most expensive ZDR endpoint price, never a list price.
+    const reserve = comparisonRates
+      ? {
+          reserveUsd:
+            Buffer.byteLength(serialized, "utf8") * comparisonRates.promptRate +
+            body.max_tokens * comparisonRates.outputRate,
+          inputTokenCeiling: Buffer.byteLength(serialized, "utf8"),
+          ...comparisonRates,
+        }
+      : migrationRequestReserve(catalog, body.model, serialized, body.max_tokens);
     try {
       assertMigrationDispatchAllowed(
         state.requests,
@@ -583,8 +663,12 @@ for (const task of schedule) {
         reserve.reserveUsd,
         calls,
         dispatchLimits,
+        dispatchMode,
       );
-      assertMigrationCumulativeBudget(ledger, reserve.reserveUsd);
+      await withMigrationLedger(ledgerPath, (ledger) => {
+        assertMigrationCumulativeBudget(ledger, reserve.reserveUsd);
+        thisRound(ledger).inFlightUsd = reserve.reserveUsd;
+      });
     } catch (error) {
       state.stopped = true;
       state.stopReason = failure(error);
@@ -700,7 +784,11 @@ for (const task of schedule) {
       await save(resolve(dossier, "receipts.json"), receipts);
       // The cost is recorded first; a receipt above the reserve or token cap stops the round.
       if (paidOverBound) throw new Error("paid_receipt_exceeds_reserve_or_token_cap");
-      if (response.ok && metadata.model !== settings.llmModel)
+      if (
+        response.ok &&
+        metadata.model !== settings.llmModel &&
+        !metadata.model?.startsWith(`${settings.llmModel}-`)
+      )
         throw new Error("reported_model_does_not_match_candidate");
       const content = metadata.choices?.[0]?.message?.content;
       if (response.ok && typeof content === "string") {
@@ -918,17 +1006,18 @@ for (const task of schedule) {
   process.stdout.write(
     `${JSON.stringify({ ...finalResult, projection: undefined, spentUsd: state.spentUsd })}\n`,
   );
-  const gateFailure = diagnosticOnly
-    ? unexpectedTransport
-      ? "unexpected_transport_gate_failed"
-      : undefined
-    : migrationAutomaticGateFailure(state.results);
+  const gateFailure =
+    diagnosticOnly || comparison
+      ? unexpectedTransport
+        ? "unexpected_transport_gate_failed"
+        : undefined
+      : migrationAutomaticGateFailure(state.results);
   if (gateFailure && !state.stopped) {
     state.stopped = true;
     state.stopReason = gateFailure;
     await persist();
   }
-  if (state.spentUsd >= migrationControls.softUsd) {
+  if (!comparison && state.spentUsd >= migrationControls.softUsd) {
     state.stopped = true;
     state.stopReason = "soft_budget_review_required";
     await persist();
@@ -966,8 +1055,12 @@ const summary = {
       total + (typeof result.jsonClosersCompleted === "number" ? result.jsonClosersCompleted : 0),
     0,
   ),
-  cumulativeMigrationQaUsd:
-    ledger.priorUnledgeredUsd + ledger.rounds.reduce((total, entry) => total + entry.spentUsd, 0),
+  ...(comparison ? { comparisonCandidate: candidateId, comparisonModel: settings.llmModel } : {}),
+  cumulativeMigrationQaUsd: await withMigrationLedger(
+    ledgerPath,
+    (ledger) =>
+      ledger.priorUnledgeredUsd + ledger.rounds.reduce((total, entry) => total + entry.spentUsd, 0),
+  ),
   stopped: state.stopped,
   stopReason: state.stopReason,
   unresolved: state.requests.filter(
@@ -978,10 +1071,11 @@ const summary = {
   controlInterruptions: state.results.filter((result) => result.controlInterruption),
 };
 await save(resolve(directory, "summary.json"), summary);
-round.status = state.stopped
-  ? "stopped"
-  : state.results.length === schedule.length
-    ? "completed"
-    : "running";
-await save(ledgerPath, ledger);
+await withMigrationLedger(ledgerPath, (ledger) => {
+  thisRound(ledger).status = state.stopped
+    ? "stopped"
+    : state.results.length === schedule.length
+      ? "completed"
+      : "running";
+});
 if (state.stopped || state.results.length !== schedule.length) process.exitCode = 1;
