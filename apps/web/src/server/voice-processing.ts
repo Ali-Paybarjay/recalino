@@ -1,7 +1,13 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import type { Database } from "@recalino/core/db";
-import { errors, type LearnerContext, readOwnedObject } from "@recalino/core/plt";
+import {
+  AppError,
+  createLogger,
+  errors,
+  type LearnerContext,
+  readOwnedObject,
+} from "@recalino/core/plt";
 import { scheduleVoiceReanalysis, type VoiceDiarizer, voiceAnalysisJob } from "@recalino/core/proc";
 import { liveTemporaryAudioObject } from "@recalino/core/src";
 import { getAiProvider } from "./ai";
@@ -10,8 +16,29 @@ import { getObjectStore } from "./storage";
 import { loadVoiceEngine } from "./voice-engine";
 import { remapVoiceSegments, voiceSourceWindows } from "./voice-source-windows";
 
+const SAFE_CODE = /^[a-z][a-z0-9_]{1,63}$/;
+
+/**
+ * One allow-listed diagnostic code per failed check (PRD-PRIV-06): never a path, URL, native
+ * message, transcript text or anything derived from audio. The stored reason stays coarse.
+ */
+export function voiceFailureCode(error: unknown): string {
+  if (error instanceof AppError) {
+    const details = (error.details ?? {}) as { fields?: Record<string, unknown>; reason?: unknown };
+    for (const key of ["voice", "audio"]) {
+      const value = details.fields?.[key];
+      if (Array.isArray(value) && typeof value[0] === "string" && SAFE_CODE.test(value[0]))
+        return value[0];
+    }
+    if (typeof details.reason === "string" && SAFE_CODE.test(details.reason)) return details.reason;
+    return SAFE_CODE.test(error.code) ? error.code : "app_error";
+  }
+  if (error instanceof Error && /^voice_[a-z0-9_]{1,58}$/.test(error.message)) return error.message;
+  return "unexpected";
+}
+
 /** The full original establishes one speaker namespace; five-minute STT chunks do not. */
-export const diarizeSourceVoice: VoiceDiarizer = async ({ db, ctx, source }) => {
+const diarizeOriginal: VoiceDiarizer = async ({ db, ctx, source }) => {
   const store = getObjectStore();
   if (!store || !source.objectId || !source.durationMs)
     throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
@@ -33,11 +60,38 @@ export const diarizeSourceVoice: VoiceDiarizer = async ({ db, ctx, source }) => 
     return {
       ...result,
       segments: remapVoiceSegments(result.segments, pcm.windows),
-      ...(selection.sampled ? { sampled: true } : {}),
+      // Skipped or shortened excerpts are disclosed exactly like distributed sampling.
+      ...(selection.sampled || pcm.partial ? { sampled: true } : {}),
     };
   } finally {
     samples?.fill(0);
     bytes.fill(0);
+  }
+};
+
+export const diarizeSourceVoice: VoiceDiarizer = async (input) => {
+  const log = createLogger();
+  const started = performance.now();
+  try {
+    const result = await diarizeOriginal(input);
+    log("info", "voice_check_diarized", {
+      code: result.sampled ? "sampled_audio" : "complete_audio",
+      duration_ms: Math.round(performance.now() - started),
+      request_id: input.ctx.requestId,
+      user_id: input.ctx.userId,
+      module: "voc",
+    });
+    return result;
+  } catch (error) {
+    log("warn", "voice_check_failed", {
+      code: voiceFailureCode(error),
+      error_name: error instanceof Error ? error.name : "unknown",
+      duration_ms: Math.round(performance.now() - started),
+      request_id: input.ctx.requestId,
+      user_id: input.ctx.userId,
+      module: "voc",
+    });
+    throw error;
   }
 };
 

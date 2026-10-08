@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { errors } from "../plt";
 import type { RunSource } from "./contracts";
 import {
   alignVoiceUtterances,
@@ -7,6 +8,7 @@ import {
   scopedVoiceSpeakerId,
   type VoiceDiarization,
   validateVoiceCorrections,
+  voicePreparationFailure,
 } from "./voice-processing";
 
 const sourceId = "a971b7b0-ae80-47aa-80a3-ec6bd66782e2";
@@ -287,5 +289,48 @@ describe("correction explanation language", () => {
         "es",
       ),
     ).toThrow();
+  });
+});
+
+// FR-VOC-002, FR-VOC-008
+describe("acoustic check failure reasons", () => {
+  const audio = { ...source(), objectId: "4b0f4d0e-24a8-4d0a-a3c1-bb33a1a7a3d1" };
+  it("stores a precise failed reason for unusable audio and native worker outcomes", () => {
+    expect(
+      voicePreparationFailure(errors.validationFailed({ audio: ["voice_audio_unusable"] }), audio),
+    ).toBe("voice_audio_unusable");
+    for (const code of [
+      "voice_inference_failed",
+      "voice_worker_interrupted",
+      "voice_diarization_output_invalid",
+      "voice_speech_too_short",
+    ])
+      expect(voicePreparationFailure(new Error(code), audio)).toBe("voice_inference_failed");
+  });
+  it("keeps the existing reasons for expiry, integrity, timeouts and unknown failures", () => {
+    expect(
+      voicePreparationFailure(
+        errors.validationFailed({ voice: ["original_audio_unavailable"] }),
+        audio,
+      ),
+    ).toBe("original_audio_unavailable");
+    expect(
+      voicePreparationFailure(
+        errors.validationFailed({ voice: ["source_integrity_mismatch"] }),
+        audio,
+      ),
+    ).toBe("voice_source_integrity_mismatch");
+    expect(voicePreparationFailure(new Error("voice_inference_timeout"), audio)).toBe(
+      "voice_inference_timeout",
+    );
+    expect(voicePreparationFailure(new Error("voice_models_not_configured"), audio)).toBe(
+      "voice_engine_unavailable",
+    );
+    expect(voicePreparationFailure(new Error("something native"), audio)).toBe(
+      "voice_analysis_failed",
+    );
+    expect(voicePreparationFailure(new Error("voice_inference_failed"), source())).toBe(
+      "original_audio_unavailable",
+    );
   });
 });

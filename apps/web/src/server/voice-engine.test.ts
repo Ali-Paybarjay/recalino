@@ -7,6 +7,7 @@ import {
   loadVoiceEngine,
   poolEmbeddings,
   validateVoicePcm,
+  workerFailureCode,
 } from "./voice-engine";
 import { embeddingSpans, qualifySegments } from "./voice-engine-quality.mjs";
 
@@ -103,5 +104,19 @@ describe("local speaker engine trust boundaries", () => {
       vi.unstubAllEnvs();
       await rm(directory, { recursive: true, force: true });
     }
+  });
+  // FR-VOC-002, PRD-PRIV-06
+  it("passes only the worker's own fixed failure codes across the thread boundary", () => {
+    expect(workerFailureCode("voice_diarization_output_invalid")).toBe(
+      "voice_diarization_output_invalid",
+    );
+    expect(workerFailureCode("voice_speech_too_short")).toBe("voice_speech_too_short");
+    for (const leaked of [
+      "/var/task/tools/voice/models/model.onnx: cannot open",
+      "voice_made_up_code",
+      undefined,
+      42,
+    ])
+      expect(workerFailureCode(leaked)).toBe("voice_inference_failed");
   });
 });

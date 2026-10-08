@@ -180,9 +180,11 @@ export async function saveVoiceAnalysis(
             ? "unverified"
             : [
                   "voice_analysis_failed",
+                  "voice_inference_failed",
                   "voice_inference_timeout",
                   "voice_engine_unavailable",
                   "voice_decoder_timeout",
+                  "voice_audio_unusable",
                   "voice_source_integrity_mismatch",
                 ].includes(input.reason ?? "")
               ? "failed"

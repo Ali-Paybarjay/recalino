@@ -51,17 +51,35 @@ export function scopedVoiceSpeakerId(sourceId: string, namespace: string, label:
 const validInterval = (start: number, end: number) =>
   Number.isSafeInteger(start) && Number.isSafeInteger(end) && start >= 0 && end > start;
 
-function voicePreparationFailure(error: unknown, source: RunSource): string {
+/** Native worker outcomes; each keeps the stored reason precise without exposing native text. */
+const VOICE_INFERENCE_FAILURES = new Set([
+  "voice_inference_failed",
+  "voice_worker_interrupted",
+  "voice_runtime_version_mismatch",
+  "voice_model_sample_rate_mismatch",
+  "voice_diarization_output_invalid",
+  "voice_speech_too_short",
+  "voice_embedding_dimension_mismatch",
+  "voice_embedding_invalid",
+  "voice_embedding_empty",
+  "voice_embedding_pool_invalid",
+]);
+
+export function voicePreparationFailure(error: unknown, source: RunSource): string {
   const details = z
     .object({
-      fields: z.object({ voice: z.array(z.string()).optional() }).optional(),
+      fields: z
+        .object({ voice: z.array(z.string()).optional(), audio: z.array(z.string()).optional() })
+        .optional(),
       reason: z.string().optional(),
     })
     .safeParse(error instanceof AppError ? error.details : undefined);
   const fields = details.success ? (details.data.fields?.voice ?? []) : [];
+  const audio = details.success ? (details.data.fields?.audio ?? []) : [];
   if (!source.objectId || fields.includes("original_audio_unavailable"))
     return "original_audio_unavailable";
   if (fields.includes("source_integrity_mismatch")) return "voice_source_integrity_mismatch";
+  if (audio.includes("voice_audio_unusable")) return "voice_audio_unusable";
   if (details.success && details.data.reason === "audio_decoder_timeout")
     return "voice_decoder_timeout";
   if (error instanceof Error) {
@@ -74,6 +92,7 @@ function voicePreparationFailure(error: unknown, source: RunSource): string {
       ].includes(error.message)
     )
       return "voice_engine_unavailable";
+    if (VOICE_INFERENCE_FAILURES.has(error.message)) return "voice_inference_failed";
   }
   return "voice_analysis_failed";
 }
