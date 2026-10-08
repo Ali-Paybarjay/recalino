@@ -1553,6 +1553,32 @@ describe("AIP direct JSON closer completion and rejection diagnostics", () => {
     expect(diagnostic).not.toContain("private");
   });
 
+  it("keeps an invalid discriminator as the diagnostic when no branch issue explains it", async () => {
+    const union = z.strictObject({
+      items: z.array(
+        z.discriminatedUnion("type", [
+          z.strictObject({ type: z.literal("lexical"), text: z.string() }),
+          z.strictObject({ type: z.literal("grammar"), text: z.string() }),
+        ]),
+      ),
+    });
+    const error = await new OpenRouterProvider(
+      "synthetic-key",
+      jsonSettings,
+      respond('{"items":[{"type":"expression","text":"x"}]}'),
+    )
+      .structured({
+        operationKey: "synthetic-union",
+        model,
+        schema: union,
+        schemaName: "class_knowledge_content",
+        system: "Synthetic",
+        input: "Synthetic",
+      })
+      .catch((caught: unknown) => caught);
+    expect((error as ProviderError).diagnostic).toBe("zod:invalid_union@items.0.type");
+  });
+
   it("omits sampling for a configured or reasoning override and keeps it otherwise", async () => {
     const bodies: Record<string, unknown>[] = [];
     const request = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => {

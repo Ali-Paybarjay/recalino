@@ -1599,7 +1599,6 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
   it.each([
     ["enjoy + -ing form", "I enjoy cooking for my friends.", "I ______ ______ for my friends."],
     ["stop + -ing", "He stopped smoking.", "He ______ ______."],
-    ["do homework", "I do my homework after dinner.", "I ______ my ______ after dinner."],
     ["look forward to", "I look forward to meeting you.", "I ______ you."],
   ])("rejects a gap for %s that also hides words outside the target", (en, full, gap) => {
     expect(lexicalGapProblem(en, full, gap)).toBe("study_gap_overhidden");
@@ -1620,6 +1619,9 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
       ["make a mistake", "Everyone makes mistakes sometimes.", "Everyone ______ sometimes."],
       ["kit sth out", "We need to kit the office out.", "We need to ______ the office ______."],
       ["a lot of", "A lot of people came.", "______ people came."],
+      // Several blanks may split one multiword target without hiding anything else.
+      ["give up", "Please give up sugar.", "Please ______ ______ sugar."],
+      ["do homework", "I do my homework after dinner.", "I ______ my ______ after dinner."],
     ] as const)
       expect(lexicalGapProblem(en, full, gap)).toBeUndefined();
   });

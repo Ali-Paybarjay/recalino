@@ -405,8 +405,9 @@ const diagnosticIssueCodes = new Set([
 type SchemaIssueSummary = { code: string; path: (string | number)[] };
 /** At most three code-owned issues, e.g. `zod:too_small@learningItems.1.teaching.imageFa`. */
 function schemaIssueDiagnostic(summaries: SchemaIssueSummary[]): string | undefined {
-  const parts = summaries
-    .filter((issue) => issue.code !== "invalid_union")
+  // A union issue is kept when no nested branch issue explains it (an invalid discriminator).
+  const specific = summaries.filter((issue) => issue.code !== "invalid_union");
+  const parts = (specific.length ? specific : summaries)
     .slice(0, 3)
     .map(
       (issue) =>

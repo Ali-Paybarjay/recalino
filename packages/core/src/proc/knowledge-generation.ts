@@ -63,7 +63,7 @@ const repairGuidance: Record<string, string> = {
   study_gap_partial:
     "A practice.gapSentence left part of its target visible beside a blank. Blank the complete target span, including particles and inflected forms.",
   study_gap_overhidden:
-    "A practice.gapSentence also hid words that are not part of the target, so its answer was not recoverable. Use one blank per target part and keep complements and objects visible.",
+    "A practice.gapSentence also hid words that are not part of the target, so its answer was not recoverable. Blank only the target's own words and keep complements and objects visible.",
   study_ipa_chunk_invalid:
     "A grammar pronunciation.spokenChunk was not consecutive words copied exactly from practice.fullSentence.",
   study_plan_uncovered:
@@ -99,7 +99,8 @@ const issueMeaning: Record<string, string> = {
   unrecognized_keys: "a property that this item or block type does not allow is present",
   invalid_value: "a value is outside the allowed set",
   invalid_format: "a value has the wrong format or script",
-  invalid_union: "the value matches no allowed variant",
+  invalid_union:
+    "the value matches no allowed variant; learningItems[].type must be exactly lexical, grammar or recognition, and kind is a separate property",
 };
 
 function repairInstruction(reason: string, detail?: string): string {
@@ -135,7 +136,7 @@ const gapWords = (value: string) => value.toLocaleLowerCase("en").match(/[\p{L}\
 /**
  * A lexical gap must hide exactly the target: no literal target occurrence may straddle a blank,
  * no visible word beside a blank may be the target's edge word or one of its content stems, and
- * the blanks may not also hide a complement or object (one blank per target part, no extra words).
+ * the blanks may not also hide a complement or object (no more hidden words than the target).
  * Unsupported targets, missing blanks and mismatched copies are reported by canonical validation.
  */
 export function lexicalGapProblem(
@@ -159,8 +160,9 @@ export function lexicalGapProblem(
     (total, [from, to]) => total + gapWords(sentence.slice(from, to)).length,
     0,
   );
-  if (hidden.length > target.parts.length || hiddenWordCount > targetWordCount)
-    return "study_gap_overhidden";
+  // Several blanks may split one multiword target ("______ ______"); only extra hidden words
+  // (a complement or object) make the answer unrecoverable.
+  if (hiddenWordCount > targetWordCount) return "study_gap_overhidden";
   for (const part of target.parts) {
     const occurrence = new RegExp(
       `(?<![\\p{L}\\p{N}])${escapePattern(part)}(?![\\p{L}\\p{N}])`,
@@ -170,7 +172,12 @@ export function lexicalGapProblem(
       const start = found.index;
       const end = start + found[0].length;
       const overlaps = hidden.some(([from, to]) => start < to && from < end);
-      const inside = hidden.some(([from, to]) => from <= start && end <= to);
+      // Every visible character of the occurrence must be hidden, possibly across adjacent blanks.
+      const inside = Array.from(sentence.slice(start, end)).every(
+        (character, offset) =>
+          /\s/u.test(character) ||
+          hidden.some(([from, to]) => from <= start + offset && start + offset < to),
+      );
       if (overlaps && !inside) return "study_gap_partial";
     }
   }
