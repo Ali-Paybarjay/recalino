@@ -42,8 +42,21 @@ export async function accountExists(db: Database, userId: string): Promise<boole
     .selectFrom("acc.user_account")
     .select("id")
     .where("id", "=", userId)
+    .where("deleted_at", "is", null)
     .executeTakeFirst();
   return row !== undefined;
+}
+
+/** Serialize domain changes per learner inside the caller's transaction (ADR-0002). */
+export async function lockAccount(db: Database | Tx, userId: string): Promise<void> {
+  const row = await db
+    .selectFrom("acc.user_account")
+    .select("id")
+    .where("id", "=", userId)
+    .where("deleted_at", "is", null)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!row) throw errors.notFound();
 }
 
 /** The learner's account, profile and pending acceptances; null when there is no account. */
@@ -67,6 +80,7 @@ export async function getAccountState(
       "profile.completed_at",
     ])
     .where("account.id", "=", userId)
+    .where("account.deleted_at", "is", null)
     .executeTakeFirst();
   if (row === undefined) return null;
 
@@ -126,6 +140,7 @@ export async function acceptDocuments(
     );
   }
   await db.transaction().execute(async (tx) => {
+    await lockAccount(tx, ctx.userId);
     await tx
       .insertInto("acc.consent")
       .values(
@@ -160,4 +175,39 @@ export async function canStartNewProcessing(
 ): Promise<boolean> {
   const state = await getAccountState(db, userId, versions);
   return state !== null && !state.pending.terms;
+}
+
+/** Cleanup and financial receipts may lock a tombstoned account, without re-enabling product access. */
+export async function lockAccountForCleanup(db: Database | Tx, userId: string): Promise<boolean> {
+  const account = await db
+    .selectFrom("acc.user_account")
+    .select("id")
+    .where("id", "=", userId)
+    .forUpdate()
+    .executeTakeFirst();
+  return account !== undefined;
+}
+export async function tombstoneAccount(
+  tx: Tx,
+  ctx: LearnerContext,
+  now = new Date(),
+): Promise<void> {
+  await tx
+    .updateTable("acc.user_account")
+    .set({ deleted_at: now, timezone: null })
+    .where("id", "=", ctx.userId)
+    .where("deleted_at", "is", null)
+    .execute();
+}
+export async function purgeAccountProfile(tx: Tx, ctx: LearnerContext): Promise<void> {
+  const account = await tx
+    .selectFrom("acc.user_account")
+    .select("deleted_at")
+    .where("id", "=", ctx.userId)
+    .executeTakeFirst();
+  if (account && !account.deleted_at) throw errors.conflict();
+  await tx.deleteFrom("acc.learning_profile_history").where("user_id", "=", ctx.userId).execute();
+  await tx.deleteFrom("acc.learning_profile").where("user_id", "=", ctx.userId).execute();
+  await tx.deleteFrom("acc.preference").where("user_id", "=", ctx.userId).execute();
+  await tx.deleteFrom("acc.consent").where("user_id", "=", ctx.userId).execute();
 }

@@ -1,0 +1,62 @@
+{
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "authentication": "Google OAuth with PKCE, server-only Supabase clients and HttpOnly session cookies",
+  "privatePages": "Verified at each page before private data using requireLearner",
+  "privateApis": "Supabase getUser validation, Recalino account check, and server-side ownership checks",
+  "changes": [
+    "Retain Supabase SSR cache headers and all cookie writes during session refresh",
+    "Prevent shared caching of Auth and private API responses, including errors and redirects",
+    "Propagate errors returned by Supabase signOut without including provider details"
+  ],
+  "checks": {
+    "unitTests": {
+      "passed": 420,
+      "files": 55
+    },
+    "focusedIntegrationTests": {
+      "passed": 20,
+      "files": 4,
+      "environment": "local Supabase"
+    },
+    "readinessToolTests": {
+      "passed": 9
+    },
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "moduleBoundaries": "passed",
+    "authFilesLint": "passed",
+    "clientVisibleSecretsScan": "passed",
+    "fullRepositoryLint": {
+      "status": "failed",
+      "reason": "Unrelated JSON formatting in artifacts/verification/production-secret-metadata.json"
+    },
+    "focusedBrowserTests": {
+      "passed": 3,
+      "environment": "local Supabase and Chromium",
+      "scope": [
+        "Google OAuth start redirect with PKCE cookie and private/no-store headers",
+        "Anonymous visitors redirected from protected pages with destination retained",
+        "Sign-out rejects private API access and old-cookie replay in both API and pages"
+      ],
+      "liveGoogleAccountUsed": false
+    }
+  },
+  "cloudAuth": {
+    "checkedAt": "2026-10-04T14:31:35.293Z",
+    "status": 200,
+    "googleEnabled": false,
+    "projectHost": "twowhuzhvyuzjrpraikm.supabase.co",
+    "errorCategory": "provider_disabled"
+  },
+  "googleOAuthCredentialsAvailable": false,
+  "liveGoogleSignInVerified": false,
+  "remainingSetup": [
+    "Supply Google OAuth client ID and secret through the ignored root .env file",
+    "Enable Google provider on the existing Recalino Supabase project",
+    "Configure Google-to-Supabase callback and Supabase-to-app redirect URLs",
+    "Complete a real Google sign-in and callback with an allowed test account"
+  ],
+  "cloudMutationsPerformed": false,
+  "checkedAt": "2026-10-04 14:42:19 UTC",
+  "runtime": "Node.js 24.19.0"
+}

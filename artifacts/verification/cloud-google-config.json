@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-04T16:28:08.147Z",
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "scope": "Google Auth configuration in existing project through pinned official CLI 2.118.0. No database or storage changes.",
+  "siteUrl": "https://recalino-ali-paybarjay-s-projects.vercel.app",
+  "callbackUrls": [
+    "https://recalino-hme6gdlf3-ali-paybarjay-s-projects.vercel.app/auth/callback",
+    "https://recalino-bzf44bkg0-ali-paybarjay-s-projects.vercel.app/auth/callback",
+    "https://recalino-ali-paybarjay-s-projects.vercel.app/auth/callback"
+  ],
+  "declaredGoogleFields": ["enabled", "client_id", "secret"],
+  "postApplyDeclaredDifferences": 0,
+  "unrelatedFieldsPreserved": true,
+  "unrelatedFieldCount": 11,
+  "googleSecretReportedUnchanged": true,
+  "literalSecretsInConfig": false
+}

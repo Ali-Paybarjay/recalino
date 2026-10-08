@@ -27,12 +27,13 @@ export function findSchemaNameViolations(
   const violations: SchemaNameViolation[] = [];
   for (const file of files) {
     // Tests may read any table to observe effects; the rule protects production code.
-    if (/\.test\.ts$/.test(file.path)) continue;
+    if (/\.(test|spec)\.tsx?$/.test(file.path) || /^packages\/[^/]+\/test\//.test(file.path))
+      continue;
     for (const table of tables) {
       const schema = table.split(".")[0];
       const ownFolder = `packages/core/src/${schema}/`;
       if (file.path.startsWith(ownFolder)) continue;
-      const pattern = new RegExp(`(^|[^a-z_])${table.replace(".", ".")}([^a-z_]|$)`);
+      const pattern = new RegExp(`(^|[^A-Za-z0-9_])${table.replace(".", "\\.")}([^A-Za-z0-9_]|$)`);
       if (pattern.test(file.content)) violations.push({ path: file.path, table });
     }
   }

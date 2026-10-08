@@ -1,0 +1,443 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/f7s2sq",
+    "id": "f7s2sq",
+    "slide": 1,
+    "layoutId": "e4071212-a6f9-4650-82eb-b67f1753b303",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "72be31fd-9be9-4839-b450-5c3ee16df09e",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Segoe UI"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "e4071212-a6f9-4650-82eb-b67f1753b303",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "72be31fd-9be9-4839-b450-5c3ee16df09e",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "72be31fd-9be9-4839-b450-5c3ee16df09e",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g7ed8nql",
+      "id": "1",
+      "bbox": [
+        72,
+        32,
+        1136,
+        86
+      ],
+      "geometry": "rect",
+      "text": "یادگیری هدفمند با Recalino",
+      "textPreview": "یادگیری هدفمند با Recalino",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "fontSize": 48,
+        "typeface": "Segoe UI",
+        "color": "#142735",
+        "alignment": "right",
+        "autoFit": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "یادگیری هدفمند با Recalino"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "یادگیری هدفمند با Recalino",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "Segoe UI",
+            "color": "#142735",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "یادگیری هدفمند با Recalino",
+              "fontSize": 48,
+              "typeface": "Segoe UI",
+              "color": "#142735",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fm5wfip0",
+      "id": "2",
+      "bbox": [
+        72,
+        136,
+        1136,
+        86
+      ],
+      "geometry": "rect",
+      "text": "یادگیری هدفمند با Recalino",
+      "textPreview": "یادگیری هدفمند با Recalino",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "fontSize": 48,
+        "typeface": "Segoe UI",
+        "color": "#142735",
+        "alignment": "right",
+        "autoFit": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "یادگیری هدفمند با Recalino"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "یادگیری هدفمند با Recalino",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "Segoe UI",
+            "color": "#142735",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "یادگیری هدفمند با Recalino",
+              "fontSize": 48,
+              "typeface": "Segoe UI",
+              "color": "#142735",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/elwv6d8v",
+      "id": "3",
+      "bbox": [
+        72,
+        240,
+        1136,
+        86
+      ],
+      "geometry": "rect",
+      "text": "یادگیری هدفمند با Recalino",
+      "textPreview": "یادگیری هدفمند با Recalino",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "fontSize": 48,
+        "typeface": "Segoe UI",
+        "color": "#142735",
+        "alignment": "right",
+        "autoFit": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "یادگیری هدفمند با Recalino"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "یادگیری هدفمند با Recalino",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "Segoe UI",
+            "color": "#142735",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "یادگیری هدفمند با Recalino",
+              "fontSize": 48,
+              "typeface": "Segoe UI",
+              "color": "#142735",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pc7els7i",
+      "id": "4",
+      "bbox": [
+        72,
+        344,
+        1136,
+        86
+      ],
+      "geometry": "rect",
+      "text": "یادگیری هدفمند با Recalino",
+      "textPreview": "یادگیری هدفمند با Recalino",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "fontSize": 48,
+        "typeface": "Segoe UI",
+        "color": "#142735",
+        "alignment": "right",
+        "autoFit": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "یادگیری هدفمند با Recalino"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "یادگیری هدفمند با Recalino",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "Segoe UI",
+            "color": "#142735",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "یادگیری هدفمند با Recalino",
+              "fontSize": 48,
+              "typeface": "Segoe UI",
+              "color": "#142735",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/obydcn6x",
+      "id": "5",
+      "bbox": [
+        72,
+        448,
+        1136,
+        86
+      ],
+      "geometry": "rect",
+      "text": "یادگیریهدفمندباRecalino",
+      "textPreview": "یادگیریهدفمندباRecalino",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "fontSize": 48,
+        "typeface": "Segoe UI",
+        "color": "#142735",
+        "alignment": "right",
+        "autoFit": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "یادگیریهدفمندباRecalino"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "یادگیریهدفمندباRecalino",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "Segoe UI",
+            "color": "#142735",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "یادگیریهدفمندباRecalino",
+              "fontSize": 48,
+              "typeface": "Segoe UI",
+              "color": "#142735",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/napwjipc",
+      "id": "6",
+      "bbox": [
+        72,
+        552,
+        1136,
+        86
+      ],
+      "geometry": "rect",
+      "text": "یادگیری⁠ هدفمند⁠ با⁠ Recalino",
+      "textPreview": "یادگیری⁠ هدفمند⁠ با⁠ Recalino",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "fontSize": 48,
+        "typeface": "Segoe UI",
+        "color": "#142735",
+        "alignment": "right",
+        "autoFit": "none",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "یادگیری⁠ هدفمند⁠ با⁠ Recalino"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "یادگیری⁠ هدفمند⁠ با⁠ Recalino",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "typeface": "Segoe UI",
+            "color": "#142735",
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "یادگیری⁠ هدفمند⁠ با⁠ Recalino",
+              "fontSize": 48,
+              "typeface": "Segoe UI",
+              "color": "#142735",
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

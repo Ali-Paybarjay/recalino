@@ -1,0 +1,93 @@
+{
+  "createdAt": "2026-10-04T09:35:59.580Z",
+  "deployment": "https://recalino-av900yb79-ali-paybarjay-s-projects.vercel.app",
+  "scope": "Authenticated Vercel protection bypass, with no application learner session. No class data, provider calls or environment changes.",
+  "protectionPreserved": true,
+  "checks": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/sources/contract",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/classes",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/privacy/account",
+      "method": "DELETE",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/jobs/run",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/dev/ui",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 404,
+      "passed": false
+    },
+    {
+      "path": "/dev/auth/session",
+      "method": "POST",
+      "status": 404,
+      "expectedStatus": 404,
+      "passed": true
+    },
+    {
+      "path": "/dev/spike/ffmpeg",
+      "method": "POST",
+      "status": 404,
+      "expectedStatus": 404,
+      "passed": true
+    },
+    {
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 200,
+      "passed": true
+    },
+    {
+      "path": "/today",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 307,
+      "passed": false
+    },
+    {
+      "path": "/me",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 307,
+      "passed": false
+    },
+    {
+      "path": "/deletion",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 307,
+      "passed": false
+    }
+  ],
+  "passed": false
+}

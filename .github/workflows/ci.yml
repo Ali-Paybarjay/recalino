@@ -33,6 +33,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm check:boundaries
       - run: pnpm test:unit
+      - name: Cloud Google readiness guard tests (no external calls)
+        run: node --test tools/auth/check-google.test.mjs
 
       - name: Start local Supabase (Postgres and Auth only)
         run: pnpm db:start
@@ -46,10 +48,10 @@ jobs:
       - name: No secrets in the client-visible build (FR-PLT-009)
         run: pnpm check:client-bundle
 
-  # Main and milestone branches (feat/*); docs branches skip it to save minutes.
+  # Main and implementation branches; docs branches skip it to save minutes.
   e2e:
-    name: End-to-end (main and feat branches)
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/feat/')
+    name: End-to-end (main and implementation branches)
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/feat/') || startsWith(github.ref, 'refs/heads/codex/')
     needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 20

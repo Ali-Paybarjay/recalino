@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-05T12:44:12.048Z",
+  "reviewedCommit": "9f09e85",
+  "deployment": "https://recalino-dn67co1df-ali-paybarjay-s-projects.vercel.app",
+  "deploymentId": "dpl_6VS3xJL5GEwEa4AhnT5NKGaShx6d",
+  "publicUrl": "https://recalino.vercel.app",
+  "pilotOperator": "Ali Paybarjay",
+  "ownerAccountRole": "test account; may also occupy one of the eight pilot participant slots",
+  "dataContractApproved": true,
+  "ownerOpenRouterPrivacyConfirmation": {
+    "privateInputOutputLogging": "off",
+    "openRouterUseOfInputsOutputs": "off",
+    "confirmedAt": "2026-10-05"
+  },
+  "defaultModels": {
+    "llm": "anthropic/claude-haiku-4.5",
+    "vision": "anthropic/claude-haiku-4.5",
+    "stt": "openai/whisper-large-v3-turbo",
+    "tts": "hexgrad/kokoro-82m"
+  },
+  "verification": {
+    "providerDefaultsTests": "8 passed",
+    "coreTypecheck": "passed",
+    "runtimeRoutes": "12 passed",
+    "googleOAuthStart": "machine-ready; no credentials entered",
+    "publicAliasReadback": "passed",
+    "supabaseCallbackUpdate": "passed; existing callbacks preserved"
+  },
+  "paidCallsDuringActivation": 0,
+  "learnerSessionUsed": false,
+  "pilotMaximumParticipants": 8,
+  "remainingOwnerInformation": []
+}

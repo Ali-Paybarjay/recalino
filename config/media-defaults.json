@@ -1,0 +1,5 @@
+{
+  "maxTtsCharacters": 500,
+  "maxTtsBytes": 5000000,
+  "pronunciationVoice": "bf_emma"
+}

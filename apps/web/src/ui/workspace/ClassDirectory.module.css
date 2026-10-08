@@ -1,0 +1,183 @@
+.directory {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.courseBar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: var(--rc-primary-tint);
+  border: 1px solid var(--color-divider);
+  border-radius: 20px;
+}
+
+.courseIcon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 52px;
+  height: 52px;
+  color: var(--rc-primary-text);
+  background: var(--color-surface);
+  border-radius: 14px;
+}
+
+.courseControl {
+  flex: 1;
+  min-width: 0;
+  max-width: 460px;
+}
+
+.courseControl select,
+.unitControl select {
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.courseControl :global(.preview-field),
+.unitControl :global(.preview-field) {
+  margin-bottom: 0;
+}
+
+.courseLabel {
+  margin: 0 0 4px;
+  color: var(--rc-primary-text);
+  font-size: 14px;
+}
+
+.courseName {
+  margin: 0;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.unitControl {
+  flex: 1;
+  min-width: 0;
+  max-width: 260px;
+}
+
+.classes {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--color-divider);
+  border-radius: 20px;
+  background: var(--color-surface);
+}
+
+.listHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 18px;
+}
+
+.listHeading h2,
+.listHeading p {
+  margin: 0;
+}
+
+.listHeading h2 {
+  font-size: 20px;
+}
+
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+.empty h2,
+.empty h3,
+.empty p {
+  margin: 0;
+}
+
+.empty p {
+  color: var(--rc-text-muted);
+}
+
+.listFooter {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding-top: 20px;
+}
+
+.listFooter p {
+  margin: 0;
+}
+
+.tools {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.newClass,
+.manage summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--rc-primary-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.manage summary {
+  display: list-item;
+  padding: 12px 4px;
+}
+
+.manage[open] {
+  flex-basis: 100%;
+}
+
+.manage :global(.preview-actions) {
+  padding-top: 8px;
+}
+
+.newClass:focus-visible,
+.manage summary:focus-visible {
+  outline: 3px solid var(--rc-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+@media (max-width: 600px) {
+  .courseBar {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .courseIcon {
+    flex-basis: 44px;
+    height: 44px;
+  }
+
+  .courseControl {
+    max-width: none;
+  }
+
+  .unitControl {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .classes {
+    padding: 16px 12px;
+  }
+
+  .listHeading {
+    padding-inline: 4px;
+  }
+}

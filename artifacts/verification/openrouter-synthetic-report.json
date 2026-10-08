@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1",
+  "configVersion": "1",
+  "mode": "real",
+  "syntheticOnly": true,
+  "localOnly": true,
+  "startedAt": "2026-10-04T06:34:59.485Z",
+  "finishedAt": "2026-10-04T06:35:09.042Z",
+  "maximumTotalMicros": 100000,
+  "attemptedCalls": 3,
+  "attemptedBoundMicros": 28000,
+  "models": {
+    "llm": "anthropic/claude-haiku-4.5",
+    "vision": "anthropic/claude-haiku-4.5",
+    "stt": "openai/whisper-large-v3-turbo",
+    "tts": "hexgrad/kokoro-82m"
+  },
+  "priceVersion": "openrouter-models-2026-10-04",
+  "classProcessing": {
+    "state": "failed",
+    "error": "validation_failed",
+    "quality": null,
+    "study": null
+  },
+  "vision": {
+    "runId": "56b49bcd-1f42-4255-bbcb-73613f3f8b6c",
+    "case": "vision",
+    "state": "ready",
+    "error": null,
+    "summary": {
+      "blocks": 1,
+      "textCharacters": 37
+    },
+    "humanReview": "required"
+  },
+  "tts": {
+    "state": "ready",
+    "error": null
+  },
+  "transcription": {
+    "runId": "28e639a6-42d6-4eab-bb92-f7305b2d2408",
+    "case": "transcription",
+    "state": "ready",
+    "error": null,
+    "summary": {
+      "textCharacters": 38,
+      "nativeSegments": 1,
+      "speakerIds": 0
+    },
+    "humanReview": "required"
+  },
+  "costs": {
+    "since": "2026-10-04T06:34:59.485Z",
+    "policy": {
+      "version": "1",
+      "currency": "USD",
+      "killSwitch": false,
+      "limits": {
+        "session": 100000,
+        "userMonth": 100000,
+        "systemDay": 100000,
+        "systemMonth": 100000
+      }
+    },
+    "costs": [
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-haiku-4.5",
+        "currency": "USD",
+        "priceVersion": "openrouter-models-2026-10-04",
+        "attempts": 1,
+        "actualMicros": 672,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      },
+      {
+        "provider": "openrouter",
+        "model": "hexgrad/kokoro-82m",
+        "currency": "USD",
+        "priceVersion": "openrouter-models-2026-10-04",
+        "attempts": 1,
+        "actualMicros": 0,
+        "estimatedMicros": 5000,
+        "unknownAttempts": 0
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/whisper-large-v3-turbo",
+        "currency": "USD",
+        "priceVersion": "openrouter-models-2026-10-04",
+        "attempts": 1,
+        "actualMicros": 8,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      }
+    ],
+    "unresolvedHolds": [
+      {
+        "currency": "USD",
+        "count": 5,
+        "maximumMicros": 50
+      }
+    ]
+  },
+  "corpus": {
+    "version": "synthetic-plan-1",
+    "plannedCases": 20,
+    "completedHumanReviews": 0
+  },
+  "humanReview": "required"
+}

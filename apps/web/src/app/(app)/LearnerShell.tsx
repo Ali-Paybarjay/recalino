@@ -43,7 +43,7 @@ export function LearnerShell({
 }) {
   const values = legalValues();
   return (
-    <AppShell current={current} hrefs={NAV_HREFS}>
+    <AppShell current={current} hrefs={NAV_HREFS} newClassHref="/classes/new">
       {header}
       {learner.state.pending.terms ? (
         <TermsNotice

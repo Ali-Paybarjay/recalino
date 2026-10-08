@@ -4,7 +4,7 @@
 
 ## وضعیت و اسناد مرجع
 
-- وضعیت فعلی: M0 (راه‌اندازی مخزن)، M1 (هسته سمت سرور PLT)، M2 (پایه UI) و M3 (ورود با Google و پروفایل یادگیری) ساخته شده‌اند؛ گزارش‌ها در [docs/plans/](docs/plans/). FRهای PLT، ACC، QUOTA، ORG و SRC تأیید شده‌اند (2026-10-01). [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
+- وضعیت فعلی: پایه M0 تا M3 و پیاده‌سازی فنی MVP با بازطراحی `codex/ui-complete-redesign` ساخته شده‌اند؛ قابلیت‌ها، آزمون‌ها و محدودیت‌های فعال‌سازی در [M5_MVP_COMPLETION](docs/plans/M5_MVP_COMPLETION.md) ثبت شده‌اند. بررسی تکمیلی 2026-10-04 نشان داد Google در Supabase ابری غیرفعال است؛ ورود واقعی تا دریافت امن OAuth Client و تنظیم callback تأییدشده نیست. بودجه/سهمیه تجاری، تأیید قرارداد داده و متن حقوقی، و مجوز انتقال کلید مستقل پشتیبان هنوز باز هستند؛ fixtureهای آزمون جایگزین این تصمیم‌ها نیستند. [ADR-0001](docs/adr/0001-stack-and-hosting.md) و [ADR-0002](docs/adr/0002-data-access-and-migrations.md) پذیرفته شده‌اند و [PROJECT_SPEC](docs/PROJECT_SPEC.md) تأیید شده است (2026-09-30).
 - سند مرجع محصول: [PRD_Recalino_FA_v0.3.md](PRD_Recalino_FA_v0.3.md). تصمیم‌های D01 تا D27 قطعی‌اند.
 - در حال تدوین:
   - [docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md](docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md): نقشه ماژول‌ها، قالب FR و فرض‌ها؛ FRهای هر ماژول در `docs/fr/<MODULE>.md`.
@@ -52,7 +52,10 @@
 
 ## پیاده‌سازی رابط کاربری
 
+**به‌روزرسانی مالک محصول، 2026-10-04 (D34 و D35):** درخواست صریح بازطراحی با Figma بر قاعدهٔ قدیمی «طراحی تازه نکن» مقدم است. مرجع رابط جاری [گزارش نخست](docs/design/UI_REDESIGN_2026-10-04.md)، [تکمیل همهٔ صفحه‌ها](docs/design/COMPLETE_UI_REDESIGN_2026-10-04.md) و Figma آن‌هاست. بستهٔ دور اول مرجع آرشیوی است. تغییرات جدید در `app.css`، CSS Modules و فایل‌های UI قرار می‌گیرند؛ vendor و متن‌های حقوقی حفظ می‌شوند. قابلیت‌های فاقد بک‌اند در `/preview` فقط با دادهٔ مصنوعی و برچسب دائم نمایش داده می‌شوند.
+
 - طرح مرجع، تحویل Claude Design در [docs/design/handoff-r1/](docs/design/handoff-r1/) است. پیش از هر کار UI، [HANDOFF.md](docs/design/handoff-r1/HANDOFF.md) بخش ۰ و [بازبینی تحویل](docs/design/HANDOFF_R1_REVIEW.md) را بخوان.
+- آیکون اپ و favicon از تحویل دور ۲ در [docs/design/handoff-r2-icons/](docs/design/handoff-r2-icons/) می‌آیند و بدون تغییر در `apps/web/public/icons` کپی شده‌اند. `apps/web/src/ui/styles/vendor.test.ts` برابری‌شان را می‌سنجد.
 - طراحی تازه نکن:
   - token‌ها و لایه پایه CSS را بدون تغییر کپی کن.
   - رنگ، فونت، اندازه، فاصله، شعاع، سایه یا انیمیشنی بیرون از آن‌ها اضافه نکن.

@@ -1,0 +1,14 @@
+{
+  "passed": 9,
+  "checks": [
+    "Native XHR reports partial byte progress during a throttled transfer",
+    "A server refresh during transfer does not duplicate the active source",
+    "The first file remains visible while the second file is uploading",
+    "Add files becomes Add more files after registration and stays that way",
+    "Verified files restore their selection controls and removal does not resurrect an optimistic row",
+    "An unsupported file shows its failure and remaining files still upload",
+    "A resumed upload skips its already verified part and stays one source row",
+    "Audio reports device saving, persists its original in IndexedDB, and sends no bytes to storage",
+    "No browser page errors"
+  ]
+}

@@ -1,6 +1,6 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
-import { readRateLimitIpKey } from "@recalino/core/config";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { readCronSecret, readRateLimitIpKey } from "@recalino/core/config";
 import type { Database } from "@recalino/core/db";
 import {
   AppError,
@@ -18,8 +18,10 @@ import {
   sha256Hex,
   toErrorResponse,
 } from "@recalino/core/plt";
+import { adminSessions, assertAdmin } from "./auth/admin";
 import { authSessions } from "./auth/learner";
 import { getDatabase } from "./db";
+import { previewApiResponse } from "./preview-mode";
 import type { RouteMeta } from "./routes";
 import type { SessionProvider } from "./session";
 
@@ -51,10 +53,13 @@ export type Handler = (args: HandlerArgs) => Promise<ApiResult>;
 
 export interface RouteDeps {
   sessions: SessionProvider;
+  adminSessions?: SessionProvider;
   database: () => Database;
   log: Logger;
   settings: () => PltSettings;
   ipKey: () => string;
+  /** CRON_SECRET, the bearer token of "system" routes. */
+  cronSecret: () => string;
   now: () => Date;
 }
 
@@ -68,10 +73,12 @@ function once<T>(read: () => T): () => T {
 
 const defaultDeps: RouteDeps = {
   sessions: authSessions(),
+  adminSessions: adminSessions(),
   database: getDatabase,
   log: createLogger(),
   settings: once(() => readPltSettings()),
   ipKey: once(() => readRateLimitIpKey()),
+  cronSecret: once(() => readCronSecret()),
   now: () => new Date(),
 };
 
@@ -90,6 +97,8 @@ export function defineRoute(
   const deps: RouteDeps = { ...defaultDeps, ...overrides };
 
   return async (request) => {
+    const preview = previewApiResponse(request);
+    if (preview) return preview;
     const requestId = randomUUID();
     const started = performance.now();
     let userId: string | null = null;
@@ -104,6 +113,11 @@ export function defineRoute(
         userId = (await deps.sessions.getSession(request))?.userId ?? null;
         if (userId === null) throw errors.unauthenticated();
       }
+      if (meta.access === "admin") {
+        userId = (await (deps.adminSessions ?? deps.sessions).getSession(request))?.userId ?? null;
+        await assertAdmin(deps.database(), userId);
+      }
+      if (meta.access === "system") assertSystemCaller(request, deps.cronSecret());
       const ctx: RequestContext = { requestId, route: meta.id, userId };
 
       if (meta.rateLimit) await enforceRateLimit(meta.rateLimit, request, ctx, deps);
@@ -135,16 +149,26 @@ export function defineRoute(
           pg_code: postgresCode(error),
         });
       }
-      if (meta.errorRedirect !== undefined) {
+      const errorRedirect =
+        failure.code === "unauthenticated" && meta.unauthenticatedRedirect !== undefined
+          ? meta.unauthenticatedRedirect
+          : meta.errorRedirect;
+      if (errorRedirect !== undefined) {
         // Form posts and the sign-in flow show the failure on a page, not as JSON.
         status = 303;
-        response = redirectTo(meta.errorRedirect, request, requestId);
+        response = redirectTo(errorRedirect, request, requestId);
       } else {
         response = Response.json(failure.body, {
           status,
           headers: { ...failure.headers, "x-request-id": requestId },
         });
       }
+    }
+
+    // Includes error responses and redirects, so a cached 401 cannot outlive sign-in and a
+    // callback's new session cookies cannot be replayed to another visitor (FR-PLT-001).
+    if (meta.access === "learner" || meta.access === "admin" || meta.path.startsWith("/auth/")) {
+      response.headers.set("cache-control", "private, no-store");
     }
 
     deps.log(status >= 500 ? "error" : "info", "request", {
@@ -166,6 +190,12 @@ async function run(
   args: Omit<HandlerArgs, "db">,
   deps: RouteDeps,
 ): Promise<{ status: number; body: unknown; redirect?: string; replayed?: boolean }> {
+  if (meta.idempotency === "handler") {
+    const key = args.request.headers.get("idempotency-key");
+    if (key === null || !isValidIdempotencyKey(key)) {
+      throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
+    }
+  }
   if (meta.idempotency !== "required") {
     const result = await handler({
       ...args,
@@ -242,6 +272,13 @@ async function recordSignal(
       error_name: error instanceof Error ? error.name : typeof error,
     });
   }
+}
+
+/** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; compared in constant time. */
+function assertSystemCaller(request: Request, secret: string): void {
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  const given = request.headers.get("authorization") ?? "";
+  if (!timingSafeEqual(digest(given), digest(`Bearer ${secret}`))) throw errors.unauthenticated();
 }
 
 /**

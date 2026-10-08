@@ -1,0 +1,38 @@
+.bar {
+  position: fixed;
+  z-index: 50;
+  bottom: 84px;
+  inset-inline: max(16px, calc((100vw - 700px) / 2));
+  border: 1px solid var(--color-divider);
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: inherit;
+  box-shadow: 0 8px 36px rgb(0 0 0 / 18%);
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bar p {
+  margin: 0;
+  flex: 1 1 180px;
+}
+.bar a {
+  color: var(--color-accent);
+}
+.photoList {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.photoList figure {
+  margin: 0;
+  max-width: 220px;
+}
+.photoList img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 12px;
+}

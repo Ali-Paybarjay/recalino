@@ -1,12 +1,16 @@
 // No "use client": these screens always sit inside a client component that saves the answer.
 import type { ExplanationLanguage, Goal, Level } from "@recalino/core/acc";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import { accountCopy } from "../../ui/account-copy";
 import { Button } from "../../ui/components/Button";
 import { Checkbox } from "../../ui/components/Checkbox";
 import { Banner } from "../../ui/components/Feedback";
 import { Icon } from "../../ui/components/Icon";
 import { ListPicker, type PickerOption } from "../../ui/components/ListPicker";
 import { RadioCards } from "../../ui/components/RadioCards";
+import { courseCopy } from "../../ui/course-copy";
 import {
   Buildings,
   Check,
@@ -38,30 +42,67 @@ type StepProps<T> = {
   onSubmit: (value: T) => Promise<void>;
   /** Shown above the button when editing from Settings. */
   note?: ReactNode;
+  mode?: "setup" | "edit";
+  onCancel?: () => void;
 };
 
 /** Runs a save, shows its error, and keeps the button busy meanwhile. */
 function useSave() {
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SaveError | null>(null);
   const run = async (action: () => Promise<void>) => {
     setSaving(true);
     setError(null);
     try {
       await action();
     } catch (failure) {
-      setError(failure instanceof SaveError ? failure.message : String(failure));
+      setError(failure instanceof SaveError ? failure : new SaveError(accountCopy.error.save));
       setSaving(false);
     }
   };
   return { saving, error, run };
 }
 
-function SaveFailed({ message }: { message: string | null }) {
-  return message === null ? null : (
-    <Banner tone="danger" icon={WarningCircle} role="alert">
-      {message}
+function SaveFailed({ failure }: { failure: SaveError | null }) {
+  const pathname = usePathname();
+  return failure === null ? null : (
+    <Banner
+      tone="danger"
+      icon={WarningCircle}
+      role="alert"
+      action={
+        failure.status === 401 || failure.code === "unauthenticated" ? (
+          <Link href={`/?next=${encodeURIComponent(pathname)}`} className="btn btn-secondary">
+            {accountCopy.error.signIn}
+          </Link>
+        ) : undefined
+      }
+    >
+      {failure.message}
     </Banner>
+  );
+}
+
+function StepActions({
+  mode,
+  onCancel,
+  saving,
+  children,
+}: {
+  mode: "setup" | "edit";
+  onCancel?: () => void;
+  saving: boolean;
+  children: ReactNode;
+}) {
+  return mode === "edit" ? (
+    <div className={styles.pair}>
+      <Button size="lg" className={styles.skip} disabled={saving} onClick={onCancel}>
+        {accountCopy.cancel}
+      </Button>
+      {children}
+    </div>
+  ) : (
+    children
   );
 }
 
@@ -71,6 +112,8 @@ export function FirstLanguageStep({
   languages,
   onSubmit,
   note,
+  mode = "setup",
+  onCancel,
 }: StepProps<string> & { value: string | null; languages: readonly FirstLanguage[] }) {
   const [chosen, setChosen] = useState(value);
   const [options, setOptions] = useState<PickerOption[]>([]);
@@ -92,7 +135,9 @@ export function FirstLanguageStep({
             {name.native ? (
               <>
                 {" — "}
-                <span lang={name.code}>{name.native}</span>
+                <bdi lang={name.code} dir="auto">
+                  {name.native}
+                </bdi>
               </>
             ) : null}
           </>
@@ -105,7 +150,32 @@ export function FirstLanguageStep({
   const chosenName = chosen ? languageName(chosen) : null;
   return (
     <div className={styles.step}>
-      <h1 className={styles.title}>{strings.setup.firstLanguage}</h1>
+      <h1 className={styles.title}>
+        {mode === "edit" ? accountCopy.language.title : strings.setup.firstLanguage}
+      </h1>
+      {mode === "edit" ? (
+        <>
+          <p className={styles.help}>{accountCopy.language.help}</p>
+          {value ? (
+            <div className={styles.locked}>
+              <div className={styles.lockedText}>
+                <span className={styles.small}>{accountCopy.language.current}</span>
+                <span>
+                  {languageName(value).english}
+                  {languageName(value).native ? (
+                    <>
+                      {" — "}
+                      <bdi lang={value} dir="auto">
+                        {languageName(value).native}
+                      </bdi>
+                    </>
+                  ) : null}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : null}
       <ListPicker
         label={strings.setup.firstLanguage}
         placeholder={strings.setup.search}
@@ -121,17 +191,24 @@ export function FirstLanguageStep({
       ) : null}
       <div className={styles.grow} />
       {note}
-      <SaveFailed message={error} />
-      <Button
-        variant="primary"
-        size="lg"
-        block
-        unavailable={chosen === null}
-        loading={saving}
-        onClick={() => chosen && run(() => onSubmit(chosen))}
-      >
-        {strings.setup.continue}
-      </Button>
+      <SaveFailed failure={error} />
+      <StepActions mode={mode} onCancel={onCancel} saving={saving}>
+        <Button
+          variant="primary"
+          size="lg"
+          block={mode === "setup"}
+          className={mode === "edit" ? styles.go : undefined}
+          unavailable={chosen === null}
+          loading={saving}
+          onClick={() => chosen && run(() => onSubmit(chosen))}
+        >
+          {saving
+            ? accountCopy.saving
+            : mode === "edit"
+              ? accountCopy.save
+              : strings.setup.continue}
+        </Button>
+      </StepActions>
     </div>
   );
 }
@@ -152,6 +229,8 @@ export function ExplanationStep({
   onSubmit,
   note,
   showLearning = true,
+  mode = "setup",
+  onCancel,
 }: StepProps<ExplanationLanguage> & {
   firstLanguage: string;
   value: ExplanationLanguage | null;
@@ -175,8 +254,12 @@ export function ExplanationStep({
           <span className={styles.small}>{strings.setup.learningFixed}</span>
         </div>
       ) : null}
-      <h1 className={`${styles.title} ${styles.titleSpaced}`}>{strings.setup.explanationsIn}</h1>
-      <p className={styles.help}>{strings.setup.explanationsHelp}</p>
+      <h1 className={`${styles.title} ${styles.titleSpaced}`}>
+        {mode === "edit" ? accountCopy.explanations.title : strings.setup.explanationsIn}
+      </h1>
+      <p className={styles.help}>
+        {mode === "edit" ? accountCopy.explanations.help : strings.setup.explanationsHelp}
+      </p>
       <RadioCards
         name="explanation-language"
         label={strings.setup.explanationsIn}
@@ -194,18 +277,25 @@ export function ExplanationStep({
       />
       <div className={styles.grow} />
       {note}
-      <SaveFailed message={error} />
-      <Button
-        variant="primary"
-        size="lg"
-        block
-        unavailable={chosen === null}
-        loading={saving}
-        aria-describedby={chosen === null ? reasonId : undefined}
-        onClick={() => chosen && run(() => onSubmit(chosen))}
-      >
-        {strings.setup.continue}
-      </Button>
+      <SaveFailed failure={error} />
+      <StepActions mode={mode} onCancel={onCancel} saving={saving}>
+        <Button
+          variant="primary"
+          size="lg"
+          block={mode === "setup"}
+          className={mode === "edit" ? styles.go : undefined}
+          unavailable={chosen === null}
+          loading={saving}
+          aria-describedby={chosen === null ? reasonId : undefined}
+          onClick={() => chosen && run(() => onSubmit(chosen))}
+        >
+          {saving
+            ? accountCopy.saving
+            : mode === "edit"
+              ? accountCopy.save
+              : strings.setup.continue}
+        </Button>
+      </StepActions>
       {chosen === null ? (
         <p id={reasonId} className={styles.center}>
           {strings.setup.chooseOne}
@@ -261,6 +351,8 @@ export function LevelGoalStep({
   goal,
   onSubmit,
   note,
+  mode = "setup",
+  onCancel,
 }: StepProps<{ level: Level | null; goal: Goal | null }> & {
   level: Level | null;
   goal: Goal | null;
@@ -270,8 +362,12 @@ export function LevelGoalStep({
   const { saving, error, run } = useSave();
   return (
     <div className={`${styles.step} ${styles.stepTight}`}>
-      <h1 className={styles.title}>{strings.setup.level}</h1>
-      <p className={styles.help}>{strings.setup.levelHelp}</p>
+      <h1 className={styles.title}>
+        {mode === "edit" ? accountCopy.levelGoal.title : strings.setup.level}
+      </h1>
+      <p className={styles.help}>
+        {mode === "edit" ? accountCopy.levelGoal.help : strings.setup.levelHelp}
+      </p>
       <div role="radiogroup" aria-label={strings.setup.level} className={styles.levels}>
         {LEVEL_OPTIONS.map((option) => (
           <Tile
@@ -294,6 +390,7 @@ export function LevelGoalStep({
         />
       </div>
       <h2 className={styles.subtitle}>{strings.setup.goal}</h2>
+      {mode === "setup" ? <p className={styles.help}>{courseCopy.goalHelp}</p> : null}
       <div role="radiogroup" aria-label={strings.setup.goal} className={styles.goals}>
         {(Object.keys(GOAL_LABELS) as Goal[]).map((value) => (
           <Tile
@@ -309,16 +406,22 @@ export function LevelGoalStep({
       </div>
       <div className={styles.grow} />
       {note}
-      <SaveFailed message={error} />
+      <SaveFailed failure={error} />
       <div className={styles.pair}>
-        <Button
-          size="lg"
-          className={styles.skip}
-          disabled={saving}
-          onClick={() => run(() => onSubmit({ level: null, goal: null }))}
-        >
-          {strings.setup.skip}
-        </Button>
+        {mode === "setup" ? (
+          <Button
+            size="lg"
+            className={styles.skip}
+            disabled={saving}
+            onClick={() => run(() => onSubmit({ level: null, goal: null }))}
+          >
+            {strings.setup.skip}
+          </Button>
+        ) : (
+          <Button size="lg" className={styles.skip} disabled={saving} onClick={onCancel}>
+            {accountCopy.cancel}
+          </Button>
+        )}
         <Button
           variant="primary"
           size="lg"
@@ -326,7 +429,11 @@ export function LevelGoalStep({
           loading={saving}
           onClick={() => run(() => onSubmit({ level: chosenLevel, goal: chosenGoal }))}
         >
-          {strings.setup.continue}
+          {saving
+            ? accountCopy.saving
+            : mode === "edit"
+              ? accountCopy.save
+              : strings.setup.continue}
         </Button>
       </div>
     </div>
@@ -338,6 +445,8 @@ export function TimezoneStep({
   value,
   onSubmit,
   note,
+  mode = "setup",
+  onCancel,
 }: StepProps<string> & { value: string | null }) {
   const [zone, setZone] = useState(value);
   const [changing, setChanging] = useState(false);
@@ -367,8 +476,12 @@ export function TimezoneStep({
 
   return (
     <div className={styles.step}>
-      <h1 className={styles.title}>{strings.setup.timezone}</h1>
-      <p className={styles.help}>{strings.setup.timezoneHelp}</p>
+      <h1 className={styles.title}>
+        {mode === "edit" ? accountCopy.timezone.title : strings.setup.timezone}
+      </h1>
+      <p className={styles.help}>
+        {mode === "edit" ? accountCopy.timezone.help : strings.setup.timezoneHelp}
+      </p>
       {zone ? (
         <div className={styles.zone}>
           <Icon icon={GlobeHemisphereWest} size={28} className={styles.accent} />
@@ -382,10 +495,15 @@ export function TimezoneStep({
           </div>
         </div>
       ) : null}
+      {changing ? null : (
+        <Button size="lg" block disabled={saving} onClick={() => setChanging(true)}>
+          {strings.setup.timezoneChange}
+        </Button>
+      )}
       {changing ? (
         <ListPicker
           label={strings.setup.timezoneChange}
-          placeholder=""
+          placeholder={accountCopy.timezone.search}
           options={options}
           value={zone}
           onChange={(id) => {
@@ -397,22 +515,24 @@ export function TimezoneStep({
       ) : null}
       <div className={styles.grow} />
       {note}
-      <SaveFailed message={error} />
-      <Button
-        variant="primary"
-        size="lg"
-        block
-        unavailable={zone === null}
-        loading={saving}
-        onClick={() => zone && run(() => onSubmit(zone))}
-      >
-        {strings.setup.timezoneYes}
-      </Button>
-      {changing ? null : (
-        <Button size="lg" block onClick={() => setChanging(true)}>
-          {strings.setup.timezoneChange}
+      <SaveFailed failure={error} />
+      <StepActions mode={mode} onCancel={onCancel} saving={saving}>
+        <Button
+          variant="primary"
+          size="lg"
+          block={mode === "setup"}
+          className={mode === "edit" ? styles.go : undefined}
+          unavailable={zone === null}
+          loading={saving}
+          onClick={() => zone && run(() => onSubmit(zone))}
+        >
+          {saving
+            ? accountCopy.saving
+            : mode === "edit"
+              ? accountCopy.save
+              : strings.setup.timezoneYes}
         </Button>
-      )}
+      </StepActions>
     </div>
   );
 }
@@ -424,15 +544,26 @@ const POINTS = [
 ] as const;
 
 /** A2.7 — recording consent, asked once (D33). Finish stays unavailable until ticked. */
-export function ConsentStep({ onSubmit }: StepProps<true>) {
+export function ConsentStep({
+  onSubmit,
+  note,
+  actionLabel = strings.setup.finish,
+  headingLevel = 1,
+}: StepProps<true> & { actionLabel?: string; headingLevel?: 1 | 2 }) {
   const [understood, setUnderstood] = useState(false);
+  const [ready, setReady] = useState(false);
+  // Native inputs can change before React attaches its controlled change handler.
+  // Keep consent disabled in the server HTML until that handler is ready.
+  useEffect(() => setReady(true), []);
   const reasonId = useId();
   const { saving, error, run } = useSave();
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+  const PointHeading = headingLevel === 1 ? "h2" : "h3";
   return (
     <div className={styles.consent}>
       <div className={styles.step}>
         <div className={styles.consentHead}>
-          <h1 className={styles.title}>{strings.setup.consentTitle}</h1>
+          <Heading className={styles.title}>{strings.setup.consentTitle}</Heading>
           <p className={styles.help}>{strings.setup.consentIntro}</p>
         </div>
         {POINTS.map((point) => (
@@ -441,31 +572,33 @@ export function ConsentStep({ onSubmit }: StepProps<true>) {
               <Icon icon={point.icon} size={22} />
             </div>
             <div className={styles.pointText}>
-              <h2 className={styles.pointTitle}>{point.title}</h2>
+              <PointHeading className={styles.pointTitle}>{point.title}</PointHeading>
               <p className={styles.help}>{point.text}</p>
             </div>
           </div>
         ))}
         <p className={styles.note}>{strings.setup.askedOnce}</p>
+        {note}
       </div>
       <div className={styles.consentBar}>
         <Checkbox
           label={strings.setup.consentBox}
           labelId={reasonId}
           checked={understood}
+          disabled={!ready || saving}
           onChange={(event) => setUnderstood(event.target.checked)}
         />
-        <SaveFailed message={error} />
+        <SaveFailed failure={error} />
         <Button
           variant="primary"
           size="lg"
           block
-          unavailable={!understood}
+          unavailable={!ready || !understood}
           loading={saving}
           aria-describedby={understood ? undefined : reasonId}
           onClick={() => understood && run(() => onSubmit(true))}
         >
-          {strings.setup.finish}
+          {saving ? accountCopy.saving : actionLabel}
         </Button>
       </div>
     </div>

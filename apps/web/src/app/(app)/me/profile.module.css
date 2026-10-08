@@ -1,0 +1,250 @@
+.intro {
+  margin: -10px 0 0;
+  color: var(--rc-text-muted);
+  font-size: var(--rc-text-md);
+  line-height: 1.6;
+}
+
+.summary {
+  padding: 28px;
+  border: 1px solid var(--color-divider);
+  border-radius: 22px;
+  background: var(--color-surface);
+}
+
+.summaryHeading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.summaryIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--rc-primary-tint);
+  color: var(--rc-primary-text);
+}
+
+.summaryTitle {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.summaryDescription {
+  margin: 5px 0 0;
+  color: var(--rc-text-muted);
+  font-size: var(--rc-text-sm);
+  line-height: 1.55;
+}
+
+.attributes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 24px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.attribute {
+  min-width: 0;
+}
+
+.attribute dt {
+  color: var(--rc-text-muted);
+  font-size: var(--rc-text-sm);
+  line-height: 1.5;
+}
+
+.attributeValue {
+  margin: 6px 0 0;
+  font-size: var(--rc-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.attributeNote {
+  margin: 4px 0 0;
+  color: var(--rc-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.profileSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--rc-text-lg);
+  font-weight: 600;
+}
+
+.sectionDescription,
+.settingsNote {
+  margin: 0;
+  color: var(--rc-text-muted);
+  font-size: var(--rc-text-sm);
+  line-height: 1.6;
+}
+
+.rows {
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: 20px;
+  background: var(--color-surface);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(0, 1.2fr) 18px;
+  align-items: center;
+  gap: 14px;
+  min-height: 88px;
+  padding: 18px 24px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.row + .row {
+  border-top: 1px solid var(--color-divider);
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--rc-primary-tint) 32%, var(--color-surface));
+}
+
+.row:focus-visible {
+  position: relative;
+  outline-offset: -3px;
+}
+
+.rowIcon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--rc-primary-tint) 48%, var(--color-surface));
+  color: var(--rc-primary-text);
+}
+
+.rowLabel {
+  font-size: var(--rc-text-md);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.rowValue {
+  color: var(--rc-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+
+.rowCaret {
+  color: var(--rc-text-muted);
+}
+
+.signOut {
+  margin: 0;
+  padding-top: 2px;
+}
+
+.signOutButton {
+  background: var(--color-surface);
+}
+
+@media (max-width: 600px) {
+  .intro {
+    margin-top: -4px;
+  }
+
+  .summary {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .summaryHeading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .summaryIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .summaryTitle {
+    font-size: var(--rc-text-lg);
+  }
+
+  .attributes {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 20px;
+    padding-top: 20px;
+  }
+
+  .attribute {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: baseline;
+  }
+
+  .attributeValue {
+    margin: 0;
+    font-size: var(--rc-text-md);
+    text-align: end;
+  }
+
+  .attributeNote {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+  }
+
+  .row {
+    grid-template-columns: 40px minmax(0, 1fr) 18px;
+    gap: 4px 12px;
+    min-height: 88px;
+    padding: 16px;
+  }
+
+  .rowIcon {
+    grid-row: 1 / 3;
+    width: 40px;
+    height: 40px;
+  }
+
+  .rowLabel,
+  .rowValue {
+    grid-column: 2;
+  }
+
+  .rowValue {
+    text-align: start;
+  }
+
+  .rowCaret {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+}

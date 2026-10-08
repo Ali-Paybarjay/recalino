@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-10-06T00:19:41.817Z",
+  "site": "https://recalino.vercel.app",
+  "readOnly": true,
+  "home": {
+    "status": 200,
+    "title": "Recalino",
+    "appScripts": 10
+  },
+  "sources": {
+    "requestedPath": "/classes/00000000-0000-4000-8000-000000000012/sources",
+    "url": "https://recalino.vercel.app/?next=%2Fclasses%2F00000000-0000-4000-8000-000000000012%2Fsources",
+    "rootSignInRedirect": true,
+    "returnTo": "/classes/00000000-0000-4000-8000-000000000012/sources",
+    "visibleGoogleSignIn": true,
+    "formAction": "/auth/start",
+    "preservedFormReturnTo": "/classes/00000000-0000-4000-8000-000000000012/sources",
+    "protectedSourcesHeadingCount": 0
+  },
+  "clientHydration": {
+    "termsDialogOpens": true,
+    "termsDialogCloses": true
+  },
+  "pageErrors": [],
+  "failedRequests": [],
+  "errorResponses": [],
+  "blockedWrites": [],
+  "passed": true
+}

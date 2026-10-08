@@ -123,3 +123,62 @@ describe("route wrapper (FR-PLT-003, FR-PLT-007)", () => {
     });
   });
 });
+
+describe("Auth response caching (FR-PLT-001)", () => {
+  it("prevents shared caching of private data and unauthenticated failures", async () => {
+    const handler: Handler = async () => ({ body: { private: "synthetic learner data" } });
+    const signedIn = await call(learnerRoute, handler, testDeps([], asUser("u1")));
+    const signedOut = await call(learnerRoute, handler, testDeps([]));
+    expect(signedIn.status).toBe(200);
+    expect(signedOut.status).toBe(401);
+    for (const response of [signedIn, signedOut]) {
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+    }
+  });
+
+  it("prevents caching Auth success and failure redirects, including public callbacks", async () => {
+    const callback: RouteMeta = {
+      id: "callback",
+      path: "/auth/callback",
+      access: "public",
+      errorRedirect: "/?error=signin",
+    };
+    const success = await call(callback, async () => ({ redirect: "/today" }), testDeps([]));
+    const failure = await call(
+      callback,
+      async () => {
+        throw new Error("Synthetic callback failure");
+      },
+      testDeps([]),
+    );
+    expect(success.headers.get("location")).toBe("http://localhost/today");
+    expect(failure.headers.get("location")).toBe("http://localhost/?error=signin");
+    for (const response of [success, failure]) {
+      expect(response.status).toBe(303);
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+    }
+  });
+});
+
+describe("system routes (FR-PLT-005)", () => {
+  const systemRoute: RouteMeta = { id: "probe", path: "/api/probe", access: "system" };
+  const SECRET = "cron-secret-for-tests-0123456789abcdef";
+
+  it("run only with the cron secret as a bearer token", async () => {
+    const ran: string[] = [];
+    const handler: Handler = async () => {
+      ran.push("ran");
+      return { body: { ok: true } };
+    };
+    const deps = { ...testDeps([]), cronSecret: () => SECRET };
+    const missing = await call(systemRoute, handler, deps);
+    const wrong = await call(systemRoute, handler, deps, {
+      headers: { authorization: `Bearer ${SECRET}x` },
+    });
+    const right = await call(systemRoute, handler, deps, {
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    expect([missing.status, wrong.status, right.status]).toEqual([401, 401, 200]);
+    expect(ran).toEqual(["ran"]);
+  });
+});

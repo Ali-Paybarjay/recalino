@@ -1,5 +1,8 @@
 # Dependencies & build output
 node_modules/
+.pnpm-store/
+tools/voice/models/
+tools/voice/evaluation-data/
 .next/
 out/
 dist/
@@ -13,8 +16,27 @@ coverage/
 !.env.example
 
 # Test artifacts
+# Local release copies, raw deployment metadata, and generated verification output.
+# Existing tracked evidence remains versioned; retain only the reviewed release summaries.
+/artifacts/releases/
+/artifacts/verification/*
+!/artifacts/verification/classes-browser-deployment-2026-10-07.json
+!/artifacts/verification/classes-browser-production-checks.json
+!/artifacts/verification/classes-browser-production-audit.json
+!/artifacts/verification/classes-preview/
+/artifacts/verification/classes-preview/*
+!/artifacts/verification/classes-preview/verification.md
+artifacts/**/unit-results.json
+artifacts/verification/preview-upload-*-results/
+artifacts/verification/open-original-browser*/
+artifacts/verification/study-flow-*-results/
+artifacts/verification/verify-source-upload.mjs
+artifacts/verification/python/
+artifacts/verification/anki-profile/
 playwright-report/
 test-results/
+test-results*/
+test-results-preview/
 
 # Logs & OS files
 *.log

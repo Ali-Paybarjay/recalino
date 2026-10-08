@@ -1,0 +1,36 @@
+.control {
+  position: relative;
+}
+
+.control input.text {
+  padding-inline-end: 60px;
+}
+
+.open {
+  position: absolute;
+  inset-block: 4px;
+  inset-inline-end: 4px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.open:hover {
+  background: var(--rc-surface-2);
+}
+
+.control input.picker {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}

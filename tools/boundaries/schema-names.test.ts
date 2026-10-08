@@ -14,11 +14,17 @@ describe("module tables stay inside their module (ADR-0002 rule 4)", () => {
       { path: "packages/core/src/quota/ledger.ts", content: 'from("plt.audit_event")' },
       { path: "apps/web/src/x.ts", content: "select * from plt.audit_event" },
       { path: "apps/web/src/y.ts", content: "const name = 'plt.audit_events_view';" },
+      { path: "apps/web/src/dto.ts", content: "const value = plt.audit_eventId;" },
+      { path: "apps/web/src/text.ts", content: "const value = 'plt-audit_event';" },
       { path: "apps/web/src/z.int.test.ts", content: 'selectFrom("plt.audit_event")' },
+      { path: "apps/web/e2e/admin.spec.ts", content: 'selectFrom("plt.audit_event")' },
+      { path: "packages/core/test/voice-fixture.ts", content: 'selectFrom("plt.audit_event")' },
+      { path: "packages/core/src/test/helper.ts", content: 'selectFrom("plt.audit_event")' },
     ];
     expect(findSchemaNameViolations(files, ["plt.audit_event"])).toEqual([
       { path: "packages/core/src/quota/ledger.ts", table: "plt.audit_event" },
       { path: "apps/web/src/x.ts", table: "plt.audit_event" },
+      { path: "packages/core/src/test/helper.ts", table: "plt.audit_event" },
     ]);
   });
 

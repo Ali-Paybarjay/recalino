@@ -13,10 +13,18 @@ const ALLOWED_FIELDS = new Set([
   "code",
   "kind",
   "job_id",
+  "object_id",
   "attempt",
   "module",
   "error_name",
   "pg_code",
+  // Class voice check attrition: integer counts and durations, never audio or text.
+  "windows_planned",
+  "windows_used",
+  "windows_refused",
+  "windows_short",
+  "audio_planned_ms",
+  "audio_used_ms",
 ]);
 
 const IDENTIFIER = /^[A-Za-z0-9_.:/\-[\]]{1,128}$/;

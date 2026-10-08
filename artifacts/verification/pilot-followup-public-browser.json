@@ -1,0 +1,36 @@
+{
+  "checkedAt": "2026-10-05T17:04:47.882Z",
+  "publicUrl": "https://recalino.vercel.app",
+  "scope": "Fresh anonymous browser: public landing, privacy sheet and OAuth start. No Vercel bypass cookie, user credentials, learner session or paid AI call.",
+  "fullLoginVerified": false,
+  "landing": {
+    "status": 200,
+    "sameOrigin": true,
+    "redirectedToVercelLogin": false
+  },
+  "privacy": {
+    "version": "0.2",
+    "draftVisible": true,
+    "googleStoredMetadataExplained": true,
+    "openRouterListed": true,
+    "possibleOverseasProcessingExplained": true
+  },
+  "oauthStart": {
+    "status": 303,
+    "cacheControl": "private, no-store",
+    "authOriginMatches": true,
+    "callbackMatches": true,
+    "pkcePresent": true
+  },
+  "authorize": {
+    "status": 302,
+    "googleOriginMatches": true,
+    "googleCallbackMatches": true
+  },
+  "privateApi": {
+    "status": 401,
+    "cacheControl": "private, no-store"
+  },
+  "passed": true,
+  "verificationNote": "Manual Playwright step verification reproduced all checks after the bundled verifier reported a non-diagnostic failure."
+}

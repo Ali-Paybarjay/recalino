@@ -1,0 +1,13 @@
+{
+  "createdAt": "2026-10-04T09:10:43Z",
+  "deploymentId": "dpl_6aN3ETsN41vENfq8VqYQpYzS6JbL",
+  "deployment": "https://recalino-gxxvr0p8d-ali-paybarjay-s-projects.vercel.app",
+  "buildState": "READY",
+  "healthStatus": 500,
+  "passed": false,
+  "diagnosis": [
+    "Sharp was bundled without its native Linux runtime dependency resolution.",
+    "Physical PDF package could not resolve its own optional Canvas dependency link."
+  ],
+  "scope": "Protected deployment read with existing Vercel account credentials; no learner session, user data, paid provider calls or domain promotion."
+}

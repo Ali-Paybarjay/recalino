@@ -1,0 +1,21 @@
+{
+  "target": "https://recalino.vercel.app/preview/new-class",
+  "testMode": "synthetic preview; backend and nonread page requests blocked",
+  "status": "passed",
+  "results": [
+    {
+      "viewport": "desktop",
+      "status": "passed",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "blockedRequests": []
+    },
+    {
+      "viewport": "mobile",
+      "status": "passed",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "blockedRequests": []
+    }
+  ]
+}

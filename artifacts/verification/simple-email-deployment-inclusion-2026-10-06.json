@@ -1,0 +1,4535 @@
+{
+  "checkedAt": "2026-10-06T01:15:35.863Z",
+  "deploymentId": "dpl_H4AmPN43QiuABvFu1K2D2b1yDzLt",
+  "deploymentUrl": "https://recalino-qjel3ignj-ali-paybarjay-s-projects.vercel.app",
+  "status": "READY",
+  "deployedSourceFileCount": 753,
+  "frozenSourceFileCount": 753,
+  "uploadIgnoredMetadata": [
+    "supabase/.gitignore"
+  ],
+  "matchesFrozenSource": true,
+  "currentRuntimeChanges": [],
+  "method": "Read-only Vercel source inventory SHA1 comparison",
+  "checks": [
+    {
+      "path": ".dependency-cruiser.cjs",
+      "expectedSha1": "8f607391b85ea7b3fd32f7cccbe3ccf5cbf99f6c",
+      "deployedSha1": "8f607391b85ea7b3fd32f7cccbe3ccf5cbf99f6c",
+      "matches": true
+    },
+    {
+      "path": ".vercelignore",
+      "expectedSha1": "2d7cbc4ec59355aad6b03feec76d183f15d1e8ea",
+      "deployedSha1": "2d7cbc4ec59355aad6b03feec76d183f15d1e8ea",
+      "matches": true
+    },
+    {
+      "path": "apps/web/AGENTS.md",
+      "expectedSha1": "8a38a9be445fb29e9ce77bb23d1086eb2dc3d656",
+      "deployedSha1": "8a38a9be445fb29e9ce77bb23d1086eb2dc3d656",
+      "matches": true
+    },
+    {
+      "path": "apps/web/CLAUDE.md",
+      "expectedSha1": "c140473a3a5fbe89301c99d9d0d1b76c5971f2c3",
+      "deployedSha1": "c140473a3a5fbe89301c99d9d0d1b76c5971f2c3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/account.spec.ts",
+      "expectedSha1": "04c8ece3ad2d6718ceb779f98b95a02bc6262110",
+      "deployedSha1": "04c8ece3ad2d6718ceb779f98b95a02bc6262110",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/helpers.ts",
+      "expectedSha1": "c554a4e855b7c9f4ee1cd828612fe9b3cafc94e0",
+      "deployedSha1": "c554a4e855b7c9f4ee1cd828612fe9b3cafc94e0",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/isolation.spec.ts",
+      "expectedSha1": "cd9de3a58d406f74aa06938c108b6e08b691ee4b",
+      "deployedSha1": "cd9de3a58d406f74aa06938c108b6e08b691ee4b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/learning.spec.ts",
+      "expectedSha1": "a240add5975471de9d49e6d88f8a425546e835db",
+      "deployedSha1": "a240add5975471de9d49e6d88f8a425546e835db",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/screens.spec.ts",
+      "expectedSha1": "4681ccf120a18464b919cad79556ec0b0eb7f255",
+      "deployedSha1": "4681ccf120a18464b919cad79556ec0b0eb7f255",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/sources.spec.ts",
+      "expectedSha1": "db32d4fe0198e7d3d96a04109fc4f20cd270316a",
+      "deployedSha1": "db32d4fe0198e7d3d96a04109fc4f20cd270316a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e-preview/workspace.spec.ts",
+      "expectedSha1": "beb573ea7b244f2de56c80af605e4598beff409a",
+      "deployedSha1": "beb573ea7b244f2de56c80af605e4598beff409a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/account.spec.ts",
+      "expectedSha1": "d94db15e81a9c75d57d2b8a85185b691927fc302",
+      "deployedSha1": "d94db15e81a9c75d57d2b8a85185b691927fc302",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/admin.spec.ts",
+      "expectedSha1": "07ca985ec99214c4bb71f8015f46cb0f821d0034",
+      "deployedSha1": "07ca985ec99214c4bb71f8015f46cb0f821d0034",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/audio-upload.spec.ts",
+      "expectedSha1": "263f4fb2d36116e4c047cae1fe81b4fa92fdd457",
+      "deployedSha1": "263f4fb2d36116e4c047cae1fe81b4fa92fdd457",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/budget.spec.ts",
+      "expectedSha1": "26547500aebb60d1690b22810a7cc2356999a26b",
+      "deployedSha1": "26547500aebb60d1690b22810a7cc2356999a26b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/class-date.spec.ts",
+      "expectedSha1": "6932ebe8aa2deccb64d0cb70906aa366f2090e36",
+      "deployedSha1": "6932ebe8aa2deccb64d0cb70906aa366f2090e36",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/course-materials.spec.ts",
+      "expectedSha1": "93e4769f891e8af1dbfcf66a4ec1a15d1305f834",
+      "deployedSha1": "93e4769f891e8af1dbfcf66a4ec1a15d1305f834",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/helpers.ts",
+      "expectedSha1": "1d138e52131426eb28f93630da8a5830033be4aa",
+      "deployedSha1": "1d138e52131426eb28f93630da8a5830033be4aa",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/learner.ts",
+      "expectedSha1": "60cf485582f294f791cc66f56d6451c78b617aa6",
+      "deployedSha1": "60cf485582f294f791cc66f56d6451c78b617aa6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/learning-privacy.spec.ts",
+      "expectedSha1": "70a496da264f1c2e81f430eb6a5b54a1b10edec7",
+      "deployedSha1": "70a496da264f1c2e81f430eb6a5b54a1b10edec7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/learning-session.spec.ts",
+      "expectedSha1": "dc6fc0ea87c41aeef34441c9bcb36139fd46dbcb",
+      "deployedSha1": "dc6fc0ea87c41aeef34441c9bcb36139fd46dbcb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/organization.spec.ts",
+      "expectedSha1": "a7705b8b15c2a16562d765e33ff262d7b9498537",
+      "deployedSha1": "a7705b8b15c2a16562d765e33ff262d7b9498537",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/pwa.spec.ts",
+      "expectedSha1": "acab3b56512bb808ea218cdd318f8f759e29ef65",
+      "deployedSha1": "acab3b56512bb808ea218cdd318f8f759e29ef65",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/recording.spec.ts",
+      "expectedSha1": "fcdf0f045060e60cb07ba74d91fdcb3b2332c88d",
+      "deployedSha1": "fcdf0f045060e60cb07ba74d91fdcb3b2332c88d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/redesign.spec.ts",
+      "expectedSha1": "94b20aa8feac991060f5b99e2d82077bc00331a6",
+      "deployedSha1": "94b20aa8feac991060f5b99e2d82077bc00331a6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/setup.spec.ts",
+      "expectedSha1": "07aa3d157ec72a954ebf4f1b007b7d00bc6db0cf",
+      "deployedSha1": "07aa3d157ec72a954ebf4f1b007b7d00bc6db0cf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/shell.spec.ts",
+      "expectedSha1": "eaba2d0533295cdef73b75bc0c5865de9ecd4049",
+      "deployedSha1": "eaba2d0533295cdef73b75bc0c5865de9ecd4049",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/signin.spec.ts",
+      "expectedSha1": "a30b10fc7ffd8197c6d8d894bc418f1525a42320",
+      "deployedSha1": "a30b10fc7ffd8197c6d8d894bc418f1525a42320",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/smoke.spec.ts",
+      "expectedSha1": "e8aecbfafdfc81ff8ccda32359a6d1bd0ba7fb5d",
+      "deployedSha1": "e8aecbfafdfc81ff8ccda32359a6d1bd0ba7fb5d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/source-original.spec.ts",
+      "expectedSha1": "a0c02b6befaecf088ddb794be1410f02bb8a7903",
+      "deployedSha1": "a0c02b6befaecf088ddb794be1410f02bb8a7903",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/study.spec.ts",
+      "expectedSha1": "9e29a6ad6ace292dc98994d3dc279ea22589bba5",
+      "deployedSha1": "9e29a6ad6ace292dc98994d3dc279ea22589bba5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/support.spec.ts",
+      "expectedSha1": "f327d35eb9df72d05850d9778e5c9d5bb5b0c2a6",
+      "deployedSha1": "f327d35eb9df72d05850d9778e5c9d5bb5b0c2a6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/text.spec.ts",
+      "expectedSha1": "3d7e275f0db9fe786148753015fba8b36f0fbc54",
+      "deployedSha1": "3d7e275f0db9fe786148753015fba8b36f0fbc54",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/theme.spec.ts",
+      "expectedSha1": "9fe8db1daaabd5867495506a07e0d1a7c83ccab4",
+      "deployedSha1": "9fe8db1daaabd5867495506a07e0d1a7c83ccab4",
+      "matches": true
+    },
+    {
+      "path": "apps/web/e2e/ui-kit.spec.ts",
+      "expectedSha1": "88efb704763ba940c335f03aa37b0fcc7b8c4bcd",
+      "deployedSha1": "88efb704763ba940c335f03aa37b0fcc7b8c4bcd",
+      "matches": true
+    },
+    {
+      "path": "apps/web/next.config.ts",
+      "expectedSha1": "cd969f18ca4b0968d19f7ed62e8b41187b3d2b9b",
+      "deployedSha1": "cd969f18ca4b0968d19f7ed62e8b41187b3d2b9b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/package.json",
+      "expectedSha1": "a5e59703047317850eb5d6e139dbe554f77f713f",
+      "deployedSha1": "a5e59703047317850eb5d6e139dbe554f77f713f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/playwright.config.ts",
+      "expectedSha1": "d4393cd18430e015a5ce32e7d046b01f065f5b48",
+      "deployedSha1": "d4393cd18430e015a5ce32e7d046b01f065f5b48",
+      "matches": true
+    },
+    {
+      "path": "apps/web/playwright.preview.config.ts",
+      "expectedSha1": "262da30144424ea4028b1d6057fa833f29763ed6",
+      "deployedSha1": "262da30144424ea4028b1d6057fa833f29763ed6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/apple-touch-icon.png",
+      "expectedSha1": "ba43df81f69ad9b4a821941b51526e2fe73e3966",
+      "deployedSha1": "ba43df81f69ad9b4a821941b51526e2fe73e3966",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/favicon-16.png",
+      "expectedSha1": "d86ff9e6706c03f6eb9511c93be94d0cb8d4b85c",
+      "deployedSha1": "d86ff9e6706c03f6eb9511c93be94d0cb8d4b85c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/favicon-32.png",
+      "expectedSha1": "306f2386c2d40c06455aa96205c8be207c40a030",
+      "deployedSha1": "306f2386c2d40c06455aa96205c8be207c40a030",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/favicon.svg",
+      "expectedSha1": "7044d493840e375b68d8fa7c215812cf7f46dc5b",
+      "deployedSha1": "7044d493840e375b68d8fa7c215812cf7f46dc5b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/icon-192.png",
+      "expectedSha1": "b4673c0e2ec9d3529f857824152fb2e4b0fdc4b6",
+      "deployedSha1": "b4673c0e2ec9d3529f857824152fb2e4b0fdc4b6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/icon-512.png",
+      "expectedSha1": "a60c773fb5519e6618857fd543e750ab5fb76a87",
+      "deployedSha1": "a60c773fb5519e6618857fd543e750ab5fb76a87",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/icon-maskable-192.png",
+      "expectedSha1": "0949c7e032be07b018dda8ab21fc86157880d322",
+      "deployedSha1": "0949c7e032be07b018dda8ab21fc86157880d322",
+      "matches": true
+    },
+    {
+      "path": "apps/web/public/icons/icon-maskable-512.png",
+      "expectedSha1": "044b4be8bd033ac974177f18ce9684ad9fb5a455",
+      "deployedSha1": "044b4be8bd033ac974177f18ce9684ad9fb5a455",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/LearnerShell.tsx",
+      "expectedSha1": "c6a1bdee548a09dacfbf5592f1ff6d96bb2e0ec4",
+      "deployedSha1": "c6a1bdee548a09dacfbf5592f1ff6d96bb2e0ec4",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/TermsNotice.tsx",
+      "expectedSha1": "633d1363582e09f7ff99155191a0bb226c559507",
+      "deployedSha1": "633d1363582e09f7ff99155191a0bb226c559507",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/app.module.css",
+      "expectedSha1": "1e8dad310377bd96e9b916b2eff4e1592e4abab5",
+      "deployedSha1": "1e8dad310377bd96e9b916b2eff4e1592e4abab5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/cards/[id]/page.tsx",
+      "expectedSha1": "1255138e94539b235025429bd58ce727fbde5bd2",
+      "deployedSha1": "1255138e94539b235025429bd58ce727fbde5bd2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/cards/page.tsx",
+      "expectedSha1": "5634e8dc5e16cf7d55a761304fce91de81cd5c96",
+      "deployedSha1": "5634e8dc5e16cf7d55a761304fce91de81cd5c96",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/estimate/page.tsx",
+      "expectedSha1": "c578e9363fff4a745f5ee8db43a9f39841eda84e",
+      "deployedSha1": "c578e9363fff4a745f5ee8db43a9f39841eda84e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/export/page.tsx",
+      "expectedSha1": "410d1200e4e06e5236960df024126fd6e1edfa78",
+      "deployedSha1": "410d1200e4e06e5236960df024126fd6e1edfa78",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/notes/page.tsx",
+      "expectedSha1": "eacf285c210cba9433793beadf3af0360d905607",
+      "deployedSha1": "eacf285c210cba9433793beadf3af0360d905607",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/notes/versions/page.tsx",
+      "expectedSha1": "a8253355484176cc9ccc90c84b245128d103a2c7",
+      "deployedSha1": "a8253355484176cc9ccc90c84b245128d103a2c7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/options/page.tsx",
+      "expectedSha1": "c46bfdfc0623886fd3bf392c7bdafec29b98191f",
+      "deployedSha1": "c46bfdfc0623886fd3bf392c7bdafec29b98191f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/page.tsx",
+      "expectedSha1": "95ce7c5921ac7b6605ad9ef16ea5221e5b8e6c66",
+      "deployedSha1": "95ce7c5921ac7b6605ad9ef16ea5221e5b8e6c66",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/processing/page.tsx",
+      "expectedSha1": "e3d84724ebadae1c4eeb962956fdf4959541b577",
+      "deployedSha1": "e3d84724ebadae1c4eeb962956fdf4959541b577",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/record/page.tsx",
+      "expectedSha1": "ae66c7cae6ddca98cb7fedcd9c6c5cc8dbbe6f05",
+      "deployedSha1": "ae66c7cae6ddca98cb7fedcd9c6c5cc8dbbe6f05",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/sources/page.tsx",
+      "expectedSha1": "b104d3b84cf1bce96511cc41af2d10c70880f834",
+      "deployedSha1": "b104d3b84cf1bce96511cc41af2d10c70880f834",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/new/page.tsx",
+      "expectedSha1": "39fe6f69588e2712f34a2ae1ed1496eb457dc9db",
+      "deployedSha1": "39fe6f69588e2712f34a2ae1ed1496eb457dc9db",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/organize/page.tsx",
+      "expectedSha1": "267d5550107679c7e64e4dab153f0554085a4926",
+      "deployedSha1": "267d5550107679c7e64e4dab153f0554085a4926",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/page.tsx",
+      "expectedSha1": "5278a1b78d3c24b62827dbb97b727dffc85140c6",
+      "deployedSha1": "5278a1b78d3c24b62827dbb97b727dffc85140c6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/courses/[id]/materials/page.tsx",
+      "expectedSha1": "b329be26ccf3e56dd2faec3a2a7f26b6291fbc3f",
+      "deployedSha1": "b329be26ccf3e56dd2faec3a2a7f26b6291fbc3f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/courses/[id]/page.tsx",
+      "expectedSha1": "dc060c79e46b3dfadeb5afae84d17438fa6a993c",
+      "deployedSha1": "dc060c79e46b3dfadeb5afae84d17438fa6a993c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/courses/page.tsx",
+      "expectedSha1": "dd23dd310239eefd7e502c96491a7fa1e2ed1c75",
+      "deployedSha1": "dd23dd310239eefd7e502c96491a7fa1e2ed1c75",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/help/[id]/page.tsx",
+      "expectedSha1": "f7ccd57c5ecbb8727c1577f3fa69a40e0003246c",
+      "deployedSha1": "f7ccd57c5ecbb8727c1577f3fa69a40e0003246c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/help/new/page.tsx",
+      "expectedSha1": "846b4b84f45eff94346cbd4ac05bd54784829092",
+      "deployedSha1": "846b4b84f45eff94346cbd4ac05bd54784829092",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/help/page.tsx",
+      "expectedSha1": "ecb3c9ed299ac922e945a6e9535a74a412c20ddb",
+      "deployedSha1": "ecb3c9ed299ac922e945a6e9535a74a412c20ddb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/layout.tsx",
+      "expectedSha1": "57ae70d1392fe72d6b6a8f82ed0a969b9a4ccd4f",
+      "deployedSha1": "57ae70d1392fe72d6b6a8f82ed0a969b9a4ccd4f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/ProfileSettings.tsx",
+      "expectedSha1": "2ef09b8a352a198c0d38b781394d66e355454a78",
+      "deployedSha1": "2ef09b8a352a198c0d38b781394d66e355454a78",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/data/page.tsx",
+      "expectedSha1": "90d84e0e64e56045f8c2a8493cb2fdaa55785b4c",
+      "deployedSha1": "90d84e0e64e56045f8c2a8493cb2fdaa55785b4c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/edit/[field]/EditField.module.css",
+      "expectedSha1": "79ff8a2f01e3f4366226f7a69b4eb41031aa6388",
+      "deployedSha1": "79ff8a2f01e3f4366226f7a69b4eb41031aa6388",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/edit/[field]/EditField.tsx",
+      "expectedSha1": "704dc809f526e262606dfe0281f46126bfeadf06",
+      "deployedSha1": "704dc809f526e262606dfe0281f46126bfeadf06",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/edit/[field]/page.tsx",
+      "expectedSha1": "bf515a9fdfc90e53df8952d7b043e3bfa4204528",
+      "deployedSha1": "bf515a9fdfc90e53df8952d7b043e3bfa4204528",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/learning/page.tsx",
+      "expectedSha1": "0f20115a99a121e83364c4a8feae0e6a081380ec",
+      "deployedSha1": "0f20115a99a121e83364c4a8feae0e6a081380ec",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/page.tsx",
+      "expectedSha1": "f2f8911055268dc7122f3796ac813ebd1b1e0897",
+      "deployedSha1": "f2f8911055268dc7122f3796ac813ebd1b1e0897",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/profile.module.css",
+      "expectedSha1": "a1babca53f64afcc104b8a98f28d9c92b88f4e24",
+      "deployedSha1": "a1babca53f64afcc104b8a98f28d9c92b88f4e24",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/quota/page.tsx",
+      "expectedSha1": "9bae2d01f09cf53bc2782693aa75944d9856dbe9",
+      "deployedSha1": "9bae2d01f09cf53bc2782693aa75944d9856dbe9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/me/review-settings/page.tsx",
+      "expectedSha1": "e367e767cadb05d42702ae231841a1ce29914839",
+      "deployedSha1": "e367e767cadb05d42702ae231841a1ce29914839",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/notes/[id]/page.tsx",
+      "expectedSha1": "167c29b32e0099295430776dbc41c16ee0fad18e",
+      "deployedSha1": "167c29b32e0099295430776dbc41c16ee0fad18e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/recordings/page.tsx",
+      "expectedSha1": "dc1078ac737e2cf07e18b8c8079384bf28ddaaec",
+      "deployedSha1": "dc1078ac737e2cf07e18b8c8079384bf28ddaaec",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/review/page.tsx",
+      "expectedSha1": "15c33d3ffbccd719220f8ade78db2b000411c020",
+      "deployedSha1": "15c33d3ffbccd719220f8ade78db2b000411c020",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/(app)/today/page.tsx",
+      "expectedSha1": "9f047e0954d01c05ce23a732b286455fe4ac6950",
+      "deployedSha1": "9f047e0954d01c05ce23a732b286455fe4ac6950",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/SignIn.module.css",
+      "expectedSha1": "9757d3e5611900eaae62e0b9be21f2c1eef265a0",
+      "deployedSha1": "9757d3e5611900eaae62e0b9be21f2c1eef265a0",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/SignIn.tsx",
+      "expectedSha1": "07530aceda4754ab1d365dce7b257a8cbf8dab3c",
+      "deployedSha1": "07530aceda4754ab1d365dce7b257a8cbf8dab3c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/SignInForm.tsx",
+      "expectedSha1": "8af19b27e87fad6adc6316a83cab936ad8ddb687",
+      "deployedSha1": "8af19b27e87fad6adc6316a83cab936ad8ddb687",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/admin/page.tsx",
+      "expectedSha1": "ea1b7f57610ca3a4c08954c65c01f849440dea48",
+      "deployedSha1": "ea1b7f57610ca3a4c08954c65c01f849440dea48",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/admin/route.ts",
+      "expectedSha1": "5914ed01a8e1d32b3cf19a54579151ac5b7000ef",
+      "deployedSha1": "5914ed01a8e1d32b3cf19a54579151ac5b7000ef",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/cards/[id]/actions/route.ts",
+      "expectedSha1": "6399b48f49bf461706f3012d4ebf316c11a0ae71",
+      "deployedSha1": "6399b48f49bf461706f3012d4ebf316c11a0ae71",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/cards/[id]/media/route.ts",
+      "expectedSha1": "cf0cb7c3de23b7202c9a24bd9dd280dd04376fe2",
+      "deployedSha1": "cf0cb7c3de23b7202c9a24bd9dd280dd04376fe2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/cards/[id]/proposals/[proposalId]/route.ts",
+      "expectedSha1": "cc67e8c47a7b187b9f309893caa5a829ab0e7e7a",
+      "deployedSha1": "cc67e8c47a7b187b9f309893caa5a829ab0e7e7a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/cards/[id]/proposals/route.ts",
+      "expectedSha1": "c2aa77eeca2641b0ea93ea9bde36abb3062a2ba7",
+      "deployedSha1": "c2aa77eeca2641b0ea93ea9bde36abb3062a2ba7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/cards/[id]/route.ts",
+      "expectedSha1": "03314f919cbc35ae16078d6ac136d9e13f5c91c5",
+      "deployedSha1": "03314f919cbc35ae16078d6ac136d9e13f5c91c5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/cards/route.ts",
+      "expectedSha1": "16acf14b9a29ff8c3b75cc06ac02034042d6c0e1",
+      "deployedSha1": "16acf14b9a29ff8c3b75cc06ac02034042d6c0e1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/estimate/route.ts",
+      "expectedSha1": "c46508439b7ce865b82c656cceffa47ce599ebee",
+      "deployedSha1": "c46508439b7ce865b82c656cceffa47ce599ebee",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/exports/route.ts",
+      "expectedSha1": "f38b79f70ae9237ecdb5673a3ccd6f0b5cba7aaf",
+      "deployedSha1": "f38b79f70ae9237ecdb5673a3ccd6f0b5cba7aaf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/media/route.ts",
+      "expectedSha1": "63c51ab51be294cf3eee6116612b79fcc26a6716",
+      "deployedSha1": "63c51ab51be294cf3eee6116612b79fcc26a6716",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/notes/route.ts",
+      "expectedSha1": "ddf9248200073bdf7cb4d0257a3abebbb4e65b9f",
+      "deployedSha1": "ddf9248200073bdf7cb4d0257a3abebbb4e65b9f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/notes/versions/route.ts",
+      "expectedSha1": "fce3596a46b47c286279b40db638428297d6e381",
+      "deployedSha1": "fce3596a46b47c286279b40db638428297d6e381",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/processing/route.ts",
+      "expectedSha1": "255f2d9193953d2ec92c742ff9107e2a523c277f",
+      "deployedSha1": "255f2d9193953d2ec92c742ff9107e2a523c277f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/route.ts",
+      "expectedSha1": "81bf6670f58d9b07076c3ce7730e28bfb0e7f4a3",
+      "deployedSha1": "81bf6670f58d9b07076c3ce7730e28bfb0e7f4a3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/sources/[sourceId]/route.ts",
+      "expectedSha1": "ce87fa11df67ec8f9710ae0621086a0c3cd42683",
+      "deployedSha1": "ce87fa11df67ec8f9710ae0621086a0c3cd42683",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/[id]/sources/route.ts",
+      "expectedSha1": "9a2e61ca1596f3039a4f1ca9253a957b7bbebc1d",
+      "deployedSha1": "9a2e61ca1596f3039a4f1ca9253a957b7bbebc1d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/classes/route.ts",
+      "expectedSha1": "765131d1c3b0e8c6f31c0631101f3cf43860fe3f",
+      "deployedSha1": "765131d1c3b0e8c6f31c0631101f3cf43860fe3f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/consents/route.ts",
+      "expectedSha1": "e2186c9a960ce37060078ce2949a38dfc6494795",
+      "deployedSha1": "e2186c9a960ce37060078ce2949a38dfc6494795",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/courses/[id]/route.ts",
+      "expectedSha1": "9ab0b769537fb83ee7cbe551ae61144f1c6c4a27",
+      "deployedSha1": "9ab0b769537fb83ee7cbe551ae61144f1c6c4a27",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/courses/[id]/units/route.ts",
+      "expectedSha1": "425872d7e6f052e86fde21fa3a30f70f81c43414",
+      "deployedSha1": "425872d7e6f052e86fde21fa3a30f70f81c43414",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/courses/route.ts",
+      "expectedSha1": "630802f48093df12205f62af6252ae0ef6a1a574",
+      "deployedSha1": "630802f48093df12205f62af6252ae0ef6a1a574",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/exports/[kind]/[id]/download/route.ts",
+      "expectedSha1": "092ce858ee63bb51dcaaa511b4277e4b683326a3",
+      "deployedSha1": "092ce858ee63bb51dcaaa511b4277e4b683326a3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/exports/[kind]/[id]/route.ts",
+      "expectedSha1": "19f6c6677be0026722ca1de78a809501e12f9352",
+      "deployedSha1": "19f6c6677be0026722ca1de78a809501e12f9352",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/health/route.ts",
+      "expectedSha1": "bb39fcfc35dadecfd389cac5fc61ad5d61a83068",
+      "deployedSha1": "bb39fcfc35dadecfd389cac5fc61ad5d61a83068",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/jobs/run/route.ts",
+      "expectedSha1": "e2f478bf6011fb85eb56eb14cdfe8bf945f6bb8d",
+      "deployedSha1": "e2f478bf6011fb85eb56eb14cdfe8bf945f6bb8d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/learning/preferences/route.ts",
+      "expectedSha1": "25036babbbd6336f6fe4e6764f3e7db9df25f745",
+      "deployedSha1": "25036babbbd6336f6fe4e6764f3e7db9df25f745",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/learning/route.ts",
+      "expectedSha1": "f985a9d888bb0233db178e74b146d7b5e8e4da3b",
+      "deployedSha1": "f985a9d888bb0233db178e74b146d7b5e8e4da3b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/media/[id]/read/route.ts",
+      "expectedSha1": "06b95d62f8369bbc409c36d4725443c1dd191e56",
+      "deployedSha1": "06b95d62f8369bbc409c36d4725443c1dd191e56",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/media/[id]/route.ts",
+      "expectedSha1": "7ce9fe437841eff23fa45ad4135a393971fe790f",
+      "deployedSha1": "7ce9fe437841eff23fa45ad4135a393971fe790f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/notes/[id]/route.ts",
+      "expectedSha1": "4702e5818f90ecdad52cfe5428f5829d7a3ae7af",
+      "deployedSha1": "4702e5818f90ecdad52cfe5428f5829d7a3ae7af",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/privacy/[id]/route.ts",
+      "expectedSha1": "97b4015c17409198695fec284989b125be350d54",
+      "deployedSha1": "97b4015c17409198695fec284989b125be350d54",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/privacy/account/route.ts",
+      "expectedSha1": "8b510cbc6a4b6421721dae93e049d37f16c23138",
+      "deployedSha1": "8b510cbc6a4b6421721dae93e049d37f16c23138",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/profile/route.ts",
+      "expectedSha1": "7f929d0109599b6024c3bb4236aed8f6c0b00adf",
+      "deployedSha1": "7f929d0109599b6024c3bb4236aed8f6c0b00adf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/quota/route.ts",
+      "expectedSha1": "c48824107fbf0dfaafc108839bce6a1ead4894e7",
+      "deployedSha1": "c48824107fbf0dfaafc108839bce6a1ead4894e7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/recordings/route.ts",
+      "expectedSha1": "2f0e5bf9ed81dcefde6a124e670db1d787e466c1",
+      "deployedSha1": "2f0e5bf9ed81dcefde6a124e670db1d787e466c1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/review/events/[id]/undo/route.ts",
+      "expectedSha1": "b7e700d8ca778cf742430decd29778808c8a00f7",
+      "deployedSha1": "b7e700d8ca778cf742430decd29778808c8a00f7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/review/events/route.ts",
+      "expectedSha1": "2b271234455d025df306661dc324fd80e9b33c13",
+      "deployedSha1": "2b271234455d025df306661dc324fd80e9b33c13",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/review/route.ts",
+      "expectedSha1": "f991bc743e26439700f422927bd9e612a25e47e1",
+      "deployedSha1": "f991bc743e26439700f422927bd9e612a25e47e1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/review/settings/route.ts",
+      "expectedSha1": "b9f9a8a7badf92ab4ef070f1320dbfd985291b32",
+      "deployedSha1": "b9f9a8a7badf92ab4ef070f1320dbfd985291b32",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/runs/[id]/route.ts",
+      "expectedSha1": "0eca7a89b4331e5bfe4c0971e119d75edf0d678c",
+      "deployedSha1": "0eca7a89b4331e5bfe4c0971e119d75edf0d678c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/[id]/audio/route.ts",
+      "expectedSha1": "c1ef71257104d08f389dccd6f017e2adadb072ca",
+      "deployedSha1": "c1ef71257104d08f389dccd6f017e2adadb072ca",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/[id]/content/route.ts",
+      "expectedSha1": "61ff5825476615cb4d71ff0f487bd85c0c2302c6",
+      "deployedSha1": "61ff5825476615cb4d71ff0f487bd85c0c2302c6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/[id]/read/route.ts",
+      "expectedSha1": "b499fd5ff0ff4f96c81f2aa88286f6571be51e61",
+      "deployedSha1": "b499fd5ff0ff4f96c81f2aa88286f6571be51e61",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/[id]/route.ts",
+      "expectedSha1": "69ef25545fedef7fc8b09a04c386a4586caa7f3f",
+      "deployedSha1": "69ef25545fedef7fc8b09a04c386a4586caa7f3f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/[id]/unlock/route.ts",
+      "expectedSha1": "41855f3bd0861c6406837fad97d424134896f38f",
+      "deployedSha1": "41855f3bd0861c6406837fad97d424134896f38f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/contract/route.ts",
+      "expectedSha1": "d1741a069314a2a52d960ea976922040ae754ada",
+      "deployedSha1": "d1741a069314a2a52d960ea976922040ae754ada",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/notice/route.ts",
+      "expectedSha1": "adea2563a75d503efbd5ac8511f51e44f37c50c8",
+      "deployedSha1": "adea2563a75d503efbd5ac8511f51e44f37c50c8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/route.ts",
+      "expectedSha1": "d8b8cbbd3319b468941756f4acd7fcba9427210b",
+      "deployedSha1": "d8b8cbbd3319b468941756f4acd7fcba9427210b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/uploads/[id]/complete/route.ts",
+      "expectedSha1": "3930d75a690d01d6201b3602e4f8420afe796430",
+      "deployedSha1": "3930d75a690d01d6201b3602e4f8420afe796430",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/uploads/[id]/parts/[index]/route.ts",
+      "expectedSha1": "b64a3718936d5144dda65b97d5ac867b40835a87",
+      "deployedSha1": "b64a3718936d5144dda65b97d5ac867b40835a87",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/sources/uploads/[id]/route.ts",
+      "expectedSha1": "19459b5ccf6360913e34989d8ed0e4b5dbab21de",
+      "deployedSha1": "19459b5ccf6360913e34989d8ed0e4b5dbab21de",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/support/[id]/route.ts",
+      "expectedSha1": "3846ff54da61341d067fb63874297d717e8eae24",
+      "deployedSha1": "3846ff54da61341d067fb63874297d717e8eae24",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/support/route.ts",
+      "expectedSha1": "8dd203c535c254ab45ea8863ee3a97ffc3538064",
+      "deployedSha1": "8dd203c535c254ab45ea8863ee3a97ffc3538064",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/api/units/[id]/route.ts",
+      "expectedSha1": "2bd0e76fca14c8d067bb1560bb53fe195e9c28e4",
+      "deployedSha1": "2bd0e76fca14c8d067bb1560bb53fe195e9c28e4",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/auth/callback/route.ts",
+      "expectedSha1": "b67d68d48994bc87c7c28bf3f99a3c7e3465fcbc",
+      "deployedSha1": "b67d68d48994bc87c7c28bf3f99a3c7e3465fcbc",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/auth/sign-out/route.ts",
+      "expectedSha1": "987c61fa8acf7edbf292ff0ba86f654ea16f95fb",
+      "deployedSha1": "987c61fa8acf7edbf292ff0ba86f654ea16f95fb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/auth/start/route.ts",
+      "expectedSha1": "990003e096a77652b7374d6b03c29a6920d43cb1",
+      "deployedSha1": "990003e096a77652b7374d6b03c29a6920d43cb1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/deletion/page.tsx",
+      "expectedSha1": "2656d73ec148e4c1fea294d8cd036f5f78f1cd71",
+      "deployedSha1": "2656d73ec148e4c1fea294d8cd036f5f78f1cd71",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/auth/session/route.ts",
+      "expectedSha1": "001e2ef1208316cc957698ad48bcc79ab956880e",
+      "deployedSha1": "001e2ef1208316cc957698ad48bcc79ab956880e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/layout.tsx",
+      "expectedSha1": "b1f0a72c5d03ddc570ff69cbc87cffea178b0d10",
+      "deployedSha1": "b1f0a72c5d03ddc570ff69cbc87cffea178b0d10",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/spike/[action]/route.ts",
+      "expectedSha1": "01b629543912e020ea6b749eefdff7bd0cb4ec0f",
+      "deployedSha1": "01b629543912e020ea6b749eefdff7bd0cb4ec0f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/UiKit.module.css",
+      "expectedSha1": "8987d6d7089e29164ea3523e3a8d6d4ec0555818",
+      "deployedSha1": "8987d6d7089e29164ea3523e3a8d6d4ec0555818",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/UiKit.tsx",
+      "expectedSha1": "17b40523166a5951a08a1d1f12370fc509591e74",
+      "deployedSha1": "17b40523166a5951a08a1d1f12370fc509591e74",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/experience/page.tsx",
+      "expectedSha1": "52c1f1cd66b2e59a59eff125bd0abc65433440d5",
+      "deployedSha1": "52c1f1cd66b2e59a59eff125bd0abc65433440d5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/page.tsx",
+      "expectedSha1": "d95d54b6b03ecc727e3f8c4ace0acda562763bd8",
+      "deployedSha1": "d95d54b6b03ecc727e3f8c4ace0acda562763bd8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/profile/page.tsx",
+      "expectedSha1": "814cc0e5e178b039eab76010197cb5ad0a3a3af3",
+      "deployedSha1": "814cc0e5e178b039eab76010197cb5ad0a3a3af3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/setup/page.tsx",
+      "expectedSha1": "6e07ad02634feb2ea1f86bd933218e58bb343334",
+      "deployedSha1": "6e07ad02634feb2ea1f86bd933218e58bb343334",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/shell/page.module.css",
+      "expectedSha1": "9902519ac3afb0c7633e50b5082ab2f2d3da66a8",
+      "deployedSha1": "9902519ac3afb0c7633e50b5082ab2f2d3da66a8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/dev/ui/shell/page.tsx",
+      "expectedSha1": "64a5b61e980630d138eeadc080d9744896f97ebb",
+      "deployedSha1": "64a5b61e980630d138eeadc080d9744896f97ebb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/error.tsx",
+      "expectedSha1": "75f2c3952dc19f7d1f8d1a999f748e084105241b",
+      "deployedSha1": "75f2c3952dc19f7d1f8d1a999f748e084105241b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/global-error.tsx",
+      "expectedSha1": "87d6974a7f137f26f9dcf4ee0958723768944817",
+      "deployedSha1": "87d6974a7f137f26f9dcf4ee0958723768944817",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/layout.tsx",
+      "expectedSha1": "2fe7b1a4e89a9a80ac2c4f7d47c940804fd68485",
+      "deployedSha1": "2fe7b1a4e89a9a80ac2c4f7d47c940804fd68485",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/loading.tsx",
+      "expectedSha1": "4292deec39ac64d40794bc9e1975be54a3776971",
+      "deployedSha1": "4292deec39ac64d40794bc9e1975be54a3776971",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/manifest.ts",
+      "expectedSha1": "d139d08adfdc27d6dfb21e71807cf20ca2e76360",
+      "deployedSha1": "d139d08adfdc27d6dfb21e71807cf20ca2e76360",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/not-found.tsx",
+      "expectedSha1": "863c4c30c13131d25a366552598befa80552d362",
+      "deployedSha1": "863c4c30c13131d25a366552598befa80552d362",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/page.tsx",
+      "expectedSha1": "8c7b443c0d09b8abd0cb19024f4c4e95dd38c5bd",
+      "deployedSha1": "8c7b443c0d09b8abd0cb19024f4c4e95dd38c5bd",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/preview/[screen]/page.tsx",
+      "expectedSha1": "3d5082f5ff31996283cfd53589f4c81367ab36b5",
+      "deployedSha1": "3d5082f5ff31996283cfd53589f4c81367ab36b5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/preview/layout.tsx",
+      "expectedSha1": "dff2a4daf83fce106378e2544c20bcceb0cbdd48",
+      "deployedSha1": "dff2a4daf83fce106378e2544c20bcceb0cbdd48",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/preview/page.tsx",
+      "expectedSha1": "24e659acc4f396e0813da11e2ec0ac2a00ffaf86",
+      "deployedSha1": "24e659acc4f396e0813da11e2ec0ac2a00ffaf86",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/recovery.module.css",
+      "expectedSha1": "0c57e34b1565e74c40877b136929570c33122796",
+      "deployedSha1": "0c57e34b1565e74c40877b136929570c33122796",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/SetupWizard.tsx",
+      "expectedSha1": "168348ddc269c5b0c3f7c2b1cd71142e0c8a0b67",
+      "deployedSha1": "168348ddc269c5b0c3f7c2b1cd71142e0c8a0b67",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/api.ts",
+      "expectedSha1": "05d7f9db5c6263ec084fefda316de07f6993e84a",
+      "deployedSha1": "05d7f9db5c6263ec084fefda316de07f6993e84a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/consent/ConsentAgain.tsx",
+      "expectedSha1": "6b6692423edd0cb097b69616a3599611580b3e6b",
+      "deployedSha1": "6b6692423edd0cb097b69616a3599611580b3e6b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/consent/page.tsx",
+      "expectedSha1": "b43ed5d2e0a61cfb3f5c6ec5c3ded47de8098c53",
+      "deployedSha1": "b43ed5d2e0a61cfb3f5c6ec5c3ded47de8098c53",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/labels.ts",
+      "expectedSha1": "52dcc985858f453ab9451475516b31684047a672",
+      "deployedSha1": "52dcc985858f453ab9451475516b31684047a672",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/languages.test.ts",
+      "expectedSha1": "10b704bce174d05d9dcb60114759007fd3635e19",
+      "deployedSha1": "10b704bce174d05d9dcb60114759007fd3635e19",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/languages.ts",
+      "expectedSha1": "fb51b1fa6f43fb4470cb0c9dcf50cbf5c0a952bc",
+      "deployedSha1": "fb51b1fa6f43fb4470cb0c9dcf50cbf5c0a952bc",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/page.tsx",
+      "expectedSha1": "9fe5a1c56ec2563a5c735b67612ec3e2adab19c7",
+      "deployedSha1": "9fe5a1c56ec2563a5c735b67612ec3e2adab19c7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/setup.module.css",
+      "expectedSha1": "126f8f362db569b63ea2278f6f380ecf0e35c8ae",
+      "deployedSha1": "126f8f362db569b63ea2278f6f380ecf0e35c8ae",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/app/setup/steps.tsx",
+      "expectedSha1": "4e206934e57d8873967f36c8309c5900c7a5e82d",
+      "deployedSha1": "4e206934e57d8873967f36c8309c5900c7a5e82d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/legal/texts.generated.ts",
+      "expectedSha1": "fe9992e9aed9482dea49f4cf314c6c0310eac26b",
+      "deployedSha1": "fe9992e9aed9482dea49f4cf314c6c0310eac26b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/proxy.auth.test.ts",
+      "expectedSha1": "1784124f91d4f7d9e8d7ff545a8ecd7be7fa1f91",
+      "deployedSha1": "1784124f91d4f7d9e8d7ff545a8ecd7be7fa1f91",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/proxy.preview.test.ts",
+      "expectedSha1": "54436a95fd974dae09c4924ccc578ec363a22de3",
+      "deployedSha1": "54436a95fd974dae09c4924ccc578ec363a22de3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/proxy.ts",
+      "expectedSha1": "abd58c3c74fb2250eb5a9b4b42f735f309858e2b",
+      "deployedSha1": "abd58c3c74fb2250eb5a9b4b42f735f309858e2b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/account-routes.ts",
+      "expectedSha1": "89066abd9e222a1b9455f93e4bbebe93e26fa4ff",
+      "deployedSha1": "89066abd9e222a1b9455f93e4bbebe93e26fa4ff",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-auth.int.test.ts",
+      "expectedSha1": "0aaca9132cc5b5037b3686bacc1ce8acb1fce9ed",
+      "deployedSha1": "0aaca9132cc5b5037b3686bacc1ce8acb1fce9ed",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-branded-email.int.test.ts",
+      "expectedSha1": "437ba5ee99f032ad16a49106502bfef6c3cdf77d",
+      "deployedSha1": "437ba5ee99f032ad16a49106502bfef6c3cdf77d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-data.int.test.ts",
+      "expectedSha1": "bb8389e041c8895e1190acb6070fc1d7cab7e3b0",
+      "deployedSha1": "bb8389e041c8895e1190acb6070fc1d7cab7e3b0",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-data.ts",
+      "expectedSha1": "fce807fa78b6beece4636303efa001745a908bd3",
+      "deployedSha1": "fce807fa78b6beece4636303efa001745a908bd3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-directory.ts",
+      "expectedSha1": "7af466b84d489c9fd2b864108ccac3e0925e3c6f",
+      "deployedSha1": "7af466b84d489c9fd2b864108ccac3e0925e3c6f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-email-values.int.test.ts",
+      "expectedSha1": "543c6192b447a253350762134186e64d6fe2366a",
+      "deployedSha1": "543c6192b447a253350762134186e64d6fe2366a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-email-values.ts",
+      "expectedSha1": "30aea1522c189dd05cdd13e4fedcd5d6e4e77249",
+      "deployedSha1": "30aea1522c189dd05cdd13e4fedcd5d6e4e77249",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-operation.ts",
+      "expectedSha1": "7844c36878327639f6c314e9264a83f401ecfd15",
+      "deployedSha1": "7844c36878327639f6c314e9264a83f401ecfd15",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/admin-routes.ts",
+      "expectedSha1": "40d249641f6ac7b714f6edbe371a5ab26455fe7d",
+      "deployedSha1": "40d249641f6ac7b714f6edbe371a5ab26455fe7d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/ai.ts",
+      "expectedSha1": "18c4869c628d7a9b4ff57706b1c0f4ff6b58f005",
+      "deployedSha1": "18c4869c628d7a9b4ff57706b1c0f4ff6b58f005",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/api.int.test.ts",
+      "expectedSha1": "60f8c65e633b4427769827d6c9dcda2389bc6dcb",
+      "deployedSha1": "60f8c65e633b4427769827d6c9dcda2389bc6dcb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/api.test.ts",
+      "expectedSha1": "c3151f9c0f49f16563af54bebc09886251f01fc1",
+      "deployedSha1": "c3151f9c0f49f16563af54bebc09886251f01fc1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/api.ts",
+      "expectedSha1": "b76d6ea28585bce6da5aede58a7ab23b90e113d3",
+      "deployedSha1": "b76d6ea28585bce6da5aede58a7ab23b90e113d3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/audio-preparer.runtime.test.ts",
+      "expectedSha1": "f52853acf31f2a2254315f4001661b49f76a7075",
+      "deployedSha1": "f52853acf31f2a2254315f4001661b49f76a7075",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/audio-preparer.test.ts",
+      "expectedSha1": "79aac527bd115c06e45e5d0b8968ee4eb6464d23",
+      "deployedSha1": "79aac527bd115c06e45e5d0b8968ee4eb6464d23",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/audio-preparer.ts",
+      "expectedSha1": "da276d3edbdea4d9a6b5355ffa68316242b46dfa",
+      "deployedSha1": "da276d3edbdea4d9a6b5355ffa68316242b46dfa",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/admin.ts",
+      "expectedSha1": "94e4c74963fa3cd2dc0422d96a7c73228f5c9e2d",
+      "deployedSha1": "94e4c74963fa3cd2dc0422d96a7c73228f5c9e2d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/deletion-recovery.int.test.ts",
+      "expectedSha1": "571076d6b905b7b0339992f3fc27cbbaaf060c5d",
+      "deployedSha1": "571076d6b905b7b0339992f3fc27cbbaaf060c5d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/flow.int.test.ts",
+      "expectedSha1": "69a2ddd22b6ad3344fd4092f8a39bccbfe90a523",
+      "deployedSha1": "69a2ddd22b6ad3344fd4092f8a39bccbfe90a523",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/flow.ts",
+      "expectedSha1": "7b67d59147f7a5464bfb0c27cdd56ec2b760b33e",
+      "deployedSha1": "7b67d59147f7a5464bfb0c27cdd56ec2b760b33e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/gateway.test.ts",
+      "expectedSha1": "c8724c4f7e2a039989b0779eb12d069e316c91ec",
+      "deployedSha1": "c8724c4f7e2a039989b0779eb12d069e316c91ec",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/gateway.ts",
+      "expectedSha1": "f03a48b7bd0766e1a5c77d93f977e6ec94ef3296",
+      "deployedSha1": "f03a48b7bd0766e1a5c77d93f977e6ec94ef3296",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/learner.ts",
+      "expectedSha1": "8d0efc7038184e8ab7e108d6a647be857e022740",
+      "deployedSha1": "8d0efc7038184e8ab7e108d6a647be857e022740",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/return-path.test.ts",
+      "expectedSha1": "1a6d06aba1237fffab73b1f03a51c356ad3e073d",
+      "deployedSha1": "1a6d06aba1237fffab73b1f03a51c356ad3e073d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/return-path.ts",
+      "expectedSha1": "2da5c2b1a7ad894e36746523f968ef56bbbd2e1f",
+      "deployedSha1": "2da5c2b1a7ad894e36746523f968ef56bbbd2e1f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/auth/supabase.ts",
+      "expectedSha1": "a446d718f4437c628cc9b83087bd869e2390b9db",
+      "deployedSha1": "a446d718f4437c628cc9b83087bd869e2390b9db",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/authSignOut.int.test.ts",
+      "expectedSha1": "bdaf724907b84d3ef254551dc2cf1ef870c4e693",
+      "deployedSha1": "bdaf724907b84d3ef254551dc2cf1ef870c4e693",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/card.int.test.ts",
+      "expectedSha1": "3783e9fce5fb19fea878177b311af20fbcfe6e58",
+      "deployedSha1": "3783e9fce5fb19fea878177b311af20fbcfe6e58",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/cardActions.int.test.ts",
+      "expectedSha1": "9669db865d925f72b702757e24a78afab2c66d91",
+      "deployedSha1": "9669db865d925f72b702757e24a78afab2c66d91",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/cardMedia.int.test.ts",
+      "expectedSha1": "83a9e1e0bccee5055e76f13c7210e36fa60344b3",
+      "deployedSha1": "83a9e1e0bccee5055e76f13c7210e36fa60344b3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/cardProposal.int.test.ts",
+      "expectedSha1": "3638e72be0f8cdb0f183c1a49c77863392d4a95a",
+      "deployedSha1": "3638e72be0f8cdb0f183c1a49c77863392d4a95a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/cardProposals.int.test.ts",
+      "expectedSha1": "291fb3ef91233239b4e68c36981a084c5ec50dba",
+      "deployedSha1": "291fb3ef91233239b4e68c36981a084c5ec50dba",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classCards.int.test.ts",
+      "expectedSha1": "d5f6be1b4ef0a04afc4b22d9cc2ea37ac81eb7ea",
+      "deployedSha1": "d5f6be1b4ef0a04afc4b22d9cc2ea37ac81eb7ea",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classExports.int.test.ts",
+      "expectedSha1": "ec17b565e2aca38b001689ec506d48c7121554e9",
+      "deployedSha1": "ec17b565e2aca38b001689ec506d48c7121554e9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classMedia.int.test.ts",
+      "expectedSha1": "17be4b0daf7bb770abcf92f8972fd8b31f86535d",
+      "deployedSha1": "17be4b0daf7bb770abcf92f8972fd8b31f86535d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classProcessing.int.test.ts",
+      "expectedSha1": "1ddc096c269c1fc7950df6d4adcf2e498148163d",
+      "deployedSha1": "1ddc096c269c1fc7950df6d4adcf2e498148163d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classSession.int.test.ts",
+      "expectedSha1": "67d750537b06a6281a67f85b3272b2dac2e7a7c9",
+      "deployedSha1": "67d750537b06a6281a67f85b3272b2dac2e7a7c9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classSource.int.test.ts",
+      "expectedSha1": "3c478b1375d0bbbd1477fb0a6dfb29cb72752029",
+      "deployedSha1": "3c478b1375d0bbbd1477fb0a6dfb29cb72752029",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classSources.int.test.ts",
+      "expectedSha1": "3d46be250b5e438ebc0f1af6a712f16c39c07734",
+      "deployedSha1": "3d46be250b5e438ebc0f1af6a712f16c39c07734",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/classes.int.test.ts",
+      "expectedSha1": "5df03eb01594617f5241708ba863e42c39d6547d",
+      "deployedSha1": "5df03eb01594617f5241708ba863e42c39d6547d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/consents.int.test.ts",
+      "expectedSha1": "97810f643e20e8a16dbfb8b3633e558bb1f22524",
+      "deployedSha1": "97810f643e20e8a16dbfb8b3633e558bb1f22524",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/course.int.test.ts",
+      "expectedSha1": "4c98a0cb4173c6e18688031ba2c734e37c0ce4ae",
+      "deployedSha1": "4c98a0cb4173c6e18688031ba2c734e37c0ce4ae",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/courseUnits.int.test.ts",
+      "expectedSha1": "9b0f48cfa16b75ab2961b5a5a571d3a6b4800f37",
+      "deployedSha1": "9b0f48cfa16b75ab2961b5a5a571d3a6b4800f37",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/courses.int.test.ts",
+      "expectedSha1": "5db999ff95e5d8bbc74444eedceec0914478791a",
+      "deployedSha1": "5db999ff95e5d8bbc74444eedceec0914478791a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/export-test-support.ts",
+      "expectedSha1": "776e42344e1f58fcd98d2691c1568cd6ee079649",
+      "deployedSha1": "776e42344e1f58fcd98d2691c1568cd6ee079649",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/exportArtifact.int.test.ts",
+      "expectedSha1": "440dc060de89d3b86347a5fce3a72603daa1ad25",
+      "deployedSha1": "440dc060de89d3b86347a5fce3a72603daa1ad25",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/exportDownload.int.test.ts",
+      "expectedSha1": "ae9666d45af4c27335632b0a22e2e87f8f4db291",
+      "deployedSha1": "ae9666d45af4c27335632b0a22e2e87f8f4db291",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/learners.ts",
+      "expectedSha1": "16210f81c364394f3305c34a978f578a7c5773a4",
+      "deployedSha1": "16210f81c364394f3305c34a978f578a7c5773a4",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/learning.int.test.ts",
+      "expectedSha1": "fd754421503dd5c8bab81494870862fc30fcba23",
+      "deployedSha1": "fd754421503dd5c8bab81494870862fc30fcba23",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/learningPreferences.int.test.ts",
+      "expectedSha1": "86b70f7ede2ee5ef07a5e4c7ae39eac7bc24a4a2",
+      "deployedSha1": "86b70f7ede2ee5ef07a5e4c7ae39eac7bc24a4a2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/media.int.test.ts",
+      "expectedSha1": "31daf681048e22369b6a5bcbd4c8b111de55ac41",
+      "deployedSha1": "31daf681048e22369b6a5bcbd4c8b111de55ac41",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/mediaRead.int.test.ts",
+      "expectedSha1": "03e76f1d19bef03d33ad35defe2d88d2c91a19c5",
+      "deployedSha1": "03e76f1d19bef03d33ad35defe2d88d2c91a19c5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/noteNotebook.int.test.ts",
+      "expectedSha1": "e32703af9e5c1e95de3b5f7b03080d2a0552c774",
+      "deployedSha1": "e32703af9e5c1e95de3b5f7b03080d2a0552c774",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/noteRevision.int.test.ts",
+      "expectedSha1": "d9d15630525312e1787e5fdc314d2c2d9953f2e5",
+      "deployedSha1": "d9d15630525312e1787e5fdc314d2c2d9953f2e5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/noteVersions.int.test.ts",
+      "expectedSha1": "2a2ee704abab1696354bb677d6d2009ae09d86ca",
+      "deployedSha1": "2a2ee704abab1696354bb677d6d2009ae09d86ca",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/org-support.ts",
+      "expectedSha1": "35f68ce60cfa803204e25134ba8a7aec4f892bed",
+      "deployedSha1": "35f68ce60cfa803204e25134ba8a7aec4f892bed",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/privacyAccount.int.test.ts",
+      "expectedSha1": "31d9e327ab37db3b19db88460f9169bab9868d29",
+      "deployedSha1": "31d9e327ab37db3b19db88460f9169bab9868d29",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/privacyRequest.int.test.ts",
+      "expectedSha1": "1654270d33b38d6f7a844cad2506256e13c1456f",
+      "deployedSha1": "1654270d33b38d6f7a844cad2506256e13c1456f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/processingEstimate.int.test.ts",
+      "expectedSha1": "9596327dbcdaad83aaa266415411f6df63ed1b6b",
+      "deployedSha1": "9596327dbcdaad83aaa266415411f6df63ed1b6b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/processingRun.int.test.ts",
+      "expectedSha1": "f91015ad5e268b24598e9575d22d4e95369eb005",
+      "deployedSha1": "f91015ad5e268b24598e9575d22d4e95369eb005",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/profile.int.test.ts",
+      "expectedSha1": "70fbff899aea5f9bc6cca3aaf083de91ced61525",
+      "deployedSha1": "70fbff899aea5f9bc6cca3aaf083de91ced61525",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/quota.int.test.ts",
+      "expectedSha1": "763fb20c8cafa603f6b4041bcf4de4343ce82b76",
+      "deployedSha1": "763fb20c8cafa603f6b4041bcf4de4343ce82b76",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/recordingSource.int.test.ts",
+      "expectedSha1": "27af7cbb42d7febdd175ecf234d34e536bbaa4a1",
+      "deployedSha1": "27af7cbb42d7febdd175ecf234d34e536bbaa4a1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/reviewEvent.int.test.ts",
+      "expectedSha1": "9a76f11fedb55baf304cf32cf95e1c3dae00877a",
+      "deployedSha1": "9a76f11fedb55baf304cf32cf95e1c3dae00877a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/reviewQueue.int.test.ts",
+      "expectedSha1": "8db56ca3ad21f3403b2ac5c5b4436325a44aa0da",
+      "deployedSha1": "8db56ca3ad21f3403b2ac5c5b4436325a44aa0da",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/reviewSettings.int.test.ts",
+      "expectedSha1": "ff91a4c45c69e6920f55cd9021de8427d2a11b80",
+      "deployedSha1": "ff91a4c45c69e6920f55cd9021de8427d2a11b80",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/reviewUndo.int.test.ts",
+      "expectedSha1": "4c9540936726ab9275bb07e79c24be2edf0ee971",
+      "deployedSha1": "4c9540936726ab9275bb07e79c24be2edf0ee971",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/source-test-support.ts",
+      "expectedSha1": "5a223621ac98bd9a913c23003c12898b88087bac",
+      "deployedSha1": "5a223621ac98bd9a913c23003c12898b88087bac",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/source.int.test.ts",
+      "expectedSha1": "71806424f1de97ee85b9ed1a4473efbbb6042f92",
+      "deployedSha1": "71806424f1de97ee85b9ed1a4473efbbb6042f92",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceAudio.int.test.ts",
+      "expectedSha1": "27fc749a74a1e7852dd98a6adfd48bb2e7a3719b",
+      "deployedSha1": "27fc749a74a1e7852dd98a6adfd48bb2e7a3719b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceComplete.int.test.ts",
+      "expectedSha1": "a501bf3522acf5b7527cdbdf166b1f46a933f295",
+      "deployedSha1": "a501bf3522acf5b7527cdbdf166b1f46a933f295",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceContent.int.test.ts",
+      "expectedSha1": "2508f09ee28dc301dbf9c8b5416d5f7cbdd9a900",
+      "deployedSha1": "2508f09ee28dc301dbf9c8b5416d5f7cbdd9a900",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceContract.int.test.ts",
+      "expectedSha1": "5e466d154e76b546778df34659b22b61c412248e",
+      "deployedSha1": "5e466d154e76b546778df34659b22b61c412248e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceNotice.int.test.ts",
+      "expectedSha1": "9434d064e1a1a40b1a0c67dd27554ba04d4c8b35",
+      "deployedSha1": "9434d064e1a1a40b1a0c67dd27554ba04d4c8b35",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourcePart.int.test.ts",
+      "expectedSha1": "8458b26453341174ae6b805f8acdb250f996c22f",
+      "deployedSha1": "8458b26453341174ae6b805f8acdb250f996c22f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceRead.int.test.ts",
+      "expectedSha1": "2814d1f5d98ab63375b8c3b1ad020b99de4a864f",
+      "deployedSha1": "2814d1f5d98ab63375b8c3b1ad020b99de4a864f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceUnlock.int.test.ts",
+      "expectedSha1": "90ed1d8936e2ac582c6fed4b9aa0987ef9e4c1a5",
+      "deployedSha1": "90ed1d8936e2ac582c6fed4b9aa0987ef9e4c1a5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sourceUpload.int.test.ts",
+      "expectedSha1": "f710703bbb8bd235455c17a49c37a229d90f20a3",
+      "deployedSha1": "f710703bbb8bd235455c17a49c37a229d90f20a3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/sources.int.test.ts",
+      "expectedSha1": "ea6f9ceff118d88dab4f33d6498268cb72952e91",
+      "deployedSha1": "ea6f9ceff118d88dab4f33d6498268cb72952e91",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/study-support.ts",
+      "expectedSha1": "1e5badd2f79d54e10ae611a9fdf7bd4bc54e902e",
+      "deployedSha1": "1e5badd2f79d54e10ae611a9fdf7bd4bc54e902e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/supportFeedback.int.test.ts",
+      "expectedSha1": "4133caee8df14617c004bfd55db2126e854a70e3",
+      "deployedSha1": "4133caee8df14617c004bfd55db2126e854a70e3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/supportThread.int.test.ts",
+      "expectedSha1": "a46bc8438fef30de25006ebc00643859735ab25e",
+      "deployedSha1": "a46bc8438fef30de25006ebc00643859735ab25e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/cross-account/unit.int.test.ts",
+      "expectedSha1": "df300ad18fcb1f787ed030614189482bf72cc85e",
+      "deployedSha1": "df300ad18fcb1f787ed030614189482bf72cc85e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/db.ts",
+      "expectedSha1": "a63ace8a806df0febac42b0dcbc886f0addc31cf",
+      "deployedSha1": "a63ace8a806df0febac42b0dcbc886f0addc31cf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/dev-auth.ts",
+      "expectedSha1": "aae6d05451f64de374bccd09b35bd5ba2f077856",
+      "deployedSha1": "aae6d05451f64de374bccd09b35bd5ba2f077856",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/dev-ui.test.ts",
+      "expectedSha1": "54ff0483e9f074f46846e92a4d18a0c919189445",
+      "deployedSha1": "54ff0483e9f074f46846e92a4d18a0c919189445",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/dev-ui.ts",
+      "expectedSha1": "3063011ee1d377756710abd87901a9fcb372f109",
+      "deployedSha1": "3063011ee1d377756710abd87901a9fcb372f109",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/export-jobs.ts",
+      "expectedSha1": "8429312f0b63bbc985e55bf0fbda200aef2da54a",
+      "deployedSha1": "8429312f0b63bbc985e55bf0fbda200aef2da54a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/export-routes.ts",
+      "expectedSha1": "723c2335674b299f3ce82637bd51d5697d838155",
+      "deployedSha1": "723c2335674b299f3ce82637bd51d5697d838155",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/jobs.int.test.ts",
+      "expectedSha1": "1444fe9adf542e9eeedbd5bdbfc445ab3e4490ca",
+      "deployedSha1": "1444fe9adf542e9eeedbd5bdbfc445ab3e4490ca",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/jobs.ts",
+      "expectedSha1": "13d1feb6ca31e928a7d7c0b23ddd2c569facb04b",
+      "deployedSha1": "13d1feb6ca31e928a7d7c0b23ddd2c569facb04b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/legal.ts",
+      "expectedSha1": "a327b578c6923a7087b6dc8c5d892c630fc52e1f",
+      "deployedSha1": "a327b578c6923a7087b6dc8c5d892c630fc52e1f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/local-test-policy.ts",
+      "expectedSha1": "da559b24af344e74ee2da9f34fbaa568f9f1976d",
+      "deployedSha1": "da559b24af344e74ee2da9f34fbaa568f9f1976d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/media-jobs.ts",
+      "expectedSha1": "c2039c2c48b4831f1f82c42c60c455f782eac26c",
+      "deployedSha1": "c2039c2c48b4831f1f82c42c60c455f782eac26c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/media-readiness.test.ts",
+      "expectedSha1": "3e6ca203c19531f8c71064b02fc971f3a28b3a5a",
+      "deployedSha1": "3e6ca203c19531f8c71064b02fc971f3a28b3a5a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/media-routes.ts",
+      "expectedSha1": "5bf94606da03a05f96d0848f905097c0473862bb",
+      "deployedSha1": "5bf94606da03a05f96d0848f905097c0473862bb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/org-idempotency.test.ts",
+      "expectedSha1": "c8629718af861495c2f061cfc74f833887b77f65",
+      "deployedSha1": "c8629718af861495c2f061cfc74f833887b77f65",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/org-routes.ts",
+      "expectedSha1": "99cfa3cc177f83f1df164e644a51085238875e38",
+      "deployedSha1": "99cfa3cc177f83f1df164e644a51085238875e38",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/pdf-preparer.int.test.ts",
+      "expectedSha1": "d0d3b8a628bca3a57d48c86db2d9ca9239192180",
+      "deployedSha1": "d0d3b8a628bca3a57d48c86db2d9ca9239192180",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/pdf-preparer.ts",
+      "expectedSha1": "d0641045947e1b2bd24edbce7c30aadfb03566cf",
+      "deployedSha1": "d0641045947e1b2bd24edbce7c30aadfb03566cf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/pers-routes.ts",
+      "expectedSha1": "123bf679d8250a3077a00258ed200dc1075235bb",
+      "deployedSha1": "123bf679d8250a3077a00258ed200dc1075235bb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/preview-api.test.ts",
+      "expectedSha1": "16c27066647c6c0090dce70b51a2489d64834c14",
+      "deployedSha1": "16c27066647c6c0090dce70b51a2489d64834c14",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/preview-mode.test.ts",
+      "expectedSha1": "fa6b8dab3aabd33e8ffca2d44c51e661fcfba636",
+      "deployedSha1": "fa6b8dab3aabd33e8ffca2d44c51e661fcfba636",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/preview-mode.ts",
+      "expectedSha1": "7a2ae84e2a610e880efc77bfb192103d492a72bf",
+      "deployedSha1": "7a2ae84e2a610e880efc77bfb192103d492a72bf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/privacy-ack.int.test.ts",
+      "expectedSha1": "1a80e7d24b1ca3ba112aaefe3ccec4115b233ca3",
+      "deployedSha1": "1a80e7d24b1ca3ba112aaefe3ccec4115b233ca3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/privacy-composition.int.test.ts",
+      "expectedSha1": "e4c4385ff8fa98e94157da46ef13a5bd3cd73389",
+      "deployedSha1": "e4c4385ff8fa98e94157da46ef13a5bd3cd73389",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/privacy-journal.test.ts",
+      "expectedSha1": "016bc41a14d3abd507c7541d9c1bf7802bfd7105",
+      "deployedSha1": "016bc41a14d3abd507c7541d9c1bf7802bfd7105",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/privacy-journal.ts",
+      "expectedSha1": "6f3ef35742c6dd3898a8d4af3c2dd3ef62434c0b",
+      "deployedSha1": "6f3ef35742c6dd3898a8d4af3c2dd3ef62434c0b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/privacy-routes.ts",
+      "expectedSha1": "0dbaa9dd33d0be583494e27ed238c1ac05cffc89",
+      "deployedSha1": "0dbaa9dd33d0be583494e27ed238c1ac05cffc89",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/privacy.ts",
+      "expectedSha1": "6c6120a3c68edadeb920251045a9287b6d1ec5c8",
+      "deployedSha1": "6c6120a3c68edadeb920251045a9287b6d1ec5c8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/processing-estimate-state.test.ts",
+      "expectedSha1": "f3a8e80cf59053df4a5957fd4b29faeccb77d1cb",
+      "deployedSha1": "f3a8e80cf59053df4a5957fd4b29faeccb77d1cb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/processing-estimate-state.ts",
+      "expectedSha1": "680e57463603797a8727a078e8eb1c870ef3f123",
+      "deployedSha1": "680e57463603797a8727a078e8eb1c870ef3f123",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/processing-estimate.test.ts",
+      "expectedSha1": "ab88e70d15603d680c24bc33d8cee138e4784760",
+      "deployedSha1": "ab88e70d15603d680c24bc33d8cee138e4784760",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/processing-jobs.ts",
+      "expectedSha1": "a317de1c64428d739da3d5e85082a0b53db7cdbe",
+      "deployedSha1": "a317de1c64428d739da3d5e85082a0b53db7cdbe",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/processing-routes.ts",
+      "expectedSha1": "a7805405959dbf16efa52bf32e8c5819fe8b2839",
+      "deployedSha1": "a7805405959dbf16efa52bf32e8c5819fe8b2839",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/quota-routes.ts",
+      "expectedSha1": "182b3077ea733254cc24f88896930ec968e22f6a",
+      "deployedSha1": "182b3077ea733254cc24f88896930ec968e22f6a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/recording-routes.ts",
+      "expectedSha1": "2a920b0a15266c39159c75c23f7cf1318bc10b46",
+      "deployedSha1": "2a920b0a15266c39159c75c23f7cf1318bc10b46",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/route-coverage.test.ts",
+      "expectedSha1": "12f4fa172121451fa2d76974f6d585819767d725",
+      "deployedSha1": "12f4fa172121451fa2d76974f6d585819767d725",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/route-coverage.ts",
+      "expectedSha1": "7b82668db04e3d25a9f09b28122cf6249acbb12c",
+      "deployedSha1": "7b82668db04e3d25a9f09b28122cf6249acbb12c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/routes.ts",
+      "expectedSha1": "1a3a40697adb935b10c2b01376dc232e7afff652",
+      "deployedSha1": "1a3a40697adb935b10c2b01376dc232e7afff652",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/session.ts",
+      "expectedSha1": "4e2cacae73865e7909a91cdd50a29bf07e126c0f",
+      "deployedSha1": "4e2cacae73865e7909a91cdd50a29bf07e126c0f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/source-jobs.test.ts",
+      "expectedSha1": "4588454a8c473c434e9e2daad5f61b8a92fb4adb",
+      "deployedSha1": "4588454a8c473c434e9e2daad5f61b8a92fb4adb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/source-jobs.ts",
+      "expectedSha1": "6f0f2521ff9cc136d81d01968a09937b1e307332",
+      "deployedSha1": "6f0f2521ff9cc136d81d01968a09937b1e307332",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/source-routes.test.ts",
+      "expectedSha1": "d11b6f62b2ae073fa0871434c98553db88107a03",
+      "deployedSha1": "d11b6f62b2ae073fa0871434c98553db88107a03",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/source-routes.ts",
+      "expectedSha1": "df103d8df4d42ea16779d0482ec375e568edd8ac",
+      "deployedSha1": "df103d8df4d42ea16779d0482ec375e568edd8ac",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/spike-jobs.ts",
+      "expectedSha1": "d1d1746f8a09191f058ad8b625660f64a07a150b",
+      "deployedSha1": "d1d1746f8a09191f058ad8b625660f64a07a150b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/spike.ts",
+      "expectedSha1": "e95da182e0966bcdb9a8e264afb39ac4d1ba4797",
+      "deployedSha1": "e95da182e0966bcdb9a8e264afb39ac4d1ba4797",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/storage.ts",
+      "expectedSha1": "25941979cbd4de95e1d12c6fbfcb4b2207817eee",
+      "deployedSha1": "25941979cbd4de95e1d12c6fbfcb4b2207817eee",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/study-routes.ts",
+      "expectedSha1": "06d27d31e8160614b5b3b0361c6d86ed3477364e",
+      "deployedSha1": "06d27d31e8160614b5b3b0361c6d86ed3477364e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/support-routes.ts",
+      "expectedSha1": "a4a8528a61fd9e9afd215470a909b45f5b22503d",
+      "deployedSha1": "a4a8528a61fd9e9afd215470a909b45f5b22503d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/test-support.ts",
+      "expectedSha1": "2bacbad923a0901e5e3b9032ef8a75aef09f645a",
+      "deployedSha1": "2bacbad923a0901e5e3b9032ef8a75aef09f645a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/server/workspace.ts",
+      "expectedSha1": "cf484ae7cf8a1439c7c77f0e2b7eb3590c9fd7c7",
+      "deployedSha1": "cf484ae7cf8a1439c7c77f0e2b7eb3590c9fd7c7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/account-copy.ts",
+      "expectedSha1": "e390343fa8c0eddea7acbe6f1f30136a7995bf59",
+      "deployedSha1": "e390343fa8c0eddea7acbe6f1f30136a7995bf59",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/Admin.module.css",
+      "expectedSha1": "283da39a85e88a9a51c3d8f87bda033c6ba67d99",
+      "deployedSha1": "283da39a85e88a9a51c3d8f87bda033c6ba67d99",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/AdminPanel.tsx",
+      "expectedSha1": "a1ce56a8b780f5c2b2fe3ad15827e36a63fc72fb",
+      "deployedSha1": "a1ce56a8b780f5c2b2fe3ad15827e36a63fc72fb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/AdminScreenProps.ts",
+      "expectedSha1": "64068cb63fe608908c837082ab4a0e245a53c252",
+      "deployedSha1": "64068cb63fe608908c837082ab4a0e245a53c252",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/CommunicationScreens.tsx",
+      "expectedSha1": "c6dbf82dac9b13965e669c5b3eb82a406715dac9",
+      "deployedSha1": "c6dbf82dac9b13965e669c5b3eb82a406715dac9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/CoreScreens.tsx",
+      "expectedSha1": "6da7ac8fa3274073e94a0f885167cff1faa5db0e",
+      "deployedSha1": "6da7ac8fa3274073e94a0f885167cff1faa5db0e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/QuotaScreens.tsx",
+      "expectedSha1": "896f92a8a0ae9f7a219281360eefc94fc51e219a",
+      "deployedSha1": "896f92a8a0ae9f7a219281360eefc94fc51e219a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/SystemScreens.tsx",
+      "expectedSha1": "c4df3c86d0a4d0d2ec73b169045b60eb17476b22",
+      "deployedSha1": "c4df3c86d0a4d0d2ec73b169045b60eb17476b22",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/api.test.ts",
+      "expectedSha1": "264375926ada112c1220947735d2e30b5d32c679",
+      "deployedSha1": "264375926ada112c1220947735d2e30b5d32c679",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/api.ts",
+      "expectedSha1": "b815b93a63bf46db89d89902a93bcb38b7545cf8",
+      "deployedSha1": "b815b93a63bf46db89d89902a93bcb38b7545cf8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/contracts.ts",
+      "expectedSha1": "4e03f665c9d6169897ff2c648bc3ecae9c67f489",
+      "deployedSha1": "4e03f665c9d6169897ff2c648bc3ecae9c67f489",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/copy.ts",
+      "expectedSha1": "1cb1f98153aa7dc54b4233c002f824a0eef05201",
+      "deployedSha1": "1cb1f98153aa7dc54b4233c002f824a0eef05201",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/model.test.ts",
+      "expectedSha1": "8b755528def663472d3834ba6753cf8299146bc7",
+      "deployedSha1": "8b755528def663472d3834ba6753cf8299146bc7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/model.ts",
+      "expectedSha1": "f1a42bb2999fb01c5e77af36175442df309e0ff9",
+      "deployedSha1": "f1a42bb2999fb01c5e77af36175442df309e0ff9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/admin/primitives.tsx",
+      "expectedSha1": "81b4d373fa13fc19c22956752410717fd47b56b1",
+      "deployedSha1": "81b4d373fa13fc19c22956752410717fd47b56b1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Button.tsx",
+      "expectedSha1": "4025c619071142757f250b92eb6f21bbccd542b1",
+      "deployedSha1": "4025c619071142757f250b92eb6f21bbccd542b1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Checkbox.module.css",
+      "expectedSha1": "b18d62524d10629b469eda7a3fbc97568d0e85a9",
+      "deployedSha1": "b18d62524d10629b469eda7a3fbc97568d0e85a9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Checkbox.tsx",
+      "expectedSha1": "937b472b0ae9b7a9cdac9baa3e3f8015238cf276",
+      "deployedSha1": "937b472b0ae9b7a9cdac9baa3e3f8015238cf276",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/ContentBlock.module.css",
+      "expectedSha1": "23067b791d603655d1647a9c031139d8b8332ade",
+      "deployedSha1": "23067b791d603655d1647a9c031139d8b8332ade",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/ContentBlock.tsx",
+      "expectedSha1": "4b516a98d30ef306836250326e8c15e91f4f0741",
+      "deployedSha1": "4b516a98d30ef306836250326e8c15e91f4f0741",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/DateInput.module.css",
+      "expectedSha1": "c457dcd99b45f88c3d40c088f144b7f0354dd9ee",
+      "deployedSha1": "c457dcd99b45f88c3d40c088f144b7f0354dd9ee",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/DateInput.tsx",
+      "expectedSha1": "0600021ea265719dfb6a315825cdf4f112133471",
+      "deployedSha1": "0600021ea265719dfb6a315825cdf4f112133471",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Feedback.module.css",
+      "expectedSha1": "8e2be87002e7dfccfe39e78aad46d96136eb345f",
+      "deployedSha1": "8e2be87002e7dfccfe39e78aad46d96136eb345f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Feedback.tsx",
+      "expectedSha1": "5930661c691f75d984cae74387c9f0d013f892b6",
+      "deployedSha1": "5930661c691f75d984cae74387c9f0d013f892b6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Field.module.css",
+      "expectedSha1": "a4033705c8a764dd18e070b8628e3a2153a8f126",
+      "deployedSha1": "a4033705c8a764dd18e070b8628e3a2153a8f126",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Field.tsx",
+      "expectedSha1": "d6cec68cc900bd39e1a4a632f395154fe453daa3",
+      "deployedSha1": "d6cec68cc900bd39e1a4a632f395154fe453daa3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Icon.tsx",
+      "expectedSha1": "f1adfbc68e5c05535cad6ce157b615eb171aee60",
+      "deployedSha1": "f1adfbc68e5c05535cad6ce157b615eb171aee60",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/LegalDocument.module.css",
+      "expectedSha1": "5d0b96933584ab54dad0c05f4891e29375e54b17",
+      "deployedSha1": "5d0b96933584ab54dad0c05f4891e29375e54b17",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/LegalDocument.tsx",
+      "expectedSha1": "c1da6815f0f50d2dddd02872d92717fb4166779b",
+      "deployedSha1": "c1da6815f0f50d2dddd02872d92717fb4166779b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/ListPicker.module.css",
+      "expectedSha1": "85e5130878f49ced7a1ceaf77566bf08bd010e58",
+      "deployedSha1": "85e5130878f49ced7a1ceaf77566bf08bd010e58",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/ListPicker.test.ts",
+      "expectedSha1": "85c420e4a8e2bb7fae22463806917c0d2bede867",
+      "deployedSha1": "85c420e4a8e2bb7fae22463806917c0d2bede867",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/ListPicker.tsx",
+      "expectedSha1": "6396791c1c202669c61f5e56eb7160080c506aa2",
+      "deployedSha1": "6396791c1c202669c61f5e56eb7160080c506aa2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/RadioCards.module.css",
+      "expectedSha1": "db3b2b353b3946a104d000a67f335b8cdeb1fedd",
+      "deployedSha1": "db3b2b353b3946a104d000a67f335b8cdeb1fedd",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/RadioCards.tsx",
+      "expectedSha1": "7bb284ecb4c6c1f9a9805ea59784fb2ad5d288f0",
+      "deployedSha1": "7bb284ecb4c6c1f9a9805ea59784fb2ad5d288f0",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/SegmentedControl.module.css",
+      "expectedSha1": "13b6dbfa4253c84f682dea110c3d5c82aecb98f1",
+      "deployedSha1": "13b6dbfa4253c84f682dea110c3d5c82aecb98f1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/SegmentedControl.tsx",
+      "expectedSha1": "e110c99e8307255f24cab364dac08fbd4f29a498",
+      "deployedSha1": "e110c99e8307255f24cab364dac08fbd4f29a498",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Sheet.module.css",
+      "expectedSha1": "0a874a2ae1ec6654c77f4e1f2f5a0dff49cb3dfb",
+      "deployedSha1": "0a874a2ae1ec6654c77f4e1f2f5a0dff49cb3dfb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Sheet.tsx",
+      "expectedSha1": "3070a584b96e8616194c51021b22dda6a57a144c",
+      "deployedSha1": "3070a584b96e8616194c51021b22dda6a57a144c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Snackbar.module.css",
+      "expectedSha1": "97528bcd6721a13c1f985f3678952bb6b3aaba27",
+      "deployedSha1": "97528bcd6721a13c1f985f3678952bb6b3aaba27",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Snackbar.tsx",
+      "expectedSha1": "0f2fe2dd7e596402d2b8698d683a655e09353784",
+      "deployedSha1": "0f2fe2dd7e596402d2b8698d683a655e09353784",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Status.module.css",
+      "expectedSha1": "989b7f0245d94189e308c56b39c8829a6029bdaf",
+      "deployedSha1": "989b7f0245d94189e308c56b39c8829a6029bdaf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Status.tsx",
+      "expectedSha1": "e01550d49ffd15592ca6a995dc3daa383d9c8944",
+      "deployedSha1": "e01550d49ffd15592ca6a995dc3daa383d9c8944",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/StudyOverview.module.css",
+      "expectedSha1": "c16590f05d48e54680f8079f26154b4cd25bcef3",
+      "deployedSha1": "c16590f05d48e54680f8079f26154b4cd25bcef3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/StudyOverview.tsx",
+      "expectedSha1": "e48b4b4108f369e1b24d3bf9d2cdc8bd40c5a1e1",
+      "deployedSha1": "e48b4b4108f369e1b24d3bf9d2cdc8bd40c5a1e1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Switch.module.css",
+      "expectedSha1": "c32947b23189d5df8b936ea5cb8d3bccc15a9ed2",
+      "deployedSha1": "c32947b23189d5df8b936ea5cb8d3bccc15a9ed2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/Switch.tsx",
+      "expectedSha1": "c0a9dd5eeccf9f20abd2cd6fcb4fd1289e435d04",
+      "deployedSha1": "c0a9dd5eeccf9f20abd2cd6fcb4fd1289e435d04",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/UploadProgress.module.css",
+      "expectedSha1": "d5a7c6179fd4da47ce1109f355e8d4a7ca179f29",
+      "deployedSha1": "d5a7c6179fd4da47ce1109f355e8d4a7ca179f29",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/components/UploadProgress.tsx",
+      "expectedSha1": "6fd15781f6ed29b576dcb72344ca4978edb980f7",
+      "deployedSha1": "6fd15781f6ed29b576dcb72344ca4978edb980f7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/course-copy.ts",
+      "expectedSha1": "3153e71d4bd6284762978993895352dfd5fa50d1",
+      "deployedSha1": "3153e71d4bd6284762978993895352dfd5fa50d1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/direction.test.ts",
+      "expectedSha1": "e92474f50caeb7259de744441760aa5ce97bca65",
+      "deployedSha1": "e92474f50caeb7259de744441760aa5ce97bca65",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/direction.ts",
+      "expectedSha1": "8f8044c084b7d4b1f249c04963f1910f6bdb9477",
+      "deployedSha1": "8f8044c084b7d4b1f249c04963f1910f6bdb9477",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/experience-copy.ts",
+      "expectedSha1": "46586cfdfba1db15d4bd1fb81e8a21b696d23f7f",
+      "deployedSha1": "46586cfdfba1db15d4bd1fb81e8a21b696d23f7f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/icons.ts",
+      "expectedSha1": "3a1323d7f31be13909a4f5ee289861eaa4134efe",
+      "deployedSha1": "3a1323d7f31be13909a4f5ee289861eaa4134efe",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/markdown.test.ts",
+      "expectedSha1": "0825b06cda2c4c56277b6dd6b9e40156b40e71a0",
+      "deployedSha1": "0825b06cda2c4c56277b6dd6b9e40156b40e71a0",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/markdown.ts",
+      "expectedSha1": "e730c952dbc1054e44d6808adb204e4d5a0c09d2",
+      "deployedSha1": "e730c952dbc1054e44d6808adb204e4d5a0c09d2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/AccountViews.module.css",
+      "expectedSha1": "a8d380948cbc79fcfcb791603b37b0669969e374",
+      "deployedSha1": "a8d380948cbc79fcfcb791603b37b0669969e374",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/AccountViews.tsx",
+      "expectedSha1": "6daf41a1ebfc7beca219c3a31bfdfbac63dde354",
+      "deployedSha1": "6daf41a1ebfc7beca219c3a31bfdfbac63dde354",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/LearningViews.module.css",
+      "expectedSha1": "34545d00fa2356fc0cd18c1a2d4dee018b2076fe",
+      "deployedSha1": "34545d00fa2356fc0cd18c1a2d4dee018b2076fe",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/LearningViews.test.ts",
+      "expectedSha1": "406f871a2946044d25e878f4c8ab16fc0e6c5880",
+      "deployedSha1": "406f871a2946044d25e878f4c8ab16fc0e6c5880",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/LearningViews.tsx",
+      "expectedSha1": "3c2c591da6d855ea8c741b0238582563c9684ca5",
+      "deployedSha1": "3c2c591da6d855ea8c741b0238582563c9684ca5",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/PreviewApp.tsx",
+      "expectedSha1": "70deacfb4bf5a90012187427e59093eda14ed639",
+      "deployedSha1": "70deacfb4bf5a90012187427e59093eda14ed639",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/PreviewContext.tsx",
+      "expectedSha1": "701c343a45a476f7e731cd45aaddf995f97d7cdf",
+      "deployedSha1": "701c343a45a476f7e731cd45aaddf995f97d7cdf",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/SourceViews.tsx",
+      "expectedSha1": "dce39684e56946d2bfd41e1bf6bfa41c1b35c0d8",
+      "deployedSha1": "dce39684e56946d2bfd41e1bf6bfa41c1b35c0d8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/WorkspaceViews.tsx",
+      "expectedSha1": "845b1fbb5d608fa8f0bd90953966148bab02e09f",
+      "deployedSha1": "845b1fbb5d608fa8f0bd90953966148bab02e09f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/preview.css",
+      "expectedSha1": "2cc2ac3e7058cf11e89e36517b96d188c5ae78b0",
+      "deployedSha1": "2cc2ac3e7058cf11e89e36517b96d188c5ae78b0",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/primitives.tsx",
+      "expectedSha1": "7b959441dcff35c11c2014a8cf7268ebc021120c",
+      "deployedSha1": "7b959441dcff35c11c2014a8cf7268ebc021120c",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/sample-material.test.ts",
+      "expectedSha1": "7f8b25f12c019b182c3f5891a8fded937ce31a5a",
+      "deployedSha1": "7f8b25f12c019b182c3f5891a8fded937ce31a5a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/sample-material.ts",
+      "expectedSha1": "b52f2069e29468128edc216db93053c8e5627ca8",
+      "deployedSha1": "b52f2069e29468128edc216db93053c8e5627ca8",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/screens.ts",
+      "expectedSha1": "c1174c55b3fdb696fcde075769f24e3c58ee4b4b",
+      "deployedSha1": "c1174c55b3fdb696fcde075769f24e3c58ee4b4b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/source-model.test.ts",
+      "expectedSha1": "2808723a23c7fd9dad45820c732ea49414aac64e",
+      "deployedSha1": "2808723a23c7fd9dad45820c732ea49414aac64e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/preview/source-model.ts",
+      "expectedSha1": "b45ef1a8e47c8f5bbfb9e4f132e85c4a57e85909",
+      "deployedSha1": "b45ef1a8e47c8f5bbfb9e4f132e85c4a57e85909",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/profile-copy.ts",
+      "expectedSha1": "83f9d764d4f8c0b4f13c3440709d405bae54c766",
+      "deployedSha1": "83f9d764d4f8c0b4f13c3440709d405bae54c766",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/Recording.module.css",
+      "expectedSha1": "6f9e452ef2d50ce3482e19c44494706baee23356",
+      "deployedSha1": "6f9e452ef2d50ce3482e19c44494706baee23356",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/RecordingProvider.tsx",
+      "expectedSha1": "ae1c2c240dd2162d37f2927f70e1ff4de1a17a0e",
+      "deployedSha1": "ae1c2c240dd2162d37f2927f70e1ff4de1a17a0e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/RecordingView.tsx",
+      "expectedSha1": "692c35d2b45f421f350a5f7397eb529c2b3bb2a1",
+      "deployedSha1": "692c35d2b45f421f350a5f7397eb529c2b3bb2a1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/controller.test.ts",
+      "expectedSha1": "4bfca2cee747ca76a087dec088da2e667bcd08ff",
+      "deployedSha1": "4bfca2cee747ca76a087dec088da2e667bcd08ff",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/controller.ts",
+      "expectedSha1": "9c1d38dd535f65cf4f85e14bb8a48bdd3141b9c2",
+      "deployedSha1": "9c1d38dd535f65cf4f85e14bb8a48bdd3141b9c2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/store.test.ts",
+      "expectedSha1": "50ebbbed392cd290931c4ebb6641536ea3e7286a",
+      "deployedSha1": "50ebbbed392cd290931c4ebb6641536ea3e7286a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recording/store.ts",
+      "expectedSha1": "68b81fb5ea5615597b19ce4711d1cc560a01e05b",
+      "deployedSha1": "68b81fb5ea5615597b19ce4711d1cc560a01e05b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/recovery-copy.ts",
+      "expectedSha1": "295d92dce85400f9809b90247d3b1b43e555cbc6",
+      "deployedSha1": "295d92dce85400f9809b90247d3b1b43e555cbc6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/shell/AppShell.module.css",
+      "expectedSha1": "78a1d57d5c34ab6be522ab239226cf8ba6a295b3",
+      "deployedSha1": "78a1d57d5c34ab6be522ab239226cf8ba6a295b3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/shell/AppShell.tsx",
+      "expectedSha1": "bb6516efe4f28598f3350cd2f770c1239d1d42d3",
+      "deployedSha1": "bb6516efe4f28598f3350cd2f770c1239d1d42d3",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/shell/Wordmark.module.css",
+      "expectedSha1": "7fc5c2726473b57f2fb743fd7df6107a3e3b6607",
+      "deployedSha1": "7fc5c2726473b57f2fb743fd7df6107a3e3b6607",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/shell/Wordmark.tsx",
+      "expectedSha1": "06115d6842d81be2ff72fe7ecfa55d88c17ee928",
+      "deployedSha1": "06115d6842d81be2ff72fe7ecfa55d88c17ee928",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/strings.test.ts",
+      "expectedSha1": "dc79212bf9abd7ead60a81a087f3c6b4c2af22e6",
+      "deployedSha1": "dc79212bf9abd7ead60a81a087f3c6b4c2af22e6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/strings.ts",
+      "expectedSha1": "550bb666696667351f186c1bac5bb7d8a442b144",
+      "deployedSha1": "550bb666696667351f186c1bac5bb7d8a442b144",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/study-copy.ts",
+      "expectedSha1": "75680eb2c8dc3a694073308ecd906c76692a5411",
+      "deployedSha1": "75680eb2c8dc3a694073308ecd906c76692a5411",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/styles/app.css",
+      "expectedSha1": "99f295e970f416a86bc4e4a3c922ba8c076f0983",
+      "deployedSha1": "99f295e970f416a86bc4e4a3c922ba8c076f0983",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/styles/vendor.test.ts",
+      "expectedSha1": "16838e7a6155c3ed3ab5edf91a8787868aab500d",
+      "deployedSha1": "16838e7a6155c3ed3ab5edf91a8787868aab500d",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/styles/vendor/nocturne-base.css",
+      "expectedSha1": "843a31bf5d15a8d5d788152bb5a7b9a3a4dcaae7",
+      "deployedSha1": "843a31bf5d15a8d5d788152bb5a7b9a3a4dcaae7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/styles/vendor/tokens.css",
+      "expectedSha1": "eb3551b294dae22aa7f04b93d8d864b25c8fcb8a",
+      "deployedSha1": "eb3551b294dae22aa7f04b93d8d864b25c8fcb8a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/support/Support.module.css",
+      "expectedSha1": "e448d99af5054c1e928ca71e4c3917e8c49bd2fb",
+      "deployedSha1": "e448d99af5054c1e928ca71e4c3917e8c49bd2fb",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/support/Support.tsx",
+      "expectedSha1": "85a96e6e4a25721ff4858af2121373158f4fdfc6",
+      "deployedSha1": "85a96e6e4a25721ff4858af2121373158f4fdfc6",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/support/copy.ts",
+      "expectedSha1": "b46bf7e927aba1481c2324baa8f2c19d7689eafc",
+      "deployedSha1": "b46bf7e927aba1481c2324baa8f2c19d7689eafc",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/theme.test.ts",
+      "expectedSha1": "1b24765703e6254ac828cf9a3d2af26ed3154ea2",
+      "deployedSha1": "1b24765703e6254ac828cf9a3d2af26ed3154ea2",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/theme.ts",
+      "expectedSha1": "f6868d822a2671eff3fce762dbab26a1a0e7e5ef",
+      "deployedSha1": "f6868d822a2671eff3fce762dbab26a1a0e7e5ef",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/CardEditor.tsx",
+      "expectedSha1": "5c63c87c029a6635d1ee6bc25a758344d69e90ba",
+      "deployedSha1": "5c63c87c029a6635d1ee6bc25a758344d69e90ba",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/CardMedia.tsx",
+      "expectedSha1": "e969c082c91640c375db796679cb621a07899a5f",
+      "deployedSha1": "e969c082c91640c375db796679cb621a07899a5f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/CardsView.test.ts",
+      "expectedSha1": "5e45fdd91fb625fd1b52f4f654de2841d4f5634b",
+      "deployedSha1": "5e45fdd91fb625fd1b52f4f654de2841d4f5634b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/CardsView.tsx",
+      "expectedSha1": "16c1d16167a155cfe2a3c20a67c2f3f5d0a3f82b",
+      "deployedSha1": "16c1d16167a155cfe2a3c20a67c2f3f5d0a3f82b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ClassForm.tsx",
+      "expectedSha1": "11241c67863c2e903607d1183057cd83b3f2fed9",
+      "deployedSha1": "11241c67863c2e903607d1183057cd83b3f2fed9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ClassRows.tsx",
+      "expectedSha1": "4d82494b609fc94894373e34330dd9898046a490",
+      "deployedSha1": "4d82494b609fc94894373e34330dd9898046a490",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/CourseManager.tsx",
+      "expectedSha1": "19906239cf3961eb5f58dcadaa29e53c24df7bff",
+      "deployedSha1": "19906239cf3961eb5f58dcadaa29e53c24df7bff",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/CourseNavigation.tsx",
+      "expectedSha1": "83701735cfab2e34719959d26adb21ff7a56e73b",
+      "deployedSha1": "83701735cfab2e34719959d26adb21ff7a56e73b",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ExportView.tsx",
+      "expectedSha1": "6c066cf534741c97e2da7a77de7117c88ac5bd9a",
+      "deployedSha1": "6c066cf534741c97e2da7a77de7117c88ac5bd9a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/LearningProfile.tsx",
+      "expectedSha1": "95a37ed9ef936a36c8c98f74cf3279b781a72068",
+      "deployedSha1": "95a37ed9ef936a36c8c98f74cf3279b781a72068",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/NoteView.test.ts",
+      "expectedSha1": "d113e71e3ab0e405ed11a39549e5bc12c9672efc",
+      "deployedSha1": "d113e71e3ab0e405ed11a39549e5bc12c9672efc",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/NoteView.tsx",
+      "expectedSha1": "7a1b36f7b536aec1a979face28208d4c285a0567",
+      "deployedSha1": "7a1b36f7b536aec1a979face28208d4c285a0567",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/PrivacyView.tsx",
+      "expectedSha1": "093ea7e05049ceb362c7430284456e1c3b14a48e",
+      "deployedSha1": "093ea7e05049ceb362c7430284456e1c3b14a48e",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ProcessingView.test.ts",
+      "expectedSha1": "719a6c7e6b4c59a929c03d8661a931de15a1ee95",
+      "deployedSha1": "719a6c7e6b4c59a929c03d8661a931de15a1ee95",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ProcessingView.tsx",
+      "expectedSha1": "3ad28489ef8543530343ebc2130684d4d3aa8e14",
+      "deployedSha1": "3ad28489ef8543530343ebc2130684d4d3aa8e14",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ReviewSettings.tsx",
+      "expectedSha1": "1e189213eb6c17c5ae0bfa87e7bd845ad610f45f",
+      "deployedSha1": "1e189213eb6c17c5ae0bfa87e7bd845ad610f45f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/ReviewView.tsx",
+      "expectedSha1": "b3cda13fdd21faed0146f6f685c6a355be427efa",
+      "deployedSha1": "b3cda13fdd21faed0146f6f685c6a355be427efa",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/SessionLearningSummary.tsx",
+      "expectedSha1": "942942d250c0d972ec76541b9bfc77eb9a3b1f2f",
+      "deployedSha1": "942942d250c0d972ec76541b9bfc77eb9a3b1f2f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/SourceRefViewer.tsx",
+      "expectedSha1": "d8712666886f727467fa7eadc4106c1e6ec9da59",
+      "deployedSha1": "d8712666886f727467fa7eadc4106c1e6ec9da59",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/SourcesView.tsx",
+      "expectedSha1": "b8cd5f320e383262d460e43ba7f3c8e12d5a21e4",
+      "deployedSha1": "b8cd5f320e383262d460e43ba7f3c8e12d5a21e4",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/api.test.ts",
+      "expectedSha1": "ae4b0df1610e01787b4cc8e7953807f968e1f10a",
+      "deployedSha1": "ae4b0df1610e01787b4cc8e7953807f968e1f10a",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/api.ts",
+      "expectedSha1": "2eee59cc123d007a97332fc2a036df0cb6953d71",
+      "deployedSha1": "2eee59cc123d007a97332fc2a036df0cb6953d71",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/open-original.test.ts",
+      "expectedSha1": "c85a792c1e2d5225a1c1cf2fc2d0545257a14824",
+      "deployedSha1": "c85a792c1e2d5225a1c1cf2fc2d0545257a14824",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/open-original.ts",
+      "expectedSha1": "530ead567016956ae310d68e8804e14ab8e0a2e7",
+      "deployedSha1": "530ead567016956ae310d68e8804e14ab8e0a2e7",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/primitives.tsx",
+      "expectedSha1": "dbed7a917f61ae60c97ae7a27c3b5e1cd0636f4f",
+      "deployedSha1": "dbed7a917f61ae60c97ae7a27c3b5e1cd0636f4f",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/privacy-actions.test.ts",
+      "expectedSha1": "6d55ef81e32019093983c3f05deb3d26653ff937",
+      "deployedSha1": "6d55ef81e32019093983c3f05deb3d26653ff937",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/privacy-actions.ts",
+      "expectedSha1": "eb40f18555be96bd992294b44a3dc1fe47b15983",
+      "deployedSha1": "eb40f18555be96bd992294b44a3dc1fe47b15983",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-progress.test.ts",
+      "expectedSha1": "aa4df43ec510bb1474d9038d2e9e7638abc98892",
+      "deployedSha1": "aa4df43ec510bb1474d9038d2e9e7638abc98892",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-progress.ts",
+      "expectedSha1": "e5441eb2327feb37d8bb6b9a4ff185df14de5930",
+      "deployedSha1": "e5441eb2327feb37d8bb6b9a4ff185df14de5930",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload.test.ts",
+      "expectedSha1": "7fa4b59777cb42bc8d853d857c449f2a4df0d245",
+      "deployedSha1": "7fa4b59777cb42bc8d853d857c449f2a4df0d245",
+      "matches": true
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload.ts",
+      "expectedSha1": "938cc721587a03d75e4f0ef9fdd63885c81f0c82",
+      "deployedSha1": "938cc721587a03d75e4f0ef9fdd63885c81f0c82",
+      "matches": true
+    },
+    {
+      "path": "apps/web/tools/check-native-runtime.mjs",
+      "expectedSha1": "8b976c480ba7b9a1ce86b844c690cc4bf74e7fac",
+      "deployedSha1": "8b976c480ba7b9a1ce86b844c690cc4bf74e7fac",
+      "matches": true
+    },
+    {
+      "path": "apps/web/tools/trace-native-dependencies.mjs",
+      "expectedSha1": "fda0d6d1d60250b8ef24154b326ad0f27b73e803",
+      "deployedSha1": "fda0d6d1d60250b8ef24154b326ad0f27b73e803",
+      "matches": true
+    },
+    {
+      "path": "apps/web/tools/trace-native-dependencies.test.mjs",
+      "expectedSha1": "ed441daa9be47fcab03d7cd77eedb0694f1562e1",
+      "deployedSha1": "ed441daa9be47fcab03d7cd77eedb0694f1562e1",
+      "matches": true
+    },
+    {
+      "path": "apps/web/tsconfig.json",
+      "expectedSha1": "06b08150c9b2c81720556d1d1d6cdd4be288b3f9",
+      "deployedSha1": "06b08150c9b2c81720556d1d1d6cdd4be288b3f9",
+      "matches": true
+    },
+    {
+      "path": "apps/web/vercel.json",
+      "expectedSha1": "e4e7ddfc278951e58c688458dbaea92649f2e75c",
+      "deployedSha1": "e4e7ddfc278951e58c688458dbaea92649f2e75c",
+      "matches": true
+    },
+    {
+      "path": "biome.json",
+      "expectedSha1": "dd4bfae35d10821444c531a4a82994ee6fa989a2",
+      "deployedSha1": "dd4bfae35d10821444c531a4a82994ee6fa989a2",
+      "matches": true
+    },
+    {
+      "path": "config/export-defaults.json",
+      "expectedSha1": "b96474e736c12d134ad8e46be140b16d2304521f",
+      "deployedSha1": "b96474e736c12d134ad8e46be140b16d2304521f",
+      "matches": true
+    },
+    {
+      "path": "config/media-defaults.json",
+      "expectedSha1": "be066452454640cba3ce07a04bd3fd79744520b1",
+      "deployedSha1": "be066452454640cba3ce07a04bd3fd79744520b1",
+      "matches": true
+    },
+    {
+      "path": "config/openrouter-defaults.json",
+      "expectedSha1": "4489c2f548ca45d295f8a222408a9333dfb63ce8",
+      "deployedSha1": "4489c2f548ca45d295f8a222408a9333dfb63ce8",
+      "matches": true
+    },
+    {
+      "path": "config/pilot-cost-policy.json",
+      "expectedSha1": "70de193878e36276fd94ec913e683c35ccba4703",
+      "deployedSha1": "70de193878e36276fd94ec913e683c35ccba4703",
+      "matches": true
+    },
+    {
+      "path": "config/pilot-defaults.json",
+      "expectedSha1": "dccc0b28c0ceb15e5644622aaa2ab3f8a3eb3035",
+      "deployedSha1": "dccc0b28c0ceb15e5644622aaa2ab3f8a3eb3035",
+      "matches": true
+    },
+    {
+      "path": "package.json",
+      "expectedSha1": "ed7f7a8294193a0dc265ac15265bca775665a2dc",
+      "deployedSha1": "ed7f7a8294193a0dc265ac15265bca775665a2dc",
+      "matches": true
+    },
+    {
+      "path": "packages/core/package.json",
+      "expectedSha1": "7a94d0e7df2599da74cf09610049bb54e72f790d",
+      "deployedSha1": "7a94d0e7df2599da74cf09610049bb54e72f790d",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/acc.test.ts",
+      "expectedSha1": "aa7a86e9df8a1a46e34c0f9b989dfceaae814846",
+      "deployedSha1": "aa7a86e9df8a1a46e34c0f9b989dfceaae814846",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/account.ts",
+      "expectedSha1": "ff3183bae7af752d34fb248f10c9696a59838f25",
+      "deployedSha1": "ff3183bae7af752d34fb248f10c9696a59838f25",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/documents.ts",
+      "expectedSha1": "daa2dd558399eb7b9387d08838ce5e83e87a6ceb",
+      "deployedSha1": "daa2dd558399eb7b9387d08838ce5e83e87a6ceb",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/index.ts",
+      "expectedSha1": "837346b43ada84594a72b8ae57b5ae92babf4905",
+      "deployedSha1": "837346b43ada84594a72b8ae57b5ae92babf4905",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/jobs.ts",
+      "expectedSha1": "8e30cee25928d2a3b064a04651ea42325b66271f",
+      "deployedSha1": "8e30cee25928d2a3b064a04651ea42325b66271f",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/languages.json",
+      "expectedSha1": "1f8e5b993b8c26b00a722e8ebc2c01ef4fe4ce52",
+      "deployedSha1": "1f8e5b993b8c26b00a722e8ebc2c01ef4fe4ce52",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/languages.ts",
+      "expectedSha1": "5fa0c99504acdf2b51f37923d7bbb8b67b89ab93",
+      "deployedSha1": "5fa0c99504acdf2b51f37923d7bbb8b67b89ab93",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/preferences.ts",
+      "expectedSha1": "23bbe60f45771097b27786e3831a02171dd45362",
+      "deployedSha1": "23bbe60f45771097b27786e3831a02171dd45362",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/profile.int.test.ts",
+      "expectedSha1": "f78889b2766f1be4558aaa13696f98660a841902",
+      "deployedSha1": "f78889b2766f1be4558aaa13696f98660a841902",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/profile.ts",
+      "expectedSha1": "5cb5444b75337ea4b00617bcf46316189ef955ec",
+      "deployedSha1": "5cb5444b75337ea4b00617bcf46316189ef955ec",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/settings.ts",
+      "expectedSha1": "382769320608b88261ddb67d88d8be69b726c00e",
+      "deployedSha1": "382769320608b88261ddb67d88d8be69b726c00e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/signup.int.test.ts",
+      "expectedSha1": "6a810fc403f22ae754e98bd5e20b36852c6a3d82",
+      "deployedSha1": "6a810fc403f22ae754e98bd5e20b36852c6a3d82",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/acc/signup.ts",
+      "expectedSha1": "7a860e7b994675ba7b1bfc9a7873f1fec9076140",
+      "deployedSha1": "7a860e7b994675ba7b1bfc9a7873f1fec9076140",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/contracts.ts",
+      "expectedSha1": "516626969edfa56a14ae0c1a147356a1cb8b51c8",
+      "deployedSha1": "516626969edfa56a14ae0c1a147356a1cb8b51c8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/index.ts",
+      "expectedSha1": "27bbc88dc3416d25b6b80ecb71634ca15d9b7209",
+      "deployedSha1": "27bbc88dc3416d25b6b80ecb71634ca15d9b7209",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/openrouter.test.ts",
+      "expectedSha1": "979389feedc80f46a59753ad9389823ff85acf70",
+      "deployedSha1": "979389feedc80f46a59753ad9389823ff85acf70",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/openrouter.ts",
+      "expectedSha1": "dc29ce19981351e8808720d40c880a0febc82ce3",
+      "deployedSha1": "dc29ce19981351e8808720d40c880a0febc82ce3",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/pricing.int.test.ts",
+      "expectedSha1": "2eeb3fba303945327258f4c01517a3d7d7facc76",
+      "deployedSha1": "2eeb3fba303945327258f4c01517a3d7d7facc76",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/pricing.test.ts",
+      "expectedSha1": "bc98aa349c9afa1a46d4345a3a23c5948e324b9c",
+      "deployedSha1": "bc98aa349c9afa1a46d4345a3a23c5948e324b9c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/pricing.ts",
+      "expectedSha1": "59208ca209a3448d1f41ed7184c0a90ebcf3bdfc",
+      "deployedSha1": "59208ca209a3448d1f41ed7184c0a90ebcf3bdfc",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/aip/structured-schema.ts",
+      "expectedSha1": "ba500ba63df6988d02acdf43c6c680c35d180719",
+      "deployedSha1": "ba500ba63df6988d02acdf43c6c680c35d180719",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/anki/exports.int.test.ts",
+      "expectedSha1": "f3e72fe309d95b93d2d62089bd9a4af99b003265",
+      "deployedSha1": "f3e72fe309d95b93d2d62089bd9a4af99b003265",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/anki/exports.ts",
+      "expectedSha1": "87931305b54b6aad692d7ac637cfd6f6e114de6b",
+      "deployedSha1": "87931305b54b6aad692d7ac637cfd6f6e114de6b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/anki/index.ts",
+      "expectedSha1": "48dda8603204d39cd22e5e393d52f25d939036c7",
+      "deployedSha1": "48dda8603204d39cd22e5e393d52f25d939036c7",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/anki/package.test.ts",
+      "expectedSha1": "893b4f3a38c86bd61cb272ce8f77de69f4952fa1",
+      "deployedSha1": "893b4f3a38c86bd61cb272ce8f77de69f4952fa1",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/anki/package.ts",
+      "expectedSha1": "2debad6fe27ba6e17708731516a66aa94067a516",
+      "deployedSha1": "2debad6fe27ba6e17708731516a66aa94067a516",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/card/cards.int.test.ts",
+      "expectedSha1": "fa9b1b19a97c45a9100e6f6406615525c72d550d",
+      "deployedSha1": "fa9b1b19a97c45a9100e6f6406615525c72d550d",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/card/cards.ts",
+      "expectedSha1": "696416f94358a98b98905873e422fd559e8fe34c",
+      "deployedSha1": "696416f94358a98b98905873e422fd559e8fe34c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/card/index.ts",
+      "expectedSha1": "27f9fe2a6401d50cd2d4076a0788753a4a5cd79c",
+      "deployedSha1": "27f9fe2a6401d50cd2d4076a0788753a4a5cd79c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/card/privacy.ts",
+      "expectedSha1": "b3cbe3ee34b50cefdd12d3efa6341201158deb09",
+      "deployedSha1": "b3cbe3ee34b50cefdd12d3efa6341201158deb09",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/card/projections.ts",
+      "expectedSha1": "251350aa9cb083f4408a6ac79c96021449051c27",
+      "deployedSha1": "251350aa9cb083f4408a6ac79c96021449051c27",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/card/schema.ts",
+      "expectedSha1": "4ca9bd8cee341791661ab7de273f75f1fb232a4e",
+      "deployedSha1": "4ca9bd8cee341791661ab7de273f75f1fb232a4e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/config/env.test.ts",
+      "expectedSha1": "3c11ae4338b902db4c64bbc0d916a92b62840739",
+      "deployedSha1": "3c11ae4338b902db4c64bbc0d916a92b62840739",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/config/env.ts",
+      "expectedSha1": "2e3001e1ba78e05e214ef33288e7f9ebdcf22557",
+      "deployedSha1": "2e3001e1ba78e05e214ef33288e7f9ebdcf22557",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/connection.test.ts",
+      "expectedSha1": "18512d01aaec9a7628f515a15547bd1356212d90",
+      "deployedSha1": "18512d01aaec9a7628f515a15547bd1356212d90",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/connection.ts",
+      "expectedSha1": "2e568b93a01e7c177c6a92b276ce23242e592f02",
+      "deployedSha1": "2e568b93a01e7c177c6a92b276ce23242e592f02",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/index.ts",
+      "expectedSha1": "77f6e166d20aee9fccb7030b5270e23dad08c026",
+      "deployedSha1": "77f6e166d20aee9fccb7030b5270e23dad08c026",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/supabase-ca.test.ts",
+      "expectedSha1": "97cdf703d0824e7780518533ef7b39969a44d2ac",
+      "deployedSha1": "97cdf703d0824e7780518533ef7b39969a44d2ac",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/supabase-ca.ts",
+      "expectedSha1": "81cd22b409e0c7ef64b556aafd7984a257c9819d",
+      "deployedSha1": "81cd22b409e0c7ef64b556aafd7984a257c9819d",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/transaction.int.test.ts",
+      "expectedSha1": "f50e3c01266639b7ce905f59e7c02a5899f26566",
+      "deployedSha1": "f50e3c01266639b7ce905f59e7c02a5899f26566",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/db/types.ts",
+      "expectedSha1": "7d1e5302b1ba03792e70a8e7ceaf9afa6fa52398",
+      "deployedSha1": "7d1e5302b1ba03792e70a8e7ceaf9afa6fa52398",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/eval/index.ts",
+      "expectedSha1": "fe2fe2c1e80e14f54f6acd6e4945a03cd9c10bc8",
+      "deployedSha1": "fe2fe2c1e80e14f54f6acd6e4945a03cd9c10bc8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/eval/provider-checks.ts",
+      "expectedSha1": "9c4d5e3fe47b87ead570bd395c03f8608b5c15d2",
+      "deployedSha1": "9c4d5e3fe47b87ead570bd395c03f8608b5c15d2",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/eval/quality.ts",
+      "expectedSha1": "49386788cdc9ec7f1d20a7d92a882224e8e36929",
+      "deployedSha1": "49386788cdc9ec7f1d20a7d92a882224e8e36929",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/html/exports.int.test.ts",
+      "expectedSha1": "5d8525ee9ad620d2a169844cbdd445ada008895e",
+      "deployedSha1": "5d8525ee9ad620d2a169844cbdd445ada008895e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/html/exports.ts",
+      "expectedSha1": "decc89ffd41185b7b3b16c8479024df32004c055",
+      "deployedSha1": "decc89ffd41185b7b3b16c8479024df32004c055",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/html/index.ts",
+      "expectedSha1": "e09f6b8424a44daad40338cb0d1f24dd7274fd08",
+      "deployedSha1": "e09f6b8424a44daad40338cb0d1f24dd7274fd08",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/html/render.test.ts",
+      "expectedSha1": "b3ae1ae0b7f512dc3cf013ef6da2477f0096769f",
+      "deployedSha1": "b3ae1ae0b7f512dc3cf013ef6da2477f0096769f",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/html/render.ts",
+      "expectedSha1": "b708b082e11d53b4e9d76690384ce513597c03f7",
+      "deployedSha1": "b708b082e11d53b4e9d76690384ce513597c03f7",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/lkm/generated-identities.test.ts",
+      "expectedSha1": "a6d52891801df784a213358f9af76c7e27524917",
+      "deployedSha1": "a6d52891801df784a213358f9af76c7e27524917",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/lkm/generated-identities.ts",
+      "expectedSha1": "89124b26d76f9500ffc25437edece35dd4ba79db",
+      "deployedSha1": "89124b26d76f9500ffc25437edece35dd4ba79db",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/lkm/index.ts",
+      "expectedSha1": "1c9ce872387910328c0d8935320d6804fb33ea73",
+      "deployedSha1": "1c9ce872387910328c0d8935320d6804fb33ea73",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/lkm/schema.test.ts",
+      "expectedSha1": "a51b4275bb2dc5338d25d62ecdaa2bb264de36ea",
+      "deployedSha1": "a51b4275bb2dc5338d25d62ecdaa2bb264de36ea",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/lkm/schema.ts",
+      "expectedSha1": "bfd097b754b27d7cb5488894466896b9c4d1b717",
+      "deployedSha1": "bfd097b754b27d7cb5488894466896b9c4d1b717",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/lkm/versions.ts",
+      "expectedSha1": "96255fe7c3f226d53417619561175c0a2344fe84",
+      "deployedSha1": "96255fe7c3f226d53417619561175c0a2344fe84",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/media/assets.ts",
+      "expectedSha1": "aae806c728f2448924c512490e4bdfd193387171",
+      "deployedSha1": "aae806c728f2448924c512490e4bdfd193387171",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/media/index.ts",
+      "expectedSha1": "dfefd165034f532c9bbb89fdba40a34f83c0c359",
+      "deployedSha1": "dfefd165034f532c9bbb89fdba40a34f83c0c359",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/activity.ts",
+      "expectedSha1": "f1d71cbfe072bc2f33112338d8add05a79d4ab38",
+      "deployedSha1": "f1d71cbfe072bc2f33112338d8add05a79d4ab38",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/course-materials.int.test.ts",
+      "expectedSha1": "216f9dc1b169d6e355e3e09d95058a3e7dd2a40e",
+      "deployedSha1": "216f9dc1b169d6e355e3e09d95058a3e7dd2a40e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/course-materials.ts",
+      "expectedSha1": "625ac686c3a32287b550ab8f3de9e73eb44cd3bf",
+      "deployedSha1": "625ac686c3a32287b550ab8f3de9e73eb44cd3bf",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/index.ts",
+      "expectedSha1": "d148922305dfcac6ecd546ecdc8169a8451b9fda",
+      "deployedSha1": "d148922305dfcac6ecd546ecdc8169a8451b9fda",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/learning-sessions.int.test.ts",
+      "expectedSha1": "e030f7dce4a8e41a123092b444f46f15d743bf6c",
+      "deployedSha1": "e030f7dce4a8e41a123092b444f46f15d743bf6c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/learning-sessions.ts",
+      "expectedSha1": "b32183c9636bf6250dbb84175dd968b6c161fa0a",
+      "deployedSha1": "b32183c9636bf6250dbb84175dd968b6c161fa0a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/notebooks.int.test.ts",
+      "expectedSha1": "f8834ccdfaac96cdec6d0800372ac3a490d75b4d",
+      "deployedSha1": "f8834ccdfaac96cdec6d0800372ac3a490d75b4d",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/notebooks.ts",
+      "expectedSha1": "5307d5d1f1c6c59a5be9e7ffa2daf419a7121e8a",
+      "deployedSha1": "5307d5d1f1c6c59a5be9e7ffa2daf419a7121e8a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/privacy.ts",
+      "expectedSha1": "ace98e1d380b977115d65d0ec2b21f5394f47653",
+      "deployedSha1": "ace98e1d380b977115d65d0ec2b21f5394f47653",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/note/schema.ts",
+      "expectedSha1": "fa6c7be1ce7aa36d88f92cf42fa02e6643671c34",
+      "deployedSha1": "fa6c7be1ce7aa36d88f92cf42fa02e6643671c34",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/admin-contracts.ts",
+      "expectedSha1": "36f4ce7a64d1de41b8a0b6c1c51a43ffc31bc5dc",
+      "deployedSha1": "36f4ce7a64d1de41b8a0b6c1c51a43ffc31bc5dc",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/admin-operations.int.test.ts",
+      "expectedSha1": "11de56ce63e9fd4682836d4c5ee568a56da42ef8",
+      "deployedSha1": "11de56ce63e9fd4682836d4c5ee568a56da42ef8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/admin-operations.ts",
+      "expectedSha1": "0d299ffc3d30a7c68f1ceedb7ddc0c812d5bfc26",
+      "deployedSha1": "0d299ffc3d30a7c68f1ceedb7ddc0c812d5bfc26",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/admin-read.ts",
+      "expectedSha1": "a62e0865583a66ab3adbf3d563fc21117df0d97b",
+      "deployedSha1": "a62e0865583a66ab3adbf3d563fc21117df0d97b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/backup-crypto.test.ts",
+      "expectedSha1": "3a5cb034cd4dfb9dc14f3067f9e73687d4bf8714",
+      "deployedSha1": "3a5cb034cd4dfb9dc14f3067f9e73687d4bf8714",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/backup-crypto.ts",
+      "expectedSha1": "ff2813a830aba333a10ca8ddcca5eb3e72aa1fc4",
+      "deployedSha1": "ff2813a830aba333a10ca8ddcca5eb3e72aa1fc4",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/backups.int.test.ts",
+      "expectedSha1": "6d65c98040761345fcd0609f6b6674b118a11fb4",
+      "deployedSha1": "6d65c98040761345fcd0609f6b6674b118a11fb4",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/backups.ts",
+      "expectedSha1": "30445bc49e8a7912074d0dbb6a9865189d020144",
+      "deployedSha1": "30445bc49e8a7912074d0dbb6a9865189d020144",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/deletion-journals.ts",
+      "expectedSha1": "7fb0c7d5fbc19b3d20c854759afd338bc0a97487",
+      "deployedSha1": "7fb0c7d5fbc19b3d20c854759afd338bc0a97487",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/index.ts",
+      "expectedSha1": "eade50e6fbfdf686b0859b7e53e4d2ea0f2cb727",
+      "deployedSha1": "eade50e6fbfdf686b0859b7e53e4d2ea0f2cb727",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/operator.int.test.ts",
+      "expectedSha1": "46a4727a4df96bbcd415f87a5f072123491236f3",
+      "deployedSha1": "46a4727a4df96bbcd415f87a5f072123491236f3",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/ops/operator.ts",
+      "expectedSha1": "c24cedf42d41bc7b0172a0560cc3b0d4e0e77987",
+      "deployedSha1": "c24cedf42d41bc7b0172a0560cc3b0d4e0e77987",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/common.ts",
+      "expectedSha1": "5c6f52b4a2b21f4192b33bfa72725f79b1be82d9",
+      "deployedSha1": "5c6f52b4a2b21f4192b33bfa72725f79b1be82d9",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/courses.ts",
+      "expectedSha1": "8d25dccb858ebd5d14a4bf14358a995ca4d85d59",
+      "deployedSha1": "8d25dccb858ebd5d14a4bf14358a995ca4d85d59",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/index.ts",
+      "expectedSha1": "b1f308a7b10e2d472fd15e4a0ff0b9e7a90f2385",
+      "deployedSha1": "b1f308a7b10e2d472fd15e4a0ff0b9e7a90f2385",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/org.int.test.ts",
+      "expectedSha1": "77f48abc7aadbb2a775871fa3226a08c5be81ddb",
+      "deployedSha1": "77f48abc7aadbb2a775871fa3226a08c5be81ddb",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/org.test.ts",
+      "expectedSha1": "deea71b2a0226415b6434036b457587db8f3b3ed",
+      "deployedSha1": "deea71b2a0226415b6434036b457587db8f3b3ed",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/privacy.ts",
+      "expectedSha1": "cdf547f954d96f655b9ba383c5f804906ea0a095",
+      "deployedSha1": "cdf547f954d96f655b9ba383c5f804906ea0a095",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/projections.ts",
+      "expectedSha1": "c6814f7794d86d56be1ba6da0828e59a29e3a5b1",
+      "deployedSha1": "c6814f7794d86d56be1ba6da0828e59a29e3a5b1",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/schemas.ts",
+      "expectedSha1": "38b2f892dcb18d3b58b1e24bc5706e65b0545ba3",
+      "deployedSha1": "38b2f892dcb18d3b58b1e24bc5706e65b0545ba3",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/org/sessions.ts",
+      "expectedSha1": "b962819cdec232efa2c2f6b092a93fea72db2863",
+      "deployedSha1": "b962819cdec232efa2c2f6b092a93fea72db2863",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/pers/index.ts",
+      "expectedSha1": "6fdf85f30298f03d930e892b896d11cdf6049b45",
+      "deployedSha1": "6fdf85f30298f03d930e892b896d11cdf6049b45",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/pers/profile.int.test.ts",
+      "expectedSha1": "a3d7dc56f9c42d756dfb414c4668323d435b53a6",
+      "deployedSha1": "a3d7dc56f9c42d756dfb414c4668323d435b53a6",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/pers/profile.ts",
+      "expectedSha1": "3552c8947edbdb2fb0b5d7433fdcbbc69708883b",
+      "deployedSha1": "3552c8947edbdb2fb0b5d7433fdcbbc69708883b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/access.int.test.ts",
+      "expectedSha1": "7f4bb185ddc4ee74904323c5ff901fa15a1a7053",
+      "deployedSha1": "7f4bb185ddc4ee74904323c5ff901fa15a1a7053",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/admin-access.ts",
+      "expectedSha1": "46813cd12a1b1b9a65bf497d1d8bd938b2124feb",
+      "deployedSha1": "46813cd12a1b1b9a65bf497d1d8bd938b2124feb",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/errors.test.ts",
+      "expectedSha1": "7705aaf80da85f53071a0ef098c954e3be97d70b",
+      "deployedSha1": "7705aaf80da85f53071a0ef098c954e3be97d70b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/errors.ts",
+      "expectedSha1": "bfc0441898cd8238a23cc4b6bdea9352c4541d42",
+      "deployedSha1": "bfc0441898cd8238a23cc4b6bdea9352c4541d42",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/export.ts",
+      "expectedSha1": "c4498730d7c23dfac7529a18ef35f55e48b251d9",
+      "deployedSha1": "c4498730d7c23dfac7529a18ef35f55e48b251d9",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/hash.ts",
+      "expectedSha1": "785c7dc47d264dd1856139a365dec39aed2e2b98",
+      "deployedSha1": "785c7dc47d264dd1856139a365dec39aed2e2b98",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/idempotency.int.test.ts",
+      "expectedSha1": "8de9023263c46d5c4b09b81c3dca2b32d4ec0553",
+      "deployedSha1": "8de9023263c46d5c4b09b81c3dca2b32d4ec0553",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/idempotency.ts",
+      "expectedSha1": "39d3d32508a7648ad22487e9b162eb68f7981ba8",
+      "deployedSha1": "39d3d32508a7648ad22487e9b162eb68f7981ba8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/index.ts",
+      "expectedSha1": "400f8a929d0b059c4fd8ede7d1b8a65d55a72e4b",
+      "deployedSha1": "400f8a929d0b059c4fd8ede7d1b8a65d55a72e4b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/jobs.int.test.ts",
+      "expectedSha1": "55f031382649e9905de1d55cdaa4c9314d12aa95",
+      "deployedSha1": "55f031382649e9905de1d55cdaa4c9314d12aa95",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/jobs.ts",
+      "expectedSha1": "21b5804e70efd7aa1bb216a9dbc60c86d0e74a86",
+      "deployedSha1": "21b5804e70efd7aa1bb216a9dbc60c86d0e74a86",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/log.test.ts",
+      "expectedSha1": "4a3e66569600967c84bc7e37ee657e8d29187251",
+      "deployedSha1": "4a3e66569600967c84bc7e37ee657e8d29187251",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/log.ts",
+      "expectedSha1": "a03ca63dfa440870ddd0c21785e6ee3e7342590c",
+      "deployedSha1": "a03ca63dfa440870ddd0c21785e6ee3e7342590c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/maintenance.ts",
+      "expectedSha1": "2ba9d3990cf858da3a0888eb788a2aa00586d59f",
+      "deployedSha1": "2ba9d3990cf858da3a0888eb788a2aa00586d59f",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/operations.ts",
+      "expectedSha1": "14de2dd20eba9adab06dc1e07f94b49a533da953",
+      "deployedSha1": "14de2dd20eba9adab06dc1e07f94b49a533da953",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/ownership.ts",
+      "expectedSha1": "a52f749c73fd029b25d194e89786532f3be64086",
+      "deployedSha1": "a52f749c73fd029b25d194e89786532f3be64086",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/rate-limit.int.test.ts",
+      "expectedSha1": "696a75083f3e9b4e3a4908a0ce29eb8ede5172ec",
+      "deployedSha1": "696a75083f3e9b4e3a4908a0ce29eb8ede5172ec",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/rate-limit.ts",
+      "expectedSha1": "2ec498d24dfc3fa27ddd32a43fabe5f2195dd5c2",
+      "deployedSha1": "2ec498d24dfc3fa27ddd32a43fabe5f2195dd5c2",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/security.ts",
+      "expectedSha1": "75b06fffdaabe0258dd9504b7a2c912d6f1f71c8",
+      "deployedSha1": "75b06fffdaabe0258dd9504b7a2c912d6f1f71c8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/settings.test.ts",
+      "expectedSha1": "2835ba1bbf3ef8fabd719ad44ecc32180e56b158",
+      "deployedSha1": "2835ba1bbf3ef8fabd719ad44ecc32180e56b158",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/settings.ts",
+      "expectedSha1": "0d2a09963a8eaa391689137a2d08c8442ae284ac",
+      "deployedSha1": "0d2a09963a8eaa391689137a2d08c8442ae284ac",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/spike.ts",
+      "expectedSha1": "98455e2eea0ce09276d805ba54289aef7c7e0d2c",
+      "deployedSha1": "98455e2eea0ce09276d805ba54289aef7c7e0d2c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/storage-memory.ts",
+      "expectedSha1": "4c05c84652d5592e266822c6ae4ab67c00cf0260",
+      "deployedSha1": "4c05c84652d5592e266822c6ae4ab67c00cf0260",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/storage-vercel-blob.ts",
+      "expectedSha1": "318fac34ff4b9e58dcd44270181877e11d293c34",
+      "deployedSha1": "318fac34ff4b9e58dcd44270181877e11d293c34",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/storage.int.test.ts",
+      "expectedSha1": "54a862197498efb4da71478d33fcb1e1eb45a882",
+      "deployedSha1": "54a862197498efb4da71478d33fcb1e1eb45a882",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/storage.ts",
+      "expectedSha1": "90bc41eb6d3fe32e21371c22a51f03070397ae05",
+      "deployedSha1": "90bc41eb6d3fe32e21371c22a51f03070397ae05",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/system-journals.ts",
+      "expectedSha1": "545d524a4c9dc5c3ae168b9731f7ef775cf84df8",
+      "deployedSha1": "545d524a4c9dc5c3ae168b9731f7ef775cf84df8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/time.test.ts",
+      "expectedSha1": "68a7be6c3e80ae818d25200f5b3ce5237b0396d4",
+      "deployedSha1": "68a7be6c3e80ae818d25200f5b3ce5237b0396d4",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/plt/time.ts",
+      "expectedSha1": "cb4d813156d412277e147c5b5665843e06655b97",
+      "deployedSha1": "cb4d813156d412277e147c5b5665843e06655b97",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/deletion.ts",
+      "expectedSha1": "d5a06ac74f4d19307e785f243b3f297ccd74c8ec",
+      "deployedSha1": "d5a06ac74f4d19307e785f243b3f297ccd74c8ec",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/index.ts",
+      "expectedSha1": "9785b1c6e702d29e6137eeedf5a7b605a3dbf46c",
+      "deployedSha1": "9785b1c6e702d29e6137eeedf5a7b605a3dbf46c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/link-retention.int.test.ts",
+      "expectedSha1": "97162f5ea04ea188227741f964860ec58c763ab0",
+      "deployedSha1": "97162f5ea04ea188227741f964860ec58c763ab0",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/media.int.test.ts",
+      "expectedSha1": "d5de3236e060e117a09a552b69ed4fa41976679d",
+      "deployedSha1": "d5de3236e060e117a09a552b69ed4fa41976679d",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/org-cleanup.int.test.ts",
+      "expectedSha1": "5f8c82c88b5c0e9320fa37a321a010070638b82a",
+      "deployedSha1": "5f8c82c88b5c0e9320fa37a321a010070638b82a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/recovery.int.test.ts",
+      "expectedSha1": "7525f9027539670356ea62a0d6a5decff52e8522",
+      "deployedSha1": "7525f9027539670356ea62a0d6a5decff52e8522",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/priv/recovery.ts",
+      "expectedSha1": "9ee6fc11b01b8aa4499f3e7ee346112380111f59",
+      "deployedSha1": "9ee6fc11b01b8aa4499f3e7ee346112380111f59",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/admin.ts",
+      "expectedSha1": "592bdca9728afcb91fb2fdd0d3d56a00338afc9b",
+      "deployedSha1": "592bdca9728afcb91fb2fdd0d3d56a00338afc9b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/audio-activation.int.test.ts",
+      "expectedSha1": "99a59f6fa2cb099c3a152c790a2dc1ac9696e134",
+      "deployedSha1": "99a59f6fa2cb099c3a152c790a2dc1ac9696e134",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/auxiliary.ts",
+      "expectedSha1": "96fbe105ad5ec1795957a2d08a567fd8ddf7f491",
+      "deployedSha1": "96fbe105ad5ec1795957a2d08a567fd8ddf7f491",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/contracts.ts",
+      "expectedSha1": "252318db96aab69340ace8fe9b79a28a70592c9b",
+      "deployedSha1": "252318db96aab69340ace8fe9b79a28a70592c9b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/index.ts",
+      "expectedSha1": "813a3cc3390c2637958db5c167eb27a014089c7e",
+      "deployedSha1": "813a3cc3390c2637958db5c167eb27a014089c7e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/maintenance.ts",
+      "expectedSha1": "457b4017a2058aa6e65670233ff846e10cfbde3a",
+      "deployedSha1": "457b4017a2058aa6e65670233ff846e10cfbde3a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/operations.ts",
+      "expectedSha1": "2d42d9c6155a4efe49c3407c93e2f942fbcacd33",
+      "deployedSha1": "2d42d9c6155a4efe49c3407c93e2f942fbcacd33",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/processing.int.test.ts",
+      "expectedSha1": "8d291b09c63f9c089608214e4b9159139c30877b",
+      "deployedSha1": "8d291b09c63f9c089608214e4b9159139c30877b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/runs.ts",
+      "expectedSha1": "cdb98ccee4a0497377a55feaa8f8029fd8d86905",
+      "deployedSha1": "cdb98ccee4a0497377a55feaa8f8029fd8d86905",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/selection.test.ts",
+      "expectedSha1": "dd152077cb4e56878cb70c15a24df1bcd2681d1a",
+      "deployedSha1": "dd152077cb4e56878cb70c15a24df1bcd2681d1a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/selection.ts",
+      "expectedSha1": "45b4ec54e40b388d788328b7dbe92829dda5393f",
+      "deployedSha1": "45b4ec54e40b388d788328b7dbe92829dda5393f",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/proc/worker.ts",
+      "expectedSha1": "6aae222c7f9851ae453a2041f19a1055526c2d46",
+      "deployedSha1": "6aae222c7f9851ae453a2041f19a1055526c2d46",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/accounting.test.ts",
+      "expectedSha1": "989023d54006829c76fd410c03d4ebd78b887c4b",
+      "deployedSha1": "989023d54006829c76fd410c03d4ebd78b887c4b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/accounting.ts",
+      "expectedSha1": "ad8beef2a37dadb87d94b4033a984726f431dc5e",
+      "deployedSha1": "ad8beef2a37dadb87d94b4033a984726f431dc5e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/admin.int.test.ts",
+      "expectedSha1": "d277444e6976a568e17c85c9e53e138f5fe96024",
+      "deployedSha1": "d277444e6976a568e17c85c9e53e138f5fe96024",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/allocations.ts",
+      "expectedSha1": "dc212d40d079baff70fd4e26406fa3cce4ed5be0",
+      "deployedSha1": "dc212d40d079baff70fd4e26406fa3cce4ed5be0",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/amounts.test.ts",
+      "expectedSha1": "7c6cd3d6ca68a763834b9eb30353bbcdbe0f3695",
+      "deployedSha1": "7c6cd3d6ca68a763834b9eb30353bbcdbe0f3695",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/amounts.ts",
+      "expectedSha1": "4db40fdc2b9c4f791b20f572fd4e5ff1004bbd65",
+      "deployedSha1": "4db40fdc2b9c4f791b20f572fd4e5ff1004bbd65",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/costs.int.test.ts",
+      "expectedSha1": "609e666ea7cf3d0bfafed8b407b3b333e47192bf",
+      "deployedSha1": "609e666ea7cf3d0bfafed8b407b3b333e47192bf",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/costs.ts",
+      "expectedSha1": "d20e26ffcf95d203040efad3bf7ebda416688909",
+      "deployedSha1": "d20e26ffcf95d203040efad3bf7ebda416688909",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/index.ts",
+      "expectedSha1": "0e562a0955eb955ca4ac53f1db075d4ac5264d41",
+      "deployedSha1": "0e562a0955eb955ca4ac53f1db075d4ac5264d41",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/ledger.int.test.ts",
+      "expectedSha1": "b5ba88eb357c724837110d7a9ac70db369e2bbbb",
+      "deployedSha1": "b5ba88eb357c724837110d7a9ac70db369e2bbbb",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/ledger.ts",
+      "expectedSha1": "370ffa75e5e91690052c509f09e17bb99a76ce18",
+      "deployedSha1": "370ffa75e5e91690052c509f09e17bb99a76ce18",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/operations.ts",
+      "expectedSha1": "b5a6ad5f8b6f7d30bd7d4a69e2bd8b7dac5768f1",
+      "deployedSha1": "b5a6ad5f8b6f7d30bd7d4a69e2bd8b7dac5768f1",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/pilot.int.test.ts",
+      "expectedSha1": "2ac7434285aa0b79228978dde507e94d430a9d32",
+      "deployedSha1": "2ac7434285aa0b79228978dde507e94d430a9d32",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/quota/pilot.ts",
+      "expectedSha1": "84b0354a322d3f4836f8d3a0e56207993bab5fb0",
+      "deployedSha1": "84b0354a322d3f4836f8d3a0e56207993bab5fb0",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/audio.int.test.ts",
+      "expectedSha1": "279bb88a86cf270d8ac8fc825948348a3ec4ac83",
+      "deployedSha1": "279bb88a86cf270d8ac8fc825948348a3ec4ac83",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/audio.ts",
+      "expectedSha1": "8531b88abb555dd6e4f463fcf550fbc6610c1197",
+      "deployedSha1": "8531b88abb555dd6e4f463fcf550fbc6610c1197",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/contracts.test.ts",
+      "expectedSha1": "a7f118bbc79bf13621a92fcd7fcbfc9b26155909",
+      "deployedSha1": "a7f118bbc79bf13621a92fcd7fcbfc9b26155909",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/contracts.ts",
+      "expectedSha1": "09dce68bfc493573a5ca2c38314c083612b4ed06",
+      "deployedSha1": "09dce68bfc493573a5ca2c38314c083612b4ed06",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/extract.ts",
+      "expectedSha1": "627bc89fe300bba85788bdae722a6e369f1b8a11",
+      "deployedSha1": "627bc89fe300bba85788bdae722a6e369f1b8a11",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/index.ts",
+      "expectedSha1": "47ce8c2bbcbf093d5391de353cad2380d6867249",
+      "deployedSha1": "47ce8c2bbcbf093d5391de353cad2380d6867249",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/jobs.ts",
+      "expectedSha1": "fc8b80863d3a3d69e645075e2fd02d4c43b2446c",
+      "deployedSha1": "fc8b80863d3a3d69e645075e2fd02d4c43b2446c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/pdf-unlock.ts",
+      "expectedSha1": "b86ef81c820b2a143588fccfd7b18de3ebbc716c",
+      "deployedSha1": "b86ef81c820b2a143588fccfd7b18de3ebbc716c",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/privacy.ts",
+      "expectedSha1": "2fb2b076e41fc4d7e26cc290ee5c5be5aa9d6228",
+      "deployedSha1": "2fb2b076e41fc4d7e26cc290ee5c5be5aa9d6228",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/roles.test.ts",
+      "expectedSha1": "b30ef65324ebee79ed2bc24a8e7b2a093bdea32a",
+      "deployedSha1": "b30ef65324ebee79ed2bc24a8e7b2a093bdea32a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/roles.ts",
+      "expectedSha1": "2cb46031e8ace212b7ee09b125082915150f5894",
+      "deployedSha1": "2cb46031e8ace212b7ee09b125082915150f5894",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/selection-cache.test.ts",
+      "expectedSha1": "d0e147a2ebb04c3e50f104720e6662452284bf25",
+      "deployedSha1": "d0e147a2ebb04c3e50f104720e6662452284bf25",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/selection-cache.ts",
+      "expectedSha1": "488951d539cd9797438786e2155d3ba3934d613e",
+      "deployedSha1": "488951d539cd9797438786e2155d3ba3934d613e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/service.int.test.ts",
+      "expectedSha1": "1d8b71cb7870093c09ec6ab766b24ba107159eb3",
+      "deployedSha1": "1d8b71cb7870093c09ec6ab766b24ba107159eb3",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/service.ts",
+      "expectedSha1": "727068daf2faad579c40f5fbc5a2c9c214ffad45",
+      "deployedSha1": "727068daf2faad579c40f5fbc5a2c9c214ffad45",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/verifier.test.ts",
+      "expectedSha1": "76b986fb10718d9fd544f4ba8ea2f927b0eaa013",
+      "deployedSha1": "76b986fb10718d9fd544f4ba8ea2f927b0eaa013",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/src/verifier.ts",
+      "expectedSha1": "4ff89edadfa5265d74fd73071c11e40feca150b7",
+      "deployedSha1": "4ff89edadfa5265d74fd73071c11e40feca150b7",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/srs/activity.ts",
+      "expectedSha1": "e309fba4a151b3024381f859757dc7a94ee7b6f7",
+      "deployedSha1": "e309fba4a151b3024381f859757dc7a94ee7b6f7",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/srs/index.ts",
+      "expectedSha1": "99f789f19d7f6d6ff681e85789934ff8f091c4cd",
+      "deployedSha1": "99f789f19d7f6d6ff681e85789934ff8f091c4cd",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/srs/privacy.ts",
+      "expectedSha1": "5f57ba820f8bddf843db9d249458cf157656a196",
+      "deployedSha1": "5f57ba820f8bddf843db9d249458cf157656a196",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/srs/review.int.test.ts",
+      "expectedSha1": "1fe18ec64c8150296f52ab0095aa4f41d98e8625",
+      "deployedSha1": "1fe18ec64c8150296f52ab0095aa4f41d98e8625",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/srs/review.ts",
+      "expectedSha1": "e2e717ac274c6f1bc24acc53f1bea6588124afa4",
+      "deployedSha1": "e2e717ac274c6f1bc24acc53f1bea6588124afa4",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/srs/schema.ts",
+      "expectedSha1": "446faf8cf8aa1f5a06763885191f2e1dc6d8a322",
+      "deployedSha1": "446faf8cf8aa1f5a06763885191f2e1dc6d8a322",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/common.ts",
+      "expectedSha1": "e70794bfd6e9e24fc1ad3db87e9733196fb7b97f",
+      "deployedSha1": "e70794bfd6e9e24fc1ad3db87e9733196fb7b97f",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/contracts.ts",
+      "expectedSha1": "e10f54a2a496b6aa7ac71418732392c2a975da98",
+      "deployedSha1": "e10f54a2a496b6aa7ac71418732392c2a975da98",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/email-logo.ts",
+      "expectedSha1": "8d18491143f5fb35b3d281903f967251df37f1fd",
+      "deployedSha1": "8d18491143f5fb35b3d281903f967251df37f1fd",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/email.ts",
+      "expectedSha1": "605a48a9f5570ee034e7572369f15fb83bd2c2fa",
+      "deployedSha1": "605a48a9f5570ee034e7572369f15fb83bd2c2fa",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/feedback.ts",
+      "expectedSha1": "ef1b09e8d226d68d51caa177de25139c99bd588b",
+      "deployedSha1": "ef1b09e8d226d68d51caa177de25139c99bd588b",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/gmail-provider.test.ts",
+      "expectedSha1": "193409e5ad6c61ff3f340acb00722c1ec5b85807",
+      "deployedSha1": "193409e5ad6c61ff3f340acb00722c1ec5b85807",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/index.ts",
+      "expectedSha1": "3425a5d438a460d2714c2738bbfeb031fb53aa4e",
+      "deployedSha1": "3425a5d438a460d2714c2738bbfeb031fb53aa4e",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/outbox-validation.test.ts",
+      "expectedSha1": "bfc48563a32705bf8750b04708eb8949198e37f1",
+      "deployedSha1": "bfc48563a32705bf8750b04708eb8949198e37f1",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/presentation.test.ts",
+      "expectedSha1": "858eedd58f67dca870b6f92fb105bf638a021707",
+      "deployedSha1": "858eedd58f67dca870b6f92fb105bf638a021707",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/presentation.ts",
+      "expectedSha1": "9013d32e040e677a3d93ab84ac6c951787ce850a",
+      "deployedSha1": "9013d32e040e677a3d93ab84ac6c951787ce850a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/provider.ts",
+      "expectedSha1": "a067ba7fc98fb1234b07b4d11fade7067fff7615",
+      "deployedSha1": "a067ba7fc98fb1234b07b4d11fade7067fff7615",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/support.int.test.ts",
+      "expectedSha1": "e5f0e645f14c9ece76937427182fab0a5dfbb74a",
+      "deployedSha1": "e5f0e645f14c9ece76937427182fab0a5dfbb74a",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/support.test.ts",
+      "expectedSha1": "c3e19c90f128068527012878ab629cf7fe9e23bf",
+      "deployedSha1": "c3e19c90f128068527012878ab629cf7fe9e23bf",
+      "matches": true
+    },
+    {
+      "path": "packages/core/src/support/templates.ts",
+      "expectedSha1": "6e9fcb5be88a16ed082f4bfd495e6c8a3704e572",
+      "deployedSha1": "6e9fcb5be88a16ed082f4bfd495e6c8a3704e572",
+      "matches": true
+    },
+    {
+      "path": "packages/core/test/auth-users.ts",
+      "expectedSha1": "4fd9147ed0d0eb4ef23029d258345f777f35fb60",
+      "deployedSha1": "4fd9147ed0d0eb4ef23029d258345f777f35fb60",
+      "matches": true
+    },
+    {
+      "path": "packages/core/test/local-db.ts",
+      "expectedSha1": "85631956a8245f3b530035ddb2e073ac616123f8",
+      "deployedSha1": "85631956a8245f3b530035ddb2e073ac616123f8",
+      "matches": true
+    },
+    {
+      "path": "packages/core/test/source-fixtures.ts",
+      "expectedSha1": "00c7b4ee663e7be0db721efa3515fe73efc41a8f",
+      "deployedSha1": "00c7b4ee663e7be0db721efa3515fe73efc41a8f",
+      "matches": true
+    },
+    {
+      "path": "packages/core/test/study-fixture.ts",
+      "expectedSha1": "33cfcbc9ce11807124f27698864042f94f812c61",
+      "deployedSha1": "33cfcbc9ce11807124f27698864042f94f812c61",
+      "matches": true
+    },
+    {
+      "path": "packages/core/tsconfig.json",
+      "expectedSha1": "e4305061819a74055166115f393fd57cd759ef58",
+      "deployedSha1": "e4305061819a74055166115f393fd57cd759ef58",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/package.json",
+      "expectedSha1": "f85a76bd013b93275eb581f4dce1ee94eb9b360a",
+      "deployedSha1": "f85a76bd013b93275eb581f4dce1ee94eb9b360a",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup-linked.test.ts",
+      "expectedSha1": "30ab1761bbc62f96c20918954cc5d392a585ffe9",
+      "deployedSha1": "30ab1761bbc62f96c20918954cc5d392a585ffe9",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup-linked.ts",
+      "expectedSha1": "bc71364891e1fa55e27842279b694e957803b7c0",
+      "deployedSha1": "bc71364891e1fa55e27842279b694e957803b7c0",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup-native.int.test.ts",
+      "expectedSha1": "86ed356408e4592e2171ed5485bbc394aa6d8a23",
+      "deployedSha1": "86ed356408e4592e2171ed5485bbc394aa6d8a23",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup-native.test.ts",
+      "expectedSha1": "533a2944602f5b1019873caa203f5962ab06f2e2",
+      "deployedSha1": "533a2944602f5b1019873caa203f5962ab06f2e2",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup-native.ts",
+      "expectedSha1": "107a1dc4ab8e874180ea4a3cf4b38f379b3b037a",
+      "deployedSha1": "107a1dc4ab8e874180ea4a3cf4b38f379b3b037a",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup-replay.ts",
+      "expectedSha1": "f9e57b558fad385c03547952fc32bbd1d374964a",
+      "deployedSha1": "f9e57b558fad385c03547952fc32bbd1d374964a",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/backup.ts",
+      "expectedSha1": "0411bdb5d7aa8e93a99d33294f4977a294451309",
+      "deployedSha1": "0411bdb5d7aa8e93a99d33294f4977a294451309",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/evaluate.ts",
+      "expectedSha1": "de9e749c9cf19bca85bf90c17cdaa427bceabc79",
+      "deployedSha1": "de9e749c9cf19bca85bf90c17cdaa427bceabc79",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/evaluation-config.test.ts",
+      "expectedSha1": "bd33319790598b4a1c1104575a4d9e61b8dff461",
+      "deployedSha1": "bd33319790598b4a1c1104575a4d9e61b8dff461",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/evaluation-config.ts",
+      "expectedSha1": "7fec1d71e4c7c30c0150302aa145109a904b0a66",
+      "deployedSha1": "7fec1d71e4c7c30c0150302aa145109a904b0a66",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/main.ts",
+      "expectedSha1": "ece5c2af39adc1ff26ce53ce9b34839dbae3ecd5",
+      "deployedSha1": "ece5c2af39adc1ff26ce53ce9b34839dbae3ecd5",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/paths.ts",
+      "expectedSha1": "62f838f9fdfcb447c1fcc1eb7718eb67b25e0905",
+      "deployedSha1": "62f838f9fdfcb447c1fcc1eb7718eb67b25e0905",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/supabase-dryrun-2.118.0.fixture.txt",
+      "expectedSha1": "2a64b4bf984b263b04db94c4ed1acf3d820840c7",
+      "deployedSha1": "2a64b4bf984b263b04db94c4ed1acf3d820840c7",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/src/synthetic-provider.ts",
+      "expectedSha1": "e12f4c702fda7b372fa3e3ba29dbd9e01ec78e81",
+      "deployedSha1": "e12f4c702fda7b372fa3e3ba29dbd9e01ec78e81",
+      "matches": true
+    },
+    {
+      "path": "packages/ops-cli/tsconfig.json",
+      "expectedSha1": "d9a815e81aea1b0d2b8c9ebe149c84ed6369302f",
+      "deployedSha1": "d9a815e81aea1b0d2b8c9ebe149c84ed6369302f",
+      "matches": true
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "expectedSha1": "cba9f7bcc5a5f77395331112b07334a1f81098e7",
+      "deployedSha1": "cba9f7bcc5a5f77395331112b07334a1f81098e7",
+      "matches": true
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "expectedSha1": "9df95b8c4da327672c554a5987a2583706be0c1c",
+      "deployedSha1": "9df95b8c4da327672c554a5987a2583706be0c1c",
+      "matches": true
+    },
+    {
+      "path": "supabase/config.toml",
+      "expectedSha1": "b350573d2f0a1bf247cb77b1c3e0bad42f2e28c9",
+      "deployedSha1": "b350573d2f0a1bf247cb77b1c3e0bad42f2e28c9",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20260930175238_baseline.sql",
+      "expectedSha1": "fbbfd8295d99f620af73a80fb114e9e873c979ee",
+      "deployedSha1": "fbbfd8295d99f620af73a80fb114e9e873c979ee",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261001100505_plt_core.sql",
+      "expectedSha1": "1b20c45ba3e27cea3aecc7c83a2161d9c602c087",
+      "deployedSha1": "1b20c45ba3e27cea3aecc7c83a2161d9c602c087",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261001200000_acc_core.sql",
+      "expectedSha1": "de72d35547d356bd180024ebc9b4867e966d6898",
+      "deployedSha1": "de72d35547d356bd180024ebc9b4867e966d6898",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261002094004_plt_jobs.sql",
+      "expectedSha1": "5bef49a9b32a541cacffea5003f479fe6797cb5d",
+      "deployedSha1": "5bef49a9b32a541cacffea5003f479fe6797cb5d",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261002094723_plt_storage.sql",
+      "expectedSha1": "80e2760b024a06037e2e8e8111ebc27fd7ecf409",
+      "deployedSha1": "80e2760b024a06037e2e8e8111ebc27fd7ecf409",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004041529_quota_ledger.sql",
+      "expectedSha1": "6e9b8829b548a77343b1f779e0af14b55838252e",
+      "deployedSha1": "6e9b8829b548a77343b1f779e0af14b55838252e",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004042240_org_core.sql",
+      "expectedSha1": "7283332ae0a27b5328257b324e5a6b55de997fdb",
+      "deployedSha1": "7283332ae0a27b5328257b324e5a6b55de997fdb",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004042259_quota_cost_controls.sql",
+      "expectedSha1": "b372da2394ea846bb076854f4992ace2994c57e5",
+      "deployedSha1": "b372da2394ea846bb076854f4992ace2994c57e5",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004042324_src_core.sql",
+      "expectedSha1": "35b25e18e3c72c028dc310d15b5e73cabed4ac9d",
+      "deployedSha1": "35b25e18e3c72c028dc310d15b5e73cabed4ac9d",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004044059_lkm_processing.sql",
+      "expectedSha1": "2428bca3a1c1b4519d787b79fdbd3d5fb8fc3ca7",
+      "deployedSha1": "2428bca3a1c1b4519d787b79fdbd3d5fb8fc3ca7",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004044636_src_temporary_audio.sql",
+      "expectedSha1": "76db24967589ccf6e1661d3fc4d826d0583d880e",
+      "deployedSha1": "76db24967589ccf6e1661d3fc4d826d0583d880e",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004045720_note_card_srs.sql",
+      "expectedSha1": "7eecbc6993153f85c8417089d49ffc0e72e6592f",
+      "deployedSha1": "7eecbc6993153f85c8417089d49ffc0e72e6592f",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004045726_src_audio_duration.sql",
+      "expectedSha1": "30e157f0a4ba5943cfd055595c37aa71f6825ce2",
+      "deployedSha1": "30e157f0a4ba5943cfd055595c37aa71f6825ce2",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004050331_media_assets.sql",
+      "expectedSha1": "122e672632afdb840c8db082c1ecc586ac41ecc4",
+      "deployedSha1": "122e672632afdb840c8db082c1ecc586ac41ecc4",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004050454_study_contract_updates.sql",
+      "expectedSha1": "1d7653ac61c653ee73f3aaa66598724e655ae157",
+      "deployedSha1": "1d7653ac61c653ee73f3aaa66598724e655ae157",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004051218_privacy_deletion.sql",
+      "expectedSha1": "317a45df729123e7c0f46ab06819b3a55f18fc8f",
+      "deployedSha1": "317a45df729123e7c0f46ab06819b3a55f18fc8f",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004052024_privacy_cleanup_registry.sql",
+      "expectedSha1": "60eed86f4772082c7ffc7e7873928108b057ab7c",
+      "deployedSha1": "60eed86f4772082c7ffc7e7873928108b057ab7c",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004052256_export_artifacts.sql",
+      "expectedSha1": "1f185e163eb331b916e7256cfaf17dbe69a93eea",
+      "deployedSha1": "1f185e163eb331b916e7256cfaf17dbe69a93eea",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004052641_src_capture_anchor.sql",
+      "expectedSha1": "298f072211b7d17f1e7c83ba6ff3fcd78c482abc",
+      "deployedSha1": "298f072211b7d17f1e7c83ba6ff3fcd78c482abc",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004053117_processing_temporary_objects.sql",
+      "expectedSha1": "b3be4a05a02f52672cbb698fee8d59833a44c152",
+      "deployedSha1": "b3be4a05a02f52672cbb698fee8d59833a44c152",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004055403_src_operator_configuration.sql",
+      "expectedSha1": "7c170f40d959051bbb36f2a0824f99b1cfe58b58",
+      "deployedSha1": "7c170f40d959051bbb36f2a0824f99b1cfe58b58",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004060100_export_keys_and_review_order.sql",
+      "expectedSha1": "c8715d5e1c64de918c2e6ef8ef802390e90a3bb9",
+      "deployedSha1": "c8715d5e1c64de918c2e6ef8ef802390e90a3bb9",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004062114_job_pointer_retention.sql",
+      "expectedSha1": "407c5ba5a3af5673440aec1c3cb5ed389dd7d919",
+      "deployedSha1": "407c5ba5a3af5673440aec1c3cb5ed389dd7d919",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004062810_processing_awaiting_upload_state.sql",
+      "expectedSha1": "284aef344ad6a4225a0818f5ae2e7bda6754e6dc",
+      "deployedSha1": "284aef344ad6a4225a0818f5ae2e7bda6754e6dc",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004062813_privacy_note_revision_cleanup.sql",
+      "expectedSha1": "aa795f069c9bb97197cee9a0443c229969942edc",
+      "deployedSha1": "aa795f069c9bb97197cee9a0443c229969942edc",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004063050_storage_access_expiry.sql",
+      "expectedSha1": "d0fecfd043bf06875f52aa1cb16db302641ff872",
+      "deployedSha1": "d0fecfd043bf06875f52aa1cb16db302641ff872",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004063303_ops_database_backups.sql",
+      "expectedSha1": "cc90780ae353a595b9fd37001a61c2e59660a372",
+      "deployedSha1": "cc90780ae353a595b9fd37001a61c2e59660a372",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261004064053_ops_deletion_journals.sql",
+      "expectedSha1": "4edc98fcb6e543a7bace7c2d27424b243dc2463b",
+      "deployedSha1": "4edc98fcb6e543a7bace7c2d27424b243dc2463b",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005192520_support_admin_communications.sql",
+      "expectedSha1": "64f7bb41ded6c8eb192849ad1eaea055dd5da881",
+      "deployedSha1": "64f7bb41ded6c8eb192849ad1eaea055dd5da881",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005192524_admin_pilot_allocations.sql",
+      "expectedSha1": "3710ca94fd330bb1e216221b68b3ac297392047d",
+      "deployedSha1": "3710ca94fd330bb1e216221b68b3ac297392047d",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005192549_admin_console.sql",
+      "expectedSha1": "6316f282fe8b5671a7d10cc8edd90bc37ca9590c",
+      "deployedSha1": "6316f282fe8b5671a7d10cc8edd90bc37ca9590c",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005193423_admin_estimate_snapshots.sql",
+      "expectedSha1": "285806cc9d1b7395ffd328cecfcdd2e74de888bc",
+      "deployedSha1": "285806cc9d1b7395ffd328cecfcdd2e74de888bc",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005195714_admin_request_receipts.sql",
+      "expectedSha1": "6f51dc36cfa99abf6b9567def915a4bc2bf6372d",
+      "deployedSha1": "6f51dc36cfa99abf6b9567def915a4bc2bf6372d",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005195722_admin_metadata_views.sql",
+      "expectedSha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "deployedSha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005195848_admin_metadata_projections.sql",
+      "expectedSha1": "096f52080e4d2e6d46fc39b23eb941e3fc6613d7",
+      "deployedSha1": "096f52080e4d2e6d46fc39b23eb941e3fc6613d7",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005200302_admin_deleted_contact_privacy.sql",
+      "expectedSha1": "c4d6a9b6807f1c920c32695de999b5ec6ff58d80",
+      "deployedSha1": "c4d6a9b6807f1c920c32695de999b5ec6ff58d80",
+      "matches": true
+    },
+    {
+      "path": "supabase/migrations/20261005234639_branded_email_snapshots.sql",
+      "expectedSha1": "d0e2aeb341731fdae75963d716e4c2ec2a47cdcf",
+      "deployedSha1": "d0e2aeb341731fdae75963d716e4c2ec2a47cdcf",
+      "matches": true
+    },
+    {
+      "path": "supabase/seed.sql",
+      "expectedSha1": "3ccc862208d9631bc2e174a335b4ed34799298cf",
+      "deployedSha1": "3ccc862208d9631bc2e174a335b4ed34799298cf",
+      "matches": true
+    },
+    {
+      "path": "tools/auth/check-google.mjs",
+      "expectedSha1": "db821a352815489f47664c8c3d31f1bc7ee3d969",
+      "deployedSha1": "db821a352815489f47664c8c3d31f1bc7ee3d969",
+      "matches": true
+    },
+    {
+      "path": "tools/auth/check-google.test.mjs",
+      "expectedSha1": "700cc7b838d98fdfe35753e545f9fd1fb3ef0739",
+      "deployedSha1": "700cc7b838d98fdfe35753e545f9fd1fb3ef0739",
+      "matches": true
+    },
+    {
+      "path": "tools/backup/daily-task.test.mjs",
+      "expectedSha1": "cbd7a294e7981638305bde5861f17c4a6628e800",
+      "deployedSha1": "cbd7a294e7981638305bde5861f17c4a6628e800",
+      "matches": true
+    },
+    {
+      "path": "tools/backup/install-daily-task.ps1",
+      "expectedSha1": "f35df8303b640e5bd8bd271ad4639cde32406015",
+      "deployedSha1": "f35df8303b640e5bd8bd271ad4639cde32406015",
+      "matches": true
+    },
+    {
+      "path": "tools/backup/protect-config.ps1",
+      "expectedSha1": "c70356723431e8547c8b7d775b622709b39fbdbe",
+      "deployedSha1": "c70356723431e8547c8b7d775b622709b39fbdbe",
+      "matches": true
+    },
+    {
+      "path": "tools/backup/run-daily.ps1",
+      "expectedSha1": "d4d423e78d9b78849664f3704bee32687b31a162",
+      "deployedSha1": "d4d423e78d9b78849664f3704bee32687b31a162",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/boundaries.test.ts",
+      "expectedSha1": "70a4b413021bbf7a4014c8d6bb53ca0a76b75264",
+      "deployedSha1": "70a4b413021bbf7a4014c8d6bb53ca0a76b75264",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/fixture/src/acc/index.ts",
+      "expectedSha1": "871db92804395c6e64823c780b3afab5af349f6e",
+      "deployedSha1": "871db92804395c6e64823c780b3afab5af349f6e",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/fixture/src/acc/upward.ts",
+      "expectedSha1": "dcebe20407b42f86b4f6a06b34ccf5edfa605daf",
+      "deployedSha1": "dcebe20407b42f86b4f6a06b34ccf5edfa605daf",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/fixture/src/plt/index.ts",
+      "expectedSha1": "d8df2fac0933d2a16ff350f25153f7d86575a589",
+      "deployedSha1": "d8df2fac0933d2a16ff350f25153f7d86575a589",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/fixture/src/proc/index.ts",
+      "expectedSha1": "16fd35d1eb4d9de28ff3bd4600ee32d466a76836",
+      "deployedSha1": "16fd35d1eb4d9de28ff3bd4600ee32d466a76836",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/rules.cjs",
+      "expectedSha1": "d1edb9399d27aef0b9b1484bdfd04fb351047153",
+      "deployedSha1": "d1edb9399d27aef0b9b1484bdfd04fb351047153",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/schema-names.test.ts",
+      "expectedSha1": "4f57505ca030533714d7dc7b25c6d1e7957dd416",
+      "deployedSha1": "4f57505ca030533714d7dc7b25c6d1e7957dd416",
+      "matches": true
+    },
+    {
+      "path": "tools/boundaries/schema-names.ts",
+      "expectedSha1": "a014aa44eb9377b912f01e879ea62debf7b3ab0d",
+      "deployedSha1": "a014aa44eb9377b912f01e879ea62debf7b3ab0d",
+      "matches": true
+    },
+    {
+      "path": "tools/capability-map.json",
+      "expectedSha1": "9fd9cafeb6830b9e85982e1d530725256c18aa82",
+      "deployedSha1": "9fd9cafeb6830b9e85982e1d530725256c18aa82",
+      "matches": true
+    },
+    {
+      "path": "tools/client-bundle/check.ts",
+      "expectedSha1": "d736168a176d6b4c2a03e6f5326d4e491f01a6f4",
+      "deployedSha1": "d736168a176d6b4c2a03e6f5326d4e491f01a6f4",
+      "matches": true
+    },
+    {
+      "path": "tools/client-bundle/scan.test.ts",
+      "expectedSha1": "48923d0e972b28d7d54c4452f1d856e3a1b49681",
+      "deployedSha1": "48923d0e972b28d7d54c4452f1d856e3a1b49681",
+      "matches": true
+    },
+    {
+      "path": "tools/client-bundle/scan.ts",
+      "expectedSha1": "16c6cac122b5ecfd90c6e94a5d766a571d28e115",
+      "deployedSha1": "16c6cac122b5ecfd90c6e94a5d766a571d28e115",
+      "matches": true
+    },
+    {
+      "path": "tools/configure-runtime-env.mjs",
+      "expectedSha1": "ddbbeaba56e3b9bdb1cb175b6f1380fcc8d43813",
+      "deployedSha1": "ddbbeaba56e3b9bdb1cb175b6f1380fcc8d43813",
+      "matches": true
+    },
+    {
+      "path": "tools/create-export-fixture.ts",
+      "expectedSha1": "5f5ceff5aaba4636cd45edf71dea2dcceca81ea7",
+      "deployedSha1": "5f5ceff5aaba4636cd45edf71dea2dcceca81ea7",
+      "matches": true
+    },
+    {
+      "path": "tools/db-types.mjs",
+      "expectedSha1": "a5c5ab9df0eb0ae396badb1a2d19bfbe733d92fb",
+      "deployedSha1": "a5c5ab9df0eb0ae396badb1a2d19bfbe733d92fb",
+      "matches": true
+    },
+    {
+      "path": "tools/db-url/check.ts",
+      "expectedSha1": "06d5196cc5ad8350b5caffc90d9ce86e4045ff5a",
+      "deployedSha1": "06d5196cc5ad8350b5caffc90d9ce86e4045ff5a",
+      "matches": true
+    },
+    {
+      "path": "tools/db-url/core.ts",
+      "expectedSha1": "48955301a0aeb116a9b61ed869965c06f33a2bef",
+      "deployedSha1": "48955301a0aeb116a9b61ed869965c06f33a2bef",
+      "matches": true
+    },
+    {
+      "path": "tools/db-url/rotate.ts",
+      "expectedSha1": "e588706771fa01cb5342c0a346d9c7794ca731b6",
+      "deployedSha1": "e588706771fa01cb5342c0a346d9c7794ca731b6",
+      "matches": true
+    },
+    {
+      "path": "tools/db-url/scram.int.test.ts",
+      "expectedSha1": "18b548a2d300ca1eb8493b7a235131db1e6fc6d9",
+      "deployedSha1": "18b548a2d300ca1eb8493b7a235131db1e6fc6d9",
+      "matches": true
+    },
+    {
+      "path": "tools/db-url/scram.test.ts",
+      "expectedSha1": "2790d50e56aa407f54976e8dcd54edf1454a904e",
+      "deployedSha1": "2790d50e56aa407f54976e8dcd54edf1454a904e",
+      "matches": true
+    },
+    {
+      "path": "tools/db-url/scram.ts",
+      "expectedSha1": "20a9c2099e705e5d947bd68f0fa5ce7e99bdc25c",
+      "deployedSha1": "20a9c2099e705e5d947bd68f0fa5ce7e99bdc25c",
+      "matches": true
+    },
+    {
+      "path": "tools/deploy-ui-preview.ps1",
+      "expectedSha1": "65baf534f0843be132e75c20534be1c6e5664cc5",
+      "deployedSha1": "65baf534f0843be132e75c20534be1c6e5664cc5",
+      "matches": true
+    },
+    {
+      "path": "tools/eval/schema-inspect.ts",
+      "expectedSha1": "9ea3442c6b7d8d44eec885ab5d12a78f296777e9",
+      "deployedSha1": "9ea3442c6b7d8d44eec885ab5d12a78f296777e9",
+      "matches": true
+    },
+    {
+      "path": "tools/eval/synthetic-mock-config.json",
+      "expectedSha1": "f9533ada9609558d32c9588cc042dca20462b58b",
+      "deployedSha1": "f9533ada9609558d32c9588cc042dca20462b58b",
+      "matches": true
+    },
+    {
+      "path": "tools/legal/build.test.ts",
+      "expectedSha1": "a0b6584a1eac4f3a004e4cc2e29ec8cbc77bf5b5",
+      "deployedSha1": "a0b6584a1eac4f3a004e4cc2e29ec8cbc77bf5b5",
+      "matches": true
+    },
+    {
+      "path": "tools/legal/build.ts",
+      "expectedSha1": "072bbc7fa81297fbb6dbeba36771fee78b81bf5f",
+      "deployedSha1": "072bbc7fa81297fbb6dbeba36771fee78b81bf5f",
+      "matches": true
+    },
+    {
+      "path": "tools/local-env.ts",
+      "expectedSha1": "28d853e378798d16acd01f1d525f6cb31f12eab6",
+      "deployedSha1": "28d853e378798d16acd01f1d525f6cb31f12eab6",
+      "matches": true
+    },
+    {
+      "path": "tools/openrouter-inspect.mjs",
+      "expectedSha1": "3f43a0861dca252829a25d090631a93ece7eea94",
+      "deployedSha1": "3f43a0861dca252829a25d090631a93ece7eea94",
+      "matches": true
+    },
+    {
+      "path": "tools/provider-defaults.test.ts",
+      "expectedSha1": "817f4c35258fc54b0a1a9aa93985e67195501c34",
+      "deployedSha1": "817f4c35258fc54b0a1a9aa93985e67195501c34",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/cloud-drive.mjs",
+      "expectedSha1": "fab3445bafcfe83a17779ea78f03459a6e48a6e8",
+      "deployedSha1": "fab3445bafcfe83a17779ea78f03459a6e48a6e8",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/queue/contract.ts",
+      "expectedSha1": "98f06485b3819292c35f03bd8f499dbe3a18dfd9",
+      "deployedSha1": "98f06485b3819292c35f03bd8f499dbe3a18dfd9",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/queue/pgboss-queue.ts",
+      "expectedSha1": "fb05f1aad0e26a448173ba379372abd29b1581f7",
+      "deployedSha1": "fb05f1aad0e26a448173ba379372abd29b1581f7",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/queue/queue.int.test.ts",
+      "expectedSha1": "3737e031d8fb4299e2462c5b9d665e9b676a75b0",
+      "deployedSha1": "3737e031d8fb4299e2462c5b9d665e9b676a75b0",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/queue/steps.ts",
+      "expectedSha1": "9ff85ad756fb69e3801e7cd97e6a6aa9ec22c513",
+      "deployedSha1": "9ff85ad756fb69e3801e7cd97e6a6aa9ec22c513",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/queue/table-queue.ts",
+      "expectedSha1": "5e012b4c4d63d6e3f30d0bd1bc7601c0261d7200",
+      "deployedSha1": "5e012b4c4d63d6e3f30d0bd1bc7601c0261d7200",
+      "matches": true
+    },
+    {
+      "path": "tools/spikes/vitest.config.ts",
+      "expectedSha1": "bb911d32da0ac74a1c2d144b2713a55a57ceb343",
+      "deployedSha1": "bb911d32da0ac74a1c2d144b2713a55a57ceb343",
+      "matches": true
+    },
+    {
+      "path": "tools/test/empty-module.ts",
+      "expectedSha1": "9f4eadbf71e87249f2d0a13429849a44bfdf284b",
+      "deployedSha1": "9f4eadbf71e87249f2d0a13429849a44bfdf284b",
+      "matches": true
+    },
+    {
+      "path": "tools/tsconfig.json",
+      "expectedSha1": "be4d9a607ee4ca488093ca2d0770df5fa79e6e4d",
+      "deployedSha1": "be4d9a607ee4ca488093ca2d0770df5fa79e6e4d",
+      "matches": true
+    },
+    {
+      "path": "tsconfig.base.json",
+      "expectedSha1": "d2cfe91c0c679d41eab68896a27f2080bd6a7e15",
+      "deployedSha1": "d2cfe91c0c679d41eab68896a27f2080bd6a7e15",
+      "matches": true
+    }
+  ],
+  "sentRealEmail": false
+}

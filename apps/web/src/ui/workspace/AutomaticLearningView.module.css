@@ -1,0 +1,25 @@
+.inlineRetry.inlineRetry {
+  display: inline-block;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  line-height: inherit;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.inlineRetry.inlineRetry:hover {
+  background: var(--rc-primary-tint);
+}
+
+.inlineRetry.inlineRetry:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

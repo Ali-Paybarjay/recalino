@@ -1,0 +1,25 @@
+{
+  "version": "synthetic-mock-eval-1",
+  "actorId": "local-synthetic-evaluation",
+  "reason": "Deterministic local transport and study-flow verification; no commercial allowances",
+  "maximumTotalMicros": 100000,
+  "provider": {
+    "version": "synthetic-mock-eval-1",
+    "llmModel": "synthetic/llm",
+    "visionModel": "synthetic/vision",
+    "sttModel": "synthetic/stt",
+    "ttsModel": "synthetic/tts",
+    "voice": "synthetic",
+    "promptVersion": "1",
+    "maxInputCharacters": 8000,
+    "maxOutputTokens": 2000,
+    "timeoutMs": 5000,
+    "maximumMicros": 10,
+    "currency": "USD",
+    "priceVersion": "synthetic-only",
+    "charactersPerPage": 1000,
+    "audioUrlSupported": false,
+    "sttProviderOptions": {},
+    "dataContractApproved": true
+  }
+}

@@ -37,14 +37,18 @@ test("Terms and Privacy open in a sheet and the ticks stay", async ({ page }) =>
   await expect(adult).toBeChecked();
 });
 
-test("Continue stores the declarations and goes to Google through Supabase", async ({ page }) => {
+test("Continue stores the declarations and requests Google account selection through Supabase", async ({
+  page,
+}) => {
   // The form post is caught so the browser never leaves for Google; the server's own answer is
   // checked instead: a redirect to Supabase's Google sign-in, with the declarations' cookie.
   let location: URL | undefined;
+  let cacheControl: string | undefined;
   let cookies: string[] = [];
   await page.route("**/auth/start", async (route) => {
     const response = await route.fetch({ maxRedirects: 0 });
     location = new URL(response.headers().location ?? "");
+    cacheControl = response.headers()["cache-control"];
     cookies = response
       .headersArray()
       .filter((header) => header.name.toLowerCase() === "set-cookie")
@@ -58,10 +62,15 @@ test("Continue stores the declarations and goes to Google through Supabase", asy
   await expect(page.getByText("Google sign-in")).toBeVisible();
   expect(location?.pathname).toBe("/auth/v1/authorize");
   expect(location?.searchParams.get("provider")).toBe("google");
+  expect(location?.searchParams.get("prompt")).toBe("select_account");
   expect(location?.searchParams.get("redirect_to")).toMatch(/\/auth\/callback$/);
   expect(location?.searchParams.get("code_challenge")).toBeTruthy();
+  expect(cacheControl).toContain("private");
+  expect(cacheControl).toContain("no-store");
   const intent = cookies.find((cookie) => cookie.startsWith("rc_signup_intent="));
   expect(intent).toMatch(/HttpOnly/i);
+  const verifier = cookies.find((cookie) => /^[^=]+-code-verifier(?:\.\d+)?=/.test(cookie));
+  expect(verifier).toMatch(/HttpOnly/i);
   expect(cookies.find((cookie) => cookie.startsWith("rc_next="))).toMatch(/^rc_next=%2Fme;/);
 });
 
@@ -76,9 +85,13 @@ test("a failed sign-in shows one general message", async ({ page }) => {
 test("a page that needs a session sends the visitor to sign in and remembers the way back", async ({
   page,
 }) => {
-  await page.goto("/me");
-  await expect(page).toHaveURL(/\/\?next=%2Fme$/);
-  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+  for (const path of ["/me", "/me/data", "/recordings", "/classes/organize"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(
+      (url) => url.pathname === "/" && url.searchParams.get("next") === path,
+    );
+    await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+  }
 });
 
 for (const scheme of ["light", "dark"] as const) {

@@ -1,0 +1,10 @@
+{
+  "checkedAt": "2026-10-04T18:15:33.360Z",
+  "projectRef": "twowhuzhvyuzjrpraikm",
+  "scope": "Only auth.additional_redirect_urls declared; existing callbacks preserved before push",
+  "newCallback": "https://recalino-lgjhd697s-ali-paybarjay-s-projects.vercel.app/auth/callback",
+  "remainingDeclaredUpdates": 0,
+  "siteUrlDeclared": false,
+  "googleCredentialsDeclared": false,
+  "passed": true
+}

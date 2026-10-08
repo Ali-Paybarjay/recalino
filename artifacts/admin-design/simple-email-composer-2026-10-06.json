@@ -1,0 +1,102 @@
+{
+  "fileKey": "8SZY9Ju3Fatad888Ba81Ra",
+  "pageId": "35:137",
+  "designURL": "https://www.figma.com/design/8SZY9Ju3Fatad888Ba81Ra?node-id=42-1930",
+  "date": "2026-10-06",
+  "mutatedNodeIds": [
+    "42:1673",
+    "42:1651",
+    "42:1663",
+    "42:1675",
+    "42:1677",
+    "74:1108",
+    "74:1109",
+    "42:1738",
+    "42:1728",
+    "42:1740",
+    "42:1742",
+    "74:1111",
+    "74:1112",
+    "42:1924",
+    "42:1870",
+    "42:1910",
+    "42:1926",
+    "42:1928",
+    "74:1114",
+    "74:1115",
+    "42:1989",
+    "42:1975",
+    "42:1991",
+    "42:1993",
+    "74:1117",
+    "74:1118"
+  ],
+  "createdNodeIds": [
+    "74:1107",
+    "74:1108",
+    "74:1109",
+    "74:1110",
+    "74:1111",
+    "74:1112",
+    "74:1113",
+    "74:1114",
+    "74:1115",
+    "74:1116",
+    "74:1117",
+    "74:1118"
+  ],
+  "frames": [
+    {
+      "id": "42:1613",
+      "name": "compose · EN · Desktop",
+      "width": 1440,
+      "height": 1100,
+      "textCount": 32,
+      "instanceCount": 12
+    },
+    {
+      "id": "42:1679",
+      "name": "composeOne · EN · Desktop",
+      "width": 1440,
+      "height": 1100,
+      "textCount": 31,
+      "instanceCount": 12
+    },
+    {
+      "id": "42:1864",
+      "name": "compose · FA · Desktop",
+      "width": 1440,
+      "height": 1100,
+      "textCount": 32,
+      "instanceCount": 12
+    },
+    {
+      "id": "42:1930",
+      "name": "composeOne · FA · Desktop",
+      "width": 1440,
+      "height": 1100,
+      "textCount": 31,
+      "instanceCount": 12
+    }
+  ],
+  "scope": "Existing composer screens; optional additional note, collapsed extra controls, recipient-preference default.",
+  "persianSync": {
+    "mutatedNodeIds": [
+      "I42:1975;18:143",
+      "I42:1918;18:143",
+      "I42:1983;18:143",
+      "42:1923",
+      "42:1988"
+    ],
+    "editableNativeText": true
+  },
+  "layout": {
+    "panels": "vertical HUG, content visible",
+    "main": "vertical HUG",
+    "roots": "1440 × 1100"
+  },
+  "reviewed": {
+    "persianDesktop": true,
+    "controls": "native editable text, existing input and button instances"
+  }
+}

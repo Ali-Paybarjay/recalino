@@ -1,0 +1,97 @@
+{
+  "createdAt": "2026-10-05T12:41:23.948Z",
+  "deployment": "https://recalino-dn67co1df-ali-paybarjay-s-projects.vercel.app",
+  "scope": "Authenticated Vercel protection bypass, with no application learner session. No class data, provider calls or environment changes.",
+  "protectionPreserved": true,
+  "checks": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/sources/contract",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/classes",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/privacy/account",
+      "method": "DELETE",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/jobs/run",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/dev/ui",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 404,
+      "streamingBehavior": "not_found_404_digest_and_noindex",
+      "passed": true
+    },
+    {
+      "path": "/dev/auth/session",
+      "method": "POST",
+      "status": 404,
+      "expectedStatus": 404,
+      "passed": true
+    },
+    {
+      "path": "/dev/spike/ffmpeg",
+      "method": "POST",
+      "status": 404,
+      "expectedStatus": 404,
+      "passed": true
+    },
+    {
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 200,
+      "passed": true
+    },
+    {
+      "path": "/today",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 307,
+      "streamingBehavior": "unauthenticated_redirect_digest_and_refresh",
+      "passed": true
+    },
+    {
+      "path": "/me",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 307,
+      "streamingBehavior": "unauthenticated_redirect_digest_and_refresh",
+      "passed": true
+    },
+    {
+      "path": "/deletion",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 307,
+      "streamingBehavior": "unauthenticated_redirect_digest_and_refresh",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

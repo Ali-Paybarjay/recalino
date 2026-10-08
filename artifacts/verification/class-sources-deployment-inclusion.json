@@ -1,0 +1,307 @@
+{
+  "verifiedAt": "2026-10-05T23:34:25.0423574Z",
+  "manifest": ".vercel/audio-release-inputs.private.json",
+  "manifestWrittenAtUtc": "2026-10-05T23:31:49.2097115Z",
+  "manifestFileCount": 825,
+  "checkedFiles": 16,
+  "matchesCurrent": true,
+  "publicationVerified": true,
+  "checks": [
+    {
+      "path": "apps/web/src/ui/workspace/SourcesView.tsx",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "aebec2c4d11703b74dc0c05e0dfb6716f8904fa5",
+      "manifestSha1": "aebec2c4d11703b74dc0c05e0dfb6716f8904fa5",
+      "size": 37918
+    },
+    {
+      "path": "apps/web/src/ui/components/UploadProgress.tsx",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "6fd15781f6ed29b576dcb72344ca4978edb980f7",
+      "manifestSha1": "6fd15781f6ed29b576dcb72344ca4978edb980f7",
+      "size": 1597
+    },
+    {
+      "path": "apps/web/src/ui/components/UploadProgress.module.css",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "d5a7c6179fd4da47ce1109f355e8d4a7ca179f29",
+      "manifestSha1": "d5a7c6179fd4da47ce1109f355e8d4a7ca179f29",
+      "size": 813
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-progress.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "e5441eb2327feb37d8bb6b9a4ff185df14de5930",
+      "manifestSha1": "e5441eb2327feb37d8bb6b9a4ff185df14de5930",
+      "size": 2218
+    },
+    {
+      "path": "apps/web/src/ui/preview/SourceViews.tsx",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "dce39684e56946d2bfd41e1bf6bfa41c1b35c0d8",
+      "manifestSha1": "dce39684e56946d2bfd41e1bf6bfa41c1b35c0d8",
+      "size": 48702
+    },
+    {
+      "path": "packages/core/src/src/roles.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "2cb46031e8ace212b7ee09b125082915150f5894",
+      "manifestSha1": "2cb46031e8ace212b7ee09b125082915150f5894",
+      "size": 1663
+    },
+    {
+      "path": "packages/core/src/src/selection-cache.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "488951d539cd9797438786e2155d3ba3934d613e",
+      "manifestSha1": "488951d539cd9797438786e2155d3ba3934d613e",
+      "size": 678
+    },
+    {
+      "path": "packages/core/src/src/selection-cache.test.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "d0e147a2ebb04c3e50f104720e6662452284bf25",
+      "manifestSha1": "d0e147a2ebb04c3e50f104720e6662452284bf25",
+      "size": 977
+    },
+    {
+      "path": "packages/core/src/proc/selection.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "45b4ec54e40b388d788328b7dbe92829dda5393f",
+      "manifestSha1": "45b4ec54e40b388d788328b7dbe92829dda5393f",
+      "size": 624
+    },
+    {
+      "path": "packages/core/src/proc/selection.test.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "dd152077cb4e56878cb70c15a24df1bcd2681d1a",
+      "manifestSha1": "dd152077cb4e56878cb70c15a24df1bcd2681d1a",
+      "size": 2249
+    },
+    {
+      "path": "apps/web/src/ui/preview/source-model.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "b45ef1a8e47c8f5bbfb9e4f132e85c4a57e85909",
+      "manifestSha1": "b45ef1a8e47c8f5bbfb9e4f132e85c4a57e85909",
+      "size": 2796
+    },
+    {
+      "path": "apps/web/src/ui/preview/source-model.test.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "2808723a23c7fd9dad45820c732ea49414aac64e",
+      "manifestSha1": "2808723a23c7fd9dad45820c732ea49414aac64e",
+      "size": 4414
+    },
+    {
+      "path": "apps/web/src/app/(app)/classes/[id]/sources/page.tsx",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "b104d3b84cf1bce96511cc41af2d10c70880f834",
+      "manifestSha1": "b104d3b84cf1bce96511cc41af2d10c70880f834",
+      "size": 1973
+    },
+    {
+      "path": "packages/core/src/src/service.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "c4a66577af1e2d5d46fdd25f8d57df2ce3553253",
+      "manifestSha1": "c4a66577af1e2d5d46fdd25f8d57df2ce3553253",
+      "size": 52789
+    },
+    {
+      "path": "packages/core/src/src/extract.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "627bc89fe300bba85788bdae722a6e369f1b8a11",
+      "manifestSha1": "627bc89fe300bba85788bdae722a6e369f1b8a11",
+      "size": 4106
+    },
+    {
+      "path": "packages/core/src/proc/runs.ts",
+      "included": true,
+      "matchesCurrent": true,
+      "sha1": "0a2372741bfff3c54a81eb6b0e2d8b38e5a6c5f6",
+      "manifestSha1": "0a2372741bfff3c54a81eb6b0e2d8b38e5a6c5f6",
+      "size": 22781
+    }
+  ],
+  "deployedSourceAudit": {
+    "verifiedAt": "2026-10-05T23:38:12.922159Z",
+    "deploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+    "readyState": "READY",
+    "sourceTreeFile": ".vercel/audio-staged-files.private.json",
+    "sourceTreeWrittenAtUtc": "2026-10-05T23:36:39.6992936Z",
+    "deployedSourceFiles": 824,
+    "checkedFiles": 16,
+    "matchesCurrent": true,
+    "publicPromotionVerified": true,
+    "checks": [
+      {
+        "path": "apps/web/src/ui/workspace/SourcesView.tsx",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "aebec2c4d11703b74dc0c05e0dfb6716f8904fa5",
+        "deployedSha1": "aebec2c4d11703b74dc0c05e0dfb6716f8904fa5"
+      },
+      {
+        "path": "apps/web/src/ui/components/UploadProgress.tsx",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "6fd15781f6ed29b576dcb72344ca4978edb980f7",
+        "deployedSha1": "6fd15781f6ed29b576dcb72344ca4978edb980f7"
+      },
+      {
+        "path": "apps/web/src/ui/components/UploadProgress.module.css",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "d5a7c6179fd4da47ce1109f355e8d4a7ca179f29",
+        "deployedSha1": "d5a7c6179fd4da47ce1109f355e8d4a7ca179f29"
+      },
+      {
+        "path": "apps/web/src/ui/workspace/upload-progress.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "e5441eb2327feb37d8bb6b9a4ff185df14de5930",
+        "deployedSha1": "e5441eb2327feb37d8bb6b9a4ff185df14de5930"
+      },
+      {
+        "path": "apps/web/src/ui/preview/SourceViews.tsx",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "dce39684e56946d2bfd41e1bf6bfa41c1b35c0d8",
+        "deployedSha1": "dce39684e56946d2bfd41e1bf6bfa41c1b35c0d8"
+      },
+      {
+        "path": "packages/core/src/src/roles.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "2cb46031e8ace212b7ee09b125082915150f5894",
+        "deployedSha1": "2cb46031e8ace212b7ee09b125082915150f5894"
+      },
+      {
+        "path": "packages/core/src/src/selection-cache.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "488951d539cd9797438786e2155d3ba3934d613e",
+        "deployedSha1": "488951d539cd9797438786e2155d3ba3934d613e"
+      },
+      {
+        "path": "packages/core/src/src/selection-cache.test.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "d0e147a2ebb04c3e50f104720e6662452284bf25",
+        "deployedSha1": "d0e147a2ebb04c3e50f104720e6662452284bf25"
+      },
+      {
+        "path": "packages/core/src/proc/selection.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "45b4ec54e40b388d788328b7dbe92829dda5393f",
+        "deployedSha1": "45b4ec54e40b388d788328b7dbe92829dda5393f"
+      },
+      {
+        "path": "packages/core/src/proc/selection.test.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "dd152077cb4e56878cb70c15a24df1bcd2681d1a",
+        "deployedSha1": "dd152077cb4e56878cb70c15a24df1bcd2681d1a"
+      },
+      {
+        "path": "apps/web/src/ui/preview/source-model.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "b45ef1a8e47c8f5bbfb9e4f132e85c4a57e85909",
+        "deployedSha1": "b45ef1a8e47c8f5bbfb9e4f132e85c4a57e85909"
+      },
+      {
+        "path": "apps/web/src/ui/preview/source-model.test.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "2808723a23c7fd9dad45820c732ea49414aac64e",
+        "deployedSha1": "2808723a23c7fd9dad45820c732ea49414aac64e"
+      },
+      {
+        "path": "apps/web/src/app/(app)/classes/[id]/sources/page.tsx",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "b104d3b84cf1bce96511cc41af2d10c70880f834",
+        "deployedSha1": "b104d3b84cf1bce96511cc41af2d10c70880f834"
+      },
+      {
+        "path": "packages/core/src/src/service.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "c4a66577af1e2d5d46fdd25f8d57df2ce3553253",
+        "deployedSha1": "c4a66577af1e2d5d46fdd25f8d57df2ce3553253"
+      },
+      {
+        "path": "packages/core/src/src/extract.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "627bc89fe300bba85788bdae722a6e369f1b8a11",
+        "deployedSha1": "627bc89fe300bba85788bdae722a6e369f1b8a11"
+      },
+      {
+        "path": "packages/core/src/proc/runs.ts",
+        "included": true,
+        "matchesCurrent": true,
+        "currentSha1": "0a2372741bfff3c54a81eb6b0e2d8b38e5a6c5f6",
+        "deployedSha1": "0a2372741bfff3c54a81eb6b0e2d8b38e5a6c5f6"
+      }
+    ],
+    "manifestCountDifference": {
+      "manifestFileCount": 825,
+      "deployedSourceFiles": 824,
+      "omittedEntry": "apps/web/test-results-class-date",
+      "omittedEntrySize": 0,
+      "runtimeDiscrepancy": false
+    }
+  },
+  "publication": {
+    "receipt": "artifacts/verification/audio-upload-deployment-2026-10-06.json",
+    "publishedAt": "2026-10-05T23:40:01.952Z",
+    "deploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+    "domain": "https://recalino.vercel.app",
+    "readyState": "READY",
+    "publicDomainDeploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+    "promotionConfirmed": true,
+    "publicPromotionVerified": true
+  },
+  "independentPublicSmoke": {
+    "verifiedAt": "2026-10-05T23:40:46.904Z",
+    "verificationSource": "Root independent direct HTTPS checks reported in this chat",
+    "domain": "https://recalino.vercel.app",
+    "passed": true,
+    "checks": [
+      {
+        "path": "/",
+        "status": 200,
+        "expectedStatus": 200,
+        "passed": true
+      },
+      {
+        "path": "/api/health",
+        "status": 200,
+        "expectedStatus": 200,
+        "passed": true
+      },
+      {
+        "path": "/api/courses",
+        "status": 401,
+        "expectedStatus": 401,
+        "passed": true
+      }
+    ]
+  }
+}

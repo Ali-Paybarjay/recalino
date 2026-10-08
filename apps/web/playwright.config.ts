@@ -1,7 +1,35 @@
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import { defineConfig, devices } from "@playwright/test";
+import { localJournalFixtureAvailable } from "./src/server/local-test-policy";
+
+const localEnvironment = new URL("./.env.local", import.meta.url);
+if (existsSync(localEnvironment)) loadEnvFile(localEnvironment);
+const testJournal = localJournalFixtureAvailable({ ...process.env, RECALINO_TEST_JOURNAL: "1" });
 
 const port = 3000;
 const baseURL = `http://localhost:${port}`;
+const loopbackUrl = (value: string | undefined, protocols: string[]) => {
+  try {
+    const url = new URL(value ?? "");
+    return (
+      protocols.includes(url.protocol) && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+};
+// Mocked PDF transfers need the SSR storage flag. CI's `next start` uses production mode;
+// only an explicitly enabled local fixture may receive this credential-free store marker.
+const localUploadFixture =
+  testJournal &&
+  localJournalFixtureAvailable({
+    ...process.env,
+    ...(process.env.CI ? { NODE_ENV: "production" } : {}),
+    RECALINO_TEST_JOURNAL: "1",
+  }) &&
+  loopbackUrl(process.env.DATABASE_URL, ["postgres:", "postgresql:"]) &&
+  loopbackUrl(baseURL, ["http:"]);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -16,6 +44,10 @@ export default defineConfig({
   webServer: {
     // CI runs the production build; locally the dev server is enough.
     command: process.env.CI ? "pnpm start" : "pnpm dev",
+    env: {
+      ...(testJournal ? { RECALINO_TEST_JOURNAL: "1" } : {}),
+      ...(localUploadFixture ? { BLOB_STORE_ID: "synthetic-background-upload-browser" } : {}),
+    },
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { THEME_COLORS, THEME_SCRIPT } from "./theme";
 
-const tokens = readFileSync(resolve(import.meta.dirname, "styles/vendor/tokens.css"), "utf8");
+const tokens = readFileSync(resolve(import.meta.dirname, "styles/app.css"), "utf8");
 
 function colorBg(selector: string): string | undefined {
   const start = tokens.indexOf(selector);
@@ -31,9 +31,9 @@ function runThemeScript(prefersDark: boolean) {
 }
 
 describe("theme", () => {
-  it("uses the page background colours of tokens.css", () => {
-    expect(colorBg(':root, [data-theme="light"]')).toBe(THEME_COLORS.light);
-    expect(colorBg('[data-theme="dark"]')).toBe(THEME_COLORS.dark);
+  it("uses the page background colours of the current redesign", () => {
+    expect(colorBg(':root[data-theme="light"]')).toBe(THEME_COLORS.light);
+    expect(colorBg(':root[data-theme="dark"]')).toBe(THEME_COLORS.dark);
   });
 
   it("follows the OS colour scheme and its later changes", () => {

@@ -1,0 +1,17 @@
+Welcome to Recalino, Alex
+
+Hello Alex,
+
+Your Recalino pilot access is ready. Open the app and sign in with synthetic@example.invalid:
+https://recalino.vercel.app
+
+We would love to hear what helps and what needs improving. Use Feedback & help in the app to send a question or share your experience.
+
+Thank you for taking part,
+The Recalino team
+
+Open Recalino: https://recalino.vercel.app/
+
+You can reply directly to this email.
+
+recalino.pilot@gmail.com

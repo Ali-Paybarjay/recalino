@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-06",
+  "createdAt": "2026-10-05T23:25:16.552Z",
+  "baseCommit": "d441367136acb9386506dc9090c9d4fc12920f09",
+  "causes": {
+    "upload": "single failed transfer/confirmation stopped immediately; exact historical transport cause unavailable",
+    "verification": "mobile audio/mp4 ftyp major brand3gp4 compatible isom/3gp4 wrongly rejected"
+  },
+  "validation": {
+    "unit": {
+      "passed": 570,
+      "files": 70,
+      "node": "24.19.0",
+      "maxWorkers": 2
+    },
+    "audioIntegration": {
+      "passed": 8
+    },
+    "audioChromium": {
+      "passed": 4
+    },
+    "types": "core/ops-cli/web/tools passed",
+    "lint": {
+      "files": 683,
+      "passed": true
+    },
+    "moduleBoundaries": {
+      "modules": 766,
+      "passed": true
+    },
+    "optimizedWebBuild": {
+      "passed": true,
+      "node": "22.23.1",
+      "platform": "win32"
+    },
+    "nativeNode24": "passed",
+    "diffCheck": "passed",
+    "cloudBuild": {
+      "passed": true,
+      "node": "24.x",
+      "platform": "linux",
+      "nativeRuntime": "passed",
+      "uploadedSourceFilesVerified": 824
+    },
+    "publicSmoke": {
+      "passed": true,
+      "checks": 12
+    }
+  },
+  "publication": {
+    "deployed": true,
+    "cloudDatabaseChanged": false,
+    "authorizedBy": "Human user replied yes on2026-10-06",
+    "deploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+    "publicDomain": "https://recalino.vercel.app",
+    "publishedAt": "2026-10-05T23:40:01.952Z",
+    "promotionConfirmed": true
+  },
+  "limitations": [
+    "Actual user recording end-to-end processing on the mobile device remains unverified",
+    "Upload and audio decoding regression tests use synthetic fixtures"
+  ],
+  "sourceHashes": {
+    "apps/web/src/ui/workspace/ProcessingView.tsx": "86bc5afa04ff9339598df5b47752ef106bd4e06052d99f9dbdaa17d8678bbe95",
+    "apps/web/src/ui/workspace/upload.ts": "ad9aef79cbb00237981b22f68f1cacc07537fcd459c4ed62102a42fd8b9ee3b5",
+    "apps/web/src/ui/workspace/api.ts": "63ade947f15f5b8f648d1f2414d31993264d40cf38c605fe53938082da29db6e",
+    "apps/web/src/server/source-routes.ts": "193a5ac86cd7c691113cc80009124c926a8fced19ee14efc0faa7a2f0d462eef",
+    "apps/web/src/server/audio-preparer.ts": "915927b0df35b9abbc4e4205bb7d81861a0150f77dacd9ed6b32506bc879af6b",
+    "apps/web/src/server/processing-routes.ts": "4be9973d382e3dacb4e56294b80f78fa19a959e82b341ff2dacf2c8085df2cfe",
+    "apps/web/e2e/audio-upload.spec.ts": "ad6fdb9513a895255e6f5de0b74e57508ca624e83f991cad6f1bd7499079be8d",
+    "packages/core/src/src/audio.ts": "f8c05fb77e659ff96b5b17e4589aad86ca0c465547674cbe3a557ca3f1218aba",
+    "packages/core/src/src/contracts.ts": "de9253c616cf4e62b3c1e92566561a4da435a10a012671e76bc944636bcc48eb",
+    "packages/core/src/src/service.ts": "487b2c312e0d483c04d30abc5979c645ae247a987b131057c59ba18c7e612dcb",
+    "packages/core/src/proc/runs.ts": "05931356219b85cc4f052bcb0b83d71dedc436510020e09f1a3661c59ce4e99b",
+    "packages/core/src/proc/selection.ts": "d21188626a5b7ba24ef38b10cef6636c356029f92c2212f5a86d70e0671252a6"
+  }
+}

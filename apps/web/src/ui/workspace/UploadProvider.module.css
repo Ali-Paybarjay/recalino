@@ -1,0 +1,8 @@
+.tray {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: 16px 16px calc(88px + env(safe-area-inset-bottom, 0px));
+}
+.tray p {
+  overflow-wrap: anywhere;
+}

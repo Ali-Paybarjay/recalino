@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-06T14:27:48.071Z",
+  "passed": true,
+  "baselineId": "dpl_FVynYyxrg9HPHmBC8Dtdc459JjJX",
+  "releaseBaselineId": "dpl_AwSK7UYjkyuZxNmBDuEhNjroca7z",
+  "checks": {
+    "lint": true,
+    "typecheck": true,
+    "moduleBoundaries": true,
+    "fullTests": {
+      "passed": 1007,
+      "skipped": 1,
+      "filesPassed": 178,
+      "filesSkipped": 1
+    },
+    "focusedStatusTests": 9,
+    "ownerApiTests": 5,
+    "browserStatusFlow": true,
+    "mobilePersianAuthFailureReadable": true,
+    "stalledStatusRequestAborts": true
+  },
+  "localVerification": {
+    "localDatabase": true,
+    "localAuth": true,
+    "cloudProviderCredentialsExcluded": true
+  },
+  "releaseScope": {
+    "overlayFiles": 10,
+    "protectedLatestProductionFiles": 761,
+    "latestProductionCodePreserved": true
+  },
+  "delivery": {
+    "diagnosedFailure": "smtp_authentication_rejected",
+    "providerAcceptedReportedMessage": false,
+    "credentialHandoffPending": true,
+    "retriedRealEmail": false
+  }
+}

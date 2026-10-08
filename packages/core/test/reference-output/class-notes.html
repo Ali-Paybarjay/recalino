@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Binomials + Hype &amp; Scams · 2026-10-05</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&amp;family=Vazirmatn:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<style>
+/* tokens: light by default, dark from the OS setting, or forced by <html data-theme="light|dark"> */
+:root{color-scheme:light dark;--bg:#faf7f2;--card:#fff;--ink:#1f2328;--mute:#6b6f76;--line:#e8e1d6;--acc:#8a3b12;--on-acc:#fff;--acc2:#1f5f5b;--bad:#a1271b;--good:#1f6b3a;--hl:#fff3d6;
+  --fa:Vazirmatn,Tahoma,sans-serif;
+  --en:Lora,Georgia,Vazirmatn,Tahoma,serif;
+  --ipa:"Noto Serif","Charis SIL","Gentium Plus","Times New Roman","DejaVu Serif",serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#16181b;--card:#1f2226;--ink:#e9e6e1;--mute:#9a9ea5;--line:#30343a;--acc:#e7955d;--on-acc:#1f2226;--acc2:#6fc2bb;--bad:#ef8a7e;--good:#7fd09a;--hl:#3a321f}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#16181b;--card:#1f2226;--ink:#e9e6e1;--mute:#9a9ea5;--line:#30343a;--acc:#e7955d;--on-acc:#1f2226;--acc2:#6fc2bb;--bad:#ef8a7e;--good:#7fd09a;--hl:#3a321f}
+:root[data-theme=light]{color-scheme:light}
+
+/* page */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--fa);line-height:1.9;font-size:16px}
+[dir=ltr],.en,.ex,.col{font-family:var(--en)}
+.ipa{font-family:var(--ipa)}
+main{max-width:880px;margin:auto;padding:1rem 16px 4rem}
+header h1{font-size:1.7rem;margin:.5rem 0 0}
+header p{color:var(--mute);margin:.2rem 0}
+.date{white-space:nowrap}
+
+/* sticky section nav */
+nav{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);display:flex;gap:.3rem;overflow-x:auto;padding:.5rem 1rem;white-space:nowrap}
+nav a{color:var(--acc2);text-decoration:none;font-size:.85rem;padding:.2rem .6rem;border-radius:99px;border:1px solid var(--line)}
+
+/* sections */
+section{margin-top:2.5rem}
+section,.entry{scroll-margin-top:3.5rem}
+h2{color:var(--acc);border-bottom:2px solid var(--acc);padding-bottom:.3rem}
+.note{background:var(--hl);border-radius:8px;padding:.6rem 1rem}
+.top{display:block;text-align:left;font-size:.8rem;margin-top:.6rem;color:var(--mute)}
+
+/* entry card */
+.entry{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:.9rem 1.1rem;margin:1rem 0}
+.entry h3{margin:0;display:flex;gap:.6rem;align-items:center}
+.entry h3 .en{font-size:1.25rem}
+.entry p{margin:.35rem 0}
+.n{background:var(--acc);color:var(--on-acc);border-radius:50%;width:1.8rem;height:1.8rem;display:inline-grid;place-items:center;font-size:.85rem;flex:none}
+.pron{font-size:.85rem;color:var(--mute)}
+.trap{color:var(--bad)}
+.mean{font-weight:600}
+.ex{background:var(--hl);padding:.3rem .6rem;border-radius:6px;font-style:italic}
+.img,.src{color:var(--mute);font-size:.9rem}
+
+/* tables */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);font-size:.92rem}
+td,th{border:1px solid var(--line);padding:.4rem .6rem;vertical-align:top}
+th{background:var(--hl)}
+.bad{color:var(--bad);text-decoration:line-through}
+.good{color:var(--good);font-weight:600}
+
+/* task items */
+.sc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.6rem 1rem;margin:.7rem 0}
+.sc p{margin:.2rem 0}
+.yours{color:var(--bad)}
+.model{color:var(--good)}
+.why{font-size:.9rem;color:var(--mute)}
+.sc a{color:var(--acc2)}
+
+/* gap-fill */
+ol.gaps li{margin:.6rem 0}
+details{display:inline-block;margin-inline-start:.6rem}
+details[open]{vertical-align:top}
+summary{cursor:pointer;color:var(--acc2);font-size:.85rem}
+.key{display:none}
+
+/* print: always the light palette, no nav, answers as a key under the drill */
+@media print{
+  :root:root{color-scheme:light;--bg:#fff;--card:#fff;--ink:#000;--mute:#555;--line:#ccc;--acc:#8a3b12;--on-acc:#fff;--acc2:#1f5f5b;--bad:#a1271b;--good:#1f6b3a;--hl:#fff3d6}
+  nav,.top,ol.gaps details{display:none}
+  .entry,.sc,tr{break-inside:avoid}
+  .key{display:block}
+}
+</style>
+</head>
+<body id="top">
+<!-- one pill per section that exists, in page order -->
+<nav><a href="#core">۳ کارت اصلی</a><a href="#oral">نکته‌های شفاهی معلم</a><a href="#chunks">چانک‌های خط‌کشیده</a><a href="#tasks">جواب تمرین‌ها</a><a href="#mistakes">اشتباهات تو</a><a href="#extra">بقیه‌ی عبارت‌ها</a><a href="#register">این را بگو/آن را نه</a><a href="#gap">جای خالی</a><a href="#pron">تلفظ</a></nav>
+<main>
+<header>
+<h1><bdi>Binomials + Hype &amp; Scams</bdi></h1>
+<p><bdi>Coleg Cambria · Advanced ESOL</bdi> · دوشنبه <bdi dir="ltr" class="date">2026-10-05</bdi></p>
+<p><bdi>Lesson 2: Binomials · Listening (concert / football manager / sculpture) · Sentence completion</bdi></p>
+</header>
+
+<section id="core">
+<h2>۱. کارت‌های اصلی (<bdi>production</bdi>)</h2>
+<p class="note"><bdi>Binomial</bdi> یعنی دو کلمه که با <bdi>and/or</bdi> و با <b>ترتیب ثابت</b> می‌آیند. <bdi>and</bdi> تقریباً همیشه ضعیف تلفظ می‌شود: <bdi class="ipa">/ən/</bdi> — «سیکِن تایِد».</p>
+<!-- one .entry per core card, numbered in deck order; these are the same items as the production flashcards -->
+<article class="entry" id="wear-tear">
+<h3><span class="n">1</span><span dir="ltr" class="en">wear and tear</span></h3>
+<p class="pron">🔊 <bdi dir="ltr" class="ipa">/ˌweər ən ˈteə/</bdi> · وِئِر اِن تِئِ · <span dir="rtl" class="trap">⚠️ تله‌ی بزرگ: <bdi>tear</bdi> اینجا با <bdi>wear</bdi> هم‌قافیه است <bdi class="ipa">/teə/</bdi> (پاره شدن) — نه <bdi class="ipa">/tɪə/</bdi> (اشک).</span></p>
+<p class="mean">استهلاک؛ ساییدگی و فرسودگی ناشی از استفاده</p>
+<p class="ex" dir="ltr">My paragliding kit is showing a bit of wear and tear after three seasons.</p>
+<p class="col" dir="ltr"><b>Collocations:</b> normal/general wear and tear · show signs of wear and tear · the warranty doesn't cover wear and tear</p>
+<p>📝 غیرقابل‌شمارش: «<bdi>a wear and tear</bdi>» غلط است. در قرارداد اجاره و گارانتی زیاد می‌بینی.</p>
+<p class="img">🖼️ بالِ پاراگلایدرت که لبه‌اش ساییده و کمی «پاره» (<bdi>tear</bdi>) شده.</p>
+<p class="src">منبع: اسلاید</p>
+</article>
+<article class="entry" id="kit-out">
+<h3><span class="n">2</span><span dir="ltr" class="en">kit sth out / kit sth out with</span></h3>
+<p class="pron">🔊 <bdi dir="ltr" class="ipa">/ˌkɪt ... ˈaʊt/</bdi> · کیت ... آوت</p>
+<p class="mean">تجهیز کردنِ جایی یا کسی با همه‌ی وسایل لازم</p>
+<p class="ex" dir="ltr">We've just moved into a new office, so we need to kit it out.</p>
+<p class="col" dir="ltr"><b>Collocations:</b> kit out the kitchen / kit the kitchen out · be kitted out with/in · (n) football kit, kit bag, paragliding kit</p>
+<p>📝 جداشدنی است: با اسم هر دو ترتیب درست است (<bdi>kit out the kitchen / kit the kitchen out</bdi>)، ولی با ضمیر فقط وسط: <bdi>kit it out</bdi> — هرگز «<bdi>kit out it</bdi>». اسمش <bdi>kit</bdi> = تجهیزات/لباس ورزشی.</p>
+<p class="img">🖼️ یک <bdi>kit bag</bdi> بزرگ که آن را خالی می‌کنی و یک آشپزخانه‌ی خالی پر از وسیله می‌شود.</p>
+<p class="src">منبع: تخته + توضیح شفاهی معلم</p>
+</article>
+<article class="entry" id="pressed-time">
+<h3><span class="n">3</span><span dir="ltr" class="en">be pressed for time</span></h3>
+<p class="pron">🔊 <bdi dir="ltr" class="ipa">/prest fə taɪm/</bdi> · پرِست فِ تایم · <span dir="rtl" class="trap">⚠️ <bdi>pressed</bdi> یک‌هجایی است: «پرِست» — نه «پرِسِد».</span></p>
+<p class="mean">وقت تنگ داشتن؛ در مضیقه‌ی وقت بودن</p>
+<p class="ex" dir="ltr">Unfortunately I've been pressed for time, so I haven't finished it yet.</p>
+<p class="col" dir="ltr"><b>Collocations:</b> be pressed for time/money · = be short of time</p>
+<p>📝 حرف اضافه <bdi>for</bdi> است، نه <bdi>by</bdi> (معلم با قرمز اصلاح کرد). <bdi>by</bdi> معنی را به «تحت فشار کسی» عوض می‌کند.</p>
+<p class="img">🖼️ یک ساعت شنی که شنش را با فشار (<bdi>press</bdi>) زیر پرس گذاشته‌اند.</p>
+<p class="src">منبع: جمله‌ی خودت (اصلاح معلم)</p>
+</article>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="oral">
+<h2>۲. چیزهایی که معلم شفاهی توضیح داد</h2>
+<p class="note">از متن صوت کلاس استخراج شده (کیفیت صوت متوسط بود؛ این‌ها جاهایی است که واضح بود).</p>
+<!-- same card, no number badge; the 📝 line is optional -->
+<article class="entry">
+<h3><span dir="ltr" class="en">I was about to + verb (… when)</span></h3>
+<p class="pron">🔊 <bdi dir="ltr" class="ipa">/aɪ wəz əˈbaʊt tə/</bdi></p>
+<p class="mean">داشتم (همین الان) می‌رفتم که…؛ می‌خواستم همین الان…</p>
+<p class="ex" dir="ltr">I was about to email IT when the Classroom came back.</p>
+<p>📝 خیلی طبیعی در گفتار؛ <bdi>to</bdi> ضعیف است. «<bdi>I was about to say that!</bdi>» = از دهانم گرفتی.</p>
+</article>
+<article class="entry">
+<h3><span dir="ltr" class="en">you can't fault sb/sth</span></h3>
+<p class="pron">🔊 <bdi dir="ltr" class="ipa">/fɔːlt/</bdi></p>
+<p class="mean">هیچ ایرادی نمی‌شود به … گرفت</p>
+<p class="ex" dir="ltr">You can't fault the museum — every exhibition is worth going to.</p>
+<p>📝 معلم: <bdi>You can't fault the teaching.</bdi></p>
+</article>
+<article class="entry">
+<h3><span dir="ltr" class="en">manager (pronunciation)</span></h3>
+<p class="pron">🔊 <bdi dir="ltr" class="ipa">/ˈmænɪdʒə/</bdi></p>
+<p class="mean">مدیر/مربی</p>
+<p class="ex" dir="ltr">How much time should a manager be given?</p>
+<p>📝 تکیه روی هجای اول: «مَنیجِ» — معلم سر کلاس اصلاح کرد.</p>
+</article>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="chunks">
+<h2>۳. چانک‌های خط‌کشیده + الگوی استفاده</h2>
+<div class="tw"><table>
+<tr><th>الگو</th><th>جمله‌ی کلاس</th><th>نکته</th></tr>
+<tr><td dir="ltr"><b>sick and tired of + -ing</b></td><td dir="ltr"><i>I'm sick and tired of going back and forth to the surgery…</i></td><td><bdi>be sick and tired of + V-ing/noun</bdi> — احساسِ کلافگی از تکرار</td></tr>
+<tr><td dir="ltr"><b>back and forth to + place</b></td><td dir="ltr"><i>…going back and forth to the surgery…</i></td><td><bdi>go back and forth to/between</bdi> + مکان</td></tr>
+<tr><td dir="ltr"><b>Sooner or later + will</b></td><td dir="ltr"><i>Sooner or later I'll get one, I'm sure.</i></td><td>اول جمله + کاما + آینده با <bdi>will</bdi></td></tr>
+</table></div>
+<p>روی تخته همچنین:</p>
+<ul dir="ltr">
+<li><b>to be taken in by sb = tricked (neutral) = deceived (formal) = conned (sl)</b></li>
+<li><b>a rogue trader = a conman / a scammer / a trickster</b></li>
+<li><b>a concert / a gig (sl)</b></li>
+</ul>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="tasks">
+<h2>۴. جواب تمرین‌ها</h2>
+<!-- this section is a free sequence of blocks, one group per exercise: h3 title, then a table, Persian text, an English quote, or .sc items -->
+<h3><bdi>Wordwall — Vocabulary Booster</bdi> (تو ۱۰ از ۱۰ گرفتی ✓)</h3>
+<div class="tw"><table>
+<tr><th><bdi>binomial</bdi></th><th><bdi>meaning</bdi></th></tr>
+<tr><td dir="ltr"><b>safe and sound</b></td><td dir="ltr">unharmed</td></tr>
+<tr><td dir="ltr"><b>sooner or later</b></td><td dir="ltr">eventually</td></tr>
+<tr><td dir="ltr"><b>by and large</b></td><td dir="ltr">generally</td></tr>
+<tr><td dir="ltr"><b>wear and tear</b></td><td dir="ltr">gradual damage through use</td></tr>
+</table></div>
+<h3><bdi>Listening</bdi> — ۳ بخش، ۶ سؤال</h3>
+<p>آنچه در صوت واضح بود: <b><bdi>Q1 = A</bdi>، <bdi>Q2 = A</bdi></b> (کنسرت راک)، <b><bdi>Q3 = C</bdi></b> (مربی فوتبال). جواب‌های ۴ تا ۶ در صوت قابل تشخیص نبود — اگر برگه‌ی سؤال‌ها را عکس بگیری، دقیقش می‌کنم.</p>
+<p class="ex" dir="ltr">“I went with <b>high hopes of</b> seeing something really spectacular… I reckon I was <b>taken in by</b> all the hype… I should know better than to <b>take any notice of</b> it.”</p>
+<h3><bdi>Sentence completion</bdi> — جواب‌های تو (۱–۲) و نمونه‌ی <bdi>C1</bdi> برای همه</h3>
+<!-- .yours appears only where the learner gave an answer; .why is optional -->
+<div class="sc">
+<p class="q" dir="ltr"><b>1.</b> I had high hopes of ___.</p>
+<p class="yours" dir="ltr">✗ I had high hope of creating an app to support my classmates, but unfortunately I have been pressed by time, so I haven't finished.</p>
+<p class="model" dir="ltr">✓ I've got high hopes of creating an app to support my classmates, but unfortunately I've been pressed for time, so I haven't finished it yet.</p>
+<p class="why"><bdi>hope → hopes</bdi>؛ <bdi>pressed by → pressed for</bdi>؛ چون پروژه هنوز ادامه دارد، <bdi>I've got high hopes</bdi> بهتر است (<bdi>had</bdi> = نشد)؛ <bdi>finish</bdi> مفعول می‌خواهد: <bdi>finished it yet.</bdi></p>
+</div>
+<div class="sc">
+<p class="q" dir="ltr"><b>2.</b> I was taken in by the hype surrounding ___.</p>
+<p class="yours" dir="ltr">✗ I was taken in by hype surrounding the film I watched last week.</p>
+<p class="model" dir="ltr">✓ I was taken in by the hype surrounding the film I watched last week.</p>
+<p class="why">فقط <bdi>the</bdi> جا افتاده: <bdi>the hype</bdi> (هایپِ مشخصِ آن فیلم).</p>
+</div>
+<div class="sc">
+<p class="q" dir="ltr"><b>3.</b> I think it's worth investing in ___.</p>
+<p class="model" dir="ltr">✓ I think it's worth investing in a professional website if you run a small business.</p>
+<p class="why"><bdi>worth + -ing.</bdi></p>
+</div>
+<div class="sc">
+<p class="q" dir="ltr"><b>4.</b> I came to the conclusion that ___.</p>
+<p class="model" dir="ltr">✓ I came to the conclusion that I remember more when I review my cards every day.</p>
+</div>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="mistakes">
+<h2>۵. اشتباهات تو</h2>
+<p class="note">بخش‌هایی از صوت این جلسه واضح نبود. در بخش گفتاری فقط چیزهایی آمده که واضح شنیده می‌شد یا معلم همان‌جا اصلاحشان کرد.</p>
+<!-- patterns: only those that occurred at least twice in this lesson -->
+<h3>الگوهای تکراری</h3>
+<div class="sc">
+<p class="mean">حرف اضافه‌ی ثابت · ۳ بار</p>
+<p dir="ltr">pressed by time → pressed for time<br>at the first time → for the first time<br>responsible about → responsible for</p>
+<p class="why">این ترکیب‌ها را با حرف اضافه‌شان یک‌جا حفظ کن؛ از فارسی ترجمه نمی‌شوند.</p>
+</div>
+<div class="sc">
+<p class="mean">جمع و مفرد · ۲ بار</p>
+<p dir="ltr">high hope → high hopes<br>our life → our lives</p>
+<p class="why">بعضی عبارت‌ها همیشه جمع‌اند، و بعد از <bdi>our</bdi> چیزی که هر کس یکی دارد جمع می‌آید.</p>
+</div>
+<!-- spoken mistakes appear only when the learner's voice is verified (Part 6) -->
+<h3>گفتاری (از صدای کلاس)</h3>
+<div class="sc">
+<p class="yours" dir="ltr">✗ The quality was really <b>disappointed</b>.</p>
+<p class="model" dir="ltr">✓ The quality was really <b>disappointing</b>.</p>
+<p class="why"><bdi>-ing</bdi> برای چیزی که ناامید می‌کند؛ <bdi>-ed</bdi> برای آدمی که ناامید شده.</p>
+<p class="src">🎙️ گرامر · <bdi dir="ltr">1:31:20</bdi></p>
+</div>
+<div class="sc">
+<p class="yours" dir="ltr">✗ responsible <b>about</b></p>
+<p class="model" dir="ltr">✓ responsible <b>for</b></p>
+<p class="why">حرف اضافه‌ی ثابت.</p>
+<p class="src">🎙️ حرف اضافه · <bdi dir="ltr">1:12:05</bdi></p>
+</div>
+<div class="sc">
+<p class="yours" dir="ltr">✗ manager</p>
+<p class="model" dir="ltr">✓ <b>MAN</b>ager</p>
+<p class="why">تکیه روی هجای اول است: <bdi class="ipa">/ˈmænɪdʒə/</bdi> «مَنیجِ».</p>
+<p class="src">🎙️ تلفظ · اصلاح معلم · <bdi dir="ltr">0:58:30</bdi></p>
+</div>
+<h3>نوشتاری (از دست‌خط تو)</h3>
+<div class="sc">
+<p class="yours" dir="ltr">✗ …unfortunately I have been pressed <b>by</b> time…</p>
+<p class="model" dir="ltr">✓ …unfortunately I've been pressed <b>for</b> time…</p>
+<p class="why">حرف اضافه <bdi>for</bdi> است، نه <bdi>by</bdi>؛ با <bdi>by</bdi> معنی می‌شود «تحت فشار کسی».</p>
+<p class="src">✍️ حرف اضافه · اصلاح معلم · <bdi>Sentence completion 1</bdi> · <a href="#pressed-time">کارت ۳</a></p>
+</div>
+<div class="sc">
+<p class="yours" dir="ltr">✗ I had high <b>hope</b> of creating an app…</p>
+<p class="model" dir="ltr">✓ I've got high <b>hopes</b> of creating an app…</p>
+<p class="why"><bdi>high hopes</bdi> همیشه جمع است. <bdi>had</bdi> یعنی امیدی که برآورده نشد؛ برای کاری که هنوز ادامه دارد <bdi>I've got.</bdi></p>
+<p class="src">✍️ گرامر · <bdi>Sentence completion 1</bdi></p>
+</div>
+<div class="sc">
+<p class="yours" dir="ltr">✗ I usually take notice of the road <b>signe</b>.</p>
+<p class="model" dir="ltr">✓ I usually take notice of road <b>signs</b>.</p>
+<p class="why">املای <bdi>signs</bdi>. برای کلی‌گویی <bdi>the</bdi> هم نمی‌خواهد.</p>
+<p class="src">✍️ املا · <bdi>Sentence completion 3</bdi></p>
+</div>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="extra">
+<h2>۶. بقیه‌ی عبارت‌ها (<bdi>recognition</bdi>)</h2>
+<!-- the supplementary recognition cards that are not already shown in the oral section -->
+<div class="tw"><table>
+<tr><th><bdi>English</bdi></th><th>معنی</th><th>مثال</th></tr>
+<tr><td dir="ltr"><b>call for sth</b></td><td>خواستار … شدن (علنی)</td><td dir="ltr"><i>Some fans are calling for his resignation.</i></td></tr>
+<tr><td dir="ltr"><b>a gig (sl)</b></td><td>کنسرت (عامیانه)</td><td dir="ltr"><i>I haven't been to a gig in yonks.</i></td></tr>
+<tr><td dir="ltr"><b>a hefty discount</b></td><td>تخفیف درست‌وحسابی</td><td dir="ltr"><i>It's just as well we got a hefty student discount.</i></td></tr>
+<tr><td dir="ltr"><b>the results speak for themselves</b></td><td>نتایج خودشان گویا هستند</td><td dir="ltr"><i>The results speak for themselves.</i></td></tr>
+</table></div>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="register">
+<h2>۷. این را بگو — آن را نه</h2>
+<div class="tw"><table>
+<tr><th>✗ نه این</th><th>✓ این</th><th>چرا</th></tr>
+<tr><td dir="ltr" class="bad">kit out it</td><td dir="ltr" class="good">kit it out</td><td>ضمیر همیشه وسطِ <bdi>phrasal verb</bdi> جداشدنی.</td></tr>
+<tr><td dir="ltr" class="bad">forth and back / later or sooner</td><td dir="ltr" class="good">back and forth / sooner or later</td><td>ترتیب <bdi>binomial</bdi> ثابت است.</td></tr>
+<tr><td dir="ltr" class="bad">I was deceived by him (با دوستان)</td><td dir="ltr" class="good">I was taken in by him / I got conned</td><td><bdi>deceived</bdi> رسمی و «<bdi>posh</bdi>» است؛ <bdi>conned</bdi> عامیانه.</td></tr>
+<tr><td dir="ltr" class="bad">It's been donkey's years (در ایمیل رسمی)</td><td dir="ltr" class="good">I haven't … for a long time</td><td><bdi>donkey's years</bdi> و <bdi>yonks</bdi> فقط محاوره‌ای‌اند.</td></tr>
+</table></div>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="gap">
+<h2>۸. جای خالی (با جواب پنهان)</h2>
+<ol class="gaps" dir="ltr">
+<li>I'm <b>______</b> and tired of chasing clients for unpaid invoices.<details><summary>جواب</summary><b>sick</b></details></li>
+<li>The landlord can't charge you for normal <b>______</b> and tear.<details><summary>جواب</summary><b>wear</b></details></li>
+<li>We've decided to <b>______</b> the spare room out as an office.<details><summary>جواب</summary><b>kit</b></details></li>
+<li>I've been pressed <b>______</b> time all week.<details><summary>جواب</summary><b>for</b> — <span class="why" dir="rtl">حرف اضافه‌ی ثابت؛ نه <bdi>by</bdi>.</span></details></li>
+<li>It's been <b>______</b> since I went to a gig. (sl, one word)<details><summary>جواب</summary><b>yonks</b></details></li>
+</ol>
+<!-- printed sheets show this key instead of the per-item toggles -->
+<p class="key">پاسخ‌ها: <bdi dir="ltr">1. sick · 2. wear · 3. kit · 4. for · 5. yonks</bdi></p>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+
+<section id="pron">
+<h2>۹. پیوست تلفظ (<bdi>British IPA</bdi>)</h2>
+<p class="note">تقریب فارسی فقط عصاست؛ ملاک <bdi>IPA</bdi> است، چون خط فارسی برای <bdi class="ipa">/æ/</bdi>، <bdi class="ipa">/ə/</bdi> و <bdi class="ipa">/ɜː/</bdi> حرفی ندارد.</p>
+<!-- every item on the sheet that has an IPA: core cards first, then the rest -->
+<div class="tw"><table>
+<tr><th>عبارت</th><th><bdi>IPA</bdi></th><th>تقریب فارسی</th><th>تله</th></tr>
+<tr><td dir="ltr"><b>wear and tear</b></td><td dir="ltr" class="ipa">/ˌweər ən ˈteə/</td><td>وِئِر اِن تِئِ</td><td>تله‌ی بزرگ: <bdi>tear</bdi> اینجا با <bdi>wear</bdi> هم‌قافیه است <bdi class="ipa">/teə/</bdi> (پاره شدن) — نه <bdi class="ipa">/tɪə/</bdi> (اشک).</td></tr>
+<tr><td dir="ltr"><b>kit sth out / kit sth out with</b></td><td dir="ltr" class="ipa">/ˌkɪt ... ˈaʊt/</td><td>کیت ... آوت</td><td></td></tr>
+<tr><td dir="ltr"><b>be pressed for time</b></td><td dir="ltr" class="ipa">/prest fə taɪm/</td><td>پرِست فِ تایم</td><td><bdi>pressed</bdi> یک‌هجایی است: «پرِست» — نه «پرِسِد».</td></tr>
+<tr><td dir="ltr"><b>I was about to + verb (… when)</b></td><td dir="ltr" class="ipa">/aɪ wəz əˈbaʊt tə/</td><td></td><td></td></tr>
+<tr><td dir="ltr"><b>you can't fault sb/sth</b></td><td dir="ltr" class="ipa">/fɔːlt/</td><td></td><td></td></tr>
+<tr><td dir="ltr"><b>manager (pronunciation)</b></td><td dir="ltr" class="ipa">/ˈmænɪdʒə/</td><td></td><td>تکیه روی هجای اول: «مَنیجِ» — معلم سر کلاس اصلاح کرد.</td></tr>
+<tr><td dir="ltr"><b>call for sth</b></td><td dir="ltr" class="ipa">/ˈkɔːl fə/</td><td></td><td></td></tr>
+<tr><td dir="ltr"><b>a gig (sl)</b></td><td dir="ltr" class="ipa">/ɡɪɡ/</td><td></td><td></td></tr>
+<tr><td dir="ltr"><b>a hefty discount</b></td><td dir="ltr" class="ipa">/ˈhefti/</td><td></td><td></td></tr>
+</table></div>
+<a class="top" href="#top">↑ بالا</a>
+</section>
+</main>
+</body>
+</html>

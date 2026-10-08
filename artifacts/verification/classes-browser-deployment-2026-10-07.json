@@ -1,0 +1,40 @@
+{
+  "publishedAt": "2026-10-07T18:28:17.668Z",
+  "productionUrl": "https://recalino.vercel.app",
+  "deploymentId": "dpl_3RsJKPnVWCUDGmqxJEDsVWR5P5NW",
+  "immutableUrl": "https://recalino-mtj6n0uz6-ali-paybarjay-s-projects.vercel.app",
+  "readyState": "READY",
+  "target": "production",
+  "baselineDeploymentId": "dpl_6nAVvuQMePxrr4tionABaaWFQPQP",
+  "reviewedTreeSha256": "a33f39864e0e40bf780b98cb9c88647d8c73f08d4a5bfacc175124ab18487f0e",
+  "sourceFiles": 1028,
+  "sourceAuditPassed": true,
+  "httpChecksPassed": true,
+  "browser": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "durationMs": 120209.516
+  },
+  "typecheck": "passed",
+  "biome": {
+    "passed": true,
+    "files": 16
+  },
+  "runtimeErrorEntries": 0,
+  "latestFileBatchReleasePreserved": true,
+  "sourceCommit": "6506171cec67912bd7fe238d63b2fa8e2239cb00",
+  "repositoryBranch": "codex/ui-complete-redesign",
+  "gitSourceAudit": {
+    "checkedAt": "2026-10-07T19:26:47.999Z",
+    "passed": true,
+    "publishedFiles": 1028,
+    "exactFiles": 1027,
+    "lineEndingOnly": [],
+    "generatedFilesNotTracked": [
+      "apps/web/next-env.d.ts"
+    ],
+    "semanticMismatches": 0
+  }
+}

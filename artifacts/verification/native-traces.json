@@ -1,0 +1,56 @@
+{
+  "createdAt": "2026-10-04T09:40:21.876Z",
+  "platform": "win32",
+  "bundler": "webpack",
+  "scope": "Local production traces; original Node PDF package link and physical assets verified. Remote Linux build checked separately.",
+  "checks": [
+    {
+      "route": "api/jobs/run",
+      "assets": {
+        "audio": true,
+        "canvas": true,
+        "pdfWorker": true,
+        "pdfPackageMetadata": true,
+        "originalPdfPackageLink": true,
+        "jpeg2000": true,
+        "cmaps": true,
+        "fonts": true
+      },
+      "privateEnvPaths": [],
+      "totalUniquePaths": 517,
+      "uniqueRealFileBytes": 141409040
+    },
+    {
+      "route": "api/classes/[id]/processing",
+      "assets": {
+        "audio": true,
+        "canvas": true,
+        "pdfWorker": true,
+        "pdfPackageMetadata": true,
+        "originalPdfPackageLink": true,
+        "jpeg2000": true,
+        "cmaps": true,
+        "fonts": true
+      },
+      "privateEnvPaths": [],
+      "totalUniquePaths": 517,
+      "uniqueRealFileBytes": 141409071
+    },
+    {
+      "route": "api/runs/[id]",
+      "assets": {
+        "audio": true,
+        "canvas": true,
+        "pdfWorker": true,
+        "pdfPackageMetadata": true,
+        "originalPdfPackageLink": true,
+        "jpeg2000": true,
+        "cmaps": true,
+        "fonts": true
+      },
+      "privateEnvPaths": [],
+      "totalUniquePaths": 517,
+      "uniqueRealFileBytes": 141409042
+    }
+  ]
+}

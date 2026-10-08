@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-10-04T18:15:55.970Z",
+  "reviewedCommit": "98543ee",
+  "deployment": "https://recalino-lgjhd697s-ali-paybarjay-s-projects.vercel.app",
+  "deploymentId": "dpl_4L1zG4VmE81He7o6ZEdRRwd6wigi",
+  "publicUrl": "https://recalino.vercel.app",
+  "scope": "Reviewed privacy notice, learner configuration message, OAuth/cache checks and host backup scheduling. Cloud checks use no learner session or content.",
+  "checks": {
+    "legalGenerationVersionsMarkdown": { "passed": 12 },
+    "existingWorkspaceApiPrivacyTests": { "passed": 16 },
+    "webTypecheck": "passed",
+    "backupWindowsSafetyRegressions": { "passed": 5, "failed": 0, "cloudCalls": 0 },
+    "backupPowerShellSyntax": { "files": 3, "errors": 0 },
+    "scopedFormatting": "passed",
+    "cloudRuntime": { "passed": 12, "learnerSessionUsed": false },
+    "cloudGoogle": {
+      "machineReady": true,
+      "publishedCacheHeadersVerified": true,
+      "fullLoginVerified": false
+    },
+    "authCallbackReadback": "passed",
+    "publicAliasReadback": "passed",
+    "freshAnonymousPublicBrowser": {
+      "landingStatus": 200,
+      "vercelLoginRequired": false,
+      "privacyVersionDisplayed": "0.2",
+      "oauthStartPassed": true,
+      "privateApiUnauthenticatedStatus": 401
+    },
+    "scheduledBackup": {
+      "lastTaskResult": 0,
+      "freshResultAfterTaskStart": true,
+      "sameDayArchiveReused": true
+    }
+  },
+  "privacyVersion": "0.2",
+  "privacyStatus": "draft",
+  "pilotMaximumParticipants": 8,
+  "dataContractApproved": true,
+  "ownerOpenRouterPrivacyConfirmation": {
+    "privateInputOutputLogging": "off",
+    "openRouterUseOfInputsOutputs": "off",
+    "confirmedAt": "2026-10-05"
+  },
+  "paidCallsDuringFollowup": 0,
+  "pilotGrantsPerformedDuringFollowup": 0,
+  "remainingOwnerInformation": [
+  ],
+  "pilotOperator": "Ali Paybarjay",
+  "ownerAccountRole": "test account; may also occupy one of the eight pilot participant slots",
+  "backupLimitations": "Existing Windows host online, owner logged on, Docker available and Supabase CLI sign-in valid; no overnight availability SLA asserted.",
+  "ownerLoginConfirmation": "Separate human confirmation on the earlier bzf44bkg0 deployment. This reviewed deployment has automatic OAuth start/form checks only."
+}

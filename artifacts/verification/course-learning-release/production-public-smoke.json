@@ -1,0 +1,87 @@
+{
+  "checkedAt": "2026-10-05T02:11:44.742Z",
+  "publicUrl": "https://recalino.vercel.app",
+  "commit": "1559f690a6f59baea5f30327059970f7d847ea31",
+  "deploymentUrl": "https://recalino-qabmdhbtw-ali-paybarjay-s-projects.vercel.app",
+  "deploymentId": "dpl_9UppZXuLWR5ZNGt7FKsDT18zjBjd",
+  "scope": "Fresh anonymous browser and GET-only requests. All non-GET/HEAD browser requests are blocked. No learner sign-in, production fixture, source upload or provider call.",
+  "checks": [
+    {
+      "name": "public landing",
+      "passed": true,
+      "status": 200,
+      "finalPath": "/",
+      "viewports": [390, 1440]
+    },
+    {
+      "name": "health is live and not a preview response",
+      "passed": true,
+      "status": 200,
+      "body": {
+        "status": "ok"
+      }
+    },
+    {
+      "name": "unauthenticated /api/courses",
+      "passed": true,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "name": "unauthenticated /api/classes",
+      "passed": true,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "name": "protected /courses redirects",
+      "passed": true,
+      "initialStatus": 200,
+      "finalPath": "/",
+      "streamedRedirectAccepted": true
+    },
+    {
+      "name": "protected /classes redirects",
+      "passed": true,
+      "initialStatus": 200,
+      "finalPath": "/",
+      "streamedRedirectAccepted": true
+    },
+    {
+      "name": "public sample /preview/course",
+      "passed": true,
+      "public": true,
+      "status": 200,
+      "syntheticBannerVisible": true,
+      "noindex": true
+    },
+    {
+      "name": "public sample /preview/new-class",
+      "passed": true,
+      "public": true,
+      "status": 200,
+      "syntheticBannerVisible": true,
+      "noindex": true
+    },
+    {
+      "name": "production disables /dev/ui",
+      "passed": true,
+      "method": "GET",
+      "status": 200,
+      "semanticStatus": 404,
+      "streaming404Accepted": true
+    },
+    {
+      "name": "production disables /dev/ui/experience",
+      "passed": true,
+      "method": "GET",
+      "status": 200,
+      "semanticStatus": 404,
+      "streaming404Accepted": true
+    }
+  ],
+  "blockedMutationRequests": [],
+  "consoleErrorCount": 0,
+  "pageErrorCount": 0,
+  "passed": true
+}

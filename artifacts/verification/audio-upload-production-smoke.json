@@ -1,0 +1,94 @@
+{
+  "checkedAt": "2026-10-05T23:41:25.035Z",
+  "origin": "https://recalino.vercel.app",
+  "applicationSession": false,
+  "cloudDataChanged": false,
+  "protectionPreserved": true,
+  "checks": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 200,
+      "passed": true
+    },
+    {
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "expectedStatus": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/sources/contract",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/classes",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/sources/00000000-0000-4000-8000-000000000001/audio",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/sources/00000000-0000-4000-8000-000000000001/audio",
+      "method": "POST",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/classes/00000000-0000-4000-8000-000000000001/processing",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/classes/00000000-0000-4000-8000-000000000001/estimate",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/jobs/run",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/admin?view=settings",
+      "method": "GET",
+      "status": 401,
+      "expectedStatus": 401,
+      "passed": true
+    },
+    {
+      "path": "/dev/auth/session",
+      "method": "POST",
+      "status": 404,
+      "expectedStatus": 404,
+      "passed": true
+    },
+    {
+      "path": "/dev/spike/ffmpeg",
+      "method": "POST",
+      "status": 404,
+      "expectedStatus": 404,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

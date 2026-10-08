@@ -13,6 +13,8 @@ export interface IdempotentRequest {
   requestHash: string;
   ttlSeconds: number;
   now?: Date;
+  /** Acquire the domain owner lock before the key row, including on cached replay. */
+  beforeKey?: (tx: Tx) => Promise<void>;
 }
 
 export interface IdempotentResult extends StoredResponse {
@@ -39,6 +41,7 @@ export async function runIdempotent(
 ): Promise<IdempotentResult> {
   const now = request.now ?? new Date();
   return withTransaction(db, async (tx) => {
+    await request.beforeKey?.(tx);
     await tx
       .deleteFrom("plt.idempotency_key")
       .where("user_id", "=", request.userId)
@@ -99,4 +102,20 @@ export async function purgeExpiredIdempotencyKeys(
     .where("expires_at", "<=", now)
     .executeTakeFirst();
   return Number(result.numDeletedRows);
+}
+
+/**
+ * PRD-PRIV-01/06: revoke cached private responses at the same tombstone transaction.
+ * Keep the key/hash until expiry so a stale retry cannot execute a deleted operation again.
+ * A null status deliberately makes that retry return conflict instead of cached content.
+ */
+export async function redactUserIdempotencyResponses(
+  db: Database | Tx,
+  userId: string,
+): Promise<void> {
+  await db
+    .updateTable("plt.idempotency_key")
+    .set({ response_status: null, response_body: null })
+    .where("user_id", "=", userId)
+    .execute();
 }

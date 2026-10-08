@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-06",
+  "diagnosis": {
+    "screenshotLocalTime": "00:49 Europe/London",
+    "latestRejectedRunAt": "2026-10-05T23:03:36.998Z",
+    "verifiedParts": 15,
+    "totalParts": 15,
+    "oldRejectionCause": "Android MP4 audio with 3gp4 brand rejected by the old MIME detector; already fixed in preceding production release",
+    "selectedSourceCountAtScreenshot": 0,
+    "lastSourceRemovalAt": "2026-10-05T23:48:42.748Z",
+    "newRunAfterPreviousFormatFix": false
+  },
+  "fix": {
+    "previousSelectionFailureTreatedAsHistory": true,
+    "estimateProblemsDistinguished": ["no_selected_sources", "sources_not_ready", "selection_too_large", "unavailable"],
+    "ownershipAndAuthenticationErrorsPreserved": true,
+    "unresolvedProviderOutcomeStillBlocksRetry": true,
+    "automaticNewProcessingStarted": false
+  },
+  "validation": {
+    "targetedUnitTests": 57,
+    "unitTestFiles": 6,
+    "nodeVersion": "24.19.0",
+    "webTypeScript": "passed",
+    "biomeChangedCodeFiles": 5,
+    "dependencyBoundaries": "passed",
+    "localOptimizedBuild": "passed",
+    "cloudOptimizedBuild": "passed",
+    "linuxNativeRuntime": "passed",
+    "baselineFilesValidated": 824,
+    "deployedSourceFilesMatched": 826,
+    "onlyApprovedSourceChanges": 5,
+    "stagedSmokeChecks": 12,
+    "publicSmokeChecks": 12,
+    "publicSmokePassed": true,
+    "publicSmokeCheckedAt": "2026-10-06T00:13:17.711Z"
+  },
+  "restoration": {
+    "authorizedByHumanInThisChat": true,
+    "activeSelectedSources": 7,
+    "audio": 1,
+    "images": 6,
+    "sourcesVersion": 25,
+    "snapshotAndSourceChangeOutboxVerified": true,
+    "newProcessingRunStarted": false,
+    "oldRunAndQuotaReservationRewritten": false
+  },
+  "publication": {
+    "domain": "https://recalino.vercel.app",
+    "deploymentId": "dpl_Am3y4Q5JQ9mVPrU5yan9a7y27LSf",
+    "baselineDeploymentId": "dpl_21kC2GgDkSJd2M1J2jMzD9aTrVjh",
+    "publishedAt": "2026-10-06T00:12:03.924Z",
+    "publicAliasVerified": true
+  },
+  "limitation": "Actual mobile recording must be retried from the device holding the saved original; no new processing was started during this recovery"
+}

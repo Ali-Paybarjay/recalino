@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "1",
+  "configVersion": "synthetic-mock-eval-1",
+  "mode": "mock",
+  "syntheticOnly": true,
+  "localOnly": true,
+  "startedAt": "2026-10-04T06:33:54.434Z",
+  "finishedAt": "2026-10-04T06:33:56.655Z",
+  "maximumTotalMicros": 100000,
+  "attemptedCalls": 4,
+  "attemptedBoundMicros": 40,
+  "models": {
+    "llm": "synthetic/llm",
+    "vision": "synthetic/vision",
+    "stt": "synthetic/stt",
+    "tts": "synthetic/tts"
+  },
+  "priceVersion": "synthetic-only",
+  "classProcessing": {
+    "state": "ready",
+    "error": null,
+    "quality": {
+      "schemaVersion": "1",
+      "structuralValid": true,
+      "referencesValidated": true,
+      "explanationLanguage": "en",
+      "claims": 2,
+      "classClaims": 2,
+      "aiExpansions": 0,
+      "uncertainClaims": 0,
+      "learningItems": 1,
+      "completeCoverage": true,
+      "humanReview": "required",
+      "educationalAccuracy": null
+    },
+    "study": {
+      "notebookPublished": true,
+      "proposedCards": 1
+    }
+  },
+  "vision": {
+    "runId": "c33d2bbd-bc06-436c-bbed-e5c14a2aa4d3",
+    "case": "vision",
+    "state": "ready",
+    "error": null,
+    "summary": {
+      "blocks": 1,
+      "textCharacters": 37
+    },
+    "humanReview": "required"
+  },
+  "tts": {
+    "state": "ready",
+    "error": null
+  },
+  "transcription": {
+    "runId": "eb0f9a44-4ac1-4957-9f0d-c3bd207ea906",
+    "case": "transcription",
+    "state": "ready",
+    "error": null,
+    "summary": {
+      "textCharacters": 37,
+      "nativeSegments": 1,
+      "speakerIds": 0
+    },
+    "humanReview": "required"
+  },
+  "costs": {
+    "since": "2026-10-04T06:33:54.434Z",
+    "policy": {
+      "version": "synthetic-mock-eval-1",
+      "currency": "USD",
+      "killSwitch": false,
+      "limits": {
+        "session": 100000,
+        "userMonth": 100000,
+        "systemDay": 100000,
+        "systemMonth": 100000
+      }
+    },
+    "costs": [
+      {
+        "provider": "synthetic-evaluation",
+        "model": "synthetic/llm",
+        "currency": "USD",
+        "priceVersion": "synthetic-only",
+        "attempts": 1,
+        "actualMicros": 1,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      },
+      {
+        "provider": "synthetic-evaluation",
+        "model": "synthetic/stt",
+        "currency": "USD",
+        "priceVersion": "synthetic-only",
+        "attempts": 1,
+        "actualMicros": 1,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      },
+      {
+        "provider": "synthetic-evaluation",
+        "model": "synthetic/tts",
+        "currency": "USD",
+        "priceVersion": "synthetic-only",
+        "attempts": 1,
+        "actualMicros": 1,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      },
+      {
+        "provider": "synthetic-evaluation",
+        "model": "synthetic/vision",
+        "currency": "USD",
+        "priceVersion": "synthetic-only",
+        "attempts": 1,
+        "actualMicros": 1,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      }
+    ],
+    "unresolvedHolds": [
+      {
+        "currency": "USD",
+        "count": 5,
+        "maximumMicros": 50
+      }
+    ]
+  },
+  "corpus": {
+    "version": "synthetic-plan-1",
+    "plannedCases": 20,
+    "completedHumanReviews": 0
+  },
+  "humanReview": "required"
+}

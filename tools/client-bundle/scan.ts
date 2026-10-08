@@ -9,6 +9,7 @@ export interface Finding {
 }
 
 const CREDENTIAL_PATTERNS: [string, RegExp][] = [
+  ["OpenRouter API key", /\bsk-or-v1-[A-Za-z0-9_-]{32,}/],
   ["postgres connection string with a password", /postgres(?:ql)?:\/\/[^\s"'`/:@]+:[^\s"'`@]+@/],
   ["Supabase secret key", /sb_secret_[A-Za-z0-9_-]{10,}/],
   ["Anthropic API key", /sk-ant-[A-Za-z0-9_-]{10,}/],

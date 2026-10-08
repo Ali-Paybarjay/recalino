@@ -1,0 +1,6776 @@
+{
+  "fileKey": "8SZY9Ju3Fatad888Ba81Ra",
+  "pageId": "35:137",
+  "date": "2026-10-05",
+  "scope": "Editable design/prototype only; no production, quota, pricing, or email operations",
+  "validation": {
+    "pageId": "35:137",
+    "frameCount": 90,
+    "frames": [
+      {
+        "id": "35:143",
+        "name": "overview · EN · Desktop",
+        "x": 180,
+        "y": 240,
+        "width": 1440,
+        "height": 1151
+      },
+      {
+        "id": "35:230",
+        "name": "users · EN · Desktop",
+        "x": 180,
+        "y": 2240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "35:449",
+        "name": "overview · FA · Desktop",
+        "x": 1680,
+        "y": 240,
+        "width": 1440,
+        "height": 1151
+      },
+      {
+        "id": "35:536",
+        "name": "users · FA · Desktop",
+        "x": 1680,
+        "y": 2240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "38:329",
+        "name": "costs · EN · Desktop",
+        "x": 180,
+        "y": 8240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "38:400",
+        "name": "processing · EN · Desktop",
+        "x": 180,
+        "y": 14240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "38:461",
+        "name": "run · EN · Desktop",
+        "x": 180,
+        "y": 16240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "38:519",
+        "name": "messages · EN · Desktop",
+        "x": 180,
+        "y": 18240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1109",
+        "name": "pilot · EN · Desktop",
+        "x": 180,
+        "y": 6240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1356",
+        "name": "preview · EN · Desktop",
+        "x": 180,
+        "y": 26240,
+        "width": 1440,
+        "height": 1327
+      },
+      {
+        "id": "39:1427",
+        "name": "sent · EN · Desktop",
+        "x": 180,
+        "y": 28240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1555",
+        "name": "previewOne · EN · Desktop",
+        "x": 180,
+        "y": 54240,
+        "width": 1440,
+        "height": 1153
+      },
+      {
+        "id": "39:1618",
+        "name": "sentOne · EN · Desktop",
+        "x": 180,
+        "y": 56240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1672",
+        "name": "replySent · EN · Desktop",
+        "x": 180,
+        "y": 58240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1715",
+        "name": "pilotReview · EN · Desktop",
+        "x": 180,
+        "y": 60240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1769",
+        "name": "pilotLowReview · EN · Desktop",
+        "x": 180,
+        "y": 62240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "39:1823",
+        "name": "previewFaEmail · EN · Desktop",
+        "x": 180,
+        "y": 64240,
+        "width": 1440,
+        "height": 1327
+      },
+      {
+        "id": "40:1171",
+        "name": "pilot · FA · Desktop",
+        "x": 1680,
+        "y": 6240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:1229",
+        "name": "costs · FA · Desktop",
+        "x": 1680,
+        "y": 8240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:1300",
+        "name": "rates · FA · Desktop",
+        "x": 1680,
+        "y": 10240,
+        "width": 1440,
+        "height": 1229
+      },
+      {
+        "id": "40:1383",
+        "name": "ratePreview · FA · Desktop",
+        "x": 1680,
+        "y": 12240,
+        "width": 1440,
+        "height": 1292
+      },
+      {
+        "id": "40:1468",
+        "name": "processing · FA · Desktop",
+        "x": 1680,
+        "y": 14240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:1529",
+        "name": "run · FA · Desktop",
+        "x": 1680,
+        "y": 16240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:1587",
+        "name": "messages · FA · Desktop",
+        "x": 1680,
+        "y": 18240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:1842",
+        "name": "preview · FA · Desktop",
+        "x": 1680,
+        "y": 26240,
+        "width": 1440,
+        "height": 1327
+      },
+      {
+        "id": "40:1913",
+        "name": "sent · FA · Desktop",
+        "x": 1680,
+        "y": 28240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:1975",
+        "name": "templates · FA · Desktop",
+        "x": 1680,
+        "y": 30240,
+        "width": 1440,
+        "height": 1224
+      },
+      {
+        "id": "40:2069",
+        "name": "privacy · FA · Desktop",
+        "x": 1680,
+        "y": 32240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2125",
+        "name": "backups · FA · Desktop",
+        "x": 1680,
+        "y": 34240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2181",
+        "name": "audit · FA · Desktop",
+        "x": 1680,
+        "y": 36240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2238",
+        "name": "settings · FA · Desktop",
+        "x": 1680,
+        "y": 38240,
+        "width": 1440,
+        "height": 1243
+      },
+      {
+        "id": "40:2319",
+        "name": "tasks · FA · Desktop",
+        "x": 1680,
+        "y": 40240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2377",
+        "name": "empty · FA · Desktop",
+        "x": 1680,
+        "y": 42240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2420",
+        "name": "failed · FA · Desktop",
+        "x": 1680,
+        "y": 44240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2482",
+        "name": "capacityLow · FA · Desktop",
+        "x": 1680,
+        "y": 46240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2606",
+        "name": "previewOne · FA · Desktop",
+        "x": 1680,
+        "y": 54240,
+        "width": 1440,
+        "height": 1153
+      },
+      {
+        "id": "40:2669",
+        "name": "sentOne · FA · Desktop",
+        "x": 1680,
+        "y": 56240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2723",
+        "name": "replySent · FA · Desktop",
+        "x": 1680,
+        "y": 58240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2766",
+        "name": "pilotReview · FA · Desktop",
+        "x": 1680,
+        "y": 60240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2820",
+        "name": "pilotLowReview · FA · Desktop",
+        "x": 1680,
+        "y": 62240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "40:2874",
+        "name": "previewFaEmail · FA · Desktop",
+        "x": 1680,
+        "y": 64240,
+        "width": 1440,
+        "height": 1327
+      },
+      {
+        "id": "41:690",
+        "name": "rates · EN · Desktop",
+        "x": 180,
+        "y": 10240,
+        "width": 1440,
+        "height": 1206
+      },
+      {
+        "id": "41:773",
+        "name": "ratePreview · EN · Desktop",
+        "x": 180,
+        "y": 12240,
+        "width": 1440,
+        "height": 1269
+      },
+      {
+        "id": "41:858",
+        "name": "templates · EN · Desktop",
+        "x": 180,
+        "y": 30240,
+        "width": 1440,
+        "height": 1224
+      },
+      {
+        "id": "41:952",
+        "name": "privacy · EN · Desktop",
+        "x": 180,
+        "y": 32240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "41:1008",
+        "name": "backups · EN · Desktop",
+        "x": 180,
+        "y": 34240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "41:1064",
+        "name": "audit · EN · Desktop",
+        "x": 180,
+        "y": 36240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "41:1121",
+        "name": "settings · EN · Desktop",
+        "x": 180,
+        "y": 38240,
+        "width": 1440,
+        "height": 1243
+      },
+      {
+        "id": "41:1202",
+        "name": "tasks · EN · Desktop",
+        "x": 180,
+        "y": 40240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "41:1260",
+        "name": "empty · EN · Desktop",
+        "x": 180,
+        "y": 42240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "41:1303",
+        "name": "failed · EN · Desktop",
+        "x": 180,
+        "y": 44240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "41:1365",
+        "name": "capacityLow · EN · Desktop",
+        "x": 180,
+        "y": 46240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1493",
+        "name": "feedback · EN · Desktop",
+        "x": 180,
+        "y": 20240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1552",
+        "name": "reply · EN · Desktop",
+        "x": 180,
+        "y": 22240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1613",
+        "name": "compose · EN · Desktop",
+        "x": 180,
+        "y": 24240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1679",
+        "name": "composeOne · EN · Desktop",
+        "x": 180,
+        "y": 52240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1744",
+        "name": "feedback · FA · Desktop",
+        "x": 1680,
+        "y": 20240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1803",
+        "name": "reply · FA · Desktop",
+        "x": 1680,
+        "y": 22240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1864",
+        "name": "compose · FA · Desktop",
+        "x": 1680,
+        "y": 24240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:1930",
+        "name": "composeOne · FA · Desktop",
+        "x": 1680,
+        "y": 52240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "42:2023",
+        "name": "appList · EN · Mobile",
+        "x": 4780,
+        "y": 2240,
+        "width": 390,
+        "height": 844
+      },
+      {
+        "id": "42:2050",
+        "name": "appThread · EN · Mobile",
+        "x": 4780,
+        "y": 4240,
+        "width": 390,
+        "height": 847
+      },
+      {
+        "id": "43:816",
+        "name": "sender · EN · Desktop",
+        "x": 180,
+        "y": 66240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "43:877",
+        "name": "appSettings · EN · Mobile",
+        "x": 4780,
+        "y": 6240,
+        "width": 390,
+        "height": 844
+      },
+      {
+        "id": "43:902",
+        "name": "overview · EN · Desktop · Dark",
+        "x": 180,
+        "y": 68240,
+        "width": 1440,
+        "height": 1151
+      },
+      {
+        "id": "43:989",
+        "name": "sender · FA · Desktop",
+        "x": 1680,
+        "y": 66240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "43:1050",
+        "name": "overview · FA · Mobile",
+        "x": 3280,
+        "y": 240,
+        "width": 390,
+        "height": 1792
+      },
+      {
+        "id": "43:1104",
+        "name": "tasks · FA · Mobile",
+        "x": 3280,
+        "y": 40240,
+        "width": 390,
+        "height": 974
+      },
+      {
+        "id": "43:1134",
+        "name": "overview · FA · Desktop · Dark",
+        "x": 1680,
+        "y": 68240,
+        "width": 1440,
+        "height": 1151
+      },
+      {
+        "id": "44:1555",
+        "name": "appForm · EN · Mobile",
+        "x": 4780,
+        "y": 240,
+        "width": 390,
+        "height": 872
+      },
+      {
+        "id": "45:877",
+        "name": "guide · EN · Desktop",
+        "x": 180,
+        "y": -1760,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "45:941",
+        "name": "guide · FA · Desktop",
+        "x": 1680,
+        "y": -1760,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "45:1005",
+        "name": "users · FA · Mobile",
+        "x": 3280,
+        "y": 2240,
+        "width": 390,
+        "height": 1467
+      },
+      {
+        "id": "46:907",
+        "name": "overview · EN · Mobile",
+        "x": 3730,
+        "y": 240,
+        "width": 390,
+        "height": 1717
+      },
+      {
+        "id": "46:961",
+        "name": "tasks · EN · Mobile",
+        "x": 3730,
+        "y": 2240,
+        "width": 390,
+        "height": 876
+      },
+      {
+        "id": "46:991",
+        "name": "users · EN · Mobile",
+        "x": 3730,
+        "y": 4240,
+        "width": 390,
+        "height": 1467
+      },
+      {
+        "id": "50:971",
+        "name": "user · EN · Desktop",
+        "x": 180,
+        "y": 4240,
+        "width": 1440,
+        "height": 1168
+      },
+      {
+        "id": "50:1068",
+        "name": "allowance · EN · Desktop",
+        "x": 180,
+        "y": 70240,
+        "width": 1440,
+        "height": 1288
+      },
+      {
+        "id": "50:1152",
+        "name": "allowanceReview · EN · Desktop",
+        "x": 180,
+        "y": 72240,
+        "width": 1440,
+        "height": 1116
+      },
+      {
+        "id": "50:1246",
+        "name": "userNew · EN · Desktop",
+        "x": 180,
+        "y": 74240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "50:1295",
+        "name": "grant · EN · Desktop",
+        "x": 180,
+        "y": 76240,
+        "width": 1440,
+        "height": 1265
+      },
+      {
+        "id": "50:1387",
+        "name": "grantReview · EN · Desktop",
+        "x": 180,
+        "y": 78240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "50:1481",
+        "name": "user · FA · Desktop",
+        "x": 1680,
+        "y": 4240,
+        "width": 1440,
+        "height": 1168
+      },
+      {
+        "id": "50:1578",
+        "name": "allowance · FA · Desktop",
+        "x": 1680,
+        "y": 70240,
+        "width": 1440,
+        "height": 1265
+      },
+      {
+        "id": "50:1662",
+        "name": "allowanceReview · FA · Desktop",
+        "x": 1680,
+        "y": 72240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "50:1756",
+        "name": "userNew · FA · Desktop",
+        "x": 1680,
+        "y": 74240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "50:1805",
+        "name": "grant · FA · Desktop",
+        "x": 1680,
+        "y": 76240,
+        "width": 1440,
+        "height": 1265
+      },
+      {
+        "id": "50:1897",
+        "name": "grantReview · FA · Desktop",
+        "x": 1680,
+        "y": 78240,
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "id": "53:1083",
+        "name": "allowanceLowReview · EN · Desktop",
+        "x": 180,
+        "y": 80240,
+        "width": 1440,
+        "height": 1116
+      },
+      {
+        "id": "53:1855",
+        "name": "allowanceLowReview · FA · Desktop",
+        "x": 1680,
+        "y": 80240,
+        "width": 1440,
+        "height": 1100
+      }
+    ],
+    "instanceCount": 871,
+    "textCount": 2903,
+    "imageFillCount": 0,
+    "boundPaintCount": 4554,
+    "linkedNodeCount": 879,
+    "invalidLinkCount": 0,
+    "invalidLinks": [],
+    "layoutIssueCount": 0,
+    "layoutIssues": [],
+    "boundsTolerancePx": 1.5,
+    "mobileCount": 10,
+    "darkCount": 2
+  },
+  "prototypeLinks": [
+    {
+      "id": "35:148",
+      "target": "overview"
+    },
+    {
+      "id": "35:152",
+      "target": "users"
+    },
+    {
+      "id": "35:156",
+      "target": "messages"
+    },
+    {
+      "id": "35:160",
+      "target": "costs"
+    },
+    {
+      "id": "35:164",
+      "target": "processing"
+    },
+    {
+      "id": "35:168",
+      "target": "settings"
+    },
+    {
+      "id": "35:173",
+      "target": "locale:overview"
+    },
+    {
+      "id": "35:188",
+      "target": "compose"
+    },
+    {
+      "id": "35:194",
+      "target": "messages"
+    },
+    {
+      "id": "35:200",
+      "target": "run"
+    },
+    {
+      "id": "35:203",
+      "target": "pilot"
+    },
+    {
+      "id": "35:207",
+      "target": "costs"
+    },
+    {
+      "id": "35:211",
+      "target": "processing"
+    },
+    {
+      "id": "35:223",
+      "target": "backups"
+    },
+    {
+      "id": "35:224",
+      "target": "backups"
+    },
+    {
+      "id": "35:225",
+      "target": "backups"
+    },
+    {
+      "id": "35:227",
+      "target": "user"
+    },
+    {
+      "id": "35:228",
+      "target": "user"
+    },
+    {
+      "id": "35:229",
+      "target": "user"
+    },
+    {
+      "id": "35:235",
+      "target": "overview"
+    },
+    {
+      "id": "35:239",
+      "target": "users"
+    },
+    {
+      "id": "35:243",
+      "target": "messages"
+    },
+    {
+      "id": "35:247",
+      "target": "costs"
+    },
+    {
+      "id": "35:251",
+      "target": "processing"
+    },
+    {
+      "id": "35:255",
+      "target": "settings"
+    },
+    {
+      "id": "35:260",
+      "target": "locale:users"
+    },
+    {
+      "id": "35:274",
+      "target": "pilot"
+    },
+    {
+      "id": "35:279",
+      "target": "compose"
+    },
+    {
+      "id": "35:290",
+      "target": "user"
+    },
+    {
+      "id": "35:291",
+      "target": "user"
+    },
+    {
+      "id": "35:292",
+      "target": "user"
+    },
+    {
+      "id": "35:293",
+      "target": "user"
+    },
+    {
+      "id": "35:295",
+      "target": "user"
+    },
+    {
+      "id": "35:296",
+      "target": "user"
+    },
+    {
+      "id": "35:297",
+      "target": "user"
+    },
+    {
+      "id": "35:298",
+      "target": "user"
+    },
+    {
+      "id": "35:300",
+      "target": "user"
+    },
+    {
+      "id": "35:301",
+      "target": "user"
+    },
+    {
+      "id": "35:302",
+      "target": "user"
+    },
+    {
+      "id": "35:303",
+      "target": "user"
+    },
+    {
+      "id": "35:305",
+      "target": "user"
+    },
+    {
+      "id": "35:306",
+      "target": "user"
+    },
+    {
+      "id": "35:307",
+      "target": "user"
+    },
+    {
+      "id": "35:308",
+      "target": "user"
+    },
+    {
+      "id": "35:315",
+      "target": "overview"
+    },
+    {
+      "id": "35:319",
+      "target": "users"
+    },
+    {
+      "id": "35:323",
+      "target": "messages"
+    },
+    {
+      "id": "35:327",
+      "target": "costs"
+    },
+    {
+      "id": "35:331",
+      "target": "processing"
+    },
+    {
+      "id": "35:335",
+      "target": "settings"
+    },
+    {
+      "id": "35:340",
+      "target": "locale:pilot"
+    },
+    {
+      "id": "35:364",
+      "target": "users"
+    },
+    {
+      "id": "35:366",
+      "target": "capacityLow"
+    },
+    {
+      "id": "35:373",
+      "target": "overview"
+    },
+    {
+      "id": "35:377",
+      "target": "users"
+    },
+    {
+      "id": "35:381",
+      "target": "messages"
+    },
+    {
+      "id": "35:385",
+      "target": "costs"
+    },
+    {
+      "id": "35:389",
+      "target": "processing"
+    },
+    {
+      "id": "35:393",
+      "target": "settings"
+    },
+    {
+      "id": "35:398",
+      "target": "locale:rates"
+    },
+    {
+      "id": "35:442",
+      "target": "ratePreview"
+    },
+    {
+      "id": "35:460",
+      "target": "overview"
+    },
+    {
+      "id": "35:464",
+      "target": "users"
+    },
+    {
+      "id": "35:468",
+      "target": "messages"
+    },
+    {
+      "id": "35:472",
+      "target": "costs"
+    },
+    {
+      "id": "35:476",
+      "target": "processing"
+    },
+    {
+      "id": "35:480",
+      "target": "settings"
+    },
+    {
+      "id": "35:485",
+      "target": "locale:overview"
+    },
+    {
+      "id": "35:491",
+      "target": "compose"
+    },
+    {
+      "id": "35:497",
+      "target": "messages"
+    },
+    {
+      "id": "35:503",
+      "target": "run"
+    },
+    {
+      "id": "35:509",
+      "target": "processing"
+    },
+    {
+      "id": "35:513",
+      "target": "costs"
+    },
+    {
+      "id": "35:517",
+      "target": "pilot"
+    },
+    {
+      "id": "35:529",
+      "target": "backups"
+    },
+    {
+      "id": "35:530",
+      "target": "backups"
+    },
+    {
+      "id": "35:531",
+      "target": "backups"
+    },
+    {
+      "id": "35:533",
+      "target": "user"
+    },
+    {
+      "id": "35:534",
+      "target": "user"
+    },
+    {
+      "id": "35:535",
+      "target": "user"
+    },
+    {
+      "id": "35:547",
+      "target": "overview"
+    },
+    {
+      "id": "35:551",
+      "target": "users"
+    },
+    {
+      "id": "35:555",
+      "target": "messages"
+    },
+    {
+      "id": "35:559",
+      "target": "costs"
+    },
+    {
+      "id": "35:563",
+      "target": "processing"
+    },
+    {
+      "id": "35:567",
+      "target": "settings"
+    },
+    {
+      "id": "35:572",
+      "target": "locale:users"
+    },
+    {
+      "id": "35:576",
+      "target": "pilot"
+    },
+    {
+      "id": "35:585",
+      "target": "compose"
+    },
+    {
+      "id": "35:596",
+      "target": "user"
+    },
+    {
+      "id": "35:597",
+      "target": "user"
+    },
+    {
+      "id": "35:598",
+      "target": "user"
+    },
+    {
+      "id": "35:599",
+      "target": "user"
+    },
+    {
+      "id": "35:601",
+      "target": "user"
+    },
+    {
+      "id": "35:602",
+      "target": "user"
+    },
+    {
+      "id": "35:603",
+      "target": "user"
+    },
+    {
+      "id": "35:604",
+      "target": "user"
+    },
+    {
+      "id": "35:606",
+      "target": "user"
+    },
+    {
+      "id": "35:607",
+      "target": "user"
+    },
+    {
+      "id": "35:608",
+      "target": "user"
+    },
+    {
+      "id": "35:609",
+      "target": "user"
+    },
+    {
+      "id": "35:611",
+      "target": "user"
+    },
+    {
+      "id": "35:612",
+      "target": "user"
+    },
+    {
+      "id": "35:613",
+      "target": "user"
+    },
+    {
+      "id": "35:614",
+      "target": "user"
+    },
+    {
+      "id": "35:626",
+      "target": "overview"
+    },
+    {
+      "id": "35:630",
+      "target": "users"
+    },
+    {
+      "id": "35:634",
+      "target": "messages"
+    },
+    {
+      "id": "35:638",
+      "target": "costs"
+    },
+    {
+      "id": "35:642",
+      "target": "processing"
+    },
+    {
+      "id": "35:646",
+      "target": "settings"
+    },
+    {
+      "id": "35:651",
+      "target": "locale:pilot"
+    },
+    {
+      "id": "35:670",
+      "target": "capacityLow"
+    },
+    {
+      "id": "35:672",
+      "target": "users"
+    },
+    {
+      "id": "35:685",
+      "target": "overview"
+    },
+    {
+      "id": "35:689",
+      "target": "users"
+    },
+    {
+      "id": "35:693",
+      "target": "messages"
+    },
+    {
+      "id": "35:697",
+      "target": "costs"
+    },
+    {
+      "id": "35:701",
+      "target": "processing"
+    },
+    {
+      "id": "35:705",
+      "target": "settings"
+    },
+    {
+      "id": "35:710",
+      "target": "locale:rates"
+    },
+    {
+      "id": "35:748",
+      "target": "ratePreview"
+    },
+    {
+      "id": "38:254",
+      "target": "overview"
+    },
+    {
+      "id": "38:258",
+      "target": "users"
+    },
+    {
+      "id": "38:262",
+      "target": "messages"
+    },
+    {
+      "id": "38:266",
+      "target": "costs"
+    },
+    {
+      "id": "38:270",
+      "target": "processing"
+    },
+    {
+      "id": "38:274",
+      "target": "settings"
+    },
+    {
+      "id": "38:279",
+      "target": "locale:user"
+    },
+    {
+      "id": "38:291",
+      "target": "compose"
+    },
+    {
+      "id": "38:293",
+      "target": "feedback"
+    },
+    {
+      "id": "38:321",
+      "target": "costs"
+    },
+    {
+      "id": "38:327",
+      "target": "feedback"
+    },
+    {
+      "id": "38:334",
+      "target": "overview"
+    },
+    {
+      "id": "38:338",
+      "target": "users"
+    },
+    {
+      "id": "38:342",
+      "target": "messages"
+    },
+    {
+      "id": "38:346",
+      "target": "costs"
+    },
+    {
+      "id": "38:350",
+      "target": "processing"
+    },
+    {
+      "id": "38:354",
+      "target": "settings"
+    },
+    {
+      "id": "38:359",
+      "target": "locale:costs"
+    },
+    {
+      "id": "38:392",
+      "target": "rates"
+    },
+    {
+      "id": "38:398",
+      "target": "settings"
+    },
+    {
+      "id": "38:405",
+      "target": "overview"
+    },
+    {
+      "id": "38:409",
+      "target": "users"
+    },
+    {
+      "id": "38:413",
+      "target": "messages"
+    },
+    {
+      "id": "38:417",
+      "target": "costs"
+    },
+    {
+      "id": "38:421",
+      "target": "processing"
+    },
+    {
+      "id": "38:425",
+      "target": "settings"
+    },
+    {
+      "id": "38:430",
+      "target": "locale:processing"
+    },
+    {
+      "id": "38:447",
+      "target": "run"
+    },
+    {
+      "id": "38:448",
+      "target": "run"
+    },
+    {
+      "id": "38:449",
+      "target": "run"
+    },
+    {
+      "id": "38:450",
+      "target": "run"
+    },
+    {
+      "id": "38:452",
+      "target": "run"
+    },
+    {
+      "id": "38:453",
+      "target": "run"
+    },
+    {
+      "id": "38:454",
+      "target": "run"
+    },
+    {
+      "id": "38:455",
+      "target": "run"
+    },
+    {
+      "id": "38:457",
+      "target": "run"
+    },
+    {
+      "id": "38:458",
+      "target": "run"
+    },
+    {
+      "id": "38:459",
+      "target": "run"
+    },
+    {
+      "id": "38:460",
+      "target": "run"
+    },
+    {
+      "id": "38:466",
+      "target": "overview"
+    },
+    {
+      "id": "38:470",
+      "target": "users"
+    },
+    {
+      "id": "38:474",
+      "target": "messages"
+    },
+    {
+      "id": "38:478",
+      "target": "costs"
+    },
+    {
+      "id": "38:482",
+      "target": "processing"
+    },
+    {
+      "id": "38:486",
+      "target": "settings"
+    },
+    {
+      "id": "38:491",
+      "target": "locale:run"
+    },
+    {
+      "id": "38:514",
+      "target": "compose"
+    },
+    {
+      "id": "38:516",
+      "target": "processing"
+    },
+    {
+      "id": "38:524",
+      "target": "overview"
+    },
+    {
+      "id": "38:528",
+      "target": "users"
+    },
+    {
+      "id": "38:532",
+      "target": "messages"
+    },
+    {
+      "id": "38:536",
+      "target": "costs"
+    },
+    {
+      "id": "38:540",
+      "target": "processing"
+    },
+    {
+      "id": "38:544",
+      "target": "settings"
+    },
+    {
+      "id": "38:549",
+      "target": "locale:messages"
+    },
+    {
+      "id": "38:558",
+      "target": "feedback"
+    },
+    {
+      "id": "38:560",
+      "target": "templates"
+    },
+    {
+      "id": "38:562",
+      "target": "compose"
+    },
+    {
+      "id": "38:572",
+      "target": "feedback"
+    },
+    {
+      "id": "38:573",
+      "target": "feedback"
+    },
+    {
+      "id": "38:574",
+      "target": "feedback"
+    },
+    {
+      "id": "38:576",
+      "target": "feedback"
+    },
+    {
+      "id": "38:577",
+      "target": "feedback"
+    },
+    {
+      "id": "38:578",
+      "target": "feedback"
+    },
+    {
+      "id": "38:583",
+      "target": "failed"
+    },
+    {
+      "id": "38:590",
+      "target": "overview"
+    },
+    {
+      "id": "38:594",
+      "target": "users"
+    },
+    {
+      "id": "38:598",
+      "target": "messages"
+    },
+    {
+      "id": "38:602",
+      "target": "costs"
+    },
+    {
+      "id": "38:606",
+      "target": "processing"
+    },
+    {
+      "id": "38:610",
+      "target": "settings"
+    },
+    {
+      "id": "38:615",
+      "target": "locale:feedback"
+    },
+    {
+      "id": "38:637",
+      "target": "reply"
+    },
+    {
+      "id": "38:639",
+      "target": "messages"
+    },
+    {
+      "id": "38:646",
+      "target": "overview"
+    },
+    {
+      "id": "38:650",
+      "target": "users"
+    },
+    {
+      "id": "38:654",
+      "target": "messages"
+    },
+    {
+      "id": "38:658",
+      "target": "costs"
+    },
+    {
+      "id": "38:662",
+      "target": "processing"
+    },
+    {
+      "id": "38:666",
+      "target": "settings"
+    },
+    {
+      "id": "38:671",
+      "target": "locale:reply"
+    },
+    {
+      "id": "38:695",
+      "target": "sent"
+    },
+    {
+      "id": "38:697",
+      "target": "messages"
+    },
+    {
+      "id": "38:704",
+      "target": "overview"
+    },
+    {
+      "id": "38:708",
+      "target": "users"
+    },
+    {
+      "id": "38:712",
+      "target": "messages"
+    },
+    {
+      "id": "38:716",
+      "target": "costs"
+    },
+    {
+      "id": "38:720",
+      "target": "processing"
+    },
+    {
+      "id": "38:724",
+      "target": "settings"
+    },
+    {
+      "id": "38:729",
+      "target": "locale:compose"
+    },
+    {
+      "id": "38:762",
+      "target": "preview"
+    },
+    {
+      "id": "38:764",
+      "target": "messages"
+    },
+    {
+      "id": "38:771",
+      "target": "overview"
+    },
+    {
+      "id": "38:775",
+      "target": "users"
+    },
+    {
+      "id": "38:779",
+      "target": "messages"
+    },
+    {
+      "id": "38:783",
+      "target": "costs"
+    },
+    {
+      "id": "38:787",
+      "target": "processing"
+    },
+    {
+      "id": "38:791",
+      "target": "settings"
+    },
+    {
+      "id": "38:796",
+      "target": "locale:preview"
+    },
+    {
+      "id": "38:812",
+      "target": "appList"
+    },
+    {
+      "id": "38:816",
+      "target": "sent"
+    },
+    {
+      "id": "38:818",
+      "target": "compose"
+    },
+    {
+      "id": "38:825",
+      "target": "overview"
+    },
+    {
+      "id": "38:829",
+      "target": "users"
+    },
+    {
+      "id": "38:833",
+      "target": "messages"
+    },
+    {
+      "id": "38:837",
+      "target": "costs"
+    },
+    {
+      "id": "38:841",
+      "target": "processing"
+    },
+    {
+      "id": "38:845",
+      "target": "settings"
+    },
+    {
+      "id": "38:850",
+      "target": "locale:sent"
+    },
+    {
+      "id": "38:880",
+      "target": "tasks"
+    },
+    {
+      "id": "39:1034",
+      "target": "overview"
+    },
+    {
+      "id": "39:1038",
+      "target": "users"
+    },
+    {
+      "id": "39:1042",
+      "target": "messages"
+    },
+    {
+      "id": "39:1046",
+      "target": "costs"
+    },
+    {
+      "id": "39:1050",
+      "target": "processing"
+    },
+    {
+      "id": "39:1054",
+      "target": "settings"
+    },
+    {
+      "id": "39:1059",
+      "target": "locale:user"
+    },
+    {
+      "id": "39:1071",
+      "target": "composeOne"
+    },
+    {
+      "id": "39:1073",
+      "target": "feedback"
+    },
+    {
+      "id": "39:1101",
+      "target": "costs"
+    },
+    {
+      "id": "39:1107",
+      "target": "feedback"
+    },
+    {
+      "id": "39:1114",
+      "target": "overview"
+    },
+    {
+      "id": "39:1118",
+      "target": "users"
+    },
+    {
+      "id": "39:1122",
+      "target": "messages"
+    },
+    {
+      "id": "39:1126",
+      "target": "costs"
+    },
+    {
+      "id": "39:1130",
+      "target": "processing"
+    },
+    {
+      "id": "39:1134",
+      "target": "settings"
+    },
+    {
+      "id": "39:1139",
+      "target": "locale:pilot"
+    },
+    {
+      "id": "39:1163",
+      "target": "pilotReview"
+    },
+    {
+      "id": "39:1165",
+      "target": "capacityLow"
+    },
+    {
+      "id": "39:1172",
+      "target": "overview"
+    },
+    {
+      "id": "39:1176",
+      "target": "users"
+    },
+    {
+      "id": "39:1180",
+      "target": "messages"
+    },
+    {
+      "id": "39:1184",
+      "target": "costs"
+    },
+    {
+      "id": "39:1188",
+      "target": "processing"
+    },
+    {
+      "id": "39:1192",
+      "target": "settings"
+    },
+    {
+      "id": "39:1197",
+      "target": "locale:feedback"
+    },
+    {
+      "id": "39:1223",
+      "target": "reply"
+    },
+    {
+      "id": "39:1225",
+      "target": "messages"
+    },
+    {
+      "id": "39:1232",
+      "target": "overview"
+    },
+    {
+      "id": "39:1236",
+      "target": "users"
+    },
+    {
+      "id": "39:1240",
+      "target": "messages"
+    },
+    {
+      "id": "39:1244",
+      "target": "costs"
+    },
+    {
+      "id": "39:1248",
+      "target": "processing"
+    },
+    {
+      "id": "39:1252",
+      "target": "settings"
+    },
+    {
+      "id": "39:1257",
+      "target": "locale:reply"
+    },
+    {
+      "id": "39:1285",
+      "target": "replySent"
+    },
+    {
+      "id": "39:1287",
+      "target": "messages"
+    },
+    {
+      "id": "39:1294",
+      "target": "overview"
+    },
+    {
+      "id": "39:1298",
+      "target": "users"
+    },
+    {
+      "id": "39:1302",
+      "target": "messages"
+    },
+    {
+      "id": "39:1306",
+      "target": "costs"
+    },
+    {
+      "id": "39:1310",
+      "target": "processing"
+    },
+    {
+      "id": "39:1314",
+      "target": "settings"
+    },
+    {
+      "id": "39:1319",
+      "target": "locale:compose"
+    },
+    {
+      "id": "39:1352",
+      "target": "preview"
+    },
+    {
+      "id": "39:1354",
+      "target": "messages"
+    },
+    {
+      "id": "39:1361",
+      "target": "overview"
+    },
+    {
+      "id": "39:1365",
+      "target": "users"
+    },
+    {
+      "id": "39:1369",
+      "target": "messages"
+    },
+    {
+      "id": "39:1373",
+      "target": "costs"
+    },
+    {
+      "id": "39:1377",
+      "target": "processing"
+    },
+    {
+      "id": "39:1381",
+      "target": "settings"
+    },
+    {
+      "id": "39:1386",
+      "target": "locale:preview"
+    },
+    {
+      "id": "39:1418",
+      "target": "appList"
+    },
+    {
+      "id": "39:1420",
+      "target": "previewFaEmail"
+    },
+    {
+      "id": "39:1423",
+      "target": "sent"
+    },
+    {
+      "id": "39:1425",
+      "target": "compose"
+    },
+    {
+      "id": "39:1432",
+      "target": "overview"
+    },
+    {
+      "id": "39:1436",
+      "target": "users"
+    },
+    {
+      "id": "39:1440",
+      "target": "messages"
+    },
+    {
+      "id": "39:1444",
+      "target": "costs"
+    },
+    {
+      "id": "39:1448",
+      "target": "processing"
+    },
+    {
+      "id": "39:1452",
+      "target": "settings"
+    },
+    {
+      "id": "39:1457",
+      "target": "locale:sent"
+    },
+    {
+      "id": "39:1487",
+      "target": "tasks"
+    },
+    {
+      "id": "39:1494",
+      "target": "overview"
+    },
+    {
+      "id": "39:1498",
+      "target": "users"
+    },
+    {
+      "id": "39:1502",
+      "target": "messages"
+    },
+    {
+      "id": "39:1506",
+      "target": "costs"
+    },
+    {
+      "id": "39:1510",
+      "target": "processing"
+    },
+    {
+      "id": "39:1514",
+      "target": "settings"
+    },
+    {
+      "id": "39:1519",
+      "target": "locale:composeOne"
+    },
+    {
+      "id": "39:1551",
+      "target": "previewOne"
+    },
+    {
+      "id": "39:1553",
+      "target": "messages"
+    },
+    {
+      "id": "39:1560",
+      "target": "overview"
+    },
+    {
+      "id": "39:1564",
+      "target": "users"
+    },
+    {
+      "id": "39:1568",
+      "target": "messages"
+    },
+    {
+      "id": "39:1572",
+      "target": "costs"
+    },
+    {
+      "id": "39:1576",
+      "target": "processing"
+    },
+    {
+      "id": "39:1580",
+      "target": "settings"
+    },
+    {
+      "id": "39:1585",
+      "target": "locale:previewOne"
+    },
+    {
+      "id": "39:1611",
+      "target": "appList"
+    },
+    {
+      "id": "39:1614",
+      "target": "sentOne"
+    },
+    {
+      "id": "39:1616",
+      "target": "composeOne"
+    },
+    {
+      "id": "39:1623",
+      "target": "overview"
+    },
+    {
+      "id": "39:1627",
+      "target": "users"
+    },
+    {
+      "id": "39:1631",
+      "target": "messages"
+    },
+    {
+      "id": "39:1635",
+      "target": "costs"
+    },
+    {
+      "id": "39:1639",
+      "target": "processing"
+    },
+    {
+      "id": "39:1643",
+      "target": "settings"
+    },
+    {
+      "id": "39:1648",
+      "target": "locale:sentOne"
+    },
+    {
+      "id": "39:1670",
+      "target": "tasks"
+    },
+    {
+      "id": "39:1677",
+      "target": "overview"
+    },
+    {
+      "id": "39:1681",
+      "target": "users"
+    },
+    {
+      "id": "39:1685",
+      "target": "messages"
+    },
+    {
+      "id": "39:1689",
+      "target": "costs"
+    },
+    {
+      "id": "39:1693",
+      "target": "processing"
+    },
+    {
+      "id": "39:1697",
+      "target": "settings"
+    },
+    {
+      "id": "39:1702",
+      "target": "locale:replySent"
+    },
+    {
+      "id": "39:1713",
+      "target": "messages"
+    },
+    {
+      "id": "39:1720",
+      "target": "overview"
+    },
+    {
+      "id": "39:1724",
+      "target": "users"
+    },
+    {
+      "id": "39:1728",
+      "target": "messages"
+    },
+    {
+      "id": "39:1732",
+      "target": "costs"
+    },
+    {
+      "id": "39:1736",
+      "target": "processing"
+    },
+    {
+      "id": "39:1740",
+      "target": "settings"
+    },
+    {
+      "id": "39:1745",
+      "target": "locale:pilotReview"
+    },
+    {
+      "id": "39:1767",
+      "target": "users"
+    },
+    {
+      "id": "39:1774",
+      "target": "overview"
+    },
+    {
+      "id": "39:1778",
+      "target": "users"
+    },
+    {
+      "id": "39:1782",
+      "target": "messages"
+    },
+    {
+      "id": "39:1786",
+      "target": "costs"
+    },
+    {
+      "id": "39:1790",
+      "target": "processing"
+    },
+    {
+      "id": "39:1794",
+      "target": "settings"
+    },
+    {
+      "id": "39:1799",
+      "target": "locale:pilotLowReview"
+    },
+    {
+      "id": "39:1821",
+      "target": "users"
+    },
+    {
+      "id": "39:1828",
+      "target": "overview"
+    },
+    {
+      "id": "39:1832",
+      "target": "users"
+    },
+    {
+      "id": "39:1836",
+      "target": "messages"
+    },
+    {
+      "id": "39:1840",
+      "target": "costs"
+    },
+    {
+      "id": "39:1844",
+      "target": "processing"
+    },
+    {
+      "id": "39:1848",
+      "target": "settings"
+    },
+    {
+      "id": "39:1853",
+      "target": "locale:previewFaEmail"
+    },
+    {
+      "id": "39:1885",
+      "target": "appList"
+    },
+    {
+      "id": "39:1887",
+      "target": "preview"
+    },
+    {
+      "id": "39:1890",
+      "target": "sent"
+    },
+    {
+      "id": "39:1892",
+      "target": "compose"
+    },
+    {
+      "id": "41:695",
+      "target": "overview"
+    },
+    {
+      "id": "41:699",
+      "target": "users"
+    },
+    {
+      "id": "41:703",
+      "target": "messages"
+    },
+    {
+      "id": "41:707",
+      "target": "costs"
+    },
+    {
+      "id": "41:711",
+      "target": "processing"
+    },
+    {
+      "id": "41:715",
+      "target": "settings"
+    },
+    {
+      "id": "41:720",
+      "target": "locale:rates"
+    },
+    {
+      "id": "41:771",
+      "target": "ratePreview"
+    },
+    {
+      "id": "41:778",
+      "target": "overview"
+    },
+    {
+      "id": "41:782",
+      "target": "users"
+    },
+    {
+      "id": "41:786",
+      "target": "messages"
+    },
+    {
+      "id": "41:790",
+      "target": "costs"
+    },
+    {
+      "id": "41:794",
+      "target": "processing"
+    },
+    {
+      "id": "41:798",
+      "target": "settings"
+    },
+    {
+      "id": "41:803",
+      "target": "locale:ratePreview"
+    },
+    {
+      "id": "41:856",
+      "target": "costs"
+    },
+    {
+      "id": "41:863",
+      "target": "overview"
+    },
+    {
+      "id": "41:867",
+      "target": "users"
+    },
+    {
+      "id": "41:871",
+      "target": "messages"
+    },
+    {
+      "id": "41:875",
+      "target": "costs"
+    },
+    {
+      "id": "41:879",
+      "target": "processing"
+    },
+    {
+      "id": "41:883",
+      "target": "settings"
+    },
+    {
+      "id": "41:888",
+      "target": "locale:templates"
+    },
+    {
+      "id": "41:902",
+      "target": "compose"
+    },
+    {
+      "id": "41:908",
+      "target": "compose"
+    },
+    {
+      "id": "41:914",
+      "target": "compose"
+    },
+    {
+      "id": "41:920",
+      "target": "compose"
+    },
+    {
+      "id": "41:926",
+      "target": "compose"
+    },
+    {
+      "id": "41:932",
+      "target": "compose"
+    },
+    {
+      "id": "41:938",
+      "target": "compose"
+    },
+    {
+      "id": "41:944",
+      "target": "compose"
+    },
+    {
+      "id": "41:950",
+      "target": "compose"
+    },
+    {
+      "id": "41:957",
+      "target": "overview"
+    },
+    {
+      "id": "41:961",
+      "target": "users"
+    },
+    {
+      "id": "41:965",
+      "target": "messages"
+    },
+    {
+      "id": "41:969",
+      "target": "costs"
+    },
+    {
+      "id": "41:973",
+      "target": "processing"
+    },
+    {
+      "id": "41:977",
+      "target": "settings"
+    },
+    {
+      "id": "41:982",
+      "target": "locale:privacy"
+    },
+    {
+      "id": "41:1013",
+      "target": "overview"
+    },
+    {
+      "id": "41:1017",
+      "target": "users"
+    },
+    {
+      "id": "41:1021",
+      "target": "messages"
+    },
+    {
+      "id": "41:1025",
+      "target": "costs"
+    },
+    {
+      "id": "41:1029",
+      "target": "processing"
+    },
+    {
+      "id": "41:1033",
+      "target": "settings"
+    },
+    {
+      "id": "41:1038",
+      "target": "locale:backups"
+    },
+    {
+      "id": "41:1069",
+      "target": "overview"
+    },
+    {
+      "id": "41:1073",
+      "target": "users"
+    },
+    {
+      "id": "41:1077",
+      "target": "messages"
+    },
+    {
+      "id": "41:1081",
+      "target": "costs"
+    },
+    {
+      "id": "41:1085",
+      "target": "processing"
+    },
+    {
+      "id": "41:1089",
+      "target": "settings"
+    },
+    {
+      "id": "41:1094",
+      "target": "locale:audit"
+    },
+    {
+      "id": "41:1126",
+      "target": "overview"
+    },
+    {
+      "id": "41:1130",
+      "target": "users"
+    },
+    {
+      "id": "41:1134",
+      "target": "messages"
+    },
+    {
+      "id": "41:1138",
+      "target": "costs"
+    },
+    {
+      "id": "41:1142",
+      "target": "processing"
+    },
+    {
+      "id": "41:1146",
+      "target": "settings"
+    },
+    {
+      "id": "41:1151",
+      "target": "locale:settings"
+    },
+    {
+      "id": "41:1165",
+      "target": "locale:settings"
+    },
+    {
+      "id": "41:1180",
+      "target": "templates"
+    },
+    {
+      "id": "41:1185",
+      "target": "pilot"
+    },
+    {
+      "id": "41:1190",
+      "target": "privacy"
+    },
+    {
+      "id": "41:1195",
+      "target": "backups"
+    },
+    {
+      "id": "41:1200",
+      "target": "audit"
+    },
+    {
+      "id": "41:1207",
+      "target": "overview"
+    },
+    {
+      "id": "41:1211",
+      "target": "users"
+    },
+    {
+      "id": "41:1215",
+      "target": "messages"
+    },
+    {
+      "id": "41:1219",
+      "target": "costs"
+    },
+    {
+      "id": "41:1223",
+      "target": "processing"
+    },
+    {
+      "id": "41:1227",
+      "target": "settings"
+    },
+    {
+      "id": "41:1232",
+      "target": "locale:tasks"
+    },
+    {
+      "id": "41:1246",
+      "target": "compose"
+    },
+    {
+      "id": "41:1252",
+      "target": "messages"
+    },
+    {
+      "id": "41:1258",
+      "target": "failed"
+    },
+    {
+      "id": "41:1265",
+      "target": "overview"
+    },
+    {
+      "id": "41:1269",
+      "target": "users"
+    },
+    {
+      "id": "41:1273",
+      "target": "messages"
+    },
+    {
+      "id": "41:1277",
+      "target": "costs"
+    },
+    {
+      "id": "41:1281",
+      "target": "processing"
+    },
+    {
+      "id": "41:1285",
+      "target": "settings"
+    },
+    {
+      "id": "41:1290",
+      "target": "locale:empty"
+    },
+    {
+      "id": "41:1301",
+      "target": "users"
+    },
+    {
+      "id": "41:1308",
+      "target": "overview"
+    },
+    {
+      "id": "41:1312",
+      "target": "users"
+    },
+    {
+      "id": "41:1316",
+      "target": "messages"
+    },
+    {
+      "id": "41:1320",
+      "target": "costs"
+    },
+    {
+      "id": "41:1324",
+      "target": "processing"
+    },
+    {
+      "id": "41:1328",
+      "target": "settings"
+    },
+    {
+      "id": "41:1333",
+      "target": "locale:failed"
+    },
+    {
+      "id": "41:1363",
+      "target": "composeOne"
+    },
+    {
+      "id": "41:1370",
+      "target": "overview"
+    },
+    {
+      "id": "41:1374",
+      "target": "users"
+    },
+    {
+      "id": "41:1378",
+      "target": "messages"
+    },
+    {
+      "id": "41:1382",
+      "target": "costs"
+    },
+    {
+      "id": "41:1386",
+      "target": "processing"
+    },
+    {
+      "id": "41:1390",
+      "target": "settings"
+    },
+    {
+      "id": "41:1395",
+      "target": "locale:capacityLow"
+    },
+    {
+      "id": "41:1419",
+      "target": "pilotLowReview"
+    },
+    {
+      "id": "41:1421",
+      "target": "capacityLow"
+    },
+    {
+      "id": "42:1498",
+      "target": "overview"
+    },
+    {
+      "id": "42:1502",
+      "target": "users"
+    },
+    {
+      "id": "42:1506",
+      "target": "messages"
+    },
+    {
+      "id": "42:1510",
+      "target": "costs"
+    },
+    {
+      "id": "42:1514",
+      "target": "processing"
+    },
+    {
+      "id": "42:1518",
+      "target": "settings"
+    },
+    {
+      "id": "42:1523",
+      "target": "locale:feedback"
+    },
+    {
+      "id": "42:1548",
+      "target": "reply"
+    },
+    {
+      "id": "42:1550",
+      "target": "messages"
+    },
+    {
+      "id": "42:1557",
+      "target": "overview"
+    },
+    {
+      "id": "42:1561",
+      "target": "users"
+    },
+    {
+      "id": "42:1565",
+      "target": "messages"
+    },
+    {
+      "id": "42:1569",
+      "target": "costs"
+    },
+    {
+      "id": "42:1573",
+      "target": "processing"
+    },
+    {
+      "id": "42:1577",
+      "target": "settings"
+    },
+    {
+      "id": "42:1582",
+      "target": "locale:reply"
+    },
+    {
+      "id": "42:1609",
+      "target": "replySent"
+    },
+    {
+      "id": "42:1611",
+      "target": "messages"
+    },
+    {
+      "id": "42:1618",
+      "target": "overview"
+    },
+    {
+      "id": "42:1622",
+      "target": "users"
+    },
+    {
+      "id": "42:1626",
+      "target": "messages"
+    },
+    {
+      "id": "42:1630",
+      "target": "costs"
+    },
+    {
+      "id": "42:1634",
+      "target": "processing"
+    },
+    {
+      "id": "42:1638",
+      "target": "settings"
+    },
+    {
+      "id": "42:1643",
+      "target": "locale:compose"
+    },
+    {
+      "id": "42:1675",
+      "target": "preview"
+    },
+    {
+      "id": "42:1677",
+      "target": "messages"
+    },
+    {
+      "id": "42:1684",
+      "target": "overview"
+    },
+    {
+      "id": "42:1688",
+      "target": "users"
+    },
+    {
+      "id": "42:1692",
+      "target": "messages"
+    },
+    {
+      "id": "42:1696",
+      "target": "costs"
+    },
+    {
+      "id": "42:1700",
+      "target": "processing"
+    },
+    {
+      "id": "42:1704",
+      "target": "settings"
+    },
+    {
+      "id": "42:1709",
+      "target": "locale:composeOne"
+    },
+    {
+      "id": "42:1740",
+      "target": "previewOne"
+    },
+    {
+      "id": "42:1742",
+      "target": "messages"
+    },
+    {
+      "id": "42:1755",
+      "target": "overview"
+    },
+    {
+      "id": "42:1759",
+      "target": "users"
+    },
+    {
+      "id": "42:1763",
+      "target": "messages"
+    },
+    {
+      "id": "42:1767",
+      "target": "costs"
+    },
+    {
+      "id": "42:1771",
+      "target": "processing"
+    },
+    {
+      "id": "42:1775",
+      "target": "settings"
+    },
+    {
+      "id": "42:1780",
+      "target": "locale:feedback"
+    },
+    {
+      "id": "42:1799",
+      "target": "messages"
+    },
+    {
+      "id": "42:1801",
+      "target": "reply"
+    },
+    {
+      "id": "42:1813",
+      "target": "overview"
+    },
+    {
+      "id": "42:1817",
+      "target": "users"
+    },
+    {
+      "id": "42:1821",
+      "target": "messages"
+    },
+    {
+      "id": "42:1825",
+      "target": "costs"
+    },
+    {
+      "id": "42:1829",
+      "target": "processing"
+    },
+    {
+      "id": "42:1833",
+      "target": "settings"
+    },
+    {
+      "id": "42:1838",
+      "target": "locale:reply"
+    },
+    {
+      "id": "42:1860",
+      "target": "messages"
+    },
+    {
+      "id": "42:1862",
+      "target": "replySent"
+    },
+    {
+      "id": "42:1875",
+      "target": "overview"
+    },
+    {
+      "id": "42:1879",
+      "target": "users"
+    },
+    {
+      "id": "42:1883",
+      "target": "messages"
+    },
+    {
+      "id": "42:1887",
+      "target": "costs"
+    },
+    {
+      "id": "42:1891",
+      "target": "processing"
+    },
+    {
+      "id": "42:1895",
+      "target": "settings"
+    },
+    {
+      "id": "42:1900",
+      "target": "locale:compose"
+    },
+    {
+      "id": "42:1926",
+      "target": "messages"
+    },
+    {
+      "id": "42:1928",
+      "target": "preview"
+    },
+    {
+      "id": "42:1940",
+      "target": "overview"
+    },
+    {
+      "id": "42:1944",
+      "target": "users"
+    },
+    {
+      "id": "42:1948",
+      "target": "messages"
+    },
+    {
+      "id": "42:1952",
+      "target": "costs"
+    },
+    {
+      "id": "42:1956",
+      "target": "processing"
+    },
+    {
+      "id": "42:1960",
+      "target": "settings"
+    },
+    {
+      "id": "42:1965",
+      "target": "locale:composeOne"
+    },
+    {
+      "id": "42:1991",
+      "target": "messages"
+    },
+    {
+      "id": "42:1993",
+      "target": "previewOne"
+    },
+    {
+      "id": "42:1999",
+      "target": "appList"
+    },
+    {
+      "id": "42:2021",
+      "target": "appList"
+    },
+    {
+      "id": "42:2027",
+      "target": "appList"
+    },
+    {
+      "id": "42:2046",
+      "target": "appThread"
+    },
+    {
+      "id": "42:2048",
+      "target": "appForm"
+    },
+    {
+      "id": "42:2054",
+      "target": "appList"
+    },
+    {
+      "id": "42:2072",
+      "target": "appList"
+    },
+    {
+      "id": "43:821",
+      "target": "overview"
+    },
+    {
+      "id": "43:825",
+      "target": "users"
+    },
+    {
+      "id": "43:829",
+      "target": "messages"
+    },
+    {
+      "id": "43:833",
+      "target": "costs"
+    },
+    {
+      "id": "43:837",
+      "target": "processing"
+    },
+    {
+      "id": "43:841",
+      "target": "settings"
+    },
+    {
+      "id": "43:846",
+      "target": "locale:sender"
+    },
+    {
+      "id": "43:875",
+      "target": "settings"
+    },
+    {
+      "id": "43:881",
+      "target": "appList"
+    },
+    {
+      "id": "43:893",
+      "target": "appForm"
+    },
+    {
+      "id": "43:899",
+      "target": "appList"
+    },
+    {
+      "id": "43:907",
+      "target": "overview"
+    },
+    {
+      "id": "43:911",
+      "target": "users"
+    },
+    {
+      "id": "43:915",
+      "target": "messages"
+    },
+    {
+      "id": "43:919",
+      "target": "costs"
+    },
+    {
+      "id": "43:923",
+      "target": "processing"
+    },
+    {
+      "id": "43:927",
+      "target": "settings"
+    },
+    {
+      "id": "43:932",
+      "target": "locale:overview"
+    },
+    {
+      "id": "43:947",
+      "target": "compose"
+    },
+    {
+      "id": "43:953",
+      "target": "messages"
+    },
+    {
+      "id": "43:959",
+      "target": "run"
+    },
+    {
+      "id": "43:962",
+      "target": "pilot"
+    },
+    {
+      "id": "43:966",
+      "target": "costs"
+    },
+    {
+      "id": "43:970",
+      "target": "processing"
+    },
+    {
+      "id": "43:982",
+      "target": "backups"
+    },
+    {
+      "id": "43:983",
+      "target": "backups"
+    },
+    {
+      "id": "43:984",
+      "target": "backups"
+    },
+    {
+      "id": "43:986",
+      "target": "user"
+    },
+    {
+      "id": "43:987",
+      "target": "user"
+    },
+    {
+      "id": "43:988",
+      "target": "user"
+    },
+    {
+      "id": "43:999",
+      "target": "overview"
+    },
+    {
+      "id": "43:1003",
+      "target": "users"
+    },
+    {
+      "id": "43:1007",
+      "target": "messages"
+    },
+    {
+      "id": "43:1011",
+      "target": "costs"
+    },
+    {
+      "id": "43:1015",
+      "target": "processing"
+    },
+    {
+      "id": "43:1019",
+      "target": "settings"
+    },
+    {
+      "id": "43:1024",
+      "target": "locale:sender"
+    },
+    {
+      "id": "43:1048",
+      "target": "settings"
+    },
+    {
+      "id": "43:1053",
+      "target": "locale:overview"
+    },
+    {
+      "id": "43:1067",
+      "target": "compose"
+    },
+    {
+      "id": "43:1073",
+      "target": "messages"
+    },
+    {
+      "id": "43:1079",
+      "target": "run"
+    },
+    {
+      "id": "43:1097",
+      "target": "backups"
+    },
+    {
+      "id": "43:1098",
+      "target": "backups"
+    },
+    {
+      "id": "43:1099",
+      "target": "backups"
+    },
+    {
+      "id": "43:1101",
+      "target": "user"
+    },
+    {
+      "id": "43:1102",
+      "target": "user"
+    },
+    {
+      "id": "43:1103",
+      "target": "user"
+    },
+    {
+      "id": "43:1107",
+      "target": "locale:tasks"
+    },
+    {
+      "id": "43:1120",
+      "target": "compose"
+    },
+    {
+      "id": "43:1126",
+      "target": "messages"
+    },
+    {
+      "id": "43:1132",
+      "target": "failed"
+    },
+    {
+      "id": "43:1145",
+      "target": "overview"
+    },
+    {
+      "id": "43:1149",
+      "target": "users"
+    },
+    {
+      "id": "43:1153",
+      "target": "messages"
+    },
+    {
+      "id": "43:1157",
+      "target": "costs"
+    },
+    {
+      "id": "43:1161",
+      "target": "processing"
+    },
+    {
+      "id": "43:1165",
+      "target": "settings"
+    },
+    {
+      "id": "43:1170",
+      "target": "locale:overview"
+    },
+    {
+      "id": "43:1176",
+      "target": "compose"
+    },
+    {
+      "id": "43:1182",
+      "target": "messages"
+    },
+    {
+      "id": "43:1188",
+      "target": "run"
+    },
+    {
+      "id": "43:1194",
+      "target": "processing"
+    },
+    {
+      "id": "43:1198",
+      "target": "costs"
+    },
+    {
+      "id": "43:1202",
+      "target": "pilot"
+    },
+    {
+      "id": "43:1214",
+      "target": "backups"
+    },
+    {
+      "id": "43:1215",
+      "target": "backups"
+    },
+    {
+      "id": "43:1216",
+      "target": "backups"
+    },
+    {
+      "id": "43:1218",
+      "target": "user"
+    },
+    {
+      "id": "43:1219",
+      "target": "user"
+    },
+    {
+      "id": "43:1220",
+      "target": "user"
+    },
+    {
+      "id": "44:1559",
+      "target": "appList"
+    },
+    {
+      "id": "44:1580",
+      "target": "appList"
+    },
+    {
+      "id": "45:882",
+      "target": "overview"
+    },
+    {
+      "id": "45:886",
+      "target": "users"
+    },
+    {
+      "id": "45:890",
+      "target": "messages"
+    },
+    {
+      "id": "45:894",
+      "target": "costs"
+    },
+    {
+      "id": "45:898",
+      "target": "processing"
+    },
+    {
+      "id": "45:902",
+      "target": "settings"
+    },
+    {
+      "id": "45:907",
+      "target": "locale:guide"
+    },
+    {
+      "id": "45:924",
+      "target": "overview"
+    },
+    {
+      "id": "45:930",
+      "target": "messages"
+    },
+    {
+      "id": "45:936",
+      "target": "settings"
+    },
+    {
+      "id": "45:938",
+      "target": "appSettings"
+    },
+    {
+      "id": "45:951",
+      "target": "overview"
+    },
+    {
+      "id": "45:955",
+      "target": "users"
+    },
+    {
+      "id": "45:959",
+      "target": "messages"
+    },
+    {
+      "id": "45:963",
+      "target": "costs"
+    },
+    {
+      "id": "45:967",
+      "target": "processing"
+    },
+    {
+      "id": "45:971",
+      "target": "settings"
+    },
+    {
+      "id": "45:976",
+      "target": "locale:guide"
+    },
+    {
+      "id": "45:985",
+      "target": "overview"
+    },
+    {
+      "id": "45:991",
+      "target": "messages"
+    },
+    {
+      "id": "45:997",
+      "target": "settings"
+    },
+    {
+      "id": "45:1002",
+      "target": "appSettings"
+    },
+    {
+      "id": "45:1008",
+      "target": "locale:users"
+    },
+    {
+      "id": "45:1020",
+      "target": "pilot"
+    },
+    {
+      "id": "45:1025",
+      "target": "compose"
+    },
+    {
+      "id": "45:1033",
+      "target": "user"
+    },
+    {
+      "id": "45:1039",
+      "target": "user"
+    },
+    {
+      "id": "45:1045",
+      "target": "user"
+    },
+    {
+      "id": "46:911",
+      "target": "locale:overview"
+    },
+    {
+      "id": "46:924",
+      "target": "compose"
+    },
+    {
+      "id": "46:930",
+      "target": "messages"
+    },
+    {
+      "id": "46:936",
+      "target": "run"
+    },
+    {
+      "id": "46:954",
+      "target": "backups"
+    },
+    {
+      "id": "46:955",
+      "target": "backups"
+    },
+    {
+      "id": "46:956",
+      "target": "backups"
+    },
+    {
+      "id": "46:958",
+      "target": "user"
+    },
+    {
+      "id": "46:959",
+      "target": "user"
+    },
+    {
+      "id": "46:960",
+      "target": "user"
+    },
+    {
+      "id": "46:965",
+      "target": "locale:tasks"
+    },
+    {
+      "id": "46:977",
+      "target": "compose"
+    },
+    {
+      "id": "46:983",
+      "target": "messages"
+    },
+    {
+      "id": "46:989",
+      "target": "failed"
+    },
+    {
+      "id": "46:995",
+      "target": "locale:users"
+    },
+    {
+      "id": "46:1006",
+      "target": "pilot"
+    },
+    {
+      "id": "46:1011",
+      "target": "compose"
+    },
+    {
+      "id": "46:1019",
+      "target": "user"
+    },
+    {
+      "id": "46:1025",
+      "target": "user"
+    },
+    {
+      "id": "46:1031",
+      "target": "user"
+    },
+    {
+      "id": "40:1101",
+      "target": "overview"
+    },
+    {
+      "id": "40:1105",
+      "target": "users"
+    },
+    {
+      "id": "40:1109",
+      "target": "messages"
+    },
+    {
+      "id": "40:1113",
+      "target": "costs"
+    },
+    {
+      "id": "40:1117",
+      "target": "processing"
+    },
+    {
+      "id": "40:1121",
+      "target": "settings"
+    },
+    {
+      "id": "40:1126",
+      "target": "locale:user"
+    },
+    {
+      "id": "40:1133",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1135",
+      "target": "composeOne"
+    },
+    {
+      "id": "40:1163",
+      "target": "costs"
+    },
+    {
+      "id": "40:1166",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1181",
+      "target": "overview"
+    },
+    {
+      "id": "40:1185",
+      "target": "users"
+    },
+    {
+      "id": "40:1189",
+      "target": "messages"
+    },
+    {
+      "id": "40:1193",
+      "target": "costs"
+    },
+    {
+      "id": "40:1197",
+      "target": "processing"
+    },
+    {
+      "id": "40:1201",
+      "target": "settings"
+    },
+    {
+      "id": "40:1206",
+      "target": "locale:pilot"
+    },
+    {
+      "id": "40:1225",
+      "target": "capacityLow"
+    },
+    {
+      "id": "40:1227",
+      "target": "pilotReview"
+    },
+    {
+      "id": "40:1239",
+      "target": "overview"
+    },
+    {
+      "id": "40:1243",
+      "target": "users"
+    },
+    {
+      "id": "40:1247",
+      "target": "messages"
+    },
+    {
+      "id": "40:1251",
+      "target": "costs"
+    },
+    {
+      "id": "40:1255",
+      "target": "processing"
+    },
+    {
+      "id": "40:1259",
+      "target": "settings"
+    },
+    {
+      "id": "40:1264",
+      "target": "locale:costs"
+    },
+    {
+      "id": "40:1292",
+      "target": "rates"
+    },
+    {
+      "id": "40:1295",
+      "target": "settings"
+    },
+    {
+      "id": "40:1311",
+      "target": "overview"
+    },
+    {
+      "id": "40:1315",
+      "target": "users"
+    },
+    {
+      "id": "40:1319",
+      "target": "messages"
+    },
+    {
+      "id": "40:1323",
+      "target": "costs"
+    },
+    {
+      "id": "40:1327",
+      "target": "processing"
+    },
+    {
+      "id": "40:1331",
+      "target": "settings"
+    },
+    {
+      "id": "40:1336",
+      "target": "locale:rates"
+    },
+    {
+      "id": "40:1381",
+      "target": "ratePreview"
+    },
+    {
+      "id": "40:1393",
+      "target": "overview"
+    },
+    {
+      "id": "40:1397",
+      "target": "users"
+    },
+    {
+      "id": "40:1401",
+      "target": "messages"
+    },
+    {
+      "id": "40:1405",
+      "target": "costs"
+    },
+    {
+      "id": "40:1409",
+      "target": "processing"
+    },
+    {
+      "id": "40:1413",
+      "target": "settings"
+    },
+    {
+      "id": "40:1418",
+      "target": "locale:ratePreview"
+    },
+    {
+      "id": "40:1466",
+      "target": "costs"
+    },
+    {
+      "id": "40:1478",
+      "target": "overview"
+    },
+    {
+      "id": "40:1482",
+      "target": "users"
+    },
+    {
+      "id": "40:1486",
+      "target": "messages"
+    },
+    {
+      "id": "40:1490",
+      "target": "costs"
+    },
+    {
+      "id": "40:1494",
+      "target": "processing"
+    },
+    {
+      "id": "40:1498",
+      "target": "settings"
+    },
+    {
+      "id": "40:1503",
+      "target": "locale:processing"
+    },
+    {
+      "id": "40:1515",
+      "target": "run"
+    },
+    {
+      "id": "40:1516",
+      "target": "run"
+    },
+    {
+      "id": "40:1517",
+      "target": "run"
+    },
+    {
+      "id": "40:1518",
+      "target": "run"
+    },
+    {
+      "id": "40:1520",
+      "target": "run"
+    },
+    {
+      "id": "40:1521",
+      "target": "run"
+    },
+    {
+      "id": "40:1522",
+      "target": "run"
+    },
+    {
+      "id": "40:1523",
+      "target": "run"
+    },
+    {
+      "id": "40:1525",
+      "target": "run"
+    },
+    {
+      "id": "40:1526",
+      "target": "run"
+    },
+    {
+      "id": "40:1527",
+      "target": "run"
+    },
+    {
+      "id": "40:1528",
+      "target": "run"
+    },
+    {
+      "id": "40:1539",
+      "target": "overview"
+    },
+    {
+      "id": "40:1543",
+      "target": "users"
+    },
+    {
+      "id": "40:1547",
+      "target": "messages"
+    },
+    {
+      "id": "40:1551",
+      "target": "costs"
+    },
+    {
+      "id": "40:1555",
+      "target": "processing"
+    },
+    {
+      "id": "40:1559",
+      "target": "settings"
+    },
+    {
+      "id": "40:1564",
+      "target": "locale:run"
+    },
+    {
+      "id": "40:1582",
+      "target": "processing"
+    },
+    {
+      "id": "40:1584",
+      "target": "compose"
+    },
+    {
+      "id": "40:1597",
+      "target": "overview"
+    },
+    {
+      "id": "40:1601",
+      "target": "users"
+    },
+    {
+      "id": "40:1605",
+      "target": "messages"
+    },
+    {
+      "id": "40:1609",
+      "target": "costs"
+    },
+    {
+      "id": "40:1613",
+      "target": "processing"
+    },
+    {
+      "id": "40:1617",
+      "target": "settings"
+    },
+    {
+      "id": "40:1622",
+      "target": "locale:messages"
+    },
+    {
+      "id": "40:1626",
+      "target": "compose"
+    },
+    {
+      "id": "40:1628",
+      "target": "templates"
+    },
+    {
+      "id": "40:1630",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1640",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1641",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1642",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1644",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1645",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1646",
+      "target": "feedback"
+    },
+    {
+      "id": "40:1648",
+      "target": "failed"
+    },
+    {
+      "id": "40:1664",
+      "target": "overview"
+    },
+    {
+      "id": "40:1668",
+      "target": "users"
+    },
+    {
+      "id": "40:1672",
+      "target": "messages"
+    },
+    {
+      "id": "40:1676",
+      "target": "costs"
+    },
+    {
+      "id": "40:1680",
+      "target": "processing"
+    },
+    {
+      "id": "40:1684",
+      "target": "settings"
+    },
+    {
+      "id": "40:1689",
+      "target": "locale:feedback"
+    },
+    {
+      "id": "40:1709",
+      "target": "messages"
+    },
+    {
+      "id": "40:1711",
+      "target": "reply"
+    },
+    {
+      "id": "40:1723",
+      "target": "overview"
+    },
+    {
+      "id": "40:1727",
+      "target": "users"
+    },
+    {
+      "id": "40:1731",
+      "target": "messages"
+    },
+    {
+      "id": "40:1735",
+      "target": "costs"
+    },
+    {
+      "id": "40:1739",
+      "target": "processing"
+    },
+    {
+      "id": "40:1743",
+      "target": "settings"
+    },
+    {
+      "id": "40:1748",
+      "target": "locale:reply"
+    },
+    {
+      "id": "40:1771",
+      "target": "messages"
+    },
+    {
+      "id": "40:1773",
+      "target": "replySent"
+    },
+    {
+      "id": "40:1786",
+      "target": "overview"
+    },
+    {
+      "id": "40:1790",
+      "target": "users"
+    },
+    {
+      "id": "40:1794",
+      "target": "messages"
+    },
+    {
+      "id": "40:1798",
+      "target": "costs"
+    },
+    {
+      "id": "40:1802",
+      "target": "processing"
+    },
+    {
+      "id": "40:1806",
+      "target": "settings"
+    },
+    {
+      "id": "40:1811",
+      "target": "locale:compose"
+    },
+    {
+      "id": "40:1838",
+      "target": "messages"
+    },
+    {
+      "id": "40:1840",
+      "target": "preview"
+    },
+    {
+      "id": "40:1852",
+      "target": "overview"
+    },
+    {
+      "id": "40:1856",
+      "target": "users"
+    },
+    {
+      "id": "40:1860",
+      "target": "messages"
+    },
+    {
+      "id": "40:1864",
+      "target": "costs"
+    },
+    {
+      "id": "40:1868",
+      "target": "processing"
+    },
+    {
+      "id": "40:1872",
+      "target": "settings"
+    },
+    {
+      "id": "40:1877",
+      "target": "locale:preview"
+    },
+    {
+      "id": "40:1904",
+      "target": "appList"
+    },
+    {
+      "id": "40:1906",
+      "target": "previewFaEmail"
+    },
+    {
+      "id": "40:1909",
+      "target": "compose"
+    },
+    {
+      "id": "40:1911",
+      "target": "sent"
+    },
+    {
+      "id": "40:1923",
+      "target": "overview"
+    },
+    {
+      "id": "40:1927",
+      "target": "users"
+    },
+    {
+      "id": "40:1931",
+      "target": "messages"
+    },
+    {
+      "id": "40:1935",
+      "target": "costs"
+    },
+    {
+      "id": "40:1939",
+      "target": "processing"
+    },
+    {
+      "id": "40:1943",
+      "target": "settings"
+    },
+    {
+      "id": "40:1948",
+      "target": "locale:sent"
+    },
+    {
+      "id": "40:1973",
+      "target": "tasks"
+    },
+    {
+      "id": "40:1985",
+      "target": "overview"
+    },
+    {
+      "id": "40:1989",
+      "target": "users"
+    },
+    {
+      "id": "40:1993",
+      "target": "messages"
+    },
+    {
+      "id": "40:1997",
+      "target": "costs"
+    },
+    {
+      "id": "40:2001",
+      "target": "processing"
+    },
+    {
+      "id": "40:2005",
+      "target": "settings"
+    },
+    {
+      "id": "40:2010",
+      "target": "locale:templates"
+    },
+    {
+      "id": "40:2016",
+      "target": "compose"
+    },
+    {
+      "id": "40:2022",
+      "target": "compose"
+    },
+    {
+      "id": "40:2028",
+      "target": "compose"
+    },
+    {
+      "id": "40:2034",
+      "target": "compose"
+    },
+    {
+      "id": "40:2040",
+      "target": "compose"
+    },
+    {
+      "id": "40:2046",
+      "target": "compose"
+    },
+    {
+      "id": "40:2052",
+      "target": "compose"
+    },
+    {
+      "id": "40:2058",
+      "target": "compose"
+    },
+    {
+      "id": "40:2064",
+      "target": "compose"
+    },
+    {
+      "id": "40:2079",
+      "target": "overview"
+    },
+    {
+      "id": "40:2083",
+      "target": "users"
+    },
+    {
+      "id": "40:2087",
+      "target": "messages"
+    },
+    {
+      "id": "40:2091",
+      "target": "costs"
+    },
+    {
+      "id": "40:2095",
+      "target": "processing"
+    },
+    {
+      "id": "40:2099",
+      "target": "settings"
+    },
+    {
+      "id": "40:2104",
+      "target": "locale:privacy"
+    },
+    {
+      "id": "40:2135",
+      "target": "overview"
+    },
+    {
+      "id": "40:2139",
+      "target": "users"
+    },
+    {
+      "id": "40:2143",
+      "target": "messages"
+    },
+    {
+      "id": "40:2147",
+      "target": "costs"
+    },
+    {
+      "id": "40:2151",
+      "target": "processing"
+    },
+    {
+      "id": "40:2155",
+      "target": "settings"
+    },
+    {
+      "id": "40:2160",
+      "target": "locale:backups"
+    },
+    {
+      "id": "40:2191",
+      "target": "overview"
+    },
+    {
+      "id": "40:2195",
+      "target": "users"
+    },
+    {
+      "id": "40:2199",
+      "target": "messages"
+    },
+    {
+      "id": "40:2203",
+      "target": "costs"
+    },
+    {
+      "id": "40:2207",
+      "target": "processing"
+    },
+    {
+      "id": "40:2211",
+      "target": "settings"
+    },
+    {
+      "id": "40:2216",
+      "target": "locale:audit"
+    },
+    {
+      "id": "40:2248",
+      "target": "overview"
+    },
+    {
+      "id": "40:2252",
+      "target": "users"
+    },
+    {
+      "id": "40:2256",
+      "target": "messages"
+    },
+    {
+      "id": "40:2260",
+      "target": "costs"
+    },
+    {
+      "id": "40:2264",
+      "target": "processing"
+    },
+    {
+      "id": "40:2268",
+      "target": "settings"
+    },
+    {
+      "id": "40:2273",
+      "target": "locale:settings"
+    },
+    {
+      "id": "40:2282",
+      "target": "locale:settings"
+    },
+    {
+      "id": "40:2295",
+      "target": "templates"
+    },
+    {
+      "id": "40:2300",
+      "target": "pilot"
+    },
+    {
+      "id": "40:2305",
+      "target": "privacy"
+    },
+    {
+      "id": "40:2310",
+      "target": "backups"
+    },
+    {
+      "id": "40:2315",
+      "target": "audit"
+    },
+    {
+      "id": "40:2329",
+      "target": "overview"
+    },
+    {
+      "id": "40:2333",
+      "target": "users"
+    },
+    {
+      "id": "40:2337",
+      "target": "messages"
+    },
+    {
+      "id": "40:2341",
+      "target": "costs"
+    },
+    {
+      "id": "40:2345",
+      "target": "processing"
+    },
+    {
+      "id": "40:2349",
+      "target": "settings"
+    },
+    {
+      "id": "40:2354",
+      "target": "locale:tasks"
+    },
+    {
+      "id": "40:2360",
+      "target": "compose"
+    },
+    {
+      "id": "40:2366",
+      "target": "messages"
+    },
+    {
+      "id": "40:2372",
+      "target": "failed"
+    },
+    {
+      "id": "40:2387",
+      "target": "overview"
+    },
+    {
+      "id": "40:2391",
+      "target": "users"
+    },
+    {
+      "id": "40:2395",
+      "target": "messages"
+    },
+    {
+      "id": "40:2399",
+      "target": "costs"
+    },
+    {
+      "id": "40:2403",
+      "target": "processing"
+    },
+    {
+      "id": "40:2407",
+      "target": "settings"
+    },
+    {
+      "id": "40:2412",
+      "target": "locale:empty"
+    },
+    {
+      "id": "40:2418",
+      "target": "users"
+    },
+    {
+      "id": "40:2430",
+      "target": "overview"
+    },
+    {
+      "id": "40:2434",
+      "target": "users"
+    },
+    {
+      "id": "40:2438",
+      "target": "messages"
+    },
+    {
+      "id": "40:2442",
+      "target": "costs"
+    },
+    {
+      "id": "40:2446",
+      "target": "processing"
+    },
+    {
+      "id": "40:2450",
+      "target": "settings"
+    },
+    {
+      "id": "40:2455",
+      "target": "locale:failed"
+    },
+    {
+      "id": "40:2480",
+      "target": "composeOne"
+    },
+    {
+      "id": "40:2492",
+      "target": "overview"
+    },
+    {
+      "id": "40:2496",
+      "target": "users"
+    },
+    {
+      "id": "40:2500",
+      "target": "messages"
+    },
+    {
+      "id": "40:2504",
+      "target": "costs"
+    },
+    {
+      "id": "40:2508",
+      "target": "processing"
+    },
+    {
+      "id": "40:2512",
+      "target": "settings"
+    },
+    {
+      "id": "40:2517",
+      "target": "locale:capacityLow"
+    },
+    {
+      "id": "40:2536",
+      "target": "capacityLow"
+    },
+    {
+      "id": "40:2538",
+      "target": "pilotLowReview"
+    },
+    {
+      "id": "40:2550",
+      "target": "overview"
+    },
+    {
+      "id": "40:2554",
+      "target": "users"
+    },
+    {
+      "id": "40:2558",
+      "target": "messages"
+    },
+    {
+      "id": "40:2562",
+      "target": "costs"
+    },
+    {
+      "id": "40:2566",
+      "target": "processing"
+    },
+    {
+      "id": "40:2570",
+      "target": "settings"
+    },
+    {
+      "id": "40:2575",
+      "target": "locale:composeOne"
+    },
+    {
+      "id": "40:2602",
+      "target": "messages"
+    },
+    {
+      "id": "40:2604",
+      "target": "previewOne"
+    },
+    {
+      "id": "40:2616",
+      "target": "overview"
+    },
+    {
+      "id": "40:2620",
+      "target": "users"
+    },
+    {
+      "id": "40:2624",
+      "target": "messages"
+    },
+    {
+      "id": "40:2628",
+      "target": "costs"
+    },
+    {
+      "id": "40:2632",
+      "target": "processing"
+    },
+    {
+      "id": "40:2636",
+      "target": "settings"
+    },
+    {
+      "id": "40:2641",
+      "target": "locale:previewOne"
+    },
+    {
+      "id": "40:2662",
+      "target": "appList"
+    },
+    {
+      "id": "40:2665",
+      "target": "composeOne"
+    },
+    {
+      "id": "40:2667",
+      "target": "sentOne"
+    },
+    {
+      "id": "40:2679",
+      "target": "overview"
+    },
+    {
+      "id": "40:2683",
+      "target": "users"
+    },
+    {
+      "id": "40:2687",
+      "target": "messages"
+    },
+    {
+      "id": "40:2691",
+      "target": "costs"
+    },
+    {
+      "id": "40:2695",
+      "target": "processing"
+    },
+    {
+      "id": "40:2699",
+      "target": "settings"
+    },
+    {
+      "id": "40:2704",
+      "target": "locale:sentOne"
+    },
+    {
+      "id": "40:2721",
+      "target": "tasks"
+    },
+    {
+      "id": "40:2733",
+      "target": "overview"
+    },
+    {
+      "id": "40:2737",
+      "target": "users"
+    },
+    {
+      "id": "40:2741",
+      "target": "messages"
+    },
+    {
+      "id": "40:2745",
+      "target": "costs"
+    },
+    {
+      "id": "40:2749",
+      "target": "processing"
+    },
+    {
+      "id": "40:2753",
+      "target": "settings"
+    },
+    {
+      "id": "40:2758",
+      "target": "locale:replySent"
+    },
+    {
+      "id": "40:2764",
+      "target": "messages"
+    },
+    {
+      "id": "40:2776",
+      "target": "overview"
+    },
+    {
+      "id": "40:2780",
+      "target": "users"
+    },
+    {
+      "id": "40:2784",
+      "target": "messages"
+    },
+    {
+      "id": "40:2788",
+      "target": "costs"
+    },
+    {
+      "id": "40:2792",
+      "target": "processing"
+    },
+    {
+      "id": "40:2796",
+      "target": "settings"
+    },
+    {
+      "id": "40:2801",
+      "target": "locale:pilotReview"
+    },
+    {
+      "id": "40:2818",
+      "target": "users"
+    },
+    {
+      "id": "40:2830",
+      "target": "overview"
+    },
+    {
+      "id": "40:2834",
+      "target": "users"
+    },
+    {
+      "id": "40:2838",
+      "target": "messages"
+    },
+    {
+      "id": "40:2842",
+      "target": "costs"
+    },
+    {
+      "id": "40:2846",
+      "target": "processing"
+    },
+    {
+      "id": "40:2850",
+      "target": "settings"
+    },
+    {
+      "id": "40:2855",
+      "target": "locale:pilotLowReview"
+    },
+    {
+      "id": "40:2872",
+      "target": "users"
+    },
+    {
+      "id": "40:2884",
+      "target": "overview"
+    },
+    {
+      "id": "40:2888",
+      "target": "users"
+    },
+    {
+      "id": "40:2892",
+      "target": "messages"
+    },
+    {
+      "id": "40:2896",
+      "target": "costs"
+    },
+    {
+      "id": "40:2900",
+      "target": "processing"
+    },
+    {
+      "id": "40:2904",
+      "target": "settings"
+    },
+    {
+      "id": "40:2909",
+      "target": "locale:previewFaEmail"
+    },
+    {
+      "id": "40:2936",
+      "target": "appList"
+    },
+    {
+      "id": "40:2938",
+      "target": "preview"
+    },
+    {
+      "id": "40:2941",
+      "target": "compose"
+    },
+    {
+      "id": "40:2943",
+      "target": "sent"
+    },
+    {
+      "id": "50:976",
+      "target": "overview"
+    },
+    {
+      "id": "50:980",
+      "target": "users"
+    },
+    {
+      "id": "50:984",
+      "target": "messages"
+    },
+    {
+      "id": "50:988",
+      "target": "costs"
+    },
+    {
+      "id": "50:992",
+      "target": "processing"
+    },
+    {
+      "id": "50:996",
+      "target": "settings"
+    },
+    {
+      "id": "50:1001",
+      "target": "locale:user"
+    },
+    {
+      "id": "50:1013",
+      "target": "composeOne"
+    },
+    {
+      "id": "50:1015",
+      "target": "feedback"
+    },
+    {
+      "id": "50:1060",
+      "target": "allowance"
+    },
+    {
+      "id": "50:1066",
+      "target": "feedback"
+    },
+    {
+      "id": "50:1073",
+      "target": "overview"
+    },
+    {
+      "id": "50:1077",
+      "target": "users"
+    },
+    {
+      "id": "50:1081",
+      "target": "messages"
+    },
+    {
+      "id": "50:1085",
+      "target": "costs"
+    },
+    {
+      "id": "50:1089",
+      "target": "processing"
+    },
+    {
+      "id": "50:1093",
+      "target": "settings"
+    },
+    {
+      "id": "50:1098",
+      "target": "locale:allowance"
+    },
+    {
+      "id": "50:1148",
+      "target": "allowanceReview"
+    },
+    {
+      "id": "50:1150",
+      "target": "user"
+    },
+    {
+      "id": "50:1157",
+      "target": "overview"
+    },
+    {
+      "id": "50:1161",
+      "target": "users"
+    },
+    {
+      "id": "50:1165",
+      "target": "messages"
+    },
+    {
+      "id": "50:1169",
+      "target": "costs"
+    },
+    {
+      "id": "50:1173",
+      "target": "processing"
+    },
+    {
+      "id": "50:1177",
+      "target": "settings"
+    },
+    {
+      "id": "50:1182",
+      "target": "locale:allowanceReview"
+    },
+    {
+      "id": "50:1242",
+      "target": "user"
+    },
+    {
+      "id": "50:1244",
+      "target": "allowance"
+    },
+    {
+      "id": "50:1251",
+      "target": "overview"
+    },
+    {
+      "id": "50:1255",
+      "target": "users"
+    },
+    {
+      "id": "50:1259",
+      "target": "messages"
+    },
+    {
+      "id": "50:1263",
+      "target": "costs"
+    },
+    {
+      "id": "50:1267",
+      "target": "processing"
+    },
+    {
+      "id": "50:1271",
+      "target": "settings"
+    },
+    {
+      "id": "50:1276",
+      "target": "locale:userNew"
+    },
+    {
+      "id": "50:1293",
+      "target": "grant"
+    },
+    {
+      "id": "50:1300",
+      "target": "overview"
+    },
+    {
+      "id": "50:1304",
+      "target": "users"
+    },
+    {
+      "id": "50:1308",
+      "target": "messages"
+    },
+    {
+      "id": "50:1312",
+      "target": "costs"
+    },
+    {
+      "id": "50:1316",
+      "target": "processing"
+    },
+    {
+      "id": "50:1320",
+      "target": "settings"
+    },
+    {
+      "id": "50:1325",
+      "target": "locale:grant"
+    },
+    {
+      "id": "50:1383",
+      "target": "grantReview"
+    },
+    {
+      "id": "50:1385",
+      "target": "userNew"
+    },
+    {
+      "id": "50:1392",
+      "target": "overview"
+    },
+    {
+      "id": "50:1396",
+      "target": "users"
+    },
+    {
+      "id": "50:1400",
+      "target": "messages"
+    },
+    {
+      "id": "50:1404",
+      "target": "costs"
+    },
+    {
+      "id": "50:1408",
+      "target": "processing"
+    },
+    {
+      "id": "50:1412",
+      "target": "settings"
+    },
+    {
+      "id": "50:1417",
+      "target": "locale:grantReview"
+    },
+    {
+      "id": "50:1477",
+      "target": "tasks"
+    },
+    {
+      "id": "50:1479",
+      "target": "grant"
+    },
+    {
+      "id": "50:1491",
+      "target": "overview"
+    },
+    {
+      "id": "50:1495",
+      "target": "users"
+    },
+    {
+      "id": "50:1499",
+      "target": "messages"
+    },
+    {
+      "id": "50:1503",
+      "target": "costs"
+    },
+    {
+      "id": "50:1507",
+      "target": "processing"
+    },
+    {
+      "id": "50:1511",
+      "target": "settings"
+    },
+    {
+      "id": "50:1516",
+      "target": "locale:user"
+    },
+    {
+      "id": "50:1523",
+      "target": "feedback"
+    },
+    {
+      "id": "50:1525",
+      "target": "composeOne"
+    },
+    {
+      "id": "50:1570",
+      "target": "allowance"
+    },
+    {
+      "id": "50:1573",
+      "target": "feedback"
+    },
+    {
+      "id": "50:1588",
+      "target": "overview"
+    },
+    {
+      "id": "50:1592",
+      "target": "users"
+    },
+    {
+      "id": "50:1596",
+      "target": "messages"
+    },
+    {
+      "id": "50:1600",
+      "target": "costs"
+    },
+    {
+      "id": "50:1604",
+      "target": "processing"
+    },
+    {
+      "id": "50:1608",
+      "target": "settings"
+    },
+    {
+      "id": "50:1613",
+      "target": "locale:allowance"
+    },
+    {
+      "id": "50:1658",
+      "target": "user"
+    },
+    {
+      "id": "50:1660",
+      "target": "allowanceReview"
+    },
+    {
+      "id": "50:1672",
+      "target": "overview"
+    },
+    {
+      "id": "50:1676",
+      "target": "users"
+    },
+    {
+      "id": "50:1680",
+      "target": "messages"
+    },
+    {
+      "id": "50:1684",
+      "target": "costs"
+    },
+    {
+      "id": "50:1688",
+      "target": "processing"
+    },
+    {
+      "id": "50:1692",
+      "target": "settings"
+    },
+    {
+      "id": "50:1697",
+      "target": "locale:allowanceReview"
+    },
+    {
+      "id": "50:1752",
+      "target": "allowance"
+    },
+    {
+      "id": "50:1754",
+      "target": "user"
+    },
+    {
+      "id": "50:1766",
+      "target": "overview"
+    },
+    {
+      "id": "50:1770",
+      "target": "users"
+    },
+    {
+      "id": "50:1774",
+      "target": "messages"
+    },
+    {
+      "id": "50:1778",
+      "target": "costs"
+    },
+    {
+      "id": "50:1782",
+      "target": "processing"
+    },
+    {
+      "id": "50:1786",
+      "target": "settings"
+    },
+    {
+      "id": "50:1791",
+      "target": "locale:userNew"
+    },
+    {
+      "id": "50:1803",
+      "target": "grant"
+    },
+    {
+      "id": "50:1815",
+      "target": "overview"
+    },
+    {
+      "id": "50:1819",
+      "target": "users"
+    },
+    {
+      "id": "50:1823",
+      "target": "messages"
+    },
+    {
+      "id": "50:1827",
+      "target": "costs"
+    },
+    {
+      "id": "50:1831",
+      "target": "processing"
+    },
+    {
+      "id": "50:1835",
+      "target": "settings"
+    },
+    {
+      "id": "50:1840",
+      "target": "locale:grant"
+    },
+    {
+      "id": "50:1893",
+      "target": "userNew"
+    },
+    {
+      "id": "50:1895",
+      "target": "grantReview"
+    },
+    {
+      "id": "50:1907",
+      "target": "overview"
+    },
+    {
+      "id": "50:1911",
+      "target": "users"
+    },
+    {
+      "id": "50:1915",
+      "target": "messages"
+    },
+    {
+      "id": "50:1919",
+      "target": "costs"
+    },
+    {
+      "id": "50:1923",
+      "target": "processing"
+    },
+    {
+      "id": "50:1927",
+      "target": "settings"
+    },
+    {
+      "id": "50:1932",
+      "target": "locale:grantReview"
+    },
+    {
+      "id": "50:1987",
+      "target": "grant"
+    },
+    {
+      "id": "50:1989",
+      "target": "tasks"
+    },
+    {
+      "id": "53:1088",
+      "target": "overview"
+    },
+    {
+      "id": "53:1092",
+      "target": "users"
+    },
+    {
+      "id": "53:1096",
+      "target": "messages"
+    },
+    {
+      "id": "53:1100",
+      "target": "costs"
+    },
+    {
+      "id": "53:1104",
+      "target": "processing"
+    },
+    {
+      "id": "53:1108",
+      "target": "settings"
+    },
+    {
+      "id": "53:1113",
+      "target": "locale:allowanceLowReview"
+    },
+    {
+      "id": "53:1173",
+      "target": "user"
+    },
+    {
+      "id": "53:1175",
+      "target": "allowance"
+    },
+    {
+      "id": "53:1177",
+      "target": "allowanceLowReview"
+    },
+    {
+      "id": "53:1865",
+      "target": "overview"
+    },
+    {
+      "id": "53:1869",
+      "target": "users"
+    },
+    {
+      "id": "53:1873",
+      "target": "messages"
+    },
+    {
+      "id": "53:1877",
+      "target": "costs"
+    },
+    {
+      "id": "53:1881",
+      "target": "processing"
+    },
+    {
+      "id": "53:1885",
+      "target": "settings"
+    },
+    {
+      "id": "53:1890",
+      "target": "locale:allowanceLowReview"
+    },
+    {
+      "id": "53:1945",
+      "target": "allowance"
+    },
+    {
+      "id": "53:1947",
+      "target": "user"
+    },
+    {
+      "id": "53:1949",
+      "target": "allowanceLowReview"
+    }
+  ],
+  "recentOperations": [
+    {
+      "name": "figmaQuotaLatestEnParsed",
+      "pageId": "35:137",
+      "locale": "en",
+      "frames": [
+        {
+          "id": "50:971",
+          "name": "user · EN · Desktop",
+          "width": 1440,
+          "height": 1168,
+          "editableText": 57,
+          "instances": 11
+        },
+        {
+          "id": "50:1068",
+          "name": "allowance · EN · Desktop",
+          "width": 1440,
+          "height": 1224,
+          "editableText": 39,
+          "instances": 16
+        },
+        {
+          "id": "50:1152",
+          "name": "allowanceReview · EN · Desktop",
+          "width": 1440,
+          "height": 1116,
+          "editableText": 56,
+          "instances": 10
+        },
+        {
+          "id": "50:1246",
+          "name": "userNew · EN · Desktop",
+          "width": 1440,
+          "height": 1100,
+          "editableText": 22,
+          "instances": 8
+        },
+        {
+          "id": "50:1295",
+          "name": "grant · EN · Desktop",
+          "width": 1440,
+          "height": 1265,
+          "editableText": 42,
+          "instances": 18
+        },
+        {
+          "id": "50:1387",
+          "name": "grantReview · EN · Desktop",
+          "width": 1440,
+          "height": 1100,
+          "editableText": 56,
+          "instances": 10
+        }
+      ],
+      "links": [
+        {
+          "id": "50:976",
+          "target": "overview"
+        },
+        {
+          "id": "50:980",
+          "target": "users"
+        },
+        {
+          "id": "50:984",
+          "target": "messages"
+        },
+        {
+          "id": "50:988",
+          "target": "costs"
+        },
+        {
+          "id": "50:992",
+          "target": "processing"
+        },
+        {
+          "id": "50:996",
+          "target": "settings"
+        },
+        {
+          "id": "50:1001",
+          "target": "locale:user"
+        },
+        {
+          "id": "50:1013",
+          "target": "composeOne"
+        },
+        {
+          "id": "50:1015",
+          "target": "feedback"
+        },
+        {
+          "id": "50:1060",
+          "target": "allowance"
+        },
+        {
+          "id": "50:1066",
+          "target": "feedback"
+        },
+        {
+          "id": "50:1073",
+          "target": "overview"
+        },
+        {
+          "id": "50:1077",
+          "target": "users"
+        },
+        {
+          "id": "50:1081",
+          "target": "messages"
+        },
+        {
+          "id": "50:1085",
+          "target": "costs"
+        },
+        {
+          "id": "50:1089",
+          "target": "processing"
+        },
+        {
+          "id": "50:1093",
+          "target": "settings"
+        },
+        {
+          "id": "50:1098",
+          "target": "locale:allowance"
+        },
+        {
+          "id": "50:1148",
+          "target": "allowanceReview"
+        },
+        {
+          "id": "50:1150",
+          "target": "user"
+        },
+        {
+          "id": "50:1157",
+          "target": "overview"
+        },
+        {
+          "id": "50:1161",
+          "target": "users"
+        },
+        {
+          "id": "50:1165",
+          "target": "messages"
+        },
+        {
+          "id": "50:1169",
+          "target": "costs"
+        },
+        {
+          "id": "50:1173",
+          "target": "processing"
+        },
+        {
+          "id": "50:1177",
+          "target": "settings"
+        },
+        {
+          "id": "50:1182",
+          "target": "locale:allowanceReview"
+        },
+        {
+          "id": "50:1242",
+          "target": "user"
+        },
+        {
+          "id": "50:1244",
+          "target": "allowance"
+        },
+        {
+          "id": "50:1251",
+          "target": "overview"
+        },
+        {
+          "id": "50:1255",
+          "target": "users"
+        },
+        {
+          "id": "50:1259",
+          "target": "messages"
+        },
+        {
+          "id": "50:1263",
+          "target": "costs"
+        },
+        {
+          "id": "50:1267",
+          "target": "processing"
+        },
+        {
+          "id": "50:1271",
+          "target": "settings"
+        },
+        {
+          "id": "50:1276",
+          "target": "locale:userNew"
+        },
+        {
+          "id": "50:1293",
+          "target": "grant"
+        },
+        {
+          "id": "50:1300",
+          "target": "overview"
+        },
+        {
+          "id": "50:1304",
+          "target": "users"
+        },
+        {
+          "id": "50:1308",
+          "target": "messages"
+        },
+        {
+          "id": "50:1312",
+          "target": "costs"
+        },
+        {
+          "id": "50:1316",
+          "target": "processing"
+        },
+        {
+          "id": "50:1320",
+          "target": "settings"
+        },
+        {
+          "id": "50:1325",
+          "target": "locale:grant"
+        },
+        {
+          "id": "50:1383",
+          "target": "grantReview"
+        },
+        {
+          "id": "50:1385",
+          "target": "userNew"
+        },
+        {
+          "id": "50:1392",
+          "target": "overview"
+        },
+        {
+          "id": "50:1396",
+          "target": "users"
+        },
+        {
+          "id": "50:1400",
+          "target": "messages"
+        },
+        {
+          "id": "50:1404",
+          "target": "costs"
+        },
+        {
+          "id": "50:1408",
+          "target": "processing"
+        },
+        {
+          "id": "50:1412",
+          "target": "settings"
+        },
+        {
+          "id": "50:1417",
+          "target": "locale:grantReview"
+        },
+        {
+          "id": "50:1477",
+          "target": "tasks"
+        },
+        {
+          "id": "50:1479",
+          "target": "grant"
+        }
+      ],
+      "createdNodeIds": [
+        "50:971",
+        "50:972",
+        "50:973",
+        "50:974",
+        "50:975",
+        "50:976",
+        "50:977",
+        "50:979",
+        "50:980",
+        "50:981",
+        "50:983",
+        "50:984",
+        "50:985",
+        "50:987",
+        "50:988",
+        "50:989",
+        "50:991",
+        "50:992",
+        "50:993",
+        "50:995",
+        "50:996",
+        "50:997",
+        "50:999",
+        "50:1000",
+        "50:1001",
+        "50:1003",
+        "50:1004",
+        "50:1005",
+        "50:1006",
+        "50:1007",
+        "50:1008",
+        "50:1009",
+        "50:1010",
+        "50:1011",
+        "50:1012",
+        "50:1013",
+        "50:1015",
+        "50:1017",
+        "50:1018",
+        "50:1019",
+        "50:1020",
+        "50:1021",
+        "50:1022",
+        "50:1023",
+        "50:1024",
+        "50:1025",
+        "50:1026",
+        "50:1027",
+        "50:1028",
+        "50:1029",
+        "50:1030",
+        "50:1031",
+        "50:1032",
+        "50:1033",
+        "50:1034",
+        "50:1035",
+        "50:1036",
+        "50:1037",
+        "50:1038",
+        "50:1039",
+        "50:1040",
+        "50:1041",
+        "50:1042",
+        "50:1043",
+        "50:1044",
+        "50:1045",
+        "50:1046",
+        "50:1047",
+        "50:1048",
+        "50:1049",
+        "50:1050",
+        "50:1051",
+        "50:1052",
+        "50:1053",
+        "50:1054",
+        "50:1055",
+        "50:1056",
+        "50:1057",
+        "50:1058",
+        "50:1059",
+        "50:1060",
+        "50:1062",
+        "50:1063",
+        "50:1064",
+        "50:1065",
+        "50:1066",
+        "50:1068",
+        "50:1069",
+        "50:1070",
+        "50:1071",
+        "50:1072",
+        "50:1073",
+        "50:1074",
+        "50:1076",
+        "50:1077",
+        "50:1078",
+        "50:1080",
+        "50:1081",
+        "50:1082",
+        "50:1084",
+        "50:1085",
+        "50:1086",
+        "50:1088",
+        "50:1089",
+        "50:1090",
+        "50:1092",
+        "50:1093",
+        "50:1094",
+        "50:1096",
+        "50:1097",
+        "50:1098",
+        "50:1100",
+        "50:1101",
+        "50:1102",
+        "50:1103",
+        "50:1104",
+        "50:1105",
+        "50:1106",
+        "50:1107",
+        "50:1108",
+        "50:1109",
+        "50:1110",
+        "50:1111",
+        "50:1112",
+        "50:1113",
+        "50:1116",
+        "50:1117",
+        "50:1118",
+        "50:1121",
+        "50:1122",
+        "50:1125",
+        "50:1126",
+        "50:1127",
+        "50:1130",
+        "50:1131",
+        "50:1134",
+        "50:1135",
+        "50:1138",
+        "50:1139",
+        "50:1140",
+        "50:1143",
+        "50:1144",
+        "50:1145",
+        "50:1146",
+        "50:1147",
+        "50:1148",
+        "50:1150",
+        "50:1152",
+        "50:1153",
+        "50:1154",
+        "50:1155",
+        "50:1156",
+        "50:1157",
+        "50:1158",
+        "50:1160",
+        "50:1161",
+        "50:1162",
+        "50:1164",
+        "50:1165",
+        "50:1166",
+        "50:1168",
+        "50:1169",
+        "50:1170",
+        "50:1172",
+        "50:1173",
+        "50:1174",
+        "50:1176",
+        "50:1177",
+        "50:1178",
+        "50:1180",
+        "50:1181",
+        "50:1182",
+        "50:1184",
+        "50:1185",
+        "50:1186",
+        "50:1187",
+        "50:1188",
+        "50:1189",
+        "50:1190",
+        "50:1191",
+        "50:1192",
+        "50:1193",
+        "50:1194",
+        "50:1195",
+        "50:1196",
+        "50:1197",
+        "50:1198",
+        "50:1199",
+        "50:1200",
+        "50:1201",
+        "50:1202",
+        "50:1203",
+        "50:1204",
+        "50:1205",
+        "50:1206",
+        "50:1207",
+        "50:1208",
+        "50:1209",
+        "50:1210",
+        "50:1211",
+        "50:1212",
+        "50:1213",
+        "50:1214",
+        "50:1215",
+        "50:1216",
+        "50:1217",
+        "50:1218",
+        "50:1219",
+        "50:1220",
+        "50:1221",
+        "50:1222",
+        "50:1223",
+        "50:1224",
+        "50:1225",
+        "50:1226",
+        "50:1227",
+        "50:1228",
+        "50:1229",
+        "50:1230",
+        "50:1231",
+        "50:1232",
+        "50:1233",
+        "50:1234",
+        "50:1237",
+        "50:1238",
+        "50:1239",
+        "50:1240",
+        "50:1241",
+        "50:1242",
+        "50:1244",
+        "50:1246",
+        "50:1247",
+        "50:1248",
+        "50:1249",
+        "50:1250",
+        "50:1251",
+        "50:1252",
+        "50:1254",
+        "50:1255",
+        "50:1256",
+        "50:1258",
+        "50:1259",
+        "50:1260",
+        "50:1262",
+        "50:1263",
+        "50:1264",
+        "50:1266",
+        "50:1267",
+        "50:1268",
+        "50:1270",
+        "50:1271",
+        "50:1272",
+        "50:1274",
+        "50:1275",
+        "50:1276",
+        "50:1278",
+        "50:1279",
+        "50:1280",
+        "50:1281",
+        "50:1282",
+        "50:1283",
+        "50:1284",
+        "50:1285",
+        "50:1286",
+        "50:1287",
+        "50:1288",
+        "50:1289",
+        "50:1290",
+        "50:1291",
+        "50:1292",
+        "50:1293",
+        "50:1295",
+        "50:1296",
+        "50:1297",
+        "50:1298",
+        "50:1299",
+        "50:1300",
+        "50:1301",
+        "50:1303",
+        "50:1304",
+        "50:1305",
+        "50:1307",
+        "50:1308",
+        "50:1309",
+        "50:1311",
+        "50:1312",
+        "50:1313",
+        "50:1315",
+        "50:1316",
+        "50:1317",
+        "50:1319",
+        "50:1320",
+        "50:1321",
+        "50:1323",
+        "50:1324",
+        "50:1325",
+        "50:1327",
+        "50:1328",
+        "50:1329",
+        "50:1330",
+        "50:1331",
+        "50:1332",
+        "50:1333",
+        "50:1334",
+        "50:1335",
+        "50:1336",
+        "50:1337",
+        "50:1338",
+        "50:1339",
+        "50:1340",
+        "50:1343",
+        "50:1344",
+        "50:1345",
+        "50:1348",
+        "50:1349",
+        "50:1352",
+        "50:1353",
+        "50:1354",
+        "50:1357",
+        "50:1358",
+        "50:1361",
+        "50:1362",
+        "50:1365",
+        "50:1366",
+        "50:1367",
+        "50:1370",
+        "50:1371",
+        "50:1374",
+        "50:1375",
+        "50:1378",
+        "50:1379",
+        "50:1380",
+        "50:1381",
+        "50:1382",
+        "50:1383",
+        "50:1385",
+        "50:1387",
+        "50:1388",
+        "50:1389",
+        "50:1390",
+        "50:1391",
+        "50:1392",
+        "50:1393",
+        "50:1395",
+        "50:1396",
+        "50:1397",
+        "50:1399",
+        "50:1400",
+        "50:1401",
+        "50:1403",
+        "50:1404",
+        "50:1405",
+        "50:1407",
+        "50:1408",
+        "50:1409",
+        "50:1411",
+        "50:1412",
+        "50:1413",
+        "50:1415",
+        "50:1416",
+        "50:1417",
+        "50:1419",
+        "50:1420",
+        "50:1421",
+        "50:1422",
+        "50:1423",
+        "50:1424",
+        "50:1425",
+        "50:1426",
+        "50:1427",
+        "50:1428",
+        "50:1429",
+        "50:1430",
+        "50:1431",
+        "50:1432",
+        "50:1433",
+        "50:1434",
+        "50:1435",
+        "50:1436",
+        "50:1437",
+        "50:1438",
+        "50:1439",
+        "50:1440",
+        "50:1441",
+        "50:1442",
+        "50:1443",
+        "50:1444",
+        "50:1445",
+        "50:1446",
+        "50:1447",
+        "50:1448",
+        "50:1449",
+        "50:1450",
+        "50:1451",
+        "50:1452",
+        "50:1453",
+        "50:1454",
+        "50:1455",
+        "50:1456",
+        "50:1457",
+        "50:1458",
+        "50:1459",
+        "50:1460",
+        "50:1461",
+        "50:1462",
+        "50:1463",
+        "50:1464",
+        "50:1465",
+        "50:1466",
+        "50:1467",
+        "50:1468",
+        "50:1469",
+        "50:1472",
+        "50:1473",
+        "50:1474",
+        "50:1475",
+        "50:1476",
+        "50:1477",
+        "50:1479"
+      ],
+      "mutatedNodeIds": [],
+      "removedNodeIds": [
+        "39:1029",
+        "40:1091",
+        "49:923",
+        "49:1003",
+        "49:1083",
+        "49:1163"
+      ],
+      "styles": {
+        "body": "S:a758bfc5704ceadc560d320c37c8d5ff0f1dee06,",
+        "bodyLarge": "S:58a42bf01ed6b0b717e203cc78cb4d9544e0a1e0,",
+        "label": "S:4c0daa3e2115b3d7ff57e6a8bb53e74322167423,",
+        "title": "S:3e89565c09501dcc8757272465e70c2523e4226f,",
+        "display": "S:97802f618e310008057128b4f571920829e06a32,"
+      }
+    },
+    {
+      "name": "figmaQuotaLatestFaParsed",
+      "pageId": "35:137",
+      "locale": "fa",
+      "frames": [
+        {
+          "id": "50:1481",
+          "name": "user · FA · Desktop",
+          "width": 1440,
+          "height": 1168,
+          "editableText": 57,
+          "instances": 11
+        },
+        {
+          "id": "50:1578",
+          "name": "allowance · FA · Desktop",
+          "width": 1440,
+          "height": 1201,
+          "editableText": 39,
+          "instances": 16
+        },
+        {
+          "id": "50:1662",
+          "name": "allowanceReview · FA · Desktop",
+          "width": 1440,
+          "height": 1100,
+          "editableText": 56,
+          "instances": 10
+        },
+        {
+          "id": "50:1756",
+          "name": "userNew · FA · Desktop",
+          "width": 1440,
+          "height": 1100,
+          "editableText": 22,
+          "instances": 8
+        },
+        {
+          "id": "50:1805",
+          "name": "grant · FA · Desktop",
+          "width": 1440,
+          "height": 1265,
+          "editableText": 42,
+          "instances": 18
+        },
+        {
+          "id": "50:1897",
+          "name": "grantReview · FA · Desktop",
+          "width": 1440,
+          "height": 1100,
+          "editableText": 56,
+          "instances": 10
+        }
+      ],
+      "links": [
+        {
+          "id": "50:1491",
+          "target": "overview"
+        },
+        {
+          "id": "50:1495",
+          "target": "users"
+        },
+        {
+          "id": "50:1499",
+          "target": "messages"
+        },
+        {
+          "id": "50:1503",
+          "target": "costs"
+        },
+        {
+          "id": "50:1507",
+          "target": "processing"
+        },
+        {
+          "id": "50:1511",
+          "target": "settings"
+        },
+        {
+          "id": "50:1516",
+          "target": "locale:user"
+        },
+        {
+          "id": "50:1523",
+          "target": "feedback"
+        },
+        {
+          "id": "50:1525",
+          "target": "composeOne"
+        },
+        {
+          "id": "50:1570",
+          "target": "allowance"
+        },
+        {
+          "id": "50:1573",
+          "target": "feedback"
+        },
+        {
+          "id": "50:1588",
+          "target": "overview"
+        },
+        {
+          "id": "50:1592",
+          "target": "users"
+        },
+        {
+          "id": "50:1596",
+          "target": "messages"
+        },
+        {
+          "id": "50:1600",
+          "target": "costs"
+        },
+        {
+          "id": "50:1604",
+          "target": "processing"
+        },
+        {
+          "id": "50:1608",
+          "target": "settings"
+        },
+        {
+          "id": "50:1613",
+          "target": "locale:allowance"
+        },
+        {
+          "id": "50:1658",
+          "target": "user"
+        },
+        {
+          "id": "50:1660",
+          "target": "allowanceReview"
+        },
+        {
+          "id": "50:1672",
+          "target": "overview"
+        },
+        {
+          "id": "50:1676",
+          "target": "users"
+        },
+        {
+          "id": "50:1680",
+          "target": "messages"
+        },
+        {
+          "id": "50:1684",
+          "target": "costs"
+        },
+        {
+          "id": "50:1688",
+          "target": "processing"
+        },
+        {
+          "id": "50:1692",
+          "target": "settings"
+        },
+        {
+          "id": "50:1697",
+          "target": "locale:allowanceReview"
+        },
+        {
+          "id": "50:1752",
+          "target": "allowance"
+        },
+        {
+          "id": "50:1754",
+          "target": "user"
+        },
+        {
+          "id": "50:1766",
+          "target": "overview"
+        },
+        {
+          "id": "50:1770",
+          "target": "users"
+        },
+        {
+          "id": "50:1774",
+          "target": "messages"
+        },
+        {
+          "id": "50:1778",
+          "target": "costs"
+        },
+        {
+          "id": "50:1782",
+          "target": "processing"
+        },
+        {
+          "id": "50:1786",
+          "target": "settings"
+        },
+        {
+          "id": "50:1791",
+          "target": "locale:userNew"
+        },
+        {
+          "id": "50:1803",
+          "target": "grant"
+        },
+        {
+          "id": "50:1815",
+          "target": "overview"
+        },
+        {
+          "id": "50:1819",
+          "target": "users"
+        },
+        {
+          "id": "50:1823",
+          "target": "messages"
+        },
+        {
+          "id": "50:1827",
+          "target": "costs"
+        },
+        {
+          "id": "50:1831",
+          "target": "processing"
+        },
+        {
+          "id": "50:1835",
+          "target": "settings"
+        },
+        {
+          "id": "50:1840",
+          "target": "locale:grant"
+        },
+        {
+          "id": "50:1893",
+          "target": "userNew"
+        },
+        {
+          "id": "50:1895",
+          "target": "grantReview"
+        },
+        {
+          "id": "50:1907",
+          "target": "overview"
+        },
+        {
+          "id": "50:1911",
+          "target": "users"
+        },
+        {
+          "id": "50:1915",
+          "target": "messages"
+        },
+        {
+          "id": "50:1919",
+          "target": "costs"
+        },
+        {
+          "id": "50:1923",
+          "target": "processing"
+        },
+        {
+          "id": "50:1927",
+          "target": "settings"
+        },
+        {
+          "id": "50:1932",
+          "target": "locale:grantReview"
+        },
+        {
+          "id": "50:1987",
+          "target": "grant"
+        },
+        {
+          "id": "50:1989",
+          "target": "tasks"
+        }
+      ],
+      "createdNodeIds": [
+        "50:1481",
+        "50:1482",
+        "50:1483",
+        "50:1484",
+        "50:1485",
+        "50:1486",
+        "50:1487",
+        "50:1488",
+        "50:1489",
+        "50:1490",
+        "50:1491",
+        "50:1492",
+        "50:1493",
+        "50:1495",
+        "50:1496",
+        "50:1497",
+        "50:1499",
+        "50:1500",
+        "50:1501",
+        "50:1503",
+        "50:1504",
+        "50:1505",
+        "50:1507",
+        "50:1508",
+        "50:1509",
+        "50:1511",
+        "50:1512",
+        "50:1513",
+        "50:1515",
+        "50:1516",
+        "50:1518",
+        "50:1519",
+        "50:1520",
+        "50:1521",
+        "50:1522",
+        "50:1523",
+        "50:1525",
+        "50:1527",
+        "50:1528",
+        "50:1529",
+        "50:1530",
+        "50:1531",
+        "50:1532",
+        "50:1533",
+        "50:1534",
+        "50:1535",
+        "50:1536",
+        "50:1537",
+        "50:1538",
+        "50:1539",
+        "50:1540",
+        "50:1541",
+        "50:1542",
+        "50:1543",
+        "50:1544",
+        "50:1545",
+        "50:1546",
+        "50:1547",
+        "50:1548",
+        "50:1549",
+        "50:1550",
+        "50:1551",
+        "50:1552",
+        "50:1553",
+        "50:1554",
+        "50:1555",
+        "50:1556",
+        "50:1557",
+        "50:1558",
+        "50:1559",
+        "50:1560",
+        "50:1561",
+        "50:1562",
+        "50:1563",
+        "50:1564",
+        "50:1565",
+        "50:1566",
+        "50:1567",
+        "50:1568",
+        "50:1569",
+        "50:1570",
+        "50:1572",
+        "50:1573",
+        "50:1575",
+        "50:1576",
+        "50:1577",
+        "50:1578",
+        "50:1579",
+        "50:1580",
+        "50:1581",
+        "50:1582",
+        "50:1583",
+        "50:1584",
+        "50:1585",
+        "50:1586",
+        "50:1587",
+        "50:1588",
+        "50:1589",
+        "50:1590",
+        "50:1592",
+        "50:1593",
+        "50:1594",
+        "50:1596",
+        "50:1597",
+        "50:1598",
+        "50:1600",
+        "50:1601",
+        "50:1602",
+        "50:1604",
+        "50:1605",
+        "50:1606",
+        "50:1608",
+        "50:1609",
+        "50:1610",
+        "50:1612",
+        "50:1613",
+        "50:1615",
+        "50:1616",
+        "50:1617",
+        "50:1618",
+        "50:1619",
+        "50:1620",
+        "50:1621",
+        "50:1622",
+        "50:1623",
+        "50:1626",
+        "50:1627",
+        "50:1628",
+        "50:1631",
+        "50:1632",
+        "50:1635",
+        "50:1636",
+        "50:1637",
+        "50:1640",
+        "50:1641",
+        "50:1644",
+        "50:1645",
+        "50:1648",
+        "50:1649",
+        "50:1650",
+        "50:1653",
+        "50:1654",
+        "50:1655",
+        "50:1656",
+        "50:1657",
+        "50:1658",
+        "50:1660",
+        "50:1662",
+        "50:1663",
+        "50:1664",
+        "50:1665",
+        "50:1666",
+        "50:1667",
+        "50:1668",
+        "50:1669",
+        "50:1670",
+        "50:1671",
+        "50:1672",
+        "50:1673",
+        "50:1674",
+        "50:1676",
+        "50:1677",
+        "50:1678",
+        "50:1680",
+        "50:1681",
+        "50:1682",
+        "50:1684",
+        "50:1685",
+        "50:1686",
+        "50:1688",
+        "50:1689",
+        "50:1690",
+        "50:1692",
+        "50:1693",
+        "50:1694",
+        "50:1696",
+        "50:1697",
+        "50:1699",
+        "50:1700",
+        "50:1701",
+        "50:1702",
+        "50:1703",
+        "50:1704",
+        "50:1705",
+        "50:1706",
+        "50:1707",
+        "50:1708",
+        "50:1709",
+        "50:1710",
+        "50:1711",
+        "50:1712",
+        "50:1713",
+        "50:1714",
+        "50:1715",
+        "50:1716",
+        "50:1717",
+        "50:1718",
+        "50:1719",
+        "50:1720",
+        "50:1721",
+        "50:1722",
+        "50:1723",
+        "50:1724",
+        "50:1725",
+        "50:1726",
+        "50:1727",
+        "50:1728",
+        "50:1729",
+        "50:1730",
+        "50:1731",
+        "50:1732",
+        "50:1733",
+        "50:1734",
+        "50:1735",
+        "50:1736",
+        "50:1737",
+        "50:1738",
+        "50:1739",
+        "50:1740",
+        "50:1741",
+        "50:1742",
+        "50:1743",
+        "50:1744",
+        "50:1747",
+        "50:1748",
+        "50:1749",
+        "50:1750",
+        "50:1751",
+        "50:1752",
+        "50:1754",
+        "50:1756",
+        "50:1757",
+        "50:1758",
+        "50:1759",
+        "50:1760",
+        "50:1761",
+        "50:1762",
+        "50:1763",
+        "50:1764",
+        "50:1765",
+        "50:1766",
+        "50:1767",
+        "50:1768",
+        "50:1770",
+        "50:1771",
+        "50:1772",
+        "50:1774",
+        "50:1775",
+        "50:1776",
+        "50:1778",
+        "50:1779",
+        "50:1780",
+        "50:1782",
+        "50:1783",
+        "50:1784",
+        "50:1786",
+        "50:1787",
+        "50:1788",
+        "50:1790",
+        "50:1791",
+        "50:1793",
+        "50:1794",
+        "50:1795",
+        "50:1796",
+        "50:1797",
+        "50:1798",
+        "50:1799",
+        "50:1800",
+        "50:1801",
+        "50:1802",
+        "50:1803",
+        "50:1805",
+        "50:1806",
+        "50:1807",
+        "50:1808",
+        "50:1809",
+        "50:1810",
+        "50:1811",
+        "50:1812",
+        "50:1813",
+        "50:1814",
+        "50:1815",
+        "50:1816",
+        "50:1817",
+        "50:1819",
+        "50:1820",
+        "50:1821",
+        "50:1823",
+        "50:1824",
+        "50:1825",
+        "50:1827",
+        "50:1828",
+        "50:1829",
+        "50:1831",
+        "50:1832",
+        "50:1833",
+        "50:1835",
+        "50:1836",
+        "50:1837",
+        "50:1839",
+        "50:1840",
+        "50:1842",
+        "50:1843",
+        "50:1844",
+        "50:1845",
+        "50:1846",
+        "50:1847",
+        "50:1848",
+        "50:1849",
+        "50:1850",
+        "50:1853",
+        "50:1854",
+        "50:1855",
+        "50:1858",
+        "50:1859",
+        "50:1862",
+        "50:1863",
+        "50:1864",
+        "50:1867",
+        "50:1868",
+        "50:1871",
+        "50:1872",
+        "50:1875",
+        "50:1876",
+        "50:1877",
+        "50:1880",
+        "50:1881",
+        "50:1884",
+        "50:1885",
+        "50:1888",
+        "50:1889",
+        "50:1890",
+        "50:1891",
+        "50:1892",
+        "50:1893",
+        "50:1895",
+        "50:1897",
+        "50:1898",
+        "50:1899",
+        "50:1900",
+        "50:1901",
+        "50:1902",
+        "50:1903",
+        "50:1904",
+        "50:1905",
+        "50:1906",
+        "50:1907",
+        "50:1908",
+        "50:1909",
+        "50:1911",
+        "50:1912",
+        "50:1913",
+        "50:1915",
+        "50:1916",
+        "50:1917",
+        "50:1919",
+        "50:1920",
+        "50:1921",
+        "50:1923",
+        "50:1924",
+        "50:1925",
+        "50:1927",
+        "50:1928",
+        "50:1929",
+        "50:1931",
+        "50:1932",
+        "50:1934",
+        "50:1935",
+        "50:1936",
+        "50:1937",
+        "50:1938",
+        "50:1939",
+        "50:1940",
+        "50:1941",
+        "50:1942",
+        "50:1943",
+        "50:1944",
+        "50:1945",
+        "50:1946",
+        "50:1947",
+        "50:1948",
+        "50:1949",
+        "50:1950",
+        "50:1951",
+        "50:1952",
+        "50:1953",
+        "50:1954",
+        "50:1955",
+        "50:1956",
+        "50:1957",
+        "50:1958",
+        "50:1959",
+        "50:1960",
+        "50:1961",
+        "50:1962",
+        "50:1963",
+        "50:1964",
+        "50:1965",
+        "50:1966",
+        "50:1967",
+        "50:1968",
+        "50:1969",
+        "50:1970",
+        "50:1971",
+        "50:1972",
+        "50:1973",
+        "50:1974",
+        "50:1975",
+        "50:1976",
+        "50:1977",
+        "50:1978",
+        "50:1979",
+        "50:1982",
+        "50:1983",
+        "50:1984",
+        "50:1985",
+        "50:1986",
+        "50:1987",
+        "50:1989"
+      ],
+      "mutatedNodeIds": [],
+      "styles": {
+        "body": "S:c555e05c9bc7a49e48f19bab5f7bea4124882e04,",
+        "bodyLarge": "S:7373ec04b38bfb64018633d09a8c682ce3e14e24,",
+        "label": "S:9ca7e4adeb5ef9835f438b05e416da242731b33d,",
+        "title": "S:6d1232d957465ca9a22b2cc3e9c68f64f3a44aee,",
+        "display": "S:a8191436e44b153db23fcabe080d0f483ecaa521,"
+      }
+    },
+    {
+      "name": "figmaLowenParsed",
+      "pageId": "35:137",
+      "locale": "en",
+      "frames": [
+        {
+          "id": "53:1083",
+          "name": "allowanceLowReview · EN · Desktop",
+          "width": 1440,
+          "height": 1116,
+          "editableText": 56,
+          "instances": 10
+        }
+      ],
+      "links": [
+        {
+          "id": "53:1088",
+          "target": "overview"
+        },
+        {
+          "id": "53:1092",
+          "target": "users"
+        },
+        {
+          "id": "53:1096",
+          "target": "messages"
+        },
+        {
+          "id": "53:1100",
+          "target": "costs"
+        },
+        {
+          "id": "53:1104",
+          "target": "processing"
+        },
+        {
+          "id": "53:1108",
+          "target": "settings"
+        },
+        {
+          "id": "53:1113",
+          "target": "locale:allowanceLowReview"
+        },
+        {
+          "id": "53:1173",
+          "target": "user"
+        },
+        {
+          "id": "53:1175",
+          "target": "allowance"
+        },
+        {
+          "id": "53:1177",
+          "target": "allowanceLowReview"
+        }
+      ],
+      "createdNodeIds": [
+        "53:1083",
+        "53:1084",
+        "53:1085",
+        "53:1086",
+        "53:1087",
+        "53:1088",
+        "53:1089",
+        "53:1091",
+        "53:1092",
+        "53:1093",
+        "53:1095",
+        "53:1096",
+        "53:1097",
+        "53:1099",
+        "53:1100",
+        "53:1101",
+        "53:1103",
+        "53:1104",
+        "53:1105",
+        "53:1107",
+        "53:1108",
+        "53:1109",
+        "53:1111",
+        "53:1112",
+        "53:1113",
+        "53:1115",
+        "53:1116",
+        "53:1117",
+        "53:1118",
+        "53:1119",
+        "53:1120",
+        "53:1121",
+        "53:1122",
+        "53:1123",
+        "53:1124",
+        "53:1125",
+        "53:1126",
+        "53:1127",
+        "53:1128",
+        "53:1129",
+        "53:1130",
+        "53:1131",
+        "53:1132",
+        "53:1133",
+        "53:1134",
+        "53:1135",
+        "53:1136",
+        "53:1137",
+        "53:1138",
+        "53:1139",
+        "53:1140",
+        "53:1141",
+        "53:1142",
+        "53:1143",
+        "53:1144",
+        "53:1145",
+        "53:1146",
+        "53:1147",
+        "53:1148",
+        "53:1149",
+        "53:1150",
+        "53:1151",
+        "53:1152",
+        "53:1153",
+        "53:1154",
+        "53:1155",
+        "53:1156",
+        "53:1157",
+        "53:1158",
+        "53:1159",
+        "53:1160",
+        "53:1161",
+        "53:1162",
+        "53:1163",
+        "53:1164",
+        "53:1165",
+        "53:1168",
+        "53:1169",
+        "53:1170",
+        "53:1171",
+        "53:1172",
+        "53:1173",
+        "53:1175",
+        "53:1177"
+      ],
+      "mutatedNodeIds": [
+        "50:1068",
+        "50:1101",
+        "50:1106",
+        "50:1069"
+      ],
+      "styles": {
+        "body": "S:a758bfc5704ceadc560d320c37c8d5ff0f1dee06,",
+        "bodyLarge": "S:58a42bf01ed6b0b717e203cc78cb4d9544e0a1e0,",
+        "label": "S:4c0daa3e2115b3d7ff57e6a8bb53e74322167423,",
+        "title": "S:3e89565c09501dcc8757272465e70c2523e4226f,",
+        "display": "S:97802f618e310008057128b4f571920829e06a32,"
+      }
+    },
+    {
+      "name": "figmaLowfaParsed",
+      "pageId": "35:137",
+      "locale": "fa",
+      "frames": [
+        {
+          "id": "53:1855",
+          "name": "allowanceLowReview · FA · Desktop",
+          "width": 1440,
+          "height": 1100,
+          "editableText": 56,
+          "instances": 10
+        }
+      ],
+      "links": [
+        {
+          "id": "53:1865",
+          "target": "overview"
+        },
+        {
+          "id": "53:1869",
+          "target": "users"
+        },
+        {
+          "id": "53:1873",
+          "target": "messages"
+        },
+        {
+          "id": "53:1877",
+          "target": "costs"
+        },
+        {
+          "id": "53:1881",
+          "target": "processing"
+        },
+        {
+          "id": "53:1885",
+          "target": "settings"
+        },
+        {
+          "id": "53:1890",
+          "target": "locale:allowanceLowReview"
+        },
+        {
+          "id": "53:1945",
+          "target": "allowance"
+        },
+        {
+          "id": "53:1947",
+          "target": "user"
+        },
+        {
+          "id": "53:1949",
+          "target": "allowanceLowReview"
+        }
+      ],
+      "createdNodeIds": [
+        "53:1855",
+        "53:1856",
+        "53:1857",
+        "53:1858",
+        "53:1859",
+        "53:1860",
+        "53:1861",
+        "53:1862",
+        "53:1863",
+        "53:1864",
+        "53:1865",
+        "53:1866",
+        "53:1867",
+        "53:1869",
+        "53:1870",
+        "53:1871",
+        "53:1873",
+        "53:1874",
+        "53:1875",
+        "53:1877",
+        "53:1878",
+        "53:1879",
+        "53:1881",
+        "53:1882",
+        "53:1883",
+        "53:1885",
+        "53:1886",
+        "53:1887",
+        "53:1889",
+        "53:1890",
+        "53:1892",
+        "53:1893",
+        "53:1894",
+        "53:1895",
+        "53:1896",
+        "53:1897",
+        "53:1898",
+        "53:1899",
+        "53:1900",
+        "53:1901",
+        "53:1902",
+        "53:1903",
+        "53:1904",
+        "53:1905",
+        "53:1906",
+        "53:1907",
+        "53:1908",
+        "53:1909",
+        "53:1910",
+        "53:1911",
+        "53:1912",
+        "53:1913",
+        "53:1914",
+        "53:1915",
+        "53:1916",
+        "53:1917",
+        "53:1918",
+        "53:1919",
+        "53:1920",
+        "53:1921",
+        "53:1922",
+        "53:1923",
+        "53:1924",
+        "53:1925",
+        "53:1926",
+        "53:1927",
+        "53:1928",
+        "53:1929",
+        "53:1930",
+        "53:1931",
+        "53:1932",
+        "53:1933",
+        "53:1934",
+        "53:1935",
+        "53:1936",
+        "53:1937",
+        "53:1940",
+        "53:1941",
+        "53:1942",
+        "53:1943",
+        "53:1944",
+        "53:1945",
+        "53:1947",
+        "53:1949"
+      ],
+      "mutatedNodeIds": [
+        "50:1578",
+        "50:1579",
+        "50:1616",
+        "50:1584"
+      ],
+      "styles": {
+        "body": "S:c555e05c9bc7a49e48f19bab5f7bea4124882e04,",
+        "bodyLarge": "S:7373ec04b38bfb64018633d09a8c682ce3e14e24,",
+        "label": "S:9ca7e4adeb5ef9835f438b05e416da242731b33d,",
+        "title": "S:6d1232d957465ca9a22b2cc3e9c68f64f3a44aee,",
+        "display": "S:a8191436e44b153db23fcabe080d0f483ecaa521,"
+      }
+    }
+  ]
+}

@@ -12,6 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default function DevLayout({ children }: { children: ReactNode }) {
-  if (!devUiEnabled(process.env)) notFound();
+  // Next replaces this direct NODE_ENV access at build time; passing the whole env object
+  // relies on a runtime property which is absent in some deployment adapters.
+  if (
+    !devUiEnabled({
+      NODE_ENV: process.env.NODE_ENV,
+      RECALINO_DEV_UI: process.env.RECALINO_DEV_UI,
+    })
+  )
+    notFound();
   return children;
 }

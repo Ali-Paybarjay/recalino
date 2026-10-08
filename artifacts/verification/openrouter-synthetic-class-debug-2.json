@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1",
+  "configVersion": "1",
+  "scope": "class-only",
+  "mode": "real",
+  "syntheticOnly": true,
+  "localOnly": true,
+  "startedAt": "2026-10-04T06:51:23.314Z",
+  "finishedAt": "2026-10-04T06:51:34.612Z",
+  "maximumTotalMicros": 100000,
+  "attemptedCalls": 1,
+  "attemptedBoundMicros": 20000,
+  "model": "anthropic/claude-haiku-4.5",
+  "priceVersion": "openrouter-models-2026-10-04",
+  "classProcessing": {
+    "runId": "e0ae26d6-d75c-4a40-a11d-c6a10f765919",
+    "state": "failed",
+    "error": "provider_http_400",
+    "quality": null,
+    "study": null
+  },
+  "costs": {
+    "since": "2026-10-04T06:51:23.314Z",
+    "policy": {
+      "version": "1",
+      "currency": "USD",
+      "killSwitch": false,
+      "limits": {
+        "session": 100000,
+        "userMonth": 100000,
+        "systemDay": 100000,
+        "systemMonth": 100000
+      }
+    },
+    "costs": [
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-haiku-4.5",
+        "currency": "USD",
+        "priceVersion": "openrouter-models-2026-10-04",
+        "attempts": 1,
+        "actualMicros": 0,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      }
+    ],
+    "unresolvedHolds": [
+      {
+        "currency": "USD",
+        "count": 5,
+        "maximumMicros": 50
+      }
+    ]
+  },
+  "providerDiagnostics": [
+    {
+      "status": 400,
+      "message": "Schema is too complex for compilation. Try reducing the number of tools or simplifying tool schemas."
+    }
+  ],
+  "humanReview": "required"
+}

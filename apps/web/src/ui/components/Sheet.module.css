@@ -23,7 +23,7 @@
   inset: auto 0 0;
   width: 100%;
   max-height: calc(100dvh - var(--rc-target));
-  overflow-y: auto;
+  overflow: hidden;
   gap: 16px;
   padding: 10px 20px max(34px, env(safe-area-inset-bottom));
   border-radius: 16px 16px 0 0;
@@ -40,6 +40,28 @@
 .header {
   display: flex;
   align-items: center;
+  flex: none;
+  gap: 12px;
+}
+
+.handle {
+  flex: none;
+}
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-divider);
 }
 
 .title {
@@ -68,6 +90,10 @@
   .handle {
     display: none;
   }
+
+  .reading {
+    width: 720px;
+  }
 }
 
 /* Destructive confirm — frames C3-discard and H-rules. */
@@ -80,6 +106,7 @@
   gap: 14px;
   padding: 22px;
   border-radius: var(--rc-card-radius);
+  overflow-y: auto;
 }
 
 .confirmTitle {

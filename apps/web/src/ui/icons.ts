@@ -4,6 +4,7 @@
 export { ArrowClockwiseIcon as ArrowClockwise } from "@phosphor-icons/react/dist/ssr/ArrowClockwise";
 export { ArrowsClockwiseIcon as ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise";
 export { BuildingsIcon as Buildings } from "@phosphor-icons/react/dist/ssr/Buildings";
+export { CalendarBlankIcon as CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
 export { CardsIcon as Cards } from "@phosphor-icons/react/dist/ssr/Cards";
 export { CaretLeftIcon as CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
 export { CaretRightIcon as CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";
@@ -40,6 +41,7 @@ export { PlayIcon as Play } from "@phosphor-icons/react/dist/ssr/Play";
 export { PlusIcon as Plus } from "@phosphor-icons/react/dist/ssr/Plus";
 export { ProhibitIcon as Prohibit } from "@phosphor-icons/react/dist/ssr/Prohibit";
 export { QueueIcon as Queue } from "@phosphor-icons/react/dist/ssr/Queue";
+export { SpeakerHighIcon as SpeakerHigh } from "@phosphor-icons/react/dist/ssr/SpeakerHigh";
 export { SunHorizonIcon as SunHorizon } from "@phosphor-icons/react/dist/ssr/SunHorizon";
 export { TrashIcon as Trash } from "@phosphor-icons/react/dist/ssr/Trash";
 export { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle";

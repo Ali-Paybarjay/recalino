@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-04",
+  "status": "public_link_verified",
+  "intendedPublicUrl": "https://recalino.vercel.app",
+  "readyForSharing": true,
+  "vercel": {
+    "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+    "teamId": "team_8WX5ZTQoGLK3XQim9CHcQ350",
+    "teamSlug": "ali-paybarjay-s-projects",
+    "targetDeploymentId": "dpl_A6RqXSAwVqwCCKhVGzGrf6LAkpFk",
+    "targetDeploymentState": "READY",
+    "currentProtectionScope": "all_except_custom_domains",
+    "intendedProtectionScope": "prod_deployment_urls_and_all_previews",
+    "aliasChangeApplied": true,
+    "protectionChangeApplied": true,
+    "aliasAttemptHttpStatus": 403,
+    "blockingReason": null,
+    "reconnectionConfirmedInUi": true,
+    "handoffUrl": "https://vercel.com/ali-paybarjay-s-projects/recalino/settings/deployment-protection",
+    "remainingActions": [],
+    "promotionHandoffUrl": "https://vercel.com/ali-paybarjay-s-projects/recalino/A6RqXSAwVqwCCKhVGzGrf6LAkpFk",
+    "stagedDeploymentConfirmedInUi": true,
+    "productionDomainUiConfirmed": true,
+    "completedBy": "User applied the publication changes; agent verified the result."
+  },
+  "supabase": {
+    "projectRef": "twowhuzhvyuzjrpraikm",
+    "siteUrl": "https://recalino.vercel.app",
+    "allowedCallback": "https://recalino.vercel.app/auth/callback",
+    "siteUrlSavedAndUiConfirmed": true,
+    "callbackSavedAndUiConfirmed": true,
+    "existingCallbacksPreserved": true
+  },
+  "verification": {
+    "anonymousPublicAccess": "verified_http_200_without_cookies_or_auth_headers",
+    "googleLoginOnStableDomain": "sign_in_page_visible; full_google_account_login_not_repeated",
+    "note": "The app uses Google basic identity scopes. Google Test users do not constitute an app sign-in allowlist; pilot processing allowance is administered separately.",
+    "checkedAtUtc": "2026-10-04T17:47:41.7169625Z",
+    "publicUrl": "https://recalino.vercel.app/",
+    "anonymousPageTitle": "Recalino",
+    "redirectedToVercelLogin": false,
+    "generatedDeploymentAliasRemainsProtected": true
+  }
+}

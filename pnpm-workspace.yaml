@@ -6,6 +6,10 @@ packages:
 allowBuilds:
   # Downloads the pinned Supabase CLI binary used by the db:* scripts.
   supabase: true
+  # SPIKE-05 only (M4, T5): downloads a static ffmpeg for the platform. Removed with the spike.
+  ffmpeg-static: true
+  # Pinned tsx operator runtime uses esbuild's platform binary.
+  esbuild: true
 
 minimumReleaseAgeExclude:
   - '@biomejs/biome@2.5.15'
@@ -34,6 +38,8 @@ minimumReleaseAgeExclude:
   - '@next/swc-win32-arm64-msvc@16.3.8'
   - '@next/swc-win32-x64-msvc@16.3.8'
   - next@16.3.8
+  - pdfjs-dist@6.4.299
+  - nodemailer@10.0.15
 
 # Record exact versions in package.json (PROJECT_SPEC §3).
 saveExact: true

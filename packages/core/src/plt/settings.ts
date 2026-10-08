@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type RateLimitClass = "auth" | "upload_url" | "ai_start" | "export";
+export type RateLimitClass = "auth" | "upload_url" | "ai_start" | "export" | "support";
 
 const rateLimitRuleSchema = z.strictObject({
   limit: z.int().positive(),
@@ -15,11 +15,29 @@ export const pltSettingsSchema = z.strictObject({
     upload_url: rateLimitRuleSchema,
     ai_start: rateLimitRuleSchema,
     export: rateLimitRuleSchema,
+    support: rateLimitRuleSchema.default({ limit: 20, windowSeconds: 60, scopes: ["user"] }),
   }),
   /** Hits beyond the limit in one window before a security event is recorded. */
   rateLimitRepeatThreshold: z.int().positive(),
   /** Local hour at which a new study day starts. */
   studyDayStartHour: z.int().min(0).max(23),
+  /** FR-PLT-005 job queue defaults; a job kind may override the first four. */
+  jobs: z.strictObject({
+    maxAttempts: z.int().min(1).max(20),
+    /** Longer than the longest function run, so a live runner never loses its claim. */
+    leaseSeconds: z.int().min(1).max(3600),
+    retryBaseSeconds: z.int().min(0),
+    retryMaxSeconds: z.int().min(0),
+    /** Finished jobs are kept this long for inspection, then purged. */
+    retentionDays: z.int().positive(),
+  }),
+  /** FR-PLT-008 and FR-PLT-014. */
+  storage: z.strictObject({
+    writeLinkSeconds: z.int().positive(),
+    readLinkSeconds: z.int().positive(),
+    /** An object with no record is deleted only after this long, so uploads in flight survive. */
+    orphanGraceSeconds: z.int().positive(),
+  }),
 });
 
 export type PltSettings = z.infer<typeof pltSettingsSchema>;
@@ -39,9 +57,24 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
     upload_url: { limit: 60, windowSeconds: 60, scopes: ["user"] },
     ai_start: { limit: 10, windowSeconds: 60, scopes: ["user"] },
     export: { limit: 20, windowSeconds: 3600, scopes: ["user"] },
+    support: { limit: 20, windowSeconds: 60, scopes: ["user"] },
   },
   rateLimitRepeatThreshold: 5,
   studyDayStartHour: 4,
+  // Proposed in M4 (2026-10-02). The lease outlasts the 800-second function limit (ADR-0001).
+  jobs: {
+    maxAttempts: 5,
+    leaseSeconds: 900,
+    retryBaseSeconds: 30,
+    retryMaxSeconds: 3600,
+    retentionDays: 30,
+  },
+  // Proposed in M4: "a few minutes" for the browser (FR-PLT-008 rule 6).
+  storage: {
+    writeLinkSeconds: 300,
+    readLinkSeconds: 300,
+    orphanGraceSeconds: 86_400,
+  },
 };
 
 export function readPltSettings(

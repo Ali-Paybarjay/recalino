@@ -1,7 +1,17 @@
 import { z } from "zod";
 
+// A pasted value can carry a space, line break or invisible character anywhere; any of them makes
+// the pooler see another user name (M4-A1). Every character must be visible ASCII.
+const VISIBLE_ASCII = /^[\x21-\x7e]*$/;
+
 const databaseEnvSchema = z.object({
-  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  DATABASE_URL: z
+    .string()
+    .refine((value) => VISIBLE_ASCII.test(value), {
+      message: "only visible ASCII characters: no spaces, line breaks or control characters",
+      abort: true,
+    })
+    .pipe(z.url({ protocol: /^postgres(ql)?$/ })),
 });
 
 export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
@@ -41,6 +51,15 @@ export function readSupabaseEnv(
   return parseEnv(supabaseEnvSchema, env, "Supabase");
 }
 
+const cronEnvSchema = z.object({
+  // Vercel Cron sends it as a bearer token; it guards the job runner (FR-PLT-005, M4).
+  CRON_SECRET: z.string().min(32),
+});
+
+export function readCronSecret(env: Record<string, string | undefined> = process.env): string {
+  return parseEnv(cronEnvSchema, env, "cron").CRON_SECRET;
+}
+
 function parseEnv<T>(
   schema: z.ZodType<T>,
   env: Record<string, string | undefined>,
@@ -48,8 +67,17 @@ function parseEnv<T>(
 ): T {
   const result = schema.safeParse(env);
   if (!result.success) {
-    const names = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];
-    throw new Error(`Invalid ${label} configuration: ${names.join(", ")}`);
+    const { issues } = result.error;
+    const names = [...new Set(issues.map((issue) => issue.path.join(".")))];
+    // Only reasons written in this file are shown; they never quote the value.
+    const reasons = [
+      ...new Set(issues.filter((issue) => issue.code === "custom").map((issue) => issue.message)),
+    ];
+    const because = reasons.length > 0 ? ` (${reasons.join("; ")})` : "";
+    const error = new Error(`Invalid ${label} configuration: ${names.join(", ")}${because}`);
+    // Request logs keep only the error name, so this tells a configuration fault from a crash.
+    error.name = "ConfigurationError";
+    throw error;
   }
   return result.data;
 }

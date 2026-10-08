@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-04T09:44:24Z",
+  "target": "local production Build5",
+  "buildId": "Nv701k77ob2BQQFWM11o3",
+  "runtime": {
+    "node": "24.19.0",
+    "next": "16.3.8",
+    "bundler": "webpack",
+    "browser": "Chromium"
+  },
+  "fixtures": {
+    "auth": "local Supabase",
+    "data": "synthetic owner-scoped fixtures",
+    "externalProviderCalls": false,
+    "cloudBlobCalls": false,
+    "journal": "Explicitly gated local test adapter: encrypted process-memory synthetic fixture; restart/restore durability is verified separately by OPS tests."
+  },
+  "results": {
+    "functionalSuite": {
+      "passed": 104,
+      "failed": 0,
+      "skipped": 2,
+      "duration": "1.6m",
+      "workers": 2,
+      "skippedCases": "The two CI-only page-weight cases were run separately below."
+    },
+    "productionBudgetSuite": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "duration": "3.5s",
+      "workers": 1,
+      "ci": true,
+      "webServer": "Reused existing production server through temporary ES-module config; no second server."
+    },
+    "combined": {
+      "passed": 106,
+      "failed": 0,
+      "unvalidated": 0
+    }
+  },
+  "pageWeight": {
+    "measurement": "PerformanceResourceTiming.transferSize, after networkidle in a fresh Chromium context; same calculation as e2e/budget.spec.ts.",
+    "thresholdsChanged": false,
+    "pages": [
+      {
+        "path": "/",
+        "script": 153076,
+        "css": 11180,
+        "budget": {
+          "script": 160000,
+          "css": 12000
+        }
+      },
+      {
+        "path": "/dev/ui",
+        "script": 173983,
+        "css": 10738,
+        "budget": {
+          "script": 190000,
+          "css": 12000
+        }
+      }
+    ],
+    "baselineCssBytes": {
+      "/": 18000,
+      "/dev/ui": 18000
+    }
+  },
+  "coverage": [
+    "Sign-in return paths and all setup screens",
+    "Owner-scoped course/unit/class organization",
+    "Published notes, editable revisions, card proposals, review and undo",
+    "Learning preference mutation response and reset persistence",
+    "Recording across navigation and offline time",
+    "Account deletion while capturing and owner-only device cleanup",
+    "Known pending and unknown deletion retries preserve the deletion barrier",
+    "Keyboard navigation, responsive layouts, light/dark themes and WCAG 2.2 AA automated checks",
+    "Production page-weight budgets"
+  ],
+  "fixes": [
+    "Page-level learner redirects retain the requested return path; the global recording layout no longer substitutes /today.",
+    "Learning preference browser test waits for the mutation response before reload and asserts HTTP 200.",
+    "Webpack CSS merging is disabled to keep unrelated route styles out of the welcome page.",
+    "Standalone Wordmark component loads its unchanged brand styles without app navigation styles; AppShell retains its public Wordmark export."
+  ],
+  "serverLogs": {
+    "characters": 25881,
+    "http500": 0,
+    "errorLines": 0,
+    "truncated": false
+  },
+  "productionServerStopped": true
+}

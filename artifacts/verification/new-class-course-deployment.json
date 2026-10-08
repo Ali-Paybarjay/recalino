@@ -1,0 +1,87 @@
+{
+  "publishedAt": "2026-10-05T23:28:25.301Z",
+  "domain": "https://recalino.vercel.app",
+  "deploymentId": "dpl_AQk8oEw75GDgsodQSQQktA5fwARz",
+  "readyState": "READY",
+  "promotionConfirmed": true,
+  "publicDomainDeploymentId": "dpl_AQk8oEw75GDgsodQSQQktA5fwARz",
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "path": "/api/courses",
+      "status": 401,
+      "passed": true
+    }
+  ],
+  "sourceAudit": {
+    "deploymentId": "dpl_AQk8oEw75GDgsodQSQQktA5fwARz",
+    "verifiedFiles": 805,
+    "changedRuntimeFiles": [
+      "apps/web/src/ui/preview/WorkspaceViews.tsx",
+      "apps/web/src/ui/workspace/ClassForm.tsx"
+    ],
+    "matchesReviewedSnapshot": true
+  },
+  "validation": {
+    "typegen": "passed",
+    "typescript": "passed",
+    "coreResolution": "isolated release source/packages/core",
+    "backend": "local loopback Supabase and PostgreSQL; production data untouched",
+    "browserTests": {
+      "passed": 2,
+      "durationSeconds": 37.9,
+      "productionFlowSeconds": 32.1,
+      "mobilePreviewFlowSeconds": 4.4,
+      "coverage": [
+        "native date input preserved",
+        "Create New Course is final course option",
+        "standalone create-course trigger absent",
+        "cancellation preserves class title/date/course/unit",
+        "duplicate name error preserves class title/date/course/unit",
+        "creation selects new course and preserves class title/date",
+        "unit clears only after successful course creation",
+        "focus returns to course selector",
+        "class saves under newly created course",
+        "mobile preview performs no backend requests"
+      ]
+    },
+    "validationServer": "stopped"
+  },
+  "passed": true,
+  "errorScan": {
+    "deploymentId": "dpl_AQk8oEw75GDgsodQSQQktA5fwARz",
+    "since": "5m",
+    "records": 0
+  },
+  "browserVerification": {
+    "target": "https://recalino.vercel.app/preview/new-class",
+    "testMode": "synthetic preview; backend and nonread page requests blocked",
+    "status": "passed",
+    "results": [
+      {
+        "viewport": "desktop",
+        "status": "passed",
+        "pageErrors": [],
+        "consoleErrors": [],
+        "blockedRequests": []
+      },
+      {
+        "viewport": "mobile",
+        "status": "passed",
+        "pageErrors": [],
+        "consoleErrors": [],
+        "blockedRequests": []
+      }
+    ]
+  },
+  "verificationCompletedAt": "2026-10-05T23:29:14.391Z"
+}

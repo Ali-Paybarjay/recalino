@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1",
+  "configVersion": "1",
+  "scope": "class-only",
+  "mode": "real",
+  "syntheticOnly": true,
+  "localOnly": true,
+  "startedAt": "2026-10-04T07:02:52.094Z",
+  "finishedAt": "2026-10-04T07:03:34.489Z",
+  "maximumTotalMicros": 100000,
+  "attemptedCalls": 1,
+  "attemptedBoundMicros": 20000,
+  "model": "anthropic/claude-haiku-4.5",
+  "priceVersion": "openrouter-models-2026-10-04",
+  "classProcessing": {
+    "runId": "aea2dc28-f391-4737-a914-bad5e9e83e27",
+    "state": "ready",
+    "error": null,
+    "quality": {
+      "schemaVersion": "1",
+      "structuralValid": true,
+      "referencesValidated": true,
+      "explanationLanguage": "en",
+      "claims": 7,
+      "classClaims": 7,
+      "aiExpansions": 0,
+      "uncertainClaims": 0,
+      "learningItems": 3,
+      "completeCoverage": true,
+      "humanReview": "required",
+      "educationalAccuracy": null
+    },
+    "study": {
+      "notebookPublished": true,
+      "proposedCards": 3
+    }
+  },
+  "costs": {
+    "since": "2026-10-04T07:02:52.094Z",
+    "policy": {
+      "version": "1",
+      "currency": "USD",
+      "killSwitch": false,
+      "limits": {
+        "session": 100000,
+        "userMonth": 100000,
+        "systemDay": 100000,
+        "systemMonth": 100000
+      }
+    },
+    "costs": [
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-haiku-4.5",
+        "currency": "USD",
+        "priceVersion": "openrouter-models-2026-10-04",
+        "attempts": 1,
+        "actualMicros": 8714,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      }
+    ],
+    "unresolvedHolds": [
+      {
+        "currency": "USD",
+        "count": 5,
+        "maximumMicros": 50
+      }
+    ]
+  },
+  "providerDiagnostics": [],
+  "humanReview": "required"
+}

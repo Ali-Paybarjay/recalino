@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1",
+  "configVersion": "1",
+  "scope": "class-only",
+  "mode": "real",
+  "syntheticOnly": true,
+  "localOnly": true,
+  "startedAt": "2026-10-04T06:54:16.368Z",
+  "finishedAt": "2026-10-04T06:55:02.165Z",
+  "maximumTotalMicros": 100000,
+  "attemptedCalls": 1,
+  "attemptedBoundMicros": 20000,
+  "model": "anthropic/claude-haiku-4.5",
+  "priceVersion": "openrouter-models-2026-10-04",
+  "classProcessing": {
+    "runId": "13ba9c6d-dc94-441f-9c3e-8936ca8a3acd",
+    "state": "failed",
+    "error": "validation_failed",
+    "quality": null,
+    "study": null
+  },
+  "costs": {
+    "since": "2026-10-04T06:54:16.368Z",
+    "policy": {
+      "version": "1",
+      "currency": "USD",
+      "killSwitch": false,
+      "limits": {
+        "session": 100000,
+        "userMonth": 100000,
+        "systemDay": 100000,
+        "systemMonth": 100000
+      }
+    },
+    "costs": [
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-haiku-4.5",
+        "currency": "USD",
+        "priceVersion": "openrouter-models-2026-10-04",
+        "attempts": 1,
+        "actualMicros": 10573,
+        "estimatedMicros": 0,
+        "unknownAttempts": 0
+      }
+    ],
+    "unresolvedHolds": [
+      {
+        "currency": "USD",
+        "count": 5,
+        "maximumMicros": 50
+      }
+    ]
+  },
+  "providerDiagnostics": [],
+  "humanReview": "required"
+}

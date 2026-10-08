@@ -1,7 +1,15 @@
+import { listLearningSessions } from "@recalino/core/note";
+import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
+import { getDatabase } from "../../../server/db";
+import { workspaceActor, workspaceGroups } from "../../../server/workspace";
+import { Icon } from "../../../ui/components/Icon";
+import { Cards, Microphone } from "../../../ui/icons";
+import { RecordLauncher } from "../../../ui/recording/RecordingProvider";
 import { PageHeader } from "../../../ui/shell/AppShell";
 import { strings } from "../../../ui/strings";
-import styles from "../app.module.css";
+import { ClassRows } from "../../../ui/workspace/ClassRows";
+import { Actions, LinkButton, Panel } from "../../../ui/workspace/primitives";
 import { LearnerShell } from "../LearnerShell";
 
 export const dynamic = "force-dynamic";
@@ -16,19 +24,62 @@ function todayLabel(timezone: string | null): string {
   }).format(new Date());
 }
 
-/**
- * B1 — Today, in its empty state for now (frame B1-empty). "Record a class" arrives with REC
- * (stage 2) and "New class without recording" with ORG (M4).
- */
 export default async function TodayPage() {
   const learner = await requireLearner("/today");
+  const [groups, sessions, review] = await Promise.all([
+    workspaceGroups(learner),
+    listLearningSessions(getDatabase(), workspaceActor(learner), { limit: 3 }),
+    getReviewQueue(getDatabase(), workspaceActor(learner)),
+  ]);
   return (
     <LearnerShell
       learner={learner}
       current="today"
       header={<PageHeader kicker={todayLabel(learner.state.timezone)} title={strings.nav.today} />}
     >
-      <p className={styles.emptyToday}>{strings.empty.today}</p>
+      <div className="preview-stack">
+        <div className="preview-grid">
+          <Panel tone="hero" title="Your English, one class at a time.">
+            <Icon icon={Microphone} size={40} />
+            <p>Keep useful moments from your next English class.</p>
+            <Actions>
+              <RecordLauncher />
+              <LinkButton href="/classes/new">New class</LinkButton>
+              <LinkButton secondary href="/classes">
+                Add material to a class
+              </LinkButton>
+            </Actions>
+          </Panel>
+          <Panel title="Ready for a little practice?">
+            <Icon icon={Cards} size={32} />
+            <p>
+              {review.dueCount} cards due · Up to {review.newRemaining} new today.
+            </p>
+            <Actions>
+              <LinkButton secondary href="/review">
+                Open review
+              </LinkButton>
+            </Actions>
+            <p className="preview-muted">Your learning stays with your account.</p>
+          </Panel>
+        </div>
+        <Panel title="Your recent classes">
+          {sessions.items.length ? (
+            <ClassRows sessions={sessions.items} {...groups} />
+          ) : (
+            <div className="preview-empty">
+              <h3>Your first class starts here.</h3>
+              <p>Create a class and add a recording, handout, photo or notes.</p>
+              <LinkButton href="/classes/new">Create a class</LinkButton>
+            </div>
+          )}
+          <Actions>
+            <LinkButton secondary href="/classes">
+              View all classes
+            </LinkButton>
+          </Actions>
+        </Panel>
+      </div>
     </LearnerShell>
   );
 }

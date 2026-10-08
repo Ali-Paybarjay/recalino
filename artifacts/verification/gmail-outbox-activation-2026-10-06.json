@@ -1,0 +1,23 @@
+{
+  "activationDate": "2026-10-06",
+  "timezone": "Europe/London",
+  "project": "recalino",
+  "supabaseProjectRef": "twowhuzhvyuzjrpraikm",
+  "deploymentId": "dpl_BoZshrimLjQZ8DTgmAZe4tbCH6K3",
+  "productionUrl": "https://recalino.vercel.app",
+  "sender": "recalino.pilot@gmail.com",
+  "configurationVerified": true,
+  "credentialValueRead": false,
+  "createdNewEmail": false,
+  "dispatch": "existing automatic cron",
+  "outbox": {
+    "state": "sent",
+    "attempts": 1,
+    "hasProviderReference": true,
+    "attemptedAtUtc": "2026-10-05T23:31:13.904Z",
+    "sentAtUtc": "2026-10-05T23:31:15.578Z",
+    "lastError": null
+  },
+  "smtpAcceptanceVerified": true,
+  "recipientInboxDeliveryVerified": false
+}

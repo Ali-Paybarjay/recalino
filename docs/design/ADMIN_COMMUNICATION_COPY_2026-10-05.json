@@ -1,0 +1,492 @@
+{
+  "schemaVersion": "1",
+  "purpose": "Design-stage bilingual communication copy and workflow requirements; no sending or implementation.",
+  "sampleDataNotice": { "en": "Sample data for design", "fa": "دادهٔ نمونه برای طراحی" },
+  "localization": {
+    "adminLocales": ["en", "fa"],
+    "directions": { "en": "ltr", "fa": "rtl" },
+    "learnerUiLocale": "en",
+    "emailLocales": ["en", "fa"],
+    "emailLanguageIndependentOfAdminUi": true,
+    "recipientEmailLanguage": "Communication preference, otherwise current English app language; admin may explicitly override before approval.",
+    "directionRules": [
+      "Mirror shell, sidebar, breadcrumb arrows, drawer edge and reading order in Persian.",
+      "Keep email addresses, URLs, technical IDs and monetary units isolated LTR inside RTL text.",
+      "Apply email direction to the selected email language, independent of the surrounding admin shell.",
+      "Use logical start/end layout properties; do not mirror nondirectional icons.",
+      "Localize displayed dates and numeric counts, retain explicit USD and timezone labels for cost and period fields."
+    ]
+  },
+  "navigation": [
+    { "id": "overview", "en": "Overview", "fa": "نمای کلی" },
+    { "id": "users", "en": "Users", "fa": "کاربران" },
+    { "id": "messages", "en": "Messages", "fa": "پیام‌ها" },
+    { "id": "usage", "en": "Usage & costs", "fa": "مصرف و هزینه" },
+    { "id": "processing", "en": "Processing", "fa": "پردازش‌ها" },
+    { "id": "settings", "en": "Settings", "fa": "تنظیمات" }
+  ],
+  "labels": {
+    "primaryAdmin": { "en": "Primary admin", "fa": "مدیر اصلی" },
+    "adminLanguage": { "en": "Panel language", "fa": "زبان پنل" },
+    "english": { "en": "English", "fa": "English" },
+    "persian": { "en": "فارسی", "fa": "فارسی" },
+    "actionNeeded": { "en": "Needs your attention", "fa": "نیازمند رسیدگی" },
+    "allCaughtUp": {
+      "en": "No actions need your attention",
+      "fa": "کاری برای رسیدگی باقی نمانده است"
+    },
+    "searchUsers": { "en": "Search name or email", "fa": "جست‌وجوی نام یا ایمیل" },
+    "allUsers": { "en": "All users", "fa": "همهٔ کاربران" },
+    "pilotUsers": { "en": "Pilot users", "fa": "کاربران پایلوت" },
+    "sendEmail": { "en": "Send email", "fa": "ارسال ایمیل" },
+    "selectedUsers": { "en": "{count} users selected", "fa": "{count} کاربر انتخاب شده است" },
+    "composeEmail": { "en": "Compose email", "fa": "نوشتن ایمیل" },
+    "recipients": { "en": "Recipients", "fa": "گیرندگان" },
+    "template": { "en": "Template", "fa": "قالب ایمیل" },
+    "emailLanguage": { "en": "Email language", "fa": "زبان ایمیل" },
+    "useRecipientLanguage": {
+      "en": "Use each recipient’s preference",
+      "fa": "طبق ترجیح هر گیرنده"
+    },
+    "subject": { "en": "Subject", "fa": "موضوع" },
+    "body": { "en": "Message", "fa": "متن پیام" },
+    "saveDraft": { "en": "Save draft", "fa": "ذخیرهٔ پیش‌نویس" },
+    "preview": { "en": "Review email", "fa": "بررسی ایمیل" },
+    "previewFor": { "en": "Preview for {email}", "fa": "پیش‌نمایش برای {email}" },
+    "editEmail": { "en": "Edit email", "fa": "ویرایش ایمیل" },
+    "approveSendOne": { "en": "Approve & send", "fa": "تأیید و ارسال" },
+    "approveSendMany": {
+      "en": "Approve & send to {count} users",
+      "fa": "تأیید و ارسال به {count} کاربر"
+    },
+    "privateRecipientNote": {
+      "en": "Each recipient gets a separate email.",
+      "fa": "برای هر گیرنده یک ایمیل جداگانه ارسال می‌شود."
+    },
+    "missingVariables": {
+      "en": "Complete {fields} before sending.",
+      "fa": "پیش از ارسال، {fields} را تکمیل کنید."
+    },
+    "excludedRecipients": {
+      "en": "{count} users excluded: review reasons",
+      "fa": "{count} کاربر از ارسال کنار گذاشته شده‌اند: بررسی دلیل‌ها"
+    },
+    "welcomeTask": {
+      "en": "Welcome {count} pilot users",
+      "fa": "ارسال خوشامدگویی به {count} کاربر پایلوت"
+    },
+    "welcomeTaskHint": {
+      "en": "Pilot access is ready. Their welcome email has not been sent.",
+      "fa": "دسترسی پایلوت آماده است؛ ایمیل خوشامدگویی هنوز ارسال نشده است."
+    },
+    "welcomeDraftAction": { "en": "Review welcome email", "fa": "بررسی ایمیل خوشامدگویی" },
+    "replyTask": { "en": "Reply to {count} messages", "fa": "پاسخ به {count} پیام" },
+    "retryFailed": { "en": "Retry failed emails", "fa": "تلاش دوباره برای ایمیل‌های ناموفق" },
+    "retrySameEmail": { "en": "Retry this email", "fa": "تلاش دوباره برای همین ایمیل" },
+    "sentHistory": { "en": "Email history", "fa": "تاریخچهٔ ایمیل‌ها" },
+    "templatesTab": { "en": "Email templates", "fa": "قالب‌های ایمیل" },
+    "inboxTab": { "en": "Inbox", "fa": "صندوق پیام‌ها" },
+    "newMessages": { "en": "New", "fa": "جدید" },
+    "needsReply": { "en": "Needs reply", "fa": "نیازمند پاسخ" },
+    "answered": { "en": "Answered", "fa": "پاسخ داده شده" },
+    "closed": { "en": "Closed", "fa": "بسته شده" },
+    "reopen": { "en": "Reopen", "fa": "بازگشایی" },
+    "suggestedReply": { "en": "Suggested reply", "fa": "پاسخ پیشنهادی" },
+    "suggestedReplyHint": {
+      "en": "Review the facts and edit before approving.",
+      "fa": "اطلاعات را بررسی کنید و پیش از تأیید، متن را ویرایش کنید."
+    },
+    "prepareReply": { "en": "Prepare reply", "fa": "آماده‌سازی پاسخ" },
+    "reviewReply": { "en": "Review reply", "fa": "بررسی پاسخ" },
+    "replyChannelHint": {
+      "en": "The approved reply appears in the user’s thread. If email notification is selected, it is also emailed to them.",
+      "fa": "پاسخ تأییدشده در گفت‌وگوی کاربر نمایش داده می‌شود. اگر اعلان ایمیلی انتخاب شده باشد، به او ایمیل هم می‌شود."
+    },
+    "replyApproval": { "en": "Approve & send reply", "fa": "تأیید و ارسال پاسخ" },
+    "noMessages": {
+      "en": "No messages match these filters.",
+      "fa": "پیامی با این فیلترها پیدا نشد."
+    },
+    "optionalClose": { "en": "Close conversation", "fa": "بستن گفت‌وگو" },
+    "pilotCapacity": { "en": "Pilot capacity", "fa": "ظرفیت پایلوت" },
+    "pilotCapacityHint": {
+      "en": "Maximum accepted participants in this pilot. Changing capacity does not change the shared budget.",
+      "fa": "حداکثر افراد پذیرفته‌شده در این پایلوت. تغییر ظرفیت، بودجهٔ مشترک را تغییر نمی‌دهد."
+    },
+    "estimatedApiCost": { "en": "API cost estimates", "fa": "برآورد هزینهٔ API" },
+    "estimatedCostHint": {
+      "en": "Rates update future forecasts. Spending reservations and actual costs are tracked separately.",
+      "fa": "نرخ‌ها، برآوردهای آینده را تغییر می‌دهند؛ رزرو هزینه و هزینهٔ واقعی جدا ثبت می‌شوند."
+    }
+  },
+  "emailStates": [
+    { "id": "draft", "en": "Draft", "fa": "پیش‌نویس", "meaning": "Saved but not approved." },
+    {
+      "id": "queued",
+      "en": "Queued",
+      "fa": "در صف",
+      "meaning": "Approved; worker has not yet completed submission."
+    },
+    {
+      "id": "sending",
+      "en": "Sending",
+      "fa": "در حال ارسال",
+      "meaning": "An attempt is in progress."
+    },
+    {
+      "id": "sent",
+      "en": "Sent",
+      "fa": "ارسال شده",
+      "meaning": "Provider accepted the message; this is not evidence of inbox delivery."
+    },
+    {
+      "id": "failed",
+      "en": "Failed",
+      "fa": "ناموفق",
+      "meaning": "Confirmed rejected attempt, with reason and retry eligibility."
+    },
+    {
+      "id": "unknown",
+      "en": "Checking send status",
+      "fa": "در حال بررسی وضعیت ارسال",
+      "meaning": "Uncertain provider result. Reconcile before a new attempt to avoid duplicates."
+    },
+    {
+      "id": "cancelled",
+      "en": "Cancelled",
+      "fa": "لغو شده",
+      "meaning": "Cancelled before dispatch."
+    }
+  ],
+  "emailWorkflow": {
+    "entryPoints": [
+      "Users row action",
+      "Users multi-select toolbar",
+      "Overview required action",
+      "Message thread"
+    ],
+    "steps": [
+      "Choose eligible recipients",
+      "Choose template and email language",
+      "Edit subject and body",
+      "Review interpolated email for each language and recipient variant",
+      "Approve explicit final recipient count",
+      "Track queue and send results"
+    ],
+    "requirements": [
+      "One email per recipient; never expose a cohort via To or CC.",
+      "Show exact recipients and excluded users with reasons before approval; revalidate permissions and recipient eligibility at dispatch.",
+      "Template edits in composer modify the draft; saving a shared template is a separate explicit action.",
+      "Freeze the approved text, recipient list, template version, variables and language as the send snapshot.",
+      "Block approval while subject/body, recipient address or required variables are missing.",
+      "Use a durable per-recipient operation key; repeating approval or retry never duplicates a successful send.",
+      "Show provider acceptance as Sent. Delivery, bounce and open labels may appear only with verified provider events; omit invented rates.",
+      "For batch partial failures, allow retry only for eligible failed recipients; never re-send successful recipients.",
+      "Unknown results need provider reconciliation or verified idempotent retry; the user is not asked to guess whether an email was sent.",
+      "Keep email sender configuration and real provider setup as future implementation dependencies. No design sample sends real emails."
+    ]
+  },
+  "templateInventory": {
+    "canonicalIds": [
+      "pilot_welcome",
+      "pilot_invitation",
+      "account_welcome",
+      "feedback_thanks",
+      "support_reply",
+      "quota_updated",
+      "pilot_followup",
+      "pilot_complete",
+      "service_notice"
+    ],
+    "freeform": "A blank editable email remains available. A start reminder uses a freeform draft based on welcome; it does not need a separate default template.",
+    "commonVariables": {
+      "first_name": "Recipient given name when available, otherwise a localized friendly greeting; always resolved before preview.",
+      "app_link": "Owner-approved public application URL. Replace with a verified invitation URL only when a supported invitation flow exists; never fabricate an authentication token.",
+      "account_email": "Current approved recipient account email, isolated LTR.",
+      "conversation_link": "Authorized link to the recipient's own conversation or Feedback & help entry point, depending on context.",
+      "pilot_end_date": "Real end of the recipient's pilot period, formatted in the email locale with a timezone when needed."
+    }
+  },
+  "adminActions": {
+    "welcome": {
+      "trigger": "A real user is accepted into the pilot and has no successful welcome-send record for that pilot.",
+      "manualAndBatch": "The same task is visible from Overview and the user detail. Batch review can include all eligible users.",
+      "completion": "Close the task after a provider-accepted welcome email, whether started manually or from the task. Queued and failed attempts remain linked to the open task; do not offer duplicate composition while queued.",
+      "existingRecord": "Do not infer that welcome was sent from account age. A verified historical send may be recorded separately with evidence and audit reason.",
+      "failure": "Restore Needs attention with a clear failure reason. A later confirmed bounce may create a distinct contact-correction task."
+    },
+    "feedback": {
+      "trigger": "Successfully stored learner question or feedback.",
+      "completion": "A reply is published to the same thread only after admin approval. Close the conversation explicitly or after the admin-selected resolution; a new learner reply reopens it.",
+      "noAutomation": "Suggested responses and routine thanks are drafts. They are never sent automatically."
+    }
+  },
+  "emailTemplates": [
+    {
+      "id": "pilot_welcome",
+      "label": { "en": "Pilot welcome & app link", "fa": "خوشامدگویی پایلوت و لینک اپ" },
+      "audience": "Accepted pilot user with an existing account",
+      "requiredVariables": ["first_name", "app_link", "account_email"],
+      "en": {
+        "subject": "Welcome to Recalino, {{first_name}}",
+        "body": "Hello {{first_name}},\n\nYour Recalino pilot access is ready. Open the app and sign in with {{account_email}}:\n{{app_link}}\n\nWe would love to hear what helps and what needs improving. Use Feedback & help in the app to send a question or share your experience.\n\nThank you for taking part,\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "{{first_name}}، به ریکالینو خوش آمدید",
+        "body": "سلام {{first_name}}،\n\nدسترسی شما به پایلوت ریکالینو آماده است. اپ را باز کنید و با ایمیل {{account_email}} وارد شوید:\n{{app_link}}\n\nخوشحال می‌شویم بدانیم چه چیزی برایتان مفید است و چه چیزی نیاز به بهبود دارد. از بخش Feedback & help در اپ، سؤال یا تجربهٔ خود را برای ما بفرستید.\n\nاز همراهی شما سپاسگزاریم،\nتیم ریکالینو"
+      }
+    },
+    {
+      "id": "pilot_invitation",
+      "label": { "en": "Pilot invitation", "fa": "دعوت به پایلوت" },
+      "audience": "Invited person who has not yet created an account; distinct from accepted users",
+      "requiredVariables": ["first_name", "app_link", "next_step_text"],
+      "en": {
+        "subject": "You’re invited to try Recalino",
+        "body": "Hello {{first_name}},\n\nWe would like to invite you to try Recalino and help us improve learning from your classes.\n\nGet started here:\n{{app_link}}\n\n{{next_step_text}}\n\nIf you have a question, reply to this email.\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "دعوت شما برای تجربهٔ ریکالینو",
+        "body": "سلام {{first_name}}،\n\nاز شما دعوت می‌کنیم ریکالینو را امتحان کنید و به ما کمک کنید یادگیری از کلاس‌ها را بهتر کنیم.\n\nاز این لینک شروع کنید:\n{{app_link}}\n\n{{next_step_text}}\n\nاگر سؤالی دارید، به همین ایمیل پاسخ دهید.\n\nتیم ریکالینو"
+      },
+      "note": "Default to the public app URL and existing sign-in flow. The next-step text must accurately describe onboarding/admission. A verified secure invitation URL may replace app_link only when available; invitation does not itself grant quota. Reply wording requires a monitored reply-to mailbox."
+    },
+    {
+      "id": "account_welcome",
+      "label": { "en": "Account welcome & app link", "fa": "خوشامدگویی حساب و لینک اپ" },
+      "audience": "New non-pilot user with an existing account",
+      "requiredVariables": ["first_name", "app_link"],
+      "en": {
+        "subject": "Welcome to Recalino, {{first_name}}",
+        "body": "Hello {{first_name}},\n\nWelcome to Recalino. Open the app to finish any remaining setup and view your learning space:\n{{app_link}}\n\nIf you have a question or an idea, use Feedback & help in the app.\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "{{first_name}}، به ریکالینو خوش آمدید",
+        "body": "سلام {{first_name}}،\n\nبه ریکالینو خوش آمدید. برای تکمیل مراحل باقی‌ماندهٔ راه‌اندازی و دیدن فضای یادگیری خود، اپ را باز کنید:\n{{app_link}}\n\nاگر سؤال یا پیشنهادی دارید، از بخش Feedback & help در اپ برایمان پیام بفرستید.\n\nتیم ریکالینو"
+      },
+      "note": "Welcome does not imply a paid plan or a learning allowance. Admission and quota are separate confirmed operations."
+    },
+    {
+      "id": "feedback_thanks",
+      "label": { "en": "Thank you for your feedback", "fa": "تشکر بابت بازخورد" },
+      "audience": "Pilot or general user who submitted feedback",
+      "requiredVariables": ["first_name", "acknowledgement_text", "conversation_link"],
+      "en": {
+        "subject": "Thank you for your Recalino feedback",
+        "body": "Hello {{first_name}},\n\nThank you for taking the time to share your experience.\n\n{{acknowledgement_text}}\n\nYou can continue the conversation here:\n{{conversation_link}}\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "از بازخورد شما دربارهٔ ریکالینو سپاسگزاریم",
+        "body": "سلام {{first_name}}،\n\nاز اینکه برای ارسال تجربهٔ خود وقت گذاشتید، سپاسگزاریم.\n\n{{acknowledgement_text}}\n\nاز اینجا می‌توانید گفت‌وگو را ادامه دهید:\n{{conversation_link}}\n\nتیم ریکالینو"
+      }
+    },
+    {
+      "id": "support_reply",
+      "label": { "en": "Reply to a question", "fa": "پاسخ به سؤال" },
+      "audience": "A user with an open feedback/help conversation",
+      "requiredVariables": [
+        "first_name",
+        "conversation_subject",
+        "reply_text",
+        "conversation_link"
+      ],
+      "en": {
+        "subject": "Re: {{conversation_subject}}",
+        "body": "Hello {{first_name}},\n\n{{reply_text}}\n\nYou can reply or view this conversation in Recalino:\n{{conversation_link}}\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "پاسخ: {{conversation_subject}}",
+        "body": "سلام {{first_name}}،\n\n{{reply_text}}\n\nاز اینجا می‌توانید پاسخ دهید یا گفت‌وگو را در ریکالینو ببینید:\n{{conversation_link}}\n\nتیم ریکالینو"
+      }
+    },
+    {
+      "id": "quota_updated",
+      "label": { "en": "Allowance updated", "fa": "تغییر سهمیه" },
+      "audience": "A user whose allowance has actually changed",
+      "requiredVariables": ["first_name", "quota_summary", "period_text", "app_link"],
+      "en": {
+        "subject": "Your Recalino allowance has been updated",
+        "body": "Hello {{first_name}},\n\nYour allowance has been updated:\n{{quota_summary}}\n\nPeriod: {{period_text}}\n\nOpen Recalino to see your current usage:\n{{app_link}}\n\nIf anything is unclear, send us a message in Feedback & help.\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "سهمیهٔ شما در ریکالینو تغییر کرد",
+        "body": "سلام {{first_name}}،\n\nسهمیهٔ شما به‌روزرسانی شده است:\n{{quota_summary}}\n\nبازهٔ اعتبار: {{period_text}}\n\nبرای مشاهدهٔ مصرف فعلی، ریکالینو را باز کنید:\n{{app_link}}\n\nاگر سؤالی دارید، از بخش Feedback & help برایمان پیام بفرستید.\n\nتیم ریکالینو"
+      }
+    },
+    {
+      "id": "pilot_followup",
+      "label": { "en": "Pilot feedback follow-up", "fa": "پیگیری تجربهٔ پایلوت" },
+      "audience": "Pilot users selected by the admin for a manual experience check-in",
+      "requiredVariables": ["first_name", "conversation_link"],
+      "en": {
+        "subject": "How is Recalino working for you?",
+        "body": "Hello {{first_name}},\n\nWe would love to hear how your Recalino pilot is going. What has helped you, and what has been difficult or unclear?\n\nShare your thoughts here:\n{{conversation_link}}\n\nThank you for helping us improve Recalino,\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "تجربهٔ شما از ریکالینو چطور بوده است؟",
+        "body": "سلام {{first_name}}،\n\nخوشحال می‌شویم بدانیم تجربهٔ شما از پایلوت ریکالینو چطور پیش می‌رود. چه چیزی کمک‌کننده بوده و چه چیزی دشوار یا نامشخص بوده است؟\n\nاز اینجا تجربهٔ خود را برایمان بفرستید:\n{{conversation_link}}\n\nاز اینکه به بهبود ریکالینو کمک می‌کنید، سپاسگزاریم،\nتیم ریکالینو"
+      },
+      "note": "No automatic recurring campaign or reminder schedule; this is an optional manually approved operational email."
+    },
+    {
+      "id": "pilot_complete",
+      "label": { "en": "Pilot period ending", "fa": "پایان دورهٔ پایلوت" },
+      "audience": "Accepted pilot users whose access period will end",
+      "requiredVariables": ["first_name", "pilot_end_date", "next_step_text", "conversation_link"],
+      "en": {
+        "subject": "Your Recalino pilot period ends on {{pilot_end_date}}",
+        "body": "Hello {{first_name}},\n\nYour current pilot period ends on {{pilot_end_date}}.\n\n{{next_step_text}}\n\nThank you for helping us improve Recalino. You can share any final thoughts here:\n{{conversation_link}}\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "دورهٔ پایلوت شما در {{pilot_end_date}} پایان می‌یابد",
+        "body": "سلام {{first_name}}،\n\nدورهٔ فعلی پایلوت شما در {{pilot_end_date}} پایان می‌یابد.\n\n{{next_step_text}}\n\nاز اینکه به بهبود ریکالینو کمک کردید، سپاسگزاریم. می‌توانید تجربهٔ پایانی خود را از اینجا برایمان بفرستید:\n{{conversation_link}}\n\nتیم ریکالینو"
+      },
+      "note": "Admin must fill next-step text from the real policy; never imply deletion, extension or continued processing unless confirmed."
+    },
+    {
+      "id": "service_notice",
+      "label": { "en": "Service update", "fa": "اطلاع‌رسانی وضعیت سرویس" },
+      "audience": "Users affected by a confirmed issue",
+      "requiredVariables": [
+        "first_name",
+        "issue_summary",
+        "current_status_text",
+        "user_action_text"
+      ],
+      "en": {
+        "subject": "Recalino service update",
+        "body": "Hello {{first_name}},\n\n{{issue_summary}}\n\nCurrent status: {{current_status_text}}\n\n{{user_action_text}}\n\nIf you need help, send us a message in Feedback & help.\n\nThe Recalino team"
+      },
+      "fa": {
+        "subject": "اطلاع‌رسانی وضعیت سرویس ریکالینو",
+        "body": "سلام {{first_name}}،\n\n{{issue_summary}}\n\nوضعیت فعلی: {{current_status_text}}\n\n{{user_action_text}}\n\nاگر به کمک نیاز دارید، از بخش Feedback & help برایمان پیام بفرستید.\n\nتیم ریکالینو"
+      },
+      "note": "No invented resolution time. Each update requires a fresh approval."
+    }
+  ],
+  "learnerFeedback": {
+    "entry": "Settings > Feedback & help; contextual Help links may open it with a non-sensitive context label.",
+    "screens": ["New message", "My messages", "Conversation"],
+    "copy": {
+      "title": "Feedback & help",
+      "intro": "Ask a question or tell us what could work better.",
+      "newMessage": "New message",
+      "myMessages": "My messages",
+      "type": "What would you like to send?",
+      "types": ["Question", "Feedback", "Report a problem"],
+      "subject": "Subject",
+      "message": "Your message",
+      "placeholder": "Tell us what happened or what you would like to know.",
+      "contextPermission": "Include basic app details to help us investigate",
+      "contextExplanation": "App version and the screen you were using. Class recordings and notes are not attached.",
+      "send": "Send message",
+      "emailNotification": "Email me when there is a reply",
+      "sent": "Message received. We’ll reply here. If you selected email notification, we’ll also email you when there is a response.",
+      "pending": "Waiting for a reply",
+      "replied": "Reply received",
+      "reply": "Reply",
+      "replyPlaceholder": "Write your reply",
+      "sendReply": "Send reply",
+      "offline": "You’re offline. Your draft is saved on this device. Send it when you’re back online.",
+      "failed": "Your message could not be sent. Your draft is still here.",
+      "retry": "Try again",
+      "noMessages": "Your questions and feedback will appear here.",
+      "team": "Recalino team"
+    },
+    "requirements": [
+      "Claim Message received only after server persistence, not when a local draft is saved.",
+      "Use durable request IDs so repeat taps and retry do not create duplicate conversations or messages.",
+      "Show submission failure inline; preserve draft. Do not promise an unapproved response-time SLA.",
+      "The app thread is the durable reply surface. Honor the recorded email-notification preference. A notification failure does not erase the published approved reply; its failure is an admin action.",
+      "Keep basic diagnostic context opt-in and visible; no automatic class content, recordings or unrelated account data in the support message.",
+      "Attachments and automated replies are outside the initial design scope.",
+      "Suggested admin responses use this conversation and verified knowledge; unresolved facts remain visibly marked for admin completion."
+    ]
+  },
+  "screenInventory": [
+    {
+      "id": "admin-overview",
+      "purpose": "Priority actions, welcome task, messages needing reply, cost and processing context."
+    },
+    {
+      "id": "admin-users",
+      "purpose": "Search/filter, single user action and selected-recipient toolbar."
+    },
+    {
+      "id": "admin-user-detail",
+      "purpose": "Pilot status, allowance, communication preference and send history."
+    },
+    {
+      "id": "admin-email-compose",
+      "purpose": "Editable template, subject/body, email language and recipient list."
+    },
+    {
+      "id": "admin-email-review",
+      "purpose": "Personalized recipient previews, unresolved-variable errors and approval."
+    },
+    {
+      "id": "admin-email-results",
+      "purpose": "Per-recipient queued/sent/failed/unknown states; eligible retry."
+    },
+    {
+      "id": "admin-inbox",
+      "purpose": "New/Needs reply/Answered/Closed tabs with readable excerpts."
+    },
+    {
+      "id": "admin-message-detail",
+      "purpose": "Conversation timeline, suggested reply, edit, approve and close."
+    },
+    {
+      "id": "admin-email-templates",
+      "purpose": "Nine default templates, language variants, a freeform draft and explicitly saved versions."
+    },
+    {
+      "id": "app-feedback-form",
+      "purpose": "Question/feedback/problem form, opt-in basic context and saved-draft/error state."
+    },
+    {
+      "id": "app-my-messages",
+      "purpose": "Own message history with reply state and new-message action."
+    },
+    {
+      "id": "app-feedback-thread",
+      "purpose": "Own conversation, approved admin reply and user follow-up."
+    }
+  ],
+  "syntheticExamples": {
+    "onlySynthetic": true,
+    "users": [
+      {
+        "id": "sample-pilot-01",
+        "name": "Sample learner 01",
+        "email": "learner01@example.invalid",
+        "communicationLanguage": "en",
+        "pilot": "Accepted",
+        "welcome": "Needs sending"
+      },
+      {
+        "id": "sample-pilot-02",
+        "name": "Sample learner 02",
+        "email": "learner02@example.invalid",
+        "communicationLanguage": "fa",
+        "pilot": "Accepted",
+        "welcome": "Queued"
+      },
+      {
+        "id": "sample-pilot-03",
+        "name": "Sample learner 03",
+        "email": "learner03@example.invalid",
+        "communicationLanguage": "en",
+        "pilot": "Accepted",
+        "welcome": "Sent"
+      }
+    ],
+    "feedback": {
+      "subject": "How can I share an idea?",
+      "message": "Could there be a way to group my classes by topic?",
+      "suggestedReply": "Thanks for sharing this idea. Grouping classes by topic could make it easier to find related material. We have recorded your suggestion for review. If you have an example of how you would use it, please share it here.",
+      "adminFaSubject": "چطور ایده‌ام را ارسال کنم؟",
+      "adminFaDraftLabel": "پیش‌نویس انگلیسی برای این کاربر"
+    }
+  }
+}

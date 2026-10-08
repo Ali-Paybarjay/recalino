@@ -1,0 +1,13 @@
+{
+  "fileKey": "8SZY9Ju3Fatad888Ba81Ra",
+  "supersedes": "figma-explanation-policy.json",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"changed\":[\"24:737\",\"24:759\",\"24:743\",\"24:765\",\"21:1114\",\"21:1136\"]}"
+      }
+    ],
+    "isError": false
+  }
+}

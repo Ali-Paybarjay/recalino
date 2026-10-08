@@ -6,7 +6,7 @@ test("light colour scheme gives the light theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(238, 249, 243)");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(246, 247, 242)");
 });
 
 test("dark colour scheme gives the dark theme before the page finishes loading", async ({
@@ -15,7 +15,7 @@ test("dark colour scheme gives the dark theme before the page finishes loading",
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/", { waitUntil: "domcontentloaded" });
   expect(await page.locator("html").getAttribute("data-theme")).toBe("dark");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(15, 26, 22)");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(17, 27, 23)");
 });
 
 test("the theme follows a change of the OS setting", async ({ page }) => {

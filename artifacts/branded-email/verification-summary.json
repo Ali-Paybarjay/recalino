@@ -1,0 +1,24 @@
+{
+  "feature": "branded-customer-email",
+  "date": "2026-10-06",
+  "status": "deployed-and-verified",
+  "unit": { "passed": 617, "failed": 0, "report": "unit-results.json" },
+  "integration": {
+    "fullRun": { "passed": 315, "failed": 1, "skipped": 1 },
+    "failure": "Old privacy fixture changed approved outbox recipient/subject after insertion; new immutability trigger correctly rejected it.",
+    "fix": "Fixture now inserts the intended recipient/subject initially; all privacy assertions preserved.",
+    "finalRelatedRerun": { "files": 3, "passed": 24, "failed": 0 },
+    "remainingFullRunTests": "Passed; no other failures."
+  },
+  "browser": { "adminScenariosPassed": 4, "finalBrandingRechecksPassed": 2, "syntheticEmailLayoutsPassed": 12, "engine": "chromium", "liveMailClientsTested": false },
+  "lint": { "files": 693, "passed": true },
+  "typecheck": { "core": true, "web": true, "ops": true, "tools": true },
+  "boundaries": { "passed": true, "modules": 776, "dependencies": 3051 },
+  "clientSecretScan": { "passed": true },
+  "productionBuild": { "platform": "linux", "nativeRuntimeChecksPassed": true, "nativeTraceManifests": 104, "nativeDependencies": 10 },
+  "localBuild": { "compile": true, "typecheck": true, "staticPages": 56, "postBuildTrace": "Shared dev server changed .next files during tracing; clean production packaging verified on Vercel." },
+  "migration": { "file": "20261005234639_branded_email_snapshots.sql", "localApplied": true, "productionApplied": true, "project": "twowhuzhvyuzjrpraikm", "snapshotColumnsVerified": 2, "immutableTriggerVerified": true, "browserAccessDenied": true },
+  "deployment": { "id": "dpl_GyRv86JKzk9KnGUWKRc2LUvPkyNd", "uniqueUrl": "https://recalino-gszoiw4bu-ali-paybarjay-s-projects.vercel.app", "productionUrl": "https://recalino.vercel.app", "promoted": true, "ownerSmokePassed": true, "routineTemplates": 9, "sender": "recalino.pilot@gmail.com" },
+  "figma": { "file": "8SZY9Ju3Fatad888Ba81Ra", "page": "67:137", "review": "67:154", "frames": 12, "mainComponents": 5, "instances": 36, "editableTexts": 122, "fullUiRasterNodes": 0, "visualReviewPassed": true },
+  "sentRealEmail": false
+}

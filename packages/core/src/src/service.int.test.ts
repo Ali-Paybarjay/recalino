@@ -1,0 +1,514 @@
+import { createHash, randomUUID } from "node:crypto";
+import { InsertQueryNode } from "kysely";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { createAuthUser } from "../../test/auth-users";
+import { testDatabaseUrl } from "../../test/local-db";
+import {
+  acceptDocuments,
+  CURRENT_VERSIONS,
+  completeSignIn,
+  createSignupIntent,
+  updateProfile,
+} from "../acc";
+import { createDatabase } from "../db";
+import { createSession } from "../org";
+import { DEFAULT_PLT_SETTINGS, MemoryObjectStore, readOwnedObject } from "../plt";
+import { allowance, amounts, grantEntitlement } from "../quota";
+import { readInputContract } from "./contracts";
+import { cleanupDeletedSource } from "./privacy";
+import { ownedSourceAvailability, verifiedUploadSessionIds } from "./projections";
+import {
+  acceptSourceNotice,
+  appendContentVersion,
+  attachSource,
+  confirmUploadPart,
+  createSource,
+  deleteSource,
+  detachSource,
+  getSource,
+  selectSourceSnapshot,
+  sourceAssets,
+  sourceContentSchema,
+  sourceContentVersions,
+  sourceReadLink,
+  updateSourceSelection,
+  uploadManifest,
+  uploadPartLink,
+  verifyUpload,
+} from "./service";
+
+const db = createDatabase(testDatabaseUrl(), { maxConnections: 3 });
+afterAll(() => db.destroy());
+async function fixture() {
+  const userId = await createAuthUser(),
+    ctx = { userId, requestId: randomUUID() },
+    now = new Date();
+  const intent = await createSignupIntent(db, { versions: CURRENT_VERSIONS, ttlSeconds: 60, now });
+  await completeSignIn(db, { userId, intentId: intent.id, now });
+  for (const change of [
+    { field: "first_language", firstLanguage: "fa" },
+    { field: "explanation_language", explanationLanguage: "english" },
+    { field: "level_goal", level: null, goal: null },
+    { field: "timezone", timezone: "Europe/London" },
+  ] as const)
+    await updateProfile(db, ctx, change, { now });
+  await acceptDocuments(
+    db,
+    ctx,
+    [{ document: "recording-consent", version: CURRENT_VERSIONS["recording-consent"] }],
+    { now },
+  );
+  const session = await createSession(db, ctx, {}, { key: randomUUID() });
+  await grantEntitlement(db, {
+    userId,
+    startsAt: new Date(now.getTime() - 1000),
+    endsAt: new Date(now.getTime() + 3600000),
+    amounts: amounts({ storage: 1000000 }),
+    operationKey: randomUUID(),
+    actorId: "synthetic-operator",
+    reason: "SRC synthetic tests",
+  });
+  await acceptSourceNotice(db, ctx, "0.1", true);
+  return { ctx, session };
+}
+const hash = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+async function upload(
+  file: {
+    kind: "text" | "html" | "pdf" | "image";
+    mimeType: string;
+    displayName: string;
+    bytes: Uint8Array;
+  } = {
+    kind: "text",
+    mimeType: "text/plain",
+    displayName: "lesson.txt",
+    bytes: new TextEncoder().encode("Synthetic lesson\n\nA second paragraph."),
+  },
+  finish = true,
+) {
+  const { ctx, session } = await fixture(),
+    bytes = file.bytes,
+    raw = {
+      sessionId: session.id,
+      kind: file.kind,
+      mimeType: file.mimeType,
+      sizeBytes: bytes.length,
+      sha256: hash(bytes),
+      displayName: file.displayName,
+      parts: [{ index: 0, sizeBytes: bytes.length, sha256: hash(bytes) }],
+      operationKey: randomUUID(),
+    };
+  const source = await createSource(db, ctx, raw),
+    store = new MemoryObjectStore();
+  if (!source.uploadId) throw new Error("missing upload");
+  const link = await uploadPartLink(
+    db,
+    store,
+    ctx,
+    source.uploadId,
+    0,
+    DEFAULT_PLT_SETTINGS.storage,
+  );
+  expect(store.upload(link.url, bytes, file.mimeType)).toBe(200);
+  await confirmUploadPart(db, store, ctx, source.uploadId, 0);
+  if (finish)
+    await verifyUpload(db, store, ctx, source.uploadId, {
+      verifier: { inspect: async () => ({ pageCount: 1, width: 1, height: 1 }) },
+    });
+  return { ctx, session, source, store, raw, bytes };
+}
+describe("source ownership history and private originals (FR-SRC-001,004,005,009,010,013)", () => {
+  it("FR-SRC-004 repeated preflight absence checks do not reject a fresh source", async () => {
+    const { ctx, session } = await fixture();
+    const store = new MemoryObjectStore();
+    const bytes = new TextEncoder().encode("Synthetic resumable source");
+    const source = await createSource(db, ctx, {
+      sessionId: session.id,
+      kind: "text",
+      mimeType: "text/plain",
+      sizeBytes: bytes.length,
+      sha256: hash(bytes),
+      displayName: "pending.txt",
+      operationKey: randomUUID(),
+      parts: [{ index: 0, sizeBytes: bytes.length, sha256: hash(bytes) }],
+    });
+    if (!source.uploadId) throw new Error("missing_upload");
+    const contract = await readInputContract(db);
+    for (let attempt = 0; attempt <= contract.maxPartAttempts; attempt++)
+      expect(await confirmUploadPart(db, store, ctx, source.uploadId, 0)).toBe("missing");
+    expect(await uploadManifest(db, ctx, source.uploadId)).toMatchObject({ state: "pending" });
+    const part = await db
+      .selectFrom("src.upload_part")
+      .select(["attempts", "verified_at"])
+      .where("upload_id", "=", source.uploadId)
+      .executeTakeFirstOrThrow();
+    expect(part).toEqual({ attempts: 0, verified_at: null });
+    const link = await uploadPartLink(
+      db,
+      store,
+      ctx,
+      source.uploadId,
+      0,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    expect(store.upload(link.url, bytes, "text/plain")).toBe(200);
+    expect(await confirmUploadPart(db, store, ctx, source.uploadId, 0)).toBe("verified");
+    expect((await verifyUpload(db, store, ctx, source.uploadId)).state).toBe("verified");
+  });
+
+  it.each(["text", "html"] as const)(
+    "FR-SRC-005/010 atomically accepts a 100001-character %s paragraph with its complete extraction",
+    async (kind) => {
+      const text = "x".repeat(100_001);
+      const bytes = new TextEncoder().encode(kind === "html" ? `<p>${text}</p>` : text);
+      const x = await upload({
+        kind,
+        mimeType: `text/${kind === "html" ? "html" : "plain"}`,
+        displayName: `long.${kind}`,
+        bytes,
+      });
+      const versions = await sourceContentVersions(db, x.ctx, x.source.assetId);
+      expect(versions).toHaveLength(1);
+      const blocks = sourceContentSchema.shape.blocks.parse(versions[0]?.blocks);
+      expect(blocks).toHaveLength(2);
+      expect(blocks.map((block) => block.text).join("")).toBe(text);
+      const source = await getSource(db, x.ctx, x.source.assetId);
+      expect(source.verified_at).not.toBeNull();
+      expect(
+        await readOwnedObject(db, x.store, x.ctx, source.original_object_id as string),
+      ).toEqual(bytes);
+      expect((await allowance(db, x.ctx)).consumed.storage).toBe(bytes.length);
+    },
+  );
+
+  it("FR-SRC-005/010 rolls back verification and quota if content persistence fails, then resumes safely", async () => {
+    const x = await upload(undefined, false);
+    const failure = new Error("Synthetic content transaction failure");
+    const failingDb = db.withPlugin({
+      transformQuery({ node }) {
+        if (InsertQueryNode.is(node) && node.into?.table.identifier.name === "content_version")
+          throw failure;
+        return node;
+      },
+      async transformResult({ result }) {
+        return result;
+      },
+    });
+    await expect(verifyUpload(failingDb, x.store, x.ctx, x.source.uploadId as string)).rejects.toBe(
+      failure,
+    );
+    expect(await uploadManifest(db, x.ctx, x.source.uploadId as string)).toMatchObject({
+      state: "verifying",
+    });
+    const pending = await getSource(db, x.ctx, x.source.assetId);
+    expect(pending.verified_at).toBeNull();
+    expect(await sourceContentVersions(db, x.ctx, x.source.assetId)).toHaveLength(0);
+    expect((await allowance(db, x.ctx)).consumed.storage).toBe(0);
+    expect(await readOwnedObject(db, x.store, x.ctx, pending.original_object_id as string)).toEqual(
+      x.bytes,
+    );
+    await verifyUpload(db, x.store, x.ctx, x.source.uploadId as string);
+    await verifyUpload(db, x.store, x.ctx, x.source.uploadId as string);
+    expect(await sourceContentVersions(db, x.ctx, x.source.assetId)).toHaveLength(1);
+    expect((await allowance(db, x.ctx)).consumed.storage).toBe(x.bytes.length);
+  });
+
+  it("FR-SRC-004 retries a transient composition failure using its durable upload destination", async () => {
+    const x = await upload(undefined, false);
+    // Legacy pending manifests need a destination composed from their confirmed parts.
+    // A current single-part upload already uses that part as its verified original.
+    await db
+      .updateTable("src.asset")
+      .set({ original_object_id: null })
+      .where("id", "=", x.source.assetId)
+      .execute();
+    const compose = vi
+      .spyOn(x.store, "compose")
+      .mockRejectedValueOnce(new Error("Synthetic storage unavailable"));
+    await expect(verifyUpload(db, x.store, x.ctx, x.source.uploadId as string)).rejects.toThrow(
+      "Synthetic storage unavailable",
+    );
+    expect((await uploadManifest(db, x.ctx, x.source.uploadId as string)).state).toBe("pending");
+    expect((await verifyUpload(db, x.store, x.ctx, x.source.uploadId as string)).state).toBe(
+      "verified",
+    );
+    expect(compose).toHaveBeenCalledTimes(2);
+    expect(await sourceContentVersions(db, x.ctx, x.source.assetId)).toHaveLength(1);
+    expect((await allowance(db, x.ctx)).consumed.storage).toBe(x.bytes.length);
+  });
+  it("projects verified original availability without exposing foreign or revoked files", async () => {
+    const x = await upload();
+    const foreign = await fixture();
+    const expected = {
+      sourceId: x.source.assetId,
+      displayName: x.raw.displayName,
+      originalAvailable: true,
+    };
+    expect(await ownedSourceAvailability(db, x.ctx, [x.source.assetId, randomUUID()])).toEqual([
+      expected,
+    ]);
+    expect(await ownedSourceAvailability(db, foreign.ctx, [x.source.assetId])).toEqual([]);
+    await deleteSource(db, x.ctx, x.source.assetId, "original");
+    expect(await ownedSourceAvailability(db, x.ctx, [x.source.assetId])).toEqual([
+      { ...expected, originalAvailable: false },
+    ]);
+  });
+
+  it("projects only verified uploads and their owner's active class links", async () => {
+    const x = await upload();
+    const foreign = await fixture();
+    if (!x.source.uploadId) throw new Error("missing upload");
+    expect(await verifiedUploadSessionIds(db, x.ctx, x.source.uploadId)).toEqual([x.session.id]);
+    expect(await verifiedUploadSessionIds(db, foreign.ctx, x.source.uploadId)).toEqual([]);
+    await db
+      .updateTable("src.upload_session")
+      .set({ state: "verifying" })
+      .where("id", "=", x.source.uploadId)
+      .execute();
+    expect(await verifiedUploadSessionIds(db, x.ctx, x.source.uploadId)).toEqual([]);
+    await db
+      .updateTable("src.upload_session")
+      .set({ state: "verified" })
+      .where("id", "=", x.source.uploadId)
+      .execute();
+    await detachSource(db, x.ctx, x.session.id, x.source.assetId);
+    expect(await verifiedUploadSessionIds(db, x.ctx, x.source.uploadId)).toEqual([]);
+  });
+
+  it.each([
+    {
+      kind: "text" as const,
+      mimeType: "text/plain",
+      displayName: "original.txt",
+      bytes: new TextEncoder().encode("Synthetic plain text original"),
+      download: true,
+    },
+    {
+      kind: "html" as const,
+      mimeType: "text/html",
+      displayName: "original.html",
+      bytes: new TextEncoder().encode("<p>Synthetic HTML original</p>"),
+      download: true,
+    },
+    {
+      kind: "pdf" as const,
+      mimeType: "application/pdf",
+      displayName: "original.pdf",
+      bytes: new TextEncoder().encode("%PDF-1.7\nSynthetic PDF original"),
+      download: false,
+    },
+    {
+      kind: "image" as const,
+      mimeType: "image/png",
+      displayName: "original.png",
+      bytes: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]),
+      download: false,
+    },
+  ])("issues the expected private original disposition for $kind (FR-SRC-012)", async (file) => {
+    const x = await upload(file);
+    const signRead = vi.spyOn(x.store, "signRead");
+    const link = await sourceReadLink(
+      db,
+      x.store,
+      x.ctx,
+      x.source.assetId,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    expect(x.store.download(link.url)).toEqual({ status: 200, bytes: file.bytes });
+    expect(signRead).toHaveBeenCalledExactlyOnceWith(expect.any(String), link.validUntil, {
+      download: file.download,
+    });
+    signRead.mockRestore();
+  });
+  it("does not issue a server original link for audio kept on the device (FR-SRC-012)", async () => {
+    const x = await fixture();
+    const source = await createSource(db, x.ctx, {
+      sessionId: x.session.id,
+      kind: "audio",
+      mimeType: "audio/mpeg",
+      sizeBytes: 3,
+      sha256: hash(new Uint8Array([0x49, 0x44, 0x33])),
+      displayName: "local-original.mp3",
+      durationMs: 4000,
+      parts: [],
+      operationKey: randomUUID(),
+    });
+    const store = new MemoryObjectStore();
+    const signRead = vi.spyOn(store, "signRead");
+    await expect(
+      sourceReadLink(db, store, x.ctx, source.assetId, DEFAULT_PLT_SETTINGS.storage),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(signRead).not.toHaveBeenCalled();
+    signRead.mockRestore();
+  });
+  it("confirms an existing pending generic part while keeping expired and foreign requests denied", async () => {
+    const x = await fixture(),
+      foreign = await fixture(),
+      store = new MemoryObjectStore();
+    const bytes = new TextEncoder().encode("Synthetic existing upload part");
+    const source = await createSource(db, x.ctx, {
+      sessionId: x.session.id,
+      kind: "text",
+      mimeType: "text/plain",
+      sizeBytes: bytes.length,
+      sha256: hash(bytes),
+      displayName: "resume.txt",
+      operationKey: randomUUID(),
+      parts: [{ index: 0, sizeBytes: bytes.length, sha256: hash(bytes) }],
+    });
+    if (!source.uploadId) throw new Error("missing_upload");
+    const link = await uploadPartLink(
+      db,
+      store,
+      x.ctx,
+      source.uploadId,
+      0,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    expect(store.upload(link.url, bytes, "text/plain")).toBe(200);
+    expect(await confirmUploadPart(db, store, x.ctx, source.uploadId, 0)).toBe("verified");
+    expect(await confirmUploadPart(db, store, x.ctx, source.uploadId, 0)).toBe("verified");
+    await expect(
+      confirmUploadPart(db, store, foreign.ctx, source.uploadId, 0),
+    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(
+      confirmUploadPart(
+        db,
+        store,
+        x.ctx,
+        source.uploadId,
+        0,
+        new Date(Date.now() + 48 * 3600 * 1000),
+      ),
+    ).rejects.toMatchObject({ code: "conflict" });
+  });
+  it("physically purges deleted source bytes and metadata without changing another owner's sources", async () => {
+    const x = await upload(),
+      other = await upload();
+    const object = await getSource(db, x.ctx, x.source.assetId);
+    const read = await sourceReadLink(
+      db,
+      x.store,
+      x.ctx,
+      x.source.assetId,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    await expect(
+      cleanupDeletedSource(db, x.store, other.ctx, x.source.assetId),
+    ).rejects.toMatchObject({ code: "not_found" });
+    await deleteSource(db, x.ctx, x.source.assetId, "all");
+    await cleanupDeletedSource(db, x.store, x.ctx, x.source.assetId);
+    await cleanupDeletedSource(db, x.store, x.ctx, x.source.assetId);
+    expect(x.store.download(read.url).status).toBe(404);
+    expect(object.original_object_id).toBeTruthy();
+    expect((await allowance(db, x.ctx)).remaining.storage).toBe(1000000);
+    const erased = await db
+      .selectFrom("src.asset")
+      .selectAll()
+      .where("id", "=", x.source.assetId)
+      .executeTakeFirstOrThrow();
+    expect(erased.display_name).toBe("Deleted source");
+    expect(erased.sha256).toBe("0".repeat(64));
+    expect(
+      await db
+        .selectFrom("src.content_version")
+        .select("id")
+        .where("asset_id", "=", erased.id)
+        .execute(),
+    ).toEqual([]);
+    expect((await selectSourceSnapshot(db, other.ctx, other.session.id)).sources).toHaveLength(1);
+  });
+  it("charges one upload once, retries without duplication and emits immutable text versions", async () => {
+    const x = await upload();
+    expect((await allowance(db, x.ctx)).consumed.storage).toBe(x.bytes.length);
+    expect((await createSource(db, x.ctx, x.raw)).assetId).toBe(x.source.assetId);
+    await verifyUpload(db, x.store, x.ctx, x.source.uploadId as string);
+    expect(await sourceContentVersions(db, x.ctx, x.source.assetId)).toHaveLength(1);
+    expect(
+      (await selectSourceSnapshot(db, x.ctx, x.session.id)).sources[0]?.contentVersionId,
+    ).toBeTruthy();
+    const link = await sourceReadLink(
+      db,
+      x.store,
+      x.ctx,
+      x.source.assetId,
+      DEFAULT_PLT_SETTINGS.storage,
+    );
+    expect(x.store.download(link.url).bytes).toEqual(x.bytes);
+  });
+  it("hides every foreign asset, file URL, attachment and immutable version", async () => {
+    const x = await upload(),
+      other = await fixture();
+    await expect(getSource(db, other.ctx, x.source.assetId)).rejects.toMatchObject({
+      code: "not_found",
+    });
+    await expect(
+      sourceReadLink(db, x.store, other.ctx, x.source.assetId, DEFAULT_PLT_SETTINGS.storage),
+    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(
+      attachSource(db, other.ctx, other.session.id, x.source.assetId),
+    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(sourceContentVersions(db, other.ctx, x.source.assetId)).rejects.toMatchObject({
+      code: "not_found",
+    });
+    expect(await sourceAssets(db, other.ctx, x.raw.sha256)).toHaveLength(0);
+  });
+  it("retains snapshots when detached and keeps originals independent from content", async () => {
+    const x = await upload(),
+      before = await selectSourceSnapshot(db, x.ctx, x.session.id);
+    await updateSourceSelection(db, x.ctx, x.session.id, x.source.assetId, {
+      role: "user_notes",
+      selected: true,
+      ranges: [],
+      timeStatus: "unknown",
+      contentVersionId: before.sources[0]?.contentVersionId,
+    });
+    await deleteSource(db, x.ctx, x.source.assetId, "original");
+    await expect(
+      sourceReadLink(db, x.store, x.ctx, x.source.assetId, DEFAULT_PLT_SETTINGS.storage),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(await sourceContentVersions(db, x.ctx, x.source.assetId)).toHaveLength(1);
+    await detachSource(db, x.ctx, x.session.id, x.source.assetId);
+    const stored = await db
+      .selectFrom("src.source_snapshot")
+      .select("sources")
+      .where("session_id", "=", x.session.id)
+      .where("sources_version", "=", before.sourcesVersion)
+      .executeTakeFirst();
+    expect(stored).toBeTruthy();
+    const first = await deleteSource(db, x.ctx, x.source.assetId, "all"),
+      second = await deleteSource(db, x.ctx, x.source.assetId, "all");
+    expect(first).toEqual(second);
+    await expect(getSource(db, x.ctx, x.source.assetId)).rejects.toMatchObject({
+      code: "not_found",
+    });
+  });
+  it("preserves old content and rejects altered retries of the same origin", async () => {
+    const x = await upload(),
+      input = {
+        originKey: randomUUID(),
+        schemaVersion: "1",
+        provenance: "user_correction",
+        settings: {},
+        units: [{ id: "d", kind: "document", start: 1 }],
+        blocks: [{ id: "p", kind: "paragraph", text: "Corrected synthetic text", unitId: "d" }],
+      };
+    const id = await db
+      .transaction()
+      .execute((tx) => appendContentVersion(tx, x.ctx, x.source.assetId, input));
+    expect(
+      await db
+        .transaction()
+        .execute((tx) => appendContentVersion(tx, x.ctx, x.source.assetId, input)),
+    ).toBe(id);
+    await expect(
+      db.transaction().execute((tx) =>
+        appendContentVersion(tx, x.ctx, x.source.assetId, {
+          ...input,
+          blocks: [{ ...input.blocks[0], text: "Changed" }],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+    expect(await sourceContentVersions(db, x.ctx, x.source.assetId)).toHaveLength(2);
+  });
+});

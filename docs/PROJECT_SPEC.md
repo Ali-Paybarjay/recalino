@@ -56,6 +56,10 @@ pnpm db:types              # تولید نوع‌های Kysely از دیتابی
 pnpm db:env                # نوشتن اتصال و کلیدهای Supabase محلی در apps/web/.env.local
 pnpm db:stop               # supabase stop
 
+# رشته اتصال دیتابیس ابری: فقط مالک محصول، در ترمینال خودش (runbooks/SECRETS.md)
+pnpm db:new-password       # رمز تازه recalino_app؛ رشته اتصال در ~/.recalino/database-url.txt، و فقط verifier برای SQL Editor
+pnpm db:url-check          # همان فایل را با تنظیم اتصال و TLS اپ می‌سنجد؛ هیچ سری چاپ نمی‌شود
+
 # توسعه
 pnpm dev                   # next dev روی http://localhost:3000
 pnpm build                 # next build
@@ -91,7 +95,7 @@ apps/web/                      Next.js: صفحه‌ها، Route Handlerها، Ro
   src/ui/                      کامپوننت‌های مشترک رابط
   e2e/                         آزمون‌های Playwright
 packages/core/                 منطق دامنه؛ بدون import از Next.js یا React
-  src/db/                      کلاینت Kysely، withTransaction، نوع‌های تولیدشده
+  src/db/                      کلاینت Kysely، withTransaction، نوع‌های تولیدشده، TLS اتصال و CA پروژه Supabase
   src/<module>/                یک پوشه برای هر شناسه نقشه قابلیت‌ها: plt، acc، quota، org، src، …
     index.ts                   API عمومی ماژول؛ تنها نقطه import برای ماژول‌های دیگر
     *.ts                       پیاده‌سازی داخلی
@@ -236,7 +240,7 @@ describe("FR-QUOTA-005 reserve", () => {
 - نگهداری صوت کلاس روی سرور بیرون از قاعده D29، یا ساختن بریده صوت کلاس روی سرور.
 - ساختن امکانات خارج از MVP، یا صفحه و زیرساخت فرضی برای آن‌ها (PRD-CORE-06).
 - سپردن `due_at`، سهمیه یا دسترسی به LLM.
-- استفاده از کانکتور Supabase در claude.ai برای این پروژه.
+- نوشتن یا تغییر با کانکتور Supabase در claude.ai بدون اجازه صریح مالک محصول برای همان مورد، یا به کار بردن آن روی پروژه‌ای جز `twowhuzhvyuzjrpraikm` (CLAUDE.md، بخش Supabase MCP؛ تصمیم مالک محصول 2026-10-02).
 - حذف یا skip کردن آزمون شکست‌خورده بدون تأیید.
 
 ## ۱۰. معیار موفقیت این سند (milestone راه‌اندازی)

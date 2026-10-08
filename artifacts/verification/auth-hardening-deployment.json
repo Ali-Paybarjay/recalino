@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-04T17:48:21.737Z",
+  "projectId": "prj_sexBQckLtPOxFHgqV385Bx1JaxqF",
+  "id": "dpl_Hv3gAJhV7DQDXDuQnDFwjJaGd4gK",
+  "url": "https://recalino-o1sq64gdc-ali-paybarjay-s-projects.vercel.app",
+  "state": "READY",
+  "nodeVersion": "24.x",
+  "regions": ["lhr1"],
+  "reviewedCommit": "d14228f",
+  "protection": {
+    "deploymentType": "all_except_custom_domains"
+  },
+  "productionEnvNames": [],
+  "source": "Pinned Git archive d14228f, no private env files or unrelated uncommitted features",
+  "automaticDomainPromotion": false,
+  "passed": true
+}

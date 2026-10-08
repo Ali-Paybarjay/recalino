@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import {FileBlob, PresentationFile} from 'file:///C:/Users/Ali-PC/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs';
+const dir='D:/Claude Projects/Recalino/artifacts/recalino-presentation/.probe';
+const presentation=await PresentationFile.importPptx(await FileBlob.load(dir+'/probe.pptx'));
+console.log((await presentation.inspect({kind:'slide,textbox,shape',maxChars:3000})).ndjson);
+console.log('slides',presentation.slides.items.length,presentation.slides.items[0]?.id);
+const slide=presentation.slides.items[0];
+const png=await presentation.export({slide,format:'png',scale:1});
+await fs.writeFile(dir+'/probe-import.png',new Uint8Array(await png.arrayBuffer()));
+console.log('Rendered patched PPTX');
