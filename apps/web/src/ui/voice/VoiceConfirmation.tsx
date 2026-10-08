@@ -1,11 +1,13 @@
 "use client";
-import type {
-  ClassVoiceView,
-  VoiceAnalysisView,
-  VoiceCandidate,
+import {
+  type ClassVoiceView,
+  type VoiceAnalysisView,
+  type VoiceCandidate,
+  voiceCoverage,
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
+import { pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
@@ -20,6 +22,14 @@ type Action =
       expectedVersion: number;
       speakerId?: string;
     };
+
+/** A service spending limit, not a failed check: retrying cannot help and is not offered. */
+function isServiceBlocked(analysis: VoiceAnalysisView) {
+  return Boolean(
+    analysis.reason?.startsWith("voice_correction_") &&
+      analysis.reason.endsWith("_service_blocked"),
+  );
+}
 
 function hasSpeakerExcerpts(candidate: VoiceCandidate) {
   return candidate.clips.length > 0 || candidate.lines.some((line) => line.trim().length > 0);
@@ -61,9 +71,11 @@ export function VoiceConfirmation({
   const hasFailedCheck = Boolean(
     view?.analyses.some(
       (analysis) =>
-        analysis.status === "failed" || analysis.reason?.startsWith("voice_correction_"),
+        analysis.status === "failed" ||
+        (analysis.reason?.startsWith("voice_correction_") && !isServiceBlocked(analysis)),
     ),
   );
+  const hasServiceBlock = Boolean(view?.analyses.some(isServiceBlocked));
   const hasUnavailableExcerpts = Boolean(
     view?.analyses.some(
       (analysis) =>
@@ -352,9 +364,11 @@ export function VoiceConfirmation({
                   ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
                   : hasFailedCheck
                     ? "Some recordings could not be checked. Retry the voice check below, or continue with your class notes."
-                    : hasUnavailableExcerpts
-                      ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
-                      : "Your voice choices are saved. The class notes below reflect those choices."}
+                    : hasServiceBlock
+                      ? pendingCopy.voice.serviceBlockedSummary
+                      : hasUnavailableExcerpts
+                        ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
+                        : "Your voice choices are saved. The class notes below reflect those choices."}
               </Status>
             )}
             {view.analyses.map((analysis, index) => (
@@ -423,6 +437,7 @@ function Analysis({
   onPlayback: (element: HTMLAudioElement) => void;
 }) {
   const audio = useLocalVoiceAudio(userId, analysis.sourceId);
+  const coverage = voiceCoverage(analysis.reason);
   const verified = analysis.status === "verified";
   const available = analysis.candidates.filter(hasSpeakerExcerpts);
   const suggested = available.find((candidate) => candidate.id === analysis.candidateId);
@@ -452,14 +467,19 @@ function Analysis({
         <h3>Class source {index + 1}</h3>
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
-      {analysis.reason?.includes("sampled_audio") ? (
+      {coverage === "sampled_audio" || coverage === "sampled_partial_audio" ? (
         <p className="preview-muted">
           This long recording was checked using excerpts sampled across your selected class audio.
           Only speech in those checked excerpts can contribute spoken mistakes. Your full transcript
           and class notes remain available.
         </p>
       ) : null}
-      {analysis.reason?.startsWith("voice_correction_") ? (
+      {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
+        <p className="preview-muted">{pendingCopy.voice.partialCoverage}</p>
+      ) : null}
+      {isServiceBlocked(analysis) ? (
+        <Status>{pendingCopy.voice.serviceBlockedDetail}</Status>
+      ) : analysis.reason?.startsWith("voice_correction_") ? (
         <Status tone="error">
           Speakers were prepared, but spoken mistakes could not be checked. You can confirm your
           speaker below and retry the class voice check when you are ready.

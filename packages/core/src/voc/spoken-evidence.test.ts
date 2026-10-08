@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import type { VoiceUtterance } from "./contracts";
-import { findRepeatedVoiceEvidence } from "./spoken-evidence";
+import { findRepeatedVoiceEvidence, hasRepeatableVoiceEvidence } from "./spoken-evidence";
 
 const first: VoiceUtterance = {
   id: "one",
@@ -53,4 +53,22 @@ it("does not count tiny fragments, word substrings, quoted speech or same-breath
   expect(findRepeatedVoiceEvidence([repaired, second], mistake, "learner")).toBeNull();
   const quoted = { ...second, text: 'The handout says "I am agree with you."' };
   expect(findRepeatedVoiceEvidence([first, quoted], mistake, "learner")).toBeNull();
+});
+
+it("PRD-COST-02: reports repeatable evidence only when a paid correction could be corroborated", () => {
+  expect(hasRepeatableVoiceEvidence([first, second])).toBe(true);
+  expect(hasRepeatableVoiceEvidence([second, first])).toBe(true);
+  // One stored turn, as in a sampled long class, can never supply a second occurrence.
+  expect(hasRepeatableVoiceEvidence([first])).toBe(false);
+  expect(hasRepeatableVoiceEvidence([])).toBe(false);
+  for (const change of [
+    { speakerId: "classmate" },
+    { eligible: false },
+    { id: first.id },
+    { startMs: 5000, endMs: 8000 },
+    { startMs: 20000, endMs: 21000 },
+    { text: "Sorry, I mean I agree with you." },
+    { text: "She said “I am agree with you.”" },
+  ])
+    expect(hasRepeatableVoiceEvidence([first, { ...second, ...change }])).toBe(false);
 });
