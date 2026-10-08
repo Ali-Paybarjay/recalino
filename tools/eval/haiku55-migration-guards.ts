@@ -2,12 +2,14 @@ import { readFile } from "node:fs/promises";
 import { z } from "../../packages/core/node_modules/zod";
 
 export const migrationControls = {
-  version: "haiku55-production-migration-evaluation-2",
+  version: "haiku55-production-migration-evaluation-3",
   maximumGenerationsPerCase: 2,
   maximumPaidResponses: 28,
   maximumHttpRequests: 56,
   softUsd: 0.5,
   hardUsd: 0.75,
+  // Every migration QA round together, including the 0.1648530 USD spent before the ledger.
+  cumulativeHardUsd: 0.5,
   responseBytes: 1048576,
   // Captured regional endpoints can cost 10% more than the main model catalog.
   catalogMaximumRateMultiplier: 1.1,
@@ -202,4 +204,50 @@ export function selectMigrationDiagnosticCases<
   if (schedule.length !== 2 || schedule[0]?.caseId !== "M03-13" || schedule[1]?.caseId !== "M04-14")
     throw new Error("diagnostic_original_ordinals_required");
   return { diagnosticOnly: true, schedule };
+}
+
+/** Spend that predates the cross-round ledger: every earlier migration round and diagnostic. */
+export const migrationUnledgeredPriorUsd = 0.164853;
+export const migrationLedgerSchema = z.strictObject({
+  version: z.literal(1),
+  priorUnledgeredUsd: z.number().nonnegative(),
+  rounds: z.array(
+    z.strictObject({
+      freeze: z.string().regex(/^[a-f0-9]{64}$/),
+      directory: z.string().min(1),
+      fixtureSet: z.string().min(1),
+      spentUsd: z.number().nonnegative(),
+      status: z.enum(["running", "stopped", "completed"]),
+    }),
+  ),
+});
+export type MigrationLedger = z.infer<typeof migrationLedgerSchema>;
+
+/**
+ * One frozen candidate gets one live round. A fresh output directory can neither repeat an
+ * evaluated freeze nor reset the cumulative migration budget.
+ */
+export function migrationLedgerRound(
+  ledger: MigrationLedger,
+  freeze: string,
+  directory: string,
+  fixtureSet: string,
+): MigrationLedger["rounds"][number] {
+  const existing = ledger.rounds.find((round) => round.freeze === freeze);
+  if (existing && existing.directory !== directory)
+    throw new Error("freeze_already_evaluated_in_another_directory");
+  if (existing && existing.fixtureSet !== fixtureSet) throw new Error("fixture_set_changed");
+  if (!existing && ledger.rounds.some((round) => round.directory === directory))
+    throw new Error("directory_belongs_to_another_freeze");
+  if (existing) return existing;
+  const round = { freeze, directory, fixtureSet, spentUsd: 0, status: "running" as const };
+  ledger.rounds.push(round);
+  return round;
+}
+
+export function assertMigrationCumulativeBudget(ledger: MigrationLedger, reserveUsd: number) {
+  const spent =
+    ledger.priorUnledgeredUsd + ledger.rounds.reduce((total, round) => total + round.spentUsd, 0);
+  if (!Number.isFinite(spent) || spent + reserveUsd > migrationControls.cumulativeHardUsd)
+    throw new Error("cumulative_budget_before_dispatch");
 }

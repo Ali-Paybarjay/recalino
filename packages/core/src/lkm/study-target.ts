@@ -5,11 +5,32 @@ export interface StudyLexicalTarget {
   parts: string[];
 }
 
+/**
+ * The complete closed set of complement notations accepted after " + ". Generation prompts quote
+ * this list so instructions and the parser cannot drift; any other notation is unsupported.
+ */
+export const studyComplementNotations = [
+  "-ing form",
+  "-ing",
+  "noun",
+  "base verb",
+  "verb",
+  "person",
+  "place",
+  "sb",
+  "sth",
+  "someone",
+  "somebody",
+  "something",
+] as const;
+
 const placeholder = /^(?:sb|sth|someone|somebody|something)$/iu;
 const lexical = /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’-]+$/u;
 const grammarWord = /\b(?:noun|verb|adjective|adverb|adj|adv|participle|ing)\b/iu;
-const complement =
-  "(?:-?ing(?: form)?|noun|verb|base verb|person|place|sb|sth|someone|somebody|something)";
+// "ing"/"ing form" without the hyphen remain accepted spellings of the listed -ing notations.
+const complement = `(?:-?ing(?: form)?|${studyComplementNotations
+  .filter((notation) => !notation.startsWith("-ing"))
+  .join("|")})`;
 const complementPattern = new RegExp(
   `^${complement}(?:\\s*(?:/|\\bor\\b)\\s*${complement})*$`,
   "iu",

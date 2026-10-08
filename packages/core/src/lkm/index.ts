@@ -52,6 +52,7 @@ export {
 } from "./study-schema";
 export {
   type StudyLexicalTarget,
+  studyComplementNotations,
   studyLexicalTarget,
   studyLexicalTargetMatches,
 } from "./study-target";

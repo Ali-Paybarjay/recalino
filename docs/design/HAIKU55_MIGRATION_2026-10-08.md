@@ -38,7 +38,7 @@ builder پیش از رزرو hold اجرا می‌شود؛ شکست آماده�
 
 پاسخ ساختاریِ نامعتبرِ اولیه نیز فقط برای مدل 5.5 و با accounting معلوم، در همان تراکنشِ تسویه marker `knowledge:schema-invalid` شامل diagnostic ثابت و شناسهٔ attempt می‌سازد؛ متن خام نامعتبر به دانش منتشرشدنی تبدیل نمی‌شود. job بعدی یک بازتولید کامل از منابع اصلی با diagnostic `provider_schema_invalid` و بودجهٔ محتوای معمول انجام می‌دهد. این فراخوان از checkpoint محدود `knowledge:repair` استفاده می‌کند و پس از موفقیت، دانش canonical و زمینهٔ جلسه را نیز ثبت می‌کند. هر شکست ساختاری، بریدگی، معنایی یا نتیجهٔ نامعلوم در تلاش دوم پایان مسیر خودکار است؛ فراخوان سوم ندارد. نبود accounting، unknown outcome و مدل 4.5 این اصلاح ساختاری تازه را فعال نمی‌کنند.
 
-تنظیم پیشنهادیِ نسخهٔ `openrouter-2026-10-08-1` و prompt `recalino-knowledge-5`:
+تنظیم پیشنهادیِ نسخهٔ `openrouter-2026-10-08-2` و prompt `recalino-knowledge-6` (پس از بازبینی Claude Code؛ نسخهٔ `-1`/`knowledge-5` همان نامزد شکست‌خورده است):
 
 | مورد | مقدار و دامنه |
 |---|---|
@@ -47,7 +47,7 @@ builder پیش از رزرو hold اجرا می‌شود؛ شکست آماده�
 | بودجهٔ محتوای درس | 6144؛ برنامه‌ریزی توضیح و تعداد کارت |
 | سقف فیزیکی پاسخ | 12000 برای همین مدل، شامل reasoning و خروجی قابل‌مشاهده |
 | effort | `low` برای همین مدل |
-| sampling | temperature برای 5.5 ارسال نمی‌شود؛ رفتار تنظیم‌شدهٔ مدل‌های دیگر حفظ می‌شود |
+| sampling | `omitTemperature: true` در override؛ temperature برای 5.5 یا override دارای reasoning ارسال نمی‌شود؛ رفتار تنظیم‌شدهٔ مدل‌های دیگر حفظ می‌شود |
 | ورودی محتوایی | حداکثر 120000 نویسه، بدون بریدن شواهد |
 | درخواست متنی | حداکثر 400000 بایت UTF-8 برای کل body، شامل system، schema و مسیر JSON fallback |
 | hold هر درخواست | 300000 میکرو‌دلار؛ هزینهٔ واقعیِ صورت‌حساب نیست |
@@ -102,6 +102,63 @@ H06 اولیه، تلفظ معتبر `/juːst/` برای be used to را صری�
 در M04، هدف‌های lexical برابر `by + time` و در تلاش اول `until + time` از قرارداد parser محدودِ `study-target.ts` عبور نکردند. این موضوع ناسازگاری headword و notation استفاده است و به‌تنهایی غلط بودن معنی را ثابت نمی‌کند. پس از حل درست قرارداد، پوشش until و افشای بخشی از on the whole در gap برابر `On ______` دوباره بررسی شوند؛ validator برای پذیرش آزاد annotation ضعیف نشود. H02 یک schema repair و M02 یک repair برای imageFa خالی داشتند. گزارش‌های اولیه، refinement تلفظ، M03 معتبر و M04 بی‌خروجی همگی جدا و بدون حذف شواهد نگه داشته شده‌اند.
 
 مالک محصول در این نقطه خواست کار ثبت و ادامه به Claude Code سپرده شود. آزمایش پولی و تغییر تازهٔ implementation متوقف شدند. [پرامپت کامل ادامه](../plans/CLAUDE_CODE_HAIKU55_HANDOFF_2026-10-08.md) مسیر worktree، رفتار کد، وضعیت تست، هزینه‌ها، مانع‌ها، دستورهای تکرار، حدود مجاز و rollback را ثبت می‌کند. این تحویل به معنی قبولی مهاجرت یا اجازهٔ انتشار نیست.
+
+## بازبینی و اصلاح Claude Code (2026-10-08)
+
+Claude Code کد و شواهد Codex را مستقل بازبینی کرد (سه بازبینی موازی: worker/حسابداری، assembly/امنیت، provider/harness). نتیجهٔ ۱۴تاییِ قبلی همچنان **FAIL** است و جایگزین نمی‌شود. علت ریشه‌ای چهار شکست:
+
+- **H02:** پاسخ با `finish_reason=stop` فقط آخرین `}` را نداشت؛ مشکل syntax بود، نه محتوا.
+- **M02:** sentinel خالیِ `""` در فیلد لازم `teaching.imageFa`. قرارداد v3 با sentinelهای فراوان، `""` را مقدار معمول جلوه می‌داد. دورهای قبلی هم همین خانواده خطا را داشتند: مثال در فیلد نامرتبط و faApprox خالی.
+- **M01:** سقف ۴ کارت production و کارت تکراری «some advice» باعث شد information جا بیفتد. برنامه‌ریزی مفهوم‌ها پیش از نوشتن کارت‌ها وجود نداشت.
+- **M04:** prompt فهرست بستهٔ notation parser را نمی‌گفت. repair هم فقط کد مبهم `study_target_unsupported` را می‌گرفت و همان خطا تکرار شد.
+- **H06:** trap تلفظ، variant معتبر را رد کرد. قاعدهٔ عمومی برای منع رد variant وجود نداشت.
+
+اصلاح‌های عمومی (بدون hardcode نکته‌های fixture، بدون ضعیف‌کردن validator canonical):
+
+| بخش | تغییر |
+|---|---|
+| DTO | `knowledge_generation_keys_v4`: discriminated union روی `type`؛ فیلدهای نامرتبطِ هر نوع از schema حذف شدند. محتوای اضافه همچنان به‌صورت کلید ناشناخته رد می‌شود. فیلدهای اختیاری حذف می‌شوند. faApprox فقط در schema فارسی وجود دارد. mistakes و learnerAnswer فقط با handwriting تأییدشدهٔ سرور در schema می‌آیند. |
+| برنامه‌ریزی | `lessonPlan` اولین ویژگی پاسخ است. هر مفهوم، دو طرف هر تقابل، شرط، تکلیف و تعارض منبع با کلید شواهد و `card/notes` فهرست می‌شود. این فهرست wire-only است و ذخیره نمی‌شود. |
+| notation | prompt همان فهرست بستهٔ `studyComplementNotations` در `lkm/study-target.ts` را نقل می‌کند. parser تغییر رفتاری ندارد و `by + time` همچنان رد می‌شود. |
+| gap | بررسی تازهٔ `study_gap_partial` فقط در assembly v4: occurrence حرفی هدف نباید روی blank شکسته شود و کلمهٔ کنار blank نباید کلمهٔ لبهٔ هدف یا ریشهٔ محتوایی آن باشد (مثلاً `On ______` برای on the whole). |
+| تلفظ | trap اختیاری است؛ هرگز تلفظی را غلط نمی‌خواند و variant را رد نمی‌کند. regex تقریب فارسی، علامت‌های IPA مانند ˈ و ː را رد می‌کند و حداقل یک حرف فارسی می‌خواهد. |
+| repair | علت رد اولیه به‌صورت diagnostic کدمحور در marker `knowledge:schema-invalid` ذخیره می‌شود. این diagnostic فقط نام property، index و کد issue دارد، مثلاً `zod:too_small@learningItems.1.teaching.imageFa` یا `assembly:study_gap_partial`. regeneration راهنمای ثابت همان کد را می‌گیرد؛ متن پاسخ ردشده هرگز replay نمی‌شود. |
+| JSON | فقط در حالت صریح `json_object` و فقط با `finish_reason=stop`: اگر پاسخ با بستن یک container تمام شده و فقط ۱ یا ۲ closer پایانی کم دارد، closerها اضافه می‌شوند. هیچ مقداری تغییر نمی‌کند و Zod سخت‌گیرانه بعد از آن اجرا می‌شود. truncation و حالت native کامل نمی‌شوند. |
+| evidence | ردیف‌های فقط فاصله کلید ندارند. board فقط متن دقیق با مرز کلمه است. ادعایی که user_notes را با منبع دیگر مخلوط کند رد می‌شود. caveat «جزئیات حذف شد» فقط در compact recovery می‌آید. |
+| worker | سقف سخت دو generation برای 5.5 اکنون روی همهٔ attemptهای خانوادهٔ knowledge شمرده می‌شود و retry پس از commit ناموفقِ پاسخ پولی را هم پوشش می‌دهد. خطای 4xx معلوم یا رد محلی پیش از dispatch شمرده نمی‌شود. |
+| provider | `omitTemperature` تنظیم override شد؛ مدل 5.5 یا هر override دارای reasoning، temperature نمی‌فرستد. snapshot بدون override هم با فهرست مدل شناخته‌شده محافظت می‌شود. |
+| prompt | مثال قالب `Could you tell me where the station is` که پاسخ fixture H04 بود حذف شد. قاعدهٔ tense بدون اشاره به yesterday بیان شد. نسخهٔ پیشنهادی `openrouter-2026-10-08-2` و `recalino-knowledge-6` است. |
+
+**harness:**
+
+- **ledger و بودجه:** ledger بین‌دوری `artifacts/verification/haiku55-evaluation-ledger.json` اجرای دوباره یا رفتن به پوشهٔ تازه با همان freeze را رد می‌کند. سقف تجمعی کل QA مهاجرت 0.50 دلار است و 0.1648530 دلار قبلی را هم شامل می‌شود.
+- **بازبینی کیفیت:** فایل بازبینی با hash fixtureهای plan و شمارش دوباره از results تطبیق داده می‌شود.
+- **کنترل خودکار gold:** شامل injection، خطای منسوب‌نشده، speech status، speaker role، تقریب، پوشش ناقص و uncertainty با همهٔ منابع تعارض. شکست هر کنترل، adoption را رد می‌کند.
+- **مرزهای receipt:** receipt بالاتر از reserve یا بیش از `max_tokens` دور را متوقف می‌کند.
+- **freeze:** lockfile، package.json، tsconfig ابزار و نسخهٔ Node را هم شامل می‌شود.
+
+**holdout مستقل `haiku55-holdout-2`:** ۱۲ درس تازه (N01 تا N12) و تکرار N04/N08، مجموعاً ۱۴ اجرا. این درس‌ها پس از دور شکست‌خورده و پیش از اجرای هر نامزد نوشته شدند. موضوع و جمله‌هایشان با fixtureهای قبلی و مثال‌های prompt مشترک نیست (آزمون خودکار) و course name یا متن منبع آن‌ها نشانهٔ ارزیابی ندارد. پوشش:
+
+- تعارض منبع: N03 و N09
+- مالکیت: N05
+- توضیح انگلیسی: N06 و N09
+- material ناقص با صفحهٔ failed: N07
+- variant تلفظ: N08
+- injection: N10
+- notationهای بیرون از فهرست: N03، N09 و N11
+- هدف‌های ESOL، IELTS و general
+
+دروازه‌ها کاهش نیافتند: 14/14 نهایی، حداقل 13/14 تلاش اول، صفر خطای مهم، پوشش همهٔ مفهوم‌ها، میانگین حداقل ۳ از ۴ و قبولی همهٔ کنترل‌های خودکار.
+
+**وضعیت آزمون این بازبینی:**
+
+- provider: ۱۰۱ آزمون موفق
+- generation: ۶۲ آزمون موفق
+- harness: ۳۲ آزمون موفق
+- worker integration روی دیتابیس ایزولهٔ 55322: ۱۶ آزمون موفق، از جمله «سقف دو generation پس از commit ناموفق و retry»
+- verify کامل: نتیجه در `artifacts/verification/haiku55-claude-verify.log`
+
+ارزیابی واقعی holdout تا تأیید هزینه توسط مالک محصول اجرا نشده است. تا عبور واقعی از دروازه‌ها، production روی 4.5 می‌ماند.
 
 ## rollout قابل بازبینی
 

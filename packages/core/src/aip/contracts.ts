@@ -20,6 +20,8 @@ export const providerSettingsSchema = z.strictObject({
         reasoningEffort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
         maxRequestBytes: z.number().int().positive().safe().optional(),
         structuredOutputMode: z.enum(["json_schema", "json_object"]).optional(),
+        /** The model rejects non-default sampling, so structuredTemperature is never sent. */
+        omitTemperature: z.literal(true).optional(),
       }),
     )
     .optional(),
@@ -116,6 +118,8 @@ export class ProviderError extends Error {
     readonly retryable: boolean,
     readonly uncertain: boolean,
     readonly accounting?: Omit<ProviderResult<never>, "output">,
+    /** Code-owned validation detail (schema paths and issue codes only), never response text. */
+    readonly diagnostic?: string,
   ) {
     super(code);
     this.name = "ProviderError";

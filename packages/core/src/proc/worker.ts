@@ -67,7 +67,7 @@ import {
   compactKnowledgeInstruction,
   knowledgeTruncationSchema,
 } from "./knowledge-compact";
-import { buildKnowledgeGenerationInput } from "./knowledge-generation";
+import { buildKnowledgeGenerationInput, knowledgeRepairDetailSchema } from "./knowledge-generation";
 import {
   generateCanonicalKnowledge,
   knowledgeSchemaFailureSchema,
@@ -165,6 +165,22 @@ async function liveRun(tx: Tx, ctx: LearnerContext, id: string) {
   await assertSessionOwner(tx, ctx, run.session_id);
   return run;
 }
+/** Only this exact model uses the content-only generation contract and its two-call cap. */
+const contentContractModel = "anthropic/claude-haiku-5.5";
+const undispatchedProviderErrors = new Set([
+  "provider_request_too_large",
+  "provider_input_too_large",
+  "provider_bounded_images_unsupported",
+  "provider_url_invalid",
+  "provider_request_schema_too_complex",
+]);
+const knowledgeGenerationSteps = [
+  "knowledge",
+  "knowledge:compact",
+  "knowledge:repair",
+  "knowledge:study-repair",
+  "knowledge:repair-language",
+];
 async function cached<T>(
   db: Database,
   runId: string,
@@ -214,6 +230,27 @@ export async function providerStep<T>(
       .executeTakeFirst();
     if (previous && ["started", "uncertain"].includes(previous.state))
       throw new ProviderError("provider_outcome_unresolved", false, true);
+    // 5.5 lessons have at most two generation dispatches per run, whichever steps used them.
+    // This also covers a retried job after a paid response whose commit failed.
+    if (model === contentContractModel && knowledgeGenerationSteps.includes(step)) {
+      const attempts = await tx
+        .selectFrom("proc.provider_attempt")
+        .select(["state", "error_code"])
+        .where("run_id", "=", runId)
+        .where("step", "in", knowledgeGenerationSteps)
+        .execute();
+      // A known HTTP 4xx or local request refusal never generated a lesson; all else counts.
+      const generations = attempts.filter(
+        (entry) =>
+          entry.state !== "failed" ||
+          !(
+            /^provider_http_4\d\d$/.test(entry.error_code ?? "") ||
+            undispatchedProviderErrors.has(entry.error_code ?? "")
+          ),
+      );
+      if (generations.length >= 2)
+        throw errors.validationFailed({ output: ["knowledge_repair_exhausted"] });
+    }
     // Each bounded correction has one paid dispatch, including known failed responses.
     if (
       [
@@ -410,11 +447,12 @@ export async function providerStep<T>(
       }
       if (
         step === "knowledge" &&
-        model === "anthropic/claude-haiku-5.5" &&
+        model === contentContractModel &&
         providerError.code === "provider_schema_invalid" &&
         !providerError.uncertain &&
         providerError.accounting
       ) {
+        const detail = knowledgeRepairDetailSchema.safeParse(providerError.diagnostic);
         await saveStep(
           tx,
           runId,
@@ -422,6 +460,7 @@ export async function providerStep<T>(
           knowledgeSchemaFailureSchema.parse({
             reason: "provider_schema_invalid",
             attemptId: attempt.id,
+            ...(detail.success ? { detail: detail.data } : {}),
           }),
           job.now(),
         );
@@ -970,7 +1009,7 @@ export function processingJob(
           lessonContext,
         };
         // Legacy snapshots retain their original wire contract and rollback behavior.
-        const compactGeneration = settings.provider.llmModel === "anthropic/claude-haiku-5.5";
+        const compactGeneration = settings.provider.llmModel === contentContractModel;
         const knowledgeInput = buildKnowledgeInput(
           generationData,
           settings.provider.maxInputCharacters,
@@ -1005,7 +1044,12 @@ export function processingJob(
                   ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
                   : settings.provider.maxOutputTokens,
                 compact: Boolean(compact),
-                ...(schemaFailure ? { repairReason: schemaFailure.reason } : {}),
+                ...(schemaFailure
+                  ? {
+                      repairReason: schemaFailure.reason,
+                      ...(schemaFailure.detail ? { repairDetail: schemaFailure.detail } : {}),
+                    }
+                  : {}),
               })
             : undefined;
           try {

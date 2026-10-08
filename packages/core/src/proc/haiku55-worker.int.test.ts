@@ -29,7 +29,7 @@ const settings: ProviderSettings = {
   sttModel: "synthetic/stt",
   ttsModel: "synthetic/tts",
   voice: "synthetic",
-  promptVersion: "recalino-knowledge-5",
+  promptVersion: "recalino-knowledge-6",
   maxInputCharacters: 120000,
   maxOutputTokens: 6144,
   structuredTemperature: 0,
@@ -38,6 +38,7 @@ const settings: ProviderSettings = {
       maxOutputTokens: 12000,
       reasoningEffort: "low",
       structuredOutputMode: "json_object",
+      omitTemperature: true,
     },
   },
   timeoutMs: 1000,
@@ -53,6 +54,7 @@ const sentence = "I look forward to meeting my new neighbours.";
 const sourceText = `${sentence} Look forward to means anticipate with pleasure; to is a preposition followed by a noun or an -ing form. This printed demonstration is not learner writing.`;
 function wire(meaning = "Anticipate a future event with pleasure") {
   return {
+    lessonPlan: [{ concept: "look forward to + -ing", evidenceKeys: ["r0"], teachAs: "card" }],
     title: "Looking forward to a meeting",
     summary: [],
     topics: [],
@@ -60,20 +62,18 @@ function wire(meaning = "Anticipate a future event with pleasure") {
     uncertainties: [],
     learningItems: [
       {
-        identity: { type: "lexical", kind: "expression", studyKind: "" },
+        type: "lexical",
+        kind: "expression",
         claim: {
           text: "Look forward to expresses pleased anticipation of a future event.",
           evidenceKeys: ["r0"],
           uncertain: false,
         },
         meaning: { en: "look forward to", faMeaning: meaning, topic: "anticipation" },
-        pronunciation: { ipa: "/lʊk ˈfɔːwəd tə/", faApprox: "", trap: "" },
+        pronunciation: { ipa: "/lʊk ˈfɔːwəd tə/" },
         practice: {
           fullSentence: sentence,
           gapSentence: "I ______ meeting my new neighbours.",
-          taskFa: "",
-          prompt: "",
-          example: "",
         },
         teaching: {
           collocations: ["look forward to a meeting"],
@@ -84,9 +84,8 @@ function wire(meaning = "Anticipate a future event with pleasure") {
     ],
     classNotes: {
       coverage: "Look forward to and its prepositional pattern",
-      orientation: { sourceNote: "", coreIntro: "", oralIntro: "" },
+      orientation: {},
       activities: { chunks: [], board: [], tasks: [], culture: [], register: [] },
-      mistakes: { noteFa: "", items: [] },
     },
   };
 }
@@ -237,9 +236,9 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
       });
       expect(body).not.toHaveProperty("temperature");
       const input = JSON.parse(body.messages[1].content[0].text);
-      expect(input.format).toBe("knowledge_generation_keys_v3");
+      expect(input.format).toBe("knowledge_generation_keys_v4");
       expect(input.sources[0].evidence[0]).toContain(sourceText);
-      expect(body.messages[0].content).toContain("content-only");
+      expect(body.messages[0].content).toContain("Write lessonPlan FIRST");
       expect(body.messages[0].content).not.toContain(
         "top-level JSON object has only these keys: schemaVersion",
       );
@@ -341,7 +340,12 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
     const marker = (await f.checkpoints()).find(
       (entry) => entry.step === "knowledge:schema-invalid",
     );
-    expect(marker?.output).toEqual({ reason: "provider_schema_invalid", attemptId: attempt.id });
+    // Only the code-owned assembly code is kept, never the rejected response text.
+    expect(marker?.output).toEqual({
+      reason: "provider_schema_invalid",
+      attemptId: attempt.id,
+      detail: "assembly:source_reference_invalid",
+    });
     await f.work();
     expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
       state: "failed",
@@ -381,10 +385,17 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
         inputs.push(body.messages[1]);
         keys.push(new Headers(init?.headers).get("Idempotency-Key"));
         if (inputs.length > 2) throw new Error("A third paid request must never be dispatched");
-        if (inputs.length === 2)
+        if (inputs.length === 2) {
           expect(body.messages[0].content).toContain(
-            "after the server diagnostic provider_schema_invalid",
+            "server rejected the previous response (provider_schema_invalid)",
           );
+          expect(body.messages[0].content).toContain(
+            invalidKind === "zod"
+              ? "Schema check failed at learningItems.0.practice.gapSentence"
+              : "A claim cited an invalid or duplicate evidence key",
+          );
+          expect(body.messages[0].content).not.toContain('"r0","r0"');
+        }
         return response(inputs.length === 1 ? invalidWire(invalidKind) : wire(), inputs.length);
       });
       const f = await fixture(request);
@@ -399,6 +410,10 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
       expect(marker?.output).toEqual({
         reason: "provider_schema_invalid",
         attemptId: firstAttempt.id,
+        detail:
+          invalidKind === "zod"
+            ? "zod:invalid_type@learningItems.0.practice.gapSentence"
+            : "assembly:source_reference_invalid",
       });
       expect(firstAttempt).toMatchObject({
         step: "knowledge",
@@ -719,6 +734,45 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
     expect(latest?.model.learningItems[0]?.study).toMatchObject({
       faMeaning: "Anticipate a future event with pleasure",
     });
+    expect((await f.costs()).map((entry) => Number(entry.amount_micros))).toEqual([5, 3]);
+    expect(await f.work()).toBe(false);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("never buys a third 5.5 generation when a paid knowledge commit failed and the job retried", async () => {
+    let responseCount = 0;
+    const request = vi.fn<typeof fetch>(async () => {
+      responseCount += 1;
+      if (responseCount > 2) throw new Error("A third paid request must never be dispatched");
+      return response(wire("look forward to means anticipate"), responseCount);
+    });
+    const f = await fixture(request);
+    await f.work();
+    expect(request).toHaveBeenCalledTimes(1);
+    // Reproduce a paid response whose success transaction failed: the attempt and its cost are
+    // recorded, but the canonical checkpoint is absent, so a retried job sees no knowledge.
+    const [first] = await f.attempts();
+    if (!first) throw new Error("Missing paid attempt");
+    await db
+      .updateTable("proc.provider_attempt")
+      .set({ state: "failed", error_code: "provider_output_commit_failed" })
+      .where("id", "=", first.id)
+      .execute();
+    await db
+      .deleteFrom("proc.run_step")
+      .where("run_id", "=", f.run.id)
+      .where("step", "in", ["knowledge", "knowledge:input-context"])
+      .execute();
+    await f.work();
+    expect(request).toHaveBeenCalledTimes(2);
+    await f.work();
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+      state: "failed",
+      lastError: "knowledge_repair_exhausted",
+      outputVersionId: null,
+    });
+    expect((await f.attempts()).map((entry) => entry.step)).toEqual(["knowledge", "knowledge"]);
     expect((await f.costs()).map((entry) => Number(entry.amount_micros))).toEqual([5, 3]);
     expect(await f.work()).toBe(false);
     expect(request).toHaveBeenCalledTimes(2);

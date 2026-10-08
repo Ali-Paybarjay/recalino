@@ -47,6 +47,8 @@ type MigrationTechnicalSummary = {
   unexpectedTransportFallbacks: number;
   stopped: boolean;
   unresolved: unknown[];
+  /** Deterministic answer-key checks for every accepted case; absent means not evaluated. */
+  automaticGoldChecksPassed?: boolean;
 };
 
 /** Reviewer judgments are tied to exact accepted models and every predeclared concept. */
@@ -99,7 +101,8 @@ export function assessMigrationQualityReview(
     summary.firstGenerationPasses >= 13 &&
     summary.unexpectedTransportFallbacks === 0 &&
     !summary.stopped &&
-    summary.unresolved.length === 0;
+    summary.unresolved.length === 0 &&
+    summary.automaticGoldChecksPassed !== false;
   return {
     freeze: review.freeze,
     reviewer: review.reviewer,

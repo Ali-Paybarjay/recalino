@@ -15,6 +15,7 @@ import { providerHttpErrorCode } from "./provider-http-error";
 import { createJsonFallbackTransport, createStructuredTransport } from "./structured-schema";
 
 const privacy = { zdr: true, data_collection: "deny", require_parameters: true };
+const providerDefaultSamplingModels = new Set(["anthropic/claude-haiku-5.5"]);
 const chatResponse = z.object({
   id: z.string().optional(),
   model: z.string(),
@@ -146,8 +147,12 @@ export class OpenRouterProvider implements AiProvider {
               effort: controls.reasoningEffort,
             },
           }),
+      // Reasoning requests and models that reject non-default sampling use provider defaults;
+      // the known model set also covers a snapshot that predates the override.
       ...(this.settings.structuredTemperature === undefined ||
-      input.model === "anthropic/claude-haiku-5.5"
+      controls?.omitTemperature ||
+      controls?.reasoningEffort !== undefined ||
+      providerDefaultSamplingModels.has(input.model)
         ? {}
         : { temperature: this.settings.structuredTemperature }),
       messages: [
@@ -237,18 +242,35 @@ export class OpenRouterProvider implements AiProvider {
     const contentValue = data.choices[0]?.message.content;
     let raw: unknown;
     try {
-      raw = parseStructuredContent(contentValue, !!jsonFallback);
+      raw = parseStructuredContent(
+        contentValue,
+        !!jsonFallback,
+        // Explicit JSON mode has no grammar. A response that stopped normally with only its
+        // final closers missing is completed without changing any value; strict Zod follows.
+        !transport && data.choices[0]?.finish_reason === "stop" ? input.schemaName : undefined,
+      );
     } catch {
       reportSchemaFailure(input.schemaName, "json_parse", input.schema);
-      throw new ProviderError("provider_schema_invalid", false, false, accounting);
+      throw new ProviderError("provider_schema_invalid", false, false, accounting, "json_parse");
     }
     const outputTransport = jsonFallback ?? transport;
     if (!outputTransport)
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
     const output = input.schema.safeParse(outputTransport.decode(raw));
     if (!output.success) {
-      reportSchemaFailure(input.schemaName, "zod", input.schema, output.error.issues);
-      throw new ProviderError("provider_schema_invalid", false, false, accounting);
+      const summaries = reportSchemaFailure(
+        input.schemaName,
+        "zod",
+        input.schema,
+        output.error.issues,
+      );
+      throw new ProviderError(
+        "provider_schema_invalid",
+        false,
+        false,
+        accounting,
+        schemaIssueDiagnostic(summaries),
+      );
     }
     return {
       output: output.data,
@@ -360,6 +382,8 @@ const diagnosticSchemas = new Set([
   "source_extraction",
   "pdf_page_extraction",
   "class_knowledge",
+  "class_knowledge_content",
+  "class_knowledge_content_repair",
   "class_knowledge_repair",
   "class_study_sentence_repair",
   "class_knowledge_translation",
@@ -378,13 +402,25 @@ const diagnosticIssueCodes = new Set([
   "invalid_value",
   "custom",
 ]);
+type SchemaIssueSummary = { code: string; path: (string | number)[] };
+/** At most three code-owned issues, e.g. `zod:too_small@learningItems.1.teaching.imageFa`. */
+function schemaIssueDiagnostic(summaries: SchemaIssueSummary[]): string | undefined {
+  const parts = summaries
+    .filter((issue) => issue.code !== "invalid_union")
+    .slice(0, 3)
+    .map(
+      (issue) =>
+        `zod:${issue.code}@${issue.path.map((part) => (part === "[unknown]" ? "?" : part)).join(".")}`,
+    );
+  return parts.length ? parts.join(";") : undefined;
+}
 /** Only code-owned schema names/paths and validation codes reach logs, never rejected values or messages. */
 function reportSchemaFailure(
   schemaName: string,
   stage: "json_parse" | "zod",
   schema: z.ZodType,
   issues: z.ZodError["issues"] = [],
-): void {
+): SchemaIssueSummary[] {
   try {
     const properties = new Set<string>();
     const visit = (value: unknown): void => {
@@ -411,29 +447,33 @@ function reportSchemaFailure(
       if (issue?.code === "invalid_union")
         bounded.push(...issue.errors.flat().slice(0, 12 - bounded.length));
     }
+    const summaries = bounded.map((issue) => ({
+      code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
+      path: issue.path
+        .slice(0, 12)
+        .map((part) =>
+          typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
+            ? part
+            : typeof part === "string" && properties.has(part)
+              ? part
+              : "[unknown]",
+        ),
+    }));
     console.warn("recalino.provider_schema_invalid", {
       schema: diagnosticSchemas.has(schemaName) ? schemaName : "other",
       stage,
-      issues: bounded.map((issue) => ({
-        code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
-        path: issue.path
-          .slice(0, 12)
-          .map((part) =>
-            typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
-              ? part
-              : typeof part === "string" && properties.has(part)
-                ? part
-                : "[unknown]",
-          ),
-      })),
+      issues: summaries,
     });
+    return summaries;
   } catch {
     // Diagnostic failure must never alter the provider outcome or trigger another request.
+    return [];
   }
 }
 function parseStructuredContent(
   content: string | null | undefined,
   allowJsonFence: boolean,
+  closerCompletionSchema?: string,
 ): unknown {
   const text = content ?? "";
   try {
@@ -444,9 +484,44 @@ function parseStructuredContent(
     const fenced = allowJsonFence
       ? /^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i.exec(text.trim())
       : null;
-    if (!fenced) throw error;
-    return JSON.parse(fenced[1] ?? "");
+    if (fenced) return JSON.parse(fenced[1] ?? "");
+    const completed = closerCompletionSchema === undefined ? undefined : completeFinalClosers(text);
+    if (!completed) throw error;
+    const value = JSON.parse(completed.text);
+    console.warn("recalino.provider_json_closers_completed", {
+      schema: diagnosticSchemas.has(closerCompletionSchema ?? "")
+        ? closerCompletionSchema
+        : "other",
+      closers: completed.closers,
+    });
+    return value;
   }
+}
+/**
+ * A root object whose text ends by closing a container, outside any string, and lacks only
+ * one or two final closers. Every value is unchanged; anything else stays a parse failure.
+ */
+export function completeFinalClosers(
+  content: string,
+): { text: string; closers: number } | undefined {
+  const text = content.trim();
+  if (!text.startsWith("{") || !(text.endsWith("}") || text.endsWith("]"))) return undefined;
+  const expected: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const character of text) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+    } else if (character === '"') inString = true;
+    else if (character === "{") expected.push("}");
+    else if (character === "[") expected.push("]");
+    else if ((character === "}" || character === "]") && expected.pop() !== character)
+      return undefined;
+  }
+  if (inString || expected.length === 0 || expected.length > 2) return undefined;
+  return { text: text + expected.reverse().join(""), closers: expected.length };
 }
 function cost(value: number | undefined): number | null {
   if (value === undefined) return null;

@@ -13,7 +13,9 @@ import {
   providerSettingsSchema,
   type StructuredInput,
 } from "../../packages/core/src/aip";
+import { completeFinalClosers } from "../../packages/core/src/aip/openrouter";
 import {
+  type KnowledgeModel,
   modelClaims,
   normalizeGeneratedStudyModel,
   renderClassNotesHtml,
@@ -28,19 +30,29 @@ import { generateCanonicalKnowledge } from "../../packages/core/src/proc/knowled
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import {
+  holdoutFixtureSetId,
+  holdoutMigrationFixtures,
+  holdoutRepeatIds,
+} from "./haiku55-holdout-fixtures";
+import {
   freshMigrationFixtures,
   migrationFixtureSchema,
   migrationInputData,
 } from "./haiku55-migration-fixtures";
+import { migrationAutomaticGoldChecks } from "./haiku55-migration-gold";
 import {
+  assertMigrationCumulativeBudget,
   assertMigrationDispatchAllowed,
   MigrationControlInterruption,
   migrationAutomaticGateFailure,
   migrationControlInterruptionResult,
   migrationControls,
   migrationInitialRecovery,
+  migrationLedgerRound,
+  migrationLedgerSchema,
   migrationRequestReserve,
   migrationRequestSchema,
+  migrationUnledgeredPriorUsd,
   readMigrationRecordedJson,
   selectMigrationDiagnosticCases,
 } from "./haiku55-migration-guards";
@@ -64,25 +76,50 @@ const save = async (path: string, value: unknown) => {
   await writeFile(temporary, JSON.stringify(value, null, 2));
   await rename(temporary, path);
 };
+const fixtureSet = option("--fixture-set", "migration-14");
+assert.ok(
+  fixtureSet === "migration-14" || fixtureSet === holdoutFixtureSetId,
+  `Unknown fixture set; use migration-14 or ${holdoutFixtureSetId}`,
+);
+const ledgerPath = resolve("artifacts/verification/haiku55-evaluation-ledger.json");
 const qualityReviewPath = option("--quality-review-file");
 if (qualityReviewPath) {
   assert.ok(!live, "Offline quality review cannot dispatch paid calls");
-  const summary = z
+  const recorded = z
     .object({
       freeze: z.string(),
       completedCases: z.number(),
       expectedCases: z.number(),
-      finalLocalPasses: z.number(),
-      firstGenerationPasses: z.number(),
-      unexpectedTransportFallbacks: z.number(),
       stopped: z.boolean(),
       unresolved: z.array(z.unknown()),
       results: z.array(z.record(z.string(), z.unknown())),
     })
     .parse(await json(resolve(directory, "summary.json")));
+  const capturedPlan = z
+    .object({ freeze: z.string(), fixturesHash: z.string(), expectedCases: z.number() })
+    .parse(await json(resolve(directory, "dry-run-plan.json")));
   const captured = z
     .object({ cases: z.array(migrationFixtureSchema) })
     .parse(await json(resolve(directory, "fixtures-and-ground-truth.json")));
+  // Never trust edited summaries or answer keys: tie both to the approved dry-run freeze.
+  assert.equal(recorded.freeze, capturedPlan.freeze, "Summary freeze differs from the plan");
+  assert.equal(
+    sha256Hex(canonicalJson(captured.cases)),
+    capturedPlan.fixturesHash,
+    "Captured answer keys differ from the frozen plan",
+  );
+  assert.equal(recorded.expectedCases, capturedPlan.expectedCases);
+  const count = (field: string) =>
+    recorded.results.filter((result) => result[field] === true).length;
+  const summary = {
+    ...recorded,
+    finalLocalPasses: count("finalLocalPass"),
+    firstGenerationPasses: count("firstGenerationPass"),
+    unexpectedTransportFallbacks: count("unexpectedTransportFallback"),
+    automaticGoldChecksPassed: recorded.results.every(
+      (result) => result.finalLocalPass !== true || result.automaticGoldChecksPassed === true,
+    ),
+  };
   const references = await Promise.all(
     summary.results.map(async (result) => {
       const caseId = z.string().parse(result.caseId);
@@ -128,24 +165,35 @@ assert.equal(
 const historical = z
   .object({ cases: z.array(migrationFixtureSchema), repeatCaseIds: z.array(z.string()) })
   .parse(await json("tools/eval/haiku55-migration-regression-fixtures.json"));
-const fixtures = [...historical.cases, ...freshMigrationFixtures()];
-const originalSchedule = [
-  ...historical.cases,
-  ...historical.repeatCaseIds.map((id) => {
-    const entry = historical.cases.find((fixture) => fixture.id === id);
+const holdout = fixtureSet === holdoutFixtureSetId;
+const fixtures = holdout
+  ? holdoutMigrationFixtures()
+  : [...historical.cases, ...freshMigrationFixtures()];
+const repeated = (ids: readonly string[], source: typeof fixtures) =>
+  ids.map((id) => {
+    const entry = source.find((fixture) => fixture.id === id);
     assert.ok(entry);
     return entry;
-  }),
-  ...freshMigrationFixtures(),
-].map((fixture, ordinal) => ({
+  });
+const originalSchedule = (
+  holdout
+    ? [...fixtures, ...repeated(holdoutRepeatIds, fixtures)]
+    : [
+        ...historical.cases,
+        ...repeated(historical.repeatCaseIds, historical.cases),
+        ...freshMigrationFixtures(),
+      ]
+).map((fixture, ordinal) => ({
   caseId: `${fixture.id}-${ordinal + 1}`,
   fixture,
-  repeat: ordinal >= 8 && ordinal < 10,
+  repeat: holdout ? ordinal >= 12 : ordinal >= 8 && ordinal < 10,
 }));
 assert.equal(originalSchedule.length, 14);
+const diagnosticIds = option("--diagnostic-only-case-ids");
+assert.ok(!holdout || diagnosticIds === undefined, "Holdout rounds have no diagnostic subset");
 const { diagnosticOnly, schedule } = selectMigrationDiagnosticCases(
   originalSchedule,
-  option("--diagnostic-only-case-ids"),
+  diagnosticIds,
 );
 const dispatchLimits = diagnosticOnly
   ? { maximumPaidResponses: 4, maximumHttpRequests: 4 }
@@ -166,10 +214,16 @@ const paths = git([
 for (const path of [
   "tools/eval/haiku55-migration-live.ts",
   "tools/eval/haiku55-migration-fixtures.ts",
+  "tools/eval/haiku55-holdout-fixtures.ts",
+  "tools/eval/haiku55-migration-gold.ts",
   "tools/eval/haiku55-migration-guards.ts",
   "tools/eval/haiku55-migration-quality.ts",
   "tools/eval/haiku55-migration-regression-fixtures.json",
   "packages/core/src/proc/knowledge-generation.ts",
+  "pnpm-lock.yaml",
+  "package.json",
+  "packages/core/package.json",
+  "tools/tsconfig.json",
 ])
   if (!paths.includes(path)) paths.push(path);
 const pipelineHashes = await Promise.all(
@@ -271,17 +325,31 @@ const plan = {
       }
     : {}),
   date: "2026-10-08",
+  fixtureSet,
+  nodeVersion: process.version,
   expectedKeysNeverSent: true,
-  evaluationProvenance: {
-    historicalFixtureIds: historical.cases.map((fixture) => fixture.id),
-    historicalRepeatIds: historical.repeatCaseIds,
-    predeclaredAdditionalFixtureIds: ["M01", "M02", "M03", "M04"],
-    additionalFixturesExposedInStoppedPriorRound: ["M01", "M02"],
-    additionalFixturesStillUnseenAtThisFreeze: ["M03", "M04"],
-    everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
-    humanTeacherCertificationClaimed: false,
-    blindModelComparisonClaimed: false,
-  },
+  evaluationProvenance: holdout
+    ? {
+        holdoutFixtureIds: fixtures.map((fixture) => fixture.id),
+        holdoutRepeatIds,
+        writtenAfterFailedFourteenCaseRound: true,
+        disjointFromRegressionFixturesAndPromptExamples: true,
+        everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
+        automaticGoldChecksGateAdoption: true,
+        humanTeacherCertificationClaimed: false,
+        blindModelComparisonClaimed: false,
+      }
+    : {
+        historicalFixtureIds: historical.cases.map((fixture) => fixture.id),
+        historicalRepeatIds: historical.repeatCaseIds,
+        predeclaredAdditionalFixtureIds: ["M01", "M02", "M03", "M04"],
+        additionalFixturesExposedInStoppedPriorRound: ["M01", "M02"],
+        additionalFixturesStillUnseenAtThisFreeze: ["M03", "M04"],
+        allFourteenExposedInEarlierRounds: true,
+        everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
+        humanTeacherCertificationClaimed: false,
+        blindModelComparisonClaimed: false,
+      },
   model: settings.llmModel,
   directJsonMode,
   nativeSchemaAcceptanceClaimed: false,
@@ -345,6 +413,17 @@ const state = stateSchema.parse(
 );
 assert.equal(state.freeze, freeze, "Never resume under changed production code or test fixtures");
 assert.ok(!state.stopped, `Evaluation stopped: ${state.stopReason}`);
+const ledger = migrationLedgerSchema.parse(
+  (await readMigrationRecordedJson(ledgerPath)) ?? {
+    version: 1,
+    priorUnledgeredUsd: migrationUnledgeredPriorUsd,
+    rounds: [],
+  },
+);
+const relativeDirectory = directory.replace(resolve("."), "").replace(/^[\\/]+/, "");
+const round = migrationLedgerRound(ledger, freeze, relativeDirectory, fixtureSet);
+assert.equal(round.spentUsd, state.spentUsd, "Ledger and round state disagree; recover offline");
+await save(ledgerPath, ledger);
 assert.ok(
   !state.requests.some((request) => request.state === "started" || request.state === "uncertain"),
   "Unresolved dispatch must be recovered offline, never retried",
@@ -360,7 +439,12 @@ if (!credential) {
 }
 assert.ok(credential, "Existing API credential unavailable");
 const key = credential;
-const persist = () => save(statePath, state);
+const persist = async () => {
+  await save(statePath, state);
+  round.spentUsd = state.spentUsd;
+  round.status = state.stopped ? "stopped" : "running";
+  await save(ledgerPath, ledger);
+};
 const stopRequested = () =>
   readFile(resolve(directory, "STOP_REQUESTED"), "utf8")
     .then(() => true)
@@ -425,6 +509,7 @@ for (const task of schedule) {
   const started = Date.now();
   let stage = "generation",
     calls = 0,
+    jsonClosersCompleted = 0,
     unexpectedTransport = false,
     initialFailure: string | undefined,
     localControlInterruption: string | undefined;
@@ -483,6 +568,7 @@ for (const task of schedule) {
         calls,
         dispatchLimits,
       );
+      assertMigrationCumulativeBudget(ledger, reserve.reserveUsd);
     } catch (error) {
       state.stopped = true;
       state.stopReason = failure(error);
@@ -570,6 +656,10 @@ for (const task of schedule) {
       if (response.status >= 500) throw new Error("provider_5xx_unknown_outcome");
       if (response.ok && metadata.usage?.cost === undefined)
         throw new Error("paid_cost_receipt_missing");
+      const paidOverBound =
+        response.ok &&
+        ((metadata.usage?.cost ?? 0) > reserve.reserveUsd ||
+          (metadata.usage?.completion_tokens ?? 0) > body.max_tokens);
       const receipt = {
         caseId: task.caseId,
         stage,
@@ -592,6 +682,8 @@ for (const task of schedule) {
       if (response.ok) state.spentUsd += metadata.usage?.cost ?? 0;
       await persist();
       await save(resolve(dossier, "receipts.json"), receipts);
+      // The cost is recorded first; a receipt above the reserve or token cap stops the round.
+      if (paidOverBound) throw new Error("paid_receipt_exceeds_reserve_or_token_cap");
       if (response.ok && metadata.model !== settings.llmModel)
         throw new Error("reported_model_does_not_match_candidate");
       const content = metadata.choices?.[0]?.message?.content;
@@ -600,7 +692,15 @@ for (const task of schedule) {
         try {
           visible = JSON.parse(content);
         } catch {
-          visible = { unparseableVisibleContent: content };
+          const completed =
+            metadata.choices?.[0]?.finish_reason === "stop"
+              ? completeFinalClosers(content)
+              : undefined;
+          if (completed) jsonClosersCompleted += completed.closers;
+          visible = {
+            unparseableVisibleContent: content,
+            ...(completed ? { finalClosersCompletable: completed.closers } : {}),
+          };
         }
         await save(resolve(dossier, `${stage}-raw-visible.json`), visible);
       }
@@ -637,13 +737,14 @@ for (const task of schedule) {
     transcribe: provider.transcribe.bind(provider),
     speech: provider.speech.bind(provider),
   };
-  const generate = async (compact = false, repairReason?: string) => {
+  const generate = async (compact = false, repairReason?: string, repairDetail?: string) => {
     const generation = buildKnowledgeGenerationInput(data, settings.maxInputCharacters, {
       maxOutputTokens: compact
         ? compactKnowledgeBudget(settings.maxOutputTokens)
         : settings.maxOutputTokens,
       ...(compact ? { compact: true } : {}),
       ...(repairReason ? { repairReason } : {}),
+      ...(repairReason && repairDetail ? { repairDetail } : {}),
     });
     return (
       await generateCanonicalKnowledge(
@@ -676,10 +777,15 @@ for (const task of schedule) {
         evaluationMarkerWithoutDatabase: true,
         productionCheckpointStep: recovery.marker,
         reason: initialFailure,
+        detail: error instanceof ProviderError ? error.diagnostic : undefined,
         accounting: error instanceof ProviderError ? error.accounting : undefined,
       });
       stage = recovery.stage;
-      generated = await generate(recovery.compact, recovery.repairReason);
+      generated = await generate(
+        recovery.compact,
+        recovery.repairReason,
+        error instanceof ProviderError ? error.diagnostic : undefined,
+      );
     }
     await save(resolve(dossier, "canonical-generated.json"), generated);
     let validated: ReturnType<typeof validateGeneratedKnowledge>;
@@ -735,6 +841,11 @@ for (const task of schedule) {
       data.learnerContext,
     );
     await save(resolve(dossier, "final-model.json"), projected.model);
+    const goldChecks = migrationAutomaticGoldChecks(
+      task.fixture,
+      projected.model as KnowledgeModel,
+    );
+    await save(resolve(dossier, "automatic-gold-checks.json"), goldChecks);
     await writeFile(resolve(dossier, "notes.html"), renderClassNotesHtml(projected.model));
     await save(
       resolve(dossier, "cards.json"),
@@ -755,6 +866,10 @@ for (const task of schedule) {
       ).length,
       sourcedClaims: modelClaims(projected.model).filter((claim) => claim.origin === "from_class")
         .length,
+      automaticGoldChecksPassed: goldChecks.every((check) => !check.gating || check.passed),
+      automaticGoldCheckFailures: goldChecks
+        .filter((check) => check.gating && !check.passed)
+        .map((check) => check.id),
     };
   } catch (error) {
     result = migrationControlInterruptionResult(
@@ -774,6 +889,7 @@ for (const task of schedule) {
     providerAttempts: calls,
     httpRequests: state.requests.filter((request) => request.caseId === task.caseId).length,
     unexpectedTransportFallback: unexpectedTransport,
+    jsonClosersCompleted,
     durationMs: Date.now() - started,
     usdCost: receipts.reduce(
       (total, receipt) => total + (typeof receipt.usdCost === "number" ? receipt.usdCost : 0),
@@ -826,6 +942,16 @@ const summary = {
     .length,
   finalLocalPasses: state.results.filter((result) => result.finalLocalPass).length,
   firstGenerationPasses: state.results.filter((result) => result.firstGenerationPass).length,
+  automaticGoldChecksPassed: state.results.every(
+    (result) => result.finalLocalPass !== true || result.automaticGoldChecksPassed === true,
+  ),
+  jsonClosersCompleted: state.results.reduce(
+    (total, result) =>
+      total + (typeof result.jsonClosersCompleted === "number" ? result.jsonClosersCompleted : 0),
+    0,
+  ),
+  cumulativeMigrationQaUsd:
+    ledger.priorUnledgeredUsd + ledger.rounds.reduce((total, entry) => total + entry.spentUsd, 0),
   stopped: state.stopped,
   stopReason: state.stopReason,
   unresolved: state.requests.filter(
@@ -836,4 +962,10 @@ const summary = {
   controlInterruptions: state.results.filter((result) => result.controlInterruption),
 };
 await save(resolve(directory, "summary.json"), summary);
+round.status = state.stopped
+  ? "stopped"
+  : state.results.length === schedule.length
+    ? "completed"
+    : "running";
+await save(ledgerPath, ledger);
 if (state.stopped || state.results.length !== schedule.length) process.exitCode = 1;

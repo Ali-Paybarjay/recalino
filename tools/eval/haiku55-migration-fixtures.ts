@@ -92,6 +92,9 @@ function concept(
     }),
   };
 }
+/** Shared synthetic builders for later independent fixture sets (no answer keys inside). */
+export const migrationSource = source;
+export const migrationConcept = concept;
 function fixture(
   id: string,
   level: MigrationFixture["declaredLevel"],

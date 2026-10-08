@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
   effectiveStructuredMaxOutputTokens,
+  ProviderError,
   type ProviderSettings,
   providerSettingsSchema,
   requireProvider,
 } from "./contracts";
-import { OpenRouterProvider } from "./openrouter";
+import { completeFinalClosers, OpenRouterProvider } from "./openrouter";
 import { createJsonFallbackTransport, createStructuredTransport } from "./structured-schema";
 
 const settings: ProviderSettings = {
@@ -1450,5 +1451,142 @@ describe("AIP OpenRouter boundary", () => {
         durationMs: 1000,
       }),
     ).rejects.toMatchObject({ code: "audio_url_not_supported" });
+  });
+});
+
+describe("AIP direct JSON closer completion and rejection diagnostics", () => {
+  const model = "anthropic/claude-haiku-5.5";
+  const schema = z.strictObject({
+    title: z.string().min(1),
+    items: z.array(z.strictObject({ text: z.string().min(1) })).min(1),
+  });
+  function respond(content: string, finishReason: string | null = "stop") {
+    return vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model,
+          choices: [{ finish_reason: finishReason, message: { content } }],
+          usage: { prompt_tokens: 10, completion_tokens: 20, cost: 0.00001 },
+        }),
+      ),
+    );
+  }
+  const call = (request: typeof fetch, configured: ProviderSettings = jsonSettings) =>
+    new OpenRouterProvider("synthetic-key", configured, request).structured({
+      operationKey: "synthetic-closers",
+      model,
+      schema,
+      schemaName: "class_knowledge_content",
+      system: "Synthetic",
+      input: "Synthetic",
+    });
+  beforeEach(() => vi.spyOn(console, "warn").mockImplementation(() => undefined));
+  afterEach(() => vi.restoreAllMocks());
+
+  it("completes only one or two missing final closers outside strings", () => {
+    expect(completeFinalClosers('{"title":"a","items":[{"text":"b"}]')).toEqual({
+      text: '{"title":"a","items":[{"text":"b"}]}',
+      closers: 1,
+    });
+    expect(completeFinalClosers('{"a":{"items":[{"text":"b"}]')).toEqual({
+      text: '{"a":{"items":[{"text":"b"}]}}',
+      closers: 2,
+    });
+    for (const broken of [
+      '{"a":{"b":{"items":[1]',
+      '{"title":"a}',
+      '{"title":"a","items":[{"text":"b\\"}]',
+      '{"title":"a",',
+      '[{"text":"b"}',
+      '{"title":"a"}]',
+      '{"title":"a"}',
+    ])
+      expect(completeFinalClosers(broken)).toBeUndefined();
+  });
+
+  it("accepts a normally stopped direct JSON response missing its final brace without a retry", async () => {
+    const request = respond('{"title":"Lesson","items":[{"text":"one"}]');
+    await expect(call(request)).resolves.toMatchObject({
+      output: { title: "Lesson", items: [{ text: "one" }] },
+      actualMicros: 10,
+    });
+    expect(request).toHaveBeenCalledOnce();
+    expect(console.warn).toHaveBeenCalledWith("recalino.provider_json_closers_completed", {
+      schema: "class_knowledge_content",
+      closers: 1,
+    });
+  });
+
+  it("never completes truncated, native-mode or unknown-finish responses", async () => {
+    await expect(
+      call(respond('{"title":"Lesson","items":[{"text":"one"}]', "length")),
+    ).rejects.toMatchObject({
+      code: "provider_output_truncated",
+      uncertain: false,
+    });
+    await expect(
+      call(respond('{"title":"Lesson","items":[{"text":"one"}]', null)),
+    ).rejects.toMatchObject({
+      code: "provider_schema_invalid",
+      uncertain: false,
+      diagnostic: "json_parse",
+      accounting: expect.objectContaining({ actualMicros: 10 }),
+    });
+    const native = { ...settings, structuredTemperature: 0 };
+    const nativeRequest = respond('{"title":"Lesson","items":[{"text":"one"}]');
+    await expect(call(nativeRequest, native)).rejects.toMatchObject({
+      code: "provider_schema_invalid",
+      diagnostic: "json_parse",
+    });
+    expect(nativeRequest).toHaveBeenCalledOnce();
+  });
+
+  it("names only schema paths and issue codes for a known invalid response", async () => {
+    const error = await call(
+      respond('{"title":"","items":[{"text":"one","private":"class text"}]}'),
+    ).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ProviderError);
+    const diagnostic = (error as ProviderError).diagnostic ?? "";
+    expect(diagnostic).toContain("zod:too_small@title");
+    expect(diagnostic).toContain("zod:unrecognized_keys@items.0");
+    expect(diagnostic).not.toContain("class text");
+    expect(diagnostic).not.toContain("private");
+  });
+
+  it("omits sampling for a configured or reasoning override and keeps it otherwise", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const request = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return new Response(
+        JSON.stringify({
+          model: "synthetic/llm",
+          choices: [{ finish_reason: "stop", message: { content: '{"answer":"hello"}' } }],
+        }),
+      );
+    });
+    for (const override of [
+      { omitTemperature: true as const },
+      { reasoningEffort: "low" as const },
+      {},
+    ])
+      await new OpenRouterProvider(
+        "synthetic-key",
+        {
+          ...settings,
+          structuredTemperature: 0,
+          structuredModelOverrides: {
+            "synthetic/llm": { ...override, structuredOutputMode: "json_object" },
+          },
+        },
+        request,
+      ).structured({
+        operationKey: "synthetic-sampling",
+        model: "synthetic/llm",
+        schema: z.strictObject({ answer: z.string() }),
+        schemaName: "test",
+        system: "Synthetic",
+        input: "Synthetic",
+      });
+    expect(bodies.map((body) => body.temperature)).toEqual([undefined, undefined, 0]);
   });
 });

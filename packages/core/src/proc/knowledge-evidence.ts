@@ -79,7 +79,8 @@ export function buildKnowledgeEvidenceInput(
       const block = source.blocks[blockIndex];
       const key = `r${(ordinal++).toString(36)}`;
       if (!block) throw errors.validationFailed({ output: ["source_reference_invalid"] });
-      if (!block.text.length) return [null, ...row];
+      // Whitespace-only rows carry no evidence and never receive a citable key.
+      if (!block.text.trim()) return [null, ...row];
       if (!source.contentVersionId)
         throw errors.validationFailed({ output: ["source_reference_invalid"] });
       const unit = units.get(block.unitId);
