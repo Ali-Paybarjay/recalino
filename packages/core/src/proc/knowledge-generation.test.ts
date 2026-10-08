@@ -1631,6 +1631,12 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
     expect(
       prepared.assemble(wire({ ...output(), learningItems: [grammar()] })).learningItems[0]?.study,
     ).toMatchObject({ ipa: grammar().ipa });
+    // Punctuation and case are ignored; the chunk may also come from the item's class evidence.
+    for (const spokenChunk of ["she walks", "She walks,", "look forward to"])
+      expect(
+        prepared.assemble(wire({ ...output(), learningItems: [{ ...grammar(), spokenChunk }] }))
+          .learningItems,
+      ).toHaveLength(1);
     for (const spokenChunk of [
       "third person + verb + s",
       "subject verb",
@@ -1654,9 +1660,21 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
     const planned = (keys: string[]) =>
       wire({
         ...output(),
-        lessonPlan: keys.map((key) => ({ concept: key, evidenceKeys: [key], teachAs: "notes" })),
+        lessonPlan: keys.map((key) => ({ concept: key, evidenceKeys: [key], teachAs: "card" })),
       });
     expect(() => prepared.assemble(planned(["r0", "r1"]))).toThrow(failure("study_plan_uncovered"));
+    // A concept planned for notes may be taught in tasks or notes without its own claim.
+    expect(
+      prepared.assemble(
+        wire({
+          ...output(),
+          lessonPlan: [
+            { concept: "r0", evidenceKeys: ["r0"], teachAs: "card" },
+            { concept: "r1", evidenceKeys: ["r1"], teachAs: "notes" },
+          ],
+        }),
+      ).learningItems,
+    ).toHaveLength(1);
     expect(prepared.assemble(planned(["r0"])).learningItems).toHaveLength(1);
     expect(
       prepared.assemble(

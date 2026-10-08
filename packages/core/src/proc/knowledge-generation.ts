@@ -199,6 +199,14 @@ export function lexicalGapProblem(
   return undefined;
 }
 
+/** Consecutive-word match that ignores case and punctuation, e.g. a comma inside the chunk. */
+function containsWordSequence(words: string[], sequence: string[]): boolean {
+  if (!sequence.length) return false;
+  for (let start = 0; start + sequence.length <= words.length; start++)
+    if (sequence.every((word, offset) => words[start + offset] === word)) return true;
+  return false;
+}
+
 /** True when the gap hides exactly the whole target; see lexicalGapProblem. */
 export function gapHidesWholeTarget(en: string, fullSentence: string, gapSentence: string) {
   return lexicalGapProblem(en, fullSentence, gapSentence) === undefined;
@@ -303,7 +311,7 @@ export function buildKnowledgeGenerationInput(
       spokenChunk: required
         .max(120)
         .describe(
-          "2 to 6 consecutive words copied exactly from practice.fullSentence that carry the pattern; pronunciation.ipa transcribes exactly these words. Never a grammar label or placeholder.",
+          "2 to 6 consecutive words copied from practice.fullSentence (or the class example it practises) that carry the pattern; pronunciation.ipa transcribes exactly these words. Never a grammar label or placeholder.",
         ),
     }),
     practice: z.strictObject({
@@ -460,7 +468,7 @@ export function buildKnowledgeGenerationInput(
     `${knowledgeGenerationFormat} evidence rows are [key,"time",startMs,endMs,text,metadata], [key,"page",page,blockId,text,metadata], or [key,"text",blockId,start,end,text,metadata]. Read all supplied text, native locators, incomplete units and source roles. Keys select exact immutable source blocks; never invent a key or cite an empty row.`,
     "For every sourced claim use evidenceKeys containing ALL essential supporting rows. Prefer one atomic fact per claim. A joint claim or source conflict requires every essential key, not a convenient unrelated row. Never combine user_notes rows with other rows in one claim. An empty evidenceKeys array means an explicitly additional AI illustration; never use it for class facts, homework or a source conflict.",
     "Only teaching content belongs in output. Do not generate IDs, sourceRefs, schemaVersion, language, coverage availability, source classifications, speaker identities, attribution, creation, dates, courses, sourceFa, voiceEvidence, mistake patterns or gapfill: the server constructs these. Each object allows only the properties its schema lists; optional properties are omitted when they have no real content, and a property that is present must contain real content.",
-    `Write lessonPlan FIRST. Read ALL evidence rows and list every distinct taught concept, each separate sense or use that the source teaches with its own example, each side of a taught contrast, each condition or exception, each source assignment and each unresolved source conflict, with its supporting keys and teachAs. Mark at most ${productionLimit + recognitionLimit} concepts as card and teach the rest as notes. Then write the lesson from that plan: every card concept gets exactly one complete learning item, no two learning items teach the same point, and every notes concept is explained in teaching notes, chunks or tasks. The server rejects a plan concept that no claim states with at least one of its keys: state it in its card's claim or in a summary or topic claim. Core rules, both sides of a taught contrast, conditions and conflicts come before optional recognition items or duplicate summaries.`,
+    `Write lessonPlan FIRST. Read ALL evidence rows and list every distinct taught concept, each separate sense or use that the source teaches with its own example, each side of a taught contrast, each condition or exception, each source assignment and each unresolved source conflict, with its supporting keys and teachAs. Mark at most ${productionLimit + recognitionLimit} concepts as card and teach the rest as notes. Then write the lesson from that plan: every card concept gets exactly one complete learning item, no two learning items teach the same point, and every notes concept is explained in teaching notes, chunks or tasks. The server rejects a planned card whose concept no claim states with at least one of its keys. Core rules, both sides of a taught contrast, conditions and conflicts come before optional recognition items or duplicate summaries.`,
     'Each learningItem has type lexical, grammar or recognition, with only that type\'s properties. lexical: a word or phrase the learner must produce, practised by practice.fullSentence and practice.gapSentence. grammar: a structure practised by practice.taskFa, practice.prompt and its answer practice.fullSentence. recognition: an optional item to recognise, shown by practice.example. A pattern with dots, brackets, grammar labels or separated parts such as "X ... Y" is grammar, not lexical.',
     `Explain in exactly ${JSON.stringify(data.explanationLanguage)} using its normal writing system. faMeaning, noteFa, imageFa, taskFa and other legacy fa suffixes name fields, not the requested language. English targets/examples remain English. Keep source examples, use plain accurate grammar terms, and never put an English lexical answer in faMeaning.`,
     isPersian
@@ -581,7 +589,9 @@ export function buildKnowledgeGenerationInput(
     );
     if (
       wire.lessonPlan.some(
-        (entry) => !entry.evidenceKeys.some((evidenceKey) => cited.has(evidenceKey)),
+        (entry) =>
+          entry.teachAs === "card" &&
+          !entry.evidenceKeys.some((evidenceKey) => cited.has(evidenceKey)),
       )
     )
       throw errors.validationFailed({ output: ["study_plan_uncovered"] });
@@ -626,12 +636,19 @@ export function buildKnowledgeGenerationInput(
         };
         if (item.type === "grammar") {
           kind = "grammar";
-          const chunk = new RegExp(
-            `(?<![\\p{L}\\p{N}])${escapePattern(item.pronunciation.spokenChunk.trim())}(?![\\p{L}\\p{N}])`,
-            "iu",
-          );
-          const chunkWords = gapWords(item.pronunciation.spokenChunk).length;
-          if (chunkWords < 1 || chunkWords > 6 || !chunk.test(item.practice.fullSentence))
+          const chunkWords = gapWords(item.pronunciation.spokenChunk);
+          const spokenTexts = [
+            item.practice.fullSentence,
+            item.practice.prompt,
+            ...item.claim.evidenceKeys.map(
+              (evidenceKey) => prepared.references.get(evidenceKey)?.block.text ?? "",
+            ),
+          ];
+          if (
+            chunkWords.length < 1 ||
+            chunkWords.length > 6 ||
+            !spokenTexts.some((text) => containsWordSequence(gapWords(text), chunkWords))
+          )
             throw errors.validationFailed({ output: ["study_ipa_chunk_invalid"] });
           study = productionStudySchema.parse({
             ...content,
