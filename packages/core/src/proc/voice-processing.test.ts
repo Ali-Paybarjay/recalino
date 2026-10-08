@@ -8,6 +8,7 @@ import {
   scopedVoiceSpeakerId,
   type VoiceDiarization,
   validateVoiceCorrections,
+  voiceCorrectionFailure,
   voicePreparationFailure,
 } from "./voice-processing";
 
@@ -332,5 +333,27 @@ describe("acoustic check failure reasons", () => {
     expect(voicePreparationFailure(new Error("voice_inference_failed"), source())).toBe(
       "original_audio_unavailable",
     );
+  });
+});
+
+describe("spoken correction failure reasons", () => {
+  it("keeps a service spending block apart from a retryable correction failure", () => {
+    for (const details of [
+      { reason: "cost_limit", scope: "session" },
+      { reason: "cost_limit", scope: "systemDay" },
+      { reason: "cost_policy_missing" },
+      { reason: "processing_paused" },
+    ])
+      expect(voiceCorrectionFailure(errors.quotaInsufficient(details))).toBe(
+        "voice_correction_service_blocked",
+      );
+    // A learner-unit shortfall and every non-budget failure keep the existing reason.
+    for (const error of [
+      errors.quotaInsufficient({ required: 1, remaining: 0 }),
+      errors.validationFailed({ voice: ["correction_input_too_large"] }),
+      errors.conflict(),
+      new Error("voice_correction_evidence_invalid"),
+    ])
+      expect(voiceCorrectionFailure(error)).toBe("voice_correction_unavailable");
   });
 });

@@ -5,10 +5,12 @@ import { ProviderError } from "../aip";
 import type { Database, Tx } from "../db";
 import { isExplanationLanguage, matchesExplanationScript } from "../lkm";
 import { AppError, errors, type LearnerContext } from "../plt";
+import { quotaProcessingFailureCode } from "../quota";
 import {
   findRepeatedVoiceEvidence,
   findVoiceAnalysis,
   getVoiceEnrollment,
+  hasRepeatableVoiceEvidence,
   markVoiceAnalysisFailure,
   type PrivateVoiceAnalysis,
   type SpokenMistake,
@@ -290,7 +292,9 @@ export async function correctVoiceCandidates(input: {
   if (analysis.candidates.every((candidate) => Object.hasOwn(analysis.mistakes, candidate.id)))
     return false;
   const eligible = analysis.utterances.filter((item) => item.eligible);
-  if (!eligible.length) {
+  // Every accepted mistake needs a second same-speaker occurrence; without one, a billable
+  // request can only return discarded suggestions. Record "no mistakes" for free instead.
+  if (!hasRepeatableVoiceEvidence(analysis.utterances)) {
     await saveVoiceCandidateMistakes(
       input.db,
       input.ctx,
@@ -350,6 +354,18 @@ export async function correctVoiceCandidates(input: {
     },
   });
   return pending !== undefined;
+}
+
+/**
+ * A service spending guard (class, monthly or system budget; paused or unpriced processing)
+ * is not fixed by retrying the voice check, so it keeps its own reason. Everything else
+ * stays the generic retryable correction failure.
+ */
+export function voiceCorrectionFailure(error: unknown): string {
+  const code = error instanceof AppError ? quotaProcessingFailureCode(error) : null;
+  return code && code !== "quota_insufficient"
+    ? "voice_correction_service_blocked"
+    : "voice_correction_unavailable";
 }
 
 export async function processVoiceSource(input: {
@@ -423,7 +439,7 @@ export async function processVoiceSource(input: {
       input.db,
       input.ctx,
       analysis.id,
-      "voice_correction_unavailable",
+      voiceCorrectionFailure(failure),
       input.now(),
     );
   }

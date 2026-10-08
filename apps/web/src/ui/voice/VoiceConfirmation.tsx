@@ -21,6 +21,14 @@ type Action =
       speakerId?: string;
     };
 
+/** A service spending limit, not a failed check: retrying cannot help and is not offered. */
+function isServiceBlocked(analysis: VoiceAnalysisView) {
+  return Boolean(
+    analysis.reason?.startsWith("voice_correction_") &&
+      analysis.reason.endsWith("_service_blocked"),
+  );
+}
+
 function hasSpeakerExcerpts(candidate: VoiceCandidate) {
   return candidate.clips.length > 0 || candidate.lines.some((line) => line.trim().length > 0);
 }
@@ -61,9 +69,11 @@ export function VoiceConfirmation({
   const hasFailedCheck = Boolean(
     view?.analyses.some(
       (analysis) =>
-        analysis.status === "failed" || analysis.reason?.startsWith("voice_correction_"),
+        analysis.status === "failed" ||
+        (analysis.reason?.startsWith("voice_correction_") && !isServiceBlocked(analysis)),
     ),
   );
+  const hasServiceBlock = Boolean(view?.analyses.some(isServiceBlocked));
   const hasUnavailableExcerpts = Boolean(
     view?.analyses.some(
       (analysis) =>
@@ -352,9 +362,11 @@ export function VoiceConfirmation({
                   ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
                   : hasFailedCheck
                     ? "Some recordings could not be checked. Retry the voice check below, or continue with your class notes."
-                    : hasUnavailableExcerpts
-                      ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
-                      : "Your voice choices are saved. The class notes below reflect those choices."}
+                    : hasServiceBlock
+                      ? "Spoken mistakes were not checked because this class reached a Recalino service limit. This is not your personal allowance. Your class notes remain available."
+                      : hasUnavailableExcerpts
+                        ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
+                        : "Your voice choices are saved. The class notes below reflect those choices."}
               </Status>
             )}
             {view.analyses.map((analysis, index) => (
@@ -459,7 +471,13 @@ function Analysis({
           and class notes remain available.
         </p>
       ) : null}
-      {analysis.reason?.startsWith("voice_correction_") ? (
+      {isServiceBlocked(analysis) ? (
+        <Status>
+          Speakers were prepared, but spoken mistakes were not checked because this class reached a
+          Recalino service limit. This is not your personal allowance, and retrying the voice check
+          will not change it. You can still confirm your speaker below.
+        </Status>
+      ) : analysis.reason?.startsWith("voice_correction_") ? (
         <Status tone="error">
           Speakers were prepared, but spoken mistakes could not be checked. You can confirm your
           speaker below and retry the class voice check when you are ready.

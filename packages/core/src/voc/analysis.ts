@@ -299,8 +299,11 @@ export async function markVoiceAnalysisFailure(
           .string()
           .regex(/^[a-z0-9_]{1,100}$/)
           .parse(
-            reason === "voice_correction_unavailable" && row.reason?.includes("sampled_audio")
-              ? "voice_correction_sampled_audio_unavailable"
+            // Keep the sampled-coverage disclosure through any correction failure.
+            reason.startsWith("voice_correction_") &&
+              !reason.includes("sampled_audio") &&
+              row.reason?.includes("sampled_audio")
+              ? reason.replace("voice_correction_", "voice_correction_sampled_audio_")
               : reason,
           ),
         updated_at: now,
