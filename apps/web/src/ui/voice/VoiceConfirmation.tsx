@@ -7,6 +7,7 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
+import { pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
@@ -364,7 +365,7 @@ export function VoiceConfirmation({
                   : hasFailedCheck
                     ? "Some recordings could not be checked. Retry the voice check below, or continue with your class notes."
                     : hasServiceBlock
-                      ? "Spoken mistakes were not checked because this class reached a Recalino service limit. This is not your personal allowance. Your class notes remain available."
+                      ? pendingCopy.voice.serviceBlockedSummary
                       : hasUnavailableExcerpts
                         ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
                         : "Your voice choices are saved. The class notes below reflect those choices."}
@@ -474,18 +475,10 @@ function Analysis({
         </p>
       ) : null}
       {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">
-          Some parts of this recording could not be read during the voice check and were skipped.
-          Speech in those parts cannot contribute spoken mistakes. Your full transcript and class
-          notes remain available.
-        </p>
+        <p className="preview-muted">{pendingCopy.voice.partialCoverage}</p>
       ) : null}
       {isServiceBlocked(analysis) ? (
-        <Status>
-          Speakers were prepared, but spoken mistakes were not checked because this class reached a
-          Recalino service limit. This is not your personal allowance, and retrying the voice check
-          will not change it. You can still confirm your speaker below.
-        </Status>
+        <Status>{pendingCopy.voice.serviceBlockedDetail}</Status>
       ) : analysis.reason?.startsWith("voice_correction_") ? (
         <Status tone="error">
           Speakers were prepared, but spoken mistakes could not be checked. You can confirm your

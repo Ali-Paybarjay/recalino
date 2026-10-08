@@ -220,6 +220,20 @@ it("skips an excerpt that cannot hold a turn and discloses the partial coverage"
   decoded.samples.fill(0);
 }, 30000);
 
+// FR-VOC-002: silent separators are not class audio and cannot satisfy the two-second floor.
+it("rejects a composite whose excerpts hold under two seconds of audio, however long the gaps", async () => {
+  await expect(
+    decodeVoiceAudioWindows(syntheticWav(8), [
+      { start: 1000, end: 1600 },
+      { start: 3000, end: 3600 },
+      { start: 5000, end: 5600 },
+    ]),
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { audio: ["voice_audio_unusable"] } },
+  });
+}, 30000);
+
 // FR-VOC-002: a decoder refusing most excerpts means a damaged recording, not a drifted end.
 it("fails the check when the decoder refuses most planned excerpts", async () => {
   const damaged = new Uint8Array(4096).fill(0x5a);

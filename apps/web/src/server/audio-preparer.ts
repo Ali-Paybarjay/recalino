@@ -195,6 +195,8 @@ export async function decodeVoiceAudio(
 export const VOICE_WINDOW_READ_SLACK_MS = 1000;
 /** A turn must last 2.4 s after both 200 ms edge guards; a shorter excerpt cannot yield evidence. */
 export const VOICE_WINDOW_MIN_MS = 2400;
+/** The native engine refuses a composite with less decoded class audio than this. */
+export const VOICE_CHECK_MIN_AUDIO_MS = 2000;
 /** Decoded shortfall beyond this is reported as partial coverage rather than hidden. */
 const VOICE_WINDOW_PARTIAL_MS = 1000;
 
@@ -326,8 +328,9 @@ export async function decodeVoiceAudioWindows(
       // recording itself is damaged, and a check over the remainder would misrepresent it.
       if (coverage.refusedWindows * 2 > coverage.plannedWindows)
         throw errors.validationFailed({ audio: ["voice_audio_windows_refused"] });
-      // The native engine needs at least two seconds of decoded speech to run at all.
-      if (!mapped.length || cursor < 2000 * 16)
+      // The native engine needs at least two seconds of decoded audio to run at all. Count the
+      // excerpts only: the silent separators between them are not audio from the class.
+      if (!mapped.length || coverage.usedMs < VOICE_CHECK_MIN_AUDIO_MS)
         throw errors.validationFailed({ audio: ["voice_audio_unusable"] });
       return {
         samples: samples.subarray(0, cursor),
