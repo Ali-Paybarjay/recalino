@@ -135,9 +135,10 @@ export function decideVoiceMatch(input: {
   if (!references.lessons.length) return ask("no_reference");
   if (!policy?.autoAccept || policy.modelVersion !== input.modelVersion)
     return ask("policy_unavailable");
+  // Every voice with a voiceprint competes, even one too short to be accepted itself.
   const scored = input.candidates.flatMap((candidate) => {
     const vector = input.vectors.find((item) => item.speakerId === candidate.id)?.vector;
-    if (!vector || candidate.cleanSpeechMs < policy.minCleanSpeechMs) return [];
+    if (!vector) return [];
     const similarity = voiceAgreement(vector, references);
     return similarity.agreement === null || similarity.best === null
       ? []
@@ -147,7 +148,12 @@ export function decideVoiceMatch(input: {
   if (scored.length < 2) return ask("few_voices");
   scored.sort((a, b) => b.agreement - a.agreement || a.candidate.id.localeCompare(b.candidate.id));
   const [top, ...others] = scored;
-  if (!top || top.agreement < policy.acceptScore) return ask("no_clear_match");
+  if (
+    !top ||
+    top.candidate.cleanSpeechMs < policy.minCleanSpeechMs ||
+    top.agreement < policy.acceptScore
+  )
+    return ask("no_clear_match");
   const closest = Math.max(...others.map((item) => item.best));
   if (top.agreement - closest < policy.minMargin) return ask("similar_voices");
   // A voice this learner already said was not theirs, scoring like this one, keeps them asked.

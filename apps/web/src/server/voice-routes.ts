@@ -110,6 +110,7 @@ export function voiceProfileHandler(): Handler {
           const bytes = Buffer.from(value.audioBase64, "base64");
           try {
             const sample = await prepareVoiceSample(loadVoiceEngine, bytes);
+            let withdrawn = false;
             await saveVoiceSample(db, store, learner, {
               profileVersion: claimed.attempt.profileVersion,
               enrollmentAttempt: claimed.attempt,
@@ -118,7 +119,13 @@ export function voiceProfileHandler(): Handler {
               durationMs: sample.durationMs,
               modelVersion: sample.modelRevision,
               embedding: sample.embedding,
+              // Automatic matches made with the old sample ask again; so do exports showing them.
+              onAutomaticWithdrawn: async (tx) => {
+                withdrawn = true;
+                await tombstoneAccountHtmlExports(tx, learner);
+              },
             });
+            if (withdrawn) await cleanupHtmlExports(db, store, learner);
           } finally {
             bytes.fill(0);
           }

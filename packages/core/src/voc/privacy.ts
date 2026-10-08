@@ -9,14 +9,20 @@ import {
   voiceTransaction,
 } from "./profile";
 
+/** Returns true when a removed reference withdrew automatic matches in other classes. */
 export async function removeSessionVoice(
   db: Database | Tx,
   ctx: LearnerContext,
   sessionId: string,
-) {
+): Promise<boolean> {
   return removeVoiceScope(db, ctx, "session_id", sessionId);
 }
-export async function removeSourceVoice(db: Database | Tx, ctx: LearnerContext, sourceId: string) {
+/** Returns true when a removed reference withdrew automatic matches in other classes. */
+export async function removeSourceVoice(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sourceId: string,
+): Promise<boolean> {
   return removeVoiceScope(db, ctx, "source_id", sourceId);
 }
 async function removeVoiceScope(
@@ -24,9 +30,10 @@ async function removeVoiceScope(
   ctx: LearnerContext,
   column: "session_id" | "source_id",
   id: string,
-) {
-  await voiceTransaction(db, async (tx) => {
-    if (!(await lockAccountForCleanup(tx, ctx.userId))) return;
+): Promise<boolean> {
+  return voiceTransaction(db, async (tx) => {
+    let withdrawn = false;
+    if (!(await lockAccountForCleanup(tx, ctx.userId))) return withdrawn;
     const rows = await tx
       .selectFrom("voc.analysis")
       .select("id")
@@ -44,7 +51,7 @@ async function removeVoiceScope(
       const retained = current.filter((entry) => !entry.analysisId || !ids.has(entry.analysisId));
       // Automatic matches elsewhere may rest on the reference this deletion removes.
       if (retained.length !== current.length)
-        await invalidateAutomaticVoice(tx, ctx.userId, new Date());
+        withdrawn = (await invalidateAutomaticVoice(tx, ctx.userId, new Date())).size > 0;
       await tx
         .updateTable("voc.profile")
         .set({
@@ -59,6 +66,7 @@ async function removeVoiceScope(
       .where("user_id", "=", ctx.userId)
       .where(column, "=", id)
       .execute();
+    return withdrawn;
   });
 }
 export async function cleanupAccountVoice(

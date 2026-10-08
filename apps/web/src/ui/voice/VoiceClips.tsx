@@ -170,11 +170,15 @@ export function VoiceClips({
                 ) : null}
               </li>
             ))
-          : [...new Set(candidate.lines.slice(0, 4))].map((line) => (
+          : null}
+        {/* Listening-only excerpts carry no text; the saved lines still identify the voice. */}
+        {!clips.some((clip) => clip.text)
+          ? [...new Set(candidate.lines.slice(0, 4))].map((line) => (
               <li className={styles.clip} key={line}>
                 <p dir="auto">{line}</p>
               </li>
-            ))}
+            ))
+          : null}
       </ol>
       {problem ? <Status tone="error">{problem}</Status> : null}
     </>

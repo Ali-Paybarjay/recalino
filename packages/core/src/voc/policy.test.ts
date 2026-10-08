@@ -100,7 +100,17 @@ describe("VOICE-AC-05: any doubt asks the learner", () => {
   });
   it("keeps the two-voice rule: a lone or short voice is never accepted", () => {
     expect(decide({ candidates: voices().slice(0, 1) }).reason).toBe("few_voices");
-    expect(decide({ candidates: voices(19999) }).reason).toBe("few_voices");
+    // A voice with too little clean speech is never accepted, yet it still competes.
+    expect(decide({ candidates: voices(19999) })).toEqual({
+      acceptedId: null,
+      reason: "no_clear_match",
+    });
+    expect(
+      decide({
+        candidates: [...voices(), { id: "brief", cleanSpeechMs: 8000, score: 0.85 }],
+        vectors: [...vectors(), { speakerId: "brief", vector: at(0.88, 3) }],
+      }).reason,
+    ).toBe("similar_voices");
     expect(decide({ vectors: vectors().slice(0, 1) }).reason).toBe("few_voices");
   });
   it("asks when no voice is close enough to both references", () => {

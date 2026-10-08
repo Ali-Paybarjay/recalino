@@ -460,3 +460,22 @@ it("VOICE-AC-07: a voice without a clean transcribed turn is still heard from it
   // Listening excerpts are not utterances and cannot carry spoken-mistake evidence.
   expect(result.utterances).toEqual([]);
 });
+
+it("keeps stored excerpts within their limits and never hears a voice whose overlap partner was cut", () => {
+  const long = "word ".repeat(1800).trim();
+  const scoped = scopedVoiceSpeakerId(sourceId, "chunk1", "0");
+  const fallback = buildTranscriptVoiceAnalysis(
+    base,
+    source([{ start: 0, end: 8000, text: long, speaker: scoped }]),
+  );
+  expect(fallback.candidates[0]?.clips[0]?.text.length).toBe(4000);
+  // An overlapped turn whose partner no longer appears (it crossed an excerpt edge) is skipped.
+  const result = buildVoiceAnalysis(base, source([]), {
+    modelRevision: "synthetic",
+    segments: [
+      { speakerId: "speaker_0", startMs: 1000, endMs: 9000, overlap: true, boundaryUnsafe: false },
+    ],
+    speakers: [],
+  });
+  expect(result.candidates[0]?.clips).toEqual([]);
+});

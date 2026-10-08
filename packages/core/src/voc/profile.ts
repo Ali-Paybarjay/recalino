@@ -10,6 +10,7 @@ import {
   writeOwnedObject,
 } from "../plt";
 import { invalidateAutomaticVoice } from "./automatic";
+import { accountVoiceCalibration } from "./calibration";
 import {
   VOICE_CONSENT_VERSION,
   type VoiceEnrollment,
@@ -105,11 +106,23 @@ export async function getVoiceProfile(
           ? "needs_sample"
           : !references.lessons.length
             ? "needs_class"
-            : model && voiceAcceptancePolicy(model)?.autoAccept
+            : (await automaticMatchingReady(db, ctx, model))
               ? "ready"
               : "unavailable",
     },
   };
+}
+/** True when later classes can be matched: the evaluated policy, or the account's own calibration. */
+async function automaticMatchingReady(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  model: string | null,
+): Promise<boolean> {
+  if (!model) return false;
+  const policy = voiceAcceptancePolicy(model);
+  if (policy) return policy.autoAccept;
+  const account = await accountVoiceCalibration(db, ctx, model);
+  return Boolean(account.calibration && account.confirmedLessons);
 }
 /** Consent is separate from a class recording; no microphone or sample storage precedes it. */
 export async function enableVoice(
@@ -158,6 +171,8 @@ export async function saveVoiceSample(
     modelVersion: string;
     embedding: number[];
     enrollmentAttempt?: VoiceEnrollmentAttempt;
+    /** Runs in the same transaction when replacing the sample withdrew automatic matches. */
+    onAutomaticWithdrawn?: (tx: Tx) => Promise<void>;
   },
   now = new Date(),
 ): Promise<void> {
@@ -234,8 +249,11 @@ export async function saveVoiceSample(
           .where("verification_method", "=", "manual")
           .execute();
       // Automatic matches were made against the replaced sample; each class asks again.
-      if (profile.embeddings.some((entry) => entry.analysisId === null))
-        await invalidateAutomaticVoice(tx, ctx.userId, now);
+      if (
+        profile.embeddings.some((entry) => entry.analysisId === null) &&
+        (await invalidateAutomaticVoice(tx, ctx.userId, now)).size
+      )
+        await input.onAutomaticWithdrawn?.(tx);
       await tx
         .updateTable("voc.profile")
         .set({

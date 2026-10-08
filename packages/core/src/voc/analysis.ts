@@ -7,6 +7,7 @@ import { assertSessionOwner } from "../org";
 import { errors, type LearnerContext } from "../plt";
 import { getSource, sessionSources, sourceContentVersions } from "../src";
 import { invalidateAutomaticVoice } from "./automatic";
+import { accountVoiceCalibration } from "./calibration";
 import {
   type ClassVoiceView,
   type PrivateVoiceAnalysis,
@@ -23,7 +24,7 @@ import {
   voiceEmbeddingSchema,
   voiceUtteranceSchema,
 } from "./contracts";
-import { autoAcceptVoice, calibrateVoiceAcceptance, rankVoiceCandidates } from "./matching";
+import { autoAcceptVoice, rankVoiceCandidates } from "./matching";
 import { decideVoiceMatch, voiceReferenceOutcome, voiceReferences } from "./policy";
 import { voiceAcceptancePolicy } from "./policy-registry";
 import { getVoiceEnrollment, voiceTransaction } from "./profile";
@@ -137,61 +138,29 @@ export async function saveVoiceAnalysis(
     const prior = await findVoiceAnalysis(tx, ctx, input);
     if (prior) return prior;
     const candidates = rankVoiceCandidates(declared, vectors, profile, input.modelVersion);
-    const feedbackRows = await tx
-      .selectFrom("voc.feedback as feedback")
-      .innerJoin("voc.analysis as analysis", "analysis.id", "feedback.analysis_id")
-      .select([
-        "feedback.score",
-        "feedback.margin",
-        "feedback.accepted",
-        "feedback.speaker_id as speakerId",
-        "analysis.session_id as sessionId",
-        "analysis.status",
-        "analysis.verified_speaker_id as verifiedSpeakerId",
-        "analysis.verification_method as method",
-      ])
-      .where("feedback.user_id", "=", ctx.userId)
-      .where("analysis.user_id", "=", ctx.userId)
-      .where("feedback.model_version", "=", input.modelVersion)
-      .execute();
-    const feedback = feedbackRows.filter(
-      (item) =>
-        !item.accepted ||
-        (item.status === "verified" &&
-          item.method === "manual" &&
-          item.verifiedSpeakerId === item.speakerId),
-    );
+    const account = await accountVoiceCalibration(tx, ctx, input.modelVersion);
     const policy = voiceAcceptancePolicy(input.modelVersion);
     let accepted: string | null = null;
     let matchReason: VoiceMatchReason | null = null;
     if (candidates.length && input.modelVersion !== TRANSCRIPT_LABEL_MODEL) {
-      // An evaluated policy replaces the per-account calibration for its model revision.
       const decision = decideVoiceMatch({
         candidates,
         vectors,
         enrollment: profile,
         modelVersion: input.modelVersion,
         policy,
-        rejectedScores: feedback.flatMap((item) =>
-          !item.accepted && item.score !== null ? [item.score] : [],
-        ),
+        rejectedScores: account.rejectedScores,
       });
       accepted = decision.acceptedId;
       matchReason = decision.reason;
-      if (!policy?.autoAccept) {
-        const confirmed = await tx
-          .selectFrom("voc.analysis")
-          .select("session_id")
-          .distinct()
-          .where("user_id", "=", ctx.userId)
-          .where("verification_method", "=", "manual")
-          .where("status", "=", "verified")
-          .execute();
+      // A model revision without an evaluated policy keeps the account's own calibration. An
+      // evaluated policy replaces it, and one with automatic acceptance off keeps every class manual.
+      if (!policy && account.confirmedLessons) {
         accepted = autoAcceptVoice(
           candidates,
-          calibrateVoiceAcceptance(input.modelVersion, feedback),
+          account.calibration,
           input.modelVersion,
-          confirmed.length,
+          account.confirmedLessons,
         );
         if (accepted) matchReason = null;
       }

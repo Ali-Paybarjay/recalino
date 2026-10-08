@@ -1082,6 +1082,31 @@ test("VOICE-AC-07: speakers with only saved lines are not presented as listenabl
   await expect(region.getByRole("button", { name: "None of these voices is mine" })).toBeEnabled();
 });
 
+test("VOICE-AC-07: listening-only excerpts still show the voice's saved lines", async ({
+  page,
+}) => {
+  const listening = analysis(1);
+  listening.candidates = listening.candidates.map((candidate) => ({
+    ...candidate,
+    clips: candidate.clips.map((clip) => ({ ...clip, text: "" })),
+  }));
+  const line = listening.candidates[0]?.lines[0];
+  if (!line) throw new Error("fixture candidate has no saved line");
+  await page.route("**/api/classes/*/voice", (route) =>
+    route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        analyses: [listening],
+      } satisfies ClassVoiceView,
+    }),
+  );
+  await page.goto("/dev/ui/voice?view=class");
+  const region = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await expect(region.getByText(/^Excerpt 1 ·/).first()).toBeVisible();
+  await expect(region.getByText(line, { exact: true }).first()).toBeVisible();
+});
+
 test("VOICE-AC-03/05: the class says why it asks and what a confirmation taught", async ({
   page,
 }) => {

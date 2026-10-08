@@ -13,6 +13,27 @@ vi.mock("./policy-registry", () => ({
   voiceAcceptancePolicy: (modelVersion: string) =>
     registry.policy?.modelVersion === modelVersion ? registry.policy : null,
 }));
+// The account's own calibration (20 confirmed and 20 rejected classes) can be stood in for.
+const account = vi.hoisted(() => ({ ready: false }));
+vi.mock("./calibration", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./calibration")>();
+  return {
+    accountVoiceCalibration: async (...args: Parameters<typeof real.accountVoiceCalibration>) =>
+      account.ready
+        ? {
+            calibration: {
+              modelVersion: args[2],
+              acceptScore: 0,
+              minMargin: 0,
+              positiveCount: 20,
+              negativeCount: 20,
+            },
+            confirmedLessons: 21,
+            rejectedScores: [],
+          }
+        : real.accountVoiceCalibration(...args),
+  };
+});
 const { changeVoiceIdentity, getClassVoice, saveVoiceAnalysis } = await import("./analysis");
 const { expireVoiceEmbeddings, removeSessionVoice } = await import("./privacy");
 const { getVoiceEnrollment, getVoiceProfile, saveVoiceSample } = await import("./profile");
@@ -23,6 +44,7 @@ const MODEL = "synthetic-voice-v1";
 const learnerVoice = [1, ...Array<number>(15).fill(0)];
 const classmateVoice = [0, 1, ...Array<number>(14).fill(0)];
 beforeEach(() => {
+  account.ready = false;
   registry.policy = {
     id: "integration-test-policy",
     modelVersion: MODEL,
@@ -187,6 +209,39 @@ describe("VOICE-AC-04/05: later classes match automatically only under the evalu
     );
   });
 
+  it("keeps every class manual under an evaluated policy that turns automatic acceptance off", async () => {
+    // A ready account calibration accepts on its own when the model revision has no policy.
+    account.ready = true;
+    registry.policy = null;
+    const x = await voiceFixture(db);
+    await sample(x, learnerVoice);
+    await confirmLearner(x);
+    const legacy = await saveVoiceAnalysis(db, x.ctx, { ...x.input, runId: randomUUID() });
+    expect(await row(legacy.id)).toMatchObject({
+      status: "verified",
+      verification_method: "automatic",
+    });
+    // An evaluated entry replaces that calibration, so its switch also keeps it from accepting.
+    registry.policy = {
+      id: "integration-test-policy-off",
+      modelVersion: MODEL,
+      acceptScore: 0.7,
+      minMargin: 0.1,
+      referenceConsistency: 0.6,
+      minCleanSpeechMs: 20000,
+      autoAccept: false,
+    };
+    const y = await voiceFixture(db);
+    await sample(y, learnerVoice);
+    await confirmLearner(y);
+    const off = await saveVoiceAnalysis(db, y.ctx, { ...y.input, runId: randomUUID() });
+    expect(await row(off.id)).toMatchObject({
+      status: "unverified",
+      verification_method: null,
+      match_reason: "policy_unavailable",
+    });
+  });
+
   it("asks when the two voices are alike or one voice has no voiceprint", async () => {
     const x = await voiceFixture(db);
     await sample(x, learnerVoice);
@@ -226,6 +281,21 @@ describe("VOICE-AC-09: withdrawn or replaced references withdraw automatic trust
       reason: "voice_reference_revoked",
     });
     expect(await row(x.analysis.id)).toMatchObject({ reference_status: "mismatch" });
+    // A class analysed from sampled audio keeps saying so after it asks again.
+    const y = await voiceFixture(db);
+    await sample(y, learnerVoice);
+    await confirmLearner(y);
+    const sampled = await saveVoiceAnalysis(db, y.ctx, {
+      ...y.input,
+      runId: randomUUID(),
+      reason: "sampled_audio",
+    });
+    expect((await row(sampled.id)).verification_method).toBe("automatic");
+    await sample(y, learnerVoice);
+    expect(await row(sampled.id)).toMatchObject({
+      status: "unverified",
+      reason: "voice_reference_revoked_sampled_audio",
+    });
     expect(
       (await getVoiceEnrollment(db, x.ctx)).embeddings.map((entry) => entry.analysisId),
     ).toEqual([null]);

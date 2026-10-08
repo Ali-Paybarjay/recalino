@@ -5,7 +5,11 @@ export interface VoiceWindowPlan {
   windowMs: number;
   maxWindows: number;
 }
-export const VOICE_WINDOW_PLAN: VoiceWindowPlan = { windowMs: 30000, maxWindows: 15 };
+/**
+ * Eight 58-second excerpts (478 s with separators): fewer excerpt edges cut turns than fifteen
+ * 30-second ones, chosen on calibration meetings only (tools/voice/evaluation/tuning-report.json).
+ */
+export const VOICE_WINDOW_PLAN: VoiceWindowPlan = { windowMs: 58000, maxWindows: 8 };
 
 export interface VoiceSourceWindow {
   start: number;

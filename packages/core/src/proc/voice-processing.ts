@@ -175,7 +175,8 @@ function candidateClips(utterances: VoiceUtterance[]): VoiceCandidate["clips"] {
   return chosen.map((item) => ({
     startMs: item.startMs,
     endMs: Math.min(item.endMs, item.startMs + 10000),
-    text: item.text,
+    // Utterances may hold up to 10 000 characters; a stored excerpt holds at most 4 000.
+    text: item.text.slice(0, 4000),
   }));
 }
 
@@ -195,6 +196,13 @@ function acousticClips(diarization: VoiceDiarization, label: string): VoiceCandi
         validInterval(segment.startMs, segment.endMs),
     )
     .flatMap((segment) => {
+      // Overlap flagged before windows were mapped back, with no partner left to cut around:
+      // that partner crossed an excerpt edge and was dropped, so its extent is unknown.
+      if (
+        segment.overlap &&
+        !others.some((other) => other.startMs < segment.endMs && other.endMs > segment.startMs)
+      )
+        return [];
       let pieces = [{ startMs: segment.startMs + 200, endMs: segment.endMs - 200 }];
       for (const other of others) {
         const cutStart = other.startMs - 200,

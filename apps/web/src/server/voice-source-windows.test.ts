@@ -9,14 +9,15 @@ import {
 it("bounds the observed two-hour-eight-minute class while sampling speech near both ends", () => {
   const plan = voiceSourceWindows(7675883);
   expect(plan.sampled).toBe(true);
-  expect(plan.windows).toHaveLength(15);
+  expect(plan.windows).toHaveLength(8);
   const length =
     plan.windows.reduce((sum, window) => sum + window.end - window.start, 0) +
     (plan.windows.length - 1) * VOICE_CHECK_GAP_MS;
   expect(length).toBe(478000);
   expect(length).toBeLessThanOrEqual(VOICE_CHECK_MAX_MS);
-  expect(plan.windows[0]?.start).toBeLessThan(300000);
-  expect(plan.windows.at(-1)?.end).toBeGreaterThan(7300000);
+  // Eight excerpts centred on equal eighths of the selection reach within 8 minutes of each end.
+  expect(plan.windows[0]?.start).toBeLessThan(480000);
+  expect(plan.windows.at(-1)?.end).toBeGreaterThan(7200000);
   for (let quarter = 0; quarter < 4; quarter++) {
     expect(
       plan.windows.some(

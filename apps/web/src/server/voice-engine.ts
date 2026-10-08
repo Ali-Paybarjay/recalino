@@ -17,9 +17,9 @@ export const VOICE_MODEL_REVISION =
 export const VOICE_CLUSTER_THRESHOLD = 0.5;
 /** Which speech of a voice forms its voiceprint (see embeddingSpans). */
 export type VoiceSpanMode = "whole-turns" | "clean-parts";
-export const VOICE_SPAN_MODE: VoiceSpanMode = "whole-turns";
+export const VOICE_SPAN_MODE: VoiceSpanMode = "clean-parts";
 /** Pooled-voice similarity at which over-split voices are merged; null leaves them as found. */
-export const VOICE_MERGE_THRESHOLD: number | null = null;
+export const VOICE_MERGE_THRESHOLD: number | null = 0.65;
 export type VoiceSegment = QualifiedVoiceSegment;
 export type VoiceDiarization = {
   modelRevision: string;

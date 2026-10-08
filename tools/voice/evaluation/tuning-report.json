@@ -1,0 +1,1323 @@
+{
+  "meetings": ["ES2002b", "ES2005b", "IS1000b", "TS3008b"],
+  "participants": 16,
+  "note": "Calibration meetings only; diarization quality, no identity decision.",
+  "configurations": [
+    {
+      "threshold": 0.25,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 6,
+      "impure": 2,
+      "clip": 10,
+      "voices": 152,
+      "wallMs": 380774
+    },
+    {
+      "threshold": 0.35,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 6,
+      "impure": 2,
+      "clip": 10,
+      "voices": 126,
+      "wallMs": 460320
+    },
+    {
+      "threshold": 0.35,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 2,
+      "impure": 1,
+      "clip": 9,
+      "voices": 126,
+      "wallMs": 454699
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.45,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 3,
+      "impure": 4,
+      "clip": 3,
+      "voices": 83,
+      "wallMs": 422110
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 6,
+      "impure": 2,
+      "clip": 0,
+      "voices": 87,
+      "wallMs": 470170
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 5,
+      "impure": 2,
+      "clip": 0,
+      "voices": 90,
+      "wallMs": 471228
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.75,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 5,
+      "impure": 2,
+      "clip": 11,
+      "voices": 99,
+      "wallMs": 377572
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": null,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 3,
+      "impure": 3,
+      "clip": 0,
+      "voices": 109,
+      "wallMs": 426083
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 1,
+      "impure": 1,
+      "clip": 8,
+      "voices": 87,
+      "wallMs": 420819
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 2,
+      "impure": 1,
+      "clip": 0,
+      "voices": 109,
+      "wallMs": 517690
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "pure": 9,
+      "impure": 2,
+      "clip": 11,
+      "voices": 76,
+      "wallMs": 384608
+    },
+    {
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "pure": 4,
+      "impure": 0,
+      "clip": 0,
+      "voices": 95,
+      "wallMs": 536945
+    },
+    {
+      "threshold": 0.7,
+      "spanMode": "clean-parts",
+      "mergeThreshold": null,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 4,
+      "impure": 2,
+      "clip": 0,
+      "voices": 60,
+      "wallMs": 454442
+    },
+    {
+      "threshold": 0.7,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 1,
+      "impure": 1,
+      "clip": 0,
+      "voices": 60,
+      "wallMs": 416519
+    },
+    {
+      "threshold": 0.8,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "pure": 1,
+      "impure": 1,
+      "clip": 0,
+      "voices": 42,
+      "wallMs": 438285
+    }
+  ],
+  "ruleSelected": {
+    "threshold": 0.5,
+    "spanMode": "clean-parts",
+    "mergeThreshold": 0.65,
+    "plan": {
+      "windowMs": 58000,
+      "maxWindows": 8
+    },
+    "pure": 9,
+    "impure": 2,
+    "clip": 11,
+    "voices": 76,
+    "wallMs": 384608
+  },
+  "decision": "ruleSelected",
+  "rows": [
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.25,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 88347,
+      "voices": 40,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.35,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 140358,
+      "voices": 34,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.35,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 139029,
+      "voices": 34,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.45,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 98835,
+      "voices": 23,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 3
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 102914,
+      "voices": 24,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 101740,
+      "voices": 25,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.75,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 87841,
+      "voices": 27,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 102667,
+      "voices": 29,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 98692,
+      "voices": 24,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 3
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 93961,
+      "voices": 29,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 99414,
+      "voices": 22,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 112076,
+      "voices": 28,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 84981,
+      "voices": 17,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 132410,
+      "voices": 19,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.7,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 84186,
+      "voices": 16,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.7,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 99116,
+      "voices": 16,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2002b",
+      "threshold": 0.8,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 82674,
+      "voices": 12,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.25,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 98211,
+      "voices": 46,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 2
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.35,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 126509,
+      "voices": 36,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 2
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.35,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 126076,
+      "voices": 36,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 2
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.45,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 137379,
+      "voices": 24,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 111955,
+      "voices": 25,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 112765,
+      "voices": 25,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.75,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 98065,
+      "voices": 29,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 2
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 114051,
+      "voices": 33,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 137141,
+      "voices": 25,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 2
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 98481,
+      "voices": 33,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 96670,
+      "voices": 24,
+      "voiceprints": 4,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 3
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 109921,
+      "voices": 31,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 153406,
+      "voices": 19,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 129635,
+      "voices": 16,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.7,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 143986,
+      "voices": 17,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.7,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 112907,
+      "voices": 17,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "ES2005b",
+      "threshold": 0.8,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 131411,
+      "voices": 12,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.25,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 96254,
+      "voices": 18,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.35,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 96214,
+      "voices": 11,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.35,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 96092,
+      "voices": 11,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.45,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 93668,
+      "voices": 5,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 151042,
+      "voices": 5,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 151381,
+      "voices": 5,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.75,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 95451,
+      "voices": 6,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 1
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 105320,
+      "voices": 9,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 2,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 93288,
+      "voices": 5,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 165822,
+      "voices": 9,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 89829,
+      "voices": 4,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 157704,
+      "voices": 7,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 97633,
+      "voices": 5,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.7,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 117040,
+      "voices": 3,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.7,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 101546,
+      "voices": 3,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "IS1000b",
+      "threshold": 0.8,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 123158,
+      "voices": 3,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 1,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.25,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 97962,
+      "voices": 48,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.35,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 97239,
+      "voices": 45,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.35,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.6,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 93502,
+      "voices": 45,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 3
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.45,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 92228,
+      "voices": 31,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 2,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 104259,
+      "voices": 33,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 105342,
+      "voices": 35,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.75,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 96215,
+      "voices": 37,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 104045,
+      "voices": 38,
+      "voiceprints": 1,
+      "participantsWithPureVoiceprint": 1,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "whole-turns",
+      "mergeThreshold": 0.55,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 91698,
+      "voices": 33,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 3
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 159426,
+      "voices": 38,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "spanMode": "clean-parts",
+      "mergeThreshold": 0.65,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 98695,
+      "voices": 26,
+      "voiceprints": 3,
+      "participantsWithPureVoiceprint": 3,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 4
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.5,
+      "plan": {
+        "windowMs": 58000,
+        "maxWindows": 8
+      },
+      "failure": null,
+      "wallMs": 157244,
+      "voices": 29,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0,
+      "spanMode": "whole-turns",
+      "mergeThreshold": null
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.7,
+      "spanMode": "clean-parts",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 109230,
+      "voices": 24,
+      "voiceprints": 2,
+      "participantsWithPureVoiceprint": 2,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.7,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 102950,
+      "voices": 24,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    },
+    {
+      "meeting": "TS3008b",
+      "threshold": 0.8,
+      "spanMode": "whole-turns",
+      "plan": {
+        "windowMs": 30000,
+        "maxWindows": 15
+      },
+      "failure": null,
+      "wallMs": 101042,
+      "voices": 15,
+      "voiceprints": 0,
+      "participantsWithPureVoiceprint": 0,
+      "impureVoiceprints": 0,
+      "participantsWithClip": 0
+    }
+  ]
+}
