@@ -11,6 +11,7 @@ import { pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
+import { OriginalRecovery } from "./OriginalRecovery";
 import styles from "./Voice.module.css";
 import { useLocalVoiceAudio, VoiceClips } from "./VoiceClips";
 
@@ -180,7 +181,7 @@ export function VoiceConfirmation({
       setProblem(
         error instanceof WorkspaceRequestError &&
           error.fields?.voice?.includes("original_audio_required")
-          ? "The temporary class recording is no longer available. Checking class voices needs the original class recording, even if you have saved a personal voice sample. Open class sources to restore the original recording."
+          ? "The temporary class recording is no longer available. Checking class voices needs the original class recording, even if you have saved a personal voice sample."
           : error instanceof Error
             ? error.message
             : "Your choice could not be saved. Try again.",
@@ -334,7 +335,7 @@ export function VoiceConfirmation({
                   The temporary class recording is no longer available. Checking class voices needs
                   the original class recording, even if you have saved a personal voice sample.
                   <LinkButton secondary href={`/classes/${sessionId}/sources`}>
-                    Restore class recording
+                    Open class sources
                   </LinkButton>
                 </Status>
               ) : view.analysisBlockedReason === "explanation_language_missing" ? (
@@ -415,6 +416,14 @@ export function VoiceConfirmation({
   );
 }
 
+function duration(ms: number) {
+  const seconds = Math.round(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  return minutes >= 60
+    ? `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+    : `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 function Analysis({
   analysis,
   index,
@@ -436,7 +445,8 @@ function Analysis({
   onAction: (payload: Action) => Promise<void>;
   onPlayback: (element: HTMLAudioElement) => void;
 }) {
-  const audio = useLocalVoiceAudio(userId, analysis.sourceId);
+  const [revision, setRevision] = useState(0);
+  const audio = useLocalVoiceAudio(userId, analysis.sourceId, revision);
   const coverage = voiceCoverage(analysis.reason);
   const verified = analysis.status === "verified";
   const available = analysis.candidates.filter(hasSpeakerExcerpts);
@@ -445,6 +455,7 @@ function Analysis({
     (candidate) => candidate.id === analysis.verifiedSpeakerId,
   );
   const candidates = verified ? [] : suggested && !chooseAll ? [suggested] : available;
+  const timed = candidates.some((candidate) => candidate.clips.length > 0);
   const labels: Record<VoiceAnalysisView["status"], string> = {
     verified: "Voice verified",
     processing: "Preparing excerpts",
@@ -464,9 +475,15 @@ function Analysis({
   return (
     <section className={styles.candidate} aria-label={`Source ${index + 1} voice confirmation`}>
       <div className={styles.heading}>
-        <h3>Class source {index + 1}</h3>
+        <h3 dir="auto">{analysis.source?.name ?? `Class source ${index + 1}`}</h3>
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
+      {analysis.source ? (
+        <p className="preview-muted">
+          Class source {index + 1}
+          {analysis.source.durationMs ? ` · ${duration(analysis.source.durationMs)}` : ""}
+        </p>
+      ) : null}
       {coverage === "sampled_audio" || coverage === "sampled_partial_audio" ? (
         <p className="preview-muted">
           This long recording was checked using excerpts sampled across your selected class audio.
@@ -496,6 +513,9 @@ function Analysis({
           <p className="preview-muted">
             Only eligible speech attributed to this speaker can contribute spoken mistakes.
           </p>
+          {analysis.verificationMethod === "manual" && analysis.referenceStatus ? (
+            <p className="preview-muted">{pendingCopy.voice.reference[analysis.referenceStatus]}</p>
+          ) : null}
           <Button secondary disabled={disabled} onClick={() => action("revoke")}>
             This is not my voice
           </Button>
@@ -531,15 +551,24 @@ function Analysis({
         </>
       ) : (
         <>
-          <p>
-            Listen to the excerpts or read the speaker’s lines, then confirm which voice is yours.
-          </p>
-          {!audio.loading && !audio.url ? (
-            <p className="preview-muted">
-              Original audio is not on this device. Use these saved speaker excerpts to identify
-              your voice.
-            </p>
+          {analysis.matchReason ? (
+            <p className="preview-muted">{pendingCopy.voice.match[analysis.matchReason]}</p>
           ) : null}
+          {!timed ? (
+            <p>{pendingCopy.voice.readPrompt}</p>
+          ) : audio.state === "playable" ? (
+            <p>{pendingCopy.voice.listenPrompt}</p>
+          ) : (
+            <OriginalRecovery
+              userId={userId}
+              sessionId={sessionId}
+              sourceId={analysis.sourceId}
+              source={analysis.source}
+              state={audio.state}
+              disabled={disabled}
+              onChanged={() => setRevision((value) => value + 1)}
+            />
+          )}
           {candidates.map((candidate) => (
             <div key={candidate.id} className={styles.aside}>
               <strong dir="auto">{candidate.label}</strong>

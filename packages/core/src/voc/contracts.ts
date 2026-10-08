@@ -52,6 +52,15 @@ export interface VoiceProfileView {
   modelVersion: string | null;
   confirmedLessons: number;
   engineAvailable: boolean;
+  /**
+   * Readiness for the current model revision: the sample, the confirmed classes that became
+   * references, and whether later classes can be matched automatically.
+   */
+  readiness?: {
+    sample: boolean;
+    references: number;
+    automatic: "off" | "needs_sample" | "needs_class" | "unavailable" | "ready";
+  };
 }
 /**
  * Coverage a class voice check discloses: planned distributed sampling of a long selection,
@@ -75,6 +84,30 @@ export function voiceCoverageReason(sampled: boolean, partial: boolean): VoiceCo
         : null;
 }
 
+/**
+ * Why a class was not matched automatically. Stored with the analysis so the learner sees the
+ * real reason for a question; never a probability or a confidence figure.
+ */
+export const VOICE_MATCH_REASONS = [
+  "policy_unavailable",
+  "no_sample",
+  "no_reference",
+  "few_voices",
+  "no_clear_match",
+  "similar_voices",
+] as const;
+export type VoiceMatchReason = (typeof VOICE_MATCH_REASONS)[number];
+
+/** What a manual confirmation contributed to later automatic matching. */
+export const VOICE_REFERENCE_STATUSES = [
+  "added",
+  "short",
+  "expired",
+  "missing",
+  "mismatch",
+] as const;
+export type VoiceReferenceStatus = (typeof VOICE_REFERENCE_STATUSES)[number];
+
 export interface VoiceAnalysisView {
   id: string;
   version: number;
@@ -84,6 +117,24 @@ export interface VoiceAnalysisView {
   verifiedSpeakerId: string | null;
   verificationMethod: "manual" | "automatic" | null;
   reason: string | null;
+  /**
+   * What this manual confirmation contributed to later matching; null otherwise. `retired`: it
+   * was added, but newer classes, a replaced sample or a deletion have since taken it out.
+   */
+  referenceStatus?: VoiceReferenceStatus | "retired" | null;
+  /** Why an acoustic check asked instead of matching automatically; null otherwise. */
+  matchReason?: VoiceMatchReason | null;
+  /**
+   * The owner's registered class recording: its name and length identify it, and its size and
+   * SHA-256 let this device verify a re-selected original. No audio or link is included.
+   */
+  source?: {
+    name: string;
+    durationMs: number | null;
+    sizeBytes: number;
+    sha256: string;
+    mimeType: string;
+  } | null;
   candidates: VoiceCandidate[];
 }
 export interface ClassVoiceView {

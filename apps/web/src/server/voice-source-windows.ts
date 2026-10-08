@@ -1,7 +1,11 @@
 export const VOICE_CHECK_MAX_MS = 480000;
 export const VOICE_CHECK_GAP_MS = 2000;
-const WINDOW_MS = 30000;
-const MAX_WINDOWS = 15;
+/** Distributed excerpts of a long selection: how long each is and how many there are. */
+export interface VoiceWindowPlan {
+  windowMs: number;
+  maxWindows: number;
+}
+export const VOICE_WINDOW_PLAN: VoiceWindowPlan = { windowMs: 30000, maxWindows: 15 };
 
 export interface VoiceSourceWindow {
   start: number;
@@ -14,7 +18,12 @@ export interface VoiceWindowMap {
 }
 
 /** A bounded acoustic check samples the entire selection, never just the recording's prefix. */
-export function voiceSourceWindows(durationMs: number, ranges: readonly VoiceSourceWindow[] = []) {
+export function voiceSourceWindows(
+  durationMs: number,
+  ranges: readonly VoiceSourceWindow[] = [],
+  plan: VoiceWindowPlan = VOICE_WINDOW_PLAN,
+) {
+  const { windowMs, maxWindows } = plan;
   if (!Number.isSafeInteger(durationMs) || durationMs <= 0)
     throw new Error("voice_duration_invalid");
   const selected: VoiceSourceWindow[] = [];
@@ -35,14 +44,14 @@ export function voiceSourceWindows(durationMs: number, ranges: readonly VoiceSou
   }
   const selectedMs = selected.reduce((sum, range) => sum + range.end - range.start, 0);
   if (
-    selected.length <= MAX_WINDOWS &&
+    selected.length <= maxWindows &&
     selectedMs + (selected.length - 1) * VOICE_CHECK_GAP_MS <= VOICE_CHECK_MAX_MS
   )
     return { windows: selected, sampled: false };
 
   const windows: VoiceSourceWindow[] = [];
-  for (let index = 0; index < MAX_WINDOWS; index++) {
-    let position = Math.floor(((index + 0.5) * selectedMs) / MAX_WINDOWS);
+  for (let index = 0; index < maxWindows; index++) {
+    let position = Math.floor(((index + 0.5) * selectedMs) / maxWindows);
     for (const range of selected) {
       const length = range.end - range.start;
       if (position >= length) {
@@ -51,9 +60,9 @@ export function voiceSourceWindows(durationMs: number, ranges: readonly VoiceSou
       }
       const start = Math.max(
         range.start,
-        Math.min(range.start + position - WINDOW_MS / 2, range.end - WINDOW_MS),
+        Math.min(range.start + position - windowMs / 2, range.end - windowMs),
       );
-      const end = Math.min(start + WINDOW_MS, range.end);
+      const end = Math.min(start + windowMs, range.end);
       const previous = windows.at(-1);
       if (previous && start <= previous.end) previous.end = Math.max(previous.end, end);
       else windows.push({ start, end });

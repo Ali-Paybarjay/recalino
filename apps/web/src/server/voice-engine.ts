@@ -10,6 +10,16 @@ import type { QualifiedVoiceSegment } from "./voice-engine-quality.mjs";
 export { cosineSimilarity, poolEmbeddings } from "./voice-engine-quality.mjs";
 export const VOICE_MODEL_REVISION =
   "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563";
+/**
+ * Agglomerative speaker-grouping distance. It decides which turns form one voice, never whether
+ * a voice is the learner. Speaker vectors stay in the same embedding space for any value.
+ */
+export const VOICE_CLUSTER_THRESHOLD = 0.5;
+/** Which speech of a voice forms its voiceprint (see embeddingSpans). */
+export type VoiceSpanMode = "whole-turns" | "clean-parts";
+export const VOICE_SPAN_MODE: VoiceSpanMode = "whole-turns";
+/** Pooled-voice similarity at which over-split voices are merged; null leaves them as found. */
+export const VOICE_MERGE_THRESHOLD: number | null = null;
 export type VoiceSegment = QualifiedVoiceSegment;
 export type VoiceDiarization = {
   modelRevision: string;
@@ -28,6 +38,9 @@ type Configuration = {
   segmentationPath: string;
   embeddingPath: string;
   modelRevision: string;
+  clusterThreshold: number;
+  spanMode: VoiceSpanMode;
+  mergeThreshold: number | null;
   numThreads: number;
   timeoutMs: number;
 };
@@ -123,8 +136,18 @@ function execute<T>(
   return settled;
 }
 
-/** Pinned weights are explicitly provisioned by the operator; runtime never downloads models. */
-export async function loadVoiceEngine(): Promise<VoiceEngine> {
+/**
+ * Pinned weights are explicitly provisioned by the operator; runtime never downloads models.
+ * `clusterThreshold`, `spanMode` and `mergeThreshold` exist for the offline pipeline evaluation;
+ * the app uses the defaults.
+ */
+export async function loadVoiceEngine(
+  options: {
+    clusterThreshold?: number;
+    spanMode?: VoiceSpanMode;
+    mergeThreshold?: number | null;
+  } = {},
+): Promise<VoiceEngine> {
   // Build-provisioned weights are traced beside the source worker into each native function.
   // Explicit absolute paths remain available for an operator-managed installation.
   const modelRoot = resolve(dirname(workerPath()), "../../../../tools/voice/models");
@@ -159,6 +182,10 @@ export async function loadVoiceEngine(): Promise<VoiceEngine> {
     segmentationPath,
     embeddingPath,
     modelRevision: VOICE_MODEL_REVISION,
+    clusterThreshold: options.clusterThreshold ?? VOICE_CLUSTER_THRESHOLD,
+    spanMode: options.spanMode ?? VOICE_SPAN_MODE,
+    mergeThreshold:
+      options.mergeThreshold === undefined ? VOICE_MERGE_THRESHOLD : options.mergeThreshold,
     numThreads: 2,
     timeoutMs: 600000,
   };

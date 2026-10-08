@@ -349,7 +349,7 @@ test("class confirmation is per source, retries safely, and offers correction an
   await page.setViewportSize({ width: 390, height: 1000 });
   await page.goto("/dev/ui/voice?view=class");
   let source = page.getByRole("region", { name: "Source 1 voice confirmation" });
-  await expect(source.getByText(/Original audio is not on this device/)).toBeVisible();
+  await expect(source.getByText("The original audio isn't on this device.")).toBeVisible();
   await expect(source.getByRole("listitem")).toHaveCount(3);
   await source.getByRole("button", { name: "Yes, this is my voice" }).click();
   await expect(page.getByRole("button", { name: "Retry voice choice" })).toBeVisible();
@@ -587,7 +587,7 @@ test("a saved personal sample does not hide the missing class recording or permi
       /Checking class voices needs the original class recording, even if you have saved a personal voice sample/,
     ),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Restore class recording" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open class sources" })).toHaveAttribute(
     "href",
     "/classes/10000000-0000-4000-8000-000000000001/sources",
   );
@@ -802,7 +802,7 @@ test("original audio stays account scoped and clip playback seeks and stops at i
   await expect(
     page
       .getByRole("region", { name: "Source 1 voice confirmation" })
-      .getByText(/Original audio is not on this device/),
+      .getByText("The original audio isn't on this device."),
   ).toBeVisible();
   await page.evaluate(async () => {
     const request = indexedDB.open("recalino-recordings-v1", 3);
@@ -865,7 +865,7 @@ test("original audio stays account scoped and clip playback seeks and stops at i
   const first = page.getByRole("region", { name: "Source 1 voice confirmation" });
   await expect(first.getByRole("button", { name: "Play Voice 1 excerpt 2" })).toBeVisible();
   const second = page.getByRole("region", { name: "Source 2 voice confirmation" });
-  await expect(second.getByText(/Original audio is not on this device/)).toBeVisible();
+  await expect(second.getByText("The original audio isn't on this device.")).toBeVisible();
   await expect(second.getByRole("button", { name: /^Play/ })).toHaveCount(0);
   const audio = first.locator("audio");
   await expect(audio).toHaveJSProperty("paused", true);
@@ -947,4 +947,170 @@ test("a queued voice job polls before any analysis exists and an old consent ret
   expect(saves[0]?.body.expectedVersion).toBe(0);
   expect(saves[1]?.body.expectedVersion).toBe(2);
   expect(saves[0]?.key).not.toBe(saves[1]?.key);
+});
+
+/** A silent synthetic WAV (test asset, no person recorded) and its registered identity. */
+function syntheticOriginal(seconds: number, fill = 0) {
+  const sampleRate = 8000,
+    bytes = sampleRate * seconds * 2,
+    buffer = Buffer.alloc(44 + bytes, fill);
+  buffer.write("RIFF", 0, "ascii");
+  buffer.writeUInt32LE(36 + bytes, 4);
+  buffer.write("WAVEfmt ", 8, "ascii");
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36, "ascii");
+  buffer.writeUInt32LE(bytes, 40);
+  return buffer;
+}
+
+test("VOICE-AC-08: a missing original is re-attached on this device, plays at once, and a different file changes nothing", async ({
+  page,
+}) => {
+  const original = syntheticOriginal(40);
+  // Same size, different bytes: only the checksum can tell it apart.
+  const imposter = Buffer.from(original);
+  imposter.fill(1, 44);
+  const { createHash } = await import("node:crypto");
+  const source = {
+    name: "Tuesday class.wav",
+    durationMs: 40000,
+    sizeBytes: original.length,
+    sha256: createHash("sha256").update(original).digest("hex"),
+    mimeType: "audio/wav",
+  };
+  const view: ClassVoiceView = {
+    enabled: true,
+    engineAvailable: true,
+    analyses: [{ ...analysis(1), source }],
+  };
+  const forbidden: string[] = [];
+  await page.route("**/api/**", (route) => {
+    const url = route.request().url();
+    if (/\/api\/classes\/[^/]+\/voice$/.test(url)) return route.fulfill({ json: view });
+    // Re-attaching is local: no source, recording, upload or learning request may be sent.
+    forbidden.push(`${route.request().method()} ${new URL(url).pathname}`);
+    return route.fulfill({ status: 500, json: {} });
+  });
+  await page.goto("/dev/ui/voice?view=class");
+  const region = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await expect(region.getByRole("heading", { name: "Tuesday class.wav" })).toBeVisible();
+  await expect(region.getByText("Class source 1 · 0:40")).toBeVisible();
+  await expect(region.getByText("The original audio isn't on this device.")).toBeVisible();
+  await expect(region.getByText(/Listen to the excerpts/)).toHaveCount(0);
+  await expect(region.getByRole("button", { name: /^Play/ })).toHaveCount(0);
+  const picker = region.locator('input[type="file"][aria-label="Select original recording"]');
+  await picker.setInputFiles({
+    name: "Tuesday class.wav",
+    mimeType: "audio/wav",
+    buffer: imposter,
+  });
+  await expect(
+    region.getByText(
+      "This file is not the original recording of this class source, so nothing was changed.",
+    ),
+  ).toBeVisible();
+  await expect(region.getByRole("button", { name: /^Play/ })).toHaveCount(0);
+  await picker.setInputFiles({ name: "renamed copy.wav", mimeType: "audio/wav", buffer: original });
+  await expect(
+    region.getByText("Listen to the excerpts, then confirm which voice is yours."),
+  ).toBeVisible();
+  const play = region.getByRole("button", { name: "Play Voice 1 excerpt 2" });
+  await expect(play).toBeVisible();
+  await play.click();
+  await expect(region.getByRole("button", { name: "Pause Voice 1 excerpt 2" })).toBeVisible();
+  expect(
+    await region.locator("audio").evaluate((element) => (element as HTMLAudioElement).currentTime),
+  ).toBeGreaterThanOrEqual(12);
+  const rows = await page.evaluate(async () => {
+    const request = indexedDB.open("recalino-recordings-v1", 3);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const all = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+      const read = db.transaction("recordings").objectStore("recordings").getAll();
+      read.onsuccess = () => resolve(read.result);
+      read.onerror = () => reject(read.error);
+    });
+    db.close();
+    return all;
+  });
+  expect(rows).toEqual([
+    expect.objectContaining({
+      userId: "10000000-0000-4000-8000-000000000002",
+      sourceAssetId: "20000000-0000-4000-8000-000000000001",
+      sessionId: null,
+      bytes: original.length,
+      chunks: 1,
+    }),
+  ]);
+  expect(rows[0]).not.toHaveProperty("autoRegister");
+  // The original stays playable after a reload, from this device only.
+  await page.reload();
+  await expect(
+    page
+      .getByRole("region", { name: "Source 1 voice confirmation" })
+      .getByRole("button", { name: "Play Voice 1 excerpt 1" }),
+  ).toBeVisible();
+  expect(forbidden).toEqual([]);
+});
+
+test("VOICE-AC-07: speakers with only saved lines are not presented as listenable", async ({
+  page,
+}) => {
+  const textOnly = analysis(1);
+  textOnly.candidates = textOnly.candidates.map((candidate) => ({ ...candidate, clips: [] }));
+  await page.route("**/api/classes/*/voice", (route) =>
+    route.fulfill({
+      json: { enabled: true, engineAvailable: true, analyses: [textOnly] } satisfies ClassVoiceView,
+    }),
+  );
+  await page.goto("/dev/ui/voice?view=class");
+  const region = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await expect(
+    region.getByText(/These speakers have saved lines but no timed audio excerpts/),
+  ).toBeVisible();
+  await expect(region.getByText(/Listen to the excerpts/)).toHaveCount(0);
+  await expect(region.getByRole("button", { name: /^Play/ })).toHaveCount(0);
+  await expect(region.getByRole("button", { name: "Select original recording" })).toHaveCount(0);
+  await expect(region.getByRole("button", { name: "None of these voices is mine" })).toBeEnabled();
+});
+
+test("VOICE-AC-03/05: the class says why it asks and what a confirmation taught", async ({
+  page,
+}) => {
+  const asking = { ...analysis(1), matchReason: "similar_voices" as const };
+  const confirmed: VoiceAnalysisView = {
+    ...analysis(2),
+    status: "verified",
+    verifiedSpeakerId: "speaker-1",
+    verificationMethod: "manual",
+    referenceStatus: "mismatch",
+  };
+  await page.route("**/api/classes/*/voice", (route) =>
+    route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        analyses: [asking, confirmed],
+      } satisfies ClassVoiceView,
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await page.goto("/dev/ui/voice?view=class");
+  await expect(
+    page
+      .getByRole("region", { name: "Source 1 voice confirmation" })
+      .getByText(/more than one voice in this recording sounds similar to yours/),
+  ).toBeVisible();
+  const second = page.getByRole("region", { name: "Source 2 voice confirmation" });
+  await expect(second.getByText(/does not sound like your saved voice sample/)).toBeVisible();
+  await expect(second.getByRole("button", { name: "This is not my voice" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

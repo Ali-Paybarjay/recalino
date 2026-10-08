@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("./storage", () => ({ getObjectStore: () => mocks.store }));
 vi.mock("./voice-engine", () => ({
+  VOICE_MODEL_REVISION: "synthetic-route-test",
   loadVoiceEngine: async () => ({ modelRevision: "synthetic-route-test", diarize: mocks.diarize }),
 }));
 vi.mock("./audio-preparer", () => ({ decodeVoiceAudio: mocks.decode }));

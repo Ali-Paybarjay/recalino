@@ -9,7 +9,12 @@ import {
   validateVoicePcm,
   workerFailureCode,
 } from "./voice-engine";
-import { embeddingSpans, qualifySegments } from "./voice-engine-quality.mjs";
+import {
+  embeddingSpans,
+  markOverlaps,
+  mergeVoices,
+  qualifySegments,
+} from "./voice-engine-quality.mjs";
 
 describe("local speaker engine trust boundaries", () => {
   it("excludes splice-adjacent and splice-crossing turns before acoustic embeddings are pooled", () => {
@@ -41,6 +46,66 @@ describe("local speaker engine trust boundaries", () => {
     expect(segments.map((item) => item.overlap)).toEqual([true, true, false]);
     expect(embeddingSpans(segments, "speaker_0")).toEqual([{ startMs: 110200, endMs: 114800 }]);
     expect(embeddingSpans(segments, "speaker_1")).toEqual([]);
+  });
+  it("clean-parts keeps only speech at least 200 ms away from any other voice; turn flags stay", () => {
+    const segments = qualifySegments(
+      [
+        { start: 1, end: 12, speaker: 0 },
+        { start: 3, end: 4, speaker: 1 },
+        { start: 13, end: 20, speaker: 0 },
+      ],
+      21000,
+    );
+    // Spoken-mistake evidence still treats both touched turns as overlapped.
+    expect(segments.map((item) => item.overlap)).toEqual([true, true, false]);
+    expect(embeddingSpans(segments, "speaker_0")).toEqual([{ startMs: 13200, endMs: 19800 }]);
+    expect(embeddingSpans(segments, "speaker_0", "clean-parts")).toEqual([
+      { startMs: 4200, endMs: 11800 },
+      { startMs: 13200, endMs: 19800 },
+    ]);
+    // The shorter voice has no clean part of two seconds and still yields nothing.
+    expect(embeddingSpans(segments, "speaker_1", "clean-parts")).toEqual([]);
+    // Clipped, splice-adjacent and short turns stay excluded in either mode.
+    const clipped = qualifySegments([{ start: 0, end: 8, speaker: 0 }], 9000);
+    expect(embeddingSpans(clipped, "speaker_0", "clean-parts")).toEqual([]);
+  });
+  it("merges an over-split voice by its pooled clean speech, never two voices heard together", () => {
+    // Synthetic vectors: speaker_0 and speaker_2 are one person split by clustering.
+    const person = [1, 0, 0],
+      alike = [0.8, 0.6, 0],
+      other = [0, 1, 0];
+    const segments = qualifySegments(
+      [
+        { start: 1, end: 9, speaker: 0 },
+        { start: 10, end: 18, speaker: 1 },
+        { start: 19, end: 27, speaker: 2 },
+        { start: 26.5, end: 30, speaker: 0 },
+      ],
+      31000,
+    );
+    const voiceOf = (span: { startMs: number }) =>
+      span.startMs < 10000 || span.startMs >= 26500 ? person : span.startMs < 19000 ? other : alike;
+    const merged = mergeVoices(segments, voiceOf, 0.6);
+    expect([...new Set(merged.map((segment) => segment.speakerId))].sort()).toEqual([
+      "speaker_0",
+      "speaker_1",
+    ]);
+    // Same-voice contact is no longer simultaneous speech once the labels agree.
+    expect(
+      merged.filter((segment) => segment.speakerId === "speaker_0").map((s) => s.overlap),
+    ).toEqual([false, false, false]);
+    // Dissimilar voices, or voices heard together, keep their own labels.
+    expect(new Set(mergeVoices(segments, voiceOf, 0.9).map((s) => s.speakerId)).size).toBe(3);
+    const together = qualifySegments(
+      [
+        { start: 1, end: 12, speaker: 0 },
+        { start: 4, end: 11, speaker: 1 },
+        { start: 13, end: 25, speaker: 1 },
+      ],
+      26000,
+    );
+    expect(new Set(mergeVoices(together, () => person, 0.5).map((s) => s.speakerId)).size).toBe(2);
+    expect(markOverlaps(together).map((segment) => segment.overlap)).toEqual([true, true, false]);
   });
   it("withholds clipped and short speech and trims two hundred milliseconds on both turn boundaries", () => {
     const segments = qualifySegments(

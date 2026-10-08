@@ -158,9 +158,14 @@ export function alignVoiceUtterances(
 }
 
 function candidateClips(utterances: VoiceUtterance[]): VoiceCandidate["clips"] {
-  const available = utterances
-    .filter((item) => item.eligible && item.endMs - item.startMs >= 6000)
-    .sort((a, b) => a.startMs - b.startMs);
+  const eligible = (minimumMs: number) =>
+    utterances
+      .filter((item) => item.eligible && item.endMs - item.startMs >= minimumMs)
+      .sort((a, b) => a.startMs - b.startMs);
+  // Prefer clear six-second turns; a voice with only shorter clean turns still gets something
+  // to listen to rather than text alone. Both come from timed, single-voice, unoverlapped turns.
+  const long = eligible(6000);
+  const available = long.length ? long : eligible(3000);
   const chosen =
     available.length <= 3
       ? available
@@ -174,15 +179,95 @@ function candidateClips(utterances: VoiceUtterance[]): VoiceCandidate["clips"] {
   }));
 }
 
+/**
+ * Without a clean transcribed turn, a voice can still be heard from its own detected speech: the
+ * parts of its turns at least 200 ms away from any other detected voice, not near a recording or
+ * excerpt edge, at least three seconds long. They carry no text and are for listening only; they
+ * are not spoken-mistake evidence.
+ */
+function acousticClips(diarization: VoiceDiarization, label: string): VoiceCandidate["clips"] {
+  const others = diarization.segments.filter((segment) => segment.speakerId !== label);
+  const parts = diarization.segments
+    .filter(
+      (segment) =>
+        segment.speakerId === label &&
+        !segment.boundaryUnsafe &&
+        validInterval(segment.startMs, segment.endMs),
+    )
+    .flatMap((segment) => {
+      let pieces = [{ startMs: segment.startMs + 200, endMs: segment.endMs - 200 }];
+      for (const other of others) {
+        const cutStart = other.startMs - 200,
+          cutEnd = other.endMs + 200;
+        pieces = pieces.flatMap((piece) =>
+          cutEnd <= piece.startMs || cutStart >= piece.endMs
+            ? [piece]
+            : [
+                { startMs: piece.startMs, endMs: Math.min(piece.endMs, cutStart) },
+                { startMs: Math.max(piece.startMs, cutEnd), endMs: piece.endMs },
+              ].filter((part) => part.endMs > part.startMs),
+        );
+      }
+      return pieces.filter((piece) => piece.endMs - piece.startMs >= 3000);
+    })
+    .sort((a, b) => a.startMs - b.startMs);
+  const chosen =
+    parts.length <= 3
+      ? parts
+      : [0, Math.floor((parts.length - 1) / 2), parts.length - 1].map((index) => parts[index]);
+  return chosen.flatMap((part) =>
+    part
+      ? [{ startMs: part.startMs, endMs: Math.min(part.endMs, part.startMs + 10000), text: "" }]
+      : [],
+  );
+}
+
+/** The stored analysis holds at most this many voices (voc candidatesSchema). */
+export const MAX_VOICE_CANDIDATES = 50;
+/**
+ * Over-split recordings can yield more labels than an analysis can hold. Voices with a
+ * voiceprint come first, then the most detected speech; the rest are tiny fragments that are
+ * dropped rather than failing the whole check. Order of first appearance is kept.
+ */
+function keptVoiceLabels(diarization: VoiceDiarization): string[] {
+  const labels = [...new Set(diarization.segments.map((segment) => segment.speakerId))];
+  if (labels.length <= MAX_VOICE_CANDIDATES) return labels;
+  const speech = new Map<string, number>();
+  for (const segment of diarization.segments)
+    speech.set(
+      segment.speakerId,
+      (speech.get(segment.speakerId) ?? 0) + segment.endMs - segment.startMs,
+    );
+  const clean = (label: string) =>
+    diarization.speakers.find((speaker) => speaker.speakerId === label)?.cleanSpeechMs ?? 0;
+  const kept = new Set(
+    [...labels]
+      .sort(
+        (a, b) =>
+          Number(clean(b) >= 20000) - Number(clean(a) >= 20000) ||
+          (speech.get(b) ?? 0) - (speech.get(a) ?? 0) ||
+          a.localeCompare(b),
+      )
+      .slice(0, MAX_VOICE_CANDIDATES),
+  );
+  return labels.filter((label) => kept.has(label));
+}
+
 export function buildVoiceAnalysis(
   input: Omit<VoiceAnalysisInput, "candidates" | "utterances" | "embeddings" | "modelVersion">,
   source: RunSource,
   diarization: VoiceDiarization,
   explanationLanguage = "fa",
 ): VoiceAnalysisInput {
-  const utterances = alignVoiceUtterances(source, diarization);
   const coverage = voiceCoverageReason(!!diarization.sampled, !!diarization.partial);
-  const labels = [...new Set(diarization.segments.map((segment) => segment.speakerId))];
+  const labels = keptVoiceLabels(diarization);
+  const kept = new Set(
+    labels.map((label) => scopedVoiceSpeakerId(source.sourceId, "whole-source", label)),
+  );
+  // Turns of dropped fragments cannot be attributed to anyone; they stay out of the evidence.
+  const utterances = alignVoiceUtterances(source, diarization).filter((item) =>
+    kept.has(item.speakerId),
+  );
   const candidates = labels.map((label, index): VoiceCandidate => {
     const speaker = diarization.speakers.find((item) => item.speakerId === label);
     const id = scopedVoiceSpeakerId(source.sourceId, "whole-source", label);
@@ -193,7 +278,9 @@ export function buildVoiceAnalysis(
         explanationLanguage.split("-")[0] === "fa" ? `گوینده ${index + 1}` : `Voice ${index + 1}`,
       score: null,
       cleanSpeechMs: Math.max(0, Math.floor(speaker?.cleanSpeechMs ?? 0)),
-      clips: candidateClips(speech),
+      clips: candidateClips(speech).length
+        ? candidateClips(speech)
+        : acousticClips(diarization, label),
       lines: speech.slice(0, 4).map((item) => item.text.slice(0, 4000)),
     };
   });
@@ -512,7 +599,17 @@ export function buildTranscriptVoiceAnalysis(
   source: RunSource,
   explanationLanguage = "fa",
 ): VoiceAnalysisInput {
-  const utterances = transcriptVoiceUtterances(source);
+  const labelled = transcriptVoiceUtterances(source);
+  const spoken = new Map<string, number>();
+  for (const item of labelled)
+    spoken.set(item.speakerId, (spoken.get(item.speakerId) ?? 0) + item.endMs - item.startMs);
+  // Chunk-scoped labels can exceed what one analysis holds; the most-heard voices stay.
+  const kept = new Set(
+    [...spoken.keys()]
+      .sort((a, b) => (spoken.get(b) ?? 0) - (spoken.get(a) ?? 0) || a.localeCompare(b))
+      .slice(0, MAX_VOICE_CANDIDATES),
+  );
+  const utterances = labelled.filter((item) => kept.has(item.speakerId));
   const ids = [...new Set(utterances.map((item) => item.speakerId))];
   return {
     ...input,
@@ -526,7 +623,8 @@ export function buildTranscriptVoiceAnalysis(
         explanationLanguage.split("-")[0] === "fa" ? `گوینده ${index + 1}` : `Voice ${index + 1}`,
       score: null,
       cleanSpeechMs: 0,
-      clips: [],
+      // Timed, unoverlapped transcript turns can be played from the local original.
+      clips: candidateClips(utterances.filter((item) => item.speakerId === id)),
       lines: utterances
         .filter((item) => item.speakerId === id)
         .slice(0, 4)

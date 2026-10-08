@@ -1,6 +1,7 @@
 import { lockAccountForCleanup } from "../acc";
 import type { Database, Tx } from "../db";
 import { emptyPayload, type LearnerContext, type ObjectStore, type PeriodicJob } from "../plt";
+import { invalidateAutomaticVoice } from "./automatic";
 import {
   cleanupVoiceSampleObjects,
   enrollmentEmbeddingsSchema,
@@ -39,9 +40,11 @@ async function removeVoiceScope(
       .where("user_id", "=", ctx.userId)
       .executeTakeFirst();
     if (profile) {
-      const retained = enrollmentEmbeddingsSchema
-        .parse(profile.embeddings)
-        .filter((entry) => !entry.analysisId || !ids.has(entry.analysisId));
+      const current = enrollmentEmbeddingsSchema.parse(profile.embeddings);
+      const retained = current.filter((entry) => !entry.analysisId || !ids.has(entry.analysisId));
+      // Automatic matches elsewhere may rest on the reference this deletion removes.
+      if (retained.length !== current.length)
+        await invalidateAutomaticVoice(tx, ctx.userId, new Date());
       await tx
         .updateTable("voc.profile")
         .set({
