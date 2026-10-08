@@ -15,8 +15,8 @@ export default async function ClassOptionsPage({ params }: { params: Promise<{ i
       current="classes"
       header={
         <PageHeader
-          title="Keep your classes organised"
-          subtitle="Rename, move or remove a class."
+          title="Keep your sessions organised"
+          subtitle="Rename, move or remove a session."
         />
       }
     >

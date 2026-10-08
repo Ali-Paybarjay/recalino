@@ -23,11 +23,11 @@ export default async function CoursesPage({
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Courses" subtitle={courseCopy.courseHelp} />}
+      header={<PageHeader title="Manage courses" subtitle={courseCopy.courseHelp} />}
     >
       <div className="preview-stack">
         <Link className="preview-back" href="/classes">
-          ← Back to classes
+          ← Back to courses
         </Link>
         <Panel title="Your courses">
           <p className="preview-muted">{courseCopy.goalHelp}</p>
@@ -39,7 +39,7 @@ export default async function CoursesPage({
                   {course.isDefault ? <p className="preview-muted">Default course</p> : null}
                   <Actions>
                     <LinkButton secondary href={`/courses/${course.id}`}>
-                      View classes
+                      View sessions
                     </LinkButton>
                     <LinkButton secondary href={`/courses/${course.id}/materials`}>
                       Course materials
@@ -49,7 +49,7 @@ export default async function CoursesPage({
               ))}
             </ul>
           ) : (
-            <p>Create your first course below, then add classes by date.</p>
+            <p>Create your first course below, then add sessions by date.</p>
           )}
         </Panel>
         <CourseManager {...groups} courseId={courseId} />

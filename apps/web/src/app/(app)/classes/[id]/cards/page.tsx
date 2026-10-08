@@ -23,7 +23,7 @@ export default async function ClassCardsPage({ params }: { params: Promise<{ id:
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Class flashcards" subtitle={session.displayTitle} />}
+      header={<PageHeader title="Session flashcards" subtitle={session.displayTitle} />}
     >
       <CardsView
         sessionId={id}

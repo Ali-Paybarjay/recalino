@@ -47,11 +47,11 @@ export default async function CourseMaterialsPage({
         <CourseNavigation course={course} courses={courses} current="materials" />
         <Panel title="Learn through this course">
           <p>
-            Read your published class notes in date order. Each lesson keeps its own notes,
+            Read your published session notes in date order. Each lesson keeps its own notes,
             flashcards and sources.
           </p>
           {materials.items.length ? (
-            <nav className="preview-actions" aria-label="Jump to a class">
+            <nav className="preview-actions" aria-label="Jump to a session">
               {materials.items.map(({ session }) => (
                 <a key={session.id} className="preview-index-link" href={`#class-${session.id}`}>
                   <span>
@@ -69,7 +69,7 @@ export default async function CourseMaterialsPage({
           ) : null}
           <Actions>
             <LinkButton secondary href={`/classes/new?courseId=${id}`}>
-              New class in this course
+              New session in this course
             </LinkButton>
           </Actions>
         </Panel>
@@ -87,16 +87,16 @@ export default async function CourseMaterialsPage({
               <SessionLearningSummary session={session} />
               <Actions>
                 <LinkButton secondary href={`/classes/${session.id}`}>
-                  Open class
+                  Open session
                 </LinkButton>
                 <LinkButton secondary href={`/classes/${session.id}/notes`}>
-                  Class notes
+                  Session notes
                 </LinkButton>
                 <LinkButton secondary href={`/classes/${session.id}/cards`}>
                   Flashcards
                 </LinkButton>
                 <LinkButton secondary href={`/classes/${session.id}/sources`}>
-                  Class sources
+                  Session sources
                 </LinkButton>
               </Actions>
             </Panel>
@@ -112,7 +112,7 @@ export default async function CourseMaterialsPage({
             ) : (
               <Panel>
                 <p>
-                  No notes for this class yet. Add class material; its notes will appear
+                  No notes for this session yet. Add session material; its notes will appear
                   automatically.
                 </p>
               </Panel>
@@ -120,17 +120,17 @@ export default async function CourseMaterialsPage({
           </section>
         ))}
         {!materials.items.length ? (
-          <Panel title={materials.total ? "No classes on this page" : "Your course starts here"}>
+          <Panel title={materials.total ? "No sessions on this page" : "Your course starts here"}>
             <p>
               {materials.total
                 ? "Choose an earlier page to keep reading."
-                : "Create a dated class and add its material. Its notes will appear here automatically in course order."}
+                : "Create a dated session and add its material. Its notes will appear here automatically in course order."}
             </p>
             <LinkButton
               secondary
               href={materials.total ? pageHref(1) : `/classes/new?courseId=${id}`}
             >
-              {materials.total ? "First page" : "Create a class in this course"}
+              {materials.total ? "First page" : "Create a session in this course"}
             </LinkButton>
           </Panel>
         ) : null}
@@ -139,15 +139,15 @@ export default async function CourseMaterialsPage({
             <nav className="preview-actions" aria-label="Course material pages">
               {page > 1 ? (
                 <LinkButton secondary href={pageHref(page - 1)}>
-                  Previous classes
+                  Previous sessions
                 </LinkButton>
               ) : null}
               <p className="preview-muted">
-                Page {page} · {materials.total} classes · Oldest first
+                Page {page} · {materials.total} sessions · Oldest first
               </p>
               {page * PAGE_SIZE < materials.total ? (
                 <LinkButton secondary href={pageHref(page + 1)}>
-                  Next classes
+                  Next sessions
                 </LinkButton>
               ) : null}
             </nav>

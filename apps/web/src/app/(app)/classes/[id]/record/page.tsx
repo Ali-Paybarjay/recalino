@@ -12,7 +12,7 @@ export default async function ClassRecordingPage({ params }: { params: Promise<{
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Record a class" subtitle={session.displayTitle} />}
+      header={<PageHeader title="Record a session" subtitle={session.displayTitle} />}
     >
       <RecordingView sessionId={id} />
     </LearnerShell>

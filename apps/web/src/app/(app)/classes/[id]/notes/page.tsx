@@ -26,7 +26,7 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
     initial?.current.knowledgeVersionId ?? latest?.id,
   );
   return (
-    <LearnerShell learner={learner} current="classes" header={<PageHeader title="Class notes" />}>
+    <LearnerShell learner={learner} current="classes" header={<PageHeader title="Session notes" />}>
       <div className="preview-stack">
         <VoiceConfirmation sessionId={id} userId={learner.userId}>
           <NoteView

@@ -20,14 +20,14 @@ export default async function OrganizePage({
       current="classes"
       header={
         <PageHeader
-          title="Keep your classes organised"
+          title="Keep your sessions organised"
           subtitle="Create courses and optional units, or rename and arrange them."
         />
       }
     >
       <div className="preview-stack">
         <Link className="preview-back" href="/classes">
-          ← Back to classes
+          ← Back to courses
         </Link>
         <CourseManager {...groups} courseId={query.courseId} />
       </div>

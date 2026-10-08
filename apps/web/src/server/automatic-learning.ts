@@ -94,7 +94,7 @@ export function automaticLearningMessage(
   if (code === "quota_insufficient")
     return "Your material is saved. More allowance is needed to finish the notes and flashcards.";
   if (code === "processing_budget_session")
-    return "The next processing step does not fit within this class's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
+    return "The next processing step does not fit within this session's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
   if (code === "processing_budget_user_month")
     return "The next processing step does not fit within your account's monthly AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
   if (code === "processing_budget_system_day")

@@ -17,7 +17,7 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Class progress" subtitle={session.displayTitle} />}
+      header={<PageHeader title="Session progress" subtitle={session.displayTitle} />}
     >
       <AutomaticLearningView sessionId={id} initial={automatic} />
     </LearnerShell>

@@ -41,7 +41,7 @@ export default async function ClassesPage({
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Classes" subtitle="Choose your course, then open a class." />}
+      header={<PageHeader title="Courses" subtitle="Choose a course, then open a session." />}
     >
       <ClassDirectory
         key={`${course?.id ?? (allCourses ? "all" : "choose")}:${unitId ?? "all"}:${classDirectoryRevision(sessions)}`}

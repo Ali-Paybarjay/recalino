@@ -92,7 +92,7 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
       <Row
         href="/courses"
         label="Courses"
-        value="Classes and learning materials"
+        value="Sessions and learning materials"
         icon={ChalkboardSimple}
       />
       <section className={styles.summary} aria-labelledby="learning-profile-title">

@@ -25,7 +25,7 @@ describe("automatic creation recovery guidance", () => {
       "More allowance is needed",
     );
     expect(automaticLearningMessage("blocked", "processing_budget_session")).toContain(
-      "class's AI spending limit",
+      "session's AI spending limit",
     );
   });
 
