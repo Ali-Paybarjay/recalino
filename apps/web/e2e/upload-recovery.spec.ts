@@ -442,7 +442,7 @@ for (const action of ["cancel", "skip"] as const) {
     expect(mock.forbidden).toEqual([]);
     await expect(
       sourceItem(page, "password-protected.pdf").getByRole("button", {
-        name: "Remove from class",
+        name: "Remove from session",
         exact: true,
       }),
     ).toBeVisible();
@@ -450,7 +450,7 @@ for (const action of ["cancel", "skip"] as const) {
     await page.reload();
     await expect(
       sourceItem(page, "password-protected.pdf").getByRole("button", {
-        name: "Remove from class",
+        name: "Remove from session",
         exact: true,
       }),
     ).toBeVisible();

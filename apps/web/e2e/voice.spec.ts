@@ -353,12 +353,12 @@ test("class confirmation is per source, retries safely, and offers correction an
   await expect(source.getByRole("listitem")).toHaveCount(3);
   await source.getByRole("button", { name: "Yes, this is my voice" }).click();
   await expect(page.getByRole("button", { name: "Retry voice choice" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toHaveCount(0);
   await expect(source.getByRole("button", { name: "None of these voices is mine" })).toBeDisabled();
   await page.getByRole("button", { name: "Retry voice choice" }).click();
   await expect(source.getByRole("button", { name: "This is not my voice" })).toBeVisible();
   expect(writes[0]).toEqual(writes[1]);
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   await expect(
     page
       .getByRole("region", { name: "Source 2 voice confirmation" })
@@ -402,14 +402,14 @@ test("class voices explain missing transcripts before a check can be submitted",
   });
   await page.goto("/dev/ui/voice?view=class");
   await expect(
-    page.getByRole("button", { name: "Check class voices", exact: true }),
+    page.getByRole("button", { name: "Check session voices", exact: true }),
   ).toBeDisabled();
-  await expect(page.getByText(/Select a class recording in Sources and process it/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open class sources" })).toHaveAttribute(
+  await expect(page.getByText(/Select a session recording in Sources and process it/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open session sources" })).toHaveAttribute(
     "href",
     "/classes/10000000-0000-4000-8000-000000000001/sources",
   );
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toBe(0);
 });
 
@@ -444,21 +444,21 @@ test("a completed voice check leads to an explicit speaker choice and the refres
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Checking class voices…" })).toBeDisabled();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Checking session voices…" })).toBeDisabled();
   await expect(
     page.getByText(/Voice check finished. Next, confirm which speaker is you/),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read session notes", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Yes, this is my voice", exact: true }).click();
   await expect(page.getByText("Voice verified", { exact: true })).toBeVisible();
   await expect(page.getByText(/Your voice choices are saved/)).toBeVisible();
-  const continuation = page.getByRole("link", { name: "Read class notes", exact: true });
+  const continuation = page.getByRole("link", { name: "Read session notes", exact: true });
   await expect(continuation).toHaveAttribute("href", "#class-notes");
   await continuation.click();
   await expect(page).toHaveURL(/#class-notes$/);
   await expect(
-    page.locator("#class-notes").getByRole("region", { name: "Synthetic class notes" }),
+    page.locator("#class-notes").getByRole("region", { name: "Synthetic session notes" }),
   ).toBeVisible();
   expect(writes).toEqual([
     { action: "analyze" },
@@ -494,8 +494,8 @@ test("a check without usable excerpts reports its outcome and offers source mate
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Checking class voices…" })).toBeDisabled();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Checking session voices…" })).toBeDisabled();
   const source = page.getByRole("region", { name: "Source 1 voice confirmation" });
   await expect(source.getByText("No usable excerpts", { exact: true })).toBeVisible();
   await expect(page.getByText("Needs confirmation", { exact: true })).toHaveCount(0);
@@ -507,7 +507,7 @@ test("a check without usable excerpts reports its outcome and offers source mate
     "/classes/10000000-0000-4000-8000-000000000001/sources",
   );
   await expect(page.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read session notes", exact: true })).toBeVisible();
 });
 
 test("a failed class voice check offers a working retry instead of asking for confirmation", async ({
@@ -531,7 +531,7 @@ test("a failed class voice check offers a working retry instead of asking for co
   const source = page.getByRole("region", { name: "Source 1 voice confirmation" });
   await expect(source.getByText("Voice check failed", { exact: true })).toBeVisible();
   await expect(source.getByText("Needs confirmation", { exact: true })).toHaveCount(0);
-  await source.getByRole("button", { name: "Retry class voice check", exact: true }).click();
+  await source.getByRole("button", { name: "Retry session voice check", exact: true }).click();
   await expect(
     source.getByRole("button", { name: "Yes, this is my voice", exact: true }),
   ).toBeVisible();
@@ -560,7 +560,7 @@ test("speaker labels without any excerpts offer recovery instead of asking for a
   await expect(source.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
   await expect(source.getByRole("button", { name: "None of these voices is mine" })).toHaveCount(0);
   await expect(source.getByRole("link", { name: "Check source material" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read session notes", exact: true })).toBeVisible();
 });
 
 test("a saved personal sample does not hide the missing class recording or permit a no-op check", async ({
@@ -580,18 +580,18 @@ test("a saved personal sample does not hide the missing class recording or permi
   });
   await page.goto("/dev/ui/voice?view=class");
   await expect(
-    page.getByRole("button", { name: "Check class voices", exact: true }),
+    page.getByRole("button", { name: "Check session voices", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByText(
-      /Checking class voices needs the original class recording, even if you have saved a personal voice sample/,
+      /Checking session voices needs the original session recording, even if you have saved a personal voice sample/,
     ),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Restore class recording" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Restore session recording" })).toHaveAttribute(
     "href",
     "/classes/10000000-0000-4000-8000-000000000001/sources",
   );
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toBe(0);
 });
 
@@ -617,7 +617,7 @@ test("sampled voice checks disclose their coverage before and after speaker conf
   await expect(
     page.getByText(/Only speech in those checked excerpts can contribute spoken mistakes/),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Read class notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Read session notes", exact: true })).toBeVisible();
 });
 
 test("a rejected voice check keeps notes visible and permits a fresh request after recovery", async ({
@@ -647,17 +647,17 @@ test("a rejected voice check keeps notes visible and permits a fresh request aft
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
-    "Select a class recording in Sources and process it before checking class voices.",
+    "Select a session recording in Sources and process it before checking session voices.",
   );
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Retry voice/ })).toHaveCount(0);
   await expect(page.getByText(/Your last choice still needs to be confirmed/)).toHaveCount(0);
   await page.getByRole("button", { name: "Refresh voice status" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toHaveLength(2);
   expect(writes[0]?.body).toEqual({ action: "analyze" });
   expect(writes[1]?.key).toBeTruthy();
@@ -685,14 +685,14 @@ test("an uncertain voice check retries the same request with voice-check copy", 
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
   await expect(page.getByRole("button", { name: "Retry voice check", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Retry voice choice", exact: true })).toHaveCount(
     0,
   );
   await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toHaveLength(2);
   expect(writes[1]).toEqual(writes[0]);
 });
@@ -720,11 +720,11 @@ test("an accepted voice check with a failed status read stays pending until reco
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
   await expect(page.getByRole("button", { name: "Retry voice check", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toHaveCount(0);
   await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBeTruthy();
   expect(keys[1]).toBe(keys[0]);
@@ -755,12 +755,12 @@ test("a rejected retry cannot release notes while an earlier voice check remains
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await page.getByRole("button", { name: "Check class voices", exact: true }).click();
+  await page.getByRole("button", { name: "Check session voices", exact: true }).click();
   await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
   await expect(page.getByRole("button", { name: "Retry voice check", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toHaveCount(0);
   await page.getByRole("button", { name: "Retry voice check", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toBe(3);
 });
 
@@ -901,9 +901,9 @@ test("a queued voice job polls before any analysis exists and an old consent ret
     });
   });
   await page.goto("/dev/ui/voice?view=class");
-  await expect(page.getByRole("button", { name: "Checking class voices…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Checking session voices…" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Yes, this is my voice" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Synthetic class notes" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   const saves: { body: Record<string, unknown>; key: string | undefined }[] = [];
   let version = 0;
   await page.route("**/api/me/voice", async (route) => {

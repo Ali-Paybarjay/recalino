@@ -246,8 +246,8 @@ async function saved(page: Page, userId: string) {
 }
 async function selectAndSend(page: Page, sessionId: string, bytes: Buffer) {
   await page.goto(`/classes/${sessionId}/sources`);
-  await expect(page.getByLabel("Choose class files")).toBeEnabled();
-  await page.getByLabel("Choose class files").setInputFiles({
+  await expect(page.getByLabel("Choose session files")).toBeEnabled();
+  await page.getByLabel("Choose session files").setInputFiles({
     name: "synthetic-background.pdf",
     mimeType: "application/pdf",
     buffer: bytes,
@@ -276,7 +276,7 @@ for (const viewport of [
     await page.evaluate(() => {
       (window as Window & { uploadNavigationMarker?: boolean }).uploadNavigationMarker = true;
     });
-    await page.getByRole("link", { name: "Back to class" }).click();
+    await page.getByRole("link", { name: "Back to session" }).click();
     await expect(page).toHaveURL(`/classes/${seeded.sessionId}`);
     expect(
       await page.evaluate(
@@ -340,7 +340,7 @@ test("keeps ready results in the inbox when device push is unavailable", async (
   await page.goto(`/classes/${seeded.sessionId}`);
   await page.getByRole("button", { name: /^Notifications/ }).click();
   const dialog = page.getByRole("dialog", { name: "Notifications" });
-  await expect(dialog.getByText("Your class materials are ready.", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Your session materials are ready.", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("link", { name: "Open result" })).toHaveAttribute(
     "href",
     `/classes/${seeded.sessionId}/notes`,
@@ -684,7 +684,7 @@ for (const scenario of ["navigation", "reload"] as const) {
       await page.evaluate(() => {
         (window as Window & { manualNavigationMarker?: boolean }).manualNavigationMarker = true;
       });
-      await page.getByRole("link", { name: /Back to class/ }).click();
+      await page.getByRole("link", { name: /Back to session/ }).click();
       await expect(page).toHaveURL(`/classes/${seeded.sessionId}`);
       expect(
         await page.evaluate(

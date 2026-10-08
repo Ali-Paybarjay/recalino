@@ -390,7 +390,7 @@ test.describe("FR-SRC-012 original-file access", () => {
     await deletionStarted.promise;
     expect(revoked).not.toContain(originalUrl);
     deletionResponse.resolve();
-    await expect(page.getByText("Source deleted from all classes.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Source deleted from all sessions.", { exact: true })).toBeVisible();
     await expect.poll(() => revoked.filter((url) => url === originalUrl)).toEqual([originalUrl]);
     expect(
       await page.evaluate(

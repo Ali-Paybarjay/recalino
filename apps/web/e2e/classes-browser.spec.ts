@@ -51,7 +51,7 @@ test("one course is selected automatically and a dated class opens its details b
   await expect(disclosure).toContainText("Travel conversations");
   await expect(disclosure.locator("time")).toHaveAttribute("datetime", "2026-09-30");
   await expect(row.locator("details")).not.toHaveAttribute("open", "");
-  await expect(row.getByRole("link", { name: "Go to class", exact: true })).toBeHidden();
+  await expect(row.getByRole("link", { name: "Go to session", exact: true })).toBeHidden();
   await page.screenshot({
     path: testInfo.outputPath("classes-desktop-collapsed.png"),
     fullPage: true,
@@ -60,7 +60,7 @@ test("one course is selected automatically and a dated class opens its details b
   await disclosure.focus();
   await page.keyboard.press("Enter");
   await expect(row.locator("details")).toHaveAttribute("open", "");
-  await expect(row.getByRole("link", { name: "Go to class", exact: true })).toHaveAttribute(
+  await expect(row.getByRole("link", { name: "Go to session", exact: true })).toHaveAttribute(
     "href",
     `/classes/${lesson.id}`,
   );
@@ -69,10 +69,10 @@ test("one course is selected automatically and a dated class opens its details b
     path: testInfo.outputPath("classes-desktop-expanded.png"),
     fullPage: true,
   });
-  await row.getByRole("link", { name: "Go to class", exact: true }).click();
+  await row.getByRole("link", { name: "Go to session", exact: true }).click();
   await expect(page).toHaveURL(`/classes/${lesson.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Travel conversations" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Class notes", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveAttribute(
     "href",
     `/classes/${lesson.id}/notes`,
   );
@@ -167,11 +167,11 @@ test("scroll loading can retry a failed page and append classes without losing d
   };
   const failedPage = page.waitForResponse(isNextPage);
   await page
-    .getByRole("button", { name: "Load more classes", exact: true })
+    .getByRole("button", { name: "Load more sessions", exact: true })
     .scrollIntoViewIfNeeded();
   expect((await failedPage).status()).toBe(503);
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
-    "More classes could not be loaded. Try again.",
+    "More sessions could not be loaded. Try again.",
   );
   await expect(rows).toHaveCount(20);
   await expect(rows.first()).toContainText("Reading lesson 25");
@@ -187,7 +187,7 @@ test("scroll loading can retry a failed page and append classes without losing d
   expect(dates).toEqual(
     Array.from({ length: 25 }, (_, index) => `2026-09-${String(25 - index).padStart(2, "0")}`),
   );
-  await expect(page.getByRole("button", { name: "Load more classes", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load more sessions", exact: true })).toHaveCount(0);
 });
 
 for (const scheme of ["light", "dark"] as const) {
@@ -214,7 +214,7 @@ for (const scheme of ["light", "dark"] as const) {
         });
       }
       await row.locator("summary").click();
-      await expect(row.getByRole("link", { name: "Go to class", exact: true })).toBeVisible();
+      await expect(row.getByRole("link", { name: "Go to session", exact: true })).toBeVisible();
       if (path === "/classes") {
         await page.screenshot({
           path: testInfo.outputPath(`classes-mobile-${scheme}-expanded.png`),

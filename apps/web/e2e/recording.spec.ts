@@ -12,16 +12,16 @@ test("capture survives app navigation and offline time, saves final parts and re
   const response = await page.request.post("/dev/auth/session", { data: { setup: "complete" } });
   expect(response.status(), await response.text()).toBe(200);
   await page.goto("/today");
-  await page.getByRole("button", { name: "Record a class", exact: true }).click();
+  await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
   await expect
     .poll(async () => page.locator('[aria-label="Active recording time"]').textContent(), {
       timeout: 10000,
     })
     .not.toBe("0:00");
-  await page.getByRole("link", { name: "Classes", exact: true }).first().click();
+  await page.getByRole("link", { name: "Courses", exact: true }).first().click();
   await expect(
-    page.getByRole("status").filter({ hasText: "Class recording continues" }),
+    page.getByRole("status").filter({ hasText: "Session recording continues" }),
   ).toBeVisible();
   await context.setOffline(true);
   await expect(

@@ -22,7 +22,7 @@ test("voice settings opened from class notes offers a return to those notes (FR-
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/dev/ui/voice?returnTo=${encodeURIComponent(notes)}`);
   await expect(
-    page.getByRole("link", { name: "Back to class notes", exact: true }),
+    page.getByRole("link", { name: "Back to session notes", exact: true }),
   ).toHaveAttribute("href", notes);
   await expect(page.getByRole("link", { name: "Back to settings", exact: true })).toHaveCount(0);
 });
@@ -35,7 +35,7 @@ test("voice settings opened from the account returns to account settings (FR-VOC
     "href",
     "/me",
   );
-  await expect(page.getByRole("link", { name: "Back to class notes", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Back to session notes", exact: true })).toHaveCount(0);
 });
 
 test("untrusted voice settings return destinations fall back to account settings (FR-VOC-001)", async ({

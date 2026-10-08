@@ -3,7 +3,7 @@ import { expectNoAxeViolations } from "./helpers";
 import { signInAsNewLearner } from "./learner";
 
 async function expectDayFirstDate(page: Page) {
-  const date = page.getByLabel("Class date", { exact: true });
+  const date = page.getByLabel("Session date", { exact: true });
   const picker = page.locator('input[type="date"]');
   await expect(date).toBeEnabled();
   await expect(date).toHaveAttribute("type", "text");
@@ -14,7 +14,7 @@ async function expectDayFirstDate(page: Page) {
   const initialDate = await picker.inputValue();
   expect(initialDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   await expect(date).toHaveValue(initialDate.split("-").reverse().join("/"));
-  await expect(page.getByRole("button", { name: "Choose class date", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose session date", exact: true })).toBeVisible();
   return { date, picker };
 }
 
@@ -36,7 +36,7 @@ for (const locale of ["en-US", "en-GB"]) {
           element.dataset.opened = "true";
         };
       });
-      await page.getByRole("button", { name: "Choose class date", exact: true }).focus();
+      await page.getByRole("button", { name: "Choose session date", exact: true }).focus();
       await page.keyboard.press("Enter");
       await expect(picker).toHaveAttribute("data-opened", "true");
 
@@ -52,7 +52,7 @@ for (const locale of ["en-US", "en-GB"]) {
         expect(await date.evaluate((element: HTMLInputElement) => element.checkValidity())).toBe(
           false,
         );
-        await page.getByRole("button", { name: "Create class", exact: true }).click();
+        await page.getByRole("button", { name: "Create session", exact: true }).click();
         await expect(date).toBeFocused();
         await expect(page).toHaveURL(/\/preview\/new-class$/);
       }
@@ -67,7 +67,7 @@ test("class date is validated and saves the same ISO day through create and edit
   await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/classes/new");
   const { date, picker } = await expectDayFirstDate(page);
-  await page.getByLabel("Class name (optional)").fill("Day-first date regression");
+  await page.getByLabel("Session name (optional)").fill("Day-first date regression");
 
   const createdRequests: unknown[] = [];
   page.on("request", (request) => {
@@ -77,7 +77,7 @@ test("class date is validated and saves the same ISO day through create and edit
   });
   await date.fill("31/02/2026");
   expect(await date.evaluate((element: HTMLInputElement) => element.checkValidity())).toBe(false);
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await expect(date).toBeFocused();
   await expect(page).toHaveURL(/\/classes\/new$/);
   const unchanged = await page.request.get("/api/classes");
@@ -91,7 +91,7 @@ test("class date is validated and saves the same ISO day through create and edit
     (response) =>
       new URL(response.url()).pathname === "/api/classes" && response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   const created = await createResponse;
   expect(created.status()).toBe(201);
   expect(created.request().postDataJSON()).toMatchObject({ classDate: "2026-04-03" });

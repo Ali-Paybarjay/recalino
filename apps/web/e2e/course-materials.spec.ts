@@ -73,7 +73,7 @@ test("course materials keep published edits, dated lessons and class links when 
   await expect(first.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
   await expect(first.getByText("A rail trip", { exact: true })).toHaveCount(0);
   await expect(first.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
-  await expect(next.getByText("No notes for this class yet.", { exact: false })).toBeVisible();
+  await expect(next.getByText("No notes for this session yet.", { exact: false })).toBeVisible();
   await expect(page.locator(`#class-${otherClass.id}`)).toHaveCount(0);
   expect(
     await page
@@ -81,17 +81,17 @@ test("course materials keep published edits, dated lessons and class links when 
       .evaluateAll((sections) => sections.map((section) => section.id)),
   ).toEqual([`class-${fixture.sessionId}`, `class-${fixture.nextId}`]);
   for (const [label, suffix] of [
-    ["Open class", ""],
-    ["Class notes", "/notes"],
+    ["Open session", ""],
+    ["Session notes", "/notes"],
     ["Flashcards", "/cards"],
-    ["Class sources", "/sources"],
+    ["Session sources", "/sources"],
   ]) {
     await expect(first.getByRole("link", { name: label, exact: true })).toHaveAttribute(
       "href",
       `/classes/${fixture.sessionId}${suffix}`,
     );
   }
-  await first.getByRole("link", { name: "Class notes", exact: true }).click();
+  await first.getByRole("link", { name: "Session notes", exact: true }).click();
   await expect(page.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
@@ -127,12 +127,12 @@ test("long course timelines retain chronological order across pages", async ({ p
   await expect(sections.first()).toHaveAttribute("id", `class-${fixture.sessionId}`);
   await expect(sections.last()).toHaveAttribute("id", `class-${later[7]}`);
   const pages = page.getByRole("navigation", { name: "Course material pages" });
-  await expect(pages).toContainText("Page 1 · 11 classes · Oldest first");
-  await pages.getByRole("link", { name: "Next classes", exact: true }).click();
+  await expect(pages).toContainText("Page 1 · 11 sessions · Oldest first");
+  await pages.getByRole("link", { name: "Next sessions", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials?page=2`);
   await expect(sections).toHaveCount(1);
   await expect(sections.first()).toHaveAttribute("id", `class-${later[8]}`);
-  await pages.getByRole("link", { name: "Previous classes", exact: true }).click();
+  await pages.getByRole("link", { name: "Previous sessions", exact: true }).click();
   await expect(sections).toHaveCount(10);
   await expect(sections.first()).toHaveAttribute("id", `class-${fixture.sessionId}`);
 });

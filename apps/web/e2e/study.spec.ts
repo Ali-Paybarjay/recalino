@@ -28,7 +28,7 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
     page.getByText("This is local synthetic test content.", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("A rail trip", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "← Back to class", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "← Back to session", exact: true })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Make flashcards", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Version history", exact: true })).toHaveCount(0);
@@ -54,7 +54,7 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   );
   await noteTools.getByRole("link", { name: "Flashcards", exact: true }).click();
   await expect(page).toHaveURL(`/classes/${sessionId}/cards`);
-  await page.getByRole("link", { name: "Class notes", exact: true }).click();
+  await page.getByRole("link", { name: "Session notes", exact: true }).click();
   await expect(page).toHaveURL(`/classes/${sessionId}/notes`);
   await page.reload();
   await expect(page.getByText(/^Note version 1 ·/)).toBeVisible();
@@ -114,7 +114,7 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   await expect(page.getByRole("button", { name: "Confirm and add", exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("button", { name: "Confirm and add", exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Review this class", exact: true }).click();
+  await page.getByRole("link", { name: "Review this session", exact: true }).click();
   await expect(page).toHaveURL(`/review?sessionId=${sessionId}`, { timeout: 45000 });
   await expect(page.getByRole("button", { name: "Show answer", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Show answer", exact: true }).click();

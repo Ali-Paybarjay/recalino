@@ -27,7 +27,7 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto(`/dev/ui/study?language=${encodeURIComponent(value.language)}`);
-    const frame = page.frameLocator('iframe[title^="Class notes:"]');
+    const frame = page.frameLocator('iframe[title^="Session notes:"]');
     await expect(frame.locator("html")).toHaveAttribute("lang", value.language);
     await expect(frame.locator("html")).toHaveAttribute("dir", value.dir);
     await expect(frame.locator("html")).toHaveAttribute("data-theme", "light");
@@ -37,11 +37,11 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
     await expect(frame.locator("#core .ex")).toHaveAttribute("dir", "ltr");
     await expect(frame.locator("#core .ex")).toHaveCSS("direction", "ltr");
     await expect(frame.locator("#core .ipa").first()).toHaveAttribute("dir", "ltr");
-    await expect(page.locator('iframe[title^="Class notes:"]')).toHaveAttribute(
+    await expect(page.locator('iframe[title^="Session notes:"]')).toHaveAttribute(
       "sandbox",
       "allow-scripts",
     );
-    await expect(page.locator('iframe[title^="Class notes:"]')).not.toHaveAttribute(
+    await expect(page.locator('iframe[title^="Session notes:"]')).not.toHaveAttribute(
       "sandbox",
       /allow-same-origin/,
     );
@@ -223,7 +223,7 @@ test("unlisted and repeated fixture languages retain the guarded Persian referen
 }) => {
   for (const query of ["language=xx", "language=es&language=ar", "language=%22%3E%3Cscript%3E"]) {
     await page.goto(`/dev/ui/study?${query}`);
-    const frame = page.frameLocator('iframe[title^="Class notes:"]');
+    const frame = page.frameLocator('iframe[title^="Session notes:"]');
     await expect(frame.locator("html")).toHaveAttribute("lang", "fa");
     await expect(frame.locator("#core .entry")).toHaveCount(3);
     await expect(

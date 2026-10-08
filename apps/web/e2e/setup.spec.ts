@@ -101,7 +101,7 @@ test("a new learner completes core setup and skips optional voice setup without 
     enrolled: false,
     consentVersion: null,
   });
-  await expect(page.getByRole("heading", { name: "Your first class starts here." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your first session starts here." })).toBeVisible();
 });
 
 test("a learner who leaves comes back to the same step, and Back keeps the answer", async ({

@@ -239,7 +239,7 @@ for (const view of ["class", "progress"] as const) {
       await expect(
         page.getByRole("heading", { name: "Notes and flashcards are ready" }),
       ).toBeVisible();
-      await expect(page.getByRole("link", { name: "Class notes", exact: true })).toHaveAttribute(
+      await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveAttribute(
         "href",
         `/classes/${sessionId}/notes`,
       );
