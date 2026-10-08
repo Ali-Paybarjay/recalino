@@ -1,3 +1,18 @@
+import { z } from "zod";
+import type { StudyContent } from "./study-schema";
+
+export const studyPronunciationTargetSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .refine(
+    (text) =>
+      /\p{Script=Latin}/u.test(text) &&
+      !/[^\p{Script=Latin}\p{Number}\p{Punctuation}\p{Separator}\p{Mark}]/u.test(text) &&
+      !/[<>{}[\]\\]|&(?:#\d+|[a-z]+);/iu.test(text),
+  );
+
 export interface StudyLexicalTarget {
   /** Spoken headword without dictionary object slots or grammatical complement notation. */
   text: string;
@@ -87,4 +102,30 @@ function escapePattern(value: string): string {
 export function studyLexicalTargetMatches(target: StudyLexicalTarget, text: string): boolean {
   const pattern = target.parts.map(escapePattern).join("\\s+(?:[\\p{L}\\p{N}'’_-]+\\s+){0,8}");
   return new RegExp(`(?:^|[^\\p{L}\\p{N}])${pattern}(?:$|[^\\p{L}\\p{N}])`, "iu").test(text);
+}
+
+/** AC-D46-01: only a structured English headword/frame can become speech, never card HTML. */
+export function studyPronunciationTarget(item: { study?: StudyContent }): string | undefined {
+  if (!item.study) return undefined;
+  const target = studyLexicalTarget(item.study.en);
+  if (!target) return undefined;
+  if (target.parts.length === 1) {
+    const spoken = studyPronunciationTargetSchema.safeParse(target.text);
+    return spoken.success ? spoken.data : undefined;
+  }
+  // A separable frame can be pronounced naturally only when both saved sentences agree.
+  if (item.study.set !== "production" || !item.study.gapSentence) return undefined;
+  const parts = item.study.gapSentence.split("______");
+  if (parts.length < 2 || parts.length > 4) return undefined;
+  const escaped = parts.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const full = item.study.fullSentence;
+  if (!new RegExp(`^${escaped.join("(.+?)")}$`, "u").test(full)) return undefined;
+  const span = full.slice(parts[0]?.length ?? 0, full.length - (parts.at(-1)?.length ?? 0));
+  const spoken = studyPronunciationTargetSchema.safeParse(span);
+  const realised = spoken.success ? studyLexicalTarget(spoken.data) : undefined;
+  return spoken.success &&
+    realised?.text === spoken.data &&
+    studyLexicalTargetMatches(target, spoken.data)
+    ? spoken.data
+    : undefined;
 }

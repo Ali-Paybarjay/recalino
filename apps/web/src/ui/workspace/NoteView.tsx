@@ -2,17 +2,22 @@
 import type { Claim, KnowledgeVersion } from "@recalino/core/lkm";
 import type { Notebook, NotebookRevision, PublishNotebookInput } from "@recalino/core/note";
 import { renderClassNotesHtml } from "@recalino/core/study-render";
+import { studyPronunciationTarget } from "@recalino/core/study-target";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { directionOf } from "../direction";
+import { SpeakerHigh } from "../icons";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import { notifyAutomaticLearning } from "./automatic-learning";
 import { ClassNotesFrame } from "./ClassNotesFrame";
+import { ClassNotesPlayback } from "./ClassNotesPlayback";
 import styles from "./NoteView.module.css";
 import type { NoteMaterialSource, NoteSourceIssue } from "./note-source-issues";
+import { PronunciationAudio } from "./PronunciationAudio";
+import pronunciationStyles from "./PronunciationAudio.module.css";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import { SourceRefViewer } from "./SourceRefViewer";
 
@@ -118,6 +123,11 @@ export function NoteView({
   const [editing, setEditing] = useState<string | null>(null),
     [text, setText] = useState("");
   const [editMode, setEditMode] = useState(false);
+  const [legacyPlayback, setLegacyPlayback] = useState<{
+    revisionId: string;
+    itemId: string;
+    target: string;
+  } | null>(null);
   const [recovering, setRecovering] = useState<string | null>(null);
   const notesStart = useRef<HTMLDivElement | null>(null);
   const key = useRef<{ payload: string; key: string } | null>(null);
@@ -137,6 +147,13 @@ export function NoteView({
   const current = readOnlyRevision ?? notebook?.current,
     preview = current ? null : latest,
     model = current?.model ?? preview?.model;
+  useEffect(() => {
+    setLegacyPlayback((previous) =>
+      !previous || editMode || readOnlyRevision?.id || previous.revisionId !== current?.id
+        ? null
+        : previous,
+    );
+  }, [current?.id, editMode, readOnlyRevision?.id]);
   const canEdit = !!notebook && !readOnlyRevision;
   const showHistory = hasEarlierVersions ?? (current?.number ?? 0) > 1;
   const explanationLanguage = model?.language.explanation;
@@ -396,7 +413,16 @@ export function NoteView({
           {model.classNotes && !editMode ? (
             <>
               {materialIssues()}
-              <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
+              {current && !readOnlyRevision ? (
+                <ClassNotesPlayback
+                  key={current.id}
+                  model={model}
+                  sessionId={sessionId}
+                  revisionId={current.id}
+                />
+              ) : (
+                <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
+              )}
               <details className={styles.evidence}>
                 <summary>Class sources and explanations</summary>
                 <div className={styles.evidenceBody}>
@@ -446,42 +472,89 @@ export function NoteView({
               </Panel>
               <Panel title="Useful things to learn">
                 {model.learningItems.length ? (
-                  model.learningItems.map((item) => (
-                    <article className="preview-list-item" key={item.id}>
-                      <ContentBlock as="h3" lang={learningLanguage}>
-                        {item.front}
-                      </ContentBlock>
-                      <NoteText text={item.back} lang={explanationLanguage} />
-                      <ClaimEvidence claim={item.claim} userId={userId} collapsed />
-                      {canEdit && editMode && (
-                        <Actions>
-                          <Button
-                            secondary
-                            disabled={busy}
-                            onClick={() => {
-                              setEditing(`front:${item.id}`);
-                              setText(item.front);
-                            }}
-                          >
-                            Edit question
-                          </Button>
-                          <Button
-                            secondary
-                            disabled={busy}
-                            onClick={() => {
-                              setEditing(`back:${item.id}`);
-                              setText(item.back);
-                            }}
-                          >
-                            Edit answer
-                          </Button>
-                        </Actions>
-                      )}
-                      {canEdit &&
-                        (editing === `front:${item.id}` || editing === `back:${item.id}`) &&
-                        editForm()}
-                    </article>
-                  ))
+                  model.learningItems.map((item) => {
+                    const target =
+                      current && !readOnlyRevision && !editMode
+                        ? studyPronunciationTarget(item)
+                        : undefined;
+                    const selected =
+                      !!target &&
+                      current?.id === legacyPlayback?.revisionId &&
+                      item.id === legacyPlayback?.itemId &&
+                      target === legacyPlayback?.target;
+                    return (
+                      <article className="preview-list-item" key={item.id}>
+                        <ContentBlock as="h3" lang={learningLanguage}>
+                          {item.front}
+                        </ContentBlock>
+                        {target && current && (
+                          <div className={pronunciationStyles.fallback}>
+                            <span lang="en" dir="ltr">
+                              {target}
+                            </span>
+                            {selected ? (
+                              <PronunciationAudio
+                                key={`${current.id}:${item.id}:${target}`}
+                                sessionId={sessionId}
+                                target={target}
+                                request={{
+                                  kind: "note_pronunciation",
+                                  learningItemId: item.id,
+                                  expectedNotebookRevisionId: current.id,
+                                }}
+                                trigger={1}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                className={pronunciationStyles.speaker}
+                                aria-label={`Hear pronunciation of ${target}`}
+                                title={`Hear pronunciation of ${target}`}
+                                onClick={() =>
+                                  setLegacyPlayback({
+                                    revisionId: current.id,
+                                    itemId: item.id,
+                                    target,
+                                  })
+                                }
+                              >
+                                <SpeakerHigh size={20} aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <NoteText text={item.back} lang={explanationLanguage} />
+                        <ClaimEvidence claim={item.claim} userId={userId} collapsed />
+                        {canEdit && editMode && (
+                          <Actions>
+                            <Button
+                              secondary
+                              disabled={busy}
+                              onClick={() => {
+                                setEditing(`front:${item.id}`);
+                                setText(item.front);
+                              }}
+                            >
+                              Edit question
+                            </Button>
+                            <Button
+                              secondary
+                              disabled={busy}
+                              onClick={() => {
+                                setEditing(`back:${item.id}`);
+                                setText(item.back);
+                              }}
+                            >
+                              Edit answer
+                            </Button>
+                          </Actions>
+                        )}
+                        {canEdit &&
+                          (editing === `front:${item.id}` || editing === `back:${item.id}`) &&
+                          editForm()}
+                      </article>
+                    );
+                  })
                 ) : (
                   <p>No learning items were found in this version.</p>
                 )}

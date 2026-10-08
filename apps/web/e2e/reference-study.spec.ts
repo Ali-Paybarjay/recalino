@@ -83,7 +83,14 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await expect(frame.locator("#mistakes")).toContainText(
     "اشتباهات گفتاری این جلسه نمایش داده نشده",
   );
-  expect(await page.locator("iframe").getAttribute("sandbox")).toBe("");
+  await expect(page.locator('iframe[title^="Class notes:"]')).toHaveAttribute(
+    "sandbox",
+    "allow-scripts",
+  );
+  await expect(page.locator('iframe[title^="Class notes:"]')).not.toHaveAttribute(
+    "sandbox",
+    /allow-same-origin/,
+  );
   for (const width of [420, 390]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
