@@ -2,7 +2,7 @@ import { z } from "zod";
 import { GOALS, LEVELS, type LearningProfile } from "../acc";
 import { studyLexicalTarget, studyLexicalTargetMatches } from "../lkm";
 
-/** D48: one bounded memory point, snapshotted at run start; evidence, never a diagnosis. */
+/** D49: one bounded memory point, snapshotted at run start; evidence, never a diagnosis. */
 export const practiceCandidateSchema = z.strictObject({
   target: z.string().min(1).max(200),
   reason: z.enum(["recall_difficulty", "asked_simpler"]),
@@ -48,7 +48,7 @@ export interface ModelTeachingContext {
 }
 
 /**
- * AC-D46-05 and D48: retain declared choices and bounded memory only. Without memory or a
+ * AC-D46-05 and D49: retain declared choices and bounded memory only. Without memory or a
  * simpler-explanation choice the snapshot stays version 1, identical to earlier releases.
  */
 export function snapshotLearnerTeachingContext(
@@ -77,7 +77,7 @@ function extractedText(sources: readonly ExtractedSource[]): string {
 }
 
 /**
- * D48: deterministic and reproducible from the frozen settings and checkpointed extraction.
+ * D49: deterministic and reproducible from the frozen settings and checkpointed extraction.
  * A same-course point is kept only when its exact lexical target occurs in this class's text;
  * that is a literal co-occurrence, not proof of the same meaning, and memory is never merged.
  */
@@ -115,7 +115,7 @@ export function modelTeachingContext(
   };
 }
 
-/** Saved with each knowledge version so the lesson can explain its adaptation (D48). */
+/** Saved with each knowledge version so the lesson can explain its adaptation (D49). */
 export const teachingAdaptationSchema = z.strictObject({
   version: z.literal(1),
   declaredLevel: z.enum(LEVELS).optional(),

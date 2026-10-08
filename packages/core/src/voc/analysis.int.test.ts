@@ -44,6 +44,11 @@ it("preserves sampled coverage through correction failures and later successful 
     mistakes: {},
   });
   expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.reason).toBe("sampled_audio");
+  // A service spending block keeps both its own cause and the sampled-coverage disclosure.
+  await markVoiceAnalysisFailure(db, x.ctx, x.analysis.id, "voice_correction_service_blocked");
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.reason).toBe(
+    "voice_correction_sampled_audio_service_blocked",
+  );
 });
 it("Part6: hidden suggestions reveal only for the confirmed voice; reject and stale writes cannot leak another speaker", async () => {
   const x = await voiceFixture(db),

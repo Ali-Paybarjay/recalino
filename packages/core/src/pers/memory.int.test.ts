@@ -39,7 +39,7 @@ async function practised(choices: ("forgot" | "remembered")[], start = new Date(
   return { ...fixture, card, now: new Date(at + 1000), last };
 }
 
-describe("D48 learning memory with owned review evidence (PRD-PERS-03/05)", () => {
+describe("D49 learning memory with owned review evidence (PRD-PERS-03/05)", () => {
   it("derives a dated practice suggestion from Again answers only for its owner", async () => {
     const start = new Date(Date.now() - 6 * day);
     const owner = await practised(["forgot", "remembered", "forgot"], start);

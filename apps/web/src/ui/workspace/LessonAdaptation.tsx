@@ -11,7 +11,7 @@ const GOALS: Record<NonNullable<LessonAdaptationView["goal"]>, string> = {
   none: strings.setup.goalNone,
 };
 
-/** D48: server-recorded inputs of this lesson version; never a model-written claim. */
+/** D49: server-recorded inputs of this lesson version; never a model-written claim. */
 export function LessonAdaptation({ adaptation }: { adaptation: LessonAdaptationView }) {
   const lines = [
     adaptation.declaredLevel

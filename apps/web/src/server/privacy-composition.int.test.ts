@@ -146,7 +146,7 @@ async function fixture() {
     { expectedVersion: card.contentVersion, side: "front", mediaId: media.id },
     { key: randomUUID() },
   );
-  // D48: a learner correction about this class's goal is deleted with the class or account.
+  // D49: a learner correction about this class's goal is deleted with the class or account.
   await recordItemFeedback(
     db,
     study.ctx,

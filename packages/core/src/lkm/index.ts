@@ -54,6 +54,8 @@ export {
   type StudyLexicalTarget,
   studyLexicalTarget,
   studyLexicalTargetMatches,
+  studyPronunciationTarget,
+  studyPronunciationTargetSchema,
 } from "./study-target";
 export {
   cleanupAccountKnowledge,

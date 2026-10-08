@@ -58,7 +58,7 @@ function memory(input: {
   });
 }
 
-describe("D48 learning memory rules (PRD-PERS-03/05)", () => {
+describe("D49 learning memory rules (PRD-PERS-03/05)", () => {
   it("labels evidence amounts by count only", () => {
     expect([1, 2, 3, 5, 6].map(evidenceAmount)).toEqual([
       "little",

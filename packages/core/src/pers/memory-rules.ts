@@ -1,5 +1,5 @@
 /**
- * D48 learning memory: deterministic rules over owned evidence. Nothing here calls a model,
+ * D49 learning memory: deterministic rules over owned evidence. Nothing here calls a model,
  * diagnoses a language weakness, or estimates CEFR, speaking or FSRS retention (PRD-PERS-03/04).
  */
 export const MEMORY_WINDOW_DAYS = 30;

@@ -1200,7 +1200,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(f.provider.prompts[0]).not.toContain("declared IELTS goal");
     expect(f.provider.calls).toBe(1);
   });
-  it("D48 freezes bounded memory at run start and sends only matched points to the one generation", async () => {
+  it("D49 freezes bounded memory at run start and sends only matched points to the one generation", async () => {
     const f = await fixture();
     await saveTeachingPreference(db, f.ctx, {
       key: "simpler_explanations",
@@ -1276,7 +1276,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       },
     });
   });
-  it("D48 recovery runs keep the recovered run's memory points instead of fresher evidence", async () => {
+  it("D49 recovery runs keep the recovered run's memory points instead of fresher evidence", async () => {
     const f = await fixture();
     const original = [
       {
@@ -1317,7 +1317,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       learnerContext: { version: 2, practiceCandidates: original },
     });
   });
-  it("D48 without memory or a simpler choice keeps the version 1 snapshot and no extra call", async () => {
+  it("D49 without memory or a simpler choice keeps the version 1 snapshot and no extra call", async () => {
     const f = await fixture();
     const run = await createProcessingRun(
       db,

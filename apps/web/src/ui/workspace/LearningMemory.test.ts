@@ -70,7 +70,7 @@ const memory: LearningMemory = {
 
 beforeEach(() => buttons.clear());
 
-describe("D48 Your learning memory view", () => {
+describe("D49 Your learning memory view", () => {
   it("shows dated, scoped evidence with a working next step and no level claim", () => {
     const html = renderToStaticMarkup(
       createElement(LearningMemoryPanel, {

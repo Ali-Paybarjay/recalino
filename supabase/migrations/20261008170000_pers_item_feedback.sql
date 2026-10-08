@@ -1,4 +1,4 @@
--- D48, 2026-10-08. Learner corrections of Recalino's practice notes about one learning goal.
+-- D49, 2026-10-08. Learner corrections of Recalino's practice notes about one learning goal.
 -- Append-only: the latest row per goal and kind is current; earlier rows explain the change.
 create schema if not exists pers;
 revoke all on schema pers from public, anon, authenticated;

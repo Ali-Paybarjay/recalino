@@ -22,7 +22,7 @@ const db = { transaction: () => ({ execute: (run: (tx: unknown) => unknown) => r
 const ctx = { userId: "10000000-0000-4000-8000-000000000001", requestId: "request" };
 beforeEach(() => vi.clearAllMocks());
 
-describe("D48 teaching memory never blocks processing or exposes content", () => {
+describe("D49 teaching memory never blocks processing or exposes content", () => {
   it("returns the bounded points read before the run transaction", async () => {
     const points = [
       {

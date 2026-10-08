@@ -83,7 +83,14 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await expect(frame.locator("#mistakes")).toContainText(
     "اشتباهات گفتاری این جلسه نمایش داده نشده",
   );
-  expect(await page.locator("iframe").getAttribute("sandbox")).toBe("");
+  await expect(page.locator('iframe[title^="Class notes:"]')).toHaveAttribute(
+    "sandbox",
+    "allow-scripts",
+  );
+  await expect(page.locator('iframe[title^="Class notes:"]')).not.toHaveAttribute(
+    "sandbox",
+    /allow-same-origin/,
+  );
   for (const width of [420, 390]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -128,7 +135,7 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await page.emulateMedia({ media: "print" });
   await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(frame.locator("nav")).toBeHidden();
-  // Print replaces each hidden-answer toggle group with its key: the gap-fill and D48 check.
+  // Print replaces each hidden-answer toggle group with its key: the gap-fill and D49 check.
   await expect(frame.locator("#gap .key")).toBeVisible();
   await expect(frame.locator("#check .key")).toBeVisible();
   await expect(frame.locator("ol.gaps details").first()).toBeHidden();

@@ -1,5 +1,5 @@
 /**
- * D48 Your learning and Class Notes adaptation copy. Pending owner copy review: it is not in
+ * D49 Your learning and Class Notes adaptation copy. Pending owner copy review: it is not in
  * the design handoff and is listed in docs/plans/TEACHING_MEMORY_2026-10-08.md §5.
  */
 export const learningMemoryCopy = {

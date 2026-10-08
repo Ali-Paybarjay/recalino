@@ -54,7 +54,7 @@ describe("AC-D46-05 declared learner context", () => {
   });
 });
 
-describe("D48 bounded memory in the teaching context", () => {
+describe("D49 bounded memory in the teaching context", () => {
   const candidate = (
     target: string,
     scope: "this_class" | "same_course",

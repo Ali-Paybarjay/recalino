@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { pendingCopy } from "../pending-copy";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
 import { requestKey, workspaceRequest } from "./api";
@@ -260,7 +261,7 @@ export function AutomaticLearningView({
           <p className="preview-muted">
             {recovery.kind === "service"
               ? review?.requestedAt
-                ? "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
+                ? pendingCopy.processingReview.recorded
                 : "The Recalino team needs to review this class's stopped processing. Request a review below; your saved material will be used when processing continues."
               : recovery.retryLabel === "Retry after allowance changes"
                 ? "After your allowance is updated, retry using this class's saved material."
@@ -285,7 +286,7 @@ export function AutomaticLearningView({
             <p role="status">
               {review?.state === "resolved"
                 ? review.partialResult
-                  ? "Your class notes and flashcards are available with some source limitations. Open the notes to see what could not be processed."
+                  ? pendingCopy.processingReview.resolvedPartial
                   : "Processing has finished. Your class notes and flashcards are ready."
                 : review?.state === "retrying"
                   ? "Processing is continuing with your saved material. You will receive a notification when the result is ready."

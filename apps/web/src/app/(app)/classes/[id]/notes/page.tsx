@@ -26,7 +26,7 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
     id,
     initial?.current.knowledgeVersionId ?? latest?.id,
   );
-  // D48: server-written explanation of what the shown lesson version was prepared with.
+  // D49: server-written explanation of what the shown lesson version was prepared with.
   const adaptation = await lessonAdaptationFor(
     db,
     ctx,

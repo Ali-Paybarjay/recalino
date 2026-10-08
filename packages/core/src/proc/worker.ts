@@ -943,7 +943,7 @@ export function processingJob(
           date: lesson.classDate,
           ...(course.isDefault ? {} : { course: course.name }),
         };
-        // D48: memory points were frozen at run start; only those this class's extracted text
+        // D49: memory points were frozen at run start; only those this class's extracted text
         // supports reach the model, without counts or dates.
         const practiceFocus = selectPracticeFocus(settings.learnerContext, extracted);
         const teaching = modelTeachingContext(settings.learnerContext, practiceFocus);

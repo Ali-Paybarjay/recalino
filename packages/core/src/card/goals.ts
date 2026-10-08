@@ -22,7 +22,7 @@ function goal(row: { id: string; logical_key: string }): OwnedLearningGoal {
   };
 }
 
-/** The class scope of owned learning goals; no goal is merged across classes (D48). */
+/** The class scope of owned learning goals; no goal is merged across classes (D49). */
 export async function ownedLearningGoals(
   db: Database | Tx,
   ctx: LearnerContext,

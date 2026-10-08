@@ -1,6 +1,6 @@
 # تدریس در Class Notes و حافظهٔ آموزشیِ شواهدمحور
 
-تاریخ: 2026-10-08 · وضعیت: پیاده‌سازی روی شاخهٔ `claude/fervent-davinci-uxjfi9`، بر مبنای commit منتشرشدهٔ `83e51f4`؛ در انتظار بازبینی مالک محصول · تصمیم: [D48](../PRODUCT_DECISIONS_LOG.md#d48)
+تاریخ: 2026-10-08 · وضعیت: پیاده‌سازی روی شاخهٔ `claude/fervent-davinci-uxjfi9`، بر مبنای commit منتشرشدهٔ `83e51f4`؛ در انتظار بازبینی مالک محصول · تصمیم: [D49](../PRODUCT_DECISIONS_LOG.md#d48)
 
 ## ۱. مبنا و مرز کار
 
@@ -166,7 +166,7 @@
 | `pnpm verify --maxWorkers=2` روی نسخهٔ نهایی | exit 0: lint، typecheck و مرزها موفق (1055 ماژول، بدون نقض)؛ 2770 آزمون موفق و همان ۱ skipped قبلی در 271 فایل |
 | `pnpm build` و `pnpm check:client-bundle` | موفق؛ بررسی وابستگی‌های native موفق؛ هیچ secret در خروجی مرورگر پیدا نشد |
 | Playwright: `learning-memory`، `learning-privacy`، `reference-study` | 10 از 10 موفق |
-| تصاویر ۳۹۰ و ۱۴۴۰ پیکسل | Your learning و بخش check جزوه بازبینی شدند (`artifacts/verification/d48-teaching-memory/`، ignored) |
+| تصاویر ۳۹۰ و ۱۴۴۰ پیکسل | Your learning و بخش check جزوه بازبینی شدند (`artifacts/verification/d49-teaching-memory/`، ignored) |
 
 - **آزمون مرورگر `reference-study`:** این آزمون در حالت چاپ وجود یک `.key` را فرض می‌کرد و با بخش تازه دو کلید وجود دارد. selector به `#gap .key` محدود شد و بررسی `#check .key` اضافه شد؛ هیچ assertionی حذف نشد.
 - **یک شکست نامشخص:** در یک اجرای ترکیبی، درست پس از راه‌اندازی دوبارهٔ سرور، آزمون `learning-memory` یک بار شکست خورد. متن آن خطا ذخیره نشد. سه اجرای بعدی، چه تنها و چه ترکیبی، موفق بودند.

@@ -1,6 +1,6 @@
 import type { ModelTeachingContext } from "./learner-context";
 
-/** AC-D46-06, D48: declared choices and matched practice evidence guide teaching, never assert mastery. */
+/** AC-D46-06, D49: declared choices and matched practice evidence guide teaching, never assert mastery. */
 export function personalisedTeachingPrompt(learnerContext?: ModelTeachingContext): string {
   const level = learnerContext?.declaredLevel;
   const levelInstruction =

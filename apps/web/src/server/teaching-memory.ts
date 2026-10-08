@@ -10,7 +10,7 @@ import {
 } from "@recalino/core/proc";
 
 /**
- * D48: memory is optional teaching context. It is read before the run transaction, so a
+ * D49: memory is optional teaching context. It is read before the run transaction, so a
  * failure here degrades to a version 1 snapshot instead of blocking class processing or
  * aborting the reservation transaction. The log carries no class text or labels.
  */

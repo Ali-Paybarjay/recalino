@@ -26,7 +26,7 @@ export function learningPreferencesHandler(): Handler {
     };
   };
 }
-/** D48: correct a practice note about one owned learning goal; append-only and idempotent. */
+/** D49: correct a practice note about one owned learning goal; append-only and idempotent. */
 export function learningFeedbackHandler(): Handler {
   return async ({ input, db, ctx, request }) => {
     if (!ctx.userId) throw errors.unauthenticated();

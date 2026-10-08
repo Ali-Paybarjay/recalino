@@ -54,6 +54,26 @@ const cardReference = parse(
   ),
 );
 
+it("AC-D46-01 exposes only escaped item anchors on app opt-in and keeps standalone notes passive", () => {
+  const model = referenceStudyModel();
+  const first = model.learningItems[0];
+  if (!first) throw new Error("Missing synthetic learning item");
+  first.id = 'unsafe" onclick="alert(1)';
+  const passive = renderClassNotesHtml(model);
+  const app = renderClassNotesHtml(model, { itemAnchors: true });
+  expect(passive).not.toContain("data-learning-item-id");
+  const anchors = elements(parse(app)).filter((element) =>
+    attribute(element, "data-learning-item-id"),
+  );
+  expect(anchors.some((element) => attribute(element, "data-learning-item-id") === first.id)).toBe(
+    true,
+  );
+  expect(anchors.every((element) => !attribute(element, "onclick"))).toBe(true);
+  expect(elements(parse(app), "script")).toHaveLength(0);
+  expect(elements(parse(app), "button")).toHaveLength(0);
+  expect(app.replace(/ data-learning-item-id="[^"]*"/g, "")).toBe(passive);
+});
+
 it("copies the reference stylesheet verbatim and reproduces reference sections from structured items", () => {
   expect(CLASS_NOTES_STYLES).toBe(/<style>([\s\S]*?)<\/style>/.exec(notesReference)?.[1]);
   const model = referenceStudyModel();
@@ -324,7 +344,7 @@ it("preserves summary, topic explanations, homework and uncertainty with source 
   );
 });
 
-it("D48 asks each core item's flashcard question with a hidden, linked answer and no repeated gap", () => {
+it("D49 asks each core item's flashcard question with a hidden, linked answer and no repeated gap", () => {
   const model = referenceStudyModel();
   if (!model.classNotes) throw new Error("fixture");
   const production = model.learningItems.filter((item) => item.study?.set === "production");
@@ -362,7 +382,7 @@ it("D48 asks each core item's flashcard question with a hidden, linked answer an
   expect(CLASS_NOTES_STYLES).toContain(".key{display:none}");
 });
 
-it("D48 check-yourself uses grammar tasks, Latin question numbers and English chrome outside Persian", () => {
+it("D49 check-yourself uses grammar tasks, Latin question numbers and English chrome outside Persian", () => {
   const model = referenceStudyModel();
   model.language.explanation = "en";
   const item = model.learningItems.find((entry) => entry.id === "pressed-time");

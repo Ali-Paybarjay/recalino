@@ -246,13 +246,13 @@ export async function createProcessingRun(
     reuseCompletedKnowledge?: boolean;
     /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
     expectedLatestClassRunId?: string;
-    /** D48: bounded memory points supplied by PERS inside this transaction (dependency inversion). */
+    /** D49: bounded memory points supplied by PERS inside this transaction (dependency inversion). */
     practiceCandidates?: (
       tx: Tx,
       input: { sessionId: string; now: Date },
     ) => Promise<readonly PracticeCandidate[]>;
     /**
-     * D48: a recovery run reuses the memory points snapshotted by the run it recovers;
+     * D49: a recovery run reuses the memory points snapshotted by the run it recovers;
      * `reuseCompletedKnowledge` alone recovers the class's newest run.
      */
     inheritPracticeCandidatesFrom?: string;
@@ -361,7 +361,7 @@ export async function createProcessingRun(
         (preference) =>
           preference.key === key && preference.origin === "explicit" && preference.value === true,
       );
-    // D48: memory is frozen with the run. A recovery run keeps its original points, so later
+    // D49: memory is frozen with the run. A recovery run keeps its original points, so later
     // reviews neither redefine the request nor void reuse of an already paid response.
     const practiceCandidates =
       options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined

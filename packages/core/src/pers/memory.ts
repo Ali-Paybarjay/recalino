@@ -120,7 +120,7 @@ async function sessionContext(db: Database | Tx, ctx: LearnerContext, sessionId:
   }
 }
 
-/** PRD-PERS-03/05, D48: evidence-backed practice notes; computed on read, never by a model. */
+/** PRD-PERS-03/05, D49: evidence-backed practice notes; computed on read, never by a model. */
 export async function learningMemory(
   db: Database | Tx,
   ctx: LearnerContext,
@@ -153,7 +153,7 @@ export async function learningMemory(
 }
 
 /**
- * D48 phase 3: a bounded, explainable selection snapshotted when a class run starts.
+ * D49 phase 3: a bounded, explainable selection snapshotted when a class run starts.
  * Only this class and other classes of the same course are eligible; the worker keeps a
  * same-course point only when its exact target occurs in this class's extracted text.
  */
@@ -214,7 +214,7 @@ export const itemFeedbackSchema = z.strictObject({
 });
 export type ItemFeedbackInput = z.infer<typeof itemFeedbackSchema>;
 
-/** D48: append-only learner corrections; the same key replays without a second effect. */
+/** D49: append-only learner corrections; the same key replays without a second effect. */
 export async function recordItemFeedback(
   db: Database,
   ctx: LearnerContext,

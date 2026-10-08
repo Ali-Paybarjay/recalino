@@ -51,7 +51,7 @@ export function classProcessingHandler(sessionId: string): Handler {
         expectedSourcesVersion: z.number().int().nonnegative(),
       })
       .parse(input);
-    // D48: bounded practice points, read before the run transaction and frozen with the run.
+    // D49: bounded practice points, read before the run transaction and frozen with the run.
     const practiceCandidates = await practiceCandidatesBeforeRun(
       db,
       learner,

@@ -51,11 +51,11 @@ const levelIndex = process.argv.indexOf("--level");
 const selectedLevel = levelIndex < 0 ? undefined : process.argv[levelIndex + 1];
 if (selectedLevel !== undefined && selectedLevel !== "A2" && selectedLevel !== "B2")
   throw new Error("The synthetic evaluation level must be A2 or B2.");
-// D48: opt-in memory case — an explicit simpler-explanation choice plus synthetic practice points.
+// D49: opt-in memory case — an explicit simpler-explanation choice plus synthetic practice points.
 const memory = process.argv.includes("--memory");
 const startedAt = new Date().toISOString();
 const directory = resolve(
-  memory ? "artifacts/verification/d48-live-teaching" : "artifacts/verification/d46-live-teaching",
+  memory ? "artifacts/verification/d49-live-teaching" : "artifacts/verification/d46-live-teaching",
   startedAt.replace(/[:.]/g, "-"),
 );
 const settings = providerSettingsSchema.parse(

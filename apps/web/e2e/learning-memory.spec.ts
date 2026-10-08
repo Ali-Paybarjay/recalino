@@ -13,7 +13,7 @@ import { referenceStudyModel } from "../../../packages/core/test/reference-study
 import { expectNoAxeViolations } from "./helpers";
 import { signInAsNewLearner } from "./learner";
 
-const output = resolve(import.meta.dirname, "../../../artifacts/verification/d48-teaching-memory");
+const output = resolve(import.meta.dirname, "../../../artifacts/verification/d49-teaching-memory");
 const day = 86400000;
 
 /** Synthetic lesson, cards and two Forgot answers on local Postgres only (no AI, no pilot data). */
@@ -37,7 +37,7 @@ async function seed(userId: string) {
           sessionId: session.id,
           runId: randomUUID(),
           sourcesVersion: 0,
-          sourceFingerprint: "d48-browser",
+          sourceFingerprint: "d49-browser",
           model,
           sources: [],
           explanationLanguage: model.language.explanation,
@@ -97,7 +97,7 @@ async function seed(userId: string) {
   }
 }
 
-test("D48 practice notes are evidence-backed, correctable, and the lesson teaches with a hidden check", async ({
+test("D49 practice notes are evidence-backed, correctable, and the lesson teaches with a hidden check", async ({
   page,
 }) => {
   test.setTimeout(180000);

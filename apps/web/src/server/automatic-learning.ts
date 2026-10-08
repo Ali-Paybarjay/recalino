@@ -317,7 +317,7 @@ export async function automaticLearningSync(
         job: processing,
         now: deps.now(),
         reuseCompletedKnowledge: !!options.retryKey,
-        // D48: bounded practice points frozen with the run; a retry keeps the original points.
+        // D49: bounded practice points frozen with the run; a retry keeps the original points.
         practiceCandidates: async () => practiceCandidates,
       },
     );

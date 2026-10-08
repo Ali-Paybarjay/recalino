@@ -14,6 +14,7 @@
     "./aip": "./src/aip/index.ts",
     "./lkm": "./src/lkm/index.ts",
     "./study-render": "./src/lkm/study-render.ts",
+    "./study-target": "./src/lkm/study-target.ts",
     "./card-html": "./src/lkm/card-html.ts",
     "./study-export": "./src/lkm/study-export.ts",
     "./voc": "./src/voc/index.ts",

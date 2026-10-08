@@ -154,7 +154,7 @@ export function privacyDependencies(): PrivacyDependencies {
           cleanupSourceProcessing(db, ctx, sourceId, { store: storage(), now }),
       },
       {
-        // D48 learner corrections reference card goals; clean them before card purges.
+        // D49 learner corrections reference card goals; clean them before card purges.
         module: "pers",
         tombstoneSession: tombstoneSessionPers,
         tombstoneAccount: tombstoneAccountPers,

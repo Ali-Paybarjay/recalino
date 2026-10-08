@@ -8,6 +8,7 @@ import {
   scopedVoiceSpeakerId,
   type VoiceDiarization,
   validateVoiceCorrections,
+  voiceCorrectionFailure,
   voicePreparationFailure,
 } from "./voice-processing";
 
@@ -152,6 +153,13 @@ describe("speaker evidence alignment", () => {
   it("retains sampled acoustic coverage and original speaker timestamps without changing the embedding model", () => {
     const sampled = buildVoiceAnalysis(base, source(), { ...diarization(), sampled: true });
     expect(sampled.reason).toBe("sampled_audio");
+    expect(buildVoiceAnalysis(base, source(), { ...diarization(), partial: true }).reason).toBe(
+      "partial_audio",
+    );
+    expect(
+      buildVoiceAnalysis(base, source(), { ...diarization(), sampled: true, partial: true }).reason,
+    ).toBe("sampled_partial_audio");
+    expect(buildVoiceAnalysis(base, source(), diarization()).reason).toBeUndefined();
     expect(sampled.modelVersion).toBe("fixture");
     expect(sampled.candidates[0]?.clips[0]).toMatchObject({ startMs: 1000, endMs: 8000 });
   });
@@ -299,6 +307,12 @@ describe("acoustic check failure reasons", () => {
     expect(
       voicePreparationFailure(errors.validationFailed({ audio: ["voice_audio_unusable"] }), audio),
     ).toBe("voice_audio_unusable");
+    expect(
+      voicePreparationFailure(
+        errors.validationFailed({ audio: ["voice_audio_windows_refused"] }),
+        audio,
+      ),
+    ).toBe("voice_audio_unusable");
     for (const code of [
       "voice_inference_failed",
       "voice_worker_interrupted",
@@ -332,5 +346,27 @@ describe("acoustic check failure reasons", () => {
     expect(voicePreparationFailure(new Error("voice_inference_failed"), source())).toBe(
       "original_audio_unavailable",
     );
+  });
+});
+
+describe("spoken correction failure reasons", () => {
+  it("keeps a service spending block apart from a retryable correction failure", () => {
+    for (const details of [
+      { reason: "cost_limit", scope: "session" },
+      { reason: "cost_limit", scope: "systemDay" },
+      { reason: "cost_policy_missing" },
+      { reason: "processing_paused" },
+    ])
+      expect(voiceCorrectionFailure(errors.quotaInsufficient(details))).toBe(
+        "voice_correction_service_blocked",
+      );
+    // A learner-unit shortfall and every non-budget failure keep the existing reason.
+    for (const error of [
+      errors.quotaInsufficient({ required: 1, remaining: 0 }),
+      errors.validationFailed({ voice: ["correction_input_too_large"] }),
+      errors.conflict(),
+      new Error("voice_correction_evidence_invalid"),
+    ])
+      expect(voiceCorrectionFailure(error)).toBe("voice_correction_unavailable");
   });
 });

@@ -22,6 +22,7 @@ export { CLASS_NOTES_STYLES } from "./study-styles";
 export const WITHHELD_SPEECH_NOTE =
   "🎙️ اشتباهات گفتاری این جلسه نمایش داده نشده، چون هنوز تأیید نشده کدام صدا مال توست. در اپ صدایت را تأیید کن تا اضافه شود.";
 interface RenderContext {
+  itemAnchors?: boolean;
   locale: StudyLocale;
   prose: (value: string) => string;
   label: (key: StudyLabelKey) => string;
@@ -156,7 +157,7 @@ function entry(item: LearningItem, ctx: RenderContext, index?: number): string {
     !production && item.claim.origin === "ai_expansion"
       ? `<p class="src">${ctx.label("aiExpansion")}</p>`
       : "";
-  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en">${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${prose(value.sourceFa)}</p>` : ""}\n${expansion}</article>`;
+  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en"${ctx.itemAnchors ? ` data-learning-item-id="${attr(item.id)}"` : ""}>${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${prose(value.sourceFa)}</p>` : ""}\n${expansion}</article>`;
 }
 
 function table(
@@ -221,7 +222,7 @@ function revealedSentence(gapSentence: string, fullSentence: string): string {
 }
 
 /**
- * D48 retrieval check: each core item asks the same question as its flashcard front
+ * D49 retrieval check: each core item asks the same question as its flashcard front
  * (renderStudyCard), so notes and cards stay one canonical source. Answers stay hidden until
  * opened; a gap already practised in the gap-fill section is not asked twice.
  */
@@ -393,9 +394,13 @@ function mistakesContent(
   return `${withheld}${untrustedVerified ? labelNote("withheldSpeech", ctx) : ""}${mistakes.speechStatus === "no_audio" ? note(mistakes.noteFa, ctx) : ""}${patternHtml}${speechRows.length ? `<h3>${ctx.label("spoken")}</h3>\n${speechRows.join("\n")}` : ""}${rows.length ? `<h3>${ctx.label("written")}</h3>\n${rows.join("\n")}` : ""}`;
 }
 
-/** A passive, standalone document. The app adds only its frame base and theme. */
-export function renderClassNotesHtml(model: KnowledgeModel): string {
+/** A passive standalone document; optional item anchors let the app attach its trusted controls. */
+export function renderClassNotesHtml(
+  model: KnowledgeModel,
+  options: { itemAnchors?: boolean } = {},
+): string {
   const ctx = context(model.language.explanation);
+  ctx.itemAnchors = options.itemAnchors;
   const prose = ctx.prose;
   const notes = model.classNotes;
   const items = model.learningItems.filter((item) => item.study);
@@ -465,7 +470,7 @@ export function renderClassNotesHtml(model: KnowledgeModel): string {
           item.study?.set === "recognition"
             ? [
                 [
-                  `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
+                  `<td ${ctx.englishAttrs}><b${ctx.itemAnchors ? ` data-learning-item-id="${attr(item.id)}"` : ""}>${text(item.study.en)}</b></td>`,
                   `<td>${prose(item.study.faMeaning)}${item.claim.origin === "ai_expansion" ? `<p class="src">${ctx.label("aiExpansion")}</p>` : ""}</td>`,
                   `<td ${ctx.englishAttrs}><i>${text(item.study.example)}</i></td>`,
                 ],

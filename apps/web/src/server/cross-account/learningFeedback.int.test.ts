@@ -9,7 +9,7 @@ import { requestAs } from "./learners";
 import { orgTestDatabase } from "./org-support";
 
 const db = orgTestDatabase();
-it("D48 FR-PLT-002: only the owner can correct a practice note; a retried key adds one row", async () => {
+it("D49 FR-PLT-002: only the owner can correct a practice note; a retried key adds one row", async () => {
   const owner = await studyFixture(db, { count: 1 });
   const other = await studyFixture(db, { count: 1 });
   const goal = owner.cards[0]?.learningItemId;

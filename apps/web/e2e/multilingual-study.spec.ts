@@ -6,6 +6,7 @@ import {
   MULTILINGUAL_STUDY_CASES,
   multilingualStudyModel,
 } from "../../../packages/core/test/multilingual-study-fixture";
+import { NOTE_PRONUNCIATION_BRIDGE } from "../src/ui/workspace/class-notes-pronunciation";
 
 const output =
   process.env.RECALINO_VERIFY_OUTPUT ??
@@ -36,7 +37,14 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
     await expect(frame.locator("#core .ex")).toHaveAttribute("dir", "ltr");
     await expect(frame.locator("#core .ex")).toHaveCSS("direction", "ltr");
     await expect(frame.locator("#core .ipa").first()).toHaveAttribute("dir", "ltr");
-    expect(await page.locator("iframe").getAttribute("sandbox")).toBe("");
+    await expect(page.locator('iframe[title^="Class notes:"]')).toHaveAttribute(
+      "sandbox",
+      "allow-scripts",
+    );
+    await expect(page.locator('iframe[title^="Class notes:"]')).not.toHaveAttribute(
+      "sandbox",
+      /allow-same-origin/,
+    );
     for (const width of [390, 420]) {
       await page.setViewportSize({ width, height: 844 });
       expect(
@@ -221,6 +229,13 @@ test("unlisted and repeated fixture languages retain the guarded Persian referen
     await expect(
       page.getByRole("link", { name: "Download synthetic HTML", exact: true }),
     ).toHaveCount(0);
-    await expect(frame.locator("script")).toHaveCount(0);
+    await expect(frame.locator("script")).toHaveCount(1);
+    expect(await frame.locator("script").textContent()).toBe(NOTE_PRONUNCIATION_BRIDGE);
+    const nonce = await frame.locator("script").getAttribute("nonce");
+    expect(nonce).toMatch(/^[a-zA-Z0-9_-]{10,100}$/);
+    await expect(frame.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+      "content",
+      expect.stringContaining(`script-src 'nonce-${nonce}'`),
+    );
   }
 });

@@ -24,6 +24,7 @@ export default async function StudyReferencePage({
   const { view, language } = await searchParams;
   const languageCase = MULTILINGUAL_STUDY_CASES.find((value) => value.language === language);
   const model = languageCase ? multilingualStudyModel(languageCase) : referenceStudyModel();
+  if (view === "legacy-notes") delete model.classNotes;
   const referenceHref = (nextView?: string): string => {
     const query = new URLSearchParams();
     if (languageCase) query.set("language", languageCase.language);
@@ -193,7 +194,7 @@ export default async function StudyReferencePage({
             userId={userId}
             initial={notebook}
             latest={null}
-            embedded
+            embedded={view !== "legacy-notes"}
           />
         )}
       </AppShell>
