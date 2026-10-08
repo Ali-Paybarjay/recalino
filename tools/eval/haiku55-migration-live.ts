@@ -455,7 +455,7 @@ if (!live) {
   process.exit(0);
 }
 assert.ok(
-  catalog && endpointCatalog,
+  comparison ? comparisonRates : catalog && endpointCatalog,
   "Live dispatch requires captured current model and regional endpoint catalogs",
 );
 assert.equal(
