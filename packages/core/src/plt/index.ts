@@ -47,6 +47,7 @@ export {
   type JobOptions,
   type JobState,
   jobState,
+  latestJobStateForPayload,
   purgeFinishedJobs,
   type RunOptions,
   type RunSummary,
@@ -69,6 +70,24 @@ export {
   pltPeriodicJobs,
   storagePeriodicJobs,
 } from "./maintenance";
+export {
+  type BrowserPushSender,
+  type BrowserPushSubscription,
+  browserPushDeliveryJob,
+  browserPushSubscriptionSchema,
+  clearAccountNotifications,
+  clearSessionNotifications,
+  isBrowserPushEndpoint,
+  type LearnerNotification,
+  learnerNotifications,
+  markNotificationsRead,
+  type NotificationKind,
+  ownsBrowserPushSubscription,
+  recordLearnerNotification,
+  removeBrowserPushSubscription,
+  saveBrowserPushSubscription,
+  webPushQueue,
+} from "./notifications";
 export { platformOperationalSummary } from "./operations";
 export { assertOwner, type LearnerContext } from "./ownership";
 export {

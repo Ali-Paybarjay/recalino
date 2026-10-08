@@ -3,7 +3,9 @@ import type { InputContract } from "@recalino/core/src";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import type { LocalPhoto, Recording, RecordingStore } from "../recording/store";
 import { workspaceRequest } from "./api";
+import { prepareFileHashes } from "./file-hashes";
 import { retryUploadRequest, type UploadRecovery, uploadWithConfirmation } from "./upload";
+import { concurrentUploads } from "./upload-concurrency";
 
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
@@ -147,6 +149,19 @@ type PhotoStore = {
   photos(userId: string, recordingId: string): Promise<LocalPhoto[]>;
   savePhoto(photo: LocalPhoto): Promise<void>;
 };
+type PhotoSource = { assetId: string; uploadId: string; sha256?: string };
+type PhotoBatchJournal = {
+  batchId: string;
+  fileIds: string[];
+  sources: Record<string, PhotoSource>;
+  legacy?: boolean;
+};
+type PhotoBatchReceipt = {
+  id: string;
+  closed: boolean;
+  source?: PhotoSource;
+  saveSource(source: PhotoSource): void;
+};
 type UploadOptions = {
   signal?: AbortSignal;
   checkAllowed?: () => void;
@@ -192,14 +207,14 @@ export async function uploadAutomaticPhoto(
   recording: Recording,
   photo: LocalPhoto,
   contract: InputContract,
-  options: UploadOptions & { store: Pick<PhotoStore, "savePhoto"> },
+  options: UploadOptions & { store: Pick<PhotoStore, "savePhoto">; photoBatch?: PhotoBatchReceipt },
 ) {
   const check = () => {
     options.signal?.throwIfAborted();
     options.checkAllowed?.();
   };
   check();
-  if (photo.sourceAssetId) return;
+  if (photo.sourceAssetId && !options.photoBatch) return;
   if (
     (!recording.completedAt && !["saved", "interrupted"].includes(recording.status)) ||
     recording.awaitingFinalData ||
@@ -231,43 +246,88 @@ export async function uploadAutomaticPhoto(
       failureMessage,
       recovery,
     );
-  const hash = async (blob: Blob) => {
-    check();
-    const value = Array.from(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())),
-      (byte) => byte.toString(16).padStart(2, "0"),
-    ).join("");
-    check();
-    return value;
-  };
-  const parts: { index: number; sizeBytes: number; sha256: string }[] = [];
-  for (let offset = 0; offset < photo.blob.size; offset += contract.partBytes) {
-    const part = photo.blob.slice(offset, offset + contract.partBytes);
-    parts.push({ index: parts.length, sizeBytes: part.size, sha256: await hash(part) });
+  const prepared = await prepareFileHashes(photo.blob, contract.partBytes, true, options.signal);
+  check();
+  const parts = prepared.parts;
+  let source = options.photoBatch?.source;
+  if (source && !source.sha256) {
+    const owned = await request<{ sha256: string }>(`/api/sources/${source.assetId}`, "GET");
+    source = { ...source, sha256: owned.sha256 };
   }
-  const source = await request<{ assetId: string; uploadId: string }>(
-    "/api/sources",
-    "POST",
-    {
-      sessionId: recording.sessionId,
-      kind: "image",
-      mimeType: photo.blob.type,
-      sizeBytes: photo.blob.size,
-      sha256: await hash(photo.blob),
-      displayName: label,
-      captureAnchor: {
-        sourceId: recording.sourceAssetId,
-        offsetMs: Math.ceil(photo.offsetMs),
-        state: photo.captureState,
+  if (source?.sha256 && source.sha256 !== prepared.sha256)
+    throw new Error(
+      `${label}'s saved bytes no longer match its upload. Keep the original and check the saved photo.`,
+    );
+  if (!source && (photo.sourceAssetId || options.photoBatch?.closed)) {
+    // A sealed group's lost local acknowledgement is recovered by its exact source identity.
+    // Reading a checksum match never attaches another source or creates new paid intent.
+    const matches = await request<{ id: string; operation_key: string; uploadId: string | null }[]>(
+      `/api/sources?checksum=${prepared.sha256}`,
+      "GET",
+    );
+    const matched = matches.find((candidate) =>
+      photo.sourceAssetId
+        ? candidate.id === photo.sourceAssetId
+        : candidate.operation_key === `recorded-photo:${photo.id}`,
+    );
+    const attached = await request<{ assetId: string }[]>(
+      `/api/classes/${recording.sessionId}/sources`,
+      "GET",
+    );
+    if (!matched?.uploadId || !attached.some((candidate) => candidate.assetId === matched.id))
+      throw new Error(
+        `${label} is no longer available in this class. The original is saved on this device.`,
+      );
+    source = { assetId: matched.id, uploadId: matched.uploadId, sha256: prepared.sha256 };
+  }
+  if (!source)
+    source = await request<PhotoSource>(
+      "/api/sources",
+      "POST",
+      {
+        sessionId: recording.sessionId,
+        ...(options.photoBatch ? { batchId: options.photoBatch.id, fileId: photo.id } : {}),
+        kind: "image",
+        mimeType: photo.blob.type,
+        sizeBytes: photo.blob.size,
+        sha256: prepared.sha256,
+        displayName: label,
+        captureAnchor: {
+          sourceId: recording.sourceAssetId,
+          offsetMs: Math.ceil(photo.offsetMs),
+          state: photo.captureState,
+        },
+        parts,
       },
-      parts,
-    },
-    `recorded-photo:${photo.id}`,
-  );
+      `recorded-photo:${photo.id}`,
+    );
+  check();
+  source = { ...source, sha256: prepared.sha256 };
+  options.photoBatch?.saveSource(source);
+  if (options.photoBatch && !options.photoBatch.closed)
+    await request(`/api/classes/${recording.sessionId}/learning`, "POST", {
+      action: "register_file",
+      batchId: options.photoBatch.id,
+      fileId: photo.id,
+      sourceId: source.assetId,
+    });
   const manifest = await request<{
+    assetId?: string;
     state?: string;
     parts: { index: number; verifiedAt: string | null }[];
   }>(`/api/sources/uploads/${source.uploadId}`, "GET");
+  if (manifest.assetId && manifest.assetId !== source.assetId)
+    throw new Error(
+      `${label}'s upload receipt does not match its source. The original is saved on this device.`,
+    );
+  if (manifest.state && !["pending", "verifying", "verified"].includes(manifest.state))
+    throw new Error(
+      `${label} needs attention before processing. The original is saved on this device.`,
+    );
+  if (options.photoBatch?.closed && !["verifying", "verified"].includes(manifest.state ?? ""))
+    throw new Error(
+      `${label}'s server receipt could not be confirmed. The original is saved on this device.`,
+    );
   if (manifest.state !== "verifying" && manifest.state !== "verified") {
     for (const part of parts) {
       check();
@@ -325,7 +385,7 @@ export async function uploadAutomaticPhoto(
   check();
 }
 
-/** A failed recording-photo batch remains open until its saved photos resume successfully. */
+/** A declared photo group seals on the server; local journals only resume bytes and lost receipts. */
 export async function prepareAutomaticRecordingPhotos(
   userId: string,
   material: NonNullable<Awaited<ReturnType<typeof automaticRecordingMaterial>>>,
@@ -333,34 +393,102 @@ export async function prepareAutomaticRecordingPhotos(
   options: UploadOptions & { store: PhotoStore },
 ) {
   const key = `recalino:learning-photos:${userId}:${material.sessionId}`;
-  let batchId: string | null = null;
+  let journal: PhotoBatchJournal | null = null;
   try {
-    batchId = localStorage.getItem(key);
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      if (/^[a-f0-9-]{36}$/i.test(saved))
+        journal = {
+          batchId: saved,
+          fileIds: material.photos.map((photo) => photo.id),
+          sources: {},
+          legacy: true,
+        };
+      else journal = JSON.parse(saved) as PhotoBatchJournal;
+    }
   } catch {
-    /* Server batch guards also persist. */
+    throw new Error(
+      "Saved board-photo upload details could not be read. The originals remain on this device.",
+    );
   }
-  if (!material.photos.some((photo) => !photo.sourceAssetId) && !batchId) return;
+  if (!journal) {
+    const fileIds = material.photos
+      .filter((photo) => !photo.sourceAssetId)
+      .map((photo) => photo.id);
+    if (!fileIds.length) return;
+    journal = { batchId: crypto.randomUUID(), fileIds, sources: {} };
+  }
+  const group = journal;
+  const photos = group.fileIds.map((id) => {
+    const photo = material.photos.find((candidate) => candidate.id === id);
+    const recording = material.recordings.find((candidate) => candidate.id === photo?.recordingId);
+    if (
+      !photo ||
+      !recording ||
+      photo.userId !== userId ||
+      recording.userId !== userId ||
+      !recording.autoGenerate
+    )
+      throw new Error("A board photo's approved recording is unavailable on this device.");
+    return { photo, recording };
+  });
+  if (!group.fileIds.length || new Set(group.fileIds).size !== group.fileIds.length)
+    throw new Error(
+      "Saved board-photo upload details are invalid. The originals remain on this device.",
+    );
+  // Keep the immutable declaration and every source receipt before the next network write.
+  const saveJournal = () => localStorage.setItem(key, JSON.stringify(group));
+  saveJournal();
   const request = options.request ?? workspaceRequest;
   const check = () => {
     options.signal?.throwIfAborted();
     options.checkAllowed?.();
   };
   check();
-  batchId = await openAutomaticBatch(material.sessionId, key, request, options);
-  for (const photo of material.photos) {
-    check();
-    const recording = material.recordings.find((recording) => recording.id === photo.recordingId);
-    if (!recording) throw new Error("A board photo's recording is unavailable on this device.");
-    await uploadAutomaticPhoto(recording, photo, contract, options);
-  }
-  check();
-  await request(
+  const begun = await request<Partial<AutomaticLearningStatus>>(
     `/api/classes/${material.sessionId}/learning`,
     "POST",
-    { action: "complete", batchId },
+    {
+      action: "begin",
+      batchId: group.batchId,
+      ...(!group.legacy ? { expectedFileIds: group.fileIds } : {}),
+    },
     undefined,
     { signal: options.signal },
   );
+  check();
+  if (begun?.lastError === "upload_batch_cancelled")
+    throw new Error("This board-photo upload was cancelled. The originals remain on this device.");
+  const closed = begun?.batchId === null;
+  for (const { photo, recording } of photos) {
+    check();
+    await uploadAutomaticPhoto(recording, photo, contract, {
+      ...options,
+      ...(!group.legacy || closed
+        ? {
+            photoBatch: {
+              id: group.batchId,
+              closed,
+              source: group.sources[photo.id],
+              saveSource: (source: PhotoSource) => {
+                group.sources[photo.id] = source;
+                saveJournal();
+              },
+            },
+          }
+        : {}),
+    });
+  }
+  check();
+  // Only pre-upgrade, undeclared photo groups still need their legacy explicit closure.
+  if (group.legacy && !closed)
+    await request(
+      `/api/classes/${material.sessionId}/learning`,
+      "POST",
+      { action: "complete", batchId: group.batchId },
+      undefined,
+      { signal: options.signal },
+    );
   check();
   try {
     localStorage.removeItem(key);
@@ -368,6 +496,10 @@ export async function prepareAutomaticRecordingPhotos(
     /* Replayed completion is safe. */
   }
   notifyAutomaticLearning(material.sessionId);
+  if (material.photos.some((photo) => !photo.sourceAssetId && !group.fileIds.includes(photo.id)))
+    throw new Error(
+      "Additional board photos are saved. Their upload resumes after this group finishes verification.",
+    );
 }
 
 export async function uploadAutomaticAudio(
@@ -403,15 +535,6 @@ export async function uploadAutomaticAudio(
       "Audio upload was interrupted. The original is saved on this device.",
       recovery,
     );
-  const hash = async (blob: Blob) => {
-    check();
-    const value = Array.from(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())),
-      (byte) => byte.toString(16).padStart(2, "0"),
-    ).join("");
-    check();
-    return value;
-  };
   check();
   const rows = await options.store.list(options.userId);
   for (const source of snapshot.sources.filter(
@@ -434,13 +557,10 @@ export async function uploadAutomaticAudio(
       );
     }
     const blob = await options.store.blob(options.userId, local.id);
-    if ((await hash(blob)) !== source.sha256)
+    const prepared = await prepareFileHashes(blob, contract.partBytes, true, options.signal);
+    if (prepared.sha256 !== source.sha256)
       throw new Error("The local recording does not match this class material.");
-    const parts: { index: number; sizeBytes: number; sha256: string }[] = [];
-    for (let offset = 0; offset < blob.size; offset += contract.partBytes) {
-      const part = blob.slice(offset, offset + contract.partBytes);
-      parts.push({ index: parts.length, sizeBytes: part.size, sha256: await hash(part) });
-    }
+    const parts = prepared.parts;
     const started = await request<{ uploadId: string }>(
       `/api/sources/${source.sourceId}/audio`,
       "POST",
@@ -452,54 +572,59 @@ export async function uploadAutomaticAudio(
       parts: { index: number; verifiedAt: string | null }[];
     }>(`/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}`, "GET");
     if (manifest.state === "verifying" || manifest.state === "verified") continue;
-    for (const part of parts) {
-      check();
-      if (manifest.parts.some((stored) => stored.index === part.index && stored.verifiedAt))
-        continue;
-      options.onProgress?.(`Uploading audio part ${part.index + 1} of ${parts.length}…`);
-      await uploadWithConfirmation(
-        async (signal) => {
-          check();
-          const link = await api<{ url: string }>(
-            `/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}&index=${part.index}`,
-            "GET",
-            undefined,
-            undefined,
-            { signal },
-          );
-          check();
-          const bytes = blob.slice(
-            part.index * contract.partBytes,
-            Math.min(blob.size, (part.index + 1) * contract.partBytes),
-          );
-          return options.put
-            ? options.put(link.url, bytes, source.mimeType, signal)
-            : fetch(link.url, {
-                method: "PUT",
-                headers: { "content-type": source.mimeType },
-                signal,
-                body: bytes,
-              });
-        },
-        async (signal) => {
-          check();
-          return api(
-            `/api/sources/${source.sourceId}/audio`,
-            "POST",
-            {
-              action: "confirm_part",
-              runId: run.id,
-              uploadId: started.uploadId,
-              index: part.index,
-            },
-            undefined,
-            { signal },
-          );
-        },
-        "Audio upload was interrupted. The original is saved on this device.",
-        { ...recovery, confirmBeforeWrite: true, confirmSuccess: true },
-      );
-    }
+    await concurrentUploads(
+      parts.filter(
+        (part) =>
+          !manifest.parts.some((stored) => stored.index === part.index && stored.verifiedAt),
+      ),
+      3,
+      async (part) => {
+        check();
+        options.onProgress?.(`Uploading audio part ${part.index + 1} of ${parts.length}…`);
+        await uploadWithConfirmation(
+          async (signal) => {
+            check();
+            const link = await api<{ url: string }>(
+              `/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}&index=${part.index}`,
+              "GET",
+              undefined,
+              undefined,
+              { signal },
+            );
+            check();
+            const bytes = blob.slice(
+              part.index * contract.partBytes,
+              Math.min(blob.size, (part.index + 1) * contract.partBytes),
+            );
+            return options.put
+              ? options.put(link.url, bytes, source.mimeType, signal)
+              : fetch(link.url, {
+                  method: "PUT",
+                  headers: { "content-type": source.mimeType },
+                  signal,
+                  body: bytes,
+                });
+          },
+          async (signal) => {
+            check();
+            return api(
+              `/api/sources/${source.sourceId}/audio`,
+              "POST",
+              {
+                action: "confirm_part",
+                runId: run.id,
+                uploadId: started.uploadId,
+                index: part.index,
+              },
+              undefined,
+              { signal },
+            );
+          },
+          "Audio upload was interrupted. The original is saved on this device.",
+          { ...recovery, confirmBeforeWrite: true, confirmSuccess: true },
+        );
+      },
+    );
     await request(
       `/api/sources/${source.sourceId}/audio`,
       "POST",

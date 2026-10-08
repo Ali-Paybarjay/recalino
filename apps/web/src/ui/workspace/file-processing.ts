@@ -44,7 +44,7 @@ export function fileProcessingFeedback(
       state: "error",
       message: `${receipt.failed} ${receipt.failed === 1 ? "file could" : "files could"} not be uploaded.`,
       detail:
-        "Check the messages beside the selected files, then retry the remaining files. Files already uploaded are saved; their processing continues.",
+        "Check the messages below, then retry the remaining files or explicitly skip them. Files already uploaded are saved. Processing waits until the batch is complete.",
     };
   const uploaded = sources.filter((source) => receipt.sourceIds.includes(source.assetId));
   const rejected = uploaded.find(
@@ -56,7 +56,7 @@ export function fileProcessingFeedback(
       message: "A file needs attention before processing can finish.",
       detail: ["needs_password", "wrong_password"].includes(rejected.rejectionReason ?? "")
         ? `Enter the correct password for ${rejected.displayName} in Class sources below. Processing resumes after verification.`
-        : `Review ${rejected.displayName} in Class sources below. Remove or replace the rejected file, then retry processing.`,
+        : `Review ${rejected.displayName} in Class sources below. Skip this file, or cancel the upload group before choosing a replacement.`,
     };
   const current =
     receipt.revision !== null && status && status.revision >= receipt.revision && !status.batchId;
@@ -103,7 +103,7 @@ export function fileProcessingFeedback(
         ? "Processing your files…"
         : "Verifying and preparing your files…",
     detail:
-      "Large files and audio can take several minutes. Progress updates automatically, and a confirmation appears when processing finishes.",
+      "Large files and audio can take several minutes. Progress updates automatically. You can use other pages. Once the files are received, processing continues on the server even if you close the app. Your result appears in Notifications.",
   };
 }
 
@@ -120,6 +120,6 @@ function processingRecovery(status: AutomaticLearningStatus) {
   if (code === "acceptance_required")
     return `${status.message} Review and accept the required material notices before processing.`;
   if (code === "upload_needs_attention")
-    return `${status.message} Check the file errors in Class sources below. Replace rejected files or enter the PDF password to continue.`;
+    return `${status.message} Check the file errors in Class sources below. Enter the PDF password, skip a rejected file, or cancel the upload group before choosing replacements.`;
   return `${status.message} Your files are saved. Review the processing details or retry processing; you do not need to upload them again.`;
 }

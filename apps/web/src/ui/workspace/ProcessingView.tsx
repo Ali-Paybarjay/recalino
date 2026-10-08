@@ -7,17 +7,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import { IndexedRecordingStore } from "../recording/store";
+import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
-import {
-  isRetryableUploadFailure,
-  retryUploadRequest,
-  type UploadRecovery,
-  uploadWithConfirmation,
-} from "./upload";
-
-const interruptedAudio =
-  "The audio connection is still unavailable after automatic retries. Your recording is saved on this device. Reconnect or resume the upload.";
+import { isRetryableUploadFailure } from "./upload";
 
 export interface ProcessingEstimate {
   snapshot: RunSnapshot;
@@ -32,12 +25,6 @@ type EstimateProblem =
   | "sources_not_ready"
   | "selection_too_large"
   | "unavailable";
-async function sha256(blob: Blob) {
-  return Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer())),
-    (n) => n.toString(16).padStart(2, "0"),
-  ).join("");
-}
 export function ProcessingView({
   sessionId,
   userId,
@@ -56,17 +43,15 @@ export function ProcessingView({
   contract: InputContract | null;
 }) {
   const router = useRouter();
+  const background = useAutomaticLearning(sessionId);
   const key = useRef<{ payload: string; key: string } | null>(null);
   const inFlight = useRef<Promise<void> | null>(null);
-  const uploadController = useRef<AbortController | null>(null);
   const recoverable = useRef(true);
   const automaticAttempt = useRef<string | null>(null);
-  const uploaded = useRef(new Set<string>());
   const [estimate, setEstimate] = useState(initialEstimate),
     [estimateProblem, setEstimateProblem] = useState(initialEstimateProblem),
     [runs, setRuns] = useState(initialRuns),
     [busy, setBusy] = useState(false),
-    [uploading, setUploading] = useState(false),
     [online, setOnline] = useState(true),
     [visible, setVisible] = useState(true),
     [recoveryEvent, setRecoveryEvent] = useState(0),
@@ -74,6 +59,8 @@ export function ProcessingView({
     [progressError, setProgressError] = useState<string | null>(null),
     [message, setMessage] = useState<string | null>(null);
   const latest = runs[0];
+  const transfer = background.manualAudio.find((entry) => entry.runId === latest?.id);
+  const uploading = transfer?.phase === "uploading";
   const [pendingRecordings, setPendingRecordings] = useState(0);
   useEffect(() => {
     let disposed = false;
@@ -120,7 +107,7 @@ export function ProcessingView({
         ? "The generated notes could not be verified against your chosen language and selected sources. No new notes were saved. Retry processing to create a new result."
         : null;
   const showConfirmation = !active && !awaitingOperator && (!completed || selectionChanged);
-  const audioUploaded = !!latest && uploaded.current.has(latest.id);
+  const audioUploaded = transfer?.phase === "verifying";
   const previousSelection =
     selectionChanged &&
     !active &&
@@ -177,26 +164,24 @@ export function ProcessingView({
       window.removeEventListener("online", connected);
       window.removeEventListener("offline", connected);
       document.removeEventListener("visibilitychange", shown);
-      uploadController.current?.abort();
     };
   }, []);
   const resumePendingUpload = useEffectEvent((attempt: string) => {
     if (
       latest?.state !== "awaiting_upload" ||
-      !estimate ||
       !contract ||
       !online ||
       !visible ||
       inFlight.current ||
       !recoverable.current ||
-      uploaded.current.has(latest.id)
+      transfer
     )
       return;
     if (automaticAttempt.current === attempt) return;
     automaticAttempt.current = attempt;
-    void action(() => sendLocalAudio(latest, true));
+    void action(() => sendLocalAudio(latest));
   });
-  const readyForUpload = !!estimate && !!contract;
+  const readyForUpload = !!contract;
   useEffect(() => {
     if (latest?.state === "awaiting_upload" && readyForUpload && online && visible && !busy)
       resumePendingUpload(`${latest.id}:${recoveryEvent}`);
@@ -236,122 +221,38 @@ export function ProcessingView({
     inFlight.current = task;
     return task;
   }
-  async function sendLocalAudio(run: ProcessingRun, resume = false) {
-    if (!contract || !estimate)
+  async function sendLocalAudio(run: ProcessingRun) {
+    if (!contract)
       throw new Error("Source settings are unavailable. Keep the local recording and try again.");
-    const controller = new AbortController();
-    uploadController.current = controller;
-    automaticAttempt.current = `${run.id}:${recoveryEvent}`;
-    setUploading(true);
-    const recovery: UploadRecovery = {
-      attempts: 3,
-      signal: controller.signal,
-      onRetry: (attempt) =>
-        setMessage(`Connection interrupted. Retrying audio upload (${attempt} of 3)…`),
-      onOffline: () =>
-        setMessage(
-          "You are offline. Your recording is saved; upload will resume when you reconnect.",
-        ),
-    };
-    const request = <T,>(path: string, method: string, body?: unknown, idempotencyKey?: string) =>
-      retryUploadRequest(
-        (signal) => workspaceRequest<T>(path, method, body, idempotencyKey, { signal }),
-        interruptedAudio,
-        recovery,
-      );
-    try {
-      const store = new IndexedRecordingStore();
-      const rows = await store.list(userId);
-      for (const source of estimate.snapshot.sources.filter(
-        (source) => source.kind === "audio" && !source.contentVersionId && !source.objectId,
-      )) {
-        const local = rows.find(
-          (row) => row.sourceAssetId === source.sourceId || row.id === source.sourceId,
-        );
-        if (!local)
-          throw new Error(
-            "A selected recording is missing from this device. Open the device that saved it, or remove it from the selection.",
-          );
-        const blob = await store.blob(userId, local.id);
-        controller.signal.throwIfAborted();
-        if ((await sha256(blob)) !== source.sha256)
-          throw new Error("The local recording does not match the selected source.");
-        const parts: { index: number; sizeBytes: number; sha256: string }[] = [];
-        for (let offset = 0; offset < blob.size; offset += contract.partBytes) {
-          controller.signal.throwIfAborted();
-          const part = blob.slice(offset, offset + contract.partBytes);
-          parts.push({ index: parts.length, sizeBytes: part.size, sha256: await sha256(part) });
-        }
-        const started = await request<{ uploadId: string }>(
-          `/api/sources/${source.sourceId}/audio`,
-          "POST",
-          { action: "start", runId: run.id, reservationId: run.reservationId, parts },
-          `audio-start:${run.id}:${source.sourceId}`,
-        );
-        const manifest = await request<{
-          parts: { index: number; verifiedAt: string | null }[];
-        }>(`/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}`, "GET");
-        for (const part of parts) {
-          if (manifest.parts.some((p) => p.index === part.index && p.verifiedAt)) continue;
-          setMessage(`Uploading audio part ${part.index + 1} of ${parts.length}…`);
-          await uploadWithConfirmation(
-            async (signal) => {
-              // Every retry gets a fresh signed URL after checking the stored part.
-              const link = await workspaceRequest<{ url: string }>(
-                `/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}&index=${part.index}`,
-                "GET",
-                undefined,
-                undefined,
-                { signal },
-              );
-              return fetch(link.url, {
-                method: "PUT",
-                headers: { "content-type": source.mimeType },
-                signal,
-                body: blob.slice(
-                  part.index * contract.partBytes,
-                  Math.min(blob.size, (part.index + 1) * contract.partBytes),
-                ),
-              });
-            },
-            (signal) =>
-              workspaceRequest(
-                `/api/sources/${source.sourceId}/audio`,
-                "POST",
-                {
-                  action: "confirm_part",
-                  runId: run.id,
-                  uploadId: started.uploadId,
-                  index: part.index,
-                },
-                undefined,
-                { signal },
-              ),
-            interruptedAudio,
-            { ...recovery, confirmBeforeWrite: resume, confirmSuccess: true },
-          );
-        }
-        setMessage("All audio parts are uploaded. Starting verification…");
-        await request(
-          `/api/sources/${source.sourceId}/audio`,
-          "POST",
-          { action: "complete", runId: run.id, uploadId: started.uploadId },
-          `audio-complete:${run.id}:${source.sourceId}`,
-        );
-      }
-      uploaded.current.add(run.id);
-      setMessage("Audio uploaded for verification. The original is still on this device.");
-      await refreshProcessing().catch(progressUnavailable);
-    } finally {
-      if (uploadController.current === controller) uploadController.current = null;
-      setUploading(false);
+    const pending = background.manualAudio.find((entry) => entry.runId === run.id);
+    if (pending) {
+      if (pending.phase === "attention") await background.retryManualAudio(run.id);
+      return;
     }
+    const confirmed = await workspaceRequest<{ run: ProcessingRun; snapshot: RunSnapshot | null }>(
+      `/api/runs/${run.id}?includeSnapshot=1`,
+      "GET",
+    );
+    if (confirmed.run.state !== "awaiting_upload") {
+      setRuns((previous) => [
+        confirmed.run,
+        ...previous.filter((row) => row.id !== confirmed.run.id),
+      ]);
+      return;
+    }
+    if (!confirmed.snapshot)
+      throw new Error(
+        "The confirmed audio selection is unavailable. Review processing and try again.",
+      );
+    await background.queueManualAudio(confirmed.run, confirmed.snapshot, contract);
+    setMessage(
+      "Audio upload is saved. You can leave this page; upload continues while the app is open and resumes when you return.",
+    );
   }
   async function cancelProcessing(run: ProcessingRun) {
-    uploadController.current?.abort();
     await inFlight.current;
     await action(async () => {
-      const canceled = await workspaceRequest<ProcessingRun>(`/api/runs/${run.id}`, "DELETE");
+      const canceled = await background.cancelManualAudio(run.id);
       setRuns((previous) => [canceled, ...previous.filter((row) => row.id !== canceled.id)]);
       setEstimate(await workspaceRequest(`/api/classes/${sessionId}/estimate`, "GET"));
       setEstimateProblem(null);
@@ -416,7 +317,8 @@ export function ProcessingView({
     <div className="preview-stack">
       {error ? <Status tone="error">{error}</Status> : null}
       {progressError && active ? <Status tone="error">{progressError}</Status> : null}
-      {message ? <Status>{message}</Status> : null}
+      {message || transfer?.message ? <Status>{message ?? transfer?.message}</Status> : null}
+      {transfer?.problem ? <Status tone="error">{transfer.problem}</Status> : null}
       {latest && !active ? (
         <Panel
           title={
@@ -504,10 +406,7 @@ export function ProcessingView({
           </p>
           <Actions>
             {latest.state === "awaiting_upload" && !audioUploaded ? (
-              <Button
-                disabled={busy}
-                onClick={() => void action(() => sendLocalAudio(latest, true))}
-              >
+              <Button disabled={busy} onClick={() => void action(() => sendLocalAudio(latest))}>
                 {uploading
                   ? online
                     ? "Uploading audio…"

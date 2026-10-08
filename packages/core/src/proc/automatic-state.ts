@@ -1,9 +1,22 @@
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import { liveAccountIdsQuery, lockAccount } from "../acc";
-import { type Database, type DB, type Tx, withTransaction } from "../db";
+import type { Database, DB, Tx } from "../db";
 import { assertSessionOwner, liveSessionIdsQuery } from "../org";
 import { errors, type LearnerContext } from "../plt";
+import { batchSourceStates, detachSource, readInputContract } from "../src";
+
+const batchFileSchema = z.strictObject({
+  fileId: z.uuid(),
+  sourceId: z.uuid().nullable(),
+  skipped: z.boolean(),
+  acknowledged: z.boolean().default(false),
+});
+export type AutomaticBatchFile = z.infer<typeof batchFileSchema>;
+const batchManifestSchema = z.array(batchFileSchema).min(1).max(250);
+function transaction<T>(db: Database | Tx, work: (tx: Tx) => Promise<T>): Promise<T> {
+  return db.isTransaction ? work(db as Tx) : db.transaction().execute(work);
+}
 
 export const automaticLearningStates = [
   "waiting_sources",
@@ -20,6 +33,7 @@ export interface AutomaticLearningSession {
   batchId: string | null;
   lastBatchId: string | null;
   batchStartedAt: string | null;
+  batchFiles: AutomaticBatchFile[] | null;
   state: AutomaticLearningState;
   lastError: string | null;
   runId: string | null;
@@ -35,6 +49,7 @@ function view(row: Row): AutomaticLearningSession {
     batchId: row.batch_id,
     lastBatchId: row.last_batch_id,
     batchStartedAt: row.batch_started_at?.toISOString() ?? null,
+    batchFiles: row.batch_manifest === null ? null : batchManifestSchema.parse(row.batch_manifest),
     state: z.enum(automaticLearningStates).parse(row.state),
     lastError: row.last_error,
     runId: row.run_id,
@@ -68,7 +83,7 @@ export async function requestAutomaticLearning(
   options: { changed?: boolean; now?: Date } = {},
 ): Promise<AutomaticLearningSession> {
   const now = options.now ?? new Date();
-  return withTransaction(db, async (tx) => {
+  return transaction(db, async (tx) => {
     await lockAccount(tx, ctx.userId);
     const previous = await owned(tx, ctx, sessionId, true);
     if (previous && options.changed === false) return view(previous);
@@ -100,22 +115,46 @@ export async function beginAutomaticLearningBatch(
   sessionId: string,
   batchId: string,
   now = new Date(),
+  expectedFileIds?: readonly string[],
 ): Promise<AutomaticLearningSession> {
   z.uuid().parse(batchId);
-  return withTransaction(db, async (tx) => {
+  const declared = expectedFileIds
+    ? z.array(z.uuid()).min(1).max(250).parse(expectedFileIds)
+    : null;
+  if (declared && new Set(declared).size !== declared.length)
+    throw errors.validationFailed({ expectedFileIds: ["duplicate"] });
+  const manifest =
+    declared?.map((fileId) => ({ fileId, sourceId: null, skipped: false, acknowledged: false })) ??
+    null;
+  return transaction(db, async (tx) => {
     await lockAccount(tx, ctx.userId);
     const previous = await owned(tx, ctx, sessionId, true);
     if (previous?.batch_id) {
       if (previous.batch_id !== batchId) throw errors.conflict();
+      if (declared) {
+        const saved =
+          previous.batch_manifest === null
+            ? null
+            : batchManifestSchema.parse(previous.batch_manifest);
+        if (
+          !saved ||
+          saved.length !== declared.length ||
+          saved.some((file) => !declared.includes(file.fileId))
+        )
+          throw errors.conflict();
+      }
       return view(previous);
     }
     if (previous?.last_batch_id === batchId) return view(previous);
+    if (declared && declared.length > (await readInputContract(tx)).maxSourcesPerSession)
+      throw errors.validationFailed({ expectedFileIds: ["too_many"] });
     const row = previous
       ? await tx
           .updateTable("proc.automatic_session")
           .set({
             batch_id: batchId,
             batch_started_at: now,
+            batch_manifest: manifest ? JSON.stringify(manifest) : null,
             request_version: previous.request_version + 1,
             state: "waiting_sources",
             last_error: null,
@@ -132,6 +171,7 @@ export async function beginAutomaticLearningBatch(
             user_id: ctx.userId,
             batch_id: batchId,
             batch_started_at: now,
+            batch_manifest: manifest ? JSON.stringify(manifest) : null,
             enabled_at: now,
             updated_at: now,
           })
@@ -148,12 +188,22 @@ export async function completeAutomaticLearningBatch(
   now = new Date(),
 ): Promise<AutomaticLearningSession> {
   z.uuid().parse(batchId);
-  return withTransaction(db, async (tx) => {
+  return transaction(db, async (tx) => {
     await lockAccount(tx, ctx.userId);
     const previous = await owned(tx, ctx, sessionId, true);
     if (previous && previous.batch_id === null && previous.last_batch_id === batchId)
       return view(previous);
     if (!previous || previous.batch_id !== batchId) throw errors.conflict();
+    if (previous.batch_manifest !== null) {
+      const result = await batchReadiness(
+        tx,
+        ctx,
+        sessionId,
+        batchManifestSchema.parse(previous.batch_manifest),
+      );
+      if (!result.complete)
+        throw errors.validationFailed({ batch: [result.problem ?? "incomplete"] });
+    }
     const row = await tx
       .updateTable("proc.automatic_session")
       .set({
@@ -165,6 +215,224 @@ export async function completeAutomaticLearningBatch(
         last_error: null,
         updated_at: now,
       })
+      .where("session_id", "=", sessionId)
+      .where("user_id", "=", ctx.userId)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return view(row);
+  });
+}
+
+async function batchReadiness(
+  tx: Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  files: readonly AutomaticBatchFile[],
+): Promise<{ complete: boolean; problem: string | null }> {
+  const requested = files.filter((file) => !file.skipped);
+  if (!requested.length) return { complete: false, problem: "select_at_least_one" };
+  if (requested.some((file) => !file.sourceId)) return { complete: false, problem: "batch_open" };
+  const rows = await batchSourceStates(
+    tx,
+    ctx,
+    sessionId,
+    requested.map((file) => file.sourceId as string),
+  );
+  for (const file of requested) {
+    const source = rows.find((row) => row.sourceId === file.sourceId);
+    if (
+      !source ||
+      source.tombstonedAt ||
+      source.originalDeletedAt ||
+      source.rejectionReason ||
+      ["rejected", "abandoned", "deleted"].includes(source.uploadState ?? "")
+    )
+      return { complete: false, problem: "upload_needs_attention" };
+    // Registering audio authorizes the existing awaiting_upload workflow, never transcription itself.
+    if (source.kind === "audio" ? !file.acknowledged : !source.verifiedAt)
+      return { complete: false, problem: "batch_open" };
+  }
+  return { complete: true, problem: null };
+}
+
+/** Only declared IDs and active sources owned by this class can acknowledge a file. */
+export async function registerAutomaticLearningFile(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  input: { batchId: string; fileId: string; sourceId: string },
+  now = new Date(),
+  acknowledged = true,
+): Promise<AutomaticLearningSession> {
+  z.strictObject({ batchId: z.uuid(), fileId: z.uuid(), sourceId: z.uuid() }).parse(input);
+  return transaction(db, async (tx) => {
+    await lockAccount(tx, ctx.userId);
+    const previous = await owned(tx, ctx, sessionId, true);
+    if (
+      !previous?.batch_manifest ||
+      (previous.batch_id !== input.batchId && previous.last_batch_id !== input.batchId)
+    )
+      throw errors.conflict();
+    const files = batchManifestSchema.parse(previous.batch_manifest);
+    const file = files.find((entry) => entry.fileId === input.fileId);
+    if (!file || file.skipped) throw errors.conflict();
+    const sameSource = file.sourceId === input.sourceId;
+    if (sameSource && (file.acknowledged || !acknowledged)) return view(previous);
+    if (!previous.batch_id) throw errors.conflict();
+    const [source] = await batchSourceStates(tx, ctx, sessionId, [input.sourceId]);
+    if (!source || source.tombstonedAt || source.originalDeletedAt) throw errors.notFound();
+    if (file.sourceId && !sameSource) {
+      const [old] = await batchSourceStates(tx, ctx, sessionId, [file.sourceId], true);
+      if (
+        old &&
+        !old.tombstonedAt &&
+        old.active &&
+        !old.rejectionReason &&
+        !["rejected", "abandoned", "deleted"].includes(old.uploadState ?? "")
+      )
+        throw errors.conflict();
+      if (old && !old.tombstonedAt && old.active)
+        await detachSource(tx, ctx, sessionId, file.sourceId, now);
+    }
+    file.sourceId = input.sourceId;
+    file.acknowledged = sameSource ? file.acknowledged || acknowledged : acknowledged;
+    const row = await tx
+      .updateTable("proc.automatic_session")
+      .set({ batch_manifest: JSON.stringify(files), updated_at: now, last_error: null })
+      .where("session_id", "=", sessionId)
+      .where("user_id", "=", ctx.userId)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return view(row);
+  });
+}
+
+/** Explicit learner omission also detaches its source, so it cannot fence the remaining group. */
+export async function skipAutomaticLearningFile(
+  db: Database,
+  ctx: LearnerContext,
+  sessionId: string,
+  input: { batchId: string; fileId: string },
+  now = new Date(),
+): Promise<AutomaticLearningSession> {
+  z.strictObject({ batchId: z.uuid(), fileId: z.uuid() }).parse(input);
+  return transaction(db, async (tx) => {
+    await lockAccount(tx, ctx.userId);
+    const previous = await owned(tx, ctx, sessionId, true);
+    if (
+      !previous?.batch_manifest ||
+      (previous.batch_id !== input.batchId && previous.last_batch_id !== input.batchId)
+    )
+      throw errors.conflict();
+    const files = batchManifestSchema.parse(previous.batch_manifest);
+    const file = files.find((entry) => entry.fileId === input.fileId);
+    if (!file) throw errors.conflict();
+    if (file.skipped) return view(previous);
+    if (!previous.batch_id) throw errors.conflict();
+    if (!files.some((entry) => entry.fileId !== input.fileId && !entry.skipped))
+      throw errors.validationFailed({ batch: ["select_at_least_one"] });
+    if (
+      file.sourceId &&
+      !files.some(
+        (entry) =>
+          entry.fileId !== file.fileId && !entry.skipped && entry.sourceId === file.sourceId,
+      )
+    ) {
+      const [source] = await batchSourceStates(tx, ctx, sessionId, [file.sourceId]);
+      if (source && !source.tombstonedAt)
+        await detachSource(tx, ctx, sessionId, file.sourceId, now);
+    }
+    file.skipped = true;
+    const row = await tx
+      .updateTable("proc.automatic_session")
+      .set({ batch_manifest: JSON.stringify(files), updated_at: now, last_error: null })
+      .where("session_id", "=", sessionId)
+      .where("user_id", "=", ctx.userId)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return view(row);
+  });
+}
+
+/** Cancellation is a durable fence against late receipts and queued automatic workers. */
+export async function cancelAutomaticLearningBatch(
+  db: Database,
+  ctx: LearnerContext,
+  sessionId: string,
+  batchId: string,
+  now = new Date(),
+): Promise<AutomaticLearningSession> {
+  z.uuid().parse(batchId);
+  return transaction(db, async (tx) => {
+    await lockAccount(tx, ctx.userId);
+    const previous = await owned(tx, ctx, sessionId, true);
+    if (!previous?.batch_manifest) throw errors.conflict();
+    if (
+      previous.batch_id === null &&
+      previous.last_batch_id === batchId &&
+      previous.last_error === "upload_batch_cancelled"
+    )
+      return view(previous);
+    if (previous.batch_id !== batchId) throw errors.conflict();
+    const files = batchManifestSchema.parse(previous.batch_manifest);
+    for (const sourceId of new Set(
+      files.flatMap((file) => (file.sourceId ? [file.sourceId] : [])),
+    )) {
+      const [source] = await batchSourceStates(tx, ctx, sessionId, [sourceId]);
+      if (source && !source.tombstonedAt) await detachSource(tx, ctx, sessionId, sourceId, now);
+    }
+    const row = await tx
+      .updateTable("proc.automatic_session")
+      .set({
+        batch_id: null,
+        batch_started_at: null,
+        last_batch_id: batchId,
+        batch_manifest: JSON.stringify(files.map((file) => ({ ...file, skipped: true }))),
+        request_version: previous.request_version + 1,
+        state: "blocked",
+        last_error: "upload_batch_cancelled",
+        updated_at: now,
+      })
+      .where("session_id", "=", sessionId)
+      .where("user_id", "=", ctx.userId)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return view(row);
+  });
+}
+
+/** Reconciles server receipts; an incomplete or failed declared group is never silently sealed. */
+export async function reconcileAutomaticLearningBatch(
+  db: Database,
+  ctx: LearnerContext,
+  sessionId: string,
+  now = new Date(),
+): Promise<AutomaticLearningSession | null> {
+  return transaction(db, async (tx) => {
+    await lockAccount(tx, ctx.userId);
+    const previous = await owned(tx, ctx, sessionId, true);
+    if (!previous?.batch_id || !previous.batch_manifest) return previous ? view(previous) : null;
+    const result = await batchReadiness(
+      tx,
+      ctx,
+      sessionId,
+      batchManifestSchema.parse(previous.batch_manifest),
+    );
+    const row = await tx
+      .updateTable("proc.automatic_session")
+      .set(
+        result.complete
+          ? {
+              batch_id: null,
+              batch_started_at: null,
+              last_batch_id: previous.batch_id,
+              request_version: previous.request_version + 1,
+              state: "waiting_sources",
+              last_error: null,
+              updated_at: now,
+            }
+          : { state: "waiting_sources", last_error: result.problem, updated_at: now },
+      )
       .where("session_id", "=", sessionId)
       .where("user_id", "=", ctx.userId)
       .returningAll()
@@ -188,7 +456,7 @@ export async function updateAutomaticLearningProgress(
       .regex(/^[a-z0-9_.]{1,64}$/)
       .parse(input.lastError);
   if (input.runId) z.uuid().parse(input.runId);
-  return withTransaction(db, async (tx) => {
+  return transaction(db, async (tx) => {
     await lockAccount(tx, ctx.userId);
     const previous = await owned(tx, ctx, sessionId, true);
     if (!previous || previous.request_version !== expectedRequestVersion) return null;
@@ -251,7 +519,9 @@ export async function listPendingAutomaticLearning(
         ]),
       ]),
     )
-    .where("automatic.batch_id", "is", null)
+    .where((eb) =>
+      eb.or([eb("automatic.batch_id", "is", null), eb("automatic.batch_manifest", "is not", null)]),
+    )
     .where("automatic.session_id", "in", liveSessionIdsQuery(db))
     .where("automatic.user_id", "in", liveAccountIdsQuery(db))
     .orderBy("automatic.updated_at")

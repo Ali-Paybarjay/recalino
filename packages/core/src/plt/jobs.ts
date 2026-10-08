@@ -217,6 +217,24 @@ export async function jobState(db: Database, jobId: string): Promise<JobState | 
   return (row?.state as JobState | undefined) ?? null;
 }
 
+/** Trusted orchestration avoids duplicate work through the platform API. */
+export async function latestJobStateForPayload(
+  db: Database | Tx,
+  kind: string,
+  identifiers: Readonly<Record<string, string>>,
+): Promise<JobState | null> {
+  if (!KIND.test(kind) || !Object.keys(identifiers).length) throw new Error("Invalid job lookup");
+  const row = await db
+    .selectFrom("plt.job")
+    .select("state")
+    .where("kind", "=", kind)
+    .where("payload", "@>", JSON.stringify(identifiers))
+    .orderBy("created_at", "desc")
+    .limit(1)
+    .executeTakeFirst();
+  return (row?.state as JobState | undefined) ?? null;
+}
+
 /**
  * Returns jobs whose lease ran out (the runner crashed or timed out) to the queue, or fails them
  * after their last attempt (rule 5). Every runner sweeps before it claims.

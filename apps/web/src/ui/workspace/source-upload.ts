@@ -1,5 +1,6 @@
 import { WorkspaceRequestError, workspaceRequest } from "./api";
 import { retryUploadRequest, type UploadRecovery, uploadWithConfirmation } from "./upload";
+import { concurrentUploads } from "./upload-concurrency";
 import { uploadWithProgress } from "./upload-progress";
 
 const interrupted = "Upload interrupted. Select the same file to resume.";
@@ -64,28 +65,44 @@ export async function uploadSourceFileParts(
     0,
   );
   input.onProgress(confirmedBytes);
-  for (const part of input.parts) {
-    recovery.signal?.throwIfAborted();
-    if (manifest.parts.some((saved) => saved.index === part.index && saved.verifiedAt)) continue;
-    const partPath = `${path}/parts/${part.index}`;
-    await uploadWithConfirmation(
-      async (signal) => {
-        // Signed links may expire while offline. Obtain a fresh link for each authorized write.
-        const link = await api<{ url: string }>(partPath, "GET", undefined, undefined, { signal });
-        return (options.put ?? uploadWithProgress)(
-          link.url,
-          input.file.slice(part.index * input.partBytes, (part.index + 1) * input.partBytes),
-          input.mimeType,
-          (sentBytes) => input.onProgress(confirmedBytes + sentBytes),
-          signal,
-        );
-      },
-      (signal) => api(partPath, "POST", undefined, undefined, { signal }),
-      interrupted,
-      { ...recovery, confirmBeforeWrite: true, confirmSuccess: true },
+  const inFlight = new Map<number, number>();
+  const progress = () =>
+    input.onProgress(
+      confirmedBytes + [...inFlight.values()].reduce((sum, bytes) => sum + bytes, 0),
     );
-    confirmedBytes += part.sizeBytes;
-    input.onProgress(confirmedBytes);
-  }
+  await concurrentUploads(
+    input.parts.filter(
+      (part) => !manifest.parts.some((saved) => saved.index === part.index && saved.verifiedAt),
+    ),
+    3,
+    async (part) => {
+      recovery.signal?.throwIfAborted();
+      const partPath = `${path}/parts/${part.index}`;
+      await uploadWithConfirmation(
+        async (signal) => {
+          // Signed links may expire while offline. Obtain a fresh link for each authorized write.
+          const link = await api<{ url: string }>(partPath, "GET", undefined, undefined, {
+            signal,
+          });
+          return (options.put ?? uploadWithProgress)(
+            link.url,
+            input.file.slice(part.index * input.partBytes, (part.index + 1) * input.partBytes),
+            input.mimeType,
+            (sentBytes) => {
+              inFlight.set(part.index, Math.min(part.sizeBytes, Math.max(0, sentBytes)));
+              progress();
+            },
+            signal,
+          );
+        },
+        (signal) => api(partPath, "POST", undefined, undefined, { signal }),
+        interrupted,
+        { ...recovery, confirmBeforeWrite: true, confirmSuccess: true },
+      );
+      confirmedBytes += part.sizeBytes;
+      inFlight.delete(part.index);
+      progress();
+    },
+  );
   await request(`${path}/complete`, "POST", undefined, `source-complete:${input.uploadId}`);
 }

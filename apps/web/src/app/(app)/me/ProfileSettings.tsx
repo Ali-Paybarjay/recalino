@@ -1,7 +1,6 @@
 import type { AccountState } from "@recalino/core/acc";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Button } from "../../../ui/components/Button";
 import { Icon, type IconComponent } from "../../../ui/components/Icon";
 import { courseCopy } from "../../../ui/course-copy";
 import {
@@ -13,6 +12,7 @@ import {
   SunHorizon,
   UserCircle,
 } from "../../../ui/icons";
+import { PushSafeSignOut } from "../../../ui/notifications/PushSafeSignOut";
 import { profileCopy } from "../../../ui/profile-copy";
 import { strings } from "../../../ui/strings";
 import { GOAL_LABELS, levelLabel } from "../../setup/labels";
@@ -177,11 +177,11 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
         </div>
         <p className={styles.settingsNote}>{strings.settings.notesUnchanged}</p>
       </section>
-      <form method="post" action="/auth/sign-out" className={styles.signOut}>
-        <Button type="submit" className={styles.signOutButton}>
-          {strings.settings.signOut}
-        </Button>
-      </form>
+      <PushSafeSignOut
+        className={styles.signOut}
+        buttonClassName={styles.signOutButton}
+        label={strings.settings.signOut}
+      />
     </>
   );
 }

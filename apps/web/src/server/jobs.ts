@@ -25,6 +25,10 @@ import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
 import { getMediaJobDefinition } from "./media-jobs";
 import { getPrivacyJobDefinition } from "./privacy";
 import { getProcessingDefinition } from "./processing-jobs";
+import {
+  processingNotificationDefinitions,
+  processingNotificationPeriodicJobs,
+} from "./processing-notifications";
 import { sourceJobDefinitions, sourcePeriodicJobs } from "./source-jobs";
 import { spikeJobDefinitions } from "./spike-jobs";
 import { getObjectStore } from "./storage";
@@ -48,6 +52,7 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
     ...exportPeriodicJobs(),
     ...processingPeriodicJobs(),
     ...automaticLearningPeriodicJobs(),
+    ...processingNotificationPeriodicJobs(),
   ];
 }
 
@@ -59,6 +64,7 @@ export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
   return [
     ...periodicJobs(settings).map((job) => job.definition),
     ...sourceJobDefinitions(),
+    ...processingNotificationDefinitions(),
     ...(processing ? [processing] : []),
     ...(voice ? [voice] : []),
     automaticLearningJob(),

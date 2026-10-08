@@ -1,11 +1,11 @@
 import "server-only";
-import { processingJob } from "@recalino/core/proc";
+import { processingJob, recordProcessingNotification } from "@recalino/core/proc";
 import { markSourceAudioTranscribed } from "@recalino/core/src";
 import { getAiProvider } from "./ai";
 import { prepareAudio } from "./audio-preparer";
 import { finalizeAutomaticRun } from "./automatic-learning-publication";
 import { prepareProcessingImage } from "./image-preparer";
-import { preparePdfPage } from "./pdf-preparer";
+import { preparePdfPages } from "./pdf-preparer";
 import { getObjectStore } from "./storage";
 import { diarizeSourceVoice } from "./voice-processing";
 export function getProcessingDefinition() {
@@ -16,7 +16,7 @@ export function getProcessingDefinition() {
     provider: getAiProvider(),
     prepareAudio,
     prepareImage: prepareProcessingImage,
-    preparePdfPage,
+    preparePdfPages,
     onTranscribed: markSourceAudioTranscribed,
     diarizeVoice: diarizeSourceVoice,
   });
@@ -28,6 +28,12 @@ export function getProcessingDefinition() {
     ) {
       await definition.run(payload, job);
       await finalizeAutomaticRun(
+        job.db,
+        { userId: payload.userId, requestId: job.job.id },
+        payload.runId,
+        job.now(),
+      );
+      await recordProcessingNotification(
         job.db,
         { userId: payload.userId, requestId: job.job.id },
         payload.runId,

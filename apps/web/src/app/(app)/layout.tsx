@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import "../../ui/preview/preview.css";
 import { getLearner } from "../../server/auth/learner";
+import { NotificationCenter } from "../../ui/notifications/NotificationCenter";
 import { RecordingProvider } from "../../ui/recording/RecordingProvider";
 import { AutomaticLearningProvider } from "../../ui/workspace/AutomaticLearningProvider";
+import { UploadProvider } from "../../ui/workspace/UploadProvider";
 
 /** Share the completed redesign's layout primitives with the real workspace. */
 export default async function WorkspaceLayout({ children }: { children: ReactNode }) {
@@ -12,7 +14,12 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
   return (
     <RecordingProvider key={learner.userId} userId={learner.userId}>
       <AutomaticLearningProvider>
-        <div className="preview-root">{children}</div>
+        <UploadProvider>
+          <div className="preview-root">
+            <NotificationCenter userId={learner.userId} />
+            {children}
+          </div>
+        </UploadProvider>
       </AutomaticLearningProvider>
     </RecordingProvider>
   );

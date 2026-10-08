@@ -10,7 +10,7 @@ import {
 import { audioVerifier } from "./audio-preparer";
 import {
   notifyAutomaticLearningForRun,
-  notifyAutomaticLearningForVerifiedUpload,
+  notifyAutomaticLearningForUpload,
 } from "./automatic-learning-notifications";
 import { getProcessingDefinition } from "./processing-jobs";
 import { getObjectStore } from "./storage";
@@ -24,12 +24,13 @@ export function sourceUploadJobDefinition() {
       input: Parameters<typeof definition.run>[0],
       job: Parameters<typeof definition.run>[1],
     ) {
-      await definition.run(input, job);
-      await notifyAutomaticLearningForVerifiedUpload(
-        job.db,
-        { userId: input.userId, requestId: job.job.id },
-        input.uploadId,
-      );
+      try {
+        await definition.run(input, job);
+      } finally {
+        const ctx = { userId: input.userId, requestId: job.job.id };
+        // Rejections preserve the open manifest's attention state; a wake-up cannot hide the original failure.
+        await notifyAutomaticLearningForUpload(job.db, ctx, input.uploadId);
+      }
     },
   };
 }

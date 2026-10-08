@@ -1,13 +1,18 @@
 export { retryRunAsAdmin } from "./admin";
 export {
+  type AutomaticBatchFile,
   type AutomaticLearningSession,
   type AutomaticLearningState,
   automaticLearningStates,
   beginAutomaticLearningBatch,
+  cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
   getAutomaticLearningSession,
   listPendingAutomaticLearning,
+  reconcileAutomaticLearningBatch,
+  registerAutomaticLearningFile,
   requestAutomaticLearning,
+  skipAutomaticLearningFile,
   updateAutomaticLearningProgress,
 } from "./automatic-state";
 export {
@@ -26,6 +31,7 @@ export {
   sourceSnapshotSchema,
 } from "./contracts";
 export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
+export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
 export {
   prepareSourceExtractionRetry,
@@ -85,8 +91,10 @@ export {
   type AudioChunk,
   type AudioPreparer,
   audioChunkSchema,
+  PDF_PAGE_PREPARATION_BATCH_SIZE,
   type PdfPageImage,
   type PdfPagePreparer,
+  type PdfPagesPreparer,
   type ProcessingDependencies,
   processingJob,
 } from "./worker";

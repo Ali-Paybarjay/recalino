@@ -14,10 +14,10 @@ import {
 import { amounts, grantEntitlement } from "@recalino/core/quota";
 import { selectSourceSnapshot } from "@recalino/core/src";
 import ffmpeg from "ffmpeg-static";
-import { afterAll, expect, it } from "vitest";
+import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
-import { preparePdfPage } from "./pdf-preparer";
+import { preparePdfPage, preparePdfPages } from "./pdf-preparer";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 3 });
 afterAll(() => db.destroy());
@@ -141,9 +141,13 @@ const provider: AiProvider = {
     throw new Error("No live provider used");
   },
 };
-it.each(["jpeg", "jpeg2000"] as const)(
-  "renders only an owned selected scanned %s page and registers its bounded temporary image for cleanup",
-  async (mode) => {
+it.each([
+  { mode: "jpeg", batch: false },
+  { mode: "jpeg2000", batch: false },
+  { mode: "jpeg", batch: true },
+] as const)(
+  "renders owned selected scanned $mode pages (batch=$batch) with one original read and registers images for cleanup",
+  async ({ mode, batch }) => {
     const f = await studyFixture(db);
     const store = new MemoryObjectStore();
     const bytes = scannedPdf(mode);
@@ -192,7 +196,7 @@ it.each(["jpeg", "jpeg2000"] as const)(
         asset_id: asset.id,
         role: "class_material",
         selected: true,
-        ranges: JSON.stringify([{ start: 2, end: 2 }]),
+        ranges: JSON.stringify([{ start: batch ? 1 : 2, end: 2 }]),
       })
       .execute();
     const snapshot = sourceSnapshotSchema.parse(
@@ -208,23 +212,34 @@ it.each(["jpeg", "jpeg2000"] as const)(
       { provider, job },
     );
     const input = { db, store, ctx: f.ctx, runId: run.id, source, page: 2, now: f.now };
-    await expect(preparePdfPage({ ...input, page: 1 })).rejects.toMatchObject({
+    await expect(preparePdfPage({ ...input, page: batch ? 3 : 1 })).rejects.toMatchObject({
       code: "validation_failed",
     });
-    const image = await preparePdfPage(input);
-    expect(image.page).toBe(2);
-    expect(image.mimeType).toBe("image/jpeg");
-    const rendered = await readOwnedObject(db, store, f.ctx, image.objectId);
-    expect(rendered.length).toBeGreaterThan(100);
-    expect(rendered.length).toBeLessThan(5000000);
-    if (mode === "jpeg2000") {
-      const decoded = await loadImage(rendered);
-      const sample = createCanvas(1, 1).getContext("2d");
-      sample.drawImage(decoded, -decoded.width / 2, -decoded.height / 2);
-      const [red, green, blue] = sample.getImageData(0, 0, 1, 1).data;
-      expect(red).toBeGreaterThan(180);
-      expect(green).toBeLessThan(80);
-      expect(blue).toBeLessThan(80);
+    const reads = vi.spyOn(store, "read");
+    const original = await db
+      .selectFrom("plt.storage_object")
+      .select("key")
+      .where("id", "=", objectId)
+      .executeTakeFirstOrThrow();
+    const images = batch
+      ? await preparePdfPages({ ...input, pages: [1, 2] })
+      : [await preparePdfPage(input)];
+    expect(reads.mock.calls.filter(([key]) => key === original.key)).toHaveLength(1);
+    expect(images.map((image) => image.page)).toEqual(batch ? [1, 2] : [2]);
+    for (const image of images) {
+      expect(image.mimeType).toBe("image/jpeg");
+      const rendered = await readOwnedObject(db, store, f.ctx, image.objectId);
+      expect(rendered.length).toBeGreaterThan(100);
+      expect(rendered.length).toBeLessThan(5000000);
+      if (mode === "jpeg2000") {
+        const decoded = await loadImage(rendered);
+        const sample = createCanvas(1, 1).getContext("2d");
+        sample.drawImage(decoded, -decoded.width / 2, -decoded.height / 2);
+        const [red, green, blue] = sample.getImageData(0, 0, 1, 1).data;
+        expect(red).toBeGreaterThan(180);
+        expect(green).toBeLessThan(80);
+        expect(blue).toBeLessThan(80);
+      }
     }
     expect(
       await db
@@ -232,11 +247,12 @@ it.each(["jpeg", "jpeg2000"] as const)(
         .select("object_id")
         .where("run_id", "=", run.id)
         .execute(),
-    ).toHaveLength(1);
+    ).toHaveLength(batch ? 2 : 1);
     await cancelRun(db, f.ctx, run.id);
     await cleanupSessionProcessing(db, f.ctx, f.session.id, { store });
-    await expect(readOwnedObject(db, store, f.ctx, image.objectId)).rejects.toMatchObject({
-      code: "not_found",
-    });
+    for (const image of images)
+      await expect(readOwnedObject(db, store, f.ctx, image.objectId)).rejects.toMatchObject({
+        code: "not_found",
+      });
   },
 );
