@@ -219,6 +219,33 @@ describe("truthful file processing feedback", () => {
     expect(feedback.detail).toContain(recovery);
   });
 
+  it.each([
+    "processing_budget_session",
+    "processing_budget_user_month",
+    "processing_budget_system_day",
+    "processing_budget_system_month",
+    "service_processing_blocked",
+    "service_processing_paused",
+    "service_cost_policy_missing",
+    "service_cost_unknown",
+    "service_reservation_missing",
+  ])(
+    "keeps %s separate from learner allowance and directs recovery to Class progress",
+    (lastError) => {
+      const feedback = fileProcessingFeedback(
+        receipt(),
+        status({ state: "blocked", lastError, message: "Processing is blocked by the service." }),
+        [source()],
+      );
+      expect(feedback).toMatchObject({ state: "error", retry: false });
+      expect(feedback.detail).toContain("Class progress to get processing help");
+      expect(feedback.detail).toContain("After the service is updated");
+      expect(feedback.detail).toContain("do not need to upload the files again");
+      expect(feedback.detail).not.toContain("Review your allowance");
+      expect(feedback.detail).not.toContain("select less material");
+    },
+  );
+
   it("does not report an unrelated old processing failure for the newly submitted batch", () => {
     expect(
       fileProcessingFeedback(

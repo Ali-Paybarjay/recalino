@@ -40,6 +40,7 @@ import {
   beginProviderStep,
   emptyAmounts,
   finishProviderStep,
+  quotaProcessingFailureCode,
   settleAllowance,
 } from "../quota";
 import {
@@ -1392,6 +1393,8 @@ function semanticRepairReason(error: unknown): string | null {
 }
 
 function processingFailureCode(error: AppError): string | null {
+  const quota = quotaProcessingFailureCode(error);
+  if (quota) return quota;
   const reason = semanticRepairReason(error);
   if (reason) return `output_${reason}`;
   const fields = error.details?.fields;

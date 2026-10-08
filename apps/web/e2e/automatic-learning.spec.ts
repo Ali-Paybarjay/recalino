@@ -272,3 +272,105 @@ test("an unresolved provider result keeps progress visible without offering retr
   );
   expect(unexpected).toEqual([]);
 });
+
+for (const view of ["notice", "progress"] as const) {
+  for (const recovery of [
+    {
+      code: "processing_budget_session",
+      message:
+        "The next processing step does not fit within this class's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.",
+      label: "Get processing help",
+      href: "/help/new",
+      retry: "Retry after service update",
+    },
+    {
+      code: "quota_insufficient",
+      message:
+        "This class needs more allowance than is currently available. Your material is saved.",
+      label: "Review allowance",
+      href: "/me/quota",
+      retry: "Retry after allowance changes",
+    },
+  ]) {
+    test(`${view}: ${recovery.code} provides the right recovery and retries only on request`, async ({
+      page,
+    }) => {
+      const unexpected = await interceptFixture(page);
+      let current: AutomaticLearningStatus = {
+        ...blocked,
+        lastError: recovery.code,
+        message: recovery.message,
+      };
+      const writes: { body: unknown; key: string | undefined }[] = [];
+      let serviceUpdated = false;
+      await page.route(`**${path}`, async (route) => {
+        const request = route.request();
+        if (request.method() === "POST") {
+          writes.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] });
+          if (serviceUpdated) current = processing;
+        }
+        await route.fulfill({ json: current });
+      });
+      await page.setViewportSize({ width: 375, height: 844 });
+      await page.goto(`/dev/ui/learning${view === "progress" ? "?view=progress" : ""}`);
+      const action = page.getByRole("link", { name: recovery.label, exact: true });
+      const blockedMessage = page
+        .getByRole(view === "notice" ? "alert" : "status")
+        .filter({ hasText: recovery.message });
+      await expect(action).toBeVisible();
+      await expect(action).toHaveAttribute("href", recovery.href);
+      await expect(blockedMessage).toBeVisible();
+      if (recovery.code === "processing_budget_session") {
+        await expect(page.getByRole("link", { name: "Review allowance", exact: true })).toHaveCount(
+          0,
+        );
+      } else {
+        await expect(
+          page.getByRole("link", { name: "Ask for more allowance", exact: true }),
+        ).toHaveAttribute("href", "/help/new");
+      }
+      if (view === "progress") {
+        await expect(page.getByRole("link", { name: "Add material", exact: true })).toHaveCount(0);
+        await expect(page.getByText("Processing continues when you leave this page.")).toHaveCount(
+          0,
+        );
+      }
+      const bounds = await action.boundingBox();
+      expect(bounds?.height).toBeGreaterThanOrEqual(44);
+      expect(bounds?.width).toBeGreaterThanOrEqual(44);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+      ).toBe(false);
+      expect(writes).toHaveLength(0);
+      if (view === "progress") {
+        for (const theme of ["light", "dark"] as const) {
+          await page.evaluate((value) => {
+            document.documentElement.dataset.theme = value;
+          }, theme);
+          await mkdir(output, { recursive: true });
+          await page.screenshot({
+            path: resolve(output, `allowance-recovery-${recovery.code}-${theme}.png`),
+            fullPage: true,
+          });
+        }
+      }
+      const retry = page.getByRole("button", { name: recovery.retry, exact: true });
+      await expect(retry).toBeVisible();
+      await retry.click();
+      await expect.poll(() => writes.length).toBe(1);
+      await expect(retry).toBeEnabled();
+      await expect(action).toBeVisible();
+      await expect(blockedMessage).toBeVisible();
+      serviceUpdated = true;
+      await retry.click();
+      await expect.poll(() => writes.length).toBe(2);
+      await expect(page.getByRole("status").filter({ hasText: processing.message })).toBeVisible();
+      await expect(retry).toHaveCount(0);
+      expect(writes.map((write) => write.body)).toEqual([{ action: "retry" }, { action: "retry" }]);
+      expect(writes[0]?.key).toMatch(/^[\da-f-]{36}$/);
+      expect(writes[1]?.key).toMatch(/^[\da-f-]{36}$/);
+      expect(writes[1]?.key).not.toBe(writes[0]?.key);
+      expect(unexpected).toEqual([]);
+    });
+  }
+}

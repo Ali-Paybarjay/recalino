@@ -31,6 +31,7 @@ import {
   sourceSnapshotSchema,
   updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
+import { quotaProcessingFailureCode } from "@recalino/core/quota";
 import {
   DefaultSourceVerifier,
   receivedSourceUploadIds,
@@ -72,6 +73,8 @@ const completedStates = new Set(["ready", "partial_ready"]);
 function problemCode(failure: unknown): string {
   if (!(failure instanceof AppError)) throw failure;
   if (["unauthenticated", "not_found"].includes(failure.code)) throw failure;
+  const quota = quotaProcessingFailureCode(failure);
+  if (quota) return quota;
   const fields = failure.details?.fields;
   if (fields && typeof fields === "object") {
     const code = Object.values(fields)
@@ -87,6 +90,25 @@ export function automaticLearningMessage(
 ): string {
   if (code === "quota_insufficient")
     return "Your material is saved. More allowance is needed to finish the notes and flashcards.";
+  if (code === "processing_budget_session")
+    return "The next processing step does not fit within this class's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
+  if (code === "processing_budget_user_month")
+    return "The next processing step does not fit within your account's monthly AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
+  if (code === "processing_budget_system_day")
+    return "The next processing step does not fit within the pilot's shared daily AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
+  if (code === "processing_budget_system_month")
+    return "The next processing step does not fit within the pilot's shared monthly AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
+  if (code === "service_processing_paused")
+    return "The pilot operator has paused AI processing. Your material is saved. Ask the pilot operator when processing can resume; you do not need to upload the same files again.";
+  if (
+    [
+      "service_cost_policy_missing",
+      "service_cost_unknown",
+      "service_reservation_missing",
+      "service_processing_blocked",
+    ].includes(code ?? "")
+  )
+    return "A processing check needs the pilot operator's attention. Your material is saved. Ask for processing help before retrying; you do not need to upload the same files again.";
   if (
     [
       "provider_outcome_unresolved",
@@ -136,7 +158,15 @@ async function view(
   const notebook = await getNotebook(db, ctx, sessionId);
   const run = progress ? progress.run : intent?.runId ? await getRun(db, ctx, intent.runId) : null;
   const state = progress?.state ?? intent?.state ?? "idle";
-  const code = progress ? progress.lastError : (intent?.lastError ?? null);
+  const storedCode = progress ? progress.lastError : (intent?.lastError ?? null);
+  // Older workers discarded the cost guard's reason. Do not guess that a failed run
+  // exhausted learner units, and never rewrite its historical record during a GET.
+  const code =
+    storedCode === "quota_insufficient" &&
+    run?.lastError === "quota_insufficient" &&
+    ["failed", "needs_input"].includes(run.state)
+      ? "service_processing_blocked"
+      : storedCode;
   return {
     state,
     revision: intent?.requestVersion ?? 0,

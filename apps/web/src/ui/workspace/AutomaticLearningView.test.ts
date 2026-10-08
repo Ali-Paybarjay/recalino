@@ -141,7 +141,6 @@ describe("retry from the class notice", () => {
     "provider_outcome_unknown",
     "provider_timestamps_invalid",
     "upload_needs_attention",
-    "quota_insufficient",
     "acceptance_required",
   ])("does not offer a retry that bypasses %s", (lastError) => {
     mocks.status = { ...blocked, lastError };
@@ -152,5 +151,100 @@ describe("retry from the class notice", () => {
   it("hides the failure notice after processing succeeds", () => {
     mocks.status = { ...blocked, state: "ready", lastError: null };
     expect(render()).toBe("");
+  });
+});
+
+describe("recovery actions match the processing blocker", () => {
+  it.each(["notice", "progress"] as const)(
+    "%s directs a learner allowance shortfall to allowance review and an increase request",
+    async (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "This class needs more allowance than is currently available.",
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
+      expect(html).not.toContain("Add material");
+      expect(mocks.request).not.toHaveBeenCalled();
+      mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
+      await mocks.buttons.get("Retry after allowance changes")?.();
+      expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
+        `/api/classes/${sessionId}/learning`,
+        "POST",
+        { action: "retry" },
+        expect.any(String),
+      );
+    },
+  );
+
+  it.each([
+    "processing_budget_session",
+    "processing_budget_user_month",
+    "processing_budget_system_day",
+    "processing_budget_system_month",
+    "service_processing_blocked",
+    "service_processing_paused",
+    "service_cost_policy_missing",
+    "service_cost_unknown",
+    "service_reservation_missing",
+  ])(
+    "offers processing help for %s without suggesting learner quota or new uploads",
+    (lastError) => {
+      mocks.status = { ...blocked, lastError, message: "Processing needs a service update." };
+      const html = render("progress");
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Get processing help<\/a>/);
+      expect(html).not.toContain("Review allowance");
+      expect(html).not.toContain("Add material");
+      expect(html).toContain("After the Recalino team updates the service");
+      expect(mocks.buttons.has("Retry after service update")).toBe(true);
+      expect(mocks.request).not.toHaveBeenCalled();
+      expect(html).toContain(`href="/classes/${sessionId}/notes"`);
+    },
+  );
+
+  it("keeps service recovery available directly in the class notice with a guarded retry", async () => {
+    mocks.status = {
+      ...blocked,
+      lastError: "processing_budget_session",
+      message: "The class processing budget needs attention from the Recalino team.",
+    };
+    const html = render();
+    expect(html).toContain("Get processing help");
+    expect(html).toContain(`href="/classes/${sessionId}/processing"`);
+    expect(html).not.toContain("Review allowance");
+    mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
+    const click = mocks.buttons.get("Retry after service update");
+    expect(click).toBeDefined();
+    await click?.();
+    expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
+      `/api/classes/${sessionId}/learning`,
+      "POST",
+      { action: "retry" },
+      expect.any(String),
+    );
+  });
+
+  it.each([
+    "provider_outcome_unresolved",
+    "provider_outcome_unknown",
+    "provider_timestamps_invalid",
+  ])("%s offers help without permitting another paid attempt", (lastError) => {
+    mocks.status = { ...blocked, lastError };
+    const html = render("progress");
+    expect(html).toContain("Get processing help");
+    expect(html).not.toContain("Add material");
+    expect(mocks.buttons.size).toBe(0);
+  });
+
+  it("takes an upload error to its material review rather than a processing retry", () => {
+    mocks.status = { ...blocked, lastError: "upload_needs_attention" };
+    const html = render("progress");
+    expect(html).toMatch(
+      new RegExp(`href="/classes/${sessionId}/sources"[^>]*>Review material<\\/a>`),
+    );
+    expect(html).not.toContain("Add material");
+    expect(mocks.buttons.size).toBe(0);
   });
 });

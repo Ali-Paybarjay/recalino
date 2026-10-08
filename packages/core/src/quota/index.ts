@@ -25,6 +25,7 @@ export {
   type ProviderStep,
   providerUsageSchema,
 } from "./costs";
+export { quotaProcessingFailureCode } from "./failures";
 export {
   adjustAllowance,
   allowance,

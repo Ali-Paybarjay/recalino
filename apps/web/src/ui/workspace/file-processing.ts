@@ -1,4 +1,5 @@
 import type { AutomaticLearningStatus } from "./automatic-learning";
+import { isServiceProcessingBlock } from "./automatic-learning-recovery";
 
 interface ProcessingSource {
   assetId: string;
@@ -66,6 +67,7 @@ export function fileProcessingFeedback(
       message: "Processing needs attention.",
       detail: processingRecovery(status),
       retry:
+        !isServiceProcessingBlock(status.lastError) &&
         !operatorErrors.includes(status.lastError ?? "") &&
         !/operator|provider.*configur|storage_unavailable|allowance|quota|password|rejected|acceptance_required|upload_needs_attention|no_selected|select_at_least_one|selection_too_large/.test(
           status.lastError ?? "",
@@ -109,6 +111,8 @@ export function fileProcessingFeedback(
 
 function processingRecovery(status: AutomaticLearningStatus) {
   const code = status.lastError ?? "";
+  if (isServiceProcessingBlock(code))
+    return `${status.message} Open Class progress to get processing help. After the service is updated, retry using the saved material; you do not need to upload the files again.`;
   if (/allowance|quota/.test(code))
     return `${status.message} Your files are saved. Review your allowance or select less material before retrying.`;
   if (operatorErrors.includes(code) || /operator|provider.*configur|storage_unavailable/.test(code))

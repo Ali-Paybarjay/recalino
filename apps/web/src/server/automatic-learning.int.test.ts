@@ -25,7 +25,7 @@ import {
   requestAutomaticLearning,
   selectProcessingSourceSnapshot,
 } from "@recalino/core/proc";
-import { amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
+import { allowance, amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
 import { afterAll, expect, it } from "vitest";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
@@ -423,6 +423,165 @@ it("read-only visits do not enable old classes and insufficient allowance never 
   await readAutomaticLearning(db, f.ctx, f.session.id);
   expect(f.provider.calls).toBe(0);
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
+});
+
+it("reads an old ambiguous failed quota run as an operator check without changing its history", async () => {
+  const f = await fixture();
+  await f.addText("Old quota diagnostic material");
+  const current = await f.sync();
+  const runId = current.run?.id;
+  if (!runId) throw new Error("Expected a synthetic processing run");
+  const policy = await db.selectFrom("quota.cost_policy").selectAll().executeTakeFirstOrThrow();
+  try {
+    await configureCostPolicy(
+      db,
+      {
+        version: "automatic-budget-blocker",
+        currency: "USD",
+        killSwitch: false,
+        limits: { session: 9, userMonth: 100000000, systemDay: 100000000, systemMonth: 100000000 },
+      },
+      { actorId: "synthetic-operator", reason: "Local historical diagnostic regression" },
+    );
+    await f.work();
+    expect(await readAutomaticLearning(db, f.ctx, f.session.id)).toMatchObject({
+      state: "blocked",
+      lastError: "processing_budget_session",
+    });
+    // Simulate the only diagnostic retained by the pre-fix production worker.
+    await db
+      .updateTable("proc.processing_run")
+      .set({ last_error: "quota_insufficient" })
+      .where("id", "=", runId)
+      .where("user_id", "=", f.ctx.userId)
+      .execute();
+    await db
+      .updateTable("proc.automatic_session")
+      .set({ last_error: "quota_insufficient" })
+      .where("session_id", "=", f.session.id)
+      .where("user_id", "=", f.ctx.userId)
+      .execute();
+    const beforeRun = await db
+      .selectFrom("proc.processing_run")
+      .selectAll()
+      .where("id", "=", runId)
+      .executeTakeFirstOrThrow();
+    const beforeIntent = await getAutomaticLearningSession(db, f.ctx, f.session.id);
+    const beforeReservations = await db
+      .selectFrom("quota.reservation")
+      .selectAll()
+      .where("user_id", "=", f.ctx.userId)
+      .execute();
+    for (let visit = 0; visit < 2; visit++) {
+      const status = await readAutomaticLearning(db, f.ctx, f.session.id);
+      expect(status).toMatchObject({ state: "blocked", lastError: "service_processing_blocked" });
+      expect(status.message).not.toContain("More allowance is needed");
+    }
+    expect(
+      await db
+        .selectFrom("proc.processing_run")
+        .selectAll()
+        .where("id", "=", runId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual(beforeRun);
+    expect(await getAutomaticLearningSession(db, f.ctx, f.session.id)).toEqual(beforeIntent);
+    expect(
+      await db
+        .selectFrom("quota.reservation")
+        .selectAll()
+        .where("user_id", "=", f.ctx.userId)
+        .execute(),
+    ).toEqual(beforeReservations);
+    expect(
+      await db
+        .selectFrom("proc.provider_attempt")
+        .select("id")
+        .where("run_id", "=", runId)
+        .execute(),
+    ).toHaveLength(0);
+    expect(f.provider.calls).toBe(0);
+  } finally {
+    await configureCostPolicy(
+      db,
+      {
+        version: policy.version,
+        currency: policy.currency,
+        killSwitch: policy.kill_switch,
+        limits: policy.limits as {
+          session: number;
+          userMonth: number;
+          systemDay: number;
+          systemMonth: number;
+        },
+      },
+      { actorId: "synthetic-operator", reason: "Restore local fixture cost policy" },
+    );
+  }
+});
+
+it("keeps explicit retries inside the AI budget and resumes after an operator update", async () => {
+  const f = await fixture();
+  await f.addText("Guarded retry material");
+  const policy = await db.selectFrom("quota.cost_policy").selectAll().executeTakeFirstOrThrow();
+  const restore = () =>
+    configureCostPolicy(
+      db,
+      {
+        version: policy.version,
+        currency: policy.currency,
+        killSwitch: policy.kill_switch,
+        limits: policy.limits as {
+          session: number;
+          userMonth: number;
+          systemDay: number;
+          systemMonth: number;
+        },
+      },
+      { actorId: "synthetic-operator", reason: "Restore local fixture cost policy" },
+    );
+  const retry = () =>
+    automaticLearningSync(db, f.ctx, f.session.id, {
+      retryKey: randomUUID(),
+      dependencies: { provider: () => f.provider, processing: () => f.job },
+    });
+  const before = await allowance(db, f.ctx);
+  try {
+    await configureCostPolicy(
+      db,
+      {
+        version: "automatic-retry-budget",
+        currency: "USD",
+        killSwitch: false,
+        limits: { session: 9, userMonth: 100000000, systemDay: 100000000, systemMonth: 100000000 },
+      },
+      { actorId: "synthetic-operator", reason: "Local guarded retry regression" },
+    );
+    await f.sync();
+    await f.work();
+    await retry();
+    await f.work();
+    expect(await readAutomaticLearning(db, f.ctx, f.session.id)).toMatchObject({
+      state: "blocked",
+      lastError: "processing_budget_session",
+    });
+    expect(f.provider.calls).toBe(0);
+    expect(await allowance(db, f.ctx)).toEqual(before);
+    await restore();
+    // A policy update alone never starts new paid processing.
+    expect((await readAutomaticLearning(db, f.ctx, f.session.id)).state).toBe("blocked");
+    expect(f.provider.calls).toBe(0);
+    await retry();
+    await f.work();
+    expect(await readAutomaticLearning(db, f.ctx, f.session.id)).toMatchObject({
+      state: "ready",
+      lastError: null,
+      notesReady: true,
+    });
+    expect(f.provider.calls).toBe(1);
+    expect((await allowance(db, f.ctx)).consumed.document).toBe(1);
+  } finally {
+    await restore();
+  }
 });
 
 it("keeps a newer failed retry visible when an older successful callback arrives late", async () => {

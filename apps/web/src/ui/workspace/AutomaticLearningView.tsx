@@ -5,19 +5,44 @@ import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
 import { requestKey, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
+import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 
-function canRetryLearning(status: AutomaticLearningStatus | null) {
-  return (
-    status?.state === "blocked" &&
-    ![
-      "provider_outcome_unresolved",
-      "provider_outcome_unknown",
-      "provider_timestamps_invalid",
-      "upload_needs_attention",
-      "quota_insufficient",
-      "acceptance_required",
-    ].includes(status.lastError ?? "")
+function RecoveryLinks({
+  sessionId,
+  kind,
+  inline = false,
+}: {
+  sessionId: string;
+  kind: ReturnType<typeof automaticLearningRecovery>["kind"];
+  inline?: boolean;
+}) {
+  const links =
+    kind === "allowance"
+      ? [
+          { href: "/me/quota", label: "Review allowance" },
+          { href: "/help/new", label: "Ask for more allowance" },
+        ]
+      : kind === "service"
+        ? [{ href: "/help/new", label: "Get processing help" }]
+        : kind === "material"
+          ? [{ href: `/classes/${sessionId}/sources`, label: "Review material" }]
+          : kind === "setup"
+            ? [{ href: "/setup", label: "Review account setup" }]
+            : [];
+  return links.map(({ href, label }, index) =>
+    inline ? (
+      <span key={href}>
+        {" "}
+        <Link href={href} prefetch={false} className={styles.inlineRetry}>
+          {label}
+        </Link>{" "}
+      </span>
+    ) : (
+      <LinkButton key={href} href={href} secondary={index > 0}>
+        {label}
+      </LinkButton>
+    ),
   );
 }
 
@@ -80,17 +105,21 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const { status, problem } = live;
   const retry = useLearningRetry(sessionId, live);
   if (!problem && (!status || status.state === "idle" || status.state === "ready")) return null;
-  const canRetry = canRetryLearning(status);
+  const recovery = automaticLearningRecovery(status);
+  const canRetry = !!recovery.retryLabel;
   const message = problem ?? status?.message ?? "";
-  const retryWord = canRetry ? /\bretry\b/i.exec(message) : null;
+  const ordinaryRetry = recovery.retryLabel === "Retry failed attempt";
+  const retryWord = canRetry && ordinaryRetry ? /\bretry\b/i.exec(message) : null;
   const retryLink = (
     <Button
       className={styles.inlineRetry}
       disabled={retry.busy}
-      aria-label="Retry failed attempt"
+      aria-label={recovery.retryLabel ?? "Retry failed attempt"}
       onClick={retry.retry}
     >
-      {retry.busy ? "Retrying…" : (retryWord?.[0] ?? "Retry")}
+      {retry.busy
+        ? "Retrying…"
+        : (retryWord?.[0] ?? (ordinaryRetry ? "Retry" : recovery.retryLabel))}
     </Button>
   );
   return (
@@ -103,11 +132,13 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
             {message.slice(retryWord.index + retryWord[0].length)}
           </>
         ) : (
-          <>
-            {message} {canRetry ? retryLink : null}
-          </>
+          message
         )}{" "}
-        <Link href={`/classes/${sessionId}/processing`}>View progress</Link>
+        <RecoveryLinks sessionId={sessionId} kind={recovery.kind} inline />
+        {!retryWord && canRetry ? retryLink : null}{" "}
+        <Link href={`/classes/${sessionId}/processing`} className={styles.inlineRetry}>
+          View progress
+        </Link>
       </Status>
       {retry.problem ? <Status tone="error">{retry.problem}</Status> : null}
       {retry.progressProblem ? (
@@ -131,7 +162,8 @@ export function AutomaticLearningView({
   const live = useAutomaticLearning(sessionId);
   const status = live.status ?? initial;
   const retry = useLearningRetry(sessionId, live);
-  const canRetry = canRetryLearning(status);
+  const recovery = automaticLearningRecovery(status);
+  const canRetry = !!recovery.retryLabel;
   return (
     <div className="preview-stack">
       <Link className="preview-back" href={`/classes/${sessionId}`}>
@@ -157,32 +189,48 @@ export function AutomaticLearningView({
           </>
         ) : null}
         <Actions>
+          <RecoveryLinks sessionId={sessionId} kind={recovery.kind} />
+          {canRetry ? (
+            <Button secondary disabled={retry.busy} onClick={retry.retry}>
+              {retry.busy ? "Retrying…" : recovery.retryLabel}
+            </Button>
+          ) : null}
           {status.notesReady ? (
-            <LinkButton href={`/classes/${sessionId}/notes`}>Class notes</LinkButton>
+            <LinkButton secondary={status.state === "blocked"} href={`/classes/${sessionId}/notes`}>
+              Class notes
+            </LinkButton>
           ) : null}
           {status.cardsReady ? (
             <LinkButton secondary href={`/classes/${sessionId}/cards`}>
               Flashcards
             </LinkButton>
           ) : null}
-          <LinkButton secondary href={`/classes/${sessionId}/sources`}>
-            Add material
-          </LinkButton>
-          {canRetry ? (
-            <Button secondary disabled={retry.busy} onClick={retry.retry}>
-              {retry.busy ? "Retrying…" : "Retry failed attempt"}
-            </Button>
+          {status.state !== "blocked" && !recovery.kind ? (
+            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+              Add material
+            </LinkButton>
           ) : null}
         </Actions>
-        <p className="preview-muted">
-          This page shows whether your notes and flashcards are being created, ready, or need
-          attention. Processing continues when you leave this page. You can also retry a failed
-          attempt directly from the class page.
-        </p>
-        <p className="preview-muted">
-          New material updates this class automatically. Your saved edits and card review history
-          stay available.
-        </p>
+        {status.state === "blocked" ? (
+          <p className="preview-muted">
+            {recovery.retryLabel === "Retry after service update"
+              ? "After the Recalino team updates the service, retry using this class's saved material."
+              : recovery.retryLabel === "Retry after allowance changes"
+                ? "After your allowance is updated, retry using this class's saved material."
+                : "Your saved edits and card review history stay available."}
+          </p>
+        ) : (
+          <>
+            <p className="preview-muted">
+              This page shows whether your notes and flashcards are being created or ready.
+              Processing continues when you leave this page.
+            </p>
+            <p className="preview-muted">
+              New material updates this class automatically. Your saved edits and card review
+              history stay available.
+            </p>
+          </>
+        )}
       </Panel>
     </div>
   );

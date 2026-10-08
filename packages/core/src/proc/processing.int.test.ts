@@ -303,6 +303,73 @@ async function fixture(grant = true) {
   return { ctx, session, asset, provider, job, start, work };
 }
 describe("durable processing, atomic quota and provenance on Postgres", () => {
+  it.each([
+    ["session", "processing_budget_session"],
+    ["userMonth", "processing_budget_user_month"],
+    ["systemDay", "processing_budget_system_day"],
+    ["systemMonth", "processing_budget_system_month"],
+  ] as const)(
+    "preserves the %s AI budget blocker without dispatching or consuming learner units",
+    async (scope, code) => {
+      const f = await fixture();
+      const policy = await db.selectFrom("quota.cost_policy").selectAll().executeTakeFirstOrThrow();
+      const before = await allowance(db, f.ctx);
+      const run = await f.start();
+      try {
+        await configureCostPolicy(
+          db,
+          {
+            version: "synthetic-cost-blocker",
+            currency: "USD",
+            killSwitch: false,
+            limits: {
+              session: 100000000,
+              userMonth: 100000000,
+              systemDay: 100000000,
+              systemMonth: 100000000,
+              [scope]: 9,
+            },
+          },
+          { actorId: "synthetic-operator", reason: "Local cost blocker regression" },
+        );
+        await f.work();
+        expect(await getRun(db, f.ctx, run.id)).toMatchObject({ state: "failed", lastError: code });
+        expect(f.provider.calls).toBe(0);
+        expect(
+          await db
+            .selectFrom("proc.provider_attempt")
+            .select("id")
+            .where("run_id", "=", run.id)
+            .execute(),
+        ).toHaveLength(0);
+        expect(await allowance(db, f.ctx)).toEqual(before);
+        expect(
+          await db
+            .selectFrom("quota.reservation")
+            .select(["closed_at", "settled_amounts"])
+            .where("id", "=", run.reservationId)
+            .executeTakeFirstOrThrow(),
+        ).toMatchObject({ closed_at: expect.any(Date), settled_amounts: amounts({}) });
+      } finally {
+        await configureCostPolicy(
+          db,
+          {
+            version: policy.version,
+            currency: policy.currency,
+            killSwitch: policy.kill_switch,
+            limits: policy.limits as {
+              session: number;
+              userMonth: number;
+              systemDay: number;
+              systemMonth: number;
+            },
+          },
+          { actorId: "synthetic-operator", reason: "Restore local fixture cost policy" },
+        );
+      }
+    },
+  );
+
   it("FR-PROC-003 preserves a changed provider configuration diagnostic without dispatching", async () => {
     const f = await fixture();
     const run = await f.start();
