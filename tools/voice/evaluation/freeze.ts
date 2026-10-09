@@ -125,20 +125,25 @@ export function assertFrozen() {
   return freeze;
 }
 
+/** SHA-256 of the manifest's compact JSON, so reformatting the committed file changes nothing. */
+function manifestDigest(value: unknown) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
 async function main() {
-  const path = join(EVALUATION_DIR, "ami-manifest.json");
   if (process.argv.includes("--write")) {
     if (existsSync(join(EVALUATION_DIR, "freeze.json"))) throw new Error("already frozen");
-    const body = `${JSON.stringify(await manifest(), null, 2)}\n`;
-    writeFileSync(path, body);
+    const data = await manifest();
+    writeFileSync(join(EVALUATION_DIR, "ami-manifest.json"), `${JSON.stringify(data, null, 2)}\n`);
     writeFileSync(
       join(EVALUATION_DIR, "freeze.json"),
       `${JSON.stringify(
         {
+          protocol: "voice-eval-ami-v1",
           frozenAt: new Date().toISOString(),
           sources: sourceHashes(),
           pipeline: pipelineSettings(),
-          manifestSha256: createHash("sha256").update(body).digest("hex"),
+          manifestSha256: manifestDigest(data),
           amendments: [],
         },
         null,
@@ -149,9 +154,12 @@ async function main() {
     return;
   }
   assertFrozen();
-  const body = `${JSON.stringify(await manifest(), null, 2)}\n`;
-  if (createHash("sha256").update(body).digest("hex") !== readFreeze().manifestSha256)
+  const data = await manifest();
+  if (manifestDigest(data) !== readFreeze().manifestSha256)
     throw new Error("data manifest differs from the freeze");
+  const committed = JSON.parse(readFileSync(join(EVALUATION_DIR, "ami-manifest.json"), "utf8"));
+  if (manifestDigest(committed) !== readFreeze().manifestSha256)
+    throw new Error("ami-manifest.json differs from the freeze");
   console.log("freeze verified");
 }
 
