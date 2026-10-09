@@ -11,16 +11,16 @@ const APPROVED_DEVIATIONS: Record<string, string> = {
   "Sign out": "HANDOFF_R1_REVIEW.md, item 8: FR-ACC-002 needs sign-out; approved 2026-10-01",
   "Clear search":
     "HANDOFF_R1_REVIEW.md, item 10: names the clear button of frame A2-1b; approved 2026-10-02",
-  Courses: "HANDOFF_R1_REVIEW.md, item 11: D48 Course/Session naming; approved 2026-10-08",
-  "New session": "HANDOFF_R1_REVIEW.md, item 11: D48 Course/Session naming; approved 2026-10-08",
+  Courses: "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
+  "New session": "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
   "Record your first session. We'll help you make notes and cards from it.":
-    "HANDOFF_R1_REVIEW.md, item 11: D48 Course/Session naming; approved 2026-10-08",
+    "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
   "No sessions yet. Add your first session.":
-    "HANDOFF_R1_REVIEW.md, item 11: D48 Course/Session naming; approved 2026-10-08",
+    "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
   "No cards yet. Cards appear after a session is processed.":
-    "HANDOFF_R1_REVIEW.md, item 11: D48 Course/Session naming; approved 2026-10-08",
+    "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
   "The Terms changed on {date}. Please read and accept them to keep processing new sessions.":
-    "HANDOFF_R1_REVIEW.md, item 11: D48 Course/Session naming; approved 2026-10-08",
+    "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
 };
 
 function decodeEntities(text: string): string {

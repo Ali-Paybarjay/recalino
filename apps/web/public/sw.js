@@ -1,5 +1,5 @@
 /* Push-only service worker. It deliberately never caches private pages or API responses. */
-// Stored notifications still link to /classes/…; pages moved to /sessions/… (D49).
+// Stored notifications still link to /classes/…; pages moved to /sessions/… (D51).
 function sessionPath(href) {
   const match =
     typeof href === "string" &&

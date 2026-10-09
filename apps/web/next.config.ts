@@ -57,7 +57,7 @@ const nextConfig: NextConfig = {
     "/api/voice/**": nativeProcessingResources,
     "/api/me/voice": nativeProcessingResources,
   },
-  // D49: learner pages moved from /classes to /sessions. Saved notifications, bookmarks and
+  // D51: learner pages moved from /classes to /sessions. Saved notifications, bookmarks and
   // installed shortcuts keep working; the /api/classes routes are unchanged.
   redirects() {
     return [{ source: "/classes/:path*", destination: "/sessions/:path*", permanent: true }];
