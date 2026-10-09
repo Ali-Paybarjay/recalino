@@ -116,6 +116,11 @@ test("D49 practice notes are evidence-backed, correctable, and the lesson teache
     await expect(practice.getByText(/You chose Again or Forgot 2 times/)).toBeVisible();
     await expect(page.getByText(/Latest answer considered:/)).toBeVisible();
     await expect(page.getByRole("heading", { name: "Your next step" })).toBeVisible();
+    // D49 release switch: memory does not reach generation yet, so nothing promises it.
+    await expect(
+      page.getByRole("button", { name: "Explain it more simply next time" }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel("Use simpler explanations")).toHaveCount(0);
     await page.screenshot({ path: `${output}/your-learning-${name}.png`, fullPage: true });
   }
   await expectNoAxeViolations(page);

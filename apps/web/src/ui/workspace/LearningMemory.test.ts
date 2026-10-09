@@ -104,6 +104,7 @@ describe("D49 Your learning memory view", () => {
         memory,
         timeZone: "UTC",
         busy: false,
+        teachingMemory: true,
         onFeedback: async (body, key) => {
           sent.push({ body, key });
           return saved.shift() ?? false;
@@ -136,16 +137,19 @@ describe("D49 Your learning memory view", () => {
   });
 
   it("offers the simpler-explanation request only where a later class run can use it", () => {
-    const render = (entry: MemoryItem) =>
+    const render = (entry: MemoryItem, teachingMemory = true) =>
       renderToStaticMarkup(
         createElement(LearningMemoryPanel, {
           memory: { ...memory, needsPractice: [entry] },
           timeZone: "UTC",
           busy: false,
           onFeedback: async () => true,
+          teachingMemory,
         }),
       );
     expect(render(item)).toContain("Explain it more simply next time");
+    // D49 release switch off (the default): no request that could not reach generation.
+    expect(render(item, false)).not.toContain("Explain it more simply next time");
     const manual = { ...item, simplerApplies: false, sessionId: null };
     expect(render(manual)).not.toContain("Explain it more simply next time");
     // A request saved earlier can always be withdrawn.
@@ -182,6 +186,7 @@ describe("D49 Your learning memory view", () => {
         timeZone: "Europe/London",
         busy: false,
         onFeedback: async () => true,
+        teachingMemory: true,
       }),
     );
     expect(html).toContain("You asked for simpler explanations");

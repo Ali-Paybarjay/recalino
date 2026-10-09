@@ -260,6 +260,12 @@ export async function createProcessingRun(
      * `reuseCompletedKnowledge` alone recovers the class's newest run.
      */
     inheritPracticeCandidatesFrom?: string;
+    /**
+     * D49: send the explicit simpler-explanation choice and memory points to generation.
+     * Off unless the caller opts in: the owner released D49 without it (2026-10-09) until a
+     * broader evaluation shows stable output. Off, the snapshot is version 1 as before D49.
+     */
+    teachingMemory?: boolean;
   },
 ): Promise<ProcessingRun> {
   const input = createRunSchema.parse(raw);
@@ -367,8 +373,10 @@ export async function createProcessingRun(
       );
     // D49: memory is frozen with the run. A recovery run keeps its original points, so later
     // reviews neither redefine the request nor void reuse of an already paid response.
-    const supplied =
-      options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
+    const teachingMemory = options.teachingMemory === true;
+    const supplied = !teachingMemory
+      ? []
+      : options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
         ? await inheritedPracticeCandidates(
             tx,
             ctx,
@@ -394,7 +402,7 @@ export async function createProcessingRun(
         account.profile.explanationLanguage === "english" ? "en" : account.profile.firstLanguage,
       profileVersion: account.profile.version,
       learnerContext: snapshotLearnerTeachingContext(account.profile, {
-        simplerExplanations: explicit("simpler_explanations"),
+        simplerExplanations: teachingMemory && explicit("simpler_explanations"),
         practiceCandidates,
       }),
       teachingPreferences: { shorterExamples: explicit("shorter_examples") },

@@ -5,7 +5,17 @@ import { workspaceRequest } from "./api";
 import { LearningMemoryPanel, NextStepPanel } from "./LearningMemory";
 import { learningMemoryCopy } from "./learning-memory-copy";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
-export function LearningProfile({ initial }: { initial: LearningOverview }) {
+/**
+ * `teachingMemory` follows the D49 release switch: while memory does not reach generation,
+ * the controls that would promise a change in later lessons are not offered.
+ */
+export function LearningProfile({
+  initial,
+  teachingMemory = false,
+}: {
+  initial: LearningOverview;
+  teachingMemory?: boolean;
+}) {
   const [overview, setOverview] = useState(initial),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
@@ -102,6 +112,7 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
         timeZone={overview.timezone}
         busy={busy}
         onFeedback={feedback}
+        teachingMemory={teachingMemory}
       />
       <Panel title="Your practice over time">
         {overview.activity.history.length ? (
@@ -146,18 +157,20 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
             <option value="yes">Shorter examples</option>
           </select>
         </Field>
-        <Field label={learningMemoryCopy.simplerLabel} hint={learningMemoryCopy.simplerHint}>
-          <select
-            disabled={busy}
-            value={overview.simplerExplanations ? "yes" : "no"}
-            onChange={(event) =>
-              change({ action: "set_simpler_explanations", value: event.target.value === "yes" })
-            }
-          >
-            <option value="no">{learningMemoryCopy.simplerStandard}</option>
-            <option value="yes">{learningMemoryCopy.simplerOn}</option>
-          </select>
-        </Field>
+        {teachingMemory ? (
+          <Field label={learningMemoryCopy.simplerLabel} hint={learningMemoryCopy.simplerHint}>
+            <select
+              disabled={busy}
+              value={overview.simplerExplanations ? "yes" : "no"}
+              onChange={(event) =>
+                change({ action: "set_simpler_explanations", value: event.target.value === "yes" })
+              }
+            >
+              <option value="no">{learningMemoryCopy.simplerStandard}</option>
+              <option value="yes">{learningMemoryCopy.simplerOn}</option>
+            </select>
+          </Field>
+        ) : null}
         {overview.suggestion ? (
           <>
             <h3>Try shorter examples?</h3>

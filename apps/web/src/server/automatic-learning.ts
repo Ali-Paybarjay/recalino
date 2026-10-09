@@ -46,7 +46,7 @@ import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
 import { getProcessingDefinition } from "./processing-jobs";
 import { getObjectStore } from "./storage";
-import { practiceCandidatesBeforeRun } from "./teaching-memory";
+import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
@@ -319,6 +319,7 @@ export async function automaticLearningSync(
         reuseCompletedKnowledge: !!options.retryKey,
         // D49: bounded practice points frozen with the run; a retry keeps the original points.
         practiceCandidates: async () => practiceCandidates,
+        teachingMemory: TEACHING_MEMORY_IN_GENERATION,
       },
     );
     // Replayed operations after a lost acknowledgement can already be terminal.

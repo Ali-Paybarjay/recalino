@@ -15,7 +15,8 @@ vi.mock("@recalino/core/plt", async (original) => ({
   ...(await original<object>()),
   createLogger: () => mocks.log,
 }));
-const { lessonAdaptationFor, practiceCandidatesBeforeRun } = await import("./teaching-memory");
+const { lessonAdaptationFor, practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } =
+  await import("./teaching-memory");
 const { AppError } = await import("@recalino/core/plt");
 
 const db = { transaction: () => ({ execute: (run: (tx: unknown) => unknown) => run({}) }) };
@@ -37,15 +38,30 @@ describe("D49 teaching memory never blocks processing or exposes content", () =>
     mocks.candidates.mockResolvedValue(points);
     const now = new Date("2026-10-08T00:00:00Z");
     expect(
-      await practiceCandidatesBeforeRun(db as unknown as Database, ctx, "session", now),
+      await practiceCandidatesBeforeRun(db as unknown as Database, ctx, "session", now, true),
     ).toEqual(points);
     expect(mocks.candidates).toHaveBeenCalledWith({}, ctx, { sessionId: "session", now });
+  });
+
+  it("reads no memory while the D49 release switch keeps it out of generation", async () => {
+    // Owner decision 2026-10-09: released without memory reaching generation.
+    expect(TEACHING_MEMORY_IN_GENERATION).toBe(false);
+    expect(
+      await practiceCandidatesBeforeRun(db as unknown as Database, ctx, "session", new Date()),
+    ).toEqual([]);
+    expect(mocks.candidates).not.toHaveBeenCalled();
   });
 
   it("degrades to no memory and logs only codes when memory cannot be read", async () => {
     mocks.candidates.mockRejectedValue(new Error("Private synthetic class text"));
     expect(
-      await practiceCandidatesBeforeRun(db as unknown as Database, ctx, "session", new Date()),
+      await practiceCandidatesBeforeRun(
+        db as unknown as Database,
+        ctx,
+        "session",
+        new Date(),
+        true,
+      ),
     ).toEqual([]);
     expect(mocks.log).toHaveBeenCalledWith("error", "practice_memory_unavailable", {
       request_id: "request",

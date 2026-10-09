@@ -10,6 +10,14 @@ import {
 } from "@recalino/core/proc";
 
 /**
+ * D49 release switch, product owner decision 2026-10-09: Your learning, corrections and the
+ * Class Notes check ship; memory and the simpler-explanation choice reach generation only
+ * after a broader live evaluation. While off, no memory is read for runs and the controls that
+ * promise a generation change stay hidden.
+ */
+export const TEACHING_MEMORY_IN_GENERATION = false;
+
+/**
  * D49: memory is optional teaching context. It is read before the run transaction, so a
  * failure here degrades to a version 1 snapshot instead of blocking class processing or
  * aborting the reservation transaction. The log carries no class text or labels.
@@ -19,7 +27,9 @@ export async function practiceCandidatesBeforeRun(
   ctx: LearnerContext,
   sessionId: string,
   now: Date,
+  enabled = TEACHING_MEMORY_IN_GENERATION,
 ): Promise<readonly PracticeCandidate[]> {
+  if (!enabled) return [];
   try {
     return await db
       .transaction()

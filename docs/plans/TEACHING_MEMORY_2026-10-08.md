@@ -68,6 +68,8 @@
 
 ### ۳.۳ اتصال حافظه به تدریس بعدی (فاز ۳)
 
+> **وضعیت انتشار (2026-10-09، تصمیم مالک):** خاموش. سازوکار زیر کامل و آزموده است، ولی `TEACHING_MEMORY_IN_GENERATION` در `apps/web/src/server/teaching-memory.ts` برابر `false` است. هیچ Runی حافظه نمی‌خواند و `createProcessingRun` بدون `teachingMemory: true` همیشه snapshot نسخهٔ ۱ می‌سازد (Retry و بازیابی هم همین‌طور). کنترل «Use simpler explanations» و دکمهٔ «Explain it more simply next time» پنهان‌اند. روشن کردن آن به ارزیابی گسترده‌تر نیاز دارد (بخش ۸.۱).
+
 - **`learnerContext` نسخهٔ ۲**، snapshotشده در شروع Run:
   - `simplerExplanations`: فقط از انتخاب صریح.
   - `practiceCandidates`: حداکثر ۸ مورد، شامل هدف واژگانی، دلیل (`recall_difficulty` یا `asked_simpler`)، دامنه (`this_class` یا `same_course`)، تعداد Again، تاریخ و کلاس منشأ (`sourceSessionId`).

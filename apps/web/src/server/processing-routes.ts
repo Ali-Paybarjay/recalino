@@ -23,7 +23,7 @@ import { getAiProvider } from "./ai";
 import type { Handler, RequestContext } from "./api";
 import { runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
-import { practiceCandidatesBeforeRun } from "./teaching-memory";
+import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
 function actor(ctx: RequestContext): LearnerContext {
   if (!ctx.userId) throw errors.unauthenticated();
@@ -32,7 +32,8 @@ function actor(ctx: RequestContext): LearnerContext {
 function options() {
   const job = getProcessingDefinition();
   if (!job) throw errors.validationFailed({ processing: ["storage_unavailable"] });
-  return { provider: getAiProvider(), job };
+  // A retry uses the same options, so it follows the same D49 release switch.
+  return { provider: getAiProvider(), job, teachingMemory: TEACHING_MEMORY_IN_GENERATION };
 }
 function operationKey(request: Request) {
   const key = request.headers.get("idempotency-key");

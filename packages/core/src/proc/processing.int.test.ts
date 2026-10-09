@@ -1237,6 +1237,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       {
         provider: f.provider,
         job: f.job,
+        teachingMemory: true,
         practiceCandidates: async (_tx, input) => {
           snapshotCalls++;
           expect(input.sessionId).toBe(f.session.id);
@@ -1329,7 +1330,12 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       db,
       f.ctx,
       { sessionId: f.session.id, operationKey: randomUUID() },
-      { provider: f.provider, job: f.job, practiceCandidates: async () => original },
+      {
+        provider: f.provider,
+        job: f.job,
+        teachingMemory: true,
+        practiceCandidates: async () => original,
+      },
     );
     await f.work();
     expect((await getRun(db, f.ctx, first.id)).state).toBe("ready");
@@ -1341,6 +1347,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
         provider: f.provider,
         job: f.job,
         reuseCompletedKnowledge: true,
+        teachingMemory: true,
         practiceCandidates: async () => {
           throw new Error("A recovery run must not take a fresh memory snapshot");
         },
@@ -1361,7 +1368,12 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       db,
       f.ctx,
       { sessionId: f.session.id, operationKey: randomUUID() },
-      { provider: f.provider, job: f.job, practiceCandidates: async () => [] },
+      {
+        provider: f.provider,
+        job: f.job,
+        teachingMemory: true,
+        practiceCandidates: async () => [],
+      },
     );
     await f.work();
     expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
@@ -1370,6 +1382,43 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(f.provider.calls).toBe(1);
     expect((await getLatestVersion(db, f.ctx, f.session.id))?.generation).toMatchObject({
       teachingAdaptation: { version: 1, focus: [], simplerExplanations: false },
+    });
+  });
+  it("D49 release switch: without teachingMemory no choice or memory point reaches generation", async () => {
+    const f = await fixture();
+    await saveTeachingPreference(db, f.ctx, {
+      key: "simpler_explanations",
+      origin: "explicit",
+      value: true,
+    });
+    let snapshotCalls = 0;
+    const run = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      {
+        provider: f.provider,
+        job: f.job,
+        practiceCandidates: async () => {
+          snapshotCalls++;
+          return [];
+        },
+      },
+    );
+    expect(snapshotCalls).toBe(0);
+    const saved = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", run.id)
+      .executeTakeFirstOrThrow();
+    expect((saved.settings as { learnerContext: unknown }).learnerContext).toEqual({ version: 1 });
+    await f.work();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.inputs[0]).toMatchObject({ learnerContext: { version: 1 } });
+    expect(f.provider.prompts[0]).not.toContain("explicitly chose simpler explanations");
+    expect(f.provider.prompts[0]).not.toContain("practiceFocus lists");
+    expect((await getLatestVersion(db, f.ctx, f.session.id))?.generation).toMatchObject({
+      teachingAdaptation: { focus: [], simplerExplanations: false },
     });
   });
   it.each(["single", "batch"] as const)(

@@ -103,10 +103,13 @@ export function LearningMemoryPanel({
   timeZone,
   busy,
   onFeedback,
+  teachingMemory = false,
 }: {
   memory: Memory;
   timeZone: string;
   busy: boolean;
+  /** D49 release switch: simpler-explanation requests are offered only while they can apply. */
+  teachingMemory?: boolean;
   onFeedback: (
     body: {
       learningItemId: string;
@@ -129,11 +132,12 @@ export function LearningMemoryPanel({
     });
   };
   const date = (value: string) => memoryDate(value, timeZone);
+  const simplerRequests = teachingMemory ? memory.simplerRequests : [];
   const empty =
     !memory.needsPractice.length &&
     !memory.recalledRecently.length &&
     !memory.dismissed.length &&
-    !memory.simplerRequests.length;
+    !simplerRequests.length;
   return (
     <Panel title={copy.noticedTitle}>
       <p className="preview-muted">{copy.noticedIntro}</p>
@@ -176,7 +180,8 @@ export function LearningMemoryPanel({
                   >
                     {copy.notDifficulty}
                   </Button>
-                  {item.simplerApplies || item.feedback.explainSimplerAt !== null ? (
+                  {teachingMemory &&
+                  (item.simplerApplies || item.feedback.explainSimplerAt !== null) ? (
                     // The label names the action, so it is not also an aria-pressed toggle.
                     <Button
                       secondary
@@ -247,11 +252,11 @@ export function LearningMemoryPanel({
           </ul>
         </section>
       ) : null}
-      {memory.simplerRequests.length ? (
+      {simplerRequests.length ? (
         <section aria-labelledby="memory-simpler">
           <h3 id="memory-simpler">{copy.simplerTitle}</h3>
           <ul className="preview-list">
-            {memory.simplerRequests.map((item) => (
+            {simplerRequests.map((item) => (
               <li key={item.learningItemId}>
                 <Goal item={item} />
                 <p>{copy.simplerReason(date(item.askedAt))}</p>
