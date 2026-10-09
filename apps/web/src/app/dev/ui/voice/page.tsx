@@ -32,7 +32,7 @@ export default async function VoiceReferencePage({
           style={{ display: "flex", gap: 20, marginBottom: 20 }}
         >
           <Link href="/dev/ui/voice">Voice settings</Link>
-          <Link href="/dev/ui/voice?view=class">Class confirmation</Link>
+          <Link href="/dev/ui/voice?view=class">Session confirmation</Link>
         </nav>
         <div className="preview-stack">
           {view === "class" ? (
@@ -40,8 +40,8 @@ export default async function VoiceReferencePage({
               sessionId="10000000-0000-4000-8000-000000000001"
               userId="10000000-0000-4000-8000-000000000002"
             >
-              <section aria-label="Synthetic class notes" className="preview-panel">
-                <h2>Class notes</h2>
+              <section aria-label="Synthetic session notes" className="preview-panel">
+                <h2>Session notes</h2>
                 <p>Synthetic written notes remain independent of speaker confirmation.</p>
               </section>
             </VoiceConfirmation>

@@ -239,7 +239,7 @@ export function SystemScreens(props: AdminScreenProps) {
                     {item.kind === "account"
                       ? t("Account deletion", "حذف حساب")
                       : item.kind === "session"
-                        ? t("Class deletion", "حذف کلاس")
+                        ? t("Session deletion", "حذف کلاس")
                         : item.kind === "source"
                           ? t("Source deletion", "حذف منبع")
                           : t("Cleanup request", "درخواست پاک‌سازی")}

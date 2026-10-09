@@ -166,7 +166,7 @@ export class ManualAudioManager {
             );
             check();
             if (current.run.id !== entry.runId || current.run.sessionId !== entry.sessionId)
-              throw new Error("The confirmed class identity has changed.");
+              throw new Error("The confirmed session identity has changed.");
             if (current.run.state !== "awaiting_upload") {
               await this.forget(entry.runId);
               this.deps.changed?.(entry.sessionId);

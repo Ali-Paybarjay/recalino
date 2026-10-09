@@ -141,7 +141,7 @@ test("simple review retries one unsaved answer and preserves exactly four answer
   ).toBeVisible();
   await page.getByRole("button", { name: "Retry sample save", exact: true }).click();
   await expect(page).toHaveURL(/\/preview\/review-card$/);
-  await expect(page.getByText("Card 2 of 4 · Sample session", { exact: true })).toBeVisible();
+  await expect(page.getByText("Card 2 of 4 · Sample review", { exact: true })).toBeVisible();
 
   for (const rating of ["Forgot", "Remembered", "Remembered"]) {
     await page.getByRole("button", { name: "Show answer", exact: true }).click();

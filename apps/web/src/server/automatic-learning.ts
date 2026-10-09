@@ -46,6 +46,7 @@ import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
 import { getProcessingDefinition } from "./processing-jobs";
 import { getObjectStore } from "./storage";
+import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
@@ -94,7 +95,7 @@ export function automaticLearningMessage(
   if (code === "quota_insufficient")
     return "Your material is saved. More allowance is needed to finish the notes and flashcards.";
   if (code === "processing_budget_session")
-    return "The next processing step does not fit within this class's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
+    return "The next processing step does not fit within this session's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
   if (code === "processing_budget_user_month")
     return "The next processing step does not fit within your account's monthly AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
   if (code === "processing_budget_system_day")
@@ -296,6 +297,10 @@ export async function automaticLearningSync(
   }
   const processing = deps.processing();
   if (!processing) return progress("blocked", "storage_unavailable", null);
+  // Read outside the run transaction; a recovery run inherits the recovered run's points.
+  const practiceCandidates = options.retryKey
+    ? []
+    : await practiceCandidatesBeforeRun(db, ctx, sessionId, deps.now());
   try {
     const run = await createProcessingRun(
       db,
@@ -312,6 +317,9 @@ export async function automaticLearningSync(
         job: processing,
         now: deps.now(),
         reuseCompletedKnowledge: !!options.retryKey,
+        // D49: bounded practice points frozen with the run; a retry keeps the original points.
+        practiceCandidates: async () => practiceCandidates,
+        teachingMemory: TEACHING_MEMORY_IN_GENERATION,
       },
     );
     // Replayed operations after a lost acknowledgement can already be terminal.

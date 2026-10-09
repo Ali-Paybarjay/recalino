@@ -482,6 +482,19 @@ export interface OrgUnit {
   position: Generated<number>;
 }
 
+export interface PersItemFeedback {
+  active: boolean;
+  created_at: Generated<Timestamp>;
+  evidence_order: Int8 | null;
+  id: Generated<string>;
+  kind: string;
+  learning_item_id: string;
+  operation_key: string;
+  request_hash: string;
+  session_id: string | null;
+  user_id: string;
+}
+
 export interface PltAdminOwner {
   created_at: Generated<Timestamp>;
   enabled: Generated<boolean>;
@@ -1189,6 +1202,7 @@ export interface DB {
   "org.deletion_request": OrgDeletionRequest;
   "org.outbox": OrgOutbox;
   "org.unit": OrgUnit;
+  "pers.item_feedback": PersItemFeedback;
   "plt.admin_owner": PltAdminOwner;
   "plt.audit_event": PltAuditEvent;
   "plt.idempotency_key": PltIdempotencyKey;

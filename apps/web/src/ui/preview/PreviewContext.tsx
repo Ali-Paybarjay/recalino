@@ -155,12 +155,12 @@ export function createSampleState(): PreviewState {
     ],
     courses: [
       { id: "esol", name: "ESOL B1", units: ["Everyday English"] },
-      { id: "default", name: "My classes", units: [] },
+      { id: "default", name: "My Courses", units: [] },
     ],
     sources: [
       {
         id: "audio-1",
-        name: "Class recording",
+        name: "Session recording",
         kind: "audio",
         durationMinutes: 48,
         pages: 0,

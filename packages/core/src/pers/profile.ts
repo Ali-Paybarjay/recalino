@@ -8,23 +8,32 @@ import {
 } from "../acc";
 import { listCards } from "../card";
 import type { Database } from "../db";
+import { cardHtmlToText } from "../lkm";
 import { noteEditActivity } from "../note";
 import { errors, type LearnerContext } from "../plt";
 import { getReviewQueue, type ReviewActivity, reviewActivity } from "../srs";
+import { learningMemory } from "./memory";
+import type { LearningMemory } from "./memory-rules";
 export interface LearningOverview {
   profile: LearningProfile;
+  /** IANA zone used to show evidence dates; UTC until the learner saves one. */
+  timezone: string;
   activity: ReviewActivity;
   acceptedCards: number;
   dueCards: number;
+  /** Plain text only: card faces are rendered markup and are never shown as a label. */
   repeatedMistakes: { cardId: string; front: string; again: number }[];
   supportEstimate: {
     level: null;
     speaking: "unknown";
     evidenceCount: number;
-    updatedAt: string;
+    /** The latest saved answer considered, or null; never the time the page was opened. */
+    updatedAt: string | null;
     uncertainty: "insufficient_evidence";
   };
+  memory: LearningMemory;
   shorterExamples: boolean;
+  simplerExplanations: boolean;
   suggestion: { key: "shorter_examples"; evidenceCount: number; classes: number } | null;
 }
 export async function learningOverview(
@@ -41,8 +50,16 @@ export async function learningOverview(
     noteEditActivity(db, ctx),
   ]);
   if (!account) throw errors.notFound();
+  const memory = await learningMemory(db, ctx, {
+    now,
+    dueCount: queue.dueCount,
+    nextDueAt: queue.nextDueAt,
+  });
   const explicit = preferences.find(
       (item) => item.key === "shorter_examples" && item.origin === "explicit",
+    ),
+    simpler = preferences.find(
+      (item) => item.key === "simpler_explanations" && item.origin === "explicit",
     ),
     inferred = preferences.find(
       (item) => item.key === "shorter_examples" && item.origin === "inferred",
@@ -53,22 +70,27 @@ export async function learningOverview(
   const baseline = dismissed.data?.dismissed ? dismissed.data.evidenceCount : 0;
   return {
     profile: account.profile,
+    timezone: account.timezone ?? "UTC",
     activity,
     acceptedCards: cards.filter((card) => card.status === "active" || card.status === "known")
       .length,
     dueCards: queue.dueCount,
     repeatedMistakes: activity.repeatedMistakes.flatMap((item) => {
       const card = cards.find((card) => card.id === item.cardId);
-      return card ? [{ ...item, front: card.front }] : [];
+      return card
+        ? [{ ...item, front: card.pronunciationTarget ?? cardHtmlToText(card.front) }]
+        : [];
     }),
     supportEstimate: {
       level: null,
       speaking: "unknown",
       evidenceCount: activity.answers,
-      updatedAt: now.toISOString(),
+      updatedAt: memory.lastEvidenceAt,
       uncertainty: "insufficient_evidence",
     },
+    memory,
     shorterExamples: explicit?.value === true,
+    simplerExplanations: simpler?.value === true,
     suggestion:
       !explicit && edits.shorterItems - baseline >= 3 && edits.classesWithShorterEdits >= 2
         ? {
@@ -81,6 +103,7 @@ export async function learningOverview(
 }
 export const preferenceChangeSchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("set_shorter_examples"), value: z.boolean() }),
+  z.strictObject({ action: z.literal("set_simpler_explanations"), value: z.boolean() }),
   z.strictObject({ action: z.literal("accept_shorter_examples") }),
   z.strictObject({ action: z.literal("dismiss_shorter_examples") }),
   z.strictObject({ action: z.literal("reset_suggestions") }),
@@ -99,7 +122,13 @@ export async function changeLearningPreferences(
       origin: "inferred",
       value: { dismissed: true, evidenceCount: edits.shorterItems },
     });
-  } else if (change.action === "set_shorter_examples")
+  } else if (change.action === "set_simpler_explanations")
+    await saveTeachingPreference(db, ctx, {
+      key: "simpler_explanations",
+      origin: "explicit",
+      value: change.value,
+    });
+  else if (change.action === "set_shorter_examples")
     await saveTeachingPreference(db, ctx, {
       key: "shorter_examples",
       origin: "explicit",

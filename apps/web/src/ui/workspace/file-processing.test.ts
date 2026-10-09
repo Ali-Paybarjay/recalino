@@ -238,7 +238,7 @@ describe("truthful file processing feedback", () => {
         [source()],
       );
       expect(feedback).toMatchObject({ state: "error", retry: false });
-      expect(feedback.detail).toContain("Class progress to get processing help");
+      expect(feedback.detail).toContain("Session progress to get processing help");
       expect(feedback.detail).toContain("After the service is updated");
       expect(feedback.detail).toContain("do not need to upload the files again");
       expect(feedback.detail).not.toContain("Review your allowance");

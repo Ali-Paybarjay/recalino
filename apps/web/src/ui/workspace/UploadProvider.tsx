@@ -120,8 +120,8 @@ function UploadIndicator({ problem }: { problem: string | null }) {
                 You can use other pages. If your browser pauses, your saved upload resumes when you
                 return.
               </p>
-              {!pathname.startsWith(`/classes/${batch.sessionId}/sources`) && (
-                <Link href={`/classes/${batch.sessionId}/sources`}>View files and progress</Link>
+              {!pathname.startsWith(`/sessions/${batch.sessionId}/sources`) && (
+                <Link href={`/sessions/${batch.sessionId}/sources`}>View files and progress</Link>
               )}
               {batch.phase === "attention" && (
                 <Button secondary onClick={() => act(() => manager.retry(batch.id))}>

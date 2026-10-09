@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
+import { lessonAdaptationFor } from "../../../../server/teaching-memory";
 import { workspaceActor } from "../../../../server/workspace";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { NoteView } from "../../../../ui/workspace/NoteView";
@@ -27,6 +28,12 @@ export default async function NoteVersionPage({ params }: { params: Promise<{ id
     revision.sessionId,
     revision.knowledgeVersionId,
   );
+  const adaptation = await lessonAdaptationFor(
+    getDatabase(),
+    workspaceActor(learner),
+    revision.knowledgeVersionId,
+    revision.model.learningItems,
+  );
   return (
     <LearnerShell
       learner={learner}
@@ -44,6 +51,7 @@ export default async function NoteVersionPage({ params }: { params: Promise<{ id
         initial={null}
         latest={null}
         readOnlyRevision={revision}
+        adaptation={adaptation}
         sourceIssues={status.issues.map((issue) => ({
           ...issue,
           action: "none",

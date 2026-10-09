@@ -77,13 +77,20 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await page.setViewportSize({ width: 420, height: 900 });
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/dev/ui/study");
-  const frame = page.frameLocator('iframe[title^="Class notes:"]');
+  const frame = page.frameLocator('iframe[title^="Session notes:"]');
   await expect(frame.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(frame.locator("#core .entry")).toHaveCount(3);
   await expect(frame.locator("#mistakes")).toContainText(
     "اشتباهات گفتاری این جلسه نمایش داده نشده",
   );
-  expect(await page.locator("iframe").getAttribute("sandbox")).toBe("");
+  await expect(page.locator('iframe[title^="Session notes:"]')).toHaveAttribute(
+    "sandbox",
+    "allow-scripts",
+  );
+  await expect(page.locator('iframe[title^="Session notes:"]')).not.toHaveAttribute(
+    "sandbox",
+    /allow-same-origin/,
+  );
   for (const width of [420, 390]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -128,8 +135,11 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await page.emulateMedia({ media: "print" });
   await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(frame.locator("nav")).toBeHidden();
-  await expect(frame.locator(".key")).toBeVisible();
-  await expect(frame.locator("ol.gaps details").first()).toBeHidden();
+  // Print replaces each hidden-answer toggle group with its key: the gap-fill and D49 check.
+  await expect(frame.locator("#gap .key")).toBeVisible();
+  await expect(frame.locator("#check .key")).toBeVisible();
+  await expect(frame.locator("#gap ol.gaps details").first()).toBeHidden();
+  await expect(frame.locator("#check details").first()).toBeHidden();
 });
 
 test("production review reveals the reference front, rule and back and keeps supplementary cards separate", async ({

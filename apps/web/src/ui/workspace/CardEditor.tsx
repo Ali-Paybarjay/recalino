@@ -48,7 +48,7 @@ export function CardEditor({
       );
       key.current = null;
       if ("deleted" in result) {
-        router.push(`/classes/${card.sessionIds[0]}/cards`);
+        router.push(`/sessions/${card.sessionIds[0]}/cards`);
         return;
       }
       if (result.id !== card.id) {
@@ -77,8 +77,8 @@ export function CardEditor({
   return (
     <div className="preview-stack">
       <Actions>
-        <LinkButton secondary href={`/classes/${card.sessionIds[0]}/cards`}>
-          Back to class cards
+        <LinkButton secondary href={`/sessions/${card.sessionIds[0]}/cards`}>
+          Back to session cards
         </LinkButton>
         <LinkButton href="/review">Review</LinkButton>
       </Actions>
@@ -189,7 +189,7 @@ export function CardEditor({
           >
             Delete this card
           </summary>
-          <p>This removes this card from every linked class and from review.</p>
+          <p>This removes this card from every linked session and from review.</p>
           <Button secondary disabled={busy} onClick={() => action("delete")}>
             Delete card
           </Button>

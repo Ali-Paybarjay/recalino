@@ -166,7 +166,7 @@ describe("finalized recording source registration", () => {
         sha256,
         durationMs: 2234,
         parts: [],
-        displayName: `Class recording 2026-10-06 · Part ${index + 1}`,
+        displayName: `Session recording 2026-10-06 · Part ${index + 1}`,
       });
       expect(key).toBe(`recorded-source:${index === 0 ? first.id : second.id}`);
       expect(body).not.toHaveProperty("blob");

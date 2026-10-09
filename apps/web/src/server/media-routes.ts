@@ -1,5 +1,5 @@
 import "server-only";
-import { getCard } from "@recalino/core/card";
+import { getCard, studyPronunciationTarget } from "@recalino/core/card";
 import {
   createImageMedia,
   getMediaAsset,
@@ -8,6 +8,7 @@ import {
   requestTts,
   setMediaExportPermission,
 } from "@recalino/core/media";
+import { getNotebook } from "@recalino/core/note";
 import { getSession } from "@recalino/core/org";
 import { errors, type LearnerContext, readPltSettings } from "@recalino/core/plt";
 import { z } from "zod";
@@ -48,6 +49,11 @@ export function classMediaHandler(sessionId: string): Handler {
           expectedContentVersion: z.number().int().positive(),
         }),
         z.strictObject({
+          kind: z.literal("note_pronunciation"),
+          learningItemId: z.string().min(1).max(100),
+          expectedNotebookRevisionId: z.uuid(),
+        }),
+        z.strictObject({
           kind: z.literal("image"),
           sourceId: z.uuid(),
           crop: z.unknown().optional(),
@@ -75,6 +81,18 @@ export function classMediaHandler(sessionId: string): Handler {
         exportAllowed: false,
         purpose: "pronunciation" as const,
       };
+    } else if (fields.kind === "note_pronunciation") {
+      const notebook = await getNotebook(db, learner, sessionId);
+      if (!notebook || notebook.sessionId !== sessionId) throw errors.notFound();
+      if (notebook.current.id !== fields.expectedNotebookRevisionId)
+        throw errors.validationFailed({ pronunciation: ["notebook_changed"] });
+      const item = notebook.current.model.learningItems.find(
+        (entry) => entry.id === fields.learningItemId,
+      );
+      if (!item) throw errors.notFound();
+      const target = studyPronunciationTarget(item);
+      if (!target) throw errors.validationFailed({ pronunciation: ["target_unavailable"] });
+      speech = { text: target, exportAllowed: false, purpose: "pronunciation" };
     } else speech = { text: fields.text, exportAllowed: fields.exportAllowed };
     const dependencies = getMediaDependencies();
     if (!dependencies) throw errors.validationFailed({ media: ["not_configured"] });

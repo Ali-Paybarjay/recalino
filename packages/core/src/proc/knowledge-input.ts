@@ -1,7 +1,7 @@
 import { ProviderError } from "../aip";
 import type { StudyLessonContext } from "../lkm";
 import type { RunSource } from "./contracts";
-import type { LearnerTeachingContext } from "./learner-context";
+import type { ModelTeachingContext } from "./learner-context";
 
 interface KnowledgeInput {
   explanationLanguage: string;
@@ -9,7 +9,7 @@ interface KnowledgeInput {
   sources: readonly RunSource[];
   missingSourceIds: readonly string[];
   lessonContext?: StudyLessonContext;
-  learnerContext?: LearnerTeachingContext;
+  learnerContext?: ModelTeachingContext;
 }
 type Block = RunSource["blocks"][number];
 type BlockMetadata = Pick<Block, "kind" | "level" | "speakerRole" | "speakerId" | "timeStatus">;

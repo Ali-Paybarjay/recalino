@@ -1,18 +1,25 @@
 "use client";
 import type { Claim, KnowledgeVersion } from "@recalino/core/lkm";
 import type { Notebook, NotebookRevision, PublishNotebookInput } from "@recalino/core/note";
+import type { LessonAdaptationView } from "@recalino/core/proc";
 import { renderClassNotesHtml } from "@recalino/core/study-render";
+import { studyPronunciationTarget } from "@recalino/core/study-target";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { directionOf } from "../direction";
+import { SpeakerHigh } from "../icons";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import { notifyAutomaticLearning } from "./automatic-learning";
 import { ClassNotesFrame } from "./ClassNotesFrame";
+import { ClassNotesPlayback } from "./ClassNotesPlayback";
+import { LessonAdaptation } from "./LessonAdaptation";
 import styles from "./NoteView.module.css";
 import type { NoteMaterialSource, NoteSourceIssue } from "./note-source-issues";
+import { PronunciationAudio } from "./PronunciationAudio";
+import pronunciationStyles from "./PronunciationAudio.module.css";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import { SourceRefViewer } from "./SourceRefViewer";
 
@@ -55,7 +62,7 @@ export function ClaimEvidence({
   return collapsed ? (
     <details className={styles.evidence}>
       <summary>
-        {claim.origin === "from_class" ? "Class sources" : "AI explanation"}
+        {claim.origin === "from_class" ? "Session sources" : "AI explanation"}
         {claim.uncertain ? " · Check this" : ""}
       </summary>
       <div className={styles.evidenceBody}>{evidence}</div>
@@ -98,6 +105,7 @@ export function NoteView({
   hasEarlierVersions,
   sourceIssues = [],
   materialSources = [],
+  adaptation = null,
 }: {
   sessionId: string;
   userId: string;
@@ -109,6 +117,7 @@ export function NoteView({
   hasEarlierVersions?: boolean;
   sourceIssues?: readonly NoteSourceIssue[];
   materialSources?: readonly NoteMaterialSource[];
+  adaptation?: LessonAdaptationView | null;
 }) {
   const router = useRouter();
   const [notebook, setNotebook] = useState(initial),
@@ -118,6 +127,11 @@ export function NoteView({
   const [editing, setEditing] = useState<string | null>(null),
     [text, setText] = useState("");
   const [editMode, setEditMode] = useState(false);
+  const [legacyPlayback, setLegacyPlayback] = useState<{
+    revisionId: string;
+    itemId: string;
+    target: string;
+  } | null>(null);
   const [recovering, setRecovering] = useState<string | null>(null);
   const notesStart = useRef<HTMLDivElement | null>(null);
   const key = useRef<{ payload: string; key: string } | null>(null);
@@ -137,6 +151,13 @@ export function NoteView({
   const current = readOnlyRevision ?? notebook?.current,
     preview = current ? null : latest,
     model = current?.model ?? preview?.model;
+  useEffect(() => {
+    setLegacyPlayback((previous) =>
+      !previous || editMode || readOnlyRevision?.id || previous.revisionId !== current?.id
+        ? null
+        : previous,
+    );
+  }, [current?.id, editMode, readOnlyRevision?.id]);
   const canEdit = !!notebook && !readOnlyRevision;
   const showHistory = hasEarlierVersions ?? (current?.number ?? 0) > 1;
   const explanationLanguage = model?.language.explanation;
@@ -186,16 +207,16 @@ export function NoteView({
       learningRetryKey.current = null;
       preparedRecovery.current = null;
       notifyAutomaticLearning(sessionId);
-      router.push(`/classes/${sessionId}/processing`);
+      router.push(`/sessions/${sessionId}/processing`);
     } catch (failure) {
       const reasons =
         failure instanceof WorkspaceRequestError ? Object.values(failure.fields ?? {}).flat() : [];
       const message = reasons.includes("original_unavailable")
-        ? `${issue.name}: the original file is no longer available. Open class material to upload it again or recover the recording on its original device.`
+        ? `${issue.name}: the original file is no longer available. Open session material to upload it again or recover the recording on its original device.`
         : reasons.includes("retry_selection_changed") || reasons.includes("retry_issue_changed")
-          ? `${issue.name}: class material has changed. Refresh the notes and review the current files before retrying.`
+          ? `${issue.name}: session material has changed. Refresh the notes and review the current files before retrying.`
           : reasons.includes("provider_outcome_unresolved")
-            ? `${issue.name}: an earlier processing attempt still needs checking. Open class processing before starting another attempt.`
+            ? `${issue.name}: an earlier processing attempt still needs checking. Open session processing before starting another attempt.`
             : failure instanceof Error
               ? failure.message
               : `${issue.name} could not be retried.`;
@@ -210,16 +231,16 @@ export function NoteView({
     if (!sourceIssues.length) {
       return model && !model.coverage.complete ? (
         <aside className={styles.issues} aria-label="Source details need checking">
-          <p>Some source details need checking. Open class material to review them.</p>
-          <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
-            Review class material
+          <p>Some source details need checking. Open session material to review them.</p>
+          <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
+            Review session material
           </QuietLink>
         </aside>
       ) : null;
     }
     return (
-      <aside className={styles.issues} aria-label="Class material needs attention">
-        <p>Some class material needs attention.</p>
+      <aside className={styles.issues} aria-label="Session material needs attention">
+        <p>Some session material needs attention.</p>
         <ul>
           {sourceIssues.map((issue) => (
             <li key={`${issue.sourceId}-${issue.kind}-${issue.locator ?? ""}`}>
@@ -246,10 +267,10 @@ export function NoteView({
                   {recovering === issue.sourceId ? "Retrying…" : `Retry file ${issue.order}`}
                 </Button>
               ) : issue.action !== "none" ? (
-                <QuietLink disabled={busy || !!recovering} href={`/classes/${sessionId}/sources`}>
+                <QuietLink disabled={busy || !!recovering} href={`/sessions/${sessionId}/sources`}>
                   {issue.action === "upload"
                     ? `Upload file ${issue.order} again`
-                    : "Review class material"}
+                    : "Review session material"}
                 </QuietLink>
               ) : null}
             </li>
@@ -349,17 +370,19 @@ export function NoteView({
   return (
     <div className={styles.layout} ref={notesStart}>
       {!embedded && (
-        <Link prefetch={false} href={`/classes/${sessionId}`} className={styles.back}>
-          ← Back to class
+        <Link prefetch={false} href={`/sessions/${sessionId}`} className={styles.back}>
+          ← Back to session
         </Link>
       )}
       {problem && <Status tone="error">{problem}</Status>}
       {notice && <Status tone="success">{notice}</Status>}
       {!model ? (
-        <Panel title="Start with class material">
-          <p>Add your class material. Notes and flashcards are created and saved automatically.</p>
+        <Panel title="Start with session material">
+          <p>
+            Add your session material. Notes and flashcards are created and saved automatically.
+          </p>
           {materialSources.length ? (
-            <ul className={styles.materials} aria-label="Selected class material">
+            <ul className={styles.materials} aria-label="Selected session material">
               {materialSources.map((source) => (
                 <li key={source.sourceId}>
                   <p className={styles.issueName}>
@@ -377,7 +400,7 @@ export function NoteView({
                           : "Upload not completed"}
                   </p>
                   {source.status === "needs-upload" && (
-                    <QuietLink href={`/classes/${sessionId}/sources`}>
+                    <QuietLink href={`/sessions/${sessionId}/sources`}>
                       Upload file {source.order} again
                     </QuietLink>
                   )}
@@ -388,7 +411,7 @@ export function NoteView({
             materialIssues()
           )}
           <div className={styles.save}>
-            <LinkButton href={`/classes/${sessionId}/sources`}>Add material</LinkButton>
+            <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
           </div>
         </Panel>
       ) : (
@@ -396,9 +419,19 @@ export function NoteView({
           {model.classNotes && !editMode ? (
             <>
               {materialIssues()}
-              <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
+              {adaptation ? <LessonAdaptation adaptation={adaptation} /> : null}
+              {current && !readOnlyRevision ? (
+                <ClassNotesPlayback
+                  key={current.id}
+                  model={model}
+                  sessionId={sessionId}
+                  revisionId={current.id}
+                />
+              ) : (
+                <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
+              )}
               <details className={styles.evidence}>
-                <summary>Class sources and explanations</summary>
+                <summary>Session sources and explanations</summary>
                 <div className={styles.evidenceBody}>
                   {[
                     ...model.summary,
@@ -446,42 +479,89 @@ export function NoteView({
               </Panel>
               <Panel title="Useful things to learn">
                 {model.learningItems.length ? (
-                  model.learningItems.map((item) => (
-                    <article className="preview-list-item" key={item.id}>
-                      <ContentBlock as="h3" lang={learningLanguage}>
-                        {item.front}
-                      </ContentBlock>
-                      <NoteText text={item.back} lang={explanationLanguage} />
-                      <ClaimEvidence claim={item.claim} userId={userId} collapsed />
-                      {canEdit && editMode && (
-                        <Actions>
-                          <Button
-                            secondary
-                            disabled={busy}
-                            onClick={() => {
-                              setEditing(`front:${item.id}`);
-                              setText(item.front);
-                            }}
-                          >
-                            Edit question
-                          </Button>
-                          <Button
-                            secondary
-                            disabled={busy}
-                            onClick={() => {
-                              setEditing(`back:${item.id}`);
-                              setText(item.back);
-                            }}
-                          >
-                            Edit answer
-                          </Button>
-                        </Actions>
-                      )}
-                      {canEdit &&
-                        (editing === `front:${item.id}` || editing === `back:${item.id}`) &&
-                        editForm()}
-                    </article>
-                  ))
+                  model.learningItems.map((item) => {
+                    const target =
+                      current && !readOnlyRevision && !editMode
+                        ? studyPronunciationTarget(item)
+                        : undefined;
+                    const selected =
+                      !!target &&
+                      current?.id === legacyPlayback?.revisionId &&
+                      item.id === legacyPlayback?.itemId &&
+                      target === legacyPlayback?.target;
+                    return (
+                      <article className="preview-list-item" key={item.id}>
+                        <ContentBlock as="h3" lang={learningLanguage}>
+                          {item.front}
+                        </ContentBlock>
+                        {target && current && (
+                          <div className={pronunciationStyles.fallback}>
+                            <span lang="en" dir="ltr">
+                              {target}
+                            </span>
+                            {selected ? (
+                              <PronunciationAudio
+                                key={`${current.id}:${item.id}:${target}`}
+                                sessionId={sessionId}
+                                target={target}
+                                request={{
+                                  kind: "note_pronunciation",
+                                  learningItemId: item.id,
+                                  expectedNotebookRevisionId: current.id,
+                                }}
+                                trigger={1}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                className={pronunciationStyles.speaker}
+                                aria-label={`Hear pronunciation of ${target}`}
+                                title={`Hear pronunciation of ${target}`}
+                                onClick={() =>
+                                  setLegacyPlayback({
+                                    revisionId: current.id,
+                                    itemId: item.id,
+                                    target,
+                                  })
+                                }
+                              >
+                                <SpeakerHigh size={20} aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <NoteText text={item.back} lang={explanationLanguage} />
+                        <ClaimEvidence claim={item.claim} userId={userId} collapsed />
+                        {canEdit && editMode && (
+                          <Actions>
+                            <Button
+                              secondary
+                              disabled={busy}
+                              onClick={() => {
+                                setEditing(`front:${item.id}`);
+                                setText(item.front);
+                              }}
+                            >
+                              Edit question
+                            </Button>
+                            <Button
+                              secondary
+                              disabled={busy}
+                              onClick={() => {
+                                setEditing(`back:${item.id}`);
+                                setText(item.back);
+                              }}
+                            >
+                              Edit answer
+                            </Button>
+                          </Actions>
+                        )}
+                        {canEdit &&
+                          (editing === `front:${item.id}` || editing === `back:${item.id}`) &&
+                          editForm()}
+                      </article>
+                    );
+                  })
                 ) : (
                   <p>No learning items were found in this version.</p>
                 )}
@@ -497,7 +577,7 @@ export function NoteView({
           {!!(unmatchedClaims.length + unmatchedItems.length) && (
             <Panel title="Your saved edits from earlier material">
               <p>
-                These edits did not match an item in the latest class version. They remain saved
+                These edits did not match an item in the latest session version. They remain saved
                 here and in version history.
               </p>
               {unmatchedClaims.map(([id, value]) => (
@@ -552,26 +632,26 @@ export function NoteView({
             )}
             {notebook && !readOnlyRevision && (
               <>
-                <QuietLink disabled={busy} href={`/classes/${sessionId}/cards`}>
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/cards`}>
                   Flashcards
                 </QuietLink>
-                <QuietLink disabled={busy} href={`/classes/${sessionId}/export`}>
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/export`}>
                   Download notes
                 </QuietLink>
               </>
             )}
             {readOnlyRevision && (
-              <QuietLink disabled={busy} href={`/classes/${sessionId}/notes`}>
+              <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes`}>
                 Current notes
               </QuietLink>
             )}
             {model && !readOnlyRevision && (
-              <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
+              <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
                 Add material
               </QuietLink>
             )}
             {showHistory && (
-              <QuietLink disabled={busy} href={`/classes/${sessionId}/notes/versions`}>
+              <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes/versions`}>
                 Version history
               </QuietLink>
             )}

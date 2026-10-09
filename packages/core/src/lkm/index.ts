@@ -1,4 +1,4 @@
-export { safeCardHtml } from "./card-html";
+export { cardHtmlToText, safeCardHtml } from "./card-html";
 export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
 export {
   type Claim,
@@ -54,6 +54,8 @@ export {
   type StudyLexicalTarget,
   studyLexicalTarget,
   studyLexicalTargetMatches,
+  studyPronunciationTarget,
+  studyPronunciationTargetSchema,
 } from "./study-target";
 export {
   cleanupAccountKnowledge,
@@ -67,6 +69,7 @@ export {
   listVersions,
   liveKnowledgeVersionIdsForCleanup,
   publishKnowledgeVersion,
+  redactVersionGenerations,
   tombstoneAccountKnowledge,
   tombstoneKnowledge,
 } from "./versions";

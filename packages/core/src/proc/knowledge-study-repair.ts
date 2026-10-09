@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ProviderError } from "../aip";
 import type { KnowledgeModel } from "../lkm";
 import { errors } from "../plt";
-import type { LearnerTeachingContext } from "./learner-context";
+import type { ModelTeachingContext } from "./learner-context";
 
 const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -43,7 +43,7 @@ function wordBoundary(text: string, offset: number): boolean {
 export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
   original: T,
   maxInputCharacters: number,
-  learnerContext?: LearnerTeachingContext,
+  learnerContext?: ModelTeachingContext,
 ) {
   const model = structuredClone(original);
   const targets = model.learningItems.flatMap((item, index) => {

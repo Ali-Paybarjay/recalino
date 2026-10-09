@@ -56,8 +56,8 @@ export function fileProcessingFeedback(
       state: "error",
       message: "A file needs attention before processing can finish.",
       detail: ["needs_password", "wrong_password"].includes(rejected.rejectionReason ?? "")
-        ? `Enter the correct password for ${rejected.displayName} in Class sources below. Processing resumes after verification.`
-        : `Review ${rejected.displayName} in Class sources below. Skip this file, or cancel the upload group before choosing a replacement.`,
+        ? `Enter the correct password for ${rejected.displayName} in Session sources below. Processing resumes after verification.`
+        : `Review ${rejected.displayName} in Session sources below. Skip this file, or cancel the upload group before choosing a replacement.`,
     };
   const current =
     receipt.revision !== null && status && status.revision >= receipt.revision && !status.batchId;
@@ -95,7 +95,7 @@ export function fileProcessingFeedback(
       return {
         state: "success",
         message: "Processing successful.",
-        detail: `${receipt.total} ${receipt.total === 1 ? "file has" : "files have"} been uploaded and processed. Your class notes and flashcards are ready.`,
+        detail: `${receipt.total} ${receipt.total === 1 ? "file has" : "files have"} been uploaded and processed. Your session notes and flashcards are ready.`,
       };
   }
   return {
@@ -112,18 +112,18 @@ export function fileProcessingFeedback(
 function processingRecovery(status: AutomaticLearningStatus) {
   const code = status.lastError ?? "";
   if (isServiceProcessingBlock(code))
-    return `${status.message} Open Class progress to get processing help. After the service is updated, retry using the saved material; you do not need to upload the files again.`;
+    return `${status.message} Open Session progress to get processing help. After the service is updated, retry using the saved material; you do not need to upload the files again.`;
   if (/allowance|quota/.test(code))
     return `${status.message} Your files are saved. Review your allowance or select less material before retrying.`;
   if (operatorErrors.includes(code) || /operator|provider.*configur|storage_unavailable/.test(code))
     return `${status.message} Your files are saved. Processing can continue when the service is available.`;
   if (/selection_too_large/.test(code))
-    return `${status.message} Select fewer files or smaller ranges in Class sources, then retry.`;
+    return `${status.message} Select fewer files or smaller ranges in Session sources, then retry.`;
   if (/no_selected|select_at_least_one/.test(code))
-    return `${status.message} Select verified material in Class sources before retrying.`;
+    return `${status.message} Select verified material in Session sources before retrying.`;
   if (code === "acceptance_required")
     return `${status.message} Review and accept the required material notices before processing.`;
   if (code === "upload_needs_attention")
-    return `${status.message} Check the file errors in Class sources below. Enter the PDF password, skip a rejected file, or cancel the upload group before choosing replacements.`;
+    return `${status.message} Check the file errors in Session sources below. Enter the PDF password, skip a rejected file, or cancel the upload group before choosing replacements.`;
   return `${status.message} Your files are saved. Review the processing details or retry processing; you do not need to upload them again.`;
 }

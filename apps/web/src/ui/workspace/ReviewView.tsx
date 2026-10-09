@@ -221,8 +221,8 @@ export function ReviewView({
           Review settings
         </LinkButton>
         {sessionId && (
-          <LinkButton secondary href={`/classes/${sessionId}/cards`}>
-            Class cards
+          <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
+            Session cards
           </LinkButton>
         )}
       </Actions>
@@ -292,7 +292,26 @@ export function ReviewView({
               <p>Loading listening audio…</p>
             )
           ) : (
-            <CardFace card={current.card} revealed={shown} />
+            <CardFace
+              card={current.card}
+              revealed={shown}
+              pronunciation={
+                current.card.pronunciationTarget && current.card.sessionIds[0]
+                  ? {
+                      target: current.card.pronunciationTarget,
+                      control: (
+                        <RecallPronunciation
+                          key={`${selectedSet}:${current.card.id}:${current.card.contentVersion}`}
+                          cardId={current.card.id}
+                          contentVersion={current.card.contentVersion}
+                          sessionId={sessionId ?? current.card.sessionIds[0]}
+                          target={current.card.pronunciationTarget}
+                        />
+                      ),
+                    }
+                  : undefined
+              }
+            />
           )}
           {current.card.template !== "listening" && frontMedia && media(frontMedia)}
           {!shown ? (
@@ -303,20 +322,30 @@ export function ReviewView({
             <div className="preview-stack">
               {current.card.template === "listening" &&
                 (current.card.contentFormat === "lesson_html" ? (
-                  <CardFace card={current.card} revealed />
+                  <CardFace
+                    card={current.card}
+                    revealed
+                    pronunciation={
+                      current.card.pronunciationTarget && current.card.sessionIds[0]
+                        ? {
+                            target: current.card.pronunciationTarget,
+                            control: (
+                              <RecallPronunciation
+                                key={`${selectedSet}:${current.card.id}:${current.card.contentVersion}`}
+                                cardId={current.card.id}
+                                contentVersion={current.card.contentVersion}
+                                sessionId={sessionId ?? current.card.sessionIds[0]}
+                                target={current.card.pronunciationTarget}
+                              />
+                            ),
+                          }
+                        : undefined
+                    }
+                  />
                 ) : (
                   <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
                 ))}
               {backMedia && media(backMedia)}
-              {current.card.pronunciationTarget && current.card.sessionIds[0] && (
-                <RecallPronunciation
-                  key={`${selectedSet}:${current.card.id}:${current.card.contentVersion}`}
-                  cardId={current.card.id}
-                  contentVersion={current.card.contentVersion}
-                  sessionId={sessionId ?? current.card.sessionIds[0]}
-                  target={current.card.pronunciationTarget}
-                />
-              )}
               <ClaimEvidence claim={current.card.provenance} userId={userId} />
               <Actions>
                 {(queue.settings.mode === "simple"
@@ -361,7 +390,7 @@ export function ReviewView({
           {queue.buriedSiblings > 0 && (
             <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
           )}
-          <LinkButton href="/classes">Open your classes</LinkButton>
+          <LinkButton href="/sessions">Open your courses</LinkButton>
         </Panel>
       )}
       {receipt && (

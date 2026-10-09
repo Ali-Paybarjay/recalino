@@ -75,7 +75,7 @@ describe("optional recording controls in platform media UI", () => {
     expect(test.session.setMicrophoneActive).toHaveBeenLastCalledWith(false);
     test.set({ phase: "recording" });
     expect(test.session.metadata).toMatchObject({
-      title: "Class recording",
+      title: "Session recording",
       artist: "Recalino",
       artwork: [{ src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }],
     });

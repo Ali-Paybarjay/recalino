@@ -99,12 +99,12 @@ function RecordingIndicator() {
           : state.phase === "saved"
             ? "Saved on this device"
             : state.phase === "paused"
-              ? "Class recording paused"
+              ? "Session recording paused"
               : state.phase === "saving"
                 ? "Saving your recording…"
                 : state.phase === "recovering"
                   ? "Recording was interrupted. Reconnecting the microphone…"
-                  : "Class recording continues"}
+                  : "Session recording continues"}
       </p>
       {online ? (
         <Link href="/recordings">Open recording</Link>
@@ -114,13 +114,13 @@ function RecordingIndicator() {
       {syncState.pending > 0 ? (
         <p role={syncState.phase === "failed" ? "alert" : "status"}>
           {syncState.phase === "syncing"
-            ? `Adding recorded parts to your class · ${syncState.pending} remaining`
+            ? `Adding recorded parts to your session · ${syncState.pending} remaining`
             : syncState.error}
         </p>
       ) : null}
       {syncState.phase === "failed" ? (
         <Button secondary onClick={() => sourceSync.retry()}>
-          Retry adding class sources
+          Retry adding session sources
         </Button>
       ) : null}
       {["recording", "recovering"].includes(state.phase) ? (
@@ -183,7 +183,8 @@ export function RecordLauncher({ sessionId }: { sessionId?: string }) {
     setError(null);
     try {
       await controller.start(sessionId ?? null);
-      if (navigator.onLine) router.push(sessionId ? `/classes/${sessionId}/record` : "/recordings");
+      if (navigator.onLine)
+        router.push(sessionId ? `/sessions/${sessionId}/record` : "/recordings");
       if (!sessionId && controller.state.recording) {
         const recording = controller.state.recording;
         // A failed connection never stops capture; after saving the learner can retry.
@@ -200,7 +201,7 @@ export function RecordLauncher({ sessionId }: { sessionId?: string }) {
   return (
     <div>
       <Button disabled={busy} onClick={begin}>
-        {busy ? "Recording in progress" : "Record a class"}
+        {busy ? "Recording in progress" : "Record a session"}
       </Button>
       {error ? <Status tone="error">{error}</Status> : null}
     </div>

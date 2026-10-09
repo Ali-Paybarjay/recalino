@@ -826,7 +826,7 @@ function Costs(props: AdminScreenProps) {
   const [review, setReview] = useState<Record<string, number> | null>(null);
   const [invalid, setInvalid] = useState(false);
   const limits: ["session" | "userMonth" | "systemDay" | "systemMonth", string][] = [
-    ["session", t("Per class session", "هر جلسهٔ کلاس")],
+    ["session", t("Per session", "هر جلسهٔ کلاس")],
     ["userMonth", t("User / UTC month", "کاربر / ماه UTC")],
     ["systemDay", t("Project / UTC day", "پروژه / روز UTC")],
     ["systemMonth", t("Project / UTC month", "پروژه / ماه UTC")],

@@ -46,7 +46,7 @@ export function ClassForm({
     ...createdCourses.filter((item) => !courses.some((saved) => saved.id === item.id)),
   ];
   const hasDefault = availableCourses.some((item) => item.isDefault);
-  const destination = initial ? `/classes/${initial.id}` : "/classes";
+  const destination = initial ? `/sessions/${initial.id}` : "/sessions";
 
   async function save() {
     if (busy || creatingCourse) return;
@@ -65,11 +65,11 @@ export function ClassForm({
         body,
         initial ? undefined : requestKey(idempotency, body),
       );
-      router.push(`/classes/${saved.id}`);
+      router.push(`/sessions/${saved.id}`);
       router.refresh();
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "Your class could not be saved. Try again.",
+        failure instanceof Error ? failure.message : "Your session could not be saved. Try again.",
       );
       setBusy(false);
     }
@@ -118,11 +118,11 @@ export function ClassForm({
         undefined,
         requestKey(idempotency, { delete: initial.id }),
       );
-      router.push("/classes");
+      router.push("/sessions");
       router.refresh();
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "The class could not be deleted. Try again.",
+        failure instanceof Error ? failure.message : "The session could not be deleted. Try again.",
       );
       setBusy(false);
       setConfirm(false);
@@ -131,40 +131,14 @@ export function ClassForm({
 
   return (
     <div className="preview-reader">
-      <Panel title={initial ? "Class details" : undefined}>
+      <Panel title={initial ? "Session details" : undefined}>
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void save();
           }}
         >
-          <Field
-            label="Class name (optional)"
-            hint="Leave it empty to name the class from its learning material. Until the material is ready, its date is used."
-          >
-            <input
-              autoComplete="off"
-              dir="auto"
-              maxLength={200}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Automatic title from learning material"
-              disabled={busy}
-            />
-          </Field>
-          {initial && title.trim() ? (
-            <Actions>
-              <Button secondary disabled={busy} onClick={() => setTitle("")}>
-                Use automatic title
-              </Button>
-            </Actions>
-          ) : null}
-          {initial && !title.trim() ? (
-            <p className="preview-muted">
-              Save changes to use the title from your learning material.
-            </p>
-          ) : null}
-          <Field label="Class date" hint="Day / Month / Year">
+          <Field label="Session date" hint="Day / Month / Year">
             <DateInput required value={date} onChange={setDate} disabled={busy} />
           </Field>
           <Field label="Course" hint={courseCopy.courseHelp}>
@@ -212,10 +186,39 @@ export function ClassForm({
               </select>
             </Field>
           ) : null}
+          {/* D51: new sessions are named from their material; renaming lives in Session options. */}
+          {initial ? (
+            <Field
+              label="Session name (optional)"
+              hint="Leave it empty to name the session from its learning material. Until the material is ready, its date is used."
+            >
+              <input
+                autoComplete="off"
+                dir="auto"
+                maxLength={200}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Automatic title from learning material"
+                disabled={busy}
+              />
+            </Field>
+          ) : null}
+          {initial && title.trim() ? (
+            <Actions>
+              <Button secondary disabled={busy} onClick={() => setTitle("")}>
+                Use automatic title
+              </Button>
+            </Actions>
+          ) : null}
+          {initial && !title.trim() ? (
+            <p className="preview-muted">
+              Save changes to use the title from your learning material.
+            </p>
+          ) : null}
           {error ? <Status tone="error">{error}</Status> : null}
           <Actions>
             <Button type="submit" disabled={busy}>
-              {busy ? "Saving…" : initial ? "Save changes" : "Create class"}
+              {busy ? "Saving…" : initial ? "Save changes" : "Create session"}
             </Button>
             <LinkButton href={destination} secondary>
               Cancel
@@ -225,7 +228,7 @@ export function ClassForm({
         {initial ? (
           <Actions>
             <Button secondary disabled={busy} onClick={() => setConfirm(true)}>
-              Delete class
+              Delete session
             </Button>
           </Actions>
         ) : null}
@@ -271,20 +274,20 @@ export function ClassForm({
         onClose={() => {
           if (!busy) setConfirm(false);
         }}
-        title="Delete this class?"
+        title="Delete this session?"
       >
         <p>
-          The class will disappear immediately. Its server files, notes and cards used only by this
-          class, including their review history, are queued for removal. Items linked to other
-          classes are checked before removal.
+          The session will disappear immediately. Its server files, notes and cards used only by
+          this session, including their review history, are queued for removal. Items linked to
+          other sessions are checked before removal.
         </p>
         <p>
-          Recordings saved on this device and files you downloaded are separate copies. Class
+          Recordings saved on this device and files you downloaded are separate copies. Session
           deletion does not remove them.
         </p>
         <Actions>
           <Button disabled={busy} onClick={() => void remove()}>
-            {busy ? "Deleting…" : "Delete class"}
+            {busy ? "Deleting…" : "Delete session"}
           </Button>
           <Button secondary disabled={busy} onClick={() => setConfirm(false)}>
             Keep it
