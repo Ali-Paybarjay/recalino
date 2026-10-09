@@ -22,13 +22,17 @@ it("shows a silent tagged completion after the page closes and restricts click n
   const path = `/classes/${id}/notes`;
   const tasks: Promise<unknown>[] = [];
   listeners.get("push")?.({
-    data: { json: () => ({ id, href: path, body: "Your class materials are ready." }) },
+    data: { json: () => ({ id, href: path, body: "Your session materials are ready." }) },
     waitUntil: (promise: Promise<unknown>) => tasks.push(promise),
   });
   await Promise.all(tasks);
   expect(showNotification).toHaveBeenCalledWith(
     "Recalino",
-    expect.objectContaining({ tag: id, silent: true, data: { href: path, id } }),
+    expect.objectContaining({
+      tag: id,
+      silent: true,
+      data: { href: `/sessions/${id}/notes`, id },
+    }),
   );
   expect(listeners.has("fetch")).toBe(false);
   const close = vi.fn();
@@ -37,7 +41,7 @@ it("shows a silent tagged completion after the page closes and restricts click n
     waitUntil: (promise: Promise<unknown>) => tasks.push(promise),
   });
   await Promise.all(tasks);
-  expect(openWindow).toHaveBeenCalledWith("https://recalino.example/classes");
+  expect(openWindow).toHaveBeenCalledWith("https://recalino.example/sessions");
   expect(fetch).toHaveBeenCalledWith(
     "/api/notifications",
     expect.objectContaining({ method: "PATCH" }),

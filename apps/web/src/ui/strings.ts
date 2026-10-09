@@ -11,10 +11,10 @@ export const strings = {
   },
   nav: {
     today: "Today",
-    classes: "Classes",
+    classes: "Courses",
     review: "Review",
     me: "Me",
-    newClass: "New class",
+    newClass: "New session",
     reviewDue: "{count} due",
     skipToContent: "Skip to content",
   },
@@ -126,15 +126,15 @@ export const strings = {
   },
   // M3 — B1-empty, B3 and F1 empty states (Design System, frame H-rules).
   empty: {
-    today: "Record your first class. We'll help you make notes and cards from it.",
-    classes: "No classes yet. Add your first class.",
-    review: "No cards yet. Cards appear after a class is processed.",
+    today: "Record your first session. We'll help you make notes and cards from it.",
+    classes: "No sessions yet. Add your first session.",
+    review: "No cards yet. Cards appear after a session is processed.",
   },
   // M3 — G3 (frame G3) and the Sign out button (HANDOFF_R1_REVIEW item 8).
   settings: {
     title: "Settings",
     termsChanged:
-      "The Terms changed on {date}. Please read and accept them to keep processing new classes.",
+      "The Terms changed on {date}. Please read and accept them to keep processing new sessions.",
     readAndAccept: "Read and accept",
     profile: "Profile",
     firstLanguage: "First language",

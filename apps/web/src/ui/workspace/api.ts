@@ -77,7 +77,7 @@ export async function workspaceRequest<T>(
         ? "A card with this question and answer already exists."
         : "That name already exists. Choose a different name.";
     if (reasons.includes("publish_notes_first"))
-      message = "Publish class notes before preparing cards.";
+      message = "Publish session notes before preparing cards.";
     if (reasons.includes("confirmation_required"))
       message = "Check this card and confirm its quality before adding it.";
     if (
@@ -90,7 +90,7 @@ export async function workspaceRequest<T>(
     if (reasons.includes("sibling_deferred"))
       message = "A related card was already reviewed this study day. This card is saved for later.";
     if (reasons.includes("move_or_delete_classes_first"))
-      message = "Move or delete the classes in this group first.";
+      message = "Move or delete the sessions in this group first.";
     if (reasons.includes("default_course_cannot_be_deleted"))
       message = "Your default course cannot be deleted.";
     if (reasons.includes("invalid_syntax"))
@@ -126,14 +126,15 @@ export async function workspaceRequest<T>(
         fields?.sources?.some((reason) => ["select_at_least_one", "not_verified"].includes(reason))
       )
         message =
-          "Select a class recording in Sources and process it before checking class voices.";
+          "Select a session recording in Sources and process it before checking session voices.";
       if (reasons.includes("consent_required") || reasons.includes("consent_changed"))
-        message = "Enable voice identification in Voice settings, then check the class again.";
+        message = "Enable voice identification in Voice settings, then check the session again.";
       if (
         reasons.includes("explanation_language_missing") ||
         reasons.includes("explanation_language_invalid")
       )
-        message = "Choose your explanation language in your profile before checking class voices.";
+        message =
+          "Choose your explanation language in your profile before checking session voices.";
     }
     throw new WorkspaceRequestError(
       message,

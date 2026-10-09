@@ -44,9 +44,9 @@ export default async function TodayPage() {
             <p>Keep useful moments from your next English class.</p>
             <Actions>
               <RecordLauncher />
-              <LinkButton href="/classes/new">New class</LinkButton>
-              <LinkButton secondary href="/classes">
-                Add material to a class
+              <LinkButton href="/sessions/new">New session</LinkButton>
+              <LinkButton secondary href="/sessions">
+                Add material to a session
               </LinkButton>
             </Actions>
           </Panel>
@@ -63,19 +63,19 @@ export default async function TodayPage() {
             <p className="preview-muted">Your learning stays with your account.</p>
           </Panel>
         </div>
-        <Panel title="Your recent classes">
+        <Panel title="Your recent sessions">
           {sessions.items.length ? (
             <ClassRows sessions={sessions.items} {...groups} />
           ) : (
             <div className="preview-empty">
-              <h3>Your first class starts here.</h3>
-              <p>Create a class and add a recording, handout, photo or notes.</p>
-              <LinkButton href="/classes/new">Create a class</LinkButton>
+              <h3>Your first session starts here.</h3>
+              <p>Create a session and add a recording, handout, photo or notes.</p>
+              <LinkButton href="/sessions/new">Create a session</LinkButton>
             </div>
           )}
           <Actions>
-            <LinkButton secondary href="/classes">
-              View all classes
+            <LinkButton secondary href="/sessions">
+              View all sessions
             </LinkButton>
           </Actions>
         </Panel>

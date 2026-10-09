@@ -125,10 +125,10 @@ export default async function StudyReferencePage({
         <PageHeader
           title={
             view === "review"
-              ? "Review your class"
+              ? "Review your session"
               : view === "cards"
-                ? "Class flashcards"
-                : "Class notes"
+                ? "Session flashcards"
+                : "Session notes"
           }
           subtitle={
             languageCase

@@ -64,7 +64,7 @@ describe("D40 content-derived session titles and topic overviews", () => {
       options(),
     );
     expect(await getLearningSession(db, fixture.ctx, session.id)).toMatchObject({
-      displayTitle: "Class — 1 Oct 2026",
+      displayTitle: "Session — 1 Oct 2026",
       titleSource: "date",
       topics: [],
     });

@@ -19,7 +19,7 @@ function textsChangedOn(): string {
 
 export const NAV_HREFS: Record<NavId, string> = {
   today: "/today",
-  classes: "/classes",
+  classes: "/sessions",
   review: "/review",
   me: "/me",
 };
@@ -43,7 +43,7 @@ export function LearnerShell({
 }) {
   const values = legalValues();
   return (
-    <AppShell current={current} hrefs={NAV_HREFS} newClassHref="/classes/new">
+    <AppShell current={current} hrefs={NAV_HREFS} newClassHref="/sessions/new">
       {header}
       {learner.state.pending.terms ? (
         <TermsNotice

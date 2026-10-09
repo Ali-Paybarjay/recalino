@@ -409,11 +409,11 @@ export function SourcesView({
   }
   return (
     <div className="preview-stack">
-      <Link className="preview-back" href={`/classes/${sessionId}`}>
-        ← Back to class
+      <Link className="preview-back" href={`/sessions/${sessionId}`}>
+        ← Back to session
       </Link>
       <Actions>
-        <LinkButton href={`/classes/${sessionId}/record`}>Record class</LinkButton>
+        <LinkButton href={`/sessions/${sessionId}/record`}>Record a session</LinkButton>
         <Button
           secondary
           disabled={!interactive || busy || !accepted}
@@ -438,7 +438,7 @@ export function SourcesView({
         ref={fileInput}
         type="file"
         hidden
-        aria-label="Choose class files"
+        aria-label="Choose session files"
         disabled={!interactive || busy || !accepted}
         multiple
         accept=".m4a,.mp3,.wav,.webm,.ogg,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.html,.htm,.xhtml,.txt"
@@ -457,7 +457,7 @@ export function SourcesView({
       {!accepted ? (
         <Panel title="Before adding sources">
           <p>
-            Choosing Upload &amp; Process creates and saves your class notes and flashcards. Audio
+            Choosing Upload &amp; Process creates and saves your session notes and flashcards. Audio
             remains on this device, with a temporary copy uploaded for transcription. Other files
             are stored privately.
           </p>
@@ -487,7 +487,7 @@ export function SourcesView({
           {batch?.active || processingBatch ? (
             <div aria-busy="true">
               <UploadProgress
-                label="Class file processing progress"
+                label="Session file processing progress"
                 status={
                   batch?.active
                     ? `Uploading file ${batch.current} of ${batch.total}…`
@@ -510,8 +510,10 @@ export function SourcesView({
               <Actions>
                 {feedback.state === "success" ? (
                   <>
-                    <LinkButton href={`/classes/${sessionId}/notes`}>Read class notes</LinkButton>
-                    <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+                    <LinkButton href={`/sessions/${sessionId}/notes`}>
+                      Read session notes
+                    </LinkButton>
+                    <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
                       Flashcards
                     </LinkButton>
                   </>
@@ -522,7 +524,7 @@ export function SourcesView({
                         Retry processing
                       </Button>
                     )}
-                    <LinkButton secondary href={`/classes/${sessionId}/estimate`}>
+                    <LinkButton secondary href={`/sessions/${sessionId}/estimate`}>
                       Review processing
                     </LinkButton>
                   </>
@@ -582,7 +584,7 @@ export function SourcesView({
               })
             }
           >
-            Add to this class
+            Add to this session
           </Button>
         </Panel>
       ) : null}
@@ -649,10 +651,10 @@ export function SourcesView({
           </Button>
         </Panel>
       )}
-      <Panel title="Class sources">
+      <Panel title="Session sources">
         <p className="preview-muted">
-          File formats are detected automatically. During processing, Recalino identifies class
-          audio, board photos, class material and notes from their content. Use the whole file or
+          File formats are detected automatically. During processing, Recalino identifies session
+          audio, board photos, session material and notes from their content. Use the whole file or
           choose part of a PDF or audio recording.
         </p>
         {batch?.active ? (
@@ -762,7 +764,7 @@ export function SourcesView({
                     setMessage(
                       mode === "original"
                         ? "Original file deleted. The saved extraction is retained."
-                        : "Source deleted from all classes.",
+                        : "Source deleted from all sessions.",
                     );
                   })
                 }
@@ -786,7 +788,7 @@ export function SourcesView({
                     setFileUploads((previous) =>
                       previous.filter((file) => file.source?.assetId !== source.assetId),
                     );
-                    setMessage("Source removed from this class.");
+                    setMessage("Source removed from this session.");
                   })
                 }
                 read={() => openOriginal(source)}
@@ -816,12 +818,12 @@ export function SourcesView({
         </Panel>
       )}
       {learning.status?.notesReady && (
-        <nav aria-label="Class learning" className="preview-actions">
-          <Link href={`/classes/${sessionId}/notes`} className="preview-index-link">
-            Read class notes
+        <nav aria-label="Session learning" className="preview-actions">
+          <Link href={`/sessions/${sessionId}/notes`} className="preview-index-link">
+            Read session notes
           </Link>
           {learning.status.cardsReady && (
-            <Link href={`/classes/${sessionId}/cards`} className="preview-index-link">
+            <Link href={`/sessions/${sessionId}/cards`} className="preview-index-link">
               Flashcards
             </Link>
           )}
@@ -899,7 +901,7 @@ function FileUploadItem({
               </Button>
             )}
             <Button secondary disabled={busy} onClick={remove}>
-              {retry ? "Skip this file" : file.source ? "Remove from class" : "Dismiss"}
+              {retry ? "Skip this file" : file.source ? "Remove from session" : "Dismiss"}
             </Button>
           </Actions>
         </>
@@ -1139,7 +1141,7 @@ function SourceItem({
           </Button>
         ) : null}
         <Button secondary disabled={busy} onClick={() => void remove()}>
-          {removeLabel ?? "Remove from class"}
+          {removeLabel ?? "Remove from session"}
         </Button>
       </Actions>
       <details>
@@ -1151,7 +1153,7 @@ function SourceItem({
         )}
         <p className="preview-muted">
           Deleting the original file keeps its saved extraction. Deleting the entire source removes
-          it from every class.
+          it from every session.
         </p>
         <label className="preview-check">
           <input

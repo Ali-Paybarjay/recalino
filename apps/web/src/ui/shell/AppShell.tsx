@@ -22,7 +22,7 @@ type AppShellProps = {
   /** The page's own section, or null on pages outside the four (aria-current="page"). */
   current: NavId | null;
   hrefs: Record<NavId, string>;
-  /** "New class" in the sidebar; left out until classes can be created (ORG, M4). */
+  /** "New session" in the sidebar; left out until sessions can be created (ORG, M4). */
   newClassHref?: string;
   /** Cards due today; Review shows it (Design System, bottom navigation). */
   reviewDue?: number;
@@ -32,7 +32,7 @@ type AppShellProps = {
 };
 
 /**
- * Mobile: content and a bottom navigation (Today, Classes, Review, Me). From 768px a sidebar
+ * Mobile: content and a bottom navigation (Today, Courses, Review, Me). From 768px a sidebar
  * replaces it, with icons only until 1024px (HANDOFF §4). Recording screens use no shell.
  */
 export function AppShell({

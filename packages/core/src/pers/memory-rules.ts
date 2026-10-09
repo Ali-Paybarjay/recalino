@@ -376,7 +376,7 @@ export function deriveLearningMemory(input: {
       ? { kind: "review_due", count: input.dueCount, href: "/review" }
       : input.hasCards
         ? { kind: "nothing_due", nextDueAt: input.nextDueAt }
-        : { kind: "no_cards", href: "/classes" };
+        : { kind: "no_cards", href: "/sessions" };
   return {
     window: input.window,
     lastEvidenceAt,

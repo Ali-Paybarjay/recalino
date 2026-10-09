@@ -40,14 +40,14 @@ async function sendBrowserPush(
         id: notification.id,
         kind: notification.kind,
         href: notification.href,
-        // Keep private class names and contents off the lock screen.
+        // Keep private session names and contents off the lock screen.
         title: "Recalino",
         body:
           notification.kind === "processing_ready"
-            ? "Your class materials are ready."
+            ? "Your session materials are ready."
             : notification.kind === "processing_partial"
-              ? "Your class materials are partly ready. Check the result."
-              : "Your class materials need your attention.",
+              ? "Your session materials are partly ready. Check the result."
+              : "Your session materials need your attention.",
       }),
       {
         vapidDetails: configuration,

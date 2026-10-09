@@ -9,7 +9,7 @@ export default async function RecordingsPage() {
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Record a class" />}
+      header={<PageHeader title="Record a session" />}
     >
       <RecordingView />
     </LearnerShell>

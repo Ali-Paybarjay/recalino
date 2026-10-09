@@ -78,7 +78,7 @@ test("radio cards have no default choice", async ({ page }) => {
 
 test("an inline error is announced and retries", async ({ page }) => {
   await page.goto("/dev/ui");
-  const error = page.getByRole("alert").filter({ hasText: "Couldn't load your classes" });
+  const error = page.getByRole("alert").filter({ hasText: "Couldn't load your sessions" });
   await expect(error).toBeVisible();
   await error.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByTestId("retries")).toHaveText("1");
@@ -88,9 +88,9 @@ test("a sheet takes focus, keeps it inside and gives it back on Esc", async ({ p
   await page.goto("/dev/ui");
   const trigger = page.getByRole("button", { name: "Open sheet" });
   await trigger.click();
-  const sheet = page.getByRole("dialog", { name: "New class" });
+  const sheet = page.getByRole("dialog", { name: "New session" });
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole("heading", { name: "New class" })).toBeFocused();
+  await expect(sheet.getByRole("heading", { name: "New session" })).toBeFocused();
   for (const key of ["Tab", "Tab", "Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab"]) {
     await page.keyboard.press(key);
     expect(await sheet.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);
@@ -106,7 +106,7 @@ test("a sheet takes focus, keeps it inside and gives it back on Esc", async ({ p
 test("the close button closes a sheet", async ({ page }) => {
   await page.goto("/dev/ui");
   await page.getByRole("button", { name: "Open sheet" }).click();
-  const sheet = page.getByRole("dialog", { name: "New class" });
+  const sheet = page.getByRole("dialog", { name: "New session" });
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toBeHidden();
 });
@@ -114,12 +114,12 @@ test("the close button closes a sheet", async ({ page }) => {
 test("a destructive confirm starts on the safe action; Esc keeps", async ({ page }) => {
   await page.goto("/dev/ui");
   await page.getByRole("button", { name: "Open delete confirm" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "Delete this class?" });
+  const dialog = page.getByRole("alertdialog", { name: "Delete this session?" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAccessibleDescription(
     /Files you already downloaded can't be recalled\./,
   );
-  await expect(dialog.getByRole("button", { name: "Keep class" })).toBeFocused();
+  await expect(dialog.getByRole("button", { name: "Keep session" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId("overlay-result")).toHaveText("kept class");

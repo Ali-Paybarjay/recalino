@@ -9,7 +9,7 @@ import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function SourcesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}/sources`),
+  const learner = await requireLearner(`/sessions/${id}/sources`),
     session = await workspaceSession(learner, id),
     db = getDatabase(),
     actor = workspaceActor(learner);
@@ -28,7 +28,7 @@ export default async function SourcesPage({ params }: { params: Promise<{ id: st
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Class material" subtitle={session.displayTitle} />}
+      header={<PageHeader title="Session material" subtitle={session.displayTitle} />}
     >
       <SourcesView
         key={`${learner.userId}:${id}`}

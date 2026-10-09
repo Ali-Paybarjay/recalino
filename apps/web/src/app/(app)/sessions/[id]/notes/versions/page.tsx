@@ -8,7 +8,7 @@ import { LearnerShell } from "../../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function NoteHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}/notes/versions`);
+  const learner = await requireLearner(`/sessions/${id}/notes/versions`);
   const session = await workspaceSession(learner, id);
   const revisions = await listNotebookRevisions(getDatabase(), workspaceActor(learner), id);
   return (
@@ -19,7 +19,7 @@ export default async function NoteHistoryPage({ params }: { params: Promise<{ id
     >
       <div className="preview-stack">
         <Actions>
-          <LinkButton secondary href={`/classes/${id}/notes`}>
+          <LinkButton secondary href={`/sessions/${id}/notes`}>
             Current notes
           </LinkButton>
         </Actions>

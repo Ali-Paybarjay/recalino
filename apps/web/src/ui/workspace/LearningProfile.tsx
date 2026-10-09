@@ -176,7 +176,7 @@ export function LearningProfile({
             <h3>Try shorter examples?</h3>
             <p>
               You shortened {overview.suggestion.evidenceCount} answers across{" "}
-              {overview.suggestion.classes} classes. This suggestion changes nothing until you
+              {overview.suggestion.classes} sessions. This suggestion changes nothing until you
               accept it.
             </p>
             <Actions>

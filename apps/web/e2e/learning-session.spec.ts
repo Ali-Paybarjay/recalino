@@ -68,18 +68,18 @@ test("material titles and topics appear automatically, while a learner can keep 
   const notes = await page.request.get(`/api/classes/${fixture.sessionId}/notes`);
   expect(notes.status()).toBe(200);
   expect((await notes.json()).notebook).toBeNull();
-  await page.goto(`/classes/${fixture.sessionId}`);
+  await page.goto(`/sessions/${fixture.sessionId}`);
   await expect(page.getByRole("heading", { level: 1, name: MATERIAL_TITLE })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Topics covered", exact: true })).toBeVisible();
   await expect(page.getByText(TOPIC, { exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Topics covered", exact: true })).toContainText(
     "Title from material",
   );
-  await page.locator("summary").filter({ hasText: "More class tools" }).click();
-  await page.getByRole("link", { name: "Class options", exact: true }).click();
-  await expect(page).toHaveURL(`/classes/${fixture.sessionId}/options`, { timeout: 30_000 });
-  await expect(page.getByLabel("Class name (optional)")).toHaveValue("");
-  await page.getByLabel("Class name (optional)").fill("My train conversation lesson");
+  await page.locator("summary").filter({ hasText: "More session tools" }).click();
+  await page.getByRole("link", { name: "Session options", exact: true }).click();
+  await expect(page).toHaveURL(`/sessions/${fixture.sessionId}/options`, { timeout: 30_000 });
+  await expect(page.getByLabel("Session name (optional)")).toHaveValue("");
+  await page.getByLabel("Session name (optional)").fill("My train conversation lesson");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: "My train conversation lesson" }),
@@ -95,11 +95,11 @@ test("material titles and topics appear automatically, while a learner can keep 
   await expect(
     page.getByRole("heading", { level: 1, name: "My train conversation lesson" }),
   ).toBeVisible();
-  await page.locator("summary").filter({ hasText: "More class tools" }).click();
-  await page.getByRole("link", { name: "Class options", exact: true }).click();
-  await expect(page).toHaveURL(`/classes/${fixture.sessionId}/options`, { timeout: 30_000 });
+  await page.locator("summary").filter({ hasText: "More session tools" }).click();
+  await page.getByRole("link", { name: "Session options", exact: true }).click();
+  await expect(page).toHaveURL(`/sessions/${fixture.sessionId}/options`, { timeout: 30_000 });
   await page.getByRole("button", { name: "Use automatic title", exact: true }).click();
-  await expect(page.getByLabel("Class name (optional)")).toHaveValue("");
+  await expect(page.getByLabel("Session name (optional)")).toHaveValue("");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: PUBLISHED_TITLE })).toBeVisible();
   expect(await getClass(page, fixture.sessionId)).toMatchObject({
@@ -151,7 +151,7 @@ test("each course lists generated topics and dated sessions in the appropriate r
   await expect(rows.nth(1)).not.toContainText("Polite requests");
   await expect(
     rows.nth(1).getByRole("link", { name: "See all 4 topics", exact: true }),
-  ).toHaveAttribute("href", `/classes/${fixture.sessionId}#topics`);
+  ).toHaveAttribute("href", `/sessions/${fixture.sessionId}#topics`);
   await expect(rows.nth(2)).toContainText("2026-09-27");
   await expect(page.getByRole("heading", { name: "Spanish greetings", exact: true })).toHaveCount(
     0,
@@ -159,7 +159,7 @@ test("each course lists generated topics and dated sessions in the appropriate r
   await rows.nth(1).getByRole("link", { name: "See all 4 topics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Topics covered", exact: true })).toBeVisible();
   for (const topic of TOPICS) await expect(page.getByText(topic, { exact: true })).toBeVisible();
-  await page.locator("summary").filter({ hasText: "More class tools" }).click();
+  await page.locator("summary").filter({ hasText: "More session tools" }).click();
   await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
   expect(
@@ -185,7 +185,7 @@ for (const name of ["mobile", "desktop"] as const) {
     const fixture = await materialFixture(page);
     await publishNotes(page, fixture.sessionId);
     for (const path of [
-      `/classes/${fixture.sessionId}`,
+      `/sessions/${fixture.sessionId}`,
       `/courses/${fixture.courseId}`,
       `/courses/${fixture.courseId}/materials`,
     ]) {
@@ -194,7 +194,7 @@ for (const name of ["mobile", "desktop"] as const) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       ).toBe(true);
-      if (path === `/classes/${fixture.sessionId}`) {
+      if (path === `/sessions/${fixture.sessionId}`) {
         await page.screenshot({
           path: testInfo.outputPath(`learning-session-${name}-class.png`),
           fullPage: true,

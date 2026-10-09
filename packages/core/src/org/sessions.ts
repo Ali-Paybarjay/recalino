@@ -35,7 +35,7 @@ export interface DeletionRequest {
 
 export function sessionDisplayTitle(title: string | null, classDate: string): string {
   if (title) return title;
-  return `Class — ${new Intl.DateTimeFormat("en-GB", {
+  return `Session — ${new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",

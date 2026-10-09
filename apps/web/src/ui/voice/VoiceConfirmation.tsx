@@ -180,7 +180,7 @@ export function VoiceConfirmation({
       setProblem(
         error instanceof WorkspaceRequestError &&
           error.fields?.voice?.includes("original_audio_required")
-          ? "The temporary class recording is no longer available. Checking class voices needs the original class recording, even if you have saved a personal voice sample. Open class sources to restore the original recording."
+          ? "The temporary session recording is no longer available. Checking session voices needs the original session recording, even if you have saved a personal voice sample. Open session sources to restore the original recording."
           : error instanceof Error
             ? error.message
             : "Your choice could not be saved. Try again.",
@@ -220,7 +220,7 @@ export function VoiceConfirmation({
           refreshNotes();
           setProblem(
             payload.action === "analyze"
-              ? "The class changed or is already being processed. Check its current sources and voice status before trying again."
+              ? "The session changed or is already being processed. Check its current sources and voice status before trying again."
               : "These voice excerpts have changed. Please check the current excerpts before choosing again.",
           );
         } catch {
@@ -239,7 +239,7 @@ export function VoiceConfirmation({
   const locked = busy || !!pending || refreshing || processing;
   return (
     <>
-      <Panel title="Your voice in this class">
+      <Panel title="Your voice in this session">
         {loading ? <Status>Loading voice confirmation…</Status> : null}
         {problem ? <Status tone="error">{problem}</Status> : null}
         {pending && !busy ? (
@@ -317,29 +317,31 @@ export function VoiceConfirmation({
               </Status>
             ) : null}
             <p className="preview-muted">
-              Check the selected class recordings for speakers, then identify which voice is yours.
-              A saved voice sample can help suggest a match.
+              Check the selected session recordings for speakers, then identify which voice is
+              yours. A saved voice sample can help suggest a match.
             </p>
             {!processing &&
               (view.analysisBlockedReason === "transcript_required" ||
               view.analysisBlockedReason === "sources_unavailable" ? (
                 <Status>
-                  Select a class recording in Sources and process it before checking class voices.
-                  <LinkButton secondary href={`/classes/${sessionId}/sources`}>
-                    Open class sources
+                  Select a session recording in Sources and process it before checking session
+                  voices.
+                  <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
+                    Open session sources
                   </LinkButton>
                 </Status>
               ) : view.analysisBlockedReason === "original_audio_required" ? (
                 <Status>
-                  The temporary class recording is no longer available. Checking class voices needs
-                  the original class recording, even if you have saved a personal voice sample.
-                  <LinkButton secondary href={`/classes/${sessionId}/sources`}>
-                    Restore class recording
+                  The temporary session recording is no longer available. Checking session voices
+                  needs the original session recording, even if you have saved a personal voice
+                  sample.
+                  <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
+                    Restore session recording
                   </LinkButton>
                 </Status>
               ) : view.analysisBlockedReason === "explanation_language_missing" ? (
                 <Status>
-                  Choose your explanation language in your profile before checking class voices.
+                  Choose your explanation language in your profile before checking session voices.
                 </Status>
               ) : null)}
             <Actions>
@@ -348,27 +350,27 @@ export function VoiceConfirmation({
                 disabled={locked || Boolean(view.analysisBlockedReason)}
                 onClick={() => void act({ action: "analyze" })}
               >
-                {processing ? "Checking class voices…" : "Check class voices"}
+                {processing ? "Checking session voices…" : "Check session voices"}
               </Button>
               <LinkButton secondary href={voiceSettingsHref(sessionId)}>
                 Voice settings
               </LinkButton>
             </Actions>
             {processing ? (
-              <Status>Preparing speaker excerpts from the class sources…</Status>
+              <Status>Preparing speaker excerpts from the session sources…</Status>
             ) : !view.analyses.length ? (
-              <p>No speaker excerpts have been prepared for this class yet.</p>
+              <p>No speaker excerpts have been prepared for this session yet.</p>
             ) : (
               <Status>
                 {needsConfirmation
                   ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
                   : hasFailedCheck
-                    ? "Some recordings could not be checked. Retry the voice check below, or continue with your class notes."
+                    ? "Some recordings could not be checked. Retry the voice check below, or continue with your session notes."
                     : hasServiceBlock
                       ? pendingCopy.voice.serviceBlockedSummary
                       : hasUnavailableExcerpts
-                        ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your class notes."
-                        : "Your voice choices are saved. The class notes below reflect those choices."}
+                        ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your session notes."
+                        : "Your voice choices are saved. The session notes below reflect those choices."}
               </Status>
             )}
             {view.analyses.map((analysis, index) => (
@@ -387,7 +389,7 @@ export function VoiceConfirmation({
             ))}
             {children && !locked && view.analyses.length ? (
               <Actions>
-                <LinkButton href="#class-notes">Read class notes</LinkButton>
+                <LinkButton href="#class-notes">Read session notes</LinkButton>
               </Actions>
             ) : null}
           </div>
@@ -396,9 +398,9 @@ export function VoiceConfirmation({
           <Status>
             {busy
               ? pending?.action === "analyze"
-                ? "Requesting a class voice check…"
+                ? "Requesting a session voice check…"
                 : "Saving your voice choice…"
-              : "Refreshing your class notes…"}
+              : "Refreshing your session notes…"}
           </Status>
         ) : null}
       </Panel>
@@ -408,7 +410,7 @@ export function VoiceConfirmation({
             {children}
           </div>
         ) : (
-          <Status>Updating voice attribution before showing the class notes…</Status>
+          <Status>Updating voice attribution before showing the session notes…</Status>
         )
       ) : null}
     </>
@@ -464,14 +466,14 @@ function Analysis({
   return (
     <section className={styles.candidate} aria-label={`Source ${index + 1} voice confirmation`}>
       <div className={styles.heading}>
-        <h3>Class source {index + 1}</h3>
+        <h3>Session source {index + 1}</h3>
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
       {coverage === "sampled_audio" || coverage === "sampled_partial_audio" ? (
         <p className="preview-muted">
           This long recording was checked using excerpts sampled across your selected class audio.
           Only speech in those checked excerpts can contribute spoken mistakes. Your full transcript
-          and class notes remain available.
+          and session notes remain available.
         </p>
       ) : null}
       {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
@@ -482,7 +484,7 @@ function Analysis({
       ) : analysis.reason?.startsWith("voice_correction_") ? (
         <Status tone="error">
           Speakers were prepared, but spoken mistakes could not be checked. You can confirm your
-          speaker below and retry the class voice check when you are ready.
+          speaker below and retry the session voice check when you are ready.
         </Status>
       ) : null}
       {verified ? (
@@ -501,7 +503,7 @@ function Analysis({
           </Button>
         </>
       ) : analysis.status === "processing" ? (
-        <Status>Preparing speaker excerpts. You can keep using the rest of your class.</Status>
+        <Status>Preparing speaker excerpts. You can keep using the rest of your session.</Status>
       ) : analysis.status === "none" ? (
         <p>
           None of these speakers was selected as you. Spoken mistakes from this source are withheld.
@@ -509,23 +511,24 @@ function Analysis({
       ) : analysis.status === "failed" ? (
         <>
           <p>
-            The voices in this source could not be checked. Your saved class notes remain available.
+            The voices in this source could not be checked. Your saved session notes remain
+            available.
           </p>
           <Button
             secondary
             disabled={retryDisabled}
             onClick={() => void onAction({ action: "analyze" })}
           >
-            Retry class voice check
+            Retry session voice check
           </Button>
         </>
       ) : analysis.status === "unavailable" || !candidates.length ? (
         <>
           <p>
             This source does not have usable speaker excerpts to confirm. Spoken mistakes from it
-            are withheld; your other class notes remain available.
+            are withheld; your other session notes remain available.
           </p>
-          <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+          <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
             Check source material
           </LinkButton>
         </>

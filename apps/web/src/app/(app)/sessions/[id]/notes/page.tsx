@@ -12,7 +12,7 @@ import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function NotesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}/notes`);
+  const learner = await requireLearner(`/sessions/${id}/notes`);
   const session = await workspaceSession(learner, id);
   const db = getDatabase(),
     ctx = workspaceActor(learner);
@@ -34,7 +34,7 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
     (initial?.current.model ?? latest?.model)?.learningItems ?? [],
   );
   return (
-    <LearnerShell learner={learner} current="classes" header={<PageHeader title="Class notes" />}>
+    <LearnerShell learner={learner} current="classes" header={<PageHeader title="Session notes" />}>
       <div className="preview-stack">
         <VoiceConfirmation sessionId={id} userId={learner.userId}>
           <NoteView

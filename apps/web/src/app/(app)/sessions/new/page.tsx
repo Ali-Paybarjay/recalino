@@ -9,7 +9,7 @@ export default async function NewClassPage({
 }: {
   searchParams: Promise<{ courseId?: string }>;
 }) {
-  const learner = await requireLearner("/classes/new");
+  const learner = await requireLearner("/sessions/new");
   const groups = await workspaceGroups(learner);
   const requested = (await searchParams).courseId;
   const courseId = groups.courses.some((item) => item.id === requested) ? requested : undefined;
@@ -19,7 +19,7 @@ export default async function NewClassPage({
       current="classes"
       header={
         <PageHeader
-          title="New class"
+          title="New session"
           subtitle="Choose a course and date. The title will come from your learning material."
         />
       }

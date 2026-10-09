@@ -85,7 +85,7 @@ test("a failed sign-in shows one general message", async ({ page }) => {
 test("a page that needs a session sends the visitor to sign in and remembers the way back", async ({
   page,
 }) => {
-  for (const path of ["/me", "/me/data", "/recordings", "/classes/organize"]) {
+  for (const path of ["/me", "/me/data", "/recordings", "/sessions/organize"]) {
     await page.goto(path);
     await expect(page).toHaveURL(
       (url) => url.pathname === "/" && url.searchParams.get("next") === path,

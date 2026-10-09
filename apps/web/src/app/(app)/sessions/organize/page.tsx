@@ -11,7 +11,7 @@ export default async function OrganizePage({
 }: {
   searchParams: Promise<{ courseId?: string }>;
 }) {
-  const learner = await requireLearner("/classes/organize");
+  const learner = await requireLearner("/sessions/organize");
   const groups = await workspaceGroups(learner);
   const query = await searchParams;
   return (
@@ -20,14 +20,14 @@ export default async function OrganizePage({
       current="classes"
       header={
         <PageHeader
-          title="Keep your classes organised"
+          title="Keep your sessions organised"
           subtitle="Create courses and optional units, or rename and arrange them."
         />
       }
     >
       <div className="preview-stack">
-        <Link className="preview-back" href="/classes">
-          ← Back to classes
+        <Link className="preview-back" href="/sessions">
+          ← Back to courses
         </Link>
         <CourseManager {...groups} courseId={query.courseId} />
       </div>

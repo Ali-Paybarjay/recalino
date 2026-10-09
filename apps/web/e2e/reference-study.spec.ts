@@ -77,17 +77,17 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await page.setViewportSize({ width: 420, height: 900 });
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/dev/ui/study");
-  const frame = page.frameLocator('iframe[title^="Class notes:"]');
+  const frame = page.frameLocator('iframe[title^="Session notes:"]');
   await expect(frame.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(frame.locator("#core .entry")).toHaveCount(3);
   await expect(frame.locator("#mistakes")).toContainText(
     "اشتباهات گفتاری این جلسه نمایش داده نشده",
   );
-  await expect(page.locator('iframe[title^="Class notes:"]')).toHaveAttribute(
+  await expect(page.locator('iframe[title^="Session notes:"]')).toHaveAttribute(
     "sandbox",
     "allow-scripts",
   );
-  await expect(page.locator('iframe[title^="Class notes:"]')).not.toHaveAttribute(
+  await expect(page.locator('iframe[title^="Session notes:"]')).not.toHaveAttribute(
     "sandbox",
     /allow-same-origin/,
   );

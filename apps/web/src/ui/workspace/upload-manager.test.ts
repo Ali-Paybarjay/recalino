@@ -367,7 +367,7 @@ it("enforces the declared class file limit before saving or making requests", as
   const f = setup();
   await expect(
     f.manager.enqueue("class", selected(2), { ...contract, maxSourcesPerSession: 1 }, true),
-  ).rejects.toThrow("class file limit");
+  ).rejects.toThrow("session file limit");
   expect(await f.store.list("owner")).toEqual([]);
   expect(f.request).not.toHaveBeenCalled();
 });

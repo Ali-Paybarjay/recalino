@@ -119,7 +119,7 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
       </Button>
       {open ? (
         <div className="preview-panel">
-          <strong dir="auto">{name || "Class source"}</strong>
+          <strong dir="auto">{name || "Session source"}</strong>
           {loading ? <Status>Opening source…</Status> : null}
           {text ? (
             <p dir="auto" style={{ whiteSpace: "pre-wrap" }}>

@@ -41,6 +41,7 @@ export function previewResponse(request: NextRequest): NextResponse | null {
     "/": "today",
     "/today": "today",
     "/classes": "classes",
+    "/sessions": "classes",
     "/review": "review",
     "/me": "profile",
     "/setup": "setup-explanations",

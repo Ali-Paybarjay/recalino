@@ -12,7 +12,7 @@ import styles from "./ClassOverview.module.css";
 export const dynamic = "force-dynamic";
 export default async function ClassPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}`);
+  const learner = await requireLearner(`/sessions/${id}`);
   const session = await workspaceSession(learner, id);
   const groups = await workspaceGroups(learner);
   const course = groups.courses.find((item) => item.id === session.courseId);
@@ -27,15 +27,15 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
     >
       <div className={styles.overview}>
         <Link
-          href={`/classes?courseId=${encodeURIComponent(session.courseId)}`}
+          href={`/sessions?courseId=${encodeURIComponent(session.courseId)}`}
           className={styles.back}
         >
           <Icon icon={CaretLeft} size={18} />
-          Back to classes
+          Back to course
         </Link>
-        <section className={styles.learning} aria-label="Study this class">
+        <section className={styles.learning} aria-label="Study this session">
           <Link
-            href={`/classes/${id}/notes`}
+            href={`/sessions/${id}/notes`}
             prefetch={false}
             className={`${styles.destination} ${styles.notes}`}
             aria-labelledby="class-notes-heading"
@@ -45,7 +45,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
               <Icon icon={FileText} size={28} />
             </span>
             <div className={styles.destinationBody}>
-              <h2 id="class-notes-heading">Class notes</h2>
+              <h2 id="class-notes-heading">Session notes</h2>
               <p id="class-notes-description">Read the lesson and revisit what you learned.</p>
             </div>
             <span className={styles.destinationAction}>
@@ -53,7 +53,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
             </span>
           </Link>
           <Link
-            href={`/classes/${id}/cards`}
+            href={`/sessions/${id}/cards`}
             prefetch={false}
             className={`${styles.destination} ${styles.cards}`}
             aria-labelledby="class-flashcards-heading"
@@ -90,38 +90,38 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           ) : (
             <p>
               {session.titleSource === "date"
-                ? "Add class material below. Your lesson title, notes and flashcards will appear automatically."
-                : "Open class notes to explore this lesson. Topics will appear here when included in the learning material."}
+                ? "Add session material below. Your lesson title, notes and flashcards will appear automatically."
+                : "Open session notes to explore this lesson. Topics will appear here when included in the learning material."}
             </p>
           )}
         </section>
         <section aria-labelledby="class-material-heading" className={styles.material}>
           <div>
-            <h2 id="class-material-heading">Class material</h2>
+            <h2 id="class-material-heading">Session material</h2>
             <p>Add a recording, handout or photo to update your notes and flashcards.</p>
           </div>
           <Actions>
             <RecordLauncher sessionId={id} />
-            <LinkButton secondary href={`/classes/${id}/sources`}>
+            <LinkButton secondary href={`/sessions/${id}/sources`}>
               Add or view material
             </LinkButton>
           </Actions>
         </section>
         <details className={styles.tools}>
           <summary>
-            More class tools
+            More session tools
             <Icon icon={CaretRight} size={20} className={styles.toolsCaret} />
           </summary>
           <div className={styles.toolsContent}>
             <Actions>
-              <LinkButton secondary href={`/classes/${id}/estimate`}>
+              <LinkButton secondary href={`/sessions/${id}/estimate`}>
                 View progress
               </LinkButton>
-              <LinkButton secondary href={`/classes/${id}/export`}>
+              <LinkButton secondary href={`/sessions/${id}/export`}>
                 Download notes and cards
               </LinkButton>
-              <LinkButton secondary href={`/classes/${id}/options`}>
-                Class options
+              <LinkButton secondary href={`/sessions/${id}/options`}>
+                Session options
               </LinkButton>
               <LinkButton secondary href={`/courses/${session.courseId}/materials`}>
                 Course materials

@@ -20,8 +20,8 @@ export const learningMemoryCopy = {
   nextReviewDueAction: "Open review",
   nextNothingDue: "Nothing is due right now.",
   nextDueAt: (date: string) => `Your next review is due on ${date}.`,
-  nextNoCards: "Add a class to start your flashcards.",
-  nextNoCardsAction: "Go to classes",
+  nextNoCards: "Add a session to start your flashcards.",
+  nextNoCardsAction: "Go to courses",
   noticedTitle: "What Recalino has noticed",
   noticedIntro:
     "Based only on your own Recall answers in the last 30 days. It describes that practice, not your level, speaking or exam readiness.",
@@ -58,7 +58,7 @@ export const learningMemoryCopy = {
   failed: "Your correction could not be saved.",
   simplerLabel: "Use simpler explanations",
   simplerHint:
-    "An explicit choice applies to classes processed from now on. Existing notes and cards stay as you saved them.",
+    "An explicit choice applies to sessions processed from now on. Existing notes and cards stay as you saved them.",
   simplerStandard: "Standard explanations",
   simplerOn: "Simpler explanations",
   adaptationTitle: "Prepared for you",
