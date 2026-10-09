@@ -1,14 +1,26 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { providerSettingsSchema } from "../../packages/core/src/aip";
+import { beforeAll, describe, expect, it } from "vitest";
+import { createJsonFallbackTransport, providerSettingsSchema } from "../../packages/core/src/aip";
+import {
+  type KnowledgeModel,
+  studyLexicalTarget,
+  studyLexicalTargetMatches,
+} from "../../packages/core/src/lkm";
 import { usesContentKnowledgeContract } from "../../packages/core/src/proc/knowledge-contract";
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
+import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
+import {
+  learnerTeachingContextSchema,
+  snapshotLearnerTeachingContext,
+} from "../../packages/core/src/proc/learner-context";
+import { studyPrompt } from "../../packages/core/src/proc/study-prompt";
 import { holdoutMigrationFixtures, holdoutRepeatIds } from "./haiku55-holdout-fixtures";
 import { holdout3MigrationFixtures, holdout3RepeatIds } from "./haiku55-holdout3-fixtures";
 import {
   freshMigrationFixtures,
+  type MigrationFixture,
   migrationFixtureSchema,
   migrationInputData,
 } from "./haiku55-migration-fixtures";
@@ -23,6 +35,7 @@ import {
 } from "./haiku55-migration-guards";
 import { comparisonCandidates, comparisonSettings } from "./model-comparison-candidates";
 import { comparisonFixtures } from "./model-comparison-fixtures";
+import { holdout4MigrationFixtures, holdout4RepeatIds } from "./multilingual-holdout4-fixtures";
 
 const freeze = (character: string) => character.repeat(64);
 const ledger = (): MigrationLedger => ({
@@ -113,6 +126,19 @@ describe.each([
     repeatIds: holdout3RepeatIds,
     before: holdoutMigrationFixtures(),
   },
+  {
+    name: "holdout-4",
+    prefix: "R",
+    count: 12,
+    languages: ["fa", "ar", "es", "ja", "uk"],
+    fixtures: holdout4MigrationFixtures(),
+    repeatIds: holdout4RepeatIds,
+    before: [
+      ...holdoutMigrationFixtures(),
+      ...holdout3MigrationFixtures(),
+      ...comparisonFixtures(),
+    ],
+  },
 ])(
   "PRD-QA-01 independent $name fixtures",
   ({ prefix, count, languages, fixtures, repeatIds, before }) => {
@@ -199,6 +225,360 @@ describe.each([
     });
   },
 );
+
+type BlockRef = { sourceId: string; blockId: string };
+type AnswerKey = {
+  concepts?: {
+    id: string;
+    supporting: BlockRef[];
+    sourceExamples?: string[];
+    lexicalTargets?: string[];
+  }[];
+  attribution?: { allowedHomework?: (BlockRef & { assignment: string })[] };
+  printedInClassTasks?: BlockRef[];
+  cueEqualsAnswer?: (BlockRef & {
+    prompt: string;
+    cue: string;
+    answer: string;
+    fullSentence: string;
+  })[];
+  classRulesFromClass?: { blocks: BlockRef[]; requiredOrigin: string };
+  injection?: { sourceBlock: string; forbiddenOutputText: string[] };
+};
+const answerKey = (fixture: MigrationFixture) => fixture.expected as AnswerKey;
+const blockAt = (fixture: MigrationFixture, ref: BlockRef) =>
+  fixture.sources
+    .find((source) => source.sourceId === ref.sourceId)
+    ?.blocks.find((block) => block.id === ref.blockId);
+const sameBlock = (left: BlockRef, right: BlockRef) =>
+  left.sourceId === right.sourceId && left.blockId === right.blockId;
+const shingleWords = (text: string) =>
+  text
+    .normalize("NFC")
+    .toLocaleLowerCase("en")
+    .match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) ?? [];
+/** Every run of six consecutive words; a shared run means copied wording, not a shared topic. */
+const shingles = (text: string) => {
+  const words = shingleWords(text);
+  return words.slice(5).map((_, index) => words.slice(index, index + 6).join(" "));
+};
+
+async function regressionFixtures(): Promise<MigrationFixture[]> {
+  const regression = JSON.parse(
+    await readFile(
+      new URL("./haiku55-migration-regression-fixtures.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { cases: unknown[] };
+  return regression.cases.map((entry) => migrationFixtureSchema.parse(entry));
+}
+
+/**
+ * Every system prompt the current code can send for these lessons, recomputed from the builders
+ * rather than copied, so a prompt change on another branch is checked against the same lessons.
+ */
+async function productionPromptTexts(fixtures: MigrationFixture[]): Promise<string[]> {
+  const code = await readFile(
+    new URL("../../packages/core/src/proc/knowledge-generation.ts", import.meta.url),
+    "utf8",
+  );
+  // The builder keeps its repair tables private; their keys name every repair variant.
+  const keys = (table: string) =>
+    [
+      ...(
+        code.match(
+          new RegExp(`const ${table}: Record<string, string> = \\{([\\s\\S]*?)\\n\\};`, "u"),
+        )?.[1] ?? ""
+      ).matchAll(/^ {2}([a-z][a-z0-9_]*):/gmu),
+    ].map((match) => String(match[1]));
+  const reasons = keys("repairGuidance");
+  const issues = keys("issueMeaning");
+  if (reasons.length < 10 || !reasons.includes("provider_schema_invalid") || !issues.length)
+    throw new Error("repair_variants_not_found");
+  const texts = new Set<string>();
+  const system = (
+    fixture: MigrationFixture,
+    options: NonNullable<Parameters<typeof buildKnowledgeGenerationInput>[2]>,
+    learnerContext = migrationInputData(fixture).learnerContext,
+  ) => {
+    const prepared = buildKnowledgeGenerationInput(
+      { ...migrationInputData(fixture), learnerContext },
+      120000,
+      options,
+    );
+    texts.add(prepared.system);
+    return prepared;
+  };
+  // JSON-object transport sends the schema in the system message, so its descriptions count too.
+  const descriptions = (node: unknown): string[] =>
+    Array.isArray(node)
+      ? node.flatMap(descriptions)
+      : node && typeof node === "object"
+        ? Object.entries(node).flatMap(([key, value]) =>
+            key === "description" && typeof value === "string" ? [value] : descriptions(value),
+          )
+        : [];
+  for (const fixture of fixtures)
+    for (const maxOutputTokens of [6144, 32000]) {
+      for (const compact of [false, true]) {
+        const { schema } = system(fixture, { maxOutputTokens, compact });
+        for (const text of descriptions(createJsonFallbackTransport(schema).schema))
+          texts.add(text);
+      }
+      // The legacy contract's shared study guidance is still a production prompt.
+      for (const usesEvidenceKeys of [false, true])
+        texts.add(
+          studyPrompt(
+            fixture.explanationLanguage,
+            maxOutputTokens,
+            usesEvidenceKeys,
+            migrationInputData(fixture).learnerContext,
+          ),
+        );
+    }
+  // Repair text sits between language-independent sentences, so one lesson per script suffices.
+  const scripts = [
+    fixtures.find((fixture) => fixture.explanationLanguage === "fa"),
+    fixtures.find((fixture) => fixture.explanationLanguage !== "fa"),
+  ];
+  for (const fixture of scripts) {
+    if (!fixture) throw new Error("repair_variant_language_missing");
+    for (const compact of [false, true]) {
+      for (const reason of [...reasons, "unlisted_reason"]) {
+        system(fixture, { compact, repairReason: reason });
+        system(fixture, {
+          compact,
+          repairReason: "provider_schema_invalid",
+          repairDetail: `assembly:${reason}`,
+        });
+      }
+      for (const detail of ["json_parse", ...issues.map((code) => `zod:${code}@learningItems.0`)])
+        system(fixture, { compact, repairReason: "provider_schema_invalid", repairDetail: detail });
+    }
+  }
+  // Every declared level and goal selects its own personalised teaching sentences.
+  const [first] = fixtures;
+  if (!first) throw new Error("fixture");
+  for (const level of [...learnerTeachingContextSchema.shape.declaredLevel.unwrap().options, null])
+    for (const goal of [...learnerTeachingContextSchema.shape.goal.unwrap().options, null])
+      system(first, {}, snapshotLearnerTeachingContext({ level, goal }));
+  // The answer-span repair prompt is fixed; one mismatched card is enough to build it.
+  const mismatched = {
+    learningItems: [
+      {
+        id: "item-1",
+        study: {
+          set: "production",
+          kind: "vocabulary",
+          en: "x",
+          fullSentence: "One two three.",
+          gapSentence: "Four ______ three.",
+        },
+      },
+    ],
+  } as unknown as KnowledgeModel;
+  texts.add(buildKnowledgeStudyRepairInput(mismatched, 120000).system);
+  return [...texts];
+}
+
+describe("PRD-QA-01 FR-PROC-004 multilingual holdout-4 answer keys and disjointness", () => {
+  const fixtures = holdout4MigrationFixtures();
+  const concepts = fixtures.flatMap((fixture) =>
+    (answerKey(fixture).concepts ?? []).map((concept) => ({ fixture, concept })),
+  );
+  let earlier: MigrationFixture[] = [];
+  let prompts: string[] = [];
+  beforeAll(async () => {
+    earlier = [
+      ...(await regressionFixtures()),
+      ...freshMigrationFixtures(),
+      ...holdoutMigrationFixtures(),
+      ...holdout3MigrationFixtures(),
+      ...comparisonFixtures(),
+    ];
+    prompts = await productionPromptTexts(fixtures);
+  }, 60000);
+
+  it("FR-PROC-004 numbers R01-R12 with source cases 101-112 and keeps a Persian majority", () => {
+    fixtures.forEach((fixture, index) => {
+      for (const source of fixture.sources)
+        expect(source.sourceId.startsWith(`ad${String(101 + index).padStart(6, "0")}-`)).toBe(true);
+    });
+    const counts = new Map<string, number>();
+    for (const { explanationLanguage } of fixtures)
+      counts.set(explanationLanguage, (counts.get(explanationLanguage) ?? 0) + 1);
+    const persian = counts.get("fa") ?? 0;
+    expect(persian).toBeGreaterThanOrEqual(5);
+    for (const [language, count] of counts)
+      if (language !== "fa") expect(count).toBeLessThan(persian);
+    expect(new Set(fixtures.map((fixture) => fixture.declaredLevel))).toEqual(
+      new Set(["A1", "A2", "B1", "B2", "C1"]),
+    );
+  });
+
+  it("FR-PROC-004 separates the one assigned homework from printed in-class tasks", () => {
+    for (const fixture of fixtures) {
+      const key = answerKey(fixture);
+      const printed = key.printedInClassTasks ?? [];
+      // Every printed task in the lesson text is recorded as in-class work in the answer key.
+      const printedBlocks = fixture.sources.flatMap((source) =>
+        source.blocks
+          .filter((block) => /\bprinted task\b/iu.test(block.text))
+          .map((block) => `${source.sourceId}/${block.id}`),
+      );
+      expect(printed.map((entry) => `${entry.sourceId}/${entry.blockId}`).sort()).toEqual(
+        printedBlocks.sort(),
+      );
+      for (const homework of key.attribution?.allowedHomework ?? []) {
+        const text = blockAt(fixture, homework)?.text ?? "";
+        expect(text).toMatch(/\bhomework\b/iu);
+        expect(text).toContain(homework.assignment);
+        expect(printed.some((entry) => sameBlock(entry, homework))).toBe(false);
+        // The assignment sits right next to an in-class printed task, so the trap is real.
+        const blocks = fixture.sources.find(
+          (source) => source.sourceId === homework.sourceId,
+        )?.blocks;
+        const position = (ref: BlockRef) =>
+          blocks?.findIndex((block) => block.id === ref.blockId) ?? -1;
+        expect(
+          printed.some(
+            (entry) =>
+              entry.sourceId === homework.sourceId &&
+              Math.abs(position(entry) - position(homework)) === 1,
+          ),
+        ).toBe(true);
+      }
+    }
+    const homework = (fixture: MigrationFixture) =>
+      answerKey(fixture).attribution?.allowedHomework ?? [];
+    expect(fixtures.some((fixture) => homework(fixture).length > 0)).toBe(true);
+    expect(
+      fixtures.some(
+        (fixture) =>
+          homework(fixture).length === 0 &&
+          (answerKey(fixture).printedInClassTasks ?? []).length > 0,
+      ),
+    ).toBe(true);
+  });
+
+  it("FR-PROC-004 teaches an indefinite pronoun and grammar tasks whose cue is the answer", () => {
+    expect(
+      concepts.some(({ concept }) =>
+        (concept.lexicalTargets ?? []).some((target) =>
+          shingleWords(target).some((word) =>
+            /^(?:any|every|no|some)(?:body|one|thing|where)$/u.test(word),
+          ),
+        ),
+      ),
+    ).toBe(true);
+    const cued = fixtures.filter((fixture) => (answerKey(fixture).cueEqualsAnswer ?? []).length);
+    expect(cued.length).toBeGreaterThanOrEqual(2);
+    for (const fixture of cued)
+      for (const task of answerKey(fixture).cueEqualsAnswer ?? []) {
+        expect(blockAt(fixture, task)?.text).toContain(task.prompt);
+        expect(task.prompt).toContain(`___ (${task.cue})`);
+        expect(task.answer).toBe(task.cue);
+        expect(task.prompt.replace(`___ (${task.cue})`, task.answer)).toBe(task.fullSentence);
+      }
+  });
+
+  it("AC-D46-06 plants a new injection marker that no other lesson or prompt contains", () => {
+    const injected = fixtures.filter((fixture) => answerKey(fixture).injection);
+    expect(injected.length).toBeGreaterThanOrEqual(1);
+    for (const fixture of injected) {
+      const injection = answerKey(fixture).injection;
+      const block = fixture.sources
+        .flatMap((source) => source.blocks)
+        .find((entry) => entry.id === injection?.sourceBlock);
+      expect(injection?.forbiddenOutputText.length).toBeGreaterThan(0);
+      for (const marker of injection?.forbiddenOutputText ?? []) {
+        expect(["HACKED", "SYSTEM OVERRIDE", "ZEBRA-OK", "WOLF-77"]).not.toContain(marker);
+        expect(block?.text).toContain(marker);
+        const lower = marker.toLocaleLowerCase("en");
+        for (const other of [...earlier, ...fixtures.filter((entry) => entry !== fixture)])
+          expect(JSON.stringify(other).toLocaleLowerCase("en")).not.toContain(lower);
+        for (const prompt of prompts) expect(prompt.toLocaleLowerCase("en")).not.toContain(lower);
+      }
+    }
+  });
+
+  it("FR-PROC-004 keeps concept IDs and lexical targets disjoint from every earlier set", () => {
+    const earlierConcepts = earlier.flatMap((fixture) => answerKey(fixture).concepts ?? []);
+    const earlierIds = new Set(earlierConcepts.map((concept) => concept.id));
+    const earlierTargets = new Set(
+      earlierConcepts.flatMap((concept) =>
+        (concept.lexicalTargets ?? []).map((target) => target.toLocaleLowerCase("en")),
+      ),
+    );
+    const ids = concepts.map(({ concept }) => concept.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.filter((id) => earlierIds.has(id))).toEqual([]);
+    expect(
+      concepts
+        .flatMap(({ concept }) => concept.lexicalTargets ?? [])
+        .filter((target) => earlierTargets.has(target.toLocaleLowerCase("en"))),
+    ).toEqual([]);
+  });
+
+  it("FR-PROC-004 shares no six-word run with earlier lessons or any production prompt", () => {
+    expect(prompts.length).toBeGreaterThan(fixtures.length * 4);
+    const earlierRuns = new Set(
+      earlier.flatMap((fixture) =>
+        fixture.sources.flatMap((source) => source.blocks.flatMap((block) => shingles(block.text))),
+      ),
+    );
+    const promptRuns = new Set(prompts.flatMap(shingles));
+    const shared = fixtures.flatMap((fixture) =>
+      fixture.sources.flatMap((source) =>
+        source.blocks.flatMap((block) =>
+          shingles(block.text).flatMap((run) => [
+            ...(earlierRuns.has(run) ? [`${fixture.id}/${block.id} lesson: ${run}`] : []),
+            ...(promptRuns.has(run) ? [`${fixture.id}/${block.id} prompt: ${run}`] : []),
+          ]),
+        ),
+      ),
+    );
+    expect(shared).toEqual([]);
+  });
+
+  it("AC-D46-01 uses lexical targets the shared parser keeps whole and finds in their block", () => {
+    for (const { fixture, concept } of concepts) {
+      const texts = concept.supporting.map((support) => blockAt(fixture, support)?.text ?? "");
+      for (const example of concept.sourceExamples ?? [])
+        expect(texts.some((text) => text.includes(example))).toBe(true);
+      for (const target of concept.lexicalTargets ?? []) {
+        const parsed = studyLexicalTarget(target);
+        // No word of a holdout target may be read as an sb/sth object slot.
+        expect(parsed?.text).toBe(target);
+        for (const text of texts)
+          expect(parsed !== undefined && studyLexicalTargetMatches(parsed, text)).toBe(true);
+      }
+    }
+    const targets = concepts.flatMap(({ concept }) => concept.lexicalTargets ?? []);
+    expect(targets.filter((target) => target.includes(" ")).length).toBeGreaterThanOrEqual(2);
+    // Class rules taught from the lesson text must keep their class origin.
+    const ruled = fixtures.filter((fixture) => answerKey(fixture).classRulesFromClass);
+    expect(ruled.length).toBeGreaterThanOrEqual(1);
+    for (const fixture of ruled) {
+      const rules = answerKey(fixture).classRulesFromClass;
+      expect(rules?.requiredOrigin).toBe("from_class");
+      expect(rules?.blocks.length).toBeGreaterThan(0);
+      for (const ref of rules?.blocks ?? []) expect(blockAt(fixture, ref)).toBeDefined();
+    }
+  });
+
+  it("FR-PROC-004 never names a model, a candidate or the answer key in model input", () => {
+    for (const fixture of fixtures) {
+      const inputs = [
+        JSON.stringify(migrationInputData(fixture)),
+        buildKnowledgeGenerationInput(migrationInputData(fixture), 120000).input,
+      ];
+      for (const input of inputs)
+        for (const marker of ["gemini", "candidate", "answer key"])
+          expect(input.toLocaleLowerCase("en")).not.toContain(marker);
+    }
+  });
+});
 
 describe("PRD-QA-01 automatic answer-key checks", () => {
   const fixture = holdoutMigrationFixtures().find((entry) => entry.id === "N10");

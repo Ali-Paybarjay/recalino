@@ -179,7 +179,7 @@ describe("FR-PROC-003 PRD-QA-01 blind packet export", () => {
       ...holdoutMigrationFixtures(),
       ...holdout3MigrationFixtures(),
       ...freshMigrationFixtures(),
-      ...holdout4MigrationFixtures,
+      ...holdout4MigrationFixtures(),
     ];
     expect(() =>
       assertBlindPacketClean(

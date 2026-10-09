@@ -9,9 +9,13 @@ import {
   holdout3RepeatIds,
 } from "./haiku55-holdout3-fixtures";
 import type { MigrationFixture } from "./haiku55-migration-fixtures";
-import { holdout4MigrationFixtures, holdout4RepeatIds } from "./multilingual-holdout4-fixtures";
+import {
+  holdout4FixtureSetId,
+  holdout4MigrationFixtures,
+  holdout4RepeatIds,
+} from "./multilingual-holdout4-fixtures";
 
-export const holdout4FixtureSetId = "multilingual-holdout-4";
+export { holdout4FixtureSetId };
 export type MigrationHoldoutSet = {
   fixtures: () => MigrationFixture[];
   repeatIds: readonly string[];
@@ -44,7 +48,7 @@ export const migrationHoldoutSets: Record<string, MigrationHoldoutSet> = {
     provenance: haikuHoldoutProvenance,
   },
   [holdout4FixtureSetId]: {
-    fixtures: () => structuredClone(holdout4MigrationFixtures),
+    fixtures: holdout4MigrationFixtures,
     repeatIds: holdout4RepeatIds,
     acceptsCandidate: true,
     provenance: (fixtures) => ({

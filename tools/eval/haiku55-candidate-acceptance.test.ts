@@ -226,7 +226,7 @@ describe("FR-PROC-003 holdout registry and per-set provenance", () => {
     if (!set) throw new Error("Missing holdout 4");
     expect(set.acceptsCandidate).toBe(true);
     expect(set.repeatIds).toBe(holdout4RepeatIds);
-    expect(set.fixtures()).toEqual(holdout4MigrationFixtures);
+    expect(set.fixtures()).toEqual(holdout4MigrationFixtures());
     const fixtures = freshMigrationFixtures();
     expect(set.provenance(fixtures)).toMatchObject({
       writtenAfterBlindComparison: true,
@@ -242,7 +242,8 @@ describe("FR-PROC-003 holdout registry and per-set provenance", () => {
   });
   it("hands each round a copy of the holdout 4 fixtures", () => {
     const set = migrationHoldoutSets[holdout4FixtureSetId];
-    expect(set?.fixtures()).not.toBe(holdout4MigrationFixtures);
+    expect(set?.fixtures()).not.toBe(set?.fixtures());
+    expect(set?.fixtures()).toEqual(set?.fixtures());
   });
 });
 
