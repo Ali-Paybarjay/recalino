@@ -1869,6 +1869,24 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
       "My brother (who lives in Kyiv) is a doctor.",
     ],
     ["Add a comma: When I arrived the shop was closed.", "When I arrived, the shop was closed."],
+    // Removing a wrong hyphen, plural apostrophe or semicolon is a real task.
+    ["Correct the mistake: My son is five-years-old.", "My son is five years old."],
+    ["My son is five-years-old.", "My son is five years old."],
+    ["Correct the mistake: The writer is well-known.", "The writer is well known."],
+    ["Correct the mistake: The dogs' are barking.", "The dogs are barking."],
+    ["Correct the mistake: I bought some apple's.", "I bought some apples."],
+    ["Correct the punctuation: I like tea; and coffee.", "I like tea and coffee."],
+    // A blank may need nothing at all, such as a zero article or a bare infinitive.
+    [
+      "Complete with a, an, the or – (no article): ______ dogs are loyal animals.",
+      "Dogs are loyal animals.",
+    ],
+    ["I like ______ music.", "I like music."],
+    ["I'm going ______ home now.", "I'm going home now."],
+    ["My parents made me ______ clean my room.", "My parents made me clean my room."],
+    ["______ life is beautiful.", "Life is beautiful."],
+    ["I play ______ tennis on Sundays. (the / –)", "I play tennis on Sundays."],
+    ["Put in the if necessary: I love ______ chocolate.", "I love chocolate."],
     // A reported-to-direct change of pronoun is the point being taught.
     ["Change to direct speech: Anna says that I can leave early.", "You can leave early."],
     ["Change to direct speech: Sara told me that I looked tired.", "You looked tired."],
@@ -2035,6 +2053,11 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
     ["headache", "/aɪ hæv ə ˈhedeɪk/"],
     ["make a decision", "/aɪ ˈmeɪd ə dɪˈsɪʒn ˈjestədeɪ/"],
     ["put sth off", "/wiː hæd tə pʊt ðə ˈmiːtɪŋ ɒf/"],
+    // Optional sounds, syllable-sized words and letter names do not hide added sentence words.
+    ["comfortable", "/ðɪs ˈtʃeə(r) ɪz ˈkʌmf(ə)təb(ə)l/"],
+    ["controversy", "/ðə ˌkɒntrəˈvɜːsi ɪz ˈbɪɡ/"],
+    ["rain", "/ɪt wɪl reɪn təˈmɒrəʊ/"],
+    ["asap", "/pliːz ˈkɔːl miː ˌeɪ es eɪ ˈpiː/"],
   ])("AC-D46-04 rejects lexical IPA of %s that adds sentence words", (en, ipa) => {
     expect(lexicalIpaExceedsHeadword(en, ipa)).toBe(true);
   });
@@ -2050,6 +2073,21 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
     ["can", "strong /kæn/ weak /kən/"],
     ["under", "/ˈʌndə(r)/"],
     ["controversy", "/ˈkɒn.trə.vɜː.si/ or /kənˈtrɒv.ə.si/"],
+    // Dictionary optional sounds inside a word, and a variant list of principal parts.
+    ["comfortable", "/ˈkʌmf(ə)təb(ə)l/"],
+    ["vegetable", "/ˈvedʒ(ə)t(ə)b(ə)l/"],
+    ["different", "/ˈdɪf(ə)r(ə)nt/"],
+    ["general", "/ˈdʒɛn(ə)r(ə)l/"],
+    ["several", "/ˈsɛv(ə)r(ə)l/"],
+    ["different from", "/ˈdɪf(ə)r(ə)nt frəm/"],
+    ["go", "/ɡəʊ – went – ɡɒn/"],
+    // Words spaced by syllable, and an initialism written in lower case.
+    ["controversy", "/ˈkɒn trə vɜː si/"],
+    ["incredible", "/ɪn ˈkred ə bəl/"],
+    ["actually", "/ˈæk tʃu ə li/"],
+    ["optimism", "/ˈɒp tɪ mɪ zəm/"],
+    ["asap", "/ˌeɪ es eɪ ˈpiː/"],
+    ["bbc", "/ˌbiː biː ˈsiː/"],
     // Slots and complements may be spoken; hyphen parts, initialisms and numbers count apart.
     ["put sth off", "/pʊt ˈsʌmθɪŋ ɒf/"],
     ["kit sth out", "/kɪt ði ˈɒfɪs aʊt/"],
@@ -2155,32 +2193,43 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
     const notes = source();
     notes.role = "user_notes";
     first(notes.blocks).text = "This is the restaurant where we met.";
-    const prepared = prepare(input([material, notes]));
+    const data = input([material, notes]);
+    const prepared = prepare(data);
     const chunk = (classSentence: string) => ({
       pattern: "reported question",
       classSentence,
       noteFa: "ترتیب کلمات خبری است.",
     });
-    const result = prepared.assemble(
-      wire({
-        ...output(),
-        classNotes: {
-          ...output().classNotes,
-          chunks: [
-            chunk("She asked where I lived."),
-            chunk("He asked where I lived."),
-            chunk("“She asked if I was hungry.”"),
-            chunk("This is the restaurant where we met."),
-            chunk("This is the café where we met."),
-          ],
-        },
-      }),
-    );
-    expect(result.classNotes?.chunks.map((entry) => entry.classSentence)).toEqual([
+    const raw = wire({
+      ...output(),
+      classNotes: {
+        ...output().classNotes,
+        chunks: [
+          chunk("She asked where I lived."),
+          chunk("He asked where I lived."),
+          chunk("“She asked if I was hungry.”"),
+          chunk("This is the restaurant where we met."),
+          chunk("This is the café where we met."),
+        ],
+      },
+    });
+    // The wire keeps every chunk; the generation projection omits and counts the misquoted ones.
+    expect(prepared.assemble(raw).classNotes?.chunks).toHaveLength(5);
+    const { sourceClassifications: _sourceClassifications, ...knowledge } = prepared.decode(raw);
+    const kept = [
       "He asked where I lived.",
       "“She asked if I was hungry.”",
       "This is the restaurant where we met.",
-    ]);
+    ];
+    const final = finalizeGeneratedStudyPractice(knowledge, data.sources, data.learnerContext);
+    expect(final.model.classNotes?.chunks.map((entry) => entry.classSentence)).toEqual(kept);
+    expect(final.audit.omittedCandidates.class_sentence_not_in_sources).toBe(2);
+    expect(JSON.stringify(final.audit)).not.toContain("café");
+    // Old queued settings without the D46 snapshot omit the same chunks.
+    const legacy = finalizeGeneratedStudyPractice(knowledge, data.sources);
+    expect(legacy.audit.applied).toBe(false);
+    expect(legacy.model.classNotes?.chunks.map((entry) => entry.classSentence)).toEqual(kept);
+    expect(knowledge.classNotes?.chunks).toHaveLength(5);
     const jsonSchema = JSON.stringify(createJsonFallbackTransport(prepared.schema).schema);
     expect(jsonSchema).toContain("One English class sentence copied exactly from the sources");
     expect(jsonSchema).toContain("omit the chunk if no class sentence shows the pattern");

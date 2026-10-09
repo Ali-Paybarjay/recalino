@@ -282,59 +282,92 @@ const ipaLabels = new Set(
   ),
 );
 
-/** Each listed variant: slash or bracket groups, split at ~ , ; | ‖ and "or". */
+/**
+ * Each listed variant: slash or bracket groups, split at ~ , ; | ‖, "or", arrows and spaced
+ * dashes ("/ɡəʊ – went – ɡɒn/"). An optional sound inside a word ("/ˈdɪf(ə)r(ə)nt/") is dropped
+ * without splitting the word; a detached bracket is a label such as "(n)".
+ */
 function ipaVariants(ipa: string): string[] {
   const text = ipa.normalize("NFC");
   const groups = [...text.matchAll(/\/([^/]*)\/|\[([^\]]*)\]/gu)].map(
     (match) => match[1] ?? match[2] ?? "",
   );
   return (groups.length ? groups : [text]).flatMap((group) =>
-    group.replace(/\([^)]*\)/gu, " ").split(/[,;~|‖]|\bor\b/u),
+    group
+      .replace(/(?<=\S)\([^)]*\)|\([^)]*\)(?=\S)/gu, "")
+      .replace(/\([^)]*\)/gu, " ")
+      .split(/[,;~|‖→]|->|=>|\s[-–—]\s|\bor\b/u),
   );
 }
 
-// An initialism is spoken letter by letter ("BBC") and a number may need several words.
+// An initialism is spoken letter by letter ("BBC", "tv") and a number may need several words.
 const spokenWordCount = (word: string) =>
-  (word.match(/\p{Lu}/gu) ?? []).length >= 2
+  (word.match(/\p{Lu}/gu) ?? []).length >= 2 || !/[\p{N}aeiouy]/iu.test(word)
     ? (word.match(/\p{L}/gu) ?? []).length
     : Math.max(1, (word.match(/\p{N}/gu) ?? []).length);
-const ipaWordCount = (variant: string) =>
+/** Transcribed words without stress, length and syllable marks; usage labels are not words. */
+const ipaWords = (variant: string) =>
   variant
     .split(/\s+/u)
-    .filter(
-      (token) =>
-        /\p{L}/u.test(token.replace(/[ˈˌːˑ.‿-]/gu, "")) &&
-        !ipaLabels.has(token.toLocaleLowerCase("en")),
-    ).length;
+    .map((token) => token.replace(/[ˈˌːˑ.‿-]/gu, ""))
+    .filter((token) => /\p{L}/u.test(token) && !ipaLabels.has(token.toLocaleLowerCase("en")));
+// A run of IPA vowel symbols is one syllable nucleus.
+const ipaNuclei = (word: string) =>
+  (
+    word
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .match(/[aeiouyæɐɑɒɔəɘɚɛɜɝɞɤɨɪɯɵøœɶʉʊʌʏ]+/gu) ?? []
+  ).length;
+// English letter names, for an initialism written in lower case ("asap" /ˌeɪ es eɪ ˈpiː/).
+const ipaLetterNames = new Set(
+  "eɪ bi si di i ef dʒi eɪtʃ aɪ dʒeɪ keɪ el em en əʊ oʊ pi kju ɑ ɑr es ti ju vi dʌbəlju dʌblju eks waɪ zed zi".split(
+    " ",
+  ),
+);
 
 /**
  * AC-D46-04: a lexical pronunciation.ipa transcribes its displayed headword, never the example
  * sentence. Each listed variant may have at most the headword's spoken words (hyphen parts apart,
  * an initialism by its letters, a number by its digits), two words per sb/sth slot and per " + "
- * complement, and one more word such as an article. Unsupported headwords are reported by
- * canonical validation.
+ * complement, and one more word such as an article. A transcription spaced by syllable or spoken
+ * letter by letter still writes the headword alone: every word is one syllable at most, and there
+ * are no more of them than the headword has vowel letters (plus one) or letters. Unsupported
+ * headwords are reported by canonical validation.
  */
 export function lexicalIpaExceedsHeadword(en: string, ipa: string): boolean {
   if (!studyLexicalTarget(en)) return false;
   const [head = "", complement] = en.trim().split(/\s*\+\s*/u);
-  const headword = Math.max(
-    ...head.split(/\s+\/\s+/u).map((alternative) => {
-      const words = alternative
-        .replace(/\((\w+)(?:\s*\/\s*\w+)?\)/gu, "$1")
-        .replace(/\b(?:sb|sth)\s*\/\s*(?:sb|sth)\b/giu, "sth")
-        .split(/\s+/u)
-        .filter(Boolean);
-      const slots = words.filter((word) => ipaSlot.test(word)).length;
-      const spoken = words
-        .filter((word) => !ipaSlot.test(word))
-        .flatMap((word) => word.split(/-+/u))
-        .filter((part) => /[\p{L}\p{N}]/u.test(part))
-        .reduce((total, part) => total + spokenWordCount(part), 0);
-      return spoken + 2 * slots;
-    }),
-  );
-  const allowed = headword + (complement === undefined ? 0 : 2) + 1;
-  return ipaVariants(ipa).some((variant) => ipaWordCount(variant) > allowed);
+  const alternatives = head.split(/\s+\/\s+/u).map((alternative) => {
+    const words = alternative
+      .replace(/\((\w+)(?:\s*\/\s*\w+)?\)/gu, "$1")
+      .replace(/\b(?:sb|sth)\s*\/\s*(?:sb|sth)\b/giu, "sth")
+      .split(/\s+/u)
+      .filter(Boolean);
+    const slots = 2 * words.filter((word) => ipaSlot.test(word)).length;
+    const spoken = words
+      .filter((word) => !ipaSlot.test(word))
+      .flatMap((word) => word.normalize("NFD").split(/-+/u))
+      .filter((part) => /[\p{L}\p{N}]/u.test(part));
+    const count = (pattern: RegExp) =>
+      spoken.reduce((total, part) => total + (part.match(pattern) ?? []).length, slots);
+    return {
+      words: spoken.reduce((total, part) => total + spokenWordCount(part), slots),
+      vowels: count(/[aeiouy]/giu),
+      letters: count(/\p{L}/gu),
+    };
+  });
+  const most = (key: "words" | "vowels" | "letters") =>
+    Math.max(...alternatives.map((entry) => entry[key]));
+  const extra = complement === undefined ? 0 : 2;
+  return ipaVariants(ipa).some((variant) => {
+    const words = ipaWords(variant);
+    if (words.length <= most("words") + extra + 1) return false;
+    if (words.every((word) => ipaLetterNames.has(word))) return words.length > most("letters");
+    return !(
+      words.every((word) => ipaNuclei(word) <= 1) && words.length <= most("vowels") + extra + 1
+    );
+  });
 }
 
 interface RevealToken {
@@ -351,8 +384,10 @@ interface RevealUnit {
   blank: boolean;
 }
 
-// Punctuation that is formatting on a card front unless the answer itself uses it.
-const revealPunctuation = ["'", "-", '"', ";", "(", ")", "[", "]", "–", "—"];
+// Punctuation that is formatting on a card front unless the answer itself uses it. A hyphen
+// between letters, an apostrophe after a plural s and ";" always count, so a card that removes
+// one ("five-years-old", "The dogs' are", "tea; and coffee") is a real task.
+const revealPunctuation = ["'", "-", '"', "(", ")", "[", "]", "–", "—"];
 const revealBlank = /_{2,}|\[\s*(?:\.{3}|…)\s*\]|\.{3,}|…/gu;
 const cueBlank = /_{2,}|\[\s*(?:\.{3}|…)\s*\]/gu;
 const englishContractions: [RegExp, string][] = [
@@ -379,21 +414,23 @@ function revealText(value: string): string {
 
 /**
  * Card-front units: split at sentence marks, ": ", arrows, spaced dashes and newlines. Blanks,
- * slashes and brackets are formatting, except punctuation that the answer itself uses.
+ * slashes and brackets are formatting, except punctuation that the answer itself uses and the
+ * marks that always count (see revealPunctuation).
  */
 function revealUnits(value: string, significant: Set<string>, contractions = false): RevealUnit[] {
   let text = revealText(value).replace(revealBlank, " \u0000 ");
   if (contractions)
     for (const [pattern, replacement] of englishContractions)
       text = text.replace(pattern, replacement);
-  const joiners = `'${significant.has("-") ? "\\-" : ""}`;
-  const word = `[\\p{L}\\p{N}]+(?:[${joiners}][\\p{L}\\p{N}]+)*${significant.has("'") ? "'?" : ""}`;
+  // Otherwise a word-final apostrophe is a closing quote, except after a plural s.
+  const final = significant.has("'") ? "'?" : "(?:(?<=[sS])')?";
+  const word = `[\\p{L}\\p{N}]+(?:['\\-][\\p{L}\\p{N}]+)*${final}`;
   const marks = revealPunctuation
     .filter((mark) => significant.has(mark))
     .map(escapePattern)
     .join("|");
   const lexer = new RegExp(
-    `${word}|[,،、]|${marks ? `${marks}|` : ""}[.?!。？！؟]+|:(?=\\s|$)|\\n|\\u0000|/`,
+    `${word}|[,،、]|;|${marks ? `${marks}|` : ""}[.?!。？！؟]+|:(?=\\s|$)|\\n|\\u0000|/`,
     "gu",
   );
   const units: RevealUnit[] = [];
@@ -473,7 +510,8 @@ function frontRevealsAnswer(front: string, fullSentence: string, significant: Se
   const units = revealUnits(front, significant);
   const single = answer.length === 1 ? answer[0] : undefined;
   for (let index = 0; index < units.length; index++) {
-    // (a) The whole answer is one complete front unit (or consecutive units). A blank-free near
+    // (a) The whole answer is one complete, blank-free front unit (or consecutive units): a unit
+    // with a blank still asks whether anything fills it, e.g. a zero article. A blank-free near
     // copy elsewhere in the same field is a sentence-level option, so the learner still chooses.
     if (
       index + answer.length <= units.length &&
@@ -481,6 +519,7 @@ function frontRevealsAnswer(front: string, fullSentence: string, significant: Se
         const other = units[index + offset];
         return (
           other !== undefined &&
+          !other.blank &&
           sameRevealTokens(unit.tokens, other.tokens) &&
           sameRevealEnd(unit.end, other.end)
         );
@@ -1211,12 +1250,6 @@ export function buildKnowledgeGenerationInput(
         throw errors.validationFailed({ output: ["board_evidence_invalid"] });
       return text;
     });
-    // A "Class sentence" that is not a faithful class quotation is omitted, never rejected:
-    // noisy extraction must not cost the lesson its single regeneration.
-    const quotation = activities.chunks?.length ? classQuotationSources(data.sources) : undefined;
-    const chunks = (activities.chunks ?? []).filter(
-      (chunk) => quotation && quotesClassSources(chunk.classSentence, quotation),
-    );
     const tasks = expandTaskGroups(activities.tasks ?? []);
     const culture = expandTaskGroups(activities.culture ?? []);
     const { mistakes } = notes as {
@@ -1272,7 +1305,8 @@ export function buildKnowledgeGenerationInput(
         ...(orientation.oralIntro === undefined ? {} : { oralIntro: orientation.oralIntro }),
         date: context.date,
         ...(context.course ? { course: context.course } : {}),
-        chunks,
+        // A misquoted "Class sentence" is omitted by finalizeGeneratedStudyPractice, never rejected.
+        chunks: activities.chunks ?? [],
         board,
         tasks,
         culture,

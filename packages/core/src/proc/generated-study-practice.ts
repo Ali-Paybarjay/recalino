@@ -9,6 +9,7 @@ import {
   studyLexicalTargetMatches,
   validateKnowledgeModel,
 } from "../lkm";
+import { classQuotationSources, quotesClassSources } from "./knowledge-generation";
 import type { LearnerTeachingContext } from "./learner-context";
 
 export interface GeneratedPracticeAudit {
@@ -38,8 +39,29 @@ export function finalizeGeneratedStudyPractice(
     derivedExercises: 0,
     omittedCandidates: {},
   };
+  const omit = (reason: string) => {
+    audit.omittedCandidates[reason] = (audit.omittedCandidates[reason] ?? 0) + 1;
+  };
+  // On every generation path, a Class Notes chunk whose "Class sentence" is not a faithful class
+  // quotation is omitted, never rejected: noisy extraction must not cost the lesson its single
+  // regeneration. Only the count is recorded, never the text (PRD-PRIV-06).
+  const chunks = input.classNotes?.chunks ?? [];
+  const quotation = chunks.length ? classQuotationSources(sources) : undefined;
+  const quoted = (entries: ClassNotes["chunks"]) =>
+    entries.filter((chunk) => quotation && quotesClassSources(chunk.classSentence, quotation));
+  const kept = quoted(chunks);
+  for (let index = kept.length; index < chunks.length; index++)
+    omit("class_sentence_not_in_sources");
+  if (model.classNotes) model.classNotes.chunks = quoted(model.classNotes.chunks);
   // Old queued settings without the D46 snapshot retain their original optional practice.
-  if (!audit.applied) return { model: input, audit };
+  if (!audit.applied)
+    return {
+      model:
+        input.classNotes && kept.length < chunks.length
+          ? { ...input, classNotes: { ...input.classNotes, chunks: kept } }
+          : input,
+      audit,
+    };
   // Generated recognition definitions may go beyond a cited term. Treat them as additional
   // AI teaching, never as a verified class statement or teacher quotation. Keep their prose.
   for (const item of model.learningItems) {
@@ -80,9 +102,6 @@ export function finalizeGeneratedStudyPractice(
       }
     }
   }
-  const omit = (reason: string) => {
-    audit.omittedCandidates[reason] = (audit.omittedCandidates[reason] ?? 0) + 1;
-  };
   if (model.classNotes) {
     audit.replacedGeneratedExercises = model.classNotes.gapfill.length;
     const exercises: ClassNotes["gapfill"] = [];

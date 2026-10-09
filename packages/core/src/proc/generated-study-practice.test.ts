@@ -118,6 +118,27 @@ describe("AC-D46 generation-only grounded practice", () => {
     expect(result.model).toEqual(model);
   });
 
+  it("FR-PROC-004 omits and counts a Class Notes chunk that misquotes the class, never its text", () => {
+    const { model, source } = fixture();
+    if (!model.classNotes) throw new Error("fixture");
+    model.classNotes.chunks = [
+      { pattern: "look forward to + -ing", classSentence: example, noteFa: "Quoted." },
+      {
+        pattern: "look forward to + -ing",
+        classSentence: "I look forward to meeting my old friends.",
+        noteFa: "Altered.",
+      },
+    ];
+    const before = structuredClone(model);
+    const result = finalizeGeneratedStudyPractice(model, [source], context);
+    expect(result.model.classNotes?.chunks.map((chunk) => chunk.noteFa)).toEqual(["Quoted."]);
+    expect(result.audit.omittedCandidates).toEqual({ class_sentence_not_in_sources: 1 });
+    // Old queued settings without the D46 snapshot omit it too; the input is never changed.
+    const legacy = finalizeGeneratedStudyPractice(model, [source]);
+    expect(legacy.model.classNotes?.chunks.map((chunk) => chunk.noteFa)).toEqual(["Quoted."]);
+    expect(model).toEqual(before);
+  });
+
   it.each(["source", "version", "block", "negative", "empty", "beyond-code-points"])(
     "never canonicalizes an invalid %s reference",
     (invalid) => {
