@@ -95,6 +95,12 @@ describe("D49 teaching instructions respect the output budget", () => {
     expect(compact).toContain("one-sentence noteFa");
     expect(compact).toContain("Within each production noteFa's one short sentence");
     expect(compact).toContain("the concise-field rules and output budget win");
+    // The choices never relax card structure (D49 live evaluation, B2).
+    expect(compact).toContain("change only the wording of explanation fields");
+    expect(compact).toContain("keep recognition items as recognition");
+    expect(personalisedTeachingPrompt({ version: 1, declaredLevel: "B2" })).not.toContain(
+      "change only the wording of explanation fields",
+    );
   });
   it("uses the compact variant inside the production-budget study prompt", () => {
     const prompt = studyPrompt("fa", 6144, true, context);
