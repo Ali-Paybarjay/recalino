@@ -1094,11 +1094,13 @@ export interface VocAnalysis {
   created_at: Generated<Timestamp>;
   embeddings_expire_at: Timestamp;
   id: Generated<string>;
+  match_reason: string | null;
   mistakes: Generated<Json>;
   model_version: string;
   private_embeddings: Generated<Json>;
   profile_version: number;
   reason: string | null;
+  reference_status: string | null;
   rejected_ids: Generated<Json>;
   run_id: string;
   session_id: string;

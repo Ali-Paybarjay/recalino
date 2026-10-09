@@ -2,6 +2,8 @@ export * from "./analysis";
 export * from "./contracts";
 export * from "./enrollment";
 export * from "./matching";
+export * from "./policy";
+export * from "./policy-registry";
 export * from "./privacy";
 export * from "./profile";
 export * from "./projection";

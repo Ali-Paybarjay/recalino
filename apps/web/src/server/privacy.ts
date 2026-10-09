@@ -11,6 +11,7 @@ import {
   tombstoneSessionCards,
   tombstoneSourceCards,
 } from "@recalino/core/card";
+import type { Database } from "@recalino/core/db";
 import {
   cleanupHtmlExports,
   tombstoneAccountHtmlExports,
@@ -44,7 +45,12 @@ import {
   tombstoneAccountPers,
   tombstoneSessionPers,
 } from "@recalino/core/pers";
-import { clearAccountNotifications, clearSessionNotifications, errors } from "@recalino/core/plt";
+import {
+  clearAccountNotifications,
+  clearSessionNotifications,
+  errors,
+  type LearnerContext,
+} from "@recalino/core/plt";
 import { type PrivacyDependencies, privacyCleanupJob } from "@recalino/core/priv";
 import {
   cleanupAccountProcessing,
@@ -87,6 +93,10 @@ async function removeIdentity(userId: string) {
   const { error } = await createAuthAdmin().deleteUser(userId, true);
   if (error && error.status !== 404) throw new Error("Authentication cleanup failed");
 }
+async function withdrawExports(db: Database, ctx: LearnerContext, now?: Date) {
+  await db.transaction().execute((tx) => tombstoneAccountHtmlExports(tx, ctx, now));
+  await cleanupHtmlExports(db, storage(), ctx, { now });
+}
 export function privacyDependencies(): PrivacyDependencies {
   return {
     authentication: { revokeSessions: removeIdentity, deleteIdentity: removeIdentity },
@@ -101,11 +111,22 @@ export function privacyDependencies(): PrivacyDependencies {
       },
       {
         module: "voc",
-        tombstoneSession: (tx, ctx, id) => removeSessionVoice(tx, ctx, id),
+        // Deleting a reference's class withdraws automatic matches elsewhere; exports that
+        // showed their spoken mistakes are withdrawn with them, as on a manual revoke.
+        tombstoneSession: async (tx, ctx, id, now) => {
+          if (await removeSessionVoice(tx, ctx, id))
+            await tombstoneAccountHtmlExports(tx, ctx, now);
+        },
         tombstoneAccount: revokeVoiceData,
-        tombstoneSource: (tx, ctx, id) => removeSourceVoice(tx, ctx, id),
-        cleanupSession: (db, ctx, id) => removeSessionVoice(db, ctx, id),
-        cleanupSource: (db, ctx, id) => removeSourceVoice(db, ctx, id),
+        tombstoneSource: async (tx, ctx, id, _sessions, now) => {
+          if (await removeSourceVoice(tx, ctx, id)) await tombstoneAccountHtmlExports(tx, ctx, now);
+        },
+        cleanupSession: async (db, ctx, id, now) => {
+          if (await removeSessionVoice(db, ctx, id)) await withdrawExports(db, ctx, now);
+        },
+        cleanupSource: async (db, ctx, id, _sessions, now) => {
+          if (await removeSourceVoice(db, ctx, id)) await withdrawExports(db, ctx, now);
+        },
         cleanupAccount: (db, ctx, now) => cleanupAccountVoice(db, storage(), ctx, now),
       },
       {

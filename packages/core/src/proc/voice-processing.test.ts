@@ -139,7 +139,8 @@ describe("speaker evidence alignment", () => {
     );
     expect(result.candidates).toHaveLength(1);
     expect(result.embeddings).toEqual([]);
-    expect(result.candidates[0]?.clips).toEqual([]);
+    // No voiceprint, but the timed, unoverlapped turn can be played from the local original.
+    expect(result.candidates[0]?.clips).toEqual([{ startMs: 0, endMs: 8000, text: "I am agree." }]);
   });
   it("withholds labelled fallback utterances outside the selected recording range or measured duration", () => {
     const scoped = scopedVoiceSpeakerId(sourceId, "chunk1", "0");
@@ -369,4 +370,127 @@ describe("spoken correction failure reasons", () => {
     ])
       expect(voiceCorrectionFailure(error)).toBe("voice_correction_unavailable");
   });
+});
+
+it("VOICE-AC-10: an over-split recording keeps the voices that matter instead of failing", () => {
+  const segments = Array.from({ length: 60 }, (_, index) => ({
+    speakerId: `speaker_${index}`,
+    startMs: index * 1000,
+    endMs: index * 1000 + (index === 59 ? 900 : 500),
+    overlap: false,
+    boundaryUnsafe: false,
+  }));
+  const vector = [1, ...Array<number>(15).fill(0)];
+  // speaker_58 is as short as most fragments and sorts late by name: only its voiceprint keeps
+  // it. speaker_7 is one of the ten fragments dropped.
+  const result = buildVoiceAnalysis(
+    base,
+    source([
+      // Each turn lies wholly inside its fragment, 200 ms from both edges.
+      { start: 200, end: 300, text: "Kept fragment words.", speaker: "0" },
+      { start: 7200, end: 7300, text: "Dropped fragment words.", speaker: "0" },
+    ]),
+    {
+      modelRevision: "synthetic",
+      segments,
+      speakers: [{ speakerId: "speaker_58", embedding: vector, cleanSpeechMs: 25000 }],
+    },
+  );
+  expect(result.candidates).toHaveLength(50);
+  expect(result.embeddings).toHaveLength(1);
+  const ids = result.candidates.map((candidate) => candidate.id);
+  const id = (label: string) => scopedVoiceSpeakerId(sourceId, "whole-source", label);
+  expect(ids).toContain(id("speaker_58"));
+  expect(ids).toContain(id("speaker_59"));
+  expect(ids).not.toContain(id("speaker_7"));
+  // Order follows the recording, not the priority used to choose.
+  expect(ids.indexOf(id("speaker_58"))).toBeLessThan(ids.indexOf(id("speaker_59")));
+  // Speech of a dropped fragment cannot be attributed to anyone.
+  expect(result.utterances.map((item) => item.text)).toEqual(["Kept fragment words."]);
+  expect(result.utterances.every((item) => ids.includes(item.speakerId))).toBe(true);
+});
+
+it("VOICE-AC-07: a voice with only shorter clean turns still gets timed excerpts", () => {
+  const turns = [
+    { start: 1000, end: 4500, text: "Short clean answer one.", speaker: "0" },
+    { start: 10000, end: 13800, text: "Short clean answer two.", speaker: "0" },
+    { start: 20000, end: 21800, text: "Too short.", speaker: "0" },
+  ];
+  const segments = turns.map((turn) => ({
+    speakerId: "speaker_0",
+    startMs: turn.start - 500,
+    endMs: turn.end + 500,
+    overlap: false,
+    boundaryUnsafe: false,
+  }));
+  const result = buildVoiceAnalysis(base, source(turns), {
+    modelRevision: "synthetic",
+    segments,
+    speakers: [],
+  });
+  expect(result.candidates[0]?.clips.map((clip) => [clip.startMs, clip.endMs])).toEqual([
+    [1000, 4500],
+    [10000, 13800],
+  ]);
+});
+
+it("VOICE-AC-07: a voice without a clean transcribed turn is still heard from its own clean speech", () => {
+  const result = buildVoiceAnalysis(base, source([]), {
+    modelRevision: "synthetic",
+    segments: [
+      { speakerId: "speaker_0", startMs: 1000, endMs: 6000, overlap: false, boundaryUnsafe: false },
+      { speakerId: "speaker_0", startMs: 7000, endMs: 9000, overlap: false, boundaryUnsafe: false },
+      {
+        speakerId: "speaker_0",
+        startMs: 10000,
+        endMs: 30000,
+        overlap: true,
+        boundaryUnsafe: false,
+      },
+      {
+        speakerId: "speaker_1",
+        startMs: 12000,
+        endMs: 18000,
+        overlap: true,
+        boundaryUnsafe: false,
+      },
+      {
+        speakerId: "speaker_2",
+        startMs: 40000,
+        endMs: 50000,
+        overlap: false,
+        boundaryUnsafe: true,
+      },
+    ],
+    speakers: [],
+  });
+  // Clean parts of at least three seconds, away from the other voice, without text.
+  expect(result.candidates[0]?.clips).toEqual([
+    { startMs: 1200, endMs: 5800, text: "" },
+    { startMs: 18200, endMs: 28200, text: "" },
+  ]);
+  // The other voice has no clean part long enough; an edge-clipped turn offers nothing.
+  expect(result.candidates[1]?.clips).toEqual([]);
+  expect(result.candidates[2]?.clips).toEqual([]);
+  // Listening excerpts are not utterances and cannot carry spoken-mistake evidence.
+  expect(result.utterances).toEqual([]);
+});
+
+it("keeps stored excerpts within their limits and never hears a voice whose overlap partner was cut", () => {
+  const long = "word ".repeat(1800).trim();
+  const scoped = scopedVoiceSpeakerId(sourceId, "chunk1", "0");
+  const fallback = buildTranscriptVoiceAnalysis(
+    base,
+    source([{ start: 0, end: 8000, text: long, speaker: scoped }]),
+  );
+  expect(fallback.candidates[0]?.clips[0]?.text.length).toBe(4000);
+  // An overlapped turn whose partner no longer appears (it crossed an excerpt edge) is skipped.
+  const result = buildVoiceAnalysis(base, source([]), {
+    modelRevision: "synthetic",
+    segments: [
+      { speakerId: "speaker_0", startMs: 1000, endMs: 9000, overlap: true, boundaryUnsafe: false },
+    ],
+    speakers: [],
+  });
+  expect(result.candidates[0]?.clips).toEqual([]);
 });

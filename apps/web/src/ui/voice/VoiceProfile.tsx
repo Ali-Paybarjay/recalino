@@ -2,6 +2,7 @@
 import { VOICE_CONSENT_VERSION, type VoiceProfileView } from "@recalino/core/voice-contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
+import { pendingCopy } from "../pending-copy";
 import { useRecording } from "../recording/RecordingProvider";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
@@ -320,6 +321,14 @@ export function VoiceProfileForm({
                   ? `${profile.confirmedLessons} confirmed ${profile.confirmedLessons === 1 ? "session" : "sessions"}.`
                   : "Your first session always needs your confirmation."}
               </Status>
+            ) : null}
+            {profile.enabled &&
+            profile.engineAvailable &&
+            profile.readiness &&
+            profile.readiness.automatic !== "off" ? (
+              <p className="preview-muted">
+                {pendingCopy.voice.readiness[profile.readiness.automatic]}
+              </p>
             ) : null}
             {!profile.engineAvailable ? (
               <Status>

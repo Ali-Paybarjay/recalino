@@ -14,8 +14,13 @@ import { voiceCoverageReason } from "@recalino/core/voice-contracts";
 import { getAiProvider } from "./ai";
 import { decodeVoiceAudioWindows, type VoiceWindowCoverage } from "./audio-preparer";
 import { getObjectStore } from "./storage";
-import { loadVoiceEngine } from "./voice-engine";
-import { remapVoiceSegments, voiceSourceWindows } from "./voice-source-windows";
+import { loadVoiceEngine, type VoiceEngine } from "./voice-engine";
+import {
+  remapVoiceSegments,
+  type VoiceSourceWindow,
+  type VoiceWindowPlan,
+  voiceSourceWindows,
+} from "./voice-source-windows";
 
 const SAFE_CODE = /^[a-z][a-z0-9_]{1,63}$/;
 
@@ -42,24 +47,20 @@ type CheckedDiarization = Awaited<ReturnType<VoiceDiarizer>> & {
   coverage?: VoiceWindowCoverage;
 };
 
-/** The full original establishes one speaker namespace; five-minute STT chunks do not. */
-const diarizeOriginal = async ({
-  db,
-  ctx,
-  source,
-}: Parameters<VoiceDiarizer>[0]): Promise<CheckedDiarization> => {
-  const store = getObjectStore();
-  if (!store || !source.objectId || !source.durationMs)
-    throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
-  if (!(await liveTemporaryAudioObject(db, ctx, source.sourceId, source.objectId)))
-    throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
-  const engine = await loadVoiceEngine();
-  const bytes = await readOwnedObject(db, store, ctx, source.objectId);
+/**
+ * Windows → decoded composite → one native diarization → original timestamps. Shared by the
+ * class check and the offline evaluation (tools/voice/evaluation), so both run the same code.
+ */
+export async function diarizeVoiceRecording(
+  engine: VoiceEngine,
+  bytes: Uint8Array,
+  durationMs: number,
+  ranges: readonly VoiceSourceWindow[] = [],
+  plan?: VoiceWindowPlan,
+): Promise<CheckedDiarization> {
   let samples: Float32Array | undefined;
   try {
-    if (createHash("sha256").update(bytes).digest("hex") !== source.sha256)
-      throw errors.validationFailed({ voice: ["source_integrity_mismatch"] });
-    const selection = voiceSourceWindows(source.durationMs, source.ranges);
+    const selection = voiceSourceWindows(durationMs, ranges, plan);
     const pcm = await decodeVoiceAudioWindows(bytes, selection.windows);
     samples = pcm.samples;
     const result = await engine.diarize(pcm.samples, {
@@ -76,6 +77,27 @@ const diarizeOriginal = async ({
     };
   } finally {
     samples?.fill(0);
+  }
+}
+
+/** The full original establishes one speaker namespace; five-minute STT chunks do not. */
+const diarizeOriginal = async ({
+  db,
+  ctx,
+  source,
+}: Parameters<VoiceDiarizer>[0]): Promise<CheckedDiarization> => {
+  const store = getObjectStore();
+  if (!store || !source.objectId || !source.durationMs)
+    throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
+  if (!(await liveTemporaryAudioObject(db, ctx, source.sourceId, source.objectId)))
+    throw errors.validationFailed({ voice: ["original_audio_unavailable"] });
+  const engine = await loadVoiceEngine();
+  const bytes = await readOwnedObject(db, store, ctx, source.objectId);
+  try {
+    if (createHash("sha256").update(bytes).digest("hex") !== source.sha256)
+      throw errors.validationFailed({ voice: ["source_integrity_mismatch"] });
+    return await diarizeVoiceRecording(engine, bytes, source.durationMs, source.ranges);
+  } finally {
     bytes.fill(0);
   }
 };

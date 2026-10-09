@@ -9,6 +9,8 @@ import {
   ownedObjectMetadata,
   writeOwnedObject,
 } from "../plt";
+import { invalidateAutomaticVoice } from "./automatic";
+import { accountVoiceCalibration } from "./calibration";
 import {
   VOICE_CONSENT_VERSION,
   type VoiceEnrollment,
@@ -20,6 +22,8 @@ import {
   completeVoiceEnrollment,
   type VoiceEnrollmentAttempt,
 } from "./enrollment";
+import { type VoiceAcceptancePolicy, voiceReferenceConsistency, voiceReferences } from "./policy";
+import { voiceAcceptancePolicy } from "./policy-registry";
 
 export const enrollmentEmbeddingsSchema = z
   .array(
@@ -59,6 +63,7 @@ export async function getVoiceProfile(
   db: Database | Tx,
   ctx: LearnerContext,
   engineAvailable = false,
+  modelRevision?: string,
 ): Promise<VoiceProfileView> {
   const row = await db
     .selectFrom("voc.profile")
@@ -76,6 +81,23 @@ export async function getVoiceProfile(
         .where("verification_method", "=", "manual")
         .execute()
     : [];
+  const model = modelRevision ?? row?.model_version ?? null;
+  const policy = model ? voiceAcceptancePolicy(model) : null;
+  const references = model
+    ? voiceReferences(
+        checkedVoiceEnrollment(
+          { version: row?.version ?? 0, enabled: true, modelVersion: model, embeddings },
+          model,
+          policy,
+        ),
+        model,
+      )
+    : { sample: null, lessons: [] };
+  // Without an evaluated policy, the account's own calibration can still accept a class.
+  const legacy =
+    row?.enabled && model && !policy && (references.sample || references.lessons.length)
+      ? await accountVoiceCalibration(db, ctx, model)
+      : null;
   return {
     version: row?.version ?? 0,
     enabled: row?.enabled ?? false,
@@ -85,6 +107,42 @@ export async function getVoiceProfile(
     modelVersion: row?.model_version ?? null,
     confirmedLessons: confirmed.length,
     engineAvailable,
+    readiness: {
+      sample: references.sample !== null,
+      references: references.lessons.length,
+      automatic: !row?.enabled
+        ? "off"
+        : legacy?.calibration && legacy.confirmedLessons
+          ? "ready"
+          : !references.sample
+            ? "needs_sample"
+            : !references.lessons.length
+              ? "needs_class"
+              : policy?.autoAccept
+                ? "ready"
+                : "unavailable",
+    },
+  };
+}
+/**
+ * The enrolment matching may rely on. Under an evaluated policy, a class reference saved before
+ * the policy existed counts only while it resembles the sample, as a new confirmation must.
+ */
+export function checkedVoiceEnrollment(
+  enrollment: VoiceEnrollment,
+  modelVersion: string,
+  policy: VoiceAcceptancePolicy | null,
+): VoiceEnrollment {
+  const { sample } = voiceReferences(enrollment, modelVersion);
+  if (!policy || !sample) return enrollment;
+  return {
+    ...enrollment,
+    embeddings: enrollment.embeddings.filter(
+      (entry) =>
+        entry.analysisId === null ||
+        entry.modelVersion !== modelVersion ||
+        voiceReferenceConsistency(entry.vector, { sample, lessons: [] }, policy) !== "mismatch",
+    ),
   };
 }
 /** Consent is separate from a class recording; no microphone or sample storage precedes it. */
@@ -134,6 +192,8 @@ export async function saveVoiceSample(
     modelVersion: string;
     embedding: number[];
     enrollmentAttempt?: VoiceEnrollmentAttempt;
+    /** Runs in the same transaction when replacing the sample withdrew automatic matches. */
+    onAutomaticWithdrawn?: (tx: Tx) => Promise<void>;
   },
   now = new Date(),
 ): Promise<void> {
@@ -175,6 +235,19 @@ export async function saveVoiceSample(
       if (!registered || registered.retired_at) throw errors.conflict();
       const metadata = await ownedObjectMetadata(tx, ctx, objectId);
       if (metadata.state !== "verified") throw errors.conflict();
+      // Confirmed classes stay references only while they still sound like the new sample.
+      const policy = voiceAcceptancePolicy(input.modelVersion);
+      const lessons = profile.embeddings
+        .filter((entry) => entry.analysisId && entry.modelVersion === input.modelVersion)
+        .slice(0, 4);
+      const kept = lessons.filter(
+        (entry) =>
+          voiceReferenceConsistency(entry.vector, { sample: vector, lessons: [] }, policy) !==
+          "mismatch",
+      );
+      const dropped = lessons.flatMap((entry) =>
+        entry.analysisId && !kept.includes(entry) ? [entry.analysisId] : [],
+      );
       const entries = [
         {
           vector,
@@ -182,10 +255,26 @@ export async function saveVoiceSample(
           analysisId: null,
           createdAt: now.toISOString(),
         },
-        ...profile.embeddings
-          .filter((entry) => entry.analysisId && entry.modelVersion === input.modelVersion)
-          .slice(0, 4),
+        ...kept,
       ];
+      if (dropped.length)
+        await tx
+          .updateTable("voc.analysis")
+          .set((eb) => ({
+            version: eb("version", "+", 1),
+            reference_status: "mismatch",
+            updated_at: now,
+          }))
+          .where("user_id", "=", ctx.userId)
+          .where("id", "in", dropped)
+          .where("verification_method", "=", "manual")
+          .execute();
+      // Automatic matches rested on the replaced sample or on a dropped reference; they ask again.
+      if (
+        (profile.embeddings.some((entry) => entry.analysisId === null) || dropped.length) &&
+        (await invalidateAutomaticVoice(tx, ctx.userId, now)).size
+      )
+        await input.onAutomaticWithdrawn?.(tx);
       await tx
         .updateTable("voc.profile")
         .set({

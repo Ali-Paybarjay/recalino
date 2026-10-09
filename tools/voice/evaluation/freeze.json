@@ -1,0 +1,35 @@
+{
+  "protocol": "voice-eval-ami-v1",
+  "frozenAt": "2026-10-08T19:28:49.203Z",
+  "sources": {
+    "tools/voice/evaluation/PROTOCOL.md": "d3decf3172a5b090027321fc46655b1776e7d4bce22c3d9e52220ee468acc2ea",
+    "tools/voice/evaluation/ami.ts": "3a91a88e8e832206ff7c00e23a699c74fd91d43c8ff18b2c51e99041dacdded9",
+    "tools/voice/evaluation/extract.ts": "bc77b925d7fe7efeeced45f07762e0722814b2df0ef3eae97d8e29a34e4eb12e",
+    "tools/voice/evaluation/simulate.ts": "eae7404d78afd5fc28f2f5349372270b985aa25e32e30a881bd07941b9739d78",
+    "tools/voice/evaluation/summary.ts": "29da250f0fe4c10a773f6bfe2f804ac44f943b11218d926ccaccb8fa3e724b0c",
+    "tools/voice/evaluation/calibrate.ts": "6842fb99290d8f58de7f152e8c49b4c9a44df7c5099c9c03abe5f3a03d922342",
+    "tools/voice/evaluation/holdout.ts": "b07c399c992e3fb579d05746a847cf7808e9b5dd4e1283d68d02f3cae3bf108d",
+    "packages/core/src/voc/policy.ts": "ff09f2c5dbdc7df8dd42d39e286ad4d2f011a094bd029772a1cbf12371414a44",
+    "packages/core/src/voc/matching.ts": "2da61c2d54dfff6e0f6f33abbf5c9abb358384d6b5f6cb6617520c545805d5bc",
+    "packages/core/src/proc/voice-processing.ts": "5845c4bbca926872019f667f3050ab123c1f35237f48935104bdecd6734c2249",
+    "apps/web/src/server/voice-engine.ts": "7c4f8587c04fade4a28d853567d2dc653997189532052c175fa2eb9aecf84c6a",
+    "apps/web/src/server/voice-engine-worker.mjs": "96a01e8b14ec76bae2651d52fa23f8e95dd24453c2084f47b8982cc7c0fcbd4b",
+    "apps/web/src/server/voice-engine-quality.mjs": "7b11c6e2e24727cf7aef0ef032e8feeb26cda94a222fe09ab2e80f2218aea232",
+    "apps/web/src/server/voice-processing.ts": "946c23c7e75e741cc94a1a52faa148e797962cebb6e59e099ec9c18bffa6f0f1",
+    "apps/web/src/server/voice-sample.ts": "fd693d02e36315cefd02e25de7d6de71ac5ab7a8dc9401c57641ba62f09b113b",
+    "apps/web/src/server/voice-source-windows.ts": "396054e15a2cafe7a0f8276798de2eec8f535b3a20157e4dd8c1b4f82f88a150",
+    "apps/web/src/server/audio-preparer.ts": "dca533a0af9105c81462f1dde4c00a3d38d8d0625f03abf211617143b641b9f8"
+  },
+  "pipeline": {
+    "modelRevision": "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+    "clusterThreshold": 0.5,
+    "spanMode": "clean-parts",
+    "mergeThreshold": 0.65,
+    "windowPlan": {
+      "windowMs": 58000,
+      "maxWindows": 8
+    }
+  },
+  "manifestSha256": "b6e99883ef01699c4ac3a6ec4598062ba1b56cb85b7de388b0be9bf6ad47a317",
+  "amendments": []
+}

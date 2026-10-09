@@ -29,11 +29,11 @@ import {
 } from "@recalino/core/voc";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
-import { decodeVoiceAudio } from "./audio-preparer";
 import { runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
-import { loadVoiceEngine } from "./voice-engine";
+import { loadVoiceEngine, VOICE_MODEL_REVISION } from "./voice-engine";
 import { queueVoiceAnalysis } from "./voice-processing";
+import { prepareVoiceSample } from "./voice-sample";
 
 function actor(ctx: RequestContext): LearnerContext {
   if (!ctx.userId) throw errors.unauthenticated();
@@ -57,7 +57,14 @@ export function voiceProfileHandler(): Handler {
   return async ({ request, input, db, ctx }) => {
     const learner = actor(ctx);
     if (request.method === "GET")
-      return { body: await getVoiceProfile(db, learner, await voiceEngineAvailable()) };
+      return {
+        body: await getVoiceProfile(
+          db,
+          learner,
+          await voiceEngineAvailable(),
+          VOICE_MODEL_REVISION,
+        ),
+      };
     const requestKey = key(request),
       store = getObjectStore();
     if (!store) throw errors.validationFailed({ voice: ["storage_unavailable"] });
@@ -80,7 +87,14 @@ export function voiceProfileHandler(): Handler {
       );
       await cleanupVoiceSampleObjects(db, store, learner);
       await cleanupHtmlExports(db, store, learner);
-      return { body: await getVoiceProfile(db, learner, await voiceEngineAvailable()) };
+      return {
+        body: await getVoiceProfile(
+          db,
+          learner,
+          await voiceEngineAvailable(),
+          VOICE_MODEL_REVISION,
+        ),
+      };
     }
     const value = voiceEnrollmentSchema.parse(input);
     const claimed = await beginVoiceEnrollment(db, learner, {
@@ -94,37 +108,25 @@ export function voiceProfileHandler(): Handler {
         // The receipt is committed before native work, and no database transaction spans inference.
         if (value.audioBase64 && value.mimeType) {
           const bytes = Buffer.from(value.audioBase64, "base64");
-          let pcm: Awaited<ReturnType<typeof decodeVoiceAudio>> | undefined;
           try {
-            if (bytes.byteLength > 2100000 || !bytes.byteLength)
-              throw errors.validationFailed({ audio: ["voice_sample_size"] });
-            const engine = await loadVoiceEngine().catch(() => {
-              throw errors.validationFailed({ voice: ["voice_engine_unavailable"] });
-            });
-            pcm = await decodeVoiceAudio(bytes, 36000);
-            if (pcm.durationMs < 15000 || pcm.durationMs > 35000)
-              throw errors.validationFailed({ audio: ["voice_sample_duration"] });
-            const diarized = await engine.diarize(pcm.samples, { sampleRate: pcm.sampleRate });
-            const ids = new Set(diarized.segments.map((segment) => segment.speakerId));
-            if (
-              ids.size !== 1 ||
-              diarized.speakers.length !== 1 ||
-              (diarized.speakers[0]?.cleanSpeechMs ?? 0) < 15000
-            )
-              throw errors.validationFailed({ audio: ["one_clear_voice_required"] });
-            const embedding = diarized.speakers[0]?.embedding;
-            if (!embedding) throw errors.validationFailed({ audio: ["one_clear_voice_required"] });
+            const sample = await prepareVoiceSample(loadVoiceEngine, bytes);
+            let withdrawn = false;
             await saveVoiceSample(db, store, learner, {
               profileVersion: claimed.attempt.profileVersion,
               enrollmentAttempt: claimed.attempt,
               bytes,
               mimeType: value.mimeType,
-              durationMs: Math.round(pcm.durationMs),
-              modelVersion: engine.modelRevision,
-              embedding,
+              durationMs: sample.durationMs,
+              modelVersion: sample.modelRevision,
+              embedding: sample.embedding,
+              // Automatic matches made with the old sample ask again; so do exports showing them.
+              onAutomaticWithdrawn: async (tx) => {
+                withdrawn = true;
+                await tombstoneAccountHtmlExports(tx, learner);
+              },
             });
+            if (withdrawn) await cleanupHtmlExports(db, store, learner);
           } finally {
-            pcm?.samples.fill(0);
             bytes.fill(0);
           }
         } else await completeVoiceEnrollment(db, learner, claimed.attempt);
@@ -133,7 +135,9 @@ export function voiceProfileHandler(): Handler {
         throw error;
       }
     }
-    return { body: await getVoiceProfile(db, learner, await voiceEngineAvailable()) };
+    return {
+      body: await getVoiceProfile(db, learner, await voiceEngineAvailable(), VOICE_MODEL_REVISION),
+    };
   };
 }
 export function classVoiceHandler(sessionId: string): Handler {
