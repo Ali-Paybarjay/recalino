@@ -254,7 +254,7 @@ pnpm build && pnpm check:client-bundle
 ترتیب پیشنهادی، هر مرحله با اجازهٔ صریح مالک محصول:
 
 1. بازبینی و merge شاخه.
-2. اعمال migration `20261008170203_voice_reference_outcome.sql` روی پروژهٔ ابری با `supabase db push`. این migration دو ستون nullable و یک check constraint (`analysis_reference_status_manual_check`) اضافه می‌کند و backfill ندارد. constraint کد قبلی را محدود می‌کند (بخش بازگشت).
+2. اعمال migration `20261009181203_voice_reference_outcome.sql` روی پروژهٔ ابری با `supabase db push`. (نام پیشین `20261008170203` بود. چون این migration هرگز روی پروژهٔ ابری اعمال نشده، در 2026-10-09 زمان تازه‌تری گرفت تا پس از migrationهای `main` بیاید و `db push` بدون `--include-all` کار کند.) این migration دو ستون nullable و یک check constraint (`analysis_reference_status_manual_check`) اضافه می‌کند و backfill ندارد. constraint کد قبلی را محدود می‌کند (بخش بازگشت).
 3. deploy. پس از آن بررسی‌های تازه با pipeline جدید اجرا می‌شوند. تحلیل‌های قبلی دست نمی‌خورند.
 4. پذیرش خودکار فقط با افزودن ورودی ارزیابی‌شده به `VOICE_ACCEPTANCE_POLICIES` روشن می‌شود، آن هم فقط اگر دروازه‌ها قبول شده باشند و مالک محصول تأیید کند. دور v1 ورودی‌ای تولید نکرد، پس این گام فعلاً انجام نمی‌شود. رفتار پیش‌فرض، بدون ورودی، همان رفتار فعلی است.
 
