@@ -147,6 +147,7 @@ export function defineRoute(
           route: meta.id,
           error_name: error instanceof Error ? error.name : typeof error,
           pg_code: postgresCode(error),
+          reason: error instanceof AppError ? error.reason : undefined,
         });
       }
       const errorRedirect =

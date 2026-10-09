@@ -219,9 +219,20 @@ export async function listUnits(
       .where("course_id", "=", courseId)
       .where("owner_id", "=", ctx.userId)
       .orderBy("position", "asc")
+      .orderBy("created_at", "asc")
       .orderBy("id", "asc")
       .execute()
   ).map(unit);
+}
+
+/** A unit created without an order goes after the course's last unit. */
+async function nextUnitPosition(tx: Tx, courseId: string): Promise<number> {
+  const row = await tx
+    .selectFrom("org.unit")
+    .select(sql<number>`least(coalesce(max(position), 0), 2147483646) + 1`.as("next"))
+    .where("course_id", "=", courseId)
+    .executeTakeFirstOrThrow();
+  return row.next;
 }
 
 async function uniqueUnitName(tx: Tx, courseId: string, name: string, except?: string) {
@@ -253,7 +264,7 @@ export async function createUnit(
             owner_id: ctx.userId,
             course_id: parsed.courseId,
             name: parsed.name,
-            position: parsed.position ?? 0,
+            position: parsed.position ?? (await nextUnitPosition(tx, parsed.courseId)),
             created_at: now,
           })
           .returningAll()

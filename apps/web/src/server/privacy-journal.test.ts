@@ -47,8 +47,9 @@ it.each([
 ])("the journal fixture cannot bypass missing production configuration: %j", async (env) => {
   expect(localJournalFixtureAvailable(env)).toBe(false);
   await expect(privacyDeletionJournal(env).record(entry)).rejects.toMatchObject({
-    code: "validation_failed",
-    details: { fields: { cleanup: ["deletion_journal_key_missing"] } },
+    code: "internal",
+    reason: "deletion_journal_key_missing",
+    details: undefined,
   });
   expect(effects.append).not.toHaveBeenCalled();
   expect(effects.store).not.toHaveBeenCalled();

@@ -13,6 +13,7 @@ import {
 } from "../../../ui/components/Feedback";
 import { Field, TextArea, TextInput } from "../../../ui/components/Field";
 import { Icon } from "../../../ui/components/Icon";
+import { InfoTip } from "../../../ui/components/InfoTip";
 import { RadioCards } from "../../../ui/components/RadioCards";
 import { SegmentedControl } from "../../../ui/components/SegmentedControl";
 import { ConfirmDialog, Sheet } from "../../../ui/components/Sheet";
@@ -26,6 +27,7 @@ import {
   SourceStatus,
 } from "../../../ui/components/Status";
 import { Switch } from "../../../ui/components/Switch";
+import { unitCopy } from "../../../ui/course-copy";
 import {
   ArrowsClockwise,
   Cards,
@@ -416,6 +418,21 @@ function Overlays() {
   );
 }
 
+function InfoTips() {
+  return (
+    <Section title="Info tip">
+      <div className={styles.row}>
+        <span>Optional units</span>
+        <InfoTip label={unitCopy.helpLabel}>
+          {unitCopy.help.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </InfoTip>
+      </div>
+    </Section>
+  );
+}
+
 function Scripts() {
   return (
     <Section title="Scripts and direction">
@@ -460,6 +477,7 @@ export function UiKit() {
       <Statuses />
       <Feedback />
       <Overlays />
+      <InfoTips />
       <Scripts />
       <p className={styles.note}>
         <Icon icon={Image} /> Images and icons: Phosphor, local SVG.

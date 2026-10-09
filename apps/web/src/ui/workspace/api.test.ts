@@ -117,3 +117,31 @@ it.each(["select_at_least_one", "not_verified"])(
     });
   },
 );
+
+it("keeps a hidden class whose deletion receipt is pending, so the form can say so", async () => {
+  const pending = {
+    requestId: "8c028da8-1448-4bca-a638-3f4519439b18",
+    kind: "session",
+    state: "acknowledgement_pending",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          { error: { code: "internal", message: "Try again.", details: { deletion: pending } } },
+          { status: 500 },
+        ),
+      ),
+  );
+  await expect(
+    workspaceRequest(`/api/classes/${pending.requestId}`, "DELETE"),
+  ).rejects.toMatchObject({
+    code: "internal",
+    status: 500,
+    deletion: pending,
+    message:
+      "It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes.",
+  });
+});
