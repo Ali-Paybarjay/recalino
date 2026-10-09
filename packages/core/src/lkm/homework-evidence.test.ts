@@ -39,6 +39,9 @@ describe("PRD-NOTE-01 announced homework evidence", () => {
     "Homework:\nWorkbook page 12, exercises 1-3.",
     "HW\n- Write five sentences using the present perfect.",
     "Homework: page twelve\nNo class",
+    // A reply the task asks for may end the announced content with "not".
+    "Homework for next Monday: write a short dialogue of eight lines that includes two negative questions and one reply with I hope not or I'm afraid not. Bring it to the next class.",
+    "Homework: answer the six questions on page 30 with I think so or I think not",
   ])("PRD-NOTE-01 recognises the English after-class assignment %s", (text) => {
     expect(statesAssignment(text, "en")).toBe(true);
   });

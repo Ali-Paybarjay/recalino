@@ -266,9 +266,12 @@ function announcesNothing(content: string, contrast: boolean, markers: Markers):
   if (absent) return true;
   if (words.length <= 4)
     return words.some((_, index) => announcedNegation(words, index, contrast, markers));
+  const last = words.length - 1;
   return (
     announcedNegation(words, 0, contrast, markers) ||
-    announcedNegation(words, words.length - 1, contrast, markers)
+    // Only a verb-final language closes longer content with its negator ("این هفته تکلیف نداریم");
+    // a final English "not" there is a reply the task asks for ("answer with I hope not").
+    (!negator.test(words[last]?.text ?? "") && announcedNegation(words, last, contrast, markers))
   );
 }
 
