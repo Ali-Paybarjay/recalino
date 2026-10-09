@@ -10,7 +10,7 @@ import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function ClassCardsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}/cards`);
+  const learner = await requireLearner(`/sessions/${id}/cards`);
   const session = await workspaceSession(learner, id);
   const db = getDatabase(),
     ctx = workspaceActor(learner);

@@ -85,7 +85,7 @@ async function fixture(page: Page, kind: "text" | "audio" = "text") {
       operationKey: randomUUID(),
     });
     if (kind === "audio") {
-      await page.goto("/classes");
+      await page.goto("/sessions");
       await page.evaluate(
         async ({ owner, sessionId, sourceId, bytes }) => {
           const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -196,7 +196,7 @@ async function mockRead(page: Page, seeded: Awaited<ReturnType<typeof fixture>>,
         : { json: { url: originalUrl } },
     );
   });
-  await page.goto(`/classes/${seeded.sessionId}/sources`);
+  await page.goto(`/sessions/${seeded.sessionId}/sources`);
   const button = page.getByRole("button", { name: "Open original", exact: true });
   await expect(button).toBeEnabled();
   return {
@@ -315,7 +315,7 @@ test.describe("FR-SRC-012 original-file access", () => {
       reads++;
       await route.abort();
     });
-    await page.goto(`/classes/${seeded.sessionId}/sources`);
+    await page.goto(`/sessions/${seeded.sessionId}/sources`);
     const button = page.getByRole("button", { name: "Open original", exact: true });
     await expect(button).toBeEnabled();
     const opened = page.waitForEvent("popup");
@@ -366,7 +366,7 @@ test.describe("FR-SRC-012 original-file access", () => {
         json: { deletionRequestId: randomUUID(), privacyRequestId: randomUUID() },
       });
     });
-    await page.goto(`/classes/${seeded.sessionId}/sources`);
+    await page.goto(`/sessions/${seeded.sessionId}/sources`);
     const button = page.getByRole("button", { name: "Open original", exact: true });
     await expect(button).toBeEnabled();
     const opened = page.waitForEvent("popup");

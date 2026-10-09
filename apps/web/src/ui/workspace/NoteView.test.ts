@@ -138,8 +138,8 @@ describe("generated previews and automatic preparation", () => {
     expect(html).not.toContain("Edit this note");
     expect(html).not.toContain("Edit question");
     expect(html).not.toContain("Edit answer");
-    expect(html).not.toContain(`href="/classes/${sessionId}/cards"`);
-    expect(html).not.toContain(`href="/classes/${sessionId}/export"`);
+    expect(html).not.toContain(`href="/sessions/${sessionId}/cards"`);
+    expect(html).not.toContain(`href="/sessions/${sessionId}/export"`);
     expect(html).not.toContain("Version history");
     expect(html).not.toContain("Your session notes are ready");
     expect(html).not.toContain("Save notes and make flashcards");
@@ -152,10 +152,10 @@ describe("generated previews and automatic preparation", () => {
     const html = render({ latest: null });
     expect(html).toContain("Start with session material");
     expect(html).not.toContain("Create session notes");
-    expect(html).not.toContain(`href="/classes/${sessionId}/estimate"`);
+    expect(html).not.toContain(`href="/sessions/${sessionId}/estimate"`);
     expect(html).toContain("Add material");
     expect(html).toContain("Notes and flashcards are created and saved automatically.");
-    expect(html).toContain(`href="/classes/${sessionId}/sources"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/sources"`);
     expect(html).not.toContain(">Save notes<");
     expect(mocks.request).not.toHaveBeenCalled();
   });
@@ -195,8 +195,8 @@ describe("saved notes and revisions", () => {
     expect(html).not.toContain("Next: make flashcards");
     expect(html).toContain("Flashcards");
     expect(html).not.toContain("Make flashcards");
-    expect(html).toContain(`href="/classes/${sessionId}/cards"`);
-    expect(html).toContain(`href="/classes/${sessionId}/export"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/cards"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/export"`);
     expect(html).toContain('href="/courses/course-1/materials"');
     expect(html).not.toContain("Apply newer version");
     expect(html).not.toContain(">Save notes<");
@@ -263,7 +263,7 @@ describe("class material diagnostics", () => {
   });
 
   it("retries only the named saved source and resumes automatic preparation", async () => {
-    mocks.request.mockResolvedValue({ next: `/classes/${sessionId}/estimate` });
+    mocks.request.mockResolvedValue({ next: `/sessions/${sessionId}/estimate` });
     render({ sourceIssues: [failedSource] });
     await click("Retry file 2");
     expect(mocks.request).toHaveBeenNthCalledWith(
@@ -280,7 +280,7 @@ describe("class material diagnostics", () => {
       { action: "retry" },
       expect.any(String),
     );
-    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(`/classes/${sessionId}/processing`);
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(`/sessions/${sessionId}/processing`);
   });
 
   it("preserves a recovery request key on failure and prevents duplicate retries", async () => {
@@ -299,7 +299,7 @@ describe("class material diagnostics", () => {
     await click("Retry file 2");
     expect(mocks.request).toHaveBeenCalledTimes(2);
     expect(mocks.request.mock.calls[1]?.[3]).toBe(firstKey);
-    resolveRecovery?.({ next: `/classes/${sessionId}/estimate` });
+    resolveRecovery?.({ next: `/sessions/${sessionId}/estimate` });
     mocks.request.mockResolvedValue({});
     await pending;
   });
@@ -317,13 +317,13 @@ describe("class material diagnostics", () => {
       ],
     });
     expect(html).toContain("Upload file 2 again");
-    expect(html).toContain(`href="/classes/${sessionId}/sources"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/sources"`);
     expect(html).not.toContain("Retry file 2");
   });
 
   it("retains the automatic retry key without resetting extraction again after a lost retry acknowledgement", async () => {
     mocks.request
-      .mockResolvedValueOnce({ next: `/classes/${sessionId}/estimate` })
+      .mockResolvedValueOnce({ next: `/sessions/${sessionId}/estimate` })
       .mockRejectedValueOnce(new TypeError("Lost retry acknowledgement"));
     render({ sourceIssues: [failedSource] });
     await click("Retry file 2");

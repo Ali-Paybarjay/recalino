@@ -46,7 +46,7 @@ export function ClassForm({
     ...createdCourses.filter((item) => !courses.some((saved) => saved.id === item.id)),
   ];
   const hasDefault = availableCourses.some((item) => item.isDefault);
-  const destination = initial ? `/classes/${initial.id}` : "/classes";
+  const destination = initial ? `/sessions/${initial.id}` : "/sessions";
 
   async function save() {
     if (busy || creatingCourse) return;
@@ -65,7 +65,7 @@ export function ClassForm({
         body,
         initial ? undefined : requestKey(idempotency, body),
       );
-      router.push(`/classes/${saved.id}`);
+      router.push(`/sessions/${saved.id}`);
       router.refresh();
     } catch (failure) {
       setError(
@@ -118,7 +118,7 @@ export function ClassForm({
         undefined,
         requestKey(idempotency, { delete: initial.id }),
       );
-      router.push("/classes");
+      router.push("/sessions");
       router.refresh();
     } catch (failure) {
       setError(
@@ -138,32 +138,6 @@ export function ClassForm({
             void save();
           }}
         >
-          <Field
-            label="Session name (optional)"
-            hint="Leave it empty to name the session from its learning material. Until the material is ready, its date is used."
-          >
-            <input
-              autoComplete="off"
-              dir="auto"
-              maxLength={200}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Automatic title from learning material"
-              disabled={busy}
-            />
-          </Field>
-          {initial && title.trim() ? (
-            <Actions>
-              <Button secondary disabled={busy} onClick={() => setTitle("")}>
-                Use automatic title
-              </Button>
-            </Actions>
-          ) : null}
-          {initial && !title.trim() ? (
-            <p className="preview-muted">
-              Save changes to use the title from your learning material.
-            </p>
-          ) : null}
           <Field label="Session date" hint="Day / Month / Year">
             <DateInput required value={date} onChange={setDate} disabled={busy} />
           </Field>
@@ -211,6 +185,32 @@ export function ClassForm({
                   ))}
               </select>
             </Field>
+          ) : null}
+          <Field
+            label="Session name (optional)"
+            hint="Leave it empty to name the session from its learning material. Until the material is ready, its date is used."
+          >
+            <input
+              autoComplete="off"
+              dir="auto"
+              maxLength={200}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Automatic title from learning material"
+              disabled={busy}
+            />
+          </Field>
+          {initial && title.trim() ? (
+            <Actions>
+              <Button secondary disabled={busy} onClick={() => setTitle("")}>
+                Use automatic title
+              </Button>
+            </Actions>
+          ) : null}
+          {initial && !title.trim() ? (
+            <p className="preview-muted">
+              Save changes to use the title from your learning material.
+            </p>
           ) : null}
           {error ? <Status tone="error">{error}</Status> : null}
           <Actions>

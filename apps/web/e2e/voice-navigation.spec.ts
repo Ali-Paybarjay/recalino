@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { VoiceProfileView } from "@recalino/core/voice-contracts";
 
-const notes = "/classes/10000000-0000-4000-8000-000000000001/notes";
+const notes = "/sessions/10000000-0000-4000-8000-000000000001/notes";
 const profile: VoiceProfileView = {
   enabled: false,
   consentVersion: null,

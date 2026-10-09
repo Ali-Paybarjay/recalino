@@ -326,7 +326,7 @@ export function VoiceConfirmation({
                 <Status>
                   Select a session recording in Sources and process it before checking session
                   voices.
-                  <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+                  <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
                     Open session sources
                   </LinkButton>
                 </Status>
@@ -335,7 +335,7 @@ export function VoiceConfirmation({
                   The temporary session recording is no longer available. Checking session voices
                   needs the original session recording, even if you have saved a personal voice
                   sample.
-                  <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+                  <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
                     Restore session recording
                   </LinkButton>
                 </Status>
@@ -528,7 +528,7 @@ function Analysis({
             This source does not have usable speaker excerpts to confirm. Spoken mistakes from it
             are withheld; your other session notes remain available.
           </p>
-          <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+          <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
             Check source material
           </LinkButton>
         </>

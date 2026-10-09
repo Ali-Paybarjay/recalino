@@ -27,7 +27,7 @@ export default function ProfilePreviewPage() {
       current="me"
       hrefs={{
         today: "/dev/ui/experience",
-        classes: "/classes",
+        classes: "/sessions",
         review: "/review",
         me: "/dev/ui/profile",
       }}

@@ -190,7 +190,7 @@ export function PrivacyView({
           cannot be removed from your devices by Recalino.
         </p>
         <Actions>
-          <LinkButton secondary href="/classes">
+          <LinkButton secondary href="/sessions">
             Choose a session
           </LinkButton>
           <LinkButton secondary href="/me">

@@ -15,7 +15,7 @@ test("a learning goal stays separate while new courses preserve and organize dat
   expect(before.status()).toBe(200);
   expect(await before.json()).toEqual([]);
 
-  await page.goto("/classes/new");
+  await page.goto("/sessions/new");
   await page.getByLabel("Session name (optional)").fill("گفت‌وگو دربارهٔ سفر");
   await page.getByLabel("Session date", { exact: true }).fill("28/09/2026");
   const course = page.getByLabel("Course", { exact: true });
@@ -28,7 +28,7 @@ test("a learning goal stays separate while new courses preserve and organize dat
   await expectNoAxeViolations(page);
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(page).toHaveURL(/\/sessions\/new$/);
   await expect(course).toBeFocused();
   await expect(course.locator("option:checked")).toHaveText("ESOL at college");
   await expect(course.locator("option").last()).toHaveText("Create New Course");
@@ -46,7 +46,7 @@ test("a learning goal stays separate while new courses preserve and organize dat
   expect(createdUnit.status(), await createdUnit.text()).toBe(201);
   const { id: unitId } = (await createdUnit.json()) as { id: string };
 
-  await page.goto("/classes/new");
+  await page.goto("/sessions/new");
   await page.getByLabel("Session name (optional)").fill("Draft second class");
   await page.getByLabel("Session date", { exact: true }).fill("29/09/2026");
   await course.selectOption(esolId);
@@ -57,7 +57,7 @@ test("a learning goal stays separate while new courses preserve and organize dat
   await dialog.getByLabel("New course name").fill("Unsubmitted course");
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(page).toHaveURL(/\/sessions\/new$/);
   await expect(course).toBeFocused();
   await expect(course).toHaveValue(esolId);
   await expect(unit).toHaveValue(unitId);
@@ -77,7 +77,7 @@ test("a learning goal stays separate while new courses preserve and organize dat
   await dialog.getByLabel("New course name").fill("Spanish evening course");
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(page).toHaveURL(/\/sessions\/new$/);
   await expect(course).toBeFocused();
   await expect(course.locator("option:checked")).toHaveText("Spanish evening course");
   await expect(course.locator("option").last()).toHaveText("Create New Course");
@@ -91,15 +91,15 @@ test("a learning goal stays separate while new courses preserve and organize dat
   expect(await created.json()).toHaveLength(2);
   await page.getByLabel("Session name (optional)").fill("");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
-  await expect(page).toHaveURL(/\/classes\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("29 Sept 2026");
   const spanishClassUrl = page.url();
 
-  await page.goto("/classes/new");
+  await page.goto("/sessions/new");
   await course.selectOption(esolId);
   await page.getByLabel("Session date", { exact: true }).fill("01/10/2026");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
-  await expect(page).toHaveURL(/\/classes\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+$/);
   const secondEsolClassUrl = page.url();
   const esolClasses = await page.request.get(`/api/classes?courseId=${esolId}`);
   expect(esolClasses.status()).toBe(200);
@@ -146,7 +146,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await expect(
     page.getByRole("heading", { name: "Your first session starts here." }),
   ).toBeVisible();
-  await page.goto("/classes/organize");
+  await page.goto("/sessions/organize");
   await page.getByLabel("New course name").fill("English B1");
   await page.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(page.getByLabel("Selected course")).toHaveValue(/.+/);
@@ -163,7 +163,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.getByRole("link", { name: "View course", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "English B1" })).toBeVisible();
   await page.getByRole("main").getByRole("link", { name: "+ New session", exact: true }).click();
-  await expect(page).toHaveURL(/\/classes\/new\?courseId=[0-9a-f-]+$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/sessions\/new\?courseId=[0-9a-f-]+$/, { timeout: 30_000 });
   await expect(page.getByLabel("Course", { exact: true })).toContainText("English B1");
   await page.getByLabel("Session name (optional)").fill("کلاس سفر 日本語");
   await page.getByLabel("Session date", { exact: true }).fill("30/09/2026");
@@ -186,7 +186,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   expect((await renamedClass).status()).toBe(200);
   await expect(page).toHaveURL(classUrl, { timeout: 30_000 });
   await expect(page.getByRole("heading", { level: 1, name: "Renamed lesson" })).toBeVisible();
-  await page.goto("/classes/organize");
+  await page.goto("/sessions/organize");
   await page.getByRole("button", { name: "Delete empty course", exact: true }).click();
   const courseDialog = page.getByRole("dialog", { name: "Delete this course?" });
   await courseDialog.getByRole("button", { name: "Delete course", exact: true }).click();
@@ -205,9 +205,9 @@ test("courses, optional units and a class can be created, moved and deleted thro
     .getByRole("button", { name: "Delete session", exact: true })
     .click();
   expect((await deletedClass).status()).toBe(202);
-  await expect(page).toHaveURL(/\/classes$/);
+  await expect(page).toHaveURL(/\/sessions$/);
   await expect(page.getByRole("heading", { name: "Renamed lesson" })).toHaveCount(0);
-  await page.goto("/classes/organize");
+  await page.goto("/sessions/organize");
   await page.getByRole("button", { name: "Delete empty course", exact: true }).click();
   await page
     .getByRole("dialog", { name: "Delete this course?" })
@@ -223,7 +223,7 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
     test.setTimeout(120_000);
     await page.setViewportSize(viewport);
     await signInAsNewLearner(page, { setup: "complete" });
-    for (const path of ["/today", "/classes", "/courses", "/classes/new", "/classes/organize"]) {
+    for (const path of ["/today", "/sessions", "/courses", "/sessions/new", "/sessions/organize"]) {
       await page.goto(path);
       await expectNoAxeViolations(page);
       expect(

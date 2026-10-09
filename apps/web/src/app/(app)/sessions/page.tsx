@@ -14,7 +14,7 @@ export default async function ClassesPage({
 }: {
   searchParams: Promise<{ courseId?: string; unitId?: string; scope?: string }>;
 }) {
-  const learner = await requireLearner("/classes");
+  const learner = await requireLearner("/sessions");
   const [query, groups] = await Promise.all([searchParams, workspaceGroups(learner)]);
   const allCourses = query.scope === "all";
   const course = query.courseId

@@ -99,7 +99,7 @@ test("a class can be created, found after refresh, and reset without a backend",
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class");
   await page.getByLabel("Session name (optional)", { exact: true }).fill("Bus journeys");
-  await page.getByRole("combobox", { name: "Course", exact: true }).selectOption("My classes");
+  await page.getByRole("combobox", { name: "Course", exact: true }).selectOption("My courses");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await expect(page).toHaveURL(/\/preview\/class$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bus journeys");
@@ -110,7 +110,7 @@ test("a class can be created, found after refresh, and reset without a backend",
   await page.goto("/preview/classes");
   await expect(page.getByLabel("Course", { exact: true })).toHaveValue("");
   await expect(classRows(page)).toHaveCount(0);
-  await page.getByLabel("Course", { exact: true }).selectOption("My classes");
+  await page.getByLabel("Course", { exact: true }).selectOption("My courses");
   await expect(classRows(page)).toHaveCount(1);
   await expect(classRows(page).locator("summary")).toContainText("Bus journeys");
   await openListedClass(page, "Bus journeys");
@@ -354,11 +354,11 @@ test("D39: course materials keep each session's current notes, dates and course 
   await page.goto("/preview/class");
   await openClassTools(page);
   await page.getByRole("link", { name: "Session options", exact: true }).click();
-  await page.getByLabel("Move to course").selectOption("My classes");
+  await page.getByLabel("Move to course").selectOption("My courses");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await page.goto("/preview/course?course=ESOL%20B1#course-materials");
   await expect(page.locator("#course-materials").getByText(notes, { exact: true })).toHaveCount(0);
-  await page.getByLabel("Course", { exact: true }).selectOption("My classes");
+  await page.getByLabel("Course", { exact: true }).selectOption("My courses");
   await expect(page.locator("#course-materials").getByText(notes, { exact: true })).toBeVisible();
 });
 

@@ -84,7 +84,7 @@ describe("retry from the class notice", () => {
   it("makes the word retry an action alongside View progress", () => {
     const html = render();
     expect(html).toMatch(/Check the material or <button[^>]*>retry<\/button> this attempt\./);
-    expect(html).toContain(`href="/classes/${sessionId}/processing"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/processing"`);
   });
 
   it.each(["notice", "progress"] as const)(
@@ -215,7 +215,7 @@ describe("recovery actions match the processing blocker", () => {
       expect(html).not.toContain("Add material");
       expect(mocks.buttons.has("Retry after service update")).toBe(false);
       expect(mocks.request).not.toHaveBeenCalled();
-      expect(html).toContain(`href="/classes/${sessionId}/notes"`);
+      expect(html).toContain(`href="/sessions/${sessionId}/notes"`);
     },
   );
 
@@ -228,7 +228,7 @@ describe("recovery actions match the processing blocker", () => {
     };
     const html = render();
     expect(html).toContain("View processing review");
-    expect(html).toContain(`href="/classes/${sessionId}/processing"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/processing"`);
     expect(html).not.toContain("Review allowance");
     mocks.request.mockResolvedValue({
       ...mocks.status,
@@ -261,7 +261,7 @@ describe("recovery actions match the processing blocker", () => {
     mocks.status = { ...blocked, lastError: "upload_needs_attention" };
     const html = render("progress");
     expect(html).toMatch(
-      new RegExp(`href="/classes/${sessionId}/sources"[^>]*>Review material<\\/a>`),
+      new RegExp(`href="/sessions/${sessionId}/sources"[^>]*>Review material<\\/a>`),
     );
     expect(html).not.toContain("Add material");
     expect(mocks.buttons.size).toBe(0);
@@ -307,7 +307,7 @@ describe("recovery actions match the processing blocker", () => {
     };
     const html = render("progress");
     expect(html).toContain("notes and flashcards are available with some source limitations");
-    expect(html).toContain(`href="/classes/${sessionId}/notes"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/notes"`);
     expect(html).toContain("Open session notes");
     expect(mocks.buttons.has("Request processing review")).toBe(false);
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);

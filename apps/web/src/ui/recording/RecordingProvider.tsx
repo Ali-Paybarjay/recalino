@@ -183,7 +183,8 @@ export function RecordLauncher({ sessionId }: { sessionId?: string }) {
     setError(null);
     try {
       await controller.start(sessionId ?? null);
-      if (navigator.onLine) router.push(sessionId ? `/classes/${sessionId}/record` : "/recordings");
+      if (navigator.onLine)
+        router.push(sessionId ? `/sessions/${sessionId}/record` : "/recordings");
       if (!sessionId && controller.state.recording) {
         const recording = controller.state.recording;
         // A failed connection never stops capture; after saving the learner can retry.

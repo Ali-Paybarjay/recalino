@@ -184,7 +184,7 @@ export function CourseManager({
                 <LinkButton secondary href={`/courses/${course.id}/materials`}>
                   Course materials
                 </LinkButton>
-                <LinkButton secondary href={`/classes/new?courseId=${course.id}`}>
+                <LinkButton secondary href={`/sessions/new?courseId=${course.id}`}>
                   New session in this course
                 </LinkButton>
                 {!course.isDefault ? (

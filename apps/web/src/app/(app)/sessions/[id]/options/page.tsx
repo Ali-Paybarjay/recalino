@@ -6,7 +6,7 @@ import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function ClassOptionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}/options`);
+  const learner = await requireLearner(`/sessions/${id}/options`);
   const initial = await workspaceSession(learner, id);
   const groups = await workspaceGroups(learner);
   return (

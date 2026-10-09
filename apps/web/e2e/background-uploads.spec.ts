@@ -245,7 +245,7 @@ async function saved(page: Page, userId: string) {
   }, userId);
 }
 async function selectAndSend(page: Page, sessionId: string, bytes: Buffer) {
-  await page.goto(`/classes/${sessionId}/sources`);
+  await page.goto(`/sessions/${sessionId}/sources`);
   await expect(page.getByLabel("Choose session files")).toBeEnabled();
   await page.getByLabel("Choose session files").setInputFiles({
     name: "synthetic-background.pdf",
@@ -277,7 +277,7 @@ for (const viewport of [
       (window as Window & { uploadNavigationMarker?: boolean }).uploadNavigationMarker = true;
     });
     await page.getByRole("link", { name: "Back to session" }).click();
-    await expect(page).toHaveURL(`/classes/${seeded.sessionId}`);
+    await expect(page).toHaveURL(`/sessions/${seeded.sessionId}`);
     expect(
       await page.evaluate(
         () => (window as Window & { uploadNavigationMarker?: boolean }).uploadNavigationMarker,
@@ -337,7 +337,7 @@ test("keeps ready results in the inbox when device push is unavailable", async (
   const seeded = await fixture(page),
     mock = await transport(page, seeded.sessionId);
   mock.state.ready = true;
-  await page.goto(`/classes/${seeded.sessionId}`);
+  await page.goto(`/sessions/${seeded.sessionId}`);
   await page.getByRole("button", { name: /^Notifications/ }).click();
   const dialog = page.getByRole("dialog", { name: "Notifications" });
   await expect(
@@ -436,7 +436,7 @@ async function legacyAudioFixture(page: Page) {
         .execute(),
     ).toEqual([]);
     const snapshot = await getProcessingRunSnapshot(db, ctx, run.id);
-    await page.goto("/classes");
+    await page.goto("/sessions");
     await page.evaluate(
       async ({ userId, sessionId, sourceId, size }) => {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -676,7 +676,7 @@ for (const scenario of ["navigation", "reload"] as const) {
       mock = await manualAudioTransport(page, seeded);
     if (scenario === "navigation")
       await captureEligibility(page, seeded.userId, seeded.sessionId, true);
-    await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await page.goto(`/sessions/${seeded.sessionId}/processing`);
     await expect.poll(() => mock.state.puts.length).toBe(3);
     await expect.poll(() => mock.state.starts.length).toBe(1);
     await expect
@@ -687,7 +687,7 @@ for (const scenario of ["navigation", "reload"] as const) {
         (window as Window & { manualNavigationMarker?: boolean }).manualNavigationMarker = true;
       });
       await page.getByRole("link", { name: /Back to session/ }).click();
-      await expect(page).toHaveURL(`/classes/${seeded.sessionId}`);
+      await expect(page).toHaveURL(`/sessions/${seeded.sessionId}`);
       expect(
         await page.evaluate(
           () => (window as Window & { manualNavigationMarker?: boolean }).manualNavigationMarker,

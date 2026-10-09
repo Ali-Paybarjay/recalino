@@ -356,7 +356,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                       </Button>
                     ) : null}
                     {row.sessionId ? (
-                      <Link href={`/classes/${row.sessionId}/sources`}>Open session sources</Link>
+                      <Link href={`/sessions/${row.sessionId}/sources`}>Open session sources</Link>
                     ) : null}
                   </Actions>
                   {player?.id === row.id ? (

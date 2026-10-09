@@ -247,10 +247,10 @@ export function ExportView({
   return (
     <div className={styles.layout}>
       <Actions>
-        <LinkButton secondary href={`/classes/${sessionId}/notes`}>
+        <LinkButton secondary href={`/sessions/${sessionId}/notes`}>
           Back to notes
         </LinkButton>
-        <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+        <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
           Manage cards
         </LinkButton>
       </Actions>

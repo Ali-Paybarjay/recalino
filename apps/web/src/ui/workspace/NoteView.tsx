@@ -203,7 +203,7 @@ export function NoteView({
       learningRetryKey.current = null;
       preparedRecovery.current = null;
       notifyAutomaticLearning(sessionId);
-      router.push(`/classes/${sessionId}/processing`);
+      router.push(`/sessions/${sessionId}/processing`);
     } catch (failure) {
       const reasons =
         failure instanceof WorkspaceRequestError ? Object.values(failure.fields ?? {}).flat() : [];
@@ -228,7 +228,7 @@ export function NoteView({
       return model && !model.coverage.complete ? (
         <aside className={styles.issues} aria-label="Source details need checking">
           <p>Some source details need checking. Open session material to review them.</p>
-          <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
+          <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
             Review session material
           </QuietLink>
         </aside>
@@ -263,7 +263,7 @@ export function NoteView({
                   {recovering === issue.sourceId ? "Retrying…" : `Retry file ${issue.order}`}
                 </Button>
               ) : issue.action !== "none" ? (
-                <QuietLink disabled={busy || !!recovering} href={`/classes/${sessionId}/sources`}>
+                <QuietLink disabled={busy || !!recovering} href={`/sessions/${sessionId}/sources`}>
                   {issue.action === "upload"
                     ? `Upload file ${issue.order} again`
                     : "Review session material"}
@@ -366,7 +366,7 @@ export function NoteView({
   return (
     <div className={styles.layout} ref={notesStart}>
       {!embedded && (
-        <Link prefetch={false} href={`/classes/${sessionId}`} className={styles.back}>
+        <Link prefetch={false} href={`/sessions/${sessionId}`} className={styles.back}>
           ← Back to session
         </Link>
       )}
@@ -396,7 +396,7 @@ export function NoteView({
                           : "Upload not completed"}
                   </p>
                   {source.status === "needs-upload" && (
-                    <QuietLink href={`/classes/${sessionId}/sources`}>
+                    <QuietLink href={`/sessions/${sessionId}/sources`}>
                       Upload file {source.order} again
                     </QuietLink>
                   )}
@@ -407,7 +407,7 @@ export function NoteView({
             materialIssues()
           )}
           <div className={styles.save}>
-            <LinkButton href={`/classes/${sessionId}/sources`}>Add material</LinkButton>
+            <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
           </div>
         </Panel>
       ) : (
@@ -627,26 +627,26 @@ export function NoteView({
             )}
             {notebook && !readOnlyRevision && (
               <>
-                <QuietLink disabled={busy} href={`/classes/${sessionId}/cards`}>
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/cards`}>
                   Flashcards
                 </QuietLink>
-                <QuietLink disabled={busy} href={`/classes/${sessionId}/export`}>
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/export`}>
                   Download notes
                 </QuietLink>
               </>
             )}
             {readOnlyRevision && (
-              <QuietLink disabled={busy} href={`/classes/${sessionId}/notes`}>
+              <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes`}>
                 Current notes
               </QuietLink>
             )}
             {model && !readOnlyRevision && (
-              <QuietLink disabled={busy} href={`/classes/${sessionId}/sources`}>
+              <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
                 Add material
               </QuietLink>
             )}
             {showHistory && (
-              <QuietLink disabled={busy} href={`/classes/${sessionId}/notes/versions`}>
+              <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes/versions`}>
                 Version history
               </QuietLink>
             )}

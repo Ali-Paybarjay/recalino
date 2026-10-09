@@ -46,8 +46,8 @@ export function ClassDirectory({
   const hasSelection = Boolean(selectedCourseId || allCourses);
   const hasMore = offset < total;
   const newClassHref = selectedCourseId
-    ? `/classes/new?courseId=${selectedCourseId}`
-    : "/classes/new";
+    ? `/sessions/new?courseId=${selectedCourseId}`
+    : "/sessions/new";
 
   useEffect(() => () => request.current?.abort(), []);
 
@@ -105,10 +105,10 @@ export function ClassDirectory({
     startTransition(() => {
       router.push(
         value === "__all__"
-          ? "/classes?scope=all"
+          ? "/sessions?scope=all"
           : value
-            ? `/classes?courseId=${value}`
-            : "/classes",
+            ? `/sessions?courseId=${value}`
+            : "/sessions",
         { scroll: false },
       );
     });
@@ -159,7 +159,7 @@ export function ClassDirectory({
                 onChange={(event) =>
                   startTransition(() =>
                     router.push(
-                      `/classes?${new URLSearchParams({ courseId: selectedCourseId, ...(event.target.value ? { unitId: event.target.value } : {}) })}`,
+                      `/sessions?${new URLSearchParams({ courseId: selectedCourseId, ...(event.target.value ? { unitId: event.target.value } : {}) })}`,
                       { scroll: false },
                     ),
                   )
@@ -220,7 +220,7 @@ export function ClassDirectory({
               : "Keep each subject and its sessions together in a course."}
           </p>
           {!courses.length ? (
-            <LinkButton href="/classes/organize">Create a course</LinkButton>
+            <LinkButton href="/sessions/organize">Create a course</LinkButton>
           ) : null}
         </div>
       )}
@@ -238,8 +238,8 @@ export function ClassDirectory({
               secondary
               href={
                 selectedCourseId
-                  ? `/classes/organize?courseId=${selectedCourseId}`
-                  : "/classes/organize"
+                  ? `/sessions/organize?courseId=${selectedCourseId}`
+                  : "/sessions/organize"
               }
             >
               Manage courses and units

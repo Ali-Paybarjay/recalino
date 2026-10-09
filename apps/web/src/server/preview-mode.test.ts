@@ -28,6 +28,7 @@ describe("isolated UI preview boundary", () => {
     ["/", "/preview/today"],
     ["/today", "/preview/today"],
     ["/classes", "/preview/classes"],
+    ["/sessions", "/preview/classes"],
     ["/review", "/preview/review"],
     ["/me", "/preview/profile"],
   ])("maps %s to an unauthenticated sample page", (path, destination) => {

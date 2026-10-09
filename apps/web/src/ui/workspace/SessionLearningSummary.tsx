@@ -32,7 +32,7 @@ export function SessionLearningSummary({
           {session.topics.length > topics.length ? (
             <>
               {" · "}
-              <Link href={`/classes/${session.id}#topics`}>
+              <Link href={`/sessions/${session.id}#topics`}>
                 See all {session.topics.length} topics
               </Link>
             </>

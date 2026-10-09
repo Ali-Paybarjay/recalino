@@ -27,12 +27,12 @@ function RecoveryLinks({
       : kind === "service"
         ? [
             {
-              href: `/classes/${sessionId}/processing#processing-review`,
+              href: `/sessions/${sessionId}/processing#processing-review`,
               label: "View processing review",
             },
           ]
         : kind === "material"
-          ? [{ href: `/classes/${sessionId}/sources`, label: "Review material" }]
+          ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }]
           : kind === "setup"
             ? [{ href: "/setup", label: "Review account setup" }]
             : [];
@@ -179,7 +179,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
           </Button>
         ) : null}
         {!retryWord && canRetry ? retryLink : null}{" "}
-        <Link href={`/classes/${sessionId}/processing`} className={styles.inlineRetry}>
+        <Link href={`/sessions/${sessionId}/processing`} className={styles.inlineRetry}>
           View progress
         </Link>
       </Status>
@@ -210,7 +210,7 @@ export function AutomaticLearningView({
   const review = status.processingReview;
   return (
     <div className="preview-stack">
-      <Link className="preview-back" href={`/classes/${sessionId}`}>
+      <Link className="preview-back" href={`/sessions/${sessionId}`}>
         ← Back to session
       </Link>
       <Panel
@@ -242,17 +242,20 @@ export function AutomaticLearningView({
             </Button>
           ) : null}
           {status.notesReady ? (
-            <LinkButton secondary={status.state === "blocked"} href={`/classes/${sessionId}/notes`}>
+            <LinkButton
+              secondary={status.state === "blocked"}
+              href={`/sessions/${sessionId}/notes`}
+            >
               Session notes
             </LinkButton>
           ) : null}
           {status.cardsReady ? (
-            <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+            <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
               Flashcards
             </LinkButton>
           ) : null}
           {status.state !== "blocked" && !recovery.kind ? (
-            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+            <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
               Add material
             </LinkButton>
           ) : null}
@@ -312,7 +315,7 @@ export function AutomaticLearningView({
                 {retry.busy ? "Checking progress…" : "Check review status"}
               </Button>
               {review?.state === "resolved" ? (
-                <LinkButton href={`/classes/${sessionId}/notes`}>Open session notes</LinkButton>
+                <LinkButton href={`/sessions/${sessionId}/notes`}>Open session notes</LinkButton>
               ) : null}
             </Actions>
           </Panel>

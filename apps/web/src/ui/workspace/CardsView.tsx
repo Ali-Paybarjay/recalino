@@ -78,7 +78,7 @@ export function CardsView({
   return (
     <div className="preview-stack">
       <Actions>
-        <LinkButton disabled={busy} secondary href={`/classes/${sessionId}/notes`}>
+        <LinkButton disabled={busy} secondary href={`/sessions/${sessionId}/notes`}>
           Session notes
         </LinkButton>
         {cards.some((card) => card.status === "active") ? (
@@ -86,7 +86,7 @@ export function CardsView({
             Review this session
           </LinkButton>
         ) : null}
-        <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+        <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
           Add material
         </LinkButton>
       </Actions>

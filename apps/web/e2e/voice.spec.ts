@@ -409,7 +409,7 @@ test("class voices explain missing transcripts before a check can be submitted",
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Open session sources" })).toHaveAttribute(
     "href",
-    "/classes/10000000-0000-4000-8000-000000000001/sources",
+    "/sessions/10000000-0000-4000-8000-000000000001/sources",
   );
   await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toBe(0);
@@ -506,7 +506,7 @@ test("a check without usable excerpts reports its outcome and offers source mate
   ).toBeVisible();
   await expect(source.getByRole("link", { name: "Check source material" })).toHaveAttribute(
     "href",
-    "/classes/10000000-0000-4000-8000-000000000001/sources",
+    "/sessions/10000000-0000-4000-8000-000000000001/sources",
   );
   await expect(page.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Read session notes", exact: true })).toBeVisible();
@@ -591,7 +591,7 @@ test("a saved personal sample does not hide the missing class recording or permi
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Restore session recording" })).toHaveAttribute(
     "href",
-    "/classes/10000000-0000-4000-8000-000000000001/sources",
+    "/sessions/10000000-0000-4000-8000-000000000001/sources",
   );
   await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   expect(writes).toBe(0);

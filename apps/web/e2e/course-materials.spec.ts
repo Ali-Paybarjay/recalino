@@ -88,7 +88,7 @@ test("course materials keep published edits, dated lessons and class links when 
   ]) {
     await expect(first.getByRole("link", { name: label, exact: true })).toHaveAttribute(
       "href",
-      `/classes/${fixture.sessionId}${suffix}`,
+      `/sessions/${fixture.sessionId}${suffix}`,
     );
   }
   await first.getByRole("link", { name: "Session notes", exact: true }).click();

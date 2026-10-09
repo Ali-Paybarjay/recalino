@@ -12,7 +12,7 @@ import styles from "./ClassOverview.module.css";
 export const dynamic = "force-dynamic";
 export default async function ClassPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}`);
+  const learner = await requireLearner(`/sessions/${id}`);
   const session = await workspaceSession(learner, id);
   const groups = await workspaceGroups(learner);
   const course = groups.courses.find((item) => item.id === session.courseId);
@@ -27,7 +27,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
     >
       <div className={styles.overview}>
         <Link
-          href={`/classes?courseId=${encodeURIComponent(session.courseId)}`}
+          href={`/sessions?courseId=${encodeURIComponent(session.courseId)}`}
           className={styles.back}
         >
           <Icon icon={CaretLeft} size={18} />
@@ -35,7 +35,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
         </Link>
         <section className={styles.learning} aria-label="Study this session">
           <Link
-            href={`/classes/${id}/notes`}
+            href={`/sessions/${id}/notes`}
             prefetch={false}
             className={`${styles.destination} ${styles.notes}`}
             aria-labelledby="class-notes-heading"
@@ -53,7 +53,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
             </span>
           </Link>
           <Link
-            href={`/classes/${id}/cards`}
+            href={`/sessions/${id}/cards`}
             prefetch={false}
             className={`${styles.destination} ${styles.cards}`}
             aria-labelledby="class-flashcards-heading"
@@ -102,7 +102,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           </div>
           <Actions>
             <RecordLauncher sessionId={id} />
-            <LinkButton secondary href={`/classes/${id}/sources`}>
+            <LinkButton secondary href={`/sessions/${id}/sources`}>
               Add or view material
             </LinkButton>
           </Actions>
@@ -114,13 +114,13 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           </summary>
           <div className={styles.toolsContent}>
             <Actions>
-              <LinkButton secondary href={`/classes/${id}/estimate`}>
+              <LinkButton secondary href={`/sessions/${id}/estimate`}>
                 View progress
               </LinkButton>
-              <LinkButton secondary href={`/classes/${id}/export`}>
+              <LinkButton secondary href={`/sessions/${id}/export`}>
                 Download notes and cards
               </LinkButton>
-              <LinkButton secondary href={`/classes/${id}/options`}>
+              <LinkButton secondary href={`/sessions/${id}/options`}>
                 Session options
               </LinkButton>
               <LinkButton secondary href={`/courses/${session.courseId}/materials`}>

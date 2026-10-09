@@ -127,7 +127,7 @@ test("a new recording consent version is asked once before Today", async ({ page
   await expect(page).toHaveURL(/\/today$/);
 });
 
-for (const path of ["/today", "/classes", "/review", "/me", "/me/edit/level-goal"]) {
+for (const path of ["/today", "/sessions", "/review", "/me", "/me/edit/level-goal"]) {
   for (const scheme of ["light", "dark"] as const) {
     for (const [name, viewport] of [
       ["mobile", VIEWPORTS.mobile],

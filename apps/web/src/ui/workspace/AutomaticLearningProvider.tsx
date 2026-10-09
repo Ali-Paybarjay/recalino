@@ -519,7 +519,7 @@ function ManualAudioIndicator({
               You can use other pages. If your browser closes or pauses, the saved original resumes
               when you return.
             </p>
-            <Link href={`/classes/${entry.sessionId}/processing`}>
+            <Link href={`/sessions/${entry.sessionId}/processing`}>
               View audio upload and processing
             </Link>
             {entry.phase === "attention" ? (

@@ -264,7 +264,7 @@ async function detach(seeded: Fixture, assetIds: string[]) {
   }
 }
 async function openReceived(page: Page, seeded: Fixture, freezePolling = false) {
-  await page.goto("/classes");
+  await page.goto("/sessions");
   await page.evaluate(async (batch) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("recalino-uploads-v1", 1);
@@ -298,7 +298,7 @@ async function openReceived(page: Page, seeded: Fixture, freezePolling = false) 
   if (freezePolling) {
     await page.clock.install();
   }
-  await page.goto(`/classes/${seeded.sessionId}/sources`);
+  await page.goto(`/sessions/${seeded.sessionId}/sources`);
   await expect(page.getByRole("heading", { name: "Resolve uploaded files" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Cancel saved upload", exact: true }),

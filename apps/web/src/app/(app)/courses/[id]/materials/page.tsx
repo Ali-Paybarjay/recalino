@@ -68,7 +68,7 @@ export default async function CourseMaterialsPage({
             </nav>
           ) : null}
           <Actions>
-            <LinkButton secondary href={`/classes/new?courseId=${id}`}>
+            <LinkButton secondary href={`/sessions/new?courseId=${id}`}>
               New session in this course
             </LinkButton>
           </Actions>
@@ -86,16 +86,16 @@ export default async function CourseMaterialsPage({
               </h2>
               <SessionLearningSummary session={session} />
               <Actions>
-                <LinkButton secondary href={`/classes/${session.id}`}>
+                <LinkButton secondary href={`/sessions/${session.id}`}>
                   Open session
                 </LinkButton>
-                <LinkButton secondary href={`/classes/${session.id}/notes`}>
+                <LinkButton secondary href={`/sessions/${session.id}/notes`}>
                   Session notes
                 </LinkButton>
-                <LinkButton secondary href={`/classes/${session.id}/cards`}>
+                <LinkButton secondary href={`/sessions/${session.id}/cards`}>
                   Flashcards
                 </LinkButton>
-                <LinkButton secondary href={`/classes/${session.id}/sources`}>
+                <LinkButton secondary href={`/sessions/${session.id}/sources`}>
                   Session sources
                 </LinkButton>
               </Actions>
@@ -128,7 +128,7 @@ export default async function CourseMaterialsPage({
             </p>
             <LinkButton
               secondary
-              href={materials.total ? pageHref(1) : `/classes/new?courseId=${id}`}
+              href={materials.total ? pageHref(1) : `/sessions/new?courseId=${id}`}
             >
               {materials.total ? "First page" : "Create a session in this course"}
             </LinkButton>

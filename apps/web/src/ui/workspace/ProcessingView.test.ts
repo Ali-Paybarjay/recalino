@@ -77,7 +77,7 @@ function buttons(html: string) {
 
 function notesAction(html: string) {
   return html.match(
-    new RegExp(`<a\\b[^>]*href="/classes/${sessionId}/notes"[^>]*>(.*?)<\\/a>`),
+    new RegExp(`<a\\b[^>]*href="/sessions/${sessionId}/notes"[^>]*>(.*?)<\\/a>`),
   )?.[1];
 }
 
@@ -110,7 +110,7 @@ describe("processing next actions", () => {
       expect(notesAction(html)).toBe("Read session notes");
       expect(html).toContain("Step 3 of 3");
       expect(html).toContain("Next, read and save your session notes.");
-      expect(html).toContain(`/classes/${sessionId}/cards`);
+      expect(html).toContain(`/sessions/${sessionId}/cards`);
       expect(html).toContain(
         state === "ready"
           ? "Your session is ready."
@@ -182,7 +182,7 @@ describe("processing next actions", () => {
     expect(buttons(html)).not.toContain("Confirm and process");
     expect(buttons(html)).not.toContain("Retry processing");
     expect(buttons(html)).toContain("Review and retry");
-    expect(html).toContain(`/classes/${sessionId}/sources`);
+    expect(html).toContain(`/sessions/${sessionId}/sources`);
     expect(html).toContain("The audio could not be verified.");
   });
 

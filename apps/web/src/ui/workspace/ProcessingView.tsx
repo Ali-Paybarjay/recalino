@@ -298,7 +298,7 @@ export function ProcessingView({
     key.current = null;
     setRuns((previous) => [run, ...previous.filter((row) => row.id !== run.id)]);
     if (run.state === "awaiting_upload") await sendLocalAudio(run);
-    router.replace(`/classes/${sessionId}/processing`);
+    router.replace(`/sessions/${sessionId}/processing`);
   }
   const enough =
     !!estimate?.requested &&
@@ -371,16 +371,16 @@ export function ProcessingView({
           <Actions>
             {completed ? (
               <>
-                <LinkButton href={`/classes/${sessionId}/notes`}>Read session notes</LinkButton>
-                <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+                <LinkButton href={`/sessions/${sessionId}/notes`}>Read session notes</LinkButton>
+                <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
                   Make flashcards
                 </LinkButton>
               </>
             ) : null}
-            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+            <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
               {completed ? "Add or change material" : "Change sources"}
             </LinkButton>
-            <Link href={`/classes/${sessionId}`}>Back to session</Link>
+            <Link href={`/sessions/${sessionId}`}>Back to session</Link>
           </Actions>
         </Panel>
       ) : null}
@@ -414,7 +414,7 @@ export function ProcessingView({
                   : "Resume audio upload"}
               </Button>
             ) : null}
-            <LinkButton secondary href={`/classes/${sessionId}`}>
+            <LinkButton secondary href={`/sessions/${sessionId}`}>
               Continue to session
             </LinkButton>
             <Button
@@ -452,7 +452,7 @@ export function ProcessingView({
                     Check again
                   </Button>
                 )}
-                <LinkButton href={`/classes/${sessionId}/sources`}>
+                <LinkButton href={`/sessions/${sessionId}/sources`}>
                   {estimateProblem === "no_selected_sources"
                     ? "Add or select material"
                     : "Review sources"}
@@ -532,7 +532,7 @@ export function ProcessingView({
                           ? "Retry processing"
                           : "Confirm and process"}
                 </Button>
-                <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+                <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
                   Change sources
                 </LinkButton>
               </Actions>

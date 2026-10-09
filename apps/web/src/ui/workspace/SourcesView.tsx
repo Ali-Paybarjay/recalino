@@ -409,11 +409,11 @@ export function SourcesView({
   }
   return (
     <div className="preview-stack">
-      <Link className="preview-back" href={`/classes/${sessionId}`}>
+      <Link className="preview-back" href={`/sessions/${sessionId}`}>
         ← Back to session
       </Link>
       <Actions>
-        <LinkButton href={`/classes/${sessionId}/record`}>Record a session</LinkButton>
+        <LinkButton href={`/sessions/${sessionId}/record`}>Record a session</LinkButton>
         <Button
           secondary
           disabled={!interactive || busy || !accepted}
@@ -510,8 +510,10 @@ export function SourcesView({
               <Actions>
                 {feedback.state === "success" ? (
                   <>
-                    <LinkButton href={`/classes/${sessionId}/notes`}>Read session notes</LinkButton>
-                    <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+                    <LinkButton href={`/sessions/${sessionId}/notes`}>
+                      Read session notes
+                    </LinkButton>
+                    <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
                       Flashcards
                     </LinkButton>
                   </>
@@ -522,7 +524,7 @@ export function SourcesView({
                         Retry processing
                       </Button>
                     )}
-                    <LinkButton secondary href={`/classes/${sessionId}/estimate`}>
+                    <LinkButton secondary href={`/sessions/${sessionId}/estimate`}>
                       Review processing
                     </LinkButton>
                   </>
@@ -817,11 +819,11 @@ export function SourcesView({
       )}
       {learning.status?.notesReady && (
         <nav aria-label="Session learning" className="preview-actions">
-          <Link href={`/classes/${sessionId}/notes`} className="preview-index-link">
+          <Link href={`/sessions/${sessionId}/notes`} className="preview-index-link">
             Read session notes
           </Link>
           {learning.status.cardsReady && (
-            <Link href={`/classes/${sessionId}/cards`} className="preview-index-link">
+            <Link href={`/sessions/${sessionId}/cards`} className="preview-index-link">
               Flashcards
             </Link>
           )}

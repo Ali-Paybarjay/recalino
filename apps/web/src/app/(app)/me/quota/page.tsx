@@ -104,7 +104,7 @@ export default async function AllowancePage() {
         )}
       </Panel>
       <Actions>
-        <LinkButton href="/classes">View courses</LinkButton>
+        <LinkButton href="/sessions">View courses</LinkButton>
         <LinkButton href="/me" secondary>
           Back to settings
         </LinkButton>

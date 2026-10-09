@@ -67,7 +67,7 @@ test("class date is validated and saves the same ISO day through create and edit
 }) => {
   test.setTimeout(120_000);
   await signInAsNewLearner(page, { setup: "complete" });
-  await page.goto("/classes/new");
+  await page.goto("/sessions/new");
   const { date, picker } = await expectDayFirstDate(page);
   await page.getByLabel("Session name (optional)").fill("Day-first date regression");
 
@@ -81,7 +81,7 @@ test("class date is validated and saves the same ISO day through create and edit
   expect(await date.evaluate((element: HTMLInputElement) => element.checkValidity())).toBe(false);
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await expect(date).toBeFocused();
-  await expect(page).toHaveURL(/\/classes\/new$/);
+  await expect(page).toHaveURL(/\/sessions\/new$/);
   const unchanged = await page.request.get("/api/classes");
   expect(unchanged.status()).toBe(200);
   expect((await unchanged.json()).total).toBe(0);
@@ -100,9 +100,9 @@ test("class date is validated and saves the same ISO day through create and edit
   const saved = (await created.json()) as { id: string; classDate: string };
   expect(saved.classDate).toBe("2026-04-03");
   expect(createdRequests).toHaveLength(1);
-  await expect(page).toHaveURL(new RegExp(`/classes/${saved.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/sessions/${saved.id}$`));
 
-  await page.goto(`/classes/${saved.id}/options`);
+  await page.goto(`/sessions/${saved.id}/options`);
   await expect(date).toBeEnabled();
   await expect(date).toHaveValue("03/04/2026");
   await expect(picker).toHaveValue("2026-04-03");
@@ -117,12 +117,12 @@ test("class date is validated and saves the same ISO day through create and edit
   const edited = await editResponse;
   expect(edited.status()).toBe(200);
   expect(edited.request().postDataJSON()).toMatchObject({ classDate: "2026-12-05" });
-  await expect(page).toHaveURL(new RegExp(`/classes/${saved.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/sessions/${saved.id}$`));
 
   const persisted = await page.request.get(`/api/classes/${saved.id}`);
   expect(persisted.status()).toBe(200);
   expect(await persisted.json()).toMatchObject({ classDate: "2026-12-05" });
-  await page.goto(`/classes/${saved.id}/options`);
+  await page.goto(`/sessions/${saved.id}/options`);
   await expect(date).toHaveValue("05/12/2026");
   await expect(picker).toHaveValue("2026-12-05");
 });

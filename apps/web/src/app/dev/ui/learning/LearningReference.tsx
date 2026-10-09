@@ -45,7 +45,7 @@ function LearningFixture({ progress }: { progress: boolean }) {
     <AutomaticLearningView sessionId={sessionId} initial={initial} />
   ) : (
     <Panel title="Session materials">
-      <LinkButton href={`/classes/${sessionId}/sources`}>Add material</LinkButton>
+      <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
       <AutomaticLearningNotice sessionId={sessionId} />
     </Panel>
   );

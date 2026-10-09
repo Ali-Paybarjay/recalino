@@ -26,7 +26,7 @@ export default async function CoursesPage({
       header={<PageHeader title="Manage courses" subtitle={courseCopy.courseHelp} />}
     >
       <div className="preview-stack">
-        <Link className="preview-back" href="/classes">
+        <Link className="preview-back" href="/sessions">
           ← Back to courses
         </Link>
         <Panel title="Your courses">
