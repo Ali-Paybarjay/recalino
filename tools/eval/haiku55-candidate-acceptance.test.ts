@@ -9,7 +9,11 @@ import {
 } from "../../packages/core/src/aip";
 import { canonicalJson, sha256Hex } from "../../packages/core/src/plt";
 import { holdoutFixtureSetId } from "./haiku55-holdout-fixtures";
-import { holdout4FixtureSetId, migrationHoldoutSets } from "./haiku55-holdout-registry";
+import {
+  holdout4FixtureSetId,
+  holdout5FixtureSetId,
+  migrationHoldoutSets,
+} from "./haiku55-holdout-registry";
 import { holdout3FixtureSetId } from "./haiku55-holdout3-fixtures";
 import { freshMigrationFixtures } from "./haiku55-migration-fixtures";
 import {
@@ -30,6 +34,7 @@ import {
   zdrEndpointMaximumRates,
 } from "./model-comparison-candidates";
 import { holdout4MigrationFixtures, holdout4RepeatIds } from "./multilingual-holdout4-fixtures";
+import { holdout5MigrationFixtures, holdout5RepeatIds } from "./multilingual-holdout5-fixtures";
 
 const base = providerSettingsSchema.parse({
   version: "base",
@@ -220,7 +225,12 @@ describe("FR-PROC-003 holdout registry and per-set provenance", () => {
   it("registers multilingual holdout 4 for the blind-comparison candidate", () => {
     expect(holdout4FixtureSetId).toBe("multilingual-holdout-4");
     expect(Object.keys(migrationHoldoutSets).sort()).toEqual(
-      [holdoutFixtureSetId, holdout3FixtureSetId, holdout4FixtureSetId].sort(),
+      [
+        holdoutFixtureSetId,
+        holdout3FixtureSetId,
+        holdout4FixtureSetId,
+        holdout5FixtureSetId,
+      ].sort(),
     );
     const set = migrationHoldoutSets[holdout4FixtureSetId];
     if (!set) throw new Error("Missing holdout 4");
@@ -240,10 +250,34 @@ describe("FR-PROC-003 holdout registry and per-set provenance", () => {
       ),
     ).toBe(true);
   });
-  it("hands each round a copy of the holdout 4 fixtures", () => {
-    const set = migrationHoldoutSets[holdout4FixtureSetId];
-    expect(set?.fixtures()).not.toBe(set?.fixtures());
-    expect(set?.fixtures()).toEqual(set?.fixtures());
+  it("registers multilingual holdout 5, written after holdout 4, for the same candidate", () => {
+    expect(holdout5FixtureSetId).toBe("multilingual-holdout-5");
+    const set = migrationHoldoutSets[holdout5FixtureSetId];
+    if (!set) throw new Error("Missing holdout 5");
+    expect(set.acceptsCandidate).toBe(true);
+    expect(set.repeatIds).toBe(holdout5RepeatIds);
+    expect(set.fixtures()).toEqual(holdout5MigrationFixtures());
+    const fixtures = holdout5MigrationFixtures();
+    const earlier = migrationHoldoutSets[holdout4FixtureSetId]?.provenance(fixtures);
+    expect(set.provenance(fixtures)).toEqual({ ...earlier, writtenAfterHoldout4: true });
+    expect(set.provenance(fixtures)).toMatchObject({
+      writtenAfterBlindComparison: true,
+      explanationLanguages: ["fa", "ar", "es", "ja", "uk"],
+      candidateSelectedByBlindComparison: "gemini-3.8-flash-medium",
+      humanTeacherCertificationClaimed: false,
+    });
+    expect(
+      acceptanceCandidateIds.includes(
+        String(set.provenance([]).candidateSelectedByBlindComparison),
+      ),
+    ).toBe(true);
+  });
+  it("hands each round a copy of the holdout 4 and holdout 5 fixtures", () => {
+    for (const id of [holdout4FixtureSetId, holdout5FixtureSetId]) {
+      const set = migrationHoldoutSets[id];
+      expect(set?.fixtures()).not.toBe(set?.fixtures());
+      expect(set?.fixtures()).toEqual(set?.fixtures());
+    }
   });
 });
 

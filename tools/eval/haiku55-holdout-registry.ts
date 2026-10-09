@@ -14,8 +14,13 @@ import {
   holdout4MigrationFixtures,
   holdout4RepeatIds,
 } from "./multilingual-holdout4-fixtures";
+import {
+  holdout5FixtureSetId,
+  holdout5MigrationFixtures,
+  holdout5RepeatIds,
+} from "./multilingual-holdout5-fixtures";
 
-export { holdout4FixtureSetId };
+export { holdout4FixtureSetId, holdout5FixtureSetId };
 export type MigrationHoldoutSet = {
   fixtures: () => MigrationFixture[];
   repeatIds: readonly string[];
@@ -27,6 +32,16 @@ export type MigrationHoldoutSet = {
 const haikuHoldoutProvenance = () => ({
   writtenAfterFailedFourteenCaseRound: true,
   disjointFromRegressionFixturesAndPromptExamples: true,
+  everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
+  automaticGoldChecksGateAdoption: true,
+  humanTeacherCertificationClaimed: false,
+  blindModelComparisonClaimed: false,
+});
+const blindComparisonCandidateProvenance = (fixtures: MigrationFixture[]) => ({
+  writtenAfterBlindComparison: true,
+  explanationLanguages: [...new Set(fixtures.map((fixture) => fixture.explanationLanguage))],
+  disjointFromComparisonSetAndHoldouts: true,
+  candidateSelectedByBlindComparison: "gemini-3.8-flash-medium",
   everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
   automaticGoldChecksGateAdoption: true,
   humanTeacherCertificationClaimed: false,
@@ -51,15 +66,16 @@ export const migrationHoldoutSets: Record<string, MigrationHoldoutSet> = {
     fixtures: holdout4MigrationFixtures,
     repeatIds: holdout4RepeatIds,
     acceptsCandidate: true,
+    provenance: blindComparisonCandidateProvenance,
+  },
+  // Written after the holdout-4 round, for the same blind-comparison candidate.
+  [holdout5FixtureSetId]: {
+    fixtures: holdout5MigrationFixtures,
+    repeatIds: holdout5RepeatIds,
+    acceptsCandidate: true,
     provenance: (fixtures) => ({
-      writtenAfterBlindComparison: true,
-      explanationLanguages: [...new Set(fixtures.map((fixture) => fixture.explanationLanguage))],
-      disjointFromComparisonSetAndHoldouts: true,
-      candidateSelectedByBlindComparison: "gemini-3.8-flash-medium",
-      everyAcceptedCaseRequiresIndependentReviewerConceptChecks: true,
-      automaticGoldChecksGateAdoption: true,
-      humanTeacherCertificationClaimed: false,
-      blindModelComparisonClaimed: false,
+      ...blindComparisonCandidateProvenance(fixtures),
+      writtenAfterHoldout4: true,
     }),
   },
 };

@@ -12,6 +12,7 @@ import {
 } from "./haiku55-migration-quality";
 import { comparisonFixtures } from "./model-comparison-fixtures";
 import { holdout4MigrationFixtures } from "./multilingual-holdout4-fixtures";
+import { holdout5MigrationFixtures } from "./multilingual-holdout5-fixtures";
 import {
   assertBlindPacketClean,
   assertManifestOutsideBlindFolder,
@@ -180,6 +181,7 @@ describe("FR-PROC-003 PRD-QA-01 blind packet export", () => {
       ...holdout3MigrationFixtures(),
       ...freshMigrationFixtures(),
       ...holdout4MigrationFixtures(),
+      ...holdout5MigrationFixtures(),
     ];
     expect(() =>
       assertBlindPacketClean(

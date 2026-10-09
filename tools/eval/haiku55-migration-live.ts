@@ -285,6 +285,7 @@ for (const path of [
   "tools/eval/haiku55-holdout-fixtures.ts",
   "tools/eval/haiku55-holdout3-fixtures.ts",
   "tools/eval/multilingual-holdout4-fixtures.ts",
+  "tools/eval/multilingual-holdout5-fixtures.ts",
   "tools/eval/haiku55-holdout-registry.ts",
   "tools/eval/quality-review-blind-export.ts",
   "tools/eval/quality-review-blind-merge.ts",
