@@ -5,9 +5,10 @@
  */
 export const pendingCopy = {
   classDeletion: {
-    // The class is hidden, but its durable deletion record could not be saved yet.
+    // The class is hidden, but its durable deletion record could not be saved yet. No noun, so
+    // the text stays right when classes are renamed to sessions (D50).
     receiptPending:
-      "This class is already hidden. Its deletion receipt still needs to be saved. Delete it again in a few minutes to finish.",
+      "It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes.",
   },
   processingReview: {
     // A review is already recorded; asking to "request a review below" again would mislead.

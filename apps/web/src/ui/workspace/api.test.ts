@@ -136,5 +136,11 @@ it("keeps a hidden class whose deletion receipt is pending, so the form can say 
   );
   await expect(
     workspaceRequest(`/api/classes/${pending.requestId}`, "DELETE"),
-  ).rejects.toMatchObject({ code: "internal", status: 500, deletion: pending });
+  ).rejects.toMatchObject({
+    code: "internal",
+    status: 500,
+    deletion: pending,
+    message:
+      "It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes.",
+  });
 });
