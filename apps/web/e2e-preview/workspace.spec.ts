@@ -321,7 +321,7 @@ test("D39: course materials keep each session's current notes, dates and course 
   await page.getByRole("button", { name: "Save a new version", exact: true }).click();
   await expect(page.getByText(notes, { exact: true })).toBeVisible();
 
-  await page.goto("/preview/new-class?course=My%20classes");
+  await page.goto("/preview/new-class?course=My%20courses");
   await page.getByLabel("Session name (optional)", { exact: true }).fill("Other course session");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/edit-notes");
