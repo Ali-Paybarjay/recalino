@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pendingCopy } from "../pending-copy";
 
 const failureSchema = z.object({
   error: z.object({
@@ -10,7 +11,7 @@ const failureSchema = z.object({
         deletion: z
           .strictObject({
             requestId: z.uuid(),
-            kind: z.literal("account"),
+            kind: z.enum(["account", "session"]),
             state: z.literal("acknowledgement_pending"),
           })
           .optional(),
@@ -72,6 +73,10 @@ export async function workspaceRequest<T>(
     let message = failure.success
       ? failure.data.error.message
       : "The change could not be saved. Try again.";
+    // A hidden class whose durable deletion receipt is not saved yet; deleting again with the
+    // same key finishes it (FR-ORG-007).
+    if (failure.success && failure.data.error.details?.deletion?.kind === "session")
+      message = pendingCopy.classDeletion.receiptPending;
     if (reasons.includes("already_exists"))
       message = path.startsWith("/api/cards")
         ? "A card with this question and answer already exists."

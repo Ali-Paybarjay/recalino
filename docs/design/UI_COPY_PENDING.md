@@ -6,6 +6,7 @@
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
+| `classDeletion.receiptPending` | It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes. | کلاس پنهان شده، اما رسید حذف آن (دفتر حذف پشتیبان) هنوز ذخیره نشده است؛ حذف دوباره با همان کلید آن را کامل می‌کند | درخواست مالک محصول برای پیام خطای درست حذف کلاس (2026-10-09) | در انتظار تأیید |
 | `processingReview.recorded` | Your processing review is recorded. Follow its status below; your saved material will be used when processing continues. | پردازش کلاس به‌دلیل سرویس متوقف شده و کاربر قبلاً درخواست بازبینی داده است | merge `83e51f4` (2026-10-08) | در انتظار تأیید |
 | `processingReview.resolvedPartial` | Your session notes and flashcards are available with some source limitations. Open the notes to see what could not be processed. | بازبینی با نتیجهٔ جزئیِ منتشرشده بسته شده است | merge `83e51f4` (2026-10-08) | در انتظار تأیید |
 | `voice.partialCoverage` | Some parts of this recording could not be read during the voice check and were skipped. Speech in those parts cannot contribute spoken mistakes. Your full transcript and session notes remain available. | بخشی از صدا در بررسی صدا خوانده نشد (`partial_audio`) | commit `d8dedeb` (2026-10-08) | در انتظار تأیید |

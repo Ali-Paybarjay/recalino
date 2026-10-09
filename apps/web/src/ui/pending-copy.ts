@@ -4,6 +4,12 @@
  * keeps the two in step. Once approved, an entry moves to its screen's copy and the register.
  */
 export const pendingCopy = {
+  classDeletion: {
+    // The class is hidden, but its durable deletion record could not be saved yet. No noun, so
+    // the text stays right when classes are renamed to sessions (D50).
+    receiptPending:
+      "It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes.",
+  },
   processingReview: {
     // A review is already recorded; asking to "request a review below" again would mislead.
     recorded:

@@ -334,7 +334,7 @@ describe("explicit media and privacy publication", () => {
     expect(calls).toBe(1);
     await expect(
       persistDeletionJournal(db, f.ctx, request.id, { hooks: dependencies.hooks }),
-    ).rejects.toMatchObject({ code: "validation_failed" });
+    ).rejects.toMatchObject({ code: "internal", reason: "deletion_journal_adapter_missing" });
     await persistDeletionJournal(db, f.ctx, request.id, dependencies);
     await persistDeletionJournal(db, f.ctx, request.id, dependencies);
     expect(entries.size).toBe(1);

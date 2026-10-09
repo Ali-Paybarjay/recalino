@@ -32,10 +32,9 @@ export function privacyDeletionJournal(
     async record(entry) {
       const keyId = env.RECALINO_BACKUP_KEY_ID;
       const encoded = env.RECALINO_BACKUP_KEY_BASE64;
-      if (!keyId || !encoded)
-        throw errors.validationFailed({ cleanup: ["deletion_journal_key_missing"] });
+      if (!keyId || !encoded) throw errors.configurationMissing("deletion_journal_key_missing");
       const store = getObjectStore();
-      if (!store) throw errors.validationFailed({ cleanup: ["storage_adapter_missing"] });
+      if (!store) throw errors.configurationMissing("storage_adapter_missing");
       await appendEncryptedDeletionJournal(
         getDatabase(),
         store,

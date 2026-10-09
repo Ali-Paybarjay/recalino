@@ -18,6 +18,8 @@ const ALLOWED_FIELDS = new Set([
   "module",
   "error_name",
   "pg_code",
+  // Identifier-like cause of a server error, e.g. a missing configuration name; never a value.
+  "reason",
   // Class voice check attrition: integer counts and durations, never audio or text.
   "windows_planned",
   "windows_used",

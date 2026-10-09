@@ -21,7 +21,7 @@ import {
   updateUnit,
   updateUnitSchema,
 } from "@recalino/core/org";
-import { errors, type LearnerContext } from "@recalino/core/plt";
+import { AppError, errors, type LearnerContext } from "@recalino/core/plt";
 import { persistDeletionJournal, requestSessionDeletion } from "@recalino/core/priv";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
@@ -132,7 +132,18 @@ export function classSessionHandler(id: string): Handler {
     }
     const dependencies = privacyDependencies();
     const result = await requestSessionDeletion(db, actor, id, deletionKey, dependencies);
-    await persistDeletionJournal(db, actor, result.id, dependencies);
+    try {
+      await persistDeletionJournal(db, actor, result.id, dependencies);
+    } catch (failure) {
+      // The class is already hidden; only its durable deletion record is missing. Say so, and
+      // let the same Idempotency-Key retry the record (FR-ORG-007).
+      throw new AppError("internal", {
+        details: {
+          deletion: { requestId: result.id, kind: "session", state: "acknowledgement_pending" },
+        },
+        reason: failure instanceof AppError ? failure.reason : "deletion_journal_failed",
+      });
+    }
     runJobsSoon(["priv.cleanup"], 90);
     return { status: 202, body: result };
   };

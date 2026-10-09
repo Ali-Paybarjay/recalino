@@ -1,4 +1,4 @@
-import { errorEnvelopeSchema } from "@recalino/core/plt";
+import { errorEnvelopeSchema, errors } from "@recalino/core/plt";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { defineRoute, type Handler, noSessions, type RouteDeps, type SessionProvider } from "./api";
@@ -99,6 +99,24 @@ describe("route wrapper (FR-PLT-003, FR-PLT-007)", () => {
     expect(JSON.stringify(body)).not.toContain(CANARY);
     expect(lines.join("\n")).not.toContain(CANARY);
     expect(lines.map((line) => JSON.parse(line).event)).toEqual(["request_failed", "request"]);
+  });
+
+  it("logs the reason of a server error without sending it to the client", async () => {
+    const lines: string[] = [];
+    const response = await call(
+      publicRoute,
+      async () => {
+        throw errors.configurationMissing("deletion_journal_key_missing");
+      },
+      testDeps(lines),
+      { method: "POST", body: "{}" },
+    );
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain("deletion_journal_key_missing");
+    const failed = lines
+      .map((line) => JSON.parse(line))
+      .find((line) => line.event === "request_failed");
+    expect(failed).toMatchObject({ reason: "deletion_journal_key_missing" });
   });
 
   it("requires an idempotency key on idempotent routes", async () => {
