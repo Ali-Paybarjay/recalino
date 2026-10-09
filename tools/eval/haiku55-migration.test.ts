@@ -11,12 +11,18 @@ import {
   assertMigrationDispatchAllowed,
   type MigrationRequest,
   migrationAutomaticGateFailure,
+  migrationBoundaryGateFailure,
   migrationControlInterruptionResult,
   migrationControls,
   migrationInitialRecovery,
+  migrationReportedModelMatches,
   migrationRequestReserve,
+  migrationSoftBudgetStop,
+  migrationTransportGateFailure,
+  migrationUnexpectedTransport,
   readMigrationRecordedJson,
   selectMigrationDiagnosticCases,
+  selectMigrationSmokeCases,
 } from "./haiku55-migration-guards";
 
 const completed: MigrationRequest = {
@@ -239,5 +245,235 @@ describe("PRD-QA-01 unreplayed remaining-case diagnostics", () => {
         maximumHttpRequests: 56,
       }),
     ).toThrow("invalid_dispatch_limits");
+  });
+});
+
+describe("FR-QUOTA-009 candidate acceptance, smoke and probe dispatch limits", () => {
+  const paid = (count: number) => Array.from({ length: count }, () => completed);
+  it("keeps the adoption and comparison limits, gates and generation cap unchanged", () => {
+    expect(migrationControls).toMatchObject({
+      maximumGenerationsPerCase: 2,
+      maximumPaidResponses: 28,
+      maximumHttpRequests: 56,
+      softUsd: 0.5,
+      hardUsd: 0.75,
+      comparison: { maximumPaidResponses: 44, maximumHttpRequests: 88, hardUsd: 1.6 },
+    });
+    expect(migrationControls.adoptionGates).toEqual({
+      finalLocalPasses: "14/14",
+      firstGenerationPasses: ">=13/14",
+      expectedTransport: "direct json_object",
+      nativeSchemaAcceptanceClaimed: false,
+      unexpectedTransportFallbacks: 0,
+      criticalTeachingGroundingAttributionInjectionErrors: 0,
+      allRequiredConceptsAdequatelyTaught: true,
+      minimumMeanQualityEachCase: 3,
+      qualityScale: "0-4: correctness, grounding, coverage, learner fit, clarity/card usability",
+    });
+    expect(() => assertMigrationDispatchAllowed([], 0.74, 0.02, 1, undefined, "adoption")).toThrow(
+      "hard_budget_before_dispatch",
+    );
+    expect(() => assertMigrationDispatchAllowed(paid(28), 0, 0.02, 1)).toThrow(
+      "paid_response_limit",
+    );
+    expect(() =>
+      assertMigrationDispatchAllowed(paid(43), 0.5, 0.02, 1, undefined, "comparison"),
+    ).not.toThrow();
+    expect(() =>
+      assertMigrationDispatchAllowed(paid(44), 0.5, 0.02, 1, undefined, "comparison"),
+    ).toThrow("paid_response_limit");
+    expect(() =>
+      assertMigrationDispatchAllowed([], 1.59, 0.02, 1, undefined, "comparison"),
+    ).toThrow("hard_budget_before_dispatch");
+  });
+  it("caps every QA round, probe and diagnostic at the owner-approved 5 USD total", () => {
+    expect(migrationControls.cumulativeHardUsd).toBe(5);
+  });
+  it("bounds candidate acceptance at 16 paid, 32 HTTP and 1.20 USD with a 0.90 soft pause", () => {
+    expect(migrationControls.candidateAcceptance).toEqual({
+      maximumPaidResponses: 16,
+      maximumHttpRequests: 32,
+      softUsd: 0.9,
+      hardUsd: 1.2,
+    });
+    // One dispatch reserved at the most expensive ZDR price is about 0.263 USD.
+    const reserve = 0.263;
+    const mode = "candidate-acceptance";
+    expect(() =>
+      assertMigrationDispatchAllowed(paid(15), 0.93, reserve, 1, undefined, mode),
+    ).not.toThrow();
+    expect(() =>
+      assertMigrationDispatchAllowed(paid(15), 0.95, reserve, 1, undefined, mode),
+    ).toThrow("hard_budget_before_dispatch");
+    expect(() =>
+      assertMigrationDispatchAllowed(paid(16), 0.5, reserve, 1, undefined, mode),
+    ).toThrow("paid_response_limit");
+    const rejected = Array.from({ length: 32 }, () => ({
+      ...completed,
+      state: "known_rejection" as const,
+    }));
+    expect(() =>
+      assertMigrationDispatchAllowed(rejected, 0.5, reserve, 1, undefined, mode),
+    ).toThrow("http_request_limit");
+    expect(() =>
+      assertMigrationDispatchAllowed(
+        [],
+        0,
+        reserve,
+        1,
+        { maximumPaidResponses: 17, maximumHttpRequests: 32 },
+        mode,
+      ),
+    ).toThrow("invalid_dispatch_limits");
+  });
+  it("bounds a smoke round at 5 paid, 5 HTTP and 0.60 USD and the probe at one 0.05 USD call", () => {
+    expect(migrationControls.smoke).toEqual({
+      maximumPaidResponses: 5,
+      maximumHttpRequests: 5,
+      hardUsd: 0.6,
+    });
+    expect(() =>
+      assertMigrationDispatchAllowed(paid(4), 0.3, 0.265, 2, undefined, "smoke"),
+    ).not.toThrow();
+    expect(() => assertMigrationDispatchAllowed(paid(5), 0.3, 0.02, 1, undefined, "smoke")).toThrow(
+      "http_request_limit",
+    );
+    expect(() => assertMigrationDispatchAllowed([], 0.34, 0.265, 1, undefined, "smoke")).toThrow(
+      "hard_budget_before_dispatch",
+    );
+    expect(migrationControls.enforcementProbe).toEqual({
+      maximumPaidResponses: 1,
+      maximumHttpRequests: 1,
+      hardUsd: 0.05,
+    });
+    expect(() =>
+      assertMigrationDispatchAllowed([], 0, 0.042, 1, undefined, "enforcement-probe"),
+    ).not.toThrow();
+    expect(() =>
+      assertMigrationDispatchAllowed([], 0, 0.051, 1, undefined, "enforcement-probe"),
+    ).toThrow("hard_budget_before_dispatch");
+    expect(() =>
+      assertMigrationDispatchAllowed(
+        [{ ...completed, state: "known_rejection" }],
+        0,
+        0.01,
+        1,
+        undefined,
+        "enforcement-probe",
+      ),
+    ).toThrow("http_request_limit");
+  });
+  it("pauses on the soft budget only before another gated case starts", () => {
+    expect(migrationSoftBudgetStop(0.5, "adoption", 5, 14)).toBe(true);
+    expect(migrationSoftBudgetStop(0.49, "adoption", 5, 14)).toBe(false);
+    expect(migrationSoftBudgetStop(0.6, "candidate-acceptance", 13, 14)).toBe(false);
+    expect(migrationSoftBudgetStop(0.9, "candidate-acceptance", 13, 14)).toBe(true);
+    // A round whose final case finished is complete, never stopped.
+    expect(migrationSoftBudgetStop(1.1, "candidate-acceptance", 14, 14)).toBe(false);
+    expect(migrationSoftBudgetStop(0.74, "adoption", 14, 14)).toBe(false);
+    for (const mode of ["comparison", "smoke"] as const)
+      expect(migrationSoftBudgetStop(1.5, mode, 1, 20)).toBe(false);
+  });
+});
+
+describe("FR-PROC-003 declared transport and reported model checks", () => {
+  it("accepts the configured model or its dated slug, never a sibling variant", () => {
+    const model = "google/gemini-3.8-flash";
+    expect(migrationReportedModelMatches(model, model)).toBe(true);
+    expect(migrationReportedModelMatches(`${model}-20260902`, model)).toBe(true);
+    for (const reported of [
+      "google/gemini-3.8-flash-lite",
+      "google/gemini-3.8-flash-tts",
+      "google/gemini-3.8-flash-lite-tts",
+      "google/gemini-3.8-flash-preview-20260902",
+      "google/gemini-3.8-flash-2026090",
+      "google/gemini-3.8-flashy",
+      "google/gemini-3X8-flash",
+      undefined,
+    ])
+      expect(migrationReportedModelMatches(reported, model)).toBe(false);
+    expect(
+      migrationReportedModelMatches(
+        "anthropic/claude-haiku-5.5-20261001",
+        "anthropic/claude-haiku-5.5",
+      ),
+    ).toBe(true);
+  });
+  it("compares the transport with the declared mode and counts only the :json fallback", () => {
+    expect(migrationUnexpectedTransport("json_object", "json_object", "operation")).toBe(false);
+    expect(migrationUnexpectedTransport("json_schema", "json_schema", "operation")).toBe(false);
+    expect(migrationUnexpectedTransport("json_schema", "json_object", "operation:json")).toBe(true);
+    expect(migrationUnexpectedTransport("json_schema", "json_schema", "operation:json")).toBe(true);
+    expect(migrationUnexpectedTransport("json_object", "json_schema", "operation")).toBe(true);
+    expect(migrationUnexpectedTransport(undefined, "json_object", "operation")).toBe(true);
+  });
+  it("closes schema-mode rounds that needed JSON closers, but not direct JSON rounds", () => {
+    const closed = [{ finalLocalPass: true, firstGenerationPass: true, jsonClosersCompleted: 1 }];
+    expect(migrationTransportGateFailure(closed, "json_schema")).toBe(
+      "schema_mode_json_closers_gate_failed",
+    );
+    expect(migrationTransportGateFailure(closed, "json_object")).toBeUndefined();
+    expect(
+      migrationTransportGateFailure([{ jsonClosersCompleted: 0 }], "json_schema"),
+    ).toBeUndefined();
+    expect(
+      migrationTransportGateFailure([{ unexpectedTransportFallback: true }], "json_object"),
+    ).toBe("unexpected_transport_gate_failed");
+  });
+  it("adds the unchanged first-pass and final-validity gates only to gated rounds", () => {
+    const twoRepairs = [
+      { firstGenerationPass: false, finalLocalPass: true },
+      { firstGenerationPass: false, finalLocalPass: true },
+    ];
+    expect(
+      migrationBoundaryGateFailure(twoRepairs, {
+        structuredOutputMode: "json_object",
+        firstPassGateStopsRound: true,
+      }),
+    ).toBe("first_generation_gate_unreachable");
+    expect(
+      migrationBoundaryGateFailure([{ finalLocalPass: false }], {
+        structuredOutputMode: "json_schema",
+        firstPassGateStopsRound: true,
+      }),
+    ).toBe("final_local_validity_gate_failed");
+    expect(
+      migrationBoundaryGateFailure(twoRepairs, {
+        structuredOutputMode: "json_object",
+        firstPassGateStopsRound: false,
+      }),
+    ).toBeUndefined();
+    expect(
+      migrationBoundaryGateFailure([{ finalLocalPass: false, jsonClosersCompleted: 2 }], {
+        structuredOutputMode: "json_schema",
+        firstPassGateStopsRound: false,
+      }),
+    ).toBe("schema_mode_json_closers_gate_failed");
+  });
+});
+
+describe("FR-QUOTA-009 comparison smoke subsets", () => {
+  const original = Array.from({ length: 20 }, (_, index) => {
+    const id = `Q${String(index + 1).padStart(2, "0")}`;
+    return { caseId: `${id}-${index + 1}`, fixture: { id } };
+  });
+  it("keeps each named lesson's original case identity", () => {
+    const selected = selectMigrationSmokeCases(original, "Q01,Q13");
+    expect(selected.smoke).toBe(true);
+    expect(selected.schedule.map((entry) => entry.caseId)).toEqual(["Q01-1", "Q13-13"]);
+    expect(selected.schedule[1]).toBe(original[12]);
+    expect(selectMigrationSmokeCases(original, undefined)).toEqual({
+      smoke: false,
+      schedule: original,
+    });
+  });
+  it.each([
+    ["Q01,Q01", "smoke_case_ids_invalid"],
+    ["Q01,,Q13", "smoke_case_ids_invalid"],
+    ["Q01;Q13", "smoke_case_ids_invalid"],
+    ["Q01,Q99", "smoke_case_ids_unknown"],
+    ["Q01,Q02,Q03", "smoke_case_count_exceeds_limits"],
+  ])("rejects %s", (ids, code) => {
+    expect(() => selectMigrationSmokeCases(original, ids)).toThrow(code);
   });
 });

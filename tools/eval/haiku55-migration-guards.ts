@@ -2,17 +2,29 @@ import { mkdir, readFile, rename, rmdir, writeFile } from "node:fs/promises";
 import { z } from "../../packages/core/node_modules/zod";
 
 export const migrationControls = {
-  version: "haiku55-production-migration-evaluation-3",
+  version: "haiku55-production-migration-evaluation-4",
   maximumGenerationsPerCase: 2,
   maximumPaidResponses: 28,
   maximumHttpRequests: 56,
   softUsd: 0.5,
   hardUsd: 0.75,
-  // Every migration QA round together, including all earlier spend (0.2370516 USD before the
-  // owner-approved cross-model comparison, which may add at most 5 USD).
-  cumulativeHardUsd: 5.237,
+  // Every migration QA round, probe and diagnostic together, including all earlier spend: the
+  // owner approved 5 USD in total for all QA.
+  cumulativeHardUsd: 5.0,
   // A comparison round runs every case for decision data; it never stops on a first-pass gate.
   comparison: { maximumPaidResponses: 44, maximumHttpRequests: 88, hardUsd: 1.6 },
+  // One gated holdout for one allow-listed candidate: fourteen cases plus the two regenerations
+  // the first-pass gate permits. The soft budget pauses only before another case starts.
+  candidateAcceptance: {
+    maximumPaidResponses: 16,
+    maximumHttpRequests: 32,
+    softUsd: 0.9,
+    hardUsd: 1.2,
+  },
+  // A named subset of the comparison set that checks a transport before a full round.
+  smoke: { maximumPaidResponses: 5, maximumHttpRequests: 5, hardUsd: 0.6 },
+  // One tiny request that shows whether a strict json_schema grammar is enforced at all.
+  enforcementProbe: { maximumPaidResponses: 1, maximumHttpRequests: 1, hardUsd: 0.05 },
   responseBytes: 1048576,
   // Captured regional endpoints can cost 10% more than the main model catalog.
   catalogMaximumRateMultiplier: 1.1,
@@ -38,6 +50,23 @@ export const migrationRequestSchema = z.strictObject({
 });
 export type MigrationRequest = z.infer<typeof migrationRequestSchema>;
 
+export type MigrationDispatchMode =
+  | "adoption"
+  | "comparison"
+  | "candidate-acceptance"
+  | "smoke"
+  | "enforcement-probe";
+const dispatchBounds: Record<
+  MigrationDispatchMode,
+  { maximumPaidResponses: number; maximumHttpRequests: number; hardUsd: number }
+> = {
+  adoption: migrationControls,
+  comparison: migrationControls.comparison,
+  "candidate-acceptance": migrationControls.candidateAcceptance,
+  smoke: migrationControls.smoke,
+  "enforcement-probe": migrationControls.enforcementProbe,
+};
+
 /** A started dispatch is never repeated after a crash, even if no receipt was saved. */
 export function assertMigrationDispatchAllowed(
   requests: MigrationRequest[],
@@ -45,9 +74,9 @@ export function assertMigrationDispatchAllowed(
   reserveUsd: number,
   generationsInCase: number,
   limits?: { maximumPaidResponses: number; maximumHttpRequests: number },
-  mode: "adoption" | "comparison" = "adoption",
+  mode: MigrationDispatchMode = "adoption",
 ) {
-  const bounds = mode === "comparison" ? migrationControls.comparison : migrationControls;
+  const bounds = dispatchBounds[mode];
   const maximumPaidResponses = limits?.maximumPaidResponses ?? bounds.maximumPaidResponses;
   const maximumHttpRequests = limits?.maximumHttpRequests ?? bounds.maximumHttpRequests;
   if (
@@ -118,6 +147,76 @@ export function migrationRequestReserve(
     promptRate,
     outputRate,
   };
+}
+
+/**
+ * The soft budget pauses a gated round before it starts another case; a round whose final case
+ * has finished is complete, never stopped. Comparison and smoke rounds have only a hard budget.
+ */
+export function migrationSoftBudgetStop(
+  spentUsd: number,
+  mode: MigrationDispatchMode,
+  completedCases: number,
+  scheduledCases: number,
+): boolean {
+  const softUsd =
+    mode === "adoption"
+      ? migrationControls.softUsd
+      : mode === "candidate-acceptance"
+        ? migrationControls.candidateAcceptance.softUsd
+        : undefined;
+  return softUsd !== undefined && completedCases < scheduledCases && spentUsd >= softUsd;
+}
+
+/** The configured model or its dated snapshot slug; sibling variants (-lite, -tts) never match. */
+export function migrationReportedModelMatches(
+  reported: string | undefined,
+  configured: string,
+): boolean {
+  if (reported === undefined) return false;
+  const escaped = configured.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return reported === configured || new RegExp(`^${escaped}-\\d{8}$`).test(reported);
+}
+
+/**
+ * A round dispatches only the transport its settings declare. The single `:json` fallback after
+ * a provider grammar rejection is never the declared transport, even in json_schema mode.
+ */
+export function migrationUnexpectedTransport(
+  declared: string | undefined,
+  responseFormat: string,
+  operationKey: string,
+): boolean {
+  return responseFormat !== declared || operationKey.endsWith(":json");
+}
+
+/** Transport failures close every round; a schema grammar never needs JSON closer completion. */
+export function migrationTransportGateFailure(
+  results: Record<string, unknown>[],
+  structuredOutputMode: string | undefined,
+): string | undefined {
+  if (results.some((result) => result.unexpectedTransportFallback))
+    return "unexpected_transport_gate_failed";
+  if (
+    structuredOutputMode === "json_schema" &&
+    results.some(
+      (result) =>
+        typeof result.jsonClosersCompleted === "number" && result.jsonClosersCompleted > 0,
+    )
+  )
+    return "schema_mode_json_closers_gate_failed";
+  return undefined;
+}
+
+/** Gated rounds add the unchanged first-pass and final-validity gates to the transport gates. */
+export function migrationBoundaryGateFailure(
+  results: Record<string, unknown>[],
+  round: { structuredOutputMode: string | undefined; firstPassGateStopsRound: boolean },
+): string | undefined {
+  return (
+    migrationTransportGateFailure(results, round.structuredOutputMode) ??
+    (round.firstPassGateStopsRound ? migrationAutomaticGateFailure(results) : undefined)
+  );
 }
 
 /** Evaluation control stops carry no claim that a paid request became uncertain. */
@@ -208,6 +307,37 @@ export function selectMigrationDiagnosticCases<
     throw new Error("diagnostic_original_ordinals_required");
   return { diagnosticOnly: true, schedule };
 }
+
+/**
+ * A smoke round names a few comparison lessons and keeps each case's original identity. Every
+ * named case can finish its one regeneration within the smoke response limit.
+ */
+export function selectMigrationSmokeCases<T extends { caseId: string; fixture: { id: string } }>(
+  original: T[],
+  requestedIds: string | undefined,
+): { smoke: boolean; schedule: T[] } {
+  if (requestedIds === undefined) return { smoke: false, schedule: original };
+  const ids = requestedIds.split(",");
+  if (ids.some((id) => !/^[A-Za-z0-9-]+$/.test(id)) || new Set(ids).size !== ids.length)
+    throw new Error("smoke_case_ids_invalid");
+  const schedule = original.filter((entry) => ids.includes(entry.fixture.id));
+  if (schedule.length !== ids.length) throw new Error("smoke_case_ids_unknown");
+  if (
+    schedule.length * migrationControls.maximumGenerationsPerCase >
+    migrationControls.smoke.maximumPaidResponses
+  )
+    throw new Error("smoke_case_count_exceeds_limits");
+  return { smoke: true, schedule };
+}
+
+export const migrationRoundStateSchema = z.strictObject({
+  freeze: z.string(),
+  spentUsd: z.number().nonnegative(),
+  stopped: z.boolean(),
+  stopReason: z.string().optional(),
+  requests: z.array(migrationRequestSchema),
+  results: z.array(z.record(z.string(), z.unknown())),
+});
 
 /** Spend that predates the cross-round ledger: every earlier migration round and diagnostic. */
 export const migrationUnledgeredPriorUsd = 0.164853;
