@@ -237,8 +237,8 @@
 | ۱. متن رابط | تأییدشده در 2026-10-08؛ شش متن تغییرکرده در انتظار تأیید |
 | ۲. ارزیابی زنده | انجام شد، 2026-10-09 (بخش ۸.۱)؛ مجموع ۰٫۷۲۳ دلار. خطای «فعل ماضی» رفع شد؛ این خطا در production فعلی هم هست. B2 با حافظه ناپایدار است؛ بدون حافظه پایدار است. تصمیم انتشار با مالک است |
 | ۳. migration ابری | انجام شد، 2026-10-09. مالک محصول `supabase db push` را از دستگاه خود و از یک worktree جدا روی همین شاخه اجرا کرد؛ `--dry-run` فقط `20261008170000_pers_item_feedback` را نشان داد. بررسی فقط‌خواندنی پس از اجرا: migration ثبت شده، RLS فعال، صفر ردیف، ستون‌ها، قیدها و ایندکس‌ها مطابق فایل، دسترسی فقط `select`/`insert`/`delete` برای `recalino_app`، و `anon`/`authenticated` بدون دسترسی به schema. تنها هشدار advisor برای این جدول همان «RLS بدون policy» است که همهٔ جدول‌های دیگر پروژه هم با همین الگو دارند |
-| ۴. env production | تغییر نکرده است؛ فقط همراه انتشار کد |
-| ۵. ادغام و deployment | انجام نشده. به دستور مالک (2026-10-09)، ادغام و deployment تا انجام migration ابری انجام نمی‌شوند. انتشار پیش از migration صفحهٔ Your learning و مسیر بازخورد را با خطا روبه‌رو می‌کند |
+| ۴. env production | `OPENROUTER_SETTINGS_JSON` درست پیش از ادغام PR [#15](https://github.com/Ali-Paybarjay/recalino/pull/15) به `config/openrouter-defaults.json` (`openrouter-2026-10-08-1`، `recalino-knowledge-5`) تغییر می‌کند؛ `promptVersion` در کلید cache و reuse است و باید همراه کد عوض شود |
+| ۵. ادغام و deployment | با تصمیم مالک، انتشار بدون اتصال حافظه به تولید (بخش ۳.۳). PR [#15](https://github.com/Ali-Paybarjay/recalino/pull/15) به `main`. Vercel از `main` خودکار production می‌سازد، پس ادغام همان deployment است |
 
 **اجرای دوم، تکراری (2026-10-09T12:38Z):** جلسهٔ دیگری که پس از افزودن کلید آماده شد، ارزیابی بالا را تکرار کرد، بی‌آنکه متوجه اجرای ثبت‌شده شود. این یک خطای هماهنگی بود و ۰٫۰۹۶۸۷۳ دلار دیگر هزینه داشت (سه فراخوان پولی؛ مجموع مصرف کلید ارزیابی ۰٫۱۹ دلار از سقف ۲ دلار). خروجی در `artifacts/verification/d49-live-teaching/2026-10-09T12-38-28-411Z/` (ignored) است.
 
@@ -295,7 +295,7 @@
 
 **Rollback:**
 
-- **کد:** promote دوبارهٔ deployment پیش از انتشار. production در 2026-10-09 (خواندن Vercel): `dpl_DVZJoACABRz99RVEtooGCbU5qMMm`، ساخته‌شده 2026-10-08 18:37 UTC با CLI و بدون metadata git؛ deployment پیشین git‌دار `dpl_J9ZH5VzdDCGRsskZCZzptLTQwZLA` (`82e2460`) است.
+- **کد:** promote دوبارهٔ deployment پیش از انتشار: `dpl_ErrxhzMNkDomQvqVtt8eT5NCq3Tr` (`main` در `1b1956f`، ساخته‌شده 2026-10-09 08:09 UTC با Git integration). همراه آن `OPENROUTER_SETTINGS_JSON` به `openrouter-2026-10-07-2` / `recalino-knowledge-4` برمی‌گردد.
 - **migration:** فقط جدول تازهٔ `pers.item_feedback` را اضافه می‌کند و جدولی را تغییر نمی‌دهد. کد قبلی آن را نمی‌خواند.
 - **سازگاری:** snapshotهای نسخهٔ ۲ برای کد قبلی ناشناخته‌اند و کد قبلی تنظیمات را هنگام فعال‌سازی Run هم با schema سخت parse می‌کند. بنابراین پیش از rollback نباید Run نسخهٔ ۲ در وضعیت `awaiting_upload`، صف یا در حال پردازش باشد. در غیر این صورت آپلود منتظر فعال نمی‌شود و آن Runها شکست می‌خورند؛ پول دوباره پرداخت نمی‌شود.
 
