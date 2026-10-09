@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { lockAccount } from "../acc";
+import { getAccountState, lockAccount } from "../acc";
 import { assertOwnedLearningGoal, listCards, ownedLearningGoals, type StudyCard } from "../card";
 import type { Database, Tx } from "../db";
 import { cardHtmlToText, studyLexicalTarget } from "../lkm";
@@ -10,14 +10,17 @@ import {
   errors,
   isValidIdempotencyKey,
   type LearnerContext,
+  resolveTimeZone,
   sha256Hex,
 } from "../plt";
 import type { PracticeCandidate } from "../proc";
-import { reviewEvidence } from "../srs";
+import { cardsOfferedForReview, reviewEvidence } from "../srs";
 import {
+  currentFeedback,
   deriveLearningMemory,
   type FeedbackKind,
   type LearningMemory,
+  localDate,
   MEMORY_WINDOW_DAYS,
   type MemoryCardInput,
   type MemoryFeedbackInput,
@@ -46,17 +49,22 @@ function memoryCard(card: StudyCard): MemoryCardInput {
   };
 }
 
+/** Corrections of goals with evidence, plus every "explain more simply" row: a request stands. */
 async function feedbackRows(
   db: Database | Tx,
   ctx: LearnerContext,
-  learningItemIds: readonly string[],
+  evidencedGoalIds: readonly string[],
 ): Promise<MemoryFeedbackInput[]> {
-  if (!learningItemIds.length) return [];
+  const ids = [...new Set(evidencedGoalIds)];
   const rows = await db
     .selectFrom("pers.item_feedback")
     .select(["learning_item_id", "kind", "active", "evidence_order", "created_at"])
     .where("user_id", "=", ctx.userId)
-    .where("learning_item_id", "in", [...new Set(learningItemIds)])
+    .where((eb) =>
+      ids.length
+        ? eb.or([eb("learning_item_id", "in", ids), eb("kind", "=", "explain_simpler")])
+        : eb("kind", "=", "explain_simpler"),
+    )
     .orderBy("created_at", "asc")
     .orderBy("id", "asc")
     .execute();
@@ -124,7 +132,7 @@ async function sessionContext(db: Database | Tx, ctx: LearnerContext, sessionId:
 export async function learningMemory(
   db: Database | Tx,
   ctx: LearnerContext,
-  options: { now?: Date; dueCount?: number; nextDueAt?: string | null } = {},
+  options: { now?: Date; dueCount?: number; nextDueAt?: string | null; limit?: number } = {},
 ): Promise<LearningMemory> {
   const now = options.now ?? new Date();
   const [evidence, cards] = await Promise.all([
@@ -132,23 +140,29 @@ export async function learningMemory(
     listCards(db, ctx),
   ]);
   const evidenced = new Set(evidence.events.map((event) => event.cardId));
-  const relevant = cards.filter((card) => evidenced.has(card.id));
-  const learningItemIds = [...new Set(relevant.map((card) => card.learningItemId))];
-  const [goals, feedback] = await Promise.all([
-    goalContext(db, ctx, learningItemIds),
-    feedbackRows(db, ctx, learningItemIds),
-  ]);
+  const evidencedGoals = new Set(
+    cards.filter((card) => evidenced.has(card.id)).map((card) => card.learningItemId),
+  );
+  const feedback = await feedbackRows(db, ctx, [...evidencedGoals]);
+  const requested = [...currentFeedback(feedback)]
+    .filter(([, current]) => current.explain_simpler?.active)
+    .map(([learningItemId]) => learningItemId);
+  const goalIds = new Set([...evidencedGoals, ...requested]);
+  // Every card of a shown goal, so a sibling that is due can carry the practice link.
+  const relevant = cards.filter((card) => goalIds.has(card.learningItemId));
+  const goals = await goalContext(db, ctx, [...goalIds]);
+  const offered = await cardsOfferedForReview(db, ctx, relevant, now);
   return deriveLearningMemory({
-    now,
     window: { from: evidence.from, to: evidence.to, days: evidence.days },
     cards: relevant.map(memoryCard),
     events: evidence.events,
-    dueAt: evidence.dueAt,
+    offered,
     goals,
     feedback,
     dueCount: options.dueCount ?? 0,
     nextDueAt: options.nextDueAt ?? null,
     hasCards: cards.some((card) => card.status === "active" || card.status === "known"),
+    ...(options.limit === undefined ? {} : { limit: options.limit }),
   });
 }
 
@@ -156,6 +170,8 @@ export async function learningMemory(
  * D49 phase 3: a bounded, explainable selection snapshotted when a class run starts.
  * Only this class and other classes of the same course are eligible; the worker keeps a
  * same-course point only when its exact target occurs in this class's extracted text.
+ * The full lists are scoped before the bound, so another course's items never crowd out
+ * this course's points. Dates are the learner's local dates of the recorded evidence.
  */
 export async function practiceCandidatesForRun(
   tx: Tx,
@@ -163,31 +179,52 @@ export async function practiceCandidatesForRun(
   input: { sessionId: string; now?: Date },
 ): Promise<PracticeCandidate[]> {
   const session = await getSession(tx, ctx, input.sessionId);
-  const memory = await learningMemory(tx, ctx, { now: input.now });
-  const eligible = [...memory.needsPractice];
-  // An explicit "explain more simply" request counts even after the recall has recovered.
-  for (const item of memory.simplerRequests)
-    if (!eligible.some((entry) => entry.learningItemId === item.learningItemId))
-      eligible.push(item);
-  const candidates: (PracticeCandidate & { order: number })[] = [];
-  for (const item of eligible) {
-    if (!item.sessionId || !item.courseId || !studyLexicalTarget(item.label)) continue;
-    const scope =
-      item.sessionId === session.id
+  const account = await getAccountState(tx, ctx.userId);
+  const timeZone = resolveTimeZone(account?.timezone).timeZone;
+  const memory = await learningMemory(tx, ctx, {
+    ...(input.now ? { now: input.now } : {}),
+    limit: Number.POSITIVE_INFINITY,
+  });
+  const scopeOf = (item: { sessionId: string | null; courseId: string | null; label: string }) =>
+    !item.sessionId || !item.courseId || !studyLexicalTarget(item.label)
+      ? undefined
+      : item.sessionId === session.id
         ? "this_class"
         : item.courseId === session.courseId
           ? "same_course"
           : undefined;
-    if (!scope) continue;
-    const simpler = item.feedback.explainSimplerAt !== null;
-    const difficulty = item.status === "needs_practice" && !item.dismissed;
-    if (!simpler && !difficulty) continue;
+  const candidates: (PracticeCandidate & { order: number })[] = [];
+  const chosen = new Set<string>();
+  // needsPractice already leaves out dismissed and marked-known goals.
+  for (const item of memory.needsPractice) {
+    const scope = scopeOf(item);
+    if (!scope || !item.sessionId) continue;
+    chosen.add(item.learningItemId);
     candidates.push({
       target: item.label,
-      reason: difficulty ? "recall_difficulty" : "asked_simpler",
+      reason: "recall_difficulty",
       scope,
       againCount: item.evidence.again,
-      lastEvidenceDate: item.evidence.lastReviewedAt.slice(0, 10),
+      lastEvidenceDate: localDate(
+        item.evidence.lastAgainAt ?? item.evidence.lastReviewedAt,
+        timeZone,
+      ),
+      sourceSessionId: item.sessionId,
+      order: scope === "this_class" ? 0 : 1,
+    });
+  }
+  // An explicit "explain more simply" request counts until withdrawn, even after recall recovered.
+  for (const request of memory.simplerRequests) {
+    const scope = scopeOf(request);
+    if (!scope || !request.sessionId || chosen.has(request.learningItemId)) continue;
+    candidates.push({
+      target: request.label,
+      reason: "asked_simpler",
+      scope,
+      // Only recall_difficulty carries an Again count; a request is not review evidence.
+      againCount: 0,
+      lastEvidenceDate: localDate(request.askedAt, timeZone),
+      sourceSessionId: request.sessionId,
       order: scope === "this_class" ? 0 : 1,
     });
   }
@@ -211,6 +248,8 @@ export const itemFeedbackSchema = z.strictObject({
   learningItemId: z.uuid(),
   kind: z.enum(["not_a_difficulty", "explain_simpler"]),
   active: z.boolean(),
+  /** The latest Again the learner was shown when dismissing; a newer one keeps the note open. */
+  shownLastAgainAt: z.iso.datetime({ offset: true }).nullable().optional(),
 });
 export type ItemFeedbackInput = z.infer<typeof itemFeedbackSchema>;
 
@@ -239,7 +278,10 @@ export async function recordItemFeedback(
       return { replayed: true };
     }
     const goal = await assertOwnedLearningGoal(tx, ctx, input.learningItemId);
-    // The baseline is the goal's latest answer the learner could see when correcting the note.
+    // Only a class goal can shape a later class run; a request elsewhere would promise nothing.
+    if (input.kind === "explain_simpler" && input.active && !goal.sessionId)
+      throw errors.validationFailed({ kind: ["not_applicable"] });
+    // The baseline is the goal's latest answer when the correction is saved.
     const [evidence, cards] = await Promise.all([
       reviewEvidence(tx, ctx, { now, days: MEMORY_WINDOW_DAYS }),
       listCards(tx, ctx),
@@ -250,6 +292,32 @@ export async function recordItemFeedback(
     const summary = summariseGoalEvents(
       evidence.events.filter((event) => cardIds.has(event.cardId)),
     );
+    let baseline = summary?.lastOrder ?? null;
+    // An Again saved after the page the learner corrected (another tab or device) is not
+    // something they dismissed: the baseline stays below it, so the note stays open.
+    if (
+      input.kind === "not_a_difficulty" &&
+      input.active &&
+      input.shownLastAgainAt !== undefined &&
+      summary?.lastAgainAt &&
+      summary.lastAgainOrder !== null &&
+      (input.shownLastAgainAt === null ||
+        Date.parse(summary.lastAgainAt) > Date.parse(input.shownLastAgainAt))
+    )
+      baseline = Math.max(0, summary.lastAgainOrder - 1);
+    // The account lock serialises a learner's corrections; a strictly increasing time keeps
+    // "the latest row wins" independent of the random row id when two share a millisecond.
+    const latest = await tx
+      .selectFrom("pers.item_feedback")
+      .select("created_at")
+      .where("user_id", "=", ctx.userId)
+      .orderBy("created_at", "desc")
+      .limit(1)
+      .executeTakeFirst();
+    const createdAt =
+      latest && latest.created_at.getTime() >= now.getTime()
+        ? new Date(latest.created_at.getTime() + 1)
+        : now;
     await tx
       .insertInto("pers.item_feedback")
       .values({
@@ -258,10 +326,10 @@ export async function recordItemFeedback(
         session_id: goal.sessionId,
         kind: input.kind satisfies FeedbackKind,
         active: input.active,
-        evidence_order: summary?.lastOrder ?? null,
+        evidence_order: baseline,
         operation_key: options.key,
         request_hash: requestHash,
-        created_at: now,
+        created_at: createdAt,
       })
       .execute();
     return { replayed: false };

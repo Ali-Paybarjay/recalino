@@ -48,6 +48,7 @@ import {
   updateAutomaticLearningProgress,
 } from "./automatic-state";
 import { expireAwaitingUploads } from "./maintenance";
+import { forgetPracticeSources } from "./practice-privacy";
 import {
   cancelRun,
   cancelSessionRuns,
@@ -1207,18 +1208,27 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       origin: "explicit",
       value: true,
     });
-    const candidate = (target: string, scope: "this_class" | "same_course") => ({
+    const other = await createSession(db, f.ctx, {}, { key: randomUUID() });
+    fixtureSubjects.push({ userId: f.ctx.userId, sessionId: other.id });
+    const candidate = (
+      target: string,
+      scope: "this_class" | "same_course",
+      sourceSessionId = scope === "this_class" ? f.session.id : other.id,
+    ) => ({
       target,
       reason: "recall_difficulty" as const,
       scope,
       againCount: 3,
       lastEvidenceDate: "2026-10-06",
+      sourceSessionId,
     });
     const supplied = [
       candidate("be pressed for time", "this_class"),
       candidate("present perfect", "same_course"),
       candidate("get on with sb", "same_course"),
     ];
+    // A point read before its class was deleted (or from any class not live for this owner).
+    const gone = candidate("present perfect tense", "same_course", randomUUID());
     let snapshotCalls = 0;
     const run = await createProcessingRun(
       db,
@@ -1230,7 +1240,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
         practiceCandidates: async (_tx, input) => {
           snapshotCalls++;
           expect(input.sessionId).toBe(f.session.id);
-          return supplied;
+          return [...supplied, gone];
         },
       },
     );
@@ -1275,6 +1285,33 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
         linkedItemIds: [],
       },
     });
+    // Deleting the other class removes its copied points; this class's own point stays.
+    await forgetPracticeSources(db, f.ctx, [other.id]);
+    const scrubbed = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", run.id)
+      .executeTakeFirstOrThrow();
+    expect(scrubbed.settings).toMatchObject({
+      provider: (saved.settings as { provider: unknown }).provider,
+      learnerContext: { version: 2, simplerExplanations: true, practiceCandidates: [supplied[0]] },
+    });
+    expect(JSON.stringify(scrubbed.settings)).not.toContain(other.id);
+    const redacted = await getLatestVersion(db, f.ctx, f.session.id);
+    expect(redacted?.generation).toMatchObject({ teachingAdaptation: { focus: [supplied[0]] } });
+    expect(JSON.stringify(redacted?.generation)).not.toMatch(/present perfect|get on with/);
+    expect(redacted?.model).toEqual(version?.model);
+    // Repeating the cleanup changes nothing.
+    await forgetPracticeSources(db, f.ctx, [other.id]);
+    expect(
+      (
+        await db
+          .selectFrom("proc.processing_run")
+          .select("settings")
+          .where("id", "=", run.id)
+          .executeTakeFirstOrThrow()
+      ).settings,
+    ).toEqual(scrubbed.settings);
   });
   it("D49 recovery runs keep the recovered run's memory points instead of fresher evidence", async () => {
     const f = await fixture();
@@ -1285,6 +1322,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
         scope: "this_class" as const,
         againCount: 0,
         lastEvidenceDate: "2026-10-05",
+        sourceSessionId: f.session.id,
       },
     ];
     const first = await createProcessingRun(

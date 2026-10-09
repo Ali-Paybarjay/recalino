@@ -263,14 +263,15 @@ function checkYourself(
     ];
   });
   if (!questions.length) return "";
-  return `${labelNote("checkNote", ctx)}${questions
+  // The reference drill structure: print hides each toggle (ol.gaps details) and shows the key.
+  return `${labelNote("checkNote", ctx)}<ol class="gaps">\n${questions
     .map(
-      (question, position) =>
-        `<div class="sc">\n<p class="mean">${question.instruction}</p>\n<p class="q" ${ctx.englishAttrs}><b>${position + 1}.</b> ${question.question}</p>\n<details><summary>${ctx.label("answer")}</summary><p class="model" ${ctx.englishAttrs}>✓ ${question.answer}</p><p class="src"><a href="#${attr(encodeURIComponent(question.item.id))}">↩ ${ctx.label("card")} ${ctx.number(question.index + 1)}</a></p></details>\n</div>`,
+      (question) =>
+        `<li><p class="mean">${question.instruction}</p><p class="q" ${ctx.englishAttrs}>${question.question}</p><details><summary>${ctx.label("answer")}</summary><p class="model" ${ctx.englishAttrs}>✓ ${question.answer}</p><p class="src"><a href="#${attr(encodeURIComponent(question.item.id))}">↩ ${ctx.label("card")} ${ctx.number(question.index + 1)}</a></p></details></li>`,
     )
     .join(
       "\n",
-    )}\n<p class="key">${ctx.label("answers")} <bdi ${ctx.englishAttrs}>${questions.map((question, position) => `${position + 1}. ${text(question.key)}`).join(" · ")}</bdi></p>`;
+    )}\n</ol>\n<p class="key">${ctx.label("answers")} <bdi ${ctx.englishAttrs}>${questions.map((question, position) => `${position + 1}. ${text(question.key)}`).join(" · ")}</bdi></p>`;
 }
 
 /** Preserve supported notebook content that is not represented by a reference section. */

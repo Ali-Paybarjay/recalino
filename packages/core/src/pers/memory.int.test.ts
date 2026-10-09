@@ -6,6 +6,7 @@ import { changeCard } from "../card";
 import { createDatabase } from "../db";
 import { submitReview, undoReview } from "../srs";
 import { learningMemory, practiceCandidatesForRun, recordItemFeedback } from "./memory";
+import { localDate } from "./memory-rules";
 import { learningOverview } from "./profile";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 2 });
@@ -163,13 +164,18 @@ describe("D49 learning memory with owned review evidence (PRD-PERS-03/05)", () =
       .execute((tx) =>
         practiceCandidatesForRun(tx, owner.ctx, { sessionId: owner.session.id, now: owner.now }),
       );
+    const lastAgainAt = (await learningMemory(db, owner.ctx, { now: owner.now })).needsPractice[0]
+      ?.evidence.lastAgainAt;
+    if (!lastAgainAt) throw new Error("missing Again evidence");
     expect(candidates).toEqual([
       {
         target: "Synthetic question 0",
         reason: "recall_difficulty",
         scope: "this_class",
         againCount: 2,
-        lastEvidenceDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        sourceSessionId: owner.session.id,
+        // The latest Again, as the learner's calendar date (the fixture uses Europe/London).
+        lastEvidenceDate: localDate(lastAgainAt, "Europe/London"),
       },
     ]);
     const other = await studyFixture(db, { autoAdd: true });
@@ -178,5 +184,129 @@ describe("D49 learning memory with owned review evidence (PRD-PERS-03/05)", () =
         .transaction()
         .execute((tx) => practiceCandidatesForRun(tx, other.ctx, { sessionId: owner.session.id })),
     ).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("keeps an explain-more-simply request for runs after its answers leave the window", async () => {
+    const start = new Date(Date.now() - 70 * day);
+    const owner = await practised(["remembered"], start);
+    const askedAt = new Date(start.getTime() + 2 * day);
+    await recordItemFeedback(
+      db,
+      owner.ctx,
+      { learningItemId: owner.card.learningItemId, kind: "explain_simpler", active: true },
+      { key: randomUUID(), now: askedAt },
+    );
+    const now = new Date();
+    const memory = await learningMemory(db, owner.ctx, { now });
+    expect(memory.lastEvidenceAt).toBeNull();
+    expect(memory.simplerRequests).toEqual([
+      expect.objectContaining({
+        learningItemId: owner.card.learningItemId,
+        label: "Synthetic question 0",
+        askedAt: askedAt.toISOString(),
+      }),
+    ]);
+    const candidates = await db
+      .transaction()
+      .execute((tx) =>
+        practiceCandidatesForRun(tx, owner.ctx, { sessionId: owner.session.id, now }),
+      );
+    expect(candidates).toEqual([
+      {
+        target: "Synthetic question 0",
+        reason: "asked_simpler",
+        scope: "this_class",
+        againCount: 0,
+        lastEvidenceDate: localDate(askedAt.toISOString(), "Europe/London"),
+        sourceSessionId: owner.session.id,
+      },
+    ]);
+    await recordItemFeedback(
+      db,
+      owner.ctx,
+      { learningItemId: owner.card.learningItemId, kind: "explain_simpler", active: false },
+      { key: randomUUID(), now },
+    );
+    expect((await learningMemory(db, owner.ctx, { now })).simplerRequests).toEqual([]);
+  });
+
+  it("a dismissal from a stale page does not absorb an Again saved after it was shown", async () => {
+    const start = new Date(Date.now() - 6 * day);
+    const owner = await practised(["forgot", "forgot"], start);
+    const shown = (await learningMemory(db, owner.ctx, { now: owner.now })).needsPractice[0];
+    if (!shown?.evidence.lastAgainAt) throw new Error("missing shown evidence");
+    expect(shown.evidence).not.toHaveProperty("lastOrder");
+    expect(shown.evidence).not.toHaveProperty("lastAgainOrder");
+    // Another tab saves a new Again before the correction arrives.
+    const later = new Date(owner.now.getTime() + day);
+    const state = await db
+      .selectFrom("srs.card_state")
+      .select("version")
+      .where("card_id", "=", owner.card.id)
+      .executeTakeFirstOrThrow();
+    await submitReview(
+      db,
+      owner.ctx,
+      {
+        eventId: randomUUID(),
+        cardId: owner.card.id,
+        expectedVersion: state.version,
+        expectedContentVersion: owner.card.contentVersion,
+        mode: "simple",
+        choice: "forgot",
+      },
+      later,
+    );
+    const now = new Date(later.getTime() + 1000);
+    const dismiss = (shownLastAgainAt: string | null) =>
+      recordItemFeedback(
+        db,
+        owner.ctx,
+        {
+          learningItemId: owner.card.learningItemId,
+          kind: "not_a_difficulty",
+          active: true,
+          shownLastAgainAt,
+        },
+        { key: randomUUID(), now },
+      );
+    await dismiss(shown.evidence.lastAgainAt);
+    let memory = await learningMemory(db, owner.ctx, { now });
+    expect(memory.needsPractice).toHaveLength(1);
+    expect(memory.dismissed).toEqual([]);
+    // The same correction made from the current page covers the newer Again.
+    const current = memory.needsPractice[0]?.evidence.lastAgainAt ?? null;
+    expect(current).not.toBe(shown.evidence.lastAgainAt);
+    await dismiss(current);
+    memory = await learningMemory(db, owner.ctx, { now });
+    expect(memory.needsPractice).toEqual([]);
+    expect(memory.dismissed).toHaveLength(1);
+    await expect(
+      recordItemFeedback(
+        db,
+        owner.ctx,
+        {
+          learningItemId: owner.card.learningItemId,
+          kind: "not_a_difficulty",
+          active: true,
+          shownLastAgainAt: "yesterday",
+        },
+        { key: randomUUID(), now },
+      ),
+    ).rejects.toMatchObject({ name: "ZodError" });
+  });
+
+  it("links to the class review only when the review queue offers the goal's card", async () => {
+    const start = new Date(Date.now() - 6 * day);
+    const owner = await practised(["forgot", "forgot"], start);
+    // Just after the latest Again the card waits for its learning step: open the card instead.
+    const waiting = (await learningMemory(db, owner.ctx, { now: owner.now })).needsPractice[0];
+    expect(waiting).toMatchObject({ card: { due: false }, next: { kind: "open_card" } });
+    const due = (await learningMemory(db, owner.ctx, { now: new Date(owner.now.getTime() + day) }))
+      .needsPractice[0];
+    expect(due).toMatchObject({
+      card: { id: owner.card.id, due: true },
+      next: { kind: "review_class", href: `/review?sessionId=${owner.session.id}` },
+    });
   });
 });

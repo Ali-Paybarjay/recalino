@@ -25,7 +25,7 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
       setBusy(false);
     }
   }
-  async function feedback(body: unknown, key: string) {
+  async function feedback(body: unknown, key: string): Promise<boolean> {
     setBusy(true);
     setProblem("");
     setNotice("");
@@ -34,8 +34,10 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
         await workspaceRequest<LearningOverview>("/api/learning/feedback", "POST", body, key),
       );
       setNotice(learningMemoryCopy.saved);
+      return true;
     } catch (failure) {
       setProblem(failure instanceof Error ? failure.message : learningMemoryCopy.failed);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -99,7 +101,7 @@ export function LearningProfile({ initial }: { initial: LearningOverview }) {
         memory={overview.memory}
         timeZone={overview.timezone}
         busy={busy}
-        onFeedback={(body, key) => void feedback(body, key)}
+        onFeedback={feedback}
       />
       <Panel title="Your practice over time">
         {overview.activity.history.length ? (

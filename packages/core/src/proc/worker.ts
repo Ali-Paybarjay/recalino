@@ -70,6 +70,7 @@ import {
 import { buildKnowledgeInput } from "./knowledge-input";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
 import {
+  declaredTeachingContext,
   type ModelTeachingContext,
   modelTeachingContext,
   selectPracticeFocus,
@@ -1062,7 +1063,7 @@ export function processingJob(
             const studyRepair = buildKnowledgeStudyRepairInput(
               generated,
               settings.provider.maxInputCharacters,
-              teaching,
+              declaredTeachingContext(teaching),
             );
             const priorStudyRepair = await cached(
               job.db,
@@ -1163,7 +1164,7 @@ export function processingJob(
                 corrected,
                 settings.explanationLanguage,
                 settings.provider.maxInputCharacters,
-                teaching,
+                declaredTeachingContext(teaching),
               );
               const priorTranslation = await cached(
                 job.db,

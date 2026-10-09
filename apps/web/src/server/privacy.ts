@@ -50,6 +50,7 @@ import {
   cleanupAccountProcessing,
   cleanupSessionProcessing,
   cleanupSourceProcessing,
+  forgetPracticeSources,
 } from "@recalino/core/proc";
 import {
   cleanupAccountSources,
@@ -145,13 +146,20 @@ export function privacyDependencies(): PrivacyDependencies {
       },
       {
         module: "proc",
-        tombstoneSession: async () => {},
-        cleanupSession: (db, ctx, sessionId, now) =>
-          cleanupSessionProcessing(db, ctx, sessionId, { store: storage(), now }),
+        // D49: memory points copied from the deleted class leave other classes' snapshots and
+        // lesson records at once; cleanup repeats it for a run created in between.
+        tombstoneSession: (tx, ctx, sessionId) => forgetPracticeSources(tx, ctx, [sessionId]),
+        tombstoneSource: (tx, ctx, _sourceId, ids) => forgetPracticeSources(tx, ctx, ids),
+        cleanupSession: async (db, ctx, sessionId, now) => {
+          await cleanupSessionProcessing(db, ctx, sessionId, { store: storage(), now });
+          await forgetPracticeSources(db, ctx, [sessionId]);
+        },
         cleanupAccount: (db, ctx, now) =>
           cleanupAccountProcessing(db, ctx, { store: storage(), now }),
-        cleanupSource: (db, ctx, sourceId, _ids, now) =>
-          cleanupSourceProcessing(db, ctx, sourceId, { store: storage(), now }),
+        cleanupSource: async (db, ctx, sourceId, ids, now) => {
+          await cleanupSourceProcessing(db, ctx, sourceId, { store: storage(), now });
+          await forgetPracticeSources(db, ctx, ids);
+        },
       },
       {
         // D49 learner corrections reference card goals; clean them before card purges.

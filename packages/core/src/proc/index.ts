@@ -43,6 +43,7 @@ export {
 export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
+export { forgetPracticeSources } from "./practice-privacy";
 export {
   type ProcessingReview,
   processingReviewTarget,

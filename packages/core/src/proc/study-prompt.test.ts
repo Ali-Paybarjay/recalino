@@ -78,6 +78,30 @@ describe("AC-D46-06 friendly declared-level teaching", () => {
   );
 });
 
+describe("D49 teaching instructions respect the output budget", () => {
+  const context = {
+    version: 2 as const,
+    simplerExplanations: true as const,
+    practiceFocus: [{ target: "get on with sb", reason: "recall_difficulty" as const }],
+  };
+  it("asks for step-by-step notes only when the budget is not compact", () => {
+    const roomy = personalisedTeachingPrompt(context);
+    expect(roomy).toContain("explain a difficult point step by step");
+    expect(roomy).toContain("clearer step-by-step noteFa");
+    const compact = personalisedTeachingPrompt(context, { compact: true });
+    expect(compact).not.toMatch(/step by step|step-by-step/);
+    expect(compact).toContain("one-sentence noteFa");
+    expect(compact).toContain("Within each production noteFa's one short sentence");
+    expect(compact).toContain("the concise-field rules and output budget win");
+  });
+  it("uses the compact variant inside the production-budget study prompt", () => {
+    const prompt = studyPrompt("fa", 6144, true, context);
+    expect(prompt).toContain("one short sentence in the resolved explanation language");
+    expect(prompt).not.toMatch(/step by step|step-by-step/);
+    expect(studyPrompt("fa", 24000, true, context)).toContain("clearer step-by-step noteFa");
+  });
+});
+
 describe("Persian lesson response budget", () => {
   it.each(["fa", "en"])(
     "keeps the actual %s primary and repair prompts consistent with their different claim contracts",

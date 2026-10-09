@@ -8,6 +8,7 @@ export {
 } from "./privacy";
 export {
   type CardSchedule,
+  cardsOfferedForReview,
   getReviewQueue,
   getReviewSettings,
   type ReviewQueue,

@@ -1,5 +1,5 @@
 "use client";
-import type { LearningOverview, MemoryItem } from "@recalino/core/pers";
+import type { LearningOverview, MemoryItem, SimplerRequest } from "@recalino/core/pers";
 import { useRef } from "react";
 import { learningMemoryCopy as copy } from "./learning-memory-copy";
 import { Actions, Button, LinkButton, Panel } from "./primitives";
@@ -73,7 +73,12 @@ export function NextStepPanel({ memory, timeZone }: { memory: Memory; timeZone: 
   );
 }
 
-function Goal({ item }: { item: MemoryItem }) {
+type GoalContext = Pick<
+  SimplerRequest,
+  "label" | "meaning" | "explanationLanguage" | "classDate" | "courseName"
+>;
+
+function Goal({ item }: { item: GoalContext }) {
   return (
     <>
       <h4 lang="en" dir="auto">
@@ -103,17 +108,25 @@ export function LearningMemoryPanel({
   timeZone: string;
   busy: boolean;
   onFeedback: (
-    body: { learningItemId: string; kind: "not_a_difficulty" | "explain_simpler"; active: boolean },
+    body: {
+      learningItemId: string;
+      kind: "not_a_difficulty" | "explain_simpler";
+      active: boolean;
+      shownLastAgainAt?: string | null;
+    },
     key: string,
-  ) => void;
+  ) => Promise<boolean>;
 }) {
-  // One retry key per correction; a resend after a lost response cannot apply it twice.
+  // A retry after a failed or lost response reuses its key, so it cannot apply twice. A saved
+  // correction drops its key: making the same correction again later is a new correction.
   const keys = useRef(new Map<string, string>());
   const send = (body: Parameters<typeof onFeedback>[0]) => {
     const payload = JSON.stringify(body);
     const key = keys.current.get(payload) ?? crypto.randomUUID();
     keys.current.set(payload, key);
-    onFeedback(body, key);
+    void onFeedback(body, key).then((saved) => {
+      if (saved && keys.current.get(payload) === key) keys.current.delete(payload);
+    });
   };
   const date = (value: string) => memoryDate(value, timeZone);
   const empty =
@@ -157,27 +170,30 @@ export function LearningMemoryPanel({
                         learningItemId: item.learningItemId,
                         kind: "not_a_difficulty",
                         active: true,
+                        shownLastAgainAt: item.evidence.lastAgainAt,
                       })
                     }
                   >
                     {copy.notDifficulty}
                   </Button>
-                  <Button
-                    secondary
-                    disabled={busy}
-                    aria-pressed={item.feedback.explainSimplerAt !== null}
-                    onClick={() =>
-                      send({
-                        learningItemId: item.learningItemId,
-                        kind: "explain_simpler",
-                        active: item.feedback.explainSimplerAt === null,
-                      })
-                    }
-                  >
-                    {item.feedback.explainSimplerAt === null
-                      ? copy.explainSimpler
-                      : copy.stopSimpler}
-                  </Button>
+                  {item.simplerApplies || item.feedback.explainSimplerAt !== null ? (
+                    // The label names the action, so it is not also an aria-pressed toggle.
+                    <Button
+                      secondary
+                      disabled={busy}
+                      onClick={() =>
+                        send({
+                          learningItemId: item.learningItemId,
+                          kind: "explain_simpler",
+                          active: item.feedback.explainSimplerAt === null,
+                        })
+                      }
+                    >
+                      {item.feedback.explainSimplerAt === null
+                        ? copy.explainSimpler
+                        : copy.stopSimpler}
+                    </Button>
+                  ) : null}
                 </Actions>
               </li>
             ))}
@@ -238,7 +254,7 @@ export function LearningMemoryPanel({
             {memory.simplerRequests.map((item) => (
               <li key={item.learningItemId}>
                 <Goal item={item} />
-                <p>{copy.simplerReason(date(item.feedback.explainSimplerAt ?? ""))}</p>
+                <p>{copy.simplerReason(date(item.askedAt))}</p>
                 <Button
                   secondary
                   disabled={busy}

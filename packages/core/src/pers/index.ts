@@ -12,6 +12,7 @@ export {
   type MemoryItem,
   type MemoryStatus,
   type NextStep,
+  type SimplerRequest,
 } from "./memory-rules";
 export {
   cleanupAccountPers,

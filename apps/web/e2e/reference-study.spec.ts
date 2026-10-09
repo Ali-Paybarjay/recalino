@@ -138,7 +138,8 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   // Print replaces each hidden-answer toggle group with its key: the gap-fill and D49 check.
   await expect(frame.locator("#gap .key")).toBeVisible();
   await expect(frame.locator("#check .key")).toBeVisible();
-  await expect(frame.locator("ol.gaps details").first()).toBeHidden();
+  await expect(frame.locator("#gap ol.gaps details").first()).toBeHidden();
+  await expect(frame.locator("#check details").first()).toBeHidden();
 });
 
 test("production review reveals the reference front, rule and back and keeps supplementary cards separate", async ({

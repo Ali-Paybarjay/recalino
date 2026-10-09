@@ -9,6 +9,8 @@ export const practiceCandidateSchema = z.strictObject({
   scope: z.enum(["this_class", "same_course"]),
   againCount: z.int().min(0).max(10000),
   lastEvidenceDate: z.iso.date(),
+  /** The class whose goal the point came from; deleting that class removes the point (PRIV). */
+  sourceSessionId: z.uuid(),
 });
 export type PracticeCandidate = z.infer<typeof practiceCandidateSchema>;
 export const MAX_PRACTICE_CANDIDATES = 8;
@@ -66,6 +68,29 @@ export function snapshotLearnerTeachingContext(
   });
 }
 
+/**
+ * D49 PRIV: the snapshot without points copied from deleted classes, or undefined when none
+ * was copied. Without remaining points or an explicit choice it returns to version 1.
+ */
+export function withoutPracticeSources(
+  context: LearnerTeachingContext | undefined,
+  deletedSessionIds: ReadonlySet<string>,
+): LearnerTeachingContext | undefined {
+  if (context?.version !== 2 || !context.practiceCandidates) return undefined;
+  const kept = context.practiceCandidates.filter(
+    (candidate) => !deletedSessionIds.has(candidate.sourceSessionId),
+  );
+  if (kept.length === context.practiceCandidates.length) return undefined;
+  const { practiceCandidates: _removed, ...rest } = context;
+  if (kept.length) return { ...rest, practiceCandidates: kept };
+  if (rest.simplerExplanations) return rest;
+  return learnerTeachingContextSchema.parse({
+    version: 1,
+    ...(rest.declaredLevel ? { declaredLevel: rest.declaredLevel } : {}),
+    ...(rest.goal ? { goal: rest.goal } : {}),
+  });
+}
+
 /** Structural, so this module does not depend on the run contract that embeds it. */
 interface ExtractedSource {
   blocks: readonly { text: string }[];
@@ -115,6 +140,21 @@ export function modelTeachingContext(
   };
 }
 
+/**
+ * Answer-span repair and translation never adapt a lesson, so they receive the version 1 shape:
+ * declared choices only, never memory points or the simpler-explanation choice (D49).
+ */
+export function declaredTeachingContext(
+  context: ModelTeachingContext | undefined,
+): ModelTeachingContext | undefined {
+  if (!context) return undefined;
+  return {
+    version: 1,
+    ...(context.declaredLevel ? { declaredLevel: context.declaredLevel } : {}),
+    ...(context.goal ? { goal: context.goal } : {}),
+  };
+}
+
 /** Saved with each knowledge version so the lesson can explain its adaptation (D49). */
 export const teachingAdaptationSchema = z.strictObject({
   version: z.literal(1),
@@ -151,6 +191,42 @@ export function teachingAdaptation(input: {
     focus: [...input.focus],
     linkedItemIds,
   });
+}
+
+/**
+ * D49 PRIV: a saved adaptation record without points from deleted classes, or undefined when it
+ * holds none. Links to lesson items stay only where a remaining point still explains them.
+ */
+export function adaptationWithoutSources(
+  generation: unknown,
+  deletedSessionIds: ReadonlySet<string>,
+  items: readonly { id: string; study?: { en: string } }[],
+): Record<string, unknown> | undefined {
+  if (typeof generation !== "object" || generation === null) return undefined;
+  const record = (generation as Record<string, unknown>).teachingAdaptation;
+  const parsed = teachingAdaptationSchema.safeParse(record);
+  if (!parsed.success) return undefined;
+  const focus = parsed.data.focus.filter(
+    (candidate) => !deletedSessionIds.has(candidate.sourceSessionId),
+  );
+  if (focus.length === parsed.data.focus.length) return undefined;
+  const targets = new Set(
+    focus.flatMap((candidate) => {
+      const target = studyLexicalTarget(candidate.target);
+      return target ? [target.text.toLocaleLowerCase("en")] : [];
+    }),
+  );
+  const linked = new Set(parsed.data.linkedItemIds);
+  const linkedItemIds = items.flatMap((item) => {
+    const target = item.study ? studyLexicalTarget(item.study.en) : undefined;
+    return linked.has(item.id) && target && targets.has(target.text.toLocaleLowerCase("en"))
+      ? [item.id]
+      : [];
+  });
+  return {
+    ...(generation as Record<string, unknown>),
+    teachingAdaptation: teachingAdaptationSchema.parse({ ...parsed.data, focus, linkedItemIds }),
+  };
 }
 
 export interface LessonAdaptationView {

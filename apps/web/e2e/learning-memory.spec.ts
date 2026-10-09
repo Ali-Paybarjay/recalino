@@ -55,6 +55,7 @@ async function seed(userId: string) {
                   scope: "same_course",
                   againCount: 2,
                   lastEvidenceDate: "2026-10-04",
+                  sourceSessionId: randomUUID(),
                 },
               ],
               linkedItemIds: ["wear-tear"],
@@ -147,7 +148,7 @@ test("D49 practice notes are evidence-backed, correctable, and the lesson teache
     await frame.locator('nav a[href="#check"]').click();
     const check = frame.locator("#check");
     await expect(check.getByText("پیش از تمام کردن این درس", { exact: false })).toBeVisible();
-    const first = check.locator("div.sc").first();
+    const first = check.locator("ol.gaps > li").first();
     await expect(first.locator("details p.model")).toBeHidden();
     await expect(check.locator("p.key")).toBeHidden();
     await page.screenshot({ path: `${output}/class-notes-check-${name}.png`, fullPage: false });

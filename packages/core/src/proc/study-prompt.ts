@@ -1,7 +1,15 @@
 import type { ModelTeachingContext } from "./learner-context";
 
-/** AC-D46-06, D49: declared choices and matched practice evidence guide teaching, never assert mastery. */
-export function personalisedTeachingPrompt(learnerContext?: ModelTeachingContext): string {
+/**
+ * AC-D46-06, D49: declared choices and matched practice evidence guide teaching, never assert
+ * mastery. Under a compact output budget the one-short-sentence field rule wins over any added
+ * explanation, so an adaptation never pushes the response past its budget.
+ */
+export function personalisedTeachingPrompt(
+  learnerContext?: ModelTeachingContext,
+  options: { compact?: boolean } = {},
+): string {
+  const compact = options.compact === true;
   const level = learnerContext?.declaredLevel;
   const levelInstruction =
     level === "A1" || level === "A2"
@@ -22,10 +30,10 @@ export function personalisedTeachingPrompt(learnerContext?: ModelTeachingContext
           : "No specific learning goal is declared. Stay with the lesson content; do not infer an exam or personal goal.";
   const simpler =
     learnerContext?.simplerExplanations === true
-      ? "The learner explicitly chose simpler explanations: use short sentences, everyday words and one idea per sentence, and explain a difficult point step by step. This changes only how you explain; keep every lesson point, example and evidence."
+      ? `The learner explicitly chose simpler explanations: use short sentences, everyday words and one idea per sentence${compact ? "" : ", and explain a difficult point step by step"}. This changes only how you explain; keep every lesson point, example and evidence.`
       : "";
   const focus = learnerContext?.practiceFocus?.length
-    ? "learnerContext.practiceFocus lists lesson items this learner recently found hard to recall in their own flashcard practice (recall_difficulty) or asked to have explained more simply (asked_simpler). It is practice evidence about recall, not a diagnosis, level or mistake. Use it only for an item that this lesson's sources actually teach with the same meaning: give that item a clearer step-by-step noteFa and, when the sources or standard usage clearly support it, one short contrast or common confusion. Never add an item, example, claim or section because it is listed; never mention practice history, counts, weakness or forgetting to the learner."
+    ? `learnerContext.practiceFocus lists lesson items this learner recently found hard to recall in their own flashcard practice (recall_difficulty) or asked to have explained more simply (asked_simpler). It is practice evidence about recall, not a diagnosis, level or mistake. Use it only for an item that this lesson's sources actually teach with the same meaning: ${compact ? "make that item's one-sentence noteFa its clearest plain explanation and add a contrast or common confusion only as a short clause that fits that sentence and that the sources or standard usage clearly support" : "give that item a clearer step-by-step noteFa and, when the sources or standard usage clearly support it, one short contrast or common confusion"}. Never add an item, example, claim or section because it is listed; never mention practice history, counts, weakness or forgetting to the learner.`
     : "";
   return [
     "Teach with a warm, calm, friendly and non-judgmental tone in the resolved explanation language. Use direct, helpful explanations without generic praise or invented familiarity.",
@@ -35,9 +43,9 @@ export function personalisedTeachingPrompt(learnerContext?: ModelTeachingContext
     simpler,
     focus,
     "Within existing classNotes and study fields, teach selected points in a useful sequence: explain the idea, show how it is used, then connect it to the example or existing practice. Use coreIntro for a short orientation: what this lesson teaches and when it is useful. Use noteFa/chunks for the teaching point; do not add fields or a second copy of the lesson.",
-    "In each production noteFa, when fullSentence shows the point, name the exact words of that sentence that carry the meaning or rule, so the learner sees why the example works. Add a comparison, condition of use or common confusion only when the lesson or standard British usage clearly supports it; never invent a mistake, nuance or contrast to fill the note.",
+    `${compact ? "Within each production noteFa's one short sentence" : "In each production noteFa"}, when fullSentence shows the point, name the exact words of that sentence that carry the meaning or rule, so the learner sees why the example works. Add a comparison, condition of use or common confusion only when the lesson or standard British usage clearly supports it${compact ? " and it fits that sentence" : ""}; never invent a mistake, nuance or contrast to fill the note.`,
     "Adapt newly written explanations and AI examples only. Preserve exact class quotations, target expressions, source examples, task order and evidence. If a class point exceeds the declared level, scaffold its explanation rather than remove or misrepresent it. New examples remain AI Expansion and are never attributed to the class.",
-    "Keep the existing item counts, concise-field rules and output budget; when space is tight, prefer fewer complete teaching points over a longer introduction.",
+    "Keep the existing item counts, concise-field rules and output budget; when space is tight, prefer fewer complete teaching points over a longer introduction. Where any teaching instruction here would lengthen a field beyond those rules, the concise-field rules and output budget win.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -83,7 +91,7 @@ export function studyPrompt(
     persian
       ? "Use natural, plain Persian teaching prose, avoiding literal or awkward translations. For grammatical noun use اسم, not نام; present perfect is حال کامل, not گذشته نزدیک. Address the learner supportively, for example بیاییم اول به این مثال نگاه کنیم, without claiming a memory or diagnosis. These are tone/terminology examples, not extra lesson facts."
       : "Use natural, plain teaching prose in the resolved explanation language, avoiding awkward literal translations.",
-    personalisedTeachingPrompt(learnerContext),
+    personalisedTeachingPrompt(learnerContext, { compact }),
     `For this English-learning learner populate classNotes and each learningItem.study. These are the one shared source for the Class Notes document and flashcards, never separate copies of core/extra items. Return plain text structured fields only, no HTML, scripts, or Markdown except **bold** around exact mistaken/corrected words. Keep schemaVersion the string "1". Set language.learning to en and language.explanation to the exact requested code. Keep legacy learningItem.front equal to study.en and back equal to study.faMeaning. Every item retains its own evidence claim; each claim.text explains in the resolved explanation language. ${usesEvidenceKeys ? "Each claim has exactly id, text, evidenceKey and uncertain; all attribution metadata is added by the server. Do not add creation, origin, evidence, speakerRole or sourceRefs to claims." : "All generated claims have creation ai_generation."}`,
     "All notebook sections belong inside the classNotes object: date, institution, course, sourceNote, coreIntro, oralIntro, chunks, board, tasks, mistakes, register, gapfill and culture. Never place any of these sections at the top level. Notebook coverage prose belongs in classNotes.coverage. The separate top-level coverage object remains required with complete and missingSourceIds; it is not the notebook coverage text. In particular, mistakes is classNotes.mistakes, never a sibling of classNotes. All production and recognition fields belong in learningItems[].study.",
     "Use a specific short educational title naming the concepts actually taught, in English or the explanation language · English. Copy classNotes.date and course from lessonContext, never guess institution, profile, date, or a course name. classNotes.coverage is one concise line about the lesson. Use empty arrays for unsupported sections. Keep summary/topics/homework/uncertainties for supported facts that do not duplicate the rich sections. Homework must be an actual assignment in a source.",

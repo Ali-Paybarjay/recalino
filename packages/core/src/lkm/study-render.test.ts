@@ -355,8 +355,12 @@ it("D49 asks each core item's flashcard question with a hidden, linked answer an
   const html = renderClassNotesHtml(model);
   const document = parse(html);
   const check = byId(document, "check");
-  const blocks = elements(check, "div").filter((node) => attribute(node, "class") === "sc");
+  const list = elements(check, "ol").find((node) => attribute(node, "class") === "gaps");
+  if (!list) throw new Error("Missing check list");
+  const blocks = elements(list, "li");
   expect(blocks.length).toBe(production.length - 1);
+  // Print hides toggles inside ol.gaps and shows the key instead (verbatim reference stylesheet).
+  expect(CLASS_NOTES_STYLES).toContain("ol.gaps details{display:none}");
   expect(serialize(check)).not.toContain(
     first.study.gapSentence.replace("______", "<b>______</b>"),
   );
@@ -382,7 +386,7 @@ it("D49 asks each core item's flashcard question with a hidden, linked answer an
   expect(CLASS_NOTES_STYLES).toContain(".key{display:none}");
 });
 
-it("D49 check-yourself uses grammar tasks, Latin question numbers and English chrome outside Persian", () => {
+it("D49 check-yourself uses grammar tasks, a numbered list and English chrome outside Persian", () => {
   const model = referenceStudyModel();
   model.language.explanation = "en";
   const item = model.learningItems.find((entry) => entry.id === "pressed-time");
@@ -398,7 +402,10 @@ it("D49 check-yourself uses grammar tasks, Latin question numbers and English ch
   const text = serialize(check);
   expect(text).toContain(studyMessage("en", "checkNote").text);
   expect(text).toContain("Rewrite the sentence with the correct preposition.");
-  expect(text).toMatch(/<b>\d+\.<\/b> I have been pressed by time all week\./);
+  expect(text).toMatch(
+    /<li><p class="mean">[^<]*<\/p><p class="q"[^>]*>I have been pressed by time all week\./,
+  );
+  expect(text).toMatch(/<p class="key">[\s\S]*\b1\. /);
   expect(text).not.toMatch(/<p class="q"[^>]*>[^<]*pressed for time/);
   for (const language of ["fa", "ja"]) {
     expect(studyMessage(language, "checkHeading").language).toBe(language === "fa" ? "fa" : "en");

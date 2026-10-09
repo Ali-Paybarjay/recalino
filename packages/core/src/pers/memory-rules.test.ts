@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveLearningMemory,
+  dismissalCovers,
   evidenceAmount,
   goalStatus,
+  localDate,
   type MemoryCardInput,
   type MemoryEventInput,
   type MemoryFeedbackInput,
 } from "./memory-rules";
 
 const now = new Date("2026-10-08T12:00:00Z");
+const SESSION = "11111111-1111-4111-8111-111111111111";
 const window = { from: "2026-09-08T12:00:00.000Z", to: now.toISOString(), days: 30 };
 const card = (id: string, item: string, status = "active"): MemoryCardInput => ({
   cardId: id,
@@ -28,19 +31,20 @@ function memory(input: {
   cards: MemoryCardInput[];
   events: MemoryEventInput[];
   feedback?: MemoryFeedbackInput[];
-  dueAt?: Record<string, string>;
+  offered?: string[];
   dueCount?: number;
+  limit?: number;
 }) {
   return deriveLearningMemory({
-    now,
     window,
     cards: input.cards,
     events: input.events,
-    dueAt: input.dueAt ?? {},
+    offered: new Set(input.offered ?? []),
+    ...(input.limit === undefined ? {} : { limit: input.limit }),
     goals: [
       {
         learningItemId: "goal-a",
-        sessionId: "11111111-1111-4111-8111-111111111111",
+        sessionId: SESSION,
         itemId: "look-forward",
         label: "look forward to + -ing / noun",
         meaning: "be pleased about something that will happen",
@@ -89,7 +93,7 @@ describe("D49 learning memory rules (PRD-PERS-03/05)", () => {
     const twice = memory({
       cards: [card("c1", "goal-a")],
       events: [answer("c1", 1, 1), answer("c1", 3, 2), answer("c1", 1, 3)],
-      dueAt: { c1: "2026-10-08T11:00:00.000Z" },
+      offered: ["c1"],
     });
     const item = twice.needsPractice[0];
     expect(item).toMatchObject({
@@ -164,13 +168,125 @@ describe("D49 learning memory rules (PRD-PERS-03/05)", () => {
     expect(memory({ cards: [], events }).lastEvidenceAt).toBeNull();
   });
 
-  it("asks for a card review only when a practice card is actually due", () => {
-    const result = memory({
-      cards: [card("c1", "goal-a")],
-      events: [answer("c1", 1, 1), answer("c1", 1, 2)],
-      dueAt: { c1: "2026-10-09T09:00:00.000Z" },
-      dueCount: 4,
+  it("asks for a card review only when the review queue offers one of the goal's cards", () => {
+    const events = [answer("c1", 1, 1), answer("c1", 1, 2)];
+    // Not offered: not due yet, or buried because a sibling was answered today.
+    const notOffered = memory({ cards: [card("c1", "goal-a")], events, dueCount: 4 });
+    expect(notOffered.needsPractice[0]).toMatchObject({
+      card: { id: "c1", due: false },
+      next: { kind: "open_card", href: "/cards/c1" },
     });
-    expect(result.nextStep).toMatchObject({ kind: "practise_item", due: false, href: "/cards/c1" });
+    expect(notOffered.nextStep).toMatchObject({
+      kind: "practise_item",
+      due: false,
+      href: "/cards/c1",
+    });
+    // An unanswered sibling the queue offers carries the link to the class review.
+    const sibling = memory({
+      cards: [card("c1", "goal-a"), { ...card("c2", "goal-a"), studySet: "recognition" }],
+      events,
+      offered: ["c2"],
+    });
+    expect(sibling.needsPractice[0]).toMatchObject({
+      card: { id: "c2", due: true },
+      next: { kind: "review_class", href: `/review?sessionId=${SESSION}` },
+    });
+    expect(sibling.needsPractice[0]?.evidence.studySets).toEqual(["production"]);
+    // A goal without a class link never claims "in review now", even when its card is offered.
+    const unlinked = memory({
+      cards: [card("u1", "goal-unlinked")],
+      events: [answer("u1", 1, 1), answer("u1", 1, 2)],
+      offered: ["u1"],
+    });
+    expect(unlinked.needsPractice[0]).toMatchObject({
+      label: "fallback u1",
+      card: { due: false },
+      next: { kind: "open_card" },
+    });
+    expect(unlinked.nextStep).toMatchObject({ due: false, href: "/cards/u1" });
+    // No class run can use a simpler-explanation request for it, so none is offered or listed.
+    expect(unlinked.needsPractice[0]?.simplerApplies).toBe(false);
+    expect(sibling.needsPractice[0]?.simplerApplies).toBe(true);
+    const inert = memory({
+      cards: [card("u1", "goal-unlinked")],
+      events: [],
+      feedback: [
+        {
+          learningItemId: "goal-unlinked",
+          kind: "explain_simpler",
+          active: true,
+          evidenceOrder: null,
+          createdAt: "2026-10-01T10:00:00.000Z",
+        },
+      ],
+    });
+    expect(inert.simplerRequests).toEqual([]);
+  });
+
+  it("bounds shown lists but can return the full list for run candidates", () => {
+    const cards = Array.from({ length: 12 }, (_, index) => card(`k${index}`, `goal-${index}`));
+    const events = cards.flatMap((entry, index) => [
+      { cardId: entry.cardId, rating: 1, at: "2026-10-02T09:00:00.000Z", order: 1000 + index * 2 },
+      { cardId: entry.cardId, rating: 1, at: "2026-10-03T09:00:00.000Z", order: 1001 + index * 2 },
+    ]);
+    expect(memory({ cards, events }).needsPractice).toHaveLength(10);
+    expect(memory({ cards, events, limit: Number.POSITIVE_INFINITY }).needsPractice).toHaveLength(
+      12,
+    );
+  });
+
+  it("an explain-more-simply request stands until withdrawn, with or without recent answers", () => {
+    const request: MemoryFeedbackInput = {
+      learningItemId: "goal-a",
+      kind: "explain_simpler",
+      active: true,
+      evidenceOrder: null,
+      createdAt: "2026-08-01T10:00:00.000Z",
+    };
+    const standing = memory({ cards: [card("c1", "goal-a")], events: [], feedback: [request] });
+    expect(standing.lastEvidenceAt).toBeNull();
+    expect(standing.simplerRequests).toEqual([
+      expect.objectContaining({
+        learningItemId: "goal-a",
+        label: "look forward to + -ing / noun",
+        sessionId: SESSION,
+        askedAt: "2026-08-01T10:00:00.000Z",
+      }),
+    ]);
+    const withdrawn = memory({
+      cards: [card("c1", "goal-a")],
+      events: [],
+      feedback: [request, { ...request, active: false, createdAt: "2026-08-02T10:00:00.000Z" }],
+    });
+    expect(withdrawn.simplerRequests).toEqual([]);
+    for (const status of ["deleted", "rejected", "known"]) {
+      const gone = memory({
+        cards: [card("c1", "goal-a", status)],
+        events: [],
+        feedback: [request],
+      });
+      expect(gone.simplerRequests, status).toEqual([]);
+    }
+  });
+
+  it("a dismissal covers only Again answers up to its baseline", () => {
+    const dismissal: MemoryFeedbackInput = {
+      learningItemId: "goal-a",
+      kind: "not_a_difficulty",
+      active: true,
+      evidenceOrder: 7,
+      createdAt: "2026-10-02T10:00:00.000Z",
+    };
+    expect(dismissalCovers(dismissal, 7)).toBe(true);
+    expect(dismissalCovers(dismissal, 8)).toBe(false);
+    expect(dismissalCovers({ ...dismissal, active: false }, 3)).toBe(false);
+    expect(dismissalCovers({ ...dismissal, evidenceOrder: null }, 3)).toBe(false);
+    expect(dismissalCovers(undefined, null)).toBe(false);
+  });
+
+  it("evidence dates use the learner's calendar date, never UTC by accident", () => {
+    expect(localDate("2026-10-07T22:30:00.000Z", "Asia/Tehran")).toBe("2026-10-08");
+    expect(localDate("2026-10-08T03:00:00.000Z", "America/Los_Angeles")).toBe("2026-10-07");
+    expect(localDate("2026-10-08T03:00:00.000Z", "Not/AZone")).toBe("2026-10-08");
   });
 });

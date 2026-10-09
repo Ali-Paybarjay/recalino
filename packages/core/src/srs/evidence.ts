@@ -15,8 +15,6 @@ export interface ReviewEvidenceWindow {
   to: string;
   days: number;
   events: ReviewEvidenceEvent[];
-  /** Current schedule of each card with evidence; FSRS stays the only source of due dates. */
-  dueAt: Record<string, string>;
 }
 
 /** PRD-PERS-03: owned answers in a bounded window, oldest first; undone answers are excluded. */
@@ -49,16 +47,5 @@ export async function reviewEvidence(
     at: row.created_at.toISOString(),
     order: Number(row.recorded_order),
   }));
-  const dueAt: Record<string, string> = {};
-  const cardIds = [...new Set(events.map((event) => event.cardId))];
-  if (cardIds.length) {
-    const states = await db
-      .selectFrom("srs.card_state")
-      .select(["card_id", "due_at"])
-      .where("user_id", "=", ctx.userId)
-      .where("card_id", "in", cardIds)
-      .execute();
-    for (const state of states) dueAt[state.card_id] = state.due_at.toISOString();
-  }
-  return { from: since.toISOString(), to: now.toISOString(), days, events, dueAt };
+  return { from: since.toISOString(), to: now.toISOString(), days, events };
 }

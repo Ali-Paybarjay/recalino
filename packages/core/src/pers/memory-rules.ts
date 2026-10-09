@@ -1,3 +1,5 @@
+import { studyLexicalTarget } from "../lkm";
+
 /**
  * D49 learning memory: deterministic rules over owned evidence. Nothing here calls a model,
  * diagnoses a language weakness, or estimates CEFR, speaking or FSRS retention (PRD-PERS-03/04).
@@ -67,17 +69,35 @@ export interface MemoryItem {
     firstReviewedAt: string;
     lastReviewedAt: string;
     lastAgainAt: string | null;
-    /** Server order of the latest answer; a dismissal stores it as its baseline. */
-    lastOrder: number;
-    lastAgainOrder: number | null;
     studySets: MemoryStudySet[];
   };
   markedKnown: boolean;
   /** The learner said this is not a difficulty after the latest Again; a new Again re-opens it. */
   dismissed: boolean;
   feedback: { notADifficultyAt: string | null; explainSimplerAt: string | null };
-  card: { id: string; due: boolean; dueAt: string | null };
+  /**
+   * A later run can use an "explain more simply" request only for a class goal in a course
+   * with a lexical target; otherwise the control is not offered (practiceCandidatesForRun).
+   */
+  simplerApplies: boolean;
+  /** `due` only when the review queue offers this card now (same rules, incl. sibling burying). */
+  card: { id: string; due: boolean };
   next: { kind: "review_class" | "open_card"; href: string };
+}
+
+/** A standing "explain it more simply" request; it lasts until withdrawn, not for a window. */
+export interface SimplerRequest {
+  learningItemId: string;
+  label: string;
+  meaning: string | null;
+  explanationLanguage: string | null;
+  sessionId: string | null;
+  itemId: string | null;
+  classDate: string | null;
+  classTitle: string | null;
+  courseId: string | null;
+  courseName: string | null;
+  askedAt: string;
 }
 
 export type NextStep =
@@ -94,13 +114,33 @@ export interface LearningMemory {
   recalledRecently: MemoryItem[];
   dismissed: MemoryItem[];
   /** Goals the learner asked to have explained more simply; withdrawable at any time. */
-  simplerRequests: MemoryItem[];
+  simplerRequests: SimplerRequest[];
   practisingCount: number;
   nextStep: NextStep;
 }
 
 export function evidenceAmount(reviews: number): EvidenceAmount {
   return reviews >= 6 ? "more" : reviews >= 3 ? "some" : "little";
+}
+
+/** A stored instant as the learner's local calendar date, "YYYY-MM-DD"; invalid zones use UTC. */
+export function localDate(at: string, timeZone: string): string {
+  const instant = new Date(at);
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+        .formatToParts(instant)
+        .map((part) => [part.type, part.value]),
+    );
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  } catch {
+    return instant.toISOString().slice(0, 10);
+  }
 }
 
 /** Latest row per goal and kind; append-only history stays in storage. */
@@ -160,18 +200,53 @@ export function goalStatus(summary: {
 
 const reviewable = new Set(["active", "suspended", "known"]);
 
+/** Whether a dismissal still covers the goal: it must postdate the goal's latest Again. */
+export function dismissalCovers(
+  dismissal: MemoryFeedbackInput | undefined,
+  lastAgainOrder: number | null,
+): boolean {
+  return (
+    !!dismissal?.active &&
+    (lastAgainOrder === null ||
+      (dismissal.evidenceOrder !== null && dismissal.evidenceOrder >= lastAgainOrder))
+  );
+}
+
+export function simplerApplies(goal: MemoryGoalInput | undefined, label: string): boolean {
+  return !!goal?.sessionId && !!goal.courseId && !!studyLexicalTarget(label);
+}
+
+function goalFields(goal: MemoryGoalInput | undefined) {
+  return {
+    meaning: goal?.meaning ?? null,
+    explanationLanguage: goal?.explanationLanguage ?? null,
+    sessionId: goal?.sessionId ?? null,
+    itemId: goal?.itemId ?? null,
+    classDate: goal?.classDate ?? null,
+    classTitle: goal?.classTitle ?? null,
+    courseId: goal?.courseId ?? null,
+    courseName: goal?.courseName ?? null,
+  };
+}
+
+/**
+ * `limit` bounds each list shown on Your learning; run candidates pass no limit so a class or
+ * course point is never dropped by another course's items before the scope filter.
+ */
 export function deriveLearningMemory(input: {
-  now: Date;
   window: { from: string; to: string; days: number };
   cards: readonly MemoryCardInput[];
   events: readonly MemoryEventInput[];
-  dueAt: Readonly<Record<string, string>>;
+  /** Cards the review queue offers right now (`cardsOfferedForReview`). */
+  offered: ReadonlySet<string>;
   goals: readonly MemoryGoalInput[];
   feedback: readonly MemoryFeedbackInput[];
   dueCount: number;
   nextDueAt: string | null;
   hasCards: boolean;
+  limit?: number;
 }): LearningMemory {
+  const limit = input.limit ?? LIST_LIMIT;
   const cards = new Map(input.cards.map((card) => [card.cardId, card]));
   const goals = new Map(input.goals.map((goal) => [goal.learningItemId, goal]));
   const feedback = currentFeedback(input.feedback);
@@ -184,7 +259,6 @@ export function deriveLearningMemory(input: {
     list.push(event);
     grouped.set(card.learningItemId, list);
   }
-  const now = input.now.toISOString();
   const items: MemoryItem[] = [];
   let lastEvidenceAt: string | null = null;
   for (const [learningItemId, events] of grouped) {
@@ -198,30 +272,23 @@ export function deriveLearningMemory(input: {
     if (!latestCard) continue;
     const current = feedback.get(learningItemId) ?? {};
     const dismissal = current.not_a_difficulty;
-    const dismissed =
-      !!dismissal?.active &&
-      (summary.lastAgainOrder === null ||
-        (dismissal.evidenceOrder !== null && dismissal.evidenceOrder >= summary.lastAgainOrder));
-    // A due, active card makes the practice link land on a real review question.
-    const dueCard = goalCards.find((card) => {
-      const due = input.dueAt[card.cardId];
-      return card.status === "active" && due !== undefined && due <= now;
-    });
-    const linkCard = dueCard ?? latestCard;
     const sessionId = goal?.sessionId ?? null;
+    // "Review now" only when the class review would really show this goal's card next.
+    const offeredCard = sessionId
+      ? input.cards.find(
+          (card) =>
+            card.learningItemId === learningItemId &&
+            card.status === "active" &&
+            input.offered.has(card.cardId),
+        )
+      : undefined;
+    const linkCard = offeredCard ?? latestCard;
     if (!lastEvidenceAt || summary.lastReviewedAt > lastEvidenceAt)
       lastEvidenceAt = summary.lastReviewedAt;
     items.push({
       learningItemId,
       label: goal?.label || latestCard.fallbackLabel,
-      meaning: goal?.meaning ?? null,
-      explanationLanguage: goal?.explanationLanguage ?? null,
-      sessionId,
-      itemId: goal?.itemId ?? null,
-      classDate: goal?.classDate ?? null,
-      classTitle: goal?.classTitle ?? null,
-      courseId: goal?.courseId ?? null,
-      courseName: goal?.courseName ?? null,
+      ...goalFields(goal),
       status: goalStatus(summary),
       amount: evidenceAmount(summary.reviews),
       evidence: {
@@ -232,25 +299,20 @@ export function deriveLearningMemory(input: {
         firstReviewedAt: summary.firstReviewedAt,
         lastReviewedAt: summary.lastReviewedAt,
         lastAgainAt: summary.lastAgainAt,
-        lastOrder: summary.lastOrder,
-        lastAgainOrder: summary.lastAgainOrder,
         studySets: [...new Set(goalCards.map((card) => card.studySet))].sort(),
       },
       markedKnown: goalCards.every((card) => card.status === "known"),
-      dismissed,
+      dismissed: dismissalCovers(dismissal, summary.lastAgainOrder),
       feedback: {
         notADifficultyAt: dismissal?.active ? dismissal.createdAt : null,
         explainSimplerAt: current.explain_simpler?.active
           ? current.explain_simpler.createdAt
           : null,
       },
-      card: {
-        id: linkCard.cardId,
-        due: linkCard === dueCard,
-        dueAt: input.dueAt[linkCard.cardId] ?? null,
-      },
+      simplerApplies: simplerApplies(goal, goal?.label || latestCard.fallbackLabel),
+      card: { id: linkCard.cardId, due: !!offeredCard },
       next:
-        dueCard && sessionId
+        offeredCard && sessionId
           ? { kind: "review_class", href: `/review?sessionId=${encodeURIComponent(sessionId)}` }
           : { kind: "open_card", href: `/cards/${encodeURIComponent(linkCard.cardId)}` },
     });
@@ -262,11 +324,11 @@ export function deriveLearningMemory(input: {
   const needsPractice = items
     .filter((item) => item.status === "needs_practice" && !item.dismissed && !item.markedKnown)
     .sort(byRecentAgain)
-    .slice(0, LIST_LIMIT);
+    .slice(0, limit);
   const dismissed = items
     .filter((item) => item.status === "needs_practice" && item.dismissed && !item.markedKnown)
     .sort(byRecentAgain)
-    .slice(0, LIST_LIMIT);
+    .slice(0, limit);
   const recalledRecently = items
     .filter((item) => item.status === "recalled_recently" && !item.markedKnown)
     .sort(
@@ -274,15 +336,33 @@ export function deriveLearningMemory(input: {
         b.evidence.lastReviewedAt.localeCompare(a.evidence.lastReviewedAt) ||
         a.learningItemId.localeCompare(b.learningItemId),
     )
-    .slice(0, LIST_LIMIT);
-  const simplerRequests = items
-    .filter((item) => item.feedback.explainSimplerAt !== null && !item.markedKnown)
-    .sort(
-      (a, b) =>
-        (b.feedback.explainSimplerAt ?? "").localeCompare(a.feedback.explainSimplerAt ?? "") ||
-        a.learningItemId.localeCompare(b.learningItemId),
-    )
-    .slice(0, LIST_LIMIT);
+    .slice(0, limit);
+  // A request stands until withdrawn, with or without answers in the evidence window, while
+  // the goal still has a reviewable card that is not marked known and a run can use it.
+  const simplerRequests: SimplerRequest[] = [];
+  for (const [learningItemId, current] of feedback) {
+    const request = current.explain_simpler;
+    if (!request?.active) continue;
+    const goalCards = input.cards.filter(
+      (card) => card.learningItemId === learningItemId && reviewable.has(card.status),
+    );
+    const first = goalCards[0];
+    if (!first || goalCards.every((card) => card.status === "known")) continue;
+    const goal = goals.get(learningItemId);
+    const label = goal?.label || first.fallbackLabel;
+    // A request no run can use is not listed as if it would be (see simplerApplies).
+    if (!simplerApplies(goal, label)) continue;
+    simplerRequests.push({
+      learningItemId,
+      label,
+      ...goalFields(goal),
+      askedAt: request.createdAt,
+    });
+  }
+  simplerRequests.sort(
+    (a, b) =>
+      b.askedAt.localeCompare(a.askedAt) || a.learningItemId.localeCompare(b.learningItemId),
+  );
   const first = needsPractice[0];
   const nextStep: NextStep = first
     ? {
@@ -290,7 +370,7 @@ export function deriveLearningMemory(input: {
         learningItemId: first.learningItemId,
         label: first.label,
         href: first.next.href,
-        due: first.card.due,
+        due: first.next.kind === "review_class",
       }
     : input.dueCount > 0
       ? { kind: "review_due", count: input.dueCount, href: "/review" }
@@ -303,7 +383,7 @@ export function deriveLearningMemory(input: {
     needsPractice,
     recalledRecently,
     dismissed,
-    simplerRequests,
+    simplerRequests: simplerRequests.slice(0, limit),
     practisingCount: items.filter((item) => item.status === "practising").length,
     nextStep,
   };

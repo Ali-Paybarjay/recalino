@@ -69,6 +69,7 @@ export {
   listVersions,
   liveKnowledgeVersionIdsForCleanup,
   publishKnowledgeVersion,
+  redactVersionGenerations,
   tombstoneAccountKnowledge,
   tombstoneKnowledge,
 } from "./versions";

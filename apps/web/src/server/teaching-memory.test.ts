@@ -31,6 +31,7 @@ describe("D49 teaching memory never blocks processing or exposes content", () =>
         scope: "this_class",
         againCount: 2,
         lastEvidenceDate: "2026-10-06",
+        sourceSessionId: "20000000-0000-4000-8000-000000000002",
       },
     ];
     mocks.candidates.mockResolvedValue(points);

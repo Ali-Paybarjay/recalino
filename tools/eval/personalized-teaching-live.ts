@@ -103,6 +103,8 @@ const source: RunSource = {
     },
   ],
 };
+// Synthetic class identifier only; the live evaluation never reads or writes a database.
+const SYNTHETIC_SOURCE_CLASS = "00000000-0000-4000-8000-0000000000d4";
 const cases = (["A2", "B2"] as const)
   .filter((level) => selectedLevel === undefined || selectedLevel === level)
   .map((declaredLevel) => {
@@ -120,6 +122,7 @@ const cases = (["A2", "B2"] as const)
                 scope: "same_course",
                 againCount: 3,
                 lastEvidenceDate: "2026-10-06",
+                sourceSessionId: SYNTHETIC_SOURCE_CLASS,
               },
               {
                 target: "get on with sb",
@@ -127,6 +130,7 @@ const cases = (["A2", "B2"] as const)
                 scope: "this_class",
                 againCount: 0,
                 lastEvidenceDate: "2026-10-05",
+                sourceSessionId: SYNTHETIC_SOURCE_CLASS,
               },
               {
                 target: "be pressed for time",
@@ -134,6 +138,7 @@ const cases = (["A2", "B2"] as const)
                 scope: "same_course",
                 againCount: 2,
                 lastEvidenceDate: "2026-10-04",
+                sourceSessionId: SYNTHETIC_SOURCE_CLASS,
               },
             ],
           }

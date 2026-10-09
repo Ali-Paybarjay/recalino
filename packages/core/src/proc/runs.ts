@@ -10,7 +10,7 @@ import {
 import { type AiProvider, ProviderError, requireProvider } from "../aip";
 import type { Database, DB, Tx } from "../db";
 import { getLatestVersion, tombstoneKnowledge } from "../lkm";
-import { assertSessionOwner, getSession } from "../org";
+import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
   assertOwner,
   cancelJob,
@@ -246,7 +246,11 @@ export async function createProcessingRun(
     reuseCompletedKnowledge?: boolean;
     /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
     expectedLatestClassRunId?: string;
-    /** D49: bounded memory points supplied by PERS inside this transaction (dependency inversion). */
+    /**
+     * D49: bounded memory points from PERS (dependency inversion). The app layer reads them in
+     * its own transaction before this one, so a memory failure degrades to no points instead of
+     * blocking the run; this callback only hands that frozen value over.
+     */
     practiceCandidates?: (
       tx: Tx,
       input: { sessionId: string; now: Date },
@@ -363,7 +367,7 @@ export async function createProcessingRun(
       );
     // D49: memory is frozen with the run. A recovery run keeps its original points, so later
     // reviews neither redefine the request nor void reuse of an already paid response.
-    const practiceCandidates =
+    const supplied =
       options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
         ? await inheritedPracticeCandidates(
             tx,
@@ -374,6 +378,16 @@ export async function createProcessingRun(
         : options.practiceCandidates
           ? await options.practiceCandidates(tx, { sessionId: session.id, now })
           : [];
+    // Under the account lock that class deletion also takes: a point from a class deleted after
+    // the memory read is dropped here, and one deleted later is removed by its privacy hook.
+    const live = new Set(
+      await filterLiveSessionIds(
+        tx,
+        ctx,
+        supplied.map((candidate) => candidate.sourceSessionId),
+      ),
+    );
+    const practiceCandidates = supplied.filter((candidate) => live.has(candidate.sourceSessionId));
     const settings = runSettingsSchema.parse({
       provider: provider.settings,
       explanationLanguage:
