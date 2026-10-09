@@ -199,6 +199,47 @@ async function todayEvents(db: Database | Tx, ctx: LearnerContext, day: string) 
     return learningItemId ? [{ ...event, learning_item_id: learningItemId }] : [];
   });
 }
+/**
+ * D49: which of these owned cards the review queue would offer right now, by the queue's own
+ * rules (active, reviewable, introduced and due, not buried by a sibling answered today).
+ * A practice link is presented as "review now" only for a card in this set.
+ */
+export async function cardsOfferedForReview(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  cards: readonly StudyCard[],
+  now = new Date(),
+): Promise<Set<string>> {
+  const active = cards.filter((card) => card.status === "active");
+  if (!active.length) return new Set();
+  const reads = await Promise.allSettled([
+    db
+      .selectFrom("srs.card_state")
+      .selectAll()
+      .where("user_id", "=", ctx.userId)
+      .where(
+        "card_id",
+        "in",
+        active.map((card) => card.id),
+      )
+      .execute(),
+    dayContext(db, ctx, now),
+  ]);
+  const rows = settledRead(reads[0]);
+  const local = settledRead(reads[1]);
+  const events = await todayEvents(db, ctx, local.day);
+  const schedules = new Map(rows.map((row) => [row.card_id, schedule(row)]));
+  const offered = new Set<string>();
+  for (const card of active) {
+    const current = schedules.get(card.id);
+    if (!current?.introducedAt || new Date(current.dueAt).getTime() > now.getTime()) continue;
+    const buried = events.some(
+      (event) => event.learning_item_id === card.learningItemId && event.card_id !== card.id,
+    );
+    if (!buried && (await isCardReviewable(db, ctx, card))) offered.add(card.id);
+  }
+  return offered;
+}
 export async function getReviewQueue(
   db: Database | Tx,
   ctx: LearnerContext,

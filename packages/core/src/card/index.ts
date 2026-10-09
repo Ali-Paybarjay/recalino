@@ -14,6 +14,7 @@ export {
   setCardMedia,
   tombstoneSessionCards,
 } from "./cards";
+export { assertOwnedLearningGoal, type OwnedLearningGoal, ownedLearningGoals } from "./goals";
 export {
   cleanupAccountCards,
   cleanupSessionCards,

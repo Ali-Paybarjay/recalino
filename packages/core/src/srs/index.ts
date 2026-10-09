@@ -1,4 +1,5 @@
 export { type ReviewActivity, reviewActivity } from "./activity";
+export { type ReviewEvidenceEvent, type ReviewEvidenceWindow, reviewEvidence } from "./evidence";
 export {
   cleanupAccountSrs,
   cleanupSessionSrs,
@@ -7,6 +8,7 @@ export {
 } from "./privacy";
 export {
   type CardSchedule,
+  cardsOfferedForReview,
   getReviewQueue,
   getReviewSettings,
   type ReviewQueue,

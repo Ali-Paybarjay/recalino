@@ -28,4 +28,19 @@ export const pendingCopy = {
     serviceBlockedDetail:
       "Speakers were prepared, but spoken mistakes were not checked because this class reached a Recalino service limit. This is not your personal allowance, and retrying the voice check will not change it. You can still confirm your speaker below.",
   },
+  learningMemory: {
+    // D49 review fixes, 2026-10-09: changed after the owner's 2026-10-08 copy approval.
+    // Names the card type; the earlier wording read as an outcome even for failed items.
+    setProduction: "core cards",
+    setRecognition: "supplementary cards",
+    setLegacy: "other cards",
+    // Hard also counts as recalled, so the heading no longer says "well".
+    recalledTitle: "Recalled in your latest answers",
+    // A request is used only when such a class is processed again, among at most eight points.
+    simplerReason:
+      "Asked on {date}. When this class, or a class in the same course that teaches it, is processed again, Recalino can use this request to ask for a simpler explanation.",
+    // The date is when the learner asked, not review evidence.
+    adaptationAskedSimpler:
+      "“{target}” appears in this lesson. You asked for a simpler explanation of it on {date}.",
+  },
 } as const;

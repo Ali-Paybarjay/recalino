@@ -9,7 +9,6 @@ import {
   studyLexicalTargetMatches,
   validateKnowledgeModel,
 } from "../lkm";
-import type { LearnerTeachingContext } from "./learner-context";
 
 export interface GeneratedPracticeAudit {
   version: "source-grounded-practice-1";
@@ -25,13 +24,14 @@ export interface GeneratedPracticeAudit {
 export function finalizeGeneratedStudyPractice(
   input: KnowledgeModel,
   sources: readonly EvidenceSource[],
-  learnerContext?: LearnerTeachingContext,
+  /** Any D46+ snapshot (version 1 or 2); legacy queued runs have none. */
+  learnerContext?: { version: number },
 ): { model: KnowledgeModel; audit: GeneratedPracticeAudit } {
   // Never turn a foreign, stale or out-of-bounds reference into a valid native block.
   let model = validateKnowledgeModel(input, sources, input.language.explanation);
   const audit: GeneratedPracticeAudit = {
     version: "source-grounded-practice-1",
-    applied: learnerContext?.version === 1,
+    applied: learnerContext !== undefined && learnerContext.version >= 1,
     canonicalizedTextRefs: 0,
     replacedGeneratedExercises: 0,
     recognitionClaimsReclassified: 0,
