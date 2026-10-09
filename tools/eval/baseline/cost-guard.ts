@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "../../../packages/core/node_modules/zod";
+import { providerHttpErrorCode } from "../../../packages/core/src/aip/provider-http-error";
 import {
   assertMigrationCumulativeBudget,
   type MigrationLedger,
@@ -8,18 +9,37 @@ import {
   migrationCumulativeHardUsd,
 } from "./ledger";
 
+/** The holdout-5 schedule: 12 lessons, then the repeats of S03 and S10. */
+const scheduledCases = 14;
+/**
+ * Job invocations per case; the worker checkpoints after each paid stage. Its four bounded
+ * knowledge steps (knowledge, knowledge:compact, knowledge:repair, knowledge:repair-language)
+ * each get at most plt jobs.maxAttempts (5) invocations through the job's 429 retries.
+ */
+const maximumJobStepsPerCase = 20;
+/**
+ * One job invocation dispatches at most one structured call, and a structured call is at most two
+ * HTTP requests: the strict json_schema request and, after a recognized grammar rejection, its one
+ * json_object fallback (`${operationKey}:json`, aip/openrouter.ts).
+ */
+const maximumHttpRequestsPerJobStep = 2;
+
 /** Fixed controls of this evaluation-only round; they are part of the frozen plan. */
 export const baselineControls = {
-  version: "production-path-baseline-1",
+  version: "production-path-baseline-2",
   /** Round spend plus in-flight reserves plus the next reserve may never exceed this. */
   roundHardUsd: 1.2,
   /** Every evaluation round recorded in the shared ledger, including this one. */
   cumulativeHardUsd: migrationCumulativeHardUsd,
-  /** A safety net above what the worker's bounded corrections can dispatch for 14 cases. */
-  maximumHttpRequests: 56,
+  /**
+   * A runaway net, never the spend bound: the two USD caps bound spend. The worker's bounded
+   * corrections alone can need 8 requests per case (4 structured calls x 2), 112 for the round,
+   * before any 429 retry, so this limit sits at the per-case job step bound (14 x 20 x 2 = 560)
+   * and binds only if a dispatch escapes it.
+   */
+  maximumHttpRequests: scheduledCases * maximumJobStepsPerCase * maximumHttpRequestsPerJobStep,
   responseBytes: 1048576,
-  /** Job invocations per case; the worker checkpoints after each paid stage. */
-  maximumJobStepsPerCase: 20,
+  maximumJobStepsPerCase,
   /** The worker's own retry policy may schedule a later attempt; wait at most this long. */
   maximumRetryWaitMs: 900000,
 } as const;
@@ -232,19 +252,39 @@ const usageSchema = z
   .passthrough();
 
 /**
- * A 4xx OpenRouter error envelope without choices or usage: the request was refused before any
- * generation (production Haiku 4.5's strict json_schema request is refused this way before its
- * one json_object fallback) and is not billed, so it adds no spend. Any other response without a
- * reported cost (a 2xx, a 5xx, an unreadable body) counts its full reserve.
+ * The one response this tool accounts at zero cost: production Haiku 4.5's strict json_schema
+ * request refused with HTTP 400 because its grammar is too large, before any generation and
+ * unbilled. It must be a 400 error envelope without choices or usage that production's own
+ * providerHttpErrorCode classifies as provider_request_schema_too_complex, on a strict-schema
+ * stage (never a `:json` fallback). Every other response without a reported cost (402, 408, 413,
+ * 429, any other 4xx, a 2xx, a 5xx, an unreadable body) counts its full reserve.
  */
-export function preGenerationRejection(status: number, body: unknown): boolean {
-  if (status < 400 || status >= 500 || !body || typeof body !== "object") return false;
-  const error = (body as { error?: unknown }).error;
+export const zeroCostAccountingRule =
+  "HTTP 400 error envelope without usage or choices, classified provider_request_schema_too_complex by production providerHttpErrorCode, on a strict json_schema stage (never :json); every other response without usage.cost counts its full reserve";
+export async function preGenerationRejection(input: {
+  status: number;
+  stage: string;
+  rawText: string;
+}): Promise<boolean> {
+  if (input.status !== 400 || input.stage === "unknown" || input.stage.endsWith(":json"))
+    return false;
+  let body: unknown;
+  try {
+    body = JSON.parse(input.rawText);
+  } catch {
+    return false;
+  }
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    Object.hasOwn(body, "choices") ||
+    Object.hasOwn(body, "usage")
+  )
+    return false;
   return (
-    !!error &&
-    typeof error === "object" &&
-    !Object.hasOwn(body, "choices") &&
-    !Object.hasOwn(body, "usage")
+    (await providerHttpErrorCode(new Response(input.rawText, { status: input.status }))) ===
+    "provider_request_schema_too_complex"
   );
 }
 
@@ -296,7 +336,8 @@ export interface CostGuardContext {
 /**
  * Wraps the provider's fetch. Before each dispatch: the reserve, the round cap, the shared
  * cumulative cap and an in-flight reservation; after it: usage.cost, or the full reserve when no
- * cost is reported (nothing for an unbilled refusal before generation). An aborted or unknown
+ * cost is reported (nothing only for the strict-schema grammar rejection, see
+ * preGenerationRejection). An aborted or unknown
  * outcome counts its full reserve as spent, and this tool never repeats a request; the worker's
  * own retry policy applies unchanged.
  */
@@ -382,11 +423,9 @@ export function guardedFetch(context: CostGuardContext): typeof fetch {
     const metadata = usageSchema.safeParse(body);
     const reported = metadata.success ? metadata.data.usage?.cost : undefined;
     const known = typeof reported === "number" && Number.isFinite(reported) && reported >= 0;
-    const accountedUsd = known
-      ? reported
-      : preGenerationRejection(response.status, body)
-        ? 0
-        : reserve.reserveUsd;
+    const rejectedBeforeGeneration =
+      !known && (await preGenerationRejection({ status: response.status, stage, rawText }));
+    const accountedUsd = known ? reported : rejectedBeforeGeneration ? 0 : reserve.reserveUsd;
     state.requests[index] = {
       ...request,
       state: response.ok ? "completed" : "known_rejection",
@@ -411,7 +450,7 @@ export function guardedFetch(context: CostGuardContext): typeof fetch {
       elapsedMs: Date.now() - began,
       body,
       accountedUsd,
-      costFallback: !known && accountedUsd === reserve.reserveUsd,
+      costFallback: !known && !rejectedBeforeGeneration,
       receipt: {
         caseId,
         stage,
@@ -429,8 +468,8 @@ export function guardedFetch(context: CostGuardContext): typeof fetch {
         costDetails: data?.usage?.cost_details,
         reserveUsd: reserve.reserveUsd,
         accountedUsd,
-        costFallback: !known && accountedUsd === reserve.reserveUsd,
-        preGenerationRejection: !known && accountedUsd === 0,
+        costFallback: !known && !rejectedBeforeGeneration,
+        preGenerationRejection: rejectedBeforeGeneration,
       },
     });
     return new Response(rawText, {

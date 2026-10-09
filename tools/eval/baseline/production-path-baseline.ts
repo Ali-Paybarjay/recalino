@@ -66,6 +66,7 @@ import {
   guardedFetch,
   roundInFlightUsd,
   zdrEndpointMaximumRates,
+  zeroCostAccountingRule,
 } from "./cost-guard";
 import type { MigrationFixture } from "./haiku55-migration-fixtures";
 import {
@@ -77,6 +78,7 @@ import {
   withMigrationLedger,
 } from "./ledger";
 import { holdout5MigrationFixtures } from "./multilingual-holdout5-fixtures";
+import { acquireRoundLock, assertRoundUnlocked } from "./round-lock";
 
 /*
  * Evaluation only, never discovered by Vitest: measures the deployed production worker (Haiku
@@ -84,9 +86,11 @@ import { holdout5MigrationFixtures } from "./multilingual-holdout5-fixtures";
  * createProcessingRun and processingJob, against the isolated local database.
  *   dry run (default)  writes and prints the frozen plan; --setup-check also builds every lesson
  *                      in the database and checks the run inputs, without any provider request
- *   --mock-fetch       one case (--case S06-6) whose every request gets HTTP 400, at zero cost
+ *   --mock-fetch       one case (--case S06-6) whose every request gets HTTP 400 without any
+ *                      network request; its mock ledger accounts the :json fallback's reserve
  *   --run-live         the 14-case round; needs --approved-freeze, --env-file, --zdr-endpoint-file
- * Every mode needs --out and --zdr-endpoint-file.
+ * Every mode needs --out and --zdr-endpoint-file. A live round records only in the shared ledger
+ * named in the plan; a mock round keeps its own ledger in --out. One process per --out directory.
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const sharedLedgerPath =
@@ -101,6 +105,11 @@ const live = process.argv.includes("--run-live");
 const mockFetch = process.argv.includes("--mock-fetch");
 const setupCheck = process.argv.includes("--setup-check");
 assert.ok(!(live && mockFetch), "Choose --run-live or --mock-fetch, not both");
+// The frozen plan names the one ledger a live round may record in; no option may replace it.
+assert.ok(
+  !process.argv.includes("--ledger-file"),
+  "--ledger-file is not accepted: a live round records only in the shared evaluation ledger",
+);
 const outOption = option("--out");
 assert.ok(outOption, "Pass --out <round directory>");
 const directory = resolve(outOption);
@@ -188,6 +197,12 @@ const plan = {
   zdrEndpointMaximumRates: zdrRates,
   toolHashes,
   controls: baselineControls,
+  sharedLedgerPath,
+  costAccounting: {
+    reported: "usage.cost of the response",
+    zeroCost: zeroCostAccountingRule,
+    unknownOutcome: "full reserve, never repeated by this tool",
+  },
   pipeline: {
     entry: "createProcessingRun + processingJob driven by runFixtureProcessingStep",
     sources:
@@ -204,6 +219,16 @@ const plan = {
 };
 const freeze = sha256Hex(canonicalJson(plan));
 const statePath = resolve(directory, "state.json");
+// One process per round directory, held before state.json is read and released on exit.
+if (live || mockFetch) {
+  const roundLock = await acquireRoundLock(directory, {
+    pid: process.pid,
+    mode: live ? "live" : "mock-fetch",
+    freeze,
+    startedAt: new Date().toISOString(),
+  });
+  process.once("exit", () => roundLock.release());
+} else assertRoundUnlocked(directory);
 const priorState = await readMigrationRecordedJson(statePath);
 if (priorState !== undefined)
   assert.equal(
@@ -387,9 +412,7 @@ if (live) {
 const redact = <T>(value: T): T =>
   JSON.parse(JSON.stringify(value).replaceAll(key, "[redacted]")) as T;
 // A mock round keeps its own ledger, so the shared one only ever records real spend.
-const ledgerPath = live
-  ? resolve(option("--ledger-file") ?? sharedLedgerPath)
-  : resolve(directory, "mock-ledger.json");
+const ledgerPath = live ? resolve(sharedLedgerPath) : resolve(directory, "mock-ledger.json");
 if (live) {
   await assertMigrationLedgerAvailable(ledgerPath, false);
   assert.equal(
@@ -759,11 +782,16 @@ const summary = {
   ledgerPath,
 };
 await saveJson(resolve(directory, "summary.json"), summary);
+// The mock proves the accounting too: the strict-schema grammar rejection is the one zero-cost
+// response, while the same 400 on the json_object fallback counts its full reserve. Nothing
+// reaches the network, so that reserve is accounted in the mock ledger only, never paid.
 const mockWiringProven =
   mode === "mock-fetch" &&
   completed &&
-  state.results.every(
-    (result) =>
+  state.results.every((result) => {
+    const requests = state.requests.filter((request) => request.caseId === result.caseId);
+    const [strict, fallback] = requests;
+    return (
       result.runState === "failed" &&
       result.lastError === "provider_request_schema_too_complex" &&
       result.httpRequests === 2 &&
@@ -776,8 +804,17 @@ const mockWiringProven =
           })),
         ) &&
       result.runInputMatchesFixture === true &&
-      result.usdCost === 0,
-  );
+      requests.length === 2 &&
+      strict?.stage === "knowledge" &&
+      strict.state === "known_rejection" &&
+      strict.costUsd === 0 &&
+      fallback?.stage === "knowledge:json" &&
+      fallback.state === "known_rejection" &&
+      fallback.costUsd === fallback.reserveUsd &&
+      result.usdCost === fallback.reserveUsd &&
+      result.costFallbacks === 1
+    );
+  });
 process.stdout.write(
   `${JSON.stringify({
     mode,
@@ -788,9 +825,11 @@ process.stdout.write(
     firstGenerationPasses: summary.firstGenerationPasses,
     spentUsd: state.spentUsd,
     httpRequests: state.requests.length,
+    // Requests that may have been billed: every one not settled as the zero-cost rejection.
     paidCalls: live
-      ? state.requests.filter((request) => request.state !== "known_rejection").length
+      ? state.requests.filter((request) => (request.costUsd ?? request.reserveUsd) > 0).length
       : 0,
+    ...(mode === "mock-fetch" ? { networkRequests: 0, accountedMockUsd: state.spentUsd } : {}),
     stopped: state.stopped,
     stopReason: state.stopReason,
     ...(mode === "mock-fetch" ? { mockWiringProven } : {}),

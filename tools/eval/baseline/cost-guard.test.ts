@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { baselineSchedule } from "./baseline-fixtures";
 import {
   assertLedgerDispatchAllowed,
   assertRoundDispatchAllowed,
@@ -136,6 +137,17 @@ describe("round and cumulative caps", () => {
     expect(roundInFlightUsd([request("started", 0.1), request("completed", 0.2)])).toBe(0.1);
   });
 
+  it("never limits HTTP requests below what the worker can dispatch within the job step bound", () => {
+    const cases = baselineSchedule().length;
+    // Bounded corrections: knowledge, knowledge:compact, knowledge:repair and
+    // knowledge:repair-language, each a strict json_schema request plus its json_object fallback.
+    expect(baselineControls.maximumHttpRequests).toBeGreaterThanOrEqual(cases * 4 * 2);
+    // One structured call per job invocation, so the per-case step bound is never undercut.
+    expect(baselineControls.maximumHttpRequests).toBe(
+      cases * baselineControls.maximumJobStepsPerCase * 2,
+    );
+  });
+
   it("refuses a request beyond the HTTP request limit or an invalid reserve", () => {
     const requests = Array.from({ length: baselineControls.maximumHttpRequests }, () =>
       request("completed", 0),
@@ -182,7 +194,7 @@ describe("round and cumulative caps", () => {
 describe("guarded fetch", () => {
   const setup = (
     transport: typeof fetch,
-    options: { ledgerRefuses?: boolean; inspect?: () => void } = {},
+    options: { ledgerRefuses?: boolean; inspect?: () => void; operationKey?: string } = {},
   ) => {
     const state: MigrationRoundState = {
       freeze: "f",
@@ -214,7 +226,7 @@ describe("guarded fetch", () => {
     const dispatch = () =>
       request(openRouterChatUrl, {
         method: "POST",
-        headers: { "Idempotency-Key": operationKey },
+        headers: { "Idempotency-Key": options.operationKey ?? operationKey },
         body: body(),
       });
     return { state, events, dispatch, calls: () => transportCalls };
@@ -237,11 +249,31 @@ describe("guarded fetch", () => {
     expect(guard.events).toEqual(["ledger", "persist:started", "persist:completed"]);
   });
 
-  it("counts the full reserve when a generation or server error reports no cost", async () => {
+  // The envelope OpenRouter returns when Haiku 4.5 refuses the strict class_knowledge grammar.
+  const grammarRejection = JSON.stringify({
+    error: {
+      message: "Provider returned error",
+      code: 400,
+      metadata: {
+        raw: JSON.stringify({
+          type: "error",
+          error: { type: "invalid_request_error", message: "The compiled grammar is too large." },
+        }),
+      },
+    },
+  });
+
+  it("counts the full reserve whenever a response reports no cost, other 4xx included", async () => {
     for (const [status, payload] of [
       [200, '{"id":"gen-2","choices":[{"message":{"content":"{}"}}]}'],
       [502, '{"error":{"message":"upstream"}}'],
       [400, "not json"],
+      [400, '{"error":{"message":"Invalid request","code":400}}'],
+      [402, '{"error":{"message":"Insufficient credits","code":402}}'],
+      [408, '{"error":{"message":"Timed out","code":408}}'],
+      [413, '{"error":{"message":"Payload too large","code":413}}'],
+      [429, '{"error":{"message":"Rate limited","code":429}}'],
+      [429, grammarRejection],
     ] as const) {
       const guard = setup(async () => new Response(payload, { status }));
       expect((await guard.dispatch()).status).toBe(status);
@@ -250,19 +282,51 @@ describe("guarded fetch", () => {
     }
   });
 
-  it("adds nothing for a refusal before generation, such as the strict-schema rejection", async () => {
-    const rejection = JSON.stringify({
-      error: { message: "Provider returned error", code: 400, metadata: { raw: "grammar" } },
-    });
-    const guard = setup(async () => new Response(rejection, { status: 400 }));
+  it("adds nothing only for production's strict-schema grammar rejection", async () => {
+    const guard = setup(async () => new Response(grammarRejection, { status: 400 }));
     const response = await guard.dispatch();
     expect(response.status).toBe(400);
-    expect(await response.text()).toBe(rejection);
+    expect(await response.text()).toBe(grammarRejection);
     expect(guard.state.requests[0]).toMatchObject({ state: "known_rejection", costUsd: 0 });
     expect(guard.state.spentUsd).toBe(0);
-    expect(preGenerationRejection(429, { error: { message: "rate" } })).toBe(true);
-    expect(preGenerationRejection(400, { error: {}, usage: { cost: 1 } })).toBe(false);
-    expect(preGenerationRejection(500, { error: {} })).toBe(false);
+  });
+
+  it("counts the full reserve for the same rejection of a json_object fallback", async () => {
+    const guard = setup(async () => new Response(grammarRejection, { status: 400 }), {
+      operationKey: `${operationKey}:json`,
+    });
+    await guard.dispatch();
+    expect(guard.state.requests[0]).toMatchObject({
+      stage: "knowledge:json",
+      state: "known_rejection",
+      costUsd: reserve,
+    });
+    expect(guard.state.spentUsd).toBe(reserve);
+  });
+
+  it("classifies a zero-cost rejection with production's own error classification", async () => {
+    const zero = (status: number, rawText: string, stage = "knowledge") =>
+      preGenerationRejection({ status, stage, rawText });
+    expect(await zero(400, grammarRejection)).toBe(true);
+    expect(await zero(400, grammarRejection, "knowledge:repair")).toBe(true);
+    expect(await zero(400, grammarRejection, "knowledge:json")).toBe(false);
+    expect(await zero(400, grammarRejection, "knowledge:repair:json")).toBe(false);
+    expect(await zero(400, grammarRejection, "unknown")).toBe(false);
+    for (const status of [402, 408, 413, 429, 500])
+      expect(await zero(status, grammarRejection)).toBe(false);
+    expect(await zero(400, '{"error":{"message":"Invalid request"}}')).toBe(false);
+    expect(
+      await zero(
+        400,
+        '{"error":{"message":"Provider returned error","metadata":{"raw":"grammar"}}}',
+      ),
+    ).toBe(false);
+    const withUsage = JSON.stringify({
+      ...JSON.parse(grammarRejection),
+      usage: { prompt_tokens: 9 },
+    });
+    expect(await zero(400, withUsage)).toBe(false);
+    expect(await zero(400, "not json")).toBe(false);
   });
 
   it("counts an aborted dispatch as fully spent and never repeats it", async () => {
