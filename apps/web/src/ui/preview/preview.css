@@ -327,6 +327,10 @@
     min-width: 0;
     padding-inline: 12px;
   }
+  /* A wrapped action, such as Record a class with its error line, fills the row like the rest. */
+  .preview-actions > div > .btn {
+    width: 100%;
+  }
   .preview-toolbar p {
     flex-basis: 100%;
   }
