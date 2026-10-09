@@ -2,7 +2,9 @@
 import type { Course, Unit } from "@recalino/core/org";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { InfoTip } from "../components/InfoTip";
 import { Sheet } from "../components/Sheet";
+import { unitCopy } from "../course-copy";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 
@@ -216,11 +218,16 @@ export function CourseManager({
         </Panel>
       </div>
       {course ? (
-        <Panel title="Optional units">
-          <p>
-            Use units to group lessons inside <bdi>{course.name}</bdi>. A class can also have no
-            unit.
-          </p>
+        <Panel
+          title="Optional units"
+          info={
+            <InfoTip label={unitCopy.helpLabel}>
+              {unitCopy.help.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </InfoTip>
+          }
+        >
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -232,6 +239,7 @@ export function CourseManager({
                 required
                 maxLength={160}
                 dir="auto"
+                placeholder={unitCopy.namePlaceholder}
                 value={unitName}
                 disabled={busy}
                 onChange={(event) => setUnitName(event.target.value)}
@@ -241,9 +249,6 @@ export function CourseManager({
               Create unit
             </Button>
           </form>
-          <p className="preview-muted">
-            Smaller order numbers appear first. A unit must be empty before it can be deleted.
-          </p>
           {courseUnits.length ? (
             <ul className="preview-list">
               {courseUnits.map((item) => (

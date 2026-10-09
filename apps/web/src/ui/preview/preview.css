@@ -48,6 +48,15 @@
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
+.preview-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 16px;
+}
+.preview-panel .preview-panel-title h2 {
+  margin: 0;
+}
 .preview-panel p {
   line-height: 1.65;
 }

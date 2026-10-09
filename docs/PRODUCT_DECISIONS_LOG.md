@@ -301,6 +301,21 @@
 
 معیارهای پذیرش و بررسی در [طرح آپلود پس‌زمینه](plans/BACKGROUND_UPLOADS_2026-10-08.md) و [راهنمای اعلان](implementation/processing-notifications.md) ثبت شده‌اند.
 
+## D48 — دکمهٔ توضیح (InfoTip) و راهنمای Unit
+
+مبنا: درخواست صریح مالک محصول در 2026-10-09 برای قرار دادن متن راهنمای Unit در یک دکمهٔ توضیح کوچک، مانند نرم‌افزارهای حرفه‌ای، تا فضای صفحه گرفته نشود و فقط کاربرِ نیازمند آن را باز کند.
+
+- کامپوننت `InfoTip` در `apps/web/src/ui/components/`: دکمهٔ آیکون `Info` با هدف لمسی 44px و نام دسترس‌پذیر. فشار آن باکس کوتاهی زیر دکمه باز می‌کند؛ فشار دوباره، فشار بیرون از آن، Escape یا خروج فوکوس آن را می‌بندد. باکس در عرض صفحه و بالای نوار پایین موبایل می‌ماند.
+- فقط token‌ها، کلاس‌ها و آیکون‌های موجود به کار می‌روند؛ رنگ، فونت، سایه یا انیمیشن تازه اضافه نمی‌شود. آیکون `Info` (دایره با i) به‌جای `WarningCircle` (دایره با علامت تعجب) انتخاب شد، چون `WarningCircle` در اپ نشانهٔ خطاست.
+- متن‌های مصوب پنل Optional units در `apps/web/src/ui/course-copy.ts` (`unitCopy`):
+  - نام دکمه: About units
+  - Units are like the chapters of your book. Use them to keep classes about one lesson together. Units are optional. A class can have no unit.
+  - After you create a unit, you can choose it when you create a class.
+  - New units go to the end of the list. To move a unit, change its order number. Smaller numbers come first. You can delete a unit only when it has no classes.
+  - راهنمای خالی فیلد نام: For example: Unit 3 – Travel
+- توضیح همیشه‌نمایانِ قبلی پنل Unit و جملهٔ ترتیب/حذف زیر دکمه جای خود را به همین دکمه می‌دهند. ساختار Course → Unit → Class در D13 تغییر نمی‌کند.
+- این تصمیم مجوز استقرار production نیست.
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.

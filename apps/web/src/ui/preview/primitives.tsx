@@ -33,16 +33,26 @@ export function PageHeader({
 }
 export function Panel({
   title,
+  info,
   children,
   tone = "plain",
 }: {
   title?: string;
+  /** Shown after the title, outside the heading, e.g. an InfoTip. */
+  info?: ReactNode;
   children: ReactNode;
   tone?: "hero" | "plain";
 }) {
   return (
     <section className={`preview-panel ${tone === "hero" ? "preview-hero" : ""}`}>
-      {title ? <h2>{title}</h2> : null}
+      {title && info ? (
+        <div className="preview-panel-title">
+          <h2>{title}</h2>
+          {info}
+        </div>
+      ) : title ? (
+        <h2>{title}</h2>
+      ) : null}
       {children}
     </section>
   );

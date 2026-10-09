@@ -1,0 +1,55 @@
+/* D48: a help box built from existing tokens only (surface, divider shadow, 14px radius). */
+.root {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* Muted until used; the 44px target does not make the line it sits on taller. */
+.root .trigger {
+  margin-block: -6px;
+  color: var(--rc-text-muted);
+}
+
+.root .trigger:hover,
+.root .trigger[aria-expanded="true"] {
+  color: var(--color-accent);
+}
+
+.box {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-start: 0;
+  z-index: 1;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  font-size: var(--rc-text-sm);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: normal;
+  text-align: start;
+  /* Keeps the box above the shell's bottom navigation when it scrolls into view. */
+  scroll-margin-bottom: calc(var(--rc-snackbar-offset, 0px) + 16px);
+}
+
+.box[hidden] {
+  display: none;
+}
+
+/* The box takes focus only so a press inside keeps it open; it is not a control. */
+.root .box:focus-visible {
+  outline: none;
+}
+
+.box > p {
+  margin: 0;
+}
+
+.box > p + p {
+  margin-top: 8px;
+}
