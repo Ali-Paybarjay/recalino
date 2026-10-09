@@ -66,11 +66,11 @@ export const pendingCopy = {
     // Why an acoustic check asked instead of matching automatically.
     match: {
       no_sample:
-        "Recalino asks because you have not saved a voice sample. Automatic matching of later classes would need a sample and one confirmed class.",
+        "Recalino asked because no voice sample was saved when this class was checked. Automatic matching of later classes would need a sample and one confirmed class.",
       no_reference:
-        "Recalino asks because none of your confirmed classes can be used as a voice reference yet. Confirm one class with enough clear speech from you.",
+        "Recalino asked because, when this class was checked, none of your confirmed classes could be used as a voice reference.",
       policy_unavailable:
-        "Automatic voice matching is not switched on yet, so each class needs your confirmation.",
+        "Automatic voice matching was not switched on when this class was checked, so it needs your confirmation.",
       few_voices:
         "Recalino asks because fewer than two voices in this recording had enough clear speech to compare.",
       no_clear_match:

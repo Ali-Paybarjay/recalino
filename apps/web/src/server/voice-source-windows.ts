@@ -76,16 +76,29 @@ export function voiceSourceWindows(
   return { windows, sampled: true };
 }
 
-/** Reject a turn spanning a splice; its words or acoustic identity cannot be safely split. */
+/**
+ * Reject a turn spanning a splice; its words or acoustic identity cannot be safely split. A turn
+ * that overlapped a rejected turn of another voice is kept but marked unsafe: the speech it was
+ * heard over is no longer known, so no excerpt can be cut around it.
+ */
 export function remapVoiceSegments<
-  Segment extends { startMs: number; endMs: number; boundaryUnsafe: boolean },
+  Segment extends { speakerId: string; startMs: number; endMs: number; boundaryUnsafe: boolean },
 >(segments: readonly Segment[], windows: readonly VoiceWindowMap[]): Segment[] {
-  return segments.flatMap((segment) => {
-    const window = windows.find(
+  const windowOf = (segment: Segment) =>
+    windows.find(
       (candidate) =>
         segment.startMs >= candidate.compositeStartMs && segment.endMs <= candidate.compositeEndMs,
     );
+  const rejected = segments.filter((segment) => !windowOf(segment));
+  return segments.flatMap((segment) => {
+    const window = windowOf(segment);
     if (!window) return [];
+    const overRejected = rejected.some(
+      (other) =>
+        other.speakerId !== segment.speakerId &&
+        other.startMs < segment.endMs &&
+        other.endMs > segment.startMs,
+    );
     return [
       {
         ...segment,
@@ -93,6 +106,7 @@ export function remapVoiceSegments<
         endMs: window.sourceStartMs + segment.endMs - window.compositeStartMs,
         boundaryUnsafe:
           segment.boundaryUnsafe ||
+          overRejected ||
           segment.startMs < window.compositeStartMs + 200 ||
           segment.endMs > window.compositeEndMs - 200,
       },

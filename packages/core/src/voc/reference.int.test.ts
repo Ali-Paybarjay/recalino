@@ -400,6 +400,10 @@ describe("references and reasons stay truthful across policy changes", () => {
       references: 0,
       automatic: "needs_class",
     });
+    // The class says why it no longer counts and offers "This is not my voice".
+    expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.referenceStatus).toBe(
+      "mismatch",
+    );
     const later = await saveVoiceAnalysis(db, x.ctx, { ...x.input, runId: randomUUID() });
     expect(await row(later.id)).toMatchObject({
       status: "unverified",

@@ -357,6 +357,15 @@ export async function getClassVoice(
   const rows = await currentVoiceRows(db, ctx, sessionId);
   const profile = await getVoiceEnrollment(db, ctx);
   const references = new Set(profile.embeddings.map((entry) => entry.analysisId));
+  // References matching may rely on: under an evaluated policy, only those like the sample.
+  const usable = (modelVersion: string) =>
+    new Set(
+      checkedVoiceEnrollment(
+        profile,
+        modelVersion,
+        voiceAcceptancePolicy(modelVersion),
+      ).embeddings.map((entry) => entry.analysisId),
+    );
   return {
     enabled: profile.enabled,
     engineAvailable,
@@ -367,9 +376,13 @@ export async function getClassVoice(
           ...view,
           // The stored outcome is the moment of confirmation; say so when it no longer holds.
           referenceStatus:
-            view.referenceStatus === "added" && !references.has(row.id)
-              ? ("retired" as const)
-              : view.referenceStatus,
+            view.referenceStatus !== "added"
+              ? view.referenceStatus
+              : !references.has(row.id)
+                ? ("retired" as const)
+                : !usable(row.model_version).has(row.id)
+                  ? ("mismatch" as const)
+                  : view.referenceStatus,
           source: await sourceIdentity(db, ctx, row),
         };
       }),

@@ -207,3 +207,34 @@ it("preserves an unsafe native boundary after moving it into the original record
     },
   ]);
 });
+
+it("marks a turn unsafe when a voice it was heard over is rejected at an excerpt edge", () => {
+  const windows = [
+    { sourceStartMs: 100000, compositeStartMs: 0, compositeEndMs: 20000 },
+    { sourceStartMs: 7500000, compositeStartMs: 22000, compositeEndMs: 42000 },
+  ];
+  const segment = (speakerId: string, startMs: number, endMs: number) => ({
+    speakerId,
+    startMs,
+    endMs,
+    overlap: true,
+    boundaryUnsafe: false,
+  });
+  const kept = remapVoiceSegments(
+    [
+      segment("learner", 11000, 19000),
+      // Runs a few frames into the silent separator, so it is rejected.
+      segment("teacher", 16000, 20030),
+      // A short reply still overlaps the learner, so the learner's turn has a partner left.
+      segment("classmate", 11500, 12000),
+      // Same voice as the rejected one only: never marks itself.
+      segment("teacher", 2000, 9000),
+    ],
+    windows,
+  );
+  expect(kept.map((item) => [item.speakerId, item.boundaryUnsafe])).toEqual([
+    ["learner", true],
+    ["classmate", false],
+    ["teacher", false],
+  ]);
+});
