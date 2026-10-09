@@ -51,26 +51,7 @@ export function StudyOverview() {
           </div>
         </div>
       </section>
-      <section aria-labelledby="learning-loop" className={styles.loop}>
-        <div className={styles.sectionHead}>
-          <h2 id="learning-loop">{copy.loopTitle}</h2>
-          <p>{copy.loopHelp}</p>
-        </div>
-        <ol className={styles.steps}>
-          {copy.loop.map((step, index) => (
-            <li key={step.title} className={styles.step}>
-              <div className={styles.stepTop}>
-                <span className={styles.stepIcon}>
-                  <Icon icon={LOOP_ICONS[index] ?? FolderSimple} size={24} />
-                </span>
-                <span className={styles.stepNumber}>0{index + 1}</span>
-              </div>
-              <h3>{step.title}</h3>
-              <p>{step.text}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <LearningLoop />
       <div className={styles.lowerGrid}>
         <section id="example-note" className={styles.example} aria-labelledby="example-heading">
           <span className={styles.eyebrow}>{copy.sampleLabel}</span>
@@ -104,6 +85,32 @@ export function StudyOverview() {
         </section>
       </div>
     </>
+  );
+}
+
+/** The three-step routine (Figma "Learning step"): what follows once a class is captured. */
+export function LearningLoop() {
+  return (
+    <section aria-labelledby="learning-loop" className={styles.loop}>
+      <div className={styles.sectionHead}>
+        <h2 id="learning-loop">{copy.loopTitle}</h2>
+        <p>{copy.loopHelp}</p>
+      </div>
+      <ol className={styles.steps}>
+        {copy.loop.map((step, index) => (
+          <li key={step.title} className={styles.step}>
+            <div className={styles.stepTop}>
+              <span className={styles.stepIcon}>
+                <Icon icon={LOOP_ICONS[index] ?? FolderSimple} size={24} />
+              </span>
+              <span className={styles.stepNumber}>0{index + 1}</span>
+            </div>
+            <h3>{step.title}</h3>
+            <p>{step.text}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
