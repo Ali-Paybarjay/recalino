@@ -1185,6 +1185,14 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     expect(prepared.system).toContain('For Persian explanations, use "پس از X، Y می‌آید"');
     expect(prepared.system).toContain('NEVER explain X + Y as "X بعد از Y می‌آید"');
     expect(prepared.system).toContain("exact English left-to-right pattern");
+    // The Persian order template is never shown to another explanation language.
+    const arabic = prepare(input([source()], "ar"));
+    expect(arabic.system).toContain("exact English left-to-right pattern");
+    expect(arabic.system).not.toContain("پس از X");
+    expect(arabic.system).not.toContain("بعد از Y");
+    expect(arabic.system).toContain(
+      'are all explanations in "ar" (Arabic); another language written in the same script is not it.',
+    );
     expect(prepared.system).toContain("ALL IPA symbols and Latin letters are banned in faApprox");
     expect(prepared.system).toContain("kind /kaɪnd/ → کایند; kind of /kaɪnd əv/ → کایند اَو");
     expect(prepared.system).toContain(
@@ -1278,6 +1286,10 @@ describe("FR-PROC-004 compact knowledge generation", () => {
       expect(prepared.system).toContain(
         "Homework and uncertainties have their own source-driven priority",
       );
+      expect(prepared.system).toContain(
+        "Homework is only work a class source explicitly sets for after class: a printed or in-class task belongs in classNotes.activities.tasks, and another person's work is never homework.",
+      );
+      expect(prepared.system).not.toContain("each source assignment");
       expect(prepared.system).not.toContain(
         "Across summary/topics/homework/uncertainties use at most",
       );
