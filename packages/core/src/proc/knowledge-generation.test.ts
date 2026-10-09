@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { createJsonFallbackTransport, ProviderError, structuredSchemaComplexity } from "../aip";
+import {
+  createJsonFallbackTransport,
+  createStructuredTransport,
+  ProviderError,
+  structuredSchemaComplexity,
+} from "../aip";
 import {
   assignGeneratedKnowledgeIds,
   knowledgeModelSchema,
@@ -1709,5 +1714,152 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
     expect(assembled.learningItems[0]?.study).toMatchObject({ collocations: [] });
     expect(assembled).toMatchObject({ summary: [], topics: [], homework: [], uncertainties: [] });
     expect(prepared.system).toContain("omit collocations otherwise");
+  });
+});
+
+/** [path, node] for every schema node; property names are data, not keywords. */
+function schemaNodes(
+  node: unknown,
+  path = "#",
+  found: [string, Record<string, unknown>][] = [],
+): [string, Record<string, unknown>][] {
+  if (!node || typeof node !== "object" || Array.isArray(node)) return found;
+  const schema = node as Record<string, unknown>;
+  found.push([path, schema]);
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "properties" && value && typeof value === "object")
+      for (const [name, child] of Object.entries(value))
+        schemaNodes(child, `${path}.${name}`, found);
+    else if ((key === "anyOf" || key === "oneOf") && Array.isArray(value))
+      value.forEach((child, index) => {
+        schemaNodes(child, `${path}|${index}`, found);
+      });
+    else if (key === "items" || key === "additionalProperties")
+      schemaNodes(value, `${path}[]`, found);
+  }
+  return found;
+}
+
+describe("FR-PROC-004 v5 contract over the Gemini json_schema transport", () => {
+  const gemini = "google/gemini-3.8-flash";
+  // A JSON Schema validator stands in for the remote grammar: it must accept every valid lesson.
+  const grammarOf = (schema: Record<string, unknown>) =>
+    z.fromJSONSchema(schema as z.core.JSONSchema.JSONSchema);
+  const keywords = (schema: unknown) =>
+    new Set(schemaNodes(schema).flatMap(([, node]) => Object.keys(node)));
+  const objects = (schema: unknown) =>
+    schemaNodes(schema)
+      .filter(([, node]) => node.type === "object")
+      .map(([path, node]) => [path, node.required, node.additionalProperties]);
+  const items = (language: string, ...learningItems: Record<string, unknown>[]) =>
+    learningItems.map((item) => (language === "fa" ? item : { ...item, faApprox: "" }));
+
+  it.each(["fa", "ja"])(
+    "sends the %s lesson schema inlined in Gemini's documented subset with literal discriminators",
+    (language) => {
+      const prepared = prepare(input([source()], language));
+      const original = z.toJSONSchema(prepared.schema);
+      const transport = createStructuredTransport(prepared.schema, gemini);
+      const forbidden = ["const", "oneOf", "pattern", "minLength", "maxLength", "maxItems"];
+      expect(forbidden.filter((keyword) => !keywords(original).has(keyword))).toEqual(
+        language === "fa" ? [] : ["pattern"],
+      );
+      expect(
+        [...forbidden, "$schema", "$ref", "$defs"].filter((keyword) =>
+          keywords(transport.schema).has(keyword),
+        ),
+      ).toEqual([]);
+      const nodes = schemaNodes(transport.schema);
+      expect(nodes.filter(([, node]) => Number(node.minItems) > 1)).toEqual([]);
+      const byPath = new Map(nodes);
+      expect([0, 1, 2].map((index) => byPath.get(`#.learningItems[]|${index}.type`))).toEqual(
+        ["lexical", "grammar", "recognition"].map((type) => ({ type: "string", enum: [type] })),
+      );
+      expect(
+        [0, 1, 2, 3].map((index) =>
+          byPath.get(`#.classNotes.activities.tasks[].blocks[]|${index}.type`),
+        ),
+      ).toEqual(
+        ["text", "quote", "table", "items"].map((type) => ({ type: "string", enum: [type] })),
+      );
+      expect(byPath.get("#.lessonPlan[].evidenceKeys[]")).toEqual({ type: "string", enum: ["r0"] });
+      // Every object keeps its exact required list and additionalProperties:false.
+      expect(objects(transport.schema)).toEqual(objects(original));
+      expect(objects(transport.schema).length).toBeGreaterThan(30);
+      expect(objects(transport.schema).every(([, , additional]) => additional === false)).toBe(
+        true,
+      );
+
+      const grammarCheck = grammarOf(transport.schema);
+      const valid = wire({
+        ...output(),
+        learningItems: items(language, lexical(), grammar(), recognitionItem()),
+      });
+      expect(transport.decode(valid)).toBe(valid);
+      expect(prepared.schema.safeParse(valid).success).toBe(true);
+      expect(grammarCheck.safeParse(valid).success).toBe(true);
+      // Dropped length, list and script bounds remain local rejections.
+      for (const loosened of [
+        wire({ ...output(), learningItems: items(language, { ...lexical(), imageFa: "" }) }),
+        wire({
+          ...output(),
+          lessonPlan: Array.from({ length: 41 }, () => ({
+            concept: "planned concept",
+            evidenceKeys: ["r0"],
+            teachAs: "notes",
+          })),
+          learningItems: items(language, lexical()),
+        }),
+        ...(language === "fa"
+          ? [wire({ ...output(), learningItems: [{ ...lexical(), faApprox: "لوک nk" }] })]
+          : []),
+      ]) {
+        expect(grammarCheck.safeParse(loosened).success).toBe(true);
+        expect(transport.decode(loosened)).toBe(loosened);
+        expect(prepared.schema.safeParse(transport.decode(loosened)).success).toBe(false);
+      }
+      for (const invalid of [
+        wire({ ...output(), learningItems: items(language, { ...lexical(), type: "other" }) }),
+        wire({
+          ...output(),
+          learningItems: items(language, { ...lexical(), claim: claim(["zz"]) }),
+        }),
+        wire({ ...output(), learningItems: items(language, { ...lexical(), invented: "key" }) }),
+      ]) {
+        expect(grammarCheck.safeParse(invalid).success).toBe(false);
+        expect(prepared.schema.safeParse(transport.decode(invalid)).success).toBe(false);
+      }
+    },
+  );
+
+  it("sends a long class's evidence keys as typed strings that local validation still checks", () => {
+    const long = source();
+    long.blocks = Array.from({ length: 65 }, (_, index) => ({
+      ...first(long.blocks),
+      id: `block-${index}`,
+      text: `Synthetic class line ${index}.`,
+    }));
+    const prepared = prepare(input([long], "ja"));
+    const transport = createStructuredTransport(prepared.schema, gemini);
+    const byPath = new Map(schemaNodes(transport.schema));
+    for (const path of [
+      "#.lessonPlan[].evidenceKeys[]",
+      "#.learningItems[]|0.claim.evidenceKeys[]",
+      "#.homework[].evidenceKeys[]",
+      "#.classNotes.activities.board[].evidenceKeys[]",
+    ])
+      expect(byPath.get(path)).toEqual({ type: "string" });
+    const invented = wire({
+      ...output(),
+      learningItems: items("ja", { ...lexical(), claim: claim(["zz"]) }),
+    });
+    expect(grammarOf(transport.schema).safeParse(invented).success).toBe(true);
+    expect(transport.decode(invented)).toBe(invented);
+    expect(prepared.schema.safeParse(transport.decode(invented)).success).toBe(false);
+    expect(
+      prepared.schema.safeParse(
+        wire({ ...output(), learningItems: items("ja", { ...lexical(), claim: claim(["r1s"]) }) }),
+      ).success,
+    ).toBe(true);
   });
 });

@@ -1616,3 +1616,106 @@ describe("AIP direct JSON closer completion and rejection diagnostics", () => {
     expect(bodies.map((body) => body.temperature)).toEqual([undefined, undefined, 0]);
   });
 });
+
+describe("FR-PROC-003 Gemini json_schema transport over OpenRouter", () => {
+  const model = "google/gemini-3.8-flash";
+  const geminiSettings: ProviderSettings = {
+    ...settings,
+    llmModel: model,
+    structuredTemperature: 0,
+    structuredModelOverrides: {
+      [model]: {
+        structuredOutputMode: "json_schema",
+        reasoningEffort: "medium",
+        maxOutputTokens: 32000,
+        omitTemperature: true,
+        knowledgeContract: "content",
+      },
+    },
+  };
+  const schema = z.strictObject({
+    title: z.string().min(1).max(200),
+    items: z
+      .array(
+        z.discriminatedUnion("type", [
+          z.strictObject({ type: z.literal("lexical"), text: z.string().min(1) }),
+          z.strictObject({ type: z.literal("grammar"), prompt: z.string().min(1) }),
+        ]),
+      )
+      .min(1)
+      .max(24),
+  });
+  function respond(content: string) {
+    return vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model,
+          choices: [{ finish_reason: "stop", message: { content } }],
+          usage: { prompt_tokens: 10, completion_tokens: 20, cost: 0.00001 },
+        }),
+      ),
+    );
+  }
+  const call = (request: typeof fetch) =>
+    new OpenRouterProvider("synthetic-key", geminiSettings, request).structured({
+      operationKey: "synthetic-gemini-schema",
+      model,
+      schema,
+      schemaName: "class_knowledge_content",
+      system: "Synthetic system",
+      input: "Synthetic",
+    });
+  beforeEach(() => vi.spyOn(console, "warn").mockImplementation(() => undefined));
+  afterEach(() => vi.restoreAllMocks());
+
+  it("sends one strict Gemini schema request with the override's controls and a plain system prompt", async () => {
+    const request = respond('{"title":"Lesson","items":[{"type":"lexical","text":"one"}]}');
+    await expect(call(request)).resolves.toMatchObject({
+      output: { title: "Lesson", items: [{ type: "lexical", text: "one" }] },
+      actualMicros: 10,
+    });
+    expect(request).toHaveBeenCalledOnce();
+    const body = JSON.parse(String(request.mock.calls[0]?.[1]?.body));
+    expect(body.response_format).toEqual({
+      type: "json_schema",
+      json_schema: {
+        name: "class_knowledge_content",
+        strict: true,
+        schema: createStructuredTransport(schema, model).schema,
+      },
+    });
+    expect(JSON.stringify(body.response_format)).not.toMatch(
+      /"(const|oneOf|minLength|maxLength|maxItems|\$schema)"/,
+    );
+    expect(body).not.toHaveProperty("temperature");
+    expect(body.reasoning).toEqual({ effort: "medium" });
+    expect(body.max_tokens).toBe(32000);
+    expect(body.provider).toEqual({ zdr: true, data_collection: "deny", require_parameters: true });
+    expect(body.messages[0]).toEqual({ role: "system", content: "Synthetic system" });
+  });
+
+  it("reports a schema-mode parse failure without closer completion, fences or a retry", async () => {
+    for (const content of [
+      '{"title":"Lesson","items":[{"type":"lexical","text":"one"}]',
+      '```json\n{"title":"Lesson","items":[{"type":"lexical","text":"one"}]}\n```',
+    ]) {
+      const request = respond(content);
+      await expect(call(request)).rejects.toMatchObject({
+        code: "provider_schema_invalid",
+        uncertain: false,
+        diagnostic: "json_parse",
+        accounting: expect.objectContaining({ actualMicros: 10 }),
+      });
+      expect(request).toHaveBeenCalledOnce();
+    }
+    expect(console.warn).not.toHaveBeenCalledWith(
+      "recalino.provider_json_closers_completed",
+      expect.anything(),
+    );
+    expect(console.warn).toHaveBeenCalledWith("recalino.provider_schema_invalid", {
+      schema: "class_knowledge_content",
+      stage: "json_parse",
+      issues: [],
+    });
+  });
+});
