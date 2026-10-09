@@ -1,6 +1,8 @@
 export {
   type AiProvider,
+  effectiveProviderTimeoutMs,
   effectiveStructuredMaxOutputTokens,
+  longestProviderTimeoutMs,
   maximumProviderCost,
   ProviderError,
   type ProviderResult,

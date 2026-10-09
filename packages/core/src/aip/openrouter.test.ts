@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
+  effectiveProviderTimeoutMs,
   effectiveStructuredMaxOutputTokens,
+  longestProviderTimeoutMs,
   ProviderError,
   type ProviderSettings,
   providerSettingsSchema,
@@ -1667,6 +1669,37 @@ describe("FR-PROC-003 Gemini json_schema transport over OpenRouter", () => {
     });
   beforeEach(() => vi.spyOn(console, "warn").mockImplementation(() => undefined));
   afterEach(() => vi.restoreAllMocks());
+
+  it("gives only the model whose override names it a longer request deadline", async () => {
+    const slow: ProviderSettings = {
+      ...geminiSettings,
+      structuredModelOverrides: {
+        [model]: { ...geminiSettings.structuredModelOverrides?.[model], timeoutMs: 180000 },
+      },
+    };
+    expect(effectiveProviderTimeoutMs(slow, model)).toBe(180000);
+    expect(effectiveProviderTimeoutMs(slow, slow.visionModel)).toBe(slow.timeoutMs);
+    expect(effectiveProviderTimeoutMs(slow)).toBe(slow.timeoutMs);
+    expect(longestProviderTimeoutMs(slow)).toBe(180000);
+    expect(longestProviderTimeoutMs(geminiSettings)).toBe(geminiSettings.timeoutMs);
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const request = respond('{"title":"Lesson","items":[{"type":"lexical","text":"one"}]}');
+    await new OpenRouterProvider("synthetic-key", slow, request).structured({
+      operationKey: "synthetic-gemini-deadline",
+      model,
+      schema,
+      schemaName: "class_knowledge_content",
+      system: "Synthetic system",
+      input: "Synthetic",
+    });
+    expect(timeout).toHaveBeenLastCalledWith(180000);
+    expect(
+      providerSettingsSchema.safeParse({
+        ...slow,
+        structuredModelOverrides: { [model]: { timeoutMs: 600001 } },
+      }).success,
+    ).toBe(false);
+  });
 
   it("sends one strict Gemini schema request with the override's controls and a plain system prompt", async () => {
     const request = respond('{"title":"Lesson","items":[{"type":"lexical","text":"one"}]}');

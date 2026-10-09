@@ -24,6 +24,8 @@ export const providerSettingsSchema = z.strictObject({
         omitTemperature: z.literal(true).optional(),
         /** As llmModel, generate knowledge with the content-only contract and its two-generation cap. */
         knowledgeContract: z.literal("content").optional(),
+        /** A slower reasoning model's request deadline; every other model keeps timeoutMs. */
+        timeoutMs: z.number().int().positive().max(600000).optional(),
       }),
     )
     .optional(),
@@ -46,6 +48,19 @@ export function effectiveStructuredMaxOutputTokens(
   model: string,
 ): number {
   return settings.structuredModelOverrides?.[model]?.maxOutputTokens ?? settings.maxOutputTokens;
+}
+/** The request deadline for one model: its override when set, otherwise the shared timeout. */
+export function effectiveProviderTimeoutMs(settings: ProviderSettings, model?: string): number {
+  return (model && settings.structuredModelOverrides?.[model]?.timeoutMs) || settings.timeoutMs;
+}
+/** The longest deadline any configured model may use, for runners that wait on a provider step. */
+export function longestProviderTimeoutMs(settings: ProviderSettings): number {
+  return Math.max(
+    settings.timeoutMs,
+    ...Object.values(settings.structuredModelOverrides ?? {}).map(
+      (override) => override.timeoutMs ?? 0,
+    ),
+  );
 }
 export function maximumProviderCost(settings: ProviderSettings, model: string): number {
   const maximum = settings.modelMaximumMicros?.[model] ?? settings.maximumMicros;

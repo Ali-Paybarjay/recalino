@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   type AiProvider,
+  effectiveProviderTimeoutMs,
   effectiveStructuredMaxOutputTokens,
   ProviderError,
   type ProviderResult,
@@ -101,7 +102,9 @@ export class OpenRouterProvider implements AiProvider {
           "X-OpenRouter-Cache": "false",
         },
         body: serialized,
-        signal: AbortSignal.timeout(this.settings.timeoutMs),
+        signal: AbortSignal.timeout(
+          effectiveProviderTimeoutMs(this.settings, typeof model === "string" ? model : undefined),
+        ),
       });
     } catch {
       throw new ProviderError("provider_outcome_unknown", false, true);

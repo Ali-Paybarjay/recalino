@@ -14,6 +14,8 @@ export type ComparisonCandidate = {
   temperature?: number;
   /** Decoding constraint; direct json_object unless the candidate declares strict json_schema. */
   structuredOutputMode?: "json_schema" | "json_object";
+  /** Request deadline for this model only; slower reasoning models need more than the default. */
+  timeoutMs?: number;
 };
 export const comparisonCandidates: Record<string, ComparisonCandidate> = {
   "gemini-3.8-flash-low": {
@@ -25,6 +27,8 @@ export const comparisonCandidates: Record<string, ComparisonCandidate> = {
     model: "google/gemini-3.8-flash",
     reasoningEffort: "medium",
     maxOutputTokens: 32000,
+    // A holdout-5 response exceeded the shared 90 s deadline; medium reasoning needs more.
+    timeoutMs: 180000,
   },
   "gemini-3.5-flash-lite-low": {
     model: "google/gemini-3.5-flash-lite",
@@ -58,6 +62,7 @@ export const schemaDecodingCandidates: Record<string, ComparisonCandidate> = {
     reasoningEffort: "medium",
     maxOutputTokens: 32000,
     structuredOutputMode: "json_schema",
+    timeoutMs: 180000,
   },
 };
 /** Every candidate a round may name with --candidate. */
@@ -201,6 +206,7 @@ export function comparisonSettings(
         structuredOutputMode: candidate.structuredOutputMode ?? "json_object",
         ...(candidate.temperature === undefined ? { omitTemperature: true as const } : {}),
         knowledgeContract: "content" as const,
+        ...(candidate.timeoutMs === undefined ? {} : { timeoutMs: candidate.timeoutMs }),
       },
     },
     modelMaximumMicros: { ...base.modelMaximumMicros, [candidate.model]: base.maximumMicros },

@@ -126,7 +126,10 @@ describe("FR-PROC-003 allow-listed acceptance candidate", () => {
       structuredOutputMode: "json_object",
       omitTemperature: true,
       knowledgeContract: "content",
+      timeoutMs: 180000,
     });
+    // Only the slower reasoning model waits longer; the shared deadline stays for other models.
+    expect(settings.timeoutMs).toBe(base.timeoutMs);
   });
   it("keeps json_object for compared candidates and passes json_schema only for the schema twin", () => {
     for (const [id, candidate] of Object.entries(comparisonCandidates))
