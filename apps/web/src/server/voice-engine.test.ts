@@ -96,16 +96,26 @@ describe("local speaker engine trust boundaries", () => {
     ).toEqual([false, false, false]);
     // Dissimilar voices, or voices heard together, keep their own labels.
     expect(new Set(mergeVoices(segments, voiceOf, 0.9).map((s) => s.speakerId)).size).toBe(3);
+    // Identical voiceprints with eight clean seconds each: only simultaneous speech keeps them
+    // apart. Ten shared seconds are well over a quarter of either voice's eighteen.
+    const apart = [
+      { start: 1, end: 9, speaker: 0 },
+      { start: 10, end: 18, speaker: 1 },
+    ];
     const together = qualifySegments(
-      [
-        { start: 1, end: 12, speaker: 0 },
-        { start: 4, end: 11, speaker: 1 },
-        { start: 13, end: 25, speaker: 1 },
-      ],
-      26000,
+      [...apart, { start: 20, end: 30, speaker: 0 }, { start: 20, end: 30, speaker: 1 }],
+      31000,
     );
     expect(new Set(mergeVoices(together, () => person, 0.5).map((s) => s.speakerId)).size).toBe(2);
-    expect(markOverlaps(together).map((segment) => segment.overlap)).toEqual([true, true, false]);
+    expect(markOverlaps(together).map((segment) => segment.overlap)).toEqual([
+      false,
+      false,
+      true,
+      true,
+    ]);
+    // The same two voices, never heard together, are one person split by clustering.
+    const separate = qualifySegments(apart, 31000);
+    expect(new Set(mergeVoices(separate, () => person, 0.5).map((s) => s.speakerId)).size).toBe(1);
   });
   it("withholds clipped and short speech and trims two hundred milliseconds on both turn boundaries", () => {
     const segments = qualifySegments(

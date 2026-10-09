@@ -378,20 +378,35 @@ it("VOICE-AC-10: an over-split recording keeps the voices that matter instead of
     startMs: index * 1000,
     endMs: index * 1000 + (index === 59 ? 900 : 500),
     overlap: false,
-    boundaryUnsafe: true,
+    boundaryUnsafe: false,
   }));
   const vector = [1, ...Array<number>(15).fill(0)];
-  const result = buildVoiceAnalysis(base, source([]), {
-    modelRevision: "synthetic",
-    segments,
-    speakers: [{ speakerId: "speaker_0", embedding: vector, cleanSpeechMs: 25000 }],
-  });
+  // speaker_58 is as short as most fragments and sorts late by name: only its voiceprint keeps
+  // it. speaker_7 is one of the ten fragments dropped.
+  const result = buildVoiceAnalysis(
+    base,
+    source([
+      // Each turn lies wholly inside its fragment, 200 ms from both edges.
+      { start: 200, end: 300, text: "Kept fragment words.", speaker: "0" },
+      { start: 7200, end: 7300, text: "Dropped fragment words.", speaker: "0" },
+    ]),
+    {
+      modelRevision: "synthetic",
+      segments,
+      speakers: [{ speakerId: "speaker_58", embedding: vector, cleanSpeechMs: 25000 }],
+    },
+  );
   expect(result.candidates).toHaveLength(50);
-  // The voice with a voiceprint and the longest fragment are kept; order follows the recording.
   expect(result.embeddings).toHaveLength(1);
   const ids = result.candidates.map((candidate) => candidate.id);
-  expect(ids[0]).toBe(scopedVoiceSpeakerId(sourceId, "whole-source", "speaker_0"));
-  expect(ids).toContain(scopedVoiceSpeakerId(sourceId, "whole-source", "speaker_59"));
+  const id = (label: string) => scopedVoiceSpeakerId(sourceId, "whole-source", label);
+  expect(ids).toContain(id("speaker_58"));
+  expect(ids).toContain(id("speaker_59"));
+  expect(ids).not.toContain(id("speaker_7"));
+  // Order follows the recording, not the priority used to choose.
+  expect(ids.indexOf(id("speaker_58"))).toBeLessThan(ids.indexOf(id("speaker_59")));
+  // Speech of a dropped fragment cannot be attributed to anyone.
+  expect(result.utterances.map((item) => item.text)).toEqual(["Kept fragment words."]);
   expect(result.utterances.every((item) => ids.includes(item.speakerId))).toBe(true);
 });
 

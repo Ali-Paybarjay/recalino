@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { VoiceEnrollment } from "./contracts";
 import {
@@ -121,6 +123,22 @@ describe("VOICE-AC-05: any doubt asks the learner", () => {
   it("asks when another voice resembles either reference", () => {
     expect(decide({ vectors: vectors(at(0.9), at(0.85, 2)) }).reason).toBe("similar_voices");
   });
+  it("compares the runner-up's closest reference, not its weaker one", () => {
+    // Distinct references: the sample on the first axis, the confirmed class off it.
+    const lesson = [0.8, 0, 0, 0, 0, 0.6, ...Array<number>(10).fill(0)];
+    const nearLesson = [0.3, 0, 0, 0, 0, Math.sqrt(1 - 0.09), ...Array<number>(10).fill(0)];
+    const references = enrollment(own, [lesson]);
+    const runnerUp = voiceAgreement(nearLesson, voiceReferences(references, "v1"));
+    expect(runnerUp.agreement).toBeCloseTo(0.3);
+    expect(runnerUp.best).toBeCloseTo(0.812, 3);
+    // The learner agrees at 0.76: well ahead of the runner-up's agreement, not of its best.
+    expect(decide({ enrollment: references, vectors: vectors(at(0.95), nearLesson) }).reason).toBe(
+      "similar_voices",
+    );
+    expect(
+      decide({ enrollment: references, vectors: vectors(at(0.95), at(0.1, 2)) }).acceptedId,
+    ).toBe("learner");
+  });
   it("asks when a voice the learner rejected before scored like this one", () => {
     expect(decide({ rejectedScores: [0.85] }).reason).toBe("similar_voices");
     expect(decide({ rejectedScores: [0.4] }).acceptedId).toBe("learner");
@@ -162,12 +180,26 @@ describe("VOICE-AC-03: a confirmation becomes a reference only with clear, consi
   });
 });
 
-it("ships automatic acceptance only for an evaluated model revision", () => {
+it("ships policy numbers only from the holdout report, and automatic acceptance only after its gates", () => {
+  const path = fileURLToPath(
+    new URL("../../../../tools/voice/evaluation/holdout-report.json", import.meta.url),
+  );
   for (const entry of VOICE_ACCEPTANCE_POLICIES) {
     expect(entry.acceptScore).toBeGreaterThan(0);
     expect(entry.acceptScore).toBeLessThanOrEqual(1);
     expect(entry.minMargin).toBeGreaterThan(0);
+    expect(entry.referenceConsistency).toBeGreaterThan(0);
     expect(entry.minCleanSpeechMs).toBeGreaterThanOrEqual(20000);
+    // The numbers are the frozen calibration's, tested on the holdout. An entry that only checks
+    // references against the sample may ship after failed gates; automatic acceptance may not.
+    const report = JSON.parse(readFileSync(path, "utf8"));
+    const { autoAccept, ...numbers } = entry;
+    expect(report.policy).toMatchObject(numbers);
+    if (autoAccept) {
+      expect(report.gates.safetyFalseAttributions.pass).toBe(true);
+      expect(report.gates.safetyPoisonedProfile.pass).toBe(true);
+      expect(report.gates.evidence.pass).toBe(true);
+    }
   }
   expect(voiceAcceptancePolicy("transcript-labels-v1")).toBeNull();
 });

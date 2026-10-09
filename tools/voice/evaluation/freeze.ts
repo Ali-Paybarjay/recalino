@@ -106,19 +106,30 @@ export function readFreeze(): {
   sources: Record<string, string>;
   pipeline: ReturnType<typeof pipelineSettings>;
   manifestSha256: string;
-  amendments: { date: string; files: string[]; reason: string }[];
+  /** Each amendment records the new hash of every file it changes (PROTOCOL.md §8). */
+  amendments: { date: string; files: string[]; sha256?: Record<string, string>; reason: string }[];
 } {
   return JSON.parse(readFileSync(join(EVALUATION_DIR, "freeze.json"), "utf8"));
 }
 
-/** Stop if a frozen file differs and no amendment explains it (PROTOCOL.md §8). */
+/**
+ * Stop if a frozen file differs from its frozen hash or, after a recorded amendment, from the
+ * hash that amendment recorded (PROTOCOL.md §8). The file list is the one stored at the freeze.
+ */
 export function assertFrozen() {
   const freeze = readFreeze();
+  const frozen = Object.keys(freeze.sources).sort();
+  if (JSON.stringify(frozen) !== JSON.stringify([...FROZEN_SOURCES].sort()))
+    throw new Error("the frozen file list differs from freeze.json");
   const current = sourceHashes();
-  const amended = new Set(freeze.amendments.flatMap((amendment) => amendment.files));
-  const changed = FROZEN_SOURCES.filter(
-    (path) => current[path] !== freeze.sources[path] && !amended.has(path),
-  );
+  const expected = { ...freeze.sources };
+  for (const amendment of freeze.amendments)
+    for (const path of amendment.files) {
+      const hash = amendment.sha256?.[path];
+      if (!hash) throw new Error(`amendment of ${path} records no hash`);
+      expected[path] = hash;
+    }
+  const changed = frozen.filter((path) => current[path] !== expected[path]);
   if (changed.length) throw new Error(`frozen files changed without an amendment: ${changed}`);
   if (JSON.stringify(pipelineSettings()) !== JSON.stringify(freeze.pipeline))
     throw new Error("pipeline settings differ from the freeze");

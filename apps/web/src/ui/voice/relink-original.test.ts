@@ -163,6 +163,24 @@ describe("VOICE-AC-08: the exact original is re-attached on this device only", (
       }),
     ).rejects.toThrow();
     expect(await store.get(userId, active.id)).toEqual(active);
+    // A saved, healthy row of source A is never rewritten as source B's original.
+    const kept = original("source A original");
+    const sourceA = await expected(kept);
+    await relinkOriginalRecording({ store, hash }, { userId, expected: sourceA, file: kept });
+    const before = await store.get(userId, sourceA.sourceId);
+    expect(before?.status).toBe("saved");
+    await expect(
+      store.replaceOriginal({
+        userId,
+        sourceId: randomUUID(),
+        recordingId: sourceA.sourceId,
+        blob: original("another source"),
+        mimeType: "audio/webm",
+        activeMs: 0,
+      }),
+    ).rejects.toThrow();
+    expect(await store.get(userId, sourceA.sourceId)).toEqual(before);
+    expect(await sha(await store.blob(userId, sourceA.sourceId))).toBe(sourceA.sha256);
   });
 
   it("keeps accounts apart and writes nothing for a deleted account", async () => {

@@ -130,16 +130,24 @@ it("VOICE-AC-09 replacing the sample withdraws automatic matches and the exports
     );
     return artifact.id;
   }
-  // The first sample replaces nothing, so an export made before it stays available.
-  const kept = await exportNotebook();
-  await replaceSample();
-  expect((await getHtmlExport(db, fixture.ctx, kept)).state).toBe("ready");
-
+  // An automatic match made before any sample rests on no sample, so the first one replaces
+  // nothing: the match and the export showing it stay.
   await db
     .updateTable("voc.analysis")
     .set({ status: "verified", verified_speaker_id: "learner", verification_method: "automatic" })
     .where("id", "=", fixture.analysis.id)
     .execute();
+  const kept = await exportNotebook();
+  await replaceSample();
+  expect((await getHtmlExport(db, fixture.ctx, kept)).state).toBe("ready");
+  expect(
+    await db
+      .selectFrom("voc.analysis")
+      .select("verification_method")
+      .where("id", "=", fixture.analysis.id)
+      .executeTakeFirstOrThrow(),
+  ).toEqual({ verification_method: "automatic" });
+
   const shown = await exportNotebook();
   await replaceSample();
   await expect(getHtmlExport(db, fixture.ctx, shown)).rejects.toMatchObject({ code: "not_found" });
