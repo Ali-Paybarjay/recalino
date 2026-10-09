@@ -6,6 +6,7 @@ export {
   claimSchema,
   type EvidenceSource,
   isExplanationLanguage,
+  KNOWLEDGE_SUMMARY_LIMIT,
   type KnowledgeModel,
   knowledgeModelSchema,
   type LearningItem,

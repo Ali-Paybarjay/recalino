@@ -4,6 +4,7 @@ import {
   type ClassNotes,
   type EvidenceSource,
   isAnnouncingHeading,
+  KNOWLEDGE_SUMMARY_LIMIT,
   type KnowledgeModel,
   type LearningItem,
   modelClaims,
@@ -32,6 +33,8 @@ export interface GeneratedPracticeAudit {
   recognitionReclassifiedReasons: Record<string, number>;
   /** Homework claims without a stated after-class assignment, moved to the summary unchanged. */
   homeworkClaimsDemoted: number;
+  /** Unsupported homework claims left in place because the summary was already full. */
+  homeworkClaimsKeptAtSummaryLimit: number;
   derivedExercises: number;
   omittedCandidates: Record<string, number>;
 }
@@ -53,14 +56,19 @@ export function finalizeGeneratedStudyPractice(
     recognitionClaimsKeptFromClass: 0,
     recognitionReclassifiedReasons: {},
     homeworkClaimsDemoted: 0,
+    homeworkClaimsKeptAtSummaryLimit: 0,
     derivedExercises: 0,
     omittedCandidates: {},
   };
-  // Every generated model: homework needs a cited after-class assignment. Nothing is deleted.
+  // Every generated model: homework needs a cited after-class assignment. Nothing is deleted or
+  // rejected: a claim that would overflow the summary limit stays where the model put it.
   const homework: Claim[] = [];
   for (const claim of model.homework) {
     if (statesCitedAssignment(claim, sources, input.language.explanation)) homework.push(claim);
-    else {
+    else if (model.summary.length >= KNOWLEDGE_SUMMARY_LIMIT) {
+      homework.push(claim);
+      audit.homeworkClaimsKeptAtSummaryLimit += 1;
+    } else {
       model.summary.push(claim);
       audit.homeworkClaimsDemoted += 1;
     }
@@ -266,15 +274,18 @@ function recognitionAnchor(
 }
 
 /**
- * A homework claim stays homework only when a cited block, or the context announcing it, states
- * an affirmative after-class assignment. Context: the nearest preceding heading block in the same
- * unit, at most 6 blocks back, and every block of the same unit of a photographed image.
+ * A class homework claim stays homework only when a cited block, read with the context announcing
+ * it, states an affirmative after-class assignment. The context is read as one text, so a heading
+ * never approves content that says there is no homework: the nearest preceding heading block in
+ * the same unit (at most 6 blocks back) before the cited block, the block a cited heading
+ * announces, or every block of the same unit of a photographed image, in source order.
  */
 function statesCitedAssignment(
   claim: Claim,
   sources: readonly EvidenceSource[],
   explanationLanguage: string,
 ): boolean {
+  if (claim.origin !== "from_class") return false;
   return claim.sourceRefs.some((ref) => {
     const source = findSource(ref, sources);
     if (!source) return false;
@@ -300,24 +311,26 @@ function statesCitedAssignment(
       );
     });
     return cited.some((block) => {
-      const context = [block.text];
-      if (source.kind === "image")
-        context.push(
-          ...source.blocks
-            .filter((entry) => entry.unitId === block.unitId)
-            .map((entry) => entry.text),
-        );
-      else {
+      const context =
+        source.kind === "image"
+          ? source.blocks
+              .filter((entry) => entry.unitId === block.unitId)
+              .map((entry) => entry.text)
+          : [block.text];
+      if (source.kind !== "image") {
         const index = source.blocks.indexOf(block);
         for (let back = index - 1; back >= Math.max(0, index - 6); back -= 1) {
           const previous = source.blocks[back];
           if (!previous || previous.unitId !== block.unitId) break;
           if (!isAnnouncingHeading(previous.text)) continue;
-          context.push(previous.text);
+          context.unshift(previous.text);
           break;
         }
+        const next = source.blocks[index + 1];
+        if (next && next.unitId === block.unitId && isAnnouncingHeading(block.text))
+          context.push(next.text);
       }
-      return context.some((text) => statesAssignment(text, explanationLanguage));
+      return statesAssignment(context.join("\n"), explanationLanguage);
     });
   });
 }

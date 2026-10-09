@@ -708,6 +708,16 @@ function homeworkModel(
   };
 }
 
+function boardPhoto(blocks: readonly string[]): EvidenceSource {
+  const source = textSource(blocks, {
+    kind: "image",
+    role: "board_photo",
+    units: [{ id: "photo", kind: "document", start: 1 }],
+  });
+  source.blocks = source.blocks.map((block) => ({ ...block, unitId: "photo" }));
+  return source;
+}
+
 describe("PRD-NOTE-01 generated homework keeps only stated after-class assignments", () => {
   it.each([
     ["fa", "تکالیف جلسه بعد: تمرین ۳ و ۴ صفحه ۴۵", "تمرین ۳ و ۴ صفحه ۴۵ را برای جلسه بعد حل کنید."],
@@ -733,20 +743,17 @@ describe("PRD-NOTE-01 generated homework keeps only stated after-class assignmen
   });
 
   it("PRD-NOTE-01 keeps board-photo, class-audio, personal-note and heading-announced assignments", () => {
-    const board = textSource(["HW:", "Workbook p. 12, ex. 1-3"], {
-      kind: "image",
-      role: "board_photo",
-      units: [{ id: "photo", kind: "document", start: 1 }],
-    });
-    board.blocks = board.blocks.map((block) => ({ ...block, unitId: "photo" }));
+    const board = boardPhoto(["HW:", "Workbook p. 12, ex. 1-3"]);
     const audio = audioSource("OK, for homework, do exercise three on page forty-five.");
     const notes = textSource(["HW for Monday: WB p. 34 ex 1-3"], { role: "user_notes" });
     const heading = textSource(["Homework", "Write five sentences using the present perfect."]);
+    const citedHeading = textSource(["Homework:", "Workbook page 12, exercises 1-3."]);
     for (const [source, ref, evidence] of [
       [board, wholeBlock(board, "block-1"), "board"],
       [audio, audioRef, "audio"],
       [notes, wholeBlock(notes), "user_notes"],
       [heading, wholeBlock(heading, "block-1"), "material"],
+      [citedHeading, wholeBlock(citedHeading), "material"],
     ] as const) {
       const model = homeworkModel("en", "Do the exercises set for after class.", [ref], {
         evidence,
@@ -813,6 +820,75 @@ describe("PRD-NOTE-01 generated homework keeps only stated after-class assignmen
       expect(result.model.homework).toEqual([]);
       expect(result.model.summary).toHaveLength(1);
       expect(result.audit.homeworkClaimsDemoted).toBe(1);
+    }
+  });
+
+  it("PRD-NOTE-01 reads a heading with the content it announces, so a no-homework note moves to the summary", () => {
+    for (const [source, blockId, evidence] of [
+      [textSource(["Homework", "None this week."]), "block-1", "material"],
+      [textSource(["Homework", "No homework this week."]), "block-1", "material"],
+      [textSource(["Homework:", "None this week."]), "block-0", "material"],
+      [textSource(["Homework:\nNone this week."]), "block-0", "material"],
+      [boardPhoto(["HW:", "none"]), "block-1", "board"],
+      [boardPhoto(["Homework", "No homework today!"]), "block-1", "board"],
+    ] as const) {
+      const model = homeworkModel(
+        "en",
+        "Write ten sentences about your weekend.",
+        [wholeBlock(source, blockId)],
+        { evidence },
+      );
+      const result = finalizeGeneratedStudyPractice(model, [source], context);
+      expect(result.model.homework).toEqual([]);
+      expect(result.model.summary).toEqual([{ ...model.homework[0], id: expect.any(String) }]);
+      expect(result.audit.homeworkClaimsDemoted).toBe(1);
+    }
+  });
+
+  it("PRD-NOTE-01 moves AI-expansion homework to the summary even when it cites a stated assignment", () => {
+    const source = textSource(["Homework: Workbook page 34, exercises 1 and 2."]);
+    const model = homeworkModel("en", "Do workbook page 34.", [wholeBlock(source)], {
+      origin: "ai_expansion",
+      evidence: "ai",
+    });
+    for (const learner of [context, undefined]) {
+      const result = finalizeGeneratedStudyPractice(model, [source], learner);
+      expect(result.model.homework).toEqual([]);
+      expect(result.model.summary).toEqual([{ ...model.homework[0], id: expect.any(String) }]);
+      expect(result.audit.homeworkClaimsDemoted).toBe(1);
+    }
+    const fromClass = homeworkModel("en", "Do workbook page 34.", [wholeBlock(source)]);
+    expect(
+      finalizeGeneratedStudyPractice(fromClass, [source], context).model.homework,
+    ).toHaveLength(1);
+  });
+
+  it("PRD-NOTE-01 leaves an unsupported homework claim in place when the summary is already full", () => {
+    const source = textSource(["Printed task: Write your arrangement for tomorrow evening."]);
+    const model = homeworkModel("en", "Write your arrangement for tomorrow evening.", [
+      wholeBlock(source),
+    ]);
+    model.summary = Array.from(
+      { length: 100 },
+      (_, index): Claim => ({
+        id: `summary-${index}`,
+        text: `Additional class summary point ${index + 1}.`,
+        origin: "ai_expansion",
+        creation: "ai_generation",
+        evidence: "ai",
+        sourceRefs: [],
+        speakerRole: "unknown",
+        uncertain: false,
+      }),
+    );
+    for (const learner of [context, undefined]) {
+      const result = finalizeGeneratedStudyPractice(model, [source], learner);
+      expect(result.model.summary).toHaveLength(100);
+      expect(result.model.homework).toEqual([{ ...model.homework[0], id: expect.any(String) }]);
+      expect(result.audit).toMatchObject({
+        homeworkClaimsDemoted: 0,
+        homeworkClaimsKeptAtSummaryLimit: 1,
+      });
     }
   });
 });

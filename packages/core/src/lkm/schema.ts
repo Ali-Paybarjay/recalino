@@ -6,6 +6,8 @@ import { classNotesSchema, studyContentSchema } from "./study-schema";
 import { studyLexicalTarget, studyLexicalTargetMatches } from "./study-target";
 
 export const LKM_SCHEMA_VERSION = "1";
+/** Most class summary claims one knowledge model may hold. */
+export const KNOWLEDGE_SUMMARY_LIMIT = 100;
 const id = z.string().min(1).max(100);
 const text = z.string().min(1).max(20000);
 const integer = z.number().int().nonnegative();
@@ -44,7 +46,7 @@ export const knowledgeModelSchema = z.strictObject({
   schemaVersion: z.literal(LKM_SCHEMA_VERSION),
   title: z.string().min(1).max(300),
   language: z.strictObject({ learning: z.literal("en"), explanation: z.string().min(2).max(16) }),
-  summary: z.array(claimSchema).max(100),
+  summary: z.array(claimSchema).max(KNOWLEDGE_SUMMARY_LIMIT),
   topics: z
     .array(
       z.strictObject({

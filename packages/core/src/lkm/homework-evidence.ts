@@ -1,5 +1,7 @@
 import { studyHomeworkMarkers } from "./study-locale";
 
+type Markers = ReturnType<typeof studyHomeworkMarkers>;
+
 /**
  * Source text that sets work for after class. A deterministic, deliberately lexical test: it errs
  * towards "not an assignment", because the generation projection only moves an unsupported
@@ -7,7 +9,9 @@ import { studyHomeworkMarkers } from "./study-locale";
  */
 const englishMarker =
   /(?<![\p{L}\p{N}])(?:(home[ -]?works?|home[ -]?tasks?|hw|h\/w|h\.w\.?)|assign(?:ed|ments?)?|due|(?:for|before|by|until) +(?:(?:the|our|your) +)?next +(?:class|lesson|session|week|time|meeting)s?)(?![\p{L}\p{N}])/giu;
+const englishLabel = new RegExp(englishMarker.source, "iu");
 const negator = /^(?:no|not|never|without|nor|none|nothing|cannot)$|n't$/u;
+const notWord = /^not$|n't$/u;
 // "don't forget the homework", "haven't finished ..., finish it for next class", "not much
 // homework, just ...", "without fail" and "no 4" do not negate a following assignment.
 const leadingNegatorException = new Set([
@@ -22,8 +26,29 @@ const leadingNegatorException = new Set([
   "only",
   "just",
 ]);
-// After the marker only quantity words are exempt: "Homework not done" still negates.
-const trailingNegatorException = new Set(["much", "only", "just"]);
+// After the marker only quantity words and "not optional" are exempt: "Homework not done" negates.
+const trailingNegatorException = new Set(["much", "only", "just", "optional"]);
+// In announced content "Homework: not optional" and "HW: don't forget ..." still set work.
+const announcedNegatorException = new Set(["forget", "fail", "much", "only", "just", "optional"]);
+// After a comma or "(" a "not" contrasts ("homework, not classwork", "Homework (not optional!)")
+// unless it states absence: "Homework, not this week", "HW (not set)".
+const absentAfterNot = new Set([
+  "this",
+  "today",
+  "tonight",
+  "tomorrow",
+  "now",
+  "yet",
+  "set",
+  "given",
+  "assigned",
+  "required",
+  "needed",
+  "necessary",
+  "due",
+  "done",
+  "applicable",
+]);
 // "and" is not a clause boundary: "no responses and assigned homework" stays negated.
 const clauseWord = new Set([
   "so",
@@ -131,11 +156,41 @@ function tokens(text: string, offset = 0): Token[] {
   }));
 }
 
-/** Sentences end at ! ? ; and line breaks, and at a full stop that ends a sentence (not "p. 12"). */
-function sentenceAround(text: string, start: number, end: number) {
+function escapePattern(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function containsWord(text: string, words: readonly string[], unspaced: boolean): boolean {
+  if (!words.length) return false;
+  const lower = text.toLocaleLowerCase();
+  if (unspaced) return words.some((word) => lower.includes(word.toLocaleLowerCase()));
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])(?:${words.map(escapePattern).join("|")})(?![\\p{L}\\p{N}])`,
+    "iu",
+  ).test(text);
+}
+
+/** A short label line whose content follows it: "Homework", "HW:", "Tonight's homework:", "تکالیف". */
+function labelLine(line: string, markers: Markers): boolean {
+  const label = line.replace(/^\s*(?:[-*•▪◦·]|\p{N}+[.)])?\s*/u, "").replace(/[\s:：–—-]+$/u, "");
+  const words = label.split(/\s+/u).filter(Boolean);
+  // "Homework: page twelve" already carries its content on the line.
+  if (!words.length || words.length > 4 || /[\p{N}?？؟:：]|\s[-–—]/u.test(label)) return false;
+  return englishLabel.test(label) || containsWord(label, markers.labels, markers.unspaced);
+}
+
+/**
+ * Sentences end at ! ? ; and line breaks, and at a full stop that ends a sentence (not "p. 12").
+ * A label line does not end one: "Homework:\nNone this week." is a single statement.
+ */
+function sentenceAround(text: string, start: number, end: number, markers: Markers) {
   const boundary = (index: number) => {
     const character = text[index] ?? "";
-    if (/[!?;\n。！？；؟؛۔]/u.test(character)) return true;
+    if (character === "\n") {
+      const head = text.slice(0, index).trimEnd();
+      return !labelLine(head.slice(head.lastIndexOf("\n") + 1), markers);
+    }
+    if (/[!?;。！？；؟؛۔]/u.test(character)) return true;
     return character === "." && /^(?:\s+[^\s\p{Ll}\p{N}]|\s*$)/u.test(text.slice(index + 1));
   };
   let from = start;
@@ -145,30 +200,125 @@ function sentenceAround(text: string, start: number, end: number) {
   return { from, to, question: /[?？؟]/u.test(text[to] ?? "") };
 }
 
-function negates(words: readonly Token[], index: number, exceptions: ReadonlySet<string>): boolean {
+/**
+ * English negators and the explanation language's code-owned negators: whole words in spaced
+ * scripts; in unspaced scripts substrings, but only where the caller allows them.
+ */
+function isNegator(word: string, markers: Markers, substrings: boolean): boolean {
+  if (negator.test(word)) return true;
+  if (markers.unspaced) return substrings && markers.negators.some((entry) => word.includes(entry));
+  return markers.negators.some((entry) => entry.toLocaleLowerCase("en") === word);
+}
+
+function negates(
+  words: readonly Token[],
+  index: number,
+  exceptions: ReadonlySet<string>,
+  markers: Markers,
+): boolean {
   const word = words[index];
-  if (!word || !negator.test(word.text)) return false;
+  if (!word || !isNegator(word.text, markers, true)) return false;
   const next = words[index + 1]?.text ?? "";
   return !exceptions.has(next) && !/^\p{N}/u.test(next);
 }
 
-/** A negator scopes over the marker within its clause: a clause word or a contrast ends it. */
-function negated(text: string, from: number, to: number, start: number, end: number): boolean {
+function announcedNegation(
+  words: readonly Token[],
+  index: number,
+  contrast: boolean,
+  markers: Markers,
+): boolean {
+  const word = words[index];
+  if (!word || !isNegator(word.text, markers, false)) return false;
+  const next = words[index + 1]?.text;
+  if (next === undefined) return true;
+  if (contrast && notWord.test(word.text)) return absentAfterNot.has(next);
+  return !announcedNegatorException.has(next) && !/^\p{N}/u.test(next);
+}
+
+/**
+ * The content a heading announces says there is no work: "none", "not this week", "ندارید",
+ * "なし". Apart from none/nothing/nil only its edges count (or every word of a short content), so
+ * "Do not use a dictionary for exercise 3" and "تمرین ۳ را بدون دیکشنری حل کنید" still set work.
+ * Unspaced scripts count only short content or a leading negator, never "使わないで" mid-way.
+ */
+function announcesNothing(content: string, contrast: boolean, markers: Markers): boolean {
+  if (markers.unspaced) {
+    const compact = content.replace(/[^\p{L}\p{N}]/gu, "");
+    const short = Array.from(compact).length <= 8;
+    if (
+      markers.negators.some(
+        (entry) =>
+          (short && compact.includes(entry)) ||
+          (Array.from(entry).length > 1 && compact.startsWith(entry)),
+      )
+    )
+      return true;
+  }
+  const words = tokens(content);
+  // "Homework: -" and "HW: —" announce nothing.
+  if (!words.length) return /^[\s\p{P}]*[-–—][\s\p{P}]*$/u.test(content);
+  const absent = words.some(
+    (word, index) =>
+      /^(?:none|nothing|nil)$/u.test(word.text) &&
+      !/^(?:but|except)$/u.test(words[index + 1]?.text ?? ""),
+  );
+  if (absent) return true;
+  if (words.length <= 4)
+    return words.some((_, index) => announcedNegation(words, index, contrast, markers));
+  return (
+    announcedNegation(words, 0, contrast, markers) ||
+    announcedNegation(words, words.length - 1, contrast, markers)
+  );
+}
+
+/**
+ * A negator scopes over the marker within its clause: a clause word or a contrast ends it. A
+ * heading marker ("Homework:", "HW (", "Homework for Monday:", a label line) is judged with the
+ * content it announces; when that content has its own marker, that marker decides instead.
+ */
+function negated(
+  text: string,
+  from: number,
+  to: number,
+  start: number,
+  end: number,
+  heading: boolean,
+  markers: Markers,
+): boolean {
   if (/(?<![\p{L}\p{N}])n\/a(?![\p{L}\p{N}])/iu.test(text.slice(from, to))) return true;
   const before = tokens(text.slice(from, start), from);
   for (let index = 0; index < before.length; index += 1)
     if (
-      negates(before, index, leadingNegatorException) &&
+      negates(before, index, leadingNegatorException, markers) &&
       !before.slice(index + 1).some((word) => clauseWord.has(word.text))
     )
       return true;
-  // "Homework: none" is negated; "for next class, not exercise 4" and "(not optional)" are not.
   const following = text.slice(end, to);
+  if (heading) {
+    const label =
+      /^((?:[^\S\n]+[\p{L}\p{N}']+){0,3})[^\S\n]*(?:[:：]|[^\S\n][-–—]+(?=\s|$)|(?=\n))/u.exec(
+        following,
+      );
+    const open = label ? null : /^[^\S\n]*[,(]/u.exec(following);
+    const separator = label ?? open;
+    if (separator) {
+      const content = following.slice(separator[0].length);
+      if (englishLabel.test(content)) return true;
+      const words = tokens(label?.[1] ?? "");
+      return (
+        words.some((_, index) => negates(words, index, trailingNegatorException, markers)) ||
+        announcesNothing(content, !!open, markers)
+      );
+    }
+  }
+  // "Homework not done" is negated; "for next class, not exercise 4" and "due on Friday, not
+  // Monday" are not.
   const contrast = following.search(/[,(]/u);
   const after = tokens(contrast < 0 ? following : following.slice(0, contrast), end);
   for (let index = 0; index < after.length; index += 1) {
     if (clauseWord.has(after[index]?.text ?? "")) break;
-    if (negates(after, index, trailingNegatorException)) return true;
+    if (negates(after, index, trailingNegatorException, markers)) return true;
   }
   return false;
 }
@@ -198,32 +348,24 @@ function describesWork(text: string, from: number, start: number, end: number): 
   return !!next && !text.slice(end, next.start).trim() && checkingNoun.has(next.text);
 }
 
-function affirmative(text: string, start: number, end: number, homeworkWord: boolean): boolean {
-  const { from, to, question } = sentenceAround(text, start, end);
+function affirmative(
+  text: string,
+  start: number,
+  end: number,
+  marker: { homeworkWord: boolean; heading: boolean },
+  markers: Markers,
+): boolean {
+  const { from, to, question } = sentenceAround(text, start, end, markers);
   if (question) return false;
   // A labelled example sentence illustrates usage; it does not set work.
   if (/(?<![\p{L}\p{N}])(?:examples?\s*:|e\.g\.)/iu.test(text.slice(from, start))) return false;
-  if (homeworkWord && describesWork(text, from, start, end)) return false;
-  return !negated(text, from, to, start, end);
-}
-
-function escapePattern(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function containsWord(text: string, words: readonly string[], unspaced: boolean): boolean {
-  if (!words.length) return false;
-  const lower = text.toLocaleLowerCase();
-  if (unspaced) return words.some((word) => lower.includes(word.toLocaleLowerCase()));
-  return new RegExp(
-    `(?<![\\p{L}\\p{N}])(?:${words.map(escapePattern).join("|")})(?![\\p{L}\\p{N}])`,
-    "iu",
-  ).test(text);
+  if (marker.homeworkWord && describesWork(text, from, start, end)) return false;
+  return !negated(text, from, to, start, end, marker.heading, markers);
 }
 
 /** Localized labels count only as a heading: "تکالیف جلسه بعد: ...", "宿題：...", or alone. */
-function localizedHeading(text: string, explanationLanguage: string): boolean {
-  const { labels, negators, unspaced } = studyHomeworkMarkers(explanationLanguage);
+function localizedHeading(text: string, markers: Markers): boolean {
+  const { labels, negators, unspaced } = markers;
   if (!labels.length) return false;
   let offset = 0;
   for (const line of text.split("\n")) {
@@ -242,9 +384,11 @@ function localizedHeading(text: string, explanationLanguage: string): boolean {
         : unspaced
           ? labels.some((entry) => lower.endsWith(entry.toLocaleLowerCase()))
           : containsWord(label, labels, false);
-    if (!heading || containsWord(line, negators, unspaced)) continue;
+    // A negator in the label voids it ("Keine Hausaufgaben:"); negated() judges the content.
+    if (!heading || containsWord(label, negators, unspaced)) continue;
     const start = lineStart + line.indexOf(label);
-    if (affirmative(text, start, start + label.length, false)) return true;
+    const marker = { homeworkWord: false, heading: true };
+    if (affirmative(text, start, start + label.length, marker, markers)) return true;
   }
   return false;
 }
@@ -252,6 +396,7 @@ function localizedHeading(text: string, explanationLanguage: string): boolean {
 /** True when the text affirmatively sets work for after class. */
 export function statesAssignment(source: string, explanationLanguage: string): boolean {
   const text = source.normalize("NFC").replace(/[’‘ʼ]/gu, "'");
+  const markers = studyHomeworkMarkers(explanationLanguage);
   for (const match of text.matchAll(englishMarker)) {
     const start = match.index ?? 0;
     const end = start + match[0].length;
@@ -259,9 +404,11 @@ export function statesAssignment(source: string, explanationLanguage: string): b
     if (/^due$/iu.test(match[0]) && /^\s+to(?![\p{L}\p{N}])/iu.test(following)) continue;
     // "assigned to groups" and "assign roles to" organise class work; they set nothing.
     if (/^assign(?:ed)?$/iu.test(match[0]) && /^\s+to(?![\p{L}\p{N}])/iu.test(following)) continue;
-    if (affirmative(text, start, end, match[1] !== undefined)) return true;
+    const homeworkWord = match[1] !== undefined;
+    const heading = homeworkWord || /^assignments?$/iu.test(match[0]);
+    if (affirmative(text, start, end, { homeworkWord, heading }, markers)) return true;
   }
-  return localizedHeading(text, explanationLanguage);
+  return localizedHeading(text, markers);
 }
 
 /** A short label block that can announce the blocks after it, such as "Homework" or "HW:". */
