@@ -224,7 +224,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
         });
         allowed();
         const captures = automaticRecordingClasses(rows);
-        const currentClass = /^\/classes\/([0-9a-f-]{36})(?:\/|$)/i.exec(path.current)?.[1];
+        const currentClass = /^\/sessions\/([0-9a-f-]{36})(?:\/|$)/i.exec(path.current)?.[1];
         const sessions = new Set([
           ...captures.map((capture) => capture.sessionId),
           ...rows.flatMap((row) =>
@@ -428,7 +428,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
           else await work();
         }
       } catch (failure) {
-        const sessionId = /^\/classes\/([0-9a-f-]{36})(?:\/|$)/i.exec(path.current)?.[1];
+        const sessionId = /^\/sessions\/([0-9a-f-]{36})(?:\/|$)/i.exec(path.current)?.[1];
         if (sessionId && !(failure instanceof DOMException && failure.name === "AbortError"))
           report(
             sessionId,

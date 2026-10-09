@@ -179,7 +179,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.getByLabel("Unit (optional)").selectOption("");
   const renamedClass = page.waitForResponse(
     (response) =>
-      response.url() === classUrl.replace("/classes/", "/api/classes/") &&
+      response.url() === classUrl.replace("/sessions/", "/api/classes/") &&
       response.request().method() === "PATCH",
   );
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -196,7 +196,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await courseDialog.getByRole("button", { name: "Keep it" }).click();
   await page.goto(`${classUrl}/options`);
   await page.getByRole("button", { name: "Delete session", exact: true }).click();
-  const classApiUrl = classUrl.replace("/classes/", "/api/classes/");
+  const classApiUrl = classUrl.replace("/sessions/", "/api/classes/");
   const deletedClass = page.waitForResponse(
     (response) => response.url() === classApiUrl && response.request().method() === "DELETE",
   );
