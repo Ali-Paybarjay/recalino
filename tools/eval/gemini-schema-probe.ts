@@ -17,6 +17,7 @@ import { canonicalJson, sha256Hex } from "../../packages/core/src/plt";
 import {
   assertMigrationCumulativeBudget,
   assertMigrationDispatchAllowed,
+  assertMigrationLedgerAvailable,
   MigrationControlInterruption,
   migrationControls,
   migrationLedgerRound,
@@ -197,7 +198,9 @@ export type SchemaProbeOptions = {
   runLive: boolean;
   envFile?: string;
   approvedFreeze?: string;
+  /** The shared cross-round ledger; a live probe refuses a missing one unless initialising. */
   ledgerPath: string;
+  initializeLedger: boolean;
   configPath: string;
 };
 
@@ -215,7 +218,10 @@ export function parseSchemaProbeOptions(argv: string[]): SchemaProbeOptions {
     runLive: argv.includes("--run-live"),
     envFile: option("--env-file"),
     approvedFreeze: option("--approved-freeze"),
-    ledgerPath: resolve("artifacts/verification/haiku55-evaluation-ledger.json"),
+    ledgerPath: resolve(
+      option("--ledger-file") ?? "artifacts/verification/haiku55-evaluation-ledger.json",
+    ),
+    initializeLedger: argv.includes("--initialize-ledger"),
     configPath: resolve("config/openrouter-defaults.json"),
   };
 }
@@ -325,12 +331,15 @@ export async function runSchemaProbe(
     );
   await save(resolve(options.out, "dry-run-plan.json"), { ...plan, freeze, paidCalls: 0 });
   if (!options.runLive) {
+    const ledgerExists = (await readMigrationRecordedJson(options.ledgerPath)) !== undefined;
     dependencies.write(
-      `${JSON.stringify({ dryRun: true, freeze, paidCalls: 0, reserveUsd: reserve.reserveUsd, hardUsd: migrationControls.enforcementProbe.hardUsd, request: plan.request })}\n`,
+      `${JSON.stringify({ dryRun: true, freeze, paidCalls: 0, reserveUsd: reserve.reserveUsd, hardUsd: migrationControls.enforcementProbe.hardUsd, ledgerPath: options.ledgerPath, ledgerExists, request: plan.request })}\n`,
     );
     return 0;
   }
   assert.equal(options.approvedFreeze, freeze, "Root must approve this exact probe freeze");
+  // The probe counts against the same cumulative cap; a fresh ledger would forget earlier spend.
+  await assertMigrationLedgerAvailable(options.ledgerPath, options.initializeLedger);
   assert.ok(
     options.envFile,
     "Pass an existing credential file explicitly; do not copy its settings into the worktree",

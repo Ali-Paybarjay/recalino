@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { z } from "../../packages/core/node_modules/zod";
 import { canonicalJson, sha256Hex } from "../../packages/core/src/plt";
 import { type MigrationFixture, migrationFixtureSchema } from "./haiku55-migration-fixtures";
-import { migrationRoundStateSchema } from "./haiku55-migration-guards";
+import { assertMigrationPlanFrozen, migrationRoundStateSchema } from "./haiku55-migration-guards";
 import {
   type MigrationQualityReview,
   migrationCriticalIssueSchema,
@@ -195,21 +195,8 @@ const json = async (path: string): Promise<unknown> => JSON.parse(await readFile
  * round state and answer keys must belong to that freeze.
  */
 export async function readFrozenBlindRound(directory: string, approvedFreeze?: string) {
-  const planFile = z
-    .record(z.string(), z.unknown())
-    .parse(await json(resolve(directory, "dry-run-plan.json")));
+  const planFile = assertMigrationPlanFrozen(await json(resolve(directory, "dry-run-plan.json")));
   const plan = z.object({ freeze: sha256, fixturesHash: z.string() }).parse(planFile);
-  assert.equal(
-    sha256Hex(
-      canonicalJson(
-        Object.fromEntries(
-          Object.entries(planFile).filter(([name]) => name !== "freeze" && name !== "paidCalls"),
-        ),
-      ),
-    ),
-    plan.freeze,
-    "The captured plan differs from its freeze",
-  );
   if (approvedFreeze !== undefined)
     assert.equal(plan.freeze, approvedFreeze, "The round plan has another freeze");
   const state = migrationRoundStateSchema.parse(await json(resolve(directory, "state.json")));

@@ -40,18 +40,20 @@ import { migrationAutomaticGoldChecks } from "./haiku55-migration-gold";
 import {
   assertMigrationCumulativeBudget,
   assertMigrationDispatchAllowed,
+  assertMigrationLedgerAvailable,
   MigrationControlInterruption,
   type MigrationDispatchMode,
   migrationBoundaryGateFailure,
   migrationControlInterruptionResult,
   migrationControls,
+  migrationDispatchPreflight,
   migrationInitialRecovery,
   migrationLedgerRound,
+  migrationPlanDate,
   migrationReportedModelMatches,
-  migrationRequestReserve,
   migrationRoundStateSchema,
   migrationSoftBudgetStop,
-  migrationUnexpectedTransport,
+  migrationTransportMatchesAdoptionGate,
   readMigrationRecordedJson,
   selectMigrationDiagnosticCases,
   selectMigrationSmokeCases,
@@ -59,12 +61,14 @@ import {
 } from "./haiku55-migration-guards";
 import {
   assessMigrationQualityReview,
+  migrationQualityPlanContext,
   migrationRecordedTechnicalSummary,
 } from "./haiku55-migration-quality";
 import {
+  assertEvaluatedRoundSettings,
   comparisonSettings,
+  evaluationCandidatePlan,
   resolveEvaluationCandidate,
-  zdrEndpointMaximumRates,
 } from "./model-comparison-candidates";
 import { comparisonFixtureSetId, comparisonFixtures } from "./model-comparison-fixtures";
 
@@ -89,45 +93,18 @@ const save = async (path: string, value: unknown) => {
 const fixtureSetOption = option("--fixture-set");
 const candidateOption = option("--candidate");
 const zdrEndpointPath = option("--zdr-endpoint-file");
-const ledgerPath = resolve("artifacts/verification/haiku55-evaluation-ledger.json");
+// The shared cross-round ledger lives in one worktree; pass it explicitly from anywhere else.
+const ledgerPath = resolve(
+  option("--ledger-file", "artifacts/verification/haiku55-evaluation-ledger.json") ?? "",
+);
+const initializeLedger = process.argv.includes("--initialize-ledger");
 const qualityReviewPath = option("--quality-review-file");
 if (qualityReviewPath) {
   assert.ok(!live, "Offline quality review cannot dispatch paid calls");
-  const planFile = z
-    .record(z.string(), z.unknown())
-    .parse(await json(resolve(directory, "dry-run-plan.json")));
-  const capturedPlan = z
-    .object({
-      freeze: z.string(),
-      fixturesHash: z.string(),
-      expectedCases: z.number(),
-      fixtureSet: z.string(),
-      comparison: z.object({ candidateId: z.string() }).optional(),
-      acceptanceCandidate: z.object({ candidateId: z.string() }).optional(),
-    })
-    .parse(planFile);
-  // The captured plan must still hash to its freeze, so its fixture set and candidate are frozen.
-  assert.equal(
-    sha256Hex(
-      canonicalJson(
-        Object.fromEntries(
-          Object.entries(planFile).filter(([name]) => name !== "freeze" && name !== "paidCalls"),
-        ),
-      ),
-    ),
-    capturedPlan.freeze,
-    "The captured plan differs from its freeze",
-  );
-  // The review reads the fixture set and candidate from the plan; a flag may only repeat them.
-  assert.ok(
-    fixtureSetOption === undefined || fixtureSetOption === capturedPlan.fixtureSet,
-    "--fixture-set differs from the frozen plan",
-  );
-  assert.ok(
-    candidateOption === undefined ||
-      candidateOption ===
-        (capturedPlan.acceptanceCandidate?.candidateId ?? capturedPlan.comparison?.candidateId),
-    "--candidate differs from the frozen plan",
+  // The fixture set, candidate and transport come from the self-hash-verified plan.
+  const capturedPlan = migrationQualityPlanContext(
+    await json(resolve(directory, "dry-run-plan.json")),
+    { fixtureSet: fixtureSetOption, candidate: candidateOption },
   );
   const recorded = z
     .object({
@@ -192,6 +169,7 @@ if (qualityReviewPath) {
     summary,
     references,
     await json(resolve(qualityReviewPath)),
+    capturedPlan.round,
   );
   await save(resolve(directory, "quality-review-summary.json"), assessed);
   process.stdout.write(`${JSON.stringify(assessed)}\n`);
@@ -213,32 +191,22 @@ const evaluated = resolveEvaluationCandidate(candidateOption, {
   comparison,
   acceptsCandidate: holdoutSet?.acceptsCandidate === true,
 });
-const candidateId = evaluated?.candidateId;
-const candidate = evaluated?.candidate;
 const acceptance = evaluated?.acceptance === true;
 const configText = await readFile("config/openrouter-defaults.json", "utf8");
 const productionSettings = providerSettingsSchema.parse(JSON.parse(configText));
 // A candidate changes only model, effort, physical cap, sampling and its declared decoding mode.
 const settings = providerSettingsSchema.parse(
-  candidate && candidateId
-    ? comparisonSettings(productionSettings, candidateId, candidate)
+  evaluated
+    ? comparisonSettings(productionSettings, evaluated.candidateId, evaluated.candidate)
     : productionSettings,
 );
-const structuredOutputMode =
-  settings.structuredModelOverrides?.[settings.llmModel]?.structuredOutputMode;
-const directJsonMode = structuredOutputMode === "json_object";
-assert.ok(
-  directJsonMode ||
-    (candidate?.structuredOutputMode === "json_schema" && structuredOutputMode === "json_schema"),
-  "Final adoption evaluation requires the intentionally configured direct JSON transport; only a candidate declaring json_schema may use strict schema decoding",
-);
-assert.ok(
-  comparison ||
-    (acceptance
-      ? settings.llmModel === candidate?.model
-      : settings.llmModel === "anthropic/claude-haiku-5.5"),
-  "Evaluate the actual migration production config or the declared acceptance candidate, nothing else",
-);
+// Production config on direct JSON, or exactly the named candidate on its declared transport.
+const { structuredOutputMode, directJsonMode } = assertEvaluatedRoundSettings(settings, evaluated);
+// The unchanged adoption gate expects direct json_object; a json_schema round never meets it.
+const transportMatchesAdoptionGate = migrationTransportMatchesAdoptionGate({
+  directJsonMode,
+  structuredOutputMode,
+});
 assert.ok(
   usesContentKnowledgeContract(settings),
   "Evaluated settings must select the content contract the worker uses",
@@ -354,17 +322,14 @@ const preparedCases = schedule.map(({ caseId, fixture, repeat }) => {
 });
 const catalog = catalogPath ? await json(resolve(catalogPath)) : undefined;
 const zdrEndpoints = zdrEndpointPath ? await json(resolve(zdrEndpointPath)) : undefined;
-assert.ok(
-  !candidate || (zdrEndpoints && catalog),
-  "A candidate round needs the captured ZDR endpoint list and model catalog",
-);
-// Every candidate round reserves at the most expensive zero-retention endpoint price.
-const candidateRates =
-  candidate && zdrEndpoints
-    ? zdrEndpointMaximumRates(zdrEndpoints, settings.llmModel, catalog)
-    : undefined;
-const zdrEndpointHash =
-  zdrEndpoints === undefined ? undefined : sha256Hex(canonicalJson(zdrEndpoints));
+// Every candidate round needs both captured lists and reserves at the most expensive ZDR price.
+const candidatePlan = evaluationCandidatePlan({
+  evaluated,
+  llmModel: settings.llmModel,
+  catalog,
+  zdrEndpoints,
+});
+const { candidateRates, acceptanceCandidate } = candidatePlan;
 const endpointCatalog = endpointPath ? await json(resolve(endpointPath)) : undefined;
 let primaryReference:
   | { freeze: string; completedCases: number; firstGenerationPasses: number }
@@ -431,22 +396,13 @@ if (diagnosticOnly) {
 }
 const priorState = await readMigrationRecordedJson(resolve(directory, "state.json"));
 // The plan binds the run date; resuming a live round keeps the date it was frozen with.
-const date =
+const date = migrationPlanDate(
+  priorState,
   priorState === undefined
-    ? new Date().toISOString().slice(0, 10)
-    : z.object({ date: z.string() }).parse(await json(resolve(directory, "dry-run-plan.json")))
-        .date;
-// The claim covers this candidate's settings on the harness pipeline; production config stays.
-const acceptanceCandidate = acceptance
-  ? {
-      candidateId,
-      candidate,
-      zdrEndpointMaximumRates: candidateRates,
-      zdrEndpointHash,
-      firstPassGateStopsRound: true,
-      productionConfigUnchanged: true,
-    }
-  : undefined;
+    ? undefined
+    : await readMigrationRecordedJson(resolve(directory, "dry-run-plan.json")),
+  new Date().toISOString().slice(0, 10),
+);
 const smokeRound = smoke
   ? {
       fixtureIds: schedule.map((task) => task.fixture.id),
@@ -472,19 +428,9 @@ const plan = {
   fixtureSet,
   nodeVersion: process.version,
   expectedKeysNeverSent: true,
-  ...(comparison
-    ? {
-        comparison: {
-          candidateId,
-          candidate,
-          zdrEndpointMaximumRates: candidateRates,
-          zdrEndpointHash,
-          firstPassGateStopsRound: false,
-          blindReviewRequired: true,
-        },
-      }
-    : {}),
+  ...(candidatePlan.comparison ? { comparison: candidatePlan.comparison } : {}),
   ...(smokeRound ? { smoke: smokeRound } : {}),
+  // The claim covers this candidate's settings on the harness pipeline; production config stays.
   ...(acceptanceCandidate ? { acceptanceCandidate } : {}),
   evaluationProvenance: comparison
     ? {
@@ -515,6 +461,7 @@ const plan = {
   model: settings.llmModel,
   directJsonMode,
   structuredOutputMode,
+  transportMatchesAdoptionGate,
   dispatchMode,
   nativeSchemaAcceptanceClaimed: false,
   transportRationale: directJsonMode
@@ -543,13 +490,14 @@ await save(resolve(directory, "fixtures-and-ground-truth.json"), {
   cases: fixtures,
 });
 if (!live) {
+  const ledgerExists = (await readMigrationRecordedJson(ledgerPath)) !== undefined;
   process.stdout.write(
-    `${JSON.stringify({ dryRun: true, freeze, fixtureCount: fixtures.length, scheduledCases: schedule.length, paidCalls: 0, catalogAvailable: catalog !== undefined, diagnosticOnly, dispatchMode, structuredOutputMode, controls: { ...migrationControls, ...dispatchLimits } })}\n`,
+    `${JSON.stringify({ dryRun: true, freeze, fixtureCount: fixtures.length, scheduledCases: schedule.length, paidCalls: 0, catalogAvailable: catalog !== undefined, diagnosticOnly, dispatchMode, structuredOutputMode, transportMatchesAdoptionGate, ledgerPath, ledgerExists, controls: { ...migrationControls, ...dispatchLimits } })}\n`,
   );
   process.exit(0);
 }
 assert.ok(
-  candidate ? candidateRates && catalog : catalog && endpointCatalog,
+  evaluated ? candidateRates && catalog : catalog && endpointCatalog,
   "Live dispatch requires captured current model and regional endpoint catalogs",
 );
 assert.equal(
@@ -557,6 +505,8 @@ assert.equal(
   freeze,
   "Root must approve this exact code/config/fixture/catalog freeze",
 );
+// Never start paid work against a fresh ledger that would forget the earlier QA spend.
+await assertMigrationLedgerAvailable(ledgerPath, initializeLedger);
 const statePath = resolve(directory, "state.json");
 const state = migrationRoundStateSchema.parse(
   (await readMigrationRecordedJson(statePath)) ?? {
@@ -685,52 +635,19 @@ for (const task of schedule) {
   };
   const receipts: Record<string, unknown>[] = [];
   const provider = new OpenRouterProvider(key, settings, async (url, init) => {
-    assert.equal(String(url), "https://openrouter.ai/api/v1/chat/completions");
     await ensureControlContinues();
-    const body = z
-      .object({
-        model: z.string(),
-        max_tokens: z.number().int().positive(),
-        provider: z.unknown(),
-        response_format: z.object({ type: z.string() }),
-        messages: z.array(z.unknown()),
-      })
-      .passthrough()
-      .parse(JSON.parse(String(init?.body)));
-    assert.equal(body.model, settings.llmModel);
-    assert.deepEqual(body.provider, {
-      zdr: true,
-      data_collection: "deny",
-      require_parameters: true,
+    const serialized = String(init?.body);
+    // Route, sampling, caps and declared transport are checked before any reserve or payment.
+    const preflight = migrationDispatchPreflight({
+      url: String(url),
+      serialized,
+      operationKey: new Headers(init?.headers).get("Idempotency-Key") ?? "",
+      settings,
+      structuredOutputMode,
+      ...(candidateRates ? { candidateRates } : {}),
+      catalog,
     });
-    const overrides = settings.structuredModelOverrides?.[settings.llmModel];
-    const expectsTemperature =
-      settings.structuredTemperature !== undefined &&
-      !overrides?.omitTemperature &&
-      overrides?.reasoningEffort === undefined;
-    assert.ok(
-      !["top_p", "top_k"].some((name) => Object.hasOwn(body, name)) &&
-        (expectsTemperature
-          ? body.temperature === settings.structuredTemperature
-          : !Object.hasOwn(body, "temperature")),
-      "Sampling must match the candidate exactly",
-    );
-    assert.equal(
-      body.max_tokens,
-      overrides?.maxOutputTokens ?? settings.maxOutputTokens,
-      "Physical token cap must come from the real production adapter",
-    );
-    assert.deepEqual(
-      body.reasoning,
-      overrides?.reasoningEffort ? { effort: overrides.reasoningEffort } : undefined,
-    );
-    if (
-      migrationUnexpectedTransport(
-        structuredOutputMode,
-        body.response_format.type,
-        new Headers(init?.headers).get("Idempotency-Key") ?? "",
-      )
-    ) {
+    if (preflight.unexpectedTransport) {
       // Never pay for a transport other than the declared one; the case records the fallback.
       unexpectedTransport = true;
       state.stopped = true;
@@ -739,22 +656,7 @@ for (const task of schedule) {
       await persist();
       throw new MigrationControlInterruption(state.stopReason);
     }
-    const serialized = String(init?.body);
-    assert.ok(
-      overrides?.maxRequestBytes &&
-        Buffer.byteLength(serialized, "utf8") <= overrides.maxRequestBytes,
-      "Physical request bytes must fit the actual production cap",
-    );
-    // Candidate reserves use the most expensive ZDR endpoint price, never a list price.
-    const reserve = candidateRates
-      ? {
-          reserveUsd:
-            Buffer.byteLength(serialized, "utf8") * candidateRates.promptRate +
-            body.max_tokens * candidateRates.outputRate,
-          inputTokenCeiling: Buffer.byteLength(serialized, "utf8"),
-          ...candidateRates,
-        }
-      : migrationRequestReserve(catalog, body.model, serialized, body.max_tokens);
+    const { body, overrides, reserve } = preflight;
     try {
       assertMigrationDispatchAllowed(
         state.requests,
@@ -1147,6 +1049,7 @@ const summary = {
   spentUsd: state.spentUsd,
   directJsonMode,
   structuredOutputMode,
+  transportMatchesAdoptionGate,
   dispatchMode,
   nativeSchemaAcceptanceClaimed: false,
   unexpectedTransportFallbacks: state.results.filter((result) => result.unexpectedTransportFallback)
@@ -1167,7 +1070,12 @@ const summary = {
       (typeof result.visibleJsonParseFailures === "number" ? result.visibleJsonParseFailures : 0),
     0,
   ),
-  ...(comparison ? { comparisonCandidate: candidateId, comparisonModel: settings.llmModel } : {}),
+  ...(candidatePlan.comparison
+    ? {
+        comparisonCandidate: candidatePlan.comparison.candidateId,
+        comparisonModel: settings.llmModel,
+      }
+    : {}),
   ...(smokeRound ? { smoke: smokeRound } : {}),
   ...(acceptanceCandidate ? { acceptanceCandidate, acceptanceModel: settings.llmModel } : {}),
   cumulativeMigrationQaUsd: await withMigrationLedger(

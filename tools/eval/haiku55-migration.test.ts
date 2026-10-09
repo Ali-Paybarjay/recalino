@@ -1,7 +1,8 @@
-import { mkdtemp, readFile, rmdir, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, rmdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { canonicalJson, sha256Hex } from "../../packages/core/src/plt";
 import {
   freshMigrationFixtures,
   migrationFixtureSchema,
@@ -9,17 +10,22 @@ import {
 } from "./haiku55-migration-fixtures";
 import {
   assertMigrationDispatchAllowed,
+  assertMigrationLedgerAvailable,
+  assertMigrationPlanFrozen,
   type MigrationRequest,
   migrationAutomaticGateFailure,
   migrationBoundaryGateFailure,
   migrationControlInterruptionResult,
   migrationControls,
   migrationInitialRecovery,
+  migrationPlanDate,
   migrationReportedModelMatches,
   migrationRequestReserve,
   migrationSoftBudgetStop,
   migrationTransportGateFailure,
+  migrationTransportMatchesAdoptionGate,
   migrationUnexpectedTransport,
+  migrationUnledgeredPriorUsd,
   readMigrationRecordedJson,
   selectMigrationDiagnosticCases,
   selectMigrationSmokeCases,
@@ -475,5 +481,77 @@ describe("FR-QUOTA-009 comparison smoke subsets", () => {
     ["Q01,Q02,Q03", "smoke_case_count_exceeds_limits"],
   ])("rejects %s", (ids, code) => {
     expect(() => selectMigrationSmokeCases(original, ids)).toThrow(code);
+  });
+});
+
+describe("FR-PROC-003 frozen plan binding", () => {
+  const plan = { version: "synthetic", fixtureSet: "multilingual-holdout-4", date: "2026-10-09" };
+  const planFile = { ...plan, freeze: sha256Hex(canonicalJson(plan)), paidCalls: 0 };
+  it("accepts only a plan that still hashes to its freeze", () => {
+    expect(assertMigrationPlanFrozen(planFile)).toEqual(planFile);
+    expect(assertMigrationPlanFrozen({ ...planFile, paidCalls: 4 }).freeze).toBe(planFile.freeze);
+    for (const edited of [
+      { ...planFile, date: "2026-10-10" },
+      { ...planFile, fixtureSet: "migration-14" },
+      { ...planFile, extra: true },
+    ])
+      expect(() => assertMigrationPlanFrozen(edited)).toThrow("differs from its freeze");
+    expect(() => assertMigrationPlanFrozen({ ...plan, freeze: "not-a-hash" })).toThrow();
+    expect(() => assertMigrationPlanFrozen(plan)).toThrow();
+  });
+  it("dates a new round today and keeps a resumed round's frozen date", () => {
+    expect(migrationPlanDate(undefined, undefined, "2026-10-09")).toBe("2026-10-09");
+    expect(migrationPlanDate(undefined, { date: "2026-10-01" }, "2026-10-09")).toBe("2026-10-09");
+    const state = { freeze: planFile.freeze };
+    expect(migrationPlanDate(state, planFile, "2026-10-12")).toBe("2026-10-09");
+    expect(() => migrationPlanDate(state, undefined, "2026-10-12")).toThrow(
+      "resumed_round_plan_missing",
+    );
+    expect(() => migrationPlanDate(state, { date: 20261009 }, "2026-10-12")).toThrow();
+    expect(() => migrationPlanDate(undefined, undefined, "2026-10-09T10:00:00Z")).toThrow();
+  });
+  it("meets the unchanged adoption gate's transport only with direct json_object", () => {
+    expect(migrationControls.adoptionGates.expectedTransport).toBe("direct json_object");
+    expect(
+      migrationTransportMatchesAdoptionGate({
+        directJsonMode: true,
+        structuredOutputMode: "json_object",
+      }),
+    ).toBe(true);
+    for (const round of [
+      { directJsonMode: false, structuredOutputMode: "json_schema" },
+      { directJsonMode: true, structuredOutputMode: "json_schema" },
+      { directJsonMode: false, structuredOutputMode: "json_object" },
+      { directJsonMode: true, structuredOutputMode: undefined },
+    ])
+      expect(migrationTransportMatchesAdoptionGate(round)).toBe(false);
+  });
+});
+
+describe("FR-QUOTA-009 PRD-COST-02 live dispatch needs the shared ledger", () => {
+  it("refuses a missing ledger unless it is explicitly initialised where none exists", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "recalino-ledger-"));
+    const path = join(directory, "ledger.json");
+    try {
+      await expect(assertMigrationLedgerAvailable(path, false)).rejects.toThrow(
+        "ledger_missing_pass_shared_ledger",
+      );
+      await expect(assertMigrationLedgerAvailable(path, true)).resolves.toBeUndefined();
+      await expect(readFile(path)).rejects.toThrow();
+      await writeFile(
+        path,
+        JSON.stringify({ version: 1, priorUnledgeredUsd: migrationUnledgeredPriorUsd, rounds: [] }),
+      );
+      await expect(assertMigrationLedgerAvailable(path, false)).resolves.toBeUndefined();
+      await expect(assertMigrationLedgerAvailable(path, true)).rejects.toThrow(
+        "ledger_exists_drop_initialize_flag",
+      );
+      await writeFile(path, JSON.stringify({ version: 2, rounds: [] }));
+      await expect(assertMigrationLedgerAvailable(path, false)).rejects.toThrow();
+      await writeFile(path, "{");
+      await expect(assertMigrationLedgerAvailable(path, false)).rejects.toThrow();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

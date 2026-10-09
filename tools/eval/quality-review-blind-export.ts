@@ -48,19 +48,28 @@ export function blindForbiddenNames(plan: Record<string, unknown>): string[] {
   return [...names].sort();
 }
 
-/** A packet that names a model, vendor or router is not blind; nothing is written. */
+/**
+ * A packet that names a model, vendor or router is not blind; nothing is written. Text is NFKC
+ * normalised so fullwidth forms match, and a name is bounded only by Latin letters and digits:
+ * Japanese, Chinese and Arabic text runs into a Latin name without a space, yet "Geminis" or
+ * "googled" stays an ordinary word.
+ */
 export function assertBlindPacketClean(
   files: { path: string; bytes: Uint8Array }[],
   forbiddenNames: string[],
 ) {
   const escapePattern = (name: string) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = forbiddenNames.map(
+    (name) =>
+      new RegExp(
+        `(?<![\\p{Script=Latin}\\p{N}])${escapePattern(name.normalize("NFKC"))}(?![\\p{Script=Latin}\\p{N}])`,
+        "iu",
+      ),
+  );
   for (const { path, bytes } of files) {
-    const text = Buffer.from(bytes).toString("utf8");
-    for (const name of forbiddenNames)
-      if (
-        new RegExp(`(?<![\\p{L}\\p{N}])${escapePattern(name)}(?![\\p{L}\\p{N}])`, "iu").test(text)
-      )
-        throw new Error(`blind_packet_names_model_or_provider: ${path}`);
+    const text = Buffer.from(bytes).toString("utf8").normalize("NFKC");
+    if (patterns.some((pattern) => pattern.test(text)))
+      throw new Error(`blind_packet_names_model_or_provider: ${path}`);
   }
 }
 

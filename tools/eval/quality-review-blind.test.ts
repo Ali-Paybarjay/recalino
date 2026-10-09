@@ -154,6 +154,25 @@ describe("FR-PROC-003 PRD-QA-01 blind packet export", () => {
     for (const text of ["I googled the flashcards", "geminis", "Claudette"])
       expect(() => assertBlindPacketClean(packet(text), names)).not.toThrow();
   });
+  it("finds a name that runs into Japanese, Chinese or Arabic-script text or is fullwidth", () => {
+    const names = blindForbiddenNames({ model: "google/gemini-3.8-flash" });
+    const packet = (text: string) => [{ path: "R01/A/notes.html", bytes: Buffer.from(text) }];
+    for (const text of [
+      "こんにちは、私はGeminiです。",
+      "このノートはClaudeが作りました。",
+      "由Gemini生成的笔记",
+      "私はＧｅｍｉｎｉです",
+      "ＯｐｅｎＲｏｕｔｅｒ経由",
+      "أنابClaude",
+      "این جزوه را Geminiساخت",
+      "Это сделал Claudeом",
+    ])
+      expect(() => assertBlindPacketClean(packet(text), names)).toThrow(
+        "blind_packet_names_model_or_provider",
+      );
+    for (const text of ["ジェミニは星座です", "双子座的笔记", "Ｇｅｍｉｎｉｓ", "googled"])
+      expect(() => assertBlindPacketClean(packet(text), names)).not.toThrow();
+  });
   it("finds no model or provider name in any synthetic answer key", () => {
     const all = [
       ...comparisonFixtures(),
@@ -354,6 +373,13 @@ describe("FR-PROC-003 PRD-QA-01 conservative blind review merge", () => {
         modelHash: sha256Hex(canonicalJson(model(entry.caseId))),
       })),
       merged,
+      {
+        fixtureSet: "synthetic-holdout",
+        candidateId: "gemini-3.8-flash-medium",
+        model: "google/gemini-3.8-flash",
+        structuredOutputMode: "json_object",
+        directJsonMode: true,
+      },
     );
     expect(assessed.criticalIssues).toBe(2);
     expect(assessed.cases.find((entry) => entry.caseId === repeat)?.qualityPassed).toBe(false);

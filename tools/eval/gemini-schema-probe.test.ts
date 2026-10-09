@@ -58,8 +58,15 @@ const run = (
       today: () => "2026-10-09",
     },
   );
+const sharedLedger = (): MigrationLedger => ({
+  version: 1,
+  priorUnledgeredUsd: migrationUnledgeredPriorUsd,
+  rounds: [],
+});
+// A live probe joins the existing shared ledger; it never creates one implicitly.
 const live = async () => {
   await run(() => chat(valid));
+  await writeFile(options.ledgerPath, JSON.stringify(sharedLedger()));
   const plan = JSON.parse(await readFile(join(options.out, "dry-run-plan.json"), "utf8"));
   return {
     runLive: true,
@@ -99,6 +106,7 @@ beforeEach(async () => {
     zdrEndpointPath: join(directory, "zdr.json"),
     runLive: false,
     ledgerPath: join(directory, "ledger.json"),
+    initializeLedger: false,
     configPath: resolve("config/openrouter-defaults.json"),
   };
 });
@@ -197,7 +205,13 @@ describe("FR-QUOTA-009 FR-PLT-009 enforcement probe dispatch", () => {
     expect(await run(() => chat(valid))).toBe(0);
     expect(calls).toHaveLength(0);
     const output = JSON.parse(printed[0] ?? "{}");
-    expect(output).toMatchObject({ dryRun: true, paidCalls: 0, hardUsd: 0.05 });
+    expect(output).toMatchObject({
+      dryRun: true,
+      paidCalls: 0,
+      hardUsd: 0.05,
+      ledgerPath: options.ledgerPath,
+      ledgerExists: false,
+    });
     expect(output.request.body.response_format.type).toBe("json_schema");
     expect(output.reserveUsd).toBeLessThanOrEqual(0.05);
     expect(await readdir(options.out)).toEqual(["dry-run-plan.json"]);
@@ -219,6 +233,29 @@ describe("FR-QUOTA-009 FR-PLT-009 enforcement probe dispatch", () => {
       run(() => chat(valid), { ...approved, envFile: join(directory, "empty.env") }),
     ).rejects.toThrow("credential unavailable");
     expect(calls).toHaveLength(0);
+  });
+  it("refuses a live probe whose shared ledger is missing before any fetch", async () => {
+    const approved = await live();
+    await rm(options.ledgerPath);
+    await expect(run(() => chat(valid), approved)).rejects.toThrow(
+      "ledger_missing_pass_shared_ledger",
+    );
+    expect(calls).toHaveLength(0);
+    await expect(readFile(options.ledgerPath)).rejects.toThrow();
+    await expect(readdir(options.out)).resolves.toEqual(["dry-run-plan.json"]);
+  });
+  it("creates a fresh ledger only with the explicit initialisation flag", async () => {
+    const approved = await live();
+    await expect(run(() => chat(valid), { ...approved, initializeLedger: true })).rejects.toThrow(
+      "ledger_exists_drop_initialize_flag",
+    );
+    expect(calls).toHaveLength(0);
+    await rm(options.ledgerPath);
+    expect(await run(() => chat(valid), { ...approved, initializeLedger: true })).toBe(0);
+    expect(calls).toHaveLength(1);
+    const ledger = JSON.parse(await readFile(options.ledgerPath, "utf8")) as MigrationLedger;
+    expect(ledger.priorUnledgeredUsd).toBe(migrationUnledgeredPriorUsd);
+    expect(ledger.rounds).toHaveLength(1);
   });
   it("records a schema-valid outcome and its spend in the shared ledger, once", async () => {
     const approved = await live();
@@ -284,8 +321,7 @@ describe("FR-QUOTA-009 FR-PLT-009 enforcement probe dispatch", () => {
   it("refuses before any dispatch when the shared cumulative cap cannot hold the reserve", async () => {
     const approved = await live();
     const full: MigrationLedger = {
-      version: 1,
-      priorUnledgeredUsd: migrationUnledgeredPriorUsd,
+      ...sharedLedger(),
       rounds: [
         {
           freeze: "c".repeat(64),
@@ -323,9 +359,23 @@ describe("FR-QUOTA-009 FR-PLT-009 enforcement probe dispatch", () => {
       "credentials.env",
       "--catalog-file",
       "catalog.json",
+      "--ledger-file",
+      "shared/ledger.json",
     ]);
-    expect(parsed).toMatchObject({ runLive: true, envFile: "credentials.env" });
-    expect(parseSchemaProbeOptions(["node", "probe"]).runLive).toBe(false);
+    expect(parsed).toMatchObject({
+      runLive: true,
+      envFile: "credentials.env",
+      ledgerPath: resolve("shared/ledger.json"),
+      initializeLedger: false,
+    });
+    expect(parseSchemaProbeOptions(["node", "probe"])).toMatchObject({
+      runLive: false,
+      ledgerPath: resolve("artifacts/verification/haiku55-evaluation-ledger.json"),
+      initializeLedger: false,
+    });
+    expect(parseSchemaProbeOptions(["node", "probe", "--initialize-ledger"]).initializeLedger).toBe(
+      true,
+    );
     expect(() => parseSchemaProbeOptions(["node", "probe", "--env-file", "--run-live"])).toThrow(
       "Missing --env-file value",
     );

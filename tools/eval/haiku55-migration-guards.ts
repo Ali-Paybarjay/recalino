@@ -1,5 +1,8 @@
+import assert from "node:assert/strict";
 import { mkdir, readFile, rename, rmdir, writeFile } from "node:fs/promises";
 import { z } from "../../packages/core/node_modules/zod";
+import type { ProviderSettings } from "../../packages/core/src/aip";
+import { canonicalJson, sha256Hex } from "../../packages/core/src/plt";
 
 export const migrationControls = {
   version: "haiku55-production-migration-evaluation-4",
@@ -190,6 +193,99 @@ export function migrationUnexpectedTransport(
   return responseFormat !== declared || operationKey.endsWith(":json");
 }
 
+/**
+ * Only the direct json_object transport meets the unchanged adoption gate (`expectedTransport`).
+ * A strict json_schema round still reports every other gate, but never adoption eligibility.
+ */
+export function migrationTransportMatchesAdoptionGate(round: {
+  directJsonMode: boolean;
+  structuredOutputMode: string | undefined;
+}): boolean {
+  return round.directJsonMode && round.structuredOutputMode === "json_object";
+}
+
+const dispatchBodySchema = z
+  .object({
+    model: z.string(),
+    max_tokens: z.number().int().positive(),
+    provider: z.unknown(),
+    response_format: z.object({ type: z.string() }),
+    messages: z.array(z.unknown()),
+  })
+  .passthrough();
+
+/**
+ * Everything a round checks before it pays for a request: the exact candidate route (model, ZDR
+ * policy, sampling, physical caps, reasoning) and the declared transport. A request on another
+ * transport, including the `:json` fallback after a grammar rejection, is reported before any
+ * reserve; the caller stops the round without dispatching it.
+ */
+export function migrationDispatchPreflight(input: {
+  url: string;
+  serialized: string;
+  operationKey: string;
+  settings: ProviderSettings;
+  structuredOutputMode: string | undefined;
+  /** Candidate rounds reserve at the most expensive ZDR endpoint price, never a list price. */
+  candidateRates?: { promptRate: number; outputRate: number };
+  catalog: unknown;
+}) {
+  const { settings, serialized } = input;
+  assert.equal(input.url, "https://openrouter.ai/api/v1/chat/completions");
+  const body = dispatchBodySchema.parse(JSON.parse(serialized));
+  assert.equal(body.model, settings.llmModel);
+  assert.deepEqual(body.provider, {
+    zdr: true,
+    data_collection: "deny",
+    require_parameters: true,
+  });
+  const overrides = settings.structuredModelOverrides?.[settings.llmModel];
+  const expectsTemperature =
+    settings.structuredTemperature !== undefined &&
+    !overrides?.omitTemperature &&
+    overrides?.reasoningEffort === undefined;
+  assert.ok(
+    !["top_p", "top_k"].some((name) => Object.hasOwn(body, name)) &&
+      (expectsTemperature
+        ? body.temperature === settings.structuredTemperature
+        : !Object.hasOwn(body, "temperature")),
+    "Sampling must match the candidate exactly",
+  );
+  assert.equal(
+    body.max_tokens,
+    overrides?.maxOutputTokens ?? settings.maxOutputTokens,
+    "Physical token cap must come from the real production adapter",
+  );
+  assert.deepEqual(
+    body.reasoning,
+    overrides?.reasoningEffort ? { effort: overrides.reasoningEffort } : undefined,
+  );
+  if (
+    migrationUnexpectedTransport(
+      input.structuredOutputMode,
+      body.response_format.type,
+      input.operationKey,
+    )
+  )
+    return { unexpectedTransport: true as const };
+  const bytes = Buffer.byteLength(serialized, "utf8");
+  assert.ok(
+    overrides?.maxRequestBytes && bytes <= overrides.maxRequestBytes,
+    "Physical request bytes must fit the actual production cap",
+  );
+  const reserve = input.candidateRates
+    ? {
+        reserveUsd:
+          bytes * input.candidateRates.promptRate +
+          body.max_tokens * input.candidateRates.outputRate,
+        inputTokenCeiling: bytes,
+        promptRate: input.candidateRates.promptRate,
+        outputRate: input.candidateRates.outputRate,
+      }
+    : migrationRequestReserve(input.catalog, body.model, serialized, body.max_tokens);
+  return { unexpectedTransport: false as const, body, overrides, reserve };
+}
+
 /** Transport failures close every round; a schema grammar never needs JSON closer completion. */
 export function migrationTransportGateFailure(
   results: Record<string, unknown>[],
@@ -294,6 +390,36 @@ export async function readMigrationRecordedJson(path: string): Promise<unknown |
   }
 }
 
+/**
+ * A captured dry-run plan must still hash to its own freeze, so nothing it records (fixture set,
+ * candidate, transport, date) can be edited after approval.
+ */
+export function assertMigrationPlanFrozen(planFile: unknown) {
+  const plan = z.record(z.string(), z.unknown()).parse(planFile);
+  const { freeze } = z.object({ freeze: z.string().regex(/^[a-f0-9]{64}$/) }).parse(plan);
+  const frozen = Object.fromEntries(
+    Object.entries(plan).filter(([name]) => name !== "freeze" && name !== "paidCalls"),
+  );
+  if (sha256Hex(canonicalJson(frozen)) !== freeze)
+    throw new Error("The captured plan differs from its freeze");
+  return { ...plan, freeze };
+}
+
+/**
+ * The plan binds the run date. A new round takes today's UTC date; a resumed live round keeps the
+ * date it was frozen with, so resuming on a later day never changes its freeze.
+ */
+export function migrationPlanDate(
+  priorState: unknown,
+  recordedPlan: unknown,
+  today: string,
+): string {
+  const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  if (priorState === undefined) return date.parse(today);
+  if (recordedPlan === undefined) throw new Error("resumed_round_plan_missing");
+  return z.object({ date }).parse(recordedPlan).date;
+}
+
 /** Diagnostics may finish only the two remaining cases, retaining original fourteen-case identities. */
 export function selectMigrationDiagnosticCases<
   T extends { caseId: string; fixture: { id: string } },
@@ -386,6 +512,18 @@ export function assertMigrationCumulativeBudget(ledger: MigrationLedger, reserve
     ledger.rounds.reduce((total, round) => total + round.spentUsd + (round.inFlightUsd ?? 0), 0);
   if (!Number.isFinite(spent) || spent + reserveUsd > migrationControls.cumulativeHardUsd)
     throw new Error("cumulative_budget_before_dispatch");
+}
+
+/**
+ * Live dispatch needs the shared ledger that already holds every earlier QA round; it is ignored by
+ * git and lives in one worktree. A missing file would silently restart the cumulative cap, so only
+ * an explicit initialisation may create one, and only where none exists yet.
+ */
+export async function assertMigrationLedgerAvailable(path: string, initialize: boolean) {
+  const recorded = await readMigrationRecordedJson(path);
+  if (recorded === undefined && !initialize) throw new Error("ledger_missing_pass_shared_ledger");
+  if (recorded !== undefined && initialize) throw new Error("ledger_exists_drop_initialize_flag");
+  if (recorded !== undefined) migrationLedgerSchema.parse(recorded);
 }
 
 /**

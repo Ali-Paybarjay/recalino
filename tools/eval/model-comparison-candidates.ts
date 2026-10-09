@@ -1,4 +1,5 @@
 import type { ProviderSettings } from "../../packages/core/src/aip";
+import { canonicalJson, sha256Hex } from "../../packages/core/src/plt";
 
 /**
  * Cross-model comparison candidates (2026-10-08). Every candidate uses the same content-only
@@ -64,7 +65,12 @@ export const evaluationCandidates: Record<string, ComparisonCandidate> = {
   ...comparisonCandidates,
   ...schemaDecodingCandidates,
 };
-/** The only candidates a gated holdout may accept instead of the production config. */
+/**
+ * The only candidates a gated holdout may accept instead of the production config. The schema
+ * twin runs every gate, but the unchanged adoption gate expects direct json_object, so its round
+ * reports `transportMatchesAdoptionGate: false` and is never adoption eligible until the owner
+ * versions a gate change.
+ */
 export const acceptanceCandidateIds: readonly string[] = [
   "gemini-3.8-flash-medium",
   "gemini-3.8-flash-medium-schema",
@@ -92,6 +98,86 @@ export function resolveEvaluationCandidate(
   if (!acceptanceCandidateIds.includes(candidateId))
     throw new Error("candidate_not_on_acceptance_allow_list");
   return { candidateId, candidate, acceptance: true };
+}
+export type EvaluatedCandidate = NonNullable<ReturnType<typeof resolveEvaluationCandidate>>;
+/** The migration production model; a round without a candidate evaluates exactly this. */
+export const productionMigrationModel = "anthropic/claude-haiku-5.5";
+
+/**
+ * A round evaluates either the production config on direct JSON or exactly the named candidate on
+ * its declared decoding mode. Strict json_schema decoding needs a candidate that declares it.
+ */
+export function assertEvaluatedRoundSettings(
+  settings: ProviderSettings,
+  evaluated: EvaluatedCandidate | undefined,
+) {
+  const structuredOutputMode =
+    settings.structuredModelOverrides?.[settings.llmModel]?.structuredOutputMode;
+  const directJsonMode = structuredOutputMode === "json_object";
+  if (
+    !directJsonMode &&
+    !(
+      evaluated?.candidate.structuredOutputMode === "json_schema" &&
+      structuredOutputMode === "json_schema"
+    )
+  )
+    throw new Error("evaluated_transport_not_declared");
+  if (settings.llmModel !== (evaluated ? evaluated.candidate.model : productionMigrationModel))
+    throw new Error("evaluated_model_differs_from_config_or_candidate");
+  return { structuredOutputMode, directJsonMode };
+}
+
+type CandidatePlanBlock = {
+  candidateId: string;
+  candidate: ComparisonCandidate;
+  zdrEndpointMaximumRates: { promptRate: number; outputRate: number };
+  zdrEndpointHash: string;
+};
+/**
+ * Every candidate round reserves at the most expensive ZDR endpoint price, so it needs the captured
+ * ZDR endpoint list and the model catalog. The plan block binds the candidate, the price maxima and
+ * the list hash; an acceptance round also stops on the first-pass gate and leaves the production
+ * config unchanged.
+ */
+export function evaluationCandidatePlan(input: {
+  evaluated: EvaluatedCandidate | undefined;
+  llmModel: string;
+  catalog: unknown;
+  zdrEndpoints: unknown;
+}): {
+  candidateRates?: { promptRate: number; outputRate: number };
+  comparison?: CandidatePlanBlock & { firstPassGateStopsRound: false; blindReviewRequired: true };
+  acceptanceCandidate?: CandidatePlanBlock & {
+    firstPassGateStopsRound: true;
+    productionConfigUnchanged: true;
+  };
+} {
+  const { evaluated } = input;
+  if (!evaluated) return {};
+  if (input.zdrEndpoints === undefined || input.catalog === undefined)
+    throw new Error("candidate_round_requires_zdr_endpoints_and_catalog");
+  if (input.llmModel !== evaluated.candidate.model)
+    throw new Error("evaluated_model_differs_from_config_or_candidate");
+  const candidateRates = zdrEndpointMaximumRates(input.zdrEndpoints, input.llmModel, input.catalog);
+  const block: CandidatePlanBlock = {
+    candidateId: evaluated.candidateId,
+    candidate: evaluated.candidate,
+    zdrEndpointMaximumRates: candidateRates,
+    zdrEndpointHash: sha256Hex(canonicalJson(input.zdrEndpoints)),
+  };
+  return evaluated.acceptance
+    ? {
+        candidateRates,
+        acceptanceCandidate: {
+          ...block,
+          firstPassGateStopsRound: true,
+          productionConfigUnchanged: true,
+        },
+      }
+    : {
+        candidateRates,
+        comparison: { ...block, firstPassGateStopsRound: false, blindReviewRequired: true },
+      };
 }
 
 /** Candidate settings derived from the versioned production defaults; nothing else changes. */

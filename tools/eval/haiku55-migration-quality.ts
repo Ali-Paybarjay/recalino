@@ -1,6 +1,10 @@
 import { z } from "../../packages/core/node_modules/zod";
 import { canonicalJson } from "../../packages/core/src/plt";
-import { migrationControls } from "./haiku55-migration-guards";
+import {
+  assertMigrationPlanFrozen,
+  migrationControls,
+  migrationTransportMatchesAdoptionGate,
+} from "./haiku55-migration-guards";
 
 const qualityScore = z.number().min(0).max(4);
 /** The five scored dimensions of the adoption gate's per-case mean. */
@@ -69,6 +73,56 @@ type MigrationTechnicalSummary = {
   /** Deterministic answer-key checks for every accepted case; absent means not evaluated. */
   automaticGoldChecksPassed?: boolean;
 };
+/** What the frozen plan says was evaluated; the assessment reports it next to every gate. */
+export type MigrationQualityRound = {
+  fixtureSet: string;
+  candidateId: string | null;
+  model: string;
+  structuredOutputMode: string | null;
+  directJsonMode: boolean;
+};
+
+/**
+ * Offline review reads the fixture set, candidate and transport from the self-hash-verified
+ * dry-run plan; a flag may only repeat them. Plans frozen before the decoding mode was recorded
+ * imply json_object exactly when they record the direct JSON transport.
+ */
+export function migrationQualityPlanContext(
+  planFile: unknown,
+  flags: { fixtureSet?: string; candidate?: string },
+): { freeze: string; fixturesHash: string; expectedCases: number; round: MigrationQualityRound } {
+  const plan = z
+    .object({
+      freeze: z.string(),
+      fixturesHash: z.string(),
+      expectedCases: z.number().int().positive(),
+      fixtureSet: z.string().min(1),
+      model: z.string().min(1),
+      directJsonMode: z.boolean(),
+      structuredOutputMode: z.string().optional(),
+      comparison: z.object({ candidateId: z.string() }).optional(),
+      acceptanceCandidate: z.object({ candidateId: z.string() }).optional(),
+    })
+    .parse(assertMigrationPlanFrozen(planFile));
+  if (flags.fixtureSet !== undefined && flags.fixtureSet !== plan.fixtureSet)
+    throw new Error("quality_fixture_set_differs_from_plan");
+  const candidateId = plan.acceptanceCandidate?.candidateId ?? plan.comparison?.candidateId;
+  if (flags.candidate !== undefined && flags.candidate !== candidateId)
+    throw new Error("quality_candidate_differs_from_plan");
+  return {
+    freeze: plan.freeze,
+    fixturesHash: plan.fixturesHash,
+    expectedCases: plan.expectedCases,
+    round: {
+      fixtureSet: plan.fixtureSet,
+      candidateId: candidateId ?? null,
+      model: plan.model,
+      structuredOutputMode:
+        plan.structuredOutputMode ?? (plan.directJsonMode ? "json_object" : null),
+      directJsonMode: plan.directJsonMode,
+    },
+  };
+}
 
 /**
  * Offline review trusts only the round state. summary.json and every case's
@@ -130,11 +184,16 @@ export function migrationRecordedTechnicalSummary(recorded: {
   };
 }
 
-/** Reviewer judgments are tied to exact accepted models and every predeclared concept. */
+/**
+ * Reviewer judgments are tied to exact accepted models and every predeclared concept. Adoption
+ * also needs the unchanged gate's direct json_object transport; a json_schema round reports
+ * every other gate but stays ineligible until the owner versions a gate change.
+ */
 export function assessMigrationQualityReview(
   summary: MigrationTechnicalSummary,
   references: MigrationQualityReference[],
   rawReview: unknown,
+  round: MigrationQualityRound,
 ) {
   const review = migrationQualityReviewSchema.parse(rawReview);
   if (review.freeze !== summary.freeze) throw new Error("quality_review_freeze_mismatch");
@@ -185,11 +244,18 @@ export function assessMigrationQualityReview(
     !summary.stopped &&
     summary.unresolved.length === 0 &&
     summary.automaticGoldChecksPassed !== false;
+  const transportMatchesAdoptionGate = migrationTransportMatchesAdoptionGate({
+    directJsonMode: round.directJsonMode,
+    structuredOutputMode: round.structuredOutputMode ?? undefined,
+  });
+  const adoptionGatesExceptTransportPassed =
+    complete && technicalGatesPassed && cases.every((entry) => entry.qualityPassed);
   return {
     freeze: review.freeze,
     reviewer: review.reviewer,
     offlineOnly: true,
     manualJudgments: true,
+    round,
     reviewedCases: cases.length,
     expectedCases: 14,
     complete,
@@ -198,8 +264,10 @@ export function assessMigrationQualityReview(
     allRequiredConceptsAdequatelyTaught:
       complete && cases.every((entry) => entry.allRequiredConceptsAdequatelyTaught),
     criticalIssues: cases.reduce((sum, entry) => sum + entry.criticalIssues, 0),
-    adoptionEligible:
-      complete && technicalGatesPassed && cases.every((entry) => entry.qualityPassed),
+    expectedTransport: migrationControls.adoptionGates.expectedTransport,
+    transportMatchesAdoptionGate,
+    adoptionGatesExceptTransportPassed,
+    adoptionEligible: transportMatchesAdoptionGate && adoptionGatesExceptTransportPassed,
     cases,
   };
 }
