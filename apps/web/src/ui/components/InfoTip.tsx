@@ -15,7 +15,7 @@ type InfoTipProps = {
 };
 
 /**
- * An "i" button that opens a short explanation below it (D48). Pressing it again, pressing
+ * An "i" button that opens a short explanation below it (D52). Pressing it again, pressing
  * anywhere else, Escape or moving focus away closes it. The text stays in the document while
  * closed, so aria-controls always points at an element. It holds block content, so place it
  * next to a heading or label, never inside one or inside a paragraph.

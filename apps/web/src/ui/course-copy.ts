@@ -6,7 +6,7 @@ export const courseCopy = {
     "A course groups its dated classes and learning materials. You can have more than one course.",
 } as const;
 
-// Unit help in an InfoTip, approved by the product owner on 2026-10-09 (D48).
+// Unit help in an InfoTip, approved by the product owner on 2026-10-09 (D52).
 export const unitCopy = {
   helpLabel: "About units",
   help: [

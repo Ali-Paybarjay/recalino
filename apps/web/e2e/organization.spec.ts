@@ -146,7 +146,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.getByLabel("New course name").fill("English B1");
   await page.getByRole("button", { name: "Create course", exact: true }).click();
   await expect(page.getByLabel("Selected course")).toHaveValue(/.+/);
-  // D48: unit help sits behind an info button instead of filling the panel.
+  // D52: unit help sits behind an info button instead of filling the panel.
   await expect(page.getByLabel("New unit name")).toHaveAttribute(
     "placeholder",
     "For example: Unit 3 – Travel",

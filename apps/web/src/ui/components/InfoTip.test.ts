@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { unitCopy } from "../course-copy";
 import { InfoTip } from "./InfoTip";
 
-describe("InfoTip (D48)", () => {
+describe("InfoTip (D52)", () => {
   it("starts closed with a named button that controls the hidden help text", () => {
     const html = renderToStaticMarkup(
       createElement(
