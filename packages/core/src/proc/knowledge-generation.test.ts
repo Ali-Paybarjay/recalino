@@ -1738,11 +1738,50 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
     // A chunk from the item's cited class block keeps that block's text.
     expect(stored("LOOK FORWARD TO")).toMatchObject({ ipaText: "look forward to" });
     // Words that are not English Latin-script text never become the transcribed words.
+    const mixed = { fullSentence: "She walks to the small shop فعل را every morning." };
+    for (const spokenChunk of ["فعل را", "shop فعل"])
+      expect(() => stored(spokenChunk, mixed)).toThrow(failure("study_ipa_chunk_invalid"));
     expect(() =>
       stored("فعل را", { prompt: "Correct the verb (فعل را): She walk to the small shop." }),
     ).toThrow(failure("study_ipa_chunk_invalid"));
+    // Shared symbols and a modifier-letter apostrophe are copied words, not another script.
+    for (const [spokenChunk, fullSentence, ipaText] of [
+      ["it costs £5", "It costs £5 to visit the small shop every morning.", "It costs £5"],
+      ["is 20°C", "The temperature is 20°C every morning.", "is 20°C"],
+      ["she doesnʼt walk", "She doesnʼt walk to the small shop.", "She doesnʼt walk"],
+    ] as const)
+      expect(stored(spokenChunk, { fullSentence })).toMatchObject({ ipaText });
     // Lexical IPA transcribes meaning.en itself, so it stores no transcribed words.
     expect(prepared.assemble(wire(output())).learningItems[0]?.study).not.toHaveProperty("ipaText");
+  });
+
+  it("AC-D46-04 never stores a prompt's uncorrected form, blank or cue as the transcribed words", () => {
+    const exercise = {
+      ...source(),
+      blocks: [
+        {
+          id: "block",
+          unitId: "unit",
+          kind: "paragraph" as const,
+          text: "Complete: she ______ (walks) home. Answer: she walks home.",
+        },
+      ],
+    };
+    const prepared = prepare(input([exercise]));
+    const stored = (spokenChunk: string, fields: Record<string, unknown> = {}) =>
+      prepared.assemble(
+        wire({ ...output(), learningItems: [{ ...grammar(), ...fields, spokenChunk }] }),
+      ).learningItems[0]?.study;
+    // The prompt holds the learner's uncorrected form; the answer is where words are copied from.
+    expect(grammar().prompt).toContain("She walk to");
+    expect(() => stored("she walk")).toThrow(failure("study_ipa_chunk_invalid"));
+    const cue = { prompt: "She ______ (walks / walk) to the small shop every morning." };
+    for (const spokenChunk of ["she walks walk", "she walk to", "walk to the"])
+      expect(() => stored(spokenChunk, cue)).toThrow(failure("study_ipa_chunk_invalid"));
+    expect(stored("she walks", cue)).toMatchObject({ ipaText: "She walks" });
+    // A class block's run across a blank or cue is skipped for its clean run of the same words.
+    expect(() => stored("complete she walks")).toThrow(failure("study_ipa_chunk_invalid"));
+    expect(stored("she walks home")).toMatchObject({ ipaText: "she walks home" });
   });
 
   it("shows the transcribed grammar words beside the IPA in the Persian Class Notes", () => {
@@ -2228,6 +2267,8 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
     for (const text of [prepared.system, schemaText]) {
       expect(text).toContain("printed its exercise that way");
       expect(text).toContain("plausible wrong form");
+      // Options in a fixed order would let the learner answer by position.
+      expect(text).toContain("in varying order so the required form is not always first");
       expect(text).toContain("the subject between the auxiliary and the verb");
     }
     expect(schemaText).toContain("IPA transcription of exactly the words in spokenChunk");
@@ -2240,7 +2281,12 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
         "study_prompt_reveals_answer",
         'the required form and a plausible wrong form separated by " / "',
       ],
+      ["study_prompt_reveals_answer", "in varying order so the required form is not always first"],
       ["study_ipa_chunk_invalid", "never skip one: in a question with subject-auxiliary inversion"],
+      [
+        "study_ipa_chunk_invalid",
+        "Never copy the chunk from practice.prompt or across a blank, bracket or slash",
+      ],
       ["study_ipa_chunk_invalid", "pronunciation.ipa transcribes exactly those words"],
     ] as const)
       expect(

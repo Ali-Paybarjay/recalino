@@ -63,7 +63,7 @@ const repairGuidance: Record<string, string> = {
   study_ipa_headword_invalid:
     "A lexical pronunciation.ipa transcribed more than its meaning.en headword. Transcribe only the headword's own words; an sb/sth slot may be spoken as a short object such as it, but never transcribe the example sentence or other added words.",
   study_prompt_reveals_answer:
-    'A grammar practice.prompt or practice.taskFa already showed practice.fullSentence: a cue in brackets was already the required form, the prompt was already the answer, or the instruction\'s words only had to be put together. Never copy a bracketed cue that is already the required form, even when the class printed its exercise that way: rewrite the prompt so the learner must choose or change something. Give a cue the learner must change or choose from, for example two forms in brackets (the required form and a plausible wrong form separated by " / ") or a sentence that needs the taught change, never print the answer on the front, and keep fullSentence the exact correct class sentence.',
+    'A grammar practice.prompt or practice.taskFa already showed practice.fullSentence: a cue in brackets was already the required form, the prompt was already the answer, or the instruction\'s words only had to be put together. Never copy a bracketed cue that is already the required form, even when the class printed its exercise that way: rewrite the prompt so the learner must choose or change something. Give a cue the learner must change or choose from, for example two forms in brackets (the required form and a plausible wrong form separated by " / ", in varying order so the required form is not always first) or a sentence that needs the taught change, never print the answer on the front, and keep fullSentence the exact correct class sentence.',
   study_gap_missing: "A lexical practice.gapSentence lacked its ______ blank.",
   study_gap_hint:
     "A blank touched letters. Each ______ replaces whole words and gives no first-letter hint.",
@@ -73,7 +73,7 @@ const repairGuidance: Record<string, string> = {
   study_gap_overhidden:
     "A practice.gapSentence also hid words that are not part of the target, so its answer was not recoverable. Blank only the target's own words and keep complements and objects visible.",
   study_ipa_chunk_invalid:
-    "A grammar pronunciation.spokenChunk was not 2 to 6 consecutive words copied exactly from practice.fullSentence. Copy the words exactly as they appear and never skip one: in a question with subject-auxiliary inversion, keep the subject between the auxiliary and the verb. pronunciation.ipa transcribes exactly those words.",
+    "A grammar pronunciation.spokenChunk was not 2 to 6 consecutive English words copied exactly from practice.fullSentence. Copy the words exactly as they appear and never skip one: in a question with subject-auxiliary inversion, keep the subject between the auxiliary and the verb. Never copy the chunk from practice.prompt or across a blank, bracket or slash. pronunciation.ipa transcribes exactly those words.",
   study_plan_uncovered:
     "A lessonPlan concept was never stated by a claim citing its keys. Teach every planned concept, or remove it from the plan only if the sources do not teach it.",
   study_sentence_mismatch:
@@ -618,12 +618,13 @@ function containsWordSequence(words: string[], sequence: string[]): boolean {
 }
 
 /**
- * The first run of the lower-case sequence in `text`, as written there: its own case, spelling
- * and inner punctuation, from its first word to its last, with whitespace collapsed.
+ * Every run of the lower-case sequence in `text`, in order, as written there: its own case,
+ * spelling and everything between its first word and its last, with whitespace collapsed.
  */
-function writtenWordSequence(text: string, sequence: string[]): string | undefined {
-  if (!sequence.length) return undefined;
+function writtenWordSequences(text: string, sequence: string[]): string[] {
+  if (!sequence.length) return [];
   const words = [...text.matchAll(/[\p{L}\p{N}'’-]+/gu)];
+  const runs: string[] = [];
   for (let start = 0; start + sequence.length <= words.length; start++) {
     const first = words[start];
     const last = words[start + sequence.length - 1];
@@ -632,9 +633,9 @@ function writtenWordSequence(text: string, sequence: string[]): string | undefin
       last &&
       sequence.every((word, offset) => words[start + offset]?.[0].toLocaleLowerCase("en") === word)
     )
-      return text.slice(first.index, last.index + last[0].length).replace(/\s+/gu, " ");
+      runs.push(text.slice(first.index, last.index + last[0].length).replace(/\s+/gu, " "));
   }
-  return undefined;
+  return runs;
 }
 
 // Unicode encodes every decimal digit in a contiguous 0-9 run, so its value is its run offset.
@@ -873,7 +874,7 @@ export function buildKnowledgeGenerationInput(
         `${explanationDescription} Instruction only: explain the requested operation and scope, without a worked answer or solution hints.`,
       ),
       prompt: required.describe(
-        'English task item without its completed answer. A bracketed cue is never already the required form, even when the class printed its exercise that way: the learner must choose or change something, for example the required form and a plausible wrong form in brackets separated by " / ".',
+        'English task item without its completed answer. A bracketed cue is never already the required form, even when the class printed its exercise that way: the learner must choose or change something, for example the required form and a plausible wrong form in brackets separated by " / ", in varying order so the required form is not always first.',
       ),
       fullSentence: required.describe(
         "The exact answer to prompt, preserving its subject, verb, meaning and tense, changing only what taskFa asks.",
@@ -1056,7 +1057,7 @@ export function buildKnowledgeGenerationInput(
     "Recognition practice.example must be a correct usable English example. For an explicitly incorrect source exercise or quotation, use the corrected form in practice.example; the original may appear only as an explicitly labelled incorrect/correction contrast in teaching.noteFa. Keep its anonymous or quoted provenance clear and never imply that the account owner made the error. Do not turn a correct source example into an error for practice.",
     `Prefer exact supplied class examples. A lexical meaning.en contains only Latin letters, digits, spaces, apostrophes and hyphens: the spoken headword as taught, optionally with sb/sth object slots (for example "kit sth out") or one complement after " + " chosen ONLY from ${notations}, with alternatives joined by " / " or "or". No other notation, such as "+ time" or "+ to + verb", and no brackets or definitions; if a usage needs another complement, write only the headword and explain the complement in teaching.noteFa.`,
     `Write practice.fullSentence first, then copy it exactly into practice.gapSentence and replace the complete target span with ${blank}: every word of the headword as it appears in the sentence, including inflections and particles. For an sb/sth frame, blank each lexical part and keep the object visible. Never leave a word of the target beside a blank, never blank only the complement, never also blank a complement or object that is not part of the target, and never add a first-letter hint. Keep enough sentence context that the target is the natural answer.`,
-    'For grammar, taskFa explains the instruction without a worked answer and prompt is the English task item without its completed answer. Solve the exact prompt before writing fullSentence: keep the same subject, verb, meaning, tense and time clues, changing only what the instruction asks. taskFa describes the prompt exactly as written: never mention brackets, options or blanks that it lacks, and never ask the learner to correct a sentence that is already correct. Never name in taskFa or the instruction the only word(s) that fill the blank unless real alternatives are offered; the learner must produce the target structure itself. A bracketed cue needs the taught change or offers real alternatives; it is never already the required form. Never copy such a cue into a card, even when a class printed its exercise that way: rewrite prompt so the learner must choose or change something, for example the required form and a plausible wrong form inside the brackets separated by " / ", while fullSentence stays the correct class sentence. The server rejects a front whose cue is already the answer. A formatting example only: prompt="Join with because: I stayed in. It was raining." and fullSentence="I stayed in because it was raining.". Do not introduce that content unless supported by the class.',
+    'For grammar, taskFa explains the instruction without a worked answer and prompt is the English task item without its completed answer. Solve the exact prompt before writing fullSentence: keep the same subject, verb, meaning, tense and time clues, changing only what the instruction asks. taskFa describes the prompt exactly as written: never mention brackets, options or blanks that it lacks, and never ask the learner to correct a sentence that is already correct. Never name in taskFa or the instruction the only word(s) that fill the blank unless real alternatives are offered; the learner must produce the target structure itself. A bracketed cue needs the taught change or offers real alternatives; it is never already the required form. Never copy such a cue into a card, even when a class printed its exercise that way: rewrite prompt so the learner must choose or change something, for example the required form and a plausible wrong form inside the brackets separated by " / ", in varying order so the required form is not always first, while fullSentence stays the correct class sentence. The server rejects a front whose cue is already the answer. A formatting example only: prompt="Join with because: I stayed in. It was raining." and fullSentence="I stayed in because it was raining.". Do not introduce that content unless supported by the class.',
     `Cross-check the same grammatical relationship across claim.text, meaning.faMeaning, teaching.noteFa and every English example. Preserve the source syntax/order and conditions consistently: if X takes complement Y, an explicit X + Y schematic is safer than an ambiguous translated before/after statement. When the source says X is followed by Y or X + Y, quote that exact English left-to-right pattern.${persianOrder} All claim, meaning and note descriptions must agree with the supplied English examples and the completed task.`,
     "classNotes has coverage (one short description of taught concepts), optional orientation {sourceNote, coreIntro, oralIntro} and optional activities {chunks, board, tasks, culture, register}; omit any property, list or group that has no real content. Board entries must copy exact text from a cited board_photo row. Each chunk's classSentence copies one class sentence exactly from the sources; never correct, combine or invent it, and omit the chunk when no class sentence shows its pattern. Do not create solved gapfill; server practice uses validated source examples.",
     'Tasks and culture preserve exercise order as groups {title, blocks}. A block is {type:"text", text} for explanation prose, {type:"quote", text} for an exact English quotation, {type:"table", headers, rows}, or {type:"items", items}, where each exercise item has prompt and model, plus whyFa when explained.',
@@ -1206,9 +1207,11 @@ export function buildKnowledgeGenerationInput(
         if (item.type === "grammar") {
           kind = "grammar";
           const chunkWords = gapWords(item.pronunciation.spokenChunk);
+          // The answer and the item's cited class blocks are where the chunk is copied from. The
+          // prompt is not: it may hold the uncorrected form, a blank or a cue, which the reader
+          // would then see, and hear, as the words the IPA transcribes.
           const spokenTexts = [
             item.practice.fullSentence,
-            item.practice.prompt,
             ...item.claim.evidenceKeys.map(
               (evidenceKey) => prepared.references.get(evidenceKey)?.block.text ?? "",
             ),
@@ -1221,13 +1224,11 @@ export function buildKnowledgeGenerationInput(
             throw errors.validationFailed({ output: ["study_ipa_chunk_invalid"] });
           // The stored words are the chunk as written where it was found, so a reader sees which
           // words the IPA transcribes; the pattern label in meaning.en is not what it transcribes.
+          // A run that crosses a blank, a cue's brackets or slash, or markup is never stored.
           const ipaText = spokenTexts
-            .map((text) => writtenWordSequence(text, chunkWords))
-            .find((text) => text !== undefined);
-          if (
-            ipaText === undefined ||
-            !productionStudySchema.shape.ipaText.safeParse(ipaText).success
-          )
+            .flatMap((text) => writtenWordSequences(text, chunkWords))
+            .find((text) => productionStudySchema.shape.ipaText.safeParse(text).success);
+          if (ipaText === undefined)
             throw errors.validationFailed({ output: ["study_ipa_chunk_invalid"] });
           // Owner decision 2026-10-09: a cue that is already the answer is rejected even when a
           // class printed its exercise that way; the prompt asks for a rewritten cue instead.

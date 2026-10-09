@@ -60,7 +60,7 @@ import {
   runSettingsSchema,
   sourceSnapshotSchema,
 } from "./contracts";
-import { generatedKnowledgeSchema } from "./generated-knowledge";
+import { generatedKnowledgeSchema, legacyKnowledgeWireSchema } from "./generated-knowledge";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
 import {
   compactKnowledgeBudget,
@@ -1075,7 +1075,8 @@ export function processingJob(
                   : provider.structured({
                       operationKey,
                       model: settings.provider.llmModel,
-                      schema: generatedKnowledgeSchema,
+                      // The checkpoint contract without study.ipaText: no provider writes it.
+                      schema: legacyKnowledgeWireSchema,
                       schemaName: "class_knowledge",
                       system: [
                         knowledgePrompt(

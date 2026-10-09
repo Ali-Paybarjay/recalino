@@ -227,7 +227,15 @@ it("AC-D46-04 stores the words a grammar IPA transcribes and keeps older grammar
   const legacy = validateKnowledgeModel(grammar(), [], "en").learningItems[0]?.study;
   expect(legacy).toMatchObject({ kind: "grammar", ipa: "/dʌz ʃi wɔːk/" });
   expect(legacy).not.toHaveProperty("ipaText");
-  for (const ipaText of ["Does she walk", "Yes, she does", "does not walk to school every"])
+  for (const ipaText of [
+    "Does she walk",
+    "Yes, she does",
+    "does not walk to school every",
+    // Shared symbols and a modifier-letter apostrophe belong to Latin-script text.
+    "It costs £5",
+    "is 20°C",
+    "She doesnʼt walk",
+  ])
     expect(
       validateKnowledgeModel(grammar({ ipaText }), [], "en").learningItems[0]?.study,
     ).toMatchObject({ ipaText });
@@ -237,8 +245,15 @@ it("AC-D46-04 stores the words a grammar IPA transcribes and keeps older grammar
     "does she walk to school every day",
     "آیا او راه می‌رود",
     "彼女は歩きますか",
+    "Does she walk コーヒー",
     "Does she <b>walk</b>",
+    "Does she walk &amp; talk",
     "/dʌz ʃi wɔːk/",
+    // A task's blank, cue brackets or option slash are never words the IPA transcribes.
+    "She ______ (walk",
+    "walk) to the",
+    "She walks / walk",
+    "Does [she] walk",
   ])
     rejected(grammar({ ipaText }));
   // Lexical IPA transcribes en itself, so only a grammar item may name transcribed words.

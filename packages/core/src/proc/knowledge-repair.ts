@@ -4,22 +4,13 @@ import {
   type Claim,
   knowledgeModelSchema,
   normalizeGeneratedStudyModel,
-  productionStudySchema,
-  recognitionStudySchema,
   validateKnowledgeModel,
 } from "../lkm";
 import { AppError, errors } from "../plt";
+import { providerStudySchema } from "./generated-knowledge";
 import { buildKnowledgeEvidenceInput, type KnowledgeEvidenceInput } from "./knowledge-evidence";
 
 type RepairInput = KnowledgeEvidenceInput;
-
-// The server derives a grammar item's transcribed words from a validated spoken chunk on the
-// content wire; this repair wire never writes them and keeps its earlier study contract.
-const { ipaText: _ipaText, ...repairProductionStudy } = productionStudySchema.shape;
-const repairStudySchema = z.discriminatedUnion("set", [
-  z.strictObject(repairProductionStudy),
-  recognitionStudySchema,
-]);
 
 /** One bounded repair request; model keys select exact evidence instead of constructing locators. */
 export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters: number) {
@@ -54,7 +45,7 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
       .array(
         knowledgeModelSchema.shape.learningItems.element
           .omit({ study: true, claim: true })
-          .extend({ study: repairStudySchema.optional(), claim }),
+          .extend({ study: providerStudySchema.optional(), claim }),
       )
       .max(500),
     homework: z.array(claim).max(100),

@@ -19,7 +19,11 @@ const common = {
 // Words as the generation check counts them: letters or digits joined by an apostrophe or hyphen.
 const transcribedWords = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
 
-/** The class words a grammar ipa transcribes: one to six Latin-script words, never markup. */
+/**
+ * The class words a grammar ipa transcribes: one to six Latin-script words, which may carry
+ * numbers, punctuation and shared symbols such as "£5", "20°C" or "doesnʼt", but no character
+ * of another script and no blank, bracket, slash or markup from a task cue.
+ */
 function isTranscribedText(value: string): boolean {
   const words = value.match(transcribedWords)?.length ?? 0;
   return (
@@ -27,7 +31,10 @@ function isTranscribedText(value: string): boolean {
     words >= 1 &&
     words <= 6 &&
     /\p{Script=Latin}/u.test(value) &&
-    !/[^\p{Script=Latin}\p{Number}\p{Punctuation}\p{Separator}\p{Mark}]/u.test(value)
+    !/[^\p{scx=Latin}\p{scx=Common}\p{scx=Inherited}\p{Number}\p{Punctuation}\p{Separator}\p{Mark}]/u.test(
+      value,
+    ) &&
+    !/[\p{Pc}\p{Ps}\p{Pe}<>/\\]|&(?:#\d+|[a-z]+);/iu.test(value)
   );
 }
 export const productionStudySchema = z
