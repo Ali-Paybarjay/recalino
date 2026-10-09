@@ -228,6 +228,16 @@
 4. **env production:** `OPENROUTER_SETTINGS_JSON` با `version=openrouter-2026-10-08-1` و `promptVersion=recalino-knowledge-5`، همراه انتشار کد. ابزار موجود `node tools/configure-runtime-env.mjs` است. فقط با اجازهٔ صریح.
 5. **ادغام و deployment:** هر دو به اجازهٔ صریح نیاز دارند. شاخهٔ صوت (`7680939`) جداگانه ادغام می‌شود. تنها فایل مشترک احتمالی، رجیستری متن رابط است.
 
+**وضعیت مراحل در 2026-10-09:**
+
+| مرحله | وضعیت |
+|---|---|
+| ۱. متن رابط | تأییدشده در 2026-10-08؛ شش متن تغییرکرده در انتظار تأیید |
+| ۲. ارزیابی زنده | اجرا نشده. `OPENROUTER_API_KEY` در این محیط نیست؛ secret تازهٔ تنظیمات محیط فقط به جلسهٔ تازه می‌رسد. اجرای آزمایشی بدون فراخوان (`--memory`) موفق است |
+| ۳. migration ابری | اجرا نشده. اعتبارنامهٔ Supabase CLI در محیط نیست و این sandbox اتصال مستقیم Postgres (پورت 5432) ندارد. فهرست migrationهای ابری (خواندن 2026-10-09) به `20261007233920` ختم می‌شود، پس فقط `20261008170000_pers_item_feedback` مانده است |
+| ۴. env production | تغییر نکرده است؛ فقط همراه انتشار کد |
+| ۵. ادغام و deployment | انجام نشده. انتشار پیش از migration صفحهٔ Your learning و مسیر بازخورد را با خطا روبه‌رو می‌کند، و انتشار پیش از ارزیابی prompt نسخهٔ ۵ را بی‌آزمون به production می‌برد |
+
 **Rollback:**
 
 - **کد:** promote دوبارهٔ deployment پیش از انتشار. production در 2026-10-09 (خواندن Vercel): `dpl_DVZJoACABRz99RVEtooGCbU5qMMm`، ساخته‌شده 2026-10-08 18:37 UTC با CLI و بدون metadata git؛ deployment پیشین git‌دار `dpl_J9ZH5VzdDCGRsskZCZzptLTQwZLA` (`82e2460`) است.
