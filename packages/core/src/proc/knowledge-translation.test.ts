@@ -62,6 +62,12 @@ describe("bounded canonical explanation translation", () => {
     expect(JSON.parse(prepared.input).learnerContext).toEqual(learnerContext);
     expect(prepared.system).toContain("Preserve the existing personalised teaching intent");
     expect(prepared.system).toContain("never regenerate, simplify or expand");
+    // D49 live evaluation: keep Persian grammar terms correct in translated claims.
+    expect(prepared.system).toContain("past participle is اسم مفعول (شکل سوم فعل), never فعل ماضی");
+    const german = { ...raw, language: { ...raw.language, explanation: "de" } };
+    expect(
+      buildKnowledgeTranslationInput(german, "de", 120000, learnerContext).system,
+    ).not.toContain("اسم مفعول");
     const translated = prepared.apply(response(prepared.input));
     expect(translated.learningItems[0]?.front).toBe(raw.learningItems[0]?.front);
     expect(translated.learningItems[0]?.back).toBe(raw.learningItems[0]?.back);

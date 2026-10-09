@@ -24,6 +24,8 @@ describe("AC-D46-06 friendly declared-level teaching", () => {
       expect(prompt).toContain("narrow the claim to what its single cited block actually supports");
       expect(prompt).toContain("Escape all quotation marks and line breaks inside JSON strings");
       expect(prompt).toContain("حال کامل, not گذشته نزدیک");
+      // D49 live evaluation: "فعل ماضی" (simple past) was used for past participle in class claims.
+      expect(prompt).toContain("past participle is اسم مفعول (شکل سوم فعل), never فعل ماضی");
       expect(prompt).toContain("not extra lesson facts");
       expect(prompt).toContain("Prefer bare dictionary headwords in study.en");
       expect(prompt).toContain("Put part-of-speech labels and explanations in noteFa");
