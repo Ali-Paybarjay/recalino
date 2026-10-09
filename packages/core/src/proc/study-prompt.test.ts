@@ -97,7 +97,8 @@ describe("D49 teaching instructions respect the output budget", () => {
     expect(compact).toContain("the concise-field rules and output budget win");
     // The choices never relax card structure (D49 live evaluation, B2).
     expect(compact).toContain("change only the wording of explanation fields");
-    expect(compact).toContain("keep recognition items as recognition");
+    expect(compact).toContain("ipa together with its faApprox");
+    expect(compact).not.toContain("recognition items as recognition");
     expect(personalisedTeachingPrompt({ version: 1, declaredLevel: "B2" })).not.toContain(
       "change only the wording of explanation fields",
     );
