@@ -1,4 +1,4 @@
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
 export { expect } from "@playwright/test";
 export { expectNoAxeViolations, VIEWPORTS } from "../e2e/helpers";
@@ -65,3 +65,11 @@ export const test = base.extend<{ previewIsolation: undefined }>({
     { auto: true },
   ],
 });
+
+/** New session has no name field (D51); sample tests name the newest session in Session options. */
+export async function nameNewestSession(page: Page, name: string) {
+  await page.goto("/preview/organize");
+  await page.getByLabel("Session name", { exact: true }).fill(name);
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page).toHaveURL(/\/preview\/class$/);
+}

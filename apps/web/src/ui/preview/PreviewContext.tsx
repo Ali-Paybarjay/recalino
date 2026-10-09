@@ -155,7 +155,7 @@ export function createSampleState(): PreviewState {
     ],
     courses: [
       { id: "esol", name: "ESOL B1", units: ["Everyday English"] },
-      { id: "default", name: "My courses", units: [] },
+      { id: "default", name: "My Courses", units: [] },
     ],
     sources: [
       {

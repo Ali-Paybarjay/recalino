@@ -43,7 +43,7 @@ test("one course is selected automatically and a dated class opens its details b
   }
   await page.goto("/sessions");
 
-  await expect(page.getByRole("heading", { name: "My courses", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My Courses", exact: true })).toBeVisible();
   const rows = classRows(page);
   await expect(rows).toHaveCount(5);
   const row = rows.first();

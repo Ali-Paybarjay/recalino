@@ -69,7 +69,6 @@ test("class date is validated and saves the same ISO day through create and edit
   await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/sessions/new");
   const { date, picker } = await expectDayFirstDate(page);
-  await page.getByLabel("Session name (optional)").fill("Day-first date regression");
 
   const createdRequests: unknown[] = [];
   page.on("request", (request) => {

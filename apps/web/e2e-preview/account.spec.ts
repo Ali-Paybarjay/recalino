@@ -1,4 +1,4 @@
-import { expect, test } from "./helpers";
+import { expect, nameNewestSession, test } from "./helpers";
 
 test("all four profile edits persist locally and keep mixed-language content readable", async ({
   page,
@@ -106,8 +106,8 @@ test("destructive data choices explain consequences, focus the safe action, and 
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("My changed sample");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "My changed sample");
   await page.goto("/preview/data-controls");
   await expect(
     page.getByRole("button", { name: "Review source deletion", exact: true }),

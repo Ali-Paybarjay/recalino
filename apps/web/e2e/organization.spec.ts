@@ -16,7 +16,8 @@ test("a learning goal stays separate while new courses preserve and organize dat
   expect(await before.json()).toEqual([]);
 
   await page.goto("/sessions/new");
-  await page.getByLabel("Session name (optional)").fill("گفت‌وگو دربارهٔ سفر");
+  // D51: a new session takes its title from its material; naming happens in Session options.
+  await expect(page.getByLabel("Session name (optional)")).toHaveCount(0);
   await page.getByLabel("Session date", { exact: true }).fill("28/09/2026");
   const course = page.getByLabel("Course", { exact: true });
   await expect(course.locator("option").last()).toHaveText("Create New Course");
@@ -33,10 +34,9 @@ test("a learning goal stays separate while new courses preserve and organize dat
   await expect(course.locator("option:checked")).toHaveText("ESOL at college");
   await expect(course.locator("option").last()).toHaveText("Create New Course");
   const esolId = await course.inputValue();
-  await expect(page.getByLabel("Session name (optional)")).toHaveValue("گفت‌وگو دربارهٔ سفر");
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("28/09/2026");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "گفت‌وگو دربارهٔ سفر" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("28 Sept 2026");
   const esolClassUrl = page.url();
 
   const createdUnit = await page.request.post(`/api/courses/${esolId}/units`, {
@@ -47,7 +47,6 @@ test("a learning goal stays separate while new courses preserve and organize dat
   const { id: unitId } = (await createdUnit.json()) as { id: string };
 
   await page.goto("/sessions/new");
-  await page.getByLabel("Session name (optional)").fill("Draft second class");
   await page.getByLabel("Session date", { exact: true }).fill("29/09/2026");
   await course.selectOption(esolId);
   const unit = page.getByLabel("Unit (optional)");
@@ -61,7 +60,6 @@ test("a learning goal stays separate while new courses preserve and organize dat
   await expect(course).toBeFocused();
   await expect(course).toHaveValue(esolId);
   await expect(unit).toHaveValue(unitId);
-  await expect(page.getByLabel("Session name (optional)")).toHaveValue("Draft second class");
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("29/09/2026");
 
   await course.selectOption({ label: "Create New Course" });
@@ -72,7 +70,6 @@ test("a learning goal stays separate while new courses preserve and organize dat
   );
   await expect(course).toHaveValue(esolId);
   await expect(unit).toHaveValue(unitId);
-  await expect(page.getByLabel("Session name (optional)")).toHaveValue("Draft second class");
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("29/09/2026");
   await dialog.getByLabel("New course name").fill("Spanish evening course");
   await dialog.getByRole("button", { name: "Create course", exact: true }).click();
@@ -82,14 +79,12 @@ test("a learning goal stays separate while new courses preserve and organize dat
   await expect(course.locator("option:checked")).toHaveText("Spanish evening course");
   await expect(course.locator("option").last()).toHaveText("Create New Course");
   await expect(unit).toHaveCount(0);
-  await expect(page.getByLabel("Session name (optional)")).toHaveValue("Draft second class");
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("29/09/2026");
   const spanishId = await course.inputValue();
   expect(spanishId).not.toBe(esolId);
   const created = await page.request.get("/api/courses");
   expect(created.status()).toBe(200);
   expect(await created.json()).toHaveLength(2);
-  await page.getByLabel("Session name (optional)").fill("");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("29 Sept 2026");
@@ -165,17 +160,16 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.getByRole("main").getByRole("link", { name: "+ New session", exact: true }).click();
   await expect(page).toHaveURL(/\/sessions\/new\?courseId=[0-9a-f-]+$/, { timeout: 30_000 });
   await expect(page.getByLabel("Course", { exact: true })).toContainText("English B1");
-  await page.getByLabel("Session name (optional)").fill("کلاس سفر 日本語");
   await page.getByLabel("Session date", { exact: true }).fill("30/09/2026");
   await page.getByLabel("Unit (optional)").selectOption({ label: "Travel" });
   await page.getByRole("button", { name: "Create session", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "کلاس سفر 日本語" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("30 Sept 2026");
   const classUrl = page.url();
   await expectNoAxeViolations(page);
   await page.locator("summary").filter({ hasText: "More session tools" }).click();
   await page.getByRole("link", { name: "Session options", exact: true }).click();
   await expect(page).toHaveURL(`${classUrl}/options`, { timeout: 30_000 });
-  await page.getByLabel("Session name (optional)").fill("Renamed lesson");
+  await page.getByLabel("Session name (optional)").fill("کلاس سفر 日本語");
   await page.getByLabel("Unit (optional)").selectOption("");
   const renamedClass = page.waitForResponse(
     (response) =>
@@ -185,7 +179,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   expect((await renamedClass).status()).toBe(200);
   await expect(page).toHaveURL(classUrl, { timeout: 30_000 });
-  await expect(page.getByRole("heading", { level: 1, name: "Renamed lesson" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "کلاس سفر 日本語" })).toBeVisible();
   await page.goto("/sessions/organize");
   await page.getByRole("button", { name: "Delete empty course", exact: true }).click();
   const courseDialog = page.getByRole("dialog", { name: "Delete this course?" });
@@ -206,7 +200,7 @@ test("courses, optional units and a class can be created, moved and deleted thro
     .click();
   expect((await deletedClass).status()).toBe(202);
   await expect(page).toHaveURL(/\/sessions$/);
-  await expect(page.getByRole("heading", { name: "Renamed lesson" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "کلاس سفر 日本語" })).toHaveCount(0);
   await page.goto("/sessions/organize");
   await page.getByRole("button", { name: "Delete empty course", exact: true }).click();
   await page

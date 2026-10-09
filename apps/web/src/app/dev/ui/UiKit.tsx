@@ -120,7 +120,7 @@ function Fields() {
       <Field
         id="kit-title"
         label="Title (optional)"
-        hint="If you don't choose, the session goes into &quot;My courses&quot;."
+        hint="If you don't choose, the session goes into &quot;My Courses&quot;."
       >
         {(control) => (
           <TextInput

@@ -186,20 +186,23 @@ export function ClassForm({
               </select>
             </Field>
           ) : null}
-          <Field
-            label="Session name (optional)"
-            hint="Leave it empty to name the session from its learning material. Until the material is ready, its date is used."
-          >
-            <input
-              autoComplete="off"
-              dir="auto"
-              maxLength={200}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Automatic title from learning material"
-              disabled={busy}
-            />
-          </Field>
+          {/* D51: new sessions are named from their material; renaming lives in Session options. */}
+          {initial ? (
+            <Field
+              label="Session name (optional)"
+              hint="Leave it empty to name the session from its learning material. Until the material is ready, its date is used."
+            >
+              <input
+                autoComplete="off"
+                dir="auto"
+                maxLength={200}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Automatic title from learning material"
+                disabled={busy}
+              />
+            </Field>
+          ) : null}
           {initial && title.trim() ? (
             <Actions>
               <Button secondary disabled={busy} onClick={() => setTitle("")}>

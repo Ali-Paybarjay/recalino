@@ -169,9 +169,9 @@ export async function defaultCourse(tx: Tx, ctx: LearnerContext, now: Date): Pro
     .selectFrom("org.course")
     .selectAll()
     .where("owner_id", "=", ctx.userId)
-    .where(sql<boolean>`lower(name) = lower(${"My courses"})`)
+    .where(sql<boolean>`lower(name) = lower(${"My Courses"})`)
     .executeTakeFirst();
-  // A manually created "My courses" becomes the default rather than violating name uniqueness.
+  // A manually created "My Courses" becomes the default rather than violating name uniqueness.
   if (named) {
     return course(
       await tx
@@ -185,7 +185,7 @@ export async function defaultCourse(tx: Tx, ctx: LearnerContext, now: Date): Pro
   return course(
     await tx
       .insertInto("org.course")
-      .values({ owner_id: ctx.userId, name: "My courses", is_default: true, created_at: now })
+      .values({ owner_id: ctx.userId, name: "My Courses", is_default: true, created_at: now })
       .returningAll()
       .executeTakeFirstOrThrow(),
   );

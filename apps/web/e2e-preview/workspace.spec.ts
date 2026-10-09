@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import {
   expect,
   expectNoAxeViolations,
+  nameNewestSession,
   SAMPLE_BANNER,
   STORAGE_KEY,
   test,
@@ -27,8 +28,8 @@ test("a global review source opens the card's own class after another class is s
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Blank review workspace");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Blank review workspace");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Blank review workspace");
   await expect(page.getByText("Session recording", { exact: true })).toHaveCount(0);
 
@@ -63,8 +64,8 @@ test("a new class begins empty and opening an existing class restores its own ma
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Weekend English");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Weekend English");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Weekend English");
   await expect(page.getByText("Session recording", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Present perfect handout.pdf", { exact: true })).toHaveCount(0);
@@ -98,9 +99,9 @@ test("a class can be created, found after refresh, and reset without a backend",
 }) => {
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Bus journeys");
-  await page.getByRole("combobox", { name: "Course", exact: true }).selectOption("My courses");
+  await page.getByRole("combobox", { name: "Course", exact: true }).selectOption("My Courses");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Bus journeys");
   await expect(page).toHaveURL(/\/preview\/class$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bus journeys");
   await page.reload();
@@ -110,7 +111,7 @@ test("a class can be created, found after refresh, and reset without a backend",
   await page.goto("/preview/classes");
   await expect(page.getByLabel("Course", { exact: true })).toHaveValue("");
   await expect(classRows(page)).toHaveCount(0);
-  await page.getByLabel("Course", { exact: true }).selectOption("My courses");
+  await page.getByLabel("Course", { exact: true }).selectOption("My Courses");
   await expect(classRows(page)).toHaveCount(1);
   await expect(classRows(page).locator("summary")).toContainText("Bus journeys");
   await openListedClass(page, "Bus journeys");
@@ -205,8 +206,8 @@ test("a damaged sample store recovers to a usable workspace", async ({ page }) =
   await expect(page.getByText(SAMPLE_BANNER, { exact: true })).toBeVisible();
   await page.getByLabel("Explore screens", { exact: true }).selectOption("new-class");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("New session");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("After storage recovery");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "After storage recovery");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("After storage recovery");
 });
 
@@ -227,8 +228,8 @@ test("unavailable browser storage explains the limit while local interactions st
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Without browser storage");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Without browser storage");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Without browser storage");
 });
 
@@ -247,7 +248,7 @@ test("D39: creating a course inside New class preserves the session and selects 
 }) => {
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("جلسهٔ عصر 日本語");
+  await expect(page.getByLabel("Session name (optional)", { exact: true })).toHaveCount(0);
   await page.getByLabel("Session date", { exact: true }).fill("01/10/2026");
   const course = page.getByLabel("Course", { exact: true });
   const unit = page.getByLabel("Unit (optional)", { exact: true });
@@ -266,9 +267,6 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(course).toBeFocused();
   await expect(course).toHaveValue("ESOL B1");
   await expect(unit).toHaveValue("Everyday English");
-  await expect(page.getByLabel("Session name (optional)", { exact: true })).toHaveValue(
-    "جلسهٔ عصر 日本語",
-  );
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("01/10/2026");
 
   await course.selectOption({ label: "Create New Course" });
@@ -277,9 +275,6 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(dialog.getByRole("alert")).toHaveText("That course already exists.");
   await expect(course).toHaveValue("ESOL B1");
   await expect(unit).toHaveValue("Everyday English");
-  await expect(page.getByLabel("Session name (optional)", { exact: true })).toHaveValue(
-    "جلسهٔ عصر 日本語",
-  );
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("01/10/2026");
 
   await dialog.getByLabel("New course name", { exact: true }).fill("ESOL evening");
@@ -290,12 +285,10 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(course).toBeFocused();
   await expect(course).toHaveValue("ESOL evening");
   await expect(course.locator("option").last()).toHaveText("Create New Course");
-  await expect(page.getByLabel("Session name (optional)", { exact: true })).toHaveValue(
-    "جلسهٔ عصر 日本語",
-  );
   await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("01/10/2026");
   await expect(unit).toHaveValue("");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "جلسهٔ عصر 日本語");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسهٔ عصر 日本語");
   await page.goto("/preview/course?course=ESOL%20evening");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ESOL evening");
@@ -313,16 +306,15 @@ test("D39: course materials keep each session's current notes, dates and course 
   test.setTimeout(120_000);
   const notes = "Travel notes from this session. <script>window.courseInjected = true</script>";
   await page.goto("/preview/new-class?course=ESOL%20B1");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Travel notebook");
   await page.getByLabel("Session date", { exact: true }).fill("29/09/2026");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Travel notebook");
   await page.goto("/preview/edit-notes");
   await page.getByLabel("Your explanation", { exact: true }).fill(notes);
   await page.getByRole("button", { name: "Save a new version", exact: true }).click();
   await expect(page.getByText(notes, { exact: true })).toBeVisible();
 
-  await page.goto("/preview/new-class?course=My%20courses");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Other course session");
+  await page.goto("/preview/new-class?course=My%20Courses");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/edit-notes");
   await page.getByLabel("Your explanation", { exact: true }).fill("Other course notes");
@@ -354,11 +346,11 @@ test("D39: course materials keep each session's current notes, dates and course 
   await page.goto("/preview/class");
   await openClassTools(page);
   await page.getByRole("link", { name: "Session options", exact: true }).click();
-  await page.getByLabel("Move to course").selectOption("My courses");
+  await page.getByLabel("Move to course").selectOption("My Courses");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await page.goto("/preview/course?course=ESOL%20B1#course-materials");
   await expect(page.locator("#course-materials").getByText(notes, { exact: true })).toHaveCount(0);
-  await page.getByLabel("Course", { exact: true }).selectOption("My courses");
+  await page.getByLabel("Course", { exact: true }).selectOption("My Courses");
   await expect(page.locator("#course-materials").getByText(notes, { exact: true })).toBeVisible();
 });
 
@@ -418,9 +410,9 @@ test("D40: a custom title survives sample processing and can be cleared to use t
 }) => {
   test.setTimeout(120_000);
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("My evening session");
   await page.getByLabel("Session date", { exact: true }).fill("03/10/2026");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "My evening session");
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles({
     name: "sample-board.png",

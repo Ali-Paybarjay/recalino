@@ -30,7 +30,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "new-class",
     title: "New session",
-    description: "Give this session a useful name. You can change it later.",
+    description: "Choose a course and date. The title comes from your learning material.",
     active: "classes",
     focused: true,
   },

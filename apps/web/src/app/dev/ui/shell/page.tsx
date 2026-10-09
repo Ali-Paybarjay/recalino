@@ -46,7 +46,7 @@ export default function ShellPage() {
         </div>
         <div className={styles.classRow}>
           <span className={styles.classTitle}>Session — 23 Sep 2026</span>
-          <span className={styles.helper}>My courses · Tue 23 Sep</span>
+          <span className={styles.helper}>My Courses · Tue 23 Sep</span>
           <ClassStatusChip status="waitingForAllowance" />
         </div>
       </div>

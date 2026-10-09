@@ -36,7 +36,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   const [name, setName] = useState(
     screen === "organize" && lesson ? (sampleCustomTitle(lesson) ?? "") : "",
   );
-  const [course, setCourse] = useState(lesson?.course ?? "My courses");
+  const [course, setCourse] = useState(lesson?.course ?? "My Courses");
   const [unit, setUnit] = useState(screen === "organize" ? (lesson?.unit ?? "") : "");
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
   const [courseName, setCourseName] = useState("");
@@ -55,7 +55,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     if (screen !== "organize") return;
     if (!lesson?.id) {
       setName("");
-      setCourse("My courses");
+      setCourse("My Courses");
       setUnit("");
       return;
     }
@@ -66,7 +66,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
         customTitle: lesson.customTitle,
       }) ?? "",
     );
-    setCourse(lesson?.course ?? "My courses");
+    setCourse(lesson?.course ?? "My Courses");
     setUnit(lesson?.unit ?? "");
   }, [
     screen,
@@ -82,7 +82,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     const requested = new URLSearchParams(window.location.search).get("course");
     const available = state.courses.find((item) => item.name === requested);
     const current = state.courses.find((item) => item.name === lesson?.course);
-    const fallback = state.courses.find((item) => item.name === "My courses") ?? state.courses[0];
+    const fallback = state.courses.find((item) => item.name === "My Courses") ?? state.courses[0];
     const initialize = initializedCourseScreen.current !== screen;
     if (screen !== "new-class") {
       setCourseFilter((selected) => {
@@ -104,7 +104,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     setCourse((selected) =>
       screen === "new-class" && !initialize && state.courses.some((item) => item.name === selected)
         ? selected
-        : (available?.name ?? current?.name ?? fallback?.name ?? "My courses"),
+        : (available?.name ?? current?.name ?? fallback?.name ?? "My Courses"),
     );
     initializedCourseScreen.current = screen;
   }, [screen, lesson?.course, state.courses]);
@@ -190,8 +190,8 @@ export function WorkspaceViews({ screen }: { screen: string }) {
       classes: [
         {
           id: crypto.randomUUID(),
-          title: name.trim() || classDate,
-          customTitle: name.trim() || null,
+          title: classDate,
+          customTitle: null,
           course,
           unit,
           date: classDate,
@@ -285,10 +285,10 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     if (
       !state.courses.some((item) => item.name === course) ||
       !next ||
-      course === "My courses" ||
+      course === "My Courses" ||
       state.courses.some((item) => item.name === next)
     ) {
-      setError("Choose a new course name. My courses is your permanent default.");
+      setError("Choose a new course name. My Courses is your permanent default.");
       return;
     }
     setState((prev) => ({
@@ -683,7 +683,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
       <div className="preview-reader">
         <PageHeader
           title="New session"
-          description="Choose a course and date for this session. The name is optional."
+          description="Choose a course and date. The title will come from your learning material."
           back="classes"
         />
         <form
@@ -725,19 +725,6 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                   <option key={item}>{item}</option>
                 ))}
             </select>
-          </Field>
-          <Field
-            label="Session name (optional)"
-            hint="Leave it empty for a title from session material. The date is shown until material is ready."
-          >
-            <input
-              autoComplete="off"
-              dir="auto"
-              maxLength={100}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="For example, Present perfect"
-            />
           </Field>
           {error ? <Status tone="error">{error}</Status> : null}
           <Actions>
@@ -984,7 +971,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               <input value={courseName} onChange={(event) => setCourseName(event.target.value)} />
             </Field>
             <Button onClick={addCourse}>Create course</Button>
-            <Button secondary disabled={course === "My courses"} onClick={renameCourse}>
+            <Button secondary disabled={course === "My Courses"} onClick={renameCourse}>
               Rename selected course
             </Button>
             <Field label="New unit name">
@@ -1000,7 +987,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               <Button
                 secondary
                 disabled={
-                  course === "My courses" || state.classes.some((item) => item.course === course)
+                  course === "My Courses" || state.classes.some((item) => item.course === course)
                 }
                 onClick={() => setConfirm("course")}
               >
@@ -1018,7 +1005,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               </Button>
             </Actions>
             <p className="preview-muted">
-              Only empty courses and units can be deleted. Move their sessions first. My courses is
+              Only empty courses and units can be deleted. Move their sessions first. My Courses is
               your permanent default.
             </p>
           </Panel>

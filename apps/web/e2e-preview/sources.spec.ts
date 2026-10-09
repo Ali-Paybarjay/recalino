@@ -5,7 +5,6 @@ test("sample files accumulate before explicit upload and show progress and compl
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto("/preview/new-class");
-  await page.getByLabel("Session name (optional)", { exact: true }).fill("Upload progress sample");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/upload");
   await expect(page.getByRole("button", { name: "Add Files", exact: true })).toBeEnabled();
@@ -348,9 +347,6 @@ test("demo uploads receive prepared extents automatically and a job keeps its co
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page
-    .getByLabel("Session name (optional)", { exact: true })
-    .fill("Automatic sample metadata");
   await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles([
