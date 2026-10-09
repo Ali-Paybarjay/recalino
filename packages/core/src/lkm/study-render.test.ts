@@ -184,6 +184,7 @@ it("omits empty sections and pills, renumbers headings, and keeps all jumps insi
   expect(elements(document, "section").map((node) => attribute(node, "id"))).toEqual([
     "core",
     "pron",
+    "check",
   ]);
   expect(html).toContain("<h2>۲. پیوست تلفظ");
   expect(html).toContain("دوشنبه");
@@ -341,4 +342,72 @@ it("preserves summary, topic explanations, homework and uncertainty with source 
   expect(elements(document, "a").some((node) => attribute(node, "href") === "#lesson-notes")).toBe(
     true,
   );
+});
+
+it("D49 asks each core item's flashcard question with a hidden, linked answer and no repeated gap", () => {
+  const model = referenceStudyModel();
+  if (!model.classNotes) throw new Error("fixture");
+  const production = model.learningItems.filter((item) => item.study?.set === "production");
+  const first = production[0];
+  if (first?.study?.set !== "production" || !first.study.gapSentence) throw new Error("fixture");
+  // The gap-fill section already asks this exact sentence; the check must not ask it twice.
+  model.classNotes.gapfill = [{ sentence: first.study.gapSentence, answer: "wear and tear" }];
+  const html = renderClassNotesHtml(model);
+  const document = parse(html);
+  const check = byId(document, "check");
+  const list = elements(check, "ol").find((node) => attribute(node, "class") === "gaps");
+  if (!list) throw new Error("Missing check list");
+  const blocks = elements(list, "li");
+  expect(blocks.length).toBe(production.length - 1);
+  // Print hides toggles inside ol.gaps and shows the key instead (verbatim reference stylesheet).
+  expect(CLASS_NOTES_STYLES).toContain("ol.gaps details{display:none}");
+  expect(serialize(check)).not.toContain(
+    first.study.gapSentence.replace("______", "<b>______</b>"),
+  );
+  const kitOut = production.find((item) => item.id === "kit-out");
+  if (kitOut?.study?.set !== "production") throw new Error("fixture");
+  const block = blocks.find((node) => serialize(node).includes("we need to <b>______</b> it"));
+  if (!block) throw new Error("Missing separable question");
+  // The visible question is the card front's meaning and gap; the answer sits inside <details>.
+  const card = renderStudyCard(kitOut);
+  const visible = elements(block).filter(
+    (node) => node.tagName === "p" && node.parentNode === block,
+  );
+  expect(visible.map((node) => serialize(node)).join(" ")).not.toContain("kit it out");
+  expect(card.front).toContain("we need to <b>______</b> it <b>______</b>.");
+  const details = elements(block, "details")[0];
+  if (!details) throw new Error("Missing hidden answer");
+  expect(serialize(details)).toContain("need to <b>kit</b> it <b>out</b>.");
+  const back = elements(details, "a")[0];
+  expect(attribute(back as Element, "href")).toBe("#kit-out");
+  // Print shows answers; the screen keeps them hidden behind the toggle (.key is display:none).
+  const key = elements(check, "p").find((node) => attribute(node, "class") === "key");
+  expect(serialize(key as Element)).toContain("kit it out");
+  expect(CLASS_NOTES_STYLES).toContain(".key{display:none}");
+});
+
+it("D49 check-yourself uses grammar tasks, a numbered list and English chrome outside Persian", () => {
+  const model = referenceStudyModel();
+  model.language.explanation = "en";
+  const item = model.learningItems.find((entry) => entry.id === "pressed-time");
+  if (item?.study?.set !== "production") throw new Error("fixture");
+  item.study = {
+    ...item.study,
+    kind: "grammar",
+    taskFa: "Rewrite the sentence with the correct preposition.",
+    prompt: "I have been pressed by time all week.",
+    fullSentence: "I have been pressed for time all week.",
+  };
+  const check = byId(parse(renderClassNotesHtml(model)), "check");
+  const text = serialize(check);
+  expect(text).toContain(studyMessage("en", "checkNote").text);
+  expect(text).toContain("Rewrite the sentence with the correct preposition.");
+  expect(text).toMatch(
+    /<li><p class="mean">[^<]*<\/p><p class="q"[^>]*>I have been pressed by time all week\./,
+  );
+  expect(text).toMatch(/<p class="key">[\s\S]*\b1\. /);
+  expect(text).not.toMatch(/<p class="q"[^>]*>[^<]*pressed for time/);
+  for (const language of ["fa", "ja"]) {
+    expect(studyMessage(language, "checkHeading").language).toBe(language === "fa" ? "fa" : "en");
+  }
 });

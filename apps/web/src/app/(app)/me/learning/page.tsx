@@ -1,6 +1,7 @@
 import { learningOverview } from "@recalino/core/pers";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
+import { TEACHING_MEMORY_IN_GENERATION } from "../../../../server/teaching-memory";
 import { workspaceActor } from "../../../../server/workspace";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { LearningProfile } from "../../../../ui/workspace/LearningProfile";
@@ -20,7 +21,7 @@ export default async function LearningPage() {
         />
       }
     >
-      <LearningProfile initial={initial} />
+      <LearningProfile initial={initial} teachingMemory={TEACHING_MEMORY_IN_GENERATION} />
     </LearnerShell>
   );
 }

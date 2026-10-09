@@ -24,6 +24,8 @@ describe("AC-D46-06 friendly declared-level teaching", () => {
       expect(prompt).toContain("narrow the claim to what its single cited block actually supports");
       expect(prompt).toContain("Escape all quotation marks and line breaks inside JSON strings");
       expect(prompt).toContain("حال کامل, not گذشته نزدیک");
+      // D49 live evaluation: "فعل ماضی" (simple past) was used for past participle in class claims.
+      expect(prompt).toContain("past participle is اسم مفعول (شکل سوم فعل), never فعل ماضی");
       expect(prompt).toContain("not extra lesson facts");
       expect(prompt).toContain("Prefer bare dictionary headwords in study.en");
       expect(prompt).toContain("Put part-of-speech labels and explanations in noteFa");
@@ -76,6 +78,30 @@ describe("AC-D46-06 friendly declared-level teaching", () => {
       expect(prompt).toContain("when space is tight, prefer fewer complete teaching points");
     },
   );
+});
+
+describe("D49 teaching instructions respect the output budget", () => {
+  const context = {
+    version: 2 as const,
+    simplerExplanations: true as const,
+    practiceFocus: [{ target: "get on with sb", reason: "recall_difficulty" as const }],
+  };
+  it("asks for step-by-step notes only when the budget is not compact", () => {
+    const roomy = personalisedTeachingPrompt(context);
+    expect(roomy).toContain("explain a difficult point step by step");
+    expect(roomy).toContain("clearer step-by-step noteFa");
+    const compact = personalisedTeachingPrompt(context, { compact: true });
+    expect(compact).not.toMatch(/step by step|step-by-step/);
+    expect(compact).toContain("one-sentence noteFa");
+    expect(compact).toContain("Within each production noteFa's one short sentence");
+    expect(compact).toContain("the concise-field rules and output budget win");
+  });
+  it("uses the compact variant inside the production-budget study prompt", () => {
+    const prompt = studyPrompt("fa", 6144, true, context);
+    expect(prompt).toContain("one short sentence in the resolved explanation language");
+    expect(prompt).not.toMatch(/step by step|step-by-step/);
+    expect(studyPrompt("fa", 24000, true, context)).toContain("clearer step-by-step noteFa");
+  });
 });
 
 describe("Persian lesson response budget", () => {

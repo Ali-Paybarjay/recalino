@@ -30,9 +30,20 @@ export {
   runStates,
   sourceSnapshotSchema,
 } from "./contracts";
+export {
+  type LessonAdaptationView,
+  lessonAdaptationView,
+  MAX_PRACTICE_CANDIDATES,
+  MAX_PRACTICE_FOCUS,
+  type PracticeCandidate,
+  practiceCandidateSchema,
+  type TeachingAdaptation,
+  teachingAdaptationSchema,
+} from "./learner-context";
 export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
+export { forgetPracticeSources } from "./practice-privacy";
 export {
   type ProcessingReview,
   processingReviewTarget,

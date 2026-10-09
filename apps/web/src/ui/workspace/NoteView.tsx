@@ -1,6 +1,7 @@
 "use client";
 import type { Claim, KnowledgeVersion } from "@recalino/core/lkm";
 import type { Notebook, NotebookRevision, PublishNotebookInput } from "@recalino/core/note";
+import type { LessonAdaptationView } from "@recalino/core/proc";
 import { renderClassNotesHtml } from "@recalino/core/study-render";
 import { studyPronunciationTarget } from "@recalino/core/study-target";
 import Link from "next/link";
@@ -14,6 +15,7 @@ import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import { notifyAutomaticLearning } from "./automatic-learning";
 import { ClassNotesFrame } from "./ClassNotesFrame";
 import { ClassNotesPlayback } from "./ClassNotesPlayback";
+import { LessonAdaptation } from "./LessonAdaptation";
 import styles from "./NoteView.module.css";
 import type { NoteMaterialSource, NoteSourceIssue } from "./note-source-issues";
 import { PronunciationAudio } from "./PronunciationAudio";
@@ -103,6 +105,7 @@ export function NoteView({
   hasEarlierVersions,
   sourceIssues = [],
   materialSources = [],
+  adaptation = null,
 }: {
   sessionId: string;
   userId: string;
@@ -114,6 +117,7 @@ export function NoteView({
   hasEarlierVersions?: boolean;
   sourceIssues?: readonly NoteSourceIssue[];
   materialSources?: readonly NoteMaterialSource[];
+  adaptation?: LessonAdaptationView | null;
 }) {
   const router = useRouter();
   const [notebook, setNotebook] = useState(initial),
@@ -413,6 +417,7 @@ export function NoteView({
           {model.classNotes && !editMode ? (
             <>
               {materialIssues()}
+              {adaptation ? <LessonAdaptation adaptation={adaptation} /> : null}
               {current && !readOnlyRevision ? (
                 <ClassNotesPlayback
                   key={current.id}

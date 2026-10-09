@@ -14,7 +14,7 @@ import { AppError, errors } from "../plt";
 import type { SourceClassification } from "../src";
 import type { RunSource } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
-import type { LearnerTeachingContext } from "./learner-context";
+import type { ModelTeachingContext } from "./learner-context";
 
 interface RepairInput {
   sources: readonly RunSource[];
@@ -22,7 +22,7 @@ interface RepairInput {
   teachingPreferences: { shorterExamples: boolean };
   missingSourceIds: readonly string[];
   lessonContext?: StudyLessonContext;
-  learnerContext?: LearnerTeachingContext;
+  learnerContext?: ModelTeachingContext;
 }
 interface Evidence {
   reference: SourceRef;
