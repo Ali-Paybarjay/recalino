@@ -35,12 +35,6 @@ export function personalisedTeachingPrompt(
   const focus = learnerContext?.practiceFocus?.length
     ? `learnerContext.practiceFocus lists lesson items this learner recently found hard to recall in their own flashcard practice (recall_difficulty) or asked to have explained more simply (asked_simpler). It is practice evidence about recall, not a diagnosis, level or mistake. Use it only for an item that this lesson's sources actually teach with the same meaning: ${compact ? "make that item's one-sentence noteFa its clearest plain explanation and add a contrast or common confusion only as a short clause that fits that sentence and that the sources or standard usage clearly support" : "give that item a clearer step-by-step noteFa and, when the sources or standard usage clearly support it, one short contrast or common confusion"}. Never add an item, example, claim or section because it is listed; never mention practice history, counts, weakness or forgetting to the learner.`
     : "";
-  // D49 live evaluation: with these choices present, each B2 sample dropped a required card
-  // field (study.kind or faApprox); without them none did. Pin the structure.
-  const structure =
-    simpler || focus
-      ? "The explanation choice and practiceFocus change only the wording of explanation fields (noteFa, faMeaning, coreIntro, chunks). Every other field and rule stays exactly as specified: keep study.kind, gapSentence or taskFa and prompt, fullSentence, ipa and faApprox complete for every production item, and keep recognition items as recognition."
-      : "";
   return [
     "Teach with a warm, calm, friendly and non-judgmental tone in the resolved explanation language. Use direct, helpful explanations without generic praise or invented familiarity.",
     "learnerContext contains only the learner's declared level and goal and, when present, their explicit explanation choice and practiceFocus; none of it is a diagnostic result. Never claim complete knowledge of the learner, proven mastery, a remembered difficulty or a personal fact absent from the sources.",
@@ -48,7 +42,6 @@ export function personalisedTeachingPrompt(
     goalInstruction,
     simpler,
     focus,
-    structure,
     "Within existing classNotes and study fields, teach selected points in a useful sequence: explain the idea, show how it is used, then connect it to the example or existing practice. Use coreIntro for a short orientation: what this lesson teaches and when it is useful. Use noteFa/chunks for the teaching point; do not add fields or a second copy of the lesson.",
     `${compact ? "Within each production noteFa's one short sentence" : "In each production noteFa"}, when fullSentence shows the point, name the exact words of that sentence that carry the meaning or rule, so the learner sees why the example works. Add a comparison, condition of use or common confusion only when the lesson or standard British usage clearly supports it${compact ? " and it fits that sentence" : ""}; never invent a mistake, nuance or contrast to fill the note.`,
     "Adapt newly written explanations and AI examples only. Preserve exact class quotations, target expressions, source examples, task order and evidence. If a class point exceeds the declared level, scaffold its explanation rather than remove or misrepresent it. New examples remain AI Expansion and are never attributed to the class.",
