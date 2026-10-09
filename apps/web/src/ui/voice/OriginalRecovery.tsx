@@ -49,13 +49,24 @@ export function OriginalRecovery({
   source: VoiceAnalysisView["source"];
   state: LocalAudioState;
   disabled: boolean;
-  onChanged: () => void;
+  /** `linked` is true when a verified original was just attached on this device. */
+  onChanged: (linked: boolean) => void;
 }) {
+  const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const abort = useRef<AbortController | null>(null);
+  const wasChecking = useRef(false);
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   useEffect(() => () => abort.current?.abort(), []);
+  // The Select and Cancel buttons replace each other; keep keyboard focus on whichever is shown.
+  useEffect(() => {
+    if (checking === wasChecking.current) return;
+    wasChecking.current = checking;
+    root.current
+      ?.querySelector<HTMLButtonElement>(checking ? "[data-relink=cancel]" : "[data-relink=select]")
+      ?.focus();
+  }, [checking]);
   async function relink(file: File) {
     if (!source) return;
     const controller = new AbortController();
@@ -84,11 +95,12 @@ export function OriginalRecovery({
       );
     try {
       // Same lock as automatic learning, so a pending transfer never reads a half-written copy.
+      // Waiting for it can be cancelled, since a transfer may hold it for a long time.
       const name = `recalino-learning:${userId}:${sessionId}`;
-      if (navigator.locks) await navigator.locks.request(name, work);
+      if (navigator.locks) await navigator.locks.request(name, { signal: controller.signal }, work);
       else await work();
       setMessage({ text: copy.linked, error: false });
-      onChanged();
+      onChanged(true);
     } catch (error) {
       setMessage(
         controller.signal.aborted
@@ -106,14 +118,14 @@ export function OriginalRecovery({
     return (
       <Status>
         {copy.unreadable}
-        <Button secondary disabled={disabled} onClick={onChanged}>
+        <Button secondary disabled={disabled} onClick={() => onChanged(false)}>
           {strings.common.tryAgain}
         </Button>
       </Status>
     );
   const verifiable = Boolean(source && /^[a-f0-9]{64}$/.test(source.sha256) && source.sizeBytes);
   return (
-    <div>
+    <div ref={root}>
       {state === "missing" ? (
         <>
           <p className="preview-muted">The original audio isn't on this device.</p>
@@ -127,13 +139,18 @@ export function OriginalRecovery({
       ) : checking ? (
         <Status>
           {copy.checking}
-          <Button secondary onClick={() => abort.current?.abort()}>
+          <Button secondary data-relink="cancel" onClick={() => abort.current?.abort()}>
             {copy.cancel}
           </Button>
         </Status>
       ) : (
         <Actions>
-          <Button secondary disabled={disabled} onClick={() => input.current?.click()}>
+          <Button
+            secondary
+            data-relink="select"
+            disabled={disabled}
+            onClick={() => input.current?.click()}
+          >
             {copy.select}
           </Button>
         </Actions>

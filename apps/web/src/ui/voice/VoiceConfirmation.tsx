@@ -446,7 +446,13 @@ function Analysis({
   onPlayback: (element: HTMLAudioElement) => void;
 }) {
   const [revision, setRevision] = useState(0);
+  const [linked, setLinked] = useState(false);
+  const linkedStatus = useRef<HTMLDivElement>(null);
   const audio = useLocalVoiceAudio(userId, analysis.sourceId, revision);
+  // After a relink the recovery controls give way to the excerpts; say so and keep focus here.
+  useEffect(() => {
+    if (linked && audio.state === "playable") linkedStatus.current?.focus();
+  }, [linked, audio.state]);
   const coverage = voiceCoverage(analysis.reason);
   const verified = analysis.status === "verified";
   const available = analysis.candidates.filter(hasSpeakerExcerpts);
@@ -557,7 +563,14 @@ function Analysis({
           {!timed ? (
             <p>{pendingCopy.voice.readPrompt}</p>
           ) : audio.state === "playable" ? (
-            <p>{pendingCopy.voice.listenPrompt}</p>
+            <>
+              {linked ? (
+                <div ref={linkedStatus} tabIndex={-1}>
+                  <Status tone="success">{pendingCopy.voice.playback.linked}</Status>
+                </div>
+              ) : null}
+              <p>{pendingCopy.voice.listenPrompt}</p>
+            </>
           ) : (
             <OriginalRecovery
               userId={userId}
@@ -566,7 +579,10 @@ function Analysis({
               source={analysis.source}
               state={audio.state}
               disabled={disabled}
-              onChanged={() => setRevision((value) => value + 1)}
+              onChanged={(wasLinked) => {
+                if (wasLinked) setLinked(true);
+                setRevision((value) => value + 1);
+              }}
             />
           )}
           {candidates.map((candidate) => (

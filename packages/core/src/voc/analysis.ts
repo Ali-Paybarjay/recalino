@@ -27,7 +27,7 @@ import {
 import { autoAcceptVoice, rankVoiceCandidates } from "./matching";
 import { decideVoiceMatch, voiceReferenceOutcome, voiceReferences } from "./policy";
 import { voiceAcceptancePolicy } from "./policy-registry";
-import { getVoiceEnrollment, voiceTransaction } from "./profile";
+import { checkedVoiceEnrollment, getVoiceEnrollment, voiceTransaction } from "./profile";
 import { findRepeatedVoiceEvidence } from "./spoken-evidence";
 
 type Row = Selectable<DB["voc.analysis"]>;
@@ -137,16 +137,17 @@ export async function saveVoiceAnalysis(
     if (!versions.some((version) => version.id === input.sourceVersionId)) throw errors.notFound();
     const prior = await findVoiceAnalysis(tx, ctx, input);
     if (prior) return prior;
-    const candidates = rankVoiceCandidates(declared, vectors, profile, input.modelVersion);
-    const account = await accountVoiceCalibration(tx, ctx, input.modelVersion);
     const policy = voiceAcceptancePolicy(input.modelVersion);
+    const enrollment = checkedVoiceEnrollment(profile, input.modelVersion, policy);
+    const candidates = rankVoiceCandidates(declared, vectors, enrollment, input.modelVersion);
+    const account = await accountVoiceCalibration(tx, ctx, input.modelVersion);
     let accepted: string | null = null;
     let matchReason: VoiceMatchReason | null = null;
     if (candidates.length && input.modelVersion !== TRANSCRIPT_LABEL_MODEL) {
       const decision = decideVoiceMatch({
         candidates,
         vectors,
-        enrollment: profile,
+        enrollment,
         modelVersion: input.modelVersion,
         policy,
         rejectedScores: account.rejectedScores,
@@ -155,14 +156,19 @@ export async function saveVoiceAnalysis(
       matchReason = decision.reason;
       // A model revision without an evaluated policy keeps the account's own calibration. An
       // evaluated policy replaces it, and one with automatic acceptance off keeps every class manual.
-      if (!policy && account.confirmedLessons) {
+      if (!policy && account.calibration && account.confirmedLessons) {
         accepted = autoAcceptVoice(
           candidates,
           account.calibration,
           input.modelVersion,
           account.confirmedLessons,
         );
-        if (accepted) matchReason = null;
+        // A calibration that declines is a weak match, not a switch that is off.
+        matchReason = accepted
+          ? null
+          : matchReason === "policy_unavailable"
+            ? "no_clear_match"
+            : matchReason;
       }
     }
     const row = await tx

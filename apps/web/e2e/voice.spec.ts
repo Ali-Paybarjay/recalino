@@ -1016,7 +1016,14 @@ test("VOICE-AC-08: a missing original is re-attached on this device, plays at on
     ),
   ).toBeVisible();
   await expect(region.getByRole("button", { name: /^Play/ })).toHaveCount(0);
+  // The check swapped the Select button for Cancel and back; keyboard focus followed it.
+  await expect(region.getByRole("button", { name: "Select original recording" })).toBeFocused();
   await picker.setInputFiles({ name: "renamed copy.wav", mimeType: "audio/wav", buffer: original });
+  await expect(
+    region.getByText(
+      "The original recording is back on this device. You can play the excerpts now.",
+    ),
+  ).toBeVisible();
   await expect(
     region.getByText("Listen to the excerpts, then confirm which voice is yours."),
   ).toBeVisible();
@@ -1059,6 +1066,63 @@ test("VOICE-AC-08: a missing original is re-attached on this device, plays at on
       .getByRole("button", { name: "Play Voice 1 excerpt 1" }),
   ).toBeVisible();
   expect(forbidden).toEqual([]);
+});
+
+test("VOICE-AC-08: waiting for the class lock can be cancelled and changes nothing", async ({
+  page,
+}) => {
+  const original = syntheticOriginal(40);
+  const { createHash } = await import("node:crypto");
+  const source = {
+    name: "Tuesday class.wav",
+    durationMs: 40000,
+    sizeBytes: original.length,
+    sha256: createHash("sha256").update(original).digest("hex"),
+    mimeType: "audio/wav",
+  };
+  await page.route("**/api/classes/*/voice", (route) =>
+    route.fulfill({
+      json: {
+        enabled: true,
+        engineAvailable: true,
+        analyses: [{ ...analysis(1), source }],
+      } satisfies ClassVoiceView,
+    }),
+  );
+  await page.goto("/dev/ui/voice?view=class");
+  // A transfer in this class holds the learning lock and does not let go.
+  await page.evaluate(() => {
+    void navigator.locks.request(
+      "recalino-learning:10000000-0000-4000-8000-000000000002:10000000-0000-4000-8000-000000000001",
+      () => new Promise(() => {}),
+    );
+  });
+  const region = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  await region
+    .locator('input[type="file"][aria-label="Select original recording"]')
+    .setInputFiles({ name: "Tuesday class.wav", mimeType: "audio/wav", buffer: original });
+  const cancel = region.getByRole("button", { name: "Cancel" });
+  await expect(cancel).toBeFocused();
+  await cancel.click();
+  await expect(region.getByText("Checking was cancelled. Nothing was changed.")).toBeVisible();
+  await expect(region.getByRole("button", { name: "Select original recording" })).toBeFocused();
+  await expect(region.getByRole("button", { name: /^Play/ })).toHaveCount(0);
+  expect(
+    await page.evaluate(async () => {
+      const request = indexedDB.open("recalino-recordings-v1", 3);
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const count = await new Promise<number>((resolve, reject) => {
+        const read = db.transaction("recordings").objectStore("recordings").count();
+        read.onsuccess = () => resolve(read.result);
+        read.onerror = () => reject(read.error);
+      });
+      db.close();
+      return count;
+    }),
+  ).toBe(0);
 });
 
 test("VOICE-AC-07: speakers with only saved lines are not presented as listenable", async ({

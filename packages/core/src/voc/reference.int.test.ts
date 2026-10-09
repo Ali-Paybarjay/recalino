@@ -14,7 +14,7 @@ vi.mock("./policy-registry", () => ({
     registry.policy?.modelVersion === modelVersion ? registry.policy : null,
 }));
 // The account's own calibration (20 confirmed and 20 rejected classes) can be stood in for.
-const account = vi.hoisted(() => ({ ready: false }));
+const account = vi.hoisted(() => ({ ready: false, acceptScore: 0 }));
 vi.mock("./calibration", async (importOriginal) => {
   const real = await importOriginal<typeof import("./calibration")>();
   return {
@@ -23,7 +23,7 @@ vi.mock("./calibration", async (importOriginal) => {
         ? {
             calibration: {
               modelVersion: args[2],
-              acceptScore: 0,
+              acceptScore: account.acceptScore,
               minMargin: 0,
               positiveCount: 20,
               negativeCount: 20,
@@ -45,6 +45,7 @@ const learnerVoice = [1, ...Array<number>(15).fill(0)];
 const classmateVoice = [0, 1, ...Array<number>(14).fill(0)];
 beforeEach(() => {
   account.ready = false;
+  account.acceptScore = 0;
   registry.policy = {
     id: "integration-test-policy",
     modelVersion: MODEL,
@@ -362,6 +363,82 @@ describe("VOICE-AC-09: withdrawn or replaced references withdraw automatic trust
       .execute();
     await removeSessionVoice(db, x.ctx, x.session.id);
     expect(await row(automatic.id)).toMatchObject({
+      status: "unverified",
+      verification_method: null,
+      reason: "voice_reference_revoked",
+    });
+  });
+});
+
+describe("references and reasons stay truthful across policy changes", () => {
+  async function confirmClassmate(x: Fixture) {
+    return changeVoiceIdentity(db, x.ctx, x.session.id, {
+      action: "confirm",
+      analysisId: x.analysis.id,
+      expectedVersion: 1,
+      speakerId: "classmate",
+    });
+  }
+
+  it("VOICE-AC-04: a reference saved before the policy existed is checked once it is registered", async () => {
+    registry.policy = null;
+    const x = await voiceFixture(db);
+    await sample(x, learnerVoice);
+    // Without a policy nothing can be checked, so the classmate's voice is kept.
+    expect((await confirmClassmate(x)).referenceStatus).toBe("added");
+    registry.policy = {
+      id: "integration-test-policy",
+      modelVersion: MODEL,
+      acceptScore: 0.7,
+      minMargin: 0.1,
+      referenceConsistency: 0.6,
+      minCleanSpeechMs: 20000,
+      autoAccept: true,
+    };
+    expect((await getVoiceProfile(db, x.ctx, true, MODEL)).readiness).toEqual({
+      sample: true,
+      references: 0,
+      automatic: "needs_class",
+    });
+    const later = await saveVoiceAnalysis(db, x.ctx, { ...x.input, runId: randomUUID() });
+    expect(await row(later.id)).toMatchObject({
+      status: "unverified",
+      verification_method: null,
+      match_reason: "no_reference",
+    });
+  });
+
+  it("VOICE-AC-05: the account's own calibration states readiness and a weak match", async () => {
+    registry.policy = null;
+    account.ready = true;
+    const x = await voiceFixture(db);
+    expect((await getVoiceProfile(db, x.ctx, true, MODEL)).readiness?.automatic).toBe(
+      "needs_sample",
+    );
+    await sample(x, learnerVoice);
+    expect((await getVoiceProfile(db, x.ctx, true, MODEL)).readiness?.automatic).toBe("ready");
+    await confirmLearner(x);
+    account.acceptScore = 2;
+    const declined = await saveVoiceAnalysis(db, x.ctx, { ...x.input, runId: randomUUID() });
+    expect(await row(declined.id)).toMatchObject({
+      status: "unverified",
+      match_reason: "no_clear_match",
+    });
+  });
+
+  it("VOICE-AC-09: a first sample that drops a reference withdraws automatic matches", async () => {
+    const x = await voiceFixture(db);
+    // No sample yet, so the confirmation cannot be checked and the classmate is kept.
+    expect((await confirmClassmate(x)).referenceStatus).toBe("added");
+    const later = await saveVoiceAnalysis(db, x.ctx, { ...x.input, runId: randomUUID() });
+    await db
+      .updateTable("voc.analysis")
+      .set({ status: "verified", verified_speaker_id: "learner", verification_method: "automatic" })
+      .where("id", "=", later.id)
+      .execute();
+    await sample(x, learnerVoice);
+    expect(await row(x.analysis.id)).toMatchObject({ reference_status: "mismatch" });
+    expect(await row(later.id)).toMatchObject({
       status: "unverified",
       verification_method: null,
       reason: "voice_reference_revoked",

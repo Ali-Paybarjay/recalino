@@ -22,7 +22,7 @@ import {
   completeVoiceEnrollment,
   type VoiceEnrollmentAttempt,
 } from "./enrollment";
-import { voiceReferenceConsistency, voiceReferences } from "./policy";
+import { type VoiceAcceptancePolicy, voiceReferenceConsistency, voiceReferences } from "./policy";
 import { voiceAcceptancePolicy } from "./policy-registry";
 
 export const enrollmentEmbeddingsSchema = z
@@ -82,12 +82,22 @@ export async function getVoiceProfile(
         .execute()
     : [];
   const model = modelRevision ?? row?.model_version ?? null;
+  const policy = model ? voiceAcceptancePolicy(model) : null;
   const references = model
     ? voiceReferences(
-        { version: row?.version ?? 0, enabled: true, modelVersion: model, embeddings },
+        checkedVoiceEnrollment(
+          { version: row?.version ?? 0, enabled: true, modelVersion: model, embeddings },
+          model,
+          policy,
+        ),
         model,
       )
     : { sample: null, lessons: [] };
+  // Without an evaluated policy, the account's own calibration can still accept a class.
+  const legacy =
+    row?.enabled && model && !policy && (references.sample || references.lessons.length)
+      ? await accountVoiceCalibration(db, ctx, model)
+      : null;
   return {
     version: row?.version ?? 0,
     enabled: row?.enabled ?? false,
@@ -102,27 +112,38 @@ export async function getVoiceProfile(
       references: references.lessons.length,
       automatic: !row?.enabled
         ? "off"
-        : !references.sample
-          ? "needs_sample"
-          : !references.lessons.length
-            ? "needs_class"
-            : (await automaticMatchingReady(db, ctx, model))
-              ? "ready"
-              : "unavailable",
+        : legacy?.calibration && legacy.confirmedLessons
+          ? "ready"
+          : !references.sample
+            ? "needs_sample"
+            : !references.lessons.length
+              ? "needs_class"
+              : policy?.autoAccept
+                ? "ready"
+                : "unavailable",
     },
   };
 }
-/** True when later classes can be matched: the evaluated policy, or the account's own calibration. */
-async function automaticMatchingReady(
-  db: Database | Tx,
-  ctx: LearnerContext,
-  model: string | null,
-): Promise<boolean> {
-  if (!model) return false;
-  const policy = voiceAcceptancePolicy(model);
-  if (policy) return policy.autoAccept;
-  const account = await accountVoiceCalibration(db, ctx, model);
-  return Boolean(account.calibration && account.confirmedLessons);
+/**
+ * The enrolment matching may rely on. Under an evaluated policy, a class reference saved before
+ * the policy existed counts only while it resembles the sample, as a new confirmation must.
+ */
+export function checkedVoiceEnrollment(
+  enrollment: VoiceEnrollment,
+  modelVersion: string,
+  policy: VoiceAcceptancePolicy | null,
+): VoiceEnrollment {
+  const { sample } = voiceReferences(enrollment, modelVersion);
+  if (!policy || !sample) return enrollment;
+  return {
+    ...enrollment,
+    embeddings: enrollment.embeddings.filter(
+      (entry) =>
+        entry.analysisId === null ||
+        entry.modelVersion !== modelVersion ||
+        voiceReferenceConsistency(entry.vector, { sample, lessons: [] }, policy) !== "mismatch",
+    ),
+  };
 }
 /** Consent is separate from a class recording; no microphone or sample storage precedes it. */
 export async function enableVoice(
@@ -248,9 +269,9 @@ export async function saveVoiceSample(
           .where("id", "in", dropped)
           .where("verification_method", "=", "manual")
           .execute();
-      // Automatic matches were made against the replaced sample; each class asks again.
+      // Automatic matches rested on the replaced sample or on a dropped reference; they ask again.
       if (
-        profile.embeddings.some((entry) => entry.analysisId === null) &&
+        (profile.embeddings.some((entry) => entry.analysisId === null) || dropped.length) &&
         (await invalidateAutomaticVoice(tx, ctx.userId, now)).size
       )
         await input.onAutomaticWithdrawn?.(tx);
