@@ -3,10 +3,17 @@ import { ankiExportJob, getAnkiExport, requestAnkiExport } from "@recalino/core/
 import { getCard, setCardMedia } from "@recalino/core/card";
 import { createDatabase } from "@recalino/core/db";
 import { getHtmlExport, htmlExportJob, requestHtmlExport } from "@recalino/core/html";
-import { getVersion } from "@recalino/core/lkm";
+import { getLatestVersion, getVersion, publishKnowledgeVersion } from "@recalino/core/lkm";
 import { createImageMedia, getMediaAsset, mediaReadLink } from "@recalino/core/media";
 import { getNotebookRevision, publishNotebook } from "@recalino/core/note";
-import { createCourse, createUnit, getSession, updateSession } from "@recalino/core/org";
+import {
+  createCourse,
+  createSession,
+  createUnit,
+  getSession,
+  updateSession,
+} from "@recalino/core/org";
+import { recordItemFeedback } from "@recalino/core/pers";
 import {
   DEFAULT_PLT_SETTINGS,
   type JobContext,
@@ -37,7 +44,7 @@ import { sql } from "kysely";
 import { afterAll, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
-import { studyFixture } from "../../../../packages/core/test/study-fixture";
+import { studyFixture, syntheticKnowledge } from "../../../../packages/core/test/study-fixture";
 import { privacyDependencies } from "./privacy";
 
 const store = new MemoryObjectStore();
@@ -145,6 +152,13 @@ async function fixture() {
     { expectedVersion: card.contentVersion, side: "front", mediaId: media.id },
     { key: randomUUID() },
   );
+  // D49: a learner correction about this class's goal is deleted with the class or account.
+  await recordItemFeedback(
+    db,
+    study.ctx,
+    { learningItemId: card.learningItemId, kind: "explain_simpler", active: true },
+    { key: randomUUID() },
+  );
   const noteKey = randomUUID();
   const noteInput = {
     expectedRevisionId: study.notebook.current.id,
@@ -187,6 +201,55 @@ async function fixture() {
   };
   await htmlExportJob(store).run({ userId: study.ctx.userId, artifactId: html.id }, job);
   await ankiExportJob(store).run({ userId: study.ctx.userId, artifactId: anki.id }, job);
+  // D49: a sibling class in the same course froze a memory point from this class.
+  const sibling = await createSession(
+    db,
+    study.ctx,
+    { courseId: course.id },
+    { key: randomUUID() },
+  );
+  const copied = {
+    target: "Private synthetic phrase",
+    reason: "recall_difficulty",
+    scope: "same_course",
+    againCount: 2,
+    lastEvidenceDate: "2026-09-30",
+    sourceSessionId: study.session.id,
+  };
+  const siblingRunId = await db.transaction().execute((tx) =>
+    scheduleAuxiliaryRun(tx, study.ctx, {
+      sessionId: sibling.id,
+      operationKey: randomUUID(),
+      subjectId: media.id,
+      requested: amounts({}),
+      request: { text: "Synthetic sibling input" },
+      settings: {
+        learnerContext: { version: 2, declaredLevel: "B1", practiceCandidates: [copied] },
+      },
+      job: unusedJob,
+    }),
+  );
+  await db.transaction().execute((tx) =>
+    publishKnowledgeVersion(tx, study.ctx, {
+      sessionId: sibling.id,
+      runId: siblingRunId,
+      sourcesVersion: 0,
+      sourceFingerprint: "sibling",
+      model: syntheticKnowledge(1),
+      sources: [],
+      explanationLanguage: "en",
+      generation: {
+        mode: "mock",
+        teachingAdaptation: {
+          version: 1,
+          shorterExamples: false,
+          simplerExplanations: false,
+          focus: [copied],
+          linkedItemIds: [],
+        },
+      },
+    }),
+  );
   return {
     ...study,
     course,
@@ -203,6 +266,8 @@ async function fixture() {
     runId,
     html,
     anki,
+    sibling,
+    siblingRunId,
   };
 }
 
@@ -211,6 +276,14 @@ it.each(["source", "session", "account"] as const)(
   async (kind) => {
     const fixtureData = await fixture();
     const other = await studyFixture(db, { count: 1 });
+    const otherCard = other.cards[0];
+    if (!otherCard) throw new Error("Other fixture card is missing");
+    await recordItemFeedback(
+      db,
+      other.ctx,
+      { learningItemId: otherCard.learningItemId, kind: "not_a_difficulty", active: true },
+      { key: randomUUID() },
+    );
     const dependencies = privacyDependencies();
     const recordJournal = vi.fn(async () => {});
     dependencies.deletionJournal = { record: recordJournal };
@@ -333,12 +406,36 @@ it.each(["source", "session", "account"] as const)(
         .where("asset_id", "=", fixtureData.imageId)
         .execute(),
     ).toHaveLength(0);
+    const feedbackOf = (userId: string) =>
+      db.selectFrom("pers.item_feedback").select("id").where("user_id", "=", userId).execute();
+    expect(await feedbackOf(fixtureData.ctx.userId)).toHaveLength(0);
+    expect(await feedbackOf(other.ctx.userId)).toHaveLength(1);
     const run = await db
       .selectFrom("proc.processing_run")
       .select(["state", "input_snapshot", "settings"])
       .where("id", "=", fixtureData.runId)
       .executeTakeFirstOrThrow();
     expect(run).toEqual({ state: "cancelled", input_snapshot: {}, settings: {} });
+    // D49: the sibling class keeps its own data but no longer holds this class's memory point.
+    const siblingRun = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", fixtureData.siblingRunId)
+      .executeTakeFirst();
+    const siblingVersion =
+      kind === "account"
+        ? null
+        : await getLatestVersion(db, fixtureData.ctx, fixtureData.sibling.id);
+    if (kind !== "account") {
+      expect(siblingRun?.settings).toEqual({ learnerContext: { version: 1, declaredLevel: "B1" } });
+      expect(siblingVersion?.generation).toMatchObject({
+        mode: "mock",
+        teachingAdaptation: { focus: [], linkedItemIds: [] },
+      });
+    }
+    expect(JSON.stringify([siblingRun ?? null, siblingVersion])).not.toContain(
+      "Private synthetic phrase",
+    );
     if (kind === "source") {
       expect((await getSource(db, fixtureData.ctx, fixtureData.textId)).display_name).toBe(
         "private.text",

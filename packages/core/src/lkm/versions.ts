@@ -1,4 +1,4 @@
-import type { Selectable } from "kysely";
+import { type Selectable, sql } from "kysely";
 import type { Database, DB, Tx } from "../db";
 import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import { assertOwner, errors, type LearnerContext } from "../plt";
@@ -211,6 +211,58 @@ export async function tombstoneKnowledge(
     .where("session_id", "=", sessionId)
     .where("tombstoned_at", "is", null)
     .execute();
+}
+
+/**
+ * PRIV redaction of derived generation metadata when its source data is deleted. Only rows whose
+ * `generation` contains one of `containsAny` are read; the knowledge model is never rewritten.
+ * `redact` returns the replacement generation, or undefined to keep a row unchanged.
+ */
+export async function redactVersionGenerations(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  containsAny: readonly unknown[],
+  redact: (
+    generation: unknown,
+    items: readonly { id: string; study?: { en: string } }[],
+  ) => unknown,
+): Promise<number> {
+  if (!containsAny.length) return 0;
+  const rows = await db
+    .selectFrom("lkm.knowledge_version")
+    .select(["id", "generation", "model"])
+    .where("user_id", "=", ctx.userId)
+    .where((eb) =>
+      eb.or(
+        containsAny.map((value) => sql<boolean>`generation @> ${JSON.stringify(value)}::jsonb`),
+      ),
+    )
+    .execute();
+  let changed = 0;
+  for (const row of rows) {
+    // Read leniently: a redaction must never be blocked by an older model shape.
+    const model = row.model as { learningItems?: unknown } | null;
+    const items = (Array.isArray(model?.learningItems) ? model.learningItems : []).flatMap(
+      (item: { id?: unknown; study?: { en?: unknown } }) =>
+        typeof item?.id === "string"
+          ? [
+              typeof item.study?.en === "string"
+                ? { id: item.id, study: { en: item.study.en } }
+                : { id: item.id },
+            ]
+          : [],
+    );
+    const next = redact(row.generation, items);
+    if (next === undefined) continue;
+    await db
+      .updateTable("lkm.knowledge_version")
+      .set({ generation: JSON.stringify(next) })
+      .where("user_id", "=", ctx.userId)
+      .where("id", "=", row.id)
+      .execute();
+    changed++;
+  }
+  return changed;
 }
 
 export async function cleanupSessionKnowledge(

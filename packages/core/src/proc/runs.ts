@@ -10,7 +10,7 @@ import {
 import { type AiProvider, ProviderError, requireProvider } from "../aip";
 import type { Database, DB, Tx } from "../db";
 import { getLatestVersion, tombstoneKnowledge } from "../lkm";
-import { assertSessionOwner, getSession } from "../org";
+import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
   assertOwner,
   cancelJob,
@@ -44,7 +44,7 @@ import {
 } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
 import { reuseCompletedKnowledge } from "./knowledge-reuse";
-import { snapshotLearnerTeachingContext } from "./learner-context";
+import { type PracticeCandidate, snapshotLearnerTeachingContext } from "./learner-context";
 import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
@@ -246,6 +246,26 @@ export async function createProcessingRun(
     reuseCompletedKnowledge?: boolean;
     /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
     expectedLatestClassRunId?: string;
+    /**
+     * D49: bounded memory points from PERS (dependency inversion). The app layer reads them in
+     * its own transaction before this one, so a memory failure degrades to no points instead of
+     * blocking the run; this callback only hands that frozen value over.
+     */
+    practiceCandidates?: (
+      tx: Tx,
+      input: { sessionId: string; now: Date },
+    ) => Promise<readonly PracticeCandidate[]>;
+    /**
+     * D49: a recovery run reuses the memory points snapshotted by the run it recovers;
+     * `reuseCompletedKnowledge` alone recovers the class's newest run.
+     */
+    inheritPracticeCandidatesFrom?: string;
+    /**
+     * D49: send the explicit simpler-explanation choice and memory points to generation.
+     * Off unless the caller opts in: the owner released D49 without it (2026-10-09) until a
+     * broader evaluation shows stable output. Off, the snapshot is version 1 as before D49.
+     */
+    teachingMemory?: boolean;
   },
 ): Promise<ProcessingRun> {
   const input = createRunSchema.parse(raw);
@@ -345,20 +365,47 @@ export async function createProcessingRun(
     const awaiting = snapshot.sources.some(
       (source) => source.kind === "audio" && !source.contentVersionId && !source.objectId,
     );
+    const preferences = await listTeachingPreferences(tx, ctx);
+    const explicit = (key: (typeof preferences)[number]["key"]) =>
+      preferences.some(
+        (preference) =>
+          preference.key === key && preference.origin === "explicit" && preference.value === true,
+      );
+    // D49: memory is frozen with the run. A recovery run keeps its original points, so later
+    // reviews neither redefine the request nor void reuse of an already paid response.
+    const teachingMemory = options.teachingMemory === true;
+    const supplied = !teachingMemory
+      ? []
+      : options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
+        ? await inheritedPracticeCandidates(
+            tx,
+            ctx,
+            session.id,
+            options.inheritPracticeCandidatesFrom,
+          )
+        : options.practiceCandidates
+          ? await options.practiceCandidates(tx, { sessionId: session.id, now })
+          : [];
+    // Under the account lock that class deletion also takes: a point from a class deleted after
+    // the memory read is dropped here, and one deleted later is removed by its privacy hook.
+    const live = new Set(
+      await filterLiveSessionIds(
+        tx,
+        ctx,
+        supplied.map((candidate) => candidate.sourceSessionId),
+      ),
+    );
+    const practiceCandidates = supplied.filter((candidate) => live.has(candidate.sourceSessionId));
     const settings = runSettingsSchema.parse({
       provider: provider.settings,
       explanationLanguage:
         account.profile.explanationLanguage === "english" ? "en" : account.profile.firstLanguage,
       profileVersion: account.profile.version,
-      learnerContext: snapshotLearnerTeachingContext(account.profile),
-      teachingPreferences: {
-        shorterExamples: (await listTeachingPreferences(tx, ctx)).some(
-          (preference) =>
-            preference.key === "shorter_examples" &&
-            preference.origin === "explicit" &&
-            preference.value === true,
-        ),
-      },
+      learnerContext: snapshotLearnerTeachingContext(account.profile, {
+        simplerExplanations: teachingMemory && explicit("simpler_explanations"),
+        practiceCandidates,
+      }),
+      teachingPreferences: { shorterExamples: explicit("shorter_examples") },
     });
     const jobId = awaiting
       ? null
@@ -559,15 +606,44 @@ export async function retryRun(
     .where("state", "in", ["started", "uncertain"])
     .executeTakeFirst();
   if (unresolved) throw errors.validationFailed({ retry: ["provider_outcome_unresolved"] });
+  const { practiceCandidates: _fresh, ...recovery } = options;
   return createProcessingRun(
     db,
     ctx,
     { sessionId: prior.sessionId, operationKey },
     {
-      ...options,
+      ...recovery,
       reuseCompletedKnowledge: true,
+      inheritPracticeCandidatesFrom: prior.id,
     },
   );
+}
+
+/**
+ * Points of the owned class run being recovered (the given run, else the class's newest run);
+ * legacy or unreadable settings contribute none.
+ */
+async function inheritedPracticeCandidates(
+  tx: Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  runId?: string,
+): Promise<PracticeCandidate[]> {
+  const row = runId
+    ? await ownedRun(tx, ctx, runId)
+    : await tx
+        .selectFrom("proc.processing_run")
+        .selectAll()
+        .where("user_id", "=", ctx.userId)
+        .where("session_id", "=", sessionId)
+        .where("kind", "=", "class")
+        .orderBy("created_at", "desc")
+        .orderBy("id", "desc")
+        .executeTakeFirst();
+  if (!row || row.session_id !== sessionId) return [];
+  const settings = runSettingsSchema.safeParse(row.settings);
+  const context = settings.success ? settings.data.learnerContext : undefined;
+  return context?.version === 2 ? [...(context.practiceCandidates ?? [])] : [];
 }
 export async function cancelSessionRuns(
   tx: Tx,

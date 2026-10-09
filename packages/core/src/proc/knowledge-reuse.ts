@@ -8,6 +8,7 @@ import { type RunSnapshot, runSettingsSchema, sourceSnapshotSchema } from "./con
 import { generatedKnowledgeSchema } from "./generated-knowledge";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
+import { modelTeachingContext, selectPracticeFocus } from "./learner-context";
 
 /**
  * Called inside createProcessingRun's owner/account lock. Only a completed, billed
@@ -264,12 +265,16 @@ async function reuseCompletedKnowledgeRepair(
       (source) => !source.blocks.length || source.units.some((unit) => unit.status !== "extracted"),
     )
     .map((source) => source.sourceId);
+  const teaching = modelTeachingContext(
+    input.settings.learnerContext,
+    selectPracticeFocus(input.settings.learnerContext, sources),
+  );
   const repair = buildKnowledgeRepairInput(
     {
       sources,
       explanationLanguage: input.settings.explanationLanguage,
       teachingPreferences: input.settings.teachingPreferences,
-      ...(input.settings.learnerContext ? { learnerContext: input.settings.learnerContext } : {}),
+      ...(teaching ? { learnerContext: teaching } : {}),
       missingSourceIds,
       lessonContext: context,
     },

@@ -3,6 +3,7 @@ import { getNotebook } from "@recalino/core/note";
 import { getNoteSourceStatus } from "@recalino/core/proc";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
+import { lessonAdaptationFor } from "../../../../../server/teaching-memory";
 import { workspaceActor, workspaceSession } from "../../../../../server/workspace";
 import { PageHeader } from "../../../../../ui/shell/AppShell";
 import { VoiceConfirmation } from "../../../../../ui/voice/VoiceConfirmation";
@@ -25,6 +26,13 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
     id,
     initial?.current.knowledgeVersionId ?? latest?.id,
   );
+  // D49: server-written explanation of what the shown lesson version was prepared with.
+  const adaptation = await lessonAdaptationFor(
+    db,
+    ctx,
+    initial ? initial.current.knowledgeVersionId : latest,
+    (initial?.current.model ?? latest?.model)?.learningItems ?? [],
+  );
   return (
     <LearnerShell learner={learner} current="classes" header={<PageHeader title="Session notes" />}>
       <div className="preview-stack">
@@ -37,6 +45,7 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
             courseId={session.courseId}
             sourceIssues={sourceStatus.issues}
             materialSources={sourceStatus.materials}
+            adaptation={adaptation}
           />
         </VoiceConfirmation>
       </div>

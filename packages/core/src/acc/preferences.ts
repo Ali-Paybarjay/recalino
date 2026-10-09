@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Database, Tx } from "../db";
 import { errors, type LearnerContext } from "../plt";
 import { getAccountState, lockAccount } from "./account";
-export const teachingPreferenceKeys = ["shorter_examples"] as const;
+export const teachingPreferenceKeys = ["shorter_examples", "simpler_explanations"] as const;
 const keySchema = z.enum(teachingPreferenceKeys);
 export interface TeachingPreference {
   key: (typeof teachingPreferenceKeys)[number];

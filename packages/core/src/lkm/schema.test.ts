@@ -184,6 +184,12 @@ it.each([
     fullSentence: "We have lived here for donkey's years without any problems.",
     exposed: "We have lived here for donkey's years without any ______.",
   },
+  {
+    en: "somebody (pronunciation)",
+    gapSentence: "______ left an umbrella on the bus.",
+    fullSentence: "Somebody left an umbrella on the bus.",
+    exposed: "Somebody left an ______ on the bus.",
+  },
 ])("validates the paid dictionary label $en without exposing its lexical answer", (fields) => {
   const valid = lexicalFrameModel(fields);
   expect(validateKnowledgeModel(valid, [], "en").learningItems).toHaveLength(1);
@@ -191,4 +197,33 @@ it.each([
   expect(() => validateKnowledgeModel(exposed, [], "en")).toThrowError(
     expect.objectContaining({ details: { fields: { output: ["study_answer_exposed"] } } }),
   );
+});
+
+it("AC-D46-01 accepts a taught indefinite pronoun as its own target and keeps slot-only notation unsupported", () => {
+  const pronoun = {
+    en: "somebody",
+    gapSentence: "______ left an umbrella on the bus.",
+    fullSentence: "Somebody left an umbrella on the bus.",
+  };
+  expect(validateKnowledgeModel(lexicalFrameModel(pronoun), [], "en").learningItems).toHaveLength(
+    1,
+  );
+  const exposed = lexicalFrameModel({
+    ...pronoun,
+    gapSentence: "Somebody left an ______ on the bus.",
+  });
+  expect(() => validateKnowledgeModel(exposed, [], "en")).toThrow(
+    expect.objectContaining({ details: { fields: { output: ["study_answer_exposed"] } } }),
+  );
+  const frame = lexicalFrameModel({
+    en: "remind somebody of something",
+    gapSentence: "Please ______ me ______ the meeting.",
+    fullSentence: "Please remind me of the meeting.",
+  });
+  expect(validateKnowledgeModel(frame, [], "en").learningItems).toHaveLength(1);
+  for (const en of ["(somebody)", "sb", "sb/sth"]) {
+    expect(() => validateKnowledgeModel(lexicalFrameModel({ ...pronoun, en }), [], "en")).toThrow(
+      expect.objectContaining({ details: { fields: { output: ["study_target_unsupported"] } } }),
+    );
+  }
 });
