@@ -7,6 +7,7 @@ import {
   validateKnowledgeModel,
 } from "../lkm";
 import { AppError, errors } from "../plt";
+import { providerStudySchema } from "./generated-knowledge";
 import { buildKnowledgeEvidenceInput, type KnowledgeEvidenceInput } from "./knowledge-evidence";
 
 type RepairInput = KnowledgeEvidenceInput;
@@ -42,7 +43,9 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
       .max(100),
     learningItems: z
       .array(
-        knowledgeModelSchema.shape.learningItems.element.omit({ claim: true }).extend({ claim }),
+        knowledgeModelSchema.shape.learningItems.element
+          .omit({ study: true, claim: true })
+          .extend({ study: providerStudySchema.optional(), claim }),
       )
       .max(500),
     homework: z.array(claim).max(100),

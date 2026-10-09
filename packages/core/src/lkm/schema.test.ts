@@ -199,3 +199,68 @@ it("AC-D46-01 accepts a taught indefinite pronoun as its own target and keeps sl
     );
   }
 });
+
+it("AC-D46-04 stores the words a grammar IPA transcribes and keeps older grammar revisions valid", () => {
+  const grammar = (fields: { ipaText?: string; kind?: "grammar" | "collocation" } = {}) => {
+    const value = lexicalFrameModel({ en: "present simple questions" });
+    const item = value.learningItems[0];
+    if (item?.study?.set !== "production") throw new Error("Missing grammar fixture");
+    const { gapSentence: _gap, ...study } = item.study;
+    item.kind = "grammar";
+    item.study = {
+      ...study,
+      kind: fields.kind ?? "grammar",
+      ipa: "/dʌz ʃi wɔːk/",
+      ...(fields.ipaText === undefined ? {} : { ipaText: fields.ipaText }),
+      taskFa: "Make a question from the statement.",
+      prompt: "Make a question: She walks to school every day.",
+      fullSentence: "Does she walk to school every day?",
+    };
+    return value;
+  };
+  const rejected = (value: KnowledgeModel) => {
+    expect(() => validateKnowledgeModel(value, [], "en")).toThrow(
+      expect.objectContaining({ details: { fields: { output: ["schema_invalid"] } } }),
+    );
+  };
+  // Older stored revisions never had the field and stay valid unchanged.
+  const legacy = validateKnowledgeModel(grammar(), [], "en").learningItems[0]?.study;
+  expect(legacy).toMatchObject({ kind: "grammar", ipa: "/dʌz ʃi wɔːk/" });
+  expect(legacy).not.toHaveProperty("ipaText");
+  for (const ipaText of [
+    "Does she walk",
+    "Yes, she does",
+    "does not walk to school every",
+    // Shared symbols and a modifier-letter apostrophe belong to Latin-script text.
+    "It costs £5",
+    "is 20°C",
+    "She doesnʼt walk",
+  ])
+    expect(
+      validateKnowledgeModel(grammar({ ipaText }), [], "en").learningItems[0]?.study,
+    ).toMatchObject({ ipaText });
+  for (const ipaText of [
+    "",
+    " Does she walk",
+    "does she walk to school every day",
+    "آیا او راه می‌رود",
+    "彼女は歩きますか",
+    "Does she walk コーヒー",
+    "Does she <b>walk</b>",
+    "Does she walk &amp; talk",
+    "/dʌz ʃi wɔːk/",
+    // A task's blank, cue brackets or option slash are never words the IPA transcribes.
+    "She ______ (walk",
+    "walk) to the",
+    "She walks / walk",
+    "Does [she] walk",
+  ])
+    rejected(grammar({ ipaText }));
+  // Lexical IPA transcribes en itself, so only a grammar item may name transcribed words.
+  rejected(grammar({ ipaText: "Does she walk", kind: "collocation" }));
+  const lexical = lexicalFrameModel();
+  const item = lexical.learningItems[0];
+  if (item?.study?.set !== "production") throw new Error("Missing lexical fixture");
+  item.study.ipaText = "look forward to";
+  rejected(lexical);
+});

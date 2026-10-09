@@ -108,7 +108,7 @@ export function renderStudyCard(
       back: `<div ${ctx.englishAttrs}><b style="font-size:1.25em">${text(value.fullSentence)}</b></div>${value.noteFa ? `<br><div ${ctx.explanatoryAttrs}>📝 ${prose(value.noteFa)}</div>` : ""}`,
     };
   const english = [
-    `<b style="font-size:1.25em">${text(value.en)}</b>${value.ipa ? `<br><span class="ipa">${text(value.ipa)}</span>` : ""}`,
+    `<b style="font-size:1.25em">${text(value.en)}</b>${value.ipa ? `<br>${value.ipaText ? `${text(value.ipaText)} ` : ""}<span class="ipa">${text(value.ipa)}</span>` : ""}`,
     value.fullSentence ? `<i>${text(value.fullSentence)}</i>` : "",
     value.collocations.length
       ? `<b>Collocations:</b> ${value.collocations.map(text).join(" · ")}`
@@ -136,10 +136,25 @@ export function renderStudyCard(
   };
 }
 
+/**
+ * A grammar IPA transcribes the class words in ipaText, not the pattern label in en, so those
+ * words come first: "Does she walk /dʌz ʃi wɔːk/". Other IPA transcribes en and stands alone.
+ */
+function transcription(value: StudyContent, ctx: RenderContext): string | undefined {
+  return value.set === "production" && value.ipaText && value.ipa
+    ? `${text(value.ipaText)} <bdi ${ctx.englishAttrs} class="ipa">${text(value.ipa)}</bdi>`
+    : undefined;
+}
+
 function pronunciation(value: StudyContent, ctx: RenderContext): string {
   const prose = ctx.prose;
+  const transcribed = transcription(value, ctx);
   const parts = [
-    value.ipa ? `<bdi ${ctx.englishAttrs} class="ipa">${text(value.ipa)}</bdi>` : "",
+    transcribed
+      ? `<bdi ${ctx.englishAttrs}>${transcribed}</bdi>`
+      : value.ipa
+        ? `<bdi ${ctx.englishAttrs} class="ipa">${text(value.ipa)}</bdi>`
+        : "",
     ctx.locale.isPersian && value.faApprox ? prose(value.faApprox) : "",
     value.trap ? `<span ${ctx.explanatoryAttrs} class="trap">⚠️ ${prose(value.trap)}</span>` : "",
   ].filter(Boolean);
@@ -461,18 +476,20 @@ export function renderClassNotesHtml(model: KnowledgeModel): string {
           ...(ctx.locale.isPersian ? [ctx.label("persianApprox")] : []),
           ctx.label("trap"),
         ],
-        appendix.flatMap((item) =>
-          item.study
-            ? [
-                [
-                  `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
-                  `<td ${ctx.englishAttrs} class="ipa">${text(item.study.ipa ?? "")}</td>`,
-                  ...(ctx.locale.isPersian ? [`<td>${prose(item.study.faApprox ?? "")}</td>`] : []),
-                  `<td>${prose(item.study.trap ?? "")}</td>`,
-                ],
-              ]
-            : [],
-        ),
+        appendix.flatMap((item) => {
+          if (!item.study) return [];
+          const transcribed = transcription(item.study, ctx);
+          return [
+            [
+              `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
+              transcribed
+                ? `<td ${ctx.englishAttrs}>${transcribed}</td>`
+                : `<td ${ctx.englishAttrs} class="ipa">${text(item.study.ipa ?? "")}</td>`,
+              ...(ctx.locale.isPersian ? [`<td>${prose(item.study.faApprox ?? "")}</td>`] : []),
+              `<td>${prose(item.study.trap ?? "")}</td>`,
+            ],
+          ];
+        }),
         ctx,
         true,
       )}`,
