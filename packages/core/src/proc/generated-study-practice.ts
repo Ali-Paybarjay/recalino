@@ -14,6 +14,7 @@ import {
   studyLexicalTargetMatches,
   validateKnowledgeModel,
 } from "../lkm";
+import { classQuotationSources, quotesClassSources } from "./knowledge-generation";
 import type { LearnerTeachingContext } from "./learner-context";
 
 /**
@@ -60,6 +61,20 @@ export function finalizeGeneratedStudyPractice(
     derivedExercises: 0,
     omittedCandidates: {},
   };
+  const omit = (reason: string) => {
+    audit.omittedCandidates[reason] = (audit.omittedCandidates[reason] ?? 0) + 1;
+  };
+  // On every generation path, a Class Notes chunk whose "Class sentence" is not a faithful class
+  // quotation is omitted, never rejected: noisy extraction must not cost the lesson its single
+  // regeneration. Only the count is recorded, never the text (PRD-PRIV-06).
+  const chunks = model.classNotes?.chunks ?? [];
+  const quotation = chunks.length ? classQuotationSources(sources) : undefined;
+  const kept = chunks.filter(
+    (chunk) => quotation && quotesClassSources(chunk.classSentence, quotation),
+  );
+  for (let index = kept.length; index < chunks.length; index++)
+    omit("class_sentence_not_in_sources");
+  if (model.classNotes) model.classNotes.chunks = kept;
   // Every generated model: homework needs a cited after-class assignment. Nothing is deleted or
   // rejected: a claim that would overflow the summary limit stays where the model put it.
   const homework: Claim[] = [];
@@ -76,7 +91,8 @@ export function finalizeGeneratedStudyPractice(
   model.homework = homework;
   // Old queued settings without the D46 snapshot retain their original optional practice.
   if (!audit.applied) {
-    if (!audit.homeworkClaimsDemoted) return { model: input, audit };
+    if (!audit.homeworkClaimsDemoted && kept.length === chunks.length)
+      return { model: input, audit };
     return {
       model: validateKnowledgeModel(
         assignGeneratedKnowledgeIds(model),
@@ -135,9 +151,6 @@ export function finalizeGeneratedStudyPractice(
       }
     }
   }
-  const omit = (reason: string) => {
-    audit.omittedCandidates[reason] = (audit.omittedCandidates[reason] ?? 0) + 1;
-  };
   if (model.classNotes) {
     audit.replacedGeneratedExercises = model.classNotes.gapfill.length;
     const exercises: ClassNotes["gapfill"] = [];

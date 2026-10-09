@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ProviderError } from "../aip";
 import type { KnowledgeModel } from "../lkm";
 import { errors } from "../plt";
+import { lexicalGapProblem } from "./knowledge-generation";
 import type { LearnerTeachingContext } from "./learner-context";
 
 const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -137,6 +138,10 @@ export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
       const study = result.learningItems[target.index]?.study;
       if (study?.set !== "production")
         throw errors.validationFailed({ output: ["study_repair_not_applicable"] });
+      // A grammar label is not a headword, whichever span is hidden. This follows a paid span
+      // repair and allows no regeneration, so a hit here fails the lesson outright.
+      if (lexicalGapProblem(study.en, study.fullSentence, gapSentence) === "study_answer_label")
+        throw errors.validationFailed({ output: ["study_answer_label"] });
       study.gapSentence = gapSentence;
     }
     return result;
