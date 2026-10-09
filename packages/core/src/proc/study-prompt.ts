@@ -39,7 +39,7 @@ export function personalisedTeachingPrompt(
   // field (study.kind or faApprox); without them none did. Pin the structure.
   const structure =
     simpler || focus
-      ? "The explanation choice and practiceFocus change only the wording of explanation fields (noteFa, faMeaning, coreIntro, chunks). They never remove or rename a field: every production item, including a grammar item, still has its complete question (gapSentence, or study.kind grammar with taskFa and prompt), fullSentence, and ipa together with its faApprox; learningItems[].kind keeps one of its exact enum values."
+      ? "The explanation choice and practiceFocus change only the wording of explanation fields (noteFa, faMeaning, coreIntro, chunks). Every other field and rule stays exactly as specified: keep study.kind, gapSentence or taskFa and prompt, fullSentence, ipa and faApprox complete for every production item, and keep recognition items as recognition."
       : "";
   return [
     "Teach with a warm, calm, friendly and non-judgmental tone in the resolved explanation language. Use direct, helpful explanations without generic praise or invented familiarity.",
