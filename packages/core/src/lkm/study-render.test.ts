@@ -150,6 +150,58 @@ it.each(["en", "fa"])(
 );
 
 it.each([
+  ["fa", 'dir="ltr"'],
+  ["ja", 'dir="ltr" lang="en"'],
+] as const)(
+  "AC-D46-04 shows the words a grammar IPA transcribes beside it in %s notes and card faces",
+  (language, english) => {
+    const model = referenceStudyModel();
+    model.language.explanation = language;
+    const item = model.learningItems[0];
+    if (item?.study?.set !== "production") throw new Error("Missing production fixture");
+    const { gapSentence: _gap, ...study } = item.study;
+    item.kind = "grammar";
+    item.study = {
+      ...study,
+      en: "present simple questions",
+      kind: "grammar",
+      ipa: "/dʌz ʃi wɔːk/",
+      ipaText: "Does she walk",
+      taskFa: "جمله را سؤالی کن:",
+      prompt: "She walks to school every day.",
+      fullSentence: "Does she walk to school every day?",
+    };
+    const { ipaText: _ipaText, ...legacyStudy } = item.study;
+    const legacyItem = { ...item, study: legacyStudy };
+    const legacy = { ...model, learningItems: [legacyItem, ...model.learningItems.slice(1)] };
+    const transcribed = `Does she walk <bdi ${english} class="ipa">/dʌz ʃi wɔːk/</bdi>`;
+    const notes = parse(renderClassNotesHtml(model));
+    const entry = serialize(byId(notes, item.id));
+    expect(entry).toContain(`<p class="pron">🔊 <bdi ${english}>${transcribed}</bdi>`);
+    // The pattern label stays the heading; it is not what the IPA transcribes.
+    expect(entry).toContain(`<span ${english} class="en">present simple questions</span>`);
+    const appendix = serialize(byId(notes, "pron"));
+    expect(appendix).toContain(`<td ${english}>${transcribed}</td>`);
+    // Older revisions without the words keep their exact IPA rendering.
+    const legacyNotes = parse(renderClassNotesHtml(legacy));
+    expect(serialize(byId(legacyNotes, item.id))).toContain(
+      `<p class="pron">🔊 <bdi ${english} class="ipa">/dʌz ʃi wɔːk/</bdi>`,
+    );
+    expect(serialize(byId(legacyNotes, "pron"))).toContain(
+      `<td ${english} class="ipa">/dʌz ʃi wɔːk/</td>`,
+    );
+    expect(serialize(byId(legacyNotes, "pron"))).not.toContain("Does she walk");
+    // A grammar task card shows no IPA; a card face that shows one names its words too.
+    const task = renderStudyCard(item, language);
+    expect(task).toEqual(renderStudyCard(legacyItem, language));
+    const { taskFa: _task, ...untasked } = item.study;
+    const face = renderStudyCard({ ...item, study: untasked }, language);
+    expect(face.back).toContain('Does she walk <span class="ipa">/dʌz ʃi wɔːk/</span>');
+    expect(safeCardHtml(face.back)).toBe(face.back);
+  },
+);
+
+it.each([
   ["en", "Use the base form **like** after don't; the quoted example is incorrect.", "ltr"],
   ["fa", "بعد از don't فعل **like** می‌آید؛ جملهٔ نقل‌شده نادرست است.", "rtl"],
 ] as const)(

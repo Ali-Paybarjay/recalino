@@ -1708,6 +1708,58 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
     ).not.toHaveProperty("spokenChunk");
   });
 
+  it("stores the transcribed grammar words exactly as written where the chunk was found", () => {
+    const prepared = prepare();
+    const assembled = (spokenChunk: string, fields: Record<string, unknown> = {}) =>
+      prepared.assemble(
+        wire({ ...output(), learningItems: [{ ...grammar(), ...fields, spokenChunk }] }),
+      ).learningItems[0];
+    const stored = (spokenChunk: string, fields: Record<string, unknown> = {}) =>
+      assembled(spokenChunk, fields)?.study;
+    // The answer's own case, spelling and inner punctuation win over the copied chunk.
+    for (const spokenChunk of ["she walks", "She walks,", "SHE WALKS"])
+      expect(stored(spokenChunk)).toMatchObject({ ipaText: "She walks", ipa: grammar().ipa });
+    // Content identities follow the stored words, not the spelling of the copied chunk.
+    expect(assembled("SHE WALKS")?.id).toBe(assembled("she walks")?.id);
+    expect(assembled("look forward to")?.id).not.toBe(assembled("she walks")?.id);
+    expect(
+      stored("mondays she walks", {
+        fullSentence: "On Mondays, she walks to the small shop.",
+        prompt: "Correct the verb: On Mondays, she walk to the small shop.",
+      }),
+    ).toMatchObject({ ipaText: "Mondays, she walks" });
+    // An inverted question keeps its subject between the auxiliary and the verb.
+    const question = {
+      fullSentence: "Does she walk to the small shop every morning?",
+      prompt: "Make a question: She walks to the small shop every morning.",
+    };
+    expect(stored("does she walk", question)).toMatchObject({ ipaText: "Does she walk" });
+    expect(() => stored("does walk", question)).toThrow(failure("study_ipa_chunk_invalid"));
+    // A chunk from the item's cited class block keeps that block's text.
+    expect(stored("LOOK FORWARD TO")).toMatchObject({ ipaText: "look forward to" });
+    // Words that are not English Latin-script text never become the transcribed words.
+    expect(() =>
+      stored("فعل را", { prompt: "Correct the verb (فعل را): She walk to the small shop." }),
+    ).toThrow(failure("study_ipa_chunk_invalid"));
+    // Lexical IPA transcribes meaning.en itself, so it stores no transcribed words.
+    expect(prepared.assemble(wire(output())).learningItems[0]?.study).not.toHaveProperty("ipaText");
+  });
+
+  it("shows the transcribed grammar words beside the IPA in the Persian Class Notes", () => {
+    const decoded = prepare().decode(
+      wire({
+        ...output(),
+        learningItems: [{ ...grammar(), spokenChunk: "she walks", ipa: "/ʃi wɔːks/" }],
+      }),
+    );
+    const html = renderClassNotesHtml(decoded);
+    const transcribed = 'She walks <bdi dir="ltr" class="ipa">/ʃi wɔːks/</bdi>';
+    expect(html).toContain(`<p class="pron">🔊 <bdi dir="ltr">${transcribed}</bdi>`);
+    expect(html).toContain(`<td dir="ltr">${transcribed}</td>`);
+    // The decoded model already passed canonical validation with the stored words.
+    expect(decoded.learningItems[0]?.study).toMatchObject({ ipaText: "She walks" });
+  });
+
   it("rejects a planned concept that no claim states with its evidence", () => {
     const data = input([source(), source()]);
     const prepared = prepare(data);
@@ -2168,6 +2220,35 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
       "Never name in taskFa or the instruction the only word(s) that fill the blank unless real alternatives are offered",
     );
     expect(prepare().system).toContain("it is never already the required form");
+  });
+
+  it("asks for a rewritten cue instead of a class-printed answer and for an uncut inverted chunk", () => {
+    const prepared = prepare();
+    const schemaText = JSON.stringify(z.toJSONSchema(prepared.schema));
+    for (const text of [prepared.system, schemaText]) {
+      expect(text).toContain("printed its exercise that way");
+      expect(text).toContain("plausible wrong form");
+      expect(text).toContain("the subject between the auxiliary and the verb");
+    }
+    expect(schemaText).toContain("IPA transcription of exactly the words in spokenChunk");
+    expect(prepared.system).toContain("for a grammar item, exactly its spokenChunk");
+    expect(prepared.system).toContain("fullSentence stays the correct class sentence");
+    expect(prepared.system).toContain("The server rejects a front whose cue is already the answer");
+    for (const [code, guidance] of [
+      ["study_prompt_reveals_answer", "rewrite the prompt so the learner must choose or change"],
+      [
+        "study_prompt_reveals_answer",
+        'the required form and a plausible wrong form separated by " / "',
+      ],
+      ["study_ipa_chunk_invalid", "never skip one: in a question with subject-auxiliary inversion"],
+      ["study_ipa_chunk_invalid", "pronunciation.ipa transcribes exactly those words"],
+    ] as const)
+      expect(
+        buildKnowledgeGenerationInput(input(), 120000, {
+          repairReason: "provider_schema_invalid",
+          repairDetail: `assembly:${code}`,
+        }).system,
+      ).toContain(guidance);
   });
 
   it.each([

@@ -30,6 +30,11 @@ export type StudyMetadata = z.infer<typeof metadataSchema>;
 /** AC-D46-01: only a structured English headword/frame can become speech, never card HTML. */
 export function studyPronunciationTarget(item: LearningItem): string | undefined {
   if (!item.study) return undefined;
+  // A grammar IPA transcribes its stored class words, so speech says those words, not the label.
+  if (item.study.set === "production" && item.study.ipaText !== undefined) {
+    const spoken = pronunciationTargetSchema.safeParse(item.study.ipaText);
+    return spoken.success ? spoken.data : undefined;
+  }
   const target = studyLexicalTarget(item.study.en);
   if (!target) return undefined;
   if (target.parts.length === 1) {
