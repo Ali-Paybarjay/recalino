@@ -320,6 +320,23 @@ const alternateScripts: Record<string, readonly string[]> = {
   uz: ["Cyrl", "Arab"],
 };
 scriptPatterns.Adlm = /\p{Script=Adlam}/u;
+// Same-script orthography: Persian/Urdu keheh and Farsi yeh are spelled ك and ي/ى/ة in Arabic.
+// پ چ ژ گ stay allowed because Arabic pronunciation notes use them for /p tʃ ʒ g/.
+const sameScriptOrthography: Record<string, { foreign: RegExp; native: RegExp }> = {
+  ar: { foreign: /[کی]/gu, native: /[كيىة]/gu },
+};
+const quotedSpans = /«[^«»]*»|"[^"]*"|“[^“”]*”|\([^()]*\)/gu;
+const arabicLetter = /(?=\p{Letter})\p{Script=Arabic}/u;
+
+/** Quoted loanwords and glosses are data; the surrounding prose decides the orthography. */
+function hasForeignOrthography(text: string, language: string): boolean {
+  const orthography = sameScriptOrthography[language];
+  if (!orthography) return false;
+  const prose = text.replace(quotedSpans, " ");
+  const judged = arabicLetter.test(prose) ? prose : text;
+  const count = (pattern: RegExp) => judged.match(pattern)?.length ?? 0;
+  return count(orthography.foreign) > count(orthography.native);
+}
 
 /** Reject clear script mismatches; same-script language fluency still needs EVAL. */
 export function matchesExplanationScript(textValue: string, language: string): boolean {
@@ -333,6 +350,7 @@ export function matchesExplanationScript(textValue: string, language: string): b
       script && scriptPatterns[script] ? [scriptPatterns[script]] : [],
     );
     if (!patterns.length || !patterns.some((pattern) => pattern.test(explanation))) return false;
+    if (hasForeignOrthography(explanation, locale.language)) return false;
     // English targets are allowed inside explanations, but a quoted English term
     // must not make Persian/Hebrew/etc prose pass a Latin-language check.
     return Array.from(explanation).every(

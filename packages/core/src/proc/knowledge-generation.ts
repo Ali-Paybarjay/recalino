@@ -103,12 +103,27 @@ const issueMeaning: Record<string, string> = {
     "the value matches no allowed variant; learningItems[].type must be exactly lexical, grammar or recognition, and kind is a separate property",
 };
 
-function repairInstruction(reason: string, detail?: string): string {
+function languageName(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Names the requested language from code; another language in the same script is not it. */
+function languageRepairNote(explanationLanguage: string): string {
+  const name = languageName(explanationLanguage);
+  return `The requested explanation language is ${name} (${JSON.stringify(explanationLanguage)}). Another language written in the same script is not ${name}; write every title, claim, meaning, note, task instruction and Class Notes prose in ${name}.`;
+}
+
+function repairInstruction(reason: string, explanationLanguage: string, detail?: string): string {
   const notes: string[] = [];
   const add = (note?: string) => {
     if (note && !notes.includes(note)) notes.push(note);
   };
   add(repairGuidance[reason]);
+  if (reason === "language_script_mismatch") add(languageRepairNote(explanationLanguage));
   if (detail === "json_parse") add(repairGuidance.json_parse);
   else if (detail?.startsWith("assembly:")) add(repairGuidance[detail.slice("assembly:".length)]);
   else if (detail?.startsWith("zod:"))
@@ -501,7 +516,7 @@ export function buildKnowledgeGenerationInput(
       ? "This is a selected compact lesson. Include a concise honest classNotes.orientation.sourceNote in the requested explanation language saying selected lesson points are included and further lesson details are omitted; do not imply exhaustive teaching."
       : "If not every taught point fits, choose complete representative core points and add an honest selected-subset note in classNotes.orientation.sourceNote. If everything fits, do not claim that anything was omitted.",
     repairReason
-      ? repairInstruction(repairReason, repairDetail)
+      ? repairInstruction(repairReason, data.explanationLanguage, repairDetail)
       : "Check the complete question, source support and accurate conversational meaning of every item before returning.",
     `FINAL explanation-language check: learningItems[].claim.text, summary[].text, topics[].claims[].text, homework[].text and uncertainties[].text are all explanations in ${JSON.stringify(data.explanationLanguage)}. So are meaning.faMeaning, teaching.noteFa/imageFa, practice.taskFa, pronunciation.trap and Class Notes prose. Source evidence may be English; copy English only into the learning target, correct examples, prompts, exact source quotations and collocations. Mentioning a few English terms inside native-language explanation is allowed.`,
     isPersian

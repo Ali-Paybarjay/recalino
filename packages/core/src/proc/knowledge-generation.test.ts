@@ -1223,6 +1223,28 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     expect(prepared.system).toContain("learningItems[].claim.text, summary[].text");
   });
 
+  it("FR-PROC-004 names the requested explanation language in a language repair without spelling hints", () => {
+    const repaired = buildKnowledgeGenerationInput(input([source()], "ar"), 120000, {
+      maxOutputTokens: 6144,
+      repairReason: "language_script_mismatch",
+    });
+    expect(
+      /The requested explanation language is [^.]*\. [^.]*\./u.exec(repaired.system)?.[0],
+    ).toBe(
+      'The requested explanation language is Arabic ("ar"). Another language written in the same script is not Arabic; write every title, claim, meaning, note, task instruction and Class Notes prose in Arabic.',
+    );
+    const regional = buildKnowledgeGenerationInput(input([source()], "ar-EG"), 120000, {
+      maxOutputTokens: 6144,
+      repairReason: "language_script_mismatch",
+    });
+    expect(regional.system).toContain('("ar-EG"). Another language written in the same script');
+    const other = buildKnowledgeGenerationInput(input([source()], "ar"), 120000, {
+      maxOutputTokens: 6144,
+      repairReason: "study_gap_hint",
+    });
+    expect(other.system).not.toContain("The requested explanation language is");
+  });
+
   it("keeps core contrasts, source conflicts and assignments ahead of duplicate summaries", () => {
     const material = source();
     first(material.blocks).text += " Homework: read a short story.";
