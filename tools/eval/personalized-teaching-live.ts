@@ -32,6 +32,7 @@ import { buildKnowledgeRepairInput } from "../../packages/core/src/proc/knowledg
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "../../packages/core/src/proc/knowledge-translation";
 import {
+  declaredTeachingContext,
   modelTeachingContext,
   selectPracticeFocus,
   snapshotLearnerTeachingContext,
@@ -388,10 +389,11 @@ for (const item of cases) {
       );
       if (noRepair || replayFrom || !repairable.has(failure)) throw error;
       if (failure === "study_sentence_mismatch") {
+        // Same as the worker: answer-span repair receives declared choices only.
         const repair = buildKnowledgeStudyRepairInput(
           generated,
           settings.maxInputCharacters,
-          item.data.learnerContext,
+          declaredTeachingContext(item.data.learnerContext),
         );
         current = { level: item.declaredLevel, stage: "study-repair" };
         const result = await provider.structured({
@@ -430,7 +432,7 @@ for (const item of cases) {
             result.output,
             "fa",
             settings.maxInputCharacters,
-            item.data.learnerContext,
+            declaredTeachingContext(item.data.learnerContext),
           );
           current = { level: item.declaredLevel, stage: "language-repair" };
           const translated = await provider.structured({
