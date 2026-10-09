@@ -340,7 +340,9 @@ test("keeps ready results in the inbox when device push is unavailable", async (
   await page.goto(`/classes/${seeded.sessionId}`);
   await page.getByRole("button", { name: /^Notifications/ }).click();
   const dialog = page.getByRole("dialog", { name: "Notifications" });
-  await expect(dialog.getByText("Your session materials are ready.", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText("Your session materials are ready.", { exact: true }),
+  ).toBeVisible();
   await expect(dialog.getByRole("link", { name: "Open result" })).toHaveAttribute(
     "href",
     `/classes/${seeded.sessionId}/notes`,

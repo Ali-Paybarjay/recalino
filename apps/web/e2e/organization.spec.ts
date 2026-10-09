@@ -109,7 +109,9 @@ test("a learning goal stays separate while new courses preserve and organize dat
   expect((await spanishClasses.json()).total).toBe(1);
 
   await page.goto("/courses");
-  await expect(page.getByRole("heading", { level: 1, name: "Manage courses", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Manage courses", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Your courses" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "ESOL at college", exact: true })).toBeVisible();
   await expect(
@@ -141,7 +143,9 @@ test("courses, optional units and a class can be created, moved and deleted thro
   test.setTimeout(120_000);
   await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/today");
-  await expect(page.getByRole("heading", { name: "Your first session starts here." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your first session starts here." }),
+  ).toBeVisible();
   await page.goto("/classes/organize");
   await page.getByLabel("New course name").fill("English B1");
   await page.getByRole("button", { name: "Create course", exact: true }).click();

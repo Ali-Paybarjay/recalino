@@ -187,7 +187,9 @@ test("scroll loading can retry a failed page and append classes without losing d
   expect(dates).toEqual(
     Array.from({ length: 25 }, (_, index) => `2026-09-${String(25 - index).padStart(2, "0")}`),
   );
-  await expect(page.getByRole("button", { name: "Load more sessions", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load more sessions", exact: true })).toHaveCount(
+    0,
+  );
 });
 
 for (const scheme of ["light", "dark"] as const) {

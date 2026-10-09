@@ -404,7 +404,9 @@ test("class voices explain missing transcripts before a check can be submitted",
   await expect(
     page.getByRole("button", { name: "Check session voices", exact: true }),
   ).toBeDisabled();
-  await expect(page.getByText(/Select a session recording in Sources and process it/)).toBeVisible();
+  await expect(
+    page.getByText(/Select a session recording in Sources and process it/),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Open session sources" })).toHaveAttribute(
     "href",
     "/classes/10000000-0000-4000-8000-000000000001/sources",

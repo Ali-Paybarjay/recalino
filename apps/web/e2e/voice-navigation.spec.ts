@@ -35,7 +35,9 @@ test("voice settings opened from the account returns to account settings (FR-VOC
     "href",
     "/me",
   );
-  await expect(page.getByRole("link", { name: "Back to session notes", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Back to session notes", exact: true })).toHaveCount(
+    0,
+  );
 });
 
 test("untrusted voice settings return destinations fall back to account settings (FR-VOC-001)", async ({

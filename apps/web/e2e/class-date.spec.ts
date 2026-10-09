@@ -14,7 +14,9 @@ async function expectDayFirstDate(page: Page) {
   const initialDate = await picker.inputValue();
   expect(initialDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   await expect(date).toHaveValue(initialDate.split("-").reverse().join("/"));
-  await expect(page.getByRole("button", { name: "Choose session date", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Choose session date", exact: true }),
+  ).toBeVisible();
   return { date, picker };
 }
 
