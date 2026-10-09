@@ -41,6 +41,8 @@ export interface AppErrorOptions {
   details?: Record<string, unknown>;
   headers?: Record<string, string>;
   securitySignal?: SecuritySignal;
+  /** An identifier-like cause for the server log, e.g. "storage_adapter_missing"; never sent. */
+  reason?: string;
 }
 
 export class AppError extends Error {
@@ -49,6 +51,7 @@ export class AppError extends Error {
   readonly details: Record<string, unknown> | undefined;
   readonly headers: Record<string, string>;
   readonly securitySignal: SecuritySignal | undefined;
+  readonly reason: string | undefined;
 
   constructor(code: ErrorCode, options: AppErrorOptions = {}) {
     super(DEFAULT_MESSAGES[code]);
@@ -58,6 +61,7 @@ export class AppError extends Error {
     this.details = options.details;
     this.headers = options.headers ?? {};
     this.securitySignal = options.securitySignal;
+    this.reason = options.reason;
   }
 }
 
@@ -83,6 +87,11 @@ export const errors = {
     new AppError("quota_insufficient", details ? { details } : {}),
   payloadTooLarge: () => new AppError("payload_too_large"),
   unsupportedMedia: () => new AppError("unsupported_media"),
+  /**
+   * Server configuration the request needs is missing. The client cannot fix it, so it is an
+   * internal error; the reason reaches only the server log (FR-PLT-003, FR-PLT-007).
+   */
+  configurationMissing: (reason: string) => new AppError("internal", { reason }),
 };
 
 export const errorEnvelopeSchema = z.strictObject({

@@ -73,7 +73,7 @@ export async function persistDeletionJournal(
 ): Promise<void> {
   const request = await getPrivacyDeletionRequest(db, ctx, requestId);
   const journal = dependencies.deletionJournal;
-  if (!journal) throw errors.validationFailed({ cleanup: ["deletion_journal_adapter_missing"] });
+  if (!journal) throw errors.configurationMissing("deletion_journal_adapter_missing");
   const row = await db
     .selectFrom("priv.deletion_request")
     .select("related_sessions")
@@ -362,7 +362,7 @@ export function privacyCleanupJob(
           throw errors.validationFailed({ cleanup: ["captured_module_missing"] });
         const journal = dependencies.deletionJournal;
         if (!journal && ["production", "preview"].includes(process.env.VERCEL_ENV ?? ""))
-          throw errors.validationFailed({ cleanup: ["deletion_journal_adapter_missing"] });
+          throw errors.configurationMissing("deletion_journal_adapter_missing");
         if (journal && !(await hasJobStep(job.db, job.job.id, "deletion_journal"))) {
           // The adapter commits its own durable registration; do not hold the job transaction
           // while it acquires a connection. An interrupted append is safe to repeat by requestId.

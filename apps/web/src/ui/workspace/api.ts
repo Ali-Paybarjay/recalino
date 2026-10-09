@@ -10,7 +10,7 @@ const failureSchema = z.object({
         deletion: z
           .strictObject({
             requestId: z.uuid(),
-            kind: z.literal("account"),
+            kind: z.enum(["account", "session"]),
             state: z.literal("acknowledgement_pending"),
           })
           .optional(),

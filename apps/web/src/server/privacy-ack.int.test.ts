@@ -138,11 +138,11 @@ it.each(["session", "source", "account"] as const)(
     expect(receipt.kind).toBe(kind);
     expect(receipt.subject_id).toBe(subjectId);
     expect(receipt.state).toBe("pending");
-    if (kind === "account") {
+    if (kind !== "source") {
       expect(failedBody.error.details).toEqual({
         deletion: {
           requestId: receipt.id,
-          kind: "account",
+          kind,
           state: "acknowledgement_pending",
         },
       });

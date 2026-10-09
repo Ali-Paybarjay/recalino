@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { DateInput } from "../components/DateInput";
 import { Sheet } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
-import { requestKey, workspaceRequest } from "./api";
+import { pendingCopy } from "../pending-copy";
+import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 
 const CREATE_NEW_COURSE = "__create_new_course__";
@@ -122,7 +123,12 @@ export function ClassForm({
       router.refresh();
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : "The class could not be deleted. Try again.",
+        // The class is already hidden; deleting again with the same key saves its receipt.
+        failure instanceof WorkspaceRequestError && failure.deletion?.kind === "session"
+          ? pendingCopy.classDeletion.receiptPending
+          : failure instanceof Error
+            ? failure.message
+            : "The class could not be deleted. Try again.",
       );
       setBusy(false);
       setConfirm(false);
