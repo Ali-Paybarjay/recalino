@@ -70,6 +70,7 @@ pnpm exec tsx --conditions=react-server tools/voice/evaluation/extract.ts --spli
 pnpm exec tsx --conditions=react-server tools/voice/evaluation/extract.ts --split holdout
 pnpm exec tsx --conditions=react-server tools/voice/evaluation/calibrate.ts
 pnpm exec tsx --conditions=react-server tools/voice/evaluation/holdout.ts
+pnpm exec tsx --conditions=react-server tools/voice/evaluation/supplement.ts   # post-hoc, not a gate
 pnpm exec biome format --write tools/voice/evaluation/*.json
 ```
 
