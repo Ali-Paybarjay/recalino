@@ -266,6 +266,20 @@ describe("correction explanation language", () => {
       )[speakerId],
     ).toEqual([{ ...mistake, whyFa: explanation, explanationLanguage: language }]);
   });
+  it("FR-ACC-005 rejects the whole correction batch when an Arabic explanation is Persian prose", () => {
+    const arabic = { ...mistake, whyFa: "الفعل agree لا يحتاج إلى am." };
+    const persian = { ...mistake, whyFa: "فعل agree به am نیاز ندارد." };
+    expect(() =>
+      validateVoiceCorrections(
+        prepared,
+        { candidates: [{ speakerId, mistakes: [arabic, persian] }] },
+        [],
+        "ar",
+      ),
+    ).toThrow(
+      expect.objectContaining({ details: { fields: { voice: ["mistake_evidence_invalid"] } } }),
+    );
+  });
   it("rejects Persian text for a Spanish explanation and provider-selected locale metadata", () => {
     expect(() =>
       validateVoiceCorrections(

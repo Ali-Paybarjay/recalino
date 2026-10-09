@@ -12,6 +12,14 @@ it.each([
   ["kit sb/sth out", "kit out", ["kit", "out"]],
   ["kit sth out / kit sth out with", "kit out", ["kit", "out"]],
   ["manager (pronunciation)", "manager", ["manager"]],
+  ["remind sb of sth", "remind of", ["remind", "of"]],
+  ["remind somebody of something", "remind of", ["remind", "of"]],
+  ["get on with (somebody)", "get on with", ["get on with"]],
+  ["somebody", "somebody", ["somebody"]],
+  ["someone", "someone", ["someone"]],
+  ["something", "something", ["something"]],
+  ["Somebody", "Somebody", ["Somebody"]],
+  ["somebody (pronunciation)", "somebody", ["somebody"]],
 ])("extracts a conservative lexical target from %s", (en, text, parts) => {
   expect(studyLexicalTarget(en as string)).toEqual({ text, parts });
 });
@@ -22,12 +30,33 @@ it.each([
   "kit sth out +",
   "lose (lost, lost)",
   "look forward to (preposition to + noun or -ing form)",
+  "somebody (separable phrasal verb)",
+  "sb",
+  "sth",
+  "sb/sth",
+  "(somebody)",
+  "(sb/sth)",
   "past participle (lost, seen, gone, done)",
   "have/has + past participle",
   "look <b>forward</b> to",
   "واژه",
 ])("declines unsupported or ambiguous target notation: %s", (en) => {
   expect(studyLexicalTarget(en)).toBeUndefined();
+});
+
+it("AC-D46-01 hides a taught indefinite pronoun while slot words in a frame stay slots", () => {
+  const pronoun = studyLexicalTarget("somebody");
+  const frame = studyLexicalTarget("remind sb of sth");
+  if (!pronoun || !frame) throw new Error("Missing indefinite pronoun fixture");
+  expect(studyLexicalTargetMatches(pronoun, "Somebody left an umbrella on the bus.")).toBe(true);
+  expect(studyLexicalTargetMatches(pronoun, "I think somebody's at the door.")).toBe(true);
+  expect(studyLexicalTargetMatches(pronoun, "______ left an umbrella on the bus.")).toBe(false);
+  expect(studyLexicalTargetMatches(pronoun, "Everybody takes a singular verb.")).toBe(false);
+  expect(studyLexicalTargetMatches(pronoun, "Nobody came to the party.")).toBe(false);
+  expect(studyLexicalTargetMatches(frame, "Please remind somebody of the meeting.")).toBe(true);
+  expect(studyLexicalTargetMatches(frame, "Please ______ somebody ______ the meeting.")).toBe(
+    false,
+  );
 });
 
 it("detects exposed lexical chunks without mistaking an unrelated gap complement for the target", () => {

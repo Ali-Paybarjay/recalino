@@ -677,7 +677,7 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     });
   });
 
-  it("recognition carries no generated voice assertion and retains generation AI policy", () => {
+  it("recognition carries no generated voice assertion and keeps class provenance only when its class sentence anchors it", () => {
     const item = {
       ...recognitionItem(),
       claim: claim(),
@@ -695,10 +695,19 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     const { sourceClassifications: _sourceClassifications, ...knowledge } = result;
     const final = finalizeGeneratedStudyPractice(knowledge, data.sources, data.learnerContext);
     expect(final.model.learningItems[1]?.claim).toMatchObject({
-      origin: "ai_expansion",
-      evidence: "ai",
-      sourceRefs: [],
+      origin: "from_class",
+      speakerRole: "unknown",
+      sourceRefs: [expect.objectContaining({ sourceId: first(data.sources).sourceId })],
     });
+    const invented = { ...item, example: "I look forward to the summer holidays." };
+    const generated = prepare(data).decode(
+      wire({ ...output(), learningItems: [lexical(), invented] }),
+    );
+    const { sourceClassifications: _classifications, ...unanchored } = generated;
+    expect(
+      finalizeGeneratedStudyPractice(unanchored, data.sources, data.learnerContext).model
+        .learningItems[1]?.claim,
+    ).toMatchObject({ origin: "ai_expansion", evidence: "ai", sourceRefs: [] });
   });
 
   it("fills availability from server extraction and preserves real notebook content", () => {
@@ -1181,6 +1190,14 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     expect(prepared.system).toContain('For Persian explanations, use "پس از X، Y می‌آید"');
     expect(prepared.system).toContain('NEVER explain X + Y as "X بعد از Y می‌آید"');
     expect(prepared.system).toContain("exact English left-to-right pattern");
+    // The Persian order template is never shown to another explanation language.
+    const arabic = prepare(input([source()], "ar"));
+    expect(arabic.system).toContain("exact English left-to-right pattern");
+    expect(arabic.system).not.toContain("پس از X");
+    expect(arabic.system).not.toContain("بعد از Y");
+    expect(arabic.system).toContain(
+      'are all explanations in "ar" (Arabic); another language written in the same script is not it.',
+    );
     expect(prepared.system).toContain("ALL IPA symbols and Latin letters are banned in faApprox");
     expect(prepared.system).toContain("kind /kaɪnd/ → کایند; kind of /kaɪnd əv/ → کایند اَو");
     expect(prepared.system).toContain(
@@ -1228,6 +1245,28 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     expect(prepared.system).toContain("learningItems[].claim.text, summary[].text");
   });
 
+  it("FR-PROC-004 names the requested explanation language in a language repair without spelling hints", () => {
+    const repaired = buildKnowledgeGenerationInput(input([source()], "ar"), 120000, {
+      maxOutputTokens: 6144,
+      repairReason: "language_script_mismatch",
+    });
+    expect(
+      /The requested explanation language is [^.]*\. [^.]*\./u.exec(repaired.system)?.[0],
+    ).toBe(
+      'The requested explanation language is Arabic ("ar"). Another language written in the same script is not Arabic; write every title, claim, meaning, note, task instruction and Class Notes prose in Arabic.',
+    );
+    const regional = buildKnowledgeGenerationInput(input([source()], "ar-EG"), 120000, {
+      maxOutputTokens: 6144,
+      repairReason: "language_script_mismatch",
+    });
+    expect(regional.system).toContain('("ar-EG"). Another language written in the same script');
+    const other = buildKnowledgeGenerationInput(input([source()], "ar"), 120000, {
+      maxOutputTokens: 6144,
+      repairReason: "study_gap_hint",
+    });
+    expect(other.system).not.toContain("The requested explanation language is");
+  });
+
   it("keeps core contrasts, source conflicts and assignments ahead of duplicate summaries", () => {
     const material = source();
     first(material.blocks).text += " Homework: read a short story.";
@@ -1252,6 +1291,10 @@ describe("FR-PROC-004 compact knowledge generation", () => {
       expect(prepared.system).toContain(
         "Homework and uncertainties have their own source-driven priority",
       );
+      expect(prepared.system).toContain(
+        "Homework is only work a class source explicitly sets for after class: a printed or in-class task belongs in classNotes.activities.tasks, and another person's work is never homework.",
+      );
+      expect(prepared.system).not.toContain("each source assignment");
       expect(prepared.system).not.toContain(
         "Across summary/topics/homework/uncertainties use at most",
       );

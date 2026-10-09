@@ -164,3 +164,38 @@ it("AC-D46-01 preserves separable frames, rejects ambiguous notation, and leaves
   };
   expect(validateKnowledgeModel(grammar, [], "en").learningItems).toHaveLength(1);
 });
+
+it("AC-D46-01 accepts a taught indefinite pronoun as its own target and keeps slot-only notation unsupported", () => {
+  const pronoun = {
+    en: "somebody",
+    gapSentence: "______ left an umbrella on the bus.",
+    fullSentence: "Somebody left an umbrella on the bus.",
+  };
+  expect(validateKnowledgeModel(lexicalFrameModel(pronoun), [], "en").learningItems).toHaveLength(
+    1,
+  );
+  const labelled = { ...pronoun, en: "somebody (pronunciation)" };
+  expect(validateKnowledgeModel(lexicalFrameModel(labelled), [], "en").learningItems).toHaveLength(
+    1,
+  );
+  for (const fields of [pronoun, labelled]) {
+    const exposed = lexicalFrameModel({
+      ...fields,
+      gapSentence: "Somebody left an ______ on the bus.",
+    });
+    expect(() => validateKnowledgeModel(exposed, [], "en")).toThrow(
+      expect.objectContaining({ details: { fields: { output: ["study_answer_exposed"] } } }),
+    );
+  }
+  const frame = lexicalFrameModel({
+    en: "remind somebody of something",
+    gapSentence: "Please ______ me ______ the meeting.",
+    fullSentence: "Please remind me of the meeting.",
+  });
+  expect(validateKnowledgeModel(frame, [], "en").learningItems).toHaveLength(1);
+  for (const en of ["(somebody)", "sb", "sb/sth"]) {
+    expect(() => validateKnowledgeModel(lexicalFrameModel({ ...pronoun, en }), [], "en")).toThrow(
+      expect.objectContaining({ details: { fields: { output: ["study_target_unsupported"] } } }),
+    );
+  }
+});
