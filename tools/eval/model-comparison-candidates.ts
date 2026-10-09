@@ -66,6 +66,7 @@ export function comparisonSettings(
         maxRequestBytes: 400000,
         structuredOutputMode: "json_object",
         ...(candidate.temperature === undefined ? { omitTemperature: true as const } : {}),
+        knowledgeContract: "content" as const,
       },
     },
     modelMaximumMicros: { ...base.modelMaximumMicros, [candidate.model]: base.maximumMicros },

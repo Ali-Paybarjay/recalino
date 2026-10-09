@@ -22,6 +22,8 @@ export const providerSettingsSchema = z.strictObject({
         structuredOutputMode: z.enum(["json_schema", "json_object"]).optional(),
         /** The model rejects non-default sampling, so structuredTemperature is never sent. */
         omitTemperature: z.literal(true).optional(),
+        /** As llmModel, generate knowledge with the content-only contract and its two-generation cap. */
+        knowledgeContract: z.literal("content").optional(),
       }),
     )
     .optional(),

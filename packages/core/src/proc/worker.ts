@@ -67,6 +67,7 @@ import {
   compactKnowledgeInstruction,
   knowledgeTruncationSchema,
 } from "./knowledge-compact";
+import { usesContentKnowledgeContract } from "./knowledge-contract";
 import { buildKnowledgeGenerationInput, knowledgeRepairDetailSchema } from "./knowledge-generation";
 import {
   generateCanonicalKnowledge,
@@ -165,8 +166,6 @@ async function liveRun(tx: Tx, ctx: LearnerContext, id: string) {
   await assertSessionOwner(tx, ctx, run.session_id);
   return run;
 }
-/** Only this exact model uses the content-only generation contract and its two-call cap. */
-const contentContractModel = "anthropic/claude-haiku-5.5";
 const undispatchedProviderErrors = new Set([
   "provider_request_too_large",
   "provider_input_too_large",
@@ -230,9 +229,12 @@ export async function providerStep<T>(
       .executeTakeFirst();
     if (previous && ["started", "uncertain"].includes(previous.state))
       throw new ProviderError("provider_outcome_unresolved", false, true);
-    // 5.5 lessons have at most two generation dispatches per run, whichever steps used them.
-    // This also covers a retried job after a paid response whose commit failed.
-    if (model === contentContractModel && knowledgeGenerationSteps.includes(step)) {
+    // Content-contract lessons have at most two generation dispatches per run, whichever steps
+    // used them. This also covers a retried job after a paid response whose commit failed.
+    if (
+      usesContentKnowledgeContract(provider.settings, model) &&
+      knowledgeGenerationSteps.includes(step)
+    ) {
       const attempts = await tx
         .selectFrom("proc.provider_attempt")
         .select(["state", "error_code"])
@@ -447,7 +449,7 @@ export async function providerStep<T>(
       }
       if (
         step === "knowledge" &&
-        model === contentContractModel &&
+        usesContentKnowledgeContract(provider.settings, model) &&
         providerError.code === "provider_schema_invalid" &&
         !providerError.uncertain &&
         providerError.accounting
@@ -1008,8 +1010,9 @@ export function processingJob(
           missingSourceIds: missing,
           lessonContext,
         };
-        // Legacy snapshots retain their original wire contract and rollback behavior.
-        const compactGeneration = settings.provider.llmModel === contentContractModel;
+        // Selected from the run's settings snapshot; legacy snapshots keep their original
+        // wire contract and rollback behavior.
+        const compactGeneration = usesContentKnowledgeContract(settings.provider);
         const knowledgeInput = buildKnowledgeInput(
           generationData,
           settings.provider.maxInputCharacters,
@@ -1151,7 +1154,7 @@ export function processingJob(
           // Provider uncertainty, changed settings and account/source failures never enter here.
           if (!semanticRepairReason(error)) throw error;
           // A known invalid response or truncation and its recovery consume both
-          // 5.5 attempts. Never buy a third generation after semantic validation.
+          // content-contract attempts. Never buy a third generation after semantic validation.
           if (
             compactGeneration &&
             ((await cached(

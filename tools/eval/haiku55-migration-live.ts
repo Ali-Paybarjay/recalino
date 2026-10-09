@@ -25,6 +25,7 @@ import { AppError, canonicalJson, sha256Hex } from "../../packages/core/src/plt"
 import type { generatedKnowledgeSchema } from "../../packages/core/src/proc/generated-knowledge";
 import { finalizeGeneratedStudyPractice } from "../../packages/core/src/proc/generated-study-practice";
 import { compactKnowledgeBudget } from "../../packages/core/src/proc/knowledge-compact";
+import { usesContentKnowledgeContract } from "../../packages/core/src/proc/knowledge-contract";
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
 import { generateCanonicalKnowledge } from "../../packages/core/src/proc/knowledge-generation-step";
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
@@ -194,6 +195,10 @@ assert.ok(
 assert.ok(
   comparison || settings.llmModel === "anthropic/claude-haiku-5.5",
   "Evaluate the actual migration production config, not an injected candidate",
+);
+assert.ok(
+  usesContentKnowledgeContract(settings),
+  "Evaluated settings must select the content contract the worker uses",
 );
 const historical = z
   .object({ cases: z.array(migrationFixtureSchema), repeatCaseIds: z.array(z.string()) })

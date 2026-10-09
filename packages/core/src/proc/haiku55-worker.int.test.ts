@@ -105,11 +105,11 @@ function invalidWire(kind: "zod" | "assembly") {
   item.claim.evidenceKeys = ["r0", "r0"];
   return value;
 }
-function response(output: unknown, index = 1, truncated = false) {
+function response(output: unknown, index = 1, truncated = false, model = settings.llmModel) {
   return new Response(
     JSON.stringify({
       id: `synthetic-haiku55-${index}`,
-      model: settings.llmModel,
+      model,
       choices: [
         {
           finish_reason: truncated ? "length" : "stop",
@@ -776,5 +776,98 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
     expect((await f.costs()).map((entry) => Number(entry.amount_micros))).toEqual([5, 3]);
     expect(await f.work()).toBe(false);
     expect(request).toHaveBeenCalledTimes(2);
+  });
+});
+
+const geminiModel = "google/gemini-3.8-flash";
+const geminiControls = {
+  maxOutputTokens: 32000,
+  reasoningEffort: "medium",
+  structuredOutputMode: "json_object",
+  omitTemperature: true,
+} as const;
+const geminiSettings: ProviderSettings = {
+  ...settings,
+  version: "synthetic-gemini-worker",
+  llmModel: geminiModel,
+  structuredModelOverrides: {
+    [geminiModel]: { ...geminiControls, knowledgeContract: "content" },
+  },
+};
+
+describe("FR-PROC-003 settings-selected content knowledge contract", () => {
+  it("generates content-contract knowledge for a configured non-Haiku model with its own controls", async () => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body).toMatchObject({
+        model: geminiModel,
+        max_tokens: 32000,
+        reasoning: { effort: "medium" },
+        response_format: { type: "json_object" },
+        provider: { zdr: true, data_collection: "deny", require_parameters: true },
+      });
+      expect(body).not.toHaveProperty("temperature");
+      const input = JSON.parse(body.messages[1].content[0].text);
+      expect(input.format).toBe("knowledge_generation_keys_v5");
+      return response(wire(), 1, false, geminiModel);
+    });
+    const f = await fixture(request, geminiSettings);
+    await f.work();
+    expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "ready", lastError: null });
+    const checkpoint = (await f.checkpoints()).find((entry) => entry.step === "knowledge");
+    const generated = generatedKnowledgeSchema.parse(checkpoint?.output);
+    expect(generated.learningItems[0]?.claim).toMatchObject({ origin: "from_class" });
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies the schema-invalid marker and two-generation cap to a configured non-Haiku model", async () => {
+    let responseCount = 0;
+    const request = vi.fn<typeof fetch>(async () =>
+      response(invalidWire("zod"), ++responseCount, false, geminiModel),
+    );
+    const f = await fixture(request, geminiSettings);
+    await f.work();
+    const marker = (await f.checkpoints()).find(
+      (entry) => entry.step === "knowledge:schema-invalid",
+    );
+    expect(marker?.output).toMatchObject({ reason: "provider_schema_invalid" });
+    await f.work();
+    expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+      state: "failed",
+      lastError: "provider_schema_invalid",
+      outputVersionId: null,
+    });
+    expect((await f.attempts()).map((entry) => entry.step).sort()).toEqual([
+      "knowledge",
+      "knowledge:repair",
+    ]);
+    expect(await f.work()).toBe(false);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the legacy contract for the same model when the override does not select content", async () => {
+    const request = vi.fn<typeof fetch>();
+    const f = await fixture(request, {
+      ...geminiSettings,
+      structuredModelOverrides: { [geminiModel]: geminiControls },
+    });
+    const structured = vi.spyOn(f.provider, "structured").mockRejectedValue(
+      new ProviderError("provider_schema_invalid", false, false, {
+        requestId: "synthetic-gemini-legacy-invalid",
+        provider: "openrouter",
+        model: geminiModel,
+        usage: { inputTokens: 1000, outputTokens: 500 },
+        actualMicros: 5,
+      }),
+    );
+    await f.work();
+    expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({
+      state: "failed",
+      lastError: "provider_schema_invalid",
+    });
+    expect((await f.checkpoints()).some((entry) => entry.step.startsWith("knowledge"))).toBe(false);
+    expect(structured).toHaveBeenCalledOnce();
+    expect(structured.mock.calls[0]?.[0]).toMatchObject({ schemaName: "class_knowledge" });
+    expect(request).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { providerSettingsSchema } from "../../packages/core/src/aip";
+import { usesContentKnowledgeContract } from "../../packages/core/src/proc/knowledge-contract";
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
 import { holdoutMigrationFixtures, holdoutRepeatIds } from "./haiku55-holdout-fixtures";
 import { holdout3MigrationFixtures, holdout3RepeatIds } from "./haiku55-holdout3-fixtures";
@@ -299,7 +301,9 @@ describe("PRD-QA-01 cross-model comparison design", () => {
       expect(settings.structuredModelOverrides?.[candidate.model]).toMatchObject({
         structuredOutputMode: "json_object",
         maxRequestBytes: 400000,
+        knowledgeContract: "content",
       });
+      expect(usesContentKnowledgeContract(providerSettingsSchema.parse(settings))).toBe(true);
       expect(Boolean(settings.structuredModelOverrides?.[candidate.model]?.omitTemperature)).toBe(
         candidate.temperature === undefined,
       );
