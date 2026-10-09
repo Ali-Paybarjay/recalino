@@ -8,6 +8,6 @@ describe("FR-ORG-004 calendar titles", () => {
     expect(isCalendarDate("2024-02-29")).toBe(true);
     expect(isCalendarDate("2026-2-04")).toBe(false);
     expect(createSessionSchema.parse({ title: "  " }).title).toBe(null);
-    expect(sessionDisplayTitle(null, "2026-10-04")).toBe("Class — 4 Oct 2026");
+    expect(sessionDisplayTitle(null, "2026-10-04")).toBe("Session — 4 Oct 2026");
   });
 });

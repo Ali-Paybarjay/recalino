@@ -191,7 +191,7 @@ describe("D49 Your learning memory view", () => {
     );
     expect(html).toContain("You asked for simpler explanations");
     expect(html).toContain(
-      "Asked on 1 Aug 2026. When this class, or a class in the same course that teaches it, is processed again, Recalino can use this request to ask for a simpler explanation.",
+      "Asked on 1 Aug 2026. When this session, or a session in the same course that teaches it, is processed again, Recalino can use this request to ask for a simpler explanation.",
     );
     expect(html).toContain("Stop the simpler explanation");
   });
@@ -203,7 +203,7 @@ describe("D49 Your learning memory view", () => {
           ...memory,
           lastEvidenceAt: null,
           needsPractice: [],
-          nextStep: { kind: "no_cards", href: "/classes" },
+          nextStep: { kind: "no_cards", href: "/sessions" },
         },
         timeZone: "UTC",
         busy: false,

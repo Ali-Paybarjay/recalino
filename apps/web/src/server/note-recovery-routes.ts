@@ -18,6 +18,6 @@ export function noteSourceRecoveryHandler(sessionId: string): Handler {
       sourceExtractionRetrySchema.parse(input),
       { key },
     );
-    return { body: { ...result, next: `/classes/${sessionId}/estimate` } };
+    return { body: { ...result, next: `/sessions/${sessionId}/estimate` } };
   };
 }

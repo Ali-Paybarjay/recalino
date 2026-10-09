@@ -7,7 +7,7 @@ test("root and product reads go to synthetic equivalents, without app authentica
   for (const [path, destination] of [
     ["/", "/preview/today"],
     ["/today", "/preview/today"],
-    ["/classes", "/preview/classes"],
+    ["/sessions", "/preview/classes"],
     ["/review", "/preview/review"],
     ["/me", "/preview/profile"],
   ]) {
@@ -18,6 +18,10 @@ test("root and product reads go to synthetic equivalents, without app authentica
     );
     expect(response.headers()["set-cookie"]).toBeUndefined();
   }
+  // D51: the old learner address moves permanently to /sessions before the preview mapping.
+  const old = await request.get("/classes", { maxRedirects: 0 });
+  expect(old.status()).toBe(308);
+  expect(new URL(old.headers().location ?? "http://invalid", old.url()).pathname).toBe("/sessions");
 });
 
 test("real Auth, jobs, profile, consent and dev handlers refuse requests", async ({ page }) => {

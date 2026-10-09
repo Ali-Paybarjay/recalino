@@ -41,9 +41,9 @@ test("one course is selected automatically and a dated class opens its details b
       lesson.courseId,
     );
   }
-  await page.goto("/classes");
+  await page.goto("/sessions");
 
-  await expect(page.getByRole("heading", { name: "My classes", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My Courses", exact: true })).toBeVisible();
   const rows = classRows(page);
   await expect(rows).toHaveCount(5);
   const row = rows.first();
@@ -51,7 +51,7 @@ test("one course is selected automatically and a dated class opens its details b
   await expect(disclosure).toContainText("Travel conversations");
   await expect(disclosure.locator("time")).toHaveAttribute("datetime", "2026-09-30");
   await expect(row.locator("details")).not.toHaveAttribute("open", "");
-  await expect(row.getByRole("link", { name: "Go to class", exact: true })).toBeHidden();
+  await expect(row.getByRole("link", { name: "Go to session", exact: true })).toBeHidden();
   await page.screenshot({
     path: testInfo.outputPath("classes-desktop-collapsed.png"),
     fullPage: true,
@@ -60,25 +60,25 @@ test("one course is selected automatically and a dated class opens its details b
   await disclosure.focus();
   await page.keyboard.press("Enter");
   await expect(row.locator("details")).toHaveAttribute("open", "");
-  await expect(row.getByRole("link", { name: "Go to class", exact: true })).toHaveAttribute(
+  await expect(row.getByRole("link", { name: "Go to session", exact: true })).toHaveAttribute(
     "href",
-    `/classes/${lesson.id}`,
+    `/sessions/${lesson.id}`,
   );
   await expectNoAxeViolations(page);
   await page.screenshot({
     path: testInfo.outputPath("classes-desktop-expanded.png"),
     fullPage: true,
   });
-  await row.getByRole("link", { name: "Go to class", exact: true }).click();
-  await expect(page).toHaveURL(`/classes/${lesson.id}`);
+  await row.getByRole("link", { name: "Go to session", exact: true }).click();
+  await expect(page).toHaveURL(`/sessions/${lesson.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Travel conversations" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Class notes", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveAttribute(
     "href",
-    `/classes/${lesson.id}/notes`,
+    `/sessions/${lesson.id}/notes`,
   );
   await expect(page.getByRole("link", { name: "Flashcards", exact: true })).toHaveAttribute(
     "href",
-    `/classes/${lesson.id}/cards`,
+    `/sessions/${lesson.id}/cards`,
   );
   await expectNoAxeViolations(page);
   await page.screenshot({
@@ -96,14 +96,14 @@ test("multiple courses require a choice, isolate their classes and offer an expl
   const spanish = await createCourse(page, "Spanish evening course");
   await createClass(page, "English speaking practice", "2026-10-02", esol.id);
   await createClass(page, "Spanish greetings", "2026-09-28", spanish.id);
-  await page.goto("/classes");
+  await page.goto("/sessions");
 
   const course = page.getByLabel("Course", { exact: true });
   await expect(course).toHaveValue("");
   await expect(course.locator("option:checked")).toHaveText("Choose a course");
   await expect(classRows(page)).toHaveCount(0);
   await course.selectOption(esol.id);
-  await expect(page).toHaveURL(`/classes?courseId=${esol.id}`);
+  await expect(page).toHaveURL(`/sessions?courseId=${esol.id}`);
   await expect(classRows(page)).toHaveCount(1);
   await expect(classRows(page)).toContainText("English speaking practice");
   await expect(page.getByRole("main").getByText("Spanish greetings", { exact: true })).toHaveCount(
@@ -118,7 +118,7 @@ test("multiple courses require a choice, isolate their classes and offer an expl
   ).toHaveCount(0);
 
   await course.selectOption("__all__");
-  await expect(page).toHaveURL("/classes?scope=all");
+  await expect(page).toHaveURL("/sessions?scope=all");
   await expect(classRows(page)).toHaveCount(2);
   await expect(classRows(page).nth(0)).toContainText("English speaking practice");
   await expect(classRows(page).nth(1)).toContainText("Spanish greetings");
@@ -142,7 +142,7 @@ test("scroll loading can retry a failed page and append classes without losing d
       course.id,
     );
   }
-  await page.goto(`/classes?courseId=${course.id}`);
+  await page.goto(`/sessions?courseId=${course.id}`);
   const rows = classRows(page);
   await expect(rows).toHaveCount(20);
   await expect(rows.first()).toContainText("Reading lesson 25");
@@ -167,11 +167,11 @@ test("scroll loading can retry a failed page and append classes without losing d
   };
   const failedPage = page.waitForResponse(isNextPage);
   await page
-    .getByRole("button", { name: "Load more classes", exact: true })
+    .getByRole("button", { name: "Load more sessions", exact: true })
     .scrollIntoViewIfNeeded();
   expect((await failedPage).status()).toBe(503);
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
-    "More classes could not be loaded. Try again.",
+    "More sessions could not be loaded. Try again.",
   );
   await expect(rows).toHaveCount(20);
   await expect(rows.first()).toContainText("Reading lesson 25");
@@ -187,7 +187,9 @@ test("scroll loading can retry a failed page and append classes without losing d
   expect(dates).toEqual(
     Array.from({ length: 25 }, (_, index) => `2026-09-${String(25 - index).padStart(2, "0")}`),
   );
-  await expect(page.getByRole("button", { name: "Load more classes", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load more sessions", exact: true })).toHaveCount(
+    0,
+  );
 });
 
 for (const scheme of ["light", "dark"] as const) {
@@ -203,19 +205,19 @@ for (const scheme of ["light", "dark"] as const) {
       "تمرین مکالمه دربارهٔ سفر — 日本語の長いクラス名 — English conversation",
       "2026-09-30",
     );
-    for (const path of ["/classes", `/courses/${lesson.courseId}`, "/today"]) {
+    for (const path of ["/sessions", `/courses/${lesson.courseId}`, "/today"]) {
       await page.goto(path);
       const row = classRows(page).first();
       await expect(row).toBeVisible();
-      if (path === "/classes") {
+      if (path === "/sessions") {
         await page.screenshot({
           path: testInfo.outputPath(`classes-mobile-${scheme}-collapsed.png`),
           fullPage: true,
         });
       }
       await row.locator("summary").click();
-      await expect(row.getByRole("link", { name: "Go to class", exact: true })).toBeVisible();
-      if (path === "/classes") {
+      await expect(row.getByRole("link", { name: "Go to session", exact: true })).toBeVisible();
+      if (path === "/sessions") {
         await page.screenshot({
           path: testInfo.outputPath(`classes-mobile-${scheme}-expanded.png`),
           fullPage: true,

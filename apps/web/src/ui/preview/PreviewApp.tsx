@@ -92,14 +92,14 @@ export function PreviewApp({ screen }: { screen: string }) {
         {needsLearning ? (
           <>
             <PageHeader
-              title={state.classes[0]?.title ?? "Your class"}
-              description="A fresh learning space for this class."
+              title={state.classes[0]?.title ?? "Your session"}
+              description="A fresh learning space for this session."
               back="class"
             />
             <Panel title="No notes here yet">
               <p>
-                Add this class’s material, or write your own notes. Each class keeps its own sources
-                and edits.
+                Add this session’s material, or write your own notes. Each session keeps its own
+                sources and edits.
               </p>
               <Actions>
                 <LinkButton to="first-upload">Add sources</LinkButton>

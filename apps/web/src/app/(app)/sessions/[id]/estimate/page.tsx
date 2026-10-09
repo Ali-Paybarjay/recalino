@@ -8,7 +8,7 @@ import { LearnerShell } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function EstimatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const learner = await requireLearner(`/classes/${id}/estimate`),
+  const learner = await requireLearner(`/sessions/${id}/estimate`),
     actor = workspaceActor(learner),
     db = getDatabase();
   const session = await workspaceSession(learner, id);
@@ -17,7 +17,7 @@ export default async function EstimatePage({ params }: { params: Promise<{ id: s
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Class progress" subtitle={session.displayTitle} />}
+      header={<PageHeader title="Session progress" subtitle={session.displayTitle} />}
     >
       <AutomaticLearningView sessionId={id} initial={automatic} />
     </LearnerShell>

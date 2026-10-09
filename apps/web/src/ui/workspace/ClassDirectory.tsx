@@ -46,8 +46,8 @@ export function ClassDirectory({
   const hasSelection = Boolean(selectedCourseId || allCourses);
   const hasMore = offset < total;
   const newClassHref = selectedCourseId
-    ? `/classes/new?courseId=${selectedCourseId}`
-    : "/classes/new";
+    ? `/sessions/new?courseId=${selectedCourseId}`
+    : "/sessions/new";
 
   useEffect(() => () => request.current?.abort(), []);
 
@@ -81,7 +81,7 @@ export function ClassDirectory({
       setTotal(page.total);
       setOffset(page.items.length ? offset + page.items.length : page.total);
     } catch {
-      if (!controller.signal.aborted) setError("More classes could not be loaded. Try again.");
+      if (!controller.signal.aborted) setError("More sessions could not be loaded. Try again.");
     } finally {
       pending.current = false;
       if (!controller.signal.aborted) setLoading(false);
@@ -105,10 +105,10 @@ export function ClassDirectory({
     startTransition(() => {
       router.push(
         value === "__all__"
-          ? "/classes?scope=all"
+          ? "/sessions?scope=all"
           : value
-            ? `/classes?courseId=${value}`
-            : "/classes",
+            ? `/sessions?courseId=${value}`
+            : "/sessions",
         { scroll: false },
       );
     });
@@ -137,7 +137,7 @@ export function ClassDirectory({
                     {course.name}
                   </option>
                 ))}
-                <option value="__all__">All classes</option>
+                <option value="__all__">All sessions</option>
               </select>
             </Field>
           ) : (
@@ -159,7 +159,7 @@ export function ClassDirectory({
                 onChange={(event) =>
                   startTransition(() =>
                     router.push(
-                      `/classes?${new URLSearchParams({ courseId: selectedCourseId, ...(event.target.value ? { unitId: event.target.value } : {}) })}`,
+                      `/sessions?${new URLSearchParams({ courseId: selectedCourseId, ...(event.target.value ? { unitId: event.target.value } : {}) })}`,
                       { scroll: false },
                     ),
                   )
@@ -175,34 +175,34 @@ export function ClassDirectory({
             </Field>
           </div>
         ) : null}
-        {switching ? <p role="status">Loading classes…</p> : null}
+        {switching ? <p role="status">Loading sessions…</p> : null}
       </section>
 
       {hasSelection ? (
-        <section className={styles.classes} aria-label="Class list">
+        <section className={styles.classes} aria-label="Session list">
           <div className={styles.listHeading}>
-            <h2>{allCourses ? "All classes" : "Classes"}</h2>
-            <p className="preview-muted">Most recent first · Select a class to see more</p>
+            <h2>{allCourses ? "All sessions" : "Sessions"}</h2>
+            <p className="preview-muted">Most recent first · Select a session to see more</p>
           </div>
           {sessions.length ? (
             <ClassRows sessions={sessions} courses={courses} units={units} />
           ) : (
             <div className={styles.empty}>
-              <h3>{unitId ? "No classes in this unit yet" : "Your first class starts here"}</h3>
-              <p>Add a class, then keep its notes and flashcards together.</p>
-              <LinkButton href={newClassHref}>Create a class</LinkButton>
+              <h3>{unitId ? "No sessions in this unit yet" : "Your first session starts here"}</h3>
+              <p>Add a session, then keep its notes and flashcards together.</p>
+              <LinkButton href={newClassHref}>Create a session</LinkButton>
             </div>
           )}
           {sessions.length ? (
             <div className={styles.listFooter}>
               <p className="preview-muted" role="status" aria-live="polite">
-                {sessions.length} of {total} {total === 1 ? "class" : "classes"}
+                {sessions.length} of {total} {total === 1 ? "session" : "sessions"}
               </p>
               {error ? <p role="alert">{error}</p> : null}
               {hasMore ? (
                 <div ref={sentinel}>
                   <Button secondary disabled={loading || switching} onClick={() => void loadMore()}>
-                    {loading ? "Loading classes…" : error ? "Try again" : "Load more classes"}
+                    {loading ? "Loading sessions…" : error ? "Try again" : "Load more sessions"}
                   </Button>
                 </div>
               ) : null}
@@ -211,14 +211,16 @@ export function ClassDirectory({
         </section>
       ) : (
         <div className={styles.empty}>
-          <h2>{courses.length ? "Choose a course to see its classes" : "Add your first course"}</h2>
+          <h2>
+            {courses.length ? "Choose a course to see its sessions" : "Add your first course"}
+          </h2>
           <p>
             {courses.length
-              ? "Your classes will appear here, ordered by date."
-              : "Keep each subject and its classes together in a course."}
+              ? "Your sessions will appear here, ordered by date."
+              : "Keep each subject and its sessions together in a course."}
           </p>
           {!courses.length ? (
-            <LinkButton href="/classes/organize">Create a course</LinkButton>
+            <LinkButton href="/sessions/organize">Create a course</LinkButton>
           ) : null}
         </div>
       )}
@@ -226,7 +228,7 @@ export function ClassDirectory({
       <footer className={styles.tools}>
         {hasSelection ? (
           <Link className={styles.newClass} href={newClassHref}>
-            + New class
+            + New session
           </Link>
         ) : null}
         <details className={styles.manage}>
@@ -236,8 +238,8 @@ export function ClassDirectory({
               secondary
               href={
                 selectedCourseId
-                  ? `/classes/organize?courseId=${selectedCourseId}`
-                  : "/classes/organize"
+                  ? `/sessions/organize?courseId=${selectedCourseId}`
+                  : "/sessions/organize"
               }
             >
               Manage courses and units

@@ -8,15 +8,15 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "classes",
-    title: "Your classes",
-    description: "Find a class, or keep related classes in a course.",
+    title: "Your courses",
+    description: "Find a session, or keep related sessions in a course.",
     active: "classes",
     focused: false,
   },
   {
     key: "course",
     title: "ESOL B1",
-    description: "Your classes, grouped by what you are learning.",
+    description: "Your sessions, grouped by what you are learning.",
     active: "classes",
     focused: false,
   },
@@ -29,14 +29,14 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "new-class",
-    title: "New class",
-    description: "Give this class a useful name. You can change it later.",
+    title: "New session",
+    description: "Choose a course and date. The title comes from your learning material.",
     active: "classes",
     focused: true,
   },
   {
     key: "organize",
-    title: "Keep your classes organised",
+    title: "Keep your sessions organised",
     description: "Rename, move or remove an empty group.",
     active: "classes",
     focused: true,
@@ -57,7 +57,7 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "recording",
-    title: "Recording your class",
+    title: "Recording your session",
     description: "Recording demonstration · no microphone capture in this preview.",
     active: "classes",
     focused: true,
@@ -78,14 +78,14 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "upload",
-    title: "Add class material",
+    title: "Add session material",
     description: "Choose a sample file or browse the sources already in this workspace.",
     active: "classes",
     focused: false,
   },
   {
     key: "source-settings",
-    title: "Class sources",
+    title: "Session sources",
     description: "Use the whole file or choose a part when you need it.",
     active: "classes",
     focused: true,
@@ -106,7 +106,7 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "processing",
-    title: "Making your class notes",
+    title: "Making your session notes",
     description: "You can leave this page and come back to this sample job.",
     active: "classes",
     focused: true,
@@ -121,7 +121,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "notes",
     title: "Present perfect",
-    description: "Class notes · ESOL B1 · Version 2",
+    description: "Session notes · ESOL B1 · Version 2",
     active: "classes",
     focused: false,
   },
@@ -148,7 +148,7 @@ export const PREVIEW_SCREENS = [
   },
   {
     key: "transcript",
-    title: "Class transcript",
+    title: "Session transcript",
     description: "Read or correct what was said in the class.",
     active: "classes",
     focused: false,
@@ -163,7 +163,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "cards",
     title: "Choose useful cards",
-    description: "Select the ideas you want to practise from this class.",
+    description: "Select the ideas you want to practise from this session.",
     active: "classes",
     focused: false,
   },
@@ -212,7 +212,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "review-summary",
     title: "You made time for your English.",
-    description: "This sample session is complete.",
+    description: "This sample review is complete.",
     active: "review",
     focused: true,
   },
@@ -233,7 +233,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "allowance",
     title: "Your processing allowance",
-    description: "Use it for the class material that helps you most.",
+    description: "Use it for the session material that helps you most.",
     active: "me",
     focused: true,
   },
@@ -303,7 +303,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "setup-explanations",
     title: "How would you like explanations?",
-    description: "Step 2 of 5 · Class notes stay in English.",
+    description: "Step 2 of 5 · Session notes stay in English.",
     active: "me",
     focused: true,
   },
@@ -338,7 +338,7 @@ export const PREVIEW_SCREENS = [
   {
     key: "stop-recording",
     title: "Finish this recording?",
-    description: "The saved part will be ready to add to your class.",
+    description: "The saved part will be ready to add to your session.",
     active: "today",
     focused: true,
   },

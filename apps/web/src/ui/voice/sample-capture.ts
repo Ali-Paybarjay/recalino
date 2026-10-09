@@ -65,13 +65,13 @@ export class VoiceSampleCapture {
     this.changed({ phase: "requesting", elapsedMs: 0, sample: null, error: null });
     try {
       if (isBlocked())
-        throw new Error("Finish your class recording before recording a voice sample.");
+        throw new Error("Finish your session recording before recording a voice sample.");
       const stream = await this.deps.getStream();
       if (generation !== this.generation || isBlocked()) {
         stream.getTracks().forEach((track) => {
           track.stop();
         });
-        if (generation === this.generation) throw new Error("Finish your class recording first.");
+        if (generation === this.generation) throw new Error("Finish your session recording first.");
         return;
       }
       this.stream = stream;

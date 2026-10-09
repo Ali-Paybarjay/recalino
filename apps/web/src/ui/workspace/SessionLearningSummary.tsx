@@ -12,7 +12,7 @@ export function SessionLearningSummary({
   return (
     <div>
       <p className="preview-muted">
-        Class date: <time dateTime={session.classDate}>{session.classDate}</time>
+        Session date: <time dateTime={session.classDate}>{session.classDate}</time>
         {" · "}
         {session.titleSource === "manual"
           ? "Custom title"
@@ -32,7 +32,7 @@ export function SessionLearningSummary({
           {session.topics.length > topics.length ? (
             <>
               {" · "}
-              <Link href={`/classes/${session.id}#topics`}>
+              <Link href={`/sessions/${session.id}#topics`}>
                 See all {session.topics.length} topics
               </Link>
             </>

@@ -53,7 +53,7 @@ test("account deletion waits for capture to stop and removes only its device cop
   test.setTimeout(120000);
   const { userId } = await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/today");
-  await page.getByRole("button", { name: "Record a class", exact: true }).click();
+  await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Me", exact: true }).first().click();
   await page.getByRole("link", { name: /Your data/ }).click();
@@ -153,7 +153,7 @@ for (const outcome of ["pending", "unknown"] as const) {
     test.setTimeout(120000);
     const { userId } = await signInAsNewLearner(page, { setup: "complete" });
     await page.goto("/today");
-    await page.getByRole("button", { name: "Record a class", exact: true }).click();
+    await page.getByRole("button", { name: "Record a session", exact: true }).click();
     await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Me", exact: true }).first().click();
     await page.getByRole("link", { name: /Your data/ }).click();

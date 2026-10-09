@@ -210,7 +210,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           // biome-ignore lint/performance/noImgElement: Signed private URLs must not pass through an image proxy.
           <img
             src={preview.url}
-            alt="Selected class material"
+            alt="Selected session material"
             style={{ maxWidth: "100%", height: "auto" }}
           />
         ))}

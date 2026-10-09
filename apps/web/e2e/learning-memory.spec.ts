@@ -144,11 +144,11 @@ test("D49 practice notes are evidence-backed, correctable, and the lesson teache
     [1440, "desktop"],
   ] as const) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto(`/classes/${session.id}/notes`);
+    await page.goto(`/sessions/${session.id}/notes`);
     await page.getByText("Prepared for you").click();
     await expect(page.getByText(/“wear and tear” appears in this lesson/)).toBeVisible();
     await expect(page.getByText("Simpler explanations (your choice)")).toBeVisible();
-    const frame = page.frameLocator('iframe[title^="Class notes:"]');
+    const frame = page.frameLocator('iframe[title^="Session notes:"]');
     // The synthetic lesson explains in Persian, so the document chrome is Persian.
     await frame.locator('nav a[href="#check"]').click();
     const check = frame.locator("#check");

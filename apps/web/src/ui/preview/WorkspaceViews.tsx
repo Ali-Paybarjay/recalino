@@ -36,7 +36,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   const [name, setName] = useState(
     screen === "organize" && lesson ? (sampleCustomTitle(lesson) ?? "") : "",
   );
-  const [course, setCourse] = useState(lesson?.course ?? "My classes");
+  const [course, setCourse] = useState(lesson?.course ?? "My Courses");
   const [unit, setUnit] = useState(screen === "organize" ? (lesson?.unit ?? "") : "");
   const [courseFilter, setCourseFilter] = useState<string | null>(null);
   const [courseName, setCourseName] = useState("");
@@ -45,6 +45,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   const [unitName, setUnitName] = useState("");
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState<string | null>(null);
+  const confirmLabel = confirm === "class" ? "session" : confirm;
   const [visibleCount, setVisibleCount] = useState(CLASS_BATCH_SIZE);
   const [materialsPage, setMaterialsPage] = useState(0);
   const initializedCourseScreen = useRef<string | null>(null);
@@ -54,7 +55,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     if (screen !== "organize") return;
     if (!lesson?.id) {
       setName("");
-      setCourse("My classes");
+      setCourse("My Courses");
       setUnit("");
       return;
     }
@@ -65,7 +66,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
         customTitle: lesson.customTitle,
       }) ?? "",
     );
-    setCourse(lesson?.course ?? "My classes");
+    setCourse(lesson?.course ?? "My Courses");
     setUnit(lesson?.unit ?? "");
   }, [
     screen,
@@ -81,7 +82,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     const requested = new URLSearchParams(window.location.search).get("course");
     const available = state.courses.find((item) => item.name === requested);
     const current = state.courses.find((item) => item.name === lesson?.course);
-    const fallback = state.courses.find((item) => item.name === "My classes") ?? state.courses[0];
+    const fallback = state.courses.find((item) => item.name === "My Courses") ?? state.courses[0];
     const initialize = initializedCourseScreen.current !== screen;
     if (screen !== "new-class") {
       setCourseFilter((selected) => {
@@ -103,7 +104,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     setCourse((selected) =>
       screen === "new-class" && !initialize && state.courses.some((item) => item.name === selected)
         ? selected
-        : (available?.name ?? current?.name ?? fallback?.name ?? "My classes"),
+        : (available?.name ?? current?.name ?? fallback?.name ?? "My Courses"),
     );
     initializedCourseScreen.current = screen;
   }, [screen, lesson?.course, state.courses]);
@@ -168,7 +169,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
   const due = state.cards.filter((card) => card.status === "active").length;
   const countClasses = (selectedCourse: string) => {
     const count = state.classes.filter((item) => item.course === selectedCourse).length;
-    return `${count} ${count === 1 ? "class" : "classes"}`;
+    return `${count} ${count === 1 ? "session" : "sessions"}`;
   };
   function validDestination() {
     const selected = state.courses.find((item) => item.name === course);
@@ -189,8 +190,8 @@ export function WorkspaceViews({ screen }: { screen: string }) {
       classes: [
         {
           id: crypto.randomUUID(),
-          title: name.trim() || classDate,
-          customTitle: name.trim() || null,
+          title: classDate,
+          customTitle: null,
           course,
           unit,
           date: classDate,
@@ -199,7 +200,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
         ...prev.classes,
       ],
     }));
-    announce("Class added to this sample.");
+    announce("Session added to this sample.");
     router.push("/preview/class");
   }
   function addCourse() {
@@ -276,7 +277,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           : item,
       ),
     }));
-    announce("Sample class updated.");
+    announce("Sample session updated.");
     router.push("/preview/class");
   }
   function renameCourse() {
@@ -284,10 +285,10 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     if (
       !state.courses.some((item) => item.name === course) ||
       !next ||
-      course === "My classes" ||
+      course === "My Courses" ||
       state.courses.some((item) => item.name === next)
     ) {
-      setError("Choose a new course name. My classes is your permanent default.");
+      setError("Choose a new course name. My Courses is your permanent default.");
       return;
     }
     setState((prev) => ({
@@ -392,7 +393,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 </div>
                 <div className={classStyles.action}>
                   <Button className="rc-btn-block" onClick={() => openClass(item, "class")}>
-                    Go to class
+                    Go to session
                   </Button>
                 </div>
               </div>
@@ -410,11 +411,11 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           description="Pick up where you left off. A short review is enough for today."
         />
         <div className="preview-grid">
-          <Panel tone="hero" title="Record a class">
+          <Panel tone="hero" title="Record a session">
             <Icon icon={Microphone} size={40} />
             <p>Keep useful moments from your next English class.</p>
             <Actions>
-              <LinkButton to="recording">Record a class</LinkButton>
+              <LinkButton to="recording">Record a session</LinkButton>
               <LinkButton secondary to="first-upload">
                 Add a file
               </LinkButton>
@@ -425,7 +426,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             <p>
               {due
                 ? `${due} sample cards are ready.`
-                : "Nothing due in this sample. Choose cards from a class to practise."}
+                : "Nothing due in this sample. Choose cards from a session to practise."}
             </p>
             <Actions>
               <LinkButton secondary to={due ? "review" : "cards"}>
@@ -437,13 +438,13 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             </p>
           </Panel>
         </div>
-        <Panel title="Your recent classes">
+        <Panel title="Your recent sessions">
           {state.classes.length ? (
             rows(recentClasses.slice(0, 2))
           ) : (
             <div className="preview-empty">
-              <p>Your first class starts here.</p>
-              <LinkButton to="new-class">New class</LinkButton>
+              <p>Your first session starts here.</p>
+              <LinkButton to="new-class">New session</LinkButton>
             </div>
           )}
         </Panel>
@@ -461,8 +462,8 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title={screen === "course" ? (selectedCourse?.name ?? "Your classes") : "Your classes"}
-          description="Choose a course, then select a class to see its details."
+          title={screen === "course" ? (selectedCourse?.name ?? "Your courses") : "Your courses"}
+          description="Choose a course, then select a session to see its details."
           back={screen === "course" ? "classes" : undefined}
         />
         <div className={directoryStyles.directory}>
@@ -495,7 +496,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                         {item.name} · {countClasses(item.name)}
                       </option>
                     ))}
-                    <option value={ALL_COURSES}>All classes</option>
+                    <option value={ALL_COURSES}>All sessions</option>
                   </select>
                 </Field>
               ) : (
@@ -509,25 +510,25 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             </div>
           </section>
           {hasSelection ? (
-            <section className={directoryStyles.classes} aria-label="Class list">
+            <section className={directoryStyles.classes} aria-label="Session list">
               <div className={directoryStyles.listHeading}>
-                <h2>{allCourses ? "All classes" : "Classes"}</h2>
-                <p className="preview-muted">Most recent first · Select a class to see more</p>
+                <h2>{allCourses ? "All sessions" : "Sessions"}</h2>
+                <p className="preview-muted">Most recent first · Select a session to see more</p>
               </div>
               {visible.length ? (
                 rows(visible.slice(0, visibleCount))
               ) : (
                 <div className={directoryStyles.empty}>
-                  <h3>Your first class starts here</h3>
-                  <p>Add a class, then keep its notes and flashcards together.</p>
-                  <LinkButton to={newClassTo}>Create a class</LinkButton>
+                  <h3>Your first session starts here</h3>
+                  <p>Add a session, then keep its notes and flashcards together.</p>
+                  <LinkButton to={newClassTo}>Create a session</LinkButton>
                 </div>
               )}
               {visible.length ? (
                 <div className={directoryStyles.listFooter}>
                   <p className="preview-muted" role="status" aria-live="polite">
                     {Math.min(visibleCount, visible.length)} of {visible.length}{" "}
-                    {visible.length === 1 ? "class" : "classes"}
+                    {visible.length === 1 ? "session" : "sessions"}
                   </p>
                   {visibleCount < visible.length ? (
                     <div ref={classSentinel}>
@@ -535,7 +536,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                         secondary
                         onClick={() => setVisibleCount((count) => count + CLASS_BATCH_SIZE)}
                       >
-                        Load more classes
+                        Load more sessions
                       </Button>
                     </div>
                   ) : null}
@@ -546,13 +547,13 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             <div className={directoryStyles.empty}>
               <h2>
                 {state.courses.length
-                  ? "Choose a course to see its classes"
+                  ? "Choose a course to see its sessions"
                   : "Add your first course"}
               </h2>
               <p>
                 {state.courses.length
-                  ? "Your classes will appear here, ordered by date."
-                  : "Keep each subject and its classes together in a course."}
+                  ? "Your sessions will appear here, ordered by date."
+                  : "Keep each subject and its sessions together in a course."}
               </p>
               {!state.courses.length ? (
                 <LinkButton to="organize">Create a course</LinkButton>
@@ -562,7 +563,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           <footer className={directoryStyles.tools}>
             {hasSelection ? (
               <Link className={directoryStyles.newClass} href={`/preview/${newClassTo}`}>
-                + New class
+                + New session
               </Link>
             ) : null}
             <details ref={courseTools} className={directoryStyles.manage}>
@@ -584,7 +585,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 <div id="course-materials">
                   <Panel title="Course materials">
                     <p className="preview-muted">
-                      Current sample notes from each class, from earliest to latest.
+                      Current sample notes from each session, from earliest to latest.
                     </p>
                     {courseSessions.length ? (
                       courseSessions.slice(materialsPage * 5, materialsPage * 5 + 5).map((item) => {
@@ -621,7 +622,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                               </>
                             ) : (
                               <p className="preview-muted">
-                                No notes yet. Open this class to add material.
+                                No notes yet. Open this session to add material.
                               </p>
                             )}
                             {content?.sources.length ? (
@@ -632,10 +633,10 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                             ) : null}
                             <Actions>
                               <Button secondary onClick={() => openClass(item, "class")}>
-                                Open class
+                                Open session
                               </Button>
                               <Button secondary onClick={() => openClass(item, "notes")}>
-                                Class notes
+                                Session notes
                               </Button>
                               <Button secondary onClick={() => openClass(item, "cards")}>
                                 Cards
@@ -648,7 +649,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                         );
                       })
                     ) : (
-                      <p>Add a class to this course to start collecting its materials.</p>
+                      <p>Add a session to this course to start collecting its materials.</p>
                     )}
                     {courseSessions.length > 5 ? (
                       <Actions>
@@ -681,8 +682,8 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     return (
       <div className="preview-reader">
         <PageHeader
-          title="New class"
-          description="Choose a course and date for this class. The name is optional."
+          title="New session"
+          description="Choose a course and date. The title will come from your learning material."
           back="classes"
         />
         <form
@@ -691,20 +692,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             createClass();
           }}
         >
-          <Field
-            label="Class name (optional)"
-            hint="Leave it empty for a title from class material. The date is shown until material is ready."
-          >
-            <input
-              autoComplete="off"
-              dir="auto"
-              maxLength={100}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="For example, Present perfect"
-            />
-          </Field>
-          <Field label="Class date" hint="Day / Month / Year">
+          <Field label="Session date" hint="Day / Month / Year">
             <DateInput required value={classDate} onChange={setClassDate} />
           </Field>
           <Field label="Course" hint={courseCopy.courseHelp}>
@@ -740,7 +728,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           </Field>
           {error ? <Status tone="error">{error}</Status> : null}
           <Actions>
-            <Button type="submit">Create class</Button>
+            <Button type="submit">Create session</Button>
             <LinkButton secondary to="classes">
               Cancel
             </LinkButton>
@@ -783,17 +771,17 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title={lesson ? summaryFor(lesson).title : "Your class"}
+          title={lesson ? summaryFor(lesson).title : "Your session"}
           description={
             lesson
               ? `${lesson.course} · ${lesson.unit || "No unit"} · ${lesson.date}`
-              : "Create a class to get started."
+              : "Create a session to get started."
           }
           back="classes"
         />
         {lesson ? (
           <div className="preview-grid">
-            <Panel tone="hero" title="Class notes">
+            <Panel tone="hero" title="Session notes">
               <Icon icon={FileText} size={32} />
               {notesAvailable ? (
                 <>
@@ -802,15 +790,15 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                     {state.noteText.length > 180 ? "…" : ""}
                   </p>
                   <Actions>
-                    <LinkButton to="notes">Read class notes</LinkButton>
+                    <LinkButton to="notes">Read session notes</LinkButton>
                   </Actions>
                 </>
               ) : (
                 <>
-                  <p>Your notes will appear here when class material is ready.</p>
+                  <p>Your notes will appear here when session material is ready.</p>
                   <Actions>
                     <LinkButton to={state.sources.length ? "estimate" : "first-upload"}>
-                      {state.sources.length ? "Prepare class notes" : "Add class material"}
+                      {state.sources.length ? "Prepare session notes" : "Add session material"}
                     </LinkButton>
                   </Actions>
                 </>
@@ -820,8 +808,8 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               <Icon icon={Cards} size={32} />
               <p>
                 {state.cards.some((card) => card.classId === lesson.id)
-                  ? "Practise the vocabulary and key ideas from this class."
-                  : "Flashcards appear when this class has learning material."}
+                  ? "Practise the vocabulary and key ideas from this session."
+                  : "Flashcards appear when this session has learning material."}
               </p>
               <Actions>
                 <LinkButton to="cards">Open flashcards</LinkButton>
@@ -830,7 +818,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           </div>
         ) : null}
         <details className={directoryStyles.manage} open={!lesson}>
-          <summary>Class tools and sources</summary>
+          <summary>Session tools and sources</summary>
           <Actions>
             {lesson ? (
               <>
@@ -838,11 +826,11 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                   <LinkButton to="first-upload">Add sources</LinkButton>
                 ) : null}
                 <LinkButton secondary to="organize">
-                  Class options
+                  Session options
                 </LinkButton>
               </>
             ) : (
-              <LinkButton to="new-class">New class</LinkButton>
+              <LinkButton to="new-class">New session</LinkButton>
             )}
           </Actions>
           {lesson ? (
@@ -864,11 +852,11 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                   </ul>
                 </>
               ) : (
-                <p className="preview-muted">Topics appear when class material is ready.</p>
+                <p className="preview-muted">Topics appear when session material is ready.</p>
               )}
             </Panel>
           ) : null}
-          <Panel title="Class material">
+          <Panel title="Session material">
             {state.sources.length ? (
               <>
                 <ul className="preview-list">
@@ -899,12 +887,12 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               </>
             ) : (
               <div className="preview-empty">
-                <p>No sources in this class yet.</p>
+                <p>No sources in this session yet.</p>
                 <p className="preview-muted">
-                  Add a class recording, handout or photo to get started.
+                  Add a session recording, handout or photo to get started.
                 </p>
                 <LinkButton to={lesson ? "first-upload" : "new-class"}>
-                  {lesson ? "Add sources" : "New class"}
+                  {lesson ? "Add sources" : "New session"}
                 </LinkButton>
               </div>
             )}
@@ -929,23 +917,12 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title="Keep your classes organised"
-          description="Rename, move and arrange your sample classes."
+          title="Keep your sessions organised"
+          description="Rename, move and arrange your sample sessions."
           back="classes"
         />
         <div className="preview-grid">
-          <Panel title="Class details">
-            <Field
-              label="Class name"
-              hint="Optional custom title. Clear it to use the material title, or the date before material is ready."
-            >
-              <input
-                maxLength={100}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={lesson?.title ?? "Create a class first"}
-              />
-            </Field>
+          <Panel title="Session details">
             <Field label="Move to course">
               <select
                 value={course}
@@ -969,12 +946,23 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                   ))}
               </select>
             </Field>
+            <Field
+              label="Session name"
+              hint="Optional custom title. Clear it to use the material title, or the date before material is ready."
+            >
+              <input
+                maxLength={100}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={lesson?.title ?? "Create a session first"}
+              />
+            </Field>
             <Actions>
               <Button disabled={!lesson} onClick={moveClass}>
                 Save changes
               </Button>
               <Button secondary disabled={!lesson} onClick={() => setConfirm("class")}>
-                Delete sample class
+                Delete sample session
               </Button>
             </Actions>
           </Panel>
@@ -983,7 +971,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               <input value={courseName} onChange={(event) => setCourseName(event.target.value)} />
             </Field>
             <Button onClick={addCourse}>Create course</Button>
-            <Button secondary disabled={course === "My classes"} onClick={renameCourse}>
+            <Button secondary disabled={course === "My Courses"} onClick={renameCourse}>
               Rename selected course
             </Button>
             <Field label="New unit name">
@@ -999,7 +987,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               <Button
                 secondary
                 disabled={
-                  course === "My classes" || state.classes.some((item) => item.course === course)
+                  course === "My Courses" || state.classes.some((item) => item.course === course)
                 }
                 onClick={() => setConfirm("course")}
               >
@@ -1017,7 +1005,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               </Button>
             </Actions>
             <p className="preview-muted">
-              Only empty courses and units can be deleted. Move their classes first. My classes is
+              Only empty courses and units can be deleted. Move their sessions first. My Courses is
               your permanent default.
             </p>
           </Panel>
@@ -1026,7 +1014,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
         <Sheet
           open={!!confirm}
           onClose={() => setConfirm(null)}
-          title={`Delete this sample ${confirm ?? "item"}?`}
+          title={`Delete this sample ${confirmLabel ?? "item"}?`}
         >
           <p>
             This changes only the preview. You can restore the original sample with Reset sample.
@@ -1056,7 +1044,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 router.push("/preview/classes");
               }}
             >
-              Delete sample {confirm}
+              Delete sample {confirmLabel}
             </Button>
             <Button secondary onClick={() => setConfirm(null)}>
               Keep it

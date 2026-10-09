@@ -27,12 +27,12 @@ function RecoveryLinks({
       : kind === "service"
         ? [
             {
-              href: `/classes/${sessionId}/processing#processing-review`,
+              href: `/sessions/${sessionId}/processing#processing-review`,
               label: "View processing review",
             },
           ]
         : kind === "material"
-          ? [{ href: `/classes/${sessionId}/sources`, label: "Review material" }]
+          ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }]
           : kind === "setup"
             ? [{ href: "/setup", label: "Review account setup" }]
             : [];
@@ -179,7 +179,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
           </Button>
         ) : null}
         {!retryWord && canRetry ? retryLink : null}{" "}
-        <Link href={`/classes/${sessionId}/processing`} className={styles.inlineRetry}>
+        <Link href={`/sessions/${sessionId}/processing`} className={styles.inlineRetry}>
           View progress
         </Link>
       </Status>
@@ -210,8 +210,8 @@ export function AutomaticLearningView({
   const review = status.processingReview;
   return (
     <div className="preview-stack">
-      <Link className="preview-back" href={`/classes/${sessionId}`}>
-        ← Back to class
+      <Link className="preview-back" href={`/sessions/${sessionId}`}>
+        ← Back to session
       </Link>
       <Panel
         title={
@@ -242,17 +242,20 @@ export function AutomaticLearningView({
             </Button>
           ) : null}
           {status.notesReady ? (
-            <LinkButton secondary={status.state === "blocked"} href={`/classes/${sessionId}/notes`}>
-              Class notes
+            <LinkButton
+              secondary={status.state === "blocked"}
+              href={`/sessions/${sessionId}/notes`}
+            >
+              Session notes
             </LinkButton>
           ) : null}
           {status.cardsReady ? (
-            <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+            <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
               Flashcards
             </LinkButton>
           ) : null}
           {status.state !== "blocked" && !recovery.kind ? (
-            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+            <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
               Add material
             </LinkButton>
           ) : null}
@@ -262,9 +265,9 @@ export function AutomaticLearningView({
             {recovery.kind === "service"
               ? review?.requestedAt
                 ? pendingCopy.processingReview.recorded
-                : "The Recalino team needs to review this class's stopped processing. Request a review below; your saved material will be used when processing continues."
+                : "The Recalino team needs to review this session's stopped processing. Request a review below; your saved material will be used when processing continues."
               : recovery.retryLabel === "Retry after allowance changes"
-                ? "After your allowance is updated, retry using this class's saved material."
+                ? "After your allowance is updated, retry using this session's saved material."
                 : "Your saved edits and card review history stay available."}
           </p>
         ) : (
@@ -274,7 +277,7 @@ export function AutomaticLearningView({
               Processing continues when you leave this page.
             </p>
             <p className="preview-muted">
-              New material updates this class automatically. Your saved edits and card review
+              New material updates this session automatically. Your saved edits and card review
               history stay available.
             </p>
           </>
@@ -287,14 +290,14 @@ export function AutomaticLearningView({
               {review?.state === "resolved"
                 ? review.partialResult
                   ? pendingCopy.processingReview.resolvedPartial
-                  : "Processing has finished. Your class notes and flashcards are ready."
+                  : "Processing has finished. Your session notes and flashcards are ready."
                 : review?.state === "retrying"
                   ? "Processing is continuing with your saved material. You will receive a notification when the result is ready."
                   : review?.requestedAt
-                    ? "Your request is recorded for this class. The Recalino team will check the cause and continue processing when it is safe. You will receive a notification with the result."
+                    ? "Your request is recorded for this session. The Recalino team will check the cause and continue processing when it is safe. You will receive a notification with the result."
                     : review
-                      ? "This class's stopped processing is already visible to the Recalino team. Request a review to flag this exact attempt for attention; you do not need to send a separate message or upload these files again."
-                      : "The service needs attention before automatic creation can continue. Check the current class status again."}
+                      ? "This session's stopped processing is already visible to the Recalino team. Request a review to flag this exact attempt for attention; you do not need to send a separate message or upload these files again."
+                      : "The service needs attention before automatic creation can continue. Check the current session status again."}
             </p>
             {review?.canRequest ? (
               <Button disabled={retry.busy} onClick={() => retry.requestReview(review.runId)}>
@@ -303,7 +306,8 @@ export function AutomaticLearningView({
             ) : null}
             {!review ? (
               <p className="preview-muted">
-                No failed class attempt is available to attach yet. Check the current status again.
+                No failed session attempt is available to attach yet. Check the current status
+                again.
               </p>
             ) : null}
             <Actions>
@@ -311,7 +315,7 @@ export function AutomaticLearningView({
                 {retry.busy ? "Checking progress…" : "Check review status"}
               </Button>
               {review?.state === "resolved" ? (
-                <LinkButton href={`/classes/${sessionId}/notes`}>Open class notes</LinkButton>
+                <LinkButton href={`/sessions/${sessionId}/notes`}>Open session notes</LinkButton>
               ) : null}
             </Actions>
           </Panel>

@@ -9,7 +9,7 @@ export const supportCopy = {
   placeholder: "Tell us what happened or what you would like to know.",
   notification: "Email me when there is a reply",
   context: "Include the app version and this screen to help us investigate",
-  contextHint: "Class recordings and notes are not attached.",
+  contextHint: "Session recordings and notes are not attached.",
   send: "Send message",
   sending: "Sending…",
   received: "Message received. We will reply in this conversation.",

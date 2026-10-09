@@ -81,7 +81,7 @@ describe("D49 learning memory rules (PRD-PERS-03/05)", () => {
     expect(empty.lastEvidenceAt).toBeNull();
     expect(empty.needsPractice).toEqual([]);
     expect(empty.recalledRecently).toEqual([]);
-    expect(empty.nextStep).toEqual({ kind: "no_cards", href: "/classes" });
+    expect(empty.nextStep).toEqual({ kind: "no_cards", href: "/sessions" });
     const quiet = memory({ cards: [card("c1", "goal-a")], events: [] });
     expect(quiet.nextStep).toEqual({ kind: "nothing_due", nextDueAt: null });
   });

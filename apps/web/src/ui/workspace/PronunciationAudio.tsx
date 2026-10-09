@@ -40,11 +40,11 @@ function pronunciationProblem(failure: unknown): string {
   if (reasons.includes("card_changed"))
     return "This card changed. Reload review to hear its current pronunciation.";
   if (reasons.includes("notebook_changed"))
-    return "This notebook changed. Reload class notes to hear its current pronunciation.";
+    return "This notebook changed. Reload session notes to hear its current pronunciation.";
   if (reasons.includes("target_unavailable"))
     return "Pronunciation is unavailable for this item. You can keep studying.";
   if (failure instanceof WorkspaceRequestError && failure.code === "conflict")
-    return "Another task is running for this class. Try again shortly; you can keep studying.";
+    return "Another task is running for this session. Try again shortly; you can keep studying.";
   if (
     reasons.some((reason) =>
       ["not_configured", "pronunciation_not_configured", "configuration_unavailable"].includes(

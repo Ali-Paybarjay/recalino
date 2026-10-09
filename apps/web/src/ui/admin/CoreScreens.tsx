@@ -319,7 +319,7 @@ function Processing(props: AdminScreenProps) {
         {runs.length ? (
           <Table
             columns={[
-              t("Class", "کلاس"),
+              t("Session", "کلاس"),
               t("Stage", "مرحله"),
               t("Status", "وضعیت"),
               t("Model", "مدل"),
@@ -329,7 +329,7 @@ function Processing(props: AdminScreenProps) {
             {runs.map((run) => (
               <tr key={run.id}>
                 <td>
-                  {run.title || t("Class processing", "پردازش کلاس")}
+                  {run.title || t("Session processing", "پردازش کلاس")}
                   <br />
                   <small className={styles.muted}>{dateLabel(run.createdAt, locale)}</small>
                 </td>

@@ -22,7 +22,7 @@ test("tablet: compact sidebar keeps navigation labels visible", async ({ page })
   const sidebar = page.locator("aside");
   await expect(sidebar).toBeVisible();
   expect((await sidebar.boundingBox())?.width).toBe(176);
-  await expect(sidebar.getByRole("link", { name: "New class" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "New session" })).toBeVisible();
   await expect(sidebar.getByRole("link", { name: "Today" })).toHaveAttribute(
     "aria-current",
     "page",

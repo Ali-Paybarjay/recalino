@@ -14,7 +14,7 @@ export default async function ClassesPage({
 }: {
   searchParams: Promise<{ courseId?: string; unitId?: string; scope?: string }>;
 }) {
-  const learner = await requireLearner("/classes");
+  const learner = await requireLearner("/sessions");
   const [query, groups] = await Promise.all([searchParams, workspaceGroups(learner)]);
   const allCourses = query.scope === "all";
   const course = query.courseId
@@ -41,7 +41,7 @@ export default async function ClassesPage({
     <LearnerShell
       learner={learner}
       current="classes"
-      header={<PageHeader title="Classes" subtitle="Choose your course, then open a class." />}
+      header={<PageHeader title="Courses" subtitle="Choose a course, then open a session." />}
     >
       <ClassDirectory
         key={`${course?.id ?? (allCourses ? "all" : "choose")}:${unitId ?? "all"}:${classDirectoryRevision(sessions)}`}

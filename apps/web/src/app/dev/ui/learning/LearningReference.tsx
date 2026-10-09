@@ -44,8 +44,8 @@ function LearningFixture({ progress }: { progress: boolean }) {
   return progress ? (
     <AutomaticLearningView sessionId={sessionId} initial={initial} />
   ) : (
-    <Panel title="Class materials">
-      <LinkButton href={`/classes/${sessionId}/sources`}>Add material</LinkButton>
+    <Panel title="Session materials">
+      <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
       <AutomaticLearningNotice sessionId={sessionId} />
     </Panel>
   );
@@ -66,7 +66,7 @@ export function LearningReference({ progress }: { progress: boolean }) {
             }}
           >
             <PageHeader
-              title={progress ? "Class progress" : "Synthetic class"}
+              title={progress ? "Session progress" : "Synthetic session"}
               subtitle="Automatic learning interface fixture · No real class data"
             />
             <LearningFixture progress={progress} />

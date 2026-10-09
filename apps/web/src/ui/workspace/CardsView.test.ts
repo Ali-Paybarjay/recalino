@@ -73,27 +73,27 @@ function render(overrides: Partial<Parameters<typeof CardsView>[0]> = {}) {
 describe("flashcard next actions", () => {
   it("points to adding material and explains automatic creation for an empty class", () => {
     const html = render();
-    expect(html).toContain(`/classes/${sessionId}/sources`);
+    expect(html).toContain(`/sessions/${sessionId}/sources`);
     expect(html).toContain("automatically with your notes");
     expect(html).not.toContain("Prepare cards");
-    expect(html).not.toContain("Review this class");
-    expect(html).not.toContain("Publish class notes");
+    expect(html).not.toContain("Review this session");
+    expect(html).not.toContain("Publish session notes");
   });
   it("does not ask the learner to save notes or prepare cards when output is pending", () => {
     const html = render({ hasGeneratedNotes: true });
-    expect(html).toContain("Class notes");
+    expect(html).toContain("Session notes");
     expect(html).not.toContain("Read and save notes");
-    expect(html).not.toContain(`/classes/${sessionId}/estimate`);
+    expect(html).not.toContain(`/sessions/${sessionId}/estimate`);
   });
   it("only asks for confirmation for cards that still need checking", () => {
     const html = render({ notebook, initial: [candidate] });
     expect(html).not.toContain("Prepare cards");
     expect(html).toContain("Confirm and add");
-    expect(html).not.toContain("Review this class");
+    expect(html).not.toContain("Review this session");
   });
   it("offers review once cards have been added", () => {
     const html = render({ notebook, initial: [{ ...candidate, status: "active" }] });
-    expect(html).toContain("Review this class");
+    expect(html).toContain("Review this session");
     expect(html).toContain(`/review?sessionId=${sessionId}`);
   });
   it("explains the absence of learning items instead of an unexplained disabled action", () => {

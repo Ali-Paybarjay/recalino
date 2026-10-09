@@ -6,7 +6,7 @@ export default function ExperiencePreview() {
   return (
     <AppShell
       current="today"
-      hrefs={{ today: "/today", classes: "/classes", review: "/review", me: "/me" }}
+      hrefs={{ today: "/today", classes: "/sessions", review: "/review", me: "/me" }}
     >
       <PageHeader title="Today" kicker="Sunday 4 October" />
       <StudyOverview />

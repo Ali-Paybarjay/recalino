@@ -336,6 +336,34 @@
 
 طرح پیاده‌سازی، تصمیم‌های فنی، نتیجهٔ آزمون‌ها و محدودیت‌ها در [برنامهٔ D49](plans/TEACHING_MEMORY_2026-10-08.md) ثبت شده‌اند.
 
+## D50 — نام‌گذاری Course و Session در رابط
+
+> شناسه: پیش از ادغام با نام D48 ثبت شد و چون شاخه‌های دیگر همان شناسه را داشتند، در 2026-10-09 به D50 تغییر کرد. پیام commitهای قدیمی‌تر هنوز D48 دارند.
+
+مبنا: درخواست صریح مالک محصول در 2026-10-08: «کلاس» یک چیز کلی برای یک دوره است و مورد تاریخ‌دار روزانه باید Session زیرمجموعهٔ Course باشد.
+
+- **Course** ظرف یک دورهٔ یادگیری است (یک ترم، دورهٔ IELTS، کلاس عصر چندماهه). **Session** یک جلسهٔ تاریخ‌دار داخل کورس است. ساختار D13 و D39 تغییر نمی‌کند: Course → Unit اختیاری → Session.
+- متن انگلیسی رابط زبان‌آموز هر جا مورد تاریخ‌دار برنامه را نام می‌برد، «session» می‌گوید: New session، Record a session، Session notes، Session material، Session date، Delete session و عنوان موقت «Session — 30 Sep 2026». برچسب «Record a class» در D32 و عنوان نمونهٔ FR-ORG-004 با همین تصمیم جایگزین می‌شوند؛ قاعدهٔ Record first و رفتار آن تغییر نمی‌کند.
+- زبانهٔ ناوبری «Classes» به «Courses» تغییر می‌کند و ابتدا کورس، سپس جلسه‌های آن را نشان می‌دهد. صفحهٔ مدیریت کورس‌ها «Manage courses» نام می‌گیرد.
+- «class» فقط برای کلاس واقعی و افراد آن می‌ماند (مدرس، هم‌کلاسی‌ها، «what you learn in class»)، همراه برچسب منشأ «From class» (PRD-CORE-03) و متن جزوهٔ تولیدشده در همهٔ زبان‌ها.
+- متن نسخه‌دار رضایت ضبط (D33) و متن‌های حقوقی بدون تغییر می‌مانند، چون به افراد کلاس واقعی اشاره دارند. تغییرشان پذیرش دوباره لازم دارد.
+- نام دوره پیش‌فرض «My classes» (Q-ORG-1) دادهٔ ذخیره‌شده است و در این تغییر عوض نمی‌شود. تغییر آن برای حساب‌های موجود نوشتن روی دادهٔ واقعی است و تصمیم جدا لازم دارد. (جایگزین‌شده با D51.)
+- مسیرها، API، نام جدول‌ها و شناسه‌های کد (`/classes`، `org.class_session`، `kind = 'class'`) و پرامپت‌های AI تغییر نمی‌کنند (مسیر صفحه‌ها با D51 به `/sessions` منتقل شد). migration یا تغییر داده لازم نیست. این تصمیم مجوز استقرار نیست.
+- تفاوت با متن طرح در [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md)، مورد ۱۱، ثبت شده است.
+
+## D51 — دوره پیش‌فرض «My Courses»، آدرس `/sessions` و نام جلسه فقط در ویرایش
+
+> شناسه: پیش از ادغام با نام D49 ثبت شد و به همان دلیل به D51 تغییر کرد.
+
+مبنا: درخواست صریح مالک محصول در 2026-10-09، پس از D50. مالک به‌روزرسانی دادهٔ حساب آزمایشی خودش را مجاز کرد.
+
+- نام دوره پیش‌فرض تازه «My Courses» است. migration دادهٔ `20261009010000_rename_default_course` دوره پیش‌فرضی را که هنوز نام دست‌نخوردهٔ «My classes» دارد، تغییر نام می‌دهد. اگر کاربر از قبل دوره‌ای به نام «My Courses» داشته باشد، برای جلوگیری از تداخل نام، دوره او دست نمی‌خورد. ساختار دیتابیس تغییر نمی‌کند.
+- صفحه‌های جلسه از `/classes` به `/sessions` منتقل شدند. `/classes/...` با redirect دائمی (308) و حفظ query به همان مسیر زیر `/sessions` می‌رود، تا لینک‌های ذخیره‌شده، نشانک‌ها و میان‌برها کار کنند. API (`/api/classes`) تغییر نمی‌کند.
+- لینک اعلان‌های ذخیره‌شده به‌خاطر قید check جدول `plt.notification` همان قالب `/classes/...` را نگه می‌دارند. redirect و service worker آن‌ها را به `/sessions` می‌برند، پس انتشار کد به اجرای هم‌زمان migration وابسته نیست.
+- فرم New session فقط تاریخ، کورس و واحد اختیاری را می‌پرسد و نام جلسه از مطالب ساخته می‌شود (D40). نام دستی فقط در Session options و در انتهای فرم ویرایش، برای جایگزینی نام خودکار، در دسترس است. API همچنان عنوان اختیاری را می‌پذیرد.
+- در پروژهٔ ابری، در 2026-10-09 دوره پیش‌فرض هر سه حسابی که هنوز «My classes» داشتند، با اجازهٔ صریح مالک و با `execute_sql` به «My Courses» تغییر نام داد. مالک تأیید کرد که هر سه حساب آزمایشی خود اوست. migration بالا با `db push` بعدی دیگر ردیفی را تغییر نمی‌دهد.
+- اعمال migration روی پروژهٔ ابری همچنان با `supabase db push` و اجازهٔ صریح مالک انجام می‌شود. این تصمیم مجوز استقرار production نیست.
+
 ## D52 — دکمهٔ توضیح (InfoTip) و راهنمای Unit
 
 > شناسه: پیش از ادغام با نام D48 ثبت شد و چون شاخهٔ `codex/class-processing-recovery` زودتر همان شناسه را داشت و D49 تا D51 هم در شاخه‌های دیگر گرفته شده بودند، به درخواست مالک محصول در 2026-10-09 به D52 تغییر کرد. پیام commitهای قدیمی‌تر هنوز D48 دارند.
@@ -346,10 +374,11 @@
 - فقط token‌ها، کلاس‌ها و آیکون‌های موجود به کار می‌روند؛ رنگ، فونت، سایه یا انیمیشن تازه اضافه نمی‌شود. آیکون `Info` (دایره با i) به‌جای `WarningCircle` (دایره با علامت تعجب) انتخاب شد، چون `WarningCircle` در اپ نشانهٔ خطاست.
 - متن‌های مصوب پنل Optional units در `apps/web/src/ui/course-copy.ts` (`unitCopy`):
   - نام دکمه: About units
-  - Units are like the chapters of your book. Use them to keep classes about one lesson together. Units are optional. A class can have no unit.
-  - After you create a unit, you can choose it when you create a class.
-  - New units go to the end of the list. To move a unit, change its order number. Smaller numbers come first. You can delete a unit only when it has no classes.
+  - Units are like the chapters of your book. Use them to keep sessions about one lesson together. Units are optional. A session can have no unit.
+  - After you create a unit, you can choose it when you create a session.
+  - New units go to the end of the list. To move a unit, change its order number. Smaller numbers come first. You can delete a unit only when it has no sessions.
   - راهنمای خالی فیلد نام: For example: Unit 3 – Travel
+- پس از ادغام D50 در 2026-10-09، در این متن‌ها «class» برای مورد تاریخ‌دار به «session» تغییر کرد.
 - توضیح همیشه‌نمایانِ قبلی پنل Unit و جملهٔ ترتیب/حذف زیر دکمه جای خود را به همین دکمه می‌دهند. ساختار Course → Unit → Class در D13 تغییر نمی‌کند.
 - این تصمیم مجوز استقرار production نیست.
 

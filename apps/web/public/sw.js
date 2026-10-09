@@ -1,4 +1,11 @@
 /* Push-only service worker. It deliberately never caches private pages or API responses. */
+// Stored notifications still link to /classes/…; pages moved to /sessions/… (D51).
+function sessionPath(href) {
+  const match =
+    typeof href === "string" &&
+    /^\/(?:classes|sessions)\/([0-9a-f-]{36})\/(notes|processing)$/.exec(href);
+  return match ? `/sessions/${match[1]}/${match[2]}` : "/sessions";
+}
 self.addEventListener("push", (event) => {
   let payload;
   try {
@@ -7,14 +14,10 @@ self.addEventListener("push", (event) => {
     return;
   }
   if (!payload || typeof payload.id !== "string") return;
-  const href =
-    typeof payload.href === "string" &&
-    /^\/classes\/[0-9a-f-]{36}\/(notes|processing)$/.test(payload.href)
-      ? payload.href
-      : "/classes";
+  const href = sessionPath(payload.href);
   event.waitUntil(
     self.registration.showNotification("Recalino", {
-      body: typeof payload.body === "string" ? payload.body : "Your class materials are ready.",
+      body: typeof payload.body === "string" ? payload.body : "Your session materials are ready.",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: payload.id,
@@ -26,10 +29,7 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const href = event.notification.data?.href;
-  const path =
-    typeof href === "string" && /^\/classes\/[0-9a-f-]{36}\/(notes|processing)$/.test(href)
-      ? href
-      : "/classes";
+  const path = sessionPath(href);
   event.waitUntil(
     (async () => {
       const target = new URL(path, self.location.origin).href;
