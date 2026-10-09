@@ -1,5 +1,6 @@
 export { safeCardHtml } from "./card-html";
 export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
+export { isAnnouncingHeading, statesAssignment } from "./homework-evidence";
 export {
   type Claim,
   claimSchema,

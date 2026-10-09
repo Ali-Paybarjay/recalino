@@ -672,7 +672,7 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     });
   });
 
-  it("recognition carries no generated voice assertion and retains generation AI policy", () => {
+  it("recognition carries no generated voice assertion and keeps class provenance only when its class sentence anchors it", () => {
     const item = {
       ...recognitionItem(),
       claim: claim(),
@@ -690,10 +690,19 @@ describe("FR-PROC-004 compact knowledge generation", () => {
     const { sourceClassifications: _sourceClassifications, ...knowledge } = result;
     const final = finalizeGeneratedStudyPractice(knowledge, data.sources, data.learnerContext);
     expect(final.model.learningItems[1]?.claim).toMatchObject({
-      origin: "ai_expansion",
-      evidence: "ai",
-      sourceRefs: [],
+      origin: "from_class",
+      speakerRole: "unknown",
+      sourceRefs: [expect.objectContaining({ sourceId: first(data.sources).sourceId })],
     });
+    const invented = { ...item, example: "I look forward to the summer holidays." };
+    const generated = prepare(data).decode(
+      wire({ ...output(), learningItems: [lexical(), invented] }),
+    );
+    const { sourceClassifications: _classifications, ...unanchored } = generated;
+    expect(
+      finalizeGeneratedStudyPractice(unanchored, data.sources, data.learnerContext).model
+        .learningItems[1]?.claim,
+    ).toMatchObject({ origin: "ai_expansion", evidence: "ai", sourceRefs: [] });
   });
 
   it("fills availability from server extraction and preserves real notebook content", () => {
