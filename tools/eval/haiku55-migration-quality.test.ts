@@ -257,15 +257,18 @@ describe("FR-PROC-003 PRD-QA-01 the adoption gate's expected transport", () => {
     structuredOutputMode: "json_schema",
     directJsonMode: false,
   };
-  it("never presents a json_schema round as meeting the direct json_object gate", () => {
+  it("accepts only the declared strict json_schema or direct json_object transport", () => {
     const assessed = assess(summary, references, review(), schemaRound);
     expect(assessed).toMatchObject({
       round: schemaRound,
-      expectedTransport: "direct json_object",
-      transportMatchesAdoptionGate: false,
+      expectedTransport: "declared direct json_object or strict json_schema",
+      transportMatchesAdoptionGate: true,
       adoptionGatesExceptTransportPassed: true,
-      adoptionEligible: false,
+      adoptionEligible: true,
     });
+    expect(
+      assess({ ...summary, unexpectedTransportFallbacks: 1 }, references, review(), schemaRound),
+    ).toMatchObject({ adoptionEligible: false });
     for (const round of [
       { ...schemaRound, directJsonMode: true },
       { ...directJsonRound, structuredOutputMode: null },

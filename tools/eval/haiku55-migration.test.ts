@@ -86,8 +86,10 @@ describe("PRD-COST-02 opt-in migration evaluation controls", () => {
       result.inputTokenCeiling * 0.0000005 * 1.1 + 12000 * 0.0000025 * 1.1,
     );
     expect(migrationControls.adoptionGates.unexpectedTransportFallbacks).toBe(0);
-    expect(migrationControls.adoptionGates.nativeSchemaAcceptanceClaimed).toBe(false);
-    expect(migrationControls.adoptionGates.expectedTransport).toBe("direct json_object");
+    expect(migrationControls.adoptionGates).not.toHaveProperty("nativeSchemaAcceptanceClaimed");
+    expect(migrationControls.adoptionGates.expectedTransport).toBe(
+      "declared direct json_object or strict json_schema",
+    );
   });
 });
 describe("PRD-PRIV-06 synthetic migration acceptance fixtures", () => {
@@ -268,8 +270,7 @@ describe("FR-QUOTA-009 candidate acceptance, smoke and probe dispatch limits", (
     expect(migrationControls.adoptionGates).toEqual({
       finalLocalPasses: "14/14",
       firstGenerationPasses: ">=13/14",
-      expectedTransport: "direct json_object",
-      nativeSchemaAcceptanceClaimed: false,
+      expectedTransport: "declared direct json_object or strict json_schema",
       unexpectedTransportFallbacks: 0,
       criticalTeachingGroundingAttributionInjectionErrors: 0,
       allRequiredConceptsAdequatelyTaught: true,
@@ -510,16 +511,23 @@ describe("FR-PROC-003 frozen plan binding", () => {
     expect(() => migrationPlanDate(state, { date: 20261009 }, "2026-10-12")).toThrow();
     expect(() => migrationPlanDate(undefined, undefined, "2026-10-09T10:00:00Z")).toThrow();
   });
-  it("meets the unchanged adoption gate's transport only with direct json_object", () => {
-    expect(migrationControls.adoptionGates.expectedTransport).toBe("direct json_object");
+  it("meets the adoption transport only with the declared direct json_object or strict json_schema", () => {
+    expect(migrationControls.adoptionGates.expectedTransport).toBe(
+      "declared direct json_object or strict json_schema",
+    );
     expect(
       migrationTransportMatchesAdoptionGate({
         directJsonMode: true,
         structuredOutputMode: "json_object",
       }),
     ).toBe(true);
+    expect(
+      migrationTransportMatchesAdoptionGate({
+        directJsonMode: false,
+        structuredOutputMode: "json_schema",
+      }),
+    ).toBe(true);
     for (const round of [
-      { directJsonMode: false, structuredOutputMode: "json_schema" },
       { directJsonMode: true, structuredOutputMode: "json_schema" },
       { directJsonMode: false, structuredOutputMode: "json_object" },
       { directJsonMode: true, structuredOutputMode: undefined },

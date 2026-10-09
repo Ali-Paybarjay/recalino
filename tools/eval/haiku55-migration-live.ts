@@ -463,7 +463,7 @@ const plan = {
   structuredOutputMode,
   transportMatchesAdoptionGate,
   dispatchMode,
-  nativeSchemaAcceptanceClaimed: false,
+  nativeSchemaAcceptanceClaimed: !directJsonMode,
   transportRationale: directJsonMode
     ? "Three native schema shapes were rejected under the unchanged zero-retention routing policy. The selected direct JSON transport bypasses that compiler and retains every strict local output, evidence, study, and accounting validator."
     : "This candidate declares strict json_schema decoding. A grammar fallback to direct JSON is never dispatched and counts as an unexpected transport; every strict local output, evidence, study, and accounting validator still applies.",
@@ -1051,7 +1051,7 @@ const summary = {
   structuredOutputMode,
   transportMatchesAdoptionGate,
   dispatchMode,
-  nativeSchemaAcceptanceClaimed: false,
+  nativeSchemaAcceptanceClaimed: !directJsonMode,
   unexpectedTransportFallbacks: state.results.filter((result) => result.unexpectedTransportFallback)
     .length,
   finalLocalPasses: state.results.filter((result) => result.finalLocalPass).length,

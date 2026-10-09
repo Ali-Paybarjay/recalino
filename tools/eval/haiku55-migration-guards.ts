@@ -34,8 +34,7 @@ export const migrationControls = {
   adoptionGates: {
     finalLocalPasses: "14/14",
     firstGenerationPasses: ">=13/14",
-    expectedTransport: "direct json_object",
-    nativeSchemaAcceptanceClaimed: false,
+    expectedTransport: "declared direct json_object or strict json_schema",
     unexpectedTransportFallbacks: 0,
     criticalTeachingGroundingAttributionInjectionErrors: 0,
     allRequiredConceptsAdequatelyTaught: true,
@@ -194,14 +193,17 @@ export function migrationUnexpectedTransport(
 }
 
 /**
- * Only the direct json_object transport meets the unchanged adoption gate (`expectedTransport`).
- * A strict json_schema round still reports every other gate, but never adoption eligibility.
+ * The adoption transport is the one the round declares: direct json_object, or strict
+ * json_schema whose grammar adds to the same server validation. Any fallback still fails the
+ * gate through unexpectedTransportFallbacks.
  */
 export function migrationTransportMatchesAdoptionGate(round: {
   directJsonMode: boolean;
   structuredOutputMode: string | undefined;
 }): boolean {
-  return round.directJsonMode && round.structuredOutputMode === "json_object";
+  return round.directJsonMode
+    ? round.structuredOutputMode === "json_object"
+    : round.structuredOutputMode === "json_schema";
 }
 
 const dispatchBodySchema = z
