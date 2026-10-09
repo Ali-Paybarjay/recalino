@@ -24,6 +24,38 @@ export const studyComplementNotations = [
   "something",
 ] as const;
 
+/**
+ * Closed English grammar metalanguage (each also with a plural -s). Such a term names a category,
+ * so a lexical answer whose blanks hide none of its words is a label rather than a headword.
+ * Ordinary vocabulary such as tense, past, subject or object is deliberately absent. Kept apart
+ * from the parser's grammarWord, which also validates stored targets and speech targets.
+ */
+export const studyGrammarTerms = [
+  "pronoun",
+  "determiner",
+  "article",
+  "preposition",
+  "conjunction",
+  "comparative",
+  "superlative",
+  "plural",
+  "singular",
+  "possessive",
+  "reflexive",
+  "demonstrative",
+  "quantifier",
+  "auxiliary",
+  "modal",
+  "gerund",
+  "infinitive",
+  "interrogative",
+  "imperative",
+  "conditional",
+  "contraction",
+  "question word",
+  "linking word",
+] as const;
+
 const placeholder = /^(?:sb|sth|someone|somebody|something)$/iu;
 const lexical = /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’-]+$/u;
 const grammarWord = /\b(?:noun|verb|adjective|adverb|adj|adv|participle|ing)\b/iu;

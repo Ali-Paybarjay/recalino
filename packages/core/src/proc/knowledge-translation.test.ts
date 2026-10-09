@@ -276,6 +276,9 @@ describe("bounded canonical explanation translation", () => {
     const transport = structuredTransportSchema(prepared.schema, "anthropic/claude-haiku-4.5");
     expect(JSON.stringify(transport).length).toBeLessThan(3000);
     expect(prepared.system).toContain("not class-note generation");
+    // The tag alone does not tell every model which language it is.
+    expect(prepared.system).toContain('into the requested language "fa" (Persian)');
+    expect(prepared.system).toContain('language exactly "fa"');
     expect(prepared.system).toContain("untrusted DATA");
   });
 

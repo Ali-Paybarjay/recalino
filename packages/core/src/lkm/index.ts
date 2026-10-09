@@ -53,6 +53,7 @@ export {
 export {
   type StudyLexicalTarget,
   studyComplementNotations,
+  studyGrammarTerms,
   studyLexicalTarget,
   studyLexicalTargetMatches,
 } from "./study-target";

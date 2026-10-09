@@ -14,9 +14,13 @@ import type { RunSource } from "./contracts";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
 import {
   buildKnowledgeGenerationInput,
+  classQuotationSources,
   gapHidesWholeTarget,
+  grammarPromptRevealsAnswer,
   type KnowledgeGenerationInput,
   lexicalGapProblem,
+  lexicalIpaExceedsHeadword,
+  quotesClassSources,
 } from "./knowledge-generation";
 
 function first<T>(values: readonly T[]): T {
@@ -1709,5 +1713,529 @@ describe("FR-PROC-004 v5 contract: recoverable cards, grounded grammar IPA and p
     expect(assembled.learningItems[0]?.study).toMatchObject({ collocations: [] });
     expect(assembled).toMatchObject({ summary: [], topics: [], homework: [], uncertainties: [] });
     expect(prepared.system).toContain("omit collocations otherwise");
+  });
+});
+
+describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers and class quotations", () => {
+  const failure = (code: string) =>
+    expect.objectContaining({ details: { fields: { output: [code] } } });
+  const card = (taskFa: string, prompt: string, fullSentence: string) => ({
+    ...grammar(),
+    taskFa,
+    prompt,
+    fullSentence,
+    spokenChunk: fullSentence.split(" ").slice(0, 2).join(" "),
+  });
+  const instruction = "جمله را طبق دستور بنویسید.";
+
+  it.each([
+    // Accepted comparison outputs whose front already showed the answer.
+    [
+      "Completa la frase formal utilizando la estructura de subjuntivo con el verbo entre paréntesis.",
+      "Complete with the subjunctive form of 'rest': The doctor recommended that he (rest) for a week.",
+      "The doctor recommended that he rest for a week.",
+    ],
+    [
+      "Conjuga el verbo entre paréntesis conforme a la estructura de subjuntivo requerida por la expresión impersonal.",
+      "Use the formal subjunctive of 'attend': It is essential that every student (attend) the first class.",
+      "It is essential that every student attend the first class.",
+    ],
+    [
+      "指示語の単数・複数および距離に注意して文を完成させてください。",
+      "(this) bag is mine.",
+      "This bag is mine.",
+    ],
+    [
+      "استخدم 'of' لربط الشيء بالمكان أو الشيء الآخر.",
+      "Complete: The color of the wall is blue. The ______ of the wall is blue.",
+      "The color of the wall is blue.",
+    ],
+    [
+      "Перетворіть прохання на наказ, використовуючи базову форму дієслова stop.",
+      "Give an instruction to stop at the lights.",
+      "Stop at the lights.",
+    ],
+    [
+      "Напишіть заперечний наказ з Don't для дії open the door.",
+      "Write a negative instruction with Don't: open the door.",
+      "Don't open the door.",
+    ],
+    [
+      "Напишіть наказ, використовуючи базову форму дієслова.",
+      "Write an instruction: (touch / the oven)",
+      "Touch the oven.",
+    ],
+    [
+      "Перепишіть речення, починаючи з It is believed that, і збережіть той самий зміст.",
+      "Rewrite with It is believed that: The painting is a copy.",
+      "It is believed that the painting is a copy.",
+    ],
+    [
+      "با استفاده از ساختار Why don't you یک پیشنهاد دوستانه برای استراحت کردن بسازید.",
+      "Suggest a break to someone: (Why don't you / take) a break?",
+      "Why don't you take a break?",
+    ],
+    [
+      "یک تصمیم لحظه‌ای بگو که همین الان با will گرفته‌ای.",
+      "Someone knocks at the door. Say that you will open the door.",
+      "I'll open the door.",
+    ],
+    // Repair-generation cards with the same defect.
+    [
+      "Reescribe la recomendación médica usando la estructura formal de subjuntivo.",
+      "The doctor advised rest for him: The doctor recommended (that / he / rest for a week).",
+      "The doctor recommended that he rest for a week.",
+    ],
+    [
+      "Completa la pauta formal usando el subjuntivo mandativo con la forma base.",
+      "State the formal requirement: It is essential (that / every student attend the first class).",
+      "It is essential that every student attend the first class.",
+    ],
+    // The cue moved away from its blank, and lead-ins behind other separators.
+    [
+      instruction,
+      "The doctor recommended that he ______ for a week. (rest)",
+      "The doctor recommended that he rest for a week.",
+    ],
+    [
+      instruction,
+      "The doctor recommended that he ______ for a week (rest).",
+      "The doctor recommended that he rest for a week.",
+    ],
+    [
+      instruction,
+      "(rest) The doctor recommended that he ______ for a week.",
+      "The doctor recommended that he rest for a week.",
+    ],
+    [instruction, "______ bag is mine. (this)", "This bag is mine."],
+    [
+      instruction,
+      "The painting is a copy. -> It is believed that ...",
+      "It is believed that the painting is a copy.",
+    ],
+    [
+      instruction,
+      "Rewrite with It is believed that：The painting is a copy.",
+      "It is believed that the painting is a copy.",
+    ],
+    [
+      instruction,
+      "Rewrite with It is believed that — The painting is a copy.",
+      "It is believed that the painting is a copy.",
+    ],
+    [
+      instruction,
+      "Rewrite with It is believed that → The painting is a copy.",
+      "It is believed that the painting is a copy.",
+    ],
+  ])(
+    "rejects a grammar front that already shows its answer: %s / %s",
+    (taskFa, prompt, fullSentence) => {
+      expect(grammarPromptRevealsAnswer(taskFa, prompt, fullSentence)).toBe(true);
+      expect(() =>
+        prepare().assemble(
+          wire({ ...output(), learningItems: [card(taskFa, prompt, fullSentence)] }),
+        ),
+      ).toThrow(failure("study_prompt_reveals_answer"));
+    },
+  );
+
+  it.each([
+    // Contractions are a real change outside a clause the learner must say.
+    ["Write the short form: I am not ready.", "I'm not ready."],
+    ["They are not at home.", "They aren't at home."],
+    ["We've finished the report.", "We have finished the report."],
+    ["Write the full form: They're late.", "They are late."],
+    ["Write the full form: She doesn't eat meat.", "She does not eat meat."],
+    ["Write the full form: I'd like a coffee.", "I would like a coffee."],
+    ["She won't come today.", "She will not come today."],
+    ["Use contractions: They are late.", "They're late."],
+    ["Using a short form, say that you are not ready.", "I'm not ready."],
+    // Punctuation that the answer uses is part of the task.
+    ["Add the apostrophe: My parents house is near the sea.", "My parents' house is near the sea."],
+    ["The teachers room is on the left.", "The teachers' room is on the left."],
+    ["Add the hyphen: I need an up to date timetable.", "I need an up-to-date timetable."],
+    ["Correct the mistake: She is a well known writer.", "She is a well-known writer."],
+    [
+      "Replace the comma with a semicolon: I love tea, my sister loves coffee.",
+      "I love tea; my sister loves coffee.",
+    ],
+    ["Add a capital letter and a question mark: where do you live", "Where do you live?"],
+    ["Correct the punctuation: Do you like coffee.", "Do you like coffee?"],
+    ["What a beautiful day.", "What a beautiful day!"],
+    ["We read Animal Farm in class.", 'We read "Animal Farm" in class.'],
+    [
+      "Add brackets: My brother who lives in Kyiv is a doctor.",
+      "My brother (who lives in Kyiv) is a doctor.",
+    ],
+    ["Add a comma: When I arrived the shop was closed.", "When I arrived, the shop was closed."],
+    // A reported-to-direct change of pronoun is the point being taught.
+    ["Change to direct speech: Anna says that I can leave early.", "You can leave early."],
+    ["Change to direct speech: Sara told me that I looked tired.", "You looked tired."],
+    // Sentence and word options leave the learner a choice.
+    [
+      "Choose the correct sentence. A. I have lived here since 2010. B. I am living here since 2010.",
+      "I have lived here since 2010.",
+    ],
+    ["Which is correct? There is two chairs. / There are two chairs.", "There are two chairs."],
+    [
+      "The doctor recommended that he (rest / rests) for a week.",
+      "The doctor recommended that he rest for a week.",
+    ],
+    ["You (must / mustn't) wear a helmet here.", "You must wear a helmet here."],
+    ["You ______ wear a helmet here. (must / mustn't)", "You must wear a helmet here."],
+    ["Complete with this, that, these or those: _____ shoes are new.", "Those shoes are new."],
+    ["Complete with this / that / these / those: _____ shoes are new.", "Those shoes are new."],
+    // A cue that needs a change, and transformations.
+    ["If it ___ (rain), we will stay at home.", "If it rains, we will stay at home."],
+    ["Join with because: I stayed in. It was raining.", "I stayed in because it was raining."],
+    [
+      "Join with Although: The bus was late. We arrived on time.",
+      "Although the bus was late, we arrived on time.",
+    ],
+    [
+      "Rewrite using It is essential that: Every student must attend the first class.",
+      "It is essential that every student attend the first class.",
+    ],
+    ["Rewrite starting with Never: I have seen such a mess.", "Never have I seen such a mess."],
+    // Named-insertion gaps are steered by the generation prompt, not rejected.
+    ["Ask about the owner of the pen: ______ pen is this?", "Whose pen is this?"],
+    [
+      "Complete with a precaution: Take an umbrella ______ it rains.",
+      "Take an umbrella in case it rains.",
+    ],
+    [
+      "Complete with when: I was cooking [...] the phone rang.",
+      "I was cooking when the phone rang.",
+    ],
+    [
+      "Join with and, both in the past continuous: The sun was shining. People were walking in the park.",
+      "The sun was shining and people were walking in the park.",
+    ],
+  ])("accepts a grammar front that leaves a real task: %s", (prompt, fullSentence) => {
+    expect(grammarPromptRevealsAnswer(instruction, prompt, fullSentence)).toBe(false);
+    expect(
+      prepare().assemble(
+        wire({ ...output(), learningItems: [card(instruction, prompt, fullSentence)] }),
+      ).learningItems,
+    ).toHaveLength(1);
+  });
+
+  it("keeps capitalisation-only fronts rejected where the bare prompt already is", () => {
+    // The existing case-insensitive study_answer_exposed already rejects the bare prompt, so an
+    // instruction in front of it does not turn the same card into a task.
+    for (const prompt of [
+      "monday is my favourite day.",
+      "Correct the capital letter: monday is my favourite day.",
+    ])
+      expect(grammarPromptRevealsAnswer(instruction, prompt, "Monday is my favourite day.")).toBe(
+        true,
+      );
+    // A mid-sentence capital is a change the learner must make.
+    expect(
+      grammarPromptRevealsAnswer(
+        instruction,
+        "Correct the capitals: my sister lives in london.",
+        "My sister lives in London.",
+      ),
+    ).toBe(false);
+  });
+
+  it("steers a revealed grammar front and a named insertion toward a real task", () => {
+    const repair = buildKnowledgeGenerationInput(input(), 120000, {
+      repairReason: "provider_schema_invalid",
+      repairDetail: "assembly:study_prompt_reveals_answer",
+    });
+    expect(repair.system).toContain(
+      "Give a cue the learner must change or choose from, for example two forms in brackets",
+    );
+    expect(prepare().system).toContain(
+      "Never name in taskFa or the instruction the only word(s) that fill the blank unless real alternatives are offered",
+    );
+    expect(prepare().system).toContain("it is never already the required form");
+  });
+
+  it.each([
+    ["object pronoun", "Can you help me?", "Can you help ______?"],
+    ["object pronoun me", "Can you help me?", "Can you help ______?"],
+    ["question word", "Where do you live?", "______ do you live?"],
+    ["subject pronoun", "She works in a bank.", "______ works in a bank."],
+    ["preposition of place", "The keys are on the table.", "The keys are ______ the table."],
+    ["definite article", "Close the door, please.", "Close ______ door, please."],
+    ["reflexive pronoun", "She hurt herself.", "She hurt ______."],
+  ])("AC-D46-01 rejects the grammar label %s as a lexical answer", (en, full, gap) => {
+    expect(lexicalGapProblem(en, full, gap)).toBe("study_answer_label");
+    expect(gapHidesWholeTarget(en, full, gap)).toBe(false);
+    expect(() =>
+      prepare().assemble(
+        wire({
+          ...output(),
+          learningItems: [
+            {
+              ...lexical(),
+              en,
+              fullSentence: full,
+              gapSentence: gap,
+              faMeaning: "معنی",
+              ipa: "/miː/",
+            },
+          ],
+        }),
+      ),
+    ).toThrow(failure("study_answer_label"));
+  });
+
+  it.each([
+    // No grammar term: abbreviations, numerals and suppletive forms stay valid headwords.
+    ["the eighth", "Henry VIII had six wives.", "Henry ______ had six wives."],
+    ["in the afternoon", "The film starts at 3 p.m.", "The film starts at 3 ______."],
+    ["because", "I stayed at home cos I was ill.", "I stayed at home ______ I was ill."],
+    ["pounds", "The baby weighed 7 lbs.", "The baby weighed 7 ______."],
+    ["toilet", "Excuse me, where is the WC?", "Excuse me, where is the ______?"],
+    [
+      "namely",
+      "Two cities, viz. Leeds and York, applied.",
+      "Two cities, ______ Leeds and York, applied.",
+    ],
+    ["badly", "He played worse than last week.", "He played ______ than last week."],
+    ["twelve", "The clock showed XII.", "The clock showed ______."],
+    ["make a mistake", "Everyone makes mistakes.", "Everyone ______ ______."],
+    ["teach", "My aunt taught me to swim.", "My aunt ______ me to swim."],
+    ["mouse", "The mice ran away.", "The ______ ran away."],
+    ["refrigerator", "Put the milk in the fridge.", "Put the milk in the ______."],
+    ["twenty-one", "She is 21 years old.", "She is ______ years old."],
+    ["would rather", "I'd rather stay at home.", "I'd ______ stay at home."],
+    ["enjoy oneself", "We enjoyed ourselves at the party.", "We ______ ourselves at the party."],
+    ["United Kingdom", "She moved to the UK.", "She moved to the ______."],
+    // A grammar term used as ordinary vocabulary is hidden by its own word.
+    ["article", "I read an article about bees.", "I read an ______ about bees."],
+    ["question word", "Who is a question word.", "Who is a ______ ______."],
+    ["linking word", "However is a linking word.", "However is a ______ ______."],
+  ])("AC-D46-01 accepts the headword %s whose blanks hide its own words", (en, full, gap) => {
+    expect(lexicalGapProblem(en, full, gap)).toBeUndefined();
+  });
+
+  it("AC-D46-01 steers a label answer to a headword or a grammar item", () => {
+    expect(
+      buildKnowledgeGenerationInput(input(), 120000, {
+        repairReason: "provider_schema_invalid",
+        repairDetail: "assembly:study_answer_label",
+      }).system,
+    ).toContain("never replace the headword with a category name or add one to it");
+    expect(
+      buildKnowledgeGenerationInput(input(), 120000, { repairReason: "study_target_unsupported" })
+        .system,
+    ).toContain("Never replace a list or set of forms with a grammar category name");
+  });
+
+  it.each([
+    ["however", "/haʊˈevə ɪt wəz sləʊ/"],
+    ["reliable", "/ðɪs kɑː ɪz rɪˈlaɪəbl/"],
+    ["on time", "/ðə treɪn ɪz ɒn taɪm/"],
+    ["headache", "/aɪ hæv ə ˈhedeɪk/"],
+    ["make a decision", "/aɪ ˈmeɪd ə dɪˈsɪʒn ˈjestədeɪ/"],
+    ["put sth off", "/wiː hæd tə pʊt ðə ˈmiːtɪŋ ɒf/"],
+  ])("AC-D46-04 rejects lexical IPA of %s that adds sentence words", (en, ipa) => {
+    expect(lexicalIpaExceedsHeadword(en, ipa)).toBe(true);
+  });
+
+  it.each([
+    // Variant, stress-shift and labelled notations transcribe the same headword.
+    ["data", "/ˈdeɪtə/ or /ˈdɑːtə/"],
+    ["data", "/ˈdeɪtə ~ ˈdɑːtə/"],
+    ["data", "ˈdeɪtə, ˈdɑːtə"],
+    ["record", "/ˈrekɔːd/ (n), /rɪˈkɔːd/ (v)"],
+    ["record", "ˈrekɔːd noun; rɪˈkɔːd verb"],
+    ["schedule", "UK /ˈʃedjuːl/, US /ˈskedʒuːl/"],
+    ["can", "strong /kæn/ weak /kən/"],
+    ["under", "/ˈʌndə(r)/"],
+    ["controversy", "/ˈkɒn.trə.vɜː.si/ or /kənˈtrɒv.ə.si/"],
+    // Slots and complements may be spoken; hyphen parts, initialisms and numbers count apart.
+    ["put sth off", "/pʊt ˈsʌmθɪŋ ɒf/"],
+    ["kit sth out", "/kɪt ði ˈɒfɪs aʊt/"],
+    ["borrow sth from sb", "/ˈbɒrəʊ ˈsʌmθɪŋ frəm ˈsʌmbədi/"],
+    ["be used to + -ing", "/bɪ juːst tə ˈwɜːkɪŋ/"],
+    ["in case + noun / verb", "/ɪn ˈkeɪs ɪt ˈreɪnz/"],
+    ["double-edged sword", "/ˌdʌbl ˈedʒd ˈsɔːd/"],
+    ["trade-off", "/ˈtreɪd ɒf/"],
+    ["Why don't you", "/waɪ ˈdəʊnt juː/"],
+    ["elephant in the room", "/ði ˈelɪfənt ɪn ðə ˈruːm/"],
+    ["DIY", "/ˌdiː aɪ ˈwaɪ/"],
+    ["2021", "/ˈtwenti ˈtwenti ˈwʌn/"],
+  ])("AC-D46-04 accepts lexical IPA for %s: %s", (en, ipa) => {
+    expect(lexicalIpaExceedsHeadword(en, ipa)).toBe(false);
+  });
+
+  it("AC-D46-04 rejects generated lexical IPA beyond its headword and steers the regeneration", () => {
+    expect(
+      prepare().assemble(wire({ ...output(), learningItems: [lexical()] })).learningItems,
+    ).toHaveLength(1);
+    expect(() =>
+      prepare().assemble(
+        wire({
+          ...output(),
+          learningItems: [{ ...lexical(), ipa: "/aɪ lʊk ˈfɔːwəd tə ˈmiːtɪŋ maɪ njuː ˈneɪbəz/" }],
+        }),
+      ),
+    ).toThrow(failure("study_ipa_headword_invalid"));
+    expect(
+      buildKnowledgeGenerationInput(input(), 120000, {
+        repairReason: "provider_schema_invalid",
+        repairDetail: "assembly:study_ipa_headword_invalid",
+      }).system,
+    ).toContain("never transcribe the example sentence or other added words");
+  });
+
+  const quotes = (texts: string[][]) =>
+    classQuotationSources(texts.map((blocks) => ({ blocks: blocks.map((text) => ({ text })) })));
+  const surgery = "I'm sick and tired of going back and forth to the surgery every week.";
+
+  it.each([
+    ["I've been work ing   here since May.", "I've been working here since May."],
+    ["Can I   open t he wi ndow?", "Can I open the window?"],
+    ["She is a well-\nknown writer in our town.", "She is a well-known writer in our town."],
+    ["He has worked here for twenty-\nfive years.", "He has worked here for twenty-five years."],
+    [
+      "My neigh­bours have lived here for twenty years.",
+      "My neighbours have lived here for twenty years.",
+    ],
+    ["The cafe where we met has closed.", "The café where we met has closed."],
+    ["The café where we met has closed.", "The cafe where we met has closed."],
+    ["I'd like a ˈcoffee, please.", "I'd like a coffee, please."],
+    ["I’m sick and tired of it.", "I'm sick and tired of it."],
+    ["I have lived here for ۲ years.", "I have lived here for 2 years."],
+    [surgery, "…going back and forth to the surgery…"],
+    [surgery, "I'm sick and tired of ⋯ the surgery every week."],
+    [surgery, "I'm sick and tired of . . . the surgery every week."],
+    [surgery, "I'm sick and tired of ‥ the surgery every week."],
+  ])("keeps a faithful class quotation of %s", (text, classSentence) => {
+    expect(quotesClassSources(classSentence, quotes([[text]]))).toBe(true);
+  });
+
+  const reported = "He asked where I lived. She asked if I was hungry.";
+  const places = "This is the town where I grew up. The café where we met has closed.";
+  it.each([
+    // A speaker swap, blend, transformation, alteration or reordering is not a quotation.
+    [reported, "She asked where I lived."],
+    [reported, "He asked if I was hungry."],
+    [places, "This is the café where we met."],
+    ["It is believed that the painting is a copy.", "The painting is believed to be a copy."],
+    ["This bag is mine. Those shoes are new.", "This bag is mine. That shoe is new."],
+    ["He asked where I lived.", "He asked where I live."],
+    ["Somebody called you.", "Some body called you."],
+    // An interior ellipsis may only omit words in order inside one source sentence.
+    [reported, "He asked … if I was hungry."],
+    [reported, "She asked … where I lived."],
+    [places, "This is the … café where we met."],
+    ["This bag is mine. Those shoes are new.", "That … shoes are new."],
+    ["It is believed that the painting is a copy.", "The painting is … believed … to be … a copy."],
+    ["He asked where I lived.", "…"],
+  ])("omits a class sentence that does not quote %s", (text, classSentence) => {
+    expect(quotesClassSources(classSentence, quotes([[text]]))).toBe(false);
+  });
+
+  it("matches a sentence split across one source's blocks, and one class sentence per chunk", () => {
+    const split = quotes([
+      ["Class example: By the time we arrived, the film", "had already started."],
+    ]);
+    expect(quotesClassSources("By the time we arrived, the film had already started.", split)).toBe(
+      true,
+    );
+    // Combining sentences from separate rows is not one class sentence.
+    const dialogue = quotes([["A: How long have you lived here?", "B: For two years."]]);
+    expect(quotesClassSources("How long have you lived here? For two years.", dialogue)).toBe(
+      false,
+    );
+    expect(quotesClassSources("How long have you lived here?", dialogue)).toBe(true);
+  });
+
+  it("omits a misquoted Class Notes chunk without rejecting the lesson, from every source role", () => {
+    const material = source();
+    first(material.blocks).text = reported;
+    const notes = source();
+    notes.role = "user_notes";
+    first(notes.blocks).text = "This is the restaurant where we met.";
+    const prepared = prepare(input([material, notes]));
+    const chunk = (classSentence: string) => ({
+      pattern: "reported question",
+      classSentence,
+      noteFa: "ترتیب کلمات خبری است.",
+    });
+    const result = prepared.assemble(
+      wire({
+        ...output(),
+        classNotes: {
+          ...output().classNotes,
+          chunks: [
+            chunk("She asked where I lived."),
+            chunk("He asked where I lived."),
+            chunk("“She asked if I was hungry.”"),
+            chunk("This is the restaurant where we met."),
+            chunk("This is the café where we met."),
+          ],
+        },
+      }),
+    );
+    expect(result.classNotes?.chunks.map((entry) => entry.classSentence)).toEqual([
+      "He asked where I lived.",
+      "“She asked if I was hungry.”",
+      "This is the restaurant where we met.",
+    ]);
+    const jsonSchema = JSON.stringify(createJsonFallbackTransport(prepared.schema).schema);
+    expect(jsonSchema).toContain("One English class sentence copied exactly from the sources");
+    expect(jsonSchema).toContain("omit the chunk if no class sentence shows the pattern");
+    expect(prepared.system).toContain("never correct, combine or invent it");
+  });
+
+  it("keeps homework to work a class source sets for after class", () => {
+    const prepared = prepare();
+    const jsonSchema = JSON.stringify(createJsonFallbackTransport(prepared.schema).schema);
+    for (const text of [prepared.system, jsonSchema]) {
+      expect(text).not.toContain("source assignment");
+      expect(text).not.toContain("sourced assignments");
+    }
+    expect(prepared.system).toContain(
+      "Homework holds only work that a class source explicitly sets for after class",
+    );
+    expect(prepared.system).toContain(
+      "A printed or in-class task belongs in classNotes.activities.tasks",
+    );
+    expect(prepared.system).toContain("another person's homework sheet is not an assignment");
+    expect(prepared.system).toContain(
+      "retain each distinct homework that a class source explicitly sets for after class",
+    );
+    expect(jsonSchema).toContain("homework that a class source explicitly sets for after class");
+  });
+
+  it("names the explanation language in words and shows the Persian order example only to Persian", () => {
+    const arabic = buildKnowledgeGenerationInput(input([source()], "ar"), 120000);
+    const arabicSchema = JSON.stringify(createJsonFallbackTransport(arabic.schema).schema);
+    expect(arabic.system).toContain(
+      'Explain in exactly "ar" (Arabic) using its normal writing system',
+    );
+    expect(arabic.system).toContain("another language that shares its script is not Arabic");
+    expect(arabicSchema).toContain('Explanation prose in \\"ar\\" (Arabic)');
+    expect(arabic.system).not.toContain("پس از");
+    expect(arabic.system).not.toContain("For Persian explanations");
+    expect(arabic.system).toContain("quote that exact English left-to-right pattern");
+    const persian = prepare();
+    expect(persian.system).toContain('Explain in exactly "fa" (Persian)');
+    expect(persian.system).toContain('For Persian explanations, use "پس از X، Y می‌آید"');
+    // A tag without a known English name falls back to the code.
+    expect(buildKnowledgeGenerationInput(input([source()], "qaa"), 120000).system).toContain(
+      'Explain in exactly "qaa" using its normal writing system',
+    );
+    const repair = buildKnowledgeGenerationInput(input([source()], "ar"), 120000, {
+      repairReason: "language_script_mismatch",
+    });
+    expect(repair.system).toContain(
+      'The requested explanation language is "ar" (Arabic). Another language written in the same script is not Arabic',
+    );
+    expect(repair.system).not.toContain("پس از");
+    expect(
+      buildKnowledgeGenerationInput(input([source()], "ar"), 120000, {
+        repairReason: "study_gap_partial",
+      }).system,
+    ).not.toContain("The requested explanation language is");
   });
 });
