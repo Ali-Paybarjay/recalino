@@ -27,6 +27,7 @@ import {
   listUnits,
   renameCourse,
   updateSession,
+  updateUnit,
 } from "./index";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
@@ -107,6 +108,43 @@ describe("ORG ownership, default creation and deletion on Postgres", () => {
     await expect(deleteCourse(db, ctx, implicit.courseId)).rejects.toMatchObject({
       code: "validation_failed",
     });
+  });
+  it("FR-ORG-003: units without an order follow the last unit and equal orders keep creation order", async () => {
+    const ctx = await learner();
+    const course = await createCourse(db, ctx, { name: "Ordered course" }, options());
+    const create = (name: string, extra: { position?: number; now?: Date } = {}) =>
+      createUnit(
+        db,
+        ctx,
+        {
+          courseId: course.id,
+          name,
+          ...(extra.position === undefined ? {} : { position: extra.position }),
+        },
+        { key: randomUUID(), ...(extra.now ? { now: extra.now } : {}) },
+      );
+    expect((await create("Unit 1")).position).toBe(1);
+    expect((await create("Unit 2")).position).toBe(2);
+    const third = await create("Unit 3");
+    expect(third.position).toBe(3);
+    expect((await create("Intro", { position: 0 })).position).toBe(0);
+    await updateUnit(db, ctx, third.id, { position: 10 });
+    expect((await create("Unit 4")).position).toBe(11);
+    await create("Review B", { position: 20, now: new Date("2026-10-02T00:00:00.000Z") });
+    await create("Review A", { position: 20, now: new Date("2026-10-01T00:00:00.000Z") });
+    expect((await listUnits(db, ctx, course.id)).map((row) => row.name)).toEqual([
+      "Intro",
+      "Unit 1",
+      "Unit 2",
+      "Unit 3",
+      "Unit 4",
+      "Review A",
+      "Review B",
+    ]);
+    const other = await createCourse(db, ctx, { name: "Separate order" }, options());
+    expect(
+      (await createUnit(db, ctx, { courseId: other.id, name: "Unit 1" }, options())).position,
+    ).toBe(1);
   });
   it("FR-PLT-002 and AC-17: foreign identities cannot read, move or delete; tombstones replay", async () => {
     const a = await learner();
