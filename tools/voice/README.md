@@ -71,10 +71,13 @@ pnpm exec tsx --conditions=react-server tools/voice/evaluation/extract.ts --spli
 pnpm exec tsx --conditions=react-server tools/voice/evaluation/calibrate.ts
 pnpm exec tsx --conditions=react-server tools/voice/evaluation/holdout.ts
 pnpm exec tsx --conditions=react-server tools/voice/evaluation/supplement.ts   # post-hoc, not a gate
+pnpm exec tsx --conditions=react-server tools/voice/evaluation/outcome.ts      # why v1 produced no policy
 pnpm exec biome format --write tools/voice/evaluation/*.json
 ```
 
 Extraction runs every production check on CPU, so it takes hours; it skips meetings whose features already exist. `calibrate.ts` and `holdout.ts` refuse to run when a frozen file or the pipeline settings changed. No AI provider or paid service is called.
+
+**Result of round `voice-eval-ami-v1` (2026-10-09): no policy.** All 231 checks ran without failure and the full freeze (code and data) verified. 74 of 132 voice samples passed the production sample check. `calibrate.ts` stopped with "no acceptance impostors": mixed voices that hold up to 49.8% of the learner's own speech resemble the sample more (up to 0.938) than any genuine confirmation (up to 0.926), so the pre-registered consistency limit (0.988) rejected every reference. The holdout was not run, no gate could pass, and automatic acceptance stays off. `outcome.ts` (added after the stop, not pre-registered) records this in `outcome.json` from the calibration split and resource figures only. Lessons for a v2 protocol are in `docs/design/VOICE_PROFILE_RECOVERY_2026-10-08.md` §4.3. The production files changed after the round, so `calibrate.ts` and `holdout.ts` now refuse to run against this freeze, as intended.
 
 ## Model provenance and licenses
 
