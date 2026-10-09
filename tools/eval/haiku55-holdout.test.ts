@@ -234,7 +234,14 @@ describe.each([
         const prepared = buildKnowledgeGenerationInput(migrationInputData(fixture), 120000);
         expect(prepared.input).not.toContain("criticalFacts");
         // No production prompt formatting example overlaps a holdout lesson.
-        for (const example of ["because it was raining", "kind of", "kit sth out"])
+        for (const example of [
+          "because it was raining",
+          "kind of",
+          "kit sth out",
+          "look forward to",
+          "get on with",
+          "lost my keys",
+        ])
           expect(input.toLocaleLowerCase("en")).not.toContain(example);
       }
     });
@@ -557,7 +564,7 @@ describe.each([
       }
     });
 
-    it("FR-PROC-004 keeps concept IDs and lexical targets disjoint from every earlier set", () => {
+    it("FR-PROC-004 keeps concept IDs and lexical targets disjoint from every earlier set and prompt", () => {
       const earlierConcepts = earlier.flatMap((fixture) => answerKey(fixture).concepts ?? []);
       const earlierIds = new Set(earlierConcepts.map((concept) => concept.id));
       const earlierTargets = new Set(
@@ -568,10 +575,17 @@ describe.each([
       const ids = concepts.map(({ concept }) => concept.id);
       expect(new Set(ids).size).toBe(ids.length);
       expect(ids.filter((id) => earlierIds.has(id))).toEqual([]);
+      const targets = concepts.flatMap(({ concept }) => concept.lexicalTargets ?? []);
       expect(
-        concepts
-          .flatMap(({ concept }) => concept.lexicalTargets ?? [])
-          .filter((target) => earlierTargets.has(target.toLocaleLowerCase("en"))),
+        targets.filter((target) => earlierTargets.has(target.toLocaleLowerCase("en"))),
+      ).toEqual([]);
+      // A target that any prompt already uses as a whole phrase, even as a formatting example,
+      // would measure the prompt rather than the lesson.
+      const promptPhrases = prompts.map((prompt) => ` ${shingleWords(prompt).join(" ")} `);
+      expect(
+        targets.filter((target) =>
+          promptPhrases.some((prompt) => prompt.includes(` ${shingleWords(target).join(" ")} `)),
+        ),
       ).toEqual([]);
     });
 

@@ -126,28 +126,28 @@ export function holdout5MigrationFixtures(): MigrationFixture[] {
   ]);
   const s03Text = migrationSource(123, [
     {
-      id: "time-clauses",
-      text: "When a sentence is about the future, use the present simple after when, as soon as, before, after and until, not will: I'll call you as soon as I land. We'll start dinner when Dad gets home. Do not say as soon as I will land.",
+      id: "purpose",
+      text: "To say why someone does something, use to + base verb: I went to the chemist's to buy some plasters. She is saving money to visit her cousins in Canada. In order to + base verb means the same and sounds more formal, and in order not to + base verb is the negative: We left home early in order not to miss the train. For goes before a noun, not a verb: I went to the chemist's for some plasters. Do not say for to buy or for buy.",
     },
     {
-      id: "arrive-task",
-      text: "Printed task: Put the bracketed verb into the gap. I'll text you as soon as I ___ (arrive) at the hotel.",
+      id: "library-task",
+      text: "Printed task: Put the bracketed verb into the gap. I'm going to the library to ___ (return) these books before it closes.",
     },
     {
-      id: "look-forward-to",
-      text: "Look forward to means feel happy and excited about something that is going to happen. To is a preposition here, so the next word is a noun or a verb ending in -ing: I'm looking forward to the weekend. We're looking forward to seeing you in June.",
+      id: "pop-out",
+      text: "Pop out means go out for a short time, usually to do something quick nearby; it is informal and common in British English. Class example: I'm just popping out to get some milk, so I'll be back in ten minutes. Common combinations: pop out for lunch, pop out to the shops.",
     },
   ]);
   const s03Audio = migrationSource(
     123,
     [
       {
-        id: "audio-will",
-        text: "Someone on the recording says: Actually, as soon as I will land is fine as well; plenty of speakers use it.",
+        id: "audio-for-to",
+        text: "Someone on the recording says: Actually, I went to the chemist's for to buy some plasters is fine as well; plenty of speakers say it.",
       },
       {
-        id: "audio-dinner",
-        text: "Near the end of the recording, someone repeats the model sentence: We'll start dinner when Dad gets home.",
+        id: "audio-train",
+        text: "Near the end of the recording, someone repeats the model sentence: We left home early in order not to miss the train.",
       },
     ],
     "audio",
@@ -222,8 +222,8 @@ export function holdout5MigrationFixtures(): MigrationFixture[] {
   ]);
   const s07 = migrationSource(127, [
     {
-      id: "it-cleft",
-      text: "An it-cleft puts one part of a sentence in focus, often to correct a wrong idea: It + be + the focus + that or who + the rest of the sentence. Class models: It was Omar who booked the hall, not Sami. It is the cost of parking that worries most residents.",
+      id: "ever-clauses",
+      text: "Whatever, whoever, wherever and whenever mean it does not matter what, who, where or when. They begin a clause that is joined to a main clause: Whatever you decide, the committee will support you. Whoever takes over the project will need more staff. Feel free to sit wherever you like. In formal writing, may often follows the subject: Whatever the reasons may be, the delay is unacceptable.",
     },
     {
       id: "emphatic-do",
@@ -287,8 +287,8 @@ export function holdout5MigrationFixtures(): MigrationFixture[] {
       text: "Use yet at the end of a question or a negative sentence for something that you expect to happen: Have you packed your suitcase yet? We haven't booked the tickets yet. Do not use yet in a positive sentence with this meaning: say I've already booked them, not I've booked them yet.",
     },
     {
-      id: "everywhere",
-      text: "Everywhere means in every place or to every place. Class example: I've looked everywhere for my glasses, but I can't find them. Common combinations: look everywhere, everywhere in the house.",
+      id: "somewhere",
+      text: "Somewhere means in or to a place that you do not know or do not name. Class example: I've put my passport somewhere safe, but now I can't remember where. Common combinations: somewhere safe, somewhere else, somewhere near here.",
     },
   ]);
   const s11 = migrationSource(131, [
@@ -417,47 +417,50 @@ export function holdout5MigrationFixtures(): MigrationFixture[] {
       [s03Text, s03Audio],
       [
         migrationConcept(
-          "future-time-clause-present-simple",
-          [[s03Text, "time-clauses"]],
+          "infinitive-of-purpose-to",
+          [[s03Text, "purpose"]],
           [
-            "After when, as soon as, before, after and until, a future meaning takes the present simple, not will.",
+            "To + base verb says why someone does something; in order (not) to is more formal; for goes before a noun, not a verb.",
           ],
-          ["Teach as soon as I will land as correct."],
-          ["I'll call you as soon as I land.", "We'll start dinner when Dad gets home."],
+          ["Teach for to buy or for buy as a purpose form."],
+          [
+            "I went to the chemist's to buy some plasters.",
+            "We left home early in order not to miss the train.",
+          ],
         ),
         migrationConcept(
-          "look-forward-to-pleasure",
-          [[s03Text, "look-forward-to"]],
+          "pop-out-short-trip",
+          [[s03Text, "pop-out"]],
           [
-            "Look forward to means feel happy about a future event; to is a preposition, so a noun or -ing follows.",
+            "Pop out means go out for a short time, usually to do something quick nearby; informal British English.",
           ],
-          ["Teach look forward to see with a base verb."],
-          ["I'm looking forward to the weekend.", "We're looking forward to seeing you in June."],
-          ["look forward to"],
+          ["Give only the sense of something coming out suddenly, or teach it as a long journey."],
+          ["I'm just popping out to get some milk, so I'll be back in ten minutes."],
+          ["pop out"],
         ),
         migrationConcept(
-          "as-soon-as-will-conflict",
+          "for-to-purpose-conflict",
           [
-            [s03Text, "time-clauses"],
-            [s03Audio, "audio-will"],
+            [s03Text, "purpose"],
+            [s03Audio, "audio-for-to"],
           ],
           [
-            "Anonymous claim that as soon as I will land is fine conflicts with the printed present-simple rule; uncertain citing both sources; as soon as I land stays taught.",
+            "Anonymous claim that for to buy is fine conflicts with the printed to + base verb rule; uncertain citing both sources; to buy stays taught.",
           ],
-          ["Present as soon as I will land as correct, or call the voice the teacher."],
+          ["Present for to buy as correct, or call the voice the teacher."],
           [],
         ),
       ],
       {
-        ...conflict(["as soon as I land", "as soon as I will land"]),
-        printedInClassTasks: [ref(s03Text, "arrive-task")],
+        ...conflict(["to buy some plasters", "for to buy some plasters"]),
+        printedInClassTasks: [ref(s03Text, "library-task")],
         cueEqualsAnswer: [
           {
-            ...ref(s03Text, "arrive-task"),
-            prompt: "I'll text you as soon as I ___ (arrive) at the hotel.",
-            cue: "arrive",
-            answer: "arrive",
-            fullSentence: "I'll text you as soon as I arrive at the hotel.",
+            ...ref(s03Text, "library-task"),
+            prompt: "I'm going to the library to ___ (return) these books before it closes.",
+            cue: "return",
+            answer: "return",
+            fullSentence: "I'm going to the library to return these books before it closes.",
             frontMustNotRevealFullSentence: true,
           },
         ],
@@ -630,15 +633,15 @@ export function holdout5MigrationFixtures(): MigrationFixture[] {
       [s07],
       [
         migrationConcept(
-          "it-cleft-focus",
-          [[s07, "it-cleft"]],
+          "ever-words-no-matter-clauses",
+          [[s07, "ever-clauses"]],
           [
-            "It + be + focus + that/who + the rest puts one part in focus, often to correct a wrong idea.",
+            "Whatever/whoever/wherever/whenever mean it does not matter what/who/where/when and begin a clause joined to a main clause; formal may can follow the subject.",
           ],
-          ["Drop that/who, or claim the cleft changes the facts of the sentence."],
+          ["Read whoever as one known, named person, or say the clause means it matters who."],
           [
-            "It was Omar who booked the hall, not Sami.",
-            "It is the cost of parking that worries most residents.",
+            "Whatever you decide, the committee will support you.",
+            "Whoever takes over the project will need more staff.",
           ],
         ),
         migrationConcept(
@@ -796,12 +799,12 @@ export function holdout5MigrationFixtures(): MigrationFixture[] {
           ["Have you packed your suitcase yet?", "We haven't booked the tickets yet."],
         ),
         migrationConcept(
-          "everywhere-every-place",
-          [[s10, "everywhere"]],
-          ["Everywhere means in every place or to every place."],
-          ["Teach it as somewhere or as nowhere."],
-          ["I've looked everywhere for my glasses, but I can't find them."],
-          ["everywhere"],
+          "somewhere-unnamed-place",
+          [[s10, "somewhere"]],
+          ["Somewhere means in or to a place that is not known or not named."],
+          ["Teach it as everywhere or as nowhere."],
+          ["I've put my passport somewhere safe, but now I can't remember where."],
+          ["somewhere"],
         ),
       ],
     ),
