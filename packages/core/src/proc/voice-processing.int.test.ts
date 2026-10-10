@@ -360,7 +360,7 @@ function gatedDiarization(
   return events;
 }
 
-it("generates the lesson while the class's acoustic check runs, then corrects in a job of its own", async () => {
+it("FR-VOC-008 generates the lesson while the class's acoustic check runs, then corrects in a job of its own", async () => {
   const x = await fixture(true, { generated: true });
   const native = await x.diarize();
   x.diarize.mockClear();
@@ -380,7 +380,7 @@ it("generates the lesson while the class's acoustic check runs, then corrects in
   ]);
 });
 
-it("keeps repairing the lesson in the same job while the acoustic check still runs", async () => {
+it("FR-VOC-008 keeps repairing the lesson in the same job while the acoustic check still runs", async () => {
   const x = await fixture(true, { generated: true });
   const knowledge = structuredClone(x.provider.knowledge) as ReturnType<typeof syntheticKnowledge>;
   const summary = knowledge.summary[0];

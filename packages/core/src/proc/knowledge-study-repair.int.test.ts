@@ -308,7 +308,7 @@ it("checkpoints each paid stage, resumes without a duplicate call and preserves 
   expect(costs.map((cost) => Number(cost.amount_micros)).sort()).toEqual([1000, 2000]);
 });
 
-it("gives a general repair that leaves only a mismatched gap one answer-span repair", async () => {
+it("NFR-06 gives a general repair that leaves only a mismatched gap one answer-span repair", async () => {
   const f = await fixture();
   const original = structuredClone(f.original);
   const firstClaim = original.learningItems[0]?.claim;

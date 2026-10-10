@@ -373,7 +373,7 @@ it("keeps transcription checkpoints distinct for independent audio sources in th
   expect(retry.map((chunk) => chunk.objectId)).not.toEqual(first.map((chunk) => chunk.objectId));
 }, 30000);
 
-it("cuts chunks a few at a time and keeps their order and IDs when writes finish out of order", async () => {
+it("PRD-SEG-01 cuts chunks a few at a time and keeps their order and IDs when writes finish out of order", async () => {
   const original = syntheticWav(6);
   storage.read.mockResolvedValue(original);
   let inFlight = 0;

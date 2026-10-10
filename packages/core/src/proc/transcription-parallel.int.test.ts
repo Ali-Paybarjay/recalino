@@ -235,7 +235,7 @@ const transcript = (index: number) =>
     { headers: { "X-Generation-Id": `synthetic-parallel-stt-${index}` } },
   );
 
-it("transcribes a long class's chunks a few at a time in one job, then publishes from the next", async () => {
+it("PRD-SEG-01 transcribes a long class's chunks a few at a time in one job, then publishes from the next", async () => {
   let inFlight = 0;
   let peak = 0;
   const c = await parallelClass(async (index) => {
@@ -263,7 +263,7 @@ it("transcribes a long class's chunks a few at a time in one job, then publishes
   expect(attempts.every((attempt) => attempt.state === "succeeded")).toBe(true);
 });
 
-it("keeps finished chunks when one fails, and the retry transcribes only the failed chunk", async () => {
+it("PRD-PROC-03 keeps finished chunks when one fails, and the retry transcribes only the failed chunk", async () => {
   let failures = 0;
   const c = await parallelClass(
     async (index) => {
@@ -292,7 +292,7 @@ it("keeps finished chunks when one fails, and the retry transcribes only the fai
   expect(attempts.map((row) => row.state)).toEqual(["failed", "succeeded"]);
 });
 
-it("starts only one chunk when the runner's deadline leaves time for one provider call", async () => {
+it("FR-PLT-005 starts only one chunk when the runner's deadline leaves time for one provider call", async () => {
   const c = await parallelClass(async (index) => transcript(index));
   await c.invoke({ deadline: new Date(Date.now() + settings.timeoutMs + 1000) });
   expect(c.calls).toHaveLength(1);
