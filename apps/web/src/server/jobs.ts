@@ -41,9 +41,9 @@ const RUNNER_MARGIN_SECONDS = 100;
 /** A handler must return this long before the function limit, leaving time to settle its job. */
 const RUNNER_FINISH_MARGIN_SECONDS = 30;
 /**
- * A processing wake keeps a class's continuation jobs moving on this request's own function
- * instead of leaving each next step to the next cron minute. The waking routes all allow the
- * runner's full limit (`maxDuration` 800).
+ * A processing wake keeps a class's or a session voice check's continuation jobs moving on this
+ * request's own function instead of leaving each next step to the next cron minute. The waking
+ * routes all allow the runner's full limit (`maxDuration` 800).
  */
 export const PROCESSING_WAKE = {
   budgetSeconds: RUNNER_MAX_SECONDS - 2 * RUNNER_MARGIN_SECONDS,
