@@ -28,6 +28,26 @@ it("FR-PLT-005 rule 5: a renewal that never settles does not stop the next one",
   expect(events).toEqual(["job_lease_renewal_timeout"]);
 });
 
+it("FR-PLT-005 rule 5: at most two unsettled renewals hold pool connections at once", async () => {
+  vi.useFakeTimers();
+  const hung: Array<(renewed: boolean) => void> = [];
+  const renew = vi.fn(
+    () =>
+      new Promise<boolean>((resolve) => {
+        hung.push(resolve);
+      }),
+  );
+  const stop = keepRenewing(renew, 1000, () => {});
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(renew).toHaveBeenCalledTimes(2);
+  // Once one of them answers, renewing goes on.
+  hung[0]?.(true);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(renew).toHaveBeenCalledTimes(3);
+  for (const answer of hung) answer(true);
+  await stop();
+});
+
 it("FR-PLT-005 rule 5: stopping waits for a renewal in flight only up to its bound", async () => {
   vi.useFakeTimers();
   const stop = keepRenewing(

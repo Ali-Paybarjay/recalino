@@ -324,11 +324,16 @@ export interface RunOptions {
   leaseRenewalMs?: number;
 }
 
+/** A hung renewal plus one more; any more would only take further pool connections. */
+const MAX_UNSETTLED_RENEWALS = 2;
+
 /**
  * Calls `renew` every `every` ms until stopped or until it reports the claim lost. A renewal
  * still unsettled after most of its period counts as failed, so the next one still runs: the
- * pool has no query timeout, and one hung connection must not let the lease run out. The
- * returned stop waits for a renewal in flight only up to that bound.
+ * pool has no query timeout, and one hung connection must not let the lease run out. Each
+ * unsettled renewal still holds a pool connection, so no new one starts while
+ * `MAX_UNSETTLED_RENEWALS` are unsettled. The returned stop waits for a renewal in flight only up
+ * to that bound.
  */
 export function keepRenewing(
   renew: () => Promise<boolean>,
@@ -339,12 +344,17 @@ export function keepRenewing(
 ): () => Promise<void> {
   const boundMs = Math.max(1, Math.floor(every * 0.8));
   let renewal: Promise<void> | null = null;
+  let unsettled = 0;
   let lost = false;
   const timer = setInterval(() => {
-    if (renewal || lost) return;
+    if (renewal || lost || unsettled >= MAX_UNSETTLED_RENEWALS) return;
     let bound: ReturnType<typeof setTimeout> | undefined;
+    unsettled += 1;
+    const call = renew().finally(() => {
+      unsettled -= 1;
+    });
     const current: Promise<void> = Promise.race([
-      renew().then(
+      call.then(
         (renewed) => {
           // Cancelled, or claimed again after an expiry: the token guards completion either way.
           if (!renewed) {
