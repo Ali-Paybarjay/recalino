@@ -44,16 +44,6 @@ export const RUNNER_STEP_SLACK_SECONDS = 20;
 const RUNNER_MIN_MARGIN_SECONDS = 100;
 /** A handler must return this long before the function limit, leaving time to settle its job. */
 const RUNNER_FINISH_MARGIN_SECONDS = 30;
-/**
- * A processing wake keeps a class's or a session voice check's continuation jobs moving on this
- * request's own function instead of leaving each next step to the next cron minute. The waking
- * routes all allow the runner's full limit (`maxDuration` 800). The processing worker starts a
- * provider request only when its model's deadline still fits before the function stops.
- */
-export const PROCESSING_WAKE = {
-  budgetSeconds: RUNNER_MAX_SECONDS - 2 * RUNNER_MIN_MARGIN_SECONDS,
-  functionSeconds: RUNNER_MAX_SECONDS,
-} as const;
 
 /**
  * FR-PLT-005: stop claiming new jobs this long before the limit, so a started step can finish.
@@ -76,6 +66,33 @@ export function runnerClaimDeadline(started: Date, longestProviderTimeoutMs?: nu
     started.getTime() + (RUNNER_MAX_SECONDS - runnerMarginSeconds(longestProviderTimeoutMs)) * 1000,
   );
 }
+
+/**
+ * How long a processing wake claims jobs: twice the base margin before the limit, and early
+ * enough that a job claimed last can still wait one provider request for its model's whole
+ * deadline before handlers must finish (the request used up to one finish margin before after()).
+ */
+export function processingWakeBudgetSeconds(longestProviderTimeoutMs?: number): number {
+  return Math.min(
+    RUNNER_MAX_SECONDS - 2 * RUNNER_MIN_MARGIN_SECONDS,
+    RUNNER_MAX_SECONDS -
+      2 * RUNNER_FINISH_MARGIN_SECONDS -
+      runnerMarginSeconds(longestProviderTimeoutMs),
+  );
+}
+
+/**
+ * A processing wake keeps a class's or a session voice check's continuation jobs moving on this
+ * request's own function instead of leaving each next step to the next cron minute. The waking
+ * routes all allow the runner's full limit (`maxDuration` 800). The processing worker also
+ * starts a lesson stage only when its call still fits before the function stops.
+ */
+export const PROCESSING_WAKE = {
+  get budgetSeconds(): number {
+    return processingWakeBudgetSeconds(defaultRunnerDeps.providerTimeoutMs());
+  },
+  functionSeconds: RUNNER_MAX_SECONDS,
+};
 
 /** Every periodic job, from every module (FR-PLT-005); storage checks only with a real store. */
 export function periodicJobs(settings: PltSettings): PeriodicJob[] {

@@ -2,6 +2,7 @@ import { longestProviderTimeoutMs, providerSettingsSchema } from "@recalino/core
 import { describe, expect, it } from "vitest";
 import defaults from "../../../../config/openrouter-defaults.json";
 import {
+  processingWakeBudgetSeconds,
   RUNNER_MAX_SECONDS,
   RUNNER_STEP_SLACK_SECONDS,
   runnerClaimDeadline,
@@ -34,5 +35,28 @@ describe("FR-PLT-005 cron runner claim margin", () => {
       );
     // Without configured provider settings the runner keeps its earlier window.
     expect(runnerClaimDeadline(started).getTime() - started.getTime()).toBe(700000);
+  });
+});
+
+describe("FR-PLT-005 processing wake budget", () => {
+  // The waking request may have used one finish margin (30 s) before after() starts, and
+  // handlers return another 30 s before the function limit.
+  const handlersFinish = RUNNER_MAX_SECONDS - 60;
+
+  it("lets a Gemini request claimed at the end of the wake finish before handlers must return", () => {
+    const settings = providerSettingsSchema.parse({ ...defaults, dataContractApproved: true });
+    const longest = longestProviderTimeoutMs(settings);
+    const budget = processingWakeBudgetSeconds(longest);
+    expect(budget).toBe(540);
+    expect(budget + longest / 1000 + RUNNER_STEP_SLACK_SECONDS).toBeLessThanOrEqual(handlersFinish);
+  });
+
+  it("keeps the 600 s wake when no configured deadline needs more", () => {
+    expect(processingWakeBudgetSeconds()).toBe(600);
+    expect(processingWakeBudgetSeconds(90000)).toBe(600);
+    for (const timeoutMs of [1000, 90000, 180000, 300000])
+      expect(
+        processingWakeBudgetSeconds(timeoutMs) + timeoutMs / 1000 + RUNNER_STEP_SLACK_SECONDS,
+      ).toBeLessThanOrEqual(handlersFinish);
   });
 });

@@ -195,17 +195,17 @@ it("FR-VOC-008 D56 keeps vision and spoken corrections on Haiku 4.5 with its cap
   expect(body.response_format.type).toBe("json_schema");
 });
 
-it("FR-PLT-005 D56 gives only Gemini a 180 s request deadline, held by a renewed job lease", () => {
+it("FR-PLT-005 D56 gives only Gemini a 180 s request deadline, well inside the function limit", () => {
   const settings = providerSettingsSchema.parse(defaults);
   expect(effectiveProviderTimeoutMs(settings, gemini)).toBe(180000);
   expect(settings.timeoutMs).toBe(90000);
   expect(longestProviderTimeoutMs(settings)).toBe(180000);
-  // Each paid generation is checkpointed in its own job. The job's lease does not bound the
-  // request: its live runner renews the lease every quarter of it while the request waits
-  // (rule 5, packages/core/src/plt/jobs.int.test.ts), and a stopped runner's job is reclaimed
-  // after one lease. The cron runner's 800 s function limit is the bound on the deadline: its
-  // claim margin grows with it (apps/web/src/server/jobs.test.ts).
+  // A live runner renews a running job's 120 s lease every quarter (rule 5), so a request may
+  // outlast one lease period; a lapsed claim never repeats a paid request. The 800 s function
+  // limit (ADR-0001) bounds the deadline instead, and the cron claim margin and processing wake
+  // budget grow with it (apps/web/src/server/jobs.test.ts).
   expect(DEFAULT_PLT_SETTINGS.jobs.leaseSeconds).toBe(120);
+  expect(longestProviderTimeoutMs(settings)).toBeLessThanOrEqual(800000 / 4);
 });
 
 it("reserves enough for a full five-minute STT chunk at every currently listed endpoint rate", () => {

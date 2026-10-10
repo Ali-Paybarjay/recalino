@@ -131,20 +131,19 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
     }
   }
 
+  // A fresh copy per result, as before, so a repaired lesson never shares this run's array.
+  const classifications = () => sourceClassifications.map((entry) => ({ ...entry }));
   function decode(raw: unknown) {
     const model = expand(raw);
     const validated = validateKnowledgeModel(model, data.sources, data.explanationLanguage);
-    return {
-      ...validated,
-      sourceClassifications,
-    };
+    return { ...validated, sourceClassifications: classifications() };
   }
   /**
    * The server-expanded lesson before validation. Only the bounded answer-span repair reads it;
    * whatever it returns is validated in full again before use.
    */
   function expanded(raw: unknown) {
-    return { ...expand(raw), sourceClassifications };
+    return { ...expand(raw), sourceClassifications: classifications() };
   }
   return { schema, input, system, decode, expanded, assertLanguageRepairEvidence };
 }
