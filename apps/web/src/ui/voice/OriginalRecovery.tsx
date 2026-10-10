@@ -11,8 +11,9 @@ import { Button, Status } from "../workspace/primitives";
 import { RelinkError, relinkOriginalRecording } from "./relink-original";
 import styles from "./Voice.module.css";
 import type { LocalAudioState } from "./VoiceClips";
+import { voiceCopy } from "./voice-copy";
 
-const copy = pendingCopy.voice.playback;
+const copy = voiceCopy.playback;
 // Parts are not needed to compare one whole-file checksum; any positive size is valid.
 const HASH_PART_BYTES = 8 * 1024 * 1024;
 
@@ -154,7 +155,7 @@ export function OriginalRecovery({
           )
         }
       >
-        {reason} {copy.listenFirst}
+        {reason} {pendingCopy.voice.playback.listenFirst}
       </Banner>
       {state === "unreadable" ? null : (
         <input

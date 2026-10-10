@@ -7,13 +7,13 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
-import { pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
 import { OriginalRecovery } from "./OriginalRecovery";
 import styles from "./Voice.module.css";
 import { useLocalVoiceAudio, VoiceClips } from "./VoiceClips";
+import { voiceCopy } from "./voice-copy";
 
 type Action =
   | { action: "analyze" }
@@ -369,7 +369,7 @@ export function VoiceConfirmation({
                   : hasFailedCheck
                     ? "Some recordings could not be checked. Retry the voice check below, or continue with your session notes."
                     : hasServiceBlock
-                      ? pendingCopy.voice.serviceBlockedSummary
+                      ? voiceCopy.serviceBlockedSummary
                       : hasUnavailableExcerpts
                         ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your session notes."
                         : "Your voice choices are saved. The session notes below reflect those choices."}
@@ -500,10 +500,10 @@ function Analysis({
         </p>
       ) : null}
       {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">{pendingCopy.voice.partialCoverage}</p>
+        <p className="preview-muted">{voiceCopy.partialCoverage}</p>
       ) : null}
       {isServiceBlocked(analysis) ? (
-        <Status>{pendingCopy.voice.serviceBlockedDetail}</Status>
+        <Status>{voiceCopy.serviceBlockedDetail}</Status>
       ) : analysis.reason?.startsWith("voice_correction_") ? (
         <Status tone="error">
           Speakers were prepared, but spoken mistakes could not be checked. You can confirm your
@@ -522,7 +522,7 @@ function Analysis({
             Only eligible speech attributed to this speaker can contribute spoken mistakes.
           </p>
           {analysis.verificationMethod === "manual" && analysis.referenceStatus ? (
-            <p className="preview-muted">{pendingCopy.voice.reference[analysis.referenceStatus]}</p>
+            <p className="preview-muted">{voiceCopy.reference[analysis.referenceStatus]}</p>
           ) : null}
           <Button secondary disabled={disabled} onClick={() => action("revoke")}>
             This is not my voice
@@ -561,16 +561,16 @@ function Analysis({
       ) : (
         <>
           {analysis.matchReason ? (
-            <p className="preview-muted">{pendingCopy.voice.match[analysis.matchReason]}</p>
+            <p className="preview-muted">{voiceCopy.match[analysis.matchReason]}</p>
           ) : null}
           {audio.state === "playable" ? (
             <>
               {linked ? (
                 <div ref={linkedStatus} tabIndex={-1}>
-                  <Status tone="success">{pendingCopy.voice.playback.linked}</Status>
+                  <Status tone="success">{voiceCopy.playback.linked}</Status>
                 </div>
               ) : null}
-              <p>{pendingCopy.voice.listenPrompt}</p>
+              <p>{voiceCopy.listenPrompt}</p>
               {candidates.map((candidate) => (
                 <div key={candidate.id} className={styles.aside}>
                   <strong dir="auto">{candidate.label}</strong>
