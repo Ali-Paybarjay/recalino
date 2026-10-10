@@ -82,9 +82,10 @@ export function processingWakeBudgetSeconds(longestProviderTimeoutMs?: number): 
 }
 
 /**
- * A processing wake keeps a class's continuation jobs moving on this request's own function
- * instead of leaving each next step to the next cron minute. The waking routes all allow the
- * runner's full limit (`maxDuration` 800).
+ * A processing wake keeps a class's or a session voice check's continuation jobs moving on this
+ * request's own function instead of leaving each next step to the next cron minute. The waking
+ * routes all allow the runner's full limit (`maxDuration` 800). The processing worker also
+ * starts a lesson stage only when its call still fits before the function stops.
  */
 export const PROCESSING_WAKE = {
   get budgetSeconds(): number {
