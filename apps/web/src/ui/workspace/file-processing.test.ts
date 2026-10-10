@@ -219,6 +219,42 @@ describe("truthful file processing feedback", () => {
     expect(feedback.detail).toContain(recovery);
   });
 
+  it("FR-QUOTA-007: shows the server's allowance amounts once and offers retry only when covered", () => {
+    const amounts = (document: number) => ({
+      audio: 0,
+      document,
+      regeneration: 0,
+      tts: 0,
+      storage: 0,
+    });
+    const short = fileProcessingFeedback(
+      receipt(),
+      status({
+        state: "blocked",
+        lastError: "quota_insufficient",
+        message: "Pages and images: 2 needed, 1 left.",
+        allowance: { active: true, required: amounts(2), available: amounts(1) },
+      }),
+      [source()],
+    );
+    expect(short).toMatchObject({
+      state: "error",
+      detail: "Pages and images: 2 needed, 1 left.",
+      retry: false,
+    });
+    const covered = fileProcessingFeedback(
+      receipt(),
+      status({
+        state: "blocked",
+        lastError: "quota_insufficient",
+        message: "Your allowance now covers this class.",
+        allowance: { active: true, required: amounts(1), available: amounts(1) },
+      }),
+      [source()],
+    );
+    expect(covered).toMatchObject({ state: "error", retry: true });
+  });
+
   it.each([
     "processing_budget_session",
     "processing_budget_user_month",

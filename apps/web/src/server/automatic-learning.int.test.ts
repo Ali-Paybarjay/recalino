@@ -25,7 +25,13 @@ import {
   requestAutomaticLearning,
   selectProcessingSourceSnapshot,
 } from "@recalino/core/proc";
-import { allowance, amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
+import {
+  adjustAllowance,
+  allowance,
+  amounts,
+  configureCostPolicy,
+  grantEntitlement,
+} from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
 import { afterAll, expect, it } from "vitest";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
@@ -746,4 +752,128 @@ it("fences a batch opened after snapshot selection before any allowance reservat
     details: { fields: { sources: ["changed_after_estimate"] } },
   });
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
+});
+
+async function limitedFixture(units: Parameters<typeof amounts>[0]) {
+  const f = await fixture(false);
+  const now = new Date();
+  const entitlementId = await grantEntitlement(db, {
+    userId: f.ctx.userId,
+    startsAt: new Date(now.getTime() - 1000),
+    endsAt: new Date(now.getTime() + 3600000),
+    amounts: amounts(units),
+    operationKey: randomUUID(),
+    actorId: "synthetic-operator",
+    reason: "Local D59 automatic learning test",
+  });
+  return { ...f, entitlementId };
+}
+
+it("D59: an update reserves only the new file and names a real shortage with its amounts (FR-QUOTA-007)", async () => {
+  const f = await limitedFixture({ document: 1, regeneration: 5 });
+  await f.addText("D59 first file");
+  await f.sync();
+  await f.work();
+  expect(await readAutomaticLearning(db, f.ctx, f.session.id, () => f.provider)).toMatchObject({
+    state: "ready",
+  });
+  await f.addText("D59 second file");
+  const blocked = await f.sync();
+  expect(blocked).toMatchObject({
+    state: "blocked",
+    lastError: "quota_insufficient",
+    // Before D59 the update asked for both files again.
+    allowance: {
+      active: true,
+      required: { document: 1, regeneration: 1 },
+      available: { document: 0, regeneration: 5 },
+    },
+  });
+  expect(blocked.message).toBe(
+    "Your material is saved, but this class needs more allowance than is left. Pages and images: 1 needed, 0 left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
+  );
+  await adjustAllowance(db, {
+    userId: f.ctx.userId,
+    entitlementId: f.entitlementId,
+    dimension: "document",
+    delta: 1,
+    operationKey: randomUUID(),
+    actorId: "synthetic-operator",
+    reason: "Local operator raises the allowance",
+  });
+  const covered = await readAutomaticLearning(db, f.ctx, f.session.id, () => f.provider);
+  expect(covered.message).toBe(
+    "Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again.",
+  );
+  // FR-QUOTA-007 rule 5: nothing starts until the learner retries.
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
+  await automaticLearningSync(db, f.ctx, f.session.id, {
+    retryKey: randomUUID(),
+    dependencies: { provider: () => f.provider, processing: () => f.job },
+  });
+  await f.work();
+  expect((await allowance(db, f.ctx)).consumed).toMatchObject({ document: 2, regeneration: 1 });
+});
+
+it("D59: the same file in another class of the period is processed without new allowance", async () => {
+  const f = await limitedFixture({ document: 1, regeneration: 5 });
+  await f.addText("D59 shared recording transcript");
+  await f.sync();
+  await f.work();
+  const copy = await createSession(db, f.ctx, {}, { key: randomUUID() });
+  const asset = await db
+    .insertInto("src.asset")
+    .values({
+      user_id: f.ctx.userId,
+      kind: "text",
+      declared_mime: "text/plain",
+      verified_mime: "text/plain",
+      size_bytes: 31,
+      sha256: sha256Hex("D59 shared recording transcript"),
+      display_name: "D59 shared recording transcript",
+      contract_version: "1",
+      retention: "persistent",
+      operation_key: randomUUID(),
+      request_hash: randomUUID(),
+      verified_at: new Date(),
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  await db
+    .insertInto("src.session_source")
+    .values({
+      user_id: f.ctx.userId,
+      session_id: copy.id,
+      asset_id: asset.id,
+      role: "class_material",
+      selected: true,
+    })
+    .execute();
+  await db.transaction().execute((tx) =>
+    appendContentVersion(tx, f.ctx, asset.id, {
+      originKey: randomUUID(),
+      schemaVersion: "1",
+      provenance: "machine_extraction",
+      settings: {},
+      units: [{ id: "doc", kind: "document", start: 1 }],
+      blocks: [{ id: "text", kind: "paragraph", unitId: "doc", text: "D59 shared recording" }],
+    }),
+  );
+  const started = await automaticLearningSync(db, f.ctx, copy.id, {
+    dependencies: { provider: () => f.provider, processing: () => f.job },
+  });
+  expect(started.state).toBe("processing");
+  const run = (await listRuns(db, f.ctx, copy.id))[0];
+  if (!run) throw new Error("Expected the copied class to start processing");
+  await f.job.run(
+    { runId: run.id, userId: f.ctx.userId },
+    {
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    },
+  );
+  expect((await listRuns(db, f.ctx, copy.id))[0]?.state).toBe("ready");
+  expect((await allowance(db, f.ctx)).consumed.document).toBe(1);
 });
