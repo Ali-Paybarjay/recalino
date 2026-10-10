@@ -19,7 +19,16 @@ interface LedgerEntry {
   operation_key: string;
 }
 
-/** ADM-I15: storage returns reduce occupancy; they never increase the owner's allocation. */
+/** Adjustments that hand used units back; any other adjustment changes the allocation. */
+export const USAGE_RETURN_PREFIXES = ["storage-return:", "charge-return:"] as const;
+export function isUsageReturn(operationKey: string): boolean {
+  return USAGE_RETURN_PREFIXES.some((prefix) => operationKey.startsWith(prefix));
+}
+
+/**
+ * ADM-I15: storage returns reduce occupancy; they never increase the owner's allocation.
+ * D59: a returned duplicate charge reduces usage in the same way.
+ */
 export function summarizeAllowanceLedger(
   rows: readonly LedgerEntry[],
   active = true,
@@ -52,7 +61,7 @@ export function summarizeAllowanceLedger(
     }
     if (row.kind === "release") total.reserved -= amount;
     if (row.kind === "adjust") {
-      if (row.operation_key.startsWith("storage-return:")) total.used -= amount;
+      if (isUsageReturn(row.operation_key)) total.used -= amount;
       else total.allocated += delta;
     }
   }

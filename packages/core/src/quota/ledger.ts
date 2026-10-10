@@ -3,7 +3,7 @@ import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import type { Database, Tx } from "../db";
 import { canonicalJson, errors, type LearnerContext, recordAudit } from "../plt";
-import { summarizeAllowanceLedger } from "./accounting";
+import { isUsageReturn, summarizeAllowanceLedger } from "./accounting";
 import { type Amounts, amountsSchema, DIMENSIONS, emptyAmounts } from "./amounts";
 
 type Connection = Database | Tx;
@@ -323,6 +323,8 @@ export async function adjustAllowance(
   now = new Date(),
 ) {
   operationKey.parse(input.operationKey);
+  if (isUsageReturn(input.operationKey))
+    throw errors.validationFailed({ operationKey: ["reserved_storage_return_key"] });
   z.enum(DIMENSIONS).parse(input.dimension);
   z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER).parse(input.delta);
   z.string().trim().min(1).max(500).parse(input.reason);
@@ -460,4 +462,150 @@ export async function releaseStorage(
     })
     .onConflict((oc) => oc.columns(["user_id", "operation_key", "dimension"]).doNothing())
     .execute();
+}
+
+/** The allowance period a new reservation would draw from now, if any. */
+export async function activeEntitlementId(
+  db: Connection,
+  ctx: LearnerContext,
+  now = new Date(),
+): Promise<string | null> {
+  const row = await db
+    .selectFrom("quota.entitlement")
+    .select("id")
+    .where("user_id", "=", ctx.userId)
+    .where("starts_at", "<=", now)
+    .where("ends_at", ">", now)
+    .where("closed_at", "is", null)
+    .executeTakeFirst();
+  return row?.id ?? null;
+}
+
+/** The allowance period an existing reservation draws from. */
+export async function reservationEntitlement(
+  db: Connection,
+  ctx: LearnerContext,
+  reservationId: string,
+): Promise<string> {
+  const row = await db
+    .selectFrom("quota.reservation")
+    .select("entitlement_id")
+    .where("id", "=", reservationId)
+    .where("user_id", "=", ctx.userId)
+    .executeTakeFirst();
+  if (!row) throw errors.notFound();
+  return row.entitlement_id;
+}
+
+export interface SettledReservation {
+  id: string;
+  entitlementId: string;
+  amounts: Amounts;
+  settled: Amounts;
+  closedAt: Date;
+}
+/** Closed reservations of the caller, with what each one held and finally charged. */
+export async function settledReservations(
+  db: Connection,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<SettledReservation[]> {
+  if (!ids.length) return [];
+  const rows = await db
+    .selectFrom("quota.reservation")
+    .select(["id", "entitlement_id", "amounts", "settled_amounts", "closed_at"])
+    .where("user_id", "=", ctx.userId)
+    .where("id", "in", [...new Set(ids)])
+    .where("closed_at", "is not", null)
+    .execute();
+  return rows.flatMap((row) =>
+    row.closed_at && row.settled_amounts
+      ? [
+          {
+            id: row.id,
+            entitlementId: row.entitlement_id,
+            amounts: amountsSchema.parse(row.amounts),
+            settled: amountsSchema.parse(row.settled_amounts),
+            closedAt: row.closed_at,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Units already handed back for a settled reservation (D59). */
+export async function returnedCharge(
+  db: Connection,
+  ctx: LearnerContext,
+  reservationId: string,
+): Promise<Amounts> {
+  const rows = await db
+    .selectFrom("quota.ledger")
+    .select(["dimension", "amount"])
+    .where("user_id", "=", ctx.userId)
+    .where("operation_key", "=", `charge-return:${reservationId}`)
+    .execute();
+  const returned = emptyAmounts();
+  for (const row of rows) returned[z.enum(DIMENSIONS).parse(row.dimension)] = Number(row.amount);
+  return returned;
+}
+
+/**
+ * D59: hand back part of a settled charge that the charge-once rule shows was a duplicate.
+ * Returned units leave usage, never the allocation. One return per reservation is final, and a
+ * replay must ask for the same amounts. Storage is returned only after deletion (releaseStorage).
+ */
+export async function returnSettledCharge(
+  tx: Tx,
+  ctx: LearnerContext,
+  input: { reservationId: string; amounts: Amounts; actorId: string; reason: string },
+  now = new Date(),
+): Promise<{ replayed: boolean }> {
+  const units = amountsSchema.parse(input.amounts);
+  z.string().trim().min(1).max(200).parse(input.actorId);
+  z.string().trim().min(1).max(500).parse(input.reason);
+  await lockAccount(tx, ctx.userId);
+  const row = await tx
+    .selectFrom("quota.reservation")
+    .selectAll()
+    .where("id", "=", input.reservationId)
+    .where("user_id", "=", ctx.userId)
+    .forUpdate()
+    .executeTakeFirst();
+  if (!row) throw errors.notFound();
+  if (!row.closed_at || !row.settled_amounts) throw errors.conflict();
+  const previous = await returnedCharge(tx, ctx, row.id);
+  if (DIMENSIONS.some((dimension) => previous[dimension] > 0)) {
+    if (canonicalJson(previous) !== canonicalJson(units)) throw errors.idempotencyMismatch();
+    return { replayed: true };
+  }
+  const settled = amountsSchema.parse(row.settled_amounts);
+  if (units.storage > 0 || DIMENSIONS.some((dimension) => units[dimension] > settled[dimension]))
+    throw errors.validationFailed({ amounts: ["exceeds_settled_charge"] });
+  if (DIMENSIONS.every((dimension) => units[dimension] === 0)) return { replayed: false };
+  for (const dimension of DIMENSIONS)
+    if (units[dimension] > 0)
+      await tx
+        .insertInto("quota.ledger")
+        .values({
+          user_id: ctx.userId,
+          entitlement_id: row.entitlement_id,
+          reservation_id: row.id,
+          kind: "adjust",
+          dimension,
+          amount: units[dimension],
+          balance_delta: units[dimension],
+          operation_key: `charge-return:${row.id}`,
+          created_at: now,
+        })
+        .execute();
+  await recordAudit(tx, {
+    actorKind: "operator",
+    actorId: input.actorId,
+    action: "quota.return_charge",
+    subjectType: "reservation",
+    subjectId: row.id,
+    reason: input.reason,
+  });
+  return { replayed: false };
 }

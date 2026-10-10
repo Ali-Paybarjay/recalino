@@ -7,8 +7,8 @@ import {
   activateProcessingRun,
   assertKnownSourceInputBound,
   cancelRun,
+  chargeableRunAmounts,
   createProcessingRun,
-  estimateRunAmounts,
   getProcessingRunSnapshot,
   getRun,
   listRuns,
@@ -88,8 +88,15 @@ export async function readProcessingEstimate(
   const balance = await allowance(db, learner);
   if (provider) assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
   const regeneration = (await getLatestVersion(db, learner, sessionId)) !== null;
+  // D59: the same charge-once amounts the confirmation will reserve.
   const requested = provider
-    ? estimateRunAmounts(snapshot, provider.settings.charactersPerPage, regeneration)
+    ? await chargeableRunAmounts(db, learner, {
+        sessionId,
+        entitlementId: balance.entitlementId,
+        sources: snapshot.sources,
+        charactersPerPage: provider.settings.charactersPerPage,
+        regeneration,
+      })
     : null;
   return {
     snapshot,
