@@ -184,6 +184,16 @@ async function mockUpload(
   const completed = new Promise<void>((resolve) => {
     completionObserved = resolve;
   });
+  // Mock-side events. The browser must hash and transfer five 8 MiB parts before any of
+  // them happens, which takes longer than an expect timeout under full-suite load.
+  let integrityRejectionObserved!: () => void;
+  const integrityRejected = new Promise<void>((resolve) => {
+    integrityRejectionObserved = resolve;
+  });
+  let disconnectionObserved!: () => void;
+  const disconnected = new Promise<void>((resolve) => {
+    disconnectionObserved = resolve;
+  });
   const baseURL = test.info().project.use.baseURL ?? "";
   await page.route(`**/api/classes/${seeded.sessionId}/processing`, (route) =>
     route.fulfill({ json: [{ ...seeded.run, state: complete ? "queued" : "awaiting_upload" }] }),
@@ -230,7 +240,7 @@ async function mockUpload(
     if (body.action === "start") {
       await route.fulfill({ status: 201, json: { uploadId } });
     } else if (body.action === "confirm_part") {
-      if (mode === "corrupt" && body.index === 3 && stored.has(3))
+      if (mode === "corrupt" && body.index === 3 && stored.has(3)) {
         await route.fulfill({
           status: 400,
           json: {
@@ -241,7 +251,8 @@ async function mockUpload(
             },
           },
         });
-      else {
+        integrityRejectionObserved();
+      } else {
         if (stored.has(body.index)) confirmed.add(body.index);
         await route.fulfill({ json: { confirmed: stored.has(body.index) } });
       }
@@ -261,6 +272,7 @@ async function mockUpload(
       if (mode === "offline") {
         await connectivity(page, false);
         await route.abort("internetdisconnected");
+        disconnectionObserved();
       } else {
         await route.fulfill({ status: 503, body: "Temporary synthetic gateway failure" });
         if (mode === "exhausted" && failures >= 3) retriesObserved();
@@ -278,8 +290,12 @@ async function mockUpload(
     waitForCompletion: () => completed,
     activations: () => activations,
     waitForFailedAttempts: () => failedAttemptsObserved,
+    waitForIntegrityRejection: () => integrityRejected,
+    waitForDisconnection: () => disconnected,
+    /** Returns the part 4 attempts made before recovery; every later attempt succeeds. */
     recover: () => {
       recovered = true;
+      return puts.filter((part) => part.index === 3).length;
     },
   };
 }
@@ -323,13 +339,19 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "corrupt");
     await page.goto(`/sessions/${seeded.sessionId}/processing`);
+    await state.waitForIntegrityRejection();
     await expect(
       page
         .getByRole("complementary", { name: "Saved audio uploads" })
         .getByRole("status")
         .filter({ hasText: "The uploaded audio part did not match the saved recording." }),
     ).toBeVisible();
-    expect(state.puts.map((part) => part.index).sort()).toEqual([0, 1, 2, 3, 4]);
+    // In-flight siblings settle before the failure is shown, but a part not yet started when
+    // part 4 is rejected is never started. Part 5 is uploaded only if a slot freed up first.
+    const indices = state.puts.map((part) => part.index).sort();
+    expect(indices.slice(0, 4)).toEqual([0, 1, 2, 3]);
+    expect(new Set(indices).size).toBe(indices.length);
+    const attempted = state.puts.length;
     expect(state.completions()).toBe(0);
     expect(state.activations()).toBe(0);
     await expect(
@@ -340,7 +362,7 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     await expect(
       page.getByRole("button", { name: "Retry saved audio upload", exact: true }),
     ).toBeEnabled();
-    expect(state.puts).toHaveLength(5);
+    expect(state.puts).toHaveLength(attempted);
   });
 
   test("waits through disconnection and resumes after reconnect without reuploading confirmed parts", async ({
@@ -349,6 +371,7 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "offline");
     await page.goto(`/sessions/${seeded.sessionId}/processing`);
+    await state.waitForDisconnection();
     await expect(
       page.getByText("Saved on this device. Upload resumes when you reconnect."),
     ).toBeVisible();
@@ -379,7 +402,8 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
     await expect(
       page.getByText(/Uploading audio part|Connection interrupted\. Retrying/),
     ).toHaveCount(0);
-    state.recover();
+    // The 3-second background tick can start another failing round before recovery.
+    const attemptsBeforeRecovery = state.recover();
     await page.evaluate(() => {
       Object.defineProperty(document, "visibilityState", {
         configurable: true,
@@ -401,7 +425,8 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
         .map((part) => part.index)
         .sort(),
     ).toEqual([0, 1, 2, 4]);
-    expect(state.puts.filter((part) => part.index === 3)).toHaveLength(failedAttempts + 1);
+    expect(attemptsBeforeRecovery).toBeGreaterThanOrEqual(failedAttempts);
+    expect(state.puts.filter((part) => part.index === 3)).toHaveLength(attemptsBeforeRecovery + 1);
     expect(state.completions()).toBe(1);
     await expect.poll(state.activations).toBe(1);
   });
