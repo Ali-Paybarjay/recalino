@@ -38,6 +38,20 @@ describe("FR-PLT-003 error envelope", () => {
     });
   });
 
+  it("answers missing server configuration as internal and keeps its reason server-side", () => {
+    const failure = errors.configurationMissing("deletion_journal_key_missing");
+    expect(failure.reason).toBe("deletion_journal_key_missing");
+    const response = toErrorResponse(failure, "r5");
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: {
+        code: "internal",
+        message: "Something went wrong. Please try again.",
+        request_id: "r5",
+      },
+    });
+  });
+
   it("answers another user's resource exactly like a missing one", () => {
     const denied = toErrorResponse(errors.ownershipDenied(), "r4");
     const missing = toErrorResponse(errors.notFound(), "r4");

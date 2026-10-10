@@ -17,4 +17,12 @@ export function qualifySegments(
 export function embeddingSpans(
   segments: QualifiedVoiceSegment[],
   speakerId: string,
+  mode?: "whole-turns" | "clean-parts",
 ): { startMs: number; endMs: number }[];
+export function markOverlaps(segments: QualifiedVoiceSegment[]): QualifiedVoiceSegment[];
+export function mergeVoices(
+  segments: QualifiedVoiceSegment[],
+  embedSpan: (span: { startMs: number; endMs: number }) => number[],
+  threshold: number,
+  minSpeechMs?: number,
+): QualifiedVoiceSegment[];

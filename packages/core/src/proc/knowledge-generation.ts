@@ -1046,7 +1046,9 @@ export function buildKnowledgeGenerationInput(
     "Retain complete core concepts supported by the selected lesson. Do not introduce unteached senses, call a correct sentence a grammar error, invent assignments, personal facts, learner mastery or remembered difficulties. New illustrative examples may accompany a sourced rule but must not pretend to be actual class quotations/events.",
     "Homework holds only work that a class source explicitly sets for after class. A printed or in-class task belongs in classNotes.activities.tasks, another person's homework sheet is not an assignment, and without such a source homework is omitted.",
     "Compare sources before assigning supporting keys. Agreement may be cited jointly; disagreement is not corroboration. When sources disagree about a rule or example, add a concise uncertainties claim with uncertain=true and ALL conflicting keys, describing the disagreement in the requested explanation language. A correct instructional claim may cite only the rows that actually support it; never attach a contradictory row as unqualified support or call an anonymous speaker the teacher. If the disputed rule cannot be safely resolved, keep it uncertain rather than teaching either version as established. Empty uncertainties is appropriate only when no relevant source conflict remains.",
-    personalisedTeachingPrompt(data.learnerContext),
+    // Same compact threshold as the legacy study prompt: below ten production items the
+    // one-short-note rules win over any added teaching explanation (D49).
+    personalisedTeachingPrompt(data.learnerContext, { compact: productionLimit < 10 }),
     data.teachingPreferences.shorterExamples
       ? "The learner requests shorter examples. Use the shortest complete natural new examples; preserve exact class examples unchanged."
       : "Use complete natural examples, normally 8–15 words; preserve exact class examples unchanged.",

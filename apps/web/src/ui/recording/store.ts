@@ -48,6 +48,21 @@ export interface RecordingStore {
   ): Promise<Recording | null>;
 }
 
+/** No saved recording with this id exists on this device for this account. */
+export class LocalRecordingMissingError extends Error {
+  constructor() {
+    super("Recording is missing on this device");
+    this.name = "LocalRecordingMissingError";
+  }
+}
+/** The manifest exists but its saved parts do not add up; the audio cannot be rebuilt. */
+export class LocalRecordingIncompleteError extends Error {
+  constructor() {
+    super("Some saved recording parts are missing");
+    this.name = "LocalRecordingIncompleteError";
+  }
+}
+
 const DB_NAME = "recalino-recordings-v1";
 type Chunk = { userId: string; recordingId: string; sequence: number; blob: Blob };
 export type LocalPhoto = {
@@ -219,7 +234,7 @@ export class IndexedRecordingStore implements RecordingStore {
   }
   async blob(userId: string, id: string) {
     const manifest = await this.get(userId, id);
-    if (!manifest) throw new Error("Recording is missing on this device");
+    if (!manifest) throw new LocalRecordingMissingError();
     const db = await this.open();
     const tx = db.transaction("chunks", "readonly");
     const chunks: Chunk[] = await result(
@@ -232,11 +247,92 @@ export class IndexedRecordingStore implements RecordingStore {
       chunks.some((row, index) => row.sequence !== index) ||
       chunks.reduce((sum, row) => sum + row.blob.size, 0) !== manifest.bytes
     )
-      throw new Error("Some saved recording parts are missing");
+      throw new LocalRecordingIncompleteError();
     return new Blob(
       chunks.map((chunk) => chunk.blob),
       { type: manifest.mimeType },
     );
+  }
+  /**
+   * Re-attach a verified original to an existing source in one transaction: its parts are
+   * replaced, photos and registration are kept, and nothing is written for a deleted account
+   * or a recording still in progress. The caller verifies the bytes against the server checksum.
+   */
+  async replaceOriginal(input: {
+    userId: string;
+    sourceId: string;
+    recordingId: string;
+    blob: Blob;
+    mimeType: string;
+    activeMs: number;
+  }): Promise<Recording> {
+    const db = await this.open();
+    const tx = db.transaction(["recordings", "chunks", "deletedAccounts"], "readwrite", {
+      durability: "strict",
+    });
+    const done = committed(tx);
+    let next: Recording | null = null;
+    unlessAccountDeleted(tx, input.userId, () => {
+      const request = tx.objectStore("recordings").get([input.userId, input.recordingId]);
+      request.onsuccess = () => {
+        try {
+          const now = new Date().toISOString();
+          const previous =
+            request.result === undefined ? null : recordingSchema.parse(request.result);
+          if (
+            (previous &&
+              ((previous.sourceAssetId ?? previous.id) !== input.sourceId ||
+                previous.status === "recording" ||
+                previous.status === "paused")) ||
+            (!previous && input.recordingId !== input.sourceId)
+          )
+            throw new Error("not this source");
+          const { awaitingFinalData: _awaiting, ...kept } = previous ?? {
+            id: input.sourceId,
+            userId: input.userId,
+            // No class link and no capture flags: relinking never registers a source or starts
+            // learning. An already authorised run still waiting for this original can resume.
+            sessionId: null,
+            mimeType: input.mimeType,
+            status: "saved" as const,
+            createdAt: now,
+            updatedAt: now,
+            activeMs: input.activeMs,
+            chunks: 0,
+            bytes: 0,
+            creationKey: crypto.randomUUID(),
+            sourceAssetId: input.sourceId,
+          };
+          next = recordingSchema.parse({
+            ...kept,
+            status: "saved",
+            sourceAssetId: input.sourceId,
+            chunks: 1,
+            bytes: input.blob.size,
+            updatedAt: now,
+          });
+          const chunks = tx.objectStore("chunks");
+          chunks.delete(
+            IDBKeyRange.bound(
+              [input.userId, input.recordingId, 0],
+              [input.userId, input.recordingId, Number.MAX_SAFE_INTEGER],
+            ),
+          );
+          chunks.add({
+            userId: input.userId,
+            recordingId: input.recordingId,
+            sequence: 0,
+            blob: input.blob,
+          } satisfies Chunk);
+          tx.objectStore("recordings").put(next);
+        } catch {
+          tx.abort();
+        }
+      };
+    });
+    await done;
+    if (!next) throw new Error("Local save failed");
+    return next;
   }
   async remove(userId: string, id: string) {
     const db = await this.open();

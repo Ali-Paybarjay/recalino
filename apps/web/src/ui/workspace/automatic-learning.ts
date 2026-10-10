@@ -277,7 +277,7 @@ export async function uploadAutomaticPhoto(
     );
     if (!matched?.uploadId || !attached.some((candidate) => candidate.assetId === matched.id))
       throw new Error(
-        `${label} is no longer available in this class. The original is saved on this device.`,
+        `${label} is no longer available in this session. The original is saved on this device.`,
       );
     source = { assetId: matched.id, uploadId: matched.uploadId, sha256: prepared.sha256 };
   }
@@ -560,7 +560,7 @@ export async function uploadAutomaticAudio(
     const blob = await options.store.blob(options.userId, local.id);
     const prepared = await prepareFileHashes(blob, contract.partBytes, true, options.signal);
     if (prepared.sha256 !== source.sha256)
-      throw new Error("The local recording does not match this class material.");
+      throw new Error("The local recording does not match this session material.");
     const parts = prepared.parts;
     const started = await request<{ uploadId: string }>(
       `/api/sources/${source.sourceId}/audio`,

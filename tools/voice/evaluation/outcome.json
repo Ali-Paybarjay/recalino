@@ -1,0 +1,135 @@
+{
+  "note": "Not pre-registered. Explains why the frozen calibration produced no policy; reads the calibration split and resource figures only.",
+  "protocol": "voice-eval-ami-v1",
+  "protocolSha256": "d3decf3172a5b090027321fc46655b1776e7d4bce22c3d9e52220ee468acc2ea",
+  "manifestSha256": "b6e99883ef01699c4ac3a6ec4598062ba1b56cb85b7de388b0be9bf6ad47a317",
+  "enrolmentAllParticipants": {
+    "ok": 74,
+    "one_clear_voice_required": 44,
+    "eval_insufficient_isolated_speech": 14
+  },
+  "calibration": {
+    "participants": 64,
+    "withSample": 34,
+    "firstConfirmation": {
+      "voiceprint": 38,
+      "no_voiceprint": 18,
+      "none": 8
+    },
+    "referenceWithoutConsistencyLimit": {
+      "added": 21,
+      "no_sample": 30,
+      "short": 8,
+      "no_candidate": 5
+    },
+    "consistencyImpostorSimilarity": {
+      "n": 68,
+      "min": 0.0589,
+      "p05": 0.1005,
+      "median": 0.3717,
+      "p95": 0.8964,
+      "max": 0.9375
+    },
+    "genuineConfirmationSimilarity": {
+      "n": 21,
+      "min": 0.7461,
+      "p05": 0.7826,
+      "median": 0.8594,
+      "p95": 0.9166,
+      "max": 0.9256
+    },
+    "frozenConsistencyLimit": 0.9875,
+    "genuineAtOrAboveLimit": 0,
+    "closestImpostors": [
+      {
+        "meeting": "IS1008b",
+        "learnerShare": 0.498,
+        "cleanSpeechMs": 59750,
+        "sim": 0.9375
+      },
+      {
+        "meeting": "IS1006b",
+        "learnerShare": 0.316,
+        "cleanSpeechMs": 59560,
+        "sim": 0.909
+      },
+      {
+        "meeting": "IS1000b",
+        "learnerShare": 0.194,
+        "cleanSpeechMs": 59530,
+        "sim": 0.9074
+      },
+      {
+        "meeting": "IS1000b",
+        "learnerShare": 0.31,
+        "cleanSpeechMs": 59530,
+        "sim": 0.8964
+      },
+      {
+        "meeting": "IS1006b",
+        "learnerShare": 0.224,
+        "cleanSpeechMs": 59560,
+        "sim": 0.8942
+      },
+      {
+        "meeting": "IS1006b",
+        "learnerShare": 0.251,
+        "cleanSpeechMs": 29039,
+        "sim": 0.8815
+      },
+      {
+        "meeting": "IS1000b",
+        "learnerShare": 0.286,
+        "cleanSpeechMs": 59530,
+        "sim": 0.8762
+      },
+      {
+        "meeting": "IS1003b",
+        "learnerShare": 0.143,
+        "cleanSpeechMs": 59637,
+        "sim": 0.8741
+      }
+    ]
+  },
+  "conclusion": "No reference passes the frozen consistency limit, so calibration has no acceptance impostors and no policy exists. EVIDENCE (≥100 holdout opportunities) cannot be met; the holdout was not run and automatic acceptance stays off.",
+  "resources": {
+    "recordings": 231,
+    "failures": 0,
+    "recordingMinutes": {
+      "n": 231,
+      "min": 13.016183333333334,
+      "p05": 20.82525,
+      "median": 36.36143333333333,
+      "p95": 47.071666666666665,
+      "max": 55.914316666666664
+    },
+    "compositeSeconds": {
+      "n": 231,
+      "min": 464,
+      "p05": 464,
+      "median": 464,
+      "p95": 464,
+      "max": 464
+    },
+    "wallSeconds": {
+      "n": 231,
+      "min": 76.051,
+      "p05": 84.003,
+      "median": 103.92,
+      "p95": 164.129,
+      "max": 304.039
+    },
+    "cpuSeconds": {
+      "n": 231,
+      "min": 147.881,
+      "p05": 159.874,
+      "median": 197.836,
+      "p95": 232.599,
+      "max": 277.478
+    },
+    "peakRssMb": 925.26171875,
+    "sampled": 231,
+    "partial": 0,
+    "paidCalls": 0
+  }
+}

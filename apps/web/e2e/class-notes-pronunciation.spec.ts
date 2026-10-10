@@ -9,7 +9,7 @@ const mediaId = "10000000-0000-4000-8000-000000000099";
 const mediaPath = `**/api/classes/${sessionId}/media`;
 const ready = { id: mediaId, kind: "tts", state: "ready", mimeType: "audio/mpeg", synthetic: true };
 const revisionId = "reference-revision";
-const frameSelector = 'iframe[title^="Class notes:"]';
+const frameSelector = 'iframe[title^="Session notes:"]';
 
 interface SubmittedSpeech {
   body: unknown;

@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
-import { generateCards } from "../card";
+import { generateCards, listCards } from "../card";
 import { createDatabase } from "../db";
 import {
+  cardsOfferedForReview,
   getReviewQueue,
   getReviewSettings,
   submitReview,
@@ -231,4 +232,60 @@ it("selects the requested set before queue truncation while sharing one daily in
   await expect(
     getReviewQueue(db, fixture.ctx, { studySet: "all" as never, now }),
   ).rejects.toThrow();
+});
+it("D49: offers exactly the cards the review queue shows, including sibling burying", async () => {
+  const today = new Date();
+  const base = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 10, 10),
+  );
+  const fixture = await studyFixture(db, { count: 1, autoAdd: true, now: base });
+  await generateCards(
+    db,
+    fixture.ctx,
+    fixture.session.id,
+    { reverse: true, autoAdd: true },
+    { key: randomUUID(), now: base },
+  );
+  const cards = await listCards(db, fixture.ctx, { sessionId: fixture.session.id });
+  const [a, b] = cards;
+  if (!a || !b || a.learningItemId !== b.learningItemId) throw new Error("missing sibling cards");
+  const answer = (cardId: string, version: number, at: Date) =>
+    submitReview(
+      db,
+      fixture.ctx,
+      {
+        eventId: randomUUID(),
+        cardId,
+        expectedVersion: version,
+        expectedContentVersion: 1,
+        mode: "simple",
+        choice: "forgot",
+      },
+      at,
+    );
+  const hour = 3600000;
+  await answer(a.id, 0, new Date(base.getTime() + 1000));
+  const nextDay = new Date(base.getTime() + 24 * hour);
+  await answer(b.id, 0, nextDay);
+  const compare = async (now: Date) => {
+    const offered = await cardsOfferedForReview(db, fixture.ctx, cards, now);
+    const queue = await getReviewQueue(db, fixture.ctx, { sessionId: fixture.session.id, now });
+    expect([...offered].sort()).toEqual(
+      queue.cards
+        .filter((item) => item.schedule.introducedAt)
+        .map((item) => item.card.id)
+        .sort(),
+    );
+    return offered;
+  };
+  // Same study day as B's answer: A is due but buried by its sibling; B is offered.
+  const sameDay = await compare(new Date(nextDay.getTime() + 2 * hour));
+  expect(sameDay.has(a.id)).toBe(false);
+  expect(sameDay.has(b.id)).toBe(true);
+  // A later day buries nothing.
+  const later = await compare(new Date(nextDay.getTime() + 24 * hour));
+  expect([...later].sort()).toEqual([a.id, b.id].sort());
+  // Another account's view of these cards offers nothing.
+  const other = await studyFixture(db, { autoAdd: true });
+  expect((await cardsOfferedForReview(db, other.ctx, cards, nextDay)).size).toBe(0);
 });

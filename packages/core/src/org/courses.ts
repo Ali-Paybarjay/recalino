@@ -169,9 +169,9 @@ export async function defaultCourse(tx: Tx, ctx: LearnerContext, now: Date): Pro
     .selectFrom("org.course")
     .selectAll()
     .where("owner_id", "=", ctx.userId)
-    .where(sql<boolean>`lower(name) = lower(${"My classes"})`)
+    .where(sql<boolean>`lower(name) = lower(${"My Courses"})`)
     .executeTakeFirst();
-  // A manually created "My classes" becomes the default rather than violating name uniqueness.
+  // A manually created "My Courses" becomes the default rather than violating name uniqueness.
   if (named) {
     return course(
       await tx
@@ -185,7 +185,7 @@ export async function defaultCourse(tx: Tx, ctx: LearnerContext, now: Date): Pro
   return course(
     await tx
       .insertInto("org.course")
-      .values({ owner_id: ctx.userId, name: "My classes", is_default: true, created_at: now })
+      .values({ owner_id: ctx.userId, name: "My Courses", is_default: true, created_at: now })
       .returningAll()
       .executeTakeFirstOrThrow(),
   );
@@ -219,9 +219,20 @@ export async function listUnits(
       .where("course_id", "=", courseId)
       .where("owner_id", "=", ctx.userId)
       .orderBy("position", "asc")
+      .orderBy("created_at", "asc")
       .orderBy("id", "asc")
       .execute()
   ).map(unit);
+}
+
+/** A unit created without an order goes after the course's last unit. */
+async function nextUnitPosition(tx: Tx, courseId: string): Promise<number> {
+  const row = await tx
+    .selectFrom("org.unit")
+    .select(sql<number>`least(coalesce(max(position), 0), 2147483646) + 1`.as("next"))
+    .where("course_id", "=", courseId)
+    .executeTakeFirstOrThrow();
+  return row.next;
 }
 
 async function uniqueUnitName(tx: Tx, courseId: string, name: string, except?: string) {
@@ -253,7 +264,7 @@ export async function createUnit(
             owner_id: ctx.userId,
             course_id: parsed.courseId,
             name: parsed.name,
-            position: parsed.position ?? 0,
+            position: parsed.position ?? (await nextUnitPosition(tx, parsed.courseId)),
             created_at: now,
           })
           .returningAll()

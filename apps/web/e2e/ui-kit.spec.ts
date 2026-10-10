@@ -78,7 +78,7 @@ test("radio cards have no default choice", async ({ page }) => {
 
 test("an inline error is announced and retries", async ({ page }) => {
   await page.goto("/dev/ui");
-  const error = page.getByRole("alert").filter({ hasText: "Couldn't load your classes" });
+  const error = page.getByRole("alert").filter({ hasText: "Couldn't load your sessions" });
   await expect(error).toBeVisible();
   await error.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByTestId("retries")).toHaveText("1");
@@ -88,9 +88,9 @@ test("a sheet takes focus, keeps it inside and gives it back on Esc", async ({ p
   await page.goto("/dev/ui");
   const trigger = page.getByRole("button", { name: "Open sheet" });
   await trigger.click();
-  const sheet = page.getByRole("dialog", { name: "New class" });
+  const sheet = page.getByRole("dialog", { name: "New session" });
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole("heading", { name: "New class" })).toBeFocused();
+  await expect(sheet.getByRole("heading", { name: "New session" })).toBeFocused();
   for (const key of ["Tab", "Tab", "Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab"]) {
     await page.keyboard.press(key);
     expect(await sheet.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);
@@ -106,7 +106,7 @@ test("a sheet takes focus, keeps it inside and gives it back on Esc", async ({ p
 test("the close button closes a sheet", async ({ page }) => {
   await page.goto("/dev/ui");
   await page.getByRole("button", { name: "Open sheet" }).click();
-  const sheet = page.getByRole("dialog", { name: "New class" });
+  const sheet = page.getByRole("dialog", { name: "New session" });
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toBeHidden();
 });
@@ -114,12 +114,12 @@ test("the close button closes a sheet", async ({ page }) => {
 test("a destructive confirm starts on the safe action; Esc keeps", async ({ page }) => {
   await page.goto("/dev/ui");
   await page.getByRole("button", { name: "Open delete confirm" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "Delete this class?" });
+  const dialog = page.getByRole("alertdialog", { name: "Delete this session?" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAccessibleDescription(
     /Files you already downloaded can't be recalled\./,
   );
-  await expect(dialog.getByRole("button", { name: "Keep class" })).toBeFocused();
+  await expect(dialog.getByRole("button", { name: "Keep session" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId("overlay-result")).toHaveText("kept class");
@@ -160,4 +160,46 @@ test("a snackbar stays 8 seconds, pauses while hovered and offers Undo", async (
   await snackbar.getByRole("button", { name: "Undo" }).click();
   await expect(snackbar).toBeHidden();
   await expect(page.getByTestId("overlay-result")).toHaveText("undone");
+});
+
+test("an info tip opens on press and closes on a second press, outside press, Escape or Tab", async ({
+  page,
+}) => {
+  await page.setViewportSize(VIEWPORTS.mobile);
+  await page.goto("/dev/ui");
+  const button = page.getByRole("button", { name: "About units" });
+  const help = page.getByText("Units are like the chapters of your book.");
+  await expect(button).toHaveAttribute("aria-expanded", "false");
+  await expect(help).toBeHidden();
+
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await expect(help).toBeVisible();
+  // The box stays inside the 16px gutter of a 390px screen.
+  const box = await help.locator("..").boundingBox();
+  expect(box?.x).toBeGreaterThanOrEqual(16);
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390 - 16);
+  await expectNoAxeViolations(page);
+  // Pressing inside the box, for example to select text, keeps it open.
+  await help.click();
+  await expect(help).toBeVisible();
+  await button.click();
+  await expect(help).toBeHidden();
+
+  await button.click();
+  await page.getByRole("heading", { name: "UI kit" }).click();
+  await expect(help).toBeHidden();
+  await expect(button).toHaveAttribute("aria-expanded", "false");
+
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(help).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(help).toBeHidden();
+  await expect(button).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(help).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(help).toBeHidden();
 });

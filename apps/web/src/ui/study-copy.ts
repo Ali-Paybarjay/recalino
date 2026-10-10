@@ -8,7 +8,7 @@ export const studyCopy = {
   intro: "A home for what you learn in class, and what you want to remember.",
   pilot: "Pilot preview",
   pilotNote:
-    "Your learning profile is ready. Adding classes, creating notes and reviewing cards are coming next.",
+    "Your learning profile is ready. Adding sessions, creating notes and reviewing cards are coming next.",
   profileAction: "Check your learning profile",
   exampleAction: "See an example",
   loopTitle: "From class to confidence",
@@ -42,12 +42,12 @@ export const studyCopy = {
     subtitle: "A home for your English classes.",
     title: "Your learning starts with a class.",
     text: "Keep each lesson’s materials, notes and cards together, so you can return to what matters.",
-    note: "Adding classes is coming next in the pilot. You can explore an example today.",
+    note: "Adding sessions is coming next in the pilot. You can explore an example today.",
   },
   review: {
     subtitle: "A little practice, at your own pace.",
     title: "Make your learning stay with you.",
-    text: "Cards from your classes will appear here for short daily reviews. You choose which suggested cards to keep.",
+    text: "Cards from your sessions will appear here for short daily reviews. You choose which suggested cards to keep.",
     note: "Card reviews are coming next in the pilot. Explore an example while you wait.",
   },
   backToday: "Explore Today",

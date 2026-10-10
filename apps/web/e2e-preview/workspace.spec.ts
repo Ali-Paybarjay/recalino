@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import {
   expect,
   expectNoAxeViolations,
+  nameNewestSession,
   SAMPLE_BANNER,
   STORAGE_KEY,
   test,
@@ -9,28 +10,28 @@ import {
 } from "./helpers";
 
 function classRows(page: Page) {
-  return page.locator("section[aria-label='Class list'] > ul > li");
+  return page.locator("section[aria-label='Session list'] > ul > li");
 }
 
 async function openClassTools(page: Page) {
-  await page.locator("summary").filter({ hasText: "Class tools and sources" }).click();
+  await page.locator("summary").filter({ hasText: "Session tools and sources" }).click();
 }
 
 async function openListedClass(page: Page, title: string) {
   const row = classRows(page).filter({ hasText: title });
   await expect(row).toHaveCount(1);
   await row.locator("summary").click();
-  await row.getByRole("button", { name: "Go to class", exact: true }).click();
+  await row.getByRole("button", { name: "Go to session", exact: true }).click();
 }
 
 test("a global review source opens the card's own class after another class is selected", async ({
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Blank review workspace");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Blank review workspace");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Blank review workspace");
-  await expect(page.getByText("Class recording", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Session recording", { exact: true })).toHaveCount(0);
 
   await page.goto("/preview/review");
   await page.getByRole("button", { name: "Start review", exact: true }).click();
@@ -55,7 +56,7 @@ test("a global review source opens the card's own class after another class is s
   await page.goto("/preview/class");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
   await openClassTools(page);
-  await expect(page.getByText("Class recording", { exact: true })).toBeVisible();
+  await expect(page.getByText("Session recording", { exact: true })).toBeVisible();
   await expect(page.getByText("Present perfect handout.pdf", { exact: true })).toBeVisible();
 });
 
@@ -63,10 +64,10 @@ test("a new class begins empty and opening an existing class restores its own ma
   page,
 }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Weekend English");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Weekend English");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Weekend English");
-  await expect(page.getByText("Class recording", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Session recording", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Present perfect handout.pdf", { exact: true })).toHaveCount(0);
   await page.goto("/preview/notes");
   await expect(page.getByText("AI explanation · sample", { exact: true })).toHaveCount(0);
@@ -76,7 +77,7 @@ test("a new class begins empty and opening an existing class restores its own ma
   await openListedClass(page, "Present perfect");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
   await openClassTools(page);
-  await expect(page.getByText("Class recording", { exact: true })).toBeVisible();
+  await expect(page.getByText("Session recording", { exact: true })).toBeVisible();
   await page.goto("/preview/notes");
   await expect(page.getByText("AI explanation · sample", { exact: true })).toBeVisible();
 });
@@ -98,9 +99,9 @@ test("a class can be created, found after refresh, and reset without a backend",
 }) => {
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Bus journeys");
-  await page.getByRole("combobox", { name: "Course", exact: true }).selectOption("My classes");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("combobox", { name: "Course", exact: true }).selectOption("My Courses");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Bus journeys");
   await expect(page).toHaveURL(/\/preview\/class$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bus journeys");
   await page.reload();
@@ -110,7 +111,7 @@ test("a class can be created, found after refresh, and reset without a backend",
   await page.goto("/preview/classes");
   await expect(page.getByLabel("Course", { exact: true })).toHaveValue("");
   await expect(classRows(page)).toHaveCount(0);
-  await page.getByLabel("Course", { exact: true }).selectOption("My classes");
+  await page.getByLabel("Course", { exact: true }).selectOption("My Courses");
   await expect(classRows(page)).toHaveCount(1);
   await expect(classRows(page).locator("summary")).toContainText("Bus journeys");
   await openListedClass(page, "Bus journeys");
@@ -144,7 +145,7 @@ test("courses and units can be created and a class moved, while nonempty deletio
   await page.getByRole("button", { name: "Create unit in Trip English", exact: true }).click();
   await page.getByLabel("Move to course").selectOption("Trip English");
   await page.getByLabel("Move to unit").selectOption("Travel");
-  await page.getByLabel("Class name", { exact: true }).fill("A trip to London");
+  await page.getByLabel("Session name", { exact: true }).fill("A trip to London");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("A trip to London");
   await expect(page.getByText(/Trip English · Travel/)).toBeVisible();
@@ -157,15 +158,15 @@ test("courses and units can be created and a class moved, while nonempty deletio
   ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Delete empty unit", exact: true })).toBeDisabled();
 
-  const remove = page.getByRole("button", { name: "Delete sample class", exact: true });
+  const remove = page.getByRole("button", { name: "Delete sample session", exact: true });
   await remove.click();
-  await expect(page.getByRole("dialog", { name: "Delete this sample class?" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Delete this sample session?" })).toBeVisible();
   await page.getByRole("button", { name: "Keep it", exact: true }).click();
   await expect(remove).toBeFocused();
   await remove.click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Delete sample class", exact: true })
+    .getByRole("button", { name: "Delete sample session", exact: true })
     .click();
   await expect(page).toHaveURL(/\/preview\/classes$/);
   await expect(page.getByRole("heading", { name: "A trip to London", exact: true })).toHaveCount(0);
@@ -204,9 +205,9 @@ test("a damaged sample store recovers to a usable workspace", async ({ page }) =
   );
   await expect(page.getByText(SAMPLE_BANNER, { exact: true })).toBeVisible();
   await page.getByLabel("Explore screens", { exact: true }).selectOption("new-class");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("New class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("After storage recovery");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("New session");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "After storage recovery");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("After storage recovery");
 });
 
@@ -227,15 +228,15 @@ test("unavailable browser storage explains the limit while local interactions st
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Without browser storage");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Without browser storage");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Without browser storage");
 });
 
 test("D39: a class without a title uses its selected date", async ({ page }) => {
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class date", { exact: true }).fill("03/10/2026");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByLabel("Session date", { exact: true }).fill("03/10/2026");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2026-10-03");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2026-10-03");
@@ -247,8 +248,8 @@ test("D39: creating a course inside New class preserves the session and selects 
 }) => {
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("جلسهٔ عصر 日本語");
-  await page.getByLabel("Class date", { exact: true }).fill("01/10/2026");
+  await expect(page.getByLabel("Session name (optional)", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Session date", { exact: true }).fill("01/10/2026");
   const course = page.getByLabel("Course", { exact: true });
   const unit = page.getByLabel("Unit (optional)", { exact: true });
   await course.selectOption("ESOL B1");
@@ -266,10 +267,7 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(course).toBeFocused();
   await expect(course).toHaveValue("ESOL B1");
   await expect(unit).toHaveValue("Everyday English");
-  await expect(page.getByLabel("Class name (optional)", { exact: true })).toHaveValue(
-    "جلسهٔ عصر 日本語",
-  );
-  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("01/10/2026");
+  await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("01/10/2026");
 
   await course.selectOption({ label: "Create New Course" });
   await dialog.getByLabel("New course name", { exact: true }).fill("ESOL B1");
@@ -277,10 +275,7 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(dialog.getByRole("alert")).toHaveText("That course already exists.");
   await expect(course).toHaveValue("ESOL B1");
   await expect(unit).toHaveValue("Everyday English");
-  await expect(page.getByLabel("Class name (optional)", { exact: true })).toHaveValue(
-    "جلسهٔ عصر 日本語",
-  );
-  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("01/10/2026");
+  await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("01/10/2026");
 
   await dialog.getByLabel("New course name", { exact: true }).fill("ESOL evening");
   await expectNoAxeViolations(page);
@@ -290,12 +285,10 @@ test("D39: creating a course inside New class preserves the session and selects 
   await expect(course).toBeFocused();
   await expect(course).toHaveValue("ESOL evening");
   await expect(course.locator("option").last()).toHaveText("Create New Course");
-  await expect(page.getByLabel("Class name (optional)", { exact: true })).toHaveValue(
-    "جلسهٔ عصر 日本語",
-  );
-  await expect(page.getByLabel("Class date", { exact: true })).toHaveValue("01/10/2026");
+  await expect(page.getByLabel("Session date", { exact: true })).toHaveValue("01/10/2026");
   await expect(unit).toHaveValue("");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "جلسهٔ عصر 日本語");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جلسهٔ عصر 日本語");
   await page.goto("/preview/course?course=ESOL%20evening");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ESOL evening");
@@ -313,17 +306,16 @@ test("D39: course materials keep each session's current notes, dates and course 
   test.setTimeout(120_000);
   const notes = "Travel notes from this session. <script>window.courseInjected = true</script>";
   await page.goto("/preview/new-class?course=ESOL%20B1");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Travel notebook");
-  await page.getByLabel("Class date", { exact: true }).fill("29/09/2026");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByLabel("Session date", { exact: true }).fill("29/09/2026");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "Travel notebook");
   await page.goto("/preview/edit-notes");
   await page.getByLabel("Your explanation", { exact: true }).fill(notes);
   await page.getByRole("button", { name: "Save a new version", exact: true }).click();
   await expect(page.getByText(notes, { exact: true })).toBeVisible();
 
-  await page.goto("/preview/new-class?course=My%20classes");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("Other course session");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.goto("/preview/new-class?course=My%20Courses");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await page.goto("/preview/edit-notes");
   await page.getByLabel("Your explanation", { exact: true }).fill("Other course notes");
   await page.getByRole("button", { name: "Save a new version", exact: true }).click();
@@ -347,18 +339,18 @@ test("D39: course materials keep each session's current notes, dates and course 
   await materials
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Travel notebook", exact: true }) })
-    .getByRole("button", { name: "Class notes", exact: true })
+    .getByRole("button", { name: "Session notes", exact: true })
     .click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Travel notebook");
   await expect(page.getByText(notes, { exact: true })).toBeVisible();
   await page.goto("/preview/class");
   await openClassTools(page);
-  await page.getByRole("link", { name: "Class options", exact: true }).click();
-  await page.getByLabel("Move to course").selectOption("My classes");
+  await page.getByRole("link", { name: "Session options", exact: true }).click();
+  await page.getByLabel("Move to course").selectOption("My Courses");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await page.goto("/preview/course?course=ESOL%20B1#course-materials");
   await expect(page.locator("#course-materials").getByText(notes, { exact: true })).toHaveCount(0);
-  await page.getByLabel("Course", { exact: true }).selectOption("My classes");
+  await page.getByLabel("Course", { exact: true }).selectOption("My Courses");
   await expect(page.locator("#course-materials").getByText(notes, { exact: true })).toBeVisible();
 });
 
@@ -368,8 +360,8 @@ test("D40: prepared sample material names an automatic session and shows its dat
   test.setTimeout(120_000);
   await page.setViewportSize(VIEWPORTS.mobile);
   await page.goto("/preview/new-class?course=ESOL%20B1");
-  await page.getByLabel("Class date", { exact: true }).fill("29/09/2026");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByLabel("Session date", { exact: true }).fill("29/09/2026");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("2026-09-29");
   await openClassTools(page);
   await expect(page.getByText(/Waiting for material/)).toBeVisible();
@@ -418,9 +410,9 @@ test("D40: a custom title survives sample processing and can be cleared to use t
 }) => {
   test.setTimeout(120_000);
   await page.goto("/preview/new-class");
-  await page.getByLabel("Class name (optional)", { exact: true }).fill("My evening session");
-  await page.getByLabel("Class date", { exact: true }).fill("03/10/2026");
-  await page.getByRole("button", { name: "Create class", exact: true }).click();
+  await page.getByLabel("Session date", { exact: true }).fill("03/10/2026");
+  await page.getByRole("button", { name: "Create session", exact: true }).click();
+  await nameNewestSession(page, "My evening session");
   await page.goto("/preview/upload");
   await page.getByLabel("Add sample file names", { exact: true }).setInputFiles({
     name: "sample-board.png",
@@ -435,14 +427,14 @@ test("D40: a custom title survives sample processing and can be cleared to use t
   await page.getByRole("button", { name: "Complete sample processing", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("My evening session");
   await page.goto("/preview/organize");
-  await expect(page.getByLabel("Class name", { exact: true })).toHaveValue("My evening session");
-  await page.getByLabel("Class name", { exact: true }).fill("");
+  await expect(page.getByLabel("Session name", { exact: true })).toHaveValue("My evening session");
+  await page.getByLabel("Session name", { exact: true }).fill("");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Present perfect");
   await page.goto("/preview/organize");
-  await expect(page.getByLabel("Class name", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Session name", { exact: true })).toHaveValue("");
 });
 
 test("D40: a legacy stored class title remains a manual override", async ({ page }) => {
@@ -461,7 +453,7 @@ test("D40: a legacy stored class title remains a manual override", async ({ page
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Legacy custom class");
   await page.goto("/preview/organize");
-  await expect(page.getByLabel("Class name", { exact: true })).toHaveValue("Legacy custom class");
+  await expect(page.getByLabel("Session name", { exact: true })).toHaveValue("Legacy custom class");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Legacy custom class");
 });

@@ -6,24 +6,33 @@ import { isExplanationLanguage, matchesExplanationScript } from "../lkm";
 import { assertSessionOwner } from "../org";
 import { errors, type LearnerContext } from "../plt";
 import { getSource, sessionSources, sourceContentVersions } from "../src";
+import { invalidateAutomaticVoice } from "./automatic";
+import { accountVoiceCalibration } from "./calibration";
 import {
   type ClassVoiceView,
   type PrivateVoiceAnalysis,
   type SpokenMistake,
   spokenMistakeSchema,
+  VOICE_MATCH_REASONS,
+  VOICE_REFERENCE_STATUSES,
   type VoiceAnalysisInput,
   type VoiceAnalysisView,
+  type VoiceMatchReason,
   voiceActionSchema,
   voiceCandidateSchema,
   voiceCoverage,
   voiceEmbeddingSchema,
   voiceUtteranceSchema,
 } from "./contracts";
-import { autoAcceptVoice, calibrateVoiceAcceptance, rankVoiceCandidates } from "./matching";
-import { getVoiceEnrollment, voiceTransaction } from "./profile";
+import { autoAcceptVoice, rankVoiceCandidates } from "./matching";
+import { decideVoiceMatch, voiceReferenceOutcome, voiceReferences } from "./policy";
+import { voiceAcceptancePolicy } from "./policy-registry";
+import { checkedVoiceEnrollment, getVoiceEnrollment, voiceTransaction } from "./profile";
 import { findRepeatedVoiceEvidence } from "./spoken-evidence";
 
 type Row = Selectable<DB["voc.analysis"]>;
+/** Speaker labels from a transcript, never acoustic voiceprints (proc/voice-processing.ts). */
+const TRANSCRIPT_LABEL_MODEL = "transcript-labels-v1";
 const candidatesSchema = z.array(voiceCandidateSchema).max(50);
 const utterancesSchema = z.array(voiceUtteranceSchema).max(10000);
 const mistakesSchema = z.record(z.string(), z.array(spokenMistakeSchema).max(15));
@@ -58,6 +67,8 @@ function publicView(row: Row): VoiceAnalysisView {
     verifiedSpeakerId: row.verified_speaker_id,
     verificationMethod: row.verification_method as VoiceAnalysisView["verificationMethod"],
     reason: row.reason,
+    referenceStatus: z.enum(VOICE_REFERENCE_STATUSES).nullable().parse(row.reference_status),
+    matchReason: z.enum(VOICE_MATCH_REASONS).nullable().parse(row.match_reason),
     candidates: candidatesSchema
       .parse(row.candidates)
       .filter((candidate) => !rejected.includes(candidate.id)),
@@ -126,45 +137,40 @@ export async function saveVoiceAnalysis(
     if (!versions.some((version) => version.id === input.sourceVersionId)) throw errors.notFound();
     const prior = await findVoiceAnalysis(tx, ctx, input);
     if (prior) return prior;
-    const candidates = rankVoiceCandidates(declared, vectors, profile, input.modelVersion);
-    const feedbackRows = await tx
-      .selectFrom("voc.feedback as feedback")
-      .innerJoin("voc.analysis as analysis", "analysis.id", "feedback.analysis_id")
-      .select([
-        "feedback.score",
-        "feedback.margin",
-        "feedback.accepted",
-        "feedback.speaker_id as speakerId",
-        "analysis.session_id as sessionId",
-        "analysis.status",
-        "analysis.verified_speaker_id as verifiedSpeakerId",
-        "analysis.verification_method as method",
-      ])
-      .where("feedback.user_id", "=", ctx.userId)
-      .where("analysis.user_id", "=", ctx.userId)
-      .where("feedback.model_version", "=", input.modelVersion)
-      .execute();
-    const feedback = feedbackRows.filter(
-      (item) =>
-        !item.accepted ||
-        (item.status === "verified" &&
-          item.method === "manual" &&
-          item.verifiedSpeakerId === item.speakerId),
-    );
-    const confirmed = await tx
-      .selectFrom("voc.analysis")
-      .select("session_id")
-      .distinct()
-      .where("user_id", "=", ctx.userId)
-      .where("verification_method", "=", "manual")
-      .where("status", "=", "verified")
-      .execute();
-    const accepted = autoAcceptVoice(
-      candidates,
-      calibrateVoiceAcceptance(input.modelVersion, feedback),
-      input.modelVersion,
-      confirmed.length,
-    );
+    const policy = voiceAcceptancePolicy(input.modelVersion);
+    const enrollment = checkedVoiceEnrollment(profile, input.modelVersion, policy);
+    const candidates = rankVoiceCandidates(declared, vectors, enrollment, input.modelVersion);
+    const account = await accountVoiceCalibration(tx, ctx, input.modelVersion);
+    let accepted: string | null = null;
+    let matchReason: VoiceMatchReason | null = null;
+    if (candidates.length && input.modelVersion !== TRANSCRIPT_LABEL_MODEL) {
+      const decision = decideVoiceMatch({
+        candidates,
+        vectors,
+        enrollment,
+        modelVersion: input.modelVersion,
+        policy,
+        rejectedScores: account.rejectedScores,
+      });
+      accepted = decision.acceptedId;
+      matchReason = decision.reason;
+      // A model revision without an evaluated policy keeps the account's own calibration. An
+      // evaluated policy replaces it, and one with automatic acceptance off keeps every class manual.
+      if (!policy && account.calibration && account.confirmedLessons) {
+        accepted = autoAcceptVoice(
+          candidates,
+          account.calibration,
+          input.modelVersion,
+          account.confirmedLessons,
+        );
+        // A calibration that declines is a weak match, not a switch that is off.
+        matchReason = accepted
+          ? null
+          : matchReason === "policy_unavailable"
+            ? "no_clear_match"
+            : matchReason;
+      }
+    }
     const row = await tx
       .insertInto("voc.analysis")
       .values({
@@ -194,6 +200,7 @@ export async function saveVoiceAnalysis(
         verified_speaker_id: accepted,
         verification_method: accepted ? "automatic" : null,
         reason: input.reason ?? null,
+        match_reason: accepted ? null : matchReason,
         candidates: JSON.stringify(candidates),
         utterances: JSON.stringify(utterances),
         // An automatic acceptance already relies on an enrolled voice. Other speakers'
@@ -348,10 +355,50 @@ export async function getClassVoice(
   engineAvailable = false,
 ): Promise<ClassVoiceView> {
   const rows = await currentVoiceRows(db, ctx, sessionId);
+  const profile = await getVoiceEnrollment(db, ctx);
+  const references = new Set(profile.embeddings.map((entry) => entry.analysisId));
+  // References matching may rely on: under an evaluated policy, only those like the sample.
+  const usable = (modelVersion: string) =>
+    new Set(
+      checkedVoiceEnrollment(
+        profile,
+        modelVersion,
+        voiceAcceptancePolicy(modelVersion),
+      ).embeddings.map((entry) => entry.analysisId),
+    );
   return {
-    enabled: (await getVoiceEnrollment(db, ctx)).enabled,
+    enabled: profile.enabled,
     engineAvailable,
-    analyses: rows.map(publicView),
+    analyses: await Promise.all(
+      rows.map(async (row) => {
+        const view = publicView(row);
+        return {
+          ...view,
+          // The stored outcome is the moment of confirmation; say so when it no longer holds.
+          referenceStatus:
+            view.referenceStatus !== "added"
+              ? view.referenceStatus
+              : !references.has(row.id)
+                ? ("retired" as const)
+                : !usable(row.model_version).has(row.id)
+                  ? ("mismatch" as const)
+                  : view.referenceStatus,
+          source: await sourceIdentity(db, ctx, row),
+        };
+      }),
+    ),
+  };
+}
+/** Name, length and checksum of the learner's own registered recording, for local playback. */
+async function sourceIdentity(db: Database | Tx, ctx: LearnerContext, row: Row) {
+  const asset = await getSource(db, ctx, row.source_id).catch(() => null);
+  if (asset?.kind !== "audio") return null;
+  return {
+    name: asset.display_name,
+    durationMs: asset.duration_ms === null ? null : Number(asset.duration_ms),
+    sizeBytes: Number(asset.size_bytes),
+    sha256: asset.sha256,
+    mimeType: asset.verified_mime ?? asset.declared_mime,
   };
 }
 export async function changeVoiceIdentity(
@@ -421,47 +468,47 @@ export async function changeVoiceIdentity(
     );
     if (!confirm && row.status === "verified") {
       // A revoked reference can have selected the same wrong voice in later lessons.
-      const invalidated = await tx
-        .updateTable("voc.analysis")
-        .set((eb) => ({
-          version: eb("version", "+", 1),
-          status: "unverified",
-          verified_speaker_id: null,
-          verification_method: null,
-          reason: "voice_reference_revoked",
-          updated_at: now,
-        }))
-        .where("user_id", "=", ctx.userId)
-        .where("verification_method", "=", "automatic")
-        .where("id", "!=", row.id)
-        .returning("id")
-        .execute();
-      const invalidIds = new Set(invalidated.map((entry) => entry.id));
+      const invalidIds = await invalidateAutomaticVoice(tx, ctx.userId, now, row.id);
       enrolled = enrolled.filter((entry) => !entry.analysisId || !invalidIds.has(entry.analysisId));
     }
     const vectors = embeddingsSchema.parse(row.private_embeddings);
-    const vector =
-      confirm && chosen && row.embeddings_expire_at > now
-        ? vectors.find((entry) => entry.speakerId === chosen.id)?.vector
-        : undefined;
-    if (vector && chosen && chosen.cleanSpeechMs >= 20000) {
-      const sample = enrolled.find((entry) => entry.analysisId === null);
-      const lessons = [
-        {
-          vector,
-          modelVersion: row.model_version,
-          analysisId: row.id,
-          createdAt: now.toISOString(),
-        },
-        ...enrolled.filter(
-          (entry) =>
-            entry.analysisId &&
-            entry.analysisId !== row.id &&
-            entry.modelVersion === row.model_version,
-        ),
-      ].slice(0, 4);
-      // The separately retained recording must keep its rebuildable sample voiceprint.
-      enrolled = [...lessons, ...(sample ? [sample] : [])];
+    let referenceStatus =
+      keepExisting && row.verification_method === "manual"
+        ? z.enum(VOICE_REFERENCE_STATUSES).nullable().parse(row.reference_status)
+        : null;
+    if (confirm && chosen && !(keepExisting && row.verification_method === "manual")) {
+      const expired = row.embeddings_expire_at <= now;
+      const vector = expired
+        ? undefined
+        : vectors.find((entry) => entry.speakerId === chosen.id)?.vector;
+      // The learner's choice stands either way; only a consistent, clear voice teaches matching.
+      referenceStatus = voiceReferenceOutcome({
+        acoustic: row.model_version !== TRANSCRIPT_LABEL_MODEL,
+        vector,
+        cleanSpeechMs: chosen.cleanSpeechMs,
+        expired,
+        references: voiceReferences(profile, row.model_version),
+        policy: voiceAcceptancePolicy(row.model_version),
+      });
+      if (referenceStatus === "added" && vector) {
+        const sample = enrolled.find((entry) => entry.analysisId === null);
+        const lessons = [
+          {
+            vector,
+            modelVersion: row.model_version,
+            analysisId: row.id,
+            createdAt: now.toISOString(),
+          },
+          ...enrolled.filter(
+            (entry) =>
+              entry.analysisId &&
+              entry.analysisId !== row.id &&
+              entry.modelVersion === row.model_version,
+          ),
+        ].slice(0, 4);
+        // The separately retained recording must keep its rebuildable sample voiceprint.
+        enrolled = [...lessons, ...(sample ? [sample] : [])];
+      }
     }
     await tx
       .updateTable("voc.profile")
@@ -488,6 +535,9 @@ export async function changeVoiceIdentity(
             : (remaining[0]?.id ?? null),
         verified_speaker_id: confirm ? chosen?.id : null,
         verification_method: confirm ? "manual" : null,
+        reference_status: confirm ? referenceStatus : null,
+        // The reason a past automatic check asked no longer describes a learner's decision.
+        match_reason: null,
         rejected_ids: JSON.stringify(rejected),
         mistakes: JSON.stringify(mistakes),
         // Other people's voiceprints end with the confirmation process, never a persistent profile.

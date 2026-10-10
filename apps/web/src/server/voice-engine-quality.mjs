@@ -77,14 +77,35 @@ export function qualifySegments(raw, durationMs, offsetMs = 0, boundaries = []) 
   return segments;
 }
 
-/** A bounded, distributed sample of only clean interior speech; no overlaps or turn boundaries. */
-export function embeddingSpans(segments, speakerId) {
+/**
+ * A bounded, distributed sample of only clean interior speech. `whole-turns` drops every turn
+ * that touches another detected voice. `clean-parts` keeps the parts of such a turn that are at
+ * least 200 ms away from any other voice. Edge-clipped, splice-adjacent and short turns are
+ * always dropped, and turn flags for spoken-mistake evidence are unchanged.
+ */
+export function embeddingSpans(segments, speakerId, mode = "whole-turns") {
   const windows = [];
   for (const segment of segments) {
-    if (segment.speakerId !== speakerId || segment.overlap || segment.boundaryUnsafe) continue;
-    const end = segment.endMs - 200;
-    for (let start = segment.startMs + 200; end - start >= 2000; start += 10000)
-      windows.push({ startMs: start, endMs: Math.min(start + 10000, end) });
+    if (segment.speakerId !== speakerId || segment.boundaryUnsafe) continue;
+    if (segment.overlap && mode !== "clean-parts") continue;
+    let parts = [{ startMs: segment.startMs + 200, endMs: segment.endMs - 200 }];
+    if (segment.overlap)
+      for (const other of segments) {
+        if (other.speakerId === speakerId) continue;
+        const cutStart = other.startMs - 200;
+        const cutEnd = other.endMs + 200;
+        parts = parts.flatMap((part) =>
+          cutEnd <= part.startMs || cutStart >= part.endMs
+            ? [part]
+            : [
+                { startMs: part.startMs, endMs: Math.min(part.endMs, cutStart) },
+                { startMs: Math.max(part.startMs, cutEnd), endMs: part.endMs },
+              ].filter((piece) => piece.endMs - piece.startMs >= 2000),
+        );
+      }
+    for (const part of parts)
+      for (let start = part.startMs; part.endMs - start >= 2000; start += 10000)
+        windows.push({ startMs: start, endMs: Math.min(start + 10000, part.endMs) });
   }
   // Distribute sampling through the recording rather than trusting its first turn.
   const ordered = [];
@@ -96,4 +117,92 @@ export function embeddingSpans(segments, speakerId) {
     if (duration < 2000) return [];
     return [{ startMs: span.startMs, endMs: span.startMs + duration }];
   });
+}
+
+/** Re-mark simultaneous speech after voices are relabelled; same-voice intersections are not overlap. */
+export function markOverlaps(segments) {
+  const ordered = segments
+    .map((segment) => ({ ...segment, overlap: false }))
+    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+  for (let index = 0; index < ordered.length; index++) {
+    const current = ordered[index];
+    for (let later = index + 1; later < ordered.length; later++) {
+      const next = ordered[later];
+      if (next.startMs >= current.endMs) break;
+      if (next.speakerId !== current.speakerId) current.overlap = next.overlap = true;
+    }
+  }
+  return ordered;
+}
+
+function simultaneousMs(segments, left, right) {
+  let total = 0;
+  for (const a of segments) {
+    if (a.speakerId !== left) continue;
+    for (const b of segments)
+      if (b.speakerId === right)
+        total += Math.max(0, Math.min(a.endMs, b.endMs) - Math.max(a.startMs, b.startMs));
+  }
+  return total;
+}
+
+/**
+ * Over-split voices are merged when their pooled clean speech is alike. The native clustering
+ * compares short chunks; pooled vectors over several clean seconds are steadier. Two voices
+ * heard at the same time for a quarter of the shorter one's speech are never merged. Voices
+ * with under `minSpeechMs` of clean speech keep their own label. `embedSpan` returns a
+ * normalised vector for one span. Returns relabelled segments with overlap re-marked.
+ */
+export function mergeVoices(segments, embedSpan, threshold, minSpeechMs = 4000) {
+  const speech = new Map();
+  for (const segment of segments)
+    speech.set(
+      segment.speakerId,
+      (speech.get(segment.speakerId) ?? 0) + segment.endMs - segment.startMs,
+    );
+  const voices = [];
+  for (const speakerId of speech.keys()) {
+    const spans = embeddingSpans(segments, speakerId, "clean-parts");
+    const weight = spans.reduce((sum, span) => sum + span.endMs - span.startMs, 0);
+    if (weight < minSpeechMs) continue;
+    voices.push({
+      ids: [speakerId],
+      weight,
+      vector: poolEmbeddings(
+        spans.map((span) => ({ embedding: embedSpan(span), weight: span.endMs - span.startMs })),
+      ),
+    });
+  }
+  for (;;) {
+    let best = null;
+    for (let i = 0; i < voices.length; i++)
+      for (let j = i + 1; j < voices.length; j++) {
+        const similarity = cosineSimilarity(voices[i].vector, voices[j].vector);
+        if (similarity < threshold || (best && similarity <= best.similarity)) continue;
+        const left = voices[i].ids.reduce((sum, id) => sum + (speech.get(id) ?? 0), 0);
+        const right = voices[j].ids.reduce((sum, id) => sum + (speech.get(id) ?? 0), 0);
+        let together = 0;
+        for (const a of voices[i].ids)
+          for (const b of voices[j].ids) together += simultaneousMs(segments, a, b);
+        if (together >= 0.25 * Math.min(left, right)) continue;
+        best = { i, j, similarity };
+      }
+    if (!best) break;
+    const [keep, drop] = [voices[best.i], voices[best.j]];
+    keep.vector = poolEmbeddings([
+      { embedding: keep.vector, weight: keep.weight },
+      { embedding: drop.vector, weight: drop.weight },
+    ]);
+    keep.weight += drop.weight;
+    keep.ids.push(...drop.ids);
+    voices.splice(best.j, 1);
+  }
+  const label = new Map();
+  for (const voice of voices) for (const id of voice.ids) label.set(id, voice.ids[0]);
+  return markOverlaps(
+    segments.map((segment) => ({
+      ...segment,
+      speakerId: label.get(segment.speakerId) ?? segment.speakerId,
+    })),
+  );
 }

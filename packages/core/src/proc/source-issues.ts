@@ -123,10 +123,10 @@ export function describeSourceIssues(
       details: canRetry
         ? "Retry extraction from this file. Your saved notes stay available; review the updated preview before applying it."
         : !context.currentSelection
-          ? "Class material has changed since these notes were made. Review the current sources to prepare an updated version."
+          ? "Session material has changed since these notes were made. Review the current sources to prepare an updated version."
           : source.kind === "audio"
             ? "Use the device holding the original recording to recover this part. These notes and the available transcript remain saved."
-            : "Choose a clearer copy of this file in class material. The original may no longer be available for processing.",
+            : "Choose a clearer copy of this file in session material. The original may no longer be available for processing.",
       action: canRetry
         ? ("retry" as const)
         : context.currentSelection && !context.originalAvailable && source.kind !== "audio"

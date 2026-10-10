@@ -71,6 +71,10 @@ export const ENGLISH_STUDY_LABELS = {
   mistakeRegister: "Register",
   patternRule: "Review the corrected examples above.",
   selectedImages: "Selected class images",
+  checkPill: "Check yourself",
+  checkHeading: "Check yourself (hidden answers)",
+  checkNote:
+    "Before you finish this lesson, answer each question in your head or out loud, then open the answer. Flashcards made from this lesson use the same questions.",
 } as const;
 export type StudyLabelKey = keyof typeof ENGLISH_STUDY_LABELS;
 type Labels = Partial<Record<StudyLabelKey, string>>;
@@ -148,6 +152,10 @@ const translations: Readonly<Record<string, Labels>> = {
     mistakeRegister: "لحن",
     patternRule: "به شکل درستِ مثال‌های بالا توجه کن.",
     selectedImages: "تصاویر انتخاب‌شدهٔ کلاس",
+    checkPill: "خودت را بسنج",
+    checkHeading: "خودت را بسنج (با جواب پنهان)",
+    checkNote:
+      "پیش از تمام کردن این درس، جواب هر سؤال را در ذهنت یا بلند بگو و بعد جواب را باز کن. کارت‌هایی که از این درس ساخته می‌شوند همین سؤال‌ها را دارند.",
   },
   ar: {
     backToTop: "↑ أعلى",

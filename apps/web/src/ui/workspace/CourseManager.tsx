@@ -2,7 +2,9 @@
 import type { Course, Unit } from "@recalino/core/org";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { InfoTip } from "../components/InfoTip";
 import { Sheet } from "../components/Sheet";
+import { unitCopy } from "../course-copy";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 
@@ -184,8 +186,8 @@ export function CourseManager({
                 <LinkButton secondary href={`/courses/${course.id}/materials`}>
                   Course materials
                 </LinkButton>
-                <LinkButton secondary href={`/classes/new?courseId=${course.id}`}>
-                  New class in this course
+                <LinkButton secondary href={`/sessions/new?courseId=${course.id}`}>
+                  New session in this course
                 </LinkButton>
                 {!course.isDefault ? (
                   <Button
@@ -199,28 +201,33 @@ export function CourseManager({
               </Actions>
               {course.isDefault ? (
                 <p className="preview-muted">
-                  Your default course can be renamed. It always remains available for new classes.
+                  Your default course can be renamed. It always remains available for new sessions.
                 </p>
               ) : (
                 <p className="preview-muted">
-                  Move or delete its classes before deleting this course.
+                  Move or delete its sessions before deleting this course.
                 </p>
               )}
             </>
           ) : (
             <p>
-              Your first course is created automatically when you create a class. You can also
+              Your first course is created automatically when you create a session. You can also
               create one here.
             </p>
           )}
         </Panel>
       </div>
       {course ? (
-        <Panel title="Optional units">
-          <p>
-            Use units to group lessons inside <bdi>{course.name}</bdi>. A class can also have no
-            unit.
-          </p>
+        <Panel
+          title="Optional units"
+          info={
+            <InfoTip label={unitCopy.helpLabel}>
+              {unitCopy.help.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </InfoTip>
+          }
+        >
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -232,6 +239,7 @@ export function CourseManager({
                 required
                 maxLength={160}
                 dir="auto"
+                placeholder={unitCopy.namePlaceholder}
                 value={unitName}
                 disabled={busy}
                 onChange={(event) => setUnitName(event.target.value)}
@@ -241,9 +249,6 @@ export function CourseManager({
               Create unit
             </Button>
           </form>
-          <p className="preview-muted">
-            Smaller order numbers appear first. A unit must be empty before it can be deleted.
-          </p>
           {courseUnits.length ? (
             <ul className="preview-list">
               {courseUnits.map((item) => (
@@ -309,8 +314,8 @@ export function CourseManager({
         title={`Delete this ${confirm?.kind ?? "group"}?`}
       >
         <p>
-          <bdi>{confirm?.name}</bdi> can be deleted only when it contains no classes. Empty units in
-          a deleted course are removed with it.
+          <bdi>{confirm?.name}</bdi> can be deleted only when it contains no sessions. Empty units
+          in a deleted course are removed with it.
         </p>
         <Actions>
           <Button disabled={busy} onClick={() => void remove()}>

@@ -212,7 +212,7 @@ export function SourceViews({ screen }: { screen: string }) {
     if (!classId || elapsed <= 0) {
       savingLock.current = false;
       setSaving(false);
-      setProblem("Start a class and keep at least one sample second before saving.");
+      setProblem("Start a session and keep at least one sample second before saving.");
       return;
     }
     const duration = elapsed / 60;
@@ -366,13 +366,13 @@ export function SourceViews({ screen }: { screen: string }) {
       <div className="preview-reader">
         <PageHeader
           title="Before you add a file"
-          description="Keep class material you are allowed to use."
+          description="Keep session material you are allowed to use."
           back="class"
         />
         <Panel title="Your class, with permission">
           <p>
             Only add material you own or have permission to use. Check your teacher’s rules before
-            adding a class recording or handout.
+            adding a session recording or handout.
           </p>
           <div className="preview-check">
             <input
@@ -440,7 +440,7 @@ export function SourceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title={screen === "recording" ? "Recording your class" : "Recording paused"}
+          title={screen === "recording" ? "Recording your session" : "Recording paused"}
           description="Recording demonstration · no microphone capture in this preview."
         />
         <Panel>
@@ -544,7 +544,7 @@ export function SourceViews({ screen }: { screen: string }) {
         <Panel title={`${clock} · sample recovery`}>
           <p>
             {screen === "recovery"
-              ? "An interrupted class recording can be recovered when its saved part is available."
+              ? "An interrupted session recording can be recovered when its saved part is available."
               : "The recording was interrupted. Check microphone permission before trying again."}
           </p>
           <p className="preview-muted">
@@ -605,7 +605,7 @@ export function SourceViews({ screen }: { screen: string }) {
           <Actions>
             <LinkButton to="estimate">View estimate</LinkButton>
             <LinkButton secondary to="class">
-              Go to class
+              Go to session
             </LinkButton>
           </Actions>
         </Panel>
@@ -615,7 +615,7 @@ export function SourceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title="Add class material"
+          title="Add session material"
           description="Audio, a handout or a whiteboard photo."
           back="class"
         />
@@ -799,7 +799,7 @@ export function SourceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title="Class sources"
+          title="Session sources"
           description="Use each whole file, or choose a part when you need it."
           back="class"
         />
@@ -1011,7 +1011,7 @@ export function SourceViews({ screen }: { screen: string }) {
         )}
         {needsAction ? (
           <Status tone="error">
-            A selected source needs attention. Return to Add class material or exclude it.
+            A selected source needs attention. Return to Add session material or exclude it.
           </Status>
         ) : null}
         {statusProblem}
@@ -1081,7 +1081,7 @@ export function SourceViews({ screen }: { screen: string }) {
     return (
       <>
         <PageHeader
-          title="Making your class notes"
+          title="Making your session notes"
           description="Processing demonstration · authored sample content."
           back="class"
         />
@@ -1104,7 +1104,7 @@ export function SourceViews({ screen }: { screen: string }) {
             <li>3. Make notes and suggested cards</li>
           </ol>
           <p className="preview-muted">
-            You can leave this screen and return to the class. This preview does not call an AI
+            You can leave this screen and return to the session. This preview does not call an AI
             service.
           </p>
           <Actions>
@@ -1180,7 +1180,7 @@ export function SourceViews({ screen }: { screen: string }) {
               Try a partial result
             </Button>
             <LinkButton secondary to="class">
-              View class
+              View session
             </LinkButton>
             <Button
               secondary
@@ -1200,7 +1200,7 @@ export function SourceViews({ screen }: { screen: string }) {
           title="Cancel this processing example?"
         >
           <p>
-            The original sample sources stay in the class. The current result can still be
+            The original sample sources stay in the session. The current result can still be
             inspected.
           </p>
           <Actions>
@@ -1304,7 +1304,7 @@ export function SourceViews({ screen }: { screen: string }) {
               Retry failed source
             </Button>
             <LinkButton secondary to="class">
-              Back to class
+              Back to session
             </LinkButton>
           </Actions>
         </Panel>
@@ -1335,9 +1335,9 @@ export function SourceViews({ screen }: { screen: string }) {
             </LinkButton>
           </Panel>
           <Panel title="An empty learning space">
-            <p>Add a class, choose useful cards and start with a short review.</p>
+            <p>Add a session, choose useful cards and start with a short review.</p>
             <LinkButton secondary to="new-class">
-              Create a class
+              Create a session
             </LinkButton>
           </Panel>
           <Panel title="Recording was interrupted">

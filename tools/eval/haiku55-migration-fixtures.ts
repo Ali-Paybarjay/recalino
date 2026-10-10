@@ -362,13 +362,17 @@ export function freshMigrationFixtures(): MigrationFixture[] {
 
 /** No answer-key field can reach the model through this deliberately explicit projection. */
 export function migrationInputData(fixture: MigrationFixture) {
+  // Declared choices only: the version 1 shape every run sends while memory stays out of
+  // generation (D49 release decision).
+  const learnerContext = snapshotLearnerTeachingContext({
+    level: fixture.declaredLevel,
+    goal: fixture.goal,
+  });
+  if (learnerContext.version !== 1) throw new Error("fixture_learner_context_version");
   return {
     explanationLanguage: fixture.explanationLanguage,
     teachingPreferences: fixture.teachingPreferences,
-    learnerContext: snapshotLearnerTeachingContext({
-      level: fixture.declaredLevel,
-      goal: fixture.goal,
-    }),
+    learnerContext,
     lessonContext: fixture.lessonContext,
     sources: fixture.sources,
     missingSourceIds: fixture.missingSourceIds,

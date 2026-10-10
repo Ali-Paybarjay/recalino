@@ -67,7 +67,7 @@ it("treats an unreadable success response as an interrupted gateway response", a
 });
 
 it.each([
-  ["transcript_required", "Select a class recording in Sources and process it"],
+  ["transcript_required", "Select a session recording in Sources and process it"],
   ["consent_required", "Enable voice identification in Voice settings"],
   ["explanation_language_missing", "Choose your explanation language in your profile"],
 ])("explains the class voice prerequisite %s", async (reason, message) => {
@@ -112,7 +112,36 @@ it.each(["select_at_least_one", "not_verified"])(
       ),
     );
     await expect(workspaceRequest("/api/classes/class-id/voice", "POST")).rejects.toMatchObject({
-      message: "Select a class recording in Sources and process it before checking class voices.",
+      message:
+        "Select a session recording in Sources and process it before checking session voices.",
     });
   },
 );
+
+it("keeps a hidden class whose deletion receipt is pending, so the form can say so", async () => {
+  const pending = {
+    requestId: "8c028da8-1448-4bca-a638-3f4519439b18",
+    kind: "session",
+    state: "acknowledgement_pending",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          { error: { code: "internal", message: "Try again.", details: { deletion: pending } } },
+          { status: 500 },
+        ),
+      ),
+  );
+  await expect(
+    workspaceRequest(`/api/classes/${pending.requestId}`, "DELETE"),
+  ).rejects.toMatchObject({
+    code: "internal",
+    status: 500,
+    deletion: pending,
+    message:
+      "It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes.",
+  });
+});

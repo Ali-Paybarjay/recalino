@@ -93,7 +93,7 @@ it("FR-PROC-003 D49 selects Gemini 3.8 Flash on the content contract with its de
   const settings = providerSettingsSchema.parse(defaults);
   expect(settings.version).toBe("openrouter-2026-10-10-1");
   expect(settings.llmModel).toBe(gemini);
-  expect(settings.promptVersion).toBe("recalino-knowledge-9");
+  expect(settings.promptVersion).toBe("recalino-knowledge-10");
   expect(settings.priceVersion).toBe("openrouter-models-2026-10-09");
   expect(settings.structuredTemperature).toBe(0);
   // maxOutputTokens stays the content plan budget; only the Gemini transport cap is larger.

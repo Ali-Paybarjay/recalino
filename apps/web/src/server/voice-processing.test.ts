@@ -92,7 +92,8 @@ it("checks a longer-than-two-hour source with one bounded native pass and restor
   });
   const result = await diarizeSourceVoice(input);
   expect(mocks.diarize).toHaveBeenCalledTimes(1);
-  expect(mocks.decode.mock.calls[0]?.[1]).toHaveLength(15);
+  // The adopted plan: eight 58-second excerpts across the selection.
+  expect(mocks.decode.mock.calls[0]?.[1]).toHaveLength(8);
   expect(result.sampled).toBe(true);
   expect(result.segments.map((segment) => [segment.startMs, segment.endMs])).toEqual([
     [101000, 108000],

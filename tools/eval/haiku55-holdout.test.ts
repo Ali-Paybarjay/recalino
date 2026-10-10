@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { GOALS, LEVELS } from "../../packages/core/src/acc";
 import { createJsonFallbackTransport, providerSettingsSchema } from "../../packages/core/src/aip";
 import {
   type KnowledgeModel,
@@ -12,7 +13,7 @@ import { usesContentKnowledgeContract } from "../../packages/core/src/proc/knowl
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
 import {
-  learnerTeachingContextSchema,
+  type ModelTeachingContext,
   snapshotLearnerTeachingContext,
 } from "../../packages/core/src/proc/learner-context";
 import { studyPrompt } from "../../packages/core/src/proc/study-prompt";
@@ -321,7 +322,7 @@ async function productionPromptTexts(fixtures: MigrationFixture[]): Promise<stri
   const system = (
     fixture: MigrationFixture,
     options: NonNullable<Parameters<typeof buildKnowledgeGenerationInput>[2]>,
-    learnerContext = migrationInputData(fixture).learnerContext,
+    learnerContext: ModelTeachingContext = migrationInputData(fixture).learnerContext,
   ) => {
     const prepared = buildKnowledgeGenerationInput(
       { ...migrationInputData(fixture), learnerContext },
@@ -381,9 +382,23 @@ async function productionPromptTexts(fixtures: MigrationFixture[]): Promise<stri
   // Every declared level and goal selects its own personalised teaching sentences.
   const [first] = fixtures;
   if (!first) throw new Error("fixture");
-  for (const level of [...learnerTeachingContextSchema.shape.declaredLevel.unwrap().options, null])
-    for (const goal of [...learnerTeachingContextSchema.shape.goal.unwrap().options, null])
-      system(first, {}, snapshotLearnerTeachingContext({ level, goal }));
+  for (const level of [...LEVELS, null])
+    for (const goal of [...GOALS, null]) {
+      const declared = snapshotLearnerTeachingContext({ level, goal });
+      if (declared.version !== 1) throw new Error("declared_context_version");
+      system(first, {}, declared);
+    }
+  // D49 memory sentences (simpler explanations and practice focus) at both budgets.
+  for (const compact of [false, true])
+    system(
+      first,
+      { compact, maxOutputTokens: compact ? 6144 : 32000 },
+      {
+        version: 2,
+        simplerExplanations: true,
+        practiceFocus: [{ target: "synthetic focus", reason: "recall_difficulty" }],
+      },
+    );
   // The answer-span repair prompt is fixed; one mismatched card is enough to build it.
   const mismatched = {
     learningItems: [

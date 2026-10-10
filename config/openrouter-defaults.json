@@ -6,7 +6,7 @@
   "sttModel": "openai/whisper-large-v3-turbo",
   "ttsModel": "hexgrad/kokoro-82m",
   "voice": "af_heart",
-  "promptVersion": "recalino-knowledge-9",
+  "promptVersion": "recalino-knowledge-10",
   "structuredTemperature": 0,
   "structuredModelOverrides": {
     "google/gemini-3.8-flash": {

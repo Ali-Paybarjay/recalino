@@ -1,4 +1,4 @@
-export { safeCardHtml } from "./card-html";
+export { cardHtmlToText, safeCardHtml } from "./card-html";
 export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
 export { isAnnouncingHeading, statesAssignment } from "./homework-evidence";
 export {
@@ -73,6 +73,7 @@ export {
   listVersions,
   liveKnowledgeVersionIdsForCleanup,
   publishKnowledgeVersion,
+  redactVersionGenerations,
   tombstoneAccountKnowledge,
   tombstoneKnowledge,
 } from "./versions";

@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { parentPort, workerData } from "node:worker_threads";
 import {
   embeddingSpans,
+  mergeVoices,
   normalizeEmbedding,
   poolEmbeddings,
   qualifySegments,
@@ -44,29 +45,44 @@ try {
         provider: "cpu",
         debug: false,
       },
-      clustering: { numClusters: -1, threshold: 0.5 },
+      clustering: { numClusters: -1, threshold: configuration.clusterThreshold },
       minDurationOn: 0.2,
       // Preserve brief changes of speaker; broad off-gap merging would contaminate voiceprints.
       minDurationOff: 0,
     });
     if (diarizer.sampleRate !== 16000) throw new Error("voice_model_sample_rate_mismatch");
-    const segments = qualifySegments(
+    // One span is embedded once, whether for merging voices or for the final voiceprint.
+    const vectors = new Map();
+    const embedSpan = (span) => {
+      const key = `${span.startMs}:${span.endMs}`;
+      if (!vectors.has(key))
+        vectors.set(
+          key,
+          embed(
+            samples.subarray(
+              Math.round((span.startMs - offsetMs) * 16),
+              Math.round((span.endMs - offsetMs) * 16),
+            ),
+          ),
+        );
+      return vectors.get(key);
+    };
+    const qualified = qualifySegments(
       diarizer.process(samples),
       samples.length / 16,
       offsetMs,
       boundaries,
     );
+    const segments =
+      configuration.mergeThreshold === null
+        ? qualified
+        : mergeVoices(qualified, embedSpan, configuration.mergeThreshold);
     const speakers = [];
     for (const speakerId of new Set(segments.map((segment) => segment.speakerId))) {
-      const spans = embeddingSpans(segments, speakerId);
+      const spans = embeddingSpans(segments, speakerId, configuration.spanMode);
       if (!spans.length) continue;
       const embeddings = spans.map((span) => ({
-        embedding: embed(
-          samples.subarray(
-            Math.round((span.startMs - offsetMs) * 16),
-            Math.round((span.endMs - offsetMs) * 16),
-          ),
-        ),
+        embedding: embedSpan(span),
         weight: span.endMs - span.startMs,
       }));
       speakers.push({

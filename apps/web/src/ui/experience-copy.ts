@@ -6,7 +6,7 @@ export const experienceCopy = {
       "Keep the useful moments from class, understand them clearly, and build a little practice into every day.",
     loopLabel: "The learning routine we are building",
     steps: [
-      { title: "Class", description: "Record or add your material." },
+      { title: "Session", description: "Record or add your material." },
       { title: "Notes", description: "Make sense of what you learnt." },
       { title: "Review", description: "Practise a few cards each day." },
     ],

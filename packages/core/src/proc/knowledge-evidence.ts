@@ -4,7 +4,7 @@ import { errors } from "../plt";
 import type { SourceClassification } from "../src";
 import type { RunSource } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
-import type { LearnerTeachingContext } from "./learner-context";
+import type { ModelTeachingContext } from "./learner-context";
 
 export interface KnowledgeEvidenceInput {
   sources: readonly RunSource[];
@@ -12,7 +12,7 @@ export interface KnowledgeEvidenceInput {
   teachingPreferences: { shorterExamples: boolean };
   missingSourceIds: readonly string[];
   lessonContext?: StudyLessonContext;
-  learnerContext?: LearnerTeachingContext;
+  learnerContext?: ModelTeachingContext;
 }
 
 export interface KnowledgeEvidence {

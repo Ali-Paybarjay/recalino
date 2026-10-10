@@ -38,7 +38,10 @@ export default async function CoursePage({
       learner={learner}
       current="classes"
       header={
-        <PageHeader title={course.name} subtitle="Open a class to find its notes and flashcards." />
+        <PageHeader
+          title={course.name}
+          subtitle="Open a session to find its notes and flashcards."
+        />
       }
     >
       <ClassDirectory

@@ -93,15 +93,15 @@ export function ProcessingView({
     !["new_confirmation_required", "audio_upload_rejected"].includes(latest.lastError ?? "");
   const operatorMessage =
     latest?.lastError === "provider_timestamps_invalid"
-      ? "The transcription service returned invalid timing information. Processing has stopped. Your saved class and earlier notes are available. Contact the operator to review this attempt before retrying."
+      ? "The transcription service returned invalid timing information. Processing has stopped. Your saved session and earlier notes are available. Contact the operator to review this attempt before retrying."
       : ["provider_outcome_unknown", "provider_outcome_unresolved"].includes(
             latest?.lastError ?? "",
           )
         ? "The result of a processing request could not be confirmed. Processing is paused. Contact the operator before retrying."
-        : "Processing is paused and needs an operator review before retrying. Your saved class and earlier notes are available.";
+        : "Processing is paused and needs an operator review before retrying. Your saved session and earlier notes are available.";
   const outputMessage =
     latest?.lastError === "provider_output_truncated"
-      ? "The generated response was incomplete. No new class notes were saved. Retry processing to create a complete result."
+      ? "The generated response was incomplete. No new session notes were saved. Retry processing to create a complete result."
       : latest?.lastError?.startsWith("output_") ||
           latest?.lastError === "knowledge_repair_exhausted"
         ? "The generated notes could not be verified against your chosen language and selected sources. No new notes were saved. Retry processing to create a new result."
@@ -267,7 +267,7 @@ export function ProcessingView({
     setPendingRecordings(pending.length);
     if (pending.length) {
       setError(
-        "Wait for every recorded part to finish saving and be added to this class before confirming processing.",
+        "Wait for every recorded part to finish saving and be added to this session before confirming processing.",
       );
       return;
     }
@@ -281,7 +281,7 @@ export function ProcessingView({
     ) {
       setEstimate(current);
       setError(
-        "The class sources have changed. Review the updated estimate and confirm again to include the saved recording parts.",
+        "The session sources have changed. Review the updated estimate and confirm again to include the saved recording parts.",
       );
       return;
     }
@@ -298,7 +298,7 @@ export function ProcessingView({
     key.current = null;
     setRuns((previous) => [run, ...previous.filter((row) => row.id !== run.id)]);
     if (run.state === "awaiting_upload") await sendLocalAudio(run);
-    router.replace(`/classes/${sessionId}/processing`);
+    router.replace(`/sessions/${sessionId}/processing`);
   }
   const enough =
     !!estimate?.requested &&
@@ -325,7 +325,7 @@ export function ProcessingView({
             previousSelection
               ? "Previous attempt"
               : completed
-                ? "Class notes created"
+                ? "Session notes created"
                 : verifiedAudioNeedsConfirmation
                   ? "Audio verified — confirm to create notes"
                   : "Latest result"
@@ -336,20 +336,20 @@ export function ProcessingView({
             {previousSelection
               ? "Your sources have changed since this attempt. Review the current selection below."
               : latest.state === "ready"
-                ? "Your class is ready."
+                ? "Your session is ready."
                 : latest.state === "partial_ready"
                   ? "A partial result is ready. Some selected material could not be extracted."
                   : latest.state === "cancelled"
                     ? "Processing cancelled. Unused allowance was released."
                     : verifiedAudioNeedsConfirmation
-                      ? "Upload and verification are complete. Confirm below to start creating your class notes."
-                      : "Processing needs attention. Your saved class and earlier notes are available."}
+                      ? "Upload and verification are complete. Confirm below to start creating your session notes."
+                      : "Processing needs attention. Your saved session and earlier notes are available."}
           </p>
           {completed ? (
             <>
               <p className="preview-muted">Step 3 of 3 · Read notes and prepare flashcards</p>
               <p>
-                Next, read and save your class notes. Then prepare flashcards from the learning
+                Next, read and save your session notes. Then prepare flashcards from the learning
                 items and add the cards you want to practise.
               </p>
             </>
@@ -360,7 +360,7 @@ export function ProcessingView({
                 ? operatorMessage
                 : latest.lastError === "new_confirmation_required"
                   ? verifiedAudioNeedsConfirmation
-                    ? "Your audio is uploaded and verified. Note creation has not started. Review the allowance below and confirm to create your class notes; you do not need to upload the audio again."
+                    ? "Your audio is uploaded and verified. Note creation has not started. Review the allowance below and confirm to create your session notes; you do not need to upload the audio again."
                     : "The verified source has changed. Review the selected sources and allowance before confirming again."
                   : latest.lastError === "audio_upload_rejected"
                     ? "The audio could not be verified. Review the selected audio, then retry with the saved original on this device or replace it."
@@ -371,25 +371,25 @@ export function ProcessingView({
           <Actions>
             {completed ? (
               <>
-                <LinkButton href={`/classes/${sessionId}/notes`}>Read class notes</LinkButton>
-                <LinkButton secondary href={`/classes/${sessionId}/cards`}>
+                <LinkButton href={`/sessions/${sessionId}/notes`}>Read session notes</LinkButton>
+                <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
                   Make flashcards
                 </LinkButton>
               </>
             ) : null}
-            <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+            <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
               {completed ? "Add or change material" : "Change sources"}
             </LinkButton>
-            <Link href={`/classes/${sessionId}`}>Back to class</Link>
+            <Link href={`/sessions/${sessionId}`}>Back to session</Link>
           </Actions>
         </Panel>
       ) : null}
       {active ? (
-        <Panel tone="hero" title="Preparing your class">
+        <Panel tone="hero" title="Preparing your session">
           <p className="preview-muted">
             {latest.state === "awaiting_upload"
               ? "Step 1 of 3 · Upload and verify material"
-              : "Step 2 of 3 · Create class notes"}
+              : "Step 2 of 3 · Create session notes"}
           </p>
           <p role="status">
             {latest.state === "awaiting_upload"
@@ -398,10 +398,10 @@ export function ProcessingView({
                 : "Waiting for selected audio to be uploaded and verified."
               : latest.state === "queued"
                 ? "Queued. You can leave this page; progress is saved."
-                : "Extracting the selected sources and building your class notes."}
+                : "Extracting the selected sources and building your session notes."}
           </p>
           <p>
-            When processing finishes, select Read class notes. Save the notes, then choose the
+            When processing finishes, select Read session notes. Save the notes, then choose the
             learning items to turn into flashcards.
           </p>
           <Actions>
@@ -414,8 +414,8 @@ export function ProcessingView({
                   : "Resume audio upload"}
               </Button>
             ) : null}
-            <LinkButton secondary href={`/classes/${sessionId}`}>
-              Continue to class
+            <LinkButton secondary href={`/sessions/${sessionId}`}>
+              Continue to session
             </LinkButton>
             <Button
               secondary
@@ -430,15 +430,15 @@ export function ProcessingView({
         <Panel tone="hero" title="Check before processing">
           {pendingRecordings > 0 ? (
             <Status>
-              {pendingRecordings} recorded parts are still being saved or added to this class. Stop
-              the active recording and wait for all parts before confirming processing.
+              {pendingRecordings} recorded parts are still being saved or added to this session.
+              Stop the active recording and wait for all parts before confirming processing.
             </Status>
           ) : null}
           {!estimate ? (
             <>
               <p role="status">
                 {estimateProblem === "no_selected_sources"
-                  ? "No material is selected for this class. Add or select saved material before processing."
+                  ? "No material is selected for this session. Add or select saved material before processing."
                   : estimateProblem === "sources_not_ready"
                     ? "Some selected files are still being verified. Wait for verification, or change the selected sources."
                     : estimateProblem === "selection_too_large"
@@ -452,7 +452,7 @@ export function ProcessingView({
                     Check again
                   </Button>
                 )}
-                <LinkButton href={`/classes/${sessionId}/sources`}>
+                <LinkButton href={`/sessions/${sessionId}/sources`}>
                   {estimateProblem === "no_selected_sources"
                     ? "Add or select material"
                     : "Review sources"}
@@ -462,7 +462,7 @@ export function ProcessingView({
           ) : (
             <>
               <p>
-                Confirm below to create class notes from your selected material. After processing,
+                Confirm below to create session notes from your selected material. After processing,
                 you can read and save the notes, then prepare flashcards. Audio leaves this device
                 for transcription after you confirm.
               </p>
@@ -532,7 +532,7 @@ export function ProcessingView({
                           ? "Retry processing"
                           : "Confirm and process"}
                 </Button>
-                <LinkButton secondary href={`/classes/${sessionId}/sources`}>
+                <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
                   Change sources
                 </LinkButton>
               </Actions>

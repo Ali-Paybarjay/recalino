@@ -14,7 +14,7 @@ vi.mock("../../../../ui/voice/VoiceProfile", () => ({
     createElement("a", { href: returnHref }, "Return from voice settings"),
 }));
 
-const notes = "/classes/10000000-0000-4000-8000-000000000001/notes";
+const notes = "/sessions/10000000-0000-4000-8000-000000000001/notes";
 
 beforeEach(() => {
   mocks.requireLearner.mockReset();

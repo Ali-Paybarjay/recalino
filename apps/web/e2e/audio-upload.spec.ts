@@ -98,7 +98,7 @@ async function fixture(page: Page) {
       },
     );
     expect(run.state).toBe("awaiting_upload");
-    await page.goto("/classes");
+    await page.goto("/sessions");
     await page.evaluate(
       async ({ owner, sessionId, sourceId, size }) => {
         const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -299,7 +299,7 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
   }) => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "transient");
-    await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await page.goto(`/sessions/${seeded.sessionId}/processing`);
     await state.waitForCompletion();
     await expect.poll(state.completions).toBe(1);
     expect(state.puts.map((part) => part.index).sort()).toEqual([0, 1, 2, 3, 3, 4]);
@@ -322,7 +322,7 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
   }) => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "corrupt");
-    await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await page.goto(`/sessions/${seeded.sessionId}/processing`);
     await expect(
       page
         .getByRole("complementary", { name: "Saved audio uploads" })
@@ -348,7 +348,7 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
   }) => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "offline");
-    await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await page.goto(`/sessions/${seeded.sessionId}/processing`);
     await expect(
       page.getByText("Saved on this device. Upload resumes when you reconnect."),
     ).toBeVisible();
@@ -365,7 +365,7 @@ test.describe("FR-SRC-004 audio upload recovery", () => {
   }) => {
     const seeded = await fixture(page);
     const state = await mockUpload(page, seeded, "exhausted");
-    await page.goto(`/classes/${seeded.sessionId}/processing`);
+    await page.goto(`/sessions/${seeded.sessionId}/processing`);
     await state.waitForFailedAttempts();
     await expect(
       page

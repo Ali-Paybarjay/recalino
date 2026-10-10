@@ -137,7 +137,7 @@ export function watchRecordingMediaSession(
             ? "Recording paused"
             : state.phase === "recovering"
               ? "Reconnecting microphone"
-              : "Class recording",
+              : "Session recording",
         artist: "Recalino",
         artwork: [{ src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }],
       });

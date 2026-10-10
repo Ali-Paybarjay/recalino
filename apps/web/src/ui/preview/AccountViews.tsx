@@ -50,7 +50,7 @@ const copy = {
   resetHelp: "Your saved choices stay the same.",
   savePreferences: "Save preferences",
   allowanceTitle: "Your processing allowance",
-  allowanceHelp: "Use it for the class material that helps you most.",
+  allowanceHelp: "Use it for the session material that helps you most.",
   available: "Available in this sample",
   minutes: "audio minutes remaining",
   pages: "pages/photos remaining",
@@ -61,7 +61,7 @@ const copy = {
     "The available amounts reflect processing in this sample workspace. Retrying a completed request does not charge twice.",
   noAllowance: "No allowance left?",
   operatorHelp:
-    "Keep your class material for later and ask the pilot operator about your allowance.",
+    "Keep your session material for later and ask the pilot operator about your allowance.",
   ask: "Ask pilot operator",
   english: "English only",
   englishHelp: "Words and grammar explained in English.",
@@ -74,7 +74,7 @@ const copy = {
   goalHelp: "What are you learning English for?",
   notSure: "Not sure",
   setupExplanationTitle: "How would you like explanations?",
-  setupExplanationHelp: "Step 2 of 5 · Class notes stay in English.",
+  setupExplanationHelp: "Step 2 of 5 · Session notes stay in English.",
   setupGoalTitle: "Your English, your goal",
   setupGoalHelp: "Step 3 of 5 · Both choices are optional.",
   setupZoneTitle: "Make room for a little practice",
@@ -93,7 +93,7 @@ const copy = {
   noZones: "No time zone matches. Try another city.",
   experimental: "Experimental",
   experimentalHelp:
-    "First-language explanations are experimental. They appear beside English so you can compare them. Check important points against your class material.",
+    "First-language explanations are experimental. They appear beside English so you can compare them. Check important points against your session material.",
   legalHelp: "Read the current documents, with clear navigation and a reachable close control.",
   legalSample:
     "The original development draft is shown below. The operator name and email in this preview are fictional.",
@@ -102,17 +102,18 @@ const copy = {
   version: "Version",
   recordingVersion: "Current recording guidance · Version 0.1",
   dataHelp: "Choose exactly what to remove. Read the consequences first.",
-  sourceTitle: "A source used in more than one class",
-  sourceSample: "Shared handout.pdf · Used by 2 sample classes",
-  remove: "Remove from this class",
-  removeHelp: "Disconnect it from this class. Keep the original source and its other use.",
+  sourceTitle: "A source used in more than one session",
+  sourceSample: "Shared handout.pdf · Used by 2 sample sessions",
+  remove: "Remove from this session",
+  removeHelp: "Disconnect it from this session. Keep the original source and its other use.",
   original: "Delete original, keep notes",
   originalHelp: "Remove the original file. Keep the notes and cards already made from it.",
   completely: "Delete completely",
-  completeHelp: "Remove the source and its derived notes and cards from every connected class.",
+  completeHelp: "Remove the source and its derived notes and cards from every connected session.",
   reviewSource: "Review source deletion",
   deleteAccount: "Delete your account",
-  accountConsequence: "This resets the sample account, classes and review history in this preview.",
+  accountConsequence:
+    "This resets the sample account, sessions and review history in this preview.",
   acknowledge: "I understand the sample changes will be removed.",
   keep: "Keep my data",
   reviewDeletion: "Review deletion",
@@ -201,7 +202,7 @@ function ProfileView() {
       <Panel title={copy.space}>
         <div className={styles.rows}>
           {[
-            { label: "Courses and classes", to: "classes" },
+            { label: "Courses and sessions", to: "classes" },
             { label: copy.progress, to: "progress" },
             { label: copy.preferences, to: "preferences" },
             { label: copy.allowance, to: "allowance" },
@@ -364,7 +365,7 @@ function AllowanceView() {
         </Button>
       </Panel>
       <Actions>
-        <LinkButton to="classes">View classes</LinkButton>
+        <LinkButton to="classes">View courses</LinkButton>
         <LinkButton to="profile" secondary>
           {accountCopy.back}
         </LinkButton>

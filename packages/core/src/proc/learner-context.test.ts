@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { canonicalJson } from "../plt";
 import { runSettingsSchema } from "./contracts";
-import { learnerTeachingContextSchema, snapshotLearnerTeachingContext } from "./learner-context";
+import {
+  adaptationWithoutSources,
+  declaredTeachingContext,
+  learnerTeachingContextSchema,
+  lessonAdaptationView,
+  MAX_PRACTICE_FOCUS,
+  modelTeachingContext,
+  selectPracticeFocus,
+  snapshotLearnerTeachingContext,
+  teachingAdaptation,
+  withoutPracticeSources,
+} from "./learner-context";
 
 describe("AC-D46-05 declared learner context", () => {
   it("snapshots declared choices without retaining mutable profile data", () => {
@@ -43,5 +54,220 @@ describe("AC-D46-05 declared learner context", () => {
     { version: 2, declaredLevel: "B1" },
   ])("rejects invalid or invented profile assertions: %j", (context) => {
     expect(learnerTeachingContextSchema.safeParse(context).success).toBe(false);
+  });
+});
+
+describe("D49 bounded memory in the teaching context", () => {
+  const THIS_CLASS = "10000000-0000-4000-8000-000000000001";
+  const OTHER_CLASS = "20000000-0000-4000-8000-000000000002";
+  const candidate = (
+    target: string,
+    scope: "this_class" | "same_course",
+    reason: "recall_difficulty" | "asked_simpler" = "recall_difficulty",
+  ) => ({
+    target,
+    reason,
+    scope,
+    againCount: 3,
+    lastEvidenceDate: "2026-10-06",
+    sourceSessionId: scope === "this_class" ? THIS_CLASS : OTHER_CLASS,
+  });
+  const sources = [
+    {
+      blocks: [
+        { text: "Today we practised: I look forward to meeting you." },
+        { text: "We also kit the office out next week." },
+      ],
+    },
+  ];
+
+  it("stays version 1 without memory and freezes explicit choice and points as version 2", () => {
+    expect(snapshotLearnerTeachingContext({ level: "B1", goal: "esol" }, {})).toEqual({
+      version: 1,
+      declaredLevel: "B1",
+      goal: "esol",
+    });
+    const snapshot = snapshotLearnerTeachingContext(
+      { level: "B1", goal: null },
+      { simplerExplanations: true, practiceCandidates: [candidate("get on with", "same_course")] },
+    );
+    expect(snapshot).toEqual({
+      version: 2,
+      declaredLevel: "B1",
+      simplerExplanations: true,
+      practiceCandidates: [candidate("get on with", "same_course")],
+    });
+    expect(() =>
+      snapshotLearnerTeachingContext(
+        { level: null, goal: null },
+        { practiceCandidates: [{ ...candidate("x", "this_class"), againCount: -1 }] },
+      ),
+    ).toThrow();
+  });
+
+  it("keeps this class's points and only literally co-occurring same-course points, at most five", () => {
+    const context = snapshotLearnerTeachingContext(
+      { level: null, goal: null },
+      {
+        practiceCandidates: [
+          candidate("be pressed for time", "this_class"),
+          candidate("look forward to + -ing / noun", "same_course"),
+          candidate("get on with sb", "same_course"),
+          candidate("kit sth out", "same_course", "asked_simpler"),
+          candidate("<b>not a target</b>", "this_class"),
+        ],
+      },
+    );
+    const focus = selectPracticeFocus(context, sources);
+    expect(focus.map((item) => item.target)).toEqual([
+      "be pressed for time",
+      "look forward to + -ing / noun",
+      "kit sth out",
+    ]);
+    expect(
+      selectPracticeFocus(snapshotLearnerTeachingContext({ level: null, goal: null }), sources),
+    ).toEqual([]);
+    const many = snapshotLearnerTeachingContext(
+      { level: null, goal: null },
+      {
+        practiceCandidates: ["a", "b", "c", "d", "e", "f"].map((word) =>
+          candidate(`word ${word}`, "this_class"),
+        ),
+      },
+    );
+    expect(selectPracticeFocus(many, sources)).toHaveLength(MAX_PRACTICE_FOCUS);
+  });
+
+  it("never gives the model unmatched points, counts or dates", () => {
+    const context = snapshotLearnerTeachingContext(
+      { level: "A2", goal: "general" },
+      {
+        simplerExplanations: true,
+        practiceCandidates: [
+          candidate("look forward to + -ing / noun", "same_course"),
+          candidate("get on with sb", "same_course"),
+        ],
+      },
+    );
+    const model = modelTeachingContext(context, selectPracticeFocus(context, sources));
+    expect(model).toEqual({
+      version: 2,
+      declaredLevel: "A2",
+      goal: "general",
+      simplerExplanations: true,
+      practiceFocus: [{ target: "look forward to + -ing / noun", reason: "recall_difficulty" }],
+    });
+    expect(JSON.stringify(model)).not.toMatch(
+      /againCount|2026-10-06|get on with|sourceSessionId|20000000/,
+    );
+    // Answer-span repair and translation get declared choices only.
+    expect(declaredTeachingContext(model)).toEqual({
+      version: 1,
+      declaredLevel: "A2",
+      goal: "general",
+    });
+    expect(declaredTeachingContext(undefined)).toBeUndefined();
+    const legacy = snapshotLearnerTeachingContext({ level: "B2", goal: null });
+    expect(modelTeachingContext(legacy, [])).toBe(legacy);
+    expect(declaredTeachingContext(modelTeachingContext(legacy, []))).toEqual(legacy);
+    expect(modelTeachingContext(undefined, [])).toBeUndefined();
+  });
+
+  it("records adaptation links by exact lexical target and shows only points still taught", () => {
+    const context = snapshotLearnerTeachingContext(
+      { level: "B1", goal: "ielts" },
+      { practiceCandidates: [candidate("look forward to + -ing / noun", "same_course")] },
+    );
+    const focus = selectPracticeFocus(context, sources);
+    const items = [
+      { id: "lf", study: { en: "look forward to + noun / -ing" } },
+      { id: "other", study: { en: "kit sth out" } },
+      { id: "plain" },
+    ];
+    const record = teachingAdaptation({ context, shorterExamples: true, focus, items });
+    expect(record).toMatchObject({
+      declaredLevel: "B1",
+      goal: "ielts",
+      shorterExamples: true,
+      simplerExplanations: false,
+      linkedItemIds: ["lf"],
+    });
+    const view = lessonAdaptationView({ teachingAdaptation: record }, items);
+    expect(view?.focus.map((item) => item.target)).toEqual(["look forward to + -ing / noun"]);
+    expect(JSON.stringify(view)).not.toContain("sourceSessionId");
+    // A learner edit that removes the structured item removes the claim from the view.
+    expect(lessonAdaptationView({ teachingAdaptation: record }, [{ id: "lf" }])?.focus).toEqual([]);
+    expect(lessonAdaptationView({ mode: "mock" }, items)).toBeNull();
+    expect(lessonAdaptationView({ teachingAdaptation: { version: 9 } }, items)).toBeNull();
+  });
+
+  it("forgets points copied from a deleted class in snapshots and adaptation records", () => {
+    const deleted = new Set([OTHER_CLASS]);
+    const mixed = snapshotLearnerTeachingContext(
+      { level: "B1", goal: null },
+      {
+        practiceCandidates: [
+          candidate("be pressed for time", "this_class"),
+          candidate("look forward to + -ing / noun", "same_course"),
+        ],
+      },
+    );
+    expect(withoutPracticeSources(mixed, deleted)).toEqual({
+      version: 2,
+      declaredLevel: "B1",
+      practiceCandidates: [candidate("be pressed for time", "this_class")],
+    });
+    const copiedOnly = snapshotLearnerTeachingContext(
+      { level: "B1", goal: "esol" },
+      { practiceCandidates: [candidate("get on with sb", "same_course")] },
+    );
+    // Nothing else justified version 2, so the snapshot returns to version 1.
+    expect(withoutPracticeSources(copiedOnly, deleted)).toEqual({
+      version: 1,
+      declaredLevel: "B1",
+      goal: "esol",
+    });
+    const chosen = snapshotLearnerTeachingContext(
+      { level: null, goal: null },
+      {
+        simplerExplanations: true,
+        practiceCandidates: [candidate("get on with sb", "same_course")],
+      },
+    );
+    expect(withoutPracticeSources(chosen, deleted)).toEqual({
+      version: 2,
+      simplerExplanations: true,
+    });
+    expect(withoutPracticeSources(mixed, new Set([crypto.randomUUID()]))).toBeUndefined();
+    expect(withoutPracticeSources(undefined, deleted)).toBeUndefined();
+
+    const items = [
+      { id: "lf", study: { en: "look forward to + noun / -ing" } },
+      { id: "busy", study: { en: "be pressed for time" } },
+    ];
+    const record = teachingAdaptation({
+      context: mixed,
+      shorterExamples: false,
+      focus: selectPracticeFocus(mixed, [
+        { blocks: [{ text: "be pressed for time; I look forward to meeting you" }] },
+      ]),
+      items,
+    });
+    expect(record.linkedItemIds).toEqual(["lf", "busy"]);
+    const redacted = adaptationWithoutSources(
+      { mode: "mock", teachingAdaptation: record },
+      deleted,
+      items,
+    );
+    expect(redacted).toMatchObject({
+      mode: "mock",
+      teachingAdaptation: {
+        focus: [candidate("be pressed for time", "this_class")],
+        linkedItemIds: ["busy"],
+      },
+    });
+    expect(JSON.stringify(redacted)).not.toMatch(/look forward|20000000/);
+    expect(adaptationWithoutSources(redacted, deleted, items)).toBeUndefined();
+    expect(adaptationWithoutSources({ mode: "mock" }, deleted, items)).toBeUndefined();
   });
 });

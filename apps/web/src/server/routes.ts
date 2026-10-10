@@ -138,6 +138,12 @@ export const ROUTES = {
     path: "/api/learning/preferences",
     access: "learner",
   },
+  learningFeedback: {
+    id: "learningFeedback",
+    path: "/api/learning/feedback",
+    access: "learner",
+    idempotency: "handler",
+  },
   classSources: { id: "classSources", path: "/api/classes/[id]/sources", access: "learner" },
   classSource: {
     id: "classSource",

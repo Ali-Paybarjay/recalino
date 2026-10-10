@@ -19,7 +19,7 @@ export function CourseNavigation({
           href={`/courses/${course.id}`}
           aria-current={current === "classes" ? "page" : undefined}
         >
-          Classes
+          Sessions
         </Link>
         <Link
           className="preview-index-link"

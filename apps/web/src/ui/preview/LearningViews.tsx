@@ -126,7 +126,7 @@ function ComputerVoice({ text }: { text: string }) {
   return (
     <div className="preview-stack">
       <p className={styles.muted}>
-        Computer voice demonstration. This is not your class recording.
+        Computer voice demonstration. This is not your session recording.
       </p>
       <Actions>
         <Button secondary onClick={play} disabled={speaking}>
@@ -157,7 +157,7 @@ function Notes() {
     <div className={styles.layout}>
       <PageHeader
         title={state.classes[0]?.title ?? "Present perfect"}
-        description={`Class notes · sample material · Version ${state.noteHistory.length}`}
+        description={`Session notes · sample material · Version ${state.noteHistory.length}`}
         back="class"
       />
       {state.processing === "partial" ? (
@@ -542,7 +542,7 @@ function Transcript() {
   return (
     <div className={styles.layout}>
       <PageHeader
-        title="Class transcript"
+        title="Session transcript"
         description="Read or correct what was said in the sample class."
         back="class"
       />
@@ -703,7 +703,7 @@ function ExportNotes() {
                 (card) => card.classId === state.classes[0]?.id && card.status === "active",
               ).length
             }{" "}
-            active sample cards in this class.
+            active sample cards in this session.
           </p>
           <Status>
             Anki export is not connected in this preview. No Anki package can be downloaded yet.
@@ -758,7 +758,7 @@ function Cards() {
     <div className={styles.layout}>
       <PageHeader
         title="Choose useful cards"
-        description="Select the ideas you want to practise from this class."
+        description="Select the ideas you want to practise from this session."
         back="notes"
       />
       <div className={styles.toolbar}>
@@ -1555,7 +1555,7 @@ function Review() {
     <div className={styles.layout}>
       <PageHeader
         title="A few minutes of practice"
-        description="A short session is enough. Review history stays in this sample workspace."
+        description="A short review is enough. Review history stays in this sample workspace."
       />
       <Panel title="Today’s cards" tone="hero">
         <dl className={styles.metrics}>
@@ -1568,7 +1568,7 @@ function Review() {
             <dd>{newCount}</dd>
           </div>
           <div>
-            <dt>In this session</dt>
+            <dt>In this review</dt>
             <dd>{queue.length}</dd>
           </div>
         </dl>
@@ -1585,7 +1585,7 @@ function Review() {
                 queue.map((card) => card.id),
               ),
             );
-            announce("A new sample review session has started.");
+            announce("A new sample review has started.");
             router.push("/preview/review-card");
           }}
         >
@@ -1593,7 +1593,7 @@ function Review() {
         </Button>
       </Panel>
       <div className="preview-grid">
-        <Panel title="Keep the session manageable">
+        <Panel title="Keep the review manageable">
           <label className={styles.check}>
             <input
               type="checkbox"
@@ -1643,7 +1643,7 @@ function Review() {
         </Panel>
       </div>
       {!queue.length ? (
-        <Status>Add a card from your class notes to start a sample review.</Status>
+        <Status>Add a card from your session notes to start a sample review.</Status>
       ) : null}
       <Actions>
         <LinkButton to="cards" secondary>
@@ -1732,12 +1732,12 @@ function ReviewCard({ revealed }: { revealed: boolean }) {
   if (!card)
     return (
       <div className={styles.layout}>
-        <PageHeader title="Your sample session is finished" />
+        <PageHeader title="Your sample review is finished" />
         <Panel>
-          <p>There are no more cards in this session.</p>
+          <p>There are no more cards in this review.</p>
           <LinkButton to="review-summary">View summary</LinkButton>
           <LinkButton to="review" secondary>
-            Choose another session
+            Choose another review
           </LinkButton>
         </Panel>
       </div>
@@ -1778,7 +1778,7 @@ function ReviewCard({ revealed }: { revealed: boolean }) {
     <div className={`${styles.layout} ${styles.review}`}>
       <PageHeader
         title={revealed ? "Compare your answer" : "A moment to remember"}
-        description={`Card ${state.reviewCursor + 1} of ${ids.length} · Sample session`}
+        description={`Card ${state.reviewCursor + 1} of ${ids.length} · Sample review`}
         back="review"
       />
       <article className={styles.flashcard}>
@@ -1897,9 +1897,9 @@ function ReviewSummary() {
             ? "You made time for your English."
             : "A little practice is ready when you are."
         }
-        description="A factual summary of this sample session."
+        description="A factual summary of this sample review."
       />
-      <Panel title="Your session" tone="hero">
+      <Panel title="Your review" tone="hero">
         <dl className={styles.metrics}>
           <div>
             <dt>Answers saved</dt>
@@ -1916,7 +1916,7 @@ function ReviewSummary() {
         </dl>
         <p>
           {Math.max(0, state.reviewSessionIds.length - saved.length)} cards remain in the sample
-          session. You do not have to finish them now.
+          review. You do not have to finish them now.
         </p>
         {pending ? (
           <Status tone="error">
@@ -2018,13 +2018,13 @@ function Progress() {
       <Panel title="Your learning space">
         <p>
           {state.cards.filter((card) => card.status === "active").length} active cards ·{" "}
-          {state.classes.length} sample classes.
+          {state.classes.length} sample sessions.
         </p>
         <p className={styles.muted}>
           Counts use your changes in this preview. No activity from a real account is included.
         </p>
         <LinkButton to="classes" secondary>
-          View classes
+          View courses
         </LinkButton>
       </Panel>
     </div>

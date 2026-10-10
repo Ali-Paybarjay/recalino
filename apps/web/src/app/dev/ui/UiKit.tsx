@@ -13,6 +13,7 @@ import {
 } from "../../../ui/components/Feedback";
 import { Field, TextArea, TextInput } from "../../../ui/components/Field";
 import { Icon } from "../../../ui/components/Icon";
+import { InfoTip } from "../../../ui/components/InfoTip";
 import { RadioCards } from "../../../ui/components/RadioCards";
 import { SegmentedControl } from "../../../ui/components/SegmentedControl";
 import { ConfirmDialog, Sheet } from "../../../ui/components/Sheet";
@@ -26,6 +27,7 @@ import {
   SourceStatus,
 } from "../../../ui/components/Status";
 import { Switch } from "../../../ui/components/Switch";
+import { unitCopy } from "../../../ui/course-copy";
 import {
   ArrowsClockwise,
   Cards,
@@ -120,7 +122,7 @@ function Fields() {
       <Field
         id="kit-title"
         label="Title (optional)"
-        hint="If you don't choose, the class goes into &quot;My classes&quot;."
+        hint="If you don't choose, the session goes into &quot;My Courses&quot;."
       >
         {(control) => (
           <TextInput
@@ -161,7 +163,7 @@ function Choices() {
       <Checkbox label="Board photos (2)" defaultChecked />
       <Checkbox label="Worksheet pages (4)" disabled />
       <div className={styles.row}>
-        <Switch label="Include class recording" checked={include} onChange={setInclude} />
+        <Switch label="Include session recording" checked={include} onChange={setInclude} />
         <Switch label="Auto add" checked={autoAdd} onChange={setAutoAdd} />
         <Switch label="Include in processing" checked={false} onChange={() => {}} disabled />
       </div>
@@ -205,8 +207,8 @@ function Choices() {
         options={[
           {
             value: "remove",
-            title: "Remove from this class",
-            description: "The file stays for other classes that use it. Notes don't change.",
+            title: "Remove from this session",
+            description: "The file stays for other sessions that use it. Notes don't change.",
           },
           {
             value: "original",
@@ -302,7 +304,7 @@ function Feedback() {
         You're offline. You can still record and recover recordings.
       </Banner>
       <InlineError
-        title="Couldn't load your classes"
+        title="Couldn't load your sessions"
         text="Check your connection and try again."
         onRetry={() => setRetries((n) => n + 1)}
       />
@@ -311,8 +313,8 @@ function Feedback() {
       </p>
       <EmptyState
         icon={Cards}
-        text="No cards yet. Cards appear after a class is processed."
-        action={<Button icon={Plus}>New class</Button>}
+        text="No cards yet. Cards appear after a session is processed."
+        action={<Button icon={Plus}>New session</Button>}
       />
       <Skeleton
         label="Loading review"
@@ -354,12 +356,12 @@ function Overlays() {
       <p className={styles.note}>
         Result: <span data-testid="overlay-result">{result}</span>
       </p>
-      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="New class">
+      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="New session">
         <Field id="sheet-title" label="Title (optional)">
           {(control) => <TextInput {...control} placeholder="For example: Present perfect" />}
         </Field>
         <Button variant="primary" size="lg" block onClick={() => setSheetOpen(false)}>
-          Create class
+          Create session
         </Button>
       </Sheet>
       <ConfirmDialog
@@ -392,14 +394,14 @@ function Overlays() {
           setDeleteOpen(false);
           setResult("deleted class");
         }}
-        title="Delete this class?"
+        title="Delete this session?"
         consequences={[
-          "Notes and 14 cards from this class will be deleted.",
+          "Notes and 14 cards from this session will be deleted.",
           "The recording on this device will be deleted.",
           "Files you already downloaded can't be recalled.",
         ]}
-        safeLabel="Keep class"
-        confirmLabel="Delete class"
+        safeLabel="Keep session"
+        confirmLabel="Delete session"
       />
       {snackbar ? (
         <Snackbar
@@ -412,6 +414,21 @@ function Overlays() {
           onDismiss={() => setSnackbar(false)}
         />
       ) : null}
+    </Section>
+  );
+}
+
+function InfoTips() {
+  return (
+    <Section title="Info tip">
+      <div className={styles.row}>
+        <span>Optional units</span>
+        <InfoTip label={unitCopy.helpLabel}>
+          {unitCopy.help.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </InfoTip>
+      </div>
     </Section>
   );
 }
@@ -460,6 +477,7 @@ export function UiKit() {
       <Statuses />
       <Feedback />
       <Overlays />
+      <InfoTips />
       <Scripts />
       <p className={styles.note}>
         <Icon icon={Image} /> Images and icons: Phosphor, local SVG.

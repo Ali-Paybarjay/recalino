@@ -1,40 +1,61 @@
 "use client";
 import type { VoiceCandidate } from "@recalino/core/voice-contracts";
 import { useEffect, useRef, useState } from "react";
-import { IndexedRecordingStore } from "../recording/store";
+import {
+  IndexedRecordingStore,
+  LocalRecordingIncompleteError,
+  LocalRecordingMissingError,
+} from "../recording/store";
 import { Button, Status } from "../workspace/primitives";
+import { localOriginalRow } from "./relink-original";
 import styles from "./Voice.module.css";
 
-export function useLocalVoiceAudio(userId: string, sourceId: string) {
-  const [audio, setAudio] = useState<{ url: string | null; loading: boolean }>({
+/**
+ * Where the original of one class source stands on this device. A store that cannot be read,
+ * an incomplete saved copy and a missing copy need different recoveries, so they stay apart.
+ */
+export type LocalAudioState = "loading" | "playable" | "missing" | "incomplete" | "unreadable";
+
+export function useLocalVoiceAudio(userId: string, sourceId: string, revision = 0) {
+  const [audio, setAudio] = useState<{ url: string | null; state: LocalAudioState }>({
     url: null,
-    loading: true,
+    state: "loading",
   });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: revision re-reads the store after a relink.
   useEffect(() => {
     let cancelled = false;
     let url: string | null = null;
-    setAudio({ url: null, loading: true });
+    setAudio({ url: null, state: "loading" });
     const store = new IndexedRecordingStore();
+    const settle = (state: LocalAudioState, blob?: Blob) => {
+      if (cancelled) return;
+      url = blob ? URL.createObjectURL(blob) : null;
+      setAudio({ url, state });
+    };
     void store
       .list(userId)
       .then(async (rows) => {
-        const row = rows.find((item) => (item.sourceAssetId ?? item.id) === sourceId);
-        if (!row) return null;
-        return store.blob(userId, row.id);
+        const row = localOriginalRow(rows, sourceId);
+        if (!row) return settle("missing");
+        try {
+          const blob = await store.blob(userId, row.id);
+          settle(blob.size ? "playable" : "incomplete", blob.size ? blob : undefined);
+        } catch (error) {
+          settle(
+            error instanceof LocalRecordingIncompleteError
+              ? "incomplete"
+              : error instanceof LocalRecordingMissingError
+                ? "missing"
+                : "unreadable",
+          );
+        }
       })
-      .then((blob) => {
-        if (cancelled) return;
-        url = blob ? URL.createObjectURL(blob) : null;
-        setAudio({ url, loading: false });
-      })
-      .catch(() => {
-        if (!cancelled) setAudio({ url: null, loading: false });
-      });
+      .catch(() => settle("unreadable"));
     return () => {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [userId, sourceId]);
+  }, [userId, sourceId, revision]);
   return audio;
 }
 
@@ -137,7 +158,7 @@ export function VoiceClips({
                   Excerpt {index + 1} · {timestamp(clip.startMs)} ·{" "}
                   {Math.round((clip.endMs - clip.startMs) / 1000)} sec
                 </span>
-                <p dir="auto">{clip.text}</p>
+                {clip.text ? <p dir="auto">{clip.text}</p> : null}
                 {audioUrl ? (
                   <Button
                     secondary
@@ -149,11 +170,15 @@ export function VoiceClips({
                 ) : null}
               </li>
             ))
-          : [...new Set(candidate.lines.slice(0, 4))].map((line) => (
+          : null}
+        {/* Listening-only excerpts carry no text; the saved lines still identify the voice. */}
+        {!clips.some((clip) => clip.text)
+          ? [...new Set(candidate.lines.slice(0, 4))].map((line) => (
               <li className={styles.clip} key={line}>
                 <p dir="auto">{line}</p>
               </li>
-            ))}
+            ))
+          : null}
       </ol>
       {problem ? <Status tone="error">{problem}</Status> : null}
     </>

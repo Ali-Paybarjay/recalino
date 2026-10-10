@@ -44,6 +44,7 @@ async function interceptFixture(page: Page) {
     });
   });
   await page.route("**/classes/**", (route) => route.abort());
+  await page.route("**/sessions/**", (route) => route.abort());
   return unexpected;
 }
 
@@ -72,11 +73,11 @@ test("inline retry stays in class, prevents duplicate submissions, and updates p
   await expect(retry).toHaveText("retry");
   await expect(page.getByRole("link", { name: "Add material", exact: true })).toHaveAttribute(
     "href",
-    `/classes/${sessionId}/sources`,
+    `/sessions/${sessionId}/sources`,
   );
   await expect(page.getByRole("link", { name: "View progress", exact: true })).toHaveAttribute(
     "href",
-    `/classes/${sessionId}/processing`,
+    `/sessions/${sessionId}/processing`,
   );
   const target = await retry.boundingBox();
   const horizontalOverflow = await page.evaluate(
@@ -239,13 +240,13 @@ for (const view of ["class", "progress"] as const) {
       await expect(
         page.getByRole("heading", { name: "Notes and flashcards are ready" }),
       ).toBeVisible();
-      await expect(page.getByRole("link", { name: "Class notes", exact: true })).toHaveAttribute(
+      await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveAttribute(
         "href",
-        `/classes/${sessionId}/notes`,
+        `/sessions/${sessionId}/notes`,
       );
       await expect(page.getByRole("link", { name: "Flashcards", exact: true })).toHaveAttribute(
         "href",
-        `/classes/${sessionId}/cards`,
+        `/sessions/${sessionId}/cards`,
       );
     } else {
       await expect(page.getByRole("link", { name: "View progress", exact: true })).toHaveCount(0);

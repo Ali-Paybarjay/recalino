@@ -361,6 +361,7 @@ export async function runDueJobs(
         ...fields,
         code,
         error_name: error instanceof Error ? error.name : typeof error,
+        reason: error instanceof AppError ? error.reason : undefined,
       });
     }
   }

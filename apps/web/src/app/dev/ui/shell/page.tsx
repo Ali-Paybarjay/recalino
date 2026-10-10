@@ -31,22 +31,22 @@ export default function ShellPage() {
       <div className={styles.record}>
         <button type="button" className={buttonClassName("primary", "md", styles.recordButton)}>
           <Icon icon={Microphone} weight="fill" size={26} />
-          Record a class
+          Record a session
         </button>
         <span className={styles.helper}>
           Starts right away · saved on this device · name it later
         </span>
       </div>
       <div className={styles.classes}>
-        <h2 className={styles.heading}>Recent classes</h2>
+        <h2 className={styles.heading}>Recent sessions</h2>
         <div className={styles.classRow}>
           <span className={styles.classTitle}>Present perfect vs past simple</span>
           <span className={styles.helper}>ESOL Entry 3 · Tue 30 Sep</span>
           <ClassStatusChip status="partlyReady" detail="Part 2 missing" />
         </div>
         <div className={styles.classRow}>
-          <span className={styles.classTitle}>Class — 23 Sep 2026</span>
-          <span className={styles.helper}>My classes · Tue 23 Sep</span>
+          <span className={styles.classTitle}>Session — 23 Sep 2026</span>
+          <span className={styles.helper}>My Courses · Tue 23 Sep</span>
           <ClassStatusChip status="waitingForAllowance" />
         </div>
       </div>
