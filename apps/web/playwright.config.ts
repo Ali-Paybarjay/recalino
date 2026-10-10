@@ -1,10 +1,13 @@
 import { existsSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 import { defineConfig, devices } from "@playwright/test";
+import { assertFixturesUseAppDatabase } from "../../packages/core/test/local-db";
 import { localJournalFixtureAvailable } from "./src/server/local-test-policy";
 
 const localEnvironment = new URL("./.env.local", import.meta.url);
 if (existsSync(localEnvironment)) loadEnvFile(localEnvironment);
+// Fixtures write straight to Postgres; stop before the server starts unless it is the app's.
+assertFixturesUseAppDatabase(process.env);
 const testJournal = localJournalFixtureAvailable({ ...process.env, RECALINO_TEST_JOURNAL: "1" });
 
 const port = 3000;
