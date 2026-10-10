@@ -365,6 +365,13 @@ function selectedRanges(ranges: { start: number; end: number }[], durationMs: nu
   }
   return merged;
 }
+/**
+ * Chunks cut at once. Each chunk's upload and read-back verification overlap the next chunk's
+ * encoding, which is where a long class spent most of its preparation time.
+ */
+export const AUDIO_PREPARATION_CONCURRENCY = 3;
+/** Provider chunk length; the transcript's time units keep the original recording's clock. */
+const CHUNK_MS = 300000;
 /** Temporary extraction artifacts only (D29); source ranges remain in original time coordinates. */
 export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, source, now }) => {
   if (!source.objectId || !source.durationMs)
@@ -372,59 +379,80 @@ export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, sourc
   const bytes = await readOwnedObject(db, store, ctx, source.objectId);
   if (createHash("sha256").update(bytes).digest("hex") !== source.sha256)
     throw errors.validationFailed({ audio: ["integrity_mismatch"] });
+  // Positions are fixed before any work starts, so chunk IDs and checkpoints stay the same on a
+  // retry whatever order the parallel cuts finish in.
+  const planned: { offsetMs: number; durationMs: number }[] = [];
+  for (const range of selectedRanges(source.ranges, source.durationMs ?? 0))
+    for (let offsetMs = range.start; offsetMs < range.end; offsetMs += CHUNK_MS)
+      planned.push({ offsetMs, durationMs: Math.min(CHUNK_MS, range.end - offsetMs) });
   const created: AudioChunk[] = [];
   try {
     return await withAudioFile(bytes, async (path, directory) => {
-      for (const range of selectedRanges(source.ranges, source.durationMs ?? 0)) {
-        for (let offsetMs = range.start; offsetMs < range.end; offsetMs += 300000) {
-          const durationMs = Math.min(300000, range.end - offsetMs);
-          const outputPath = join(directory, `part-${created.length}.mp3`);
-          await ffmpeg([
-            "-ss",
-            String(offsetMs / 1000),
-            "-i",
-            path,
-            "-t",
-            String(durationMs / 1000),
-            "-map",
-            "0:a:0",
-            "-vn",
-            "-sn",
-            "-dn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-b:a",
-            "32k",
-            "-map_metadata",
-            "-1",
-            "-y",
-            outputPath,
-          ]);
-          const output = await readFile(outputPath);
-          const objectId = await writeOwnedObject(db, store, ctx, {
-            module: "src",
-            retention: "temporary",
-            contentType: "audio/mpeg",
-            bytes: output,
-            now,
-            onRegistered: async (objectId) => {
-              await registerProcessingTemporaryObject(db, ctx, runId, objectId, now);
-            },
-          });
-          created.push({
-            // A class run can contain several independently recorded audio sources.
-            id: `${runId}-${source.sourceId}-${created.length}`,
-            sourceId: source.sourceId,
-            objectId,
-            offsetMs,
-            durationMs,
-            format: "mp3",
-          });
+      const chunks: AudioChunk[] = new Array(planned.length);
+      let next = 0;
+      let failure: { error: unknown } | null = null;
+      const lane = async () => {
+        while (!failure && next < planned.length) {
+          const index = next++;
+          const { offsetMs, durationMs } = planned[index] as (typeof planned)[number];
+          try {
+            const outputPath = join(directory, `part-${index}.mp3`);
+            await ffmpeg([
+              "-ss",
+              String(offsetMs / 1000),
+              "-i",
+              path,
+              "-t",
+              String(durationMs / 1000),
+              "-map",
+              "0:a:0",
+              "-vn",
+              "-sn",
+              "-dn",
+              "-ac",
+              "1",
+              "-ar",
+              "16000",
+              "-b:a",
+              "32k",
+              "-map_metadata",
+              "-1",
+              "-y",
+              outputPath,
+            ]);
+            const output = await readFile(outputPath);
+            await rm(outputPath, { force: true });
+            const objectId = await writeOwnedObject(db, store, ctx, {
+              module: "src",
+              retention: "temporary",
+              contentType: "audio/mpeg",
+              bytes: output,
+              now,
+              onRegistered: async (objectId) => {
+                await registerProcessingTemporaryObject(db, ctx, runId, objectId, now);
+              },
+            });
+            const chunk: AudioChunk = {
+              // A class run can contain several independently recorded audio sources.
+              id: `${runId}-${source.sourceId}-${index}`,
+              sourceId: source.sourceId,
+              objectId,
+              offsetMs,
+              durationMs,
+              format: "mp3",
+            };
+            chunks[index] = chunk;
+            created.push(chunk);
+          } catch (error) {
+            failure ??= { error };
+          }
         }
-      }
-      return created;
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(AUDIO_PREPARATION_CONCURRENCY, planned.length) }, lane),
+      );
+      if (failure) throw (failure as { error: unknown }).error;
+      return chunks;
     });
   } catch (failure) {
     await Promise.allSettled(

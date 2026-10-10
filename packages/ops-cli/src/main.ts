@@ -9,7 +9,7 @@ async function main() {
   const args = process.argv.slice(2).filter((argument) => argument !== "--");
   if (args.length === 0 || args.includes("--help")) {
     process.stdout.write(
-      "Usage: pnpm ops -- --input <request.json> [--env <explicit-env-file>]\nCommands in JSON: pilot.grant, quota.grant, quota.adjust, quota.close, cost.configure, source.configure, stats.\nRequires DATABASE_URL. Requests require version 1, actorId, reason, operationKey and input.\nPilot grants require an approved policy, a real account UUID, a persisted startsAt and operationKey pilot:<pilotId>:<userId>:initial.\nNo database target, commercial capacity or price is assumed.\n",
+      "Usage: pnpm ops -- --input <request.json> [--env <explicit-env-file>]\nCommands in JSON: pilot.grant, quota.grant, quota.adjust, quota.close, quota.return_duplicate_charges, cost.configure, source.configure, stats.\nRequires DATABASE_URL. Requests require version 1, actorId, reason, operationKey and input.\nPilot grants require an approved policy, a real account UUID, a persisted startsAt and operationKey pilot:<pilotId>:<userId>:initial.\nNo database target, commercial capacity or price is assumed.\n",
     );
     return;
   }

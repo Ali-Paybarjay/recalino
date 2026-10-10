@@ -7,8 +7,8 @@ import {
   activateProcessingRun,
   assertKnownSourceInputBound,
   cancelRun,
+  chargeableRunAmounts,
   createProcessingRun,
-  estimateRunAmounts,
   getProcessingRunSnapshot,
   getRun,
   listRuns,
@@ -21,7 +21,7 @@ import { allowance } from "@recalino/core/quota";
 import { z } from "zod";
 import { getAiProvider } from "./ai";
 import type { Handler, RequestContext } from "./api";
-import { runJobsSoon } from "./jobs";
+import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
 import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
@@ -65,7 +65,8 @@ export function classProcessingHandler(sessionId: string): Handler {
       { sessionId, operationKey: operationKey(request), ...expected },
       { ...options(), practiceCandidates: async () => practiceCandidates },
     );
-    if (run.state === "queued") runJobsSoon(["proc.process"], 90);
+    if (run.state === "queued")
+      runJobsSoon(["proc.process"], PROCESSING_WAKE.budgetSeconds, PROCESSING_WAKE.functionSeconds);
     return { status: 202, body: run };
   };
 }
@@ -87,8 +88,15 @@ export async function readProcessingEstimate(
   const balance = await allowance(db, learner);
   if (provider) assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
   const regeneration = (await getLatestVersion(db, learner, sessionId)) !== null;
+  // D59: the same charge-once amounts the confirmation will reserve.
   const requested = provider
-    ? estimateRunAmounts(snapshot, provider.settings.charactersPerPage, regeneration)
+    ? await chargeableRunAmounts(db, learner, {
+        sessionId,
+        entitlementId: balance.entitlementId,
+        sources: snapshot.sources,
+        charactersPerPage: provider.settings.charactersPerPage,
+        regeneration,
+      })
     : null;
   return {
     snapshot,
@@ -131,7 +139,7 @@ export function processingRunHandler(id: string): Handler {
       fields.action === "retry"
         ? await retryRun(db, learner, id, operationKey(request), deps)
         : await activateProcessingRun(db, learner, id, deps.job);
-    runJobsSoon(["proc.process"], 90);
+    runJobsSoon(["proc.process"], PROCESSING_WAKE.budgetSeconds, PROCESSING_WAKE.functionSeconds);
     return { status: 202, body: run };
   };
 }

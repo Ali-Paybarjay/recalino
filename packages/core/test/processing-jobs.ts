@@ -62,6 +62,7 @@ export async function runFixtureProcessingStep<P extends { runId: string; userId
       payloadVersion: job.payload_version,
       attempt: job.attempt + 1,
       token,
+      leaseSeconds: job.lease_seconds,
     };
     return { claim, payload };
   });

@@ -26,15 +26,20 @@ import {
 } from "../plt";
 import {
   type Amounts,
+  activeEntitlementId,
   amounts,
   amountsSchema,
   emptyAmounts,
-  equivalentPages,
+  reservationEntitlement,
   reserveAllowance,
-  selectedSeconds,
   settleAllowance,
 } from "../quota";
 import { selectSourceSnapshot } from "../src";
+import {
+  CHARGE_STEP_PATTERN,
+  chargeableRunAmounts,
+  keepChargedMaterialOnSourceCleanup,
+} from "./charged-material";
 import {
   createRunSchema,
   type RunSnapshot,
@@ -166,34 +171,6 @@ export function selectProcessingSourceSnapshot(
     },
   });
 }
-export function estimateRunAmounts(
-  snapshot: RunSnapshot,
-  charactersPerPage: number,
-  regeneration: boolean,
-): Amounts {
-  const used = emptyAmounts();
-  for (const source of snapshot.sources) {
-    if (source.kind === "audio")
-      used.audio += source.ranges.length
-        ? selectedSeconds(
-            source.ranges.map((range) => ({ start: range.start / 1000, end: range.end / 1000 })),
-          )
-        : Math.ceil((source.durationMs ?? 0) / 1000);
-    else if (source.kind === "pdf")
-      used.document += source.ranges.length
-        ? source.ranges.reduce((total, range) => total + range.end - range.start + 1, 0)
-        : (source.pageCount ?? 0);
-    else if (source.kind === "image") used.document += 1;
-    else
-      used.document += equivalentPages(
-        source.blocks.map((block) => block.text).join("\n"),
-        charactersPerPage,
-      );
-  }
-  used.regeneration = regeneration ? 1 : 0;
-  return amountsSchema.parse(used);
-}
-
 /** Known selected text is bounded before confirmation; OCR/transcription output is bounded separately. */
 export function assertKnownSourceInputBound(
   snapshot: RunSnapshot,
@@ -356,11 +333,14 @@ export async function createProcessingRun(
     )
       throw errors.validationFailed({ sources: ["changed_after_estimate"] });
     const id = randomUUID();
-    const requested = estimateRunAmounts(
-      snapshot,
-      provider.settings.charactersPerPage,
-      (await getLatestVersion(tx, ctx, session.id)) !== null,
-    );
+    // D59: under the account lock, reserve only material this class has not already paid for.
+    const requested = await chargeableRunAmounts(tx, ctx, {
+      sessionId: session.id,
+      entitlementId: await activeEntitlementId(tx, ctx, now),
+      sources: snapshot.sources,
+      charactersPerPage: provider.settings.charactersPerPage,
+      regeneration: (await getLatestVersion(tx, ctx, session.id)) !== null,
+    });
     const reservation = await reserveAllowance(tx, ctx, `processing:${id}`, requested, now);
     const awaiting = snapshot.sources.some(
       (source) => source.kind === "audio" && !source.contentVersionId && !source.objectId,
@@ -499,11 +479,14 @@ export async function activateProcessingRun(
         throw errors.validationFailed({ audio: ["new_confirmation_required"] });
     }
     const held = amountsSchema.parse(run.requested_amounts);
-    const actual = estimateRunAmounts(
-      current,
-      runSettingsSchema.parse(run.settings).provider.charactersPerPage,
-      held.regeneration > 0,
-    );
+    const actual = await chargeableRunAmounts(tx, ctx, {
+      sessionId: run.session_id,
+      entitlementId: await reservationEntitlement(tx, ctx, run.reservation_id),
+      sources: current.sources,
+      charactersPerPage: runSettingsSchema.parse(run.settings).provider.charactersPerPage,
+      regeneration: held.regeneration > 0,
+      excludeRunId: run.id,
+    });
     // Decoding can add codec padding milliseconds. The confirmed selection must stay
     // valid, and its measured, rounded usage must still fit the original reservation.
     if (
@@ -724,6 +707,8 @@ async function cleanupProcessingRuns(
   ctx: LearnerContext,
   runIds: readonly string[],
   options?: { store: ObjectStore; now?: Date },
+  /** D59: a source cleanup keeps what the class paid for its other files. */
+  deletedSourceId?: string,
 ): Promise<void> {
   if (!runIds.length) return;
   await db.transaction().execute(async (tx) => {
@@ -760,13 +745,18 @@ async function cleanupProcessingRuns(
           .where("user_id", "=", ctx.userId)
           .execute();
       }
+    if (deletedSourceId !== undefined)
+      await keepChargedMaterialOnSourceCleanup(
+        tx,
+        ctx,
+        ids,
+        deletedSourceId,
+        options?.now ?? new Date(),
+      );
     await tx
       .deleteFrom("proc.run_step")
-      .where(
-        "run_id",
-        "in",
-        rows.map((run) => run.id),
-      )
+      .where("run_id", "in", ids)
+      .$if(deletedSourceId !== undefined, (qb) => qb.where("step", "not like", CHARGE_STEP_PATTERN))
       .execute();
     await tx
       .updateTable("proc.processing_run")
@@ -798,6 +788,7 @@ export async function cleanupSourceProcessing(
     ctx,
     rows.map((row) => row.run_id),
     options,
+    sourceId,
   );
 }
 /** Session/account tombstones prevent replacement runs before this broader cleanup. */
