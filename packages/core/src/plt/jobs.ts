@@ -29,6 +29,8 @@ export interface ClaimedJob {
   attempt: number;
   /** This claim only: once the lease runs out and another runner claims the job, it is void. */
   token: string;
+  /** A live runner renews the lease before it ends (rule 5). */
+  leaseSeconds: number;
 }
 
 export interface JobContext {
@@ -36,6 +38,11 @@ export interface JobContext {
   now: () => Date;
   /** For records and logs; the payload carries the job's subject. */
   job: { id: string; attempt: number };
+  /**
+   * When the runner's function stops. A long handler starts no new external call it cannot
+   * finish before this, and checkpoints instead. Absent when the runner does not know its limit.
+   */
+  deadline?: Date;
   /**
    * Runs `effect` at most once for this job, in one transaction with the step's record
    * (FR-PLT-005 rule 6). Throws `JobCancelled` when the job was cancelled meanwhile (rule 7).
@@ -125,6 +132,7 @@ export async function claimJobs(
     payload_version: number;
     attempt: number;
     lease_token: string;
+    lease_seconds: number;
   }>`
     with picked as (
       select id from plt.job
@@ -139,7 +147,8 @@ export async function claimJobs(
         lease_until = ${now}::timestamptz + make_interval(secs => j.lease_seconds),
         updated_at = ${now}
     from picked where j.id = picked.id
-    returning j.id, j.kind, j.payload, j.payload_version, j.attempt, j.lease_token`.execute(db);
+    returning j.id, j.kind, j.payload, j.payload_version, j.attempt, j.lease_token,
+      j.lease_seconds`.execute(db);
   return result.rows.map((row) => ({
     id: row.id,
     kind: row.kind,
@@ -147,7 +156,20 @@ export async function claimJobs(
     payloadVersion: row.payload_version,
     attempt: row.attempt,
     token: row.lease_token,
+    leaseSeconds: row.lease_seconds,
   }));
+}
+
+/**
+ * Extends a running job's lease from `now` (rule 5). Only the current claim may renew, so a
+ * runner whose lease already ran out, or whose job was cancelled, gets false and stops renewing.
+ */
+export async function renewJobLease(db: Database, job: ClaimedJob, now: Date): Promise<boolean> {
+  const result = await sql`
+    update plt.job
+    set lease_until = ${now}::timestamptz + make_interval(secs => lease_seconds)
+    where id = ${job.id} and lease_token = ${job.token} and state = 'running'`.execute(db);
+  return Number(result.numAffectedRows ?? 0) === 1;
 }
 
 /** False when this claim is void: its lease ran out, or the job was cancelled. */
@@ -292,10 +314,50 @@ export async function runJobStep(
 export interface RunOptions {
   /** Stop claiming new jobs after this moment, so the function ends within its time limit. */
   deadline: Date;
+  /** When the runner's function itself stops; handlers see it as `JobContext.deadline`. */
+  finishBy?: Date;
   now?: () => Date;
   log?: Logger;
   /** Only these kinds, e.g. the one just enqueued; defaults to every definition. */
   kinds?: readonly string[];
+  /** How often a running job's lease is renewed; defaults to a quarter of its lease. */
+  leaseRenewalMs?: number;
+}
+
+/**
+ * Renews the claim while its handler runs (rule 5), so a lease can be short and a runner that
+ * stopped is found soon after. The returned stop waits for a renewal in flight, so completion
+ * never races one.
+ */
+function keepLease(
+  db: Database,
+  job: ClaimedJob,
+  now: () => Date,
+  options: Pick<RunOptions, "leaseRenewalMs" | "log">,
+): () => Promise<void> {
+  const every = options.leaseRenewalMs ?? Math.max(1000, (job.leaseSeconds * 1000) / 4);
+  const fields = { kind: job.kind, job_id: job.id, attempt: job.attempt };
+  let renewal: Promise<void> | null = null;
+  let lost = false;
+  const timer = setInterval(() => {
+    if (renewal || lost) return;
+    renewal = renewJobLease(db, job, now())
+      .then((renewed) => {
+        // Cancelled, or claimed again after an expiry: the token guards completion either way.
+        if (!renewed) {
+          lost = true;
+          options.log?.("warn", "job_lease_lost", fields);
+        }
+      })
+      .catch(() => options.log?.("warn", "job_lease_renewal_failed", fields))
+      .finally(() => {
+        renewal = null;
+      });
+  }, every);
+  return async () => {
+    clearInterval(timer);
+    await renewal;
+  };
 }
 
 export interface RunSummary {
@@ -341,10 +403,16 @@ export async function runDueJobs(
       db,
       now,
       job: { id: job.id, attempt: job.attempt },
+      ...(options.finishBy ? { deadline: options.finishBy } : {}),
       step: (name, effect) => runJobStep(db, job, name, effect, now()),
     };
+    const stopRenewal = keepLease(db, job, now, options);
     try {
-      await definition.run(parsed.data, ctx);
+      try {
+        await definition.run(parsed.data, ctx);
+      } finally {
+        await stopRenewal();
+      }
       if (await completeJob(db, job, now())) summary.succeeded += 1;
       options.log?.("info", "job_succeeded", fields);
     } catch (error) {

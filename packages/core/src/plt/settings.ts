@@ -24,7 +24,7 @@ export const pltSettingsSchema = z.strictObject({
   /** FR-PLT-005 job queue defaults; a job kind may override the first four. */
   jobs: z.strictObject({
     maxAttempts: z.int().min(1).max(20),
-    /** Longer than the longest function run, so a live runner never loses its claim. */
+    /** A live runner renews it every quarter (FR-PLT-005 rule 5); a stopped one loses it soon. */
     leaseSeconds: z.int().min(1).max(3600),
     retryBaseSeconds: z.int().min(0),
     retryMaxSeconds: z.int().min(0),
@@ -61,10 +61,12 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
   },
   rateLimitRepeatThreshold: 5,
   studyDayStartHour: 4,
-  // Proposed in M4 (2026-10-02). The lease outlasts the 800-second function limit (ADR-0001).
+  // Proposed in M4 (2026-10-02). Since 2026-10-10 the runner renews a running job's lease, so it
+  // no longer has to outlast the 800-second function limit (ADR-0001): a job whose runner stopped
+  // is claimed again about two minutes later instead of fifteen.
   jobs: {
     maxAttempts: 5,
-    leaseSeconds: 900,
+    leaseSeconds: 120,
     retryBaseSeconds: 30,
     retryMaxSeconds: 3600,
     retentionDays: 30,

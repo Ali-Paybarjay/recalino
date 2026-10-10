@@ -36,7 +36,7 @@ import {
   notifyAutomaticLearning,
   notifyAutomaticLearningForUpload,
 } from "./automatic-learning-notifications";
-import { runJobsSoon } from "./jobs";
+import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { privacyDependencies } from "./privacy";
 import { sourceAudioJobDefinition, sourceUploadJobDefinition } from "./source-jobs";
 import { getObjectStore } from "./storage";
@@ -337,7 +337,11 @@ export function sourceAudioHandler(assetId: string): Handler {
       }),
     );
     // Verification activates the confirmed run; keep its processing jobs moving immediately.
-    runJobsSoon(["src.verify_audio", "proc.process"], 90);
+    runJobsSoon(
+      ["src.verify_audio", "proc.process"],
+      PROCESSING_WAKE.budgetSeconds,
+      PROCESSING_WAKE.functionSeconds,
+    );
     return { status: 202, body: { ...manifest, jobId } };
   };
 }
