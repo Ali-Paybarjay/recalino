@@ -517,12 +517,16 @@ test("a completed voice check leads to an explicit speaker choice and the refres
   await page.goto("/dev/ui/voice?view=class");
   await page.getByRole("button", { name: "Check session voices", exact: true }).click();
   await expect(page.getByRole("button", { name: "Checking session voices…" })).toBeDisabled();
+  // D55: until the excerpts can play here, the summary names that step instead of a choice.
   await expect(
-    page.getByText(/Voice check finished. Next, confirm which speaker is you/),
+    page.getByText(/Voice check finished. To confirm your voice, its excerpts must first play/),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Read session notes", exact: true })).toBeVisible();
   await expect(page.getByText("The original audio isn't on this device.")).toBeVisible();
   await keepOriginalsOnDevice(page, { 1: learnerId });
+  await expect(
+    page.getByText(/Voice check finished. Next, confirm which speaker is you/),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Yes, this is my voice", exact: true }).click();
   await expect(page.getByText("Voice verified", { exact: true })).toBeVisible();
   await expect(page.getByText(/Your voice choices are saved/)).toBeVisible();
@@ -1222,7 +1226,17 @@ test("D55: a source whose excerpts cannot play here warns, names the next step a
   await page.goto("/dev/ui/voice?view=class");
   const listenFirst =
     "You confirm your voice by listening to these excerpts. Until they can play here, spoken mistakes from this source are withheld; your session notes stay available.";
+  await expect(
+    page.getByText(
+      "Voice check finished. To confirm your voice, its excerpts must first play on this device; the next step is shown below. Your session notes stay available.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/Next, confirm which speaker is you/)).toHaveCount(0);
   const first = page.getByRole("region", { name: "Source 1 voice confirmation" });
+  // The excerpts the warning refers to stay readable, with nothing to play or choose.
+  await expect(first.getByText(/^Excerpt 1 ·/).first()).toBeVisible();
+  await expect(first.getByText(/Source 1, voice 1, excerpt 1/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Play/ })).toHaveCount(0);
   const warning = first
     .getByRole("status")
     .filter({ hasText: "The original audio isn't on this device." });
@@ -1257,6 +1271,10 @@ test("D55: a source whose excerpts cannot play here warns, names the next step a
   await expect(first.getByRole("button", { name: "Play Voice 1 excerpt 1" })).toBeVisible();
   await expect(first.getByRole("button", { name: "Yes, this is my voice" })).toBeEnabled();
   await expect(second.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
+  // One source can now be confirmed, so the summary asks for that choice again.
+  await expect(
+    page.getByText(/Voice check finished. Next, confirm which speaker is you/),
+  ).toBeVisible();
 });
 
 test("VOICE-AC-03/05: the class says why it asks and what a confirmation taught", async ({

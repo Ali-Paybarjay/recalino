@@ -7,7 +7,8 @@ const MAX_CLIP_MS = 10000;
  * A voice is confirmed by listening to it (D55). Stored excerpts come from clean turns or clean
  * detected speech, and a voice can have neither while it still has timed lines. Those lines can
  * play from the learner's local original, so up to three of the voice's own lines become its
- * excerpts: clean turns first, then the longest. They may be short or hold another voice; they are
+ * excerpts: clean turns first, then the longest. They stay in that order, because a list of all
+ * voices offers only the first excerpt of each. They may be short or hold another voice; they are
  * for listening only and never spoken-mistake evidence. Only times and text are sent: no class
  * audio is cut or kept on the server (D29).
  */
@@ -38,8 +39,7 @@ export function withListeningClips(
         seen.add(key);
         return true;
       })
-      .slice(0, MAX_CLIPS)
-      .sort((a, b) => a.startMs - b.startMs);
+      .slice(0, MAX_CLIPS);
     return clips.length ? { ...candidate, clips } : candidate;
   });
 }

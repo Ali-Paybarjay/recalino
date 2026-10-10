@@ -6,7 +6,8 @@ import {
   voiceCoverage,
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
@@ -56,6 +57,17 @@ export function VoiceConfirmation({
   const [choosing, setChoosing] = useState<Set<string>>(() => new Set());
   const [notesSafe, setNotesSafe] = useState(true);
   const [refreshRequested, setRefreshRequested] = useState(false);
+  // Sources that ask for a choice but cannot play their excerpts on this device (D55).
+  const [waiting, setWaiting] = useState<ReadonlySet<string>>(() => new Set());
+  const reportWaiting = useCallback((analysisId: string, value: boolean) => {
+    setWaiting((current) => {
+      if (current.has(analysisId) === value) return current;
+      const next = new Set(current);
+      if (value) next.add(analysisId);
+      else next.delete(analysisId);
+      return next;
+    });
+  }, []);
   const [refreshing, startTransition] = useTransition();
   const inFlight = useRef(false);
   const playing = useRef<HTMLAudioElement | null>(null);
@@ -64,12 +76,13 @@ export function VoiceConfirmation({
   const processing = Boolean(
     view?.processing || view?.analyses.some((analysis) => analysis.status === "processing"),
   );
-  const needsConfirmation = Boolean(
-    view?.analyses.some(
+  const confirmable =
+    view?.analyses.filter(
       (analysis) =>
         analysis.status === "unverified" && analysis.candidates.some(hasSpeakerExcerpts),
-    ),
-  );
+    ) ?? [];
+  const needsConfirmation = confirmable.length > 0;
+  const confirmationWaits = needsConfirmation && confirmable.every(({ id }) => waiting.has(id));
   const hasFailedCheck = Boolean(
     view?.analyses.some(
       (analysis) =>
@@ -364,15 +377,17 @@ export function VoiceConfirmation({
               <p>No speaker excerpts have been prepared for this session yet.</p>
             ) : (
               <Status>
-                {needsConfirmation
-                  ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
-                  : hasFailedCheck
-                    ? "Some recordings could not be checked. Retry the voice check below, or continue with your session notes."
-                    : hasServiceBlock
-                      ? voiceCopy.serviceBlockedSummary
-                      : hasUnavailableExcerpts
-                        ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your session notes."
-                        : "Your voice choices are saved. The session notes below reflect those choices."}
+                {confirmationWaits
+                  ? pendingCopy.voice.confirmBlockedSummary
+                  : needsConfirmation
+                    ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
+                    : hasFailedCheck
+                      ? "Some recordings could not be checked. Retry the voice check below, or continue with your session notes."
+                      : hasServiceBlock
+                        ? voiceCopy.serviceBlockedSummary
+                        : hasUnavailableExcerpts
+                          ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your session notes."
+                          : "Your voice choices are saved. The session notes below reflect those choices."}
               </Status>
             )}
             {view.analyses.map((analysis, index) => (
@@ -385,6 +400,7 @@ export function VoiceConfirmation({
                 disabled={locked}
                 retryDisabled={locked || Boolean(view.analysisBlockedReason)}
                 chooseAll={choosing.has(analysis.id)}
+                onWaiting={reportWaiting}
                 onAction={act}
                 onPlayback={onPlayback}
               />
@@ -435,6 +451,7 @@ function Analysis({
   disabled,
   retryDisabled,
   chooseAll,
+  onWaiting,
   onAction,
   onPlayback,
 }: {
@@ -445,6 +462,8 @@ function Analysis({
   disabled: boolean;
   retryDisabled: boolean;
   chooseAll: boolean;
+  /** Whether this source asks for a choice it cannot offer until its excerpts play here. */
+  onWaiting: (analysisId: string, value: boolean) => void;
   onAction: (payload: Action) => Promise<void>;
   onPlayback: (element: HTMLAudioElement) => void;
 }) {
@@ -464,6 +483,15 @@ function Analysis({
     (candidate) => candidate.id === analysis.verifiedSpeakerId,
   );
   const candidates = verified ? [] : suggested && !chooseAll ? [suggested] : available;
+  const waitsForPlayback =
+    analysis.status === "unverified" &&
+    candidates.length > 0 &&
+    audio.state !== "loading" &&
+    audio.state !== "playable";
+  useEffect(() => {
+    onWaiting(analysis.id, waitsForPlayback);
+    return () => onWaiting(analysis.id, false);
+  }, [analysis.id, waitsForPlayback, onWaiting]);
   const labels: Record<VoiceAnalysisView["status"], string> = {
     verified: "Voice verified",
     processing: "Preparing excerpts",
@@ -606,20 +634,35 @@ function Analysis({
               </Actions>
             </>
           ) : (
-            // Nothing to confirm until the excerpts can play here (D55): the warning names the
-            // next step instead of offering choices the learner cannot make by listening.
-            <OriginalRecovery
-              userId={userId}
-              sessionId={sessionId}
-              sourceId={analysis.sourceId}
-              source={analysis.source}
-              state={audio.state}
-              disabled={disabled}
-              onChanged={(wasLinked) => {
-                if (wasLinked) setLinked(true);
-                setRevision((value) => value + 1);
-              }}
-            />
+            <>
+              {/* Nothing to confirm until the excerpts can play here (D55): the warning names the
+                  next step, and the excerpts it refers to stay readable without any choice. */}
+              <OriginalRecovery
+                userId={userId}
+                sessionId={sessionId}
+                sourceId={analysis.sourceId}
+                source={analysis.source}
+                state={audio.state}
+                disabled={disabled}
+                onChanged={(wasLinked) => {
+                  if (wasLinked) setLinked(true);
+                  setRevision((value) => value + 1);
+                }}
+              />
+              {audio.state === "loading"
+                ? null
+                : candidates.map((candidate) => (
+                    <div key={candidate.id} className={styles.aside}>
+                      <strong dir="auto">{candidate.label}</strong>
+                      <VoiceClips
+                        candidate={candidate}
+                        audioUrl={null}
+                        limit={suggested && !chooseAll ? 3 : 1}
+                        onPlayback={onPlayback}
+                      />
+                    </div>
+                  ))}
+            </>
           )}
         </>
       )}

@@ -10,6 +10,8 @@
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
-| `voice.playback.listenFirst` | You confirm your voice by listening to these excerpts. Until they can play here, spoken mistakes from this source are withheld; your session notes stay available. | هشدار منبعی که کلیپ دارد ولی صوت اصلی روی این دستگاه پخش‌شدنی نیست؛ دکمه‌های تأیید نمایش داده نمی‌شوند (D55) | D55 (2026-10-10)؛ جایگزین `voice.readPrompt` که تأیید فقط با خواندن متن را پیشنهاد می‌کرد | در انتظار تأیید |
+| `voice.confirmBlockedSummary` | Voice check finished. To confirm your voice, its excerpts must first play on this device; the next step is shown below. Your session notes stay available. | خلاصهٔ بالای پنل وقتی هر منبعی که تأیید می‌خواهد، منتظر پخش‌شدن کلیپ‌ها روی این دستگاه است؛ جای «Next, confirm which speaker is you below» (D55) | D55 (2026-10-10) | در انتظار تأیید |
+| `voice.playback.clipFailed` | This clip could not play. Try again. | پخش یک کلیپ شکست خورد؛ جای متن قدیمی که تشخیص گوینده از روی متن را پیشنهاد می‌کرد (D55) | D55 (2026-10-10) | در انتظار تأیید |
+| `voice.playback.listenFirst` | You confirm your voice by listening to these excerpts. Until they can play here, spoken mistakes from this source are withheld; your session notes stay available. | هشدار منبعی که کلیپ دارد ولی صوت اصلی روی این دستگاه پخش‌شدنی نیست؛ زیر هشدار فقط برچسب گوینده‌ها و متن کلیپ‌ها بدون Play دیده می‌شود و دکمه‌های تأیید نمایش داده نمی‌شوند (D55) | D55 (2026-10-10)؛ جایگزین `voice.readPrompt` که تأیید فقط با خواندن متن را پیشنهاد می‌کرد | در انتظار تأیید |
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.
