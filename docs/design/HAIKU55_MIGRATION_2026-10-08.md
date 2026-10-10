@@ -448,31 +448,92 @@ verify کامل همین commit (`4da724d`) پس از reset دیتابیس ای�
 - بازبین‌ها عامل‌های مستقل AI بودند، نه معلم انسانی. خطاهای آموزشی باقی‌ماندهٔ Gemini (بخش دور ۵) همچنان وجود دارند.
 - شواهد محلی در checkout مهاجرت: `artifacts/verification/holdout5-joint-results.json`، `holdout5-joint-blind/` و `holdout5-joint-reviews/`.
 
+### مبنای کد
+
+- شاخهٔ `codex/gemini-release` روی `1b1956f` ساخته شد. بازبینی 2026-10-10 نشان داد production دیگر آن commit نیست:
+  - alias `recalino.vercel.app` روی `dpl_J1S3M5TVicw5xVGFPDT9yyBMgbC9` است: deploy با CLI در 2026-10-10 00:15 UTC، بدون متادیتای Git.
+  - worktree `Recalino-deploy` روی `c50c018` (همان `origin/main`) detached است.
+  - پس commit زنده با استنتاج `c50c018` است و پیش از انتشار باید دوباره تأیید شود.
+- `origin/main` (`c50c018`: D49 تا D53، مرجع صدا و سه migration) در شاخه ادغام شد. بدون این ادغام، deploy شاخه آن تغییرهای منتشرشده را برمی‌گرداند. migrationهای `main` پیش‌تر روی ابر اعمال شده‌اند و این شاخه migration تازه‌ای ندارد.
+- env فعلی production طبق [برنامهٔ D49](../plans/TEACHING_MEMORY_2026-10-08.md) نسخهٔ `openrouter-2026-10-08-1` با `recalino-knowledge-5` است. پیش از انتشار، نسخهٔ runtime ثبت شود (فقط نسخه، نه مقدار).
+
 ### تنظیمات انتشار
 
 `config/openrouter-defaults.json` نسخهٔ `openrouter-2026-10-10-1` است:
 
 - `llmModel` برابر `google/gemini-3.8-flash`، با override: سقف خروجی 32000، effort `medium`، سقف درخواست 400000 بایت، `json_schema`، بدون temperature، `knowledgeContract: "content"` و مهلت 180000 میلی‌ثانیه.
 - `visionModel` و `voiceCorrectionModel` برابر `anthropic/claude-haiku-4.5`، بدون override: سقف 6144 و temperature صفر.
+- `promptVersion` برابر `recalino-knowledge-10`:
+  - پس از ادغام `main`، prompt مشترک تدریس (`personalisedTeachingPrompt`) جمله‌های D49 را هم دارد. قرارداد content همان آستانهٔ compact مسیر قدیمی را به آن می‌دهد.
+  - پس متن prompt دیگر همان `-9` ارزیابی‌شده نیست و برچسب تازه گرفت.
+  - این ترکیب روی holdout-5 دوباره ارزیابی نشده است.
 - رزرو هر فراخوان: Gemini تا 760000 میکرودلار و Haiku 4.5 تا 300000. شاهد آزمون `tools/provider-defaults.test.ts` با قیمت‌های ZDR در snapshot 2026-10-09، برای 400000 بایت ورودی و 32000 توکن خروجی: priority 756000، standard 420000 و flex 210000 میکرودلار.
 - مسیر اصلاح اشتباه گفتاری (`voice:corrections:<id>`) مدل، hold، sampling، transport و مهلت خودش را از `voiceCorrectionModel` می‌گیرد. snapshot بدون این فیلد مانند قبل از `llmModel` استفاده می‌کند.
+- runner کرون (حداکثر 800 ثانیه) گرفتن Job تازه را پیش از پایان متوقف می‌کند. این فاصله برابر طولانی‌ترین مهلت provider به‌اضافهٔ 20 ثانیه است و هرگز کمتر از 100 ثانیه نیست؛ با این config، 200 ثانیه. پیش‌تر فاصله ثابت 100 ثانیه بود و فراخوان 180 ثانیه‌ای Gemini که نزدیک آن لحظه شروع می‌شد، ممکن بود با پایان تابع قطع شود.
+
+### شرط‌های پیش از مجوز deploy
+
+1. آزمون‌های integration وابسته به دیتابیس و Playwright روی همان commit نهایی، با `pnpm db:start` و `pnpm db:reset`، اجرا و سبز شوند: یا `pnpm verify` کامل به‌اضافهٔ `pnpm test:e2e`، یا دست‌کم این‌ها:
+   - `packages/core/src/proc/knowledge-repair.int.test.ts`، شامل آزمون تازهٔ retry قرارداد content
+   - `packages/core/src/proc/knowledge-study-repair.int.test.ts`
+   - `packages/core/src/proc/processing.int.test.ts`
+   - `packages/core/src/proc/haiku55-worker.int.test.ts`
+   - `packages/core/src/ops/processing-review.int.test.ts`
+   - `apps/web/src/server/cross-account/classVoice.int.test.ts`
+   - `apps/web/e2e/class-notes-pronunciation.spec.ts` و `apps/web/e2e/recall-pronunciation.spec.ts`
+
+   محیط آماده‌سازی Docker نداشت. فقط آزمون‌های unit، typecheck، biome، مرز ماژول‌ها و `legal:build` اجرا شدند. هر شکست پیش از deploy رفع شود.
+2. مالک دربارهٔ اثر رزرو 0.76 دلاری بر سقف‌های D37 تصمیم بگیرد (بخش محدودیت‌ها).
+3. مالک شناسه‌های D55 و D56 را تأیید کند.
 
 ### ترتیب انتشار
 
 قواعد کلی بخش بعد همچنان برقرارند. هر مرحله مجوز صریح جداگانهٔ مالک محصول می‌خواهد.
 
-1. **اول کد، با env بدون تغییر production.** کد تازه JSON فعلی production را می‌پذیرد: Haiku 4.5 با قرارداد قدیمی، و اصلاح گفتاری روی `llmModel`. قواعد اعتبارسنجی و نمایش تازهٔ این merge (مثل D55 و تکلیف) از همین مرحله اعمال می‌شوند. ترتیب لازم است، چون schema سخت‌گیر کد production فعلی (`1b1956f`) فیلدهای `voiceCorrectionModel` و `structuredModelOverrides` را رد می‌کند.
-2. **سپس به‌روزرسانی JSON env.**
-   - پیش از آن، runهای `queued` و `processing` با snapshot قدیمی تمام شوند.
-   - فقط `OPENROUTER_SETTINGS_JSON` با محتوای این config به‌روز شود؛ `tools/configure-runtime-env.mjs --apply-production` اجرا نشود.
-   - در همان پنجره، revision نرخ برآورد از کنسول مدیریت و با تأیید ثبت شود. برای `google/gemini-3.8-flash` در مرحلهٔ generation: ورودی 750000 و خروجی 3750000 میکرودلار برای هر میلیون توکن (standard)، یا 1350000 و 6750000 (priority). ردیف‌های فعلی `anthropic/claude-haiku-4.5` بمانند، چون تصویر و اصلاح گفتاری هنوز از آن‌ها استفاده می‌کنند.
-   - سقف جلسه در cost policy پایلوت (D37) یک دلار است. hold تازهٔ 0.76 دلاری فقط وقتی پذیرفته می‌شود که هزینه و holdهای باز همان جلسه حداکثر 0.24 دلار باشند. پیش از تغییر، اثر آن روی جلسه‌های پرتکرار بررسی شود.
-3. **در پایان، smoke check مصنوعی.** یک run کلاس با دادهٔ مصنوعی و بدون دادهٔ واقعی کاربر. بررسی: نسخهٔ settings برابر `openrouter-2026-10-10-1`، attempt با مدل `google/gemini-3.8-flash` و hold برابر 760000، اصلاح گفتاری (اگر فعال است) با `anthropic/claude-haiku-4.5` و hold برابر 300000، و ثبت هزینه و checkpoint.
+1. **اول کد، با env بدون تغییر production.**
+   - کد تازه JSON فعلی production را می‌پذیرد: Haiku 4.5 با قرارداد قدیمی، و اصلاح گفتاری روی `llmModel`.
+   - قواعد اعتبارسنجی و نمایش تازهٔ این ادغام (مثل D55 و تکلیف) از همین مرحله اعمال می‌شوند.
+   - ترتیب لازم است، چون schema سخت‌گیر کد production فعلی (`c50c018`) فیلدهای `voiceCorrectionModel` و `structuredModelOverrides` را رد می‌کند.
+   - شناسهٔ deployment این مرحله ثبت شود.
+2. **سپس تغییر env Production، به این ترتیب:**
+   1. revision نرخ برآورد برای `google/gemini-3.8-flash` در مرحلهٔ generation **پیش از** تغییر env، از کنسول مدیریت و با تأیید ثبت شود. پیشنهاد محافظه‌کارانه priority است: ورودی 1350000 و خروجی 6750000 میکرودلار برای هر میلیون توکن (standard: 750000 و 3750000). بدون این ردیف، پاسخی که `usage.cost` ندارد با کل رزرو (760000) برآورد می‌شود. ردیف‌های فعلی `anthropic/claude-haiku-4.5` بمانند، چون تصویر و اصلاح گفتاری هنوز از آن‌ها استفاده می‌کنند.
+   2. runهای `queued` و `processing` با snapshot قدیمی تمام شوند؛ worker برای settings متفاوت `settings_changed` می‌دهد.
+   3. فقط `OPENROUTER_SETTINGS_JSON` در محیط **Production** (نه Preview) با محتوای این config به‌روز شود. `tools/configure-runtime-env.mjs --apply-production` اجرا نشود.
+   4. تغییر env در Vercel فقط روی deployment تازه اثر دارد. پس **همان commit مرحلهٔ ۱** دوباره deploy شود، نه build دیگری با ورودی متفاوت.
+   5. از این لحظه هر deploy production باید schema تازه را داشته باشد. کد قدیمی‌تر (مثل `c50c018` یا `1b1956f`) JSON تازه را با schema سخت‌گیر رد می‌کند و `getAiProvider` بی‌صدا `undefined` برمی‌گرداند؛ یعنی همهٔ پردازش AI «پیکربندی‌نشده» می‌شود. deployهای موازی با CLI از checkoutهای قدیمی‌تر (مثل `dpl_J1S3M5TVicw5xVGFPDT9yyBMgbC9`) پیش از تغییر متوقف شوند.
+3. **در پایان، smoke check مصنوعی.** یک run کلاس با دادهٔ مصنوعی و بدون دادهٔ واقعی کاربر، در جلسه‌ای که پیش‌تر کمتر از 0.24 دلار هزینه داشته است. بررسی:
+   - نسخهٔ settings برابر `openrouter-2026-10-10-1` و promptVersion برابر `recalino-knowledge-10`؛
+   - attempt با مدل `google/gemini-3.8-flash` و hold برابر 760000؛
+   - اصلاح گفتاری، اگر فعال است، با `anthropic/claude-haiku-4.5` و hold برابر 300000؛
+   - ثبت هزینه و checkpoint.
 
 ### بازگشت
 
-1. **اول env:** JSON قبلی production (`openrouter-2026-10-07-2`، مرجع `1b1956f:config/openrouter-defaults.json`) امن بازگردانده شود. پیش از آن، runهای فعال با snapshot Gemini تمام شوند. snapshot یا checkpoint پولی ویرایش نشود و hold نامعلوم بدون مدرک آزاد نشود.
-2. **سپس کد، اگر لازم است.** کد قدیمی JSON تازه را نمی‌پذیرد، پس این ترتیب برعکس‌شدنی نیست. runهایی که snapshot آن‌ها فیلدهای تازه دارد، زیر کد قدیمی خوانده نمی‌شوند و باید پیش از بازگشت کد تمام شده باشند.
+1. **اول env.**
+   - JSON قبلی production (`openrouter-2026-10-08-1`، مرجع `c50c018:config/openrouter-defaults.json`، پس از مقایسه با نسخهٔ runtime ثبت‌شده) امن بازگردانده شود و همان deployment جاری دوباره deploy شود تا env اثر کند.
+   - پیش از آن، runهای فعال با snapshot Gemini تمام شوند: هم به خاطر `settings_changed`، و هم چون با مهلت مشترک 90 ثانیه runner فقط 110 ثانیه پیش از پایان از گرفتن Job دست می‌کشد و فراخوان 180 ثانیه‌ای Gemini در آن جا نمی‌شود.
+   - snapshot یا checkpoint پولی ویرایش نشود و hold نامعلوم بدون مدرک آزاد نشود.
+   - بازگشت env امن است.
+2. **سپس کد، فقط با احتیاط.**
+   - کد قدیمی JSON تازه را نمی‌پذیرد، پس این ترتیب برعکس‌شدنی نیست. runهایی که snapshot آن‌ها فیلدهای تازه دارد، زیر کد قدیمی خوانده نمی‌شوند و باید پیش از بازگشت کد تمام شده باشند.
+   - قرارداد content برای هر آیتم گرامر `study.ipaText` ذخیره می‌کند. schema سخت‌گیر `c50c018` و `1b1956f` این فیلد را ندارد و `knowledgeModelSchema.parse` هنگام خواندن نسخه‌ها و دفترچه شکست می‌خورد.
+   - پس پس از انتشار نخستین درس با قرارداد content، کد قدیمی دوباره deploy نشود؛ درس‌ها و دفترچه‌های آن جلسه‌ها دیگر باز نمی‌شوند. در آن حالت فقط build سازگار از همین شاخه (اصلاح رو به جلو) deploy شود.
+   - پیش از تغییر env (فقط مرحلهٔ ۱)، مسیر قدیمی `ipaText` نمی‌نویسد و بازگشت کد به `c50c018` از این نظر امن است.
+   - ارجاع `a80fb14` در بخش rollback عمومی پایین برای Haiku 5.5 بود. برای این انتشار، همین بخش جای آن را می‌گیرد.
+
+### محدودیت‌های شناخته‌شده
+
+- **سقف‌های D37:**
+  - سقف یک‌دلاری جلسه، هزینهٔ همهٔ عمر جلسهٔ کلاس و holdهای باز آن را می‌شمارد (`quota/costs.ts`). با رزرو 0.76، فراخوان Gemini فقط تا مجموع 0.24 دلار پذیرفته می‌شود (پیش‌تر 0.70).
+  - hold همزمان 0.30 دلاری اصلاح گفتاری و hold Gemini در یک جلسه جا نمی‌شوند.
+  - سقف روزانهٔ 5 دلاری پروژه، بدون هزینهٔ دیگر در آن روز، حداکثر شش hold همزمان Gemini را می‌پذیرد.
+  - رد با `cost_limit` پیش از dispatch است و هزینه ندارد.
+  - گزینه‌ها برای مالک: بالا بردن سقف جلسه با ابزار اپراتور، پایین آوردن رزرو، یا پذیرفتن این توقف‌ها.
+- **ترمیم پولی:**
+  - `knowledge-reuse.ts` ترمیم پولی Run قبلی را فقط برای قرارداد قدیمی evidence-key بازیابی می‌کند. خروجی ترمیم قرارداد content یک درس کامل canonical است و هیچ‌گاه از schema سخت ترمیم قدیمی رد نمی‌شود، پس چیزی قابل بازیابی دور ریخته نمی‌شود.
+  - اما retry اپراتور یا مالک پس از اصلاح validator، اگر تولید اصلی بازیابی‌شده باز رد شود، یک `class_knowledge_content_repair` پولی تازه می‌فرستد (رزرو تا 0.76 دلار). سقف دو dispatch فقط در همان Run شمرده می‌شود.
+  - آزمون `knowledge-repair.int.test.ts` این رفتار را ثابت می‌کند.
+  - بازیابی ترمیم content با `generatedKnowledgeSchema` و `validateGeneratedKnowledge` زیر همان snapshot و fenceها، کار بعدی است.
 
 ## rollout قابل بازبینی
 
