@@ -89,7 +89,7 @@ it("retains the verified Haiku 4.5 vision/rollback bound for its full input cont
 const gemini = "google/gemini-3.8-flash";
 const haiku = "anthropic/claude-haiku-4.5";
 
-it("FR-PROC-003 D49 selects Gemini 3.8 Flash on the content contract with its declared transport", () => {
+it("FR-PROC-003 D56 selects Gemini 3.8 Flash on the content contract with its declared transport", () => {
   const settings = providerSettingsSchema.parse(defaults);
   expect(settings.version).toBe("openrouter-2026-10-10-1");
   expect(settings.llmModel).toBe(gemini);
@@ -118,7 +118,7 @@ it("FR-PROC-003 D49 selects Gemini 3.8 Flash on the content contract with its de
   );
 });
 
-it("FR-QUOTA-009 FR-QUOTA-010 D49 reserves a Gemini request at the highest captured ZDR endpoint price", () => {
+it("FR-QUOTA-009 FR-QUOTA-010 D56 reserves a Gemini request at the highest captured ZDR endpoint price", () => {
   // Captured ZDR endpoint list for google/gemini-3.8-flash, snapshot 2026-10-09, from the
   // migration evidence openrouter-zdr-endpoints-2026-10-09.json (no inference request).
   // Verified test witnesses in USD per million tokens, not runtime rates. Reasoning tokens are
@@ -154,7 +154,7 @@ it("FR-QUOTA-009 FR-QUOTA-010 D49 reserves a Gemini request at the highest captu
   });
 });
 
-it("FR-VOC-008 D49 keeps vision and spoken corrections on Haiku 4.5 with its cap and sampling", async () => {
+it("FR-VOC-008 D56 keeps vision and spoken corrections on Haiku 4.5 with its cap and sampling", async () => {
   const settings = providerSettingsSchema.parse({ ...defaults, dataContractApproved: true });
   expect(settings.visionModel).toBe(haiku);
   expect(settings.voiceCorrectionModel).toBe(haiku);
@@ -195,7 +195,7 @@ it("FR-VOC-008 D49 keeps vision and spoken corrections on Haiku 4.5 with its cap
   expect(body.response_format.type).toBe("json_schema");
 });
 
-it("FR-PLT-005 D49 gives only Gemini a 180 s request deadline, well inside the job lease", () => {
+it("FR-PLT-005 D56 gives only Gemini a 180 s request deadline, well inside the job lease", () => {
   const settings = providerSettingsSchema.parse(defaults);
   expect(effectiveProviderTimeoutMs(settings, gemini)).toBe(180000);
   expect(settings.timeoutMs).toBe(90000);

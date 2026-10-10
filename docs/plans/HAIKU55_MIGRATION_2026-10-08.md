@@ -78,7 +78,7 @@
 - [x] اصلاح false positive و diagnostic در `43191b7`. هنوز ارزیابی نشده است.
 - [x] مقایسهٔ کور شش نامزد (Gemini 3.8 Flash و 3.5 Flash-Lite با effort low/medium، Haiku 5.5 low، Haiku 4.5) روی ۲۰ درس در پنج زبان توضیح، با تأیید مالک محصول. Gemini 3.8 Flash medium بهترین بود: 13/20 درس قابل‌قبول، 0.0241 دلار برای هر درس. هیچ نامزدی دروازهٔ انتشار را رد نکرد. هزینه 2.1126 دلار؛ کل QA 2.3497 دلار. جزئیات در بخش «مقایسهٔ کور چندمدلی» [سند طراحی](../design/HAIKU55_MIGRATION_2026-10-08.md).
 - [x] اصلاح false positive `studyLexicalTarget` برای somebody/someone/something در جلسهٔ جدا انجام شد (PR #14 روی main) و به این برنچ منتقل شد.
-- [x] مالک محصول مسیر Gemini 3.8 Flash medium را انتخاب کرد (2026-10-09) و D48 را برای Recognition تصویب کرد.
+- [x] مالک محصول مسیر Gemini 3.8 Flash medium را انتخاب کرد (2026-10-09) و D55 را برای Recognition تصویب کرد.
 - [x] انتخاب قرارداد از تنظیمات، transport سخت‌گیر json_schema، بررسی‌های تازهٔ wire و lkm، و harness و fixtureهای holdout-4. verify کامل موفق بود؛ تنها شکست، fixture یک آزمون legacy بود که اصلاح شد.
 - [x] probe و smoke با json_schema موفق بودند. holdout-4 **FAIL** شد: پس از ۳ مورد، 3/3 نهایی و 1/3 تلاش اول؛ دو بازبین کور 2/3 را قابل‌قبول دانستند. هزینهٔ این مرحله‌ها 0.1884 دلار؛ کل QA 2.5380 دلار.
 - [x] پیش از holdout-5: اصلاح prompt برای chunk پیوسته و کارت بی‌پاسخ، نمایش واژه‌های IPA کارت گرامر، و ادامهٔ رد کپی تمرین چاپی کلاس با پاسخ داخل پرانتز (تصمیم مالک).

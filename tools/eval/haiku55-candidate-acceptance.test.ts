@@ -290,7 +290,7 @@ const production = async () =>
   );
 /**
  * The Haiku 5.5 migration baseline (config openrouter-2026-10-09-2) that this harness's production
- * rounds evaluated. D49 moved the release config to Gemini on json_schema, so it is frozen here.
+ * rounds evaluated. D56 moved the release config to Gemini on json_schema, so it is frozen here.
  */
 const migrationBaseline = async () => {
   const { voiceCorrectionModel: _voice, ...release } = await production();
@@ -351,7 +351,7 @@ describe("FR-PROC-003 evaluated round settings", () => {
       ),
     ).toEqual({ structuredOutputMode: "json_schema", directJsonMode: false });
   });
-  it("D49 refuses a production round on the Gemini release config before any paid dispatch", async () => {
+  it("D56 refuses a production round on the Gemini release config before any paid dispatch", async () => {
     // The release config is the json_schema candidate's model; only that declared candidate
     // may evaluate it, so a candidate-free round fails closed instead of reusing the old gate.
     const release = await production();
