@@ -1407,7 +1407,7 @@ export function processingJob(
                       ctx,
                       payload.runId,
                       request.step,
-                      settings.provider.llmModel,
+                      request.model,
                       provider,
                       request.schema,
                       request.effect,

@@ -2,6 +2,7 @@ export {
   type AiProvider,
   effectiveProviderTimeoutMs,
   effectiveStructuredMaxOutputTokens,
+  effectiveVoiceCorrectionModel,
   longestProviderTimeoutMs,
   maximumProviderCost,
   ProviderError,

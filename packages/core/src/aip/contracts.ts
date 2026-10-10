@@ -4,6 +4,8 @@ import { errors } from "../plt";
 export const providerSettingsSchema = z.strictObject({
   version: z.string().min(1).max(100),
   llmModel: z.string().min(1).max(200),
+  /** Spoken-mistake corrections; absent in older snapshots, which keep using llmModel. */
+  voiceCorrectionModel: z.string().min(1).max(200).optional(),
   visionModel: z.string().min(1).max(200),
   sttModel: z.string().min(1).max(200),
   ttsModel: z.string().min(1).max(200),
@@ -48,6 +50,13 @@ export function effectiveStructuredMaxOutputTokens(
   model: string,
 ): number {
   return settings.structuredModelOverrides?.[model]?.maxOutputTokens ?? settings.maxOutputTokens;
+}
+/**
+ * The model for spoken-mistake corrections. Its hold, sampling, transport and deadline follow
+ * this model's own overrides, never those of llmModel when the two differ.
+ */
+export function effectiveVoiceCorrectionModel(settings: ProviderSettings): string {
+  return settings.voiceCorrectionModel ?? settings.llmModel;
 }
 /** The request deadline for one model: its override when set, otherwise the shared timeout. */
 export function effectiveProviderTimeoutMs(settings: ProviderSettings, model?: string): number {
