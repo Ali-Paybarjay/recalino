@@ -56,15 +56,20 @@ class StudyRepairProvider implements AiProvider {
   answerParts = ["clamped down on"];
   repairFailure?: ProviderError;
   primaryFailure?: ProviderError;
+  /** A general evidence repair, for a first response whose evidence is invalid. */
+  evidenceRepair?: (input: StructuredInput<unknown>) => unknown;
   readonly calls = vi.fn(async (input: StructuredInput<unknown>) => {
     if (input.schemaName === "class_knowledge") {
       if (this.primaryFailure) throw this.primaryFailure;
       return this.original;
     }
+    if (input.schemaName === "class_knowledge_repair" && this.evidenceRepair)
+      return this.evidenceRepair(input);
     if (input.schemaName !== "class_study_sentence_repair")
       throw new Error("A sentence mismatch must never regenerate the lesson");
     if (this.repairFailure) throw this.repairFailure;
-    return { items: [{ itemId: "item-1", answerParts: this.answerParts }] };
+    const items: { itemId: string }[] = JSON.parse(input.input).items;
+    return { items: items.map(({ itemId }) => ({ itemId, answerParts: this.answerParts })) };
   });
   async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
     return {
@@ -301,6 +306,75 @@ it("checkpoints each paid stage, resumes without a duplicate call and preserves 
     .where("run_id", "=", f.run.id)
     .execute();
   expect(costs.map((cost) => Number(cost.amount_micros)).sort()).toEqual([1000, 2000]);
+});
+
+it("gives a general repair that leaves only a mismatched gap one answer-span repair", async () => {
+  const f = await fixture();
+  const original = structuredClone(f.original);
+  const firstClaim = original.learningItems[0]?.claim;
+  if (!firstClaim) throw new Error("Missing fixture claim");
+  // The first response cites the photo as audio, so the general evidence repair runs first.
+  firstClaim.evidence = "audio";
+  f.provider.original = original;
+  const study = f.original.learningItems[0]?.study;
+  f.provider.evidenceRepair = (input) => {
+    const key = JSON.parse(input.input).sources[0].evidence[0][0];
+    return {
+      schemaVersion: "1",
+      title: "Synthetic sentence lesson",
+      language: { learning: "en", explanation: "fa" },
+      summary: [],
+      topics: [],
+      homework: [],
+      uncertainties: [],
+      coverage: { complete: true, missingSourceIds: [] },
+      learningItems: [
+        {
+          id: "item-1",
+          kind: "expression",
+          front: "clamp down on (sth/sb)",
+          back: "سخت‌گیری کردن",
+          claim: { id: "claim-1", text: firstClaim.text, evidenceKey: key, uncertain: false },
+          // The repair keeps the gap that does not match its sentence.
+          study,
+        },
+      ],
+    };
+  };
+  await f.work();
+  await f.work();
+  await f.work();
+  await f.work();
+  expect(f.provider.calls.mock.calls.map(([input]) => input.schemaName)).toEqual([
+    "class_knowledge",
+    "class_knowledge_repair",
+    "class_study_sentence_repair",
+  ]);
+  expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "ready", lastError: null });
+  const latest = await getLatestVersion(db, f.x.ctx, f.x.session.id);
+  expect(latest?.model.learningItems[0]?.study).toMatchObject({
+    fullSentence: "The council clamped down on unsafe parking near schools.",
+    gapSentence: "The council ______ unsafe parking near schools.",
+  });
+  expect(latest?.model.learningItems[0]?.claim).toMatchObject({
+    origin: "from_class",
+    evidence: "material",
+  });
+  // Each correction is still one paid dispatch: no second general or answer-span repair.
+  await f.work();
+  expect(f.provider.calls).toHaveBeenCalledTimes(3);
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .select(["step", "attempt", "state"])
+      .where("run_id", "=", f.run.id)
+      .orderBy("step")
+      .execute(),
+  ).toEqual([
+    { step: "knowledge", attempt: 1, state: "succeeded" },
+    { step: "knowledge:repair", attempt: 1, state: "succeeded" },
+    { step: "knowledge:study-repair", attempt: 1, state: "succeeded" },
+  ]);
 });
 
 it("rejects an ambiguous answer after one correction and retains the original knowledge checkpoint", async () => {

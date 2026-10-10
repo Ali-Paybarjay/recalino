@@ -230,16 +230,22 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
     }
   }
 
+  const sourceClassifications = () =>
+    data.sources.map((source) => ({
+      sourceId: source.sourceId,
+      classification: classification(source),
+    }));
   function decode(raw: unknown) {
     const model = expand(raw);
     const validated = validateKnowledgeModel(model, data.sources, data.explanationLanguage);
-    return {
-      ...validated,
-      sourceClassifications: data.sources.map((source) => ({
-        sourceId: source.sourceId,
-        classification: classification(source),
-      })),
-    };
+    return { ...validated, sourceClassifications: sourceClassifications() };
   }
-  return { schema, input, system, decode, assertLanguageRepairEvidence };
+  /**
+   * The server-expanded lesson before validation. Only the bounded answer-span repair reads it;
+   * whatever it returns is validated in full again before use.
+   */
+  function expanded(raw: unknown) {
+    return { ...expand(raw), sourceClassifications: sourceClassifications() };
+  }
+  return { schema, input, system, decode, expanded, assertLanguageRepairEvidence };
 }
