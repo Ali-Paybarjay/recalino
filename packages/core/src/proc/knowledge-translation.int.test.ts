@@ -112,7 +112,8 @@ async function fixture(options: { invalidHomework?: boolean; fullHistory?: boole
         verified_mime: audio ? "audio/mpeg" : "image/jpeg",
         duration_ms: audio ? 3000 : null,
         size_bytes: 1000,
-        sha256: "a".repeat(64),
+        // Distinct files: D59 charges identical content once.
+        sha256: `${index}`.repeat(64),
         display_name: `Synthetic immutable source ${index}`,
         contract_version: "1",
         retention: audio ? "device_only" : "persistent",
@@ -407,6 +408,8 @@ async function history(runId: string) {
     .selectAll()
     .where("run_id", "=", runId)
     .where("step", "!=", "knowledge:repair-language")
+    // D59 publication records what it charged; it is not a provider checkpoint.
+    .where("step", "not like", "charge:%")
     .orderBy("step")
     .execute();
   return { attempts, costs, holds, checkpoints };

@@ -22,6 +22,16 @@ export {
   scheduleAuxiliaryRun,
 } from "./auxiliary";
 export {
+  type ChargedCoverage,
+  type ChargedMaterial,
+  chargeableAmounts,
+  chargeableRunAmounts,
+  chargedMaterialSchema,
+  type ReturnedDuplicateCharge,
+  readChargedCoverage,
+  returnDuplicateClassCharges,
+} from "./charged-material";
+export {
   createRunSchema,
   type RunSnapshot,
   type RunSource,
@@ -66,7 +76,6 @@ export {
   cleanupSessionProcessing,
   cleanupSourceProcessing,
   createProcessingRun,
-  estimateRunAmounts,
   failAwaitingUploadRun,
   findProcessingRunByOperationKey,
   getProcessingRunSnapshot,

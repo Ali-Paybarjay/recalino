@@ -57,6 +57,7 @@ import {
   sourceContentSchema,
   updateAutomaticSourceRoles,
 } from "../src";
+import { settleClassMaterial } from "./charged-material";
 import {
   type RunSource,
   runJobPayload,
@@ -91,7 +92,7 @@ export { generatedKnowledgeSchema } from "./generated-knowledge";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { buildKnowledgeStudyRepairInput } from "./knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "./knowledge-translation";
-import { estimateRunAmounts, ownedRun } from "./runs";
+import { ownedRun } from "./runs";
 import { studyPrompt } from "./study-prompt";
 import {
   correctVoiceCandidates,
@@ -1705,15 +1706,16 @@ export function processingJob(
               },
               job.now(),
             );
-            const actual = estimateRunAmounts(
-              { ...snapshot, sources: extracted.filter((source) => source.blocks.length) },
-              settings.provider.charactersPerPage,
-              amountsSchema.parse(run.requested_amounts).regeneration > 0,
-            );
-            const held = amountsSchema.parse(run.requested_amounts);
-            for (const key of ["audio", "document", "regeneration", "tts", "storage"] as const)
-              actual[key] = Math.min(actual[key], held[key]);
-            await settleAllowance(tx, ctx, run.reservation_id, actual, job.now());
+            // D59: charge only material no earlier publication paid for, within the reservation.
+            await settleClassMaterial(tx, ctx, {
+              runId: run.id,
+              sessionId: run.session_id,
+              reservationId: run.reservation_id,
+              held: amountsSchema.parse(run.requested_amounts),
+              sources: extracted.filter((source) => source.blocks.length),
+              charactersPerPage: settings.provider.charactersPerPage,
+              now: job.now(),
+            });
             await tx
               .updateTable("proc.processing_run")
               .set({
