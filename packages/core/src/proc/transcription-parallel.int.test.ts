@@ -306,3 +306,16 @@ it("FR-PLT-005 starts only one chunk when the runner's deadline leaves time for 
   await c.invoke();
   expect(c.calls).toHaveLength(CHUNKS);
 });
+
+it("FR-PLT-005 leaves a lesson call that could not finish before the runner's deadline to a fresh runner", async () => {
+  const c = await parallelClass(async (index) => transcript(index));
+  await c.invoke();
+  expect(c.request).toHaveBeenCalledTimes(CHUNKS);
+  // Less than one request on the run's longest deadline plus the time kept after it.
+  await c.invoke({ deadline: new Date(Date.now() + settings.timeoutMs) });
+  expect(c.request).toHaveBeenCalledTimes(CHUNKS);
+  expect(await getRun(db, c.x.ctx, c.run.id)).toMatchObject({ state: "processing" });
+  await c.invoke();
+  expect(c.request).toHaveBeenCalledTimes(CHUNKS + 1);
+  expect(await getRun(db, c.x.ctx, c.run.id)).toMatchObject({ state: "ready", lastError: null });
+});

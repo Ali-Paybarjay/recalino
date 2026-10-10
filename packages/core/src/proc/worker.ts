@@ -1106,6 +1106,13 @@ export function processingJob(
         }
         if (!extracted.some((source) => source.blocks.some((block) => block.text.trim())))
           throw errors.validationFailed({ sources: ["no_extractable_content"] });
+        // Each lesson stage makes at most one provider call, on any model of the run. A stage
+        // whose call could not finish before the runner's deadline is left to a fresh runner.
+        const lessonCallMs = longestProviderTimeoutMs(provider.settings) + PROVIDER_CALL_SAFETY_MS;
+        if (!hasTime(job, lessonCallMs)) {
+          await checkpointAndContinue(job, ctx, payload.runId, definition, YIELD_DELAY_SECONDS);
+          return;
+        }
         // A separate private projection; no identity or hidden correction enters knowledge input.
         // Its acoustic check runs while the lesson is generated rather than before it; it is
         // saved before the paid correction, which still keeps a job of its own.
@@ -1726,11 +1733,10 @@ export function processingJob(
           do outcome = await lessonStage();
           while (
             // While the acoustic check still runs, the lesson goes on in this job instead of the
-            // next, as long as one more provider call, on any model's deadline, can finish before
-            // the runner's deadline.
+            // next, as long as one more stage's call can finish before the runner's deadline.
             outcome === "checkpoint" &&
             voiceCheck?.running() &&
-            hasTime(job, longestProviderTimeoutMs(provider.settings) + PROVIDER_CALL_SAFETY_MS)
+            hasTime(job, lessonCallMs)
           );
         } catch (error) {
           // The check's worker never outlives its job; the lesson's own failure is reported.
