@@ -1154,6 +1154,58 @@ const translations: Readonly<Record<string, Labels>> = {
     selectedImages: "所選課堂圖片",
   },
 };
+/**
+ * Code-owned homework heading markers per localized explanation language. Labels are matched
+ * only in heading form ("تکالیف جلسه بعد: ..."), and only unambiguous words are listed: tarea,
+ * tarefa, devoir, 課題 and 과제 also name in-class tasks or tests. A negator in the same line voids
+ * the heading. Unspaced scripts match by substring; all others match whole words.
+ */
+const homeworkMarkers: Readonly<
+  Record<string, { labels: readonly string[]; negators: readonly string[] }>
+> = {
+  fa: {
+    labels: ["تکلیف", "تکالیف", "مشق", "مشق شب"],
+    negators: ["ندارید", "ندارد", "نداریم", "ندارند", "نداره", "نیست", "هیچ", "بدون"],
+  },
+  ar: {
+    labels: ["الواجب", "واجب", "الواجبات", "واجبات", "الواجب المنزلي", "واجب منزلي"],
+    negators: ["لا", "ليس", "ليست", "لايوجد", "بدون", "لن"],
+  },
+  ur: { labels: ["گھر کا کام", "ہوم ورک"], negators: ["نہیں", "بغیر"] },
+  he: { labels: ["שיעורי בית"], negators: ["אין", "לא", "ללא", "בלי"] },
+  es: {
+    labels: ["deberes", "tarea para casa", "tareas para casa", "tarea para la casa"],
+    negators: ["no", "ningún", "ninguno", "ninguna", "nada", "sin"],
+  },
+  fr: {
+    labels: ["devoirs", "devoir maison", "devoirs maison", "devoirs à la maison"],
+    negators: ["pas", "aucun", "aucune", "rien", "sans"],
+  },
+  de: {
+    labels: ["Hausaufgabe", "Hausaufgaben"],
+    negators: ["kein", "keine", "keinen", "keiner", "nicht", "nichts", "ohne", "entfällt"],
+  },
+  pt: {
+    labels: ["dever de casa", "deveres de casa", "trabalho de casa", "tarefa de casa", "TPC"],
+    negators: ["não", "nenhum", "nenhuma", "nada", "sem"],
+  },
+  ru: {
+    labels: ["домашнее задание", "домашняя работа", "д/з", "дз"],
+    negators: ["нет", "не", "ни", "без"],
+  },
+  uk: {
+    labels: ["домашнє завдання", "домашня робота", "д/з", "дз", "домашнее задание"],
+    negators: ["немає", "нема", "не", "ні", "без", "нет"],
+  },
+  tr: { labels: ["ödev", "ev ödevi"], negators: ["yok", "yoktur", "değil", "hiç"] },
+  hi: { labels: ["गृहकार्य", "होमवर्क"], negators: ["नहीं", "बिना"] },
+  bn: { labels: ["বাড়ির কাজ"], negators: ["নেই", "নাই", "না", "ছাড়া"] },
+  ja: { labels: ["宿題"], negators: ["なし", "無し", "ありません", "ない"] },
+  ko: { labels: ["숙제"], negators: ["없", "않"] },
+  "zh-Hans": { labels: ["作业", "家庭作业"], negators: ["无", "没有", "不"] },
+  "zh-Hant": { labels: ["作業", "家庭作業"], negators: ["無", "沒有", "不"] },
+};
+const unspacedHomeworkMarkers = new Set(["ja", "ko", "zh-Hans", "zh-Hant"]);
 const rtlLanguages = new Set(["ar", "dv", "fa", "he", "ps", "ug", "ur", "yi"]);
 const ambiguousScripts = new Set(["az", "ks", "ku", "pa", "sd"]);
 
@@ -1264,17 +1316,19 @@ export function resolveStudyLocale(language: string): StudyLocale {
     fontGoogleFamily: font[1],
   };
 }
+function translationKey(locale: StudyLocale): string {
+  return locale.language.startsWith("zh")
+    ? locale.language.includes("Hant") || /-(?:TW|HK|MO)\b/.test(locale.language)
+      ? "zh-Hant"
+      : "zh-Hans"
+    : (locale.language.split("-")[0] ?? "en");
+}
 export function studyMessage(
   language: string,
   key: StudyLabelKey,
 ): { text: string; language: string } {
   const locale = resolveStudyLocale(language);
-  const translationKey = locale.language.startsWith("zh")
-    ? locale.language.includes("Hant") || /-(?:TW|HK|MO)\b/.test(locale.language)
-      ? "zh-Hant"
-      : "zh-Hans"
-    : (locale.language.split("-")[0] ?? "en");
-  const translated = translations[translationKey]?.[key];
+  const translated = translations[translationKey(locale)]?.[key];
   return {
     text: translated ?? ENGLISH_STUDY_LABELS[key],
     language: translated ? locale.language : "en",
@@ -1282,6 +1336,20 @@ export function studyMessage(
 }
 export function studyText(language: string, key: StudyLabelKey): string {
   return studyMessage(language, key).text;
+}
+/** Localized homework heading markers; English markers are recognised for every language. */
+export function studyHomeworkMarkers(language: string): {
+  labels: readonly string[];
+  negators: readonly string[];
+  unspaced: boolean;
+} {
+  const key = translationKey(resolveStudyLocale(language));
+  const markers = homeworkMarkers[key];
+  return {
+    labels: markers?.labels ?? [],
+    negators: markers?.negators ?? [],
+    unspaced: unspacedHomeworkMarkers.has(key),
+  };
 }
 export function studyNumber(value: number, language: string): string {
   const locale = resolveStudyLocale(language);

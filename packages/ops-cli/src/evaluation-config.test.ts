@@ -32,4 +32,43 @@ describe("isolated synthetic evaluation gates", () => {
         "local_supabase_database_required",
       );
   });
+  it.each(["llmModel", "visionModel"] as const)(
+    "bounds the physical output override for active %s",
+    (slot) => {
+      const model = mock.provider[slot];
+      expect(
+        evaluationConfigSchema.safeParse({
+          ...mock,
+          provider: {
+            ...mock.provider,
+            structuredModelOverrides: {
+              [model]: { maxOutputTokens: 12000, reasoningEffort: "low" },
+            },
+          },
+        }).success,
+      ).toBe(false);
+      expect(
+        evaluationConfigSchema.safeParse({
+          ...mock,
+          provider: {
+            ...mock.provider,
+            structuredModelOverrides: { [model]: { maxOutputTokens: 4000 } },
+          },
+        }).success,
+      ).toBe(true);
+    },
+  );
+  it("does not change evaluation bounds for an unused rollback model override", () => {
+    expect(
+      evaluationConfigSchema.safeParse({
+        ...mock,
+        provider: {
+          ...mock.provider,
+          structuredModelOverrides: {
+            "anthropic/claude-haiku-5.5": { maxOutputTokens: 12000, reasoningEffort: "low" },
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
 });

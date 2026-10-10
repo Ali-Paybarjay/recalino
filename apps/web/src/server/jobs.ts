@@ -1,5 +1,6 @@
 import "server-only";
 import { accPeriodicJobs } from "@recalino/core/acc";
+import { longestProviderTimeoutMs } from "@recalino/core/aip";
 import { databaseBackupMaintenanceJob } from "@recalino/core/ops";
 import {
   createLogger,
@@ -18,6 +19,7 @@ import { runEmailOutbox } from "@recalino/core/support";
 import { voicePeriodicJobs } from "@recalino/core/voc";
 import { after } from "next/server";
 import { adminDirectory } from "./admin-directory";
+import { getAiProvider } from "./ai";
 import type { Handler } from "./api";
 import { automaticLearningJob, automaticLearningPeriodicJobs } from "./automatic-learning";
 import { getDatabase } from "./db";
@@ -36,19 +38,44 @@ import { getVoiceAnalysisDefinition } from "./voice-processing";
 
 /** The runner route's limit (ADR-0001: up to 800 seconds); `maxDuration` in its route file. */
 export const RUNNER_MAX_SECONDS = 800;
-/** Stop claiming new jobs this long before the limit, so a started step can finish. */
-const RUNNER_MARGIN_SECONDS = 100;
+/** Database work around one provider request: claim, checkpoint, accounting and completion. */
+export const RUNNER_STEP_SLACK_SECONDS = 20;
+/** The claim margin before provider deadlines were configurable per model. */
+const RUNNER_MIN_MARGIN_SECONDS = 100;
 /** A handler must return this long before the function limit, leaving time to settle its job. */
 const RUNNER_FINISH_MARGIN_SECONDS = 30;
 /**
  * A processing wake keeps a class's or a session voice check's continuation jobs moving on this
  * request's own function instead of leaving each next step to the next cron minute. The waking
- * routes all allow the runner's full limit (`maxDuration` 800).
+ * routes all allow the runner's full limit (`maxDuration` 800). The processing worker starts a
+ * provider request only when its model's deadline still fits before the function stops.
  */
 export const PROCESSING_WAKE = {
-  budgetSeconds: RUNNER_MAX_SECONDS - 2 * RUNNER_MARGIN_SECONDS,
+  budgetSeconds: RUNNER_MAX_SECONDS - 2 * RUNNER_MIN_MARGIN_SECONDS,
   functionSeconds: RUNNER_MAX_SECONDS,
 } as const;
+
+/**
+ * FR-PLT-005: stop claiming new jobs this long before the limit, so a started step can finish.
+ * A job claimed just before that point may wait on one provider request for its model's whole
+ * deadline (each paid result is checkpointed before the next request gets its own execution),
+ * so the margin covers the longest configured deadline plus slack, never less than 100 s.
+ * A run keeps the deadlines of its settings snapshot: runtime settings with a shorter deadline
+ * go back only after the runs created under the longer one have finished (release runbook).
+ */
+export function runnerMarginSeconds(longestProviderTimeoutMs = 0): number {
+  return Math.max(
+    RUNNER_MIN_MARGIN_SECONDS,
+    Math.ceil(longestProviderTimeoutMs / 1000) + RUNNER_STEP_SLACK_SECONDS,
+  );
+}
+
+/** The last moment the cron runner claims a job; see runnerMarginSeconds. */
+export function runnerClaimDeadline(started: Date, longestProviderTimeoutMs?: number): Date {
+  return new Date(
+    started.getTime() + (RUNNER_MAX_SECONDS - runnerMarginSeconds(longestProviderTimeoutMs)) * 1000,
+  );
+}
 
 /** Every periodic job, from every module (FR-PLT-005); storage checks only with a real store. */
 export function periodicJobs(settings: PltSettings): PeriodicJob[] {
@@ -92,12 +119,18 @@ interface RunnerDeps {
   now: () => Date;
   /** Restrict a controlled runner; the production cron runs every registered definition. */
   kinds?: readonly string[];
+  /** The longest request deadline of the runtime provider settings, when configured. */
+  providerTimeoutMs: () => number | undefined;
 }
 
 const defaultRunnerDeps: RunnerDeps = {
   settings: () => readPltSettings(),
   log: createLogger(),
   now: () => new Date(),
+  providerTimeoutMs: () => {
+    const provider = getAiProvider();
+    return provider ? longestProviderTimeoutMs(provider.settings) : undefined;
+  },
 };
 
 /**
@@ -118,9 +151,7 @@ export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
     for (const job of periodicJobs(settings)) {
       await ensurePeriodicJob(db, job.definition, job.everySeconds, started, settings.jobs);
     }
-    const deadline = new Date(
-      started.getTime() + (RUNNER_MAX_SECONDS - RUNNER_MARGIN_SECONDS) * 1000,
-    );
+    const deadline = runnerClaimDeadline(started, deps.providerTimeoutMs());
     const summary = await runDueJobs(db, jobDefinitions(settings), {
       deadline,
       finishBy: new Date(

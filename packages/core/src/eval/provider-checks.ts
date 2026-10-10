@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { type AiProvider, ProviderError, transcriptSchema } from "../aip";
+import { type AiProvider, longestProviderTimeoutMs, ProviderError, transcriptSchema } from "../aip";
 import type { Database } from "../db";
 import { AppError, errors, type JobDefinition, type LearnerContext, runDueJobs } from "../plt";
 import {
@@ -132,7 +132,7 @@ export async function evaluateAuxiliaryProvider(
   );
   await runDueJobs(db, [job], {
     kinds: [job.kind],
-    deadline: new Date(Date.now() + provider.settings.timeoutMs + 10000),
+    deadline: new Date(Date.now() + longestProviderTimeoutMs(provider.settings) + 10000),
   });
   const run = await getRun(db, ctx, runId);
   return {

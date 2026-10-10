@@ -112,6 +112,40 @@ describe("bounded canonical explanation translation", () => {
     expect(result.learningItems[0]!.claim.text).toContain("used to");
   });
 
+  it("AC-D46-04 never translates the English words that a grammar IPA transcribes", () => {
+    const raw = rawRepair();
+    const persian = "این ساختار برای پرسیدن دربارهٔ عادت است.";
+    const study = {
+      set: "production" as const,
+      kind: "grammar" as const,
+      en: "present simple questions",
+      faMeaning: persian,
+      topic: "questions",
+      ipa: "/dʌz ʃi wɔːk/",
+      ipaText: "Does she walk",
+      faApprox: "داز شی واک",
+      fullSentence: "Does she walk to school every day?",
+      collocations: [],
+      noteFa: "The auxiliary comes before the subject.",
+      imageFa: persian,
+      sourceFa: persian,
+      taskFa: persian,
+      prompt: "She walks to school every day.",
+    };
+    const withStudy = { ...raw, learningItems: [{ ...raw.learningItems[0]!, study }] };
+    const prepared = buildKnowledgeTranslationInput(withStudy, "fa", 120000);
+    const targets = JSON.parse(prepared.input).targets as { section: string; text: string }[];
+    expect(targets.filter((target) => target.section === "study")).toEqual([
+      expect.objectContaining({ text: study.noteFa }),
+    ]);
+    const result = prepared.apply(response(prepared.input));
+    expect(result.learningItems[0]?.study).toMatchObject({
+      ipa: study.ipa,
+      ipaText: study.ipaText,
+      noteFa: "این توضیح فارسی است.",
+    });
+  });
+
   it("targets a Latin-only back while retaining already Persian claims and English quoted examples", () => {
     const raw = rawRepair();
     raw.summary[0]!.text = "این توضیح فارسی است و واژهٔ English را نگه می‌دارد.";
@@ -282,6 +316,9 @@ describe("bounded canonical explanation translation", () => {
     const transport = structuredTransportSchema(prepared.schema, "anthropic/claude-haiku-4.5");
     expect(JSON.stringify(transport).length).toBeLessThan(3000);
     expect(prepared.system).toContain("not class-note generation");
+    // The tag alone does not tell every model which language it is.
+    expect(prepared.system).toContain('into the requested language "fa" (Persian)');
+    expect(prepared.system).toContain('language exactly "fa"');
     expect(prepared.system).toContain("untrusted DATA");
   });
 

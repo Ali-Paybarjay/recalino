@@ -1,11 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  effectiveVoiceCorrectionModel,
+  maximumProviderCost,
+  OpenRouterProvider,
+  type ProviderSettings,
+  providerSettingsSchema,
+} from "../aip";
 import { errors } from "../plt";
+import type { PrivateVoiceAnalysis } from "../voc";
 import type { RunSource } from "./contracts";
 import {
   alignVoiceUtterances,
   buildTranscriptVoiceAnalysis,
   buildVoiceAnalysis,
+  correctVoiceCandidates,
   scopedVoiceSpeakerId,
+  type VoiceCorrectionExecutor,
   type VoiceDiarization,
   validateVoiceCorrections,
   voiceCorrectionFailure,
@@ -277,6 +287,20 @@ describe("correction explanation language", () => {
       )[speakerId],
     ).toEqual([{ ...mistake, whyFa: explanation, explanationLanguage: language }]);
   });
+  it("FR-ACC-005 rejects the whole correction batch when an Arabic explanation is Persian prose", () => {
+    const arabic = { ...mistake, whyFa: "الفعل agree لا يحتاج إلى am." };
+    const persian = { ...mistake, whyFa: "فعل agree به am نیاز ندارد." };
+    expect(() =>
+      validateVoiceCorrections(
+        prepared,
+        { candidates: [{ speakerId, mistakes: [arabic, persian] }] },
+        [],
+        "ar",
+      ),
+    ).toThrow(
+      expect.objectContaining({ details: { fields: { voice: ["mistake_evidence_invalid"] } } }),
+    );
+  });
   it("rejects Persian text for a Spanish explanation and provider-selected locale metadata", () => {
     expect(() =>
       validateVoiceCorrections(
@@ -369,6 +393,132 @@ describe("spoken correction failure reasons", () => {
       new Error("voice_correction_evidence_invalid"),
     ])
       expect(voiceCorrectionFailure(error)).toBe("voice_correction_unavailable");
+  });
+});
+
+describe("FR-VOC-008 spoken corrections use their own provider model", () => {
+  const gemini = "google/gemini-3.8-flash";
+  const haiku = "anthropic/claude-haiku-4.5";
+  // Synthetic settings shaped like the release config: a slower text model with its own
+  // overrides and a separate correction model with none.
+  const release: ProviderSettings = {
+    version: "synthetic-voice-model",
+    llmModel: gemini,
+    voiceCorrectionModel: haiku,
+    visionModel: haiku,
+    sttModel: "synthetic/stt",
+    ttsModel: "synthetic/tts",
+    voice: "synthetic",
+    promptVersion: "synthetic",
+    structuredTemperature: 0,
+    structuredModelOverrides: {
+      [gemini]: {
+        maxOutputTokens: 32000,
+        reasoningEffort: "medium",
+        maxRequestBytes: 400000,
+        structuredOutputMode: "json_schema",
+        omitTemperature: true,
+        knowledgeContract: "content",
+        timeoutMs: 180000,
+      },
+    },
+    maxInputCharacters: 120000,
+    maxOutputTokens: 6144,
+    timeoutMs: 90000,
+    maximumMicros: 760000,
+    modelMaximumMicros: { [gemini]: 760000, [haiku]: 300000 },
+    currency: "USD",
+    priceVersion: "synthetic",
+    charactersPerPage: 3000,
+    audioUrlSupported: false,
+    sttProviderOptions: {},
+    dataContractApproved: true,
+  };
+  const prepared = buildVoiceAnalysis(
+    base,
+    source([
+      { start: 1000, end: 8000, text: "I am agree with you.", speaker: "0" },
+      { start: 30000, end: 38000, text: "I am agree with you.", speaker: "0" },
+    ]),
+    diarization([segment("0", 0, 40000)]),
+  );
+  const analysis: PrivateVoiceAnalysis = {
+    id: "5b0b44f4-5d7e-4f39-9d55-2b8e0b9e1d0a",
+    version: 1,
+    sourceId,
+    sourceVersionId,
+    runId: base.runId,
+    profileVersion: base.profileVersion,
+    modelVersion: prepared.modelVersion,
+    status: "unverified",
+    candidateId: null,
+    reason: null,
+    candidates: prepared.candidates,
+    utterances: prepared.utterances,
+    mistakes: {},
+  };
+  async function correct(settings: ProviderSettings) {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: effectiveVoiceCorrectionModel(settings),
+          choices: [{ finish_reason: "stop", message: { content: '{"candidates":[]}' } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5, cost: 0.00001 },
+        }),
+      ),
+    );
+    const dispatched: Parameters<VoiceCorrectionExecutor>[0][] = [];
+    const execute: VoiceCorrectionExecutor = async (input) => {
+      dispatched.push(input);
+      return (await input.effect(`${analysis.runId}:${input.step}:1`)).output;
+    };
+    const corrected = await correctVoiceCandidates({
+      db: undefined as never,
+      ctx: { userId: "0f7a1d2e-0c39-4a8e-9d7c-6a9b9f3c2e11", requestId: "synthetic" },
+      analysis,
+      provider: new OpenRouterProvider("synthetic-key", settings, request),
+      execute,
+      now: () => new Date("2026-10-10T00:00:00Z"),
+    });
+    return {
+      corrected,
+      dispatched,
+      body: JSON.parse(String(request.mock.calls[0]?.[1]?.body)),
+    };
+  }
+  afterEach(() => vi.restoreAllMocks());
+
+  it("dispatches, holds and samples with the correction model's settings, not the text model's", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const { corrected, dispatched, body } = await correct(release);
+    expect(corrected).toBe(true);
+    expect(dispatched).toHaveLength(1);
+    // The executor records the attempt and the cost hold against this model.
+    expect(dispatched[0]?.model).toBe(haiku);
+    expect(dispatched[0]?.step).toBe(`voice:corrections:${analysis.id}`);
+    expect(maximumProviderCost(release, dispatched[0]?.model ?? "")).toBe(300000);
+    expect(body.model).toBe(haiku);
+    expect(body.temperature).toBe(0);
+    expect(body.max_tokens).toBe(6144);
+    expect(body).not.toHaveProperty("reasoning");
+    expect(body.response_format).toMatchObject({
+      type: "json_schema",
+      json_schema: { name: "spoken_mistake_candidates", strict: true },
+    });
+    expect(timeout).toHaveBeenLastCalledWith(90000);
+  });
+
+  it("keeps every snapshot without the field on llmModel exactly as before", async () => {
+    const { voiceCorrectionModel: _voice, ...legacy } = release;
+    expect(providerSettingsSchema.parse(legacy)).not.toHaveProperty("voiceCorrectionModel");
+    expect(effectiveVoiceCorrectionModel(legacy)).toBe(gemini);
+    const { dispatched, body } = await correct({ ...legacy, llmModel: haiku });
+    expect(dispatched[0]?.model).toBe(haiku);
+    expect(body.model).toBe(haiku);
+    expect(body.temperature).toBe(0);
+    expect(providerSettingsSchema.safeParse({ ...release, voiceCorrectionModel: "" }).success).toBe(
+      false,
+    );
   });
 });
 

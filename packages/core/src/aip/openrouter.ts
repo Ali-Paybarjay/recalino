@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
   type AiProvider,
+  effectiveProviderTimeoutMs,
+  effectiveStructuredMaxOutputTokens,
   ProviderError,
   type ProviderResult,
   type ProviderSettings,
@@ -14,6 +16,7 @@ import { providerHttpErrorCode } from "./provider-http-error";
 import { createJsonFallbackTransport, createStructuredTransport } from "./structured-schema";
 
 const privacy = { zdr: true, data_collection: "deny", require_parameters: true };
+const providerDefaultSamplingModels = new Set(["anthropic/claude-haiku-5.5"]);
 const chatResponse = z.object({
   id: z.string().optional(),
   model: z.string(),
@@ -77,6 +80,16 @@ export class OpenRouterProvider implements AiProvider {
       throw new ProviderError("provider_contract_missing", false, false);
   }
   private async post(path: string, body: unknown, operationKey: string): Promise<Response> {
+    const serialized = JSON.stringify(body);
+    const model =
+      typeof body === "object" && body !== null && "model" in body ? body.model : undefined;
+    const maximumBytes =
+      path === "chat/completions" && typeof model === "string"
+        ? this.settings.structuredModelOverrides?.[model]?.maxRequestBytes
+        : undefined;
+    // Check the complete wire body, including schema/system overhead, before any dispatch.
+    if (maximumBytes !== undefined && Buffer.byteLength(serialized, "utf8") > maximumBytes)
+      throw new ProviderError("provider_request_too_large", false, false);
     let response: Response;
     try {
       response = await this.request(`https://openrouter.ai/api/v1/${path}`, {
@@ -88,8 +101,10 @@ export class OpenRouterProvider implements AiProvider {
           "Idempotency-Key": operationKey,
           "X-OpenRouter-Cache": "false",
         },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.settings.timeoutMs),
+        body: serialized,
+        signal: AbortSignal.timeout(
+          effectiveProviderTimeoutMs(this.settings, typeof model === "string" ? model : undefined),
+        ),
       });
     } catch {
       throw new ProviderError("provider_outcome_unknown", false, true);
@@ -107,8 +122,15 @@ export class OpenRouterProvider implements AiProvider {
   async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
     if (Array.from(input.input).length > this.settings.maxInputCharacters)
       throw new ProviderError("provider_input_too_large", false, false);
+    const controls = this.settings.structuredModelOverrides?.[input.model];
+    // A URL's byte length cannot bound the image's token usage. This bound is text-only.
+    if (controls?.maxRequestBytes !== undefined && input.imageUrls?.length)
+      throw new ProviderError("provider_bounded_images_unsupported", false, false);
     const content: unknown[] = [{ type: "text", text: input.input }];
-    const transport = createStructuredTransport(input.schema, input.model);
+    const transport =
+      controls?.structuredOutputMode === "json_object"
+        ? undefined
+        : createStructuredTransport(input.schema, input.model);
     for (const url of input.imageUrls ?? []) {
       if (
         !/^https:\/\//.test(url) &&
@@ -120,8 +142,20 @@ export class OpenRouterProvider implements AiProvider {
     const body = {
       model: input.model,
       provider: privacy,
-      max_tokens: this.settings.maxOutputTokens,
-      ...(this.settings.structuredTemperature === undefined
+      max_tokens: effectiveStructuredMaxOutputTokens(this.settings, input.model),
+      ...(controls?.reasoningEffort === undefined
+        ? {}
+        : {
+            reasoning: {
+              effort: controls.reasoningEffort,
+            },
+          }),
+      // Reasoning requests and models that reject non-default sampling use provider defaults;
+      // the known model set also covers a snapshot that predates the override.
+      ...(this.settings.structuredTemperature === undefined ||
+      controls?.omitTemperature ||
+      controls?.reasoningEffort !== undefined ||
+      providerDefaultSamplingModels.has(input.model)
         ? {}
         : { temperature: this.settings.structuredTemperature }),
       messages: [
@@ -131,30 +165,11 @@ export class OpenRouterProvider implements AiProvider {
     };
     let response: Response;
     let jsonFallback: ReturnType<typeof createJsonFallbackTransport> | undefined;
-    try {
-      response = await this.post(
-        "chat/completions",
-        {
-          ...body,
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: input.schemaName,
-              strict: true,
-              schema: transport.schema,
-            },
-          },
-        },
-        input.operationKey,
-      );
-    } catch (error) {
-      // A recognized HTTP 400 grammar rejection happened before generation. One
-      // JSON-mode attempt bypasses only the remote grammar compiler; every local
-      // schema/evidence validator still applies. Unknown outcomes never retry.
-      if (!(error instanceof ProviderError) || error.code !== "provider_request_schema_too_complex")
-        throw error;
-      jsonFallback = createJsonFallbackTransport(input.schema);
-      response = await this.post(
+    const postJson = (
+      jsonTransport: ReturnType<typeof createJsonFallbackTransport>,
+      operationKey: string,
+    ) =>
+      this.post(
         "chat/completions",
         {
           ...body,
@@ -164,16 +179,49 @@ export class OpenRouterProvider implements AiProvider {
               content: [
                 input.system,
                 "Return exactly one complete JSON object conforming to the following JSON Schema. Do not include Markdown fences or surrounding prose. All required fields, types, constraints and evidence rules still apply. Finish the entire object within the output token budget.",
-                "Omit inapplicable optional fields. Null and empty-string absence values are permitted only where this schema explicitly declares them; never use them for required fields.",
-                JSON.stringify(jsonFallback.schema),
+                "Omit inapplicable optional fields. Every required property must be present. Absence values null or empty string are allowed only where this schema explicitly permits them; never substitute absence for a field constrained to nonempty content.",
+                JSON.stringify(jsonTransport.schema),
               ].join("\n\n"),
             },
             { role: "user", content },
           ],
           response_format: { type: "json_object" },
         },
-        `${input.operationKey}:json`,
+        operationKey,
       );
+    if (!transport) {
+      // Explicit JSON mode skips native compilation, never local schema validation.
+      jsonFallback = createJsonFallbackTransport(input.schema);
+      response = await postJson(jsonFallback, input.operationKey);
+    } else {
+      try {
+        response = await this.post(
+          "chat/completions",
+          {
+            ...body,
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: input.schemaName,
+                strict: true,
+                schema: transport.schema,
+              },
+            },
+          },
+          input.operationKey,
+        );
+      } catch (error) {
+        // A recognized HTTP 400 grammar rejection happened before generation. One
+        // JSON-mode attempt bypasses only the remote grammar compiler; every local
+        // schema/evidence validator still applies. Unknown outcomes never retry.
+        if (
+          !(error instanceof ProviderError) ||
+          error.code !== "provider_request_schema_too_complex"
+        )
+          throw error;
+        jsonFallback = createJsonFallbackTransport(input.schema);
+        response = await postJson(jsonFallback, `${input.operationKey}:json`);
+      }
     }
     const parsed = chatResponse.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new ProviderError("provider_response_invalid", false, true);
@@ -197,17 +245,35 @@ export class OpenRouterProvider implements AiProvider {
     const contentValue = data.choices[0]?.message.content;
     let raw: unknown;
     try {
-      raw = parseStructuredContent(contentValue, !!jsonFallback);
+      raw = parseStructuredContent(
+        contentValue,
+        !!jsonFallback,
+        // Explicit JSON mode has no grammar. A response that stopped normally with only its
+        // final closers missing is completed without changing any value; strict Zod follows.
+        !transport && data.choices[0]?.finish_reason === "stop" ? input.schemaName : undefined,
+      );
     } catch {
       reportSchemaFailure(input.schemaName, "json_parse", input.schema);
-      throw new ProviderError("provider_schema_invalid", false, false, accounting);
+      throw new ProviderError("provider_schema_invalid", false, false, accounting, "json_parse");
     }
-    const output = input.schema.safeParse(
-      jsonFallback ? jsonFallback.decode(raw) : transport.decode(raw),
-    );
-    if (!output.success) {
-      reportSchemaFailure(input.schemaName, "zod", input.schema, output.error.issues);
+    const outputTransport = jsonFallback ?? transport;
+    if (!outputTransport)
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
+    const output = input.schema.safeParse(outputTransport.decode(raw));
+    if (!output.success) {
+      const summaries = reportSchemaFailure(
+        input.schemaName,
+        "zod",
+        input.schema,
+        output.error.issues,
+      );
+      throw new ProviderError(
+        "provider_schema_invalid",
+        false,
+        false,
+        accounting,
+        schemaIssueDiagnostic(summaries),
+      );
     }
     return {
       output: output.data,
@@ -319,6 +385,8 @@ const diagnosticSchemas = new Set([
   "source_extraction",
   "pdf_page_extraction",
   "class_knowledge",
+  "class_knowledge_content",
+  "class_knowledge_content_repair",
   "class_knowledge_repair",
   "class_study_sentence_repair",
   "class_knowledge_translation",
@@ -337,13 +405,26 @@ const diagnosticIssueCodes = new Set([
   "invalid_value",
   "custom",
 ]);
+type SchemaIssueSummary = { code: string; path: (string | number)[] };
+/** At most three code-owned issues, e.g. `zod:too_small@learningItems.1.teaching.imageFa`. */
+function schemaIssueDiagnostic(summaries: SchemaIssueSummary[]): string | undefined {
+  // A union issue is kept when no nested branch issue explains it (an invalid discriminator).
+  const specific = summaries.filter((issue) => issue.code !== "invalid_union");
+  const parts = (specific.length ? specific : summaries)
+    .slice(0, 3)
+    .map(
+      (issue) =>
+        `zod:${issue.code}@${issue.path.map((part) => (part === "[unknown]" ? "?" : part)).join(".")}`,
+    );
+  return parts.length ? parts.join(";") : undefined;
+}
 /** Only code-owned schema names/paths and validation codes reach logs, never rejected values or messages. */
 function reportSchemaFailure(
   schemaName: string,
   stage: "json_parse" | "zod",
   schema: z.ZodType,
   issues: z.ZodError["issues"] = [],
-): void {
+): SchemaIssueSummary[] {
   try {
     const properties = new Set<string>();
     const visit = (value: unknown): void => {
@@ -370,6 +451,18 @@ function reportSchemaFailure(
       if (issue?.code === "invalid_union")
         bounded.push(...issue.errors.flat().slice(0, 12 - bounded.length));
     }
+    const summaries = bounded.map((issue) => ({
+      code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
+      path: issue.path
+        .slice(0, 12)
+        .map((part) =>
+          typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
+            ? part
+            : typeof part === "string" && properties.has(part)
+              ? part
+              : "[unknown]",
+        ),
+    }));
     // JSON preserves nested issue paths in deployed logs; console's default
     // object inspection replaces deeper arrays with [Array]. The payload below
     // contains only bounded code-owned paths/codes, never rejected source data.
@@ -378,27 +471,19 @@ function reportSchemaFailure(
       JSON.stringify({
         schema: diagnosticSchemas.has(schemaName) ? schemaName : "other",
         stage,
-        issues: bounded.map((issue) => ({
-          code: diagnosticIssueCodes.has(issue.code) ? issue.code : "other",
-          path: issue.path
-            .slice(0, 12)
-            .map((part) =>
-              typeof part === "number" && Number.isSafeInteger(part) && part >= 0 && part <= 1000000
-                ? part
-                : typeof part === "string" && properties.has(part)
-                  ? part
-                  : "[unknown]",
-            ),
-        })),
+        issues: summaries,
       }),
     );
+    return summaries;
   } catch {
     // Diagnostic failure must never alter the provider outcome or trigger another request.
+    return [];
   }
 }
 function parseStructuredContent(
   content: string | null | undefined,
   allowJsonFence: boolean,
+  closerCompletionSchema?: string,
 ): unknown {
   const text = content ?? "";
   try {
@@ -409,9 +494,44 @@ function parseStructuredContent(
     const fenced = allowJsonFence
       ? /^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i.exec(text.trim())
       : null;
-    if (!fenced) throw error;
-    return JSON.parse(fenced[1] ?? "");
+    if (fenced) return JSON.parse(fenced[1] ?? "");
+    const completed = closerCompletionSchema === undefined ? undefined : completeFinalClosers(text);
+    if (!completed) throw error;
+    const value = JSON.parse(completed.text);
+    console.warn("recalino.provider_json_closers_completed", {
+      schema: diagnosticSchemas.has(closerCompletionSchema ?? "")
+        ? closerCompletionSchema
+        : "other",
+      closers: completed.closers,
+    });
+    return value;
   }
+}
+/**
+ * A root object whose text ends by closing a container, outside any string, and lacks only
+ * one or two final closers. Every value is unchanged; anything else stays a parse failure.
+ */
+export function completeFinalClosers(
+  content: string,
+): { text: string; closers: number } | undefined {
+  const text = content.trim();
+  if (!text.startsWith("{") || !(text.endsWith("}") || text.endsWith("]"))) return undefined;
+  const expected: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const character of text) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+    } else if (character === '"') inString = true;
+    else if (character === "{") expected.push("}");
+    else if (character === "[") expected.push("]");
+    else if ((character === "}" || character === "]") && expected.pop() !== character)
+      return undefined;
+  }
+  if (inString || expected.length === 0 || expected.length > 2) return undefined;
+  return { text: text + expected.reverse().join(""), closers: expected.length };
 }
 function cost(value: number | undefined): number | null {
   if (value === undefined) return null;

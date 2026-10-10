@@ -2,14 +2,14 @@
   "version": "1",
   "command": "cost.configure",
   "actorId": "product-owner-authorized-codex",
-  "reason": "Owner-approved eight-person pilot AI caps on 2026-10-04",
-  "operationKey": "pilot-2026-10-04-cost-approved",
+  "reason": "Owner raised the per-session AI cap to 2 USD on 2026-10-10 (D56) so the 0.76 USD Gemini reserve fits; other pilot caps unchanged",
+  "operationKey": "pilot-2026-10-10-session-cap-d56",
   "input": {
-    "version": "pilot-2026-10-04-approved",
+    "version": "pilot-2026-10-10-session-2usd",
     "currency": "USD",
     "killSwitch": false,
     "limits": {
-      "session": 1000000,
+      "session": 2000000,
       "userMonth": 8000000,
       "systemDay": 5000000,
       "systemMonth": 50000000

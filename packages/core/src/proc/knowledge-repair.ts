@@ -1,124 +1,23 @@
 import { z } from "zod";
-import { ProviderError } from "../aip";
 import {
   assignGeneratedKnowledgeIds,
   type Claim,
   knowledgeModelSchema,
   normalizeGeneratedStudyModel,
-  type SourceRef,
-  type StudyLessonContext,
-  sourceRefSchema,
   validateKnowledgeModel,
 } from "../lkm";
 import { AppError, errors } from "../plt";
-import type { SourceClassification } from "../src";
-import type { RunSource } from "./contracts";
-import { buildKnowledgeInput } from "./knowledge-input";
-import type { ModelTeachingContext } from "./learner-context";
+import { providerStudySchema } from "./generated-knowledge";
+import { buildKnowledgeEvidenceInput, type KnowledgeEvidenceInput } from "./knowledge-evidence";
 
-interface RepairInput {
-  sources: readonly RunSource[];
-  explanationLanguage: string;
-  teachingPreferences: { shorterExamples: boolean };
-  missingSourceIds: readonly string[];
-  lessonContext?: StudyLessonContext;
-  learnerContext?: ModelTeachingContext;
-}
-interface Evidence {
-  reference: SourceRef;
-  evidence: Claim["evidence"];
-}
-
-function classification(source: RunSource): SourceClassification {
-  const role = source.role === "class_audio" ? "class_material" : (source.role ?? "class_material");
-  return { role, confidence: role === "class_material" ? "uncertain" : "high" };
-}
-function evidenceKind(source: RunSource): Claim["evidence"] {
-  if (source.kind === "audio") return "audio";
-  if (source.role === "user_notes") return "user_notes";
-  if (source.kind === "image" && source.role === "board_photo") return "board";
-  return "material";
-}
+type RepairInput = KnowledgeEvidenceInput;
 
 /** One bounded repair request; model keys select exact evidence instead of constructing locators. */
 export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters: number) {
-  const prepared = buildKnowledgeInput(data, maxInputCharacters);
-  const encoded = JSON.parse(prepared.input);
-  const references = new Map<string, Evidence>();
-  let ordinal = 0;
-  const sources = data.sources.map((source, sourceIndex) => {
-    const transport = encoded.sources[sourceIndex];
-    let rows: unknown[][];
-    let metadata: Record<string, unknown>;
-    if (prepared.format === "compact") {
-      const { evidence, ...rest } = transport;
-      rows = evidence;
-      metadata = rest;
-    } else {
-      const { units, blocks, allowedSourceRefs, ...rest } = transport;
-      metadata = {
-        ...rest,
-        blockDefaults: {},
-        incompleteUnits: units
-          .filter((unit: RunSource["units"][number]) => unit.status !== "extracted")
-          .map(({ id: _id, ...unit }: RunSource["units"][number]) => unit),
-      };
-      rows = source.blocks.map((block, index) => {
-        const locator = allowedSourceRefs[index].locator as SourceRef["locator"];
-        const row: unknown[] =
-          locator.kind === "time"
-            ? ["time", locator.startMs, locator.endMs, block.text]
-            : locator.kind === "page"
-              ? ["page", locator.page, locator.blockId, block.text]
-              : ["text", locator.blockId, locator.start, locator.end, block.text];
-        const { id: _id, unitId: _unitId, text: _text, ...annotations } = block;
-        row.push(annotations);
-        return row;
-      });
-    }
-    const units = new Map(source.units.map((unit) => [unit.id, unit]));
-    const evidence = rows.map((row, blockIndex) => {
-      const block = source.blocks[blockIndex];
-      const key = `r${(ordinal++).toString(36)}`;
-      if (!block) throw errors.validationFailed({ output: ["source_reference_invalid"] });
-      if (!block.text.length) return [null, ...row];
-      if (!source.contentVersionId)
-        throw errors.validationFailed({ output: ["source_reference_invalid"] });
-      const unit = units.get(block.unitId);
-      const locator: SourceRef["locator"] =
-        source.kind === "audio" && unit?.kind === "time" && unit.end !== undefined
-          ? { kind: "time", startMs: unit.start, endMs: unit.end }
-          : source.kind === "pdf" && unit?.kind === "page"
-            ? { kind: "page", page: unit.start, blockId: block.id }
-            : { kind: "text", blockId: block.id, start: 0, end: Array.from(block.text).length };
-      if (locator.kind === "time" && locator.endMs <= locator.startMs)
-        throw errors.validationFailed({ output: ["time_reference_invalid"] });
-      references.set(key, {
-        reference: sourceRefSchema.parse({
-          sourceId: source.sourceId,
-          contentVersionId: source.contentVersionId,
-          locator,
-        }),
-        evidence: evidenceKind(source),
-      });
-      return [key, ...row];
-    });
-    return { ...metadata, evidence };
-  });
-  if (!references.size) throw errors.validationFailed({ sources: ["no_extractable_content"] });
-  const input = JSON.stringify({
-    format: "knowledge_repair_keys_v1",
-    explanationLanguage: data.explanationLanguage,
-    teachingPreferences: data.teachingPreferences,
-    sources,
-    missingSourceIds: data.missingSourceIds,
-    ...(data.lessonContext ? { lessonContext: data.lessonContext } : {}),
-    ...(data.learnerContext ? { learnerContext: data.learnerContext } : {}),
-  });
-  if (Array.from(input).length > maxInputCharacters)
-    throw new ProviderError("provider_input_too_large", false, false);
-
-  const keys = Array.from(references.keys()) as [string, ...string[]];
+  const { input, references, keys, sourceClassifications } = buildKnowledgeEvidenceInput(
+    data,
+    maxInputCharacters,
+  );
   const claim = z.strictObject({
     id: z.string().min(1).max(100),
     text: z.string().min(1).max(20000),
@@ -144,7 +43,9 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
       .max(100),
     learningItems: z
       .array(
-        knowledgeModelSchema.shape.learningItems.element.omit({ claim: true }).extend({ claim }),
+        knowledgeModelSchema.shape.learningItems.element
+          .omit({ study: true, claim: true })
+          .extend({ study: providerStudySchema.optional(), claim }),
       )
       .max(500),
     homework: z.array(claim).max(100),
@@ -230,22 +131,20 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
     }
   }
 
-  const sourceClassifications = () =>
-    data.sources.map((source) => ({
-      sourceId: source.sourceId,
-      classification: classification(source),
-    }));
   function decode(raw: unknown) {
     const model = expand(raw);
     const validated = validateKnowledgeModel(model, data.sources, data.explanationLanguage);
-    return { ...validated, sourceClassifications: sourceClassifications() };
+    return {
+      ...validated,
+      sourceClassifications,
+    };
   }
   /**
    * The server-expanded lesson before validation. Only the bounded answer-span repair reads it;
    * whatever it returns is validated in full again before use.
    */
   function expanded(raw: unknown) {
-    return { ...expand(raw), sourceClassifications: sourceClassifications() };
+    return { ...expand(raw), sourceClassifications };
   }
   return { schema, input, system, decode, expanded, assertLanguageRepairEvidence };
 }

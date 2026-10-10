@@ -1,4 +1,8 @@
-import { maximumProviderCost, providerSettingsSchema } from "@recalino/core/aip";
+import {
+  effectiveStructuredMaxOutputTokens,
+  maximumProviderCost,
+  providerSettingsSchema,
+} from "@recalino/core/aip";
 import { z } from "zod";
 
 export const evaluationConfigSchema = z
@@ -34,7 +38,13 @@ export const evaluationConfigSchema = z
         path: ["maximumTotalMicros"],
         message: "four_call_bounds_exceed_total",
       });
-    if (config.provider.maxInputCharacters > 10000 || config.provider.maxOutputTokens > 4000)
+    if (
+      config.provider.maxInputCharacters > 10000 ||
+      config.provider.maxOutputTokens > 4000 ||
+      [config.provider.llmModel, config.provider.visionModel].some(
+        (model) => effectiveStructuredMaxOutputTokens(config.provider, model) > 4000,
+      )
+    )
       ctx.addIssue({
         code: "custom",
         path: ["provider"],

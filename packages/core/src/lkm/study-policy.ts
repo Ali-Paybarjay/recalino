@@ -1,4 +1,4 @@
-import { studyText } from "./study-locale";
+import { studyMessage, studyText } from "./study-locale";
 import type { ClassNotes, StudyContent, TaskGroup } from "./study-schema";
 
 export interface StudyLessonContext {
@@ -8,7 +8,8 @@ export interface StudyLessonContext {
 
 /** Explanation prose paths; legacy fa* names remain stable for stored revisions. */
 export function explanationStudyFields(model: {
-  learningItems: readonly { study?: StudyContent }[];
+  language?: { explanation: string };
+  learningItems: readonly { study?: StudyContent; claim?: { origin?: string; text?: string } }[];
   classNotes?: ClassNotes;
 }): { path: (string | number)[]; text: string }[] {
   const fields: { path: (string | number)[]; text: string }[] = [];
@@ -28,8 +29,20 @@ export function explanationStudyFields(model: {
     for (const key of ["faMeaning", "trap", "noteFa"] as const)
       add(["learningItems", index, "study", key], study[key]);
     if (study.set === "production") {
-      for (const key of ["imageFa", "sourceFa", "taskFa"] as const)
+      for (const key of ["imageFa", "taskFa"] as const)
         add(["learningItems", index, "study", key], study[key]);
+      const origin = item.claim?.origin;
+      const sourceLabel =
+        model.language && (origin === "from_class" || origin === "ai_expansion")
+          ? studyMessage(
+              model.language.explanation,
+              origin === "from_class" ? "fromClass" : "aiExpansion",
+            )
+          : undefined;
+      // D31: exact server provenance chrome may have reviewed English fallback.
+      // Arbitrary source prose and a label for the wrong origin remain explanations.
+      if (sourceLabel?.language !== "en" || sourceLabel.text !== study.sourceFa)
+        add(["learningItems", index, "study", "sourceFa"], study.sourceFa);
     }
   });
   const notes = model.classNotes;

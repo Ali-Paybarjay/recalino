@@ -20,13 +20,66 @@ export interface StudyLexicalTarget {
   parts: string[];
 }
 
+/**
+ * The complete closed set of complement notations accepted after " + ". Generation prompts quote
+ * this list so instructions and the parser cannot drift; any other notation is unsupported.
+ */
+export const studyComplementNotations = [
+  "-ing form",
+  "-ing",
+  "noun",
+  "base verb",
+  "verb",
+  "person",
+  "place",
+  "sb",
+  "sth",
+  "someone",
+  "somebody",
+  "something",
+] as const;
+
+/**
+ * Closed English grammar metalanguage (each also with a plural -s). Such a term names a category,
+ * so a lexical answer whose blanks hide none of its words is a label rather than a headword.
+ * Ordinary vocabulary such as tense, past, subject or object is deliberately absent. Kept apart
+ * from the parser's grammarWord, which also validates stored targets and speech targets.
+ */
+export const studyGrammarTerms = [
+  "pronoun",
+  "determiner",
+  "article",
+  "preposition",
+  "conjunction",
+  "comparative",
+  "superlative",
+  "plural",
+  "singular",
+  "possessive",
+  "reflexive",
+  "demonstrative",
+  "quantifier",
+  "auxiliary",
+  "modal",
+  "gerund",
+  "infinitive",
+  "interrogative",
+  "imperative",
+  "conditional",
+  "contraction",
+  "question word",
+  "linking word",
+] as const;
+
 const placeholder = /^(?:sb|sth|someone|somebody|something)$/iu;
 // A spelled-out slot word standing alone cannot be a slot: it is the taught word itself.
 const literalPronoun = /^(?:someone|somebody|something)$/iu;
 const lexical = /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’-]+$/u;
 const grammarWord = /\b(?:noun|verb|adjective|adverb|adj|adv|participle|ing)\b/iu;
-const complement =
-  "(?:-?ing(?: form)?|noun|verb|base verb|person|place|sb|sth|someone|somebody|something)";
+// "ing"/"ing form" without the hyphen remain accepted spellings of the listed -ing notations.
+const complement = `(?:-?ing(?: form)?|${studyComplementNotations
+  .filter((notation) => !notation.startsWith("-ing"))
+  .join("|")})`;
 const complementPattern = new RegExp(
   `^${complement}(?:\\s*(?:/|\\bor\\b)\\s*${complement})*$`,
   "iu",
@@ -111,6 +164,11 @@ export function studyLexicalTargetMatches(target: StudyLexicalTarget, text: stri
 /** AC-D46-01: only a structured English headword/frame can become speech, never card HTML. */
 export function studyPronunciationTarget(item: { study?: StudyContent }): string | undefined {
   if (!item.study) return undefined;
+  // A grammar IPA transcribes its stored class words, so speech says those words, not the label.
+  if (item.study.set === "production" && item.study.ipaText !== undefined) {
+    const spoken = studyPronunciationTargetSchema.safeParse(item.study.ipaText);
+    return spoken.success ? spoken.data : undefined;
+  }
   const target = studyLexicalTarget(item.study.en);
   if (!target) return undefined;
   if (target.parts.length === 1) {
