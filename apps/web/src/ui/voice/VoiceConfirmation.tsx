@@ -7,7 +7,6 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { voiceSettingsHref } from "./navigation";
@@ -378,7 +377,7 @@ export function VoiceConfirmation({
             ) : (
               <Status>
                 {confirmationWaits
-                  ? pendingCopy.voice.confirmBlockedSummary
+                  ? voiceCopy.confirmBlockedSummary
                   : needsConfirmation
                     ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
                     : hasFailedCheck

@@ -3,7 +3,6 @@ import type { VoiceAnalysisView } from "@recalino/core/voice-contracts";
 import { useEffect, useRef, useState } from "react";
 import { Banner } from "../components/Feedback";
 import { WarningCircle } from "../icons";
-import { pendingCopy } from "../pending-copy";
 import { IndexedRecordingStore } from "../recording/store";
 import { strings } from "../strings";
 import { prepareFileHashes } from "../workspace/file-hashes";
@@ -155,7 +154,7 @@ export function OriginalRecovery({
           )
         }
       >
-        {reason} {pendingCopy.voice.playback.listenFirst}
+        {reason} {copy.listenFirst}
       </Banner>
       {state === "unreadable" ? null : (
         <input

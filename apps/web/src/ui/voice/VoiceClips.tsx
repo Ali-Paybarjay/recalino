@@ -1,7 +1,6 @@
 "use client";
 import type { VoiceCandidate } from "@recalino/core/voice-contracts";
 import { useEffect, useRef, useState } from "react";
-import { pendingCopy } from "../pending-copy";
 import {
   IndexedRecordingStore,
   LocalRecordingIncompleteError,
@@ -10,6 +9,7 @@ import {
 import { Button, Status } from "../workspace/primitives";
 import { localOriginalRow } from "./relink-original";
 import styles from "./Voice.module.css";
+import { voiceCopy } from "./voice-copy";
 
 /**
  * Where the original of one class source stands on this device. A store that cannot be read,
@@ -121,7 +121,7 @@ export function VoiceClips({
       timeout.current = setTimeout(stop, Math.max(0, clip.endMs - element.currentTime * 1000));
     } catch {
       if (request === generation.current) {
-        setProblem(pendingCopy.voice.playback.clipFailed);
+        setProblem(voiceCopy.playback.clipFailed);
         setPlaying(null);
       }
     }
