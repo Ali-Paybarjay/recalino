@@ -24,6 +24,7 @@ import {
   voiceEmbeddingSchema,
   voiceUtteranceSchema,
 } from "./contracts";
+import { withListeningClips } from "./listening";
 import { autoAcceptVoice, rankVoiceCandidates } from "./matching";
 import { decideVoiceMatch, voiceReferenceOutcome, voiceReferences } from "./policy";
 import { voiceAcceptancePolicy } from "./policy-registry";
@@ -69,9 +70,12 @@ function publicView(row: Row): VoiceAnalysisView {
     reason: row.reason,
     referenceStatus: z.enum(VOICE_REFERENCE_STATUSES).nullable().parse(row.reference_status),
     matchReason: z.enum(VOICE_MATCH_REASONS).nullable().parse(row.match_reason),
-    candidates: candidatesSchema
-      .parse(row.candidates)
-      .filter((candidate) => !rejected.includes(candidate.id)),
+    candidates: withListeningClips(
+      candidatesSchema
+        .parse(row.candidates)
+        .filter((candidate) => !rejected.includes(candidate.id)),
+      utterancesSchema.parse(row.utterances),
+    ),
   };
 }
 async function ownedAnalysis(db: Database | Tx, ctx: LearnerContext, id: string): Promise<Row> {

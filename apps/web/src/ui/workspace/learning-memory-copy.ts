@@ -1,14 +1,8 @@
-import { pendingCopy } from "../pending-copy";
-
 /**
  * D49 Your learning and Class Notes adaptation copy. Not in the design handoff; the product owner
- * approved the proposed texts on 2026-10-08 (docs/plans/TEACHING_MEMORY_2026-10-08.md §5).
- * Texts changed by the 2026-10-09 review fixes come from the pending-copy register instead.
+ * approved the proposed texts on 2026-10-08 (docs/plans/TEACHING_MEMORY_2026-10-08.md §5) and
+ * the texts changed by the 2026-10-09 review fixes on 2026-10-10.
  */
-const pending = pendingCopy.learningMemory;
-const fill = (template: string, values: Record<string, string>) =>
-  template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
-
 export const learningMemoryCopy = {
   nextTitle: "Your next step",
   nextPractiseDue: (label: string) => `Practise “${label}” in review now.`,
@@ -33,16 +27,16 @@ export const learningMemoryCopy = {
     `You chose Again or Forgot ${again} times, most recently on ${date}.${
       recalled === 1 ? " You recalled it once since then." : ""
     }`,
-  recalledTitle: pending.recalledTitle,
+  recalledTitle: "Recalled in your latest answers",
   recalledReason: (count: number, date: string) =>
     `You recalled it in your last ${count} answers, most recently on ${date}.`,
   fromClass: (date: string, course: string | null) =>
     course ? `From your class on ${date} · ${course}` : `From your class on ${date}`,
   evidence: (amount: "little" | "some" | "more", reviews: number, sets: string) =>
     `Evidence: ${amount} (${reviews === 1 ? "1 answer" : `${reviews} answers`}; ${sets}).`,
-  setProduction: pending.setProduction,
-  setRecognition: pending.setRecognition,
-  setLegacy: pending.setLegacy,
+  setProduction: "core cards",
+  setRecognition: "supplementary cards",
+  setLegacy: "other cards",
   notDifficulty: "This isn't a difficulty for me",
   explainSimpler: "Explain it more simply next time",
   stopSimpler: "Stop the simpler explanation",
@@ -51,7 +45,8 @@ export const learningMemoryCopy = {
     `You said this on ${date}. A new Again or Forgot answer brings it back.`,
   showAgain: "Show it again",
   simplerTitle: "You asked for simpler explanations",
-  simplerReason: (date: string) => fill(pending.simplerReason, { date }),
+  simplerReason: (date: string) =>
+    `Asked on ${date}. When this session, or a session in the same course that teaches it, is processed again, Recalino can use this request to ask for a simpler explanation.`,
   definitions:
     "Evidence amounts: little = 1–2 answers, some = 3–5, more = 6 or more. “Suggested for more practice” means at least two Again or Forgot answers and fewer than two recalls since the latest one. Recalling a card is not the same as using the language on your own.",
   saved: "Your correction is saved.",
@@ -69,7 +64,7 @@ export const learningMemoryCopy = {
   adaptationFocus: (target: string, reason: "recall_difficulty" | "asked_simpler", date: string) =>
     reason === "recall_difficulty"
       ? `“${target}” appears in this lesson. Before it was prepared, you chose Again or Forgot for it in review (latest ${date}).`
-      : fill(pending.adaptationAskedSimpler, { target, date }),
+      : `“${target}” appears in this lesson. You asked for a simpler explanation of it on ${date}.`,
   adaptationNote:
     "This lists what the lesson was prepared with. It is not a test result or a judgement of your English.",
 } as const;
