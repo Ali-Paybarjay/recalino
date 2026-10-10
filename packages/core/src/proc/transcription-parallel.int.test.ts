@@ -238,10 +238,17 @@ const transcript = (index: number) =>
 it("PRD-SEG-01 transcribes a long class's chunks a few at a time in one job, then publishes from the next", async () => {
   let inFlight = 0;
   let peak = 0;
+  let overlapped = () => {};
+  const overlap = new Promise<void>((resolve) => {
+    overlapped = resolve;
+  });
   const c = await parallelClass(async (index) => {
     inFlight += 1;
     peak = Math.max(peak, inFlight);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    if (inFlight > 1) overlapped();
+    // A call waits for a second one, however long each start's database step takes; serial
+    // calls would only reach the bound and fail the peak check below.
+    await Promise.race([overlap, new Promise((resolve) => setTimeout(resolve, 2000))]);
     inFlight -= 1;
     return transcript(index);
   });
