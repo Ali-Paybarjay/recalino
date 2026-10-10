@@ -18,7 +18,10 @@ import {
 } from "../../packages/core/src/lkm";
 import { AppError, errors, sha256Hex } from "../../packages/core/src/plt";
 import type { RunSource } from "../../packages/core/src/proc/contracts";
-import { generatedKnowledgeSchema } from "../../packages/core/src/proc/generated-knowledge";
+import {
+  generatedKnowledgeSchema,
+  legacyKnowledgeWireSchema,
+} from "../../packages/core/src/proc/generated-knowledge";
 import {
   finalizeGeneratedStudyPractice,
   type GeneratedPracticeAudit,
@@ -331,7 +334,7 @@ for (const item of cases) {
       return provider.structured({
         operationKey: randomUUID(),
         model: settings.llmModel,
-        schema: generatedKnowledgeSchema,
+        schema: legacyKnowledgeWireSchema,
         schemaName: "class_knowledge",
         system: [
           knowledgePrompt(

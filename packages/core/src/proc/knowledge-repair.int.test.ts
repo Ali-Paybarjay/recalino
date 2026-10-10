@@ -51,7 +51,10 @@ const generatedSchema = knowledgeModelSchema.extend({
 class RepairProvider implements AiProvider {
   readonly name = "synthetic";
   readonly mode = "mock";
-  readonly settings = { ...settings };
+  readonly settings: ProviderSettings;
+  constructor(providerSettings: ProviderSettings = settings) {
+    this.settings = { ...providerSettings };
+  }
   readonly structuredCalls = vi.fn(async (input: StructuredInput<unknown>) => {
     if (this.failure) throw this.failure;
     return this.response(input);
@@ -109,7 +112,13 @@ function repairedOutput(input: Pick<StructuredInput<unknown>, "input">, english 
   };
 }
 
-async function fixture(options: { seedOriginal?: boolean; originalValid?: boolean } = {}) {
+async function fixture(
+  options: {
+    seedOriginal?: boolean;
+    originalValid?: boolean;
+    providerSettings?: ProviderSettings;
+  } = {},
+) {
   const x = await studyFixture(db);
   await updateProfile(
     db,
@@ -212,7 +221,7 @@ async function fixture(options: { seedOriginal?: boolean; originalValid?: boolea
     },
     { actorId: "synthetic-operator", reason: "Synthetic bounded knowledge repair integration" },
   );
-  const provider = new RepairProvider();
+  const provider = new RepairProvider(options.providerSettings);
   const job = processingJob({ provider, store: new MemoryObjectStore() });
   const run = await createProcessingRun(
     db,
@@ -343,8 +352,8 @@ async function fixture(options: { seedOriginal?: boolean; originalValid?: boolea
   return { x, run, snapshot, repair, provider, job, jobContext, work, workStep, original };
 }
 
-async function failedWithPaidRepair() {
-  const f = await fixture();
+async function failedWithPaidRepair(options: { providerSettings?: ProviderSettings } = {}) {
+  const f = await fixture(options);
   await db
     .insertInto("proc.run_step")
     .values({
@@ -587,6 +596,39 @@ it.each(["context", "knowledge", "schema", "answer", "cost", "attempt"] as const
     ).toEqual([]);
   },
 );
+
+it("FR-PROC-003 D56 never replays an earlier paid repair into a content-contract retry", async () => {
+  // Under the content contract a paid knowledge:repair is a whole regenerated lesson, so only the
+  // legacy evidence-key repair is replayed. Even a legacy-shaped paid repair is skipped here: a
+  // retry after a validator fix pays for its own regeneration instead (known D56 limitation).
+  const content: ProviderSettings = {
+    ...settings,
+    version: "synthetic-content-repair",
+    structuredModelOverrides: { [settings.llmModel]: { knowledgeContract: "content" } },
+  };
+  const f = await failedWithPaidRepair({ providerSettings: content });
+  const retry = await retryRun(db, f.x.ctx, f.run.id, randomUUID(), {
+    provider: f.provider,
+    job: f.job,
+  });
+  const steps = await db
+    .selectFrom("proc.run_step")
+    .select("step")
+    .where("run_id", "=", retry.id)
+    .where("step", "in", ["knowledge:reused", "knowledge:repair", "knowledge:repair-reused"])
+    .execute();
+  // The paid generation is still recovered; its paid repair is not.
+  expect(steps.map((row) => row.step)).toEqual(["knowledge:reused"]);
+  expect(
+    await db
+      .selectFrom("proc.run_step")
+      .select("output")
+      .where("run_id", "=", f.run.id)
+      .where("step", "=", "knowledge:repair")
+      .executeTakeFirstOrThrow(),
+  ).toEqual({ output: f.paid });
+  expect(f.provider.structuredCalls).not.toHaveBeenCalled();
+});
 
 function knownTruncation(): ProviderError {
   return new ProviderError("provider_output_truncated", false, false, {

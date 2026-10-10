@@ -159,7 +159,8 @@ async function fixture(options: { invalidHomework?: boolean; fullHistory?: boole
           id: `b${i}`,
           kind: audio ? "transcript" : "paragraph",
           unitId: audio ? `t${i}` : "image-1",
-          text: `Synthetic native English evidence ${index}:${i}.`,
+          // The cited first transcript row also sets the synthetic after-class homework.
+          text: `Synthetic native English evidence ${index}:${i}.${audio && i === 0 ? " Homework for the next class: read page ten." : ""}`,
           speakerRole: "unknown",
         })),
       }),

@@ -1,10 +1,12 @@
 export { cardHtmlToText, safeCardHtml } from "./card-html";
 export { assignGeneratedKnowledgeIds, GENERATED_IDENTITY_VERSION } from "./generated-identities";
+export { isAnnouncingHeading, statesAssignment } from "./homework-evidence";
 export {
   type Claim,
   claimSchema,
   type EvidenceSource,
   isExplanationLanguage,
+  KNOWLEDGE_SUMMARY_LIMIT,
   type KnowledgeModel,
   knowledgeModelSchema,
   type LearningItem,
@@ -52,6 +54,8 @@ export {
 } from "./study-schema";
 export {
   type StudyLexicalTarget,
+  studyComplementNotations,
+  studyGrammarTerms,
   studyLexicalTarget,
   studyLexicalTargetMatches,
   studyPronunciationTarget,

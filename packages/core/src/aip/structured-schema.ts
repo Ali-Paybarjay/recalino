@@ -145,7 +145,122 @@ export function createJsonFallbackTransport(schema: z.ZodType) {
   return { schema: wire, decode: (value: unknown) => decode(value) };
 }
 
+// A local bound, not a published Gemini limit: long enums are a documented compile-complexity
+// trigger, and evidence-key enums grow with the class transcript.
+const GEMINI_ENUM_LIMIT = 64;
+const geminiKept = new Set(["type", "required", "enum", "description"]);
+const geminiFormats = new Set(["date-time", "date", "time"]);
+// Annotations and value constraints outside Gemini's documented response-schema subset, or
+// documented as grammar-complexity drivers. The original Zod schema enforces every one locally.
+const geminiDropped = new Set([
+  "$schema",
+  "$id",
+  "$comment",
+  "$defs",
+  "definitions",
+  "title",
+  "default",
+  "examples",
+  "deprecated",
+  "readOnly",
+  "writeOnly",
+  "pattern",
+  "minLength",
+  "maxLength",
+  "maxItems",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "propertyNames",
+  "minProperties",
+  "maxProperties",
+  "uniqueItems",
+  "contentEncoding",
+  "contentMediaType",
+]);
+
+function geminiNull(value: unknown): boolean {
+  return object(value) && value.type === "null" && Object.keys(value).length === 1;
+}
+
+/**
+ * Fully inlined subset: type, properties, required, additionalProperties, items, enum, anyOf,
+ * description, minItems <= 1 and date/time formats. Structure Gemini cannot express (a recursive
+ * reference, allOf, not, conditionals, tuples) fails locally instead of being silently dropped.
+ */
+function createGeminiTransport(schema: z.ZodType) {
+  const root = z.toJSONSchema(schema) as Schema;
+  function transform(value: unknown, inlining: ReadonlySet<Schema>): unknown {
+    if (!object(value)) return value;
+    if (typeof value.$ref === "string") {
+      const { $ref: _ref, ...siblings } = value;
+      const target = resolve(value, root);
+      if (target === value || "$ref" in target || inlining.has(target))
+        throw new ProviderError("provider_schema_unsupported", false, false);
+      return transform({ ...target, ...siblings }, new Set([...inlining, target]));
+    }
+    if ("anyOf" in value && "oneOf" in value)
+      throw new ProviderError("provider_schema_unsupported", false, false);
+    const result: Schema = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (geminiDropped.has(key) || key === "const") continue;
+      if (key === "properties" && object(item))
+        result.properties = Object.fromEntries(
+          Object.entries(item).map(([name, child]) => [name, transform(child, inlining)]),
+        );
+      else if ((key === "anyOf" || key === "oneOf") && Array.isArray(item))
+        result.anyOf = item.map((child) => transform(child, inlining));
+      else if (key === "items" || key === "additionalProperties")
+        result[key] = transform(item, inlining);
+      else if (key === "minItems") {
+        if (typeof item === "number" && item <= 1) result.minItems = item;
+      } else if (key === "format") {
+        if (typeof item === "string" && geminiFormats.has(item)) result.format = item;
+      } else if (geminiKept.has(key)) result[key] = item;
+      else throw new ProviderError("provider_schema_unsupported", false, false);
+    }
+    if ("const" in value) result.enum = [value.const];
+    // Gemini documents string and numeric enums only. A literal outside them, or a long enum,
+    // keeps its type and description; local Zod still rejects every other value.
+    if (
+      Array.isArray(result.enum) &&
+      (result.enum.length > GEMINI_ENUM_LIMIT ||
+        !(
+          result.enum.every((entry) => typeof entry === "string") ||
+          result.enum.every((entry) => typeof entry === "number")
+        ))
+    )
+      delete result.enum;
+    // Gemini documents nullability as a type array; an exact nullable union becomes one.
+    if (
+      Array.isArray(result.anyOf) &&
+      result.anyOf.length === 2 &&
+      Object.keys(result).every((key) => key === "anyOf" || key === "description")
+    ) {
+      const [first, second] = result.anyOf;
+      const nullable = geminiNull(second) ? first : geminiNull(first) ? second : undefined;
+      if (
+        object(nullable) &&
+        typeof nullable.type === "string" &&
+        nullable.type !== "null" &&
+        !("enum" in nullable) &&
+        !("anyOf" in nullable)
+      )
+        return {
+          ...nullable,
+          type: [nullable.type, "null"],
+          ...("description" in result ? { description: result.description } : {}),
+        };
+    }
+    return result;
+  }
+  return { schema: transform(root, new Set()) as Schema, decode: (value: unknown) => value };
+}
+
 export function createStructuredTransport(schema: z.ZodType, model: string) {
+  if (model.startsWith("google/")) return createGeminiTransport(schema);
   if (!model.startsWith("anthropic/"))
     return { schema: z.toJSONSchema(schema), decode: (value: unknown) => value };
   const converted = z.toJSONSchema(schema, { reused: "ref" });

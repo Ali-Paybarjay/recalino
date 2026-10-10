@@ -34,6 +34,38 @@ it.each(MULTILINGUAL_STUDY_CASES)(
   },
 );
 
+it("AC-D46-04 speaks the words a grammar IPA transcribes, never its pattern label", () => {
+  const model = referenceStudyModel();
+  const item = model.learningItems[0];
+  if (item?.study?.set !== "production") throw new Error("Missing reference target");
+  const { gapSentence: _gap, ...study } = item.study;
+  const grammar = {
+    ...item,
+    kind: "grammar" as const,
+    study: {
+      ...study,
+      en: "present simple questions",
+      kind: "grammar" as const,
+      ipa: "/dʌz ʃi wɔːk/",
+      ipaText: "Does she walk",
+      taskFa: "جمله را سؤالی کن:",
+      prompt: "She walks to school every day.",
+      fullSentence: "Does she walk to school every day?",
+    },
+  };
+  expect(studyPronunciationTarget(grammar)).toBe("Does she walk");
+  expect(
+    readStudyMetadata(studyCardContent(grammar, model).study_metadata).pronunciationTarget,
+  ).toBe("Does she walk");
+  // Words unfit for speech leave the card silent rather than speaking the label instead.
+  expect(
+    studyPronunciationTarget({
+      ...grammar,
+      study: { ...grammar.study, ipaText: "Does [she] walk" },
+    }),
+  ).toBeUndefined();
+});
+
 it("AC-D46-01 extracts only the structured target and preserves old metadata", () => {
   const model = referenceStudyModel();
   const item = model.learningItems[0];
