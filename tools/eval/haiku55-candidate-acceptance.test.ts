@@ -288,6 +288,35 @@ const production = async () =>
   providerSettingsSchema.parse(
     JSON.parse(await readFile(resolve("config/openrouter-defaults.json"), "utf8")),
   );
+/**
+ * The Haiku 5.5 migration baseline (config openrouter-2026-10-09-2) that this harness's production
+ * rounds evaluated. D49 moved the release config to Gemini on json_schema, so it is frozen here.
+ */
+const migrationBaseline = async () => {
+  const { voiceCorrectionModel: _voice, ...release } = await production();
+  return providerSettingsSchema.parse({
+    ...release,
+    version: "openrouter-2026-10-09-2",
+    llmModel: productionMigrationModel,
+    structuredModelOverrides: {
+      [productionMigrationModel]: {
+        maxOutputTokens: 12000,
+        reasoningEffort: "low",
+        maxRequestBytes: 400000,
+        structuredOutputMode: "json_object",
+        omitTemperature: true,
+      },
+    },
+    maximumMicros: 300000,
+    modelMaximumMicros: {
+      [productionMigrationModel]: 300000,
+      "anthropic/claude-haiku-4.5": 300000,
+      "openai/whisper-large-v3-turbo": 5000,
+      "hexgrad/kokoro-82m": 5000,
+    },
+    priceVersion: "openrouter-models-2026-10-08",
+  });
+};
 const resolved = (id: string) => {
   const evaluated = resolveEvaluationCandidate(id, {
     comparison: false,
@@ -304,12 +333,11 @@ const candidateRoundSettings = async (id: string) => {
 };
 
 describe("FR-PROC-003 evaluated round settings", () => {
-  it("evaluates production config on direct JSON or exactly the candidate on its declared mode", async () => {
-    expect(assertEvaluatedRoundSettings(await production(), undefined)).toEqual({
+  it("evaluates the migration baseline on direct JSON or exactly the candidate on its declared mode", async () => {
+    expect(assertEvaluatedRoundSettings(await migrationBaseline(), undefined)).toEqual({
       structuredOutputMode: "json_object",
       directJsonMode: true,
     });
-    expect((await production()).llmModel).toBe(productionMigrationModel);
     expect(
       assertEvaluatedRoundSettings(
         await candidateRoundSettings("gemini-3.8-flash-medium"),
@@ -322,6 +350,15 @@ describe("FR-PROC-003 evaluated round settings", () => {
         resolved("gemini-3.8-flash-medium-schema"),
       ),
     ).toEqual({ structuredOutputMode: "json_schema", directJsonMode: false });
+  });
+  it("D49 refuses a production round on the Gemini release config before any paid dispatch", async () => {
+    // The release config is the json_schema candidate's model; only that declared candidate
+    // may evaluate it, so a candidate-free round fails closed instead of reusing the old gate.
+    const release = await production();
+    expect(release.llmModel).toBe(gemini);
+    expect(() => assertEvaluatedRoundSettings(release, undefined)).toThrow(
+      "evaluated_transport_not_declared",
+    );
   });
   it("rejects an acceptance model mismatch or an injected production model", async () => {
     const lite = comparisonCandidates["gemini-3.5-flash-lite-medium"];
@@ -341,7 +378,7 @@ describe("FR-PROC-003 evaluated round settings", () => {
     expect(() =>
       assertEvaluatedRoundSettings(schemaSettings, resolved("gemini-3.8-flash-medium")),
     ).toThrow("evaluated_transport_not_declared");
-    const base = await production();
+    const base = await migrationBaseline();
     const override = base.structuredModelOverrides?.[productionMigrationModel];
     const nativeProduction: ProviderSettings = {
       ...base,
@@ -494,7 +531,7 @@ describe("FR-PROC-003 FR-QUOTA-009 checks before any paid dispatch", () => {
     );
   });
   it("reserves a production round at the catalog maximum and refuses any other transport", async () => {
-    const settings = await production();
+    const settings = await migrationBaseline();
     const request = await capture(settings);
     const haikuCatalog = {
       data: [
