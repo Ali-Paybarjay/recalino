@@ -8,9 +8,9 @@ import { updateProfile } from "../acc";
 import type { AiProvider, ProviderResult, ProviderSettings, StructuredInput } from "../aip";
 import { createDatabase } from "../db";
 import { getLatestVersion } from "../lkm";
-import { MemoryObjectStore } from "../plt";
+import { MemoryObjectStore, writeOwnedObject } from "../plt";
 import { amounts, configureCostPolicy, grantEntitlement } from "../quota";
-import { appendContentVersion } from "../src";
+import { appendContentVersion, TEMPORARY_AUDIO_SWEEP_SECONDS } from "../src";
 import {
   changeVoiceIdentity,
   enableVoice,
@@ -406,6 +406,41 @@ it("refuses expired class audio with no usable speaker labels before creating an
       .where("user_id", "=", x.ctx.userId)
       .execute(),
   ).toEqual([{ id: x.run.id }]);
+});
+
+it("FR-SRC-007 offers a voice check only while the class original outlasts the next deletion sweep (D29)", async () => {
+  const x = await fixture(false);
+  await x.step();
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const now = new Date();
+  const objectId = await writeOwnedObject(db, new MemoryObjectStore(), x.ctx, {
+    module: "src",
+    retention: "temporary",
+    contentType: "audio/mpeg",
+    bytes: new Uint8Array([0x49, 0x44, 0x33]),
+    now,
+  });
+  const expiresAt = new Date(now.getTime() + 3600_000);
+  await db
+    .insertInto("src.audio_upload")
+    .values({
+      user_id: x.ctx.userId,
+      asset_id: x.source.id,
+      reservation_id: randomUUID(),
+      object_id: objectId,
+      state: "verified",
+      actual_duration_ms: 60000,
+      expires_at: expiresAt,
+    })
+    .execute();
+  const sweep = TEMPORARY_AUDIO_SWEEP_SECONDS * 1000;
+  const before = (ms: number) => new Date(expiresAt.getTime() - ms);
+  expect(
+    await voiceAnalysisBlockedReason(db, x.ctx, x.session.id, before(sweep + 1000)),
+  ).toBeNull();
+  expect(await voiceAnalysisBlockedReason(db, x.ctx, x.session.id, before(sweep))).toBe(
+    "original_audio_required",
+  );
 });
 
 it("reports missing consent, transcript and selected sources before creating an analysis run", async () => {

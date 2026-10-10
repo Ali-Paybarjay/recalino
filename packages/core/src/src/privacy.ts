@@ -1,6 +1,6 @@
 import type { Database } from "../db";
 import { assertOwner, errors, type LearnerContext, type ObjectStore } from "../plt";
-import { maintainSources } from "./jobs";
+import { expireTemporaryAudio, maintainSources } from "./jobs";
 import { cleanupSourceContent } from "./service";
 
 async function cleanup(
@@ -22,7 +22,9 @@ async function cleanup(
     if (!row?.tombstoned_at) throw errors.conflict();
   }
   // Each relevant object is deleted before content cleanup can report success.
-  await maintainSources(db, store, now, { userId: ctx.userId, assetIds: ids });
+  const scope = { userId: ctx.userId, assetIds: ids };
+  await maintainSources(db, store, now, scope);
+  await expireTemporaryAudio(db, store, now, scope);
   await cleanupSourceContent(db, ctx, ids);
 }
 export async function cleanupDeletedSource(

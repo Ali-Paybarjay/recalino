@@ -10,7 +10,12 @@ import {
   type PeriodicJob,
 } from "../plt";
 import { emptyAmounts, releaseStorage, reservationIsOpen, settleAllowance } from "../quota";
-import { type AudioVerifier, temporaryAudioManifest, verifyTemporaryAudio } from "./audio";
+import {
+  type AudioVerifier,
+  TEMPORARY_AUDIO_SWEEP_SECONDS,
+  temporaryAudioManifest,
+  verifyTemporaryAudio,
+} from "./audio";
 import { confirmUploadPart, type SourceVerifier, uploadManifest, verifyUpload } from "./service";
 
 const payload = z.strictObject({ userId: z.uuid(), uploadId: z.uuid() });
@@ -194,6 +199,16 @@ export async function maintainSources(
       }
     });
   }
+  return { abandoned, removed };
+}
+
+/** FR-SRC-007 rule 6 (D29): deletes expired temporary class audio and audio of deleted sources. */
+export async function expireTemporaryAudio(
+  db: Database,
+  store: ObjectStore,
+  now = new Date(),
+  scope?: { userId: string; assetIds: string[] },
+) {
   const audio = await db
     .selectFrom("src.audio_upload as upload")
     .innerJoin("src.asset as asset", "asset.id", "upload.asset_id")
@@ -218,6 +233,8 @@ export async function maintainSources(
         .where("upload.id", "=", upload.id)
         .where("upload.user_id", "=", upload.user_id)
         .executeTakeFirstOrThrow();
+      // An overlapping sweep already deleted it; its deletion time stays the record (D29).
+      if (!scope && live.state === "deleted") return;
       if (!live.tombstoned_at && live.expires_at > now) return;
       const parts = await tx
         .selectFrom("src.audio_upload_part")
@@ -233,7 +250,6 @@ export async function maintainSources(
         .execute();
     });
   }
-  return { abandoned, removed };
 }
 export function sourceMaintenanceJob(store: ObjectStore): PeriodicJob {
   return {
@@ -247,4 +263,22 @@ export function sourceMaintenanceJob(store: ObjectStore): PeriodicJob {
       },
     },
   };
+}
+/** Its own short period, so expired class audio never waits for the hourly maintenance (D29). */
+export function temporaryAudioExpiryJob(store: ObjectStore): PeriodicJob {
+  return {
+    everySeconds: TEMPORARY_AUDIO_SWEEP_SECONDS,
+    definition: {
+      kind: "src.expire_audio",
+      version: 1,
+      payload: z.strictObject({}),
+      async run(_input, ctx) {
+        await expireTemporaryAudio(ctx.db, store, ctx.now());
+      },
+    },
+  };
+}
+/** Every periodic SRC job (FR-PLT-005). */
+export function sourcePeriodicJobs(store: ObjectStore): PeriodicJob[] {
+  return [sourceMaintenanceJob(store), temporaryAudioExpiryJob(store)];
 }

@@ -266,7 +266,7 @@
 | شناسه | موضوع | مالک | مرتبط | الزامات متأثر PRD | FR | تست |
 |---|---|---|---|---|---|---|
 | D28 | هزینه زیرساخت MVP | ADR-0001 | QUOTA, OPS | PRD-ARCH-05, NFR-12 | — | — |
-| D29 | صوت کلاس روی دستگاه؛ نسخه سرور موقت | REC, PRIV | SRC, PROC, NOTE, MEDIA, AIP | PRD-REC-07, PRD-REC-08, PRD-REC-09, PRD-DEL-01, PRD-DEL-02, PRD-NOTE-02, PRD-NOTE-05, PRD-MEDIA-04, PRD-COST-04, PRD-PROC-03, AC-05 | FR-SRC-007, FR-SRC-011, FR-SRC-012 (بخشی) | — |
+| D29 | صوت کلاس روی دستگاه؛ نسخه سرور موقت | REC, PRIV | SRC, PROC, NOTE, MEDIA, AIP | PRD-REC-07, PRD-REC-08, PRD-REC-09, PRD-DEL-01, PRD-DEL-02, PRD-NOTE-02, PRD-NOTE-05, PRD-MEDIA-04, PRD-COST-04, PRD-PROC-03, AC-05 | FR-SRC-007, FR-SRC-011, FR-SRC-012 (بخشی) | بخشی (قاعده ۳، حذف خودکار پس از رونویسی): core `src/audio-expiry.int.test.ts`, `proc/voice-processing.int.test.ts` |
 | D31 | زبان اول: همه زبان‌ها با دو سطح کیفیت؛ زبان توضیح دوگزینه‌ای | ACC | EVAL, LKM, PROC, NOTE, CARD, PLT | D03, D04, PRD-ONB-01, PRD-ONB-02, PRD-ONB-03, PRD-CARD-01, G05، PRD بخش ۲۴.۱ | FR-ACC-003, FR-ACC-005, FR-PLT-011 | `e2e/theme.spec.ts`, `e2e/budget.spec.ts` (قاعده ۸)؛ core `acc/acc.test.ts`; web `app/setup/languages.test.ts`, `e2e/setup.spec.ts` |
 | D32 | ضبط با یک لمس (Record first) | ORG | REC, ACC | PRD بخش ۷ (گام ۲)، D13 | FR-ORG-008 | — |
 | D33 | رضایت ضبط یک بار در تنظیم پروفایل، نسخه‌دار | ACC | REC, SRC | PRD-PRIV-01 | FR-ACC-003, FR-SRC-015 | core `acc/profile.int.test.ts`; web `cross-account/consents.int.test.ts`, `e2e/setup.spec.ts`, `e2e/account.spec.ts` |
