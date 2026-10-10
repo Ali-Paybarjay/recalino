@@ -32,6 +32,7 @@ import {
   type JobDefinition,
   type LearnerContext,
   type ObjectStore,
+  ownedObjectMetadata,
   readOwnedObject,
   readPltSettings,
 } from "../plt";
@@ -124,6 +125,15 @@ export type PdfPagePreparer = (input: {
 }) => Promise<PdfPageImage>;
 /** Bound speculative page rendering without increasing paid provider calls per invocation. */
 export const PDF_PAGE_PREPARATION_BATCH_SIZE = 3;
+/**
+ * Audio chunks transcribed at once. Each keeps its own attempt, cost hold and idempotency key;
+ * the bound keeps one class from sending its whole recording to the provider in one burst.
+ */
+export const TRANSCRIPTION_CONCURRENCY = 4;
+/** After this long a job starts no further chunk; the rest continue in the next job. */
+export const TRANSCRIPTION_LAUNCH_WINDOW_MS = 120_000;
+/** Time kept after the last provider call a job starts, before its runner's deadline. */
+const PROVIDER_CALL_SAFETY_MS = 15_000;
 export type PdfPagesPreparer = (
   input: Omit<Parameters<PdfPagePreparer>[0], "page"> & {
     pages: number[];
@@ -142,6 +152,8 @@ export interface ProcessingDependencies {
   }>;
   onTranscribed?: (db: Database, ctx: LearnerContext, sourceId: string, now: Date) => Promise<void>;
   diarizeVoice?: VoiceDiarizer;
+  /** Defaults to TRANSCRIPTION_CONCURRENCY. */
+  transcriptionConcurrency?: number;
 }
 const extractionSchema = z.strictObject({
   classification: sourceClassificationSchema.default({
@@ -186,6 +198,21 @@ async function saveStep(tx: Tx, runId: string, step: string, output: unknown, no
     .values({ run_id: runId, step, output: JSON.stringify(output), completed_at: now })
     .onConflict((oc) => oc.columns(["run_id", "step"]).doNothing())
     .execute();
+}
+/** One read for many checkpoints, e.g. every transcribed chunk of a long class. */
+async function completedSteps(
+  db: Database,
+  runId: string,
+  steps: readonly string[],
+): Promise<Set<string>> {
+  if (!steps.length) return new Set();
+  const rows = await db
+    .selectFrom("proc.run_step")
+    .select("step")
+    .where("run_id", "=", runId)
+    .where("step", "in", [...steps])
+    .execute();
+  return new Set(rows.map((row) => row.step));
 }
 
 /** The attempt and maximum cost hold are committed before dispatch; an unknown result is not repeated. */
@@ -413,6 +440,69 @@ export async function providerStep<T>(
     throw providerError;
   }
 }
+/**
+ * Transcribes chunks a few at a time. Every chunk is its own paid provider step, committed before
+ * its bytes are deleted, so a retry repeats only unfinished chunks. The first chunk always starts;
+ * a later one starts only while its call can still end before the runner's deadline. After a
+ * failure no new chunk starts, the calls in flight settle, and the first failure is thrown.
+ */
+async function transcribeChunks(
+  job: JobContext,
+  input: {
+    ctx: LearnerContext;
+    runId: string;
+    chunks: readonly AudioChunk[];
+    provider: AiProvider;
+    model: string;
+    store: ObjectStore;
+    concurrency: number;
+  },
+): Promise<void> {
+  const { ctx, runId, provider, model, store } = input;
+  const launchUntil = Math.min(
+    job.now().getTime() + TRANSCRIPTION_LAUNCH_WINDOW_MS,
+    (job.deadline?.getTime() ?? Number.POSITIVE_INFINITY) -
+      provider.settings.timeoutMs -
+      PROVIDER_CALL_SAFETY_MS,
+  );
+  const queue = [...input.chunks];
+  let launched = 0;
+  let failure: { error: unknown } | null = null;
+  const lane = async () => {
+    while (!failure) {
+      if (launched > 0 && job.now().getTime() >= launchUntil) return;
+      const chunk = queue.shift();
+      if (!chunk) return;
+      launched += 1;
+      try {
+        const bytes = await readOwnedObject(job.db, store, ctx, chunk.objectId);
+        await providerStep(
+          job,
+          ctx,
+          runId,
+          `stt:${chunk.id}`,
+          model,
+          provider,
+          transcriptSchema,
+          (operationKey) =>
+            provider.transcribe({
+              operationKey,
+              model,
+              audio: { bytes, format: chunk.format },
+              durationMs: chunk.durationMs,
+              offsetMs: chunk.offsetMs,
+            }),
+        );
+        await deleteObject(job.db, store, ctx, chunk.objectId, job.now());
+      } catch (error) {
+        failure ??= { error };
+      }
+    }
+  };
+  const lanes = Math.max(1, Math.min(Math.floor(input.concurrency), input.chunks.length));
+  await Promise.all(Array.from({ length: lanes }, lane));
+  if (failure) throw (failure as { error: unknown }).error;
+}
 async function checkpointAndContinue(
   job: JobContext,
   ctx: LearnerContext,
@@ -566,31 +656,31 @@ export function processingJob(
                 await saveStep(tx, payload.runId, `audio:${source.sourceId}`, chunks, job.now());
               });
             }
+            const transcribed = await completedSteps(
+              job.db,
+              payload.runId,
+              chunks.map((chunk) => `stt:${chunk.id}`),
+            );
             for (const chunk of chunks) {
-              const step = `stt:${chunk.id}`;
-              if (await cached(job.db, payload.runId, step, transcriptSchema)) {
-                await deleteObject(job.db, dependencies.store, ctx, chunk.objectId, job.now());
-                continue;
-              }
-              const bytes = await readOwnedObject(job.db, dependencies.store, ctx, chunk.objectId);
-              await providerStep(
-                job,
-                ctx,
-                payload.runId,
-                step,
-                settings.provider.sttModel,
-                provider,
-                transcriptSchema,
-                (operationKey) =>
-                  provider.transcribe({
-                    operationKey,
-                    model: settings.provider.sttModel,
-                    audio: { bytes, format: chunk.format },
-                    durationMs: chunk.durationMs,
-                    offsetMs: chunk.offsetMs,
-                  }),
+              if (!transcribed.has(`stt:${chunk.id}`)) continue;
+              // Only a job that stopped between a saved transcript and its deletion leaves bytes.
+              const object = await ownedObjectMetadata(job.db, ctx, chunk.objectId).catch(
+                () => null,
               );
-              await deleteObject(job.db, dependencies.store, ctx, chunk.objectId, job.now());
+              if (object && object.state !== "deleted")
+                await deleteObject(job.db, dependencies.store, ctx, chunk.objectId, job.now());
+            }
+            const pending = chunks.filter((chunk) => !transcribed.has(`stt:${chunk.id}`));
+            if (pending.length) {
+              await transcribeChunks(job, {
+                ctx,
+                runId: payload.runId,
+                chunks: pending,
+                provider,
+                model: settings.provider.sttModel,
+                store: dependencies.store,
+                concurrency: dependencies.transcriptionConcurrency ?? TRANSCRIPTION_CONCURRENCY,
+              });
               await checkpointAndContinue(job, ctx, payload.runId, definition);
               return;
             }
