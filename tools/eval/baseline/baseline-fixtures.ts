@@ -26,6 +26,9 @@ export const baselineSourceFixtureSetId = holdout5FixtureSetId;
 /** sha256(canonicalJson(fixtures)) of the Gemini holdout-5 round's frozen plan. */
 export const holdout5FixturesHash =
   "3d88a0a8e655fca1caa395b6f689df620cad2fa0f7ff4df3eda50c29526f4471";
+/** The freeze of the Gemini holdout-5 acceptance round whose recorded inputs this round compares. */
+export const geminiAcceptanceRoundFreeze =
+  "f7d6b2005d183e12f118e3d3c5d4427ac6b92ce446974bd680edd5fd95b79679";
 /**
  * The release candidate this round measures: the merge base of this branch with the release
  * branch. Only tools/eval/baseline may differ from it.
@@ -131,7 +134,8 @@ export function syntheticPagedPdf(pages: readonly string[]): Uint8Array {
  * machine-extraction content version holding the fixture units and blocks unchanged. Failed units
  * keep their status and reason, so the worker reports the source missing exactly as after a
  * production extraction. `expected` is the source the worker then reads: the fixture source with
- * the metadata production verification assigns (a text upload always has a page count).
+ * the metadata production verification assigns (a text upload always has a page count, 1 for
+ * every holdout-5 text, where the Gemini acceptance round's fixture-fed worker sent null).
  */
 export function baselineSourceRows(fixture: MigrationFixture) {
   return fixture.sources.map((raw, index) => {
@@ -300,9 +304,10 @@ export function expectedGenerationData(fixture: MigrationFixture): KnowledgeGene
 /**
  * The exact content-contract knowledge input (knowledge_generation_keys_v5) the release worker
  * sends for this fixture, with fixture identifiers. Upload identity is dropped by
- * buildKnowledgeInput, so only the fixture and production's own page count enter it. The input
- * does not depend on the output budget, compaction or a repair reason; only the system prompt
- * and schema do.
+ * buildKnowledgeInput, so only the fixture and production's own page count enter it; that page
+ * count is the one model-visible field in which it differs from the Gemini acceptance round's
+ * recorded input (see recordedInputComparison). The input does not depend on the output budget,
+ * compaction or a repair reason; only the system prompt and schema do.
  */
 export function expectedKnowledgeInput(
   fixture: MigrationFixture,
@@ -377,6 +382,63 @@ export function contentKnowledgeInputDifferences(sent: string, expected: string)
   return differences;
 }
 
+export interface RecordedInputComparison {
+  /** contentKnowledgeInputDifferences of the recorded input against this round's. */
+  differences: string[];
+  /** Text sources whose page count differs: recorded (the earlier round) and this release's. */
+  textPageCounts: { source: number; recorded: unknown; release: unknown }[];
+  /**
+   * Every other model-visible field is equal: sources, roles, blocks, missing material,
+   * explanation language, teaching preferences, learner context and lesson context. Only a text
+   * source the earlier round sent with a null page count may differ, and only by that count.
+   */
+  allOtherFieldsEqual: boolean;
+  stringIdentical: boolean;
+}
+
+/**
+ * An earlier round's recorded knowledge input against this round's. The Gemini acceptance round
+ * fed the fixture sources to the worker directly, so its text sources had no page count; here a
+ * text upload passes production verification (DefaultSourceVerifier), which sets one. That is the
+ * only difference allowed; anything else means the two rounds did not send the same lesson.
+ */
+export function recordedInputComparison(
+  recorded: string,
+  release: string,
+): RecordedInputComparison {
+  const differences = contentKnowledgeInputDifferences(recorded, release);
+  const stringIdentical = recorded === release;
+  let normalized: z.infer<typeof contentInputSchema>;
+  let wanted: z.infer<typeof contentInputSchema>;
+  try {
+    normalized = contentInputSchema.parse(JSON.parse(recorded));
+    wanted = contentInputSchema.parse(JSON.parse(release));
+  } catch {
+    return { differences, textPageCounts: [], allOtherFieldsEqual: false, stringIdentical };
+  }
+  const textPageCounts: RecordedInputComparison["textPageCounts"] = [];
+  wanted.sources.forEach((source, index) => {
+    const found = normalized.sources[index];
+    if (!found || source.kind !== "text" || found.kind !== "text") return;
+    if (canonicalJson(found.pageCount ?? null) === canonicalJson(source.pageCount ?? null)) return;
+    textPageCounts.push({
+      source: index + 1,
+      recorded: found.pageCount ?? null,
+      release: source.pageCount ?? null,
+    });
+    // Production verification only adds a page count; it never changes a recorded one.
+    if (found.pageCount === null && typeof source.pageCount === "number")
+      normalized.sources[index] = { ...found, pageCount: source.pageCount };
+  });
+  return {
+    differences,
+    textPageCounts,
+    allOtherFieldsEqual:
+      contentKnowledgeInputDifferences(JSON.stringify(normalized), release).length === 0,
+    stringIdentical,
+  };
+}
+
 /**
  * Content-contract steps whose user input is the lesson's knowledge input, and their json_object
  * fallbacks. knowledge:study-repair carries the generated lesson instead and is not compared.
@@ -397,6 +459,11 @@ const userTextSchema = z.tuple(
   ],
   z.unknown(),
 );
+/** The user text of a [system, user] chat request, or undefined when the messages differ. */
+export function userInputText(messages: unknown): string | undefined {
+  const parsed = userTextSchema.safeParse(messages);
+  return parsed.success ? parsed.data[1].content[0].text : undefined;
+}
 export interface KnowledgeInputCheck {
   stage: string;
   semanticMatch: boolean;
@@ -416,9 +483,9 @@ export function knowledgeInputInspector(input: {
 }) {
   return ({ stage, body }: { stage: string; body: DispatchBody }) => {
     if (!lessonInputStages.has(stage)) return;
-    const messages = userTextSchema.safeParse(body.messages);
-    if (!messages.success) throw new DispatchRefused("knowledge_input_unreadable");
-    const sent = mapIdsInText(messages.data[1].content[0].text, input.map());
+    const text = userInputText(body.messages);
+    if (text === undefined) throw new DispatchRefused("knowledge_input_unreadable");
+    const sent = mapIdsInText(text, input.map());
     const differences = contentKnowledgeInputDifferences(sent, input.expected);
     const semanticMatch = differences.length === 0;
     input.record({ stage, semanticMatch, stringIdentical: sent === input.expected, differences });

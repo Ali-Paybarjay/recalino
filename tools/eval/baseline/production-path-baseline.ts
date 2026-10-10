@@ -58,13 +58,16 @@ import {
   contentKnowledgeInputDifferences,
   evaluationToolPath,
   expectedKnowledgeInput,
+  geminiAcceptanceRoundFreeze,
   holdout5FixturesHash,
   type KnowledgeInputCheck,
   knowledgeInputInspector,
   mapIds,
   mapIdsInText,
+  recordedInputComparison,
   releaseBranch,
   releaseCandidateCommit,
+  userInputText,
   workerMissingSourceIds,
 } from "./baseline-fixtures";
 import {
@@ -121,10 +124,17 @@ import { acquireRoundLock, assertRoundUnlocked } from "./round-lock";
  *   --run-live         the 14-case round; needs --approved-freeze, --env-file, --zdr-endpoint-file
  * Every mode needs --out and --zdr-endpoint-file. A live round records only in the shared ledger
  * named in the plan; a mock round keeps its own ledger in --out. One process per --out directory.
+ * Every mode also reads the Gemini acceptance round's recorded knowledge inputs (read only) and
+ * freezes how this round's inputs differ from them.
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const sharedLedgerPath =
   "C:/Users/Ali-PC/.codex/worktrees/haiku55-migration/Recalino/artifacts/verification/haiku55-evaluation-ledger.json";
+/** The Gemini holdout-5 acceptance round this release candidate is compared with. */
+const geminiAcceptanceRoundPath =
+  "C:/Users/Ali-PC/.codex/worktrees/haiku55-migration/Recalino/artifacts/verification/gemini38-holdout5-acceptance";
+const geminiRoundInputStatement =
+  "Text sources carry production's pageCount 1, set when DefaultSourceVerifier verifies the text upload; the Gemini acceptance round sent null. Every other model-visible field equals that round's recorded input: sources, roles, blocks, missing material, explanation language, teaching preferences, learner context and lesson context.";
 const option = (name: string) => {
   const index = process.argv.indexOf(name);
   const value = index < 0 ? undefined : process.argv[index + 1];
@@ -218,6 +228,54 @@ const fixtures = holdout5MigrationFixtures();
 const fixturesHash = sha256Hex(canonicalJson(fixtures));
 assert.equal(fixturesHash, holdout5FixturesHash, "Holdout-5 lessons differ from the Gemini round");
 const schedule = baselineSchedule(fixtures);
+// The Gemini acceptance round's recorded knowledge inputs, one per case, read without any request.
+const geminiRoundPlan = JSON.parse(
+  await readFile(resolve(geminiAcceptanceRoundPath, "dry-run-plan.json"), "utf8"),
+) as { freeze?: unknown; fixturesHash?: unknown };
+assert.equal(
+  geminiRoundPlan.freeze,
+  geminiAcceptanceRoundFreeze,
+  "Not the Gemini acceptance round",
+);
+assert.equal(geminiRoundPlan.fixturesHash, holdout5FixturesHash, "Gemini round lessons differ");
+const geminiRoundInputs = new Map(
+  await Promise.all(
+    schedule.map(async ({ caseId }) => {
+      const dossier = resolve(geminiAcceptanceRoundPath, "dossiers", caseId);
+      const bodies = (await readdir(dossier)).filter((name) =>
+        /^request-\d+-body\.json$/.test(name),
+      );
+      assert.equal(bodies.length, 1, `${caseId}: the Gemini round recorded one request per case`);
+      const recorded = JSON.parse(await readFile(resolve(dossier, bodies[0] ?? ""), "utf8")) as {
+        body?: { messages?: unknown };
+      };
+      const text = userInputText(recorded.body?.messages);
+      assert.ok(text !== undefined, `${caseId}: the Gemini round's knowledge input is unreadable`);
+      return [caseId, text] as const;
+    }),
+  ),
+);
+const geminiRoundInput = (caseId: string) => {
+  const text = geminiRoundInputs.get(caseId);
+  assert.ok(text !== undefined, `${caseId}: no Gemini round input`);
+  return text;
+};
+/** Exactly the difference the plan states: a null text page count became production's 1. */
+const onlyStatedDifference = (comparison: ReturnType<typeof recordedInputComparison>) =>
+  comparison.allOtherFieldsEqual &&
+  comparison.textPageCounts.every((entry) => entry.recorded === null && entry.release === 1);
+const geminiRoundCases = schedule.map(({ caseId, fixture }) => {
+  const recorded = geminiRoundInput(caseId);
+  const comparison = recordedInputComparison(
+    recorded,
+    expectedKnowledgeInput(fixture, settings.maxInputCharacters, settings.maxOutputTokens),
+  );
+  return { caseId, recordedInputSha256: sha256Hex(recorded), ...comparison };
+});
+assert.ok(
+  geminiRoundCases.every(onlyStatedDifference),
+  "This round's knowledge input differs from the Gemini acceptance round beyond the text page count",
+);
 const toolDirectory = resolve(root, evaluationToolPath);
 const toolHashes = await Promise.all(
   (await readdir(toolDirectory, { recursive: true, withFileTypes: true }))
@@ -285,7 +343,7 @@ const plan = {
     sources:
       "production upload APIs into a memory object store: text and PDF verified by DefaultSourceVerifier, class audio declared on the device; then the fixture units and blocks appended as a machine-extraction content version",
     knowledgeInput:
-      "content contract (knowledge_generation_keys_v5); every lesson-input dispatch must equal the fixture's sources, roles, blocks, missing material, explanation language, learner context and lesson context",
+      "content contract (knowledge_generation_keys_v5); every lesson-input dispatch must equal the fixture's sources, roles, blocks, missing material, explanation language, learner context and lesson context, each text source with the pageCount production verification sets (1); the Gemini acceptance round sent null there, see knowledgeInputVsGeminiRound",
     voiceAnalysis:
       "production wiring; a fresh learner has no voice enrollment and no original audio exists",
     learner: {
@@ -295,6 +353,19 @@ const plan = {
       teachingMemorySource: teachingMemoryFile,
       practiceCandidates: "none: a new pilot learner has no practice history",
     },
+  },
+  knowledgeInputVsGeminiRound: {
+    statement: geminiRoundInputStatement,
+    round: geminiAcceptanceRoundPath,
+    freeze: geminiAcceptanceRoundFreeze,
+    allOtherFieldsEqual: geminiRoundCases.every((entry) => entry.allOtherFieldsEqual),
+    textPageCountCases: geminiRoundCases
+      .filter((entry) => entry.textPageCounts.length)
+      .map((entry) => entry.caseId),
+    stringIdenticalCases: geminiRoundCases
+      .filter((entry) => entry.stringIdentical)
+      .map((entry) => entry.caseId),
+    cases: geminiRoundCases,
   },
   schedule: schedule.map(({ caseId, fixture, repeat }) => ({
     caseId,
@@ -355,12 +426,15 @@ function createBaselineRun(
  * assembles from them, against the fixture. Read only through production APIs: the snapshot and
  * settings as stored on the run, the profile and preferences createProcessingRun turns into run
  * settings, and the class date and course. The dispatched request is checked again before payment.
+ * The worker's input is also compared with the Gemini acceptance round's recorded input for the
+ * case; that comparison is reported, the fixture equality above is the gate.
  */
 async function verifyRunInputs(
   db: Database,
   created: BaselineCase,
   fixture: MigrationFixture,
   runId: string,
+  geminiRoundRecordedInput: string,
 ) {
   const snapshot = await getProcessingRunSnapshot(db, created.ctx, runId);
   const frozen = runSettingsSchema.parse((await ownedRun(db, created.ctx, runId)).settings);
@@ -444,9 +518,11 @@ async function verifyRunInputs(
       (difference) => `knowledge_input_${difference}`,
     ),
   ];
+  const vsGeminiRound = recordedInputComparison(geminiRoundRecordedInput, sent);
   return {
     matches: differences.length === 0,
     differences,
+    vsGeminiRound: { ...vsGeminiRound, onlyStatedDifference: onlyStatedDifference(vsGeminiRound) },
     explanationLanguage: frozen.explanationLanguage,
     learnerContext: frozen.learnerContext ?? null,
     modelLearnerContext: teaching ?? null,
@@ -463,6 +539,7 @@ async function verifyRunInputs(
 // ---- Dry run -----------------------------------------------------------------------------------
 if (!live && !mockFetch) {
   let setup: Record<string, unknown> | undefined;
+  let setupPassed = true;
   if (setupCheck) {
     // Creates each distinct lesson's synthetic learner, class and sources and a queued run, checks
     // the run's frozen inputs against the fixture, then cancels the run before any job executes.
@@ -478,7 +555,16 @@ if (!live && !mockFetch) {
       for (const fixture of fixtures) {
         const created = await createBaselineCase(db, store, fixture);
         const run = await createBaselineRun(db, created, { provider, job });
-        const verified = await verifyRunInputs(db, created, fixture, run.id);
+        // The lesson's first scheduled case; a repeat sent the same recorded input.
+        const firstCase = schedule.find((task) => task.fixture.id === fixture.id);
+        assert.ok(firstCase, `${fixture.id} is not scheduled`);
+        const verified = await verifyRunInputs(
+          db,
+          created,
+          fixture,
+          run.id,
+          geminiRoundInput(firstCase.caseId),
+        );
         const cancelled = await cancelRun(db, created.ctx, run.id);
         checks.push({
           fixtureId: fixture.id,
@@ -493,12 +579,28 @@ if (!live && !mockFetch) {
       setup = {
         lessons: checks.length,
         matching: checks.filter((entry) => entry.matches).length,
+        // String-identical to this tool's expected input, built from the production-verified sources.
         inputStringIdentical: checks.filter((entry) => entry.inputStringIdentical).length,
         cancelled: checks.filter((entry) => entry.runState === "cancelled").length,
         differences: checks.flatMap((entry) =>
           entry.differences.map((difference) => `${entry.fixtureId}:${difference}`),
         ),
+        vsGeminiRound: {
+          statement: geminiRoundInputStatement,
+          onlyStatedDifference: checks.filter((entry) => entry.vsGeminiRound.onlyStatedDifference)
+            .length,
+          stringIdentical: checks.filter((entry) => entry.vsGeminiRound.stringIdentical).length,
+          textPageCounts: checks.flatMap((entry) =>
+            entry.vsGeminiRound.textPageCounts.map(
+              ({ source, recorded, release }) =>
+                `${entry.fixtureId}:source_${source}:${String(recorded)}->${String(release)}`,
+            ),
+          ),
+        },
       };
+      setupPassed = checks.every(
+        (entry) => entry.matches && entry.vsGeminiRound.onlyStatedDifference,
+      );
       await saveJson(resolve(directory, "setup-check.json"), { syntheticOnly: true, checks });
     } finally {
       await db.destroy();
@@ -517,10 +619,16 @@ if (!live && !mockFetch) {
       zdrEndpointHash: plan.zdrEndpointHash,
       zdrEndpointMaximumRates: zdrRates,
       controls: baselineControls,
+      knowledgeInputVsGeminiRound: {
+        statement: geminiRoundInputStatement,
+        allOtherFieldsEqual: plan.knowledgeInputVsGeminiRound.allOtherFieldsEqual,
+        textPageCountCases: plan.knowledgeInputVsGeminiRound.textPageCountCases,
+        stringIdenticalCases: plan.knowledgeInputVsGeminiRound.stringIdenticalCases,
+      },
       ...(setup ? { setupCheck: setup } : {}),
     })}\n`,
   );
-  process.exit(setup && setup.matching !== fixtures.length ? 1 : 0);
+  process.exit(setupPassed ? 0 : 1);
 }
 
 // ---- Live or mock round ------------------------------------------------------------------------
@@ -778,7 +886,13 @@ async function runCase(task: BaselineTask): Promise<Record<string, unknown>> {
   // A case that dispatched nothing still has its (empty) receipts.
   await saveJson(resolve(dossier, "receipts.json"), active.receipts);
   const run = await createBaselineRun(db, created, { provider, job });
-  const inputCheck = await verifyRunInputs(db, created, task.fixture, run.id);
+  const inputCheck = await verifyRunInputs(
+    db,
+    created,
+    task.fixture,
+    run.id,
+    geminiRoundInput(task.caseId),
+  );
   await saveJson(resolve(dossier, "run-input-check.json"), { runId: run.id, ...inputCheck });
   let drive = { jobSteps: 0, stepLimitReached: false, stalled: false, retryWaitMs: 0 };
   let toolError: string | undefined;
@@ -841,6 +955,12 @@ async function runCase(task: BaselineTask): Promise<Record<string, unknown>> {
       inputChecks.length > 0 && inputChecks.every((check) => check.semanticMatch),
     runInputMatchesFixture: inputCheck.matches,
     runInputDifferences: inputCheck.differences,
+    // Reported, not gated: the worker's input against the Gemini round's recorded one.
+    runInputVsGeminiRound: {
+      onlyStatedDifference: inputCheck.vsGeminiRound.onlyStatedDifference,
+      textPageCounts: inputCheck.vsGeminiRound.textPageCounts,
+      differences: inputCheck.vsGeminiRound.differences,
+    },
     ...drive,
     ...(toolError ? { toolError } : {}),
     ...(outputError ? { outputError } : {}),
@@ -917,6 +1037,18 @@ const summary = {
   }),
   releaseCandidate: candidateCommit,
   releaseConfiguration: plan.releaseConfiguration,
+  // What the release-vs-Gemini comparison of this round's outputs must account for.
+  knowledgeInputVsGeminiRound: {
+    statement: geminiRoundInputStatement,
+    geminiRoundFreeze: geminiAcceptanceRoundFreeze,
+    textPageCountCases: plan.knowledgeInputVsGeminiRound.textPageCountCases,
+    stringIdenticalCases: plan.knowledgeInputVsGeminiRound.stringIdenticalCases,
+    runInputsWithOnlyStatedDifference: state.results.filter(
+      (result) =>
+        (result.runInputVsGeminiRound as { onlyStatedDifference?: unknown } | undefined)
+          ?.onlyStatedDifference === true,
+    ).length,
+  },
   codeChangedOutsideToolDuringRound: canonicalJson(changedAtEnd) !== canonicalJson(changedAtStart),
   timeouts: state.results.reduce((total, result) => total + Number(result.timeouts ?? 0), 0),
   ledgerPath,
@@ -937,6 +1069,10 @@ async function mockWiring() {
     result: state.results.find((result) => result.caseId === caseId),
     requests: state.requests.filter((request) => request.caseId === caseId),
   });
+  // The worker's input differs from the Gemini round's recorded one only as the plan states.
+  const statedGeminiDifference = (result: Record<string, unknown> | undefined) =>
+    (result?.runInputVsGeminiRound as { onlyStatedDifference?: unknown } | undefined)
+      ?.onlyStatedDifference === true;
   const lessonCheck = (stage: string) => ({
     stage,
     semanticMatch: true,
@@ -964,6 +1100,7 @@ async function mockWiring() {
     success.result.finalLocalPass === true &&
     success.result.firstGenerationPass === true &&
     success.result.runInputMatchesFixture === true &&
+    statedGeminiDifference(success.result) &&
     success.result.httpRequests === 1 &&
     canonicalJson(success.result.knowledgeInputChecks) ===
       canonicalJson([lessonCheck("knowledge")]) &&
@@ -981,6 +1118,7 @@ async function mockWiring() {
     failure.result.lastError === "provider_outcome_unknown" &&
     failure.result.finalLocalPass === false &&
     failure.result.runInputMatchesFixture === true &&
+    statedGeminiDifference(failure.result) &&
     failure.result.httpRequests === 2 &&
     canonicalJson(failure.result.knowledgeInputChecks) ===
       canonicalJson([lessonCheck("knowledge"), lessonCheck("knowledge:json")]) &&

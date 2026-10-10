@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, sha256Hex } from "../../../packages/core/src/plt";
 import { snapshotSourceSchema } from "../../../packages/core/src/proc/contracts";
@@ -19,14 +19,18 @@ import {
   contentKnowledgeInputDifferences,
   expectedGenerationData,
   expectedKnowledgeInput,
+  expectedRunSources,
+  geminiAcceptanceRoundFreeze,
   holdout5FixturesHash,
   knowledgeInputInspector,
   lessonInputStages,
   mapIds,
   mapIdsInText,
+  recordedInputComparison,
   releaseCandidateCommit,
   runExplanationLanguage,
   snapshotRoleOf,
+  userInputText,
   workerMissingSourceIds,
 } from "./baseline-fixtures";
 import { DispatchRefused } from "./cost-guard";
@@ -34,6 +38,9 @@ import type { MigrationFixture } from "./haiku55-migration-fixtures";
 import { holdout5MigrationFixtures } from "./multilingual-holdout5-fixtures";
 
 const fixtures = holdout5MigrationFixtures();
+/** The captured Gemini holdout-5 acceptance round, where this machine has it. */
+const geminiRoundDirectory =
+  "C:/Users/Ali-PC/.codex/worktrees/haiku55-migration/Recalino/artifacts/verification/gemini38-holdout5-acceptance";
 const fixture = (id: string) => {
   const found = fixtures.find((entry) => entry.id === id);
   if (!found) throw new Error(`missing ${id}`);
@@ -106,8 +113,7 @@ describe("holdout-5 schedule", () => {
     expect(schedule[12]?.fixture).toBe(fixture("S03"));
   });
 
-  const geminiPlan =
-    "C:/Users/Ali-PC/.codex/worktrees/haiku55-migration/Recalino/artifacts/verification/gemini38-holdout5-acceptance/dry-run-plan.json";
+  const geminiPlan = `${geminiRoundDirectory}/dry-run-plan.json`;
   it.skipIf(!existsSync(geminiPlan))(
     "matches the captured Gemini round's schedule and lessons",
     () => {
@@ -229,7 +235,8 @@ describe("fixture sources as production rows", () => {
         expect(decodeSourceText(row.bytes ?? new Uint8Array())).toBe(
           row.content.blocks.map((block) => block.text).join("\n\n"),
         );
-        // A verified text upload always carries a page count; these lessons fit on one page.
+        // A verified text upload always carries a page count; these lessons fit on one page. The
+        // Gemini acceptance round fed the fixture source directly and sent null instead.
         expect(row.expected.pageCount).toBe(1);
         expect({ ...row.expected, pageCount: null }).toEqual(
           snapshotSourceSchema.parse(lesson.sources[row.index]),
@@ -445,6 +452,147 @@ describe("identifier mapping and input checks", () => {
       "knowledge:repair",
       "knowledge:repair:json",
     ]);
+  });
+
+  /**
+   * The input the Gemini acceptance round's fixture-fed worker sent: the same lesson, with every
+   * text source's page count null because no upload was verified.
+   */
+  const geminiRoundInput = (lesson: MigrationFixture) =>
+    buildKnowledgeGenerationInput(
+      {
+        ...expectedGenerationData(lesson),
+        sources: expectedRunSources(lesson).map((source) =>
+          source.kind === "text" ? { ...source, pageCount: null } : source,
+        ),
+      },
+      120000,
+      { maxOutputTokens: 6144 },
+    ).input;
+
+  it("states the one difference from the Gemini round's input: a text page count", () => {
+    for (const lesson of fixtures) {
+      const release = expectedKnowledgeInput(lesson, 120000, 6144);
+      const comparison = recordedInputComparison(geminiRoundInput(lesson), release);
+      const textSources = lesson.sources
+        .map((source, index) => ({ kind: source.kind, source: index + 1 }))
+        .filter((source) => source.kind === "text")
+        .map(({ source }) => ({ source, recorded: null, release: 1 }));
+      expect(comparison.textPageCounts).toEqual(textSources);
+      expect(comparison.allOtherFieldsEqual).toBe(true);
+      expect(comparison.stringIdentical).toBe(textSources.length === 0);
+      expect(comparison.differences).toEqual(
+        textSources.map(({ source }) => `source_${source}_metadata`),
+      );
+    }
+    // The PDF lesson has no text source; its input is the Gemini round's, byte for byte.
+    expect(
+      recordedInputComparison(
+        geminiRoundInput(fixture("S06")),
+        expectedKnowledgeInput(fixture("S06"), 120000),
+      ),
+    ).toEqual({
+      differences: [],
+      textPageCounts: [],
+      allOtherFieldsEqual: true,
+      stringIdentical: true,
+    });
+  });
+
+  it("allows no other difference from the Gemini round's input", () => {
+    const lesson = fixture("S04");
+    const release = expectedKnowledgeInput(lesson, 120000);
+    const recorded = (
+      edit: (input: { sources: Record<string, unknown>[] } & Record<string, unknown>) => void,
+    ) => {
+      const input = JSON.parse(geminiRoundInput(lesson));
+      edit(input);
+      return recordedInputComparison(JSON.stringify(input), release);
+    };
+    const nullPages = [
+      { source: 1, recorded: null, release: 1 },
+      { source: 2, recorded: null, release: 1 },
+    ];
+    expect(recorded(() => {})).toMatchObject({
+      textPageCounts: nullPages,
+      allOtherFieldsEqual: true,
+    });
+    // A changed block, role or context is a different lesson, page count or not.
+    expect(
+      recorded((input) => {
+        const source = input.sources[0] as { evidence: unknown[][] };
+        (source.evidence[0] as unknown[])[5] = "changed";
+      }),
+    ).toMatchObject({ textPageCounts: nullPages, allOtherFieldsEqual: false });
+    expect(
+      recorded((input) => (input.sources[1] = { ...input.sources[1], role: "class_material" })),
+    ).toMatchObject({ allOtherFieldsEqual: false });
+    expect(recorded((input) => (input.lessonContext = { date: "2026-01-01" }))).toMatchObject({
+      allOtherFieldsEqual: false,
+    });
+    // Production verification only adds a page count; a different recorded count is a difference.
+    expect(
+      recorded((input) => (input.sources[0] = { ...input.sources[0], pageCount: 2 })),
+    ).toMatchObject({
+      textPageCounts: [{ source: 1, recorded: 2, release: 1 }, nullPages[1]],
+      allOtherFieldsEqual: false,
+    });
+    // Only a text source's page count is allowed to differ.
+    const pdf = fixture("S06");
+    const pdfRecorded = JSON.parse(geminiRoundInput(pdf));
+    pdfRecorded.sources[0].pageCount = null;
+    expect(
+      recordedInputComparison(JSON.stringify(pdfRecorded), expectedKnowledgeInput(pdf, 120000)),
+    ).toEqual({
+      differences: ["source_1_metadata"],
+      textPageCounts: [],
+      allOtherFieldsEqual: false,
+      stringIdentical: false,
+    });
+    expect(recordedInputComparison("not json", release)).toEqual({
+      differences: ["input_unreadable"],
+      textPageCounts: [],
+      allOtherFieldsEqual: false,
+      stringIdentical: false,
+    });
+  });
+
+  it.skipIf(!existsSync(`${geminiRoundDirectory}/dossiers`))(
+    "differs from each recorded Gemini round input only by the stated text page count",
+    () => {
+      const plan = JSON.parse(readFileSync(`${geminiRoundDirectory}/dry-run-plan.json`, "utf8"));
+      expect(plan.freeze).toBe(geminiAcceptanceRoundFreeze);
+      for (const { caseId, fixture: lesson } of baselineSchedule()) {
+        const dossier = `${geminiRoundDirectory}/dossiers/${caseId}`;
+        const bodies = readdirSync(dossier).filter((name) => /^request-\d+-body\.json$/.test(name));
+        expect(bodies).toHaveLength(1);
+        const recorded = userInputText(
+          JSON.parse(readFileSync(`${dossier}/${bodies[0]}`, "utf8")).body.messages,
+        );
+        // The recorded input is exactly the fixture-fed input this test models...
+        expect(recorded).toBe(geminiRoundInput(lesson));
+        // ...so this round sends the same lesson, text page counts aside.
+        const comparison = recordedInputComparison(
+          recorded ?? "",
+          expectedKnowledgeInput(lesson, 120000, 32000),
+        );
+        expect(comparison.allOtherFieldsEqual).toBe(true);
+        expect(comparison.textPageCounts.every((entry) => entry.recorded === null)).toBe(true);
+        expect(comparison.textPageCounts.every((entry) => entry.release === 1)).toBe(true);
+        expect(comparison.stringIdentical).toBe(lesson.id === "S06");
+      }
+    },
+  );
+
+  it("reads the user text of a recorded [system, user] request", () => {
+    const messages = [
+      { role: "system", content: "s" },
+      { role: "user", content: [{ type: "text", text: "lesson" }] },
+    ];
+    expect(userInputText(messages)).toBe("lesson");
+    expect(userInputText([messages[1]])).toBeUndefined();
+    expect(userInputText([messages[0], { role: "user", content: "lesson" }])).toBeUndefined();
+    expect(userInputText(undefined)).toBeUndefined();
   });
 
   it("names the release candidate and its own ledger fixture set", () => {
