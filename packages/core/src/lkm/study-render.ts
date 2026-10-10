@@ -109,7 +109,7 @@ export function renderStudyCard(
       back: `<div ${ctx.englishAttrs}><b style="font-size:1.25em">${text(value.fullSentence)}</b></div>${value.noteFa ? `<br><div ${ctx.explanatoryAttrs}>📝 ${prose(value.noteFa)}</div>` : ""}`,
     };
   const english = [
-    `<b style="font-size:1.25em">${text(value.en)}</b>${value.ipa ? `<br><span class="ipa">${text(value.ipa)}</span>` : ""}`,
+    `<b style="font-size:1.25em">${text(value.en)}</b>${value.ipa ? `<br>${value.ipaText ? `${text(value.ipaText)} ` : ""}<span class="ipa">${text(value.ipa)}</span>` : ""}`,
     value.fullSentence ? `<i>${text(value.fullSentence)}</i>` : "",
     value.collocations.length
       ? `<b>Collocations:</b> ${value.collocations.map(text).join(" · ")}`
@@ -137,10 +137,25 @@ export function renderStudyCard(
   };
 }
 
+/**
+ * A grammar IPA transcribes the class words in ipaText, not the pattern label in en, so those
+ * words come first: "Does she walk /dʌz ʃi wɔːk/". Other IPA transcribes en and stands alone.
+ */
+function transcription(value: StudyContent, ctx: RenderContext): string | undefined {
+  return value.set === "production" && value.ipaText && value.ipa
+    ? `${text(value.ipaText)} <bdi ${ctx.englishAttrs} class="ipa">${text(value.ipa)}</bdi>`
+    : undefined;
+}
+
 function pronunciation(value: StudyContent, ctx: RenderContext): string {
   const prose = ctx.prose;
+  const transcribed = transcription(value, ctx);
   const parts = [
-    value.ipa ? `<bdi ${ctx.englishAttrs} class="ipa">${text(value.ipa)}</bdi>` : "",
+    transcribed
+      ? `<bdi ${ctx.englishAttrs}>${transcribed}</bdi>`
+      : value.ipa
+        ? `<bdi ${ctx.englishAttrs} class="ipa">${text(value.ipa)}</bdi>`
+        : "",
     ctx.locale.isPersian && value.faApprox ? prose(value.faApprox) : "",
     value.trap ? `<span ${ctx.explanatoryAttrs} class="trap">⚠️ ${prose(value.trap)}</span>` : "",
   ].filter(Boolean);
@@ -157,7 +172,15 @@ function entry(item: LearningItem, ctx: RenderContext, index?: number): string {
     !production && item.claim.origin === "ai_expansion"
       ? `<p class="src">${ctx.label("aiExpansion")}</p>`
       : "";
-  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en"${ctx.itemAnchors ? ` data-learning-item-id="${attr(item.id)}"` : ""}>${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${prose(value.sourceFa)}</p>` : ""}\n${expansion}</article>`;
+  const sourceKey = item.claim.origin === "from_class" ? "fromClass" : "aiExpansion";
+  const sourceLabel = studyMessage(ctx.locale.language, sourceKey);
+  const sourceHtml =
+    production && value.sourceFa === sourceLabel.text
+      ? ctx.label(sourceKey)
+      : production
+        ? prose(value.sourceFa)
+        : "";
+  return `<article class="entry" id="${attr(item.id)}">\n<h3>${index !== undefined ? `<span class="n">${index + 1}</span>` : ""}<span ${ctx.englishAttrs} class="en"${ctx.itemAnchors ? ` data-learning-item-id="${attr(item.id)}"` : ""}>${text(value.en)}</span></h3>\n${pronunciation(value, ctx)}\n${value.faMeaning ? `<p class="mean">${prose(value.faMeaning)}</p>` : ""}\n${example ? `<p class="ex" ${ctx.englishAttrs}>${text(example)}</p>` : ""}\n${production && value.collocations.length ? `<p class="col" ${ctx.englishAttrs}><b>Collocations:</b> ${value.collocations.map(text).join(" · ")}</p>` : ""}\n${value.noteFa ? `<p>📝 ${prose(value.noteFa)}</p>` : ""}\n${production && value.imageFa ? `<p class="img">🖼️ ${prose(value.imageFa)}</p>` : ""}\n${production && value.sourceFa ? `<p class="src">${ctx.label("source")} ${sourceHtml}</p>` : ""}\n${expansion}</article>`;
 }
 
 function table(
@@ -405,7 +428,7 @@ export function renderClassNotesHtml(
             ? [
                 [
                   `<td ${ctx.englishAttrs}><b${ctx.itemAnchors ? ` data-learning-item-id="${attr(item.id)}"` : ""}>${text(item.study.en)}</b></td>`,
-                  `<td>${prose(item.study.faMeaning)}${item.claim.origin === "ai_expansion" ? `<p class="src">${ctx.label("aiExpansion")}</p>` : ""}</td>`,
+                  `<td>${prose(item.study.faMeaning)}${item.study.noteFa ? `<p ${ctx.explanatoryAttrs}>📝 ${prose(item.study.noteFa)}</p>` : ""}${item.claim.origin === "ai_expansion" ? `<p class="src">${ctx.label("aiExpansion")}</p>` : ""}</td>`,
                   `<td ${ctx.englishAttrs}><i>${text(item.study.example)}</i></td>`,
                 ],
               ]
@@ -458,18 +481,20 @@ export function renderClassNotesHtml(
           ...(ctx.locale.isPersian ? [ctx.label("persianApprox")] : []),
           ctx.label("trap"),
         ],
-        appendix.flatMap((item) =>
-          item.study
-            ? [
-                [
-                  `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
-                  `<td ${ctx.englishAttrs} class="ipa">${text(item.study.ipa ?? "")}</td>`,
-                  ...(ctx.locale.isPersian ? [`<td>${prose(item.study.faApprox ?? "")}</td>`] : []),
-                  `<td>${prose(item.study.trap ?? "")}</td>`,
-                ],
-              ]
-            : [],
-        ),
+        appendix.flatMap((item) => {
+          if (!item.study) return [];
+          const transcribed = transcription(item.study, ctx);
+          return [
+            [
+              `<td ${ctx.englishAttrs}><b>${text(item.study.en)}</b></td>`,
+              transcribed
+                ? `<td ${ctx.englishAttrs}>${transcribed}</td>`
+                : `<td ${ctx.englishAttrs} class="ipa">${text(item.study.ipa ?? "")}</td>`,
+              ...(ctx.locale.isPersian ? [`<td>${prose(item.study.faApprox ?? "")}</td>`] : []),
+              `<td>${prose(item.study.trap ?? "")}</td>`,
+            ],
+          ];
+        }),
         ctx,
         true,
       )}`,

@@ -12,6 +12,23 @@ export const providerSettingsSchema = z.strictObject({
   maxInputCharacters: z.number().int().positive(),
   maxOutputTokens: z.number().int().positive(),
   structuredTemperature: z.number().min(0).max(1).optional(),
+  structuredModelOverrides: z
+    .record(
+      z.string().min(1).max(200),
+      z.strictObject({
+        maxOutputTokens: z.number().int().positive().max(128000).optional(),
+        reasoningEffort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
+        maxRequestBytes: z.number().int().positive().safe().optional(),
+        structuredOutputMode: z.enum(["json_schema", "json_object"]).optional(),
+        /** The model rejects non-default sampling, so structuredTemperature is never sent. */
+        omitTemperature: z.literal(true).optional(),
+        /** As llmModel, generate knowledge with the content-only contract and its two-generation cap. */
+        knowledgeContract: z.literal("content").optional(),
+        /** A slower reasoning model's request deadline; every other model keeps timeoutMs. */
+        timeoutMs: z.number().int().positive().max(600000).optional(),
+      }),
+    )
+    .optional(),
   timeoutMs: z.number().int().positive().max(600000),
   maximumMicros: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   modelMaximumMicros: z
@@ -25,6 +42,26 @@ export const providerSettingsSchema = z.strictObject({
   dataContractApproved: z.boolean(),
 });
 export type ProviderSettings = z.infer<typeof providerSettingsSchema>;
+/** Content planning retains maxOutputTokens; only this model's transport cap changes. */
+export function effectiveStructuredMaxOutputTokens(
+  settings: ProviderSettings,
+  model: string,
+): number {
+  return settings.structuredModelOverrides?.[model]?.maxOutputTokens ?? settings.maxOutputTokens;
+}
+/** The request deadline for one model: its override when set, otherwise the shared timeout. */
+export function effectiveProviderTimeoutMs(settings: ProviderSettings, model?: string): number {
+  return (model && settings.structuredModelOverrides?.[model]?.timeoutMs) || settings.timeoutMs;
+}
+/** The longest deadline any configured model may use, for runners that wait on a provider step. */
+export function longestProviderTimeoutMs(settings: ProviderSettings): number {
+  return Math.max(
+    settings.timeoutMs,
+    ...Object.values(settings.structuredModelOverrides ?? {}).map(
+      (override) => override.timeoutMs ?? 0,
+    ),
+  );
+}
 export function maximumProviderCost(settings: ProviderSettings, model: string): number {
   const maximum = settings.modelMaximumMicros?.[model] ?? settings.maximumMicros;
   if (!Number.isSafeInteger(maximum) || maximum <= 0 || maximum > settings.maximumMicros)
@@ -98,6 +135,8 @@ export class ProviderError extends Error {
     readonly retryable: boolean,
     readonly uncertain: boolean,
     readonly accounting?: Omit<ProviderResult<never>, "output">,
+    /** Code-owned validation detail (schema paths and issue codes only), never response text. */
+    readonly diagnostic?: string,
   ) {
     super(code);
     this.name = "ProviderError";

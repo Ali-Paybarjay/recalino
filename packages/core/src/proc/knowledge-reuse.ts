@@ -6,6 +6,7 @@ import { canonicalJson, type LearnerContext, sha256Hex } from "../plt";
 import { providerAccountingProvenanceQueries } from "../quota";
 import { type RunSnapshot, runSettingsSchema, sourceSnapshotSchema } from "./contracts";
 import { generatedKnowledgeSchema } from "./generated-knowledge";
+import { usesContentKnowledgeContract } from "./knowledge-contract";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 
@@ -186,6 +187,9 @@ async function reuseCompletedKnowledgeRepair(
   knowledge: unknown,
   context: z.infer<typeof knowledgeInputContextSchema>,
 ): Promise<void> {
+  // The content contract repairs by regenerating the whole lesson under its own two-dispatch
+  // cap; only the legacy evidence-key repair below can be replayed from an earlier run.
+  if (usesContentKnowledgeContract(input.settings.provider)) return;
   const accounting = providerAccountingProvenanceQueries(tx, ctx, input.sessionId);
   const candidates = await tx
     .selectFrom("proc.processing_run as run")
