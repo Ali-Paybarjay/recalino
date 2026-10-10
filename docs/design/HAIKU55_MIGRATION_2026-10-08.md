@@ -659,6 +659,10 @@ verify کامل همین commit (`4da724d`) پس از reset دیتابیس ای�
   4. رزرو کوچک‌تر برای این step اختیاری است و تغییر کد می‌خواهد.
 - **اگر انتقال پذیرفته نشود:** دست‌کم شکست ۳ از ۲۰ کلاس Haiku و پرچم‌های ASR آن پیگیری شوند.
 
+**تصمیم مالک محصول (2026-10-10):** انتقال پذیرفته شد و در [D57](../PRODUCT_DECISIONS_LOG.md#d57--gemini-38-flash-برای-اصلاح-اشتباه-گفتاری) ثبت شده است.
+- انتقال تغییر env جداست و پس از پایدار شدن انتشار D56 انجام می‌شود.
+- `config/openrouter-defaults.json` تا آن زمان عمداً `voiceCorrectionModel` را روی Haiku 4.5 نگه می‌دارد.
+
 ### محدودیت‌های این ارزیابی
 
 - **داده:** transcriptها مصنوعی، تمیز و کوتاه‌اند (۱۹ تا ۳۷ نوبت). کلاس واقعی طولانی‌تر است و خطای ASR و diarization بیشتری دارد.
@@ -668,7 +672,8 @@ verify کامل همین commit (`4da724d`) پس از reset دیتابیس ای�
 - **مسیر:** hold و ledger دیتابیس اجرا نشدند و عددهای hold از کد و config آمده‌اند.
 
 **شواهد:**
-- مسیر اجرا: `artifacts/verification/voice-corrections-eval/166b8f10e6b90bdf/`، شامل `state.json`، `results.json`، `production-revalidation.json`، `blind/`، `reviews/` و `blind-key.json`.
+- محل: پوشهٔ `artifacts/verification/voice-corrections-eval/` در checkout مهاجرت (`haiku55-migration`) و در worktree ارزیابی؛ gitignore شده و فقط دادهٔ مصنوعی دارد.
+- مسیر اجرا: `166b8f10e6b90bdf/`، شامل `state.json`، `results.json`، `production-revalidation.json`، `blind/`، `reviews/` و `blind-key.json`.
 - برنامه و قیمت‌ها: `dry-run-plan.json` و فهرست ZDR در 2026-10-10.
 - برابری درخواست‌ها: `production-c50c018-haiku-bodies.json` و `release-fd60d3a-*-bodies.json`.
 - آزمون: `tools/eval/voice-corrections.test.ts`.
