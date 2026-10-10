@@ -5,6 +5,7 @@ import type { AudioPreparer } from "@recalino/core/proc";
 import ffmpegPath from "ffmpeg-static";
 import { expect, it, vi } from "vitest";
 import {
+  AUDIO_PREPARATION_CONCURRENCY,
   audioVerifier,
   decodeVoiceAudio,
   decodeVoiceAudioWindows,
@@ -370,4 +371,57 @@ it("keeps transcription checkpoints distinct for independent audio sources in th
   const retry = await prepareAudio(input);
   expect(retry.map((chunk) => chunk.id)).toEqual(first.map((chunk) => chunk.id));
   expect(retry.map((chunk) => chunk.objectId)).not.toEqual(first.map((chunk) => chunk.objectId));
+}, 30000);
+
+it("cuts chunks a few at a time and keeps their order and IDs when writes finish out of order", async () => {
+  const original = syntheticWav(6);
+  storage.read.mockResolvedValue(original);
+  let inFlight = 0;
+  let peak = 0;
+  let writes = 0;
+  storage.write.mockImplementation(async () => {
+    const order = writes++;
+    inFlight += 1;
+    peak = Math.max(peak, inFlight);
+    // Later chunks finish first, so order can only come from the plan.
+    await new Promise((resolve) => setTimeout(resolve, 80 - order * 10));
+    inFlight -= 1;
+    return randomUUID();
+  });
+  const ranges = Array.from({ length: 6 }, (_, index) => ({
+    start: index * 1000,
+    end: index * 1000 + 500,
+  }));
+  const source: Parameters<AudioPreparer>[0]["source"] = {
+    sourceId: randomUUID(),
+    kind: "audio",
+    sha256: createHash("sha256").update(original).digest("hex"),
+    mimeType: "audio/wav",
+    durationMs: 6000,
+    pageCount: null,
+    objectId: randomUUID(),
+    contentVersionId: null,
+    captureAnchor: null,
+    ranges,
+    units: [],
+    blocks: [],
+  };
+  const runId = randomUUID();
+  const chunks = await prepareAudio({
+    db: {} as Parameters<AudioPreparer>[0]["db"],
+    store: new MemoryObjectStore(),
+    ctx: { userId: randomUUID(), requestId: randomUUID() },
+    runId,
+    source,
+    now: new Date("2026-10-10T10:00:00Z"),
+  });
+  expect(chunks.map(({ id, offsetMs, durationMs }) => ({ id, offsetMs, durationMs }))).toEqual(
+    ranges.map((range, index) => ({
+      id: `${runId}-${source.sourceId}-${index}`,
+      offsetMs: range.start,
+      durationMs: 500,
+    })),
+  );
+  expect(peak).toBeGreaterThan(1);
+  expect(peak).toBeLessThanOrEqual(AUDIO_PREPARATION_CONCURRENCY);
 }, 30000);
