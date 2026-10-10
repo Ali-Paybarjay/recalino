@@ -67,11 +67,12 @@ export function fileProcessingFeedback(
       message: "Processing needs attention.",
       detail: processingRecovery(status),
       retry:
-        !isServiceProcessingBlock(status.lastError) &&
-        !operatorErrors.includes(status.lastError ?? "") &&
-        !/operator|provider.*configur|storage_unavailable|allowance|quota|password|rejected|acceptance_required|upload_needs_attention|no_selected|select_at_least_one|selection_too_large/.test(
-          status.lastError ?? "",
-        ),
+        allowanceNowCovers(status) ||
+        (!isServiceProcessingBlock(status.lastError) &&
+          !operatorErrors.includes(status.lastError ?? "") &&
+          !/operator|provider.*configur|storage_unavailable|allowance|quota|password|rejected|acceptance_required|upload_needs_attention|no_selected|select_at_least_one|selection_too_large/.test(
+            status.lastError ?? "",
+          )),
     };
   // A completed old run can briefly be returned while new, unselected files are verifying.
   // Require both the submitted sources and a fresh run before confirming full success.
@@ -109,8 +110,22 @@ export function fileProcessingFeedback(
   };
 }
 
+/** A learner-allowance block whose current allowance now covers the class can be retried. */
+function allowanceNowCovers(status: AutomaticLearningStatus) {
+  const allowance = status.lastError === "quota_insufficient" ? status.allowance : null;
+  return (
+    !!allowance?.active &&
+    Object.entries(allowance.required).every(
+      ([dimension, needed]) =>
+        needed <= (allowance.available[dimension as keyof typeof allowance.available] ?? 0),
+    )
+  );
+}
+
 function processingRecovery(status: AutomaticLearningStatus) {
   const code = status.lastError ?? "";
+  // The server message already names the short allowance, its amounts and the next step.
+  if (code === "quota_insufficient" && status.allowance) return status.message;
   if (isServiceProcessingBlock(code))
     return `${status.message} Open Session progress to get processing help. After the service is updated, retry using the saved material; you do not need to upload the files again.`;
   if (/allowance|quota/.test(code))

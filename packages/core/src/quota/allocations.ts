@@ -4,7 +4,7 @@ import { lockAccount } from "../acc";
 import type { Database, Tx } from "../db";
 import { canonicalJson, errors, recordAudit } from "../plt";
 import type { AllowanceAccounting } from "./accounting";
-import { summarizeAllowanceLedger } from "./accounting";
+import { isUsageReturn, summarizeAllowanceLedger } from "./accounting";
 import { type Amounts, amountsSchema, DIMENSIONS } from "./amounts";
 
 export interface EntitlementAllocation extends AllowanceAccounting {
@@ -68,7 +68,7 @@ export async function setAllowanceAllocation(
   z.uuid().parse(input.userId);
   z.uuid().parse(input.entitlementId);
   z.string().min(8).max(200).parse(input.operationKey);
-  if (input.operationKey.startsWith("storage-return:"))
+  if (isUsageReturn(input.operationKey))
     throw errors.validationFailed({ operationKey: ["reserved_storage_return_key"] });
   z.string().trim().min(1).max(200).parse(input.actorId);
   z.string().trim().min(1).max(500).parse(input.reason);

@@ -1,4 +1,5 @@
 import type { ProcessingReview, ProcessingRun, RunSnapshot } from "@recalino/core/proc";
+import type { Amounts } from "@recalino/core/quota";
 import type { InputContract } from "@recalino/core/src";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import type { LocalPhoto, Recording, RecordingStore } from "../recording/store";
@@ -18,6 +19,8 @@ export interface AutomaticLearningStatus {
   notesReady: boolean;
   cardsReady: boolean;
   processingReview?: ProcessingReview | null;
+  /** FR-QUOTA-007: for a learner-allowance block, what this class needs and what is left now. */
+  allowance?: { active: boolean; required: Amounts; available: Amounts } | null;
 }
 
 export function automaticResultNeedsRefresh(

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Database } from "../db";
 import { platformOperationalSummary, recordAudit } from "../plt";
-import { processingOperationalSummary } from "../proc";
+import { processingOperationalSummary, returnDuplicateClassCharges } from "../proc";
 import {
   adjustAllowance,
   amountsSchema,
@@ -56,6 +56,12 @@ export const operatorRequestSchema = z.discriminatedUnion("command", [
     ...common,
     command: z.literal("quota.close"),
     input: z.strictObject({ userId: z.uuid(), entitlementId: z.uuid() }),
+  }),
+  z.strictObject({
+    ...common,
+    // D59: hand back class charges settled before charge-once accounting; preview by default.
+    command: z.literal("quota.return_duplicate_charges"),
+    input: z.strictObject({ userId: z.uuid(), apply: z.boolean().default(false) }),
   }),
   z.strictObject({ ...common, command: z.literal("cost.configure"), input: costPolicySchema }),
   z.strictObject({ ...common, command: z.literal("source.configure"), input: inputContractSchema }),
@@ -112,6 +118,15 @@ export async function executeOperatorRequest(
     case "quota.close":
       await closeEntitlement(db, { ...request.input, ...operator }, now);
       return { closed: true };
+    case "quota.return_duplicate_charges":
+      return {
+        applied: request.input.apply,
+        returns: await returnDuplicateClassCharges(
+          db,
+          { userId: request.input.userId, requestId: request.operationKey },
+          { ...operator, apply: request.input.apply, now },
+        ),
+      };
     case "cost.configure":
       await configureCostPolicy(db, request.input, operator, now);
       return {
