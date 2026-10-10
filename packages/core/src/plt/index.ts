@@ -51,6 +51,7 @@ export {
   purgeFinishedJobs,
   type RunOptions,
   type RunSummary,
+  renewJobLease,
   runDueJobs,
   runJobStep,
   sweepJobs,

@@ -38,6 +38,17 @@ import { getVoiceAnalysisDefinition } from "./voice-processing";
 export const RUNNER_MAX_SECONDS = 800;
 /** Stop claiming new jobs this long before the limit, so a started step can finish. */
 const RUNNER_MARGIN_SECONDS = 100;
+/** A handler must return this long before the function limit, leaving time to settle its job. */
+const RUNNER_FINISH_MARGIN_SECONDS = 30;
+/**
+ * A processing wake keeps a class's continuation jobs moving on this request's own function
+ * instead of leaving each next step to the next cron minute. The waking routes all allow the
+ * runner's full limit (`maxDuration` 800).
+ */
+export const PROCESSING_WAKE = {
+  budgetSeconds: RUNNER_MAX_SECONDS - 2 * RUNNER_MARGIN_SECONDS,
+  functionSeconds: RUNNER_MAX_SECONDS,
+} as const;
 
 /** Every periodic job, from every module (FR-PLT-005); storage checks only with a real store. */
 export function periodicJobs(settings: PltSettings): PeriodicJob[] {
@@ -112,6 +123,9 @@ export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
     );
     const summary = await runDueJobs(db, jobDefinitions(settings), {
       deadline,
+      finishBy: new Date(
+        started.getTime() + (RUNNER_MAX_SECONDS - RUNNER_FINISH_MARGIN_SECONDS) * 1000,
+      ),
       now: deps.now,
       log: deps.log,
       kinds: deps.kinds,
@@ -123,13 +137,21 @@ export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
 /**
  * Runs just-enqueued jobs right after the response is sent (ADR-0001: "فراخوانی فوری پس از ثبت
  * Job"). Anything left over, or longer than this request's own limit, is picked up by the cron.
+ * `functionSeconds` is the waking route's own `maxDuration`; handlers finish before it.
  */
-export function runJobsSoon(kinds: readonly string[], budgetSeconds: number): void {
+export function runJobsSoon(
+  kinds: readonly string[],
+  budgetSeconds: number,
+  functionSeconds = 120,
+): void {
   after(async () => {
     const settings = readPltSettings();
+    const started = Date.now();
     await runDueJobs(getDatabase(), jobDefinitions(settings), {
       kinds,
-      deadline: new Date(Date.now() + budgetSeconds * 1000),
+      deadline: new Date(started + budgetSeconds * 1000),
+      // The request already used some of its limit before after() began.
+      finishBy: new Date(started + (functionSeconds - 2 * RUNNER_FINISH_MARGIN_SECONDS) * 1000),
       log: defaultRunnerDeps.log,
     });
   });
