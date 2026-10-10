@@ -85,7 +85,7 @@ export const pendingCopy = {
       needs_class:
         "Automatic matching also needs one session where you confirmed your voice with enough clear speech. Until then, each session asks you.",
       unavailable:
-        "Your sample and confirmed sessions are saved. Automatic matching is not switched on yet, so each session asks you.",
+        "Your sample and confirmed sessions are saved. Automatic matching is not available yet, so each session asks you. Confirming or rejecting more sessions can make it available.",
       ready:
         "Later sessions can be matched automatically when your voice is clearly recognised. Unclear sessions still ask you.",
     },
