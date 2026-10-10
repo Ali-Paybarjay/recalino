@@ -89,6 +89,11 @@
   font-size: 20px;
   font-weight: 650;
 }
+.recovery {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
 .aside {
   border-top: 1px solid var(--color-divider);
   padding-top: 16px;

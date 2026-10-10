@@ -1,11 +1,15 @@
 "use client";
 import type { VoiceAnalysisView } from "@recalino/core/voice-contracts";
 import { useEffect, useRef, useState } from "react";
+import { Banner } from "../components/Feedback";
+import { WarningCircle } from "../icons";
+import { pendingCopy } from "../pending-copy";
 import { IndexedRecordingStore } from "../recording/store";
 import { strings } from "../strings";
 import { prepareFileHashes } from "../workspace/file-hashes";
-import { Actions, Button, Status } from "../workspace/primitives";
+import { Button, Status } from "../workspace/primitives";
 import { RelinkError, relinkOriginalRecording } from "./relink-original";
+import styles from "./Voice.module.css";
 import type { LocalAudioState } from "./VoiceClips";
 import { voiceCopy } from "./voice-copy";
 
@@ -114,60 +118,60 @@ export function OriginalRecovery({
   }
   if (state === "loading" || state === "playable")
     return message && !message.error ? <Status tone="success">{message.text}</Status> : null;
-  if (state === "unreadable")
-    return (
-      <Status>
-        {copy.unreadable}
-        <Button secondary disabled={disabled} onClick={() => onChanged(false)}>
-          {strings.common.tryAgain}
-        </Button>
-      </Status>
-    );
   const verifiable = Boolean(source && /^[a-f0-9]{64}$/.test(source.sha256) && source.sizeBytes);
+  const reason =
+    state === "unreadable"
+      ? copy.unreadable
+      : state === "missing"
+        ? verifiable
+          ? copy.missingDetail
+          : copy.noChecksum
+        : verifiable
+          ? copy.incomplete
+          : `${copy.incomplete} ${copy.noChecksum}`;
+  // A warning, not a hint: confirming waits on this step (D55), so it carries the next action.
   return (
-    <div ref={root}>
-      {state === "missing" ? (
-        <>
-          <p className="preview-muted">The original audio isn't on this device.</p>
-          {verifiable ? <p className="preview-muted">{copy.missingDetail}</p> : null}
-        </>
-      ) : (
-        <p className="preview-muted">{copy.incomplete}</p>
+    <div ref={root} className={styles.recovery}>
+      <Banner
+        tone="warning"
+        icon={WarningCircle}
+        title={state === "missing" ? "The original audio isn't on this device." : undefined}
+        action={
+          state === "unreadable" ? (
+            <Button disabled={disabled} onClick={() => onChanged(false)}>
+              {strings.common.tryAgain}
+            </Button>
+          ) : !verifiable ? null : checking ? (
+            <Status>
+              {copy.checking}
+              <Button secondary data-relink="cancel" onClick={() => abort.current?.abort()}>
+                {copy.cancel}
+              </Button>
+            </Status>
+          ) : (
+            <Button data-relink="select" disabled={disabled} onClick={() => input.current?.click()}>
+              {copy.select}
+            </Button>
+          )
+        }
+      >
+        {reason} {pendingCopy.voice.playback.listenFirst}
+      </Banner>
+      {state === "unreadable" ? null : (
+        <input
+          ref={input}
+          type="file"
+          hidden
+          aria-label={copy.select}
+          accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg"
+          disabled={disabled || checking || !verifiable}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void relink(file);
+          }}
+        />
       )}
-      {!verifiable ? (
-        <p className="preview-muted">{copy.noChecksum}</p>
-      ) : checking ? (
-        <Status>
-          {copy.checking}
-          <Button secondary data-relink="cancel" onClick={() => abort.current?.abort()}>
-            {copy.cancel}
-          </Button>
-        </Status>
-      ) : (
-        <Actions>
-          <Button
-            secondary
-            data-relink="select"
-            disabled={disabled}
-            onClick={() => input.current?.click()}
-          >
-            {copy.select}
-          </Button>
-        </Actions>
-      )}
-      <input
-        ref={input}
-        type="file"
-        hidden
-        aria-label={copy.select}
-        accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg"
-        disabled={disabled || checking || !verifiable}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) void relink(file);
-        }}
-      />
       {message ? <Status tone={message.error ? "error" : "neutral"}>{message.text}</Status> : null}
     </div>
   );
