@@ -325,9 +325,56 @@ export interface RunOptions {
 }
 
 /**
+ * Calls `renew` every `every` ms until stopped or until it reports the claim lost. A renewal
+ * still unsettled after most of its period counts as failed, so the next one still runs: the
+ * pool has no query timeout, and one hung connection must not let the lease run out. The
+ * returned stop waits for a renewal in flight only up to that bound.
+ */
+export function keepRenewing(
+  renew: () => Promise<boolean>,
+  every: number,
+  report: (
+    event: "job_lease_lost" | "job_lease_renewal_failed" | "job_lease_renewal_timeout",
+  ) => void,
+): () => Promise<void> {
+  const boundMs = Math.max(1, Math.floor(every * 0.8));
+  let renewal: Promise<void> | null = null;
+  let lost = false;
+  const timer = setInterval(() => {
+    if (renewal || lost) return;
+    let bound: ReturnType<typeof setTimeout> | undefined;
+    const current: Promise<void> = Promise.race([
+      renew().then(
+        (renewed) => {
+          // Cancelled, or claimed again after an expiry: the token guards completion either way.
+          if (!renewed) {
+            lost = true;
+            report("job_lease_lost");
+          }
+        },
+        () => report("job_lease_renewal_failed"),
+      ),
+      new Promise<void>((resolve) => {
+        bound = setTimeout(() => {
+          report("job_lease_renewal_timeout");
+          resolve();
+        }, boundMs);
+      }),
+    ]).finally(() => {
+      clearTimeout(bound);
+      if (renewal === current) renewal = null;
+    });
+    renewal = current;
+  }, every);
+  return async () => {
+    clearInterval(timer);
+    await renewal;
+  };
+}
+
+/**
  * Renews the claim while its handler runs (rule 5), so a lease can be short and a runner that
- * stopped is found soon after. The returned stop waits for a renewal in flight, so completion
- * never races one.
+ * stopped is found soon after.
  */
 function keepLease(
   db: Database,
@@ -337,27 +384,11 @@ function keepLease(
 ): () => Promise<void> {
   const every = options.leaseRenewalMs ?? Math.max(1000, (job.leaseSeconds * 1000) / 4);
   const fields = { kind: job.kind, job_id: job.id, attempt: job.attempt };
-  let renewal: Promise<void> | null = null;
-  let lost = false;
-  const timer = setInterval(() => {
-    if (renewal || lost) return;
-    renewal = renewJobLease(db, job, now())
-      .then((renewed) => {
-        // Cancelled, or claimed again after an expiry: the token guards completion either way.
-        if (!renewed) {
-          lost = true;
-          options.log?.("warn", "job_lease_lost", fields);
-        }
-      })
-      .catch(() => options.log?.("warn", "job_lease_renewal_failed", fields))
-      .finally(() => {
-        renewal = null;
-      });
-  }, every);
-  return async () => {
-    clearInterval(timer);
-    await renewal;
-  };
+  return keepRenewing(
+    () => renewJobLease(db, job, now()),
+    every,
+    (event) => options.log?.("warn", event, fields),
+  );
 }
 
 export interface RunSummary {
