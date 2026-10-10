@@ -43,6 +43,15 @@ export function testDatabaseUrl(): string {
     : (process.env.DATABASE_URL ?? LOCAL_APP_DATABASE_URL);
 }
 
+/** Whether a run names its test databases itself, as a run against an isolated stack does. */
+export function usesLocalTestOverrides(env: Env): boolean {
+  return [
+    "LOCAL_TEST_APP_DATABASE_URL",
+    "LOCAL_TEST_ADMIN_DATABASE_URL",
+    "LOCAL_TEST_POOLER_DATABASE_URL",
+  ].some((name) => env[name] !== undefined);
+}
+
 /**
  * Port and database of a loopback Postgres URL that names both, never its user or password.
  * Every loopback name reaches this computer, so these two decide which local database it is.

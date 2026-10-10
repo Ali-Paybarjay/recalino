@@ -161,3 +161,15 @@ it("refuses a fixture override that is remote or unspecific by its name only", a
       "a database",
   );
 });
+
+it("tells a run that names its own test databases from one on the default stack", async () => {
+  const { usesLocalTestOverrides } = await import("../../packages/core/test/local-db");
+  // CI and the shared stack: only the app's DATABASE_URL, from `pnpm db:env`.
+  expect(usesLocalTestOverrides({ DATABASE_URL: app(54322) })).toBe(false);
+  for (const name of [
+    "LOCAL_TEST_APP_DATABASE_URL",
+    "LOCAL_TEST_ADMIN_DATABASE_URL",
+    "LOCAL_TEST_POOLER_DATABASE_URL",
+  ])
+    expect(usesLocalTestOverrides({ DATABASE_URL: app(58322), [name]: app(58322) })).toBe(true);
+});
