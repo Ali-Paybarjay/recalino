@@ -27,6 +27,7 @@ export {
 } from "./costs";
 export { quotaProcessingFailureCode } from "./failures";
 export {
+  activeEntitlementId,
   adjustAllowance,
   allowance,
   closeEntitlement,
@@ -35,10 +36,15 @@ export {
   grantEntitlement,
   readLatestEntitlementPeriod,
   releaseStorage,
+  reservationEntitlement,
   reservationForOperation,
   reservationIsOpen,
   reserveAllowance,
+  returnedCharge,
+  returnSettledCharge,
+  type SettledReservation,
   settleAllowance,
+  settledReservations,
 } from "./ledger";
 export { providerCostSummary, providerSessionCostSummary } from "./operations";
 export {

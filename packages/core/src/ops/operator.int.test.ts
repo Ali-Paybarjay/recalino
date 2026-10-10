@@ -100,3 +100,55 @@ it("runs profile-free audited quota commands, replays financial mutations once a
   );
   expect((await allowance(db, { userId, requestId: randomUUID() }, now)).entitlementId).toBeNull();
 });
+it("D59: previews duplicate class charges by default and rejects a usage-return key elsewhere", async () => {
+  const userId = await createAuthUser();
+  const now = new Date();
+  const intent = await createSignupIntent(db, { versions: CURRENT_VERSIONS, ttlSeconds: 60, now });
+  await completeSignIn(db, { userId, intentId: intent.id, now });
+  const common = {
+    version: "1",
+    actorId: "synthetic-d59-operator",
+    reason: "Synthetic D59 correction smoke test",
+  };
+  expect(
+    await executeOperatorRequest(
+      db,
+      {
+        ...common,
+        operationKey: randomUUID(),
+        command: "quota.return_duplicate_charges",
+        input: { userId },
+      },
+      now,
+    ),
+  ).toEqual({ applied: false, returns: [] });
+  const grant = await executeOperatorRequest(
+    db,
+    {
+      ...common,
+      operationKey: randomUUID(),
+      command: "quota.grant",
+      input: {
+        userId,
+        startsAt: new Date(now.getTime() - 1000).toISOString(),
+        endsAt: new Date(now.getTime() + 3600000).toISOString(),
+        amounts: { audio: 60, document: 1, regeneration: 0, tts: 0, storage: 0 },
+      },
+    },
+    now,
+  );
+  const { entitlementId } = grant as { entitlementId: string };
+  // A charge-return key is reserved for audited D59 returns, never an allocation change.
+  await expect(
+    executeOperatorRequest(
+      db,
+      {
+        ...common,
+        operationKey: `charge-return:${randomUUID()}`,
+        command: "quota.adjust",
+        input: { userId, entitlementId, dimension: "audio", delta: 60 },
+      },
+      now,
+    ),
+  ).rejects.toMatchObject({ code: "validation_failed" });
+});

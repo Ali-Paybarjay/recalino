@@ -1,25 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { allowance, DIMENSIONS, type Dimension } from "@recalino/core/quota";
+import { allowance, DIMENSIONS } from "@recalino/core/quota";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
+import { allowanceLabels as labels, allowanceUnits as units } from "../../../../ui/allowance-units";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
 import { LearnerShell } from "../../LearnerShell";
 
 export const dynamic = "force-dynamic";
-const labels: Record<Dimension, string> = {
-  audio: "Class audio",
-  document: "Pages and images",
-  regeneration: "New versions",
-  tts: "Speech characters",
-  storage: "File storage",
-};
-function units(dimension: Dimension, value: number): string {
-  if (dimension === "audio") return `${Math.floor(value / 60)} min ${value % 60} sec`;
-  if (dimension === "storage")
-    return `${(value / 1048576).toLocaleString("en-GB", { maximumFractionDigits: 1 })} MB`;
-  return value.toLocaleString("en-GB");
-}
 
 export default async function AllowancePage() {
   const learner = await requireLearner("/me/quota");

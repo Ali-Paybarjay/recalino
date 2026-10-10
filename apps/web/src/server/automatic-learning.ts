@@ -1,6 +1,7 @@
 import "server-only";
 import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
+import { getLatestVersion } from "@recalino/core/lkm";
 import { getNotebook } from "@recalino/core/note";
 import { getSession } from "@recalino/core/org";
 import {
@@ -15,6 +16,7 @@ import {
   sha256Hex,
 } from "@recalino/core/plt";
 import {
+  chargeableRunAmounts,
   createProcessingRun,
   findProcessingRunByOperationKey,
   getAutomaticLearningSession,
@@ -33,7 +35,12 @@ import {
   sourceSnapshotSchema,
   updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
-import { quotaProcessingFailureCode } from "@recalino/core/quota";
+import {
+  type Amounts,
+  allowance,
+  DIMENSIONS,
+  quotaProcessingFailureCode,
+} from "@recalino/core/quota";
 import {
   DefaultSourceVerifier,
   receivedSourceUploadIds,
@@ -41,6 +48,8 @@ import {
   sourceVerificationJob,
 } from "@recalino/core/src";
 import type { z } from "zod";
+import { allowanceLabels, allowanceUnits } from "../ui/allowance-units";
+import { pendingCopy } from "../ui/pending-copy";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
@@ -59,6 +68,14 @@ export interface AutomaticLearningStatus {
   notesReady: boolean;
   cardsReady: boolean;
   processingReview?: ProcessingReview | null;
+  /** FR-QUOTA-007: for a learner-allowance block, what this class needs and what is left now. */
+  allowance?: AllowanceShortage | null;
+}
+export interface AllowanceShortage {
+  /** False when the account has no active allowance period. */
+  active: boolean;
+  required: Amounts;
+  available: Amounts;
 }
 type Progress = Pick<AutomaticLearningStatus, "state" | "lastError" | "run">;
 export interface AutomaticLearningDependencies {
@@ -88,12 +105,28 @@ function problemCode(failure: unknown): string {
   }
   return failure.code;
 }
+function allowanceMessage(shortage: AllowanceShortage | null | undefined): string {
+  if (!shortage)
+    return "Your material is saved. More allowance is needed to finish the notes and flashcards.";
+  if (!shortage.active) return pendingCopy.allowance.none;
+  const items = DIMENSIONS.filter(
+    (dimension) => shortage.required[dimension] > shortage.available[dimension],
+  ).map((dimension) =>
+    pendingCopy.allowance.shortageItem
+      .replace("{allowance}", allowanceLabels[dimension])
+      .replace("{needed}", allowanceUnits(dimension, shortage.required[dimension]))
+      .replace("{left}", allowanceUnits(dimension, shortage.available[dimension])),
+  );
+  return items.length
+    ? pendingCopy.allowance.shortage.replace("{items}", items.join(". "))
+    : pendingCopy.allowance.covered;
+}
 export function automaticLearningMessage(
   state: AutomaticLearningStatus["state"],
   code: string | null,
+  shortage?: AllowanceShortage | null,
 ): string {
-  if (code === "quota_insufficient")
-    return "Your material is saved. More allowance is needed to finish the notes and flashcards.";
+  if (code === "quota_insufficient") return allowanceMessage(shortage);
   if (code === "processing_budget_session")
     return "The next processing step does not fit within this session's AI spending limit. Your material is saved. Ask the pilot operator to review the limit before retrying; you do not need to upload the same files again.";
   if (code === "processing_budget_user_month")
@@ -152,11 +185,40 @@ export function automaticLearningMessage(
     blocked: "Automatic creation needs attention. Your earlier notes and cards are available.",
   }[state];
 }
+/** Read-only: the charge-once amounts this class would reserve now, beside what is left. */
+async function readAllowanceShortage(
+  db: Database,
+  ctx: LearnerContext,
+  sessionId: string,
+  provider: AiProvider | undefined,
+): Promise<AllowanceShortage | null> {
+  if (!provider) return null;
+  try {
+    const snapshot = sourceSnapshotSchema.parse(
+      await selectProcessingSourceSnapshot(db, ctx, sessionId),
+    );
+    const balance = await allowance(db, ctx);
+    const required = await chargeableRunAmounts(db, ctx, {
+      sessionId,
+      entitlementId: balance.entitlementId,
+      sources: snapshot.sources,
+      charactersPerPage: provider.settings.charactersPerPage,
+      regeneration: (await getLatestVersion(db, ctx, sessionId)) !== null,
+    });
+    return { active: balance.entitlementId !== null, required, available: balance.remaining };
+  } catch (failure) {
+    if (failure instanceof AppError && ["unauthenticated", "not_found"].includes(failure.code))
+      throw failure;
+    // A changed or unverified selection keeps the general allowance guidance.
+    return null;
+  }
+}
 async function view(
   db: Database,
   ctx: LearnerContext,
   sessionId: string,
   progress?: Progress,
+  provider: () => AiProvider | undefined = defaults.provider,
 ): Promise<AutomaticLearningStatus> {
   const intent = await getAutomaticLearningSession(db, ctx, sessionId);
   const notebook = await getNotebook(db, ctx, sessionId);
@@ -171,6 +233,10 @@ async function view(
     ["failed", "needs_input"].includes(run.state)
       ? "service_processing_blocked"
       : storedCode;
+  const shortage =
+    state === "blocked" && code === "quota_insufficient"
+      ? await readAllowanceShortage(db, ctx, sessionId, provider())
+      : null;
   return {
     state,
     revision: intent?.requestVersion ?? 0,
@@ -179,16 +245,22 @@ async function view(
     snapshot:
       run?.state === "awaiting_upload" ? await getProcessingRunSnapshot(db, ctx, run.id) : null,
     lastError: code,
-    message: automaticLearningMessage(state, code),
+    message: automaticLearningMessage(state, code, shortage),
+    allowance: shortage,
     notesReady: !!notebook,
     cardsReady: intent?.state === "ready" && !!notebook,
     processingReview: await readClassProcessingReview(db, ctx, sessionId),
   };
 }
 /** Read-only polling never reserves allowance or starts provider work. */
-export async function readAutomaticLearning(db: Database, ctx: LearnerContext, sessionId: string) {
+export async function readAutomaticLearning(
+  db: Database,
+  ctx: LearnerContext,
+  sessionId: string,
+  provider: () => AiProvider | undefined = defaults.provider,
+) {
   await getSession(db, ctx, sessionId);
-  return view(db, ctx, sessionId);
+  return view(db, ctx, sessionId, undefined, provider);
 }
 
 /** Serializes class updates around the existing atomic reservation/run contract. */
@@ -205,7 +277,8 @@ export async function automaticLearningSync(
   });
   if (intent.batchId && intent.batchFiles)
     intent = (await reconcileAutomaticLearningBatch(db, ctx, sessionId, deps.now())) ?? intent;
-  if (intent.lastError === "upload_batch_cancelled") return view(db, ctx, sessionId);
+  if (intent.lastError === "upload_batch_cancelled")
+    return view(db, ctx, sessionId, undefined, deps.provider);
   const progress = async (
     state: Progress["state"],
     lastError: string | null,
@@ -222,8 +295,8 @@ export async function automaticLearningSync(
           deps.now(),
         ))
       )
-        return view(db, ctx, sessionId);
-    return view(db, ctx, sessionId, { state, lastError, run });
+        return view(db, ctx, sessionId, undefined, deps.provider);
+    return view(db, ctx, sessionId, { state, lastError, run }, deps.provider);
   };
   if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
   const materials = await sessionSources(db, ctx, sessionId);
