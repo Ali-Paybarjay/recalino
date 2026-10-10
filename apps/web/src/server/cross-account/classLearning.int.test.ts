@@ -7,6 +7,7 @@ import { studyFixture } from "../../../../../packages/core/test/study-fixture";
 import { defineRoute } from "../api";
 import { readAutomaticLearning } from "../automatic-learning";
 import { automaticLearningHandler } from "../automatic-learning-routes";
+import { PROCESSING_WAKE } from "../jobs";
 import { ROUTES } from "../routes";
 import { routeDeps } from "../test-support";
 import { newLearner, requestAs } from "./learners";
@@ -85,7 +86,8 @@ it("preserves an open group during sync and replays completion once", async () =
   });
   expect(wake).toHaveBeenLastCalledWith(
     ["proc.automatic_learning", "src.verify_upload", "src.verify_audio", "proc.process"],
-    90,
+    PROCESSING_WAKE.budgetSeconds,
+    PROCESSING_WAKE.functionSeconds,
   );
 });
 

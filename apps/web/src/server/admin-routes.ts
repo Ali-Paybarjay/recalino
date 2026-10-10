@@ -51,7 +51,7 @@ import { adminEmailValues } from "./admin-email-values";
 import { adminOperation } from "./admin-operation";
 import { getAiProvider } from "./ai";
 import type { Handler } from "./api";
-import { runJobsSoon } from "./jobs";
+import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
 
 const locale = z.enum(["en", "fa"]);
@@ -618,7 +618,12 @@ export function adminHandler(): Handler {
           { ...p, actorId, requestId: ctx.requestId, operationKey: op },
           { provider: getAiProvider(), job },
         );
-        if (run.state === "queued") runJobsSoon(["proc.process"], 90);
+        if (run.state === "queued")
+          runJobsSoon(
+            ["proc.process"],
+            PROCESSING_WAKE.budgetSeconds,
+            PROCESSING_WAKE.functionSeconds,
+          );
         return { status: 202, body: { ok: true, runId: run.id } };
       }
       case "task.update": {

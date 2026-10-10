@@ -473,6 +473,28 @@ export function voiceCorrectionFailure(error: unknown): string {
     : "voice_correction_unavailable";
 }
 
+/** Whether a run's audio still needs its acoustic check, decided as processVoiceSource decides. */
+export async function voiceAnalysisPending(
+  db: Database,
+  ctx: LearnerContext,
+  input: { sessionId: string; runId: string; sources: readonly RunSource[] },
+): Promise<boolean> {
+  const audio = input.sources.filter(
+    (source) => source.kind === "audio" && source.contentVersionId,
+  );
+  if (!audio.length || !(await getVoiceEnrollment(db, ctx)).enabled) return false;
+  for (const source of audio)
+    if (
+      !(await findVoiceAnalysis(db, ctx, {
+        sessionId: input.sessionId,
+        sourceId: source.sourceId,
+        sourceVersionId: source.contentVersionId as string,
+        runId: input.runId,
+      }))
+    )
+      return true;
+  return false;
+}
 export async function processVoiceSource(input: {
   db: Database;
   ctx: LearnerContext;

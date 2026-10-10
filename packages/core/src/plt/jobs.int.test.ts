@@ -12,6 +12,7 @@ import {
   type JobDefinition,
   jobState,
   purgeFinishedJobs,
+  renewJobLease,
   runDueJobs,
   runJobStep,
   sweepJobs,
@@ -117,6 +118,67 @@ for (const [connection, url] of Object.entries(CONNECTIONS)) {
       expect(await jobState(db, jobId)).toBe("succeeded");
       expect(await effects(db, jobId, "transcribe")).toBe(1);
       expect(await effects(db, jobId, "notes")).toBe(1);
+    });
+
+    it("rule 5: only the live claim renews its lease; a stopped runner's claim is taken over", async () => {
+      const def = definition(async () => {});
+      const jobId = (await enqueue(def)) ?? "";
+      const [claim] = await claimJobs(db, [def.kind], 1, T0);
+      if (!claim) throw new Error("job not claimed");
+      expect(claim.leaseSeconds).toBe(DEFAULTS.leaseSeconds);
+      // Renewing from a later moment moves the lease end with it, so a live runner keeps the job.
+      expect(await renewJobLease(db, claim, at(DEFAULTS.leaseSeconds - 1))).toBe(true);
+      expect(await sweepJobs(db, at(DEFAULTS.leaseSeconds + 1))).toBe(0);
+      // The runner stops renewing: one lease later the job is swept and claimed again.
+      const expired = at(2 * DEFAULTS.leaseSeconds);
+      expect(await sweepJobs(db, expired)).toBe(1);
+      const [again] = await claimJobs(db, [def.kind], 1, expired);
+      expect(again?.id).toBe(jobId);
+      if (!again) return;
+      expect(await renewJobLease(db, claim, expired)).toBe(false); // the old claim is void
+      expect(await renewJobLease(db, again, expired)).toBe(true);
+      await cancelJob(db, jobId, expired);
+      expect(await renewJobLease(db, again, expired)).toBe(false);
+    });
+
+    it("rule 5: a running handler's lease is renewed, and its context carries the runner's deadline", async () => {
+      let clock = 0;
+      const now = () => at(clock);
+      const seen: { deadline?: Date; renewed?: boolean } = {};
+      const def = definition(
+        async (_payload, ctx) => {
+          seen.deadline = ctx.deadline;
+          const lease = async () =>
+            (
+              await db
+                .selectFrom("plt.job")
+                .select("lease_until")
+                .where("id", "=", jobId)
+                .executeTakeFirstOrThrow()
+            ).lease_until?.getTime() ?? 0;
+          const claimed = await lease();
+          clock = 30; // the handler works on; renewals now extend the lease from here
+          for (let tries = 0; tries < 200 && (await lease()) <= claimed; tries++)
+            await new Promise((resolve) => setTimeout(resolve, 5));
+          seen.renewed = (await lease()) > claimed;
+        },
+        { leaseSeconds: 60 },
+      );
+      const jobId = (await enqueue(def)) ?? "";
+      const summary = await runDueJobs(db, [def], {
+        deadline: at(10),
+        finishBy: at(100),
+        now,
+        leaseRenewalMs: 5,
+      });
+      expect(summary).toMatchObject({ succeeded: 1 });
+      expect(seen).toEqual({ deadline: at(100), renewed: true });
+      const finished = await db
+        .selectFrom("plt.job")
+        .select(["state", "lease_until", "lease_token"])
+        .where("id", "=", jobId)
+        .executeTakeFirstOrThrow();
+      expect(finished).toEqual({ state: "succeeded", lease_until: null, lease_token: null });
     });
 
     it("two runners claiming at once: only one gets the job", async () => {

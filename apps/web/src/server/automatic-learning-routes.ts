@@ -15,7 +15,7 @@ import {
   readAutomaticLearning,
   scheduleAutomaticLearning,
 } from "./automatic-learning";
-import { runJobsSoon } from "./jobs";
+import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 
 const actions = z.discriminatedUnion("action", [
   z.strictObject({
@@ -95,7 +95,8 @@ export function automaticLearningHandler(
       await scheduleAutomaticLearning(db, learner, sessionId, { changed: false });
       deps.wake(
         ["proc.automatic_learning", "src.verify_upload", "src.verify_audio", "proc.process"],
-        90,
+        PROCESSING_WAKE.budgetSeconds,
+        PROCESSING_WAKE.functionSeconds,
       );
       return { status: 202, body: await deps.read(db, learner, sessionId) };
     }
@@ -108,7 +109,8 @@ export function automaticLearningHandler(
       const body = await deps.sync(db, learner, sessionId, {});
       deps.wake(
         ["proc.automatic_learning", "src.verify_upload", "src.verify_audio", "proc.process"],
-        90,
+        PROCESSING_WAKE.budgetSeconds,
+        PROCESSING_WAKE.functionSeconds,
       );
       return { status: 202, body };
     }
@@ -118,7 +120,8 @@ export function automaticLearningHandler(
     const body = await deps.sync(db, learner, sessionId, retryKey ? { retryKey } : {});
     deps.wake(
       ["proc.automatic_learning", "src.verify_upload", "src.verify_audio", "proc.process"],
-      90,
+      PROCESSING_WAKE.budgetSeconds,
+      PROCESSING_WAKE.functionSeconds,
     );
     return { status: 202, body };
   };

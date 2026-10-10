@@ -36,7 +36,10 @@ vi.mock("@recalino/core/proc", async (original) => ({
   validateAudioUploadRun: mocks.validateRun,
 }));
 vi.mock("./storage", () => ({ getObjectStore: () => new MemoryObjectStore() }));
-vi.mock("./jobs", () => ({ runJobsSoon: mocks.runJobsSoon }));
+vi.mock("./jobs", () => ({
+  PROCESSING_WAKE: { budgetSeconds: 600, functionSeconds: 800 },
+  runJobsSoon: mocks.runJobsSoon,
+}));
 vi.mock("./source-jobs", () => ({
   sourceAudioJobDefinition: mocks.audioJob,
   sourceUploadJobDefinition: vi.fn(),
@@ -183,9 +186,11 @@ it("moves a completed audio upload through verification into processing without 
         singletonKey: `audio:${uploadId}`,
       }),
     );
+    // The chain keeps going on this request instead of waiting for the next cron minute.
     expect(mocks.runJobsSoon).toHaveBeenCalledExactlyOnceWith(
       ["src.verify_audio", "proc.process"],
-      90,
+      600,
+      800,
     );
   } finally {
     executeSpy.mockRestore();
