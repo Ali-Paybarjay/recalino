@@ -4,6 +4,8 @@
 >
 > وضعیت: کد پیشنهادی برای بررسی و ادامه به Claude Code تحویل می‌شود؛ ارزیابی واقعی نهایی **FAIL** است و مدل در production فعال نشده است.
 >
+> به‌روزرسانی 2026-10-10: Haiku 5.5 منتشر نمی‌شود. طبق D49، Gemini 3.8 Flash مدل متن انتشار است؛ بخش [انتشار Gemini 3.8 Flash (D49)](#انتشار-gemini-38-flash-d49) را ببینید. deploy و تغییر env هنوز انجام نشده‌اند.
+>
 > مبنا: [طرح مهاجرت](../plans/HAIKU55_MIGRATION_2026-10-08.md)، [PROJECT_SPEC](../PROJECT_SPEC.md)، D36 و D46. این سند شناسهٔ تصمیم یا ADR تازه‌ای ایجاد نمی‌کند.
 
 مبنای نهایی برنچ، commit منتشرشدهٔ `9d3fa4e301d4d420385546c6a8acd9ce0dfaf10f` است. بررسی فقط‌خواندنی Vercel، deployment فعال `dpl_6aah9ZvtZhwasncriTkfmsbtzF9R` را با همین `reviewedCommit` و manifest برابر `15235b6ee374174bf2b9c951ef211bd084ea0faf9ea2c7226aa54bcf7eb19a6f` نشان داد. متادیتای قدیمی `gitCommitSha=a80fb14` و `gitDirty=1` نیز موجود بود؛ بنابراین فقط به آن SHA قدیمی اتکا نشد. اصلاح‌های منتشرشدهٔ آپلود، اعلان‌ها، آماده‌سازی PDF و تفکیک اعتبار کاربر از سقف هزینهٔ سرویس در مبنای جدید حفظ شده‌اند. checkout مشترک و تغییرهای باز آن دستکاری نشده‌اند.
@@ -425,6 +427,52 @@ verify کامل همین commit (`4da724d`) پس از reset دیتابیس ای�
 - **پیامد برای دروازه:** با این نرخ، دروازهٔ «صفر خطای مهم در ۱۴ درس» بعید است رد شود، مگر با یک مرحلهٔ بازبینی دوم یا تصمیم تازهٔ مالک دربارهٔ دروازه.
 - **مقایسه با مدل فعلی:** خط پایهٔ واقعی Haiku 4.5 روی مسیر production با همین بازبینی هنوز اندازه‌گیری نشده است.
 - production روی Haiku 4.5 می‌ماند.
+
+## انتشار Gemini 3.8 Flash (D49)
+
+مالک محصول در 2026-10-09 و 2026-10-10 معیار انتشار را به «بهتر از production فعلی در همان بازبینی کورِ کنارِ هم» تغییر داد و Gemini 3.8 Flash را انتخاب کرد. تصمیم در [D49](../PRODUCT_DECISIONS_LOG.md) ثبت شده است.
+
+### مقایسهٔ کور مشترک روی holdout-5
+
+هر دو مسیر روی همان ۱۴ درس holdout-5 (fa، ar، es، ja و uk) اجرا و با هم کور بازبینی شدند. Haiku 4.5 روی مسیر production خودش، یعنی قرارداد قدیمی، اجرا شد.
+
+| سنجه | Haiku 4.5، مسیر production | Gemini 3.8 Flash، medium، `json_schema` |
+|---|---:|---:|
+| خروجی معتبر | 7 از 14 | 13 از 14 |
+| معتبر در تلاش اول | 4 از 14 | 13 از 13 |
+| درس قابل‌قبول | 0 از 14 | 8 از 14 |
+| میانگین نمره (از ۴) | 2.09 | 3.43 |
+| هزینهٔ هر درس | حدود 0.053 دلار | حدود 0.024 دلار |
+
+- تنها شکست Gemini، timeout در ۹۰ ثانیه بود. مهلت این مدل اکنون ۱۸۰ ثانیه است.
+- بازبین‌ها عامل‌های مستقل AI بودند، نه معلم انسانی. خطاهای آموزشی باقی‌ماندهٔ Gemini (بخش دور ۵) همچنان وجود دارند.
+- شواهد محلی در checkout مهاجرت: `artifacts/verification/holdout5-joint-results.json`، `holdout5-joint-blind/` و `holdout5-joint-reviews/`.
+
+### تنظیمات انتشار
+
+`config/openrouter-defaults.json` نسخهٔ `openrouter-2026-10-10-1` است:
+
+- `llmModel` برابر `google/gemini-3.8-flash`، با override: سقف خروجی 32000، effort `medium`، سقف درخواست 400000 بایت، `json_schema`، بدون temperature، `knowledgeContract: "content"` و مهلت 180000 میلی‌ثانیه.
+- `visionModel` و `voiceCorrectionModel` برابر `anthropic/claude-haiku-4.5`، بدون override: سقف 6144 و temperature صفر.
+- رزرو هر فراخوان: Gemini تا 760000 میکرودلار و Haiku 4.5 تا 300000. شاهد آزمون `tools/provider-defaults.test.ts` با قیمت‌های ZDR در snapshot 2026-10-09، برای 400000 بایت ورودی و 32000 توکن خروجی: priority 756000، standard 420000 و flex 210000 میکرودلار.
+- مسیر اصلاح اشتباه گفتاری (`voice:corrections:<id>`) مدل، hold، sampling، transport و مهلت خودش را از `voiceCorrectionModel` می‌گیرد. snapshot بدون این فیلد مانند قبل از `llmModel` استفاده می‌کند.
+
+### ترتیب انتشار
+
+قواعد کلی بخش بعد همچنان برقرارند. هر مرحله مجوز صریح جداگانهٔ مالک محصول می‌خواهد.
+
+1. **اول کد، با env بدون تغییر production.** کد تازه JSON فعلی production را می‌پذیرد: Haiku 4.5 با قرارداد قدیمی، و اصلاح گفتاری روی `llmModel`. قواعد اعتبارسنجی و نمایش تازهٔ این merge (مثل D48 و تکلیف) از همین مرحله اعمال می‌شوند. ترتیب لازم است، چون schema سخت‌گیر کد production فعلی (`1b1956f`) فیلدهای `voiceCorrectionModel` و `structuredModelOverrides` را رد می‌کند.
+2. **سپس به‌روزرسانی JSON env.**
+   - پیش از آن، runهای `queued` و `processing` با snapshot قدیمی تمام شوند.
+   - فقط `OPENROUTER_SETTINGS_JSON` با محتوای این config به‌روز شود؛ `tools/configure-runtime-env.mjs --apply-production` اجرا نشود.
+   - در همان پنجره، revision نرخ برآورد از کنسول مدیریت و با تأیید ثبت شود. برای `google/gemini-3.8-flash` در مرحلهٔ generation: ورودی 750000 و خروجی 3750000 میکرودلار برای هر میلیون توکن (standard)، یا 1350000 و 6750000 (priority). ردیف‌های فعلی `anthropic/claude-haiku-4.5` بمانند، چون تصویر و اصلاح گفتاری هنوز از آن‌ها استفاده می‌کنند.
+   - سقف جلسه در cost policy پایلوت (D37) یک دلار است. hold تازهٔ 0.76 دلاری فقط وقتی پذیرفته می‌شود که هزینه و holdهای باز همان جلسه حداکثر 0.24 دلار باشند. پیش از تغییر، اثر آن روی جلسه‌های پرتکرار بررسی شود.
+3. **در پایان، smoke check مصنوعی.** یک run کلاس با دادهٔ مصنوعی و بدون دادهٔ واقعی کاربر. بررسی: نسخهٔ settings برابر `openrouter-2026-10-10-1`، attempt با مدل `google/gemini-3.8-flash` و hold برابر 760000، اصلاح گفتاری (اگر فعال است) با `anthropic/claude-haiku-4.5` و hold برابر 300000، و ثبت هزینه و checkpoint.
+
+### بازگشت
+
+1. **اول env:** JSON قبلی production (`openrouter-2026-10-07-2`، مرجع `1b1956f:config/openrouter-defaults.json`) امن بازگردانده شود. پیش از آن، runهای فعال با snapshot Gemini تمام شوند. snapshot یا checkpoint پولی ویرایش نشود و hold نامعلوم بدون مدرک آزاد نشود.
+2. **سپس کد، اگر لازم است.** کد قدیمی JSON تازه را نمی‌پذیرد، پس این ترتیب برعکس‌شدنی نیست. runهایی که snapshot آن‌ها فیلدهای تازه دارد، زیر کد قدیمی خوانده نمی‌شوند و باید پیش از بازگشت کد تمام شده باشند.
 
 ## rollout قابل بازبینی
 

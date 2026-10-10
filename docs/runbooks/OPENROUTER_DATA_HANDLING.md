@@ -35,6 +35,8 @@
 
 این‌ها مسیرهای ممکن هستند، نه رسید پردازش یک درخواست واقعی. `global` یا tag بدون region محل قطعی پردازش را ثابت نمی‌کند. نام `openai/...` یا `anthropic/...` سازندهٔ مدل را نشان می‌دهد و شرکت اجراکننده را به‌تنهایی مشخص نمی‌کند. Anthropic و Azure در فهرست عمومی endpoints مدل Haiku بودند، اما در خروجی ZDR این مدل نبودند. registry و availability ممکن است تغییر کنند.
 
+**افزودهٔ 2026-10-09 (D49):** فهرست ZDR ثبت‌شده در ارزیابی مدل برای `google/gemini-3.8-flash` فقط Google Vertex را نشان داد، با tagهای `google-vertex/global`، `google-vertex/global/priority` و `google-vertex/global/flex`. همان محدودیت‌های بالا برقرارند: این‌ها مسیر ممکن‌اند، نه رسید پردازش، و `global` کشور را ثابت نمی‌کند.
+
 اپ از میزبان عمومی `openrouter.ai` استفاده می‌کند؛ لندن‌بودن پایگاه داده و Blob به معنی لندن‌بودن AI نیست. مسیرهای ممکن شامل آمریکا و خارج از بریتانیا هستند. مستندات، routing منطقه‌ای EU/US را به میزبان‌های جدا و پلن Business/Enterprise وابسته می‌دانند؛ این پروژه در این بررسی چنین مسیری را فعال نکرده است. [provider routing](https://openrouter.ai/docs/guides/routing/provider-selection)
 
 ## نگهداری و تنظیمات حساب
