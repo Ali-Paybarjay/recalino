@@ -153,6 +153,24 @@ function hasTime(job: JobContext, ms: number): boolean {
   return !job.deadline || job.deadline.getTime() - job.now().getTime() >= ms;
 }
 
+/** Whether one request on this model's own deadline can still finish before the runner's. */
+function callFits(job: JobContext, provider: AiProvider, model: string): boolean {
+  return hasTime(
+    job,
+    effectiveProviderTimeoutMs(provider.settings, model) + PROVIDER_CALL_SAFETY_MS,
+  );
+}
+
+/**
+ * Which of several lanes' failures a job reports: cancellation first, then an unknown provider
+ * outcome, then a definite failure, and a retryable one last, so a retry never hides the others.
+ */
+function failureRank(error: unknown): number {
+  if (error instanceof JobCancelled) return 3;
+  if (error instanceof ProviderError) return error.uncertain ? 2 : error.retryable ? 0 : 1;
+  return 1;
+}
+
 /**
  * The acoustic check of a run's audio, started while the lesson is generated. The native engine
  * runs in a worker thread, so the check and the provider calls do not wait for each other.
@@ -545,10 +563,11 @@ export async function providerStep<T>(
   }
 }
 /**
- * Transcribes chunks a few at a time. Every chunk is its own paid provider step, committed before
- * its bytes are deleted, so a retry repeats only unfinished chunks. The first chunk always starts;
- * a later one starts only while its call can still end before the runner's deadline. After a
- * failure no new chunk starts, the calls in flight settle, and the first failure is thrown.
+ * Transcribes chunks a few at a time and returns how many it started. Every chunk is its own
+ * paid provider step, committed before its bytes are deleted, so a retry repeats only unfinished
+ * chunks. A chunk, the first included, starts only while its call can still end before the
+ * runner's deadline. After a failure no new chunk starts, the calls in flight settle, and the
+ * most significant failure is thrown (failureRank).
  */
 async function transcribeChunks(
   job: JobContext,
@@ -561,7 +580,7 @@ async function transcribeChunks(
     store: ObjectStore;
     concurrency: number;
   },
-): Promise<void> {
+): Promise<number> {
   const { ctx, runId, provider, model, store } = input;
   const launchUntil = Math.min(
     job.now().getTime() + TRANSCRIPTION_LAUNCH_WINDOW_MS,
@@ -574,7 +593,7 @@ async function transcribeChunks(
   let failure: { error: unknown } | null = null;
   const lane = async () => {
     while (!failure) {
-      if (launched > 0 && job.now().getTime() >= launchUntil) return;
+      if (job.now().getTime() >= launchUntil) return;
       const chunk = queue.shift();
       if (!chunk) return;
       launched += 1;
@@ -599,13 +618,16 @@ async function transcribeChunks(
         );
         await deleteObject(job.db, store, ctx, chunk.objectId, job.now());
       } catch (error) {
-        failure ??= { error };
+        // Another lane may have failed while this one awaited.
+        const earlier = failure as { error: unknown } | null;
+        if (!earlier || failureRank(error) > failureRank(earlier.error)) failure = { error };
       }
     }
   };
   const lanes = Math.max(1, Math.min(Math.floor(input.concurrency), input.chunks.length));
   await Promise.all(Array.from({ length: lanes }, lane));
   if (failure) throw (failure as { error: unknown }).error;
+  return launched;
 }
 async function checkpointAndContinue(
   job: JobContext,
@@ -778,7 +800,7 @@ export function processingJob(
             }
             const pending = chunks.filter((chunk) => !transcribed.has(`stt:${chunk.id}`));
             if (pending.length) {
-              await transcribeChunks(job, {
+              const launched = await transcribeChunks(job, {
                 ctx,
                 runId: payload.runId,
                 chunks: pending,
@@ -787,7 +809,15 @@ export function processingJob(
                 store: dependencies.store,
                 concurrency: dependencies.transcriptionConcurrency ?? TRANSCRIPTION_CONCURRENCY,
               });
-              await checkpointAndContinue(job, ctx, payload.runId, definition);
+              // No chunk fit before the runner's deadline: a fresh runner continues from the saved
+              // chunk plan.
+              await checkpointAndContinue(
+                job,
+                ctx,
+                payload.runId,
+                definition,
+                launched ? 0 : YIELD_DELAY_SECONDS,
+              );
               return;
             }
             const units: z.infer<typeof sourceContentSchema>["units"] = [];
@@ -970,6 +1000,18 @@ export function processingJob(
                     );
                 });
               }
+              // A vision call this function could not finish is left to a fresh runner; the
+              // rendered page stays saved for it.
+              if (!callFits(job, provider, settings.provider.visionModel)) {
+                await checkpointAndContinue(
+                  job,
+                  ctx,
+                  payload.runId,
+                  definition,
+                  YIELD_DELAY_SECONDS,
+                );
+                return;
+              }
               const pageBytes = await readOwnedObject(
                 job.db,
                 dependencies.store,
@@ -1051,6 +1093,11 @@ export function processingJob(
               ),
             );
           } else if (source.kind === "image") {
+            // A vision call this function could not finish is left to a fresh runner.
+            if (!callFits(job, provider, settings.provider.visionModel)) {
+              await checkpointAndContinue(job, ctx, payload.runId, definition, YIELD_DELAY_SECONDS);
+              return;
+            }
             const bytes = await readOwnedObject(job.db, dependencies.store, ctx, source.objectId);
             if (createHash("sha256").update(bytes).digest("hex") !== source.sha256)
               throw errors.validationFailed({ source: ["integrity_mismatch"] });

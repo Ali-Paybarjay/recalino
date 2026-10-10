@@ -299,10 +299,36 @@ it("PRD-PROC-03 keeps finished chunks when one fails, and the retry transcribes 
   expect(attempts.map((row) => row.state)).toEqual(["failed", "succeeded"]);
 });
 
-it("FR-PLT-005 starts only one chunk when the runner's deadline leaves time for one provider call", async () => {
+it("PRD-PROC-03 reports an unknown provider outcome rather than another lane's retryable failure", async () => {
+  const c = await parallelClass(
+    async (index) => {
+      if (index === 0)
+        return new Response(JSON.stringify({ error: { message: "rate limited" } }), {
+          status: 429,
+        });
+      if (index === 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        throw new Error("synthetic connection reset");
+      }
+      return transcript(index);
+    },
+    { concurrency: 2 },
+  );
+  // The 429 settles first. Retrying would only meet the unresolved attempt beside it, so the run
+  // stops for review at once, under the unknown outcome's code.
+  await c.invoke();
+  expect(await getRun(db, c.x.ctx, c.run.id)).toMatchObject({
+    state: "needs_input",
+    lastError: "provider_outcome_unknown",
+  });
+});
+
+it("FR-PLT-005 leaves transcription to a fresh runner when the deadline cannot hold one chunk's request", async () => {
   const c = await parallelClass(async (index) => transcript(index));
+  // Less than one request on the STT deadline plus the time kept after it, even for the first.
   await c.invoke({ deadline: new Date(Date.now() + settings.timeoutMs + 1000) });
-  expect(c.calls).toHaveLength(1);
+  expect(c.calls).toHaveLength(0);
+  expect(await getRun(db, c.x.ctx, c.run.id)).toMatchObject({ state: "processing" });
   await c.invoke();
   expect(c.calls).toHaveLength(CHUNKS);
 });
