@@ -1,7 +1,8 @@
 /**
  * Voice check copy added after the design handoff. The product owner approved these texts on
  * 2026-10-10 (D54, follow-up), including the reworded reference, reason and readiness texts that
- * stay true while the account's own calibration can still accept later sessions.
+ * stay true while the account's own calibration can still accept later sessions, and later that
+ * day the three D55 texts for confirming a voice only after hearing it.
  */
 export const voiceCopy = {
   // Some excerpts were skipped or decoded short (partial_audio).
@@ -14,7 +15,15 @@ export const voiceCopy = {
     "Speakers were prepared, but spoken mistakes were not checked because this session reached a Recalino service limit. This is not your personal allowance, and retrying the voice check will not change it. You can still confirm your speaker below.",
   // Confirmation instructions that match what the learner can actually do.
   listenPrompt: "Listen to the excerpts, then confirm which voice is yours.",
+  // D55: every source that needs a choice is waiting for its excerpts to play on this device.
+  confirmBlockedSummary:
+    "Voice check finished. To confirm your voice, its excerpts must first play on this device; the next step is shown below. Your session notes stay available.",
   playback: {
+    // D55: no confirmation is offered until the excerpts can play on this device.
+    listenFirst:
+      "You confirm your voice by listening to these excerpts. Until they can play here, spoken mistakes from this source are withheld; your session notes stay available.",
+    // D55: a failed clip no longer suggests deciding from the transcript.
+    clipFailed: "This clip could not play. Try again.",
     // The original is on another device or was cleared; relinking stays on this device.
     missingDetail:
       "To play these excerpts here, select the original recording of this session. Recalino checks on this device that it is exactly the same file and does not upload it.",
