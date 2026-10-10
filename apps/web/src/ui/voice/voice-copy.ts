@@ -1,12 +1,8 @@
-import { pendingCopy } from "../pending-copy";
-
 /**
  * Voice check copy added after the design handoff. The product owner approved these texts on
- * 2026-10-10 (D54, follow-up). Texts still held for a wording check come from the pending-copy
- * register instead.
+ * 2026-10-10 (D54, follow-up), including the reworded reference, reason and readiness texts that
+ * stay true while the account's own calibration can still accept later sessions.
  */
-const pending = pendingCopy.voice;
-
 export const voiceCopy = {
   // Some excerpts were skipped or decoded short (partial_audio).
   partialCoverage:
@@ -46,9 +42,12 @@ export const voiceCopy = {
   // What a manual confirmation contributed to later automatic matching.
   reference: {
     added: "Saved as a voice reference for later sessions.",
-    short: pending.reference.short,
-    expired: pending.reference.expired,
-    missing: pending.reference.missing,
+    short:
+      "This session had less than 20 seconds of your clear speech, so it was not saved as a voice reference.",
+    expired:
+      "Confirmed after the 24-hour window for voice patterns, so this session was not saved as a voice reference.",
+    missing:
+      "No voice pattern was available for this speaker, so this session was not saved as a voice reference.",
     mismatch:
       "This voice does not sound like your saved voice sample, so it will not be used to recognise you. If it is not your voice, choose “This is not my voice”.",
     retired:
@@ -56,9 +55,12 @@ export const voiceCopy = {
   },
   // Why an acoustic check asked instead of matching automatically.
   match: {
-    no_sample: pending.match.no_sample,
-    no_reference: pending.match.no_reference,
-    policy_unavailable: pending.match.policy_unavailable,
+    no_sample:
+      "No voice sample was saved when this session was checked. Recalino asked you to confirm this session.",
+    no_reference:
+      "When this session was checked, none of your confirmed sessions could be used as a voice reference. Recalino asked you to confirm this session.",
+    policy_unavailable:
+      "Automatic voice matching was not available when this session was checked, so it needs your confirmation.",
     few_voices:
       "Recalino asks because fewer than two voices in this recording had enough clear speech to compare.",
     no_clear_match:
@@ -68,9 +70,12 @@ export const voiceCopy = {
   },
   // Settings summary of what automatic matching still needs.
   readiness: {
-    needs_sample: pending.readiness.needs_sample,
-    needs_class: pending.readiness.needs_class,
-    unavailable: pending.readiness.unavailable,
+    needs_sample:
+      "Save a voice sample below to help Recalino recognise your voice in later sessions. Until automatic matching is available, sessions ask you.",
+    needs_class:
+      "Confirming your voice in a session with enough clear speech helps Recalino recognise you in later sessions. Until automatic matching is available, sessions ask you.",
+    unavailable:
+      "Your sample and confirmed sessions are saved. Automatic matching is not available yet, so each session asks you.",
     ready:
       "Later sessions can be matched automatically when your voice is clearly recognised. Unclear sessions still ask you.",
   },
