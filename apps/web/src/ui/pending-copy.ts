@@ -23,9 +23,10 @@ export const pendingCopy = {
       "Speakers were prepared, but spoken mistakes were not checked because this session reached a Recalino service limit. This is not your personal allowance, and retrying the voice check will not change it. You can still confirm your speaker below.",
     // Confirmation instructions that match what the learner can actually do.
     listenPrompt: "Listen to the excerpts, then confirm which voice is yours.",
-    readPrompt:
-      "These speakers have saved lines but no timed audio excerpts, so there is nothing to play. Read their lines to decide, or choose “None of these voices is mine”. Your session notes stay available.",
     playback: {
+      // D55: no confirmation is offered until the excerpts can play on this device.
+      listenFirst:
+        "You confirm your voice by listening to these excerpts. Until they can play here, spoken mistakes from this source are withheld; your session notes stay available.",
       // The original is on another device or was cleared; relinking stays on this device.
       missingDetail:
         "To play these excerpts here, select the original recording of this session. Recalino checks on this device that it is exactly the same file and does not upload it.",

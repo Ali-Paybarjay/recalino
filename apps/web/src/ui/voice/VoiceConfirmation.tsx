@@ -32,8 +32,9 @@ function isServiceBlocked(analysis: VoiceAnalysisView) {
   );
 }
 
+/** A voice is confirmed by listening (D55); saved lines alone are not enough to decide. */
 function hasSpeakerExcerpts(candidate: VoiceCandidate) {
-  return candidate.clips.length > 0 || candidate.lines.some((line) => line.trim().length > 0);
+  return candidate.clips.length > 0;
 }
 
 /** Children are hidden while a changed attribution and its refreshed notes are being reconciled. */
@@ -463,7 +464,6 @@ function Analysis({
     (candidate) => candidate.id === analysis.verifiedSpeakerId,
   );
   const candidates = verified ? [] : suggested && !chooseAll ? [suggested] : available;
-  const timed = candidates.some((candidate) => candidate.clips.length > 0);
   const labels: Record<VoiceAnalysisView["status"], string> = {
     verified: "Voice verified",
     processing: "Preparing excerpts",
@@ -563,9 +563,7 @@ function Analysis({
           {analysis.matchReason ? (
             <p className="preview-muted">{pendingCopy.voice.match[analysis.matchReason]}</p>
           ) : null}
-          {!timed ? (
-            <p>{pendingCopy.voice.readPrompt}</p>
-          ) : audio.state === "playable" ? (
+          {audio.state === "playable" ? (
             <>
               {linked ? (
                 <div ref={linkedStatus} tabIndex={-1}>
@@ -573,8 +571,43 @@ function Analysis({
                 </div>
               ) : null}
               <p>{pendingCopy.voice.listenPrompt}</p>
+              {candidates.map((candidate) => (
+                <div key={candidate.id} className={styles.aside}>
+                  <strong dir="auto">{candidate.label}</strong>
+                  <VoiceClips
+                    candidate={candidate}
+                    audioUrl={audio.url}
+                    limit={suggested && !chooseAll ? 3 : 1}
+                    onPlayback={onPlayback}
+                  />
+                  <p className={styles.question} lang="fa" dir="rtl">
+                    این صدای توست؟
+                  </p>
+                  <Actions>
+                    <Button disabled={disabled} onClick={() => action("confirm", candidate.id)}>
+                      Yes, this is my voice
+                    </Button>
+                    {suggested && !chooseAll ? (
+                      <Button
+                        secondary
+                        disabled={disabled}
+                        onClick={() => action("reject", candidate.id)}
+                      >
+                        No, show other speakers
+                      </Button>
+                    ) : null}
+                  </Actions>
+                </div>
+              ))}
+              <Actions>
+                <Button secondary disabled={disabled} onClick={() => action("none")}>
+                  None of these voices is mine
+                </Button>
+              </Actions>
             </>
           ) : (
+            // Nothing to confirm until the excerpts can play here (D55): the warning names the
+            // next step instead of offering choices the learner cannot make by listening.
             <OriginalRecovery
               userId={userId}
               sessionId={sessionId}
@@ -588,39 +621,6 @@ function Analysis({
               }}
             />
           )}
-          {candidates.map((candidate) => (
-            <div key={candidate.id} className={styles.aside}>
-              <strong dir="auto">{candidate.label}</strong>
-              <VoiceClips
-                candidate={candidate}
-                audioUrl={audio.url}
-                limit={suggested && !chooseAll ? 3 : 1}
-                onPlayback={onPlayback}
-              />
-              <p className={styles.question} lang="fa" dir="rtl">
-                این صدای توست؟
-              </p>
-              <Actions>
-                <Button disabled={disabled} onClick={() => action("confirm", candidate.id)}>
-                  Yes, this is my voice
-                </Button>
-                {suggested && !chooseAll ? (
-                  <Button
-                    secondary
-                    disabled={disabled}
-                    onClick={() => action("reject", candidate.id)}
-                  >
-                    No, show other speakers
-                  </Button>
-                ) : null}
-              </Actions>
-            </div>
-          ))}
-          <Actions>
-            <Button secondary disabled={disabled} onClick={() => action("none")}>
-              None of these voices is mine
-            </Button>
-          </Actions>
         </>
       )}
     </section>
