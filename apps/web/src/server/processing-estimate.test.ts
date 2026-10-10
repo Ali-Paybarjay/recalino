@@ -17,6 +17,24 @@ vi.mock("@recalino/core/quota", async (original) => ({
   ...(await original<object>()),
   allowance: mocks.allowance,
 }));
+vi.mock("@recalino/core/proc", async (original) => {
+  const actual = await original<typeof import("@recalino/core/proc")>();
+  return {
+    ...actual,
+    // D59: this synthetic class has no earlier charge; only the coverage read is replaced.
+    chargeableRunAmounts: async (
+      _db: unknown,
+      _ctx: unknown,
+      input: Parameters<typeof actual.chargeableRunAmounts>[2],
+    ) =>
+      actual.chargeableAmounts(
+        input.sources,
+        new Map(),
+        input.charactersPerPage,
+        input.regeneration,
+      ),
+  };
+});
 
 // No connection is opened: estimates exercise mocked public domain reads and actual calculation.
 const db = createDatabase("postgresql://recalino_app:recalino-local-only@127.0.0.1:54322/postgres");
