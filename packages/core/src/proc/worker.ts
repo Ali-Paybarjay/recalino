@@ -90,6 +90,7 @@ import {
   processVoiceSource,
   scopedVoiceSpeakerId,
   type VoiceDiarizer,
+  voiceAnalysisPending,
 } from "./voice-processing";
 
 export const audioChunkSchema = z.strictObject({
@@ -134,6 +135,42 @@ export const TRANSCRIPTION_CONCURRENCY = 4;
 export const TRANSCRIPTION_LAUNCH_WINDOW_MS = 120_000;
 /** Time kept after the last provider call a job starts, before its runner's deadline. */
 const PROVIDER_CALL_SAFETY_MS = 15_000;
+/** A class's acoustic check starts only with this much time left (twice a 128-minute class's). */
+export const VOICE_ANALYSIS_TIME_MS = 360_000;
+/** A job that cannot fit its next step leaves it to a fresh runner after this delay. */
+const YIELD_DELAY_SECONDS = 30;
+
+function hasTime(job: JobContext, ms: number): boolean {
+  return !job.deadline || job.deadline.getTime() - job.now().getTime() >= ms;
+}
+
+/**
+ * The acoustic check of a run's audio, started while the lesson is generated. The native engine
+ * runs in a worker thread, so the check and the provider calls do not wait for each other.
+ */
+function startVoiceCheck(run: () => Promise<boolean>) {
+  let running = true;
+  const result = run().then(
+    (analyzed) => ({ analyzed }),
+    (error: unknown) => ({ error }),
+  );
+  void result.finally(() => {
+    running = false;
+  });
+  return {
+    running: () => running,
+    /** True when the check saved an analysis in this job; rethrows the check's failure. */
+    async wait(): Promise<boolean> {
+      const outcome = await result;
+      if ("error" in outcome) throw outcome.error;
+      return outcome.analyzed;
+    },
+    /** Waits without rethrowing, when the job already fails for another reason. */
+    async settle(): Promise<void> {
+      await result;
+    },
+  };
+}
 export type PdfPagesPreparer = (
   input: Omit<Parameters<PdfPagePreparer>[0], "page"> & {
     pages: number[];
@@ -508,6 +545,7 @@ async function checkpointAndContinue(
   ctx: LearnerContext,
   runId: string,
   definition: JobDefinition<{ runId: string; userId: string }>,
+  delaySeconds = 0,
 ) {
   await job.db.transaction().execute(async (tx) => {
     await liveRun(tx, ctx, runId);
@@ -515,6 +553,7 @@ async function checkpointAndContinue(
       payload: { runId, userId: ctx.userId },
       singletonKey: `${runId}:${job.job.id}`,
       now: job.now(),
+      ...(delaySeconds ? { runAt: new Date(job.now().getTime() + delaySeconds * 1000) } : {}),
       defaults: readPltSettings().jobs,
     });
     await tx
@@ -1002,324 +1041,175 @@ export function processingJob(
         if (!extracted.some((source) => source.blocks.some((block) => block.text.trim())))
           throw errors.validationFailed({ sources: ["no_extractable_content"] });
         // A separate private projection; no identity or hidden correction enters knowledge input.
-        if (dependencies.diarizeVoice) {
-          for (const source of extracted) {
-            const voiceProgress = await processVoiceSource({
-              db: job.db,
-              ctx,
-              sessionId: initial.session_id,
-              runId: payload.runId,
-              source,
-              explanationLanguage: settings.explanationLanguage,
-              diarize: dependencies.diarizeVoice,
-              now: job.now,
-              // Required lesson generation gets cost headroom before this optional paid analysis.
-              correct: async () => false,
-            });
-            if (voiceProgress !== "unchanged") {
-              await checkpointAndContinue(job, ctx, payload.runId, definition);
-              return;
-            }
-          }
-        }
-        const missing = extracted
-          .filter(
-            (source) =>
-              !source.blocks.length || source.units.some((unit) => unit.status !== "extracted"),
-          )
-          .map((source) => source.sourceId);
-        const lesson = await getSession(job.db, ctx, initial.session_id);
-        const course = await getCourse(job.db, ctx, lesson.courseId);
-        const lessonContext = {
-          date: lesson.classDate,
-          ...(course.isDefault ? {} : { course: course.name }),
-        };
-        // D49: memory points were frozen at run start; only those this class's extracted text
-        // supports reach the model, without counts or dates.
-        const practiceFocus = selectPracticeFocus(settings.learnerContext, extracted);
-        const teaching = modelTeachingContext(settings.learnerContext, practiceFocus);
-        const knowledgeInput = buildKnowledgeInput(
-          {
-            explanationLanguage: settings.explanationLanguage,
-            teachingPreferences: settings.teachingPreferences,
-            ...(teaching ? { learnerContext: teaching } : {}),
+        // Its acoustic check runs while the lesson is generated rather than before it; it is
+        // saved before the paid correction, which still keeps a job of its own.
+        let voiceCheck: ReturnType<typeof startVoiceCheck> | null = null;
+        const diarize = dependencies.diarizeVoice;
+        if (
+          diarize &&
+          (await voiceAnalysisPending(job.db, ctx, {
+            sessionId: initial.session_id,
+            runId: payload.runId,
             sources: extracted,
-            missingSourceIds: missing,
-            lessonContext,
-          },
-          settings.provider.maxInputCharacters,
-        );
-        const priorKnowledge = await cached(
-          job.db,
-          payload.runId,
-          "knowledge",
-          generatedKnowledgeSchema,
-        );
-        let knowledgeDispatched = !priorKnowledge;
-        let generated = priorKnowledge;
-        if (!generated) {
-          const compact = await cached(
-            job.db,
-            payload.runId,
-            "knowledge:truncated",
-            knowledgeTruncationSchema,
-          );
-          try {
-            generated = await providerStep(
-              job,
-              ctx,
-              payload.runId,
-              compact ? "knowledge:compact" : "knowledge",
-              settings.provider.llmModel,
-              provider,
-              generatedKnowledgeSchema,
-              (operationKey) =>
-                provider.structured({
-                  operationKey,
-                  model: settings.provider.llmModel,
-                  schema: generatedKnowledgeSchema,
-                  schemaName: "class_knowledge",
-                  system: [
-                    knowledgePrompt(
-                      settings.explanationLanguage,
-                      settings.teachingPreferences.shorterExamples,
-                      compact
-                        ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
-                        : settings.provider.maxOutputTokens,
-                      false,
-                      teaching,
-                    ),
-                    knowledgeInput.sourceRefPrompt,
-                    "Return one sourceClassifications entry per source, using the exact sourceId. " +
-                      sourceClassificationPrompt +
-                      " Audio always uses evidence audio; use class_material as its classification placeholder. Images already have an automatically detected role from vision: preserve that category. Use the detected category when choosing claim evidence, but never treat personal notes as proof of authorship or a speaker's identity.",
-                    ...(compact ? [compactKnowledgeInstruction(settings.explanationLanguage)] : []),
-                  ].join(" "),
-                  input: knowledgeInput.input,
-                }),
-              {
-                onCommit: async (tx, output) => {
-                  await saveStep(
-                    tx,
-                    payload.runId,
-                    "knowledge:input-context",
-                    knowledgeInputContextSchema.parse({ version: 1, ...lessonContext }),
-                    job.now(),
-                  );
-                  if (compact) {
-                    await saveStep(tx, payload.runId, "knowledge", output, job.now());
-                  }
-                },
-              },
-            );
-          } catch (error) {
-            if (
-              !compact &&
-              error instanceof ProviderError &&
-              error.code === "provider_output_truncated" &&
-              !error.uncertain &&
-              error.accounting &&
-              (await cached(
-                job.db,
-                payload.runId,
-                "knowledge:truncated",
-                knowledgeTruncationSchema,
-              ))
-            ) {
-              await checkpointAndContinue(job, ctx, payload.runId, definition);
-              return;
-            }
-            throw error;
-          }
-        }
-        let validated: ReturnType<typeof validateGeneratedKnowledge>;
-        try {
-          validated = validateGeneratedKnowledge(
-            generated,
-            extracted,
-            missing,
-            settings.explanationLanguage,
-          );
-        } catch (error) {
-          // Only a complete, saved response with a known semantic failure permits repair.
-          // Provider uncertainty, changed settings and account/source failures never enter here.
-          if (!semanticRepairReason(error)) throw error;
-          // Persist each paid result before the next provider call gets its own job budget.
-          if (!priorKnowledge) {
-            await checkpointAndContinue(job, ctx, payload.runId, definition);
+          }))
+        ) {
+          // A check this function could not finish is left to a fresh runner.
+          if (!hasTime(job, VOICE_ANALYSIS_TIME_MS)) {
+            await checkpointAndContinue(job, ctx, payload.runId, definition, YIELD_DELAY_SECONDS);
             return;
           }
-          if (semanticRepairReason(error) === "study_sentence_mismatch") {
-            const studyRepair = buildKnowledgeStudyRepairInput(
-              generated,
-              settings.provider.maxInputCharacters,
-              declaredTeachingContext(teaching),
-            );
-            const priorStudyRepair = await cached(
-              job.db,
-              payload.runId,
-              "knowledge:study-repair",
-              studyRepair.schema,
-            );
-            const answerParts =
-              priorStudyRepair ??
-              (await providerStep(
-                job,
+          voiceCheck = startVoiceCheck(async () => {
+            let analyzed = false;
+            for (const source of extracted) {
+              if (analyzed && !hasTime(job, VOICE_ANALYSIS_TIME_MS)) break;
+              const progress = await processVoiceSource({
+                db: job.db,
                 ctx,
-                payload.runId,
-                "knowledge:study-repair",
-                settings.provider.llmModel,
-                provider,
-                studyRepair.schema,
-                (operationKey) =>
-                  provider.structured({
-                    operationKey,
-                    model: settings.provider.llmModel,
-                    schema: studyRepair.schema,
-                    schemaName: "class_study_sentence_repair",
-                    system: studyRepair.system,
-                    input: studyRepair.input,
-                  }),
-              ));
-            if (!priorStudyRepair) knowledgeDispatched = true;
-            // Only gap fields change. A remaining semantic failure stops this attempt;
-            // it never triggers a second repair or regenerates the saved lesson.
-            validated = validateGeneratedKnowledge(
-              studyRepair.apply(answerParts),
-              extracted,
-              missing,
-              settings.explanationLanguage,
-            );
-          } else {
-            const repair = buildKnowledgeRepairInput(
-              {
-                sources: extracted,
+                sessionId: initial.session_id,
+                runId: payload.runId,
+                source,
                 explanationLanguage: settings.explanationLanguage,
-                teachingPreferences: settings.teachingPreferences,
-                ...(teaching ? { learnerContext: teaching } : {}),
-                missingSourceIds: missing,
-                lessonContext,
-              },
-              settings.provider.maxInputCharacters,
-            );
-            const priorRepair = await cached(
+                diarize,
+                now: job.now,
+                // Required lesson generation gets cost headroom before this optional paid analysis.
+                correct: async () => false,
+              });
+              if (progress !== "unchanged") analyzed = true;
+            }
+            return analyzed;
+          });
+        }
+        const lessonStage = async (): Promise<"checkpoint" | "published"> => {
+          const missing = extracted
+            .filter(
+              (source) =>
+                !source.blocks.length || source.units.some((unit) => unit.status !== "extracted"),
+            )
+            .map((source) => source.sourceId);
+          const lesson = await getSession(job.db, ctx, initial.session_id);
+          const course = await getCourse(job.db, ctx, lesson.courseId);
+          const lessonContext = {
+            date: lesson.classDate,
+            ...(course.isDefault ? {} : { course: course.name }),
+          };
+          // D49: memory points were frozen at run start; only those this class's extracted text
+          // supports reach the model, without counts or dates.
+          const practiceFocus = selectPracticeFocus(settings.learnerContext, extracted);
+          const teaching = modelTeachingContext(settings.learnerContext, practiceFocus);
+          const knowledgeInput = buildKnowledgeInput(
+            {
+              explanationLanguage: settings.explanationLanguage,
+              teachingPreferences: settings.teachingPreferences,
+              ...(teaching ? { learnerContext: teaching } : {}),
+              sources: extracted,
+              missingSourceIds: missing,
+              lessonContext,
+            },
+            settings.provider.maxInputCharacters,
+          );
+          const priorKnowledge = await cached(
+            job.db,
+            payload.runId,
+            "knowledge",
+            generatedKnowledgeSchema,
+          );
+          let knowledgeDispatched = !priorKnowledge;
+          let generated = priorKnowledge;
+          if (!generated) {
+            const compact = await cached(
               job.db,
               payload.runId,
-              "knowledge:repair",
-              repair.schema,
+              "knowledge:truncated",
+              knowledgeTruncationSchema,
             );
-            const corrected =
-              priorRepair ??
-              (await providerStep(
+            try {
+              generated = await providerStep(
                 job,
                 ctx,
                 payload.runId,
-                "knowledge:repair",
+                compact ? "knowledge:compact" : "knowledge",
                 settings.provider.llmModel,
                 provider,
-                repair.schema,
+                generatedKnowledgeSchema,
                 (operationKey) =>
                   provider.structured({
                     operationKey,
                     model: settings.provider.llmModel,
-                    schema: repair.schema,
-                    schemaName: "class_knowledge_repair",
+                    schema: generatedKnowledgeSchema,
+                    schemaName: "class_knowledge",
                     system: [
                       knowledgePrompt(
                         settings.explanationLanguage,
                         settings.teachingPreferences.shorterExamples,
-                        settings.provider.maxOutputTokens,
-                        true,
+                        compact
+                          ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
+                          : settings.provider.maxOutputTokens,
+                        false,
                         teaching,
                       ),
-                      repair.system,
+                      knowledgeInput.sourceRefPrompt,
+                      "Return one sourceClassifications entry per source, using the exact sourceId. " +
+                        sourceClassificationPrompt +
+                        " Audio always uses evidence audio; use class_material as its classification placeholder. Images already have an automatically detected role from vision: preserve that category. Use the detected category when choosing claim evidence, but never treat personal notes as proof of authorship or a speaker's identity.",
+                      ...(compact
+                        ? [compactKnowledgeInstruction(settings.explanationLanguage)]
+                        : []),
                     ].join(" "),
-                    input: repair.input,
+                    input: knowledgeInput.input,
                   }),
-              ));
-            if (!priorRepair) knowledgeDispatched = true;
-            const studyMismatch = (error: unknown) =>
-              semanticRepairReason(error) === "study_sentence_mismatch";
-            // The repaired lesson as returned (or translated), kept for an answer-span repair.
-            let candidate: unknown = corrected;
-            let repaired: ReturnType<typeof repair.decode> | null = null;
-            try {
-              repaired = repair.decode(corrected);
+                {
+                  onCommit: async (tx, output) => {
+                    await saveStep(
+                      tx,
+                      payload.runId,
+                      "knowledge:input-context",
+                      knowledgeInputContextSchema.parse({ version: 1, ...lessonContext }),
+                      job.now(),
+                    );
+                    if (compact) {
+                      await saveStep(tx, payload.runId, "knowledge", output, job.now());
+                    }
+                  },
+                },
+              );
             } catch (error) {
-              if (!studyMismatch(error)) {
-                if (semanticRepairReason(error) !== "language_script_mismatch") throw error;
-                // A language correction is permitted only after the immutable canonical
-                // result has passed every earlier non-language evidence/attribution check.
-                repair.assertLanguageRepairEvidence(corrected);
-                if (!priorRepair) {
-                  await checkpointAndContinue(job, ctx, payload.runId, definition);
-                  return;
-                }
-                const translation = buildKnowledgeTranslationInput(
-                  corrected,
-                  settings.explanationLanguage,
-                  settings.provider.maxInputCharacters,
-                  declaredTeachingContext(teaching),
-                );
-                const priorTranslation = await cached(
+              if (
+                !compact &&
+                error instanceof ProviderError &&
+                error.code === "provider_output_truncated" &&
+                !error.uncertain &&
+                error.accounting &&
+                (await cached(
                   job.db,
                   payload.runId,
-                  "knowledge:repair-language",
-                  translation.schema,
-                );
-                const translated =
-                  priorTranslation ??
-                  (await providerStep(
-                    job,
-                    ctx,
-                    payload.runId,
-                    "knowledge:repair-language",
-                    settings.provider.llmModel,
-                    provider,
-                    translation.schema,
-                    (operationKey) =>
-                      provider.structured({
-                        operationKey,
-                        model: settings.provider.llmModel,
-                        schema: translation.schema,
-                        schemaName: "class_knowledge_translation",
-                        system: `${translation.system} The response has a hard limit of ${settings.provider.maxOutputTokens} output tokens. Aim for at most ${Math.floor(settings.provider.maxOutputTokens * 0.75)} output tokens and finish the entire valid JSON object.`,
-                        input: translation.input,
-                      }),
-                  ));
-                if (!priorTranslation) knowledgeDispatched = true;
-                candidate = translation.apply(translated);
-                // No second translation: only the bounded answer-span repair below remains.
-                try {
-                  repaired = repair.decode(candidate);
-                } catch (translatedError) {
-                  if (!studyMismatch(translatedError)) throw translatedError;
-                }
+                  "knowledge:truncated",
+                  knowledgeTruncationSchema,
+                ))
+              ) {
+                return "checkpoint";
               }
+              throw error;
             }
-            let accepted: ReturnType<typeof validateGeneratedKnowledge> | null = null;
-            if (repaired)
-              try {
-                accepted = validateGeneratedKnowledge(
-                  repaired,
-                  extracted,
-                  missing,
-                  settings.explanationLanguage,
-                );
-              } catch (error) {
-                if (!studyMismatch(error)) throw error;
-              }
-            if (accepted) validated = accepted;
-            else {
-              // A repaired lesson whose remaining problem is a gap that no longer matches its
-              // sentence gets the same single answer-span repair a first response would. Only
-              // gap fields change, and the full validation below runs again on the result.
-              if (knowledgeDispatched) {
-                await checkpointAndContinue(job, ctx, payload.runId, definition);
-                return;
-              }
+          }
+          let validated: ReturnType<typeof validateGeneratedKnowledge>;
+          try {
+            validated = validateGeneratedKnowledge(
+              generated,
+              extracted,
+              missing,
+              settings.explanationLanguage,
+            );
+          } catch (error) {
+            // Only a complete, saved response with a known semantic failure permits repair.
+            // Provider uncertainty, changed settings and account/source failures never enter here.
+            if (!semanticRepairReason(error)) throw error;
+            // Persist each paid result before the next provider call gets its own job budget.
+            if (!priorKnowledge) {
+              return "checkpoint";
+            }
+            if (semanticRepairReason(error) === "study_sentence_mismatch") {
               const studyRepair = buildKnowledgeStudyRepairInput(
-                repaired ?? repair.expanded(candidate),
+                generated,
                 settings.provider.maxInputCharacters,
                 declaredTeachingContext(teaching),
               );
@@ -1350,145 +1240,331 @@ export function processingJob(
                     }),
                 ));
               if (!priorStudyRepair) knowledgeDispatched = true;
+              // Only gap fields change. A remaining semantic failure stops this attempt;
+              // it never triggers a second repair or regenerates the saved lesson.
               validated = validateGeneratedKnowledge(
                 studyRepair.apply(answerParts),
                 extracted,
                 missing,
                 settings.explanationLanguage,
               );
-            }
-          }
-        }
-        const { classified } = validated;
-        const { model, audit: practiceAudit } = finalizeGeneratedStudyPractice(
-          normalizeGeneratedStudyModel(
-            validated.model,
-            extracted.some((source) => source.kind === "audio"),
-            lessonContext,
-          ),
-          classified,
-          settings.learnerContext,
-        );
-        if (dependencies.diarizeVoice) {
-          // Optional correction must not share a job with a newly paid knowledge stage.
-          if (knowledgeDispatched) {
-            await checkpointAndContinue(job, ctx, payload.runId, definition);
-            return;
-          }
-          for (const source of extracted) {
-            const voiceProgress = await processVoiceSource({
-              db: job.db,
-              ctx,
-              sessionId: initial.session_id,
-              runId: payload.runId,
-              source,
-              explanationLanguage: settings.explanationLanguage,
-              diarize: dependencies.diarizeVoice,
-              now: job.now,
-              correct: (analysis) =>
-                correctVoiceCandidates({
-                  db: job.db,
-                  ctx,
-                  analysis,
+            } else {
+              const repair = buildKnowledgeRepairInput(
+                {
+                  sources: extracted,
                   explanationLanguage: settings.explanationLanguage,
+                  teachingPreferences: settings.teachingPreferences,
+                  ...(teaching ? { learnerContext: teaching } : {}),
+                  missingSourceIds: missing,
+                  lessonContext,
+                },
+                settings.provider.maxInputCharacters,
+              );
+              const priorRepair = await cached(
+                job.db,
+                payload.runId,
+                "knowledge:repair",
+                repair.schema,
+              );
+              const corrected =
+                priorRepair ??
+                (await providerStep(
+                  job,
+                  ctx,
+                  payload.runId,
+                  "knowledge:repair",
+                  settings.provider.llmModel,
                   provider,
-                  now: job.now,
-                  referenceTexts: classified
-                    .filter((item) => item.kind !== "audio" && item.role !== "user_notes")
-                    .flatMap((item) => item.blocks.map((block) => block.text)),
-                  execute: (request) =>
-                    providerStep(
+                  repair.schema,
+                  (operationKey) =>
+                    provider.structured({
+                      operationKey,
+                      model: settings.provider.llmModel,
+                      schema: repair.schema,
+                      schemaName: "class_knowledge_repair",
+                      system: [
+                        knowledgePrompt(
+                          settings.explanationLanguage,
+                          settings.teachingPreferences.shorterExamples,
+                          settings.provider.maxOutputTokens,
+                          true,
+                          teaching,
+                        ),
+                        repair.system,
+                      ].join(" "),
+                      input: repair.input,
+                    }),
+                ));
+              if (!priorRepair) knowledgeDispatched = true;
+              const studyMismatch = (error: unknown) =>
+                semanticRepairReason(error) === "study_sentence_mismatch";
+              // The repaired lesson as returned (or translated), kept for an answer-span repair.
+              let candidate: unknown = corrected;
+              let repaired: ReturnType<typeof repair.decode> | null = null;
+              try {
+                repaired = repair.decode(corrected);
+              } catch (error) {
+                if (!studyMismatch(error)) {
+                  if (semanticRepairReason(error) !== "language_script_mismatch") throw error;
+                  // A language correction is permitted only after the immutable canonical
+                  // result has passed every earlier non-language evidence/attribution check.
+                  repair.assertLanguageRepairEvidence(corrected);
+                  if (!priorRepair) {
+                    return "checkpoint";
+                  }
+                  const translation = buildKnowledgeTranslationInput(
+                    corrected,
+                    settings.explanationLanguage,
+                    settings.provider.maxInputCharacters,
+                    declaredTeachingContext(teaching),
+                  );
+                  const priorTranslation = await cached(
+                    job.db,
+                    payload.runId,
+                    "knowledge:repair-language",
+                    translation.schema,
+                  );
+                  const translated =
+                    priorTranslation ??
+                    (await providerStep(
                       job,
                       ctx,
                       payload.runId,
-                      request.step,
+                      "knowledge:repair-language",
                       settings.provider.llmModel,
                       provider,
-                      request.schema,
-                      request.effect,
-                      { onCommit: request.onCommit },
-                    ),
-                }),
-            });
-            if (voiceProgress !== "unchanged") {
-              await checkpointAndContinue(job, ctx, payload.runId, definition);
-              return;
+                      translation.schema,
+                      (operationKey) =>
+                        provider.structured({
+                          operationKey,
+                          model: settings.provider.llmModel,
+                          schema: translation.schema,
+                          schemaName: "class_knowledge_translation",
+                          system: `${translation.system} The response has a hard limit of ${settings.provider.maxOutputTokens} output tokens. Aim for at most ${Math.floor(settings.provider.maxOutputTokens * 0.75)} output tokens and finish the entire valid JSON object.`,
+                          input: translation.input,
+                        }),
+                    ));
+                  if (!priorTranslation) knowledgeDispatched = true;
+                  candidate = translation.apply(translated);
+                  // No second translation: only the bounded answer-span repair below remains.
+                  try {
+                    repaired = repair.decode(candidate);
+                  } catch (translatedError) {
+                    if (!studyMismatch(translatedError)) throw translatedError;
+                  }
+                }
+              }
+              let accepted: ReturnType<typeof validateGeneratedKnowledge> | null = null;
+              if (repaired)
+                try {
+                  accepted = validateGeneratedKnowledge(
+                    repaired,
+                    extracted,
+                    missing,
+                    settings.explanationLanguage,
+                  );
+                } catch (error) {
+                  if (!studyMismatch(error)) throw error;
+                }
+              if (accepted) validated = accepted;
+              else {
+                // A repaired lesson whose remaining problem is a gap that no longer matches its
+                // sentence gets the same single answer-span repair a first response would. Only
+                // gap fields change, and the full validation below runs again on the result.
+                if (knowledgeDispatched) {
+                  return "checkpoint";
+                }
+                const studyRepair = buildKnowledgeStudyRepairInput(
+                  repaired ?? repair.expanded(candidate),
+                  settings.provider.maxInputCharacters,
+                  declaredTeachingContext(teaching),
+                );
+                const priorStudyRepair = await cached(
+                  job.db,
+                  payload.runId,
+                  "knowledge:study-repair",
+                  studyRepair.schema,
+                );
+                const answerParts =
+                  priorStudyRepair ??
+                  (await providerStep(
+                    job,
+                    ctx,
+                    payload.runId,
+                    "knowledge:study-repair",
+                    settings.provider.llmModel,
+                    provider,
+                    studyRepair.schema,
+                    (operationKey) =>
+                      provider.structured({
+                        operationKey,
+                        model: settings.provider.llmModel,
+                        schema: studyRepair.schema,
+                        schemaName: "class_study_sentence_repair",
+                        system: studyRepair.system,
+                        input: studyRepair.input,
+                      }),
+                  ));
+                if (!priorStudyRepair) knowledgeDispatched = true;
+                validated = validateGeneratedKnowledge(
+                  studyRepair.apply(answerParts),
+                  extracted,
+                  missing,
+                  settings.explanationLanguage,
+                );
+              }
             }
           }
-        }
-        await job.db.transaction().execute(async (tx) => {
-          const run = await liveRun(tx, ctx, payload.runId);
-          // The source's own lock prevents a late worker from publishing after an asset tombstone.
-          await assertSourcesLive(
-            tx,
-            ctx,
-            snapshot.sources.map((source) => source.sourceId),
+          const { classified } = validated;
+          const { model, audit: practiceAudit } = finalizeGeneratedStudyPractice(
+            normalizeGeneratedStudyModel(
+              validated.model,
+              extracted.some((source) => source.kind === "audio"),
+              lessonContext,
+            ),
+            classified,
+            settings.learnerContext,
           );
-          await updateAutomaticSourceRoles(
-            tx,
-            ctx,
-            run.session_id,
-            classified.map((source) => ({
-              sourceId: source.sourceId,
-              role: source.role ?? "class_material",
-            })),
-            job.now(),
-          );
-          const version = await publishKnowledgeVersion(
-            tx,
-            ctx,
-            {
-              runId: run.id,
-              sessionId: run.session_id,
-              sourcesVersion: snapshot.sourcesVersion,
-              sourceFingerprint: snapshot.fingerprint,
-              model,
-              sources: classified,
-              explanationLanguage: settings.explanationLanguage,
-              generation: {
-                provider: provider.name,
-                model: settings.provider.llmModel,
-                promptVersion: settings.provider.promptVersion,
-                identityVersion: GENERATED_IDENTITY_VERSION,
-                settings: settings.provider,
-                profileVersion: settings.profileVersion,
-                teachingPreferences: settings.teachingPreferences,
-                ...(practiceAudit.applied ? { studyPractice: practiceAudit } : {}),
-                ...(settings.learnerContext
-                  ? {
-                      teachingAdaptation: teachingAdaptation({
-                        context: settings.learnerContext,
-                        shorterExamples: settings.teachingPreferences.shorterExamples,
-                        focus: practiceFocus,
-                        items: model.learningItems,
-                      }),
-                    }
-                  : {}),
+          if (dependencies.diarizeVoice) {
+            // Optional correction must not share a job with a newly paid knowledge stage.
+            if (knowledgeDispatched) {
+              return "checkpoint";
+            }
+            // Nor with the acoustic check that ran in this job: the check is saved first.
+            if (voiceCheck && (await voiceCheck.wait())) return "checkpoint";
+            for (const source of extracted) {
+              const voiceProgress = await processVoiceSource({
+                db: job.db,
+                ctx,
+                sessionId: initial.session_id,
+                runId: payload.runId,
+                source,
+                explanationLanguage: settings.explanationLanguage,
+                diarize: dependencies.diarizeVoice,
+                now: job.now,
+                correct: (analysis) =>
+                  correctVoiceCandidates({
+                    db: job.db,
+                    ctx,
+                    analysis,
+                    explanationLanguage: settings.explanationLanguage,
+                    provider,
+                    now: job.now,
+                    referenceTexts: classified
+                      .filter((item) => item.kind !== "audio" && item.role !== "user_notes")
+                      .flatMap((item) => item.blocks.map((block) => block.text)),
+                    execute: (request) =>
+                      providerStep(
+                        job,
+                        ctx,
+                        payload.runId,
+                        request.step,
+                        settings.provider.llmModel,
+                        provider,
+                        request.schema,
+                        request.effect,
+                        { onCommit: request.onCommit },
+                      ),
+                  }),
+              });
+              if (voiceProgress !== "unchanged") {
+                return "checkpoint";
+              }
+            }
+          }
+          await job.db.transaction().execute(async (tx) => {
+            const run = await liveRun(tx, ctx, payload.runId);
+            // The source's own lock prevents a late worker from publishing after an asset tombstone.
+            await assertSourcesLive(
+              tx,
+              ctx,
+              snapshot.sources.map((source) => source.sourceId),
+            );
+            await updateAutomaticSourceRoles(
+              tx,
+              ctx,
+              run.session_id,
+              classified.map((source) => ({
+                sourceId: source.sourceId,
+                role: source.role ?? "class_material",
+              })),
+              job.now(),
+            );
+            const version = await publishKnowledgeVersion(
+              tx,
+              ctx,
+              {
+                runId: run.id,
+                sessionId: run.session_id,
+                sourcesVersion: snapshot.sourcesVersion,
+                sourceFingerprint: snapshot.fingerprint,
+                model,
+                sources: classified,
+                explanationLanguage: settings.explanationLanguage,
+                generation: {
+                  provider: provider.name,
+                  model: settings.provider.llmModel,
+                  promptVersion: settings.provider.promptVersion,
+                  identityVersion: GENERATED_IDENTITY_VERSION,
+                  settings: settings.provider,
+                  profileVersion: settings.profileVersion,
+                  teachingPreferences: settings.teachingPreferences,
+                  ...(practiceAudit.applied ? { studyPractice: practiceAudit } : {}),
+                  ...(settings.learnerContext
+                    ? {
+                        teachingAdaptation: teachingAdaptation({
+                          context: settings.learnerContext,
+                          shorterExamples: settings.teachingPreferences.shorterExamples,
+                          focus: practiceFocus,
+                          items: model.learningItems,
+                        }),
+                      }
+                    : {}),
+                },
               },
-            },
-            job.now(),
+              job.now(),
+            );
+            const actual = estimateRunAmounts(
+              { ...snapshot, sources: extracted.filter((source) => source.blocks.length) },
+              settings.provider.charactersPerPage,
+              amountsSchema.parse(run.requested_amounts).regeneration > 0,
+            );
+            const held = amountsSchema.parse(run.requested_amounts);
+            for (const key of ["audio", "document", "regeneration", "tts", "storage"] as const)
+              actual[key] = Math.min(actual[key], held[key]);
+            await settleAllowance(tx, ctx, run.reservation_id, actual, job.now());
+            await tx
+              .updateTable("proc.processing_run")
+              .set({
+                state: missing.length ? "partial_ready" : "ready",
+                output_version_id: version.id,
+                finished_at: job.now(),
+                updated_at: job.now(),
+                last_error: null,
+              })
+              .where("id", "=", run.id)
+              .execute();
+          });
+          return "published";
+        };
+        let outcome: "checkpoint" | "published";
+        try {
+          do outcome = await lessonStage();
+          while (
+            // While the acoustic check still runs, the lesson goes on in this job instead of the
+            // next, as long as one more provider call can finish before the runner's deadline.
+            outcome === "checkpoint" &&
+            voiceCheck?.running() &&
+            hasTime(job, provider.settings.timeoutMs + PROVIDER_CALL_SAFETY_MS)
           );
-          const actual = estimateRunAmounts(
-            { ...snapshot, sources: extracted.filter((source) => source.blocks.length) },
-            settings.provider.charactersPerPage,
-            amountsSchema.parse(run.requested_amounts).regeneration > 0,
-          );
-          const held = amountsSchema.parse(run.requested_amounts);
-          for (const key of ["audio", "document", "regeneration", "tts", "storage"] as const)
-            actual[key] = Math.min(actual[key], held[key]);
-          await settleAllowance(tx, ctx, run.reservation_id, actual, job.now());
-          await tx
-            .updateTable("proc.processing_run")
-            .set({
-              state: missing.length ? "partial_ready" : "ready",
-              output_version_id: version.id,
-              finished_at: job.now(),
-              updated_at: job.now(),
-              last_error: null,
-            })
-            .where("id", "=", run.id)
-            .execute();
-        });
+        } catch (error) {
+          // The check's worker never outlives its job; the lesson's own failure is reported.
+          await voiceCheck?.settle();
+          throw error;
+        }
+        await voiceCheck?.wait();
+        if (outcome === "checkpoint")
+          await checkpointAndContinue(job, ctx, payload.runId, definition);
       } catch (error) {
         if (error instanceof JobCancelled) return;
         if (

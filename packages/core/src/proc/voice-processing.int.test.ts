@@ -65,7 +65,15 @@ class VoiceProvider implements AiProvider {
   readonly mode = "mock";
   readonly settings = settings;
   onReply?: () => Promise<void>;
+  /** When set, the lesson is generated here instead of being seeded as a cached checkpoint. */
+  knowledge?: unknown;
+  repair?: (input: StructuredInput<unknown>) => unknown;
+  onCall?: (schemaName: string) => void;
   calls = vi.fn((input: StructuredInput<unknown>) => {
+    this.onCall?.(input.schemaName);
+    if (input.schemaName === "class_knowledge" && this.knowledge !== undefined)
+      return this.knowledge;
+    if (input.schemaName === "class_knowledge_repair" && this.repair) return this.repair(input);
     if (input.schemaName === "spoken_mistake_candidates") {
       const data = JSON.parse(input.input);
       const learner = data.utterances.find((item: { text: string }) =>
@@ -115,7 +123,7 @@ class VoiceProvider implements AiProvider {
 }
 async function fixture(
   enabled: boolean,
-  options: { processingOrigin?: boolean; labelledTranscript?: boolean } = {},
+  options: { processingOrigin?: boolean; labelledTranscript?: boolean; generated?: boolean } = {},
 ) {
   const x = await studyFixture(db);
   if (enabled) await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
@@ -262,20 +270,23 @@ async function fixture(
       completed_at: new Date(),
     })
     .execute();
-  await db
-    .insertInto("proc.run_step")
-    .values({
-      run_id: run.id,
-      step: "knowledge",
-      output: JSON.stringify({
-        ...syntheticKnowledge(1),
-        sourceClassifications: [
-          { sourceId: source.id, classification: { role: "class_material", confidence: "high" } },
-        ],
-      }),
-      completed_at: new Date(),
-    })
-    .execute();
+  const knowledge = {
+    ...syntheticKnowledge(1),
+    sourceClassifications: [
+      { sourceId: source.id, classification: { role: "class_material", confidence: "high" } },
+    ],
+  };
+  if (options.generated) provider.knowledge = knowledge;
+  else
+    await db
+      .insertInto("proc.run_step")
+      .values({
+        run_id: run.id,
+        step: "knowledge",
+        output: JSON.stringify(knowledge),
+        completed_at: new Date(),
+      })
+      .execute();
   const step = () =>
     runFixtureProcessingStep(db, definition, { runId: run.id, userId: x.ctx.userId });
   return { ...x, source, run, provider, diarize, step };
@@ -322,6 +333,103 @@ it("stages private speaker analysis and billed corrections before ordinary notes
     "I agree with you.",
   );
   expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.status).toBe("unverified");
+});
+
+/** Diarization that waits until the named lesson call has been sent, or a fallback timeout. */
+function gatedDiarization(
+  x: Awaited<ReturnType<typeof fixture>>,
+  native: VoiceDiarization,
+  releaseOn: string,
+) {
+  const events: string[] = [];
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+    setTimeout(resolve, 3000);
+  });
+  x.diarize.mockImplementation(async () => {
+    events.push("diarize:start");
+    await gate;
+    events.push("diarize:end");
+    return native;
+  });
+  x.provider.onCall = (name) => {
+    events.push(name);
+    if (name === releaseOn) release();
+  };
+  return events;
+}
+
+it("generates the lesson while the class's acoustic check runs, then corrects in a job of its own", async () => {
+  const x = await fixture(true, { generated: true });
+  const native = await x.diarize();
+  x.diarize.mockClear();
+  const events = gatedDiarization(x, native, "class_knowledge");
+  await x.step();
+  // The lesson call went out while the check was still running, in the same job.
+  expect(events).toEqual(["diarize:start", "class_knowledge", "diarize:end"]);
+  expect((await getClassVoice(db, x.ctx, x.session.id)).analyses).toHaveLength(1);
+  await x.step();
+  expect(events.at(-1)).toBe("spoken_mistake_candidates");
+  await x.step();
+  expect((await getRun(db, x.ctx, x.run.id)).state).toBe("ready");
+  expect(x.diarize).toHaveBeenCalledTimes(1);
+  expect(x.provider.calls.mock.calls.map(([input]) => input.schemaName)).toEqual([
+    "class_knowledge",
+    "spoken_mistake_candidates",
+  ]);
+});
+
+it("keeps repairing the lesson in the same job while the acoustic check still runs", async () => {
+  const x = await fixture(true, { generated: true });
+  const knowledge = structuredClone(x.provider.knowledge) as ReturnType<typeof syntheticKnowledge>;
+  const summary = knowledge.summary[0];
+  if (!summary) throw new Error("Synthetic summary missing");
+  // A class claim without its evidence is a known, repairable failure.
+  Object.assign(summary, { origin: "from_class", evidence: "audio", sourceRefs: [] });
+  x.provider.knowledge = knowledge;
+  x.provider.repair = () => {
+    const claim = (id: string, text: string) => ({ id, text, evidenceKey: null, uncertain: false });
+    return {
+      schemaVersion: "1",
+      title: "Synthetic study fixture",
+      language: { learning: "en", explanation: "en" },
+      summary: [claim("summary", "A synthetic explanation.")],
+      topics: [],
+      learningItems: [
+        {
+          id: "item-0",
+          kind: "vocabulary",
+          front: "Synthetic question 0",
+          back: "Synthetic answer 0",
+          claim: claim("claim-0", "Synthetic item 0"),
+        },
+      ],
+      homework: [],
+      uncertainties: [],
+      coverage: { complete: true, missingSourceIds: [] },
+    };
+  };
+  const native = await x.diarize();
+  x.diarize.mockClear();
+  const events = gatedDiarization(x, native, "class_knowledge_repair");
+  await x.step();
+  // Without the check the first rejected answer would end this job; here the repair follows.
+  expect(events).toEqual([
+    "diarize:start",
+    "class_knowledge",
+    "class_knowledge_repair",
+    "diarize:end",
+  ]);
+  for (let step = 0; step < 4 && (await getRun(db, x.ctx, x.run.id)).state !== "ready"; step++)
+    await x.step();
+  expect((await getRun(db, x.ctx, x.run.id)).state).toBe("ready");
+  expect(x.diarize).toHaveBeenCalledTimes(1);
+  expect(x.provider.calls.mock.calls.map(([input]) => input.schemaName)).toEqual([
+    "class_knowledge",
+    "class_knowledge_repair",
+    "spoken_mistake_candidates",
+  ]);
 });
 
 it("does not infer voices or dispatch private analysis unless the learner opted in", async () => {
