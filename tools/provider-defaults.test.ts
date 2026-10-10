@@ -201,7 +201,8 @@ it("FR-PLT-005 D56 gives only Gemini a 180 s request deadline, well inside the j
   expect(settings.timeoutMs).toBe(90000);
   expect(longestProviderTimeoutMs(settings)).toBe(180000);
   // Each paid generation is checkpointed in its own job; its deadline leaves most of the
-  // 900 s lease (and the 800 s function limit inside it) for the surrounding job work.
+  // 900 s lease for the surrounding job work. The cron runner's 800 s function limit is a
+  // separate bound: its claim margin grows with this deadline (apps/web/src/server/jobs.test.ts).
   const leaseMs = DEFAULT_PLT_SETTINGS.jobs.leaseSeconds * 1000;
   expect(leaseMs).toBe(900000);
   expect(longestProviderTimeoutMs(settings)).toBeLessThanOrEqual(leaseMs / 5);
