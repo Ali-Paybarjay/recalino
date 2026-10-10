@@ -1,15 +1,15 @@
 "use client";
 import type { VoiceAnalysisView } from "@recalino/core/voice-contracts";
 import { useEffect, useRef, useState } from "react";
-import { pendingCopy } from "../pending-copy";
 import { IndexedRecordingStore } from "../recording/store";
 import { strings } from "../strings";
 import { prepareFileHashes } from "../workspace/file-hashes";
 import { Actions, Button, Status } from "../workspace/primitives";
 import { RelinkError, relinkOriginalRecording } from "./relink-original";
 import type { LocalAudioState } from "./VoiceClips";
+import { voiceCopy } from "./voice-copy";
 
-const copy = pendingCopy.voice.playback;
+const copy = voiceCopy.playback;
 // Parts are not needed to compare one whole-file checksum; any positive size is valid.
 const HASH_PART_BYTES = 8 * 1024 * 1024;
 

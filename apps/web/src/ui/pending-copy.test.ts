@@ -20,3 +20,10 @@ it.each(leaves(pendingCopy))("%s is registered verbatim for owner approval", (ke
   expect(register).toContain(`\`${key}\``);
   expect(register).toContain(text);
 });
+
+// The register lists only text that is still pending, so an approved row cannot linger there.
+it("lists no key in the register that is not pending", () => {
+  const pending = new Set(leaves(pendingCopy).map(([key]) => key));
+  const listed = [...register.matchAll(/^\| `([\w.]+)` \|/gm)].map((match) => match[1]);
+  expect(listed.filter((key) => !pending.has(key ?? ""))).toEqual([]);
+});
