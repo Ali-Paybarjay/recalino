@@ -2,12 +2,12 @@
 import { VOICE_CONSENT_VERSION, type VoiceProfileView } from "@recalino/core/voice-contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
-import { pendingCopy } from "../pending-copy";
 import { useRecording } from "../recording/RecordingProvider";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { sampleBase64, type VoiceCaptureState, VoiceSampleCapture } from "./sample-capture";
 import styles from "./Voice.module.css";
+import { voiceCopy } from "./voice-copy";
 
 export function VoiceProfile({ returnHref = "/me" }: { returnHref?: string }) {
   const { state } = useRecording();
@@ -326,9 +326,7 @@ export function VoiceProfileForm({
             profile.engineAvailable &&
             profile.readiness &&
             profile.readiness.automatic !== "off" ? (
-              <p className="preview-muted">
-                {pendingCopy.voice.readiness[profile.readiness.automatic]}
-              </p>
+              <p className="preview-muted">{voiceCopy.readiness[profile.readiness.automatic]}</p>
             ) : null}
             {!profile.engineAvailable ? (
               <Status>

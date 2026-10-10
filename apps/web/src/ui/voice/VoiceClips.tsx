@@ -9,6 +9,7 @@ import {
 import { Button, Status } from "../workspace/primitives";
 import { localOriginalRow } from "./relink-original";
 import styles from "./Voice.module.css";
+import { voiceCopy } from "./voice-copy";
 
 /**
  * Where the original of one class source stands on this device. A store that cannot be read,
@@ -120,9 +121,7 @@ export function VoiceClips({
       timeout.current = setTimeout(stop, Math.max(0, clip.endMs - element.currentTime * 1000));
     } catch {
       if (request === generation.current) {
-        setProblem(
-          "This clip could not play. You can identify the speaker from the transcript or try again.",
-        );
+        setProblem(voiceCopy.playback.clipFailed);
         setPlaying(null);
       }
     }
@@ -156,7 +155,8 @@ export function VoiceClips({
               <li key={`${clip.startMs}-${clip.endMs}`} className={styles.clip}>
                 <span className={styles.clipLabel}>
                   Excerpt {index + 1} · {timestamp(clip.startMs)} ·{" "}
-                  {Math.round((clip.endMs - clip.startMs) / 1000)} sec
+                  {/* A line under half a second still lasts; it never reads "0 sec". */}
+                  {Math.max(1, Math.round((clip.endMs - clip.startMs) / 1000))} sec
                 </span>
                 {clip.text ? <p dir="auto">{clip.text}</p> : null}
                 {audioUrl ? (
