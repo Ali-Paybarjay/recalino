@@ -365,7 +365,68 @@ describe("learning progress", () => {
       "blocked",
       "pending",
     ]);
-    expect(result.guidance).toContain("Review your allowance");
+    expect(result.guidance).toContain("Ask for more allowance");
+  });
+
+  const allowanceAmounts = (document: number, regeneration = 0) => ({
+    audio: 0,
+    document,
+    regeneration,
+    tts: 0,
+    storage: 0,
+  });
+
+  it.each([
+    {
+      name: "covered allowance",
+      allowance: {
+        active: true,
+        required: allowanceAmounts(1),
+        available: allowanceAmounts(1),
+      },
+      guidance:
+        "Your allowance now covers this session. Choose Retry processing to continue with your saved material.",
+    },
+    {
+      name: "no active allowance",
+      allowance: {
+        active: false,
+        required: allowanceAmounts(1),
+        available: allowanceAmounts(0),
+      },
+      guidance: "Ask the pilot operator for an allowance, then retry using your saved material.",
+    },
+    {
+      name: "document shortage",
+      allowance: {
+        active: true,
+        required: allowanceAmounts(2),
+        available: allowanceAmounts(1),
+      },
+      guidance:
+        "Ask for more allowance or open Review material to select less material, then retry.",
+    },
+    {
+      name: "new-version shortage",
+      allowance: {
+        active: true,
+        required: allowanceAmounts(1, 1),
+        available: allowanceAmounts(5, 0),
+      },
+      guidance: "Ask for more allowance, then retry using your saved material.",
+    },
+    {
+      name: "unknown allowance amounts",
+      allowance: undefined,
+      guidance:
+        "Ask for more allowance or open Review material to select less material, then retry.",
+    },
+  ])("FR-QUOTA-007: gives the correct prominent next step for $name", ({ allowance, guidance }) => {
+    const result = learningProgress(
+      status({ state: "blocked", batchId: null, lastError: "quota_insufficient", allowance }),
+    );
+    expect(result.guidance).toBe(guidance);
+    expect(result.active).toBe(false);
   });
 
   it("puts an audio rejection on the upload step and a material check failure on verification", () => {

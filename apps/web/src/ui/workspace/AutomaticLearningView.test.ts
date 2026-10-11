@@ -214,9 +214,108 @@ describe("recovery actions match the processing blocker", () => {
       expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
       expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
       expect(html).not.toContain("Add material");
+      // Amounts the status does not name may already be covered, so the retry stays.
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(true);
       expect(mocks.request).not.toHaveBeenCalled();
       mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
       await mocks.buttons.get("Retry after allowance changes")?.();
+      expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
+        `/api/classes/${sessionId}/learning`,
+        "POST",
+        { action: "retry" },
+        expect.any(String),
+      );
+    },
+  );
+
+  const amounts = (document: number, regeneration = 0) => ({
+    audio: 0,
+    document,
+    regeneration,
+    tts: 0,
+    storage: 0,
+  });
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-007: %s offers more allowance or less material for a named shortage",
+    (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "Pages and images: 2 needed, 1 left.",
+        allowance: { active: true, required: amounts(2), available: amounts(1) },
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
+      expect(html).toMatch(
+        new RegExp(`href="/sessions/${sessionId}/sources"[^>]*>Review material</a>`),
+      );
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
+      // A known shortage would only stop again; the retry appears once the allowance covers it.
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(false);
+      if (view === "progress")
+        expect(html).toContain(
+          "After your allowance is updated, retry using this session&#x27;s saved material.",
+        );
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-007: %s does not ask for less material when only a new version is short",
+    (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "New versions: 1 needed, 0 left.",
+        allowance: { active: true, required: amounts(1, 1), available: amounts(5, 0) },
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
+      expect(html).not.toContain("Review material");
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-003: %s sends a learner without an allowance to the pilot operator",
+    (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "Your material is saved. You have no active processing allowance.",
+        allowance: { active: false, required: amounts(1), available: amounts(0) },
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask the pilot operator<\/a>/);
+      expect(html).not.toContain("Ask for more allowance");
+      expect(html).not.toContain("Review material");
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(false);
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-007 rule 5: %s retries a class its allowance now covers, without asking for more",
+    async (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message:
+          "Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again.",
+        allowance: { active: true, required: amounts(1), available: amounts(1) },
+      };
+      const html = render(view);
+      expect(html).not.toContain("/help/new");
+      expect(html).not.toContain("Review allowance");
+      expect(html).not.toContain("Retry after allowance changes");
+      expect(html).not.toContain("After your allowance is updated");
+      expect(html).not.toContain("After it is updated");
+      expect(html).toContain(
+        "Your allowance now covers this session. Choose Retry processing to continue with your saved material.",
+      );
+      expect(html).toMatch(/<button[^>]*>Retry processing<\/button>/);
+      mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
+      await mocks.buttons.get("Retry processing")?.();
       expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
         `/api/classes/${sessionId}/learning`,
         "POST",

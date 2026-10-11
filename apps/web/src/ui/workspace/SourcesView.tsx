@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FileSelectionQueue } from "../components/FileSelectionQueue";
 import { UploadProgress } from "../components/UploadProgress";
 import { IndexedRecordingStore } from "../recording/store";
+import { AllowanceActions, AllowanceRequest } from "./AllowanceActions";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { requestKey, workspaceRequest } from "./api";
 import {
@@ -524,6 +525,7 @@ export function SourcesView({
                         Retry processing
                       </Button>
                     )}
+                    <AllowanceRequest block={feedback.allowance} />
                     <LinkButton secondary href={`/sessions/${sessionId}/estimate`}>
                       Review processing
                     </LinkButton>
@@ -801,6 +803,14 @@ export function SourcesView({
         <Status tone={learning.status.state === "blocked" ? "error" : "neutral"}>
           {learning.status.message}
         </Status>
+      )}
+      {/* Without this device's upload receipt, an allowance stop still names its next step. */}
+      {!receipt && (
+        <AllowanceActions
+          status={learning.status}
+          busy={busy}
+          onRetry={() => void action(retryProcessing)}
+        />
       )}
       {!receipt && learning.problem && <Status tone="error">{learning.problem}</Status>}
       {interruptedBatch && (

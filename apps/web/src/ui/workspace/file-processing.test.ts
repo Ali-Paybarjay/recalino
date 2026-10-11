@@ -241,7 +241,19 @@ describe("truthful file processing feedback", () => {
       state: "error",
       detail: "Pages and images: 2 needed, 1 left.",
       retry: false,
+      allowance: "shortage",
     });
+    const none = fileProcessingFeedback(
+      receipt(),
+      status({
+        state: "blocked",
+        lastError: "quota_insufficient",
+        message: "You have no active processing allowance.",
+        allowance: { active: false, required: amounts(1), available: amounts(0) },
+      }),
+      [source()],
+    );
+    expect(none).toMatchObject({ state: "error", retry: false, allowance: "none" });
     const covered = fileProcessingFeedback(
       receipt(),
       status({
@@ -252,7 +264,7 @@ describe("truthful file processing feedback", () => {
       }),
       [source()],
     );
-    expect(covered).toMatchObject({ state: "error", retry: true });
+    expect(covered).toMatchObject({ state: "error", retry: true, allowance: "covered" });
   });
 
   it.each([

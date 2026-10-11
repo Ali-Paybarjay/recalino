@@ -15,7 +15,7 @@ import {
   sha256Hex,
 } from "../plt";
 import { amounts, amountsSchema, emptyAmounts } from "../quota";
-import { liveTemporaryAudioObject } from "../src";
+import { liveTemporaryAudioObject, TEMPORARY_AUDIO_SWEEP_SECONDS } from "../src";
 import { getVoiceEnrollment, type VoiceAnalysisBlockedReason } from "../voc";
 import {
   completeAuxiliaryRun,
@@ -44,7 +44,12 @@ export interface VoiceJobDependencies {
   diarize: VoiceDiarizer;
 }
 
-async function voiceReanalysisInput(db: Database | Tx, ctx: LearnerContext, sessionId: string) {
+async function voiceReanalysisInput(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  originalLiveAt = new Date(),
+) {
   const enrollment = await getVoiceEnrollment(db, ctx);
   if (!enrollment.enabled) throw errors.validationFailed({ voice: ["consent_required"] });
   const snapshot = sourceSnapshotSchema.parse(
@@ -59,7 +64,13 @@ async function voiceReanalysisInput(db: Database | Tx, ctx: LearnerContext, sess
         async (source) =>
           hasTranscriptVoiceEvidence(source) ||
           (source.objectId
-            ? await liveTemporaryAudioObject(db, ctx, source.sourceId, source.objectId)
+            ? await liveTemporaryAudioObject(
+                db,
+                ctx,
+                source.sourceId,
+                source.objectId,
+                originalLiveAt,
+              )
             : false),
       ),
   );
@@ -75,15 +86,25 @@ async function voiceReanalysisInput(db: Database | Tx, ctx: LearnerContext, sess
   return { enrollment, snapshot, explanationLanguage };
 }
 
-/** A read-only preflight shares the queue's source selection and cache validity checks. */
+/**
+ * A read-only preflight shares the queue's source selection and cache validity checks. It offers
+ * a check only while the original outlasts the next deletion sweep, so a check started now still
+ * reads it: never one on audio about to be deleted (D29).
+ */
 export async function voiceAnalysisBlockedReason(
   db: Database | Tx,
   ctx: LearnerContext,
   sessionId: string,
+  now = new Date(),
 ): Promise<VoiceAnalysisBlockedReason | null> {
   await assertSessionOwner(db, ctx, sessionId);
   try {
-    await voiceReanalysisInput(db, ctx, sessionId);
+    await voiceReanalysisInput(
+      db,
+      ctx,
+      sessionId,
+      new Date(now.getTime() + TEMPORARY_AUDIO_SWEEP_SECONDS * 1000),
+    );
     return null;
   } catch (error) {
     if (!(error instanceof AppError) || error.code !== "validation_failed") throw error;

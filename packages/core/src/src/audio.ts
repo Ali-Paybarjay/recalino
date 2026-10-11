@@ -22,6 +22,14 @@ import { confirmedReservationAmounts, reservationIsOpen } from "../quota";
 import { readInputContract, sha256Schema } from "./contracts";
 import { getSource } from "./service";
 
+/** FR-SRC-007 rule 6: how often expired temporary class audio is deleted. */
+export const TEMPORARY_AUDIO_SWEEP_SECONDS = 300;
+/**
+ * D29 allows at most 24 hours after a successful transcript. The copy expires two sweeps sooner:
+ * the next sweep may start one interval later, and the cron minute and the queue get the other.
+ */
+const TRANSCRIBED_AUDIO_TTL_MS = (24 * 3600 - 2 * TEMPORARY_AUDIO_SWEEP_SECONDS) * 1000;
+
 export const audioManifestSchema = z.strictObject({
   reservationId: z.uuid(),
   parts: z
@@ -465,7 +473,9 @@ export async function markAudioTranscribed(
       .updateTable("src.audio_upload")
       .set({
         transcribed_at: now,
-        expires_at: new Date(Math.min(row.expires_at.getTime(), now.getTime() + 24 * 3600 * 1000)),
+        expires_at: new Date(
+          Math.min(row.expires_at.getTime(), now.getTime() + TRANSCRIBED_AUDIO_TTL_MS),
+        ),
       })
       .where("id", "=", row.id)
       .execute();

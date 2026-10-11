@@ -22,19 +22,32 @@ function subscribeConnection(changed: () => void) {
 const connectionSnapshot = () => navigator.onLine;
 const connectedServerSnapshot = () => true;
 
-function RecoveryLinks({
-  sessionId,
-  kind,
-}: {
-  sessionId: string;
-  kind: ReturnType<typeof automaticLearningRecovery>["kind"];
-}) {
+type Recovery = ReturnType<typeof automaticLearningRecovery>;
+
+/**
+ * The actions each allowance stop names (FR-QUOTA-007): a short allowance asks for more, or for
+ * less material where that lowers what is short; a missing one asks the pilot operator; one that
+ * now covers the class needs only the retry, so it links nowhere.
+ */
+function allowanceLinks(sessionId: string, { allowance, lessMaterial }: Recovery) {
+  if (allowance === "covered") return [];
+  if (allowance === "none")
+    return [
+      { href: "/help/new", label: "Ask the pilot operator" },
+      { href: "/me/quota", label: "Review allowance" },
+    ];
+  return [
+    { href: "/help/new", label: "Ask for more allowance" },
+    ...(lessMaterial ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }] : []),
+    { href: "/me/quota", label: "Review allowance" },
+  ];
+}
+
+function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: Recovery }) {
+  const { kind } = recovery;
   const links =
     kind === "allowance"
-      ? [
-          { href: "/me/quota", label: "Review allowance" },
-          { href: "/help/new", label: "Ask for more allowance" },
-        ]
+      ? allowanceLinks(sessionId, recovery)
       : kind === "service"
         ? [
             {
@@ -329,11 +342,15 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     >
       <Actions>
         {canRetry ? (
-          <Button disabled={retry.busy} onClick={retry.retry}>
+          <Button
+            secondary={recovery.kind === "allowance" && recovery.allowance !== "covered"}
+            disabled={retry.busy}
+            onClick={retry.retry}
+          >
             {retry.action === "retry" ? "Retrying…" : recovery.retryLabel}
           </Button>
         ) : null}
-        <RecoveryLinks sessionId={sessionId} kind={recovery.kind} />
+        <RecoveryLinks sessionId={sessionId} recovery={recovery} />
         {status?.state === "ready" ? (
           <>
             {status.notesReady ? (
@@ -382,10 +399,14 @@ export function AutomaticLearningView({
       <LearningStatusCard sessionId={sessionId} status={status} live={live} retry={retry}>
         <Actions>
           {recovery.kind !== "service" ? (
-            <RecoveryLinks sessionId={sessionId} kind={recovery.kind} />
+            <RecoveryLinks sessionId={sessionId} recovery={recovery} />
           ) : null}
           {canRetry ? (
-            <Button disabled={retry.busy} onClick={retry.retry}>
+            <Button
+              secondary={recovery.kind === "allowance" && recovery.allowance !== "covered"}
+              disabled={retry.busy}
+              onClick={retry.retry}
+            >
               {retry.action === "retry" ? "Retrying…" : recovery.retryLabel}
             </Button>
           ) : null}
@@ -412,9 +433,12 @@ export function AutomaticLearningView({
           <p className={styles.detail}>
             {recovery.kind === "service"
               ? review?.requestedAt
-                ? "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
-                : "Request a review below so the Recalino team can help continue processing."
-              : "Your saved edits and card review history stay available."}
+                ? // Approved by the product owner on 2026-10-10.
+                  "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
+                : "The Recalino team needs to review this session's stopped processing. Request a review below; your saved material will be used when processing continues."
+              : recovery.allowance === "shortage" || recovery.allowance === "none"
+                ? "After your allowance is updated, retry using this session's saved material."
+                : "Your saved edits and card review history stay available."}
           </p>
         ) : null}
       </LearningStatusCard>

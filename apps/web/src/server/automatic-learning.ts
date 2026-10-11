@@ -48,8 +48,8 @@ import {
   sourceVerificationJob,
 } from "@recalino/core/src";
 import type { z } from "zod";
+import { allowanceCopy } from "../ui/allowance-copy";
 import { allowanceLabels, allowanceUnits } from "../ui/allowance-units";
-import { pendingCopy } from "../ui/pending-copy";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
@@ -108,18 +108,18 @@ function problemCode(failure: unknown): string {
 function allowanceMessage(shortage: AllowanceShortage | null | undefined): string {
   if (!shortage)
     return "Your material is saved. More allowance is needed to finish the notes and flashcards.";
-  if (!shortage.active) return pendingCopy.allowance.none;
+  if (!shortage.active) return allowanceCopy.none;
   const items = DIMENSIONS.filter(
     (dimension) => shortage.required[dimension] > shortage.available[dimension],
   ).map((dimension) =>
-    pendingCopy.allowance.shortageItem
+    allowanceCopy.shortageItem
       .replace("{allowance}", allowanceLabels[dimension])
       .replace("{needed}", allowanceUnits(dimension, shortage.required[dimension]))
       .replace("{left}", allowanceUnits(dimension, shortage.available[dimension])),
   );
   return items.length
-    ? pendingCopy.allowance.shortage.replace("{items}", items.join(". "))
-    : pendingCopy.allowance.covered;
+    ? allowanceCopy.shortage.replace("{items}", items.join(". "))
+    : allowanceCopy.covered;
 }
 export function automaticLearningMessage(
   state: AutomaticLearningStatus["state"],

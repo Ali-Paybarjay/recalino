@@ -110,8 +110,15 @@ function blockedStage(status: AutomaticLearningStatus, batch: UploadBatch | unde
 
 function recoveryGuidance(status: AutomaticLearningStatus) {
   const recovery = automaticLearningRecovery(status);
-  if (recovery.kind === "allowance")
-    return "Review your allowance. After it is updated, retry this session.";
+  if (recovery.kind === "allowance") {
+    if (recovery.allowance === "covered")
+      return "Your allowance now covers this session. Choose Retry processing to continue with your saved material.";
+    if (recovery.allowance === "none")
+      return "Ask the pilot operator for an allowance, then retry using your saved material.";
+    return recovery.lessMaterial
+      ? "Ask for more allowance or open Review material to select less material, then retry."
+      : "Ask for more allowance, then retry using your saved material.";
+  }
   if (recovery.kind === "service")
     return status.processingReview?.requestedAt
       ? "Your review request is recorded. Follow its status in Processing review below."
