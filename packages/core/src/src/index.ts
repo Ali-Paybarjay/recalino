@@ -6,6 +6,7 @@ export {
   liveTemporaryAudioObject,
   markAudioTranscribed,
   markSourceAudioTranscribed,
+  TEMPORARY_AUDIO_SWEEP_SECONDS,
   temporaryAudioManifest,
   temporaryAudioPartLink,
   verifyTemporaryAudio,
@@ -29,6 +30,7 @@ export {
   maintainSources,
   sourceAudioVerificationJob,
   sourceMaintenanceJob,
+  sourcePeriodicJobs,
   sourceVerificationJob,
 } from "./jobs";
 export { unlockPdf } from "./pdf-unlock";

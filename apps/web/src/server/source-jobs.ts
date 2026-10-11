@@ -2,9 +2,9 @@ import "server-only";
 import { AppError } from "@recalino/core/plt";
 import { activateProcessingRun, failAwaitingUploadRun } from "@recalino/core/proc";
 import {
+  sourcePeriodicJobs as coreSourcePeriodicJobs,
   DefaultSourceVerifier,
   sourceAudioVerificationJob,
-  sourceMaintenanceJob,
   sourceVerificationJob,
 } from "@recalino/core/src";
 import { audioVerifier } from "./audio-preparer";
@@ -81,5 +81,5 @@ export function sourceJobDefinitions() {
 }
 export function sourcePeriodicJobs() {
   const store = getObjectStore();
-  return store ? [sourceMaintenanceJob(store)] : [];
+  return store ? coreSourcePeriodicJobs(store) : [];
 }
