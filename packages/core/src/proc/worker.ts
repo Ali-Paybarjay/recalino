@@ -257,7 +257,7 @@ const knowledgeGenerationSteps = [
   "knowledge:repair-language",
 ];
 async function cached<T>(
-  db: Database,
+  db: Database | Tx,
   runId: string,
   step: string,
   schema: z.ZodType<T>,
@@ -303,14 +303,24 @@ export async function providerStep<T>(
   provider: AiProvider,
   schema: z.ZodType<T>,
   effect: (operationKey: string) => Promise<ProviderResult<T>>,
-  options: { onCommit?: (tx: Tx, output: T) => Promise<void> } = {},
+  options: {
+    onCommit?: (tx: Tx, output: T) => Promise<void>;
+    /** Evaluations accept one response; a paid invalid result must not trigger another call. */
+    singleResponse?: boolean;
+  } = {},
 ): Promise<T> {
   const prior = await cached(job.db, runId, step, schema);
   if (prior !== null) return prior;
   const maximumMicros = maximumProviderCost(provider.settings, model);
   const estimateSchedule = await readEstimateRates(job.db);
-  const attempt = await job.db.transaction().execute(async (tx) => {
+  const attemptOrCheckpoint = await job.db.transaction().execute(async (tx) => {
     const run = await liveRun(tx, ctx, runId);
+    if (options.singleResponse) {
+      // A concurrent worker may have committed its valid response after our optimistic read.
+      // Reuse it under the dispatch lock, before deciding whether another response is allowed.
+      const checkpoint = await cached(tx, runId, step, schema);
+      if (checkpoint !== null) return { cachedOutput: checkpoint };
+    }
     const previous = await tx
       .selectFrom("proc.provider_attempt")
       .selectAll()
@@ -320,6 +330,27 @@ export async function providerStep<T>(
       .executeTakeFirst();
     if (previous && ["started", "uncertain"].includes(previous.state))
       throw new ProviderError("provider_outcome_unresolved", false, true);
+    if (options.singleResponse && previous) {
+      const attempts = await tx
+        .selectFrom("proc.provider_attempt")
+        .select(["state", "error_code"])
+        .where("run_id", "=", runId)
+        .where("step", "=", step)
+        .execute();
+      // This guard shares the account lock and transaction that inserts the next attempt.
+      // A reclaimed worker cannot pass a preflight then rebill after another worker records
+      // its paid invalid response. Definite HTTP refusals alone can be attempted again.
+      const response = attempts.find(
+        (entry) =>
+          entry.state !== "failed" || !/^provider_http_[45]\d\d$/.test(entry.error_code ?? ""),
+      );
+      if (response)
+        throw new ProviderError(
+          response.error_code ?? "provider_response_already_recorded",
+          false,
+          false,
+        );
+    }
     // Content-contract lessons have at most two generation dispatches per run, whichever steps
     // used them. This also covers a retried job after a paid response whose commit failed.
     if (
@@ -387,6 +418,8 @@ export async function providerStep<T>(
       .returningAll()
       .executeTakeFirstOrThrow();
   });
+  if ("cachedOutput" in attemptOrCheckpoint) return attemptOrCheckpoint.cachedOutput;
+  const attempt = attemptOrCheckpoint;
   let completedAccounting: Omit<ProviderResult<T>, "output"> | undefined;
   try {
     const result = await effect(attempt.operation_key);

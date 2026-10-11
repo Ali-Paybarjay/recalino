@@ -16,6 +16,8 @@ import { notifyAutomaticLearning } from "./automatic-learning";
 import { ClassNotesFrame } from "./ClassNotesFrame";
 import { ClassNotesPlayback } from "./ClassNotesPlayback";
 import { LessonAdaptation } from "./LessonAdaptation";
+import { LessonReview } from "./LessonReview";
+import { hasLessonEdits } from "./lesson-review-state";
 import styles from "./NoteView.module.css";
 import type { NoteMaterialSource, NoteSourceIssue } from "./note-source-issues";
 import { PronunciationAudio } from "./PronunciationAudio";
@@ -151,6 +153,7 @@ export function NoteView({
   const current = readOnlyRevision ?? notebook?.current,
     preview = current ? null : latest,
     model = current?.model ?? preview?.model;
+  const reviewVersionId = current?.knowledgeVersionId ?? preview?.id;
   useEffect(() => {
     setLegacyPlayback((previous) =>
       !previous || editMode || readOnlyRevision?.id || previous.revisionId !== current?.id
@@ -606,6 +609,14 @@ export function NoteView({
             </div>
           )}
         </>
+      )}
+      {model && reviewVersionId && !readOnlyRevision && (
+        <LessonReview
+          sessionId={sessionId}
+          knowledgeVersionId={reviewVersionId}
+          knowledgeVersion={latest?.id === reviewVersionId ? latest.version : undefined}
+          hasEdits={hasLessonEdits(current)}
+        />
       )}
       {!embedded && (canEdit || courseId || readOnlyRevision || showHistory) && (
         <footer>

@@ -118,6 +118,23 @@ beforeEach(() => {
 });
 
 describe("generated previews and automatic preparation", () => {
+  it("AC-EE-01/07 scopes advisory reviews to saved generated material and excludes edits", () => {
+    const html = render({ initial: notebook });
+    expect(html).toContain("Lesson quality review");
+    expect(html).toContain(`Generated version ID: <bdi>${revision.knowledgeVersionId}</bdi>`);
+    expect(html).not.toContain(`Generated version ID: <bdi>${latest.id}</bdi>`);
+    expect(html).toContain("These notes contain your edits.");
+    expect(html).toContain("not human approval or a test of your level");
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
+
+  it("AC-EE-01 keeps review actions out of historical note revisions", () => {
+    expect(render({ initial: notebook, readOnlyRevision: revision })).not.toContain(
+      "Lesson quality review",
+    );
+    expect(render({ initial: null, latest: null })).not.toContain("Lesson quality review");
+  });
+
   it("shows the complete generated preview without enabling edits, cards, or exports", () => {
     const html = render();
     for (const text of [

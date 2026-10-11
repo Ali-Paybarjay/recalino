@@ -73,6 +73,11 @@ export const ROUTES = {
   classSession: { id: "classSession", path: "/api/classes/[id]", access: "learner" },
   quota: { id: "quota", path: "/api/quota", access: "learner" },
   classMedia: { id: "classMedia", path: "/api/classes/[id]/media", access: "learner" },
+  classLessonReview: {
+    id: "classLessonReview",
+    path: "/api/classes/[id]/lesson-review",
+    access: "learner",
+  },
   media: { id: "media", path: "/api/media/[id]", access: "learner" },
   mediaRead: { id: "mediaRead", path: "/api/media/[id]/read", access: "learner" },
   classExports: { id: "classExports", path: "/api/classes/[id]/exports", access: "learner" },
