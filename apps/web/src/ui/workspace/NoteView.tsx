@@ -565,16 +565,18 @@ export function NoteView({
                 </Status>
               )}
               <Panel>
-                <ContentBlock as="h2" lang={explanationLanguage} dir="auto">
-                  {model.title}
-                </ContentBlock>
+                {!standalone && (
+                  <ContentBlock as="h2" lang={explanationLanguage} dir="auto">
+                    {model.title}
+                  </ContentBlock>
+                )}
                 <p className="preview-muted">
                   {current
                     ? `Note version ${current.number} · ${new Date(current.createdAt).toLocaleString("en-GB")}`
                     : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
                 </p>
                 {materialIssues()}
-                <h3>Class summary</h3>
+                {standalone ? <h2>Class summary</h2> : <h3>Class summary</h3>}
                 {model.summary.map(claim)}
                 {model.topics.map((topic) => (
                   <section key={topic.id}>

@@ -40,3 +40,22 @@
   white-space: pre-wrap;
   text-align: start;
 }
+
+.pronunciationGroup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.pronunciationGroup > :is(b, strong) {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 52px);
+}
+
+.pronunciationSlot {
+  display: contents;
+}

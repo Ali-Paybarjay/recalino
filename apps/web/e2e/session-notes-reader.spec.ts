@@ -19,6 +19,13 @@ async function isolated(page: Page) {
       json: { error: { code: "fixture_only", message: "Unexpected fixture request." } },
     });
   });
+  await page.route(`**/api/classes/${sessionId}/lesson-review?*`, (route) => {
+    expect(route.request().method()).toBe("GET");
+    expect(new URL(route.request().url()).searchParams.get("versionId")).toBe(
+      "reference-knowledge",
+    );
+    return route.fulfill({ json: null });
+  });
   await page.route("**/sessions/**", (route) => route.abort());
   await page.route("**/courses/**", (route) => route.abort());
   return unexpected;

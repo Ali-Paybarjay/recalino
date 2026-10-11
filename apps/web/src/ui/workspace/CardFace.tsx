@@ -39,10 +39,19 @@ export function CardFace({
       return lexical && studyLexicalTargetMatches(lexical, target);
     });
     const slot = anchor ? document.createElement("span") : null;
-    if (slot) anchor?.after(slot);
+    const group = anchor ? document.createElement("span") : null;
+    if (anchor && slot && group) {
+      group.className = styles.pronunciationGroup;
+      group.dir = "ltr";
+      slot.className = styles.pronunciationSlot;
+      anchor.before(group);
+      group.append(anchor, slot);
+    }
     setPlacement({ target, slot, face: `${card.front}\0${card.back}` });
     return () => {
       slot?.remove();
+      if (group && anchor?.parentNode === group) group.replaceWith(anchor);
+      else group?.remove();
     };
   }, [revealed, target, card.front, card.back]);
   return (
