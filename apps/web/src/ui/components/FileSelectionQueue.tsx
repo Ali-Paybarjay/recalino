@@ -12,6 +12,7 @@ export function FileSelectionQueue({
   submit,
   label = "Upload & Process",
   description,
+  uploadHelp = true,
 }: {
   files: SelectedFile[];
   busy: boolean;
@@ -20,15 +21,16 @@ export function FileSelectionQueue({
   submit: () => void;
   label?: string;
   description?: string;
+  uploadHelp?: boolean;
 }) {
+  if (!files.length) return null;
   const invalid = files.some((entry) => entry.invalid);
   return (
-    <Panel title="Files ready to upload">
+    <Panel title="Files to upload">
       <p className="preview-muted">
-        {description ??
-          "Add files one at a time or select several together. When your list is ready, choose Upload & Process to send them all."}
+        {description ?? "Choose Upload & Process to add these files to your session."}
       </p>
-      <ul className="preview-list" aria-label="Selected files">
+      <ul className="preview-list" aria-label="Files to upload">
         {files.map(({ id, file, problem }) => (
           <li key={id}>
             <div className="preview-row">
@@ -53,10 +55,10 @@ export function FileSelectionQueue({
       </ul>
       <div className={styles.summary}>
         <p role="status">
-          {files.length} {files.length === 1 ? "file selected" : "files selected"}
+          {files.length} {files.length === 1 ? "file to upload" : "files to upload"}
         </p>
         <Actions>
-          <Button disabled={busy || disabled || invalid || !files.length} onClick={submit}>
+          <Button disabled={busy || disabled || invalid} onClick={submit}>
             {busy ? "Uploading…" : label}
           </Button>
         </Actions>
@@ -64,11 +66,16 @@ export function FileSelectionQueue({
       {invalid && (
         <p className="preview-muted">Remove or replace the files marked above before uploading.</p>
       )}
-      <p className="preview-muted">
-        Choose Upload &amp; Process to save these files on this device. You can then use other pages
-        while they upload. If your browser pauses, upload resumes when you return. Files that have
-        not been submitted still need to be selected again after leaving or reloading.
-      </p>
+      {uploadHelp && (
+        <details className={styles.help}>
+          <summary>About background uploads</summary>
+          <p className="preview-muted">
+            Upload &amp; Process saves these files on this device so you can use other pages while
+            they upload. If your browser pauses, uploads resume when you return. Files you have not
+            submitted need to be selected again after leaving or reloading.
+          </p>
+        </details>
+      )}
     </Panel>
   );
 }

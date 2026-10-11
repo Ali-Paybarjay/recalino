@@ -20,3 +20,11 @@
 .summary > div {
   margin-top: 0;
 }
+
+.help {
+  margin-top: 16px;
+}
+
+.help summary {
+  cursor: pointer;
+}

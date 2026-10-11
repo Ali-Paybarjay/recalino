@@ -655,7 +655,8 @@ export function SourceViews({ screen }: { screen: string }) {
               setSelectedFiles((previous) => previous.filter((item) => item.id !== id))
             }
             submit={() => void addFiles()}
-            description="Choose files one at a time or together, then select Upload & Process to run the sample. File bytes stay on your device; no AI service is called."
+            description="Choose Upload & Process to run the sample. File bytes stay on your device; no AI service is called."
+            uploadHelp={false}
           />
           {uploadComplete ? (
             <Status tone="success">

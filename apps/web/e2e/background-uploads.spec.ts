@@ -247,14 +247,20 @@ async function saved(page: Page, userId: string) {
 async function selectAndSend(page: Page, sessionId: string, bytes: Buffer) {
   await page.goto(`/sessions/${sessionId}/sources`);
   await expect(page.getByLabel("Choose session files")).toBeEnabled();
+  const queueTitle = page.getByRole("heading", { name: "Files to upload", exact: true });
+  await expect(queueTitle).toHaveCount(0);
   await page.getByLabel("Choose session files").setInputFiles({
     name: "synthetic-background.pdf",
     mimeType: "application/pdf",
     buffer: bytes,
   });
   const submit = page.getByRole("button", { name: "Upload & Process", exact: true });
+  await expect(page.getByText("1 file to upload", { exact: true })).toBeVisible();
   await expect(submit).toBeEnabled();
   await submit.click();
+  await expect(queueTitle).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Session sources", exact: true })).toBeVisible();
+  await expect(page.getByText("synthetic-background.pdf", { exact: true }).first()).toBeVisible();
 }
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },
