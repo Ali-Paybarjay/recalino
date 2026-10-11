@@ -38,20 +38,55 @@ export function isServiceProcessingBlock(code: string | null) {
   return serviceBlocks.has(code ?? "");
 }
 
+/**
+ * Which learner-allowance stop this is (FR-QUOTA-007): still short, no active allowance at all, or
+ * an allowance that now covers the class. A stop without amounts is treated as short.
+ */
+export type AllowanceBlock = "shortage" | "none" | "covered";
+export function allowanceBlock(status: AutomaticLearningStatus | null): AllowanceBlock | null {
+  if (status?.lastError !== "quota_insufficient") return null;
+  const allowance = status.allowance;
+  if (!allowance) return "shortage";
+  if (!allowance.active) return "none";
+  return Object.entries(allowance.required).every(
+    ([dimension, needed]) =>
+      needed <= (allowance.available[dimension as keyof typeof allowance.available] ?? 0),
+  )
+    ? "covered"
+    : "shortage";
+}
+
 export function automaticLearningRecovery(status: AutomaticLearningStatus | null): {
   kind: "allowance" | "service" | "material" | "setup" | null;
+  allowance: AllowanceBlock | null;
   retryLabel: string | null;
 } {
   const code = status?.lastError ?? "";
   const blocked = status?.state === "blocked";
-  if (code === "quota_insufficient")
-    return { kind: "allowance", retryLabel: blocked ? "Retry after allowance changes" : null };
+  const allowance = allowanceBlock(status);
+  // An allowance that now covers the class needs only a retry; a short or missing one needs
+  // the allowance to change first.
+  if (allowance)
+    return {
+      kind: "allowance",
+      allowance,
+      retryLabel: blocked
+        ? allowance === "covered"
+          ? "Retry processing"
+          : "Retry after allowance changes"
+        : null,
+    };
   if (isServiceProcessingBlock(code) || unavailableService.has(code))
-    return { kind: "service", retryLabel: blocked ? "Retry after service update" : null };
+    return {
+      kind: "service",
+      allowance: null,
+      retryLabel: blocked ? "Retry after service update" : null,
+    };
   if (uncertainProviderResults.has(code) || rejectedServiceRequests.has(code))
-    return { kind: "service", retryLabel: null };
-  if (materialProblems.has(code)) return { kind: "material", retryLabel: null };
-  if (code === "acceptance_required") return { kind: "setup", retryLabel: null };
-  if (code === "upload_batch_cancelled") return { kind: "material", retryLabel: null };
-  return { kind: null, retryLabel: blocked ? "Retry failed attempt" : null };
+    return { kind: "service", allowance: null, retryLabel: null };
+  if (materialProblems.has(code)) return { kind: "material", allowance: null, retryLabel: null };
+  if (code === "acceptance_required") return { kind: "setup", allowance: null, retryLabel: null };
+  if (code === "upload_batch_cancelled")
+    return { kind: "material", allowance: null, retryLabel: null };
+  return { kind: null, allowance: null, retryLabel: blocked ? "Retry failed attempt" : null };
 }

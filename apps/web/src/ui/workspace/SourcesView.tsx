@@ -524,6 +524,14 @@ export function SourcesView({
                         Retry processing
                       </Button>
                     )}
+                    {/* A short or missing allowance changes only on request (FR-QUOTA-007). */}
+                    {feedback.allowance === "shortage" || feedback.allowance === "none" ? (
+                      <LinkButton href="/help/new">
+                        {feedback.allowance === "none"
+                          ? "Ask the pilot operator"
+                          : "Ask for more allowance"}
+                      </LinkButton>
+                    ) : null}
                     <LinkButton secondary href={`/sessions/${sessionId}/estimate`}>
                       Review processing
                     </LinkButton>

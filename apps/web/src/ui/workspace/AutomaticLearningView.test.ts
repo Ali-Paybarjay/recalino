@@ -188,6 +188,78 @@ describe("recovery actions match the processing blocker", () => {
     },
   );
 
+  const amounts = (document: number) => ({
+    audio: 0,
+    document,
+    regeneration: 0,
+    tts: 0,
+    storage: 0,
+  });
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-007: %s offers more allowance or less material for a named shortage",
+    (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "Pages and images: 2 needed, 1 left.",
+        allowance: { active: true, required: amounts(2), available: amounts(1) },
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
+      expect(html).toMatch(
+        new RegExp(`href="/sessions/${sessionId}/sources"[^>]*>Review material</a>`),
+      );
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(true);
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-003: %s sends a learner without an allowance to the pilot operator",
+    (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "Your material is saved. You have no active processing allowance.",
+        allowance: { active: false, required: amounts(1), available: amounts(0) },
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask the pilot operator<\/a>/);
+      expect(html).not.toContain("Ask for more allowance");
+      expect(html).not.toContain("Review material");
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(true);
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-007 rule 5: %s retries a class its allowance now covers, without asking for more",
+    async (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message:
+          "Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again.",
+        allowance: { active: true, required: amounts(1), available: amounts(1) },
+      };
+      const html = render(view);
+      expect(html).not.toContain("/help/new");
+      expect(html).not.toContain("Review allowance");
+      expect(html).not.toContain("Retry after allowance changes");
+      expect(html).not.toContain("After your allowance is updated");
+      if (view === "notice") expect(html).toMatch(/aria-label="Retry processing"[^>]*>Retry</);
+      mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
+      await mocks.buttons.get("Retry processing")?.();
+      expect(mocks.request).toHaveBeenCalledExactlyOnceWith(
+        `/api/classes/${sessionId}/learning`,
+        "POST",
+        { action: "retry" },
+        expect.any(String),
+      );
+    },
+  );
+
   it.each([
     "processing_budget_session",
     "processing_budget_user_month",

@@ -10,13 +10,19 @@
 
 **تأیید دوم 2026-10-10:** مالک محصول سه متن D55 (`voice.confirmBlockedSummary`، `voice.playback.listenFirst` و `voice.playback.clipFailed`) را عیناً تأیید کرد. این متن‌ها به [`voice/voice-copy.ts`](../../apps/web/src/ui/voice/voice-copy.ts) منتقل شدند.
 
-**افزوده 2026-10-10 (D59 و FR-QUOTA-007):** چهار متن زیر پیام کمبود سهمیه را دقیق می‌کنند تا بگوید کدام سهمیه کم است، این کلاس چقدر لازم دارد و چقدر مانده است. نام سهمیه‌ها و واحدها همان‌اند که صفحهٔ Your allowance نشان می‌دهد. جای `{items}` یک یا چند `shortageItem` با نقطه از هم جدا می‌شوند.
+**تأیید 2026-10-11:** مالک محصول چهار متن D59 و FR-QUOTA-007 (`allowance.shortage`، `allowance.shortageItem`، `allowance.none` و `allowance.covered`) را عیناً تأیید کرد. شرطش این بود که هر متن اقدام متناسب خودش را داشته باشد. متن‌ها به [`allowance-copy.ts`](../../apps/web/src/ui/allowance-copy.ts) منتقل شدند. اقدام‌ها از برچسب‌های موجود و `handoff/copy.md` ساخته شده‌اند و متن تازه‌ای ندارند:
+
+| حالت و متن | اقدام اصلی | اقدام‌های دیگر |
+|---|---|---|
+| کمبود سهمیه (`allowance.shortage` با `allowance.shortageItem`) | «Ask for more allowance» | «Review material» برای انتخاب مواد کمتر، «Review allowance» و «Retry after allowance changes» |
+| نبود سهمیهٔ فعال (`allowance.none`) | «Ask the pilot operator» (از بخش Allowance در `handoff/copy.md`) | «Review allowance» و «Retry after allowance changes» |
+| سهمیهٔ کافی (`allowance.covered`) | «Retry» در خود پیام، و دکمهٔ اصلی «Retry processing» | پیوند درخواست سهمیه نمایش داده نمی‌شود، چون سهمیه کافی است |
+
+در اعلان پس از بارگذاری در Session sources، کمبود سهمیه «Ask for more allowance» و نبود سهمیه «Ask the pilot operator» را نشان می‌دهد؛ سهمیهٔ کافی همان «Retry processing» را دارد.
+
+فهرست اکنون خالی است.
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
-| `allowance.shortage` | Your material is saved, but this class needs more allowance than is left. {items}. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again. | پردازش خودکار کلاس با کمبود سهمیهٔ زبان‌آموز متوقف شده است | FR-QUOTA-007 بند ۱، D59 | در انتظار تأیید |
-| `allowance.shortageItem` | {allowance}: {needed} needed, {left} left | یک سهمیهٔ کم، مثل Class audio: 127 min 56 sec needed, 69 min 22 sec left | FR-QUOTA-007 بند ۱ | در انتظار تأیید |
-| `allowance.none` | Your material is saved. You have no active processing allowance. Ask the pilot operator for an allowance, then retry. You do not need to upload the same files again. | حساب دورهٔ سهمیهٔ فعال ندارد | FR-QUOTA-003 | در انتظار تأیید |
-| `allowance.covered` | Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again. | کلاس قبلاً با کمبود سهمیه متوقف شده، ولی سهمیهٔ فعلی اکنون کافی است | FR-QUOTA-007 بند ۵، D59 | در انتظار تأیید |
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.
