@@ -13,6 +13,7 @@ import {
 } from "../../../../ui/workspace/AutomaticLearningView";
 import type { AutomaticLearningStatus } from "../../../../ui/workspace/automatic-learning";
 import { LinkButton, Panel } from "../../../../ui/workspace/primitives";
+import { UploadProvider } from "../../../../ui/workspace/UploadProvider";
 
 const sessionId = "10000000-0000-4000-8000-000000000001";
 const userId = "10000000-0000-4000-8000-000000000002";
@@ -35,7 +36,7 @@ function LearningFixture({ progress }: { progress: boolean }) {
   refreshRef.current = refresh;
   useEffect(() => {
     // The real provider polls /classes paths. This fixture uses its public refresh
-    // on /dev instead, with an empty recording store and synthetic identities.
+    // on /dev instead, with synthetic identities and optional browser-owned uploads.
     const check = () => void refreshRef.current().catch(() => {});
     check();
     const timer = setInterval(check, 3000);
@@ -44,10 +45,12 @@ function LearningFixture({ progress }: { progress: boolean }) {
   return progress ? (
     <AutomaticLearningView sessionId={sessionId} initial={initial} />
   ) : (
-    <Panel title="Session materials">
-      <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
+    <div className="preview-stack">
       <AutomaticLearningNotice sessionId={sessionId} />
-    </Panel>
+      <Panel title="Session materials">
+        <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
+      </Panel>
+    </div>
   );
 }
 
@@ -55,23 +58,25 @@ export function LearningReference({ progress }: { progress: boolean }) {
   return (
     <RecordingProvider userId={userId}>
       <AutomaticLearningProvider>
-        <div className="preview-root">
-          <AppShell
-            current="classes"
-            hrefs={{
-              today: "/dev/ui/learning",
-              classes: "/dev/ui/learning",
-              review: "/dev/ui/learning",
-              me: "/dev/ui/learning",
-            }}
-          >
-            <PageHeader
-              title={progress ? "Session progress" : "Synthetic session"}
-              subtitle="Automatic learning interface fixture · No real class data"
-            />
-            <LearningFixture progress={progress} />
-          </AppShell>
-        </div>
+        <UploadProvider>
+          <div className="preview-root">
+            <AppShell
+              current="classes"
+              hrefs={{
+                today: "/dev/ui/learning",
+                classes: "/dev/ui/learning",
+                review: "/dev/ui/learning",
+                me: "/dev/ui/learning",
+              }}
+            >
+              <PageHeader
+                title={progress ? "Session progress" : "Synthetic session"}
+                subtitle="Automatic learning interface fixture · No real class data"
+              />
+              <LearningFixture progress={progress} />
+            </AppShell>
+          </div>
+        </UploadProvider>
       </AutomaticLearningProvider>
     </RecordingProvider>
   );

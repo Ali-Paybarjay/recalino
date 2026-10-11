@@ -41,19 +41,24 @@ export function LearnerShell({
   header: ReactNode;
   children: ReactNode;
 }) {
-  const values = legalValues();
   return (
     <AppShell current={current} hrefs={NAV_HREFS} newClassHref="/sessions/new">
       {header}
-      {learner.state.pending.terms ? (
-        <TermsNotice
-          versions={{ terms: CURRENT_VERSIONS.terms, privacy: CURRENT_VERSIONS.privacy }}
-          changedOn={textsChangedOn()}
-          terms={<LegalDocument id="terms" values={values} />}
-          privacy={<LegalDocument id="privacy" values={values} />}
-        />
-      ) : null}
+      <LearnerTermsNotice learner={learner} />
       {children}
     </AppShell>
   );
+}
+
+/** Kept on dedicated readers as well as the normal app workspace. */
+export function LearnerTermsNotice({ learner }: { learner: Learner }) {
+  const values = legalValues();
+  return learner.state.pending.terms ? (
+    <TermsNotice
+      versions={{ terms: CURRENT_VERSIONS.terms, privacy: CURRENT_VERSIONS.privacy }}
+      changedOn={textsChangedOn()}
+      terms={<LegalDocument id="terms" values={values} />}
+      privacy={<LegalDocument id="privacy" values={values} />}
+    />
+  ) : null;
 }

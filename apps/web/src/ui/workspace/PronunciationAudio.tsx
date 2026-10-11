@@ -1,17 +1,19 @@
 "use client";
-import type { MediaAsset } from "@recalino/core/media";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SpeakerHigh } from "../icons";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import styles from "./PronunciationAudio.module.css";
+import {
+  freshPronunciationPlayback,
+  type PronunciationAsset,
+  PronunciationCache,
+  type PronunciationCacheEntry,
+  type PronunciationPlayback,
+  type PronunciationRequest,
+  pronunciationPollDelay,
+} from "./pronunciation-cache";
 
-export type PronunciationRequest =
-  | { kind: "pronunciation"; cardId: string; expectedContentVersion: number }
-  | {
-      kind: "note_pronunciation";
-      learningItemId: string;
-      expectedNotebookRevisionId: string;
-    };
+export type { PronunciationRequest } from "./pronunciation-cache";
 export interface PronunciationState {
   busy: boolean;
   ready: boolean;
@@ -19,7 +21,7 @@ export interface PronunciationState {
   message: string;
 }
 
-function waitForSpeech(signal: AbortSignal): Promise<void> {
+function waitForSpeech(signal: AbortSignal, delay: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const abort = () => {
       clearTimeout(timer);
@@ -28,7 +30,7 @@ function waitForSpeech(signal: AbortSignal): Promise<void> {
     const timer = setTimeout(() => {
       signal.removeEventListener("abort", abort);
       resolve();
-    }, 1000);
+    }, delay);
     signal.addEventListener("abort", abort, { once: true });
     if (signal.aborted) abort();
   });
@@ -73,6 +75,7 @@ export function PronunciationAudio({
   trigger = 0,
   showButton = true,
   onState,
+  cache: sharedCache,
 }: {
   sessionId: string;
   request: PronunciationRequest;
@@ -80,6 +83,7 @@ export function PronunciationAudio({
   trigger?: number;
   showButton?: boolean;
   onState?: (state: PronunciationState) => void;
+  cache?: PronunciationCache;
 }) {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
@@ -87,8 +91,10 @@ export function PronunciationAudio({
   const [message, setMessage] = useState("");
   const [showControls, setShowControls] = useState(false);
   const audio = useRef<HTMLAudioElement>(null);
-  const operation = useRef<{ payload: string; key: string } | null>(null);
-  const savedAsset = useRef<MediaAsset | null>(null);
+  const [localCache] = useState(() => new PronunciationCache("player", 1));
+  const cache = sharedCache ?? localCache;
+  const cacheEntry = useRef<PronunciationCacheEntry | null>(null);
+  const playbackLink = useRef<PronunciationPlayback | null>(null);
   const active = useRef<AbortController | null>(null);
   const disposed = useRef(false);
   const playback = useRef(0);
@@ -140,9 +146,31 @@ export function PronunciationAudio({
 
   async function hear() {
     if (active.current || disposed.current) return;
-    if (url && audio.current) {
+    const entry = cache.entry(sessionId, request, target);
+    const sameEntry = cacheEntry.current === entry;
+    cacheEntry.current = entry;
+    if (
+      sameEntry &&
+      url &&
+      audio.current &&
+      (!playbackLink.current?.validUntil || freshPronunciationPlayback(playbackLink.current))
+    ) {
       audio.current.currentTime = 0;
       await play(audio.current);
+      return;
+    }
+    if (url) {
+      playback.current += 1;
+      audio.current?.pause();
+      setUrl("");
+    }
+    const cachedLink = cache.playback(entry);
+    if (cachedLink) {
+      playbackLink.current = cachedLink;
+      setProblem("");
+      setShowControls(false);
+      setUrl(cachedLink.url);
+      setMessage("Synthetic British pronunciation");
       return;
     }
     const controller = new AbortController();
@@ -153,55 +181,61 @@ export function PronunciationAudio({
     setMessage("Preparing pronunciation… You can keep studying.");
     try {
       // A known asset survives read-link/playback failures; retry never creates new speech.
-      let asset = savedAsset.current
-        ? await workspaceRequest<MediaAsset>(
-            `/api/media/${savedAsset.current.id}`,
-            "GET",
-            undefined,
-            undefined,
-            { signal: controller.signal },
-          )
-        : await workspaceRequest<MediaAsset>(
+      let asset: PronunciationAsset = entry.asset
+        ? entry.asset.state === "ready"
+          ? entry.asset
+          : await workspaceRequest<PronunciationAsset>(
+              `/api/media/${entry.asset.id}?playback=1`,
+              "GET",
+              undefined,
+              undefined,
+              { signal: controller.signal },
+            )
+        : await workspaceRequest<PronunciationAsset>(
             `/api/classes/${sessionId}/media`,
             "POST",
             request,
-            requestKey(operation, request),
+            requestKey(entry.operation, request),
             { signal: controller.signal },
           );
       if (controller.signal.aborted) return;
-      savedAsset.current = asset;
+      cache.asset(entry, asset);
       const deadline = Date.now() + 120000;
+      let polls = 0;
       while (asset.state === "queued" || asset.state === "processing") {
         if (Date.now() >= deadline)
           throw new Error("Pronunciation is still being prepared. Try again shortly.");
-        await waitForSpeech(controller.signal);
-        asset = await workspaceRequest<MediaAsset>(
-          `/api/media/${asset.id}`,
+        await waitForSpeech(controller.signal, pronunciationPollDelay(polls++));
+        asset = await workspaceRequest<PronunciationAsset>(
+          `/api/media/${asset.id}?playback=1`,
           "GET",
           undefined,
           undefined,
           { signal: controller.signal },
         );
         if (controller.signal.aborted) return;
-        savedAsset.current = asset;
+        cache.asset(entry, asset);
       }
       if (asset.state === "needs_input")
         throw new Error(
           "Pronunciation is unavailable right now. Please contact support; you can keep studying.",
         );
       if (asset.state !== "ready" || !asset.mimeType?.startsWith("audio/")) {
-        operation.current = null;
-        savedAsset.current = null;
+        cache.generationFailed(entry);
         throw new Error("Pronunciation could not be prepared. Try again.");
       }
-      const link = await workspaceRequest<{ url: string }>(
-        `/api/media/${asset.id}/read`,
-        "GET",
-        undefined,
-        undefined,
-        { signal: controller.signal },
-      );
+      const link =
+        cache.playback(entry) ??
+        (await workspaceRequest<PronunciationPlayback>(
+          `/api/media/${asset.id}/read`,
+          "GET",
+          undefined,
+          undefined,
+          { signal: controller.signal },
+        ));
       if (controller.signal.aborted) return;
+      cache.savePlayback(entry, link);
+      playbackLink.current = link;
       setUrl(link.url);
       setMessage("Synthetic British pronunciation");
     } catch (failure) {
@@ -280,6 +314,8 @@ export function PronunciationAudio({
           onPlay={(event) => pauseOtherStudyAudio(event.currentTarget)}
           onError={() => {
             playback.current += 1;
+            if (cacheEntry.current) cache.playbackFailed(cacheEntry.current);
+            playbackLink.current = null;
             setUrl("");
             setShowControls(false);
             setMessage("");

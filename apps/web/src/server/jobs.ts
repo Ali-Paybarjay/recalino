@@ -10,6 +10,7 @@ import {
   type PeriodicJob,
   type PltSettings,
   pltPeriodicJobs,
+  type RunOptions,
   readPltSettings,
   runDueJobs,
   storagePeriodicJobs,
@@ -24,6 +25,7 @@ import type { Handler } from "./api";
 import { automaticLearningJob, automaticLearningPeriodicJobs } from "./automatic-learning";
 import { getDatabase } from "./db";
 import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
+import { getLessonReviewDefinition } from "./lesson-review";
 import { getMediaJobDefinition } from "./media-jobs";
 import { getPrivacyJobDefinition } from "./privacy";
 import { getProcessingDefinition } from "./processing-jobs";
@@ -116,12 +118,14 @@ export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
   const processing = getProcessingDefinition();
   const media = getMediaJobDefinition();
   const voice = getVoiceAnalysisDefinition();
+  const lessonReview = getLessonReviewDefinition();
   return [
     ...periodicJobs(settings).map((job) => job.definition),
     ...sourceJobDefinitions(),
     ...processingNotificationDefinitions(),
     ...(processing ? [processing] : []),
     ...(voice ? [voice] : []),
+    ...(lessonReview ? [lessonReview] : []),
     automaticLearningJob(),
     ...(media ? [media] : []),
     getPrivacyJobDefinition(),
@@ -191,12 +195,14 @@ export function runJobsSoon(
   kinds: readonly string[],
   budgetSeconds: number,
   functionSeconds = 120,
+  target?: RunOptions["target"],
 ): void {
   after(async () => {
     const settings = readPltSettings();
     const started = Date.now();
     await runDueJobs(getDatabase(), jobDefinitions(settings), {
       kinds,
+      ...(target !== undefined ? { target } : {}),
       deadline: new Date(started + budgetSeconds * 1000),
       // The request already used some of its limit before after() began.
       finishBy: new Date(started + (functionSeconds - 2 * RUNNER_FINISH_MARGIN_SECONDS) * 1000),

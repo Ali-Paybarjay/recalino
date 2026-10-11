@@ -28,11 +28,18 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
     page.getByText("This is local synthetic test content.", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("A rail trip", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "← Back to session", exact: true })).toHaveCount(1);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Notes navigation", exact: true })
+      .getByRole("link", { name: "Back to session", exact: true }),
+  ).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Make flashcards", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Version history", exact: true })).toHaveCount(0);
-  const attribution = page.locator("details").first();
+  const attribution = page
+    .locator("details")
+    .filter({ has: page.locator("summary").filter({ hasText: /^AI explanation$/ }) })
+    .first();
   await expect(attribution).toHaveJSProperty("open", false);
   await attribution.locator("summary").click();
   await expect(attribution.getByText("AI expansion", { exact: true })).toBeVisible();
@@ -48,13 +55,19 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   expect(beforePreparing.status()).toBe(200);
   expect((await beforePreparing.json()).cards[0].status).toBe("active");
   const noteTools = page.getByRole("navigation", { name: "Note tools", exact: true });
+  const toolDisclosure = page.locator("summary").filter({ hasText: /^Note tools$/ });
+  await expect(noteTools).toBeHidden();
+  await toolDisclosure.click();
   await expect(noteTools.getByRole("link", { name: "Download notes", exact: true })).toBeVisible();
   await expect(noteTools.getByRole("link", { name: "Version history", exact: true })).toHaveCount(
     0,
   );
   await noteTools.getByRole("link", { name: "Flashcards", exact: true }).click();
   await expect(page).toHaveURL(`/sessions/${sessionId}/cards`);
-  await page.getByRole("link", { name: "Session notes", exact: true }).click();
+  await page
+    .getByRole("region", { name: "Session progress", exact: true })
+    .getByRole("link", { name: "Session notes", exact: true })
+    .click();
   await expect(page).toHaveURL(`/sessions/${sessionId}/notes`);
   await page.reload();
   await expect(page.getByText(/^Note version 1 ·/)).toBeVisible();
@@ -62,20 +75,22 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   await expect(page.getByRole("button", { name: "Save notes", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
   await expectNoAxeViolations(page);
-  await noteTools.getByRole("button", { name: "Edit notes", exact: true }).click();
-  await expect(
-    noteTools.getByRole("button", { name: "Done editing", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Edit notes", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Done editing", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.getByRole("button", { name: "Edit answer", exact: true }).click();
   await page.getByLabel("Your text", { exact: true }).fill("A trip on a train");
   await page.getByRole("button", { name: "Save edit", exact: true }).click();
   await expect(page.getByLabel("Your text", { exact: true })).toHaveCount(0);
   await expect(page.getByText("A trip on a train", { exact: true })).toBeVisible();
   await expect(page.getByText(/^Note version 2 ·/)).toBeVisible();
-  await noteTools.getByRole("button", { name: "Done editing", exact: true }).click();
+  await page.getByRole("button", { name: "Done editing", exact: true }).click();
   await expect(page.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
-  await expect(noteTools.getByRole("button", { name: "Edit notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit notes", exact: true })).toBeVisible();
   await expectNoAxeViolations(page);
+  await toolDisclosure.click();
   await noteTools.getByRole("link", { name: "Version history", exact: true }).click();
   await expect(page).toHaveURL(`/sessions/${sessionId}/notes/versions`, { timeout: 45000 });
   await expect(page.getByRole("heading", { name: "Version 2", exact: true })).toBeVisible();
@@ -88,7 +103,10 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   await expect(page.getByRole("button", { name: "Edit notes", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Current notes", exact: true }).click();
   await expect(page).toHaveURL(`/sessions/${sessionId}/notes`);
-  await noteTools.getByRole("link", { name: "Flashcards", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Notes navigation", exact: true })
+    .getByRole("link", { name: "Flashcards", exact: true })
+    .click();
   await expect(page).toHaveURL(`/sessions/${sessionId}/cards`);
   await expect(page.getByRole("button", { name: "Prepare cards", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Confirm and add", exact: true })).toHaveCount(0);
@@ -185,8 +203,13 @@ for (const [name, viewport] of Object.entries(VIEWPORTS))
       await page.goto(path);
       if (path === `/sessions/${sessionId}/notes`) {
         const tools = page.getByRole("navigation", { name: "Note tools", exact: true });
-        await expect(tools.getByRole("button", { name: "Edit notes", exact: true })).toBeVisible();
-        await expect(tools.getByRole("link", { name: "Flashcards", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Edit notes", exact: true })).toBeVisible();
+        await expect(tools).toBeHidden();
+        await expect(
+          page
+            .getByRole("navigation", { name: "Notes navigation", exact: true })
+            .getByRole("link", { name: "Flashcards", exact: true }),
+        ).toBeVisible();
         await expect(page.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
         if (name === "mobile")
           await page.screenshot({

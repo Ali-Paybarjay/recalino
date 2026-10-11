@@ -4,12 +4,13 @@ import Link from "next/link";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
 import { workspaceActor, workspaceCourse } from "../../../../../server/workspace";
+import { Icon } from "../../../../../ui/components/Icon";
+import { CaretRight, CheckCircle, FileText } from "../../../../../ui/icons";
 import { PageHeader } from "../../../../../ui/shell/AppShell";
 import { CourseNavigation } from "../../../../../ui/workspace/CourseNavigation";
-import { NoteView } from "../../../../../ui/workspace/NoteView";
 import { Actions, LinkButton, Panel } from "../../../../../ui/workspace/primitives";
-import { SessionLearningSummary } from "../../../../../ui/workspace/SessionLearningSummary";
 import { LearnerShell } from "../../../LearnerShell";
+import styles from "./CourseMaterials.module.css";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 10;
@@ -47,7 +48,7 @@ export default async function CourseMaterialsPage({
         <CourseNavigation course={course} courses={courses} current="materials" />
         <Panel title="Learn through this course">
           <p>
-            Read your published session notes in date order. Each lesson keeps its own notes,
+            Choose a session to read its notes. Your sessions stay in date order, with their own
             flashcards and sources.
           </p>
           {materials.items.length ? (
@@ -78,45 +79,74 @@ export default async function CourseMaterialsPage({
             key={session.id}
             id={`class-${session.id}`}
             aria-labelledby={`title-${session.id}`}
-            className="preview-stack"
+            className={styles.sessionCard}
           >
-            <Panel>
-              <h2 id={`title-${session.id}`} dir="auto">
-                {session.displayTitle}
-              </h2>
-              <SessionLearningSummary session={session} />
-              <Actions>
-                <LinkButton secondary href={`/sessions/${session.id}`}>
-                  Open session
-                </LinkButton>
-                <LinkButton secondary href={`/sessions/${session.id}/notes`}>
-                  Session notes
-                </LinkButton>
-                <LinkButton secondary href={`/sessions/${session.id}/cards`}>
-                  Flashcards
-                </LinkButton>
-                <LinkButton secondary href={`/sessions/${session.id}/sources`}>
-                  Session sources
-                </LinkButton>
-              </Actions>
-            </Panel>
-            {notebook ? (
-              <NoteView
-                sessionId={session.id}
-                userId={learner.userId}
-                initial={null}
-                latest={null}
-                readOnlyRevision={notebook.current}
-                embedded
-              />
-            ) : (
-              <Panel>
-                <p>
-                  No notes for this session yet. Add session material; its notes will appear
-                  automatically.
+            <div className={styles.sessionHeading}>
+              <span className={styles.noteIcon}>
+                <Icon icon={FileText} size={26} />
+              </span>
+              <div className={styles.sessionTitle}>
+                <p className={styles.date}>
+                  Session · <time dateTime={session.classDate}>{session.classDate}</time>
                 </p>
-              </Panel>
-            )}
+                <h2 id={`title-${session.id}`} dir="auto">
+                  {session.displayTitle}
+                </h2>
+              </div>
+              <span className={notebook ? styles.readyBadge : styles.pendingBadge}>
+                {notebook ? <Icon icon={CheckCircle} size={16} /> : null}
+                {notebook ? "Notes ready" : "No notes yet"}
+              </span>
+            </div>
+            {session.topics.length ? (
+              <ul className={styles.topics} aria-label="Session topics">
+                {session.topics.slice(0, 3).map((topic) => (
+                  <li key={topic}>
+                    <bdi>{topic}</bdi>
+                  </li>
+                ))}
+                {session.topics.length > 3 ? (
+                  <li className={styles.moreTopics}>
+                    <Link href={`/sessions/${session.id}#topics`}>
+                      See all {session.topics.length} topics
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
+            {!notebook ? (
+              <p className={styles.emptyNotes}>
+                Add session material to create notes for this session automatically.
+              </p>
+            ) : null}
+            <div className={styles.sessionFooter}>
+              <Link
+                href={
+                  notebook ? `/sessions/${session.id}/notes` : `/sessions/${session.id}/sources`
+                }
+                prefetch={false}
+                className={styles.readLink}
+              >
+                {notebook ? "Read session notes" : "Add session material"}
+                <Icon icon={CaretRight} size={18} />
+              </Link>
+              <div className={styles.sessionLinks}>
+                <Link href={`/sessions/${session.id}`} prefetch={false}>
+                  Open session
+                </Link>
+                {!notebook ? (
+                  <Link href={`/sessions/${session.id}/notes`} prefetch={false}>
+                    Session notes
+                  </Link>
+                ) : null}
+                <Link href={`/sessions/${session.id}/cards`} prefetch={false}>
+                  Flashcards
+                </Link>
+                <Link href={`/sessions/${session.id}/sources`} prefetch={false}>
+                  Session sources
+                </Link>
+              </div>
+            </div>
           </section>
         ))}
         {!materials.items.length ? (

@@ -63,7 +63,10 @@ it("AC-D46-01/02 derives the owned structured target and routes through cached p
     },
     mocks.dependencies(),
   );
-  expect(mocks.jobs).toHaveBeenCalledWith(["media.tts"], 90);
+  expect(mocks.jobs).toHaveBeenCalledWith(["media.tts"], 90, 120, {
+    userId: ctx.userId,
+    subjectId: cardId,
+  });
 });
 it("rejects arbitrary text overrides, stale cards and cards outside this owned session before dispatch", async () => {
   await expect(

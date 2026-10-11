@@ -13,10 +13,12 @@ test("sample files accumulate before explicit upload and show progress and compl
 
   const files = page.getByLabel("Add sample file names", { exact: true });
   const submit = page.getByRole("button", { name: /^(Upload & Process|Uploading…)$/ });
+  const queueTitle = page.getByRole("heading", { name: "Files to upload", exact: true });
   const sourcePanel = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Your sources", exact: true }),
   });
-  await expect(submit).toBeDisabled();
+  await expect(submit).toHaveCount(0);
+  await expect(queueTitle).toHaveCount(0);
   await files.setInputFiles({
     name: "first-handout.pdf",
     mimeType: "application/pdf",
@@ -29,6 +31,8 @@ test("sample files accumulate before explicit upload and show progress and compl
   });
   await expect(page.getByText("first-handout.pdf", { exact: true })).toBeVisible();
   await expect(page.getByText("second-board.png", { exact: true })).toBeVisible();
+  await expect(queueTitle).toBeVisible();
+  await expect(page.getByText("2 files to upload", { exact: true })).toBeVisible();
   await expect(sourcePanel.getByRole("listitem")).toHaveCount(0);
   expect(
     await page.evaluate(
@@ -73,6 +77,8 @@ test("sample files accumulate before explicit upload and show progress and compl
   await expect(progress).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add More Files", exact: true })).toBeEnabled();
   await expect(page.getByText(/Sample upload successful/)).toBeVisible();
+  await expect(submit).toHaveCount(0);
+  await expect(queueTitle).toHaveCount(0);
 
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Add More Files", exact: true }).click();
@@ -83,6 +89,7 @@ test("sample files accumulate before explicit upload and show progress and compl
   });
   await expect(progress).toHaveCount(0);
   await expect(sourcePanel.getByText("third-recording.wav", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 file to upload", { exact: true })).toBeVisible();
   await submit.click();
   await expect(progress).toBeVisible();
   await page.clock.runFor(1_000);
@@ -93,6 +100,7 @@ test("sample files accumulate before explicit upload and show progress and compl
   await page.reload();
   await expect(page.getByRole("button", { name: "Add More Files", exact: true })).toBeEnabled();
   await expect(page.getByText("third-recording.wav", { exact: true })).toBeVisible();
+  await expect(queueTitle).toHaveCount(0);
 });
 
 test("source permission, file metadata and password examples stay local", async ({ page }) => {
@@ -122,6 +130,7 @@ test("source permission, file metadata and password examples stay local", async 
     .getByRole("button", { name: "Remove selected file: unsupported.exe", exact: true })
     .click();
   await expect(page.getByText("unsupported.exe", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Files to upload", exact: true })).toHaveCount(0);
 
   await page.goto("/preview/source-settings");
   const addedPdf = page.locator("section").filter({
@@ -296,6 +305,10 @@ test("recording controls demonstrate photo, pause, resume and save without captu
   await page.getByRole("button", { name: "Stop and keep recording", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your recording is ready");
   await page.getByRole("link", { name: "Go to session", exact: true }).click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Session tools and sources$/ })
+    .click();
   await expect(page.getByText("Sample recording", { exact: true })).toBeVisible();
 });
 
@@ -337,6 +350,10 @@ test("recording elapsed time and photos survive pause, resume and stop confirmat
   await page.clock.runFor(1_000);
   await expect(page).toHaveURL(/\/preview\/saved$/);
   await page.getByRole("link", { name: "Go to session", exact: true }).click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Session tools and sources$/ })
+    .click();
   const recording = page.getByRole("listitem").filter({ hasText: "Sample recording" });
   const savedMinutes = Number((await recording.innerText()).match(/([\d.]+) audio minutes/)?.[1]);
   expect(Number.isFinite(savedMinutes)).toBe(true);

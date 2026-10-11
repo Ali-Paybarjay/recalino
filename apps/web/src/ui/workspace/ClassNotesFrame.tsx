@@ -4,10 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ClassNotesFrame.module.css";
 import {
   interactiveClassNotesHtml,
+  NOTES_READER_MIN_HEIGHT,
   type NotePronunciationItem,
   type NotePronunciationPlayback,
+  notesReaderMessage,
   pronunciationMessageItem,
 } from "./class-notes-pronunciation";
+
+const noPronunciationItems: readonly NotePronunciationItem[] = [];
 
 /** The downloaded document is unchanged except for the frame's base URL and app theme. */
 export function framedClassNotesHtml(html: string, theme?: "light" | "dark"): string {
@@ -18,22 +22,38 @@ export function framedClassNotesHtml(html: string, theme?: "light" | "dark"): st
 export function ClassNotesFrame({
   html,
   title,
-  pronunciationItems = [],
+  pronunciationItems = noPronunciationItems,
   onPronunciation,
   playback,
+  fitContent = false,
 }: {
   html: string;
   title: string;
   pronunciationItems?: readonly NotePronunciationItem[];
   onPronunciation?: (itemId: string) => void;
   playback?: NotePronunciationPlayback;
+  fitContent?: boolean;
 }) {
   const [theme, setTheme] = useState<"light" | "dark">();
   const frame = useRef<HTMLIFrameElement>(null);
-  const [identity, setIdentity] = useState<{ html: string; channel: string; nonce: string }>();
+  const [identity, setIdentity] = useState<{
+    html: string;
+    theme: "light" | "dark" | undefined;
+    fitContent: boolean;
+    channel: string;
+    nonce: string;
+  }>();
+  // Keep the reader's space while a replacement document starts its authenticated bridge.
+  const [frameHeight, setFrameHeight] = useState(NOTES_READER_MIN_HEIGHT);
   useEffect(() => {
-    setIdentity({ html, channel: crypto.randomUUID(), nonce: crypto.randomUUID() });
-  }, [html]);
+    setIdentity({
+      html,
+      theme,
+      fitContent,
+      channel: crypto.randomUUID(),
+      nonce: crypto.randomUUID(),
+    });
+  }, [html, theme, fitContent]);
   useEffect(() => {
     const root = document.documentElement;
     const sync = () => setTheme(root.dataset.theme === "dark" ? "dark" : "light");
@@ -42,51 +62,84 @@ export function ClassNotesFrame({
     observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
   }, []);
-  const interactive = !!onPronunciation && pronunciationItems.length > 0 && identity?.html === html;
+  const currentDocument =
+    identity?.html === html && identity.theme === theme && identity.fitContent === fitContent;
+  const interactive = !!onPronunciation && pronunciationItems.length > 0 && currentDocument;
+  const bridged = (interactive || fitContent) && currentDocument;
   const eligible = useMemo(
     () => new Set(pronunciationItems.map((item) => item.id)),
     [pronunciationItems],
   );
   const frameDocument = useMemo(() => {
-    if (!interactive || !identity) return framedClassNotesHtml(html, theme);
+    if (!bridged || !identity) return framedClassNotesHtml(html, theme);
     const document = framedClassNotesHtml(html, theme);
     return interactiveClassNotesHtml(
       document,
-      pronunciationItems,
+      interactive ? pronunciationItems : [],
       identity.channel,
       identity.nonce,
+      { fitContent },
     );
-  }, [html, theme, interactive, identity, pronunciationItems]);
+  }, [html, theme, bridged, interactive, identity, pronunciationItems, fitContent]);
   useEffect(() => {
-    if (!interactive || !identity) return;
+    if (!bridged || !identity) return;
+    let anchorScroll: number | undefined;
     const listener = (event: MessageEvent) => {
-      const item = pronunciationMessageItem(
-        event,
-        frame.current?.contentWindow ?? null,
-        identity.channel,
-        eligible,
-      );
-      if (item) onPronunciation?.(item);
+      const frameWindow = frame.current?.contentWindow ?? null;
+      if (interactive) {
+        const item = pronunciationMessageItem(event, frameWindow, identity.channel, eligible);
+        if (item) onPronunciation?.(item);
+      }
+      if (!fitContent) return;
+      const message = notesReaderMessage(event, frameWindow, identity.channel);
+      if (message?.type === "resize") setFrameHeight(message.height);
+      if (message?.type === "anchor") {
+        if (anchorScroll !== undefined) window.cancelAnimationFrame(anchorScroll);
+        // Apply the document height before moving the outer page to an anchor far below the fold.
+        anchorScroll = window.requestAnimationFrame(() => {
+          const element = frame.current;
+          if (!element || element.contentWindow !== frameWindow) return;
+          const headerOffset = Number.parseFloat(getComputedStyle(element).scrollMarginTop) || 88;
+          window.scrollBy({
+            top: element.getBoundingClientRect().top + message.offset - headerOffset,
+            behavior: "auto",
+          });
+        });
+      }
     };
     window.addEventListener("message", listener);
-    return () => window.removeEventListener("message", listener);
-  }, [interactive, identity, eligible, onPronunciation]);
+    return () => {
+      window.removeEventListener("message", listener);
+      if (anchorScroll !== undefined) window.cancelAnimationFrame(anchorScroll);
+    };
+  }, [bridged, interactive, fitContent, identity, eligible, onPronunciation]);
   const restorePlayback = useCallback(() => {
-    if (interactive && identity && playback)
+    if (fitContent && bridged && identity)
       frame.current?.contentWindow?.postMessage(
-        { type: "recalino:pronunciation-state", channel: identity.channel, state: playback },
+        { type: "recalino:notes-measure", channel: identity.channel },
         "*",
       );
-  }, [interactive, identity, playback]);
+    if (interactive && identity)
+      frame.current?.contentWindow?.postMessage(
+        {
+          type: "recalino:pronunciation-state",
+          channel: identity.channel,
+          state: playback ?? null,
+        },
+        "*",
+      );
+  }, [fitContent, bridged, interactive, identity, playback]);
   useEffect(restorePlayback, [restorePlayback]);
   return (
     <iframe
-      key={interactive && identity ? identity.channel : "passive"}
+      key={bridged && identity ? identity.channel : "passive"}
       ref={frame}
-      className={styles.frame}
+      className={`${styles.frame}${fitContent ? ` ${styles.fitContent}` : ""}`}
+      style={fitContent ? { height: frameHeight } : undefined}
       title={`Session notes: ${title}`}
       srcDoc={frameDocument}
-      sandbox={interactive ? "allow-scripts" : ""}
+      sandbox={bridged ? "allow-scripts" : ""}
+      scrolling={fitContent ? "no" : undefined}
       referrerPolicy="no-referrer"
       onLoad={restorePlayback}
     />

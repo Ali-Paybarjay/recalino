@@ -33,6 +33,12 @@ export interface ClaimedJob {
   leaseSeconds: number;
 }
 
+/** Internal orchestration target, derived from an already-authorized resource. */
+export interface JobTarget {
+  readonly userId: string;
+  readonly subjectId: string;
+}
+
 export interface JobContext {
   db: Database;
   now: () => Date;
@@ -123,8 +129,22 @@ export async function claimJobs(
   kinds: readonly string[],
   limit: number,
   now: Date,
+  target?: JobTarget,
 ): Promise<ClaimedJob[]> {
   if (kinds.length === 0) return [];
+  if (
+    target !== undefined &&
+    (!target ||
+      typeof target.userId !== "string" ||
+      !target.userId ||
+      typeof target.subjectId !== "string" ||
+      !target.subjectId)
+  )
+    throw new Error("Invalid job target");
+  const targetFilter =
+    target === undefined
+      ? sql``
+      : sql`and payload @> ${JSON.stringify({ userId: target.userId, subjectId: target.subjectId })}::jsonb`;
   const result = await sql<{
     id: string;
     kind: string;
@@ -138,6 +158,7 @@ export async function claimJobs(
       select id from plt.job
       where state in ('queued', 'retry_scheduled') and run_at <= ${now}
         and kind = any(${kinds as string[]})
+        ${targetFilter}
       order by run_at
       for update skip locked
       limit ${limit}
@@ -320,6 +341,8 @@ export interface RunOptions {
   log?: Logger;
   /** Only these kinds, e.g. the one just enqueued; defaults to every definition. */
   kinds?: readonly string[];
+  /** Restrict an immediate wake to its authorized owner and subject; never fall back to all jobs. */
+  target?: JobTarget;
   /** How often a running job's lease is renewed; defaults to a quarter of its lease. */
   leaseRenewalMs?: number;
 }
@@ -428,7 +451,7 @@ export async function runDueJobs(
   };
 
   while (now() < options.deadline) {
-    const [job] = await claimJobs(db, kinds, 1, now());
+    const [job] = await claimJobs(db, kinds, 1, now(), options.target);
     if (!job) break;
     const definition = byKind.get(job.kind);
     const fields = { kind: job.kind, job_id: job.id, attempt: job.attempt };

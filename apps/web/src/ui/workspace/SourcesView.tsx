@@ -655,15 +655,8 @@ export function SourcesView({
       )}
       <Panel title="Session sources">
         <p className="preview-muted">
-          File formats are detected automatically. During processing, Recalino identifies session
-          audio, board photos, session material and notes from their content. Use the whole file or
-          choose part of a PDF or audio recording.
+          Files added to this session. Checked files are used to create your notes and flashcards.
         </p>
-        {batch?.active ? (
-          <Status>
-            Sending saved file {batch.current} of {batch.total}. You can use other pages.
-          </Status>
-        ) : null}
         {!visibleSources.length && !pendingFiles.length ? (
           <div className="preview-empty">
             <h3>Add your first source</h3>

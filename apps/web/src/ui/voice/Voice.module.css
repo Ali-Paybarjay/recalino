@@ -107,3 +107,28 @@
     padding: 12px;
   }
 }
+
+.readerVoice {
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.readerVoice > summary {
+  padding: 14px 18px;
+  min-height: 48px;
+  cursor: pointer;
+  color: var(--rc-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.readerVoice[open] > summary {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.readerVoice > :global(.preview-panel) {
+  border: 0;
+  border-radius: 0;
+}

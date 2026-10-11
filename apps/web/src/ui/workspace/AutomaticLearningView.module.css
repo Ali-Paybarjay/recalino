@@ -1,25 +1,266 @@
-.inlineRetry.inlineRetry {
-  display: inline-block;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 8px 6px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
+.card {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--rc-border-strong);
+  border-top: 5px solid var(--color-accent);
+  border-radius: var(--rc-card-radius, 20px);
+  background: var(--color-surface);
+  scroll-margin-top: 24px;
+  overflow-wrap: anywhere;
+}
+
+.card[data-tone="attention"] {
+  border-color: var(--rc-warning-border);
+  border-top-color: var(--rc-warning);
+}
+
+.card[data-tone="ready"] {
+  border-color: var(--rc-success-border);
+  border-top-color: var(--rc-success);
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.statusHeading {
+  display: grid;
+  gap: 12px;
+}
+
+.card .eyebrow {
+  margin: 0;
   color: var(--color-accent);
-  font: inherit;
-  line-height: inherit;
-  text-align: center;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
-.inlineRetry.inlineRetry:hover {
+.card[data-tone="attention"] .eyebrow {
+  color: var(--rc-warning);
+}
+
+.statusHeading h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.card .guidance {
+  margin: 0;
+  padding: 16px;
+  border-radius: 12px;
   background: var(--rc-primary-tint);
+  color: var(--color-text);
+  font-size: 17px;
+  font-weight: 550;
+  line-height: 1.55;
 }
 
-.inlineRetry.inlineRetry:disabled {
-  cursor: wait;
-  opacity: 0.65;
+.card[data-tone="attention"] .guidance {
+  background: var(--rc-warning-tint);
+}
+
+.card .detail {
+  margin: 0;
+  color: var(--rc-text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.progress {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.segments {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.segments span {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--rc-primary-tint);
+  border: 1px solid var(--rc-border-strong);
+}
+
+.segments [data-state="complete"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.segments [data-state="current"] {
+  background: var(--rc-primary-tint);
+  border-color: var(--color-accent);
+}
+
+.segments [data-state="current"][data-active="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent);
+  animation: stage-pulse 1.6s ease-in-out infinite alternate;
+}
+
+.segments [data-state="blocked"] {
+  border-color: var(--rc-warning);
+  background: var(--rc-warning-tint);
+}
+
+.card .stageLabel {
+  margin: -8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rc-text-muted);
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.timeline li {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.stepMarker {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rc-border-strong);
+  border-radius: 50%;
+  color: var(--rc-text-muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.timeline [data-state="complete"] .stepMarker,
+.timeline [data-state="current"] .stepMarker {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  border-color: var(--color-accent);
+}
+
+.timeline [data-state="blocked"] .stepMarker {
+  background: var(--rc-warning-tint);
+  border-color: var(--rc-warning);
+  color: var(--rc-warning);
+}
+
+.stepState {
+  display: block;
+  margin-top: 3px;
+  color: var(--rc-text-muted);
+  font-size: 13px;
+}
+
+.files {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--rc-border-strong);
+  list-style: none;
+}
+
+.files li {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.files strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.cardActions {
+  display: grid;
+  gap: 16px;
+}
+
+.cardActions:empty {
+  display: none;
+}
+
+.cardActions :global(.preview-actions) {
+  margin-top: 0;
+}
+
+.pending progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--color-accent);
+}
+
+@keyframes stage-pulse {
+  from {
+    opacity: 0.25;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+@media (max-width: 600px) {
+  .timeline {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .timeline li {
+    position: relative;
+    flex-direction: row;
+    gap: 12px;
+    padding-bottom: 20px;
+    font-size: 15px;
+  }
+
+  .timeline li:last-child {
+    padding-bottom: 0;
+  }
+
+  .timeline li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 36px;
+    bottom: 4px;
+    left: 15px;
+    width: 2px;
+    background: var(--rc-border-strong);
+  }
+
+  .cardActions :global(.preview-actions) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segments [data-state="current"][data-active="true"]::after {
+    animation: none;
+    opacity: 0.6;
+  }
 }

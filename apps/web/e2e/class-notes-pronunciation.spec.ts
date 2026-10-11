@@ -223,9 +223,32 @@ test("AC-D46-NOTE preparation uses one current-item request, polls and leaves ot
     return route.fulfill({ json: { ...ready, state: "queued" } });
   });
   let polls = 0;
-  await page.route(`**/api/media/${mediaId}`, (route) =>
-    route.fulfill({ json: { ...ready, state: ++polls === 1 ? "processing" : "ready" } }),
+  let reads = 0;
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => {
+      expect(new URL(route.request().url()).searchParams.get("playback")).toBe("1");
+      const complete = ++polls > 1;
+      return route.fulfill({
+        json: {
+          ...ready,
+          state: complete ? "ready" : "processing",
+          ...(complete
+            ? {
+                playback: {
+                  url: `/synthetic-notes-pronunciation.wav?id=${mediaId}`,
+                  validUntil: new Date(Date.now() + 60000).toISOString(),
+                },
+              }
+            : {}),
+        },
+      });
+    },
   );
+  await page.route(`**/api/media/${mediaId}/read`, (route) => {
+    reads++;
+    return route.fulfill({ json: { url: `/synthetic-notes-pronunciation.wav?id=${mediaId}` } });
+  });
   await page.goto("/dev/ui/study?view=notes");
   const frame = page.frameLocator(frameSelector);
   await hear(frame).click();
@@ -235,6 +258,7 @@ test("AC-D46-NOTE preparation uses one current-item request, polls and leaves ot
   await expect(hear(frame, "kit it out")).toBeEnabled();
   await readySpeech(page);
   expect(polls).toBe(2);
+  expect(reads).toBe(0);
   expect(submitted).toEqual([
     {
       body: {
@@ -245,6 +269,78 @@ test("AC-D46-NOTE preparation uses one current-item request, polls and leaves ot
       key: expect.any(String),
     },
   ]);
+});
+
+test("AC-D46-NOTE switching back reuses ready pronunciation and renews only an expired playback link", async ({
+  page,
+}) => {
+  await fixtures(page);
+  const now = Date.now(),
+    validUntil = now + 60000;
+  await page.clock.install({ time: new Date(now) });
+  const secondId = "10000000-0000-4000-8000-000000000098";
+  const requests: string[] = [],
+    reads: string[] = [],
+    statusChecks: string[] = [];
+  await page.route(mediaPath, (route) => {
+    const itemId = route.request().postDataJSON().learningItemId;
+    requests.push(itemId);
+    const id = itemId === "kit-out" ? secondId : mediaId;
+    return route.fulfill({
+      json: {
+        ...ready,
+        id,
+        playback: {
+          url: `/synthetic-notes-pronunciation.wav?id=${id}&lease=1`,
+          validUntil: new Date(validUntil).toISOString(),
+        },
+      },
+    });
+  });
+  await page.route(
+    (url) => [mediaId, secondId].some((id) => url.pathname === `/api/media/${id}`),
+    (route) => {
+      statusChecks.push(new URL(route.request().url()).pathname);
+      return route.fulfill({ json: ready });
+    },
+  );
+  await page.route("**/api/media/*/read", (route) => {
+    reads.push(new URL(route.request().url()).pathname);
+    return route.fulfill({
+      json: {
+        url: `/synthetic-notes-pronunciation.wav?id=${mediaId}&lease=2`,
+        validUntil: new Date(validUntil + 120000).toISOString(),
+      },
+    });
+  });
+  await page.goto("/dev/ui/study?view=notes");
+  const frame = page.frameLocator(frameSelector);
+  await hear(frame).click();
+  await readySpeech(page);
+  await hear(frame, "kit it out").click();
+  await readySpeech(page, "kit it out");
+  await hear(frame).click();
+  await readySpeech(page);
+  await expect(page.locator("audio")).toHaveAttribute("src", /lease=1$/);
+  expect(requests).toEqual(["wear-tear", "kit-out"]);
+  expect(reads).toEqual([]);
+  expect(statusChecks).toEqual([]);
+  await expect
+    .poll(async () => (await events(page)).filter((event) => event.kind === "play").length)
+    .toBe(3);
+
+  await hear(frame, "kit it out").click();
+  await readySpeech(page, "kit it out");
+  await page.clock.setSystemTime(new Date(validUntil + 1000));
+  await hear(frame).click();
+  await readySpeech(page);
+  await expect(page.locator("audio")).toHaveAttribute("src", /lease=2$/);
+  expect(requests).toEqual(["wear-tear", "kit-out"]);
+  expect(reads).toEqual([`/api/media/${mediaId}/read`]);
+  expect(statusChecks).toEqual([]);
+  await expect
+    .poll(async () => (await events(page)).filter((event) => event.kind === "play").length)
+    .toBe(5);
 });
 
 test("AC-D46-NOTE switching words discards the late request and stops earlier audio", async ({
@@ -560,10 +656,13 @@ test("AC-D46-NOTE a failed read link retries the existing asset without paying f
     return route.fulfill({ json: ready });
   });
   let checks = 0;
-  await page.route(`**/api/media/${mediaId}`, (route) => {
-    checks++;
-    return route.fulfill({ json: ready });
-  });
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => {
+      checks++;
+      return route.fulfill({ json: ready });
+    },
+  );
   let reads = 0;
   await page.route(`**/api/media/${mediaId}/read`, (route) => {
     reads++;
@@ -584,7 +683,7 @@ test("AC-D46-NOTE a failed read link retries the existing asset without paying f
     .click();
   await readySpeech(page);
   expect(generations).toBe(1);
-  expect(checks).toBe(1);
+  expect(checks).toBe(0);
   expect(reads).toBe(2);
 });
 
@@ -598,8 +697,9 @@ test("AC-D46-NOTE theme reload restores the in-flight item's busy state without 
     requests++;
     return route.fulfill({ json: { ...ready, state: "queued" } });
   });
-  await page.route(`**/api/media/${mediaId}`, (route) =>
-    route.fulfill({ json: { ...ready, state: complete ? "ready" : "processing" } }),
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => route.fulfill({ json: { ...ready, state: complete ? "ready" : "processing" } }),
   );
   await page.goto("/dev/ui/study?view=notes");
   const frame = page.frameLocator(frameSelector);

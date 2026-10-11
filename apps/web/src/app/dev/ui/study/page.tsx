@@ -12,7 +12,9 @@ import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { CardsView } from "../../../../ui/workspace/CardsView";
 import { ExportView } from "../../../../ui/workspace/ExportView";
 import { NoteView } from "../../../../ui/workspace/NoteView";
+import { Panel } from "../../../../ui/workspace/primitives";
 import { ReviewView } from "../../../../ui/workspace/ReviewView";
+import { SessionNotesReader } from "../../../../ui/workspace/SessionNotesReader";
 import "../../../../ui/preview/preview.css";
 
 /** Uses the real reading and review components with a synthetic, local-only lesson. */
@@ -51,6 +53,57 @@ export default async function StudyReferencePage({
       createdAt,
     },
   };
+  if (view === "reader" || view === "reader-readonly")
+    return (
+      <div className="preview-root">
+        <SessionNotesReader
+          sessionId={sessionId}
+          title={model.title}
+          courseName="Synthetic English course"
+          classDate="2026-10-05"
+          topics={["Binomials", "Everyday expressions"]}
+          hasNotes
+          revisionNumber={notebook.current.number}
+          backHref={referenceHref("reader-session")}
+          cardsHref={referenceHref("cards")}
+        >
+          <NoteView
+            sessionId={sessionId}
+            userId={userId}
+            initial={notebook}
+            latest={null}
+            courseId="10000000-0000-4000-8000-000000000003"
+            readOnlyRevision={view === "reader-readonly" ? notebook.current : undefined}
+            standalone
+          />
+        </SessionNotesReader>
+      </div>
+    );
+  if (view === "reader-session")
+    return (
+      <div className="preview-root">
+        <AppShell
+          current="classes"
+          hrefs={{
+            today: referenceHref(),
+            classes: referenceHref(),
+            review: referenceHref("review"),
+            me: referenceHref(),
+          }}
+        >
+          <PageHeader
+            title="Synthetic session"
+            subtitle="Synthetic reading navigation fixture · No real session data"
+          />
+          {Array.from({ length: 8 }, (_, index) => `Session material ${index + 1}`).map((title) => (
+            <Panel key={title} title={title}>
+              <p>This saved synthetic material belongs to the same lesson.</p>
+            </Panel>
+          ))}
+          <Link href={referenceHref("reader")}>Open session notes</Link>
+        </AppShell>
+      </div>
+    );
   const cards: StudyCard[] = model.learningItems
     .filter((item) => item.study)
     .map((item, index) => ({

@@ -6,6 +6,7 @@ import type { LocalPhoto, Recording } from "../recording/store";
 import type { workspaceRequest } from "./api";
 import {
   type AutomaticLearningStatus,
+  type AutomaticUploadProgress,
   automaticRecordingClasses,
   automaticRecordingMaterial,
   automaticResultNeedsRefresh,
@@ -15,6 +16,9 @@ import {
   uploadAutomaticAudio,
   uploadAutomaticPhoto,
 } from "./automatic-learning";
+
+const transport = vi.hoisted(() => ({ upload: vi.fn() }));
+vi.mock("./upload-progress", () => ({ uploadWithProgress: transport.upload }));
 
 const userId = randomUUID(),
   sessionId = randomUUID(),
@@ -41,6 +45,7 @@ function row(patch: Partial<Recording> = {}): Recording {
   };
 }
 beforeEach(() => {
+  transport.upload.mockReset();
   const values = new Map<string, string>();
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => values.get(key) ?? null,
@@ -679,7 +684,53 @@ describe("automatic temporary audio upload", () => {
     expect(put).not.toHaveBeenCalled();
   });
 
+  it("announces checking before reading or hashing saved audio and before any upload request", async () => {
+    const onProgress = vi.fn();
+    const onTransferProgress = vi.fn();
+    const request = vi.fn(async (_path, method: string, body?: { action: string }) =>
+      body?.action === "start"
+        ? { uploadId: "upload" }
+        : method === "GET"
+          ? { state: "verifying", parts: [] }
+          : {},
+    );
+    const assertChecking = () => {
+      expect(onProgress).toHaveBeenLastCalledWith("Checking audio file 1 of 1 before upload…");
+      expect(onTransferProgress).toHaveBeenLastCalledWith({
+        runId: run.id,
+        sentBytes: 0,
+        totalBytes: 4,
+        files: [
+          { sourceId, displayName: "Audio file 1", sentBytes: 0, totalBytes: 4, phase: "checking" },
+        ],
+      });
+      expect(request).not.toHaveBeenCalled();
+    };
+    const saved = new Blob(["abcd"]);
+    const read = vi.spyOn(saved, "arrayBuffer").mockImplementation(async () => {
+      assertChecking();
+      return blob.arrayBuffer();
+    });
+    const local = {
+      list: store.list,
+      blob: vi.fn(async () => {
+        assertChecking();
+        return saved;
+      }),
+    };
+    await uploadAutomaticAudio(run, snapshot, contract, {
+      userId,
+      store: local,
+      request: request as typeof workspaceRequest,
+      onProgress,
+      onTransferProgress,
+    });
+    expect(local.blob).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledOnce();
+  });
+
   it("skips verified parts, confirms unknown writes, and uses stable start/completion keys", async () => {
+    const progress: AutomaticUploadProgress[] = [];
     const put = vi.fn(
       async (_url: string, _blob: Blob, _mimeType: string, _signal?: AbortSignal) => ({
         ok: true,
@@ -709,6 +760,7 @@ describe("automatic temporary audio upload", () => {
       store,
       put,
       request: request as typeof workspaceRequest,
+      onTransferProgress: (value) => progress.push(value),
     });
     expect(put).toHaveBeenCalledOnce();
     expect(put.mock.calls[0]?.[1].size).toBe(2);
@@ -719,9 +771,100 @@ describe("automatic temporary audio upload", () => {
     expect(request.mock.calls.find((call) => call[2]?.action === "complete")?.[3]).toBe(
       `audio-complete:${run.id}:${sourceId}`,
     );
+    expect(progress[0]).toMatchObject({ sentBytes: 0, totalBytes: 4 });
+    expect(progress).toContainEqual({
+      runId: run.id,
+      sentBytes: 2,
+      totalBytes: 4,
+      files: [
+        { sourceId, displayName: "Audio file 1", sentBytes: 2, totalBytes: 4, phase: "uploading" },
+      ],
+    });
+    expect(progress.at(-1)).toMatchObject({
+      sentBytes: 4,
+      totalBytes: 4,
+      files: [{ phase: "verifying" }],
+    });
+    // Published snapshots must remain unchanged as later parts finish.
+    expect(progress[0]?.files[0]?.sentBytes).toBe(0);
+  });
+  it("combines live XHR bytes with unknown event totals across concurrent parts before either finishes", async () => {
+    const progress: AutomaticUploadProgress[] = [];
+    const transfers = new Map<number, AudioXMLHttpRequest>();
+    const written = new Set<number>();
+    class AudioXMLHttpRequest {
+      index = -1;
+      status = 0;
+      upload: { onprogress: ((event: ProgressEvent) => void) | null } = { onprogress: null };
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      ontimeout: (() => void) | null = null;
+      open(_method: string, url: string) {
+        this.index = Number(new URL(url).searchParams.get("index"));
+      }
+      setRequestHeader = vi.fn();
+      send() {
+        transfers.set(this.index, this);
+      }
+      abort = vi.fn();
+      advance(bytes: number) {
+        this.upload.onprogress?.({
+          loaded: bytes,
+          total: 0,
+          lengthComputable: false,
+        } as ProgressEvent);
+      }
+      finish() {
+        written.add(this.index);
+        this.status = 200;
+        this.onload?.();
+      }
+    }
+    vi.stubGlobal("XMLHttpRequest", AudioXMLHttpRequest);
+    const actual = await vi.importActual<typeof import("./upload-progress")>("./upload-progress");
+    transport.upload.mockImplementation(actual.uploadWithProgress);
+    const request = vi.fn(
+      async (path: string, method: string, body?: { action: string; index: number }) => {
+        if (body?.action === "start") return { uploadId: "upload" };
+        if (body?.action === "confirm_part") return { confirmed: written.has(body.index) };
+        if (method === "GET" && path.includes("index="))
+          return { url: `https://storage.example.test${path}` };
+        if (method === "GET") return { state: "pending", parts: [] };
+        return {};
+      },
+    );
+    const upload = uploadAutomaticAudio(run, snapshot, contract, {
+      userId,
+      store,
+      request: request as typeof workspaceRequest,
+      onTransferProgress: (value) => progress.push(value),
+    });
+    await vi.waitFor(() => expect(transfers.size).toBe(2));
+    transfers.get(0)?.advance(1);
+    transfers.get(1)?.advance(1);
+    expect(progress.at(-1)).toMatchObject({
+      runId: run.id,
+      sentBytes: 2,
+      totalBytes: 4,
+      files: [{ sourceId, sentBytes: 2, totalBytes: 4, phase: "uploading" }],
+    });
+    expect(written.size).toBe(0);
+    transfers.get(1)?.finish();
+    expect(progress.at(-1)?.sentBytes).toBe(3);
+    transfers.get(0)?.finish();
+    await upload;
+    expect(progress.at(-1)).toMatchObject({
+      sentBytes: 4,
+      totalBytes: 4,
+      files: [{ phase: "verifying" }],
+    });
+    expect(progress.every((value) => value.sentBytes <= value.totalBytes)).toBe(true);
+    expect(request.mock.calls.filter((call) => call[2]?.action === "complete")).toHaveLength(1);
   });
   it("does not upload completed audio again while the server verifies it", async () => {
     const put = vi.fn();
+    const progress = vi.fn();
     const request = vi.fn(async (_path, method: string, body?: { action: string }) =>
       body?.action === "start"
         ? { uploadId: "upload" }
@@ -734,9 +877,57 @@ describe("automatic temporary audio upload", () => {
       store,
       put,
       request: request as typeof workspaceRequest,
+      onTransferProgress: progress,
     });
     expect(put).not.toHaveBeenCalled();
     expect(request.mock.calls.some((call) => call[2]?.action === "complete")).toBe(false);
+    expect(progress).toHaveBeenLastCalledWith({
+      runId: run.id,
+      sentBytes: 4,
+      totalBytes: 4,
+      files: [
+        { sourceId, displayName: "Audio file 1", sentBytes: 4, totalBytes: 4, phase: "verifying" },
+      ],
+    });
+  });
+  it("resets only a retried part's transmitted bytes instead of adding them to the next attempt", async () => {
+    const progress: AutomaticUploadProgress[] = [];
+    let attempts = 0;
+    transport.upload.mockImplementation(
+      async (
+        _url: string,
+        _part: Blob,
+        _type: string,
+        onProgress: (bytes: number, total: number) => void,
+      ) => {
+        attempts++;
+        onProgress(attempts === 1 ? 3 : 2, 4);
+        return { ok: attempts > 1, status: attempts === 1 ? 503 : 200 };
+      },
+    );
+    const request = vi.fn(async (_path: string, method: string, body?: { action: string }) => {
+      if (body?.action === "start") return { uploadId: "upload" };
+      if (body?.action === "confirm_part") return { confirmed: attempts > 1 };
+      if (method === "GET" && _path.includes("index="))
+        return { url: "https://storage.example.test/part" };
+      if (method === "GET") return { state: "pending", parts: [] };
+      return {};
+    });
+    await uploadAutomaticAudio(run, snapshot, { partBytes: 4 } as InputContract, {
+      userId,
+      store,
+      request: request as typeof workspaceRequest,
+      onTransferProgress: (value) => progress.push(value),
+    });
+    const bytes = progress.map((value) => value.sentBytes);
+    const firstAttempt = bytes.indexOf(3);
+    expect(bytes.slice(firstAttempt, firstAttempt + 3)).toEqual([3, 0, 2]);
+    expect(progress.at(-1)).toMatchObject({
+      sentBytes: 4,
+      totalBytes: 4,
+      files: [{ phase: "verifying" }],
+    });
+    expect(transport.upload).toHaveBeenCalledTimes(2);
   });
   it("names a missing local recording and performs no upload", async () => {
     const request = vi

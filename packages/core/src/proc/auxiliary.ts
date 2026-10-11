@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { sql } from "kysely";
 import type { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import type { AiProvider, ProviderResult } from "../aip";
-import type { Tx } from "../db";
+import type { Database, Tx } from "../db";
 import { assertSessionOwner } from "../org";
 import {
   cancelJob,
@@ -22,8 +23,93 @@ import {
   reserveAllowance,
   settleAllowance,
 } from "../quota";
-import { ownedRun } from "./runs";
+import { ownedRun, type ProcessingRun, runView } from "./runs";
 import { providerStep } from "./worker";
+
+/** Owned, live-session context only; higher modules never query PROC tables themselves. */
+export interface AuxiliaryRun extends ProcessingRun {
+  operationKey: string;
+  inputSnapshot: unknown;
+  settings: unknown;
+}
+
+export async function readAuxiliaryRun(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  runId: string,
+): Promise<AuxiliaryRun> {
+  const row = await ownedRun(db, ctx, runId);
+  await assertSessionOwner(db, ctx, row.session_id);
+  if (row.kind !== "auxiliary") throw errors.notFound();
+  return {
+    ...runView(row),
+    operationKey: row.operation_key,
+    inputSnapshot: row.input_snapshot,
+    settings: row.settings,
+  };
+}
+
+/** The caller's fixed request kind separates capabilities that share a subject UUID. */
+export async function latestAuxiliaryRun(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  input: { subjectId: string; requestKind: string },
+): Promise<AuxiliaryRun | null> {
+  await assertSessionOwner(db, ctx, sessionId);
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .selectAll()
+    .where("user_id", "=", ctx.userId)
+    .where("session_id", "=", sessionId)
+    .where("kind", "=", "auxiliary")
+    .where(
+      sql<boolean>`input_snapshot @> ${JSON.stringify({
+        subjectId: input.subjectId,
+        request: { kind: input.requestKind },
+      })}::jsonb`,
+    )
+    .orderBy("created_at", "desc")
+    .orderBy("id", "desc")
+    .limit(1)
+    .executeTakeFirst();
+  return row
+    ? {
+        ...runView(row),
+        operationKey: row.operation_key,
+        inputSnapshot: row.input_snapshot,
+        settings: row.settings,
+      }
+    : null;
+}
+
+export async function readAuxiliaryCheckpoint(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  runId: string,
+  step: string,
+): Promise<unknown | null> {
+  await readAuxiliaryRun(db, ctx, runId);
+  const row = await db
+    .selectFrom("proc.run_step")
+    .select("output")
+    .where("run_id", "=", runId)
+    .where("step", "=", step)
+    .executeTakeFirst();
+  return row?.output ?? null;
+}
+
+/** Exact original class settings, including its frozen learner context, never today's profile. */
+export async function readClassRunSettings(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  runId: string,
+): Promise<unknown> {
+  const row = await ownedRun(db, ctx, runId);
+  await assertSessionOwner(db, ctx, row.session_id);
+  if (row.kind !== "class") throw errors.notFound();
+  return row.settings;
+}
 
 /** Injected into higher-module jobs: every AI operation uses PROC attempt/cost/state handling. */
 export async function scheduleAuxiliaryRun(
@@ -110,6 +196,8 @@ export async function executeAuxiliaryProviderStep<T>(
     schema: z.ZodType<T>;
     effect: (operationKey: string) => Promise<ProviderResult<T>>;
     onCommit?: (tx: Tx, output: T) => Promise<void>;
+    /** A returned response, even if invalid, is final; only definite HTTP refusals may retry. */
+    singleResponse?: boolean;
   },
 ): Promise<T> {
   await job.db.transaction().execute(async (tx) => {
@@ -132,7 +220,7 @@ export async function executeAuxiliaryProviderStep<T>(
     input.provider,
     input.schema,
     input.effect,
-    { onCommit: input.onCommit },
+    { onCommit: input.onCommit, singleResponse: input.singleResponse },
   );
 }
 export async function completeAuxiliaryRun(

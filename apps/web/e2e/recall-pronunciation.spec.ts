@@ -133,8 +133,9 @@ test("AC-D46-01/02 pronunciation follows reveal, prepares saved audio and replay
     return route.fulfill({ json: { ...ready, state: "queued" } });
   });
   let polls = 0;
-  await page.route(`**/api/media/${mediaId}`, (route) =>
-    route.fulfill({ json: { ...ready, state: ++polls === 1 ? "processing" : "ready" } }),
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => route.fulfill({ json: { ...ready, state: ++polls === 1 ? "processing" : "ready" } }),
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dev/ui/study?view=review");
@@ -275,7 +276,8 @@ test("AC-D46-03 grading during preparation discards late audio and leaving revie
     .getByRole("button", { name: "Hear pronunciation of wear and tear", exact: true })
     .click();
   await page.getByRole("button", { name: "Remembered", exact: true }).click();
-  await expect(page.locator(".fc-face")).toContainText("new office");
+  // A failed optional font can leave hidden server markup beside the hydrated card.
+  await expect(page.locator(".fc-face:visible")).toHaveText([/new office/]);
   release?.();
   await expect(page.locator("audio")).toHaveCount(0);
   await page.getByRole("button", { name: "Show answer", exact: true }).click();
@@ -328,6 +330,8 @@ for (const width of [390, 1440]) {
       page,
     }) => {
       await fixtures(page);
+      // The target and control must stay together when optional web fonts fail.
+      await page.route("https://fonts.googleapis.com/**", (route) => route.abort());
       const requests: unknown[] = [];
       await page.route(mediaPath, (route) => {
         requests.push(route.request().postDataJSON());
@@ -354,8 +358,19 @@ for (const width of [390, 1440]) {
       await expect(speaker).toBeVisible();
       expect(requests).toHaveLength(0);
       const word = page
-        .locator(".fc-face")
+        .locator(".fc-face:visible")
         .getByText(studySet === "production" ? target : "manager (pronunciation)", { exact: true });
+      // Fonts and the inline control settle after the answer is revealed.
+      await page.evaluate(() => document.fonts.ready);
+      await expect
+        .poll(async () => {
+          const wordBounds = await word.boundingBox();
+          const control = await speaker.boundingBox();
+          return wordBounds && control
+            ? Math.abs(control.y + control.height / 2 - wordBounds.y - wordBounds.height / 2)
+            : Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThan(32);
       const wordBounds = await word.boundingBox();
       const speakerBounds = await speaker.boundingBox();
       expect(wordBounds).not.toBeNull();
@@ -461,10 +476,13 @@ test("AC-D46-03 an unresolved asset is checked again without another generation 
     return route.fulfill({ json: { ...ready, state: "needs_input" } });
   });
   let checks = 0;
-  await page.route(`**/api/media/${mediaId}`, (route) => {
-    checks++;
-    return route.fulfill({ json: { ...ready, state: "needs_input" } });
-  });
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => {
+      checks++;
+      return route.fulfill({ json: { ...ready, state: "needs_input" } });
+    },
+  );
   await page.goto("/dev/ui/study?view=review");
   await page.getByRole("button", { name: "Show answer", exact: true }).click();
   await page

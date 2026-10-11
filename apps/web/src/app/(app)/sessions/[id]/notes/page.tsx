@@ -4,11 +4,11 @@ import { getNoteSourceStatus } from "@recalino/core/proc";
 import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
 import { lessonAdaptationFor } from "../../../../../server/teaching-memory";
-import { workspaceActor, workspaceSession } from "../../../../../server/workspace";
-import { PageHeader } from "../../../../../ui/shell/AppShell";
+import { workspaceActor, workspaceCourse, workspaceSession } from "../../../../../server/workspace";
 import { VoiceConfirmation } from "../../../../../ui/voice/VoiceConfirmation";
 import { NoteView } from "../../../../../ui/workspace/NoteView";
-import { LearnerShell } from "../../../LearnerShell";
+import { SessionNotesReader } from "../../../../../ui/workspace/SessionNotesReader";
+import { LearnerTermsNotice } from "../../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function NotesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,9 +16,10 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
   const session = await workspaceSession(learner, id);
   const db = getDatabase(),
     ctx = workspaceActor(learner);
-  const [initial, latest] = await Promise.all([
+  const [initial, latest, course] = await Promise.all([
     getNotebook(db, ctx, id),
     getLatestVersion(db, ctx, id),
+    workspaceCourse(learner, session.courseId),
   ]);
   const sourceStatus = await getNoteSourceStatus(
     db,
@@ -34,21 +35,30 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
     (initial?.current.model ?? latest?.model)?.learningItems ?? [],
   );
   return (
-    <LearnerShell learner={learner} current="classes" header={<PageHeader title="Session notes" />}>
-      <div className="preview-stack">
-        <VoiceConfirmation sessionId={id} userId={learner.userId}>
-          <NoteView
-            sessionId={id}
-            userId={learner.userId}
-            initial={initial}
-            latest={latest}
-            courseId={session.courseId}
-            sourceIssues={sourceStatus.issues}
-            materialSources={sourceStatus.materials}
-            adaptation={adaptation}
-          />
-        </VoiceConfirmation>
-      </div>
-    </LearnerShell>
+    <SessionNotesReader
+      sessionId={id}
+      title={(initial?.current.model ?? latest?.model)?.title ?? session.displayTitle}
+      courseName={course.name}
+      classDate={session.classDate}
+      topics={session.topics}
+      hasNotes={!!(initial || latest)}
+      canOpenCards={!!initial}
+      revisionNumber={initial?.current.number}
+    >
+      <LearnerTermsNotice learner={learner} />
+      <VoiceConfirmation sessionId={id} userId={learner.userId} compact>
+        <NoteView
+          standalone
+          sessionId={id}
+          userId={learner.userId}
+          initial={initial}
+          latest={latest}
+          courseId={session.courseId}
+          sourceIssues={sourceStatus.issues}
+          materialSources={sourceStatus.materials}
+          adaptation={adaptation}
+        />
+      </VoiceConfirmation>
+    </SessionNotesReader>
   );
 }
