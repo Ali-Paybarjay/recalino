@@ -305,6 +305,10 @@ test("recording controls demonstrate photo, pause, resume and save without captu
   await page.getByRole("button", { name: "Stop and keep recording", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your recording is ready");
   await page.getByRole("link", { name: "Go to session", exact: true }).click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Session tools and sources$/ })
+    .click();
   await expect(page.getByText("Sample recording", { exact: true })).toBeVisible();
 });
 
@@ -346,6 +350,10 @@ test("recording elapsed time and photos survive pause, resume and stop confirmat
   await page.clock.runFor(1_000);
   await expect(page).toHaveURL(/\/preview\/saved$/);
   await page.getByRole("link", { name: "Go to session", exact: true }).click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Session tools and sources$/ })
+    .click();
   const recording = page.getByRole("listitem").filter({ hasText: "Sample recording" });
   const savedMinutes = Number((await recording.innerText()).match(/([\d.]+) audio minutes/)?.[1]);
   expect(Number.isFinite(savedMinutes)).toBe(true);
