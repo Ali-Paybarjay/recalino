@@ -177,15 +177,15 @@
 }
 @media (max-width: 767px) {
   .shell {
-    height: 100dvh;
+    --rc-bottom-nav-height: calc(63px + max(12px, env(safe-area-inset-bottom)));
   }
   .main {
-    min-height: 0;
-    overflow-y: auto;
+    padding-bottom: calc(32px + var(--rc-bottom-nav-height));
   }
   .bottomNav {
-    position: relative;
-    flex-shrink: 0;
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
   }
 }
 @media (min-width: 768px) {
