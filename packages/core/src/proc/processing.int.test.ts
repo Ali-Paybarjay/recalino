@@ -800,6 +800,60 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       blocks: [{ text: "Learner corrected board text" }],
     });
   });
+  it("FR-PLT-005 leaves an image's vision call that could not finish before the runner's deadline to a fresh runner", async () => {
+    const f = await fixture();
+    const store = new MemoryObjectStore();
+    const bytes = Buffer.from("Synthetic board photo bytes");
+    const objectId = await writeOwnedObject(db, store, f.ctx, {
+      module: "src",
+      retention: "durable",
+      contentType: "image/jpeg",
+      bytes,
+      now: new Date(),
+    });
+    await db
+      .updateTable("src.asset")
+      .set({
+        kind: "image",
+        declared_mime: "image/jpeg",
+        verified_mime: "image/jpeg",
+        size_bytes: bytes.length,
+        sha256: sha256Hex(bytes),
+        original_object_id: objectId,
+      })
+      .where("id", "=", f.asset.id)
+      .execute();
+    const job = processingJob({ provider: f.provider, store });
+    const run = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      { provider: f.provider, job },
+    );
+    const invoke = (deadline?: Date) =>
+      job.run(
+        { runId: run.id, userId: f.ctx.userId },
+        {
+          db,
+          now: () => new Date(),
+          job: { id: randomUUID(), attempt: 1 },
+          step: async () => "ran" as const,
+          ...(deadline ? { deadline } : {}),
+        },
+      );
+    // Less than one vision request plus the time kept after it.
+    await invoke(new Date(Date.now() + settings.timeoutMs));
+    expect(f.provider.calls).toBe(0);
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("processing");
+    for (
+      let attempt = 0;
+      attempt < 4 && (await getRun(db, f.ctx, run.id)).state !== "ready";
+      attempt++
+    )
+      await invoke();
+    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+    expect(f.provider.calls).toBe(2);
+  });
   it("falls back to class material for uncertain notes and refuses foreign category IDs", async () => {
     const f = await fixture();
     f.provider.sourceClassifications = [
