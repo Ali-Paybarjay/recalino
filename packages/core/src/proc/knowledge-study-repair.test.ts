@@ -148,6 +148,17 @@ describe("bounded production sentence repair", () => {
     );
   });
 
+  it("AC-D46-01 fails a repaired gap whose target is a grammar label, with no regeneration", () => {
+    const labelled = model("Can you help me?");
+    const study = labelled.learningItems[0]?.study;
+    if (study?.set !== "production") throw new Error("Fixture missing study");
+    study.en = "object pronoun";
+    const repair = buildKnowledgeStudyRepairInput(labelled, 10000);
+    expect(() => repair.apply(answer("me"))).toThrowError(
+      expect.objectContaining({ details: { fields: { output: ["study_answer_label"] } } }),
+    );
+  });
+
   it("preserves Unicode context and does not split complete accented words", () => {
     const repair = buildKnowledgeStudyRepairInput(model("😀 A café serves fresh coffee."), 10000);
     expect(repair.apply(answer("café")).learningItems[0]?.study).toMatchObject({

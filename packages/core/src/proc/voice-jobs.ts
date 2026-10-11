@@ -239,11 +239,7 @@ export function voiceAnalysisJob(
                   .flatMap((item) => item.blocks.map((block) => block.text)),
                 now: job.now,
                 execute: (request) =>
-                  executeAuxiliaryProviderStep(job, ctx, run.id, {
-                    ...request,
-                    provider,
-                    model: provider.settings.llmModel,
-                  }),
+                  executeAuxiliaryProviderStep(job, ctx, run.id, { ...request, provider }),
               }),
           });
           if (progress !== "unchanged") {

@@ -29,7 +29,7 @@ import {
 } from "@recalino/core/voc";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
-import { runJobsSoon } from "./jobs";
+import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
 import { loadVoiceEngine, VOICE_MODEL_REVISION } from "./voice-engine";
 import { queueVoiceAnalysis } from "./voice-processing";
@@ -155,7 +155,12 @@ export function classVoiceHandler(sessionId: string): Handler {
     const requestKey = key(request);
     if (z.object({ action: z.literal("analyze") }).safeParse(input).success) {
       const run = await queueVoiceAnalysis(db, learner, sessionId, requestKey);
-      runJobsSoon(["proc.voice_analysis"], 60);
+      // The check takes minutes; its correction and publish steps follow on this request.
+      runJobsSoon(
+        ["proc.voice_analysis"],
+        PROCESSING_WAKE.budgetSeconds,
+        PROCESSING_WAKE.functionSeconds,
+      );
       return { status: 202, body: run ?? {} };
     }
     const change = voiceActionSchema.parse(input);

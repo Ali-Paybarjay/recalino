@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { ProviderError, structuredTransportSchema } from "../aip";
 import type { RunSource } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
@@ -67,6 +68,47 @@ it("AC-D46-05 keeps declared learner context in evidence repair without altering
   expect(encoded.sources[0].evidence[0][0]).toBe("r0");
   expect(JSON.parse(buildKnowledgeRepairInput(input([original]), 120000).input)).not.toHaveProperty(
     "learnerContext",
+  );
+});
+
+it("AC-D46-04 keeps the transcribed grammar words out of the evidence repair wire", () => {
+  const prepared = buildKnowledgeRepairInput(input([source()]), 120000);
+  expect(JSON.stringify(z.toJSONSchema(prepared.schema))).not.toContain("ipaText");
+  const item = {
+    id: "item",
+    kind: "grammar",
+    front: "present simple questions",
+    back: "پرسیدن دربارهٔ عادت",
+    claim: {
+      id: "item-claim",
+      text: "سؤال با Does ساخته می‌شود.",
+      evidenceKey: "r0",
+      uncertain: false,
+    },
+    study: {
+      set: "production",
+      kind: "grammar",
+      en: "present simple questions",
+      faMeaning: "پرسیدن دربارهٔ عادت",
+      topic: "questions",
+      ipa: "/dʌz ʃi wɔːk/",
+      faApprox: "داز شی واک",
+      fullSentence: "Does she walk to school every day?",
+      collocations: [],
+      noteFa: "فعل کمکی پیش از فاعل می‌آید.",
+      imageFa: "دوستی که هر روز پیاده به مدرسه می‌رود.",
+      sourceFa: "از کلاس",
+      taskFa: "جمله را سؤالی کن.",
+      prompt: "She walks to school every day.",
+    },
+  };
+  const raw = (study: Record<string, unknown>) => ({
+    ...output("r0"),
+    learningItems: [{ ...item, study }],
+  });
+  expect(prepared.schema.safeParse(raw(item.study)).success).toBe(true);
+  expect(prepared.schema.safeParse(raw({ ...item.study, ipaText: "Does she walk" })).success).toBe(
+    false,
   );
 });
 

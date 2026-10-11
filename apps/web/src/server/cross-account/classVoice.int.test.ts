@@ -35,9 +35,13 @@ it("FR-PLT-002 Part6: only the owner can read/confirm candidates; retries do not
   expect((await route(request(x.ctx.userId))).status).toBe(200);
   expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.version).toBe(2);
   const response = await route(requestAs(x.ctx.userId, path, "GET"));
+  expect(response.status).toBe(200);
   const data = await response.json();
-  // Saved candidates remain confirmable; this fixture has no original or usable transcript for a fresh check.
+  // The fixture retains candidates but has no original server audio or reusable transcript.
+  // Fresh analysis is blocked; the owner can still read and confirm retained candidates.
+  expect(x.source.retention).toBe("device_only");
   expect(data.analysisBlockedReason).toBe("original_audio_required");
+  expect(data.analyses[0]?.version).toBe(2);
   expect(JSON.stringify(data)).not.toContain("whyFa");
   expect(JSON.stringify(data)).not.toContain("embedding");
 });

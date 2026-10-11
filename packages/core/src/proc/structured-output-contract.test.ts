@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { referenceStudyModel } from "../../test/reference-study-fixture";
 import { createStructuredTransport, OpenRouterProvider, structuredSchemaComplexity } from "../aip";
+import { legacyKnowledgeWireSchema } from "./generated-knowledge";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { generatedKnowledgeSchema } from "./worker";
 
@@ -79,7 +80,7 @@ describe("production knowledge structured-output contracts", () => {
     const result = await provider.structured({
       operationKey: "fixture",
       model: provider.settings.llmModel,
-      schema: generatedKnowledgeSchema,
+      schema: legacyKnowledgeWireSchema,
       schemaName: "class_knowledge",
       system: "Synthetic fixture",
       input: "Synthetic material",
@@ -92,7 +93,7 @@ describe("production knowledge structured-output contracts", () => {
     );
   });
   it.each([
-    { name: "generation", schema: generatedKnowledgeSchema },
+    { name: "generation", schema: legacyKnowledgeWireSchema },
     { name: "evidence repair", schema: repair.schema },
   ])("keeps the actual $name schema within Anthropic grammar budgets", ({ schema }) => {
     const original = z.toJSONSchema(schema, { reused: "ref" });
@@ -104,6 +105,30 @@ describe("production knowledge structured-output contracts", () => {
     expect(metrics.unionParameters).toBeLessThanOrEqual(16);
     expect(metrics.unionParameters).toBe(structuredSchemaComplexity(original).unionParameters);
     expect(z.toJSONSchema(schema, { reused: "ref" })).toEqual(original);
+  });
+  it("AC-D46-04 keeps the transcribed grammar words out of the legacy class_knowledge wire", () => {
+    const sent = (schema: z.ZodType) =>
+      JSON.stringify(createStructuredTransport(schema, "anthropic/claude-haiku-4.5").schema);
+    // The checkpoint contract stores the words; the provider wire never offers them.
+    expect(JSON.stringify(z.toJSONSchema(generatedKnowledgeSchema))).toContain("ipaText");
+    expect(JSON.stringify(z.toJSONSchema(legacyKnowledgeWireSchema))).not.toContain("ipaText");
+    expect(sent(legacyKnowledgeWireSchema)).not.toContain("ipaText");
+    const model = generatedKnowledgeSchema.parse(referenceStudyModel());
+    const item = model.learningItems.find((entry) => entry.study?.set === "production");
+    if (item?.study?.set !== "production") throw new Error("Missing production fixture");
+    const { gapSentence: _gap, ...study } = item.study;
+    item.kind = "grammar";
+    item.study = {
+      ...study,
+      kind: "grammar",
+      taskFa: "Make a question from the statement.",
+      prompt: "Make a question: She walks to school every day.",
+      fullSentence: "Does she walk to school every day?",
+    };
+    expect(legacyKnowledgeWireSchema.safeParse(model).success).toBe(true);
+    item.study = { ...item.study, ipaText: "Does she walk" };
+    expect(generatedKnowledgeSchema.safeParse(model).success).toBe(true);
+    expect(legacyKnowledgeWireSchema.safeParse(model).success).toBe(false);
   });
 });
 

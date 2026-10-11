@@ -40,9 +40,12 @@ const samples: Record<string, string> = {
   Cans: "ᐃᓄᒃᑎᑐᑦ",
   Yiii: "ꆈꌠꉙ",
 };
+// Languages whose script sample would be another language's spelling (Persian for Arabic).
+const languageSamples: Record<string, string> = { ar: "شرح واضح" };
 function explanationFor(language: string) {
-  const script = new Intl.Locale(language).maximize().script ?? "";
-  const value = samples[script];
+  const locale = new Intl.Locale(language);
+  const script = locale.maximize().script ?? "";
+  const value = languageSamples[locale.language] ?? samples[script];
   if (!value) throw new Error(`Missing writing-system fixture for ${language}: ${script}`);
   return value;
 }
@@ -112,6 +115,60 @@ describe("D31 rich study explanation languages", () => {
     expect(() => validateKnowledgeModel(model, [], "ar")).toThrow();
     first.claim.text = "شرح واضح";
     expect(() => validateKnowledgeModel(model, [], "ar")).not.toThrow();
+  });
+  it("FR-ACC-005 rejects Persian prose for an Arabic explanation while Arabic-script languages keep their spelling", () => {
+    const persian = "luggage به معنای چمدان‌ها و کیف‌هایی است که در سفر همراه داریم.";
+    for (const language of ["ar", "ar-EG"]) {
+      expect(matchesExplanationScript(persian, language)).toBe(false);
+      expect(matchesExplanationScript("توضیح روشن", language)).toBe(false);
+    }
+    expect(matchesExplanationScript(persian, "fa")).toBe(true);
+    expect(matchesExplanationScript("یہ ایک واضح وضاحت ہے", "ur")).toBe(true);
+    expect(matchesExplanationScript("دا یو روښانه تشریح ده", "ps")).toBe(true);
+    expect(matchesExplanationScript("توضیح روشن", "fa")).toBe(true);
+    for (const arabic of [
+      "شرح واضح",
+      "بنستخدم make لما نتكلم عن حاجة بنصنعها.",
+      "تُنطق p مثل «پ» في الفارسية، وليس «ب».",
+      "g في go تُنطق مثل «گ» أو الجيم المصرية.",
+      "يُكتب صوت v في بعض الكلمات بالحرف ڤ مثل ڤيديو.",
+      "الفرق بين ship /ʃɪp/ و sheep /ʃiːp/ في طول الصوت.",
+    ])
+      expect(matchesExplanationScript(arabic, "ar")).toBe(true);
+    expect(matchesExplanationScript("بنستخدم make لما نتكلم عن حاجة بنصنعها.", "ar-EG")).toBe(true);
+  });
+  it("FR-ACC-005 accepts quoted Persian or Urdu loanwords inside Arabic prose", () => {
+    for (const arabic of [
+      "أصل كلمة kiosk فارسي: «کوشک» ومعناه القصر الصغير.",
+      "كلمة khaki مأخوذة من الأردية «خاکی» أي بلون التراب.",
+      "caravan كلمة إنجليزية أصلها فارسي «کاروان» أي قافلة.",
+      'في المصدر كُتب معنى luggage بالفارسية "کیف و چمدان"، والمعنى بالعربية: الأمتعة.',
+      "يحتفل الإيرانيون بـ“شب یلدا” في أطول ليلة من السنة.",
+      "تعني book بالكردية (کتێب) وبالعربية كتاب.",
+    ])
+      expect(matchesExplanationScript(arabic, "ar")).toBe(true);
+    // A field that is only a quoted Persian phrase is still judged as a whole.
+    expect(matchesExplanationScript("«کیف و چمدان»", "ar")).toBe(false);
+  });
+  it("FR-ACC-005 rejects a Persian claim or meaning for an Arabic learner with language_script_mismatch", () => {
+    const persian = "جمله شرطی نوع اول برای موقعیت‌های واقعی در آینده به کار می‌رود.";
+    const claimModel = normalizeGeneratedStudyModel(rich("ar"), false);
+    const claimItem = claimModel.learningItems[0];
+    if (!claimItem) throw new Error("fixture");
+    claimItem.claim.text = persian;
+    const meaningModel = normalizeGeneratedStudyModel(rich("ar"), false);
+    const meaningItem = meaningModel.learningItems[0];
+    if (meaningItem?.study?.set !== "production") throw new Error("fixture");
+    meaningItem.study.faMeaning = persian;
+    for (const [model, language] of [
+      [claimModel, "ar"],
+      [meaningModel, "ar"],
+    ] as const)
+      expect(() => validateKnowledgeModel(model, [], language)).toThrow(
+        expect.objectContaining({
+          details: { fields: { output: ["language_script_mismatch"] } },
+        }),
+      );
   });
   it("does not accept Persian prose as Spanish because it contains a quoted English target", () => {
     expect(matchesExplanationScript('معنی فارسی با "wear and tear"', "es")).toBe(false);

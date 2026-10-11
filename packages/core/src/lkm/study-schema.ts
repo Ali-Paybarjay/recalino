@@ -16,36 +16,71 @@ const common = {
   topic: z.string().min(1).max(150).describe("One or two topic tag words."),
   kind: studyKindSchema.optional(),
 };
-export const productionStudySchema = z.strictObject({
-  set: z.literal("production"),
-  ...common,
-  ipa: shortText.describe("British non-rhotic IPA, with slashes, stress and natural weak forms."),
-  faApprox: optionalText.describe(
-    "Persian vowel-marked pronunciation; required for fa, omitted for other explanation languages.",
-  ),
-  trap: optionalText.describe("Only a genuine misleading spelling or pronunciation trap."),
-  gapSentence: optionalText.describe(
-    "Copy fullSentence exactly, replacing only target span(s) with ______; keep all other characters unchanged. Separable targets may use 2–3 blanks. Omit for grammar.",
-  ),
-  fullSentence: shortText.describe(
-    "Complete British English example (8–15 words), identical to the filled gapSentence, or a corrected grammar task.",
-  ),
-  collocations: z
-    .array(shortText)
-    .max(3)
-    .describe("Two or three frequent collocations when relevant."),
-  noteFa: prose.describe(
-    "Usage/register/nuance in language.explanation, including evidenced corrections.",
-  ),
-  imageFa: shortText.describe(
-    "One concrete mental image, never an invented fact about the learner.",
-  ),
-  sourceFa: shortText.describe(
-    "Source label in language.explanation; authorship and teacher speech require evidence.",
-  ),
-  taskFa: optionalText.describe("Grammar instruction in language.explanation, paired with prompt."),
-  prompt: optionalText.describe("English grammar task prompt without the corrected answer."),
-});
+// Words as the generation check counts them: letters or digits joined by an apostrophe or hyphen.
+const transcribedWords = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
+
+/**
+ * The class words a grammar ipa transcribes: one to six Latin-script words, which may carry
+ * numbers, punctuation and shared symbols such as "£5", "20°C" or "doesnʼt", but no character
+ * of another script and no blank, bracket, slash or markup from a task cue.
+ */
+function isTranscribedText(value: string): boolean {
+  const words = value.match(transcribedWords)?.length ?? 0;
+  return (
+    value.trim() === value &&
+    words >= 1 &&
+    words <= 6 &&
+    /\p{Script=Latin}/u.test(value) &&
+    !/[^\p{scx=Latin}\p{scx=Common}\p{scx=Inherited}\p{Number}\p{Punctuation}\p{Separator}\p{Mark}]/u.test(
+      value,
+    ) &&
+    !/[\p{Pc}\p{Ps}\p{Pe}<>/\\]|&(?:#\d+|[a-z]+);/iu.test(value)
+  );
+}
+export const productionStudySchema = z
+  .strictObject({
+    set: z.literal("production"),
+    ...common,
+    ipa: shortText.describe("British non-rhotic IPA, with slashes, stress and natural weak forms."),
+    // Optional so that older stored revisions, which never had it, stay valid.
+    ipaText: shortText
+      .refine(isTranscribedText)
+      .optional()
+      .describe(
+        "Grammar items only: the 1 to 6 consecutive English words that ipa transcribes, exactly as written in the sentence they come from. Omit for every other item.",
+      ),
+    faApprox: optionalText.describe(
+      "Persian vowel-marked pronunciation; required for fa, omitted for other explanation languages.",
+    ),
+    trap: optionalText.describe("Only a genuine misleading spelling or pronunciation trap."),
+    gapSentence: optionalText.describe(
+      "Copy fullSentence exactly, replacing only target span(s) with ______; keep all other characters unchanged. Separable targets may use 2–3 blanks. Omit for grammar.",
+    ),
+    fullSentence: shortText.describe(
+      "Complete British English example (8–15 words), identical to the filled gapSentence, or a corrected grammar task.",
+    ),
+    collocations: z
+      .array(shortText)
+      .max(3)
+      .describe("Two or three frequent collocations when relevant."),
+    noteFa: prose.describe(
+      "Usage/register/nuance in language.explanation, including evidenced corrections.",
+    ),
+    imageFa: shortText.describe(
+      "One concrete mental image, never an invented fact about the learner.",
+    ),
+    sourceFa: shortText.describe(
+      "Source label in language.explanation; authorship and teacher speech require evidence.",
+    ),
+    taskFa: optionalText.describe(
+      "Grammar instruction in language.explanation, paired with prompt.",
+    ),
+    prompt: optionalText.describe("English grammar task prompt without the corrected answer."),
+  })
+  // A lexical or recognition ipa transcribes en itself, so only grammar names its words.
+  .refine((study) => study.ipaText === undefined || study.kind === "grammar", {
+    path: ["ipaText"],
+  });
 export const recognitionStudySchema = z.strictObject({
   set: z.literal("recognition"),
   ...common,
