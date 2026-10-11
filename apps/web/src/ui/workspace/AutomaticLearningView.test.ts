@@ -176,6 +176,8 @@ describe("recovery actions match the processing blocker", () => {
       expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
       expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
       expect(html).not.toContain("Add material");
+      // Amounts the status does not name may already be covered, so the retry stays.
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(true);
       expect(mocks.request).not.toHaveBeenCalled();
       mocks.request.mockResolvedValue({ ...blocked, state: "processing", lastError: null });
       await mocks.buttons.get("Retry after allowance changes")?.();
@@ -188,10 +190,10 @@ describe("recovery actions match the processing blocker", () => {
     },
   );
 
-  const amounts = (document: number) => ({
+  const amounts = (document: number, regeneration = 0) => ({
     audio: 0,
     document,
-    regeneration: 0,
+    regeneration,
     tts: 0,
     storage: 0,
   });
@@ -211,7 +213,28 @@ describe("recovery actions match the processing blocker", () => {
         new RegExp(`href="/sessions/${sessionId}/sources"[^>]*>Review material</a>`),
       );
       expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
-      expect(mocks.buttons.has("Retry after allowance changes")).toBe(true);
+      // A known shortage would only stop again; the retry appears once the allowance covers it.
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(false);
+      if (view === "progress")
+        expect(html).toContain(
+          "After your allowance is updated, retry using this session&#x27;s saved material.",
+        );
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "FR-QUOTA-007: %s does not ask for less material when only a new version is short",
+    (view) => {
+      mocks.status = {
+        ...blocked,
+        lastError: "quota_insufficient",
+        message: "New versions: 1 needed, 0 left.",
+        allowance: { active: true, required: amounts(1, 1), available: amounts(5, 0) },
+      };
+      const html = render(view);
+      expect(html).toMatch(/href="\/help\/new"[^>]*>Ask for more allowance<\/a>/);
+      expect(html).not.toContain("Review material");
+      expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
     },
   );
 
@@ -229,7 +252,7 @@ describe("recovery actions match the processing blocker", () => {
       expect(html).not.toContain("Ask for more allowance");
       expect(html).not.toContain("Review material");
       expect(html).toMatch(/href="\/me\/quota"[^>]*>Review allowance<\/a>/);
-      expect(mocks.buttons.has("Retry after allowance changes")).toBe(true);
+      expect(mocks.buttons.has("Retry after allowance changes")).toBe(false);
     },
   );
 

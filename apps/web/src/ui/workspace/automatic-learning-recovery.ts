@@ -56,37 +56,63 @@ export function allowanceBlock(status: AutomaticLearningStatus | null): Allowanc
     : "shortage";
 }
 
+/**
+ * Whether selecting less material can end a shortage: it lowers class audio and pages, never the
+ * new version a class with published notes needs. Unknown amounts may be either.
+ */
+function lessMaterialHelps(status: AutomaticLearningStatus | null) {
+  const allowance = status?.allowance;
+  if (!allowance) return true;
+  return (["audio", "document"] as const).some(
+    (dimension) => allowance.required[dimension] > allowance.available[dimension],
+  );
+}
+
 export function automaticLearningRecovery(status: AutomaticLearningStatus | null): {
   kind: "allowance" | "service" | "material" | "setup" | null;
   allowance: AllowanceBlock | null;
+  /** For a shortage, whether "select less material" can help. */
+  lessMaterial: boolean;
   retryLabel: string | null;
 } {
   const code = status?.lastError ?? "";
   const blocked = status?.state === "blocked";
   const allowance = allowanceBlock(status);
-  // An allowance that now covers the class needs only a retry; a short or missing one needs
-  // the allowance to change first.
+  // An allowance that now covers the class needs only a retry. One known to be short or missing
+  // would only stop again, so its retry appears once the allowance covers the class (the status
+  // is read again while the page is open). Unknown amounts keep the conditional retry.
   if (allowance)
     return {
       kind: "allowance",
       allowance,
-      retryLabel: blocked
-        ? allowance === "covered"
+      lessMaterial: allowance === "shortage" && lessMaterialHelps(status),
+      retryLabel: !blocked
+        ? null
+        : allowance === "covered"
           ? "Retry processing"
-          : "Retry after allowance changes"
-        : null,
+          : status?.allowance
+            ? null
+            : "Retry after allowance changes",
     };
   if (isServiceProcessingBlock(code) || unavailableService.has(code))
     return {
       kind: "service",
       allowance: null,
+      lessMaterial: false,
       retryLabel: blocked ? "Retry after service update" : null,
     };
   if (uncertainProviderResults.has(code) || rejectedServiceRequests.has(code))
-    return { kind: "service", allowance: null, retryLabel: null };
-  if (materialProblems.has(code)) return { kind: "material", allowance: null, retryLabel: null };
-  if (code === "acceptance_required") return { kind: "setup", allowance: null, retryLabel: null };
+    return { kind: "service", allowance: null, lessMaterial: false, retryLabel: null };
+  if (materialProblems.has(code))
+    return { kind: "material", allowance: null, lessMaterial: false, retryLabel: null };
+  if (code === "acceptance_required")
+    return { kind: "setup", allowance: null, lessMaterial: false, retryLabel: null };
   if (code === "upload_batch_cancelled")
-    return { kind: "material", allowance: null, retryLabel: null };
-  return { kind: null, allowance: null, retryLabel: blocked ? "Retry failed attempt" : null };
+    return { kind: "material", allowance: null, lessMaterial: false, retryLabel: null };
+  return {
+    kind: null,
+    allowance: null,
+    lessMaterial: false,
+    retryLabel: blocked ? "Retry failed attempt" : null,
+  };
 }

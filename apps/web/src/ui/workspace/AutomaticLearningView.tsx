@@ -11,11 +11,11 @@ import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 type Recovery = ReturnType<typeof automaticLearningRecovery>;
 
 /**
- * The actions each allowance stop names (FR-QUOTA-007): a short allowance asks for more or for less
- * material, a missing one asks the pilot operator, and one that now covers the class needs only
- * the retry, so it links nowhere.
+ * The actions each allowance stop names (FR-QUOTA-007): a short allowance asks for more, or for
+ * less material where that lowers what is short; a missing one asks the pilot operator; one that
+ * now covers the class needs only the retry, so it links nowhere.
  */
-function allowanceLinks(sessionId: string, allowance: Recovery["allowance"]) {
+function allowanceLinks(sessionId: string, { allowance, lessMaterial }: Recovery) {
   if (allowance === "covered") return [];
   if (allowance === "none")
     return [
@@ -24,23 +24,24 @@ function allowanceLinks(sessionId: string, allowance: Recovery["allowance"]) {
     ];
   return [
     { href: "/help/new", label: "Ask for more allowance" },
-    { href: `/sessions/${sessionId}/sources`, label: "Review material" },
+    ...(lessMaterial ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }] : []),
     { href: "/me/quota", label: "Review allowance" },
   ];
 }
 
 function RecoveryLinks({
   sessionId,
-  recovery: { kind, allowance },
+  recovery,
   inline = false,
 }: {
   sessionId: string;
   recovery: Recovery;
   inline?: boolean;
 }) {
+  const { kind } = recovery;
   const links =
     kind === "allowance"
-      ? allowanceLinks(sessionId, allowance)
+      ? allowanceLinks(sessionId, recovery)
       : kind === "service"
         ? [
             {
@@ -169,12 +170,18 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     <Button
       className={styles.inlineRetry}
       disabled={retry.busy}
+      aria-busy={retry.busy || undefined}
       aria-label={recovery.retryLabel ?? "Retry failed attempt"}
       onClick={retry.retry}
     >
-      {retry.busy
-        ? "Retrying…"
-        : (retryWord?.[0] ?? (ordinaryRetry ? "Retry" : recovery.retryLabel))}
+      {/* A word inside the message stays as written, so the sentence still reads while busy. */}
+      {retryWord
+        ? retryWord[0]
+        : retry.busy
+          ? "Retrying…"
+          : ordinaryRetry
+            ? "Retry"
+            : recovery.retryLabel}
     </Button>
   );
   return (
@@ -292,7 +299,7 @@ export function AutomaticLearningView({
                 ? // Approved by the product owner on 2026-10-10.
                   "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
                 : "The Recalino team needs to review this session's stopped processing. Request a review below; your saved material will be used when processing continues."
-              : recovery.retryLabel === "Retry after allowance changes"
+              : recovery.allowance === "shortage" || recovery.allowance === "none"
                 ? "After your allowance is updated, retry using this session's saved material."
                 : "Your saved edits and card review history stay available."}
           </p>
