@@ -1,5 +1,9 @@
 import type { AutomaticLearningStatus } from "./automatic-learning";
-import { isServiceProcessingBlock } from "./automatic-learning-recovery";
+import {
+  type AllowanceBlock,
+  allowanceBlock,
+  isServiceProcessingBlock,
+} from "./automatic-learning-recovery";
 
 interface ProcessingSource {
   assetId: string;
@@ -33,7 +37,14 @@ export function fileProcessingFeedback(
   receipt: FileProcessingReceipt,
   status: AutomaticLearningStatus | null,
   sources: ProcessingSource[],
-): { state: "processing" | "success" | "error"; message: string; detail: string; retry?: boolean } {
+): {
+  state: "processing" | "success" | "error";
+  message: string;
+  detail: string;
+  retry?: boolean;
+  /** A learner-allowance stop, so the right request for allowance can be offered. */
+  allowance?: AllowanceBlock | null;
+} {
   if (receipt.problem)
     return {
       state: "error",
@@ -66,8 +77,9 @@ export function fileProcessingFeedback(
       state: "error",
       message: "Processing needs attention.",
       detail: processingRecovery(status),
+      allowance: allowanceBlock(status),
       retry:
-        allowanceNowCovers(status) ||
+        allowanceBlock(status) === "covered" ||
         (!isServiceProcessingBlock(status.lastError) &&
           !operatorErrors.includes(status.lastError ?? "") &&
           !/operator|provider.*configur|storage_unavailable|allowance|quota|password|rejected|acceptance_required|upload_needs_attention|no_selected|select_at_least_one|selection_too_large/.test(
@@ -108,18 +120,6 @@ export function fileProcessingFeedback(
     detail:
       "Large files and audio can take several minutes. Progress updates automatically. You can use other pages. Once the files are received, processing continues on the server even if you close the app. Your result appears in Notifications.",
   };
-}
-
-/** A learner-allowance block whose current allowance now covers the class can be retried. */
-function allowanceNowCovers(status: AutomaticLearningStatus) {
-  const allowance = status.lastError === "quota_insufficient" ? status.allowance : null;
-  return (
-    !!allowance?.active &&
-    Object.entries(allowance.required).every(
-      ([dimension, needed]) =>
-        needed <= (allowance.available[dimension as keyof typeof allowance.available] ?? 0),
-    )
-  );
 }
 
 function processingRecovery(status: AutomaticLearningStatus) {

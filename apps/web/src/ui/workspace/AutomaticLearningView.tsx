@@ -8,21 +8,40 @@ import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automat
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 
+type Recovery = ReturnType<typeof automaticLearningRecovery>;
+
+/**
+ * The actions each allowance stop names (FR-QUOTA-007): a short allowance asks for more, or for
+ * less material where that lowers what is short; a missing one asks the pilot operator; one that
+ * now covers the class needs only the retry, so it links nowhere.
+ */
+function allowanceLinks(sessionId: string, { allowance, lessMaterial }: Recovery) {
+  if (allowance === "covered") return [];
+  if (allowance === "none")
+    return [
+      { href: "/help/new", label: "Ask the pilot operator" },
+      { href: "/me/quota", label: "Review allowance" },
+    ];
+  return [
+    { href: "/help/new", label: "Ask for more allowance" },
+    ...(lessMaterial ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }] : []),
+    { href: "/me/quota", label: "Review allowance" },
+  ];
+}
+
 function RecoveryLinks({
   sessionId,
-  kind,
+  recovery,
   inline = false,
 }: {
   sessionId: string;
-  kind: ReturnType<typeof automaticLearningRecovery>["kind"];
+  recovery: Recovery;
   inline?: boolean;
 }) {
+  const { kind } = recovery;
   const links =
     kind === "allowance"
-      ? [
-          { href: "/me/quota", label: "Review allowance" },
-          { href: "/help/new", label: "Ask for more allowance" },
-        ]
+      ? allowanceLinks(sessionId, recovery)
       : kind === "service"
         ? [
             {
@@ -142,17 +161,27 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const message = problem ?? status?.message ?? "";
   const ordinaryRetry = recovery.retryLabel === "Retry failed attempt";
-  const retryWord = canRetry && ordinaryRetry ? /\bretry\b/i.exec(message) : null;
+  // The message itself says what to retry, so its own "Retry" becomes the action.
+  const retryWord =
+    canRetry && (ordinaryRetry || recovery.allowance === "covered")
+      ? /\bretry\b/i.exec(message)
+      : null;
   const retryLink = (
     <Button
       className={styles.inlineRetry}
       disabled={retry.busy}
+      aria-busy={retry.busy || undefined}
       aria-label={recovery.retryLabel ?? "Retry failed attempt"}
       onClick={retry.retry}
     >
-      {retry.busy
-        ? "Retrying…"
-        : (retryWord?.[0] ?? (ordinaryRetry ? "Retry" : recovery.retryLabel))}
+      {/* A word inside the message stays as written, so the sentence still reads while busy. */}
+      {retryWord
+        ? retryWord[0]
+        : retry.busy
+          ? "Retrying…"
+          : ordinaryRetry
+            ? "Retry"
+            : recovery.retryLabel}
     </Button>
   );
   return (
@@ -167,7 +196,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
         ) : (
           message
         )}{" "}
-        <RecoveryLinks sessionId={sessionId} kind={recovery.kind} inline />
+        <RecoveryLinks sessionId={sessionId} recovery={recovery} inline />
         {recovery.kind === "service" && review?.canRequest ? (
           <Button
             className={styles.inlineRetry}
@@ -233,10 +262,14 @@ export function AutomaticLearningView({
         ) : null}
         <Actions>
           {recovery.kind !== "service" ? (
-            <RecoveryLinks sessionId={sessionId} kind={recovery.kind} />
+            <RecoveryLinks sessionId={sessionId} recovery={recovery} />
           ) : null}
           {canRetry ? (
-            <Button secondary disabled={retry.busy} onClick={retry.retry}>
+            <Button
+              secondary={recovery.allowance !== "covered"}
+              disabled={retry.busy}
+              onClick={retry.retry}
+            >
               {retry.busy ? "Retrying…" : recovery.retryLabel}
             </Button>
           ) : null}
@@ -266,7 +299,7 @@ export function AutomaticLearningView({
                 ? // Approved by the product owner on 2026-10-10.
                   "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
                 : "The Recalino team needs to review this session's stopped processing. Request a review below; your saved material will be used when processing continues."
-              : recovery.retryLabel === "Retry after allowance changes"
+              : recovery.allowance === "shortage" || recovery.allowance === "none"
                 ? "After your allowance is updated, retry using this session's saved material."
                 : "Your saved edits and card review history stay available."}
           </p>
