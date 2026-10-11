@@ -133,8 +133,9 @@ test("AC-D46-01/02 pronunciation follows reveal, prepares saved audio and replay
     return route.fulfill({ json: { ...ready, state: "queued" } });
   });
   let polls = 0;
-  await page.route(`**/api/media/${mediaId}`, (route) =>
-    route.fulfill({ json: { ...ready, state: ++polls === 1 ? "processing" : "ready" } }),
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => route.fulfill({ json: { ...ready, state: ++polls === 1 ? "processing" : "ready" } }),
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dev/ui/study?view=review");
@@ -461,10 +462,13 @@ test("AC-D46-03 an unresolved asset is checked again without another generation 
     return route.fulfill({ json: { ...ready, state: "needs_input" } });
   });
   let checks = 0;
-  await page.route(`**/api/media/${mediaId}`, (route) => {
-    checks++;
-    return route.fulfill({ json: { ...ready, state: "needs_input" } });
-  });
+  await page.route(
+    (url) => url.pathname === `/api/media/${mediaId}`,
+    (route) => {
+      checks++;
+      return route.fulfill({ json: { ...ready, state: "needs_input" } });
+    },
+  );
   await page.goto("/dev/ui/study?view=review");
   await page.getByRole("button", { name: "Show answer", exact: true }).click();
   await page

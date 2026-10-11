@@ -1,21 +1,33 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState, useSyncExternalStore } from "react";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
 import { requestKey, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
+import { LearningProgress } from "./LearningProgress";
+import { learningProgress } from "./learning-progress";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+import { useUploadBatches } from "./UploadProvider";
+
+function subscribeConnection(changed: () => void) {
+  window.addEventListener("online", changed);
+  window.addEventListener("offline", changed);
+  return () => {
+    window.removeEventListener("online", changed);
+    window.removeEventListener("offline", changed);
+  };
+}
+const connectionSnapshot = () => navigator.onLine;
+const connectedServerSnapshot = () => true;
 
 function RecoveryLinks({
   sessionId,
   kind,
-  inline = false,
 }: {
   sessionId: string;
   kind: ReturnType<typeof automaticLearningRecovery>["kind"];
-  inline?: boolean;
 }) {
   const links =
     kind === "allowance"
@@ -35,24 +47,29 @@ function RecoveryLinks({
           : kind === "setup"
             ? [{ href: "/setup", label: "Review account setup" }]
             : [];
-  return links.map(({ href, label }, index) =>
-    inline ? (
-      <span key={href}>
-        {" "}
-        <Link href={href} prefetch={false} className={styles.inlineRetry}>
-          {label}
-        </Link>{" "}
-      </span>
-    ) : (
-      <LinkButton key={href} href={href} secondary={index > 0}>
-        {label}
-      </LinkButton>
-    ),
-  );
+  return links.map(({ href, label }, index) => (
+    <LinkButton key={href} href={href} secondary={index > 0}>
+      {label}
+    </LinkButton>
+  ));
 }
 
 function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomaticLearning>) {
   const [busy, setBusy] = useState(false);
+  const [action, setAction] = useState<"retry" | "review" | "refresh" | null>(null);
+  const [feedback, setFeedback] = useState("");
+  const focusRef = useRef<HTMLElement>(null);
+  function begin(action: "retry" | "review" | "refresh") {
+    setAction(action);
+    setFeedback("");
+    setProblem("");
+    setProgressProblem("");
+    if (typeof window !== "undefined")
+      window.requestAnimationFrame(() => {
+        focusRef.current?.focus({ preventScroll: true });
+        focusRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+      });
+  }
   const [problem, setProblem] = useState("");
   const lock = useRef(false);
   const key = useRef<{ payload: string; key: string } | null>(null);
@@ -61,22 +78,24 @@ function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomati
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
+    begin("refresh");
     try {
       await live.refresh();
+      setFeedback("Progress is up to date.");
       setProgressProblem("");
     } catch {
       setProgressProblem("Progress could not be refreshed. Check your connection and try again.");
     } finally {
       lock.current = false;
       setBusy(false);
+      setAction(null);
     }
   }
   async function retry() {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
-    setProblem("");
-    setProgressProblem("");
+    begin("retry");
     try {
       const body = { action: "retry" };
       const status = await workspaceRequest<AutomaticLearningStatus>(
@@ -87,6 +106,9 @@ function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomati
       );
       key.current = null;
       live.acceptStatus(status);
+      setAction(null);
+      if (status?.state !== "blocked")
+        setFeedback("Retry accepted. Follow the live progress below.");
       notifyAutomaticLearning(sessionId);
       try {
         await live.refresh();
@@ -100,13 +122,14 @@ function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomati
     } finally {
       lock.current = false;
       setBusy(false);
+      setAction(null);
     }
   }
   async function requestReview(runId: string) {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
-    setProblem("");
+    begin("review");
     try {
       const body = { action: "request_review", runId };
       const status = await workspaceRequest<AutomaticLearningStatus>(
@@ -117,6 +140,7 @@ function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomati
       );
       key.current = null;
       live.acceptStatus(status);
+      setFeedback("Your processing review request is recorded. You can follow its status below.");
       notifyAutomaticLearning(sessionId);
     } catch (failure) {
       setProblem(
@@ -127,71 +151,214 @@ function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomati
     } finally {
       lock.current = false;
       setBusy(false);
+      setAction(null);
     }
   }
-  return { busy, problem, progressProblem, retry, refreshProgress, requestReview };
+  return {
+    busy,
+    action,
+    feedback,
+    focusRef,
+    problem,
+    progressProblem,
+    retry,
+    refreshProgress,
+    requestReview,
+  };
+}
+
+function LearningStatusCard({
+  sessionId,
+  status,
+  live,
+  retry,
+  compact = false,
+  children,
+}: {
+  sessionId: string;
+  status: AutomaticLearningStatus;
+  live: ReturnType<typeof useAutomaticLearning>;
+  retry: ReturnType<typeof useLearningRetry>;
+  compact?: boolean;
+  children: ReactNode;
+}) {
+  const batches = useUploadBatches(sessionId);
+  const progress = learningProgress(status, batches, live.uploadProgress);
+  const online = useSyncExternalStore(
+    subscribeConnection,
+    connectionSnapshot,
+    connectedServerSnapshot,
+  );
+  const disconnected = !online && progress.active;
+  const problem =
+    live.problem || (status.state !== "ready" ? retry.problem || retry.progressProblem : "");
+  const attention =
+    !!problem || disconnected || status.state === "blocked" || progress.needsMaterialReview;
+  const pending = retry.action;
+  const heading =
+    pending === "retry"
+      ? "Retrying your session…"
+      : pending === "review"
+        ? "Requesting a processing review…"
+        : pending === "refresh"
+          ? "Checking your progress…"
+          : disconnected
+            ? progress.stage === "upload"
+              ? "Upload paused"
+              : "Reconnect to see progress"
+            : problem
+              ? "Progress needs your attention"
+              : progress.heading;
+  const guidance =
+    pending === "retry"
+      ? "Please wait while we restart using your saved material."
+      : pending === "review"
+        ? "Please wait while we record your request."
+        : pending === "refresh"
+          ? "Please wait while we check the latest status."
+          : disconnected
+            ? progress.stage === "upload"
+              ? "Reconnect this device to the internet. Your upload will resume automatically; keep this app open."
+              : "Processing can continue, but this device needs an internet connection to show the latest progress."
+            : problem
+              ? "Check the message below for your next step. Your saved material is still available."
+              : compact && automaticLearningRecovery(status).kind === "service"
+                ? status.processingReview?.requestedAt
+                  ? "Your review request is recorded. Open View processing review to follow its status."
+                  : "Open View processing review for the next step."
+                : progress.guidance;
+  return (
+    <section
+      ref={retry.focusRef}
+      tabIndex={-1}
+      aria-label="Session progress"
+      className={styles.card}
+      data-tone={
+        pending ? "active" : attention ? "attention" : status.state === "ready" ? "ready" : "active"
+      }
+    >
+      <div className={styles.statusHeading} role="status" aria-atomic="true">
+        <p className={styles.eyebrow}>
+          {pending
+            ? "Updating your session"
+            : attention
+              ? "Action needed"
+              : status.state === "ready"
+                ? "Ready to learn"
+                : "Your session progress"}
+        </p>
+        <h2>{heading}</h2>
+        <p className={styles.guidance}>{guidance}</p>
+      </div>
+      {pending ? (
+        <div className={styles.pending}>
+          <progress aria-label="Updating session status" />
+        </div>
+      ) : (
+        <>
+          {problem ? <Status tone="error">{problem}</Status> : null}
+          {retry.feedback && !problem && status.state !== "blocked" && status.state !== "ready" ? (
+            <Status tone="success">{retry.feedback}</Status>
+          ) : null}
+          {status.state === "blocked" ? <p className={styles.detail}>{status.message}</p> : null}
+          <LearningProgress
+            progress={progress}
+            compact={compact}
+            paused={!!problem || disconnected}
+            pausedLabel={disconnected ? "Waiting to reconnect" : "Check status"}
+          />
+          {!progress.preparing &&
+          status.state !== "blocked" &&
+          status.state !== "ready" &&
+          status.state !== "idle" ? (
+            <p className={styles.detail} role="status">
+              {status.message}
+            </p>
+          ) : null}
+        </>
+      )}
+      <div className={styles.cardActions}>
+        {progress.needsMaterialReview && automaticLearningRecovery(status).kind !== "material" ? (
+          <LinkButton href={`/sessions/${sessionId}/sources`}>Review material</LinkButton>
+        ) : null}
+        {children}
+      </div>
+      {(retry.progressProblem && status.state !== "ready") || live.problem ? (
+        <Button secondary disabled={retry.busy} onClick={retry.refreshProgress}>
+          {retry.action === "refresh" ? "Checking progress…" : "Check progress again"}
+        </Button>
+      ) : null}
+    </section>
+  );
 }
 
 export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const live = useAutomaticLearning(sessionId);
+  const batches = useUploadBatches(sessionId);
   const { status, problem } = live;
   const retry = useLearningRetry(sessionId, live);
-  if (!problem && (!status || status.state === "idle" || status.state === "ready")) return null;
   const recovery = automaticLearningRecovery(status);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
-  const message = problem ?? status?.message ?? "";
-  const ordinaryRetry = recovery.retryLabel === "Retry failed attempt";
-  const retryWord = canRetry && ordinaryRetry ? /\bretry\b/i.exec(message) : null;
-  const retryLink = (
-    <Button
-      className={styles.inlineRetry}
-      disabled={retry.busy}
-      aria-label={recovery.retryLabel ?? "Retry failed attempt"}
-      onClick={retry.retry}
-    >
-      {retry.busy
-        ? "Retrying…"
-        : (retryWord?.[0] ?? (ordinaryRetry ? "Retry" : recovery.retryLabel))}
-    </Button>
-  );
+  const fallback: AutomaticLearningStatus = {
+    state: "idle",
+    revision: 0,
+    batchId: null,
+    run: null,
+    snapshot: null,
+    lastError: null,
+    message: "Checking session progress…",
+    notesReady: false,
+    cardsReady: false,
+  };
+  const progress = learningProgress(status ?? fallback, batches, live.uploadProgress);
+  if (
+    !problem &&
+    (!status || status.state === "idle") &&
+    !progress.active &&
+    !progress.needsMaterialReview
+  )
+    return null;
   return (
-    <>
-      <Status tone={status?.state === "blocked" || problem ? "error" : undefined}>
-        {retryWord ? (
-          <>
-            {message.slice(0, retryWord.index)}
-            {retryLink}
-            {message.slice(retryWord.index + retryWord[0].length)}
-          </>
-        ) : (
-          message
-        )}{" "}
-        <RecoveryLinks sessionId={sessionId} kind={recovery.kind} inline />
-        {recovery.kind === "service" && review?.canRequest ? (
-          <Button
-            className={styles.inlineRetry}
-            disabled={retry.busy}
-            onClick={() => retry.requestReview(review.runId)}
-          >
-            {retry.busy ? "Requesting review…" : "Request processing review"}
+    <LearningStatusCard
+      sessionId={sessionId}
+      status={status ?? fallback}
+      live={live}
+      retry={retry}
+      compact
+    >
+      <Actions>
+        {canRetry ? (
+          <Button disabled={retry.busy} onClick={retry.retry}>
+            {retry.action === "retry" ? "Retrying…" : recovery.retryLabel}
           </Button>
         ) : null}
-        {!retryWord && canRetry ? retryLink : null}{" "}
-        <Link href={`/sessions/${sessionId}/processing`} className={styles.inlineRetry}>
-          View progress
-        </Link>
-      </Status>
-      {retry.problem ? <Status tone="error">{retry.problem}</Status> : null}
-      {retry.progressProblem ? (
-        <>
-          <Status tone="error">{retry.progressProblem}</Status>
-          <Button secondary disabled={retry.busy} onClick={retry.refreshProgress}>
-            {retry.busy ? "Checking progress…" : "Check progress again"}
+        <RecoveryLinks sessionId={sessionId} kind={recovery.kind} />
+        {status?.state === "ready" ? (
+          <>
+            {status.notesReady ? (
+              <LinkButton href={`/sessions/${sessionId}/notes`}>Session notes</LinkButton>
+            ) : null}
+            {status.cardsReady ? (
+              <LinkButton secondary href={`/sessions/${sessionId}/cards`}>
+                Flashcards
+              </LinkButton>
+            ) : null}
+          </>
+        ) : null}
+        {recovery.kind === "service" && review?.canRequest ? (
+          <Button disabled={retry.busy} onClick={() => retry.requestReview(review.runId)}>
+            {retry.action === "review" ? "Requesting review…" : "Request processing review"}
           </Button>
-        </>
-      ) : null}
-    </>
+        ) : null}
+        <LinkButton
+          secondary={canRetry || !!recovery.kind || status?.state === "ready"}
+          href={`/sessions/${sessionId}/processing`}
+        >
+          View progress
+        </LinkButton>
+      </Actions>
+    </LearningStatusCard>
   );
 }
 export function AutomaticLearningView({
@@ -212,32 +379,14 @@ export function AutomaticLearningView({
       <Link className="preview-back" href={`/sessions/${sessionId}`}>
         ← Back to session
       </Link>
-      <Panel
-        title={
-          status.state === "ready"
-            ? "Notes and flashcards are ready"
-            : "Automatic notes and flashcards"
-        }
-      >
-        <p role="status">{status.message}</p>
-        {retry.problem || live.problem ? (
-          <Status tone="error">{retry.problem || live.problem}</Status>
-        ) : null}
-        {retry.progressProblem ? (
-          <>
-            <Status tone="error">{retry.progressProblem}</Status>
-            <Button secondary disabled={retry.busy} onClick={retry.refreshProgress}>
-              {retry.busy ? "Checking progress…" : "Check progress again"}
-            </Button>
-          </>
-        ) : null}
+      <LearningStatusCard sessionId={sessionId} status={status} live={live} retry={retry}>
         <Actions>
           {recovery.kind !== "service" ? (
             <RecoveryLinks sessionId={sessionId} kind={recovery.kind} />
           ) : null}
           {canRetry ? (
-            <Button secondary disabled={retry.busy} onClick={retry.retry}>
-              {retry.busy ? "Retrying…" : recovery.retryLabel}
+            <Button disabled={retry.busy} onClick={retry.retry}>
+              {retry.action === "retry" ? "Retrying…" : recovery.retryLabel}
             </Button>
           ) : null}
           {status.notesReady ? (
@@ -253,36 +402,22 @@ export function AutomaticLearningView({
               Flashcards
             </LinkButton>
           ) : null}
-          {status.state !== "blocked" && !recovery.kind ? (
+          {(status.state === "idle" || status.state === "ready") && !recovery.kind ? (
             <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
               Add material
             </LinkButton>
           ) : null}
         </Actions>
         {status.state === "blocked" ? (
-          <p className="preview-muted">
+          <p className={styles.detail}>
             {recovery.kind === "service"
               ? review?.requestedAt
-                ? // Approved by the product owner on 2026-10-10.
-                  "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
-                : "The Recalino team needs to review this session's stopped processing. Request a review below; your saved material will be used when processing continues."
-              : recovery.retryLabel === "Retry after allowance changes"
-                ? "After your allowance is updated, retry using this session's saved material."
-                : "Your saved edits and card review history stay available."}
+                ? "Your processing review is recorded. Follow its status below; your saved material will be used when processing continues."
+                : "Request a review below so the Recalino team can help continue processing."
+              : "Your saved edits and card review history stay available."}
           </p>
-        ) : (
-          <>
-            <p className="preview-muted">
-              This page shows whether your notes and flashcards are being created or ready.
-              Processing continues when you leave this page.
-            </p>
-            <p className="preview-muted">
-              New material updates this session automatically. Your saved edits and card review
-              history stay available.
-            </p>
-          </>
-        )}
-      </Panel>
+        ) : null}
+      </LearningStatusCard>
       {review || recovery.kind === "service" ? (
         <section id="processing-review" aria-label="Processing review">
           <Panel title="Processing review">
@@ -302,7 +437,7 @@ export function AutomaticLearningView({
             </p>
             {review?.canRequest ? (
               <Button disabled={retry.busy} onClick={() => retry.requestReview(review.runId)}>
-                {retry.busy ? "Requesting review…" : "Request processing review"}
+                {retry.action === "review" ? "Requesting review…" : "Request processing review"}
               </Button>
             ) : null}
             {!review ? (
@@ -313,7 +448,7 @@ export function AutomaticLearningView({
             ) : null}
             <Actions>
               <Button secondary disabled={retry.busy} onClick={retry.refreshProgress}>
-                {retry.busy ? "Checking progress…" : "Check review status"}
+                {retry.action === "refresh" ? "Checking progress…" : "Check review status"}
               </Button>
               {review?.state === "resolved" ? (
                 <LinkButton href={`/sessions/${sessionId}/notes`}>Open session notes</LinkButton>

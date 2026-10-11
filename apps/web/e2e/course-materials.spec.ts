@@ -51,7 +51,7 @@ async function courseFixture(page: Page) {
   return { courseId: course.id, sessionId, nextId: next.id };
 }
 
-test("course materials keep published edits, dated lessons and class links when classes move", async ({
+test("course materials open published notes from dated session cards when classes move", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -69,11 +69,15 @@ test("course materials keep published edits, dated lessons and class links when 
   ).toBeVisible();
   await expect(
     first.getByRole("heading", { name: "Published travel notes", exact: true }),
-  ).toBeVisible();
-  await expect(first.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
+  ).toHaveCount(0);
+  await expect(first.getByText("Notes ready", { exact: true })).toBeVisible();
+  await expect(first.getByText("My own answer دربارهٔ قطار", { exact: true })).toHaveCount(0);
   await expect(first.getByText("A rail trip", { exact: true })).toHaveCount(0);
   await expect(first.getByRole("button", { name: "Edit answer", exact: true })).toHaveCount(0);
-  await expect(next.getByText("No notes for this session yet.", { exact: false })).toBeVisible();
+  await expect(next.getByText("No notes yet", { exact: true })).toBeVisible();
+  await expect(
+    next.getByRole("link", { name: "Add session material", exact: true }),
+  ).toHaveAttribute("href", `/sessions/${fixture.nextId}/sources`);
   await expect(page.locator(`#class-${otherClass.id}`)).toHaveCount(0);
   expect(
     await page
@@ -82,7 +86,7 @@ test("course materials keep published edits, dated lessons and class links when 
   ).toEqual([`class-${fixture.sessionId}`, `class-${fixture.nextId}`]);
   for (const [label, suffix] of [
     ["Open session", ""],
-    ["Session notes", "/notes"],
+    ["Read session notes", "/notes"],
     ["Flashcards", "/cards"],
     ["Session sources", "/sources"],
   ]) {
@@ -91,8 +95,17 @@ test("course materials keep published edits, dated lessons and class links when 
       `/sessions/${fixture.sessionId}${suffix}`,
     );
   }
-  await first.getByRole("link", { name: "Session notes", exact: true }).click();
+  await first.getByRole("link", { name: "Read session notes", exact: true }).click();
+  await expect(page).toHaveURL(`/sessions/${fixture.sessionId}/notes`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Published travel notes", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
+  await expect(page.getByText("A rail trip", { exact: true })).toHaveCount(0);
+  await page
+    .locator("summary")
+    .filter({ hasText: /^Note tools$/ })
+    .click();
   await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
 
@@ -104,9 +117,13 @@ test("course materials keep published edits, dated lessons and class links when 
   await expect(first).toHaveCount(0);
   await expect(next).toBeVisible();
   await page.goto(`/courses/${otherCourse.id}/materials`);
-  await expect(first.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
+  await expect(first.getByText("Notes ready", { exact: true })).toBeVisible();
+  await expect(first.getByText("My own answer دربارهٔ قطار", { exact: true })).toHaveCount(0);
   await expect(page.locator(`#class-${otherClass.id}`)).toBeVisible();
   await expect(page.locator(`#class-${fixture.nextId}`)).toHaveCount(0);
+  await first.getByRole("link", { name: "Read session notes", exact: true }).click();
+  await expect(page).toHaveURL(`/sessions/${fixture.sessionId}/notes`);
+  await expect(page.getByText("My own answer دربارهٔ قطار", { exact: true })).toBeVisible();
 });
 
 test("long course timelines retain chronological order across pages", async ({ page }) => {

@@ -8,6 +8,12 @@
   background: var(--color-surface);
 }
 
+.frame.fitContent {
+  min-height: 420px;
+  overflow: hidden;
+  scroll-margin-top: var(--notes-reader-header-offset, 88px);
+}
+
 @media (max-width: 767px) {
   .frame {
     height: max(420px, calc(100dvh - 190px));

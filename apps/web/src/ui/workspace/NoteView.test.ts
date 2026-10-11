@@ -171,14 +171,15 @@ describe("generated previews and automatic preparation", () => {
       ],
     });
     expect(html).toContain("File 1 · <bdi>Class recording</bdi>");
-    expect(html).toContain("Saved on this device · automatic upload pending");
+    expect(html).toContain("Original saved on this device");
     expect(html).toContain("Worksheet.pdf");
     expect(html).toContain("Ready");
     expect(html).toContain("Upload file 3 again");
     expect(html).toContain("Uploading…");
     expect(html).not.toContain("Upload file 1 again");
     expect(html).not.toContain("Create session notes");
-    expect(html).toContain("Add material");
+    expect(html).toContain("Your session material");
+    expect(html).toContain("View session material");
   });
 });
 

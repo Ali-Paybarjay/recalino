@@ -11,6 +11,7 @@ import { ListPicker, type PickerOption } from "../components/ListPicker";
 import { RadioCards } from "../components/RadioCards";
 import { ConfirmDialog } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
+import { retryAllowanceCopy } from "../retry-allowance-copy";
 import { strings } from "../strings";
 import styles from "./AccountViews.module.css";
 import { type PreviewState, usePreview } from "./PreviewContext";
@@ -57,8 +58,7 @@ const copy = {
   separate: "Audio and pages/photos have separate allowances.",
   use: "Recent use",
   noUse: "No sample processing yet. Your allowance is available when you are ready.",
-  useHelp:
-    "The available amounts reflect processing in this sample workspace. Retrying a completed request does not charge twice.",
+  useHelp: `The available amounts reflect processing in this sample workspace. ${retryAllowanceCopy()}`,
   noAllowance: "No allowance left?",
   operatorHelp:
     "Keep your session material for later and ask the pilot operator about your allowance.",

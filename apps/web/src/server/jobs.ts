@@ -10,6 +10,7 @@ import {
   type PeriodicJob,
   type PltSettings,
   pltPeriodicJobs,
+  type RunOptions,
   readPltSettings,
   runDueJobs,
   storagePeriodicJobs,
@@ -191,12 +192,14 @@ export function runJobsSoon(
   kinds: readonly string[],
   budgetSeconds: number,
   functionSeconds = 120,
+  target?: RunOptions["target"],
 ): void {
   after(async () => {
     const settings = readPltSettings();
     const started = Date.now();
     await runDueJobs(getDatabase(), jobDefinitions(settings), {
       kinds,
+      ...(target !== undefined ? { target } : {}),
       deadline: new Date(started + budgetSeconds * 1000),
       // The request already used some of its limit before after() began.
       finishBy: new Date(started + (functionSeconds - 2 * RUNNER_FINISH_MARGIN_SECONDS) * 1000),

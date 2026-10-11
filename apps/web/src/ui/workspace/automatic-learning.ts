@@ -7,6 +7,20 @@ import { workspaceRequest } from "./api";
 import { prepareFileHashes } from "./file-hashes";
 import { retryUploadRequest, type UploadRecovery, uploadWithConfirmation } from "./upload";
 import { concurrentUploads } from "./upload-concurrency";
+import { uploadWithProgress } from "./upload-progress";
+
+export interface AutomaticUploadProgress {
+  runId: string;
+  sentBytes: number;
+  totalBytes: number;
+  files: {
+    sourceId: string;
+    displayName: string;
+    sentBytes: number;
+    totalBytes: number;
+    phase: "queued" | "checking" | "uploading" | "verifying" | "complete";
+  }[];
+}
 
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
@@ -170,6 +184,7 @@ type UploadOptions = {
   signal?: AbortSignal;
   checkAllowed?: () => void;
   onProgress?: (message: string) => void;
+  onTransferProgress?: (progress: AutomaticUploadProgress) => void;
   request?: typeof workspaceRequest;
   put?: (
     url: string,
@@ -541,13 +556,33 @@ export async function uploadAutomaticAudio(
     );
   check();
   const rows = await options.store.list(options.userId);
-  for (const source of snapshot.sources.filter(
+  const sources = snapshot.sources.filter(
     (source) => source.kind === "audio" && !source.contentVersionId && !source.objectId,
-  )) {
+  );
+  const localFor = (sourceId: string) =>
+    rows.find((row) => row.sourceAssetId === sourceId || row.id === sourceId);
+  const files: AutomaticUploadProgress["files"] = sources.map((source, index) => ({
+    sourceId: source.sourceId,
+    displayName: `Audio file ${index + 1}`,
+    sentBytes: 0,
+    totalBytes: localFor(source.sourceId)?.bytes ?? 0,
+    phase: "queued",
+  }));
+  const reportTransfer = () => {
     check();
-    const local = rows.find(
-      (row) => row.sourceAssetId === source.sourceId || row.id === source.sourceId,
-    );
+    options.onTransferProgress?.({
+      runId: run.id,
+      sentBytes: files.reduce((sum, file) => sum + file.sentBytes, 0),
+      totalBytes: files.reduce((sum, file) => sum + file.totalBytes, 0),
+      files: files.map((file) => ({ ...file })),
+    });
+  };
+  reportTransfer();
+  for (const [sourceIndex, source] of sources.entries()) {
+    check();
+    const file = files[sourceIndex];
+    if (!file) continue;
+    const local = localFor(source.sourceId);
     if (!local) {
       const files = await request<{ assetId: string; displayName: string }[]>(
         `/api/classes/${run.sessionId}/sources`,
@@ -560,7 +595,14 @@ export async function uploadAutomaticAudio(
         `${name} is not on this device. Open the device that saved it to resume the upload.`,
       );
     }
+    file.phase = "checking";
+    reportTransfer();
+    options.onProgress?.(
+      `Checking audio file ${sourceIndex + 1} of ${sources.length} before upload…`,
+    );
     const blob = await options.store.blob(options.userId, local.id);
+    file.totalBytes = blob.size;
+    reportTransfer();
     const prepared = await prepareFileHashes(blob, contract.partBytes, true, options.signal);
     if (prepared.sha256 !== source.sha256)
       throw new Error("The local recording does not match this session material.");
@@ -575,7 +617,31 @@ export async function uploadAutomaticAudio(
       state?: string;
       parts: { index: number; verifiedAt: string | null }[];
     }>(`/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}`, "GET");
-    if (manifest.state === "verifying" || manifest.state === "verified") continue;
+    if (manifest.state === "verifying" || manifest.state === "verified") {
+      file.sentBytes = blob.size;
+      file.phase = manifest.state === "verified" ? "complete" : "verifying";
+      reportTransfer();
+      continue;
+    }
+    const sentParts = new Map(
+      parts.map((part) => [
+        part.index,
+        manifest.parts.some((stored) => stored.index === part.index && stored.verifiedAt)
+          ? part.sizeBytes
+          : 0,
+      ]),
+    );
+    const reportPart = (index: number, sentBytes: number) => {
+      sentParts.set(index, sentBytes);
+      file.sentBytes = Math.min(
+        blob.size,
+        [...sentParts.values()].reduce((sum, sent) => sum + sent, 0),
+      );
+      reportTransfer();
+    };
+    file.phase = "uploading";
+    file.sentBytes = [...sentParts.values()].reduce((sum, sent) => sum + sent, 0);
+    reportTransfer();
     await concurrentUploads(
       parts.filter(
         (part) =>
@@ -602,12 +668,13 @@ export async function uploadAutomaticAudio(
             );
             return options.put
               ? options.put(link.url, bytes, source.mimeType, signal)
-              : fetch(link.url, {
-                  method: "PUT",
-                  headers: { "content-type": source.mimeType },
+              : uploadWithProgress(
+                  link.url,
+                  bytes,
+                  source.mimeType,
+                  (sentBytes) => reportPart(part.index, sentBytes),
                   signal,
-                  body: bytes,
-                });
+                );
           },
           async (signal) => {
             check();
@@ -625,10 +692,21 @@ export async function uploadAutomaticAudio(
             );
           },
           "Audio upload was interrupted. The original is saved on this device.",
-          { ...recovery, confirmBeforeWrite: true, confirmSuccess: true },
+          {
+            ...recovery,
+            onRetry: (attempt) => {
+              reportPart(part.index, 0);
+              recovery.onRetry?.(attempt);
+            },
+            confirmBeforeWrite: true,
+            confirmSuccess: true,
+          },
         );
+        reportPart(part.index, part.sizeBytes);
       },
     );
+    file.phase = "verifying";
+    reportTransfer();
     await request(
       `/api/sources/${source.sourceId}/audio`,
       "POST",

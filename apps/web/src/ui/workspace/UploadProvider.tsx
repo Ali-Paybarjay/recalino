@@ -19,6 +19,22 @@ import { IndexedUploadStore, type UploadBatch } from "./upload-store";
 const Context = createContext<UploadManager | null>(null);
 const empty: UploadBatch[] = [];
 const serverSnapshot = () => empty;
+const emptySubscribe = () => () => {};
+
+/** Progress can also render before uploads have restored, or without an upload workspace. */
+export function useUploadBatches(sessionId: string) {
+  const manager = useContext(Context);
+  const batches = useSyncExternalStore(
+    manager?.subscribe ?? emptySubscribe,
+    manager?.snapshot ?? serverSnapshot,
+    serverSnapshot,
+  );
+  return useMemo(
+    () => batches.filter((batch) => batch.sessionId === sessionId),
+    [batches, sessionId],
+  );
+}
+
 export function useUploads(sessionId?: string) {
   const manager = useContext(Context);
   if (!manager) throw new Error("UploadProvider is required");

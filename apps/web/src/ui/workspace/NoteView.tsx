@@ -10,6 +10,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { directionOf } from "../direction";
 import { SpeakerHigh } from "../icons";
+import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import { notifyAutomaticLearning } from "./automatic-learning";
@@ -101,6 +102,7 @@ export function NoteView({
   latest,
   readOnlyRevision,
   embedded = false,
+  standalone = false,
   courseId,
   hasEarlierVersions,
   sourceIssues = [],
@@ -113,6 +115,8 @@ export function NoteView({
   latest: KnowledgeVersion | null;
   readOnlyRevision?: NotebookRevision;
   embedded?: boolean;
+  /** The dedicated notes reader supplies navigation and a single document scroll. */
+  standalone?: boolean;
   courseId?: string;
   hasEarlierVersions?: boolean;
   sourceIssues?: readonly NoteSourceIssue[];
@@ -120,6 +124,9 @@ export function NoteView({
   adaptation?: LessonAdaptationView | null;
 }) {
   const router = useRouter();
+  const learning = useAutomaticLearning(sessionId);
+  const hasSessionMaterial =
+    materialSources.length > 0 || (!!learning.status && learning.status.state !== "idle");
   const [notebook, setNotebook] = useState(initial),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
@@ -367,19 +374,110 @@ export function NoteView({
       </article>
     );
   }
+  function noteTools() {
+    return (
+      <>
+        {!embedded && (canEdit || courseId || readOnlyRevision || showHistory) && (
+          <footer>
+            <nav className={styles.footer} aria-label="Note tools">
+              {canEdit && !standalone && (
+                <Button
+                  secondary
+                  className={styles.quiet}
+                  disabled={busy}
+                  aria-pressed={editMode}
+                  onClick={() => {
+                    setEditMode(!editMode);
+                    setEditing(null);
+                    if (!editMode) notesStart.current?.scrollIntoView({ block: "start" });
+                  }}
+                >
+                  {editMode ? "Done editing" : "Edit notes"}
+                </Button>
+              )}
+              {courseId && (
+                <QuietLink disabled={busy} href={`/courses/${courseId}/materials`}>
+                  Course materials
+                </QuietLink>
+              )}
+              {notebook && !readOnlyRevision && (
+                <>
+                  <QuietLink disabled={busy} href={`/sessions/${sessionId}/cards`}>
+                    Flashcards
+                  </QuietLink>
+                  <QuietLink disabled={busy} href={`/sessions/${sessionId}/export`}>
+                    Download notes
+                  </QuietLink>
+                </>
+              )}
+              {readOnlyRevision && (
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes`}>
+                  Current notes
+                </QuietLink>
+              )}
+              {model && !readOnlyRevision && (
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
+                  Add material
+                </QuietLink>
+              )}
+              {showHistory && (
+                <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes/versions`}>
+                  Version history
+                </QuietLink>
+              )}
+            </nav>
+          </footer>
+        )}
+      </>
+    );
+  }
+  function toggleEdit() {
+    setEditMode(!editMode);
+    setEditing(null);
+    if (!editMode) notesStart.current?.scrollIntoView({ block: "start" });
+  }
   return (
-    <div className={styles.layout} ref={notesStart}>
-      {!embedded && (
+    <div className={`${styles.layout} ${standalone ? styles.standalone : ""}`} ref={notesStart}>
+      {!embedded && !standalone && (
         <Link prefetch={false} href={`/sessions/${sessionId}`} className={styles.back}>
           ← Back to session
         </Link>
       )}
       {problem && <Status tone="error">{problem}</Status>}
       {notice && <Status tone="success">{notice}</Status>}
+      {!embedded &&
+        !readOnlyRevision &&
+        (!standalone || !model || learning.status?.state !== "ready") && (
+          <AutomaticLearningNotice sessionId={sessionId} />
+        )}
+      {standalone && model ? (
+        <div className={styles.readerToolbar}>
+          <span>{editMode ? "Editing your notes" : "Read & review"}</span>
+          <div className={styles.readerActions}>
+            {canEdit ? (
+              <Button
+                secondary
+                className={styles.quiet}
+                disabled={busy}
+                aria-pressed={editMode}
+                onClick={toggleEdit}
+              >
+                {editMode ? "Done editing" : "Edit notes"}
+              </Button>
+            ) : null}
+            <details className={styles.readerTools}>
+              <summary>Note tools</summary>
+              {noteTools()}
+            </details>
+          </div>
+        </div>
+      ) : null}
       {!model ? (
-        <Panel title="Start with session material">
+        <Panel title={hasSessionMaterial ? "Your session material" : "Start with session material"}>
           <p>
-            Add your session material. Notes and flashcards are created and saved automatically.
+            {hasSessionMaterial
+              ? "Your selected material is listed below. Notes and flashcards will be saved here when ready."
+              : "Add your session material. Notes and flashcards are created and saved automatically."}
           </p>
           {materialSources.length ? (
             <ul className={styles.materials} aria-label="Selected session material">
@@ -396,7 +494,7 @@ export function NoteView({
                       : source.status === "uploading"
                         ? "Uploading…"
                         : source.status === "local-audio"
-                          ? "Saved on this device · automatic upload pending"
+                          ? "Original saved on this device"
                           : "Upload not completed"}
                   </p>
                   {source.status === "needs-upload" && (
@@ -411,7 +509,9 @@ export function NoteView({
             materialIssues()
           )}
           <div className={styles.save}>
-            <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
+            <LinkButton secondary={hasSessionMaterial} href={`/sessions/${sessionId}/sources`}>
+              {hasSessionMaterial ? "View session material" : "Add material"}
+            </LinkButton>
           </div>
         </Panel>
       ) : (
@@ -422,13 +522,18 @@ export function NoteView({
               {adaptation ? <LessonAdaptation adaptation={adaptation} /> : null}
               {current && !readOnlyRevision ? (
                 <ClassNotesPlayback
-                  key={current.id}
+                  key={sessionId}
                   model={model}
                   sessionId={sessionId}
                   revisionId={current.id}
+                  fitContent={standalone}
                 />
               ) : (
-                <ClassNotesFrame html={renderClassNotesHtml(model)} title={model.title} />
+                <ClassNotesFrame
+                  html={renderClassNotesHtml(model)}
+                  title={model.title}
+                  fitContent={standalone}
+                />
               )}
               <details className={styles.evidence}>
                 <summary>Session sources and explanations</summary>
@@ -607,58 +712,7 @@ export function NoteView({
           )}
         </>
       )}
-      {!embedded && (canEdit || courseId || readOnlyRevision || showHistory) && (
-        <footer>
-          <nav className={styles.footer} aria-label="Note tools">
-            {canEdit && (
-              <Button
-                secondary
-                className={styles.quiet}
-                disabled={busy}
-                aria-pressed={editMode}
-                onClick={() => {
-                  setEditMode(!editMode);
-                  setEditing(null);
-                  if (!editMode) notesStart.current?.scrollIntoView({ block: "start" });
-                }}
-              >
-                {editMode ? "Done editing" : "Edit notes"}
-              </Button>
-            )}
-            {courseId && (
-              <QuietLink disabled={busy} href={`/courses/${courseId}/materials`}>
-                Course materials
-              </QuietLink>
-            )}
-            {notebook && !readOnlyRevision && (
-              <>
-                <QuietLink disabled={busy} href={`/sessions/${sessionId}/cards`}>
-                  Flashcards
-                </QuietLink>
-                <QuietLink disabled={busy} href={`/sessions/${sessionId}/export`}>
-                  Download notes
-                </QuietLink>
-              </>
-            )}
-            {readOnlyRevision && (
-              <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes`}>
-                Current notes
-              </QuietLink>
-            )}
-            {model && !readOnlyRevision && (
-              <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
-                Add material
-              </QuietLink>
-            )}
-            {showHistory && (
-              <QuietLink disabled={busy} href={`/sessions/${sessionId}/notes/versions`}>
-                Version history
-              </QuietLink>
-            )}
-          </nav>
-        </footer>
-      )}
-      {!embedded && !readOnlyRevision && <AutomaticLearningNotice sessionId={sessionId} />}
+      {(!standalone || !model) && noteTools()}
     </div>
   );
 }

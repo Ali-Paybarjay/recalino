@@ -18,6 +18,7 @@ import { useRecording } from "../recording/RecordingProvider";
 import { workspaceRequest } from "./api";
 import {
   type AutomaticLearningStatus,
+  type AutomaticUploadProgress,
   automaticRecordingClasses,
   automaticRecordingMaterial,
   automaticResultNeedsRefresh,
@@ -35,6 +36,7 @@ const Context = createContext<{
   entries: Record<string, Entry>;
   refresh(sessionId: string): Promise<void>;
   acceptStatus(sessionId: string, status: AutomaticLearningStatus): void;
+  uploadProgress: Record<string, AutomaticUploadProgress>;
   manualAudio: readonly ManualAudioTransfer[];
   queueManualAudio(
     run: ProcessingRun,
@@ -53,6 +55,7 @@ export function useAutomaticLearning(sessionId: string) {
     problem: value?.entries[sessionId]?.problem ?? null,
     refresh: () => value?.refresh(sessionId) ?? Promise.resolve(),
     acceptStatus: (status: AutomaticLearningStatus) => value?.acceptStatus(sessionId, status),
+    uploadProgress: value?.uploadProgress[sessionId] ?? null,
     manualAudio: value?.manualAudio.filter((entry) => entry.sessionId === sessionId) ?? [],
     queueManualAudio: (run: ProcessingRun, snapshot: RunSnapshot, contract: InputContract) => {
       if (!value) throw new Error("The background upload workspace is unavailable.");
@@ -100,11 +103,20 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
   const pathname = usePathname();
   const path = useRef(pathname);
   const [entries, setEntries] = useState<Record<string, Entry>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, AutomaticUploadProgress>>({});
   const states = useRef(new Map<string, AutomaticLearningStatus>());
   const statusVersions = useRef(new Map<string, number>());
   const acceptStatus = useCallback((sessionId: string, status: AutomaticLearningStatus) => {
     statusVersions.current.set(sessionId, (statusVersions.current.get(sessionId) ?? 0) + 1);
     states.current.set(sessionId, status);
+    setUploadProgress((previous) => {
+      const progress = previous[sessionId];
+      if (!progress || (status.state === "waiting_upload" && status.run?.id === progress.runId))
+        return previous;
+      const next = { ...previous };
+      delete next[sessionId];
+      return next;
+    });
     setEntries((previous) =>
       JSON.stringify(previous[sessionId]) === JSON.stringify({ status, problem: null })
         ? previous
@@ -380,7 +392,18 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
                     store,
                     signal: operation.signal,
                     checkAllowed: check,
-                    onProgress,
+                    onProgress: (message) => {
+                      const current = states.current.get(sessionId);
+                      if (current?.state === "waiting_upload" && current.run?.id === status.run?.id)
+                        onProgress(message);
+                    },
+                    onTransferProgress: (progress) => {
+                      check();
+                      const current = states.current.get(sessionId);
+                      if (current?.state !== "waiting_upload" || current.run?.id !== progress.runId)
+                        return;
+                      setUploadProgress((previous) => ({ ...previous, [sessionId]: progress }));
+                    },
                   });
                   uploaded.add(status.run.id);
                   await refresh(sessionId, operation.signal);
@@ -477,6 +500,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
         entries,
         refresh,
         acceptStatus,
+        uploadProgress,
         manualAudio,
         queueManualAudio: (run, snapshot, contract) =>
           manualManager.enqueue(run, snapshot, contract),

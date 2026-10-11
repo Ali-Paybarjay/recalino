@@ -28,7 +28,8 @@ Unavailable: "The original audio isn't on this device." · "The original file is
 **Never:** "Saved to your account" (for class audio).
 
 ## Class statuses
-"Ready to process" · "Waiting for allowance" · "In queue" · "Processing" · "Needs your action" · "Partly ready · {what is missing}" · "Ready" · "Failed" (+ "Retry won't use your allowance again.") · "Cancelled"
+"Ready to process" · "Waiting for allowance" · "In queue" · "Processing" · "Needs your action" · "Partly ready · {what is missing}" · "Ready" · "Failed" · "Cancelled"
+Retry (updated for [D59](../../../PRODUCT_DECISIONS_LOG.md)): "Publishing a result uses allowance for material not already charged. A new version of existing notes also uses 1 New versions unit." Do not promise that Retry uses no allowance: previously charged material and a newly published version have different charging rules.
 Partial: "Part 2 isn't ready yet. These notes use Part 1 and the worksheet only." (never "complete notes")
 Processing: "Transcribing" · "Matching photos and pages" · "Writing notes" · "Suggesting cards" · "You can close this page — we'll keep working."
 Changed sources: "New sources since your notes were made" · "Update affected parts"

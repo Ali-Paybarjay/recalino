@@ -3,15 +3,18 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticLearningNotice, AutomaticLearningView } from "./AutomaticLearningView";
 import type { AutomaticLearningStatus } from "./automatic-learning";
+import type { UploadBatch } from "./upload-store";
 
 const mocks = vi.hoisted(() => ({
   status: null as AutomaticLearningStatus | null,
+  batches: [] as UploadBatch[],
   request: vi.fn(),
   refresh: vi.fn(),
   notify: vi.fn(),
   accept: vi.fn(),
   buttons: new Map<string, () => unknown>(),
 }));
+vi.mock("./UploadProvider", () => ({ useUploadBatches: () => mocks.batches }));
 vi.mock("./AutomaticLearningProvider", () => ({
   useAutomaticLearning: () => ({
     status: mocks.status,
@@ -73,6 +76,7 @@ function retry() {
 }
 beforeEach(() => {
   mocks.status = blocked;
+  mocks.batches = [];
   mocks.request.mockReset();
   mocks.refresh.mockReset().mockResolvedValue(undefined);
   mocks.notify.mockReset();
@@ -81,9 +85,40 @@ beforeEach(() => {
 });
 
 describe("retry from the class notice", () => {
-  it("makes the word retry an action alongside View progress", () => {
+  it("keeps pre-send checking visible before the server has acknowledged a new upload", () => {
+    mocks.status = { ...blocked, state: "idle", lastError: null };
+    mocks.batches = [
+      {
+        id: "preparing-batch",
+        userId: "user",
+        sessionId,
+        createdAt: 1,
+        phase: "uploading",
+        entries: [
+          {
+            id: "audio-file",
+            displayName: "lecture.m4a",
+            phase: "checking",
+            sentBytes: 0,
+            sizeBytes: 100,
+          },
+        ],
+        receipt: { revision: null },
+      } as UploadBatch,
+    ];
     const html = render();
-    expect(html).toMatch(/Check the material or <button[^>]*>retry<\/button> this attempt\./);
+    expect(html).toContain("Preparing your files for upload");
+    expect(html).toContain("Checking files before upload");
+    expect(html).toContain('aria-label="Material upload progress"');
+    expect(html).not.toContain('value="0"');
+    expect(html).not.toContain("0%");
+  });
+
+  it("shows a prominent retry action alongside View progress", () => {
+    const html = render();
+    expect(html).toMatch(/<button[^>]*>Retry failed attempt<\/button>/);
+    expect(html).toContain("Your session needs attention");
+    expect(html).toContain('aria-label="Session progress"');
     expect(html).toContain(`href="/sessions/${sessionId}/processing"`);
   });
 
@@ -157,9 +192,12 @@ describe("retry from the class notice", () => {
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
   });
 
-  it("hides the failure notice after processing succeeds", () => {
-    mocks.status = { ...blocked, state: "ready", lastError: null };
-    expect(render()).toBe("");
+  it("replaces the failure notice with a ready state and next actions", () => {
+    mocks.status = { ...blocked, state: "ready", lastError: null, cardsReady: true };
+    const html = render();
+    expect(html).toContain("Notes and flashcards are ready");
+    expect(html).toContain("Session notes");
+    expect(html).not.toContain("Retry failed attempt");
   });
 });
 

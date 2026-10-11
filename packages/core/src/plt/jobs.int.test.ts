@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { LOCAL_POOLER_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
@@ -189,6 +189,94 @@ for (const [connection, url] of Object.entries(CONNECTIONS)) {
         claimJobs(second, [def.kind], 1, at(1)),
       ]);
       expect(a.length + b.length).toBe(1);
+    });
+
+    it("a targeted wake runs its requested subject ahead of unrelated queued work without falling back", async () => {
+      const target = { userId: randomUUID(), subjectId: randomUUID() };
+      const seen: string[] = [];
+      const def = {
+        kind: kind(),
+        version: 1,
+        payload: z.strictObject({ userId: z.uuid(), subjectId: z.uuid() }),
+        run: async (value: typeof target) => {
+          seen.push(value.subjectId);
+        },
+      };
+      const save = (value: typeof target, now = T0) =>
+        withTransaction(db, (tx) =>
+          enqueueJob(tx, def, { payload: value, now, defaults: DEFAULTS }),
+        );
+      const otherOwner = await save({ ...target, userId: randomUUID() });
+      const otherSubject = await save({ ...target, subjectId: randomUUID() });
+      const requested = await save(target, at(1));
+      expect(
+        await runDueJobs(db, [def], { target, now: () => at(2), deadline: at(10) }),
+      ).toMatchObject({ succeeded: 1 });
+      expect(seen).toEqual([target.subjectId]);
+      expect(await jobState(db, requested ?? "")).toBe("succeeded");
+      expect(await jobState(db, otherOwner ?? "")).toBe("queued");
+      expect(await jobState(db, otherSubject ?? "")).toBe("queued");
+      expect(
+        await runDueJobs(db, [def], { target, now: () => at(2), deadline: at(10) }),
+      ).toMatchObject({ succeeded: 0 });
+      expect(
+        await claimJobs(db, [def.kind], 1, at(2), { ...target, subjectId: randomUUID() }),
+      ).toEqual([]);
+      expect(await jobState(db, otherOwner ?? "")).toBe("queued");
+      expect(await jobState(db, otherSubject ?? "")).toBe("queued");
+    });
+
+    it("concurrent targeted and general claims keep one lease per job and never substitute another target", async () => {
+      const target = { userId: randomUUID(), subjectId: randomUUID() };
+      const def = {
+        kind: kind(),
+        version: 1,
+        payload: z.strictObject({ userId: z.uuid(), subjectId: z.uuid() }),
+        run: async () => {},
+      };
+      const save = (value: typeof target, now: Date) =>
+        withTransaction(db, (tx) =>
+          enqueueJob(tx, def, { payload: value, now, defaults: DEFAULTS }),
+        );
+      const unrelated = await save({ ...target, subjectId: randomUUID() }, T0);
+      const requested = await save(target, at(1));
+      const [a, b, general] = await Promise.all([
+        claimJobs(db, [def.kind], 1, at(2), target),
+        claimJobs(second, [def.kind], 1, at(2), target),
+        claimJobs(db, [def.kind], 1, at(2)),
+      ]);
+      expect([...a, ...b].map((job) => job.id)).toEqual([requested]);
+      expect(general.map((job) => job.id)).toEqual([unrelated]);
+      expect(await claimJobs(second, [def.kind], 1, at(2), target)).toEqual([]);
+    });
+
+    it("a targeted wake respects retry due times and cancellation while unrelated work stays queued", async () => {
+      const target = { userId: randomUUID(), subjectId: randomUUID() };
+      let attempts = 0;
+      const def = {
+        kind: kind(),
+        version: 1,
+        payload: z.strictObject({ userId: z.uuid(), subjectId: z.uuid() }),
+        run: async () => {
+          if (++attempts === 1) throw new Error("Synthetic retryable failure");
+        },
+      };
+      const save = (value: typeof target) =>
+        withTransaction(db, (tx) =>
+          enqueueJob(tx, def, { payload: value, now: T0, defaults: DEFAULTS }),
+        );
+      const unrelated = await save({ ...target, subjectId: randomUUID() });
+      const requested = await save(target);
+      const run = (seconds: number) =>
+        runDueJobs(db, [def], { target, now: () => at(seconds), deadline: at(seconds + 1) });
+      expect(await run(0)).toMatchObject({ retried: 1 });
+      expect(await run(29)).toMatchObject({ retried: 0, succeeded: 0 });
+      expect(attempts).toBe(1);
+      expect(await jobState(db, unrelated ?? "")).toBe("queued");
+      await cancelJob(db, requested ?? "", at(29));
+      expect(await run(30)).toMatchObject({ succeeded: 0 });
+      expect(attempts).toBe(1);
+      expect(await jobState(db, unrelated ?? "")).toBe("queued");
     });
 
     it("a job that always fails retries with a growing delay, then fails with its reason", async () => {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileSelectionQueue } from "../components/FileSelectionQueue";
 import { Sheet } from "../components/Sheet";
 import { UploadProgress } from "../components/UploadProgress";
+import { retryAllowanceCopy } from "../retry-allowance-copy";
 import { appendSelectedFiles, type SelectedFile } from "../workspace/file-selection";
 import { createSampleState, type SampleSource, usePreview } from "./PreviewContext";
 import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
@@ -1271,7 +1272,7 @@ export function SourceViews({ screen }: { screen: string }) {
               </li>
             ))}
           </ul>
-          <p>Retrying the failed sample source does not use more allowance.</p>
+          <p>{retryAllowanceCopy({ notesReady: !!state.noteText })}</p>
           <Actions>
             {["ready", "partial"].includes(state.processing) && state.noteText ? (
               <LinkButton to="notes">

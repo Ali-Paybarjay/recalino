@@ -42,10 +42,12 @@ export function VoiceConfirmation({
   sessionId,
   userId,
   children,
+  compact = false,
 }: {
   sessionId: string;
   userId: string;
   children?: ReactNode;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<ClassVoiceView | null>(null);
@@ -251,176 +253,186 @@ export function VoiceConfirmation({
     playing.current = element;
   }
   const locked = busy || !!pending || refreshing || processing;
+  const controls = (
+    <Panel title="Your voice in this session">
+      {loading ? <Status>Loading voice confirmation…</Status> : null}
+      {problem ? <Status tone="error">{problem}</Status> : null}
+      {pending && !busy ? (
+        <>
+          <p>
+            {pending.action === "analyze"
+              ? "The server has not confirmed your voice check yet. Retry to resolve it before showing the notes."
+              : "Your last choice still needs to be confirmed by the server. The notes stay hidden until this is resolved."}
+          </p>
+          <Button disabled={busy} onClick={() => void act(pending)}>
+            {pending.action === "analyze" ? "Retry voice check" : "Retry voice choice"}
+          </Button>
+        </>
+      ) : !view && !loading ? (
+        <Button
+          secondary
+          onClick={() => {
+            setLoading(true);
+            setProblem("");
+            void load()
+              .catch((error) =>
+                setProblem(
+                  error instanceof Error ? error.message : "Could not load voice confirmation.",
+                ),
+              )
+              .finally(() => setLoading(false));
+          }}
+        >
+          Retry voice confirmation
+        </Button>
+      ) : problem && view ? (
+        <Button
+          secondary
+          disabled={busy || refreshing}
+          onClick={() => {
+            setBusy(true);
+            void load()
+              .then(() => {
+                setProblem("");
+                refreshNotes();
+              })
+              .catch((error) =>
+                setProblem(
+                  error instanceof Error ? error.message : "Could not refresh voice confirmation.",
+                ),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          Refresh voice status
+        </Button>
+      ) : null}
+      {view && !view.enabled ? (
+        <>
+          <p>
+            Voice identification is optional. Enable it to identify your speech before Recalino
+            includes your spoken mistakes.
+          </p>
+          <LinkButton secondary href={voiceSettingsHref(sessionId)}>
+            Set up your voice
+          </LinkButton>
+        </>
+      ) : view ? (
+        <div className={styles.stack}>
+          <p className="preview-muted">
+            Check each source separately. A speaker label in one recording may belong to someone
+            else in another. Written mistakes remain available independently.
+          </p>
+          {!view.engineAvailable ? (
+            <Status>
+              Audio matching is not available. Labelled transcripts can still be confirmed by
+              checking the excerpts below.
+            </Status>
+          ) : null}
+          <p className="preview-muted">
+            Check the selected session recordings for speakers, then identify which voice is yours.
+            A saved voice sample can help suggest a match.
+          </p>
+          {!processing &&
+            (view.analysisBlockedReason === "transcript_required" ||
+            view.analysisBlockedReason === "sources_unavailable" ? (
+              <Status>
+                Select a session recording in Sources and process it before checking session voices.
+                <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
+                  Open session sources
+                </LinkButton>
+              </Status>
+            ) : view.analysisBlockedReason === "original_audio_required" ? (
+              <Status>
+                The temporary session recording is no longer available. Checking session voices
+                needs the original session recording, even if you have saved a personal voice
+                sample.
+                <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
+                  Open session sources
+                </LinkButton>
+              </Status>
+            ) : view.analysisBlockedReason === "explanation_language_missing" ? (
+              <Status>
+                Choose your explanation language in your profile before checking session voices.
+              </Status>
+            ) : null)}
+          <Actions>
+            <Button
+              secondary
+              disabled={locked || Boolean(view.analysisBlockedReason)}
+              onClick={() => void act({ action: "analyze" })}
+            >
+              {processing ? "Checking session voices…" : "Check session voices"}
+            </Button>
+            <LinkButton secondary href={voiceSettingsHref(sessionId)}>
+              Voice settings
+            </LinkButton>
+          </Actions>
+          {processing ? (
+            <Status>Preparing speaker excerpts from the session sources…</Status>
+          ) : !view.analyses.length ? (
+            <p>No speaker excerpts have been prepared for this session yet.</p>
+          ) : (
+            <Status>
+              {confirmationWaits
+                ? voiceCopy.confirmBlockedSummary
+                : needsConfirmation
+                  ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
+                  : hasFailedCheck
+                    ? "Some recordings could not be checked. Retry the voice check below, or continue with your session notes."
+                    : hasServiceBlock
+                      ? voiceCopy.serviceBlockedSummary
+                      : hasUnavailableExcerpts
+                        ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your session notes."
+                        : "Your voice choices are saved. The session notes below reflect those choices."}
+            </Status>
+          )}
+          {view.analyses.map((analysis, index) => (
+            <Analysis
+              key={`${analysis.id}-${analysis.version}`}
+              analysis={analysis}
+              index={index}
+              sessionId={sessionId}
+              userId={userId}
+              disabled={locked}
+              retryDisabled={locked || Boolean(view.analysisBlockedReason)}
+              chooseAll={choosing.has(analysis.id)}
+              onWaiting={reportWaiting}
+              onAction={act}
+              onPlayback={onPlayback}
+            />
+          ))}
+          {children && !locked && view.analyses.length ? (
+            <Actions>
+              <LinkButton href="#class-notes">Read session notes</LinkButton>
+            </Actions>
+          ) : null}
+        </div>
+      ) : null}
+      {busy || refreshing ? (
+        <Status>
+          {busy
+            ? pending?.action === "analyze"
+              ? "Requesting a session voice check…"
+              : "Saving your voice choice…"
+            : "Refreshing your session notes…"}
+        </Status>
+      ) : null}
+    </Panel>
+  );
   return (
     <>
-      <Panel title="Your voice in this session">
-        {loading ? <Status>Loading voice confirmation…</Status> : null}
-        {problem ? <Status tone="error">{problem}</Status> : null}
-        {pending && !busy ? (
-          <>
-            <p>
-              {pending.action === "analyze"
-                ? "The server has not confirmed your voice check yet. Retry to resolve it before showing the notes."
-                : "Your last choice still needs to be confirmed by the server. The notes stay hidden until this is resolved."}
-            </p>
-            <Button disabled={busy} onClick={() => void act(pending)}>
-              {pending.action === "analyze" ? "Retry voice check" : "Retry voice choice"}
-            </Button>
-          </>
-        ) : !view && !loading ? (
-          <Button
-            secondary
-            onClick={() => {
-              setLoading(true);
-              setProblem("");
-              void load()
-                .catch((error) =>
-                  setProblem(
-                    error instanceof Error ? error.message : "Could not load voice confirmation.",
-                  ),
-                )
-                .finally(() => setLoading(false));
-            }}
-          >
-            Retry voice confirmation
-          </Button>
-        ) : problem && view ? (
-          <Button
-            secondary
-            disabled={busy || refreshing}
-            onClick={() => {
-              setBusy(true);
-              void load()
-                .then(() => {
-                  setProblem("");
-                  refreshNotes();
-                })
-                .catch((error) =>
-                  setProblem(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not refresh voice confirmation.",
-                  ),
-                )
-                .finally(() => setBusy(false));
-            }}
-          >
-            Refresh voice status
-          </Button>
-        ) : null}
-        {view && !view.enabled ? (
-          <>
-            <p>
-              Voice identification is optional. Enable it to identify your speech before Recalino
-              includes your spoken mistakes.
-            </p>
-            <LinkButton secondary href={voiceSettingsHref(sessionId)}>
-              Set up your voice
-            </LinkButton>
-          </>
-        ) : view ? (
-          <div className={styles.stack}>
-            <p className="preview-muted">
-              Check each source separately. A speaker label in one recording may belong to someone
-              else in another. Written mistakes remain available independently.
-            </p>
-            {!view.engineAvailable ? (
-              <Status>
-                Audio matching is not available. Labelled transcripts can still be confirmed by
-                checking the excerpts below.
-              </Status>
-            ) : null}
-            <p className="preview-muted">
-              Check the selected session recordings for speakers, then identify which voice is
-              yours. A saved voice sample can help suggest a match.
-            </p>
-            {!processing &&
-              (view.analysisBlockedReason === "transcript_required" ||
-              view.analysisBlockedReason === "sources_unavailable" ? (
-                <Status>
-                  Select a session recording in Sources and process it before checking session
-                  voices.
-                  <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                    Open session sources
-                  </LinkButton>
-                </Status>
-              ) : view.analysisBlockedReason === "original_audio_required" ? (
-                <Status>
-                  The temporary session recording is no longer available. Checking session voices
-                  needs the original session recording, even if you have saved a personal voice
-                  sample.
-                  <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                    Open session sources
-                  </LinkButton>
-                </Status>
-              ) : view.analysisBlockedReason === "explanation_language_missing" ? (
-                <Status>
-                  Choose your explanation language in your profile before checking session voices.
-                </Status>
-              ) : null)}
-            <Actions>
-              <Button
-                secondary
-                disabled={locked || Boolean(view.analysisBlockedReason)}
-                onClick={() => void act({ action: "analyze" })}
-              >
-                {processing ? "Checking session voices…" : "Check session voices"}
-              </Button>
-              <LinkButton secondary href={voiceSettingsHref(sessionId)}>
-                Voice settings
-              </LinkButton>
-            </Actions>
-            {processing ? (
-              <Status>Preparing speaker excerpts from the session sources…</Status>
-            ) : !view.analyses.length ? (
-              <p>No speaker excerpts have been prepared for this session yet.</p>
-            ) : (
-              <Status>
-                {confirmationWaits
-                  ? voiceCopy.confirmBlockedSummary
-                  : needsConfirmation
-                    ? "Voice check finished. Next, confirm which speaker is you below. Checking voices prepares suggestions; your spoken mistakes are included only after your voice is verified."
-                    : hasFailedCheck
-                      ? "Some recordings could not be checked. Retry the voice check below, or continue with your session notes."
-                      : hasServiceBlock
-                        ? voiceCopy.serviceBlockedSummary
-                        : hasUnavailableExcerpts
-                          ? "Voice check finished, but some recordings have no usable speaker excerpts. Check their source material below, or continue with your session notes."
-                          : "Your voice choices are saved. The session notes below reflect those choices."}
-              </Status>
-            )}
-            {view.analyses.map((analysis, index) => (
-              <Analysis
-                key={`${analysis.id}-${analysis.version}`}
-                analysis={analysis}
-                index={index}
-                sessionId={sessionId}
-                userId={userId}
-                disabled={locked}
-                retryDisabled={locked || Boolean(view.analysisBlockedReason)}
-                chooseAll={choosing.has(analysis.id)}
-                onWaiting={reportWaiting}
-                onAction={act}
-                onPlayback={onPlayback}
-              />
-            ))}
-            {children && !locked && view.analyses.length ? (
-              <Actions>
-                <LinkButton href="#class-notes">Read session notes</LinkButton>
-              </Actions>
-            ) : null}
-          </div>
-        ) : null}
-        {busy || refreshing ? (
-          <Status>
-            {busy
-              ? pending?.action === "analyze"
-                ? "Requesting a session voice check…"
-                : "Saving your voice choice…"
-              : "Refreshing your session notes…"}
-          </Status>
-        ) : null}
-      </Panel>
+      {compact ? (
+        <details
+          className={styles.readerVoice}
+          open={!!problem || !!pending || !notesSafe || needsConfirmation || undefined}
+        >
+          <summary>Voice settings for this session</summary>
+          {controls}
+        </details>
+      ) : (
+        controls
+      )}
       {children ? (
         notesSafe ? (
           <div id="class-notes" className="preview-stack">

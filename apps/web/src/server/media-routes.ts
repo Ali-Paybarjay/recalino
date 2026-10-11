@@ -1,9 +1,11 @@
 import "server-only";
 import { getCard, studyPronunciationTarget } from "@recalino/core/card";
+import type { Database } from "@recalino/core/db";
 import {
   createImageMedia,
   getMediaAsset,
   listMediaAssets,
+  type MediaAsset,
   mediaReadLink,
   requestTts,
   setMediaExportPermission,
@@ -25,6 +27,22 @@ function store() {
   const value = getObjectStore();
   if (!value) throw errors.validationFailed({ storage: ["unavailable"] });
   return value;
+}
+
+/** Include the private playback link in a ready response to avoid another network round trip. */
+async function withPlayback(db: Database, learner: LearnerContext, media: MediaAsset) {
+  if (media.state !== "ready" || media.kind !== "tts" || !media.mimeType?.startsWith("audio/"))
+    return media;
+  try {
+    return {
+      ...media,
+      playback: await mediaReadLink(db, store(), learner, media.id, readPltSettings().storage),
+    };
+  } catch {
+    // Preserve the known asset if signing is temporarily unavailable. The player can retry
+    // the existing read-link endpoint without starting another speech generation.
+    return media;
+  }
 }
 export function classMediaHandler(sessionId: string): Handler {
   return async ({ db, ctx, input, request }) => {
@@ -102,15 +120,27 @@ export function classMediaHandler(sessionId: string): Handler {
       { sessionId, ...speech, operationKey },
       dependencies,
     );
-    if (media.state === "queued") runJobsSoon(["media.tts"], 90);
-    return { status: 202, body: media };
+    if (media.state === "queued")
+      runJobsSoon(["media.tts"], 90, 120, { userId: learner.userId, subjectId: media.id });
+    return {
+      status: 202,
+      body: speech.purpose === "pronunciation" ? await withPlayback(db, learner, media) : media,
+    };
   };
 }
 export function mediaHandler(id: string): Handler {
   return async ({ db, ctx, request, input }) => {
     const learner = actor(ctx);
     z.uuid().parse(id);
-    if (request.method === "GET") return { body: await getMediaAsset(db, learner, id) };
+    if (request.method === "GET") {
+      const media = await getMediaAsset(db, learner, id);
+      return {
+        body:
+          new URL(request.url).searchParams.get("playback") === "1"
+            ? await withPlayback(db, learner, media)
+            : media,
+      };
+    }
     return {
       body: await setMediaExportPermission(
         db,
