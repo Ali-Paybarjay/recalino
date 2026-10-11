@@ -16,9 +16,14 @@ export {
   updateAutomaticLearningProgress,
 } from "./automatic-state";
 export {
+  type AuxiliaryRun,
   completeAuxiliaryRun,
   executeAuxiliaryProviderStep,
   failAuxiliaryRun,
+  latestAuxiliaryRun,
+  readAuxiliaryCheckpoint,
+  readAuxiliaryRun,
+  readClassRunSettings,
   scheduleAuxiliaryRun,
 } from "./auxiliary";
 export {

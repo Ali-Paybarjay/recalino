@@ -25,6 +25,7 @@ import type { Handler } from "./api";
 import { automaticLearningJob, automaticLearningPeriodicJobs } from "./automatic-learning";
 import { getDatabase } from "./db";
 import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
+import { getLessonReviewDefinition } from "./lesson-review";
 import { getMediaJobDefinition } from "./media-jobs";
 import { getPrivacyJobDefinition } from "./privacy";
 import { getProcessingDefinition } from "./processing-jobs";
@@ -117,12 +118,14 @@ export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
   const processing = getProcessingDefinition();
   const media = getMediaJobDefinition();
   const voice = getVoiceAnalysisDefinition();
+  const lessonReview = getLessonReviewDefinition();
   return [
     ...periodicJobs(settings).map((job) => job.definition),
     ...sourceJobDefinitions(),
     ...processingNotificationDefinitions(),
     ...(processing ? [processing] : []),
     ...(voice ? [voice] : []),
+    ...(lessonReview ? [lessonReview] : []),
     automaticLearningJob(),
     ...(media ? [media] : []),
     getPrivacyJobDefinition(),
