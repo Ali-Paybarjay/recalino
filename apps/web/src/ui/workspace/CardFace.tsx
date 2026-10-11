@@ -41,9 +41,9 @@ export function CardFace({
     const slot = anchor ? document.createElement("span") : null;
     const group = anchor ? document.createElement("span") : null;
     if (anchor && slot && group) {
-      group.className = styles.pronunciationGroup;
+      group.className = styles.pronunciationGroup ?? "";
       group.dir = "ltr";
-      slot.className = styles.pronunciationSlot;
+      slot.className = styles.pronunciationSlot ?? "";
       anchor.before(group);
       group.append(anchor, slot);
     }
