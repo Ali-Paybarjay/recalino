@@ -18,6 +18,7 @@ import { ClassNotesFrame } from "./ClassNotesFrame";
 import { ClassNotesPlayback } from "./ClassNotesPlayback";
 import { LessonAdaptation } from "./LessonAdaptation";
 import { LessonReview } from "./LessonReview";
+import { lessonQualityCopy } from "./lesson-quality-copy";
 import { hasLessonEdits } from "./lesson-review-state";
 import styles from "./NoteView.module.css";
 import type { NoteMaterialSource, NoteSourceIssue } from "./note-source-issues";
@@ -290,6 +291,39 @@ export function NoteView({
     );
   }
 
+  /** lesson-quality-1: a file with extracted text that taught nothing, with its reason. */
+  function coverageNotes() {
+    const unused = (model?.coverage.sources ?? []).flatMap((entry) =>
+      entry.status === "not_used" ? [entry] : [],
+    );
+    if (!unused.length) return null;
+    return (
+      <aside className={styles.issues} aria-label={lessonQualityCopy.coverage.title}>
+        <p>{lessonQualityCopy.coverage.title}</p>
+        <ul>
+          {unused.map((entry) => {
+            const material = materialSources.find((item) => item.sourceId === entry.sourceId);
+            return (
+              <li key={entry.sourceId}>
+                {material ? (
+                  <p className={styles.issueName}>
+                    <strong>
+                      File {material.order} · <bdi>{material.name}</bdi>
+                    </strong>
+                  </p>
+                ) : null}
+                <p>{lessonQualityCopy.coverage.reason[entry.reason]}</p>
+              </li>
+            );
+          })}
+        </ul>
+        <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
+          Review session material
+        </QuietLink>
+      </aside>
+    );
+  }
+
   async function save(change: Omit<PublishNotebookInput, "expectedRevisionId">) {
     if (saving.current || recoveryInFlight.current) return;
     saving.current = true;
@@ -522,6 +556,7 @@ export function NoteView({
           {model.classNotes && !editMode ? (
             <>
               {materialIssues()}
+              {coverageNotes()}
               {adaptation ? <LessonAdaptation adaptation={adaptation} /> : null}
               {current && !readOnlyRevision ? (
                 <ClassNotesPlayback
@@ -576,6 +611,7 @@ export function NoteView({
                     : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
                 </p>
                 {materialIssues()}
+                {coverageNotes()}
                 {standalone ? <h2>Class summary</h2> : <h3>Class summary</h3>}
                 {model.summary.map(claim)}
                 {model.topics.map((topic) => (

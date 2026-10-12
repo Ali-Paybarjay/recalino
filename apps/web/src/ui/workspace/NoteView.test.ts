@@ -200,6 +200,55 @@ describe("generated previews and automatic preparation", () => {
   });
 });
 
+describe("lesson-quality-1 source coverage in the notes", () => {
+  const photoId = "10000000-0000-4000-8000-000000000011";
+  const handoutId = "10000000-0000-4000-8000-000000000012";
+  const covered: KnowledgeVersion = {
+    ...latest,
+    model: {
+      ...model,
+      coverage: {
+        complete: true,
+        missingSourceIds: [],
+        sources: [
+          { sourceId: handoutId, status: "used" },
+          { sourceId: photoId, status: "not_used", reason: "unreadable" },
+        ],
+      },
+    },
+  };
+  it("names each unused file with its reason and links to session material", () => {
+    const html = render({
+      latest: covered,
+      materialSources: [
+        { sourceId: handoutId, name: "Handout.pdf", order: 1, status: "ready" },
+        { sourceId: photoId, name: "Board.jpeg", order: 2, status: "ready" },
+      ],
+    });
+    expect(html).toContain("Material not used in these notes");
+    expect(html).toContain("File 2 · <bdi>Board.jpeg</bdi>");
+    expect(html).toContain("This file could not be read clearly enough to teach from.");
+    expect(html).not.toContain("File 1 · <bdi>Handout.pdf</bdi>");
+    expect(html).toContain(`href="/sessions/${sessionId}/sources"`);
+  });
+
+  it("shows nothing for older versions without per-source coverage or when all were used", () => {
+    expect(render()).not.toContain("Material not used in these notes");
+    const allUsed = {
+      ...covered,
+      model: {
+        ...covered.model,
+        coverage: {
+          complete: true,
+          missingSourceIds: [],
+          sources: [{ sourceId: photoId, status: "used" as const }],
+        },
+      },
+    };
+    expect(render({ latest: allUsed })).not.toContain("Material not used in these notes");
+  });
+});
+
 describe("saved notes and revisions", () => {
   it("opens saved notes in reading mode with optional tools after the content", () => {
     const html = render({ initial: notebook, courseId: "course-1" });
