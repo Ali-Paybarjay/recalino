@@ -394,7 +394,9 @@ export async function relinkClassVoices(
     if (canonicalJson(next) === canonicalJson(previous)) continue;
     await tx
       .updateTable("voc.analysis")
-      .set({ speaker_links: JSON.stringify(next), version: row.version + 1, updated_at: now })
+      // Links never bump the part's version: a learner's choice on a part does not depend on
+      // them, and a class choice re-reads them and refuses when the set of parts changed.
+      .set({ speaker_links: JSON.stringify(next), updated_at: now })
       .where("id", "=", row.id)
       .execute();
   }
