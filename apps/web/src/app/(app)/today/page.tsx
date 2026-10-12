@@ -107,7 +107,8 @@ export default async function TodayPage() {
             initial={latestStatus}
             content={{
               notes: !!latestStatus?.notesReady,
-              cards: !!latestStatus?.cardsReady,
+              // Same rule as the session page: flashcards open once notes are published.
+              cards: !!latestStatus?.notesReady,
             }}
             title={latest.displayTitle}
             primarySecondary
