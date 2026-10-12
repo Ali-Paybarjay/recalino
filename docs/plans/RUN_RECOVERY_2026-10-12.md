@@ -114,6 +114,31 @@ group by 1, 2, 3, 4, 5
 order by 1, 5;
 ```
 
+نوبت دوم، برای سقف هزینهٔ AI. سقف جلسه همهٔ هزینهٔ عمر همان جلسه را می‌شمارد (D56). سقف کاربر/ماه و پروژه/ماه هم از ابتدای ماه UTC شمرده می‌شوند (`packages/core/src/quota/costs.ts:117`).
+
+```sql
+-- Q5: AI cost already recorded per class (session cap 2 USD; a Gemini call needs spent+held <= 1.24)
+select left(session_id::text, 8) as session, currency, count(*) as cost_rows,
+       round(sum(coalesce(amount_micros, estimated_micros)) / 1e6, 3) as usd
+from quota.provider_cost
+where session_id is not null
+group by 1, 2
+order by 1;
+
+-- Q6: this month's totals (user cap 8 USD, project 50 USD) and today's (project 5 USD), plus open holds
+select currency,
+       round(sum(coalesce(amount_micros, estimated_micros))
+             filter (where created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc') / 1e6, 3) as month_usd,
+       round(sum(coalesce(amount_micros, estimated_micros))
+             filter (where created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc') / 1e6, 3) as today_usd
+from quota.provider_cost
+group by 1;
+select currency, count(*) as open_holds, round(sum(maximum_micros) / 1e6, 3) as held_usd
+from quota.cost_hold
+where closed_at is null
+group by 1;
+```
+
 ## ۳. جدول همهٔ Runها
 
 (پس از نتیجهٔ SQL)
