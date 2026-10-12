@@ -35,8 +35,8 @@
 | `sessionNavigation.savedOnDevice.online` | Your recording uploads automatically while this app is open. | همان حالت، دستگاه آنلاین | تشخیص ۷.۳ بند ۱ | در انتظار تأیید |
 | `sessionNavigation.savedOnDevice.offline` | Your recording uploads when this device is back online. Keep this app open. | همان حالت، دستگاه آفلاین («منتظر اینترنت») | تشخیص ۷.۳ بند ۱ | در انتظار تأیید |
 | `sessionNavigation.capture.background` | Finished parts upload in the background. Keep recording; nothing interrupts it. | سطر وضعیت حین ضبط وقتی قطعه‌های بسته‌شده در پس‌زمینه ارسال می‌شوند | D60 (تصمیم مالک 2026-10-12)، PRD-REC-02 | در انتظار تأیید |
-| `sessionNavigation.capture.lastPart` | Sending the last part | پس از Stop، فقط قطعهٔ آخر مانده است | D60، پیام مدیر 2026-10-12 | در انتظار تأیید |
-| `sessionNavigation.capture.lastPartDetail` | The other parts are already sent. Keep this app open until it finishes. | همان حالت، دستگاه آنلاین | D60 | در انتظار تأیید |
+| `sessionNavigation.capture.lastPart` | Sending the last part | پس از Stop، از قطعه‌های صوتی در حال ارسال فقط آخری مانده است (از پیشرفت اندازه‌گیری‌شدهٔ ارسال) | D60، پیام مدیر 2026-10-12 | در انتظار تأیید |
+| `sessionNavigation.capture.lastPartDetail` | The other parts are already sent. Keep this app open until it finishes. | همان حالت | D60 | در انتظار تأیید |
 | `sessionNavigation.voiceCheck.heading` | Finishing your notes | درس نوشته شده و انتشار منتظر بررسی صداست | تصمیم مالک 2026-10-12 (رد انتشار پیش از نتیجهٔ صدا)، تشخیص ۷.۱ بند ۵ | در انتظار تأیید |
 | `sessionNavigation.voiceCheck.detail` | Your lesson is written. Recalino is checking the voices in your recording before it shows the notes. This can take a few minutes; you can leave this page. | همان حالت | همان | در انتظار تأیید |
 | `sessionNavigation.voice.action` | Confirm your voice | دکمهٔ گام اختیاری صدا در صفحهٔ جلسه | تشخیص ۷.۳ بند ۴ | در انتظار تأیید |

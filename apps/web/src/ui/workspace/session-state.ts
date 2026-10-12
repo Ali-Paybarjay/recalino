@@ -66,11 +66,11 @@ export interface SessionStateInput {
   uploadProgress?: AutomaticUploadProgress | null;
   audioTransfers?: readonly SessionAudioTransfer[];
   /**
-   * Captures on this device: one is in progress, or finished parts still wait to be sent.
-   * `parts` counts the finished parts of this session; `background` is true when sealed parts
-   * upload during capture (D60, read defensively from the recording worker's state).
+   * Captures on this device: one is in progress, or finished parts are not yet registered with
+   * the server. `background` is true when sealed parts of the running capture are already
+   * registered (D60, read defensively from the recording worker's state).
    */
-  recordings?: { capturing: boolean; waiting: number; parts?: number; background?: boolean };
+  recordings?: { capturing: boolean; waiting: number; background?: boolean };
   /** Whether this session's voice check waits for the learner's optional confirmation. */
   voicePending?: boolean;
 }
@@ -259,20 +259,14 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
     recordings?.waiting &&
     !input.uploadProgress &&
     ["idle", "waiting_sources", "waiting_upload"].includes(status.state)
-  ) {
-    const lastPart = recordings.waiting === 1 && (recordings.parts ?? 0) > 1;
+  )
     return step(
       "active",
-      lastPart ? copy.capture.lastPart : copy.savedOnDevice.heading,
-      input.online === false
-        ? copy.savedOnDevice.offline
-        : lastPart
-          ? copy.capture.lastPartDetail
-          : copy.savedOnDevice.online,
+      copy.savedOnDevice.heading,
+      input.online === false ? copy.savedOnDevice.offline : copy.savedOnDevice.online,
       study ?? go.view_progress,
       [go.view_progress, ...studyActions],
     );
-  }
 
   if (progress.active) {
     if (input.online === false)
@@ -291,6 +285,18 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
         "active",
         copy.voiceCheck.heading,
         copy.voiceCheck.detail,
+        study ?? go.view_progress,
+        [go.view_progress, ...studyActions],
+      );
+    // D60: earlier parts may already be sent; measured transfer says when only the last remains.
+    const audio = input.uploadProgress?.runId === status.run?.id ? input.uploadProgress : null;
+    const audioLeft =
+      audio?.files.filter((file) => file.phase !== "verifying" && file.phase !== "complete") ?? [];
+    if (progress.stage === "upload" && (audio?.files.length ?? 0) > 1 && audioLeft.length === 1)
+      return step(
+        "active",
+        copy.capture.lastPart,
+        copy.capture.lastPartDetail,
         study ?? go.view_progress,
         [go.view_progress, ...studyActions],
       );

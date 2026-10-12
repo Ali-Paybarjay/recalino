@@ -48,7 +48,6 @@ function useWaitingRecordings(sessionId: string) {
   return {
     capturing: capturingHere,
     waiting: finished.filter((row) => !row.sourceAssetId).length,
-    parts: finished.length,
     // D60: a sealed part of the running capture already registered on the server.
     background:
       capturingHere &&

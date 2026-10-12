@@ -319,20 +319,43 @@ describe("states during and after capture (D60, D61) and before publication", ()
   it("names background part uploads during capture without any warning", () => {
     const step = next({
       status: status({ state: "blocked", lastError: "audio_upload_rejected" }),
-      recordings: { capturing: true, waiting: 0, parts: 2, background: true },
+      recordings: { capturing: true, waiting: 0, background: true },
     });
     expect(step.heading).toBe("Recording in progress");
     expect(step.detail).toMatch(/upload in the background/);
     expect(step.tone).toBe("active");
   });
 
-  it("says only the last part remains after Stop", () => {
+  it("says only the last part remains, from the measured transfer", () => {
+    const parts = (phases: ("queued" | "uploading" | "verifying" | "complete")[]) =>
+      next({
+        status: status({ state: "waiting_upload", run: run("awaiting_upload") }),
+        uploadProgress: {
+          runId: run("awaiting_upload").id,
+          sentBytes: 0,
+          totalBytes: 30,
+          files: phases.map((phase, index) => ({
+            sourceId: `part-${index}`,
+            displayName: `Part ${index + 1}`,
+            sentBytes: phase === "complete" ? 10 : 0,
+            totalBytes: 10,
+            phase,
+          })),
+        },
+      });
+    const last = parts(["complete", "verifying", "uploading"]);
+    expect(last.heading).toBe("Sending the last part");
+    expect(last.detail).toMatch(/other parts are already sent/);
+    expect(parts(["complete", "uploading", "queued"]).heading).toBe("Uploading your material");
+    expect(parts(["uploading"]).heading).toBe("Uploading your material");
+  });
+
+  it("does not call a registered part sent while its audio still waits on the device", () => {
     const step = next({
       status: status({ state: "waiting_sources" }),
-      recordings: { capturing: false, waiting: 1, parts: 6 },
+      recordings: { capturing: false, waiting: 1 },
     });
-    expect(step.heading).toBe("Sending the last part");
-    expect(step.detail).toMatch(/other parts are already sent/);
+    expect(step.heading).toBe("Saved on this device");
   });
 
   it("explains a written lesson that waits for the voice check", () => {
