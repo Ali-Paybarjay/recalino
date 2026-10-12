@@ -110,3 +110,15 @@
 | صفحهٔ ورود Vercel می‌آید | نشانی preview محافظت‌شده است | از `https://recalino.vercel.app` استفاده کنید یا اول وارد Vercel شوید. |
 
 اگر هیچ‌کدام نبود: زمان (UTC) و متن دقیق خطا را بدون Secret برای تیم بفرستید.
+
+## توسعهٔ محلی (`http://localhost:3000`، فقط برای توسعه‌دهنده)
+
+اپ محلی به Supabase محلی (Docker) وصل است، نه به پروژهٔ ابری؛ پس تنظیم‌های بالا روی آن اثری ندارند.
+
+1. در همان OAuth Client گوگل (گام ۵):
+   - **Authorized JavaScript origins:** `http://localhost:3000` را اضافه کنید.
+   - **Authorized redirect URIs:** `http://127.0.0.1:54321/auth/v1/callback` را اضافه کنید (callback Supabase محلی؛ پورت از `supabase/config.toml`).
+2. Client ID و Secret را فقط در فایل ignored `.env` ریشه، در `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` و `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET` بگذارید (نمونه: `.env.example`) و `pnpm db:start` را دوباره اجرا کنید.
+3. `site_url` و `additional_redirect_urls` محلی از قبل `http://localhost:3000/auth/callback` را دارند. اپ را از `http://localhost:3000` باز کنید، نه `127.0.0.1:3000`، تا با origin ثبت‌شده در Google یکی باشد.
+
+جزئیات بیشتر: [GOOGLE_OAUTH.md](../runbooks/GOOGLE_OAUTH.md).
