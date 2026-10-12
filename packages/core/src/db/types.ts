@@ -1094,6 +1094,7 @@ export interface VocAnalysis {
   created_at: Generated<Timestamp>;
   embeddings_expire_at: Timestamp;
   id: Generated<string>;
+  line_choices: Generated<Json>;
   match_reason: string | null;
   mistakes: Generated<Json>;
   model_version: string;
@@ -1106,6 +1107,7 @@ export interface VocAnalysis {
   session_id: string;
   source_id: string;
   source_version_id: string;
+  speaker_links: Generated<Json>;
   status: string;
   updated_at: Generated<Timestamp>;
   user_id: string;

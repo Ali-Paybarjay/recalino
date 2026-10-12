@@ -19,6 +19,7 @@ import {
   spokenMistakeSchema,
   type VoiceAnalysisInput,
   type VoiceCandidate,
+  type VoiceSettings,
   type VoiceUtterance,
   voiceCoverageReason,
 } from "../voc";
@@ -38,11 +39,23 @@ export interface VoiceDiarization {
     boundaryUnsafe: boolean;
   }[];
   speakers: { speakerId: string; embedding: number[]; cleanSpeechMs: number }[];
+  /**
+   * Voiceprints of single clean turns, only when target-speaker turns were requested. They are
+   * scored against the learner's sample when the analysis is saved and never stored.
+   */
+  turns?: { speakerId: string; startMs: number; endMs: number; embedding: number[] }[];
+}
+export interface VoiceDiarizationOptions {
+  /** Excerpt plan of a background check; absent keeps the standard plan. */
+  plan?: { windowMs: number; maxWindows: number };
+  /** Embed clean single turns at least this long (target-speaker turns). */
+  targetTurnMinMs?: number;
 }
 export type VoiceDiarizer = (input: {
   db: Database;
   ctx: LearnerContext;
   source: RunSource;
+  options?: VoiceDiarizationOptions;
 }) => Promise<VoiceDiarization>;
 
 /** Provider labels belong to exactly one audio job, never to a person globally. */
@@ -298,6 +311,9 @@ export function buildVoiceAnalysis(
     modelVersion: diarization.modelRevision,
     candidates,
     utterances,
+    ...(diarization.turns
+      ? { turnEmbeddings: turnEmbeddings(source.sourceId, utterances, diarization) }
+      : {}),
     embeddings: diarization.speakers.flatMap((speaker) => {
       const speakerId = scopedVoiceSpeakerId(source.sourceId, "whole-source", speaker.speakerId);
       // Short examples remain manually selectable, but are not enrollment material.
@@ -307,6 +323,28 @@ export function buildVoiceAnalysis(
         : [];
     }),
   };
+}
+
+/**
+ * A turn voiceprint belongs to the transcript line it lies in: at least 80% of the turn falls
+ * inside the line, and the turn's own voice is the line's voice.
+ */
+export function turnEmbeddings(
+  sourceId: string,
+  utterances: readonly VoiceUtterance[],
+  diarization: Pick<VoiceDiarization, "turns">,
+): { utteranceId: string; vector: number[] }[] {
+  return (diarization.turns ?? []).flatMap((turn) => {
+    if (!validInterval(turn.startMs, turn.endMs)) return [];
+    const length = turn.endMs - turn.startMs;
+    const speakerId = scopedVoiceSpeakerId(sourceId, "whole-source", turn.speakerId);
+    const line = utterances.find(
+      (item) =>
+        item.speakerId === speakerId &&
+        Math.min(item.endMs, turn.endMs) - Math.max(item.startMs, turn.startMs) >= 0.8 * length,
+    );
+    return line ? [{ utteranceId: line.id, vector: turn.embedding }] : [];
+  });
 }
 
 const correctionOutputSchema = z.strictObject({
@@ -502,6 +540,8 @@ export async function processVoiceSource(input: {
   runId: string;
   source: RunSource;
   diarize?: VoiceDiarizer;
+  /** Background checks may use a wider excerpt plan; target turns follow the switch. */
+  options?: VoiceDiarizationOptions;
   explanationLanguage?: string;
   correct: (analysis: PrivateVoiceAnalysis) => Promise<boolean>;
   now: () => Date;
@@ -524,6 +564,7 @@ export async function processVoiceSource(input: {
         db: input.db,
         ctx: input.ctx,
         source: input.source,
+        ...(input.options ? { options: input.options } : {}),
       });
       prepared = buildVoiceAnalysis(
         { ...key, profileVersion: enrollment.version },
@@ -665,4 +706,75 @@ export function buildTranscriptVoiceAnalysis(
         .map((item) => item.text.slice(0, 4000)),
     })),
   };
+}
+
+/** Diarization options a check uses: background checks may cover more of a long recording. */
+export function voiceDiarizationOptions(
+  settings: VoiceSettings,
+  background: boolean,
+): VoiceDiarizationOptions | undefined {
+  const options: VoiceDiarizationOptions = {
+    ...(background && settings.backgroundCoverage ? { plan: settings.backgroundCoverage } : {}),
+    ...(settings.targetTurns ? { targetTurnMinMs: settings.targetTurnMinMs } : {}),
+  };
+  return Object.keys(options).length ? options : undefined;
+}
+
+/**
+ * The acoustic checks of a run's recording parts, up to `concurrency` at once: each part has its
+ * own original, so parts never wait for one another; the native pool bounds the CPU actually
+ * used. No paid correction runs here. `canStart` is asked before each further part starts.
+ * Returns true when any part saved an analysis; the first failure is rethrown after the others
+ * settle, so no native worker outlives the call.
+ */
+export async function analyzeVoiceSources(input: {
+  db: Database;
+  ctx: LearnerContext;
+  sessionId: string;
+  runId: string;
+  sources: readonly RunSource[];
+  diarize: VoiceDiarizer;
+  options?: VoiceDiarizationOptions;
+  explanationLanguage?: string;
+  concurrency: number;
+  canStart: () => boolean;
+  now: () => Date;
+}): Promise<boolean> {
+  const queue = input.sources.filter(
+    (source) => source.kind === "audio" && source.contentVersionId,
+  );
+  let analyzed = false,
+    failure: { error: unknown } | null = null,
+    started = 0;
+  const lane = async () => {
+    for (;;) {
+      const source = queue.shift();
+      if (!source || failure) return;
+      // The first part always starts; later ones only while the job still has time.
+      if (started > 0 && !input.canStart()) return;
+      started++;
+      try {
+        const progress = await processVoiceSource({
+          db: input.db,
+          ctx: input.ctx,
+          sessionId: input.sessionId,
+          runId: input.runId,
+          source,
+          diarize: input.diarize,
+          ...(input.options ? { options: input.options } : {}),
+          ...(input.explanationLanguage ? { explanationLanguage: input.explanationLanguage } : {}),
+          now: input.now,
+          correct: async () => false,
+        });
+        if (progress !== "unchanged") analyzed = true;
+      } catch (error) {
+        failure ??= { error };
+      }
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.max(1, Math.min(input.concurrency, queue.length)) }, lane),
+  );
+  if (failure) throw (failure as { error: unknown }).error;
+  return analyzed;
 }

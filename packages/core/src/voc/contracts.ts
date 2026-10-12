@@ -16,6 +16,11 @@ export const voiceUtteranceSchema = z.strictObject({
   endMs: z.int().positive(),
   text: z.string().min(1).max(10000),
   eligible: z.boolean(),
+  /**
+   * Similarity of this turn's own clean speech to the learner's sample (target-speaker turns,
+   * draft FR-VOC v3); absent when the turn was not scored. A proposal, never an identity.
+   */
+  targetScore: z.number().min(-1).max(1).optional(),
 });
 export const spokenMistakeSchema = z.strictObject({
   utteranceId: z.string().min(1).max(200),
@@ -136,8 +141,49 @@ export interface VoiceAnalysisView {
     mimeType: string;
   } | null;
   candidates: VoiceCandidate[];
+  /**
+   * Voices below the suggestion minimum: no voiceprint, no usable excerpt or too little clean
+   * speech. They are never suggested and are grouped as short voices rather than offered one by one.
+   */
+  shortCandidateIds?: string[];
+  /**
+   * Class voice of each linked speaker of this part (`classVoices` of the class view);
+   * `ambiguous` when the voice resembled more than one voice of another part.
+   */
+  speakerLinks?: Record<string, { voiceId: string; ambiguous: boolean }>;
+  /** Target-speaker lines: proposed lines and the learner's own line choices. */
+  lines?: VoiceLineView[];
+}
+/** One transcript line of a part that the learner may mark as their own (draft FR-VOC v3). */
+export interface VoiceLineView {
+  utteranceId: string;
+  speakerId: string;
+  startMs: number;
+  endMs: number;
+  text: string;
+  /** Proposed because its own clean speech resembles the learner's sample. */
+  proposed: boolean;
+  choice: "mine" | "not_mine" | null;
+}
+/**
+ * One voice of the whole class: the same person's speakers in different recording parts, linked
+ * by their voiceprints (PRD-SPK-02). `ambiguous` keeps an uncertain link visible: the voice
+ * resembled more than one voice of another part, so it was not joined to any of them.
+ */
+export interface ClassVoiceEntry {
+  id: string;
+  label: string;
+  ambiguous: boolean;
+  cleanSpeechMs: number;
+  members: { analysisId: string; speakerId: string }[];
 }
 export interface ClassVoiceView {
+  /** Which workstream-4 switches are on (VOICE_SETTINGS_JSON); absent means all off. */
+  features?: { classConfirmation: boolean; lineChoices: boolean };
+  /** Linked voices of the class, the suggested one first when there is a suggestion. */
+  classVoices?: ClassVoiceEntry[];
+  /** The class voice suggested for one confirmation per class; never a voice without a voiceprint. */
+  classCandidateId?: string | null;
   processing?: boolean;
   /** The same input prerequisites checked before an explicit voice analysis is queued. */
   analysisBlockedReason?: VoiceAnalysisBlockedReason | null;
@@ -156,6 +202,25 @@ export const voiceActionSchema = z.strictObject({
   analysisId: z.uuid(),
   expectedVersion: z.int().positive(),
   speakerId: z.string().min(1).max(200).optional(),
+});
+/** One choice for the whole class, applied to every current part in one transaction. */
+export const voiceClassActionSchema = z.strictObject({
+  scope: z.literal("class"),
+  action: z.enum(["confirm", "reject", "none", "revoke"]),
+  classVoiceId: z.string().min(1).max(200).optional(),
+  /** Every current part and the version the learner saw; a changed part refuses the choice. */
+  expected: z
+    .array(z.strictObject({ analysisId: z.uuid(), version: z.int().positive() }))
+    .min(1)
+    .max(50),
+});
+/** The learner marks one transcript line as theirs or not (draft FR-VOC v3). */
+export const voiceLineActionSchema = z.strictObject({
+  scope: z.literal("line"),
+  analysisId: z.uuid(),
+  expectedVersion: z.int().positive(),
+  utteranceId: z.string().min(1).max(200),
+  choice: z.enum(["mine", "not_mine", "clear"]),
 });
 export const voiceEnrollmentSchema = z
   .strictObject({
@@ -195,6 +260,11 @@ export interface VoiceAnalysisInput {
   candidates: VoiceCandidate[];
   utterances: VoiceUtterance[];
   embeddings: { speakerId: string; vector: number[] }[];
+  /**
+   * Transient voiceprints of single clean turns, scored against the learner's sample when the
+   * analysis is saved and never stored (target-speaker turns).
+   */
+  turnEmbeddings?: { utteranceId: string; vector: number[] }[];
   reason?: string;
 }
 export interface PrivateVoiceAnalysis {

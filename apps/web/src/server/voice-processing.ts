@@ -57,6 +57,7 @@ export async function diarizeVoiceRecording(
   durationMs: number,
   ranges: readonly VoiceSourceWindow[] = [],
   plan?: VoiceWindowPlan,
+  targetTurnMinMs?: number,
 ): Promise<CheckedDiarization> {
   let samples: Float32Array | undefined;
   try {
@@ -66,10 +67,23 @@ export async function diarizeVoiceRecording(
     const result = await engine.diarize(pcm.samples, {
       sampleRate: pcm.sampleRate,
       boundaries: pcm.windows.flatMap((window) => [window.compositeStartMs, window.compositeEndMs]),
+      ...(targetTurnMinMs ? { targetTurnMinMs } : {}),
     });
+    const { turns, ...diarization } = result;
     return {
-      ...result,
+      ...diarization,
       segments: remapVoiceSegments(result.segments, pcm.windows),
+      // A turn near an excerpt edge or splice is dropped: its speech may be cut.
+      ...(turns
+        ? {
+            turns: remapVoiceSegments(
+              turns.map((turn) => ({ ...turn, overlap: false, boundaryUnsafe: false })),
+              pcm.windows,
+            ).flatMap(({ overlap: _overlap, boundaryUnsafe, ...turn }) =>
+              boundaryUnsafe ? [] : [turn],
+            ),
+          }
+        : {}),
       // Planned sampling and skipped or shortened excerpts are disclosed separately.
       ...(selection.sampled ? { sampled: true } : {}),
       ...(pcm.partial ? { partial: true } : {}),
@@ -85,6 +99,7 @@ const diarizeOriginal = async ({
   db,
   ctx,
   source,
+  options,
 }: Parameters<VoiceDiarizer>[0]): Promise<CheckedDiarization> => {
   const store = getObjectStore();
   if (!store || !source.objectId || !source.durationMs)
@@ -96,7 +111,14 @@ const diarizeOriginal = async ({
   try {
     if (createHash("sha256").update(bytes).digest("hex") !== source.sha256)
       throw errors.validationFailed({ voice: ["source_integrity_mismatch"] });
-    return await diarizeVoiceRecording(engine, bytes, source.durationMs, source.ranges);
+    return await diarizeVoiceRecording(
+      engine,
+      bytes,
+      source.durationMs,
+      source.ranges,
+      options?.plan,
+      options?.targetTurnMinMs,
+    );
   } finally {
     bytes.fill(0);
   }

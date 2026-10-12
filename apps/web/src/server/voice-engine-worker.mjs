@@ -6,6 +6,7 @@ import {
   normalizeEmbedding,
   poolEmbeddings,
   qualifySegments,
+  targetTurnSpans,
 } from "./voice-engine-quality.mjs";
 
 // This module is an isolated CPU worker. User audio never leaves this process or reaches a URL.
@@ -15,7 +16,14 @@ try {
   const sherpa = require("sherpa-onnx-node");
   if (require("sherpa-onnx-node/package.json").version !== "1.13.8")
     throw new Error("voice_runtime_version_mismatch");
-  const { samples, configuration, operation, offsetMs, boundaries = [] } = workerData;
+  const {
+    samples,
+    configuration,
+    operation,
+    offsetMs,
+    boundaries = [],
+    targetTurnMinMs = null,
+  } = workerData;
   const extractor = new sherpa.SpeakerEmbeddingExtractor({
     model: configuration.embeddingPath,
     numThreads: configuration.numThreads,
@@ -91,9 +99,31 @@ try {
         cleanSpeechMs: embeddings.reduce((sum, entry) => sum + entry.weight, 0),
       });
     }
+    // Target-speaker turns: one transient voiceprint per clean single turn, never pooled.
+    const turns = [];
+    if (targetTurnMinMs !== null)
+      for (const span of targetTurnSpans(
+        segments,
+        samples.length / 16,
+        offsetMs,
+        boundaries,
+        targetTurnMinMs,
+      )) {
+        try {
+          turns.push({ ...span, embedding: embedSpan(span) });
+        } catch (error) {
+          // A turn too short for the extractor is not scored; anything else fails the check.
+          if (!(error instanceof Error) || error.message !== "voice_speech_too_short") throw error;
+        }
+      }
     parentPort.postMessage({
       ok: true,
-      value: { modelRevision: configuration.modelRevision, segments, speakers },
+      value: {
+        modelRevision: configuration.modelRevision,
+        segments,
+        speakers,
+        ...(targetTurnMinMs !== null ? { turns } : {}),
+      },
     });
   }
 } catch (error) {

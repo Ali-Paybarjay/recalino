@@ -89,17 +89,20 @@ import {
 
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
+import { readVoiceSettings } from "../voc";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { buildKnowledgeStudyRepairInput } from "./knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "./knowledge-translation";
 import { ownedRun } from "./runs";
 import { studyPrompt } from "./study-prompt";
 import {
+  analyzeVoiceSources,
   correctVoiceCandidates,
   processVoiceSource,
   scopedVoiceSpeakerId,
   type VoiceDiarizer,
   voiceAnalysisPending,
+  voiceDiarizationOptions,
 } from "./voice-processing";
 
 export const audioChunkSchema = z.strictObject({
@@ -1198,6 +1201,7 @@ export function processingJob(
         // Its acoustic check runs while the lesson is generated rather than before it; it is
         // saved before the paid correction, which still keeps a job of its own.
         let voiceCheck: ReturnType<typeof startVoiceCheck> | null = null;
+        const voiceSettings = readVoiceSettings();
         const diarize = dependencies.diarizeVoice;
         if (
           diarize &&
@@ -1212,26 +1216,24 @@ export function processingJob(
             await checkpointAndContinue(job, ctx, payload.runId, definition, YIELD_DELAY_SECONDS);
             return;
           }
-          voiceCheck = startVoiceCheck(async () => {
-            let analyzed = false;
-            for (const source of extracted) {
-              if (analyzed && !hasTime(job, VOICE_ANALYSIS_TIME_MS)) break;
-              const progress = await processVoiceSource({
-                db: job.db,
-                ctx,
-                sessionId: initial.session_id,
-                runId: payload.runId,
-                source,
-                explanationLanguage: settings.explanationLanguage,
-                diarize,
-                now: job.now,
-                // Required lesson generation gets cost headroom before this optional paid analysis.
-                correct: async () => false,
-              });
-              if (progress !== "unchanged") analyzed = true;
-            }
-            return analyzed;
-          });
+          // Recording parts are checked side by side; no paid correction runs here, so required
+          // lesson generation gets cost headroom before this optional paid analysis.
+          const options = voiceDiarizationOptions(voiceSettings, false);
+          voiceCheck = startVoiceCheck(() =>
+            analyzeVoiceSources({
+              db: job.db,
+              ctx,
+              sessionId: initial.session_id,
+              runId: payload.runId,
+              sources: extracted,
+              diarize,
+              ...(options ? { options } : {}),
+              explanationLanguage: settings.explanationLanguage,
+              concurrency: voiceSettings.diarizationConcurrency,
+              canStart: () => hasTime(job, VOICE_ANALYSIS_TIME_MS),
+              now: job.now,
+            }),
+          );
         }
         const lessonStage = async (): Promise<"checkpoint" | "published"> => {
           const missing = extracted
