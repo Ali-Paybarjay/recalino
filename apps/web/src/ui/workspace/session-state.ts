@@ -76,25 +76,15 @@ export interface SessionStateInput {
 }
 
 /**
- * Upload refusals that a retry of the same saved file cannot change. Codes come from the upload
- * worker (`feat/upload-reliability`); an unknown or missing code keeps today's retry.
+ * Whether a learner's Retry of a saved audio upload can pass. Same rule as
+ * `audioUploadRetryable` in `feat/upload-reliability` (upload-problems.ts): only a missing or
+ * `unknown` reason keeps the retry; every stable reason (audio_upload_not_started,
+ * audio_upload_incomplete, audio_upload_rejected, …) names a state a retry cannot change.
+ * A non-string value is read defensively as missing.
  */
-const finalUploadReasons = new Set([
-  "audio_upload_rejected",
-  "audio_start_rejected",
-  "confirmed_processing_required",
-  "checksum_mismatch",
-  "file_changed",
-  "original_missing",
-  "original_unreadable",
-  "too_large",
-  "unsupported_type",
-  "not_verified",
-]);
-
 export function uploadRetryCanHelp(transfer: SessionAudioTransfer) {
   const reason = typeof transfer.reason === "string" ? transfer.reason : null;
-  return !reason || !finalUploadReasons.has(reason);
+  return !reason || reason === "unknown";
 }
 
 function actions(sessionId: string) {

@@ -190,6 +190,14 @@ describe("sessionNextStep", () => {
     expect(uploadRetryCanHelp({ runId: "r", phase: "attention", message: "", problem: null })).toBe(
       true,
     );
+    const transfer = { runId: "r", phase: "attention", message: "", problem: null };
+    expect(uploadRetryCanHelp({ ...transfer, reason: "unknown" })).toBe(true);
+    for (const reason of [
+      "audio_upload_not_started",
+      "audio_upload_incomplete",
+      "audio_upload_rejected",
+    ])
+      expect(uploadRetryCanHelp({ ...transfer, reason })).toBe(false);
   });
 
   it("explains an audio upload that never arrived and keeps material review beside the retry", () => {
