@@ -97,6 +97,12 @@ export const ROUTES = {
   sourceRead: { id: "sourceRead", path: "/api/sources/[id]/read", access: "learner" },
   sourceAudio: { id: "sourceAudio", path: "/api/sources/[id]/audio", access: "learner" },
   recordingSource: { id: "recordingSource", path: "/api/recordings", access: "learner" },
+  captureDiagnostics: {
+    id: "captureDiagnostics",
+    path: "/api/recordings/diagnostics",
+    access: "learner",
+    rateLimit: "support",
+  },
   sourceUnlock: { id: "sourceUnlock", path: "/api/sources/[id]/unlock", access: "learner" },
   classProcessing: {
     id: "classProcessing",

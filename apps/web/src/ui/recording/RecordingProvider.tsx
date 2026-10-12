@@ -11,6 +11,7 @@ import {
 } from "react";
 import { workspaceRequest } from "../workspace/api";
 import { Button, Status } from "../workspace/primitives";
+import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
 import { RecordingController } from "./controller";
@@ -39,6 +40,17 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
   useEffect(() => {
     value.sourceSync.start();
     const unwatchMediaSession = watchRecordingMediaSession(value.controller);
+    const unwatchDiagnostics = watchCaptureDiagnostics(value.controller, {
+      userAgent: navigator.userAgent,
+      // keepalive lets the last batch leave while the page is being hidden or closed.
+      send: (body) =>
+        fetch("/api/recordings/diagnostics", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+          keepalive: true,
+        }),
+    });
     const unwatch = watchCaptureLifecycle(value.controller, {
       page: document,
       window,
@@ -48,6 +60,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     });
     return () => {
       unwatch();
+      unwatchDiagnostics();
       unwatchMediaSession();
       value.sourceSync.dispose();
       value.controller.dispose();
