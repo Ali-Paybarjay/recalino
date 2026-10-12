@@ -4,6 +4,7 @@ export { isAnnouncingHeading, statesAssignment } from "./homework-evidence";
 export {
   type Claim,
   claimSchema,
+  coverageBaseSchema,
   type EvidenceSource,
   isExplanationLanguage,
   KNOWLEDGE_SUMMARY_LIMIT,
@@ -15,7 +16,10 @@ export {
   locatorSchema,
   matchesExplanationScript,
   modelClaims,
+  type SourceCoverage,
   type SourceRef,
+  sourceCoverageSchema,
+  sourceNotUsedReasons,
   sourceRefSchema,
   validateKnowledgeModel,
 } from "./schema";

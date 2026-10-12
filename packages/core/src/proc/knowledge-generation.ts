@@ -10,8 +10,10 @@ import {
   normalizeGeneratedStudyModel,
   productionStudySchema,
   recognitionStudySchema,
+  type SourceCoverage,
   type StudyContent,
   type StudyLessonContext,
+  sourceNotUsedReasons,
   studyComplementNotations,
   studyGrammarTerms,
   studyLexicalTarget,
@@ -21,7 +23,12 @@ import {
   validateKnowledgeModel,
 } from "../lkm";
 import { errors } from "../plt";
-import { buildKnowledgeEvidenceInput, type KnowledgeEvidenceInput } from "./knowledge-evidence";
+import {
+  buildKnowledgeEvidenceInput,
+  type KnowledgeEvidenceInput,
+  sourceKey,
+} from "./knowledge-evidence";
+import type { LessonBudget } from "./lesson-budget";
 import { personalisedTeachingPrompt } from "./study-prompt";
 
 export const knowledgeGenerationFormat = "knowledge_generation_keys_v5";
@@ -39,7 +46,17 @@ export interface KnowledgeGenerationOptions {
   repairReason?: string;
   /** Code-owned detail of the rejected first response; see knowledgeRepairDetailSchema. */
   repairDetail?: string;
+  /** lesson-quality-1: content-scaled limits; absent keeps the legacy fixed planning budget. */
+  budget?: LessonBudget;
+  /** lesson-quality-1: each source with extracted text is cited or listed as not used. */
+  sourceCoverage?: boolean;
 }
+
+/** Reasons a model may give; not_reported is server-assigned only. */
+const modelNotUsedReasons = sourceNotUsedReasons.filter((reason) => reason !== "not_reported") as [
+  Exclude<(typeof sourceNotUsedReasons)[number], "not_reported">,
+  ...Exclude<(typeof sourceNotUsedReasons)[number], "not_reported">[],
+];
 
 /** Schema property names, indexes and issue codes only; never response or source text. */
 export const knowledgeRepairDetailSchema = z
@@ -74,6 +91,8 @@ const repairGuidance: Record<string, string> = {
     "A practice.gapSentence also hid words that are not part of the target, so its answer was not recoverable. Blank only the target's own words and keep complements and objects visible.",
   study_ipa_chunk_invalid:
     "A grammar pronunciation.spokenChunk was not 2 to 6 consecutive English words copied exactly from practice.fullSentence. Copy the words exactly as they appear and never skip one: in a question with subject-auxiliary inversion, keep the subject between the auxiliary and the verb. Never copy the chunk from practice.prompt or across a blank, bracket or slash. pronunciation.ipa transcribes exactly those words.",
+  source_coverage_missing:
+    "A source with evidence rows was neither cited by a lessonPlan entry, claim or board entry nor listed in unusedSources. Teach from every source, or list it once in unusedSources with its reason.",
   study_plan_uncovered:
     "A lessonPlan concept was never stated by a claim citing its keys. Teach every planned concept, or remove it from the plan only if the sources do not teach it.",
   study_sentence_mismatch:
@@ -771,7 +790,7 @@ export function buildKnowledgeGenerationInput(
   const outputTokens = z
     .int()
     .positive()
-    .parse(options.maxOutputTokens ?? 6144);
+    .parse(options.maxOutputTokens ?? options.budget?.outputTokens ?? 6144);
   const repairReason =
     options.repairReason === undefined
       ? undefined
@@ -786,8 +805,43 @@ export function buildKnowledgeGenerationInput(
   const context = z
     .strictObject({ date: z.iso.date(), course: prose.optional() })
     .parse(data.lessonContext);
-  const prepared = buildKnowledgeEvidenceInput(data, maxInputCharacters, knowledgeGenerationFormat);
+  const prepared = buildKnowledgeEvidenceInput(
+    data,
+    maxInputCharacters,
+    knowledgeGenerationFormat,
+    {
+      sourceKeys: options.sourceCoverage,
+    },
+  );
   const key = z.enum(prepared.keys);
+  // Sources with at least one citable row must each be taught or explicitly set aside.
+  const accountable = data.sources
+    .map((source, index) => ({ source, key: sourceKey(index) }))
+    .filter(({ source }) =>
+      [...prepared.references.values()].some((entry) => entry.source.sourceId === source.sourceId),
+    );
+  const accountableKeys = accountable.map((entry) => entry.key) as [string, ...string[]];
+  const coverageWire =
+    options.sourceCoverage && accountable.length
+      ? {
+          unusedSources: z
+            .array(
+              z.strictObject({
+                source: z.enum(accountableKeys),
+                reason: z
+                  .enum(modelNotUsedReasons)
+                  .describe(
+                    "unreadable: its text is garbled or illegible; duplicate: it repeats another source; off_topic: not lesson content; outside_selection: outside the selected part; no_teaching_content: nothing teachable.",
+                  ),
+              }),
+            )
+            .max(100)
+            .optional()
+            .describe(
+              "Every source (by sourceKey) that no lessonPlan entry, claim or board entry cites, each once with its reason. Omit when every source is taught.",
+            ),
+        }
+      : {};
   const short = z.string().max(2000);
   const required = short.min(1);
   // Named in words: a bare code such as "ar" does not tell every model which language it is.
@@ -965,6 +1019,7 @@ export function buildKnowledgeGenerationInput(
       )
       .min(1)
       .max(40),
+    ...coverageWire,
     title: knowledgeModelSchema.shape.title,
     learningItems: z.array(itemSchema).min(1).max(24),
     summary: z.array(claim).max(100).optional(),
@@ -1026,8 +1081,17 @@ export function buildKnowledgeGenerationInput(
     }),
   });
 
-  const productionLimit = Math.max(1, Math.min(18, Math.floor(outputTokens / 1280)));
-  const recognitionLimit = Math.min(6, Math.floor(outputTokens / 3072));
+  const budget = options.budget;
+  const productionLimit =
+    budget?.production ?? Math.max(1, Math.min(18, Math.floor(outputTokens / 1280)));
+  const recognitionLimit = budget?.recognition ?? Math.min(6, Math.floor(outputTokens / 3072));
+  const claimLimit =
+    budget?.supplementaryClaims ?? Math.max(1, Math.min(4, Math.floor(outputTokens / 2048)));
+  // Compact teaching only when this model's response cannot hold what the material justifies.
+  const compactTeaching = budget ? budget.compact : productionLimit < 10;
+  const structuredRows = data.sources.some((source) =>
+    source.blocks.some((block) => block.layout !== undefined),
+  );
   // A Persian phrase shown to other languages that share its script primes Persian output.
   const persianOrder = isPersian
     ? ' For Persian explanations, use "پس از X، Y می‌آید". NEVER explain X + Y as "X بعد از Y می‌آید", which reverses the source order. These are abstract X/Y placeholders, not lesson facts.'
@@ -1048,7 +1112,7 @@ export function buildKnowledgeGenerationInput(
     "Compare sources before assigning supporting keys. Agreement may be cited jointly; disagreement is not corroboration. When sources disagree about a rule or example, add a concise uncertainties claim with uncertain=true and ALL conflicting keys, describing the disagreement in the requested explanation language. A correct instructional claim may cite only the rows that actually support it; never attach a contradictory row as unqualified support or call an anonymous speaker the teacher. If the disputed rule cannot be safely resolved, keep it uncertain rather than teaching either version as established. Empty uncertainties is appropriate only when no relevant source conflict remains.",
     // Same compact threshold as the legacy study prompt: below ten production items the
     // one-short-note rules win over any added teaching explanation (D49).
-    personalisedTeachingPrompt(data.learnerContext, { compact: productionLimit < 10 }),
+    personalisedTeachingPrompt(data.learnerContext, { compact: compactTeaching }),
     data.teachingPreferences.shorterExamples
       ? "The learner requests shorter examples. Use the shortest complete natural new examples; preserve exact class examples unchanged."
       : "Use complete natural examples, normally 8–15 words; preserve exact class examples unchanged.",
@@ -1068,7 +1132,22 @@ export function buildKnowledgeGenerationInput(
       : "There is no confirmed handwritten authorship, so the schema has no learner mistakes or learner answers. Do not infer ownership or describe personal or repeated learner mistakes from any source.",
     "No generated speech mistakes, speech-derived learner answers or speaker identity. Source role/filename, anonymous speaker, public typed note and a named quotation never establish this learner's identity. Anonymous exercise corrections can be taught as grammar, not personal mistakes.",
     "Do not truncate evidence or output. Prioritize complete source-grounded concepts and questions over duplicated summaries, extra definitions or decorative introductions. Every factual claim must be supported by its selected keys, and every question must hide and agree with its answer.",
-    `The hard response budget is ${outputTokens} output tokens. Aim below ${Math.floor(outputTokens * 0.75)}. Select at most ${productionLimit} complete production items and ${recognitionLimit} optional recognition items. Across summary/topics use at most ${Math.max(1, Math.min(4, Math.floor(outputTokens / 2048)))} short supplementary claims and avoid duplicating cards. Homework and uncertainties have their own source-driven priority. Homework is only work a class source explicitly sets for after class: a printed or in-class task belongs in classNotes.activities.tasks, and another person's work is never homework. Retain each such assignment and relevant conflicts concisely; never suppress them to meet the summary budget, invent them when absent, or replace uncertainty with unqualified agreement. Core concepts not given separate cards stay in concise grounded teaching notes or activities. Keep introductions and explanations concise and finish the whole object. Read all source text; these are response limits, never source limits.`,
+    `The hard response budget is ${outputTokens} output tokens. Aim below ${Math.floor(outputTokens * 0.75)}. Select at most ${productionLimit} complete production items and ${recognitionLimit} optional recognition items. Across summary/topics use at most ${claimLimit} short supplementary claims and avoid duplicating cards. Homework and uncertainties have their own source-driven priority. Homework is only work a class source explicitly sets for after class: a printed or in-class task belongs in classNotes.activities.tasks, and another person's work is never homework. Retain each such assignment and relevant conflicts concisely; never suppress them to meet the summary budget, invent them when absent, or replace uncertainty with unqualified agreement. Core concepts not given separate cards stay in concise grounded teaching notes or activities. Keep introductions and explanations concise and finish the whole object. Read all source text; these are response limits, never source limits.`,
+    ...(budget && !compactTeaching && !options.compact
+      ? [
+          `This class material (${budget.content.speechMinutes} minutes of speech, ${budget.content.photos} photos, ${budget.content.pages} PDF pages, ${budget.content.textPages} text pages) justifies up to ${productionLimit} production items and the response can hold them: teach every distinct core point of every source with full one-to-three-sentence teaching notes. Use fewer items only when the sources teach fewer points; never pad.`,
+        ]
+      : []),
+    ...(coverageWire.unusedSources
+      ? [
+          "Each source has a sourceKey. Account for EVERY source: cite at least one of its rows in a lessonPlan entry, claim or board entry, or list its sourceKey once in unusedSources with the reason it teaches nothing. Photos, board photos and scanned pages are core class material, not optional extras: teach their content as cards or notes.",
+        ]
+      : []),
+    ...(structuredRows
+      ? [
+          "Rows read from a photo or scanned page may carry layout metadata {type, order, uncertain}: type is heading, list_item, table, relation (an arrow or link between items), example, correction or text; order is the reading order. Follow reading order, keep a relation or table together with what it connects, teach a correction as a correction, and treat an uncertain row as a possibly misread line: never build a card on an uncertain reading alone.",
+        ]
+      : []),
     options.compact
       ? "This is a selected compact lesson. Include a concise honest classNotes.orientation.sourceNote in the requested explanation language saying selected lesson points are included and further lesson details are omitted; do not imply exhaustive teaching."
       : "If not every taught point fits, choose complete representative core points and add an honest selected-subset note in classNotes.orientation.sourceNote. If everything fits, do not claim that anything was omitted.",
@@ -1139,6 +1218,29 @@ export function buildKnowledgeGenerationInput(
       }),
     }));
   }
+  /**
+   * Server-derived use of each source: cited anywhere, or set aside with the model's reason. Only
+   * the single bounded regeneration may leave a source unreported; a first response is rejected.
+   */
+  function accountSources(
+    wire: { unusedSources?: { source: string; reason: string }[] },
+    citedKeys: readonly string[],
+  ): SourceCoverage[] {
+    const used = new Set(
+      citedKeys.map((evidenceKey) => prepared.references.get(evidenceKey)?.source.sourceId),
+    );
+    const reasons = new Map<string, (typeof modelNotUsedReasons)[number]>();
+    for (const entry of wire.unusedSources ?? [])
+      if (!reasons.has(entry.source))
+        reasons.set(entry.source, entry.reason as (typeof modelNotUsedReasons)[number]);
+    return accountable.map(({ source, key: handle }) => {
+      if (used.has(source.sourceId)) return { sourceId: source.sourceId, status: "used" };
+      const reason = reasons.get(handle);
+      if (reason) return { sourceId: source.sourceId, status: "not_used", reason };
+      if (!repairReason) throw errors.validationFailed({ output: ["source_coverage_missing"] });
+      return { sourceId: source.sourceId, status: "not_used", reason: "not_reported" };
+    });
+  }
   function assemble(raw: unknown) {
     const wire = schema.parse(raw);
     const notes = wire.classNotes;
@@ -1167,6 +1269,16 @@ export function buildKnowledgeGenerationInput(
       )
     )
       throw errors.validationFailed({ output: ["study_plan_uncovered"] });
+    const sourceCoverage = coverageWire.unusedSources
+      ? accountSources(wire as { unusedSources?: { source: string; reason: string }[] }, [
+          ...cited,
+          ...wire.lessonPlan.flatMap((entry) => entry.evidenceKeys),
+          ...(activities.board ?? []).flatMap((entry) => entry.evidenceKeys),
+          ...(
+            (notes as { mistakes?: { items: { evidenceKeys: string[] }[] } }).mistakes?.items ?? []
+          ).flatMap((entry) => entry.evidenceKeys),
+        ])
+      : undefined;
     const learningItems = wire.learningItems.map((item, index) => {
       const expanded = expandClaim(item.claim, `item-claim-${index}`);
       // faApprox exists in the schema only for Persian explanations.
@@ -1338,6 +1450,7 @@ export function buildKnowledgeGenerationInput(
       coverage: {
         complete: data.missingSourceIds.length === 0,
         missingSourceIds: [...data.missingSourceIds],
+        ...(sourceCoverage ? { sources: sourceCoverage } : {}),
       },
       classNotes: {
         coverage: notes.coverage,

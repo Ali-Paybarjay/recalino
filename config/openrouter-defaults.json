@@ -1,12 +1,12 @@
 {
-  "version": "openrouter-2026-10-10-1",
+  "version": "openrouter-2026-10-12-1",
   "llmModel": "google/gemini-3.8-flash",
   "voiceCorrectionModel": "anthropic/claude-haiku-4.5",
   "visionModel": "anthropic/claude-haiku-4.5",
   "sttModel": "openai/whisper-large-v3-turbo",
   "ttsModel": "hexgrad/kokoro-82m",
   "voice": "af_heart",
-  "promptVersion": "recalino-knowledge-10",
+  "promptVersion": "recalino-knowledge-11",
   "structuredTemperature": 0,
   "structuredModelOverrides": {
     "google/gemini-3.8-flash": {
@@ -18,6 +18,12 @@
       "knowledgeContract": "content",
       "timeoutMs": 180000
     }
+  },
+  "lessonQuality": {
+    "version": "lesson-quality-1",
+    "budget": "lesson-budget-1",
+    "sourceCoverage": true,
+    "structuredBoard": true
   },
   "maxInputCharacters": 120000,
   "maxOutputTokens": 6144,

@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { knowledgeModelSchema, productionStudySchema, recognitionStudySchema } from "../lkm";
+import {
+  coverageBaseSchema,
+  knowledgeModelSchema,
+  productionStudySchema,
+  recognitionStudySchema,
+} from "../lkm";
 import { sourceClassificationSchema } from "../src";
 
 /** Shared wire/checkpoint contract; provider instructions and provenance checks do not change its shape. */
@@ -26,6 +31,8 @@ export const providerStudySchema = z.discriminatedUnion("set", [
 
 /** The legacy class_knowledge provider wire: the checkpoint contract with provider study content. */
 export const legacyKnowledgeWireSchema = generatedKnowledgeSchema.extend({
+  // Per-source coverage is server derived on the content contract only; this wire is unchanged.
+  coverage: coverageBaseSchema,
   learningItems: z
     .array(
       knowledgeModelSchema.shape.learningItems.element.extend({

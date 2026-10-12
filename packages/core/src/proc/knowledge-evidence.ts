@@ -34,11 +34,17 @@ function evidenceKind(source: RunSource): Claim["evidence"] {
   return "material";
 }
 
+/** The wire handle of a source for per-source coverage, e.g. s1. */
+export function sourceKey(sourceIndex: number): string {
+  return `s${sourceIndex + 1}`;
+}
+
 /** Finite keys select exact native evidence; text is never truncated or reinterpreted. */
 export function buildKnowledgeEvidenceInput(
   data: KnowledgeEvidenceInput,
   maxInputCharacters: number,
   format = "knowledge_repair_keys_v1",
+  options: { sourceKeys?: boolean } = {},
 ) {
   const prepared = buildKnowledgeInput(data, maxInputCharacters);
   const encoded = JSON.parse(prepared.input);
@@ -104,7 +110,12 @@ export function buildKnowledgeEvidenceInput(
       });
       return [key, ...row];
     });
-    return { ...metadata, evidence };
+    // lesson-quality-1: a short handle the model uses to account for each source.
+    return {
+      ...(options.sourceKeys ? { sourceKey: sourceKey(sourceIndex) } : {}),
+      ...metadata,
+      evidence,
+    };
   });
   if (!references.size) throw errors.validationFailed({ sources: ["no_extractable_content"] });
   const input = JSON.stringify({

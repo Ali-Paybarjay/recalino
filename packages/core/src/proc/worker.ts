@@ -4,6 +4,7 @@ import { lockAccount, lockAccountForCleanup } from "../acc";
 import {
   type AiProvider,
   effectiveProviderTimeoutMs,
+  effectiveStructuredMaxOutputTokens,
   estimatedUsageCost,
   estimateRatesSchema,
   longestProviderTimeoutMs,
@@ -92,6 +93,7 @@ export { generatedKnowledgeSchema } from "./generated-knowledge";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { buildKnowledgeStudyRepairInput } from "./knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "./knowledge-translation";
+import { lessonBudget, measureLessonContent } from "./lesson-budget";
 import { ownedRun } from "./runs";
 import { studyPrompt } from "./study-prompt";
 import {
@@ -1261,6 +1263,25 @@ export function processingJob(
           // Selected from the run's settings snapshot; legacy snapshots keep their original
           // wire contract and rollback behavior.
           const compactGeneration = usesContentKnowledgeContract(settings.provider);
+          // lesson-quality-1: limits from the lesson model's own output limit and the measured
+          // material. Snapshots without it keep the fixed planning budget unchanged.
+          const quality = settings.provider.lessonQuality;
+          const qualityOptions = quality
+            ? (() => {
+                const outputTokens = effectiveStructuredMaxOutputTokens(
+                  settings.provider,
+                  settings.provider.llmModel,
+                );
+                return {
+                  maxOutputTokens: outputTokens,
+                  budget: lessonBudget(
+                    outputTokens,
+                    measureLessonContent(extracted, settings.provider.charactersPerPage),
+                  ),
+                  sourceCoverage: quality.sourceCoverage,
+                };
+              })()
+            : {};
           const knowledgeInput = buildKnowledgeInput(
             generationData,
             settings.provider.maxInputCharacters,
@@ -1297,6 +1318,8 @@ export function processingJob(
                     maxOutputTokens: compact
                       ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
                       : settings.provider.maxOutputTokens,
+                    // The single compact recovery keeps its fixed small budget.
+                    ...(compact ? {} : qualityOptions),
                     compact: Boolean(compact),
                     ...(schemaFailure
                       ? {
@@ -1474,6 +1497,7 @@ export function processingJob(
                 settings.provider.maxInputCharacters,
                 {
                   maxOutputTokens: settings.provider.maxOutputTokens,
+                  ...qualityOptions,
                   repairReason: semanticRepairReason(error) ?? undefined,
                 },
               );
@@ -1994,7 +2018,12 @@ export function validateGeneratedKnowledge(
           classified.some((source) => source.kind === "audio"),
         ),
       ),
-      coverage: { complete: missing.length === 0, missingSourceIds: missing },
+      coverage: {
+        complete: missing.length === 0,
+        missingSourceIds: missing,
+        // Server-derived per-source use (lesson-quality-1) survives availability recomputation.
+        ...(knowledge.coverage.sources ? { sources: knowledge.coverage.sources } : {}),
+      },
     },
     classified,
     explanationLanguage,

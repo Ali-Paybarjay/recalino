@@ -91,9 +91,9 @@ const haiku = "anthropic/claude-haiku-4.5";
 
 it("FR-PROC-003 D56 selects Gemini 3.8 Flash on the content contract with its declared transport", () => {
   const settings = providerSettingsSchema.parse(defaults);
-  expect(settings.version).toBe("openrouter-2026-10-10-1");
+  expect(settings.version).toBe("openrouter-2026-10-12-1");
   expect(settings.llmModel).toBe(gemini);
-  expect(settings.promptVersion).toBe("recalino-knowledge-10");
+  expect(settings.promptVersion).toBe("recalino-knowledge-11");
   expect(settings.priceVersion).toBe("openrouter-models-2026-10-09");
   expect(settings.structuredTemperature).toBe(0);
   // maxOutputTokens stays the content plan budget; only the Gemini transport cap is larger.
@@ -116,6 +116,23 @@ it("FR-PROC-003 D56 selects Gemini 3.8 Flash on the content contract with its de
   expect(usesContentKnowledgeContract(settings, effectiveVoiceCorrectionModel(settings))).toBe(
     false,
   );
+});
+
+it("lesson-quality-1 proposes the content-scaled budget, source coverage and board structure", () => {
+  const settings = providerSettingsSchema.parse(defaults);
+  // Proposed in docs/plans/LESSON_QUALITY_2026-10-12.md; production keeps its own env JSON.
+  expect(settings.lessonQuality).toEqual({
+    version: "lesson-quality-1",
+    budget: "lesson-budget-1",
+    sourceCoverage: true,
+    structuredBoard: true,
+  });
+  // No separate board model or class parts until the owner chooses them after evaluation.
+  expect(settings.lessonQuality?.boardVisionModel).toBeUndefined();
+  expect(settings.lessonQuality?.classPartMinutes).toBeUndefined();
+  // The production snapshot of D56 has no lessonQuality and keeps the fixed planning budget.
+  const { lessonQuality: _quality, ...previous } = settings;
+  expect(providerSettingsSchema.parse(previous).lessonQuality).toBeUndefined();
 });
 
 it("FR-QUOTA-009 FR-QUOTA-010 D56 reserves a Gemini request at the highest captured ZDR endpoint price", () => {
