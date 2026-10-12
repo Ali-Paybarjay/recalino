@@ -14,6 +14,7 @@ import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
+import { CaptureUploader } from "./capture-uploader";
 import { RecordingController } from "./controller";
 import { MissingAudioNotice } from "./MissingAudioNotice";
 import styles from "./Recording.module.css";
@@ -40,6 +41,14 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
   });
   useEffect(() => {
     value.sourceSync.start();
+    // D60/D61: sealed parts are staged silently during capture; nothing is shown until Stop.
+    const uploader = new CaptureUploader(value.userId, value.store, {
+      snapshot: value.controller.snapshot,
+      subscribe: value.controller.subscribe,
+      attachSession: (sessionId, captureId) => value.controller.attachSession(sessionId, captureId),
+      report: value.controller.reportStaging,
+    });
+    uploader.start();
     const unwatchMediaSession = watchRecordingMediaSession(value.controller);
     const unwatchDiagnostics = watchCaptureDiagnostics(value.controller, {
       userAgent: navigator.userAgent,
@@ -61,6 +70,7 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     });
     return () => {
       unwatch();
+      uploader.dispose();
       unwatchDiagnostics();
       unwatchMediaSession();
       value.sourceSync.dispose();

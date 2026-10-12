@@ -44,6 +44,7 @@ const ALLOWED_FIELDS = new Set([
   "media_ms",
   "wall_ms",
   "gaps",
+  "result",
 ]);
 
 const IDENTIFIER = /^[A-Za-z0-9_.:/\-[\]]{1,128}$/;

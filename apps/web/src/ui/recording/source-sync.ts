@@ -69,7 +69,10 @@ async function checksum(blob: Blob) {
   ).join("");
 }
 
-/** Registers metadata only. Original audio remains local until processing is confirmed. */
+/**
+ * Registers metadata only. Original audio stays local until processing is confirmed, or, for a
+ * sealed in-app part under D60, until the capture uploader stages its temporary server copy.
+ */
 export async function registerRecordingRow(
   recording: Recording,
   store: SyncStore,
@@ -77,6 +80,8 @@ export async function registerRecordingRow(
   dependencies: Partial<SourceSyncDependencies> & {
     signal?: AbortSignal;
     cancelled?: () => boolean;
+    /** D60: a sealed part of a capture still in progress may be registered before Stop. */
+    sealedDuringCapture?: boolean;
   } = {},
 ): Promise<Recording> {
   const deps = { ...defaults, ...dependencies };
@@ -101,7 +106,10 @@ export async function registerRecordingRow(
   check();
   if (!current) throw new Error("The recording is missing on this device.");
   if (current.sourceAssetId) return current;
-  if (!finalized(current) || (current.autoRegister && !current.completedAt))
+  if (
+    !finalized(current) ||
+    (current.autoRegister && !current.completedAt && !dependencies.sealedDuringCapture)
+  )
     throw new RecordingNotReady("Stop and save the recording before adding its final audio parts.");
   if (earlierPendingPart(await store.list(current.userId), current))
     throw new RecordingNotReady(waitingForEarlierParts);

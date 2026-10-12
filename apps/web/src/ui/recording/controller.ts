@@ -47,6 +47,7 @@ export type CaptureHealthEvent =
   | { type: "track"; state: "muted" | "unmuted" | "ended" }
   | { type: "gap"; part: number; offsetMs: number; missingMs: number; cause: GapCause }
   | { type: "interrupted"; part: number }
+  | { type: "staged"; part: number; result: "staged" | "skipped" | "failed"; durationMs: number }
   | {
       type: "part";
       part: number;
@@ -161,6 +162,10 @@ export class RecordingController {
     return () => {
       this.healthListeners.delete(listener);
     };
+  };
+  /** D60 staging outcome of one part, for diagnostics only; never shown during capture. */
+  reportStaging = (part: number, result: "staged" | "skipped" | "failed", durationMs = 0) => {
+    this.report({ type: "staged", part, result, durationMs });
   };
   private report(event: CaptureHealthEvent) {
     for (const listener of this.healthListeners) {

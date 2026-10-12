@@ -37,6 +37,12 @@ export const captureHealthEventSchema = z.discriminatedUnion("type", [
   }),
   z.strictObject({ type: z.literal("interrupted"), part }),
   z.strictObject({
+    type: z.literal("staged"),
+    part,
+    result: z.enum(["staged", "skipped", "failed"]),
+    durationMs: ms,
+  }),
+  z.strictObject({
     type: z.literal("part"),
     part,
     mime,
