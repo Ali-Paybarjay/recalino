@@ -3,7 +3,7 @@ import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
 import { getLatestVersion } from "@recalino/core/lkm";
 import { getNotebook } from "@recalino/core/note";
-import { getSession } from "@recalino/core/org";
+import { captureInProgress, getSession } from "@recalino/core/org";
 import {
   AppError,
   emptyPayload,
@@ -299,6 +299,9 @@ export async function automaticLearningSync(
     return view(db, ctx, sessionId, { state, lastError, run }, deps.provider);
   };
   if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
+  // D60: parts registered during an open capture wait for Stop; no lesson from part of a class.
+  if (await captureInProgress(db, ctx, sessionId, deps.now()))
+    return progress("waiting_sources", null, null);
   const materials = await sessionSources(db, ctx, sessionId);
   if (
     materials.some(

@@ -1,0 +1,34 @@
+import { randomUUID } from "node:crypto";
+import { captureInProgress } from "@recalino/core/org";
+import { expect, it } from "vitest";
+import { classCaptureHandler } from "../capture-staging";
+import { ROUTES } from "../routes";
+import { orgCall, orgFixture, orgTestDatabase, unauthenticatedOrg } from "./org-support";
+
+const db = orgTestDatabase();
+unauthenticatedOrg(db, ROUTES.classCapture, classCaptureHandler(randomUUID()), "POST");
+it("opens and closes a capture lease only on the learner's own class (D60)", async () => {
+  const owner = await orgFixture(db),
+    attacker = await orgFixture(db);
+  const call = (userId: string, action: "open" | "close") =>
+    orgCall(
+      db,
+      ROUTES.classCapture,
+      classCaptureHandler(owner.session.id),
+      userId,
+      `/api/classes/${owner.session.id}/capture`,
+      "POST",
+      { action },
+      randomUUID(),
+    );
+  expect((await call(attacker.owner, "open")).status).toBe(404);
+  expect(await captureInProgress(db, owner.actor, owner.session.id)).toBe(false);
+  const opened = await call(owner.owner, "open");
+  expect(opened.status).toBe(200);
+  expect(await opened.json()).toMatchObject({ earlyUpload: true, earlyTranscription: true });
+  expect(await captureInProgress(db, owner.actor, owner.session.id)).toBe(true);
+  expect((await call(attacker.owner, "close")).status).toBe(404);
+  expect(await captureInProgress(db, owner.actor, owner.session.id)).toBe(true);
+  expect((await call(owner.owner, "close")).status).toBe(200);
+  expect(await captureInProgress(db, owner.actor, owner.session.id)).toBe(false);
+});

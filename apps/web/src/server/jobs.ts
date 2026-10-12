@@ -23,6 +23,7 @@ import { adminDirectory } from "./admin-directory";
 import { getAiProvider } from "./ai";
 import type { Handler } from "./api";
 import { automaticLearningJob, automaticLearningPeriodicJobs } from "./automatic-learning";
+import { stagedAudioJobDefinition } from "./capture-staging-jobs";
 import { getDatabase } from "./db";
 import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
 import { getLessonReviewDefinition } from "./lesson-review";
@@ -122,6 +123,7 @@ export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
   return [
     ...periodicJobs(settings).map((job) => job.definition),
     ...sourceJobDefinitions(),
+    ...[stagedAudioJobDefinition()].filter((job) => job !== null),
     ...processingNotificationDefinitions(),
     ...(processing ? [processing] : []),
     ...(voice ? [voice] : []),

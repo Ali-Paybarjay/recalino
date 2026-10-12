@@ -30,6 +30,11 @@ vi.mock("@recalino/core/src", async (original) => ({
   ...(await original<object>()),
   sessionSources: mocks.materials,
 }));
+vi.mock("@recalino/core/org", async (original) => ({
+  ...(await original<object>()),
+  // D60 capture lease: these classes are not being recorded.
+  captureInProgress: vi.fn(async () => false),
+}));
 vi.mock("@recalino/core/note", async (original) => ({
   ...(await original<object>()),
   getNotebook: vi.fn(async () => null),

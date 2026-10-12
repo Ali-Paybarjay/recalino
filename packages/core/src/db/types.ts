@@ -433,6 +433,7 @@ export interface OpsTaskPreference {
 }
 
 export interface OrgClassSession {
+  capture_open_until: Timestamp | null;
   class_date: Timestamp;
   course_id: string | null;
   created_at: Generated<Timestamp>;
@@ -834,7 +835,8 @@ export interface SrcAudioUpload {
   expires_at: Timestamp;
   id: Generated<string>;
   object_id: string;
-  reservation_id: string;
+  reservation_id: string | null;
+  staged_at: Timestamp | null;
   state: Generated<string>;
   transcribed_at: Timestamp | null;
   user_id: string;
