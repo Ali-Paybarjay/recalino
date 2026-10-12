@@ -35,6 +35,33 @@ export default async function StudyReferencePage({
   };
   // Phase one has no voice verification. Synthetic spoken examples stay withheld too.
   if (model.classNotes?.mistakes) model.classNotes.mistakes.speechStatus = "unverified";
+  // Lesson-quality coverage fixture (workstream 3): one used file and one unreadable photo.
+  const coverageSources = [
+    {
+      sourceId: "10000000-0000-4000-8000-0000000000a1",
+      name: "Handout.pdf",
+      order: 1,
+      status: "ready" as const,
+    },
+    {
+      sourceId: "10000000-0000-4000-8000-0000000000a2",
+      name: "Board photo.jpeg",
+      order: 2,
+      status: "ready" as const,
+    },
+  ];
+  if (view === "coverage")
+    model.coverage = {
+      ...model.coverage,
+      sources: [
+        { sourceId: "10000000-0000-4000-8000-0000000000a1", status: "used" },
+        {
+          sourceId: "10000000-0000-4000-8000-0000000000a2",
+          status: "not_used",
+          reason: "unreadable",
+        },
+      ],
+    };
   const sessionId = "10000000-0000-4000-8000-000000000001";
   const userId = "10000000-0000-4000-8000-000000000002";
   const createdAt = "2026-10-05T12:00:00.000Z";
@@ -248,6 +275,7 @@ export default async function StudyReferencePage({
             initial={notebook}
             latest={null}
             embedded={view !== "legacy-notes"}
+            {...(view === "coverage" ? { materialSources: coverageSources } : {})}
           />
         )}
       </AppShell>
