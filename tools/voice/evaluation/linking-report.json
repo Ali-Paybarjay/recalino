@@ -1,0 +1,250 @@
+{
+  "generated": "synthetic vectors only; no recording, no licensed corpus",
+  "rules": {
+    "threshold": 0.65,
+    "margin": 0.05
+  },
+  "scenarios": [
+    {
+      "scenario": {
+        "seed": 4,
+        "parts": 6,
+        "classmates": 5,
+        "partNoise": 0.9,
+        "turnNoise": 1.4,
+        "channelShift": 1.2,
+        "fragmentsPerPart": 3,
+        "learnerTurns": 5,
+        "otherTurns": 40,
+        "lookalike": 0.6
+      },
+      "result": {
+        "seed": 4,
+        "linking": {
+          "voices": 34,
+          "classVoices": 9,
+          "people": 7,
+          "precision": 1,
+          "recall": 0.855,
+          "ambiguousRate": 0.444
+        },
+        "fragments": {
+          "rate": 0.37,
+          "suggestedRate": 0
+        },
+        "targetSpeaker": {
+          "minScore": 0.6,
+          "precision": null,
+          "recall": 0
+        }
+      },
+      "targetSweep": [
+        {
+          "minScore": 0.3,
+          "precision": 0.556,
+          "recall": 0.833
+        },
+        {
+          "minScore": 0.4,
+          "precision": 0.714,
+          "recall": 0.167
+        },
+        {
+          "minScore": 0.5,
+          "precision": null,
+          "recall": 0
+        },
+        {
+          "minScore": 0.6,
+          "precision": null,
+          "recall": 0
+        },
+        {
+          "minScore": 0.7,
+          "precision": null,
+          "recall": 0
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "seed": 1,
+        "parts": 6,
+        "classmates": 4,
+        "partNoise": 0.25,
+        "turnNoise": 0.6,
+        "channelShift": 0.5,
+        "fragmentsPerPart": 3,
+        "learnerTurns": 6,
+        "otherTurns": 30
+      },
+      "result": {
+        "seed": 1,
+        "linking": {
+          "voices": 26,
+          "classVoices": 6,
+          "people": 6,
+          "precision": 1,
+          "recall": 1,
+          "ambiguousRate": 0
+        },
+        "fragments": {
+          "rate": 0.458,
+          "suggestedRate": 0
+        },
+        "targetSpeaker": {
+          "minScore": 0.6,
+          "precision": 1,
+          "recall": 1
+        }
+      },
+      "targetSweep": [
+        {
+          "minScore": 0.3,
+          "precision": 0.45,
+          "recall": 1
+        },
+        {
+          "minScore": 0.4,
+          "precision": 0.818,
+          "recall": 1
+        },
+        {
+          "minScore": 0.5,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "minScore": 0.6,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "minScore": 0.7,
+          "precision": 1,
+          "recall": 0.917
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "seed": 2,
+        "parts": 6,
+        "classmates": 6,
+        "partNoise": 0.35,
+        "turnNoise": 0.8,
+        "channelShift": 0.8,
+        "fragmentsPerPart": 4,
+        "learnerTurns": 4,
+        "otherTurns": 40
+      },
+      "result": {
+        "seed": 2,
+        "linking": {
+          "voices": 26,
+          "classVoices": 8,
+          "people": 8,
+          "precision": 1,
+          "recall": 1,
+          "ambiguousRate": 0
+        },
+        "fragments": {
+          "rate": 0.527,
+          "suggestedRate": 0
+        },
+        "targetSpeaker": {
+          "minScore": 0.6,
+          "precision": 1,
+          "recall": 0.792
+        }
+      },
+      "targetSweep": [
+        {
+          "minScore": 0.3,
+          "precision": 0.267,
+          "recall": 1
+        },
+        {
+          "minScore": 0.4,
+          "precision": 0.75,
+          "recall": 1
+        },
+        {
+          "minScore": 0.5,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "minScore": 0.6,
+          "precision": 1,
+          "recall": 0.792
+        },
+        {
+          "minScore": 0.7,
+          "precision": 1,
+          "recall": 0.042
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "seed": 3,
+        "parts": 3,
+        "classmates": 2,
+        "partNoise": 0.2,
+        "turnNoise": 0.5,
+        "channelShift": 0.3,
+        "fragmentsPerPart": 2,
+        "learnerTurns": 8,
+        "otherTurns": 20
+      },
+      "result": {
+        "seed": 3,
+        "linking": {
+          "voices": 8,
+          "classVoices": 4,
+          "people": 4,
+          "precision": 1,
+          "recall": 1,
+          "ambiguousRate": 0
+        },
+        "fragments": {
+          "rate": 0.5,
+          "suggestedRate": 0
+        },
+        "targetSpeaker": {
+          "minScore": 0.6,
+          "precision": 1,
+          "recall": 1
+        }
+      },
+      "targetSweep": [
+        {
+          "minScore": 0.3,
+          "precision": 0.727,
+          "recall": 1
+        },
+        {
+          "minScore": 0.4,
+          "precision": 0.923,
+          "recall": 1
+        },
+        {
+          "minScore": 0.5,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "minScore": 0.6,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "minScore": 0.7,
+          "precision": 1,
+          "recall": 1
+        }
+      ]
+    }
+  ]
+}

@@ -7,12 +7,20 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { fillCopy, pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
+import {
+  type ClassVoiceAction,
+  ClassVoiceConfirmation,
+  classConfirmationActive,
+  coveredByClass,
+} from "./ClassVoiceConfirmation";
 import { voiceSettingsHref } from "./navigation";
 import { OriginalRecovery } from "./OriginalRecovery";
 import styles from "./Voice.module.css";
 import { useLocalVoiceAudio, VoiceClips } from "./VoiceClips";
+import { type VoiceLineAction, VoiceLines } from "./VoiceLines";
 import { voiceCopy } from "./voice-copy";
 
 type Action =
@@ -22,7 +30,9 @@ type Action =
       analysisId: string;
       expectedVersion: number;
       speakerId?: string;
-    };
+    }
+  | ClassVoiceAction
+  | VoiceLineAction;
 
 /** A service spending limit, not a failed check: retrying cannot help and is not offered. */
 function isServiceBlocked(analysis: VoiceAnalysisView) {
@@ -187,7 +197,11 @@ export function VoiceConfirmation({
       await workspaceRequest(endpoint, "POST", payload, requestKey(key, payload));
       submitted = true;
       await load();
-      if (payload.action === "reject" || payload.action === "revoke")
+      if (
+        !("scope" in payload) &&
+        "analysisId" in payload &&
+        (payload.action === "reject" || payload.action === "revoke")
+      )
         setChoosing((current) => new Set(current).add(payload.analysisId));
       setPending(null);
       key.current = null;
@@ -202,6 +216,7 @@ export function VoiceConfirmation({
             : "Your choice could not be saved. Try again.",
       );
       if (
+        "action" in payload &&
         payload.action === "analyze" &&
         !submitted &&
         error instanceof WorkspaceRequestError &&
@@ -235,7 +250,7 @@ export function VoiceConfirmation({
           key.current = null;
           refreshNotes();
           setProblem(
-            payload.action === "analyze"
+            "action" in payload && payload.action === "analyze"
               ? "The session changed or is already being processed. Check its current sources and voice status before trying again."
               : "These voice excerpts have changed. Please check the current excerpts before choosing again.",
           );
@@ -260,12 +275,14 @@ export function VoiceConfirmation({
       {pending && !busy ? (
         <>
           <p>
-            {pending.action === "analyze"
+            {"action" in pending && pending.action === "analyze"
               ? "The server has not confirmed your voice check yet. Retry to resolve it before showing the notes."
               : "Your last choice still needs to be confirmed by the server. The notes stay hidden until this is resolved."}
           </p>
           <Button disabled={busy} onClick={() => void act(pending)}>
-            {pending.action === "analyze" ? "Retry voice check" : "Retry voice choice"}
+            {"action" in pending && pending.action === "analyze"
+              ? "Retry voice check"
+              : "Retry voice choice"}
           </Button>
         </>
       ) : !view && !loading ? (
@@ -387,8 +404,18 @@ export function VoiceConfirmation({
                         : "Your voice choices are saved. The session notes below reflect those choices."}
             </Status>
           )}
+          {classConfirmationActive(view) ? (
+            <ClassVoiceConfirmation
+              view={view}
+              userId={userId}
+              disabled={locked}
+              onAction={act}
+              onPlayback={onPlayback}
+            />
+          ) : null}
           {view.analyses.map((analysis, index) => (
             <Analysis
+              covered={coveredByClass(view, analysis)}
               key={`${analysis.id}-${analysis.version}`}
               analysis={analysis}
               index={index}
@@ -412,7 +439,7 @@ export function VoiceConfirmation({
       {busy || refreshing ? (
         <Status>
           {busy
-            ? pending?.action === "analyze"
+            ? pending && "action" in pending && pending.action === "analyze"
               ? "Requesting a session voice check…"
               : "Saving your voice choice…"
             : "Refreshing your session notes…"}
@@ -455,6 +482,7 @@ function duration(ms: number) {
 }
 
 function Analysis({
+  covered,
   analysis,
   index,
   sessionId,
@@ -466,6 +494,8 @@ function Analysis({
   onAction,
   onPlayback,
 }: {
+  /** The class-level choice (D64) decides this part; it shows status and recovery only. */
+  covered: boolean;
   analysis: VoiceAnalysisView;
   index: number;
   sessionId: string;
@@ -488,12 +518,27 @@ function Analysis({
   }, [linked, audio.state]);
   const coverage = voiceCoverage(analysis.reason);
   const verified = analysis.status === "verified";
-  const available = analysis.candidates.filter(hasSpeakerExcerpts);
+  // Fragments are never suggested or offered one by one; they wait in their own group.
+  const short = new Set(analysis.shortCandidateIds ?? []);
+  const available = analysis.candidates.filter(
+    (candidate) => hasSpeakerExcerpts(candidate) && !short.has(candidate.id),
+  );
+  const shortVoices = analysis.candidates.filter(
+    (candidate) => hasSpeakerExcerpts(candidate) && short.has(candidate.id),
+  );
   const suggested = available.find((candidate) => candidate.id === analysis.candidateId);
   const speaker = analysis.candidates.find(
     (candidate) => candidate.id === analysis.verifiedSpeakerId,
   );
-  const candidates = verified ? [] : suggested && !chooseAll ? [suggested] : available;
+  const listing = !(suggested && !chooseAll);
+  const candidates = verified
+    ? []
+    : !listing && suggested
+      ? [suggested]
+      : available.length
+        ? available
+        : shortVoices;
+  const grouped = listing && available.length ? shortVoices : [];
   const waitsForPlayback =
     analysis.status === "unverified" &&
     candidates.length > 0 &&
@@ -519,6 +564,30 @@ function Analysis({
       ...(speakerId ? { speakerId } : {}),
     });
   }
+  const card = (candidate: VoiceCandidate) => (
+    <div key={candidate.id} className={styles.aside}>
+      <strong dir="auto">{candidate.label}</strong>
+      <VoiceClips
+        candidate={candidate}
+        audioUrl={audio.url}
+        limit={suggested && !chooseAll ? 3 : 1}
+        onPlayback={onPlayback}
+      />
+      <p className={styles.question} lang="fa" dir="rtl">
+        این صدای توست؟
+      </p>
+      <Actions>
+        <Button disabled={disabled} onClick={() => action("confirm", candidate.id)}>
+          Yes, this is my voice
+        </Button>
+        {suggested && !chooseAll ? (
+          <Button secondary disabled={disabled} onClick={() => action("reject", candidate.id)}>
+            No, show other speakers
+          </Button>
+        ) : null}
+      </Actions>
+    </div>
+  );
   return (
     <section className={styles.candidate} aria-label={`Source ${index + 1} voice confirmation`}>
       <div className={styles.heading}>
@@ -609,40 +678,34 @@ function Analysis({
                   <Status tone="success">{voiceCopy.playback.linked}</Status>
                 </div>
               ) : null}
-              <p>{voiceCopy.listenPrompt}</p>
-              {candidates.map((candidate) => (
-                <div key={candidate.id} className={styles.aside}>
-                  <strong dir="auto">{candidate.label}</strong>
-                  <VoiceClips
-                    candidate={candidate}
-                    audioUrl={audio.url}
-                    limit={suggested && !chooseAll ? 3 : 1}
-                    onPlayback={onPlayback}
-                  />
-                  <p className={styles.question} lang="fa" dir="rtl">
-                    این صدای توست؟
-                  </p>
-                  <Actions>
-                    <Button disabled={disabled} onClick={() => action("confirm", candidate.id)}>
-                      Yes, this is my voice
-                    </Button>
-                    {suggested && !chooseAll ? (
-                      <Button
-                        secondary
-                        disabled={disabled}
-                        onClick={() => action("reject", candidate.id)}
-                      >
-                        No, show other speakers
-                      </Button>
-                    ) : null}
-                  </Actions>
-                </div>
-              ))}
-              <Actions>
-                <Button secondary disabled={disabled} onClick={() => action("none")}>
-                  None of these voices is mine
-                </Button>
-              </Actions>
+              {covered ? (
+                <p>{pendingCopy.voiceDetection.coveredByClass}</p>
+              ) : (
+                <>
+                  <p>{voiceCopy.listenPrompt}</p>
+                  {candidates.map(card)}
+                  {grouped.length ? (
+                    <details>
+                      <summary>
+                        {fillCopy(pendingCopy.voiceDetection.shortVoices, {
+                          count: grouped.length,
+                        })}
+                      </summary>
+                      <p className="preview-muted">
+                        {pendingCopy.voiceDetection.shortVoicesDetail}
+                      </p>
+                      {grouped.map(card)}
+                    </details>
+                  ) : null}
+                </>
+              )}
+              {covered ? null : (
+                <Actions>
+                  <Button secondary disabled={disabled} onClick={() => action("none")}>
+                    None of these voices is mine
+                  </Button>
+                </Actions>
+              )}
             </>
           ) : (
             <>
@@ -677,6 +740,9 @@ function Analysis({
           )}
         </>
       )}
+      {analysis.status !== "processing" && analysis.status !== "failed" ? (
+        <VoiceLines analysis={analysis} disabled={disabled} onAction={onAction} />
+      ) : null}
     </section>
   );
 }

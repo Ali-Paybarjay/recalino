@@ -22,9 +22,26 @@
 
 در Session sources، اعلان پس از بارگذاری و پیام وضعیت بدون رسید بارگذاری همین اقدام‌ها را نشان می‌دهند: کمبود سهمیه «Ask for more allowance» و «Review allowance»، نبود سهمیه «Ask the pilot operator» و «Review allowance»، و سهمیهٔ کافی «Retry processing».
 
-فهرست اکنون خالی است.
+## Workstream 4 — تشخیص صدا (`feat/voice-detection`، 2026-10-12)
+
+متن‌های تأیید یک‌بارهٔ کلاس و انتخاب در سطح خط (D64). طبق D65، مالک محصول همه را یک‌جا در پایان بازبینی می‌کند. متن‌های موجود و مصوب («Yes, this is my voice»، «No, show other speakers»، «None of these voices is mine»، «This is not my voice» و «این صدای توست؟») بدون تغییر دوباره به کار رفته‌اند.
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
+| `voiceDetection.classHeading` | Your voice in this class | عنوان بخش تأیید صدا برای کل کلاس | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.classIntro` | Recalino matched the same voices across this class's recordings. Confirm your voice once for the whole class. | توضیح بالای تأیید یک‌بارهٔ کلاس | D64، PRD-SPK-02 | در انتظار تأیید (D65) |
+| `voiceDetection.heardIn` | Heard in {count} of {total} recordings | زیر هر صدای کلاس: در چند بخش ضبط شنیده شده | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.ambiguous` | This voice sounded like more than one voice in another recording, so those recordings were not joined. Check them separately below. | پیوند مبهم بین بخش‌ها | FR-VOC-002، D64 | در انتظار تأیید (D65) |
+| `voiceDetection.classConfirmed` | Your voice is confirmed for this whole class. | پس از تأیید کلاس | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.coveredByClass` | Your choice for the whole class above covers this recording. | کارت هر بخش وقتی تأیید کلاس آن را پوشش می‌دهد | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.shortVoices` | Short voices ({count}) | گروه بسته‌شدهٔ صداهای کوتاه | وظیفهٔ ۱ (صداهای تکه‌ای) | در انتظار تأیید (D65) |
+| `voiceDetection.shortVoicesDetail` | These voices have too little clear speech to suggest. Choose one only if you recognise it. | داخل گروه صداهای کوتاه | وظیفهٔ ۱ | در انتظار تأیید (D65) |
+| `voiceDetection.linesHeading` | Lines that may be yours | عنوان فهرست خط‌های پیشنهادی | D64 (تشخیص گویندهٔ هدف) | در انتظار تأیید (D65) |
+| `voiceDetection.linesIntro` | These short lines sound like your voice sample. Mark the lines you said. Only lines you mark can add spoken mistakes. | توضیح فهرست خط‌ها | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.lineMine` | This is me | دکمهٔ هر خط | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.lineNotMine` | Not me | دکمهٔ هر خط | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.lineUndo` | Undo | برگرداندن انتخاب خط | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.lineMarkedMine` | Marked as yours | وضعیت خط | D64 | در انتظار تأیید (D65) |
+| `voiceDetection.lineMarkedNotMine` | Marked as not yours | وضعیت خط | D64 | در انتظار تأیید (D65) |
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.
