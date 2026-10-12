@@ -25,6 +25,11 @@ import {
   prepareAutomaticRecordingPhotos,
   uploadAutomaticAudio,
 } from "./automatic-learning";
+import {
+  LEARNING_POLL,
+  LearningPollSchedule,
+  manualAudioPollDelay,
+} from "./automatic-learning-poll";
 import { ManualAudioManager } from "./manual-audio-manager";
 import { IndexedManualAudioStore, type ManualAudioTransfer } from "./manual-audio-store";
 import { Button, Panel, Status } from "./primitives";
@@ -142,8 +147,12 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
     },
     [acceptStatus],
   );
+  const wakeLearning = useRef<(sessionId?: string) => void>(() => {});
   useEffect(() => {
     path.current = pathname;
+    // Opening a class reads it at once, whatever its earlier backoff.
+    const viewed = /^\/sessions\/([0-9a-f-]{36})(?:\/|$)/i.exec(pathname)?.[1];
+    if (viewed) wakeLearning.current(viewed);
   }, [pathname]);
   useEffect(() => {
     let active = true;
@@ -183,14 +192,28 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
           );
       });
     const unsubscribe = controller.subscribe(captureChanged);
-    const timer = setInterval(kick, 3000);
+    // Saved transfers re-check their runs while the page is visible: often while a transfer is
+    // in progress, rarely while every entry waits for the learner. Events still kick at once.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      clearTimeout(timer);
+      const delay = manualAudioPollDelay(manualManager.snapshot());
+      if (!active || delay === null) return;
+      timer = setTimeout(() => {
+        if (document.visibilityState !== "hidden") kick();
+        schedule();
+      }, delay);
+    };
+    const stopWatching = manualManager.subscribe(schedule);
+    schedule();
     window.addEventListener("online", kick);
     document.addEventListener("visibilitychange", kick);
     return () => {
       active = false;
       manualManager.pause();
       unsubscribe();
-      clearInterval(timer);
+      stopWatching();
+      clearTimeout(timer);
       window.removeEventListener("online", kick);
       document.removeEventListener("visibilitychange", kick);
     };
@@ -204,6 +227,19 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
     const uploaded = new Set<string>();
     const rejectedUploads = new Set<string>();
     const ready = new Set<string>();
+    const polls = new LearningPollSchedule();
+    wakeLearning.current = (sessionId) => polls.wake(sessionId);
+    const syncedFingerprint = (sessionId: string) => {
+      const known = synchronized.get(sessionId);
+      if (known !== undefined) return known;
+      try {
+        return (
+          localStorage.getItem(`recalino:learning-recording:${userId}:${sessionId}`) ?? undefined
+        );
+      } catch {
+        return undefined;
+      }
+    };
     const allowed = () => {
       abort.signal.throwIfAborted();
       if (controller.snapshot().accountDeletionBlocked)
@@ -245,7 +281,21 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
           ),
           ...(currentClass ? [currentClass] : []),
         ]);
+        const hidden = document.visibilityState === "hidden";
         for (const sessionId of sessions) {
+          const status = states.current.get(sessionId);
+          const local =
+            captures.some(
+              (capture) =>
+                capture.sessionId === sessionId &&
+                capture.fingerprint !== syncedFingerprint(sessionId),
+            ) ||
+            (status?.state === "waiting_upload" &&
+              status.run?.state === "awaiting_upload" &&
+              !uploaded.has(status.run.id) &&
+              !rejectedUploads.has(status.run.id));
+          if (!polls.due(sessionId, { status, viewed: sessionId === currentClass, local, hidden }))
+            continue;
           const work = async () => {
             allowed();
             const operation = new AbortController();
@@ -439,6 +489,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
             } finally {
               abort.signal.removeEventListener("abort", cancel);
               if (activity === operation) activity = null;
+              polls.observed(sessionId, states.current.get(sessionId));
             }
           };
           if (navigator.locks)
@@ -467,8 +518,22 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
     const kick = () => {
       void tick();
     };
+    /** Events reset the backoff, so a change is seen at once and the base interval resumes. */
+    const wake = (event?: Event) => {
+      const sessionId = event instanceof CustomEvent ? event.detail : undefined;
+      polls.wake(typeof sessionId === "string" ? sessionId : undefined);
+      kick();
+    };
+    const shown = () => {
+      if (document.visibilityState !== "hidden") wake();
+    };
+    let capture = "";
     const unsubscribe = controller.subscribe(() => {
       const state = controller.snapshot();
+      // Clock updates during capture only kick; a phase change (e.g. Stop) resets the backoff.
+      const phase = `${state.phase}:${state.accountDeletionBlocked}`;
+      const changed = phase !== capture;
+      capture = phase;
       if (
         state.accountDeletionBlocked ||
         ["starting", "recording", "recovering", "paused", "saving"].includes(state.phase)
@@ -479,20 +544,23 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
             "AbortError",
           ),
         );
-      kick();
+      if (changed) wake();
+      else kick();
     });
-    const timer = setInterval(kick, 3000);
-    window.addEventListener("online", kick);
-    window.addEventListener("recalino:learning-changed", kick);
-    document.addEventListener("visibilitychange", kick);
+    // The timer only finds classes that are due; most ticks send no request (LEARNING_POLL).
+    const timer = setInterval(kick, LEARNING_POLL.baseMs);
+    window.addEventListener("online", wake);
+    window.addEventListener("recalino:learning-changed", wake);
+    document.addEventListener("visibilitychange", shown);
     kick();
     return () => {
       abort.abort();
+      wakeLearning.current = () => {};
       clearInterval(timer);
       unsubscribe();
-      window.removeEventListener("online", kick);
-      window.removeEventListener("recalino:learning-changed", kick);
-      document.removeEventListener("visibilitychange", kick);
+      window.removeEventListener("online", wake);
+      window.removeEventListener("recalino:learning-changed", wake);
+      document.removeEventListener("visibilitychange", shown);
     };
   }, [userId, store, controller, refresh, router, manualManager]);
   return (
