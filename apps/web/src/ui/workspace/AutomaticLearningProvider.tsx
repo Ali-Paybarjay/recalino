@@ -27,7 +27,7 @@ import {
 } from "./automatic-learning";
 import { ManualAudioManager } from "./manual-audio-manager";
 import { IndexedManualAudioStore, type ManualAudioTransfer } from "./manual-audio-store";
-import { Button, Panel, Status } from "./primitives";
+import { Panel, Status } from "./primitives";
 import uploadStyles from "./UploadProvider.module.css";
 import { isRetryableUploadFailure } from "./upload";
 
@@ -510,22 +510,19 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
       }}
     >
       {children}
-      <ManualAudioIndicator entries={manualAudio} manager={manualManager} problem={manualProblem} />
+      <ManualAudioIndicator entries={manualAudio} problem={manualProblem} />
     </Context.Provider>
   );
 }
 
 function ManualAudioIndicator({
   entries,
-  manager,
   problem,
 }: {
   entries: readonly ManualAudioTransfer[];
-  manager: ManualAudioManager;
   problem: string | null;
 }) {
   const { state } = useRecording();
-  const [actionProblem, setActionProblem] = useState<string | null>(null);
   if (
     state.accountDeletionBlocked ||
     ["starting", "recording", "recovering", "paused", "saving"].includes(state.phase) ||
@@ -535,7 +532,7 @@ function ManualAudioIndicator({
   return (
     <aside className={uploadStyles.tray} aria-label="Saved audio uploads">
       <Panel title="Your audio uploads">
-        {problem || actionProblem ? <Status tone="error">{problem ?? actionProblem}</Status> : null}
+        {problem ? <Status tone="error">{problem}</Status> : null}
         {entries.map((entry) => (
           <div key={entry.runId}>
             <p role="status">{entry.problem ?? entry.message}</p>
@@ -543,26 +540,10 @@ function ManualAudioIndicator({
               You can use other pages. If your browser closes or pauses, the saved original resumes
               when you return.
             </p>
-            <Link href={`/sessions/${entry.sessionId}/processing`}>
+            {/* One place for material and status: its retry is on that page, not repeated here. */}
+            <Link href={`/sessions/${entry.sessionId}/sources#session-progress`}>
               View audio upload and processing
             </Link>
-            {entry.phase === "attention" ? (
-              <Button
-                secondary
-                onClick={() => {
-                  setActionProblem(null);
-                  void manager
-                    .retry(entry.runId)
-                    .catch((failure: unknown) =>
-                      setActionProblem(
-                        failure instanceof Error ? failure.message : "The upload could not resume.",
-                      ),
-                    );
-                }}
-              >
-                Retry saved audio upload
-              </Button>
-            ) : null}
           </div>
         ))}
       </Panel>

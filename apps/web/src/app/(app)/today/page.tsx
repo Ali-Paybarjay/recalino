@@ -1,6 +1,7 @@
 import { listLearningSessions } from "@recalino/core/note";
 import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
+import { readAutomaticLearning } from "../../../server/automatic-learning";
 import { getDatabase } from "../../../server/db";
 import { workspaceActor, workspaceGroups } from "../../../server/workspace";
 import { Icon } from "../../../ui/components/Icon";
@@ -11,6 +12,7 @@ import { PageHeader } from "../../../ui/shell/AppShell";
 import { strings } from "../../../ui/strings";
 import { ClassRows } from "../../../ui/workspace/ClassRows";
 import { Actions, LinkButton, Panel } from "../../../ui/workspace/primitives";
+import { SessionNextStep } from "../../../ui/workspace/SessionNextStep";
 import { LearnerShell } from "../LearnerShell";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +61,13 @@ export default async function TodayPage() {
         </div>
       </LearnerShell>
     );
+  // The most recent session's next step comes from the same resolver as the session page.
+  const latest = sessions.items[0];
+  const latestStatus = latest
+    ? await readAutomaticLearning(getDatabase(), workspaceActor(learner), latest.id).catch(
+        () => null,
+      )
+    : null;
   const record = (
     <Panel tone="hero" title="Your English, one class at a time.">
       <Icon icon={Microphone} size={40} />
@@ -92,6 +101,18 @@ export default async function TodayPage() {
         ) : (
           record
         )}
+        {latest ? (
+          <SessionNextStep
+            sessionId={latest.id}
+            initial={latestStatus}
+            content={{
+              notes: !!latestStatus?.notesReady,
+              cards: !!latestStatus?.cardsReady,
+            }}
+            title={latest.displayTitle}
+            primarySecondary
+          />
+        ) : null}
         <Panel title="Your recent sessions">
           <ClassRows sessions={sessions.items} {...groups} />
           <Actions>
