@@ -16,6 +16,7 @@ import {
   sha256Hex,
 } from "@recalino/core/plt";
 import {
+  captureTranscriptionActive,
   chargeableRunAmounts,
   createProcessingRun,
   findProcessingRunByOperationKey,
@@ -300,7 +301,11 @@ export async function automaticLearningSync(
   };
   if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
   // D60: parts registered during an open capture wait for Stop; no lesson from part of a class.
-  if (await captureInProgress(db, ctx, sessionId, deps.now()))
+  // D61: a part still being transcribed in the background is reused, not transcribed twice.
+  if (
+    (await captureInProgress(db, ctx, sessionId, deps.now())) ||
+    (await captureTranscriptionActive(db, ctx, sessionId))
+  )
     return progress("waiting_sources", null, null);
   const materials = await sessionSources(db, ctx, sessionId);
   if (

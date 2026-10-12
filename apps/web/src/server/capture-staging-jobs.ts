@@ -1,8 +1,15 @@
 import "server-only";
 import type { Database } from "@recalino/core/db";
 import type { LearnerContext } from "@recalino/core/plt";
-import { stagedAudioVerificationJob } from "@recalino/core/src";
-import { audioVerifier } from "./audio-preparer";
+import {
+  captureTranscriptionJob,
+  readAuxiliaryRun,
+  scheduleCaptureTranscription,
+} from "@recalino/core/proc";
+import { markSourceAudioTranscribed, stagedAudioVerificationJob } from "@recalino/core/src";
+import { getAiProvider } from "./ai";
+import { audioVerifier, prepareAudio } from "./audio-preparer";
+import { notifyAutomaticLearning } from "./automatic-learning-notifications";
 import { getObjectStore } from "./storage";
 
 /**
@@ -18,17 +25,45 @@ export function captureFlags() {
   };
 }
 
-type StagedVerified = (db: Database, ctx: LearnerContext, assetId: string) => Promise<void>;
-let onStagedVerified: StagedVerified | undefined;
-/** D61 attaches background transcription here; verification itself never depends on it. */
-export function setStagedVerifiedHook(hook: StagedVerified | undefined) {
-  onStagedVerified = hook;
+function transcriptionDependencies() {
+  const store = getObjectStore();
+  return store
+    ? { store, provider: getAiProvider(), prepareAudio, onTranscribed: markSourceAudioTranscribed }
+    : null;
 }
+
+/** D61: background transcription of a staged part; the class run then reuses its transcript. */
+export function captureTranscriptionDefinition() {
+  const dependencies = transcriptionDependencies();
+  if (!dependencies) return null;
+  const definition = captureTranscriptionJob(dependencies);
+  return {
+    ...definition,
+    async run(
+      payload: Parameters<typeof definition.run>[0],
+      job: Parameters<typeof definition.run>[1],
+    ) {
+      await definition.run(payload, job);
+      // A class run waiting for this part can start now instead of at the next reconcile.
+      const ctx = { userId: payload.userId, requestId: job.job.id };
+      const run = await readAuxiliaryRun(job.db, ctx, payload.runId).catch(() => null);
+      if (run && !["queued", "processing"].includes(run.state))
+        await notifyAutomaticLearning(job.db, ctx, run.sessionId, false);
+    },
+  };
+}
+
 export function stagedAudioJobDefinition() {
   const store = getObjectStore();
   return store
-    ? stagedAudioVerificationJob(store, audioVerifier(), async (db, ctx, assetId) => {
-        if (captureFlags().earlyTranscription) await onStagedVerified?.(db, ctx, assetId);
-      })
+    ? stagedAudioVerificationJob(
+        store,
+        audioVerifier(),
+        async (db: Database, ctx: LearnerContext, assetId: string) => {
+          if (!captureFlags().earlyTranscription) return;
+          const dependencies = transcriptionDependencies();
+          if (dependencies) await scheduleCaptureTranscription(db, ctx, assetId, dependencies);
+        },
+      )
     : null;
 }

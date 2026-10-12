@@ -11,6 +11,7 @@ import {
 } from "@recalino/core/src";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
+import { notifyAutomaticLearning } from "./automatic-learning-notifications";
 import { captureFlags, stagedAudioJobDefinition } from "./capture-staging-jobs";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
@@ -96,7 +97,11 @@ export function stagedAudioHandler(assetId: string): Handler {
         defaults: readPltSettings().jobs,
       }),
     );
-    runJobsSoon(["src.verify_staged_audio", "proc.process"], PROCESSING_WAKE.budgetSeconds);
+    runJobsSoon(
+      ["src.verify_staged_audio", "proc.capture_transcription"],
+      PROCESSING_WAKE.budgetSeconds,
+      PROCESSING_WAKE.functionSeconds,
+    );
     return { status: 202, body: { ...manifest, jobId } };
   };
 }
@@ -114,6 +119,13 @@ export function classCaptureHandler(sessionId: string): Handler {
     const flags = captureFlags();
     if (action === "close") {
       await releaseCaptureLease(db, learner, id);
+      // Stop: a class waiting on the lease is processed now, not at the next reconcile.
+      await notifyAutomaticLearning(db, learner, id, false);
+      runJobsSoon(
+        ["proc.automatic_learning", "proc.capture_transcription", "proc.process"],
+        PROCESSING_WAKE.budgetSeconds,
+        PROCESSING_WAKE.functionSeconds,
+      );
       return { body: { ...flags, openUntil: null } };
     }
     if (!flags.earlyUpload) return { body: { ...flags, openUntil: null } };

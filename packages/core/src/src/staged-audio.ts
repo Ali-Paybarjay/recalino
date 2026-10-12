@@ -160,6 +160,22 @@ export async function beginStagedAudioUpload(
   });
 }
 
+/** The class a recorded part is linked to, for work that follows its staged copy (D61). */
+export async function recordedPartSessionId(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  assetId: string,
+): Promise<string | null> {
+  const link = await db
+    .selectFrom("src.session_source")
+    .select("session_id")
+    .where("asset_id", "=", assetId)
+    .where("user_id", "=", ctx.userId)
+    .where("active", "=", true)
+    .executeTakeFirst();
+  return link?.session_id ?? null;
+}
+
 /** The manifest of a staged copy only; a run's upload is never reachable through this path. */
 export async function stagedAudioManifest(
   db: Database | Tx,

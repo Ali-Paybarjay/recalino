@@ -85,6 +85,7 @@ export {
 } from "./service";
 export {
   beginStagedAudioUpload,
+  recordedPartSessionId,
   stagedAudioManifest,
   stagedAudioManifestSchema,
   stagedAudioVerificationJob,

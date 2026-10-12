@@ -25,6 +25,8 @@ vi.mock("@recalino/core/proc", async (original) => ({
   findProcessingRunByOperationKey: mocks.acknowledged,
   createProcessingRun: mocks.createRun,
   readClassProcessingReview: mocks.review,
+  // D61: no background transcription is running in these classes.
+  captureTranscriptionActive: vi.fn(async () => false),
 }));
 vi.mock("@recalino/core/src", async (original) => ({
   ...(await original<object>()),
