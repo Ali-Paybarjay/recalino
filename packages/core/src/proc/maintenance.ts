@@ -29,6 +29,7 @@ export async function expireAwaitingUploads(db: Database, now = new Date()): Pro
   for (const run of runs) {
     const ctx = { userId: run.user_id, requestId: `expire:${run.id}` };
     let deadline = Number.POSITIVE_INFINITY;
+    let missingSource = false;
     const audio = sourceSnapshotSchema
       .parse(run.input_snapshot)
       .sources.filter((item) => item.kind === "audio");
@@ -41,12 +42,16 @@ export async function expireAwaitingUploads(db: Database, now = new Date()): Pro
     } catch (error) {
       if (!(error instanceof AppError && error.code === "not_found")) throw error;
       deadline = 0;
+      missingSource = true;
     }
     if (deadline <= now.getTime()) {
-      const code = expiredUploadCode(
-        audio.map((source) => source.sourceId),
-        await temporaryAudioUploadStates(db, ctx, run.reservation_id),
-      );
+      // A deleted source keeps the earlier code: no saved original can be promised for it.
+      const code = missingSource
+        ? "audio_upload_rejected"
+        : expiredUploadCode(
+            audio.map((source) => source.sourceId),
+            await temporaryAudioUploadStates(db, ctx, run.reservation_id),
+          );
       const result = await failAwaitingUploadRun(db, ctx, run.id, code, now);
       if (result.state === "needs_input") expired++;
     }

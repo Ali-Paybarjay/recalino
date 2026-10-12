@@ -55,7 +55,7 @@
 - `expireAwaitingUploads` ([`maintenance.ts`](../../packages/core/src/proc/maintenance.ts)) پیش‌تر هر Run منقضی را `audio_upload_rejected` می‌کرد. حالا با `temporaryAudioUploadStates` بر اساس رسیدهای آپلود همان رزرو تصمیم می‌گیرد:
   - `audio_upload_not_started`: هیچ آپلودی شروع نشده است.
   - `audio_upload_incomplete`: آپلود شروع شده، ولی تمام نشده است.
-  - `audio_upload_rejected`: فقط برای رد واقعی توسط verifier.
+  - `audio_upload_rejected`: فقط برای رد واقعی توسط verifier، و مثل قبل برای Runی که منبع صوتی‌اش حذف شده است. در این حالت نمی‌شود گفت نسخهٔ اصلی روی دستگاه مانده است.
 - نوع `AwaitingUploadFailure` در `runs.ts` این کدها را نام می‌برد.
 - migration لازم نیست، چون ستون `last_error` فقط الگوی `^[a-z0-9_.]{1,64}$` را می‌خواهد.
 - انتظار آزمون موجود `processing.int.test.ts` (انقضای Run بی‌آپلود) از `audio_upload_rejected` به `audio_upload_not_started` تغییر کرد. این همان رفتار اصلاح‌شده است، نه تضعیف آزمون.
