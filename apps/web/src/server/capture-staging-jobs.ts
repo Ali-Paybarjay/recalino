@@ -1,6 +1,6 @@
 import "server-only";
 import type { Database } from "@recalino/core/db";
-import type { LearnerContext } from "@recalino/core/plt";
+import { createLogger, type LearnerContext } from "@recalino/core/plt";
 import {
   captureTranscriptionJob,
   readAuxiliaryRun,
@@ -62,7 +62,17 @@ export function stagedAudioJobDefinition() {
         async (db: Database, ctx: LearnerContext, assetId: string) => {
           if (!captureFlags().earlyTranscription) return;
           const dependencies = transcriptionDependencies();
-          if (dependencies) await scheduleCaptureTranscription(db, ctx, assetId, dependencies);
+          if (!dependencies) return;
+          try {
+            await scheduleCaptureTranscription(db, ctx, assetId, dependencies);
+          } catch (failure) {
+            // Verification stands; the class run transcribes this part instead.
+            createLogger()("error", "capture_transcription_not_scheduled", {
+              request_id: ctx.requestId,
+              user_id: ctx.userId,
+              error_name: failure instanceof Error ? failure.name : typeof failure,
+            });
+          }
         },
       )
     : null;
