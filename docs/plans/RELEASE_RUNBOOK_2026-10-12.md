@@ -11,7 +11,7 @@
 | آدرس production | `https://recalino.vercel.app` |
 | آخرین migration ابری | `20261009181203` (۴۶ migration)، برابر با `origin/claude/gifted-franklin-7ecldm` |
 | شاخهٔ پایه | `origin/claude/gifted-franklin-7ecldm` (`2baa35f`)؛ `main` در `4ad3391`، سه commit فقط‌مستند عقب‌تر |
-| hotfix D59 | شاخهٔ `feat/hotfix-d59-audio-start` روی remote وجود ندارد. همین اصلاح در `feat/upload-reliability` (commit `47c1bfb`) هست |
+| hotfix D59 | شاخهٔ `feat/hotfix-d59-audio-start` (`94c3580`، از `main`). همان تغییر `audio.ts` در `feat/upload-reliability` (commit `47c1bfb`) هم هست |
 
 ## ۱. PR و CI کامل
 
@@ -24,7 +24,7 @@
    ```
 3. push کن و منتظر سبز شدن هر دو job بمان: «Lint, types, boundaries, tests, build» و «End-to-end».
 4. PR از شاخهٔ ادغام به `main`. توضیح PR: فهرست D60 تا D66، migrationها، کلیدهای خاموش‌کردن (بخش ۶).
-5. پیش از ادغام، hotfix D59: اگر PR جداگانهٔ آن زودتر در `main` نشست، `main` را در شاخهٔ ادغام merge کن؛ تعارض در `packages/core/src/src/audio.ts` محتمل است. نسخهٔ `feat/upload-reliability` را نگه دار (همان اصلاح، به‌اضافهٔ کدهای `audio_upload_not_started` و `audio_upload_incomplete`).
+5. hotfix D59: اگر PR جداگانهٔ `feat/hotfix-d59-audio-start` زودتر در `main` نشست، `main` را در شاخهٔ ادغام merge کن. ادغام آزمایشی (2026-10-12): تغییر `audio.ts` در دو شاخه یکسان است و بی‌تعارض ادغام می‌شود. تنها تعارض add/add در `packages/core/src/proc/audio-charged-material.int.test.ts` است؛ هر دو نسخهٔ آزمون را نگه دار، یا اگر یکسان‌اند، نسخهٔ `upload-reliability` را. سپس `pnpm test:int` را برای `proc` اجرا کن.
 
 ## ۲. بررسی بی‌کاری پردازش (فقط‌خواندنی، پیش از ادغام در `main`)
 
@@ -67,7 +67,7 @@ select max(version), count(*) from supabase_migrations.schema_migrations;
 | 4 | `feat/lesson-quality` | ندارد | تعارض متنی در دو فایل متن |
 | 5 | `feat/voice-detection` | `20261012220000_voice_class_links.sql` | تعارض با ۴ در `packages/core/src/proc/worker.ts` و با ۱ در `packages/core/src/voc/index.ts` |
 
-نتیجهٔ ادغام آزمایشی (2026-10-12، سرِ شاخه‌ها: `fa9ff12`، `dbf93d7`، `38067a3`، `f4a0f7a`، `966c6aa`):
+نتیجهٔ ادغام آزمایشی (2026-10-12، سرِ شاخه‌ها در دور دوم: `105c2ac`، `c512a24`، `38067a3`، `f4a0f7a`، `26aa6e0`):
 
 - **برخورد timestamp:** ندارد. دو migration تازه هر دو بعد از `20261009181203` ابری‌اند.
 - **وابستگی ترتیب:** ندارند. یکی `voc.analysis` و دیگری `src.audio_upload` و `org.class_session` را تغییر می‌دهد. `supabase db push` آن‌ها را به ترتیب نام اجرا می‌کند (`2200` پیش از `2300`)، مستقل از ترتیب ادغام.

@@ -4,10 +4,10 @@
 
 | شاخه | سرِ بررسی‌شده |
 |---|---|
-| `feat/upload-reliability` | `fa9ff12` |
-| `feat/recording-capture` | `dbf93d7` |
+| `feat/upload-reliability` | `105c2ac` (دور دوم؛ دور اول `fa9ff12`) |
+| `feat/recording-capture` | `c512a24` (دور دوم؛ دور اول `dbf93d7`) |
 | `feat/lesson-quality` | `f4a0f7a` |
-| `feat/voice-detection` | `966c6aa` |
+| `feat/voice-detection` | `26aa6e0` (دور دوم؛ دور اول `966c6aa`) |
 | `feat/session-navigation` | `38067a3` |
 
 ## ۱. یافته‌ها
@@ -35,7 +35,7 @@
 ### S4 — اطلاع: D60 با ادغام روشن می‌شود و D61 هنوز کامل نیست
 
 - `feat/recording-capture`، `apps/web/src/server/capture-staging-jobs.ts:14-18`: `RECALINO_CAPTURE_EARLY_UPLOAD` و `RECALINO_CAPTURE_EARLY_TRANSCRIPTION` پیش‌فرض روشن‌اند و در production تعریف نشده‌اند. پس D60 با همان استقرار فعال می‌شود، نه در گام «روشن کردن» D66.
-- `setStagedVerifiedHook` در هیچ‌جا فراخوانی نمی‌شود، پس D61 عملاً کاری نمی‌کند. سمت کلاینت (فراخوانی `/api/sources/[id]/audio/staged` و `/api/classes/[id]/capture`) هم در سرِ `dbf93d7` نیست. شاخه هنوز در حال کار است. پیش از انتشار، دوباره بازبینی شود، به‌ویژه S1.
+- `setStagedVerifiedHook` در هیچ‌جا فراخوانی نمی‌شود، پس D61 عملاً کاری نمی‌کند. سمت کلاینت در `c512a24` اضافه شد، بی‌تغییر سمت سرور؛ S1 تا این commit باز است. پیش از انتشار، دوباره بازبینی شود.
 
 ## ۲. موارد بررسی‌شده بدون یافته
 
