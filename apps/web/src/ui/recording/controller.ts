@@ -1,3 +1,5 @@
+import { type CaptureGap, CaptureMeter, GAP_MIN_MS, type GapCause } from "./capture-meter";
+import type { MediaTimeline } from "./media-timeline";
 import type { Recording, RecordingStore } from "./store";
 
 export type CaptureState = {
@@ -13,12 +15,59 @@ export type CaptureState = {
     | "failed";
   error: string | null;
   accountDeletionBlocked: boolean;
+  /** After Stop: intervals the learner meant to record for which no audio was saved. */
+  missing?: MissingAudio | null;
 };
+export type MissingAudio = { totalMs: number; intervals: { from: string; missingMs: number }[] };
+/** Gaps across a capture's parts, in time order, for the notice shown after Stop. */
+export function missingAudio(parts: Recording[]): MissingAudio | null {
+  const intervals = parts
+    .flatMap((part) => part.gaps ?? [])
+    .map((gap) => ({ from: gap.from, missingMs: gap.missingMs }))
+    .sort((a, b) => a.from.localeCompare(b.from));
+  if (!intervals.length) return null;
+  return { totalMs: intervals.reduce((sum, gap) => sum + gap.missingMs, 0), intervals };
+}
 export interface CaptureDependencies {
   getStream(): Promise<MediaStream>;
   makeRecorder(stream: MediaStream): MediaRecorder;
+  /** Device time in milliseconds since the epoch; it keeps counting while the page is frozen. */
   clock(): number;
   segmentMs?: number;
+  /** Reads a recorder run's container timestamps; defaults to WebM and fragmented MP4. */
+  timeline?: () => MediaTimeline;
+  readChunk?: (blob: Blob) => Promise<Uint8Array>;
+}
+/** Capture health facts without audio, text or identifiers (PRD-PRIV-06). */
+export type CaptureHealthEvent =
+  | { type: "started"; mime: string; part: number }
+  | { type: "visibility"; visible: boolean }
+  | { type: "lifecycle"; state: "frozen" | "resumed" | "throttled" }
+  | { type: "wake_lock"; state: "acquired" | "released" | "unavailable" | "failed" }
+  | { type: "track"; state: "muted" | "unmuted" | "ended" }
+  | { type: "gap"; part: number; offsetMs: number; missingMs: number; cause: GapCause }
+  | { type: "interrupted"; part: number }
+  | {
+      type: "part";
+      part: number;
+      mime: string;
+      measured: boolean;
+      mediaMs: number;
+      wallMs: number;
+      missingMs: number;
+      gaps: number;
+    };
+/** A chunk older than this on a visible page is overdue; the recorder is asked for data. */
+const STALL_MS = 12000;
+/** After asking, a recorder that still sends nothing is restarted. */
+const PROBE_MS = 4000;
+/** Heartbeats further apart than this mean timers were frozen or throttled. */
+const HEARTBEAT_GAP_MS = 5000;
+let lastTime = 0;
+/** Wall time that never runs backwards within this page. */
+function deviceClock() {
+  lastTime = Math.max(lastTime, Date.now());
+  return lastTime;
 }
 export function supportedMime(): string | undefined {
   if (typeof MediaRecorder === "undefined") return undefined;
@@ -35,7 +84,13 @@ const defaults: CaptureDependencies = {
       mime ? { mimeType: mime, audioBitsPerSecond: 64000 } : undefined,
     );
   },
-  clock: () => performance.now(),
+  clock: deviceClock,
+};
+type Chunk = {
+  blob: Blob;
+  activeMs: number;
+  gaps?: CaptureGap[];
+  measuredBy?: "media" | "clock";
 };
 type Capture = {
   recording: Recording;
@@ -43,7 +98,9 @@ type Capture = {
   stream: MediaStream;
   ownsStream: boolean;
   manifestCommitted: boolean;
-  startedAt: number | null;
+  meter: CaptureMeter;
+  /** Chunks are measured in arrival order before they are saved. */
+  measuring: Promise<void>;
   activeMs: number;
   lastDataAt: number;
   probeAt: number | null;
@@ -52,7 +109,7 @@ type Capture = {
   signalStop: (() => void) | null;
   interrupted: boolean;
   sealed: boolean;
-  pending: { blob: Blob; activeMs: number }[];
+  pending: Chunk[];
   finalizing: Promise<boolean> | null;
   lateSaveTimer: ReturnType<typeof setTimeout> | null;
   lateSaving: boolean;
@@ -72,7 +129,6 @@ export class RecordingController {
   private queue: Promise<void> = Promise.resolve();
   private intent: "recording" | "paused" | "stopped" = "stopped";
   private session = 0;
-  private completedMs = 0;
   private recovery: Promise<void> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private healthTimer: ReturnType<typeof setInterval> | null = null;
@@ -82,6 +138,11 @@ export class RecordingController {
   private disposed = false;
   private lateCaptures = new Set<Capture>();
   private attachedSessions = new Map<string, string>();
+  private healthListeners = new Set<(event: CaptureHealthEvent) => void>();
+  private lastBeat: number | null = null;
+  /** When capture broke while the learner meant to record, until the next part starts. */
+  private brokenAt: { at: number; cause: GapCause } | null = null;
+  private hidden = false;
   constructor(
     readonly userId: string,
     readonly store: RecordingStore,
@@ -94,25 +155,46 @@ export class RecordingController {
     };
   };
   snapshot = () => this.state;
+  /** Capture health facts for diagnostics; never audio, text or identifiers. */
+  onHealth = (listener: (event: CaptureHealthEvent) => void) => {
+    this.healthListeners.add(listener);
+    return () => {
+      this.healthListeners.delete(listener);
+    };
+  };
+  private report(event: CaptureHealthEvent) {
+    for (const listener of this.healthListeners) {
+      try {
+        listener(event);
+      } catch {
+        /* Diagnostics never affect capture. */
+      }
+    }
+  }
   private update(next: Partial<CaptureState>) {
     this.state = { ...this.state, ...next };
     for (const listener of this.listeners) listener();
   }
   private captureElapsed(capture: Capture) {
-    return (
-      capture.activeMs +
-      (capture.startedAt === null ? 0 : Math.max(0, this.deps.clock() - capture.startedAt))
-    );
+    return capture.meter.liveMs();
   }
   segmentElapsed() {
     return this.capture ? this.captureElapsed(this.capture) : (this.state.recording?.activeMs ?? 0);
   }
   elapsed() {
-    return this.completedMs + (this.capture ? this.captureElapsed(this.capture) : 0);
+    return this.captures.reduce(
+      (sum, part) => sum + (part.sealed ? part.recording.activeMs : this.captureElapsed(part)),
+      0,
+    );
   }
   private freeze(capture: Capture) {
-    capture.activeMs = this.captureElapsed(capture);
-    capture.startedAt = null;
+    capture.meter.halt();
+    capture.activeMs = capture.meter.mediaMs();
+  }
+  private newMeter() {
+    const meter = new CaptureMeter(this.deps.clock, this.deps.timeline?.());
+    if (this.hidden) meter.note("hidden", true);
+    return meter;
   }
   private publish(capture: Capture) {
     if (
@@ -151,14 +233,15 @@ export class RecordingController {
       throw new Error("A recording is already active");
     const session = ++this.session;
     this.disposed = false;
+    this.lastBeat = null;
+    this.brokenAt = null;
     this.intent = "recording";
-    this.completedMs = 0;
     this.captures = [];
     this.capture = null;
     this.stopPromise = null;
     this.retries = 0;
     this.recovery = null;
-    this.update({ recording: null, phase: "starting", error: null });
+    this.update({ recording: null, phase: "starting", error: null, missing: null });
     try {
       await this.openCapture(session, null, sessionId);
       if (!this.cancelled(session)) this.healthTimer = setInterval(() => this.checkHealth(), 1000);
@@ -227,7 +310,8 @@ export class RecordingController {
         stream,
         ownsStream: true,
         manifestCommitted: true,
-        startedAt: null,
+        meter: this.newMeter(),
+        measuring: Promise.resolve(),
         activeMs: 0,
         lastDataAt: this.deps.clock(),
         probeAt: null,
@@ -246,7 +330,9 @@ export class RecordingController {
       this.publish(capture);
       this.bindCapture(capture, session);
       recorder.start(5000);
-      capture.startedAt = this.deps.clock();
+      capture.meter.run();
+      this.report({ type: "started", mime: recorder.mimeType, part: recording.segment ?? 1 });
+      this.recordBrokenInterval(capture);
       if (this.isPaused()) {
         this.freeze(capture);
         recorder.pause();
@@ -260,6 +346,59 @@ export class RecordingController {
       throw failure;
     }
   }
+  /** The time between a broken part and this one is audio the learner did not get. */
+  private recordBrokenInterval(capture: Capture) {
+    const broken = this.brokenAt;
+    this.brokenAt = null;
+    if (!broken || this.intent !== "recording") return;
+    const now = this.deps.clock();
+    const gap = capture.meter.addGap({
+      from: new Date(broken.at).toISOString(),
+      to: new Date(now).toISOString(),
+      missingMs: now - broken.at,
+      cause: broken.cause,
+    });
+    if (gap) this.noteGap(capture, gap);
+  }
+  private noteGap(capture: Capture, gap: CaptureGap) {
+    capture.recording = { ...capture.recording, gaps: capture.meter.gaps.map((g) => ({ ...g })) };
+    this.report({
+      type: "gap",
+      part: capture.recording.segment ?? 1,
+      offsetMs: gap.offsetMs,
+      missingMs: gap.missingMs,
+      cause: gap.cause,
+    });
+  }
+  /** Measures a chunk against the device clock, in arrival order, before it is saved. */
+  private measure(capture: Capture, chunk: Chunk, arrivedAt: number) {
+    const read =
+      this.deps.readChunk ?? (async (blob: Blob) => new Uint8Array(await blob.arrayBuffer()));
+    capture.measuring = capture.measuring.then(async () => {
+      let gap: CaptureGap | null = null;
+      try {
+        gap = capture.meter.push(await read(chunk.blob), arrivedAt);
+        if (gap) this.noteGap(capture, gap);
+      } catch {
+        /* An unreadable chunk leaves the measurement to the device clock. */
+      }
+      chunk.activeMs = capture.meter.mediaMs();
+      chunk.gaps = capture.meter.gaps.map((gap) => ({ ...gap }));
+      chunk.measuredBy = capture.meter.measured ? "media" : "clock";
+      // Timers can be throttled or frozen; chunks still arrive, so rotation follows the audio.
+      if (
+        this.capture === capture &&
+        this.intent === "recording" &&
+        !capture.sealed &&
+        !capture.interrupted &&
+        (chunk.activeMs >= (this.deps.segmentMs ?? 10 * 60 * 1000) ||
+          // A later part restarts its timestamps, so transcription never skips audio after a gap.
+          gap !== null)
+      )
+        queueMicrotask(() => this.rotate(capture));
+    });
+    return capture.measuring;
+  }
   private bindCapture(capture: Capture, session: number) {
     const { recorder, stream } = capture;
     recorder.ondataavailable = (event) => {
@@ -269,12 +408,15 @@ export class RecordingController {
         ((session !== this.session || capture.sealed) && !capture.acceptLateData)
       )
         return;
-      capture.lastDataAt = this.deps.clock();
+      const arrivedAt = this.deps.clock();
+      capture.lastDataAt = arrivedAt;
       capture.probeAt = null;
-      const chunk = { blob: event.data, activeMs: this.captureElapsed(capture) };
+      const chunk: Chunk = { blob: event.data, activeMs: this.captureElapsed(capture) };
+      const measured = this.measure(capture, chunk, arrivedAt);
       this.queue = this.queue
         .catch(() => {})
         .then(async () => {
+          await measured;
           if (capture.pending.length) {
             capture.pending.push(chunk);
             if (capture.sealed) this.saveLateCapture(capture);
@@ -282,11 +424,7 @@ export class RecordingController {
           }
           try {
             capture.recording = await this.store.append(
-              {
-                ...capture.recording,
-                activeMs: chunk.activeMs,
-                updatedAt: new Date().toISOString(),
-              },
+              this.chunkManifest(capture, chunk),
               chunk.blob,
             );
             this.publish(capture);
@@ -323,18 +461,54 @@ export class RecordingController {
         this.interrupt(capture, "Recording paused unexpectedly. Restarting automatically…");
     };
     for (const track of stream.getAudioTracks()) {
-      track.onended = () =>
+      track.onended = () => {
+        capture.meter.note("ended");
+        if (this.capture === capture) this.report({ type: "track", state: "ended" });
         this.interrupt(
           capture,
           "The microphone stopped. Reconnecting automatically; saved audio is safe on this device.",
+          "ended",
         );
-      track.onmute = () =>
+      };
+      track.onmute = () => {
+        capture.meter.note("muted");
+        if (this.capture === capture) this.report({ type: "track", state: "muted" });
         this.interrupt(
           capture,
           "The microphone was interrupted. Reconnecting automatically; saved audio is safe on this device.",
+          "muted",
         );
-      track.onunmute = () => this.checkHealth();
+      };
+      track.onunmute = () => {
+        if (this.capture === capture) this.report({ type: "track", state: "unmuted" });
+        this.checkHealth();
+      };
     }
+  }
+  private chunkManifest(capture: Capture, chunk: Chunk): Recording {
+    return {
+      ...capture.recording,
+      activeMs: chunk.activeMs,
+      ...(chunk.measuredBy ? { measuredBy: chunk.measuredBy } : {}),
+      ...(chunk.gaps?.length ? { gaps: chunk.gaps } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  /** Final comparison once the last chunk is measured; the part's duration is its audio. */
+  private settle(capture: Capture) {
+    const gap = capture.meter.seal();
+    if (gap) this.noteGap(capture, gap);
+    capture.activeMs = capture.meter.mediaMs();
+    this.report({
+      type: "part",
+      part: capture.recording.segment ?? 1,
+      mime: capture.recording.mimeType,
+      measured: capture.meter.measured,
+      mediaMs: Math.round(capture.activeMs),
+      wallMs: Math.round(capture.meter.wallMs()),
+      missingMs: Math.round(capture.meter.missingMs()),
+      gaps: capture.meter.gaps.length,
+    });
   }
   private saveLateCapture(capture: Capture) {
     if (capture.lateSaving || this.disposed || this.accountDeleted) return;
@@ -348,15 +522,13 @@ export class RecordingController {
       .catch(() => {})
       .then(async () => {
         try {
+          await capture.measuring;
           while (capture.pending.length) {
             const chunk = capture.pending[0];
             if (!chunk) break;
+            capture.activeMs = Math.max(capture.activeMs, chunk.activeMs);
             capture.recording = await this.store.append(
-              {
-                ...capture.recording,
-                activeMs: capture.activeMs,
-                updatedAt: new Date().toISOString(),
-              },
+              this.chunkManifest(capture, { ...chunk, activeMs: capture.activeMs }),
               chunk.blob,
             );
             capture.pending.shift();
@@ -395,10 +567,16 @@ export class RecordingController {
         }
       });
   }
-  private interrupt(capture: Capture, message: string) {
+  private interrupt(capture: Capture, message: string, cause: GapCause = "interrupted") {
     if (this.capture !== capture || capture.sealed || this.intent === "stopped") return;
     this.freeze(capture);
     capture.interrupted = true;
+    if (this.intent === "recording")
+      this.brokenAt ??= {
+        at: this.deps.clock(),
+        cause: this.hidden && cause === "interrupted" ? "hidden" : cause,
+      };
+    this.report({ type: "interrupted", part: capture.recording.segment ?? 1 });
     this.update({ phase: this.intent === "paused" ? "paused" : "recovering", error: message });
     void this.finishCapture(capture, true);
     if (this.intent === "recording") this.scheduleRecovery(0);
@@ -450,10 +628,59 @@ export class RecordingController {
       });
     this.recovery = recovery;
   }
+  private get pageHidden() {
+    return (
+      this.hidden || (typeof document !== "undefined" && document.visibilityState === "hidden")
+    );
+  }
+  /** Ask the recorder for its buffered audio; data, or its absence, shows the real state. */
+  private probe(capture: Capture, now: number) {
+    capture.probeAt = now;
+    try {
+      capture.recorder.requestData();
+    } catch {
+      this.interrupt(
+        capture,
+        "Recording stopped producing audio. Restarting automatically…",
+        "stalled",
+      );
+    }
+  }
+  /** Page lifecycle facts from the shell (visibility, freeze/resume, wake lock). */
+  observe(
+    event:
+      | { type: "visibility"; visible: boolean }
+      | { type: "lifecycle"; state: "frozen" | "resumed" }
+      | { type: "wake_lock"; state: "acquired" | "released" | "unavailable" | "failed" },
+  ) {
+    if (event.type === "visibility") {
+      if (this.hidden === !event.visible) return;
+      this.hidden = !event.visible;
+      for (const part of this.captures) if (!part.sealed) part.meter.note("hidden", this.hidden);
+    } else if (event.type === "lifecycle") {
+      for (const part of this.captures) if (!part.sealed) part.meter.note("frozen");
+    }
+    if (this.intent !== "stopped") this.report(event);
+    if (event.type !== "wake_lock")
+      this.checkHealth(
+        (event.type === "visibility" && event.visible) ||
+          (event.type === "lifecycle" && event.state === "resumed"),
+      );
+  }
   /** Also called when the page becomes active again after browser suspension. */
-  checkHealth() {
+  checkHealth(woke = false) {
+    const now = this.deps.clock();
+    const beat = this.lastBeat;
+    this.lastBeat = now;
     if (this.intent !== "recording") return;
     const capture = this.capture;
+    // Timers were frozen or throttled: whatever happened meanwhile is unknown until data arrives.
+    const throttled = beat !== null && now - beat > HEARTBEAT_GAP_MS;
+    const resumed = woke || throttled;
+    if (throttled && capture) {
+      capture.meter.note("frozen");
+      this.report({ type: "lifecycle", state: "throttled" });
+    }
     if (!capture || capture.finalizing || capture.interrupted) {
       if (this.state.phase === "recovering") this.scheduleRecovery(0);
       return;
@@ -464,26 +691,42 @@ export class RecordingController {
       tracks.some((track) => track.readyState === "ended" || track.muted) ||
       capture.recorder.state !== "recording"
     ) {
-      this.interrupt(capture, "Recording was interrupted. Restarting automatically…");
+      const ended = tracks.some((track) => track.readyState === "ended");
+      const muted = tracks.some((track) => track.muted);
+      this.interrupt(
+        capture,
+        "Recording was interrupted. Restarting automatically…",
+        ended ? "ended" : muted ? "muted" : "interrupted",
+      );
       return;
     }
     if (this.captureElapsed(capture) >= (this.deps.segmentMs ?? 10 * 60 * 1000)) {
       this.rotate(capture);
       return;
     }
-    // Timeslices can be delayed while the page is hidden/locked. Probe only a visible page.
-    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-    const now = this.deps.clock();
-    if (now - capture.lastDataAt < 20000) return;
-    if (capture.probeAt === null) {
-      capture.probeAt = now;
-      try {
-        capture.recorder.requestData();
-      } catch {
-        this.interrupt(capture, "Recording stopped producing audio. Restarting automatically…");
+    const silent = now - capture.lastDataAt;
+    // Timeslices can be delayed while the page is hidden/locked. Never restart a hidden page,
+    // but flush what the recorder holds so a gap is measured as soon as possible.
+    if (this.pageHidden) {
+      if (resumed && capture.probeAt === null) {
+        try {
+          capture.recorder.requestData();
+        } catch {
+          /* Checked again when the page is visible. */
+        }
       }
-    } else if (now - capture.probeAt >= 10000) {
-      this.interrupt(capture, "Recording stopped producing audio. Restarting automatically…");
+      capture.probeAt = null;
+      return;
+    }
+    // A visible page never shows a healthy recording for long without audio (PRD-REC-03).
+    if (capture.probeAt === null) {
+      if (silent >= STALL_MS || (resumed && silent >= 1000)) this.probe(capture, now);
+    } else if (now - capture.probeAt >= PROBE_MS) {
+      this.interrupt(
+        capture,
+        "Recording stopped producing audio. Restarting automatically…",
+        "stalled",
+      );
     }
   }
   private rotate(previous: Capture) {
@@ -493,8 +736,9 @@ export class RecordingController {
       this.freeze(previous);
       previous.ownsStream = false;
       const now = new Date().toISOString();
+      const { gaps: _gaps, measuredBy: _measuredBy, ...kept } = previous.recording;
       const recording: Recording = {
-        ...previous.recording,
+        ...kept,
         id: crypto.randomUUID(),
         segment: (previous.recording.segment ?? 1) + 1,
         status: "recording",
@@ -515,7 +759,8 @@ export class RecordingController {
         stream: previous.stream,
         ownsStream: true,
         manifestCommitted: false,
-        startedAt: null,
+        meter: this.newMeter(),
+        measuring: Promise.resolve(),
         activeMs: 0,
         lastDataAt: this.deps.clock(),
         probeAt: null,
@@ -529,7 +774,6 @@ export class RecordingController {
         lateSaveTimer: null,
         lateSaving: false,
       };
-      this.completedMs += previous.activeMs;
       this.capture = capture;
       this.captures.push(capture);
       this.queue = this.queue
@@ -550,7 +794,8 @@ export class RecordingController {
       previous.recorder.stop();
       const finished = this.finishCapture(previous, false);
       recorder.start(5000);
-      capture.startedAt = this.deps.clock();
+      capture.meter.run();
+      this.report({ type: "started", mime: recorder.mimeType, part: recording.segment ?? 1 });
       this.publish(capture);
       void finished.then((saved) => {
         if (!saved && this.capture && this.intent === "recording")
@@ -568,6 +813,8 @@ export class RecordingController {
   pause() {
     if (this.intent !== "recording") return;
     this.intent = "paused";
+    // Paused time is the learner's choice, not missing audio.
+    this.brokenAt = null;
     this.clearRetry();
     const capture = this.capture;
     if (capture && !capture.interrupted && capture.recorder.state === "recording") {
@@ -592,7 +839,7 @@ export class RecordingController {
     if (capture && !capture.interrupted && capture.recorder.state === "paused") {
       try {
         capture.recorder.resume();
-        capture.startedAt = this.deps.clock();
+        capture.meter.run();
         capture.lastDataAt = this.deps.clock();
         capture.probeAt = null;
         capture.recording = { ...capture.recording, status: "recording" };
@@ -642,6 +889,10 @@ export class RecordingController {
   stop(): Promise<void> {
     if (this.stopPromise) return this.stopPromise;
     if (this.intent === "stopped" && !this.captures.length) return this.queue;
+    // Audio missing from a break until Stop belongs to the last part.
+    const broken = this.intent === "recording" ? this.brokenAt : null;
+    const stoppedAt = this.deps.clock();
+    this.brokenAt = null;
     this.intent = "stopped";
     this.stopMonitoring();
     const capture = this.capture;
@@ -662,7 +913,20 @@ export class RecordingController {
             if (!part.sealed) continue;
             const stored = await this.store.get(this.userId, part.recording.id);
             if (!stored) continue;
-            part.recording = { ...stored, completedAt };
+            const trailing =
+              part === last && broken && stoppedAt - broken.at >= GAP_MIN_MS
+                ? [
+                    {
+                      from: new Date(broken.at).toISOString(),
+                      to: new Date(stoppedAt).toISOString(),
+                      offsetMs: Math.round(stored.activeMs),
+                      missingMs: Math.round(stoppedAt - broken.at),
+                      cause: broken.cause,
+                    },
+                  ]
+                : [];
+            const gaps = [...(stored.gaps ?? []), ...trailing];
+            part.recording = { ...stored, completedAt, ...(gaps.length ? { gaps } : {}) };
             await this.store.put(part.recording);
             this.publish(part);
           }
@@ -684,6 +948,7 @@ export class RecordingController {
         this.update({
           phase: "saved",
           recording: exported?.recording ?? this.state.recording,
+          missing: missingAudio(parts.map((part) => part.recording)),
           error: last?.interrupted
             ? "Recording ended during an interruption. The recoverable parts are saved on this device."
             : null,
@@ -732,22 +997,24 @@ export class RecordingController {
               else await this.store.put(capture.recording);
               capture.manifestCommitted = true;
             }
+            await capture.measuring;
             while (capture.pending.length) {
               const chunk = capture.pending[0];
               if (!chunk) break;
               capture.recording = await this.store.append(
-                {
-                  ...capture.recording,
-                  activeMs: chunk.activeMs,
-                  updatedAt: new Date().toISOString(),
-                },
+                this.chunkManifest(capture, chunk),
                 chunk.blob,
               );
               capture.pending.shift();
             }
+            if (!capture.sealed) this.settle(capture);
             const manifest: Recording = {
               ...capture.recording,
               activeMs: capture.activeMs,
+              measuredBy: capture.meter.measured ? "media" : "clock",
+              ...(capture.meter.gaps.length
+                ? { gaps: capture.meter.gaps.map((gap) => ({ ...gap })) }
+                : {}),
               status: capture.interrupted || !capture.recording.bytes ? "interrupted" : "saved",
               awaitingFinalData: !capture.stopSeen,
               updatedAt: new Date().toISOString(),
@@ -756,10 +1023,7 @@ export class RecordingController {
             capture.recording = manifest;
             capture.sealed = true;
             this.publish(capture);
-            if (this.capture === capture) {
-              this.completedMs += capture.activeMs;
-              this.capture = null;
-            }
+            if (this.capture === capture) this.capture = null;
             saved = true;
           } catch {
             capture.finalizing = null;

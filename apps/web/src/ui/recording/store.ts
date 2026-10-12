@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GAP_CAUSES } from "./capture-meter";
 
 export const recordingSchema = z.strictObject({
   id: z.uuid(),
@@ -21,6 +22,21 @@ export const recordingSchema = z.strictObject({
   // Only captures made after automatic learning was introduced authorize paid preparation.
   autoGenerate: z.boolean().optional(),
   completedAt: z.string().datetime().optional(),
+  /** How `activeMs` was measured: the audio's own timestamps, or the device clock (PRD-REC-05). */
+  measuredBy: z.enum(["media", "clock"]).optional(),
+  /** Intervals meant to be recorded for which no audio reached this device. */
+  gaps: z
+    .array(
+      z.strictObject({
+        from: z.string().datetime(),
+        to: z.string().datetime(),
+        offsetMs: z.number().finite().nonnegative(),
+        missingMs: z.number().finite().positive(),
+        cause: z.enum(GAP_CAUSES),
+      }),
+    )
+    .max(500)
+    .optional(),
   syncError: z.string().max(1000).nullable().optional(),
 });
 export type Recording = z.infer<typeof recordingSchema>;
