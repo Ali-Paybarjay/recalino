@@ -30,6 +30,7 @@ import { IndexedManualAudioStore, type ManualAudioTransfer } from "./manual-audi
 import { Button, Panel, Status } from "./primitives";
 import uploadStyles from "./UploadProvider.module.css";
 import { isRetryableUploadFailure } from "./upload";
+import { audioUploadRetryable } from "./upload-problems";
 
 type Entry = { status: AutomaticLearningStatus | null; problem: string | null };
 const Context = createContext<{
@@ -546,7 +547,7 @@ function ManualAudioIndicator({
             <Link href={`/sessions/${entry.sessionId}/processing`}>
               View audio upload and processing
             </Link>
-            {entry.phase === "attention" ? (
+            {entry.phase === "attention" && audioUploadRetryable(entry.reason) ? (
               <Button
                 secondary
                 onClick={() => {

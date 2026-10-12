@@ -1,11 +1,17 @@
+import { createHash } from "node:crypto";
 import type { ProcessingRun, RunSnapshot } from "@recalino/core/proc";
 import type { InputContract } from "@recalino/core/src";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { pendingCopy } from "../pending-copy";
 import type { RecordingStore } from "../recording/store";
 import { WorkspaceRequestError, type workspaceRequest } from "./api";
 import { ManualAudioManager } from "./manual-audio-manager";
 import { IndexedManualAudioStore } from "./manual-audio-store";
+import { AudioUploadProblem } from "./upload-problems";
+
+const transport = vi.hoisted(() => ({ upload: vi.fn() }));
+vi.mock("./upload-progress", () => ({ uploadWithProgress: transport.upload }));
 
 beforeEach(() => vi.stubGlobal("indexedDB", new IDBFactory()));
 afterEach(() => vi.unstubAllGlobals());
@@ -338,4 +344,99 @@ it("does no work after a lock-delayed account deletion and preserves a lost acti
   await manager.kick();
   expect((await store.list("other"))[0]?.phase).toBe("verifying");
   expect(manager.snapshot()).toHaveLength(1);
+});
+
+it("D59: the saved queue uploads, completes and activates a confirmed run whose hold reserved no audio seconds", async () => {
+  // The client never reads reservation amounts; the confirmed run and its open hold are enough.
+  const bytes = new Blob(["abcd"]);
+  const d59Snapshot = {
+    ...snapshot,
+    sources: [
+      {
+        sourceId: "audio",
+        kind: "audio",
+        mimeType: "audio/webm",
+        sha256: createHash("sha256").update("abcd").digest("hex"),
+        objectId: null,
+        contentVersionId: null,
+      },
+    ],
+  } as RunSnapshot;
+  const recordings = {
+    list: async () => [{ id: "local", sourceAssetId: "audio", bytes: 4 }],
+    blob: async () => bytes,
+  } as unknown as RecordingStore;
+  const written = new Set<number>();
+  transport.upload.mockImplementation(async (url: string) => {
+    written.add(Number(url.split("/").at(-1)));
+    return { ok: true, status: 200 };
+  });
+  const request = vi.fn(async (path: string, method: string, body?: Record<string, unknown>) => {
+    if (path.startsWith("/api/runs/"))
+      return method === "GET" ? { run, snapshot: d59Snapshot } : { ...run, state: "queued" };
+    if (body?.action === "start") return { uploadId: "upload" };
+    if (body?.action === "confirm_part") return { confirmed: written.has(Number(body.index)) };
+    if (body?.action === "complete") return { state: "pending" };
+    const index = /index=(\d+)/.exec(path)?.[1];
+    return index === undefined
+      ? { state: "pending", parts: [] }
+      : { url: `https://storage.example.test/${index}` };
+  });
+  const store = new IndexedManualAudioStore();
+  const manager = new ManualAudioManager("owner", store, recordings, {
+    request: request as unknown as typeof workspaceRequest,
+    allowed: () => true,
+  });
+  const kickoff = vi.spyOn(manager, "kick").mockResolvedValue();
+  await manager.enqueue(run, d59Snapshot, contract);
+  kickoff.mockRestore();
+  await manager.kick();
+  expect(manager.snapshot()).toEqual([]);
+  expect(await store.list("owner")).toEqual([]);
+  expect(request.mock.calls.map(([, , body]) => body?.action).filter(Boolean)).toEqual([
+    "start",
+    "confirm_part",
+    "confirm_part",
+    "complete",
+    "activate",
+  ]);
+  expect(written).toEqual(new Set([0]));
+});
+
+it("does not offer a retry that cannot succeed after the server closed the upload", async () => {
+  const f = setup({
+    upload: async () => {
+      throw new AudioUploadProblem(
+        "upload_closed",
+        pendingCopy.uploadReliability.audio.uploadClosed,
+      );
+    },
+  });
+  await f.manager.enqueue(run, snapshot, contract);
+  f.allow();
+  await f.manager.kick();
+  expect(f.manager.snapshot()[0]).toMatchObject({
+    phase: "attention",
+    reason: "upload_closed",
+    problem: pendingCopy.uploadReliability.audio.uploadClosed,
+  });
+  await f.manager.retry(run.id);
+  expect(f.manager.snapshot()[0]?.phase).toBe("attention");
+  expect((await f.store.get("owner", run.id))?.reason).toBe("upload_closed");
+});
+
+it("keeps Retry for an unclassified stop and clears its reason when retried", async () => {
+  let fail = true;
+  const f = setup({
+    upload: async () => {
+      if (fail) throw new Error("Unclassified local problem");
+    },
+  });
+  await f.manager.enqueue(run, snapshot, contract);
+  f.allow();
+  await f.manager.kick();
+  expect(f.manager.snapshot()[0]).toMatchObject({ phase: "attention", reason: "unknown" });
+  fail = false;
+  await f.manager.retry(run.id);
+  expect(await f.store.list("owner")).toEqual([]);
 });

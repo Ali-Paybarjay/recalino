@@ -2,6 +2,7 @@ import type { ProcessingRun } from "@recalino/core/proc";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { pendingCopy } from "../pending-copy";
 import { type ProcessingEstimate, ProcessingView } from "./ProcessingView";
 
 vi.mock("next/navigation", () => ({
@@ -185,6 +186,20 @@ describe("processing next actions", () => {
     expect(html).toContain(`/sessions/${sessionId}/sources`);
     expect(html).toContain("The audio could not be verified.");
   });
+
+  it.each([
+    ["audio_upload_not_started", pendingCopy.uploadReliability.audio.notStarted],
+    ["audio_upload_incomplete", pendingCopy.uploadReliability.audio.incomplete],
+  ])(
+    "names %s as a lapsed upload, not rejected audio, and offers a retry that can succeed",
+    (lastError, text) => {
+      const html = render([run("needs_input", { lastError })]);
+      expect(buttons(html)).toContain("Review and retry");
+      expect(buttons(html)).not.toContain("Confirm and process");
+      expect(html).toContain(text);
+      expect(html).not.toContain("The audio could not be verified.");
+    },
+  );
 
   it("explains that verified audio needs confirmation without another upload", () => {
     const html = render([run("needs_input", { lastError: "new_confirmation_required" })], {

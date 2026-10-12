@@ -5,12 +5,20 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { pendingCopy } from "../pending-copy";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import { IndexedRecordingStore } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { isRetryableUploadFailure } from "./upload";
+
+/** Awaiting-upload stops whose saved device original can be sent again with a new attempt. */
+const AUDIO_UPLOAD_RETRY_CODES: readonly string[] = [
+  "audio_upload_rejected",
+  "audio_upload_not_started",
+  "audio_upload_incomplete",
+];
 
 export interface ProcessingEstimate {
   snapshot: RunSnapshot;
@@ -90,7 +98,7 @@ export function ProcessingView({
         latest.sourcesVersion);
   const awaitingOperator =
     latest?.state === "needs_input" &&
-    !["new_confirmation_required", "audio_upload_rejected"].includes(latest.lastError ?? "");
+    !["new_confirmation_required", ...AUDIO_UPLOAD_RETRY_CODES].includes(latest.lastError ?? "");
   const operatorMessage =
     latest?.lastError === "provider_timestamps_invalid"
       ? "The transcription service returned invalid timing information. Processing has stopped. Your saved session and earlier notes are available. Contact the operator to review this attempt before retrying."
@@ -364,8 +372,12 @@ export function ProcessingView({
                     : "The verified source has changed. Review the selected sources and allowance before confirming again."
                   : latest.lastError === "audio_upload_rejected"
                     ? "The audio could not be verified. Review the selected audio, then retry with the saved original on this device or replace it."
-                    : (outputMessage ??
-                      "The selected material could not finish processing. Check your sources, then confirm a new attempt.")}
+                    : latest.lastError === "audio_upload_not_started"
+                      ? pendingCopy.uploadReliability.audio.notStarted
+                      : latest.lastError === "audio_upload_incomplete"
+                        ? pendingCopy.uploadReliability.audio.incomplete
+                        : (outputMessage ??
+                          "The selected material could not finish processing. Check your sources, then confirm a new attempt.")}
             </Status>
           ) : null}
           <Actions>
@@ -524,7 +536,7 @@ export function ProcessingView({
                     ? "Starting…"
                     : latest?.lastError === "new_confirmation_required"
                       ? "Review and confirm"
-                      : latest?.lastError === "audio_upload_rejected"
+                      : AUDIO_UPLOAD_RETRY_CODES.includes(latest?.lastError ?? "")
                         ? "Review and retry"
                         : latest &&
                             !selectionChanged &&
