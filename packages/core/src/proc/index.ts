@@ -55,7 +55,7 @@ export {
   type TeachingAdaptation,
   teachingAdaptationSchema,
 } from "./learner-context";
-export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
+export { expireAwaitingUploads, expiredUploadCode, processingPeriodicJobs } from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
 export { forgetPracticeSources } from "./practice-privacy";
@@ -72,6 +72,7 @@ export {
   sourceExtractionRetrySchema,
 } from "./recovery";
 export {
+  type AwaitingUploadFailure,
   activateProcessingRun,
   assertKnownSourceInputBound,
   cancelAccountRuns,

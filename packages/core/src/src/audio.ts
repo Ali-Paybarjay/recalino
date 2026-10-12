@@ -18,7 +18,7 @@ import {
   type PltSettings,
   readOwnedObject,
 } from "../plt";
-import { confirmedReservationAmounts, reservationIsOpen } from "../quota";
+import { reservationIsOpen } from "../quota";
 import { readInputContract, sha256Schema } from "./contracts";
 import { getSource } from "./service";
 
@@ -71,6 +71,23 @@ export async function liveTemporaryAudioObject(
     throw error;
   }
 }
+/**
+ * Temporary upload receipts of one confirmed hold, by source. A selected audio source without a
+ * receipt never started its upload; the expiry sweep reports that separately from a rejection.
+ */
+export async function temporaryAudioUploadStates(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  reservationId: string,
+): Promise<Map<string, string>> {
+  const rows = await db
+    .selectFrom("src.audio_upload")
+    .select(["asset_id", "state"])
+    .where("user_id", "=", ctx.userId)
+    .where("reservation_id", "=", reservationId)
+    .execute();
+  return new Map(rows.map((row) => [row.asset_id, row.state]));
+}
 export async function beginTemporaryAudioUpload(
   db: Database,
   ctx: LearnerContext,
@@ -84,8 +101,10 @@ export async function beginTemporaryAudioUpload(
     await sql`select pg_advisory_xact_lock(hashtextextended(${ctx.userId}, 17))`.execute(tx);
     const source = await getSource(tx, ctx, assetId);
     if (source.kind !== "audio" || source.original_deleted_at) throw errors.conflict();
-    const hold = await confirmedReservationAmounts(tx, ctx, input.reservationId);
-    if (!hold || hold.audio <= 0)
+    // An open hold of this learner is required, not a positive audio amount: under D59 a
+    // confirmed run reserves no audio seconds for content already paid for in this period.
+    // The route binds the hold to its awaiting run first (`validateAudioUploadRun`).
+    if (!(await reservationIsOpen(tx, ctx, input.reservationId)))
       throw errors.validationFailed({ reservation: ["confirmed_processing_required"] });
     const previous = await tx
       .selectFrom("src.audio_upload")
