@@ -22,9 +22,15 @@
 
 در Session sources، اعلان پس از بارگذاری و پیام وضعیت بدون رسید بارگذاری همین اقدام‌ها را نشان می‌دهند: کمبود سهمیه «Ask for more allowance» و «Review allowance»، نبود سهمیه «Ask the pilot operator» و «Review allowance»، و سهمیهٔ کافی «Retry processing».
 
-فهرست اکنون خالی است.
+## Workstream 2 — ضبط داخل اپ (`feat/recording-capture`، 2026-10-12)
+
+این متن‌ها فقط **پس از Stop** نمایش داده می‌شوند (PRD-REC-02) و بازه‌هایی را می‌گویند که زبان‌آموز قصد ضبط داشت ولی صدایی به دستگاه نرسید (PRD-REC-03، PRD-REC-05). `{minutes}` عدد دقیقه گردشده به بالا و `{time}` ساعت محلی شروع بازه است. جزئیات در [گزارش ضبط داخل اپ](../plans/RECORDING_CAPTURE_2026-10-12.md).
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
+| `recordingCapture.missingSummary` | Part of this class was not recorded: about {minutes} min in total. | پس از Stop، وقتی دست‌کم یک بازهٔ بی‌صدا ثبت شده است؛ در صفحهٔ Recordings و نوار ضبط | تازه؛ در طرح نیست | در انتظار تأیید |
+| `recordingCapture.missingInterval` | About {minutes} min missing from {time}. | یک سطر برای هر بازه، زیر متن بالا | تازه | در انتظار تأیید |
+| `recordingCapture.missingHint` | This usually happens when the screen locks or another app uses the microphone. Keep Recalino open and the screen on during class. | زیر فهرست بازه‌ها | جملهٔ دوم از متن موجود صفحهٔ ضبط («Keep Recalino open and the screen on for reliable capture») | در انتظار تأیید |
+| `recordingCapture.partMissing` | {minutes} min not recorded | کنار مدت هر قطعه در فهرست ضبط‌ها، وقتی آن قطعه بازهٔ بی‌صدا دارد | تازه | در انتظار تأیید |
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.

@@ -344,3 +344,18 @@ describe("honest in-app capture (PRD-REC-03, PRD-REC-05)", () => {
         expect(typeof value === "string" ? /^[a-z/;=_.0-9 -]+$/.test(value) : true).toBe(true);
   });
 });
+
+describe("board photo anchors (task 5)", () => {
+  it("anchors a photo inside the audio already measured, never in a gap", async () => {
+    const test = harness();
+    await test.controller.start();
+    await test.chunk(5000);
+    test.advance(60000);
+    // The screen still ticks a little ahead, but the anchor is measured audio.
+    expect(test.controller.segmentElapsed()).toBe(11000);
+    expect(test.controller.anchorMs()).toBe(5000);
+    await test.controller.stop();
+    const [row] = await test.rows();
+    expect(test.controller.anchorMs()).toBeLessThanOrEqual(row?.activeMs ?? 0);
+  });
+});

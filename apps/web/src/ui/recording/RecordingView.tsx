@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { workspaceRequest } from "../workspace/api";
 import { notifyAutomaticLearning, uploadAutomaticPhoto } from "../workspace/automatic-learning";
 import { Actions, Button, Panel, Status } from "../workspace/primitives";
+import { MissingAudioNotice, partMissingLabel } from "./MissingAudioNotice";
 import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
 import { registerRecordingRow } from "./source-sync";
@@ -228,7 +229,8 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                     if (!recording) return;
                     captureAnchor.current = {
                       recordingId: recording.id,
-                      offsetMs: controller.segmentElapsed(),
+                      // Audio already measured in this part, so the anchor never passes its end.
+                      offsetMs: controller.anchorMs(),
                       captureState: state.phase === "paused" ? "paused" : "recording",
                     };
                     photoInput.current?.click();
@@ -271,6 +273,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
             <RecordLauncher sessionId={sessionId} />
           </>
         )}
+        {state.phase === "saved" ? <MissingAudioNotice missing={state.missing} /> : null}
         {state.error ? <Status tone="error">{state.error}</Status> : null}
       </Panel>
       {error ? <Status tone="error">{error}</Status> : null}
@@ -299,6 +302,9 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
               <p>
                 {duration(row.id === currentId && active ? time.segmentElapsed : row.activeMs)} ·{" "}
                 {Math.ceil(row.bytes / 1024)} KB
+                {row.gaps?.length && !(row.id === currentId && active)
+                  ? ` · ${partMissingLabel(row.gaps.reduce((sum, gap) => sum + gap.missingMs, 0))}`
+                  : null}
               </p>
               {row.id === currentId && active ? (
                 <p>

@@ -181,6 +181,10 @@ export class RecordingController {
   segmentElapsed() {
     return this.capture ? this.captureElapsed(this.capture) : (this.state.recording?.activeMs ?? 0);
   }
+  /** Measured audio of the current part: a photo anchor that never passes the part's end. */
+  anchorMs() {
+    return this.capture ? this.capture.meter.mediaMs() : (this.state.recording?.activeMs ?? 0);
+  }
   elapsed() {
     return this.captures.reduce(
       (sum, part) => sum + (part.sealed ? part.recording.activeMs : this.captureElapsed(part)),

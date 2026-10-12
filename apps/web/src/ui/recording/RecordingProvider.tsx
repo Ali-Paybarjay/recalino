@@ -15,6 +15,7 @@ import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
 import { RecordingController } from "./controller";
+import { MissingAudioNotice } from "./MissingAudioNotice";
 import styles from "./Recording.module.css";
 import { RecordingSourceSync } from "./source-sync";
 import { IndexedRecordingStore, type Recording } from "./store";
@@ -119,6 +120,7 @@ function RecordingIndicator() {
                   ? "Recording was interrupted. Reconnecting the microphone…"
                   : "Session recording continues"}
       </p>
+      {state.phase === "saved" ? <MissingAudioNotice compact missing={state.missing} /> : null}
       {online ? (
         <Link href="/recordings">Open recording</Link>
       ) : (
