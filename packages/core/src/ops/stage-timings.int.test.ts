@@ -1,6 +1,6 @@
-import { createDatabase } from "@recalino/core/db";
 import { afterAll, expect, it } from "vitest";
-import { testDatabaseUrl } from "../../core/test/local-db";
+import { testDatabaseUrl } from "../../test/local-db";
+import { createDatabase } from "../db";
 import { readRunTimes, stageDurations } from "./stage-timings";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 1 });

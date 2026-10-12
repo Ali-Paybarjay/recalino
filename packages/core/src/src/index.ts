@@ -1,6 +1,7 @@
 export {
   type AudioVerifier,
   audioManifestSchema,
+  audioUploadWindows,
   beginTemporaryAudioUpload,
   confirmTemporaryAudioPart,
   liveTemporaryAudioObject,

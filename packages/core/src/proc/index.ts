@@ -101,6 +101,7 @@ export {
   type NoteMaterialSource,
   type NoteSourceIssue,
 } from "./source-issues";
+export { type ClassRunTimes, classRunTimes, type ProviderWindow } from "./stage-times";
 export {
   scheduleVoiceReanalysis,
   type VoiceJobDependencies,

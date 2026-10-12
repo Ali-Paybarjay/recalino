@@ -141,7 +141,7 @@
 
 ## ۷. کار ۶ — زمان مراحل (NFR-07)
 
-[`stage-timings.ts`](../../packages/ops-cli/src/stage-timings.ts) و [`timings.ts`](../../packages/ops-cli/src/timings.ts):
+[`ops/stage-timings.ts`](../../packages/core/src/ops/stage-timings.ts) (خواندن از راه توابع `classRunTimes` در proc، `audioUploadWindows` در src و `voiceAnalysisTimes` در voc، طبق ADR-0002 قاعدهٔ ۴) و [`timings.ts`](../../packages/ops-cli/src/timings.ts):
 
 ```
 DATABASE_URL=... pnpm --filter @recalino/ops-cli timings -- --since 2026-10-06 [--until …] [--runs] [--env <file>]

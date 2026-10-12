@@ -88,6 +88,37 @@ export async function temporaryAudioUploadStates(
     .execute();
   return new Map(rows.map((row) => [row.asset_id, row.state]));
 }
+/**
+ * Operator report (NFR-07): when each confirmed hold's temporary audio upload started and when its
+ * last original was verified (null until all are). Times only; no class content.
+ */
+export async function audioUploadWindows(
+  db: Database | Tx,
+  reservationIds: readonly string[],
+): Promise<Map<string, { startedAt: Date; verifiedAt: Date | null }>> {
+  if (!reservationIds.length) return new Map();
+  const rows = await db
+    .selectFrom("src.audio_upload")
+    .select((eb) => [
+      "reservation_id as reservationId",
+      eb.fn.min("created_at").as("startedAt"),
+      sql<Date | null>`case when bool_and(verified_at is not null) then max(verified_at) end`.as(
+        "verifiedAt",
+      ),
+    ])
+    .where("reservation_id", "in", [...reservationIds])
+    .groupBy("reservation_id")
+    .execute();
+  return new Map(
+    rows.map((row) => [
+      row.reservationId,
+      {
+        startedAt: new Date(row.startedAt),
+        verifiedAt: row.verifiedAt && new Date(row.verifiedAt),
+      },
+    ]),
+  );
+}
 export async function beginTemporaryAudioUpload(
   db: Database,
   ctx: LearnerContext,

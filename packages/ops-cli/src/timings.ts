@@ -1,7 +1,7 @@
 import { loadEnvFile } from "node:process";
 import { createDatabase } from "@recalino/core/db";
+import { readRunTimes, summarize } from "@recalino/core/ops";
 import { workspacePath } from "./paths";
-import { readRunTimes, summarize } from "./stage-timings";
 
 /**
  * Usage: pnpm --filter @recalino/ops-cli timings -- --since <ISO date> [--until <ISO date>]

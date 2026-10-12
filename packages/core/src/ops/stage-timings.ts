@@ -1,5 +1,8 @@
-import type { Database } from "@recalino/core/db";
 import { sql } from "kysely";
+import type { Database } from "../db";
+import { classRunTimes } from "../proc";
+import { audioUploadWindows } from "../src";
+import { voiceAnalysisTimes } from "../voc";
 
 /**
  * NFR-07: per-run stage durations of class processing, from timestamps the service already keeps.
@@ -102,53 +105,45 @@ export function summarize(runs: readonly RunTimes[]) {
   return { runs: runs.length, stages, perRun };
 }
 
-/** Class runs created in [since, until), inside one read-only transaction. */
+/**
+ * Class runs created in [since, until), read through each module inside one read-only
+ * transaction. Voice: analyses of the class created during the run (their last update can move
+ * later when the learner confirms a voice, so its end is approximate).
+ */
 export async function readRunTimes(db: Database, since: Date, until: Date): Promise<RunTimes[]> {
   return db.transaction().execute(async (tx) => {
     await sql`set transaction read only`.execute(tx);
-    const result = await sql<RunTimes>`
-      select
-        run.id as "runId",
-        run.state,
-        run.created_at as "createdAt",
-        run.finished_at as "finishedAt",
-        upload.started_at as "uploadStartedAt",
-        upload.verified_at as "uploadVerifiedAt",
-        stt.started_at as "sttStartedAt",
-        stt.finished_at as "sttFinishedAt",
-        vision.started_at as "visionStartedAt",
-        vision.finished_at as "visionFinishedAt",
-        lesson.started_at as "lessonStartedAt",
-        lesson.finished_at as "lessonFinishedAt",
-        voice.started_at as "voiceStartedAt",
-        voice.finished_at as "voiceFinishedAt"
-      from proc.processing_run run
-      left join lateral (
-        select min(created_at) as started_at,
-          case when bool_and(verified_at is not null) then max(verified_at) end as verified_at
-        from src.audio_upload where reservation_id = run.reservation_id and user_id = run.user_id
-      ) upload on true
-      left join lateral (
-        select min(started_at) as started_at, max(finished_at) as finished_at
-        from proc.provider_attempt where run_id = run.id and step like 'stt:%'
-      ) stt on true
-      left join lateral (
-        select min(started_at) as started_at, max(finished_at) as finished_at
-        from proc.provider_attempt where run_id = run.id and step like 'vision:%'
-      ) vision on true
-      left join lateral (
-        select min(started_at) as started_at, max(finished_at) as finished_at
-        from proc.provider_attempt where run_id = run.id and step like 'knowledge%'
-      ) lesson on true
-      left join lateral (
-        select min(created_at) as started_at, max(updated_at) as finished_at
-        from voc.analysis
-        where session_id = run.session_id and user_id = run.user_id
-          and created_at >= run.created_at
-          and (run.finished_at is null or created_at <= run.finished_at)
-      ) voice on true
-      where run.kind = 'class' and run.created_at >= ${since} and run.created_at < ${until}
-      order by run.created_at`.execute(tx);
-    return result.rows;
+    const runs = await classRunTimes(tx, since, until);
+    const uploads = await audioUploadWindows(
+      tx,
+      runs.map((run) => run.reservationId),
+    );
+    const voice = await voiceAnalysisTimes(tx, [...new Set(runs.map((run) => run.sessionId))]);
+    return runs.map((run) => {
+      const analyses = voice.filter(
+        (analysis) =>
+          analysis.sessionId === run.sessionId &&
+          analysis.userId === run.userId &&
+          analysis.createdAt >= run.createdAt &&
+          (!run.finishedAt || analysis.createdAt <= run.finishedAt),
+      );
+      const upload = uploads.get(run.reservationId);
+      return {
+        runId: run.runId,
+        state: run.state,
+        createdAt: run.createdAt,
+        finishedAt: run.finishedAt,
+        uploadStartedAt: upload?.startedAt ?? null,
+        uploadVerifiedAt: upload?.verifiedAt ?? null,
+        sttStartedAt: run.transcription.startedAt,
+        sttFinishedAt: run.transcription.finishedAt,
+        visionStartedAt: run.boardPhotos.startedAt,
+        visionFinishedAt: run.boardPhotos.finishedAt,
+        lessonStartedAt: run.lesson.startedAt,
+        lessonFinishedAt: run.lesson.finishedAt,
+        voiceStartedAt: earliest(...analyses.map((analysis) => analysis.createdAt)),
+        voiceFinishedAt: latest(...analyses.map((analysis) => analysis.updatedAt)),
+      };
+    });
   });
 }
