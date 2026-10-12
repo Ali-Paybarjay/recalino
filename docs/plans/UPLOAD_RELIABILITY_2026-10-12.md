@@ -211,7 +211,44 @@ DATABASE_URL=... pnpm --filter @recalino/ops-cli timings -- --since 2026-10-06 [
 
 ## ۱۱. آزمون و شواهد
 
-<!-- CI -->
+همه روی شاخهٔ `feat/upload-reliability`، Node 24.21.0 و pnpm 12.4.2، با Supabase محلی و فقط دادهٔ مصنوعی:
+
+| بررسی | نتیجه |
+|---|---|
+| `pnpm lint` | بدون خطا (1117 فایل) |
+| `pnpm typecheck` | بدون خطا |
+| `pnpm check:boundaries` | بدون نقض |
+| `pnpm test:unit` | 182 فایل، 3282 آزمون، همه موفق |
+| `pnpm test:int` (کامل) | 138 فایل، 624 آزمون موفق و 1 skip موجود؛ پیش از کار ۶ اجرا شد. آزمون‌های integration تازهٔ کار ۶ جداگانه اجرا و موفق شدند |
+| e2e روی build تولیدی با `CI=1` (مهلت ۵ ثانیه) | 32 از 32 موفق: `upload-reliability`، `audio-upload`، `automatic-learning`، `background-uploads`، `upload-recovery`، `recording` و `processing-review` |
+
+**بازتولید پیش از اصلاح:** آزمون D59 در `audio-charged-material.int.test.ts` پیش از اصلاح در `audio.ts:89` با `validation_failed` شکست خورد و پس از اصلاح موفق شد.
+
+**آزمون‌های تازه:**
+
+- `packages/core/src/proc/audio-charged-material.int.test.ts`: سه آزمون؛ D59 سرتاسری، رزرو ناشناخته، کدهای انقضا.
+- `packages/core/src/proc/maintenance.test.ts`.
+- `packages/core/src/ops/stage-timings.test.ts` و `stage-timings.int.test.ts`.
+- `apps/web/src/ui/workspace/upload-problems.test.ts`.
+- `apps/web/src/ui/workspace/automatic-learning-poll.test.ts`.
+- `apps/web/e2e/upload-reliability.spec.ts`.
+- آزمون‌های افزوده در `automatic-learning.test.ts` (D59، انتقال موازی)، `manual-audio-manager.test.ts` (مسیر کلاینت D59، Retry)، `ProcessingView.test.ts` و `automatic-learning-message.test.ts`.
+
+**تصویرها (D65)** در `artifacts/verification/feat-upload-reliability/`، با `RECALINO_SCREENSHOTS=1` از همان e2e:
+
+- `session-progress-upload-not-started-390.png` و `-1440.png`: Session progress برای آپلودی که شروع نشد.
+- `audio-tray-upload-closed-390.png` و `-1440.png`: صف «Your audio uploads» برای آپلود بسته‌شده، بدون Retry.
+- `.gitignore` پوشهٔ `artifacts/verification/*` را نادیده می‌گیرد. این چهار فایل با `git add -f` ثبت شدند. `.gitignore` را تغییر ندادم تا با کارهای دیگر تعارض نسازد.
+
+**CI در GitHub Actions:**
+
+- Run [`38315163237`](https://github.com/Ali-Paybarjay/recalino/actions/runs/38315163237) خطای واقعی قاعدهٔ ADR-0002 را نشان داد. اصلاح شد (`dd068c5`).
+- از حدود 22:16 UTC همهٔ jobهای مخزن، در همهٔ شاخه‌ها و نه فقط این شاخه، در ۲ تا ۳۰ ثانیه و بی‌آنکه runner بگیرند شکست می‌خورند: `runner_id: 0`، بدون لاگ. این مشکل حساب یا ظرفیت GitHub Actions است، نه کد.
+- نتیجهٔ CI برای commit نهایی در پیام پایانی گزارش می‌شود.
+
+**نکتهٔ محیط e2e محلی:** shell این محیط کلید `SUPABASE_SECRET_KEY` ابری و `NEXT_PUBLIC_SUPABASE_*` را export می‌کند. چون Next.js مقدار موجود را با `.env.local` عوض نمی‌کند، سرور محلی کلید ابری را به Auth محلی فرستاد و ورود آزمایشی 500 داد. چیزی به پروژهٔ ابری نرسید، چون `SUPABASE_URL` محلی بود. e2e را با `env -u` برای این متغیرها اجرا کردم.
+
+**آزمون ناپایدار موجود:** `automatic-learning.spec.ts:510` یک بار پیش از تلاش دوم شکست خورد. خود آزمون IndexedDB را بدون `onupgradeneeded` باز می‌کند و به باز شدن پایگاه توسط اپ وابسته است. در اجرای نهایی موفق بود.
 
 ## ۱۲. پرسش‌ها برای مالک محصول
 
