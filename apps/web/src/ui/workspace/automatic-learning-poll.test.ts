@@ -40,7 +40,9 @@ it("reads an idle class once, then only when an event wakes it (2026-10-12: 7 id
 it("backs off an unchanged class in progress and restarts after a change", () => {
   const time = clock();
   const polls = new LearningPollSchedule(time.now);
-  const processing = status("processing");
+  const processing = status("blocked", {
+    run: { state: "queued" } as AutomaticLearningStatus["run"],
+  });
   const reads: number[] = [];
   for (let tick = 0; tick < 200; tick++) {
     if (polls.due("class", { ...visible, status: processing })) {
@@ -93,4 +95,29 @@ it("checks saved audio transfers often only while one is moving", () => {
   expect(manualAudioPollDelay([{ phase: "attention" }, { phase: "verifying" }])).toBe(
     LEARNING_POLL.baseMs,
   );
+});
+
+it("keeps the upload start and finished notes prompt while a class waits or processes", () => {
+  for (const [state, ceiling] of [
+    ["waiting_sources", LEARNING_POLL.startMs],
+    ["waiting_upload", LEARNING_POLL.startMs],
+    ["processing", LEARNING_POLL.processingMs],
+  ] as const) {
+    const time = clock();
+    const polls = new LearningPollSchedule(time.now);
+    let reads = 0;
+    let last = 0;
+    let widest = 0;
+    for (let tick = 0; tick < 600; tick++) {
+      if (polls.due("class", { ...visible, status: status(state) })) {
+        widest = Math.max(widest, time.now() - last);
+        last = time.now();
+        reads++;
+        polls.observed("class", status(state));
+      }
+      time.advance(1000);
+    }
+    expect(reads).toBeGreaterThan(1);
+    expect(widest).toBe(ceiling);
+  }
 });

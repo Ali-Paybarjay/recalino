@@ -5,7 +5,14 @@ import type { AutomaticLearningStatus } from "./automatic-learning";
  * progress, or the class being viewed, starts at `baseMs` and doubles up to `maxMs`; a class with
  * nothing in progress is read once and then only when an event wakes it.
  */
-export const LEARNING_POLL = { baseMs: 3_000, maxMs: 60_000 } as const;
+export const LEARNING_POLL = {
+  baseMs: 3_000,
+  /** Ceiling while the next step is an upload this device may start. */
+  startMs: 6_000,
+  /** Ceiling while the server creates the notes. */
+  processingMs: 15_000,
+  maxMs: 60_000,
+} as const;
 
 const ONGOING: ReadonlySet<AutomaticLearningStatus["state"]> = new Set([
   "waiting_sources",
@@ -38,6 +45,21 @@ export function learningStatusSignature(status: AutomaticLearningStatus | undefi
     status.notesReady,
     status.cardsReady,
   ]);
+}
+
+/**
+ * The longest wait for a class in this state. A class waiting for its files or for the device's
+ * audio must start the transfer as soon as the server creates the confirmed run (D29 rule 2), and
+ * a class in processing shows its notes soon after they are published.
+ */
+export function learningPollCeiling(
+  status: AutomaticLearningStatus | undefined,
+  maxMs: number = LEARNING_POLL.maxMs,
+): number {
+  if (status?.state === "waiting_sources" || status?.state === "waiting_upload")
+    return Math.min(maxMs, LEARNING_POLL.startMs);
+  if (status?.state === "processing") return Math.min(maxMs, LEARNING_POLL.processingMs);
+  return maxMs;
 }
 
 /** Per-class read schedule with backoff. Time is injected so tests need no timers. */
@@ -75,7 +97,7 @@ export class LearningPollSchedule {
     const previous = this.entries.get(sessionId);
     const intervalMs =
       previous && previous.signature === signature
-        ? Math.min(this.options.maxMs, previous.intervalMs * 2)
+        ? Math.min(learningPollCeiling(status, this.options.maxMs), previous.intervalMs * 2)
         : this.options.baseMs;
     this.entries.set(sessionId, { intervalMs, nextAt: this.now() + intervalMs, signature });
   }
