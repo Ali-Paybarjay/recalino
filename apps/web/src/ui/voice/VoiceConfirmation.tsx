@@ -336,10 +336,13 @@ export function VoiceConfirmation({
         </>
       ) : view ? (
         <div className={styles.stack}>
-          <p className="preview-muted">
-            Check each source separately. A speaker label in one recording may belong to someone
-            else in another. Written mistakes remain available independently.
-          </p>
+          {/* With one choice per class (D64) the parts are not checked one by one. */}
+          {classConfirmationActive(view) ? null : (
+            <p className="preview-muted">
+              Check each source separately. A speaker label in one recording may belong to someone
+              else in another. Written mistakes remain available independently.
+            </p>
+          )}
           {!view.engineAvailable ? (
             <Status>
               Audio matching is not available. Labelled transcripts can still be confirmed by
