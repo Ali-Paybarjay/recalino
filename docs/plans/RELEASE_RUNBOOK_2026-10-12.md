@@ -15,6 +15,7 @@
 
 ## ۱. PR و CI کامل
 
+0. **پیش‌شرط: GitHub Actions کار را شروع می‌کند.** از حدود 22:16 UTC روز 2026-10-12، همهٔ اجراها در همهٔ شاخه‌ها پس از ۲ ثانیه و بدون هیچ گامی شکست می‌خوردند (گزارش مدیر). پیش از هر کار: آخرین اجرای CI روی `main` یا شاخهٔ ادغام باید گام‌های اجراشده داشته باشد (مثلاً `pnpm install`)، نه شکست صفرگامی. تا رفع این مشکل، «CI سبز» قابل اثبات نیست و ادغام در `main` انجام نمی‌شود.
 1. شاخه‌ها را به ترتیب بخش ۳ در یک شاخهٔ ادغام (پیشنهاد: `feat/five-problems-release`، تا e2e هم اجرا شود) از `origin/claude/gifted-franklin-7ecldm` ادغام کن. ادغام شاخهٔ `claude/...` مستقیم e2e را اجرا نمی‌کند؛ شرط job در `ci.yml` فقط `main`، `feat/*` و `codex/*` است.
 2. پس از ادغام آخرین migration:
    ```bash
@@ -212,6 +213,7 @@ where reservation_id is null and state <> 'deleted' and expires_at < now() - int
    - `org.class_session.capture_open_until`: کد قدیمی نمی‌خواند؛ پردازش خودکار دیگر منتظر lease نمی‌ماند.
    - اگر حذف schema لازم شد، فقط با migration تازهٔ رو به جلو و اجازهٔ صریح مالک. پیش از `set not null` دوباره روی `reservation_id`، ردیف‌های staged باید حذف شده باشند.
 4. داده: rollback هیچ دادهٔ کاربر را تغییر نمی‌دهد. حذف دستی ردیف‌ها لازم نیست.
+5. **Vercel مستقل از GitHub Actions است:** استقرار production را Git integration مستقیم از `main` می‌سازد، نه CI. از کار افتادن Actions نه استقرار را متوقف می‌کند و نه rollback را. هر push به `main`، حتی با CI ازکارافتاده یا قرمز، استقرار می‌شود؛ پس push اصلاحی به `main` جایگزین rollback نیست، مگر اینکه محلی `pnpm verify` و `pnpm test:e2e` را گذرانده باشد. Instant Rollback در Vercel همیشه بدون CI کار می‌کند.
 
 ## ۱۱. گزارش پایانی انتشار
 
