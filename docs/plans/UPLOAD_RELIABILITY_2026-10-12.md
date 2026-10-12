@@ -238,16 +238,16 @@ DATABASE_URL=... pnpm --filter @recalino/ops-cli timings -- --since 2026-10-06 [
 
 ## ۱۱. آزمون و شواهد
 
-همه روی شاخهٔ `feat/upload-reliability`، Node 24.21.0 و pnpm 12.4.2، با Supabase محلی و فقط دادهٔ مصنوعی:
+GitHub Actions از حدود 22:16 UTC در کل مخزن job را شروع نمی‌کند. به درخواست مدیر، شواهد CI از اجرای کامل محلی روی commit نهایی همین شاخه آمده است (پس از ادغام `origin/main @ 4ad3391`). محیط: Node 24.21.0، pnpm 12.4.2، Supabase محلی و فقط دادهٔ مصنوعی.
 
-| بررسی | نتیجه |
+| دستور | خط خلاصه |
 |---|---|
-| `pnpm lint` | بدون خطا (1117 فایل) |
-| `pnpm typecheck` | بدون خطا |
-| `pnpm check:boundaries` | بدون نقض |
-| `pnpm test:unit` | 182 فایل، 3282 آزمون، همه موفق |
-| `pnpm test:int` (کامل) | 138 فایل، 624 آزمون موفق و 1 skip موجود؛ پیش از کار ۶ اجرا شد. آزمون‌های integration تازهٔ کار ۶ جداگانه اجرا و موفق شدند |
-| e2e روی build تولیدی با `CI=1` (مهلت ۵ ثانیه) | 32 از 32 موفق: `upload-reliability`، `audio-upload`، `automatic-learning`، `background-uploads`، `upload-recovery`، `recording` و `processing-review` |
+| `pnpm verify` → `pnpm lint` | `Checked 1118 files in 1591ms. No fixes applied.` |
+| `pnpm verify` → `pnpm typecheck` | `packages/core typecheck: Done`، `apps/web typecheck: Done`، `packages/ops-cli typecheck: Done` |
+| `pnpm verify` → `pnpm check:boundaries` | `✔ no dependency violations found (1198 modules, 5458 dependencies cruised)` |
+| `pnpm verify` → `pnpm test` (unit و integration) | `Test Files  320 passed \| 1 skipped (321)`؛ `Tests  3906 passed \| 1 skipped (3907)` |
+| `pnpm build` (با `RECALINO_DEV_UI=1`) | موفق (exit 0) |
+| `CI=1 pnpm test:e2e` (build تولیدی، مهلت ۵ ثانیه، مثل CI) | `268 passed (5.0m)`، بدون flaky |
 
 **بازتولید پیش از اصلاح:** آزمون D59 در `audio-charged-material.int.test.ts` پیش از اصلاح در `audio.ts:89` با `validation_failed` شکست خورد و پس از اصلاح موفق شد.
 
@@ -269,9 +269,10 @@ DATABASE_URL=... pnpm --filter @recalino/ops-cli timings -- --since 2026-10-06 [
 
 **CI در GitHub Actions:**
 
-- Run [`38315163237`](https://github.com/Ali-Paybarjay/recalino/actions/runs/38315163237) خطای واقعی قاعدهٔ ADR-0002 را نشان داد. اصلاح شد (`dd068c5`).
-- از حدود 22:16 UTC همهٔ jobهای مخزن، در همهٔ شاخه‌ها و نه فقط این شاخه، در ۲ تا ۳۰ ثانیه و بی‌آنکه runner بگیرند شکست می‌خورند: `runner_id: 0`، بدون لاگ. این مشکل حساب یا ظرفیت GitHub Actions است، نه کد.
-- نتیجهٔ CI برای commit نهایی در پیام پایانی گزارش می‌شود.
+- Run [`38315163237`](https://github.com/Ali-Paybarjay/recalino/actions/runs/38315163237) پیش از قطعی خطای واقعی قاعدهٔ ADR-0002 را نشان داد. اصلاح شد (`dd068c5`).
+- از حدود 22:16 UTC همهٔ jobهای مخزن در همهٔ شاخه‌ها در ۲ تا ۳۰ ثانیه، بی‌آنکه runner بگیرند، شکست می‌خورند (`runner_id: 0`، بدون لاگ). مدیر تأیید کرده که مشکل از حساب است و مالک در حال رفع آن است.
+
+**ادغام hotfix:** شاخهٔ `feat/hotfix-d59-audio-start` (PR #44) هنوز در `main` ادغام نشده است. پس از ادغام، فقط فایل `packages/core/src/proc/audio-charged-material.int.test.ts` تعارض می‌دهد. نسخهٔ این شاخه را نگه دارید، چون کامل‌تر است. تغییر `audio.ts` در هر دو یکی است.
 
 **نکتهٔ محیط e2e محلی:** shell این محیط کلید `SUPABASE_SECRET_KEY` ابری و `NEXT_PUBLIC_SUPABASE_*` را export می‌کند. چون Next.js مقدار موجود را با `.env.local` عوض نمی‌کند، سرور محلی کلید ابری را به Auth محلی فرستاد و ورود آزمایشی 500 داد. چیزی به پروژهٔ ابری نرسید، چون `SUPABASE_URL` محلی بود. e2e را با `env -u` برای این متغیرها اجرا کردم.
 
