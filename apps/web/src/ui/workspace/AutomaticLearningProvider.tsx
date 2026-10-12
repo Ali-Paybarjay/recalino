@@ -608,10 +608,13 @@ function ManualAudioIndicator({
         {entries.map((entry) => (
           <div key={entry.runId}>
             <p role="status">{entry.problem ?? entry.message}</p>
-            <p className="preview-muted">
-              You can use other pages. If your browser closes or pauses, the saved original resumes
-              when you return.
-            </p>
+            {audioUploadRetryable(entry.reason) ? (
+              // A closed upload never resumes; its message names the next step instead.
+              <p className="preview-muted">
+                You can use other pages. If your browser closes or pauses, the saved original
+                resumes when you return.
+              </p>
+            ) : null}
             <Link href={`/sessions/${entry.sessionId}/processing`}>
               View audio upload and processing
             </Link>

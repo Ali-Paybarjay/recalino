@@ -4,7 +4,12 @@ import type { AiProvider } from "@recalino/core/aip";
 import { createDatabase } from "@recalino/core/db";
 import { createSession } from "@recalino/core/org";
 import { sha256Hex } from "@recalino/core/plt";
-import { createProcessingRun, failAwaitingUploadRun } from "@recalino/core/proc";
+import {
+  createProcessingRun,
+  failAwaitingUploadRun,
+  requestAutomaticLearning,
+  updateAutomaticLearningProgress,
+} from "@recalino/core/proc";
 import { amounts, grantEntitlement } from "@recalino/core/quota";
 import { acceptSourceNotice, createSource, readInputContract } from "@recalino/core/src";
 import { z } from "zod";
@@ -109,20 +114,32 @@ async function awaitingRun(page: Page) {
 }
 
 test.describe("Workstream 1 upload reliability", () => {
-  test("names an upload that never started as lapsed, not rejected audio, and offers Review and retry", async ({
+  test("names an upload that never started as lapsed, not rejected audio, and offers a retry", async ({
     page,
   }) => {
     const f = await awaitingRun(page);
     try {
+      // The upload sweep stops the run, then the automatic reconciler records the stop on the
+      // class intent, which is what Session progress shows.
       await failAwaitingUploadRun(f.db, f.ctx, f.run.id, "audio_upload_not_started");
+      const intent = await requestAutomaticLearning(f.db, f.ctx, f.session.id, { changed: true });
+      await updateAutomaticLearningProgress(f.db, f.ctx, f.session.id, intent.requestVersion, {
+        state: "blocked",
+        lastError: "audio_upload_not_started",
+        runId: f.run.id,
+      });
     } finally {
       await f.db.destroy();
     }
     await page.goto(`/sessions/${f.session.id}/processing`);
-    await expect(page.getByText(pendingCopy.uploadReliability.audio.notStarted)).toBeVisible();
-    await expect(page.getByText("The audio could not be verified.")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Review and retry", exact: true })).toBeVisible();
-    await capture(page, "processing-upload-not-started");
+    await expect(
+      page.getByText(pendingCopy.uploadReliability.automatic.notStarted).first(),
+    ).toBeVisible();
+    await expect(page.getByText("could not be verified")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Retry failed attempt", exact: true }).first(),
+    ).toBeVisible();
+    await capture(page, "session-progress-upload-not-started");
   });
 
   test("shows a closed saved upload without a Retry that cannot succeed", async ({ page }) => {
@@ -174,6 +191,7 @@ test.describe("Workstream 1 upload reliability", () => {
       tray.getByRole("link", { name: "View audio upload and processing" }),
     ).toBeVisible();
     await expect(tray.getByRole("button", { name: "Retry saved audio upload" })).toHaveCount(0);
+    await expect(tray.getByText("the saved original resumes when you return")).toHaveCount(0);
     await capture(page, "audio-tray-upload-closed");
   });
 });
