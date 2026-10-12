@@ -23,10 +23,6 @@ it.each([
     "upload_closed",
   ],
   [rejection("conflict", 409), "upload_closed"],
-  [
-    rejection("validation_failed", 400, { audio: ["part_integrity_mismatch"] }),
-    "integrity_mismatch",
-  ],
   [rejection("idempotency_mismatch", 422), "integrity_mismatch"],
   [rejection("unsupported_media", 415), "audio_unsupported"],
 ])("names a server refusal %# with a stable reason that hides Retry", (failure, reason) => {
@@ -52,6 +48,7 @@ it.each([
   rejection("internal", 500),
   new DOMException("Paused", "AbortError"),
   rejection("validation_failed", 400, { audio: ["something_new"] }),
+  rejection("validation_failed", 400, { audio: ["part_integrity_mismatch"] }),
   new Error("Unclassified"),
 ])("keeps retryable, aborted and unclassified failure %# unchanged", (failure) => {
   expect(audioUploadProblem(failure)).toBe(failure);

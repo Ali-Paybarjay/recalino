@@ -9,7 +9,7 @@ import { isRetryableUploadFailure } from "./upload";
 export type AudioUploadReason =
   /** The server no longer accepts this run's upload: it ended, or its confirmed hold closed. */
   | "upload_closed"
-  /** The stored or local bytes differ from the confirmed audio. */
+  /** The device original differs from the confirmed audio or from the upload's manifest. */
   | "integrity_mismatch"
   /** The original is not saved on this device. */
   | "original_missing"
@@ -52,7 +52,9 @@ export function audioUploadProblem(failure: unknown): unknown {
   const problems = reasons(failure);
   if (failure.code === "unsupported_media")
     return new AudioUploadProblem("audio_unsupported", failure.message);
-  if (problems.includes("part_integrity_mismatch") || failure.code === "idempotency_mismatch")
+  // A part corrupted in transit is sent again with a fresh link, so its retry stays offered. A
+  // changed manifest means the device original differs from the one this upload started with.
+  if (failure.code === "idempotency_mismatch")
     return new AudioUploadProblem("integrity_mismatch", failure.message);
   if (
     failure.code === "conflict" ||
