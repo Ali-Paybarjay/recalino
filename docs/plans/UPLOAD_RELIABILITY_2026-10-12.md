@@ -200,6 +200,33 @@ DATABASE_URL=... pnpm --filter @recalino/ops-cli timings -- --since 2026-10-06 [
 
 پنج متن در [`UI_COPY_PENDING.md`](../design/UI_COPY_PENDING.md)، بخش «کار ۱ — پایداری آپلود»، و در `pendingCopy.uploadReliability` آمده‌اند. هیچ‌کدام تأییدشده علامت نخورده‌اند.
 
+## ۹-الف. رابط پایدار برای کارهای دیگر
+
+**ناوبری** (`feat/session-navigation`): این‌ها export پایدارند و resolver «گام بعد» می‌تواند با آن‌ها تصمیم بگیرد که Retry ممکن است یا نه.
+
+- از [`upload-problems.ts`](../../apps/web/src/ui/workspace/upload-problems.ts):
+  - نوع `AudioUploadReason`.
+  - کلاس `AudioUploadProblem` با فیلد `reason`.
+  - `audioUploadProblem(failure)` برای دسته‌بندی خطای سرور.
+  - `audioUploadRetryable(reason)`.
+- فیلد `ManualAudioTransfer.reason` در `manual-audio-store.ts`.
+- کدهای سرور `audio_upload_not_started` و `audio_upload_incomplete` در `lastError` وضعیت کلاس.
+
+**ضبط** (`feat/recording-capture`، D60):
+
+- `uploadAutomaticAudio(run, snapshot, contract, options)` بدون تغییر امضا مستقیم قابل فراخوانی است.
+- پیشرفت با `onTransferProgress` و `onProgress` گزارش می‌شود و به polling وابسته نیست.
+- تایمرهای polling و صف صوت ذخیره‌شده در صفحهٔ پنهان kick نمی‌کنند. صفحه هنگام ضبط روی گوشی ممکن است پنهان باشد. پس آپلود حین ضبط باید مستقیم با `uploadAutomaticAudio` یا با driver خود کار ضبط اجرا شود، نه با این تایمرها.
+- `ManualAudioManager` حین ضبط عمداً متوقف است، چون `allowed()` برای phaseهای ضبط false برمی‌گرداند.
+- اگر کار ضبط برای هر بخش مهر و موم‌شده رخداد `recalino:learning-changed` با `detail` همان کلاس بفرستد، polling همان کلاس فوراً بیدار می‌شود.
+
+**تعارض شناخته‌شده در `AutomaticLearningProvider.tsx`:**
+
+- `feat/session-navigation` دکمهٔ «Retry saved audio upload» را از صف حذف می‌کند و این اقدام را به صفحهٔ جلسه می‌برد. در ادغام، حذف برنده است (یادداشت مدیر).
+- تغییر من در همان بلوک (شرط `audioUploadRetryable` برای دکمه و برای جملهٔ «…resumes when you return») با حذف دکمه بی‌اثر می‌شود.
+- اگر جملهٔ راهنما در صف بماند، بهتر است همان شرط را نگه دارد.
+- بقیهٔ تغییرهای این فایل (polling) در بلوک‌های دیگرند.
+
 ## ۱۰. فایل‌های بیرون از مالکیت
 
 - `packages/core/src/proc/maintenance.ts`، `runs.ts` (فقط نوع `AwaitingUploadFailure`) و `index.ts` (export). کار ۲ به آن‌ها نیاز داشت.
