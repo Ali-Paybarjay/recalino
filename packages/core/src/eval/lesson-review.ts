@@ -97,6 +97,21 @@ Report reasons, explanations and suggestions in the lesson's explanation languag
 plain text, concise and evidence-based. No HTML, numerical accuracy score or aggregate verdict.
 Review all supplied lesson sections and items; an empty findings list is not a guarantee of truth.`;
 
+/**
+ * Compact fallback input (2026-10-12). The legacy input repeats source and version IDs and a
+ * locator object on every evidence block and the whole lesson text as a target, so a 25-minute
+ * class with photos passed the 120,000-character limit and the review request ended in 400
+ * `lesson_review_input_too_large`. Inputs that fit keep the benchmarked legacy format; evidence
+ * keys and target IDs are identical in both, so saved reports validate either way.
+ */
+export const LESSON_REVIEW_COMPACT_INPUT_FORMAT = "lesson_review_compact_v1";
+const compactInputNote = `
+Input format ${LESSON_REVIEW_COMPACT_INPUT_FORMAT}: evidence is grouped by source. Each source
+lists rows [key, text, locator?, speakerRole?]; locator is [startMs, endMs] for audio, the page
+number for a PDF page, and null otherwise; a missing speakerRole means unknown. Use the row key
+as the evidence key. The target "lesson" has no text field: its text is every text value in
+lesson. Every other target lists its own text. selectedSources lists only incomplete units.`;
+
 function textValues(value: unknown): string[] {
   if (typeof value === "string") return [value];
   if (Array.isArray(value)) return value.flatMap(textValues);
@@ -166,7 +181,7 @@ export function buildLessonReviewInput(options: {
   sources: readonly RunSource[];
   learner: { declaredLevel: string | null; goal: string | null };
   maxInputCharacters: number;
-}): { input: string; schema: z.ZodType<LessonReviewResponse> } {
+}): { input: string; system: string; schema: z.ZodType<LessonReviewResponse> } {
   const { knowledge } = options;
   const sources = selectedLessonReviewSources(options.sources);
   const model = validateKnowledgeModel(
@@ -223,7 +238,7 @@ export function buildLessonReviewInput(options: {
           source.units.some((unit) => unit.kind === "page" && !unitsWithText.has(unit.id)))
       );
     });
-  const input = JSON.stringify({
+  const legacy = JSON.stringify({
     rubricVersion: LESSON_REVIEW_RUBRIC_VERSION,
     knowledgeVersionId: knowledge.id,
     knowledgeVersion: knowledge.version,
@@ -244,12 +259,63 @@ export function buildLessonReviewInput(options: {
     incompleteSources,
     missingSourceIds: model.coverage.missingSourceIds,
   });
+  const fits = (text: string) =>
+    Number.isSafeInteger(options.maxInputCharacters) &&
+    options.maxInputCharacters > 0 &&
+    Array.from(text).length <= options.maxInputCharacters;
+  let input = legacy;
+  let system = LESSON_REVIEW_SYSTEM_PROMPT;
+  if (!fits(input + system)) {
+    const rows = new Map<number, unknown[][]>();
+    for (const entry of evidence) {
+      const sourceIndex = Number(entry.key.split(":")[1]);
+      const unit = entry.unit;
+      const known = entry.speakerRole && entry.speakerRole !== "unknown";
+      const locator =
+        unit?.kind === "time" && unit.end !== undefined
+          ? [unit.start, unit.end]
+          : unit?.kind === "page"
+            ? unit.start
+            : null;
+      const row: unknown[] = [entry.key, entry.text];
+      if (locator !== null || known) row.push(locator);
+      if (known) row.push(entry.speakerRole);
+      rows.set(sourceIndex, [...(rows.get(sourceIndex) ?? []), row]);
+    }
+    input = JSON.stringify({
+      format: LESSON_REVIEW_COMPACT_INPUT_FORMAT,
+      rubricVersion: LESSON_REVIEW_RUBRIC_VERSION,
+      knowledgeVersionId: knowledge.id,
+      knowledgeVersion: knowledge.version,
+      scope: "original_generated_lesson",
+      learner,
+      lesson: model,
+      targets: targets.map((target) =>
+        target.id === "lesson" ? { id: target.id } : { id: target.id, text: target.text },
+      ),
+      selectedSources: sources.map((source) => ({
+        sourceId: source.sourceId,
+        contentVersionId: source.contentVersionId,
+        kind: source.kind,
+        role: source.role ?? null,
+        ranges: source.ranges,
+        pageCount: source.pageCount,
+        durationMs: source.durationMs,
+        incompleteUnits: source.units
+          .filter((unit) => unit.status !== "extracted")
+          .map(({ id: _id, ...unit }) => unit),
+      })),
+      evidence: sources.map((_source, sourceIndex) => ({
+        source: sourceIndex,
+        rows: rows.get(sourceIndex) ?? [],
+      })),
+      incompleteSources,
+      missingSourceIds: model.coverage.missingSourceIds,
+    });
+    system = LESSON_REVIEW_SYSTEM_PROMPT + compactInputNote;
+  }
   // No silent truncation: a report must never imply review of content the model did not see.
-  if (
-    !Number.isSafeInteger(options.maxInputCharacters) ||
-    options.maxInputCharacters <= 0 ||
-    Array.from(input + LESSON_REVIEW_SYSTEM_PROMPT).length > options.maxInputCharacters
-  )
+  if (!fits(input + system))
     throw errors.validationFailed({ review: ["lesson_review_input_too_large"] });
 
   const targetMap = new Map(targets.map((target) => [target.id, target.text]));
@@ -295,5 +361,5 @@ export function buildLessonReviewInput(options: {
       }
     });
   });
-  return { input, schema };
+  return { input, system, schema };
 }
