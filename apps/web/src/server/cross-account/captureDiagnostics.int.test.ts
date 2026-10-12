@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, it } from "vitest";
 import { captureDiagnosticsHandler } from "../recording-routes";
 import { ROUTES } from "../routes";
@@ -25,12 +26,14 @@ it("logs capture health under the caller only and refuses any class or recording
       "/api/recordings/diagnostics",
       "POST",
       body,
+      randomUUID(),
     );
   const accepted = await call({
     platform: "android",
     browser: "chrome",
     events: [{ ageMs: 0, event: { type: "visibility", visible: false } }],
   });
+  expect(await accepted.clone().json()).toEqual({ accepted: 1 });
   expect(accepted.status).toBe(202);
   expect(lines).toEqual([
     expect.objectContaining({ user_id: owner.owner, capture_event: "visibility" }),
