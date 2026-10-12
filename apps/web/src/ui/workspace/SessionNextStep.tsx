@@ -3,6 +3,7 @@ import type { ClassVoiceView } from "@recalino/core/voice-contracts";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { pendingCopy } from "../pending-copy";
 import { useRecording } from "../recording/RecordingProvider";
+import type { Recording } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import {
   connectedServerSnapshot,
@@ -24,24 +25,15 @@ const capturing = ["starting", "recording", "recovering", "paused", "saving"];
 /** Finished captures of this session on this device that have not reached the server yet. */
 function useWaitingRecordings(sessionId: string) {
   const { userId, store, state } = useRecording();
-  const [waiting, setWaiting] = useState(0);
+  const [rows, setRows] = useState<Recording[]>([]);
   const phase = state.phase;
   // biome-ignore lint/correctness/useExhaustiveDependencies: phase is the refresh token; a stopped capture changes the saved rows.
   useEffect(() => {
     let active = true;
     void store
       .list(userId)
-      .then((rows) => {
-        if (active)
-          setWaiting(
-            rows.filter(
-              (row) =>
-                row.sessionId === sessionId &&
-                row.completedAt &&
-                row.bytes > 0 &&
-                !row.sourceAssetId,
-            ).length,
-          );
+      .then((all) => {
+        if (active) setRows(all.filter((row) => row.sessionId === sessionId));
       })
       .catch(() => {
         /* Device storage problems are reported by the upload tray. */
@@ -50,9 +42,18 @@ function useWaitingRecordings(sessionId: string) {
       active = false;
     };
   }, [store, userId, sessionId, phase]);
+  const finished = rows.filter((row) => row.completedAt && row.bytes > 0);
+  const capturingHere = capturing.includes(state.phase) && state.recording?.sessionId === sessionId;
+  const captureId = state.recording?.captureId;
   return {
-    capturing: capturing.includes(state.phase) && state.recording?.sessionId === sessionId,
-    waiting,
+    capturing: capturingHere,
+    waiting: finished.filter((row) => !row.sourceAssetId).length,
+    parts: finished.length,
+    // D60: a sealed part of the running capture already registered on the server.
+    background:
+      capturingHere &&
+      !!captureId &&
+      finished.some((row) => row.captureId === captureId && row.sourceAssetId),
   };
 }
 

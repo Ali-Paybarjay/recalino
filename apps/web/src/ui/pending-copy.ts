@@ -15,6 +15,16 @@ export const pendingCopy = {
       online: "Your recording uploads automatically while this app is open.",
       offline: "Your recording uploads when this device is back online. Keep this app open.",
     },
+    capture: {
+      background: "Finished parts upload in the background. Keep recording; nothing interrupts it.",
+      lastPart: "Sending the last part",
+      lastPartDetail: "The other parts are already sent. Keep this app open until it finishes.",
+    },
+    voiceCheck: {
+      heading: "Finishing your notes",
+      detail:
+        "Your lesson is written. Recalino is checking the voices in your recording before it shows the notes. This can take a few minutes; you can leave this page.",
+    },
     voice: {
       action: "Confirm your voice",
       ready: "Your notes are ready. Confirming your voice in this session is optional.",

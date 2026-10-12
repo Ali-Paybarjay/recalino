@@ -65,8 +65,12 @@ export interface SessionStateInput {
   batches?: readonly UploadBatch[];
   uploadProgress?: AutomaticUploadProgress | null;
   audioTransfers?: readonly SessionAudioTransfer[];
-  /** Captures on this device: one is in progress, or finished captures still wait to be sent. */
-  recordings?: { capturing: boolean; waiting: number };
+  /**
+   * Captures on this device: one is in progress, or finished parts still wait to be sent.
+   * `parts` counts the finished parts of this session; `background` is true when sealed parts
+   * upload during capture (D60, read defensively from the recording worker's state).
+   */
+  recordings?: { capturing: boolean; waiting: number; parts?: number; background?: boolean };
   /** Whether this session's voice check waits for the learner's optional confirmation. */
   voicePending?: boolean;
 }
@@ -159,7 +163,13 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
 
   // Capture comes first and stays quiet (PRD-REC-02): only where to return to it.
   if (input.recordings?.capturing)
-    return step("active", "Recording in progress", "", go.open_recording, studyActions);
+    return step(
+      "active",
+      "Recording in progress",
+      input.recordings.background ? copy.capture.background : "",
+      go.open_recording,
+      studyActions,
+    );
 
   // A saved audio transfer stopped: its own next step, never a retry the server refuses again.
   const stopped = input.audioTransfers?.find((transfer) => transfer.phase === "attention");
@@ -253,6 +263,27 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
       ...studyActions,
     ]);
 
+  // Finished captures on this device that have not reached the server yet.
+  const recordings = input.recordings;
+  if (
+    recordings?.waiting &&
+    !input.uploadProgress &&
+    ["idle", "waiting_sources", "waiting_upload"].includes(status.state)
+  ) {
+    const lastPart = recordings.waiting === 1 && (recordings.parts ?? 0) > 1;
+    return step(
+      "active",
+      lastPart ? copy.capture.lastPart : copy.savedOnDevice.heading,
+      input.online === false
+        ? copy.savedOnDevice.offline
+        : lastPart
+          ? copy.capture.lastPartDetail
+          : copy.savedOnDevice.online,
+      study ?? go.view_progress,
+      [go.view_progress, ...studyActions],
+    );
+  }
+
   if (progress.active) {
     if (input.online === false)
       return step(
@@ -261,6 +292,15 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
         progress.stage === "upload"
           ? "Reconnect this device to the internet. Your upload will resume automatically; keep this app open."
           : "Processing can continue, but this device needs an internet connection to show the latest progress.",
+        study ?? go.view_progress,
+        [go.view_progress, ...studyActions],
+      );
+    // Publication waits for the voice check (owner decision 2026-10-12): say so, not a dead wait.
+    if (status.state === "processing" && status.stage === "checking_voices")
+      return step(
+        "active",
+        copy.voiceCheck.heading,
+        copy.voiceCheck.detail,
         study ?? go.view_progress,
         [go.view_progress, ...studyActions],
       );
@@ -278,16 +318,6 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
       [go.view_progress, ...studyActions],
     );
   }
-
-  // Finished captures on this device that have not reached the server yet.
-  if (input.recordings?.waiting && status.state === "idle")
-    return step(
-      "active",
-      copy.savedOnDevice.heading,
-      input.online === false ? copy.savedOnDevice.offline : copy.savedOnDevice.online,
-      study ?? go.view_progress,
-      [go.view_progress, ...studyActions],
-    );
 
   if (status.state === "ready" || notes || cards) {
     const heading =

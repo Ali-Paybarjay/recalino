@@ -45,6 +45,10 @@ export const sessionStates: {
   { name: "empty", status: status({}) },
   { name: "processing", status: status({ state: "processing", run: run("processing") }) },
   {
+    name: "checking-voices",
+    status: status({ state: "processing", run: run("processing"), stage: "checking_voices" }),
+  },
+  {
     name: "ready-voice",
     status: status({ state: "ready", run: run("ready"), notesReady: true, cardsReady: true }),
     notes: true,

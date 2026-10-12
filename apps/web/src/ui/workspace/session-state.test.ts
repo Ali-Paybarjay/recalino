@@ -306,3 +306,38 @@ describe("sessionNextStep", () => {
     }
   });
 });
+
+describe("states during and after capture (D60, D61) and before publication", () => {
+  it("names background part uploads during capture without any warning", () => {
+    const step = next({
+      status: status({ state: "blocked", lastError: "audio_upload_rejected" }),
+      recordings: { capturing: true, waiting: 0, parts: 2, background: true },
+    });
+    expect(step.heading).toBe("Recording in progress");
+    expect(step.detail).toMatch(/upload in the background/);
+    expect(step.tone).toBe("active");
+  });
+
+  it("says only the last part remains after Stop", () => {
+    const step = next({
+      status: status({ state: "waiting_sources" }),
+      recordings: { capturing: false, waiting: 1, parts: 6 },
+    });
+    expect(step.heading).toBe("Sending the last part");
+    expect(step.detail).toMatch(/other parts are already sent/);
+  });
+
+  it("explains a written lesson that waits for the voice check", () => {
+    const step = next({
+      status: status({ state: "processing", run: run("processing"), stage: "checking_voices" }),
+      content: { notes: true, cards: true },
+    });
+    expect(step.heading).toBe("Finishing your notes");
+    expect(step.detail).toMatch(/checking the voices/);
+    expect(step.primary.id).toBe("read_notes");
+    expect(
+      next({ status: status({ state: "processing", run: run("processing"), stage: "publishing" }) })
+        .heading,
+    ).toBe("Creating notes and flashcards");
+  });
+});
