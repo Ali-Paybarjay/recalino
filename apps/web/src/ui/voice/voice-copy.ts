@@ -60,6 +60,27 @@ export const voiceCopy = {
     retired:
       "This session was a voice reference earlier. Newer confirmed sessions or your current voice sample now take its place.",
   },
+  // One confirmation per class and line-level choices (D64). The product owner approved these
+  // fifteen texts verbatim on 2026-10-13 (D65 review).
+  classHeading: "Your voice in this class",
+  classIntro:
+    "Recalino matched the same voices across this class's recordings. Confirm your voice once for the whole class.",
+  heardIn: "Heard in {count} of {total} recordings",
+  ambiguous:
+    "This voice sounded like more than one voice in another recording, so those recordings were not joined. Check them separately below.",
+  classConfirmed: "Your voice is confirmed for this whole class.",
+  coveredByClass: "Your choice for the whole class above covers this recording.",
+  shortVoices: "Short voices ({count})",
+  shortVoicesDetail:
+    "These voices have too little clear speech to suggest. Choose one only if you recognise it.",
+  linesHeading: "Lines that may be yours",
+  linesIntro:
+    "These short lines sound like your voice sample. Mark the lines you said. Only lines you mark can add spoken mistakes.",
+  lineMine: "This is me",
+  lineNotMine: "Not me",
+  lineUndo: "Undo",
+  lineMarkedMine: "Marked as yours",
+  lineMarkedNotMine: "Marked as not yours",
   // Why an acoustic check asked instead of matching automatically.
   match: {
     no_sample:
@@ -87,3 +108,10 @@ export const voiceCopy = {
       "Later sessions can be matched automatically when your voice is clearly recognised. Unclear sessions still ask you.",
   },
 } as const;
+
+/** Fills `{name}` placeholders of a copy text. */
+export function fillCopy(text: string, values: Record<string, string | number>): string {
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    Object.hasOwn(values, name) ? String(values[name]) : match,
+  );
+}

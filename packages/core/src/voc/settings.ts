@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createLogger, type Logger } from "../plt";
 
 /**
  * Voice-detection switches (workstream 4, 2026-10-12). One confirmation per class and line-level
@@ -51,26 +52,51 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   diarizationConcurrency: 3,
 };
 
+/**
+ * What an unreadable VOICE_SETTINGS_JSON falls back to: the D64 behaviours off, everything else
+ * as shipped. The variable is the kill switch and may be edited in a hurry; a typo must never
+ * stop a voice check or the class voice route (security review 2026-10-12, S3).
+ */
+export const VOICE_SETTINGS_FALLBACK: VoiceSettings = {
+  ...DEFAULT_VOICE_SETTINGS,
+  classConfirmation: false,
+  targetTurns: false,
+};
+
+let reported: string | undefined;
+/**
+ * The deployment's switches. An invalid value is reported once per distinct value, as an event
+ * without the value itself, and the safe fallback applies; nothing throws at request time.
+ */
 export function readVoiceSettings(
   env: Record<string, string | undefined> = process.env,
+  log: Logger = createLogger(),
 ): VoiceSettings {
   const raw = env.VOICE_SETTINGS_JSON;
   if (!raw) return DEFAULT_VOICE_SETTINGS;
+  const result = parseVoiceSettings(raw);
+  if (result.ok) return result.settings;
+  if (reported !== raw) {
+    reported = raw;
+    log("warn", "voice_settings_invalid", { module: "voc", reason: result.reason });
+  }
+  return VOICE_SETTINGS_FALLBACK;
+}
+
+function parseVoiceSettings(
+  raw: string,
+): { ok: true; settings: VoiceSettings } | { ok: false; reason: string } {
   let overrides: unknown;
   try {
     overrides = JSON.parse(raw);
   } catch {
-    throw new Error("Invalid VOICE_SETTINGS_JSON: not valid JSON");
+    return { ok: false, reason: "not_valid_json" };
   }
-  const result = voiceSettingsSchema.safeParse({
-    ...DEFAULT_VOICE_SETTINGS,
-    ...(overrides && typeof overrides === "object" && !Array.isArray(overrides) ? overrides : {}),
-  });
-  if (!result.success || !overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
-    const names = result.success
-      ? ["root"]
-      : [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];
-    throw new Error(`Invalid VOICE_SETTINGS_JSON: ${names.join(", ")}`);
-  }
-  return result.data;
+  if (!overrides || typeof overrides !== "object" || Array.isArray(overrides))
+    return { ok: false, reason: "not_an_object" };
+  const result = voiceSettingsSchema.safeParse({ ...DEFAULT_VOICE_SETTINGS, ...overrides });
+  if (result.success) return { ok: true, settings: result.data };
+  // Only setting names reach the log, never values.
+  const name = result.error.issues[0]?.path.join(".") || "root";
+  return { ok: false, reason: /^[A-Za-z0-9_.]{1,64}$/.test(name) ? name : "schema" };
 }

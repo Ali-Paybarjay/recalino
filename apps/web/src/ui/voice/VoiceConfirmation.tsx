@@ -7,7 +7,6 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { fillCopy, pendingCopy } from "../pending-copy";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import {
@@ -21,7 +20,7 @@ import { OriginalRecovery } from "./OriginalRecovery";
 import styles from "./Voice.module.css";
 import { useLocalVoiceAudio, VoiceClips } from "./VoiceClips";
 import { type VoiceLineAction, VoiceLines } from "./VoiceLines";
-import { voiceCopy } from "./voice-copy";
+import { fillCopy, voiceCopy } from "./voice-copy";
 
 type Action =
   | { action: "analyze" }
@@ -682,7 +681,7 @@ function Analysis({
                 </div>
               ) : null}
               {covered ? (
-                <p>{pendingCopy.voiceDetection.coveredByClass}</p>
+                <p>{voiceCopy.coveredByClass}</p>
               ) : (
                 <>
                   <p>{voiceCopy.listenPrompt}</p>
@@ -690,13 +689,11 @@ function Analysis({
                   {grouped.length ? (
                     <details>
                       <summary>
-                        {fillCopy(pendingCopy.voiceDetection.shortVoices, {
+                        {fillCopy(voiceCopy.shortVoices, {
                           count: grouped.length,
                         })}
                       </summary>
-                      <p className="preview-muted">
-                        {pendingCopy.voiceDetection.shortVoicesDetail}
-                      </p>
+                      <p className="preview-muted">{voiceCopy.shortVoicesDetail}</p>
                       {grouped.map(card)}
                     </details>
                   ) : null}
