@@ -193,7 +193,7 @@
 | چرخش ۱۰ دقیقه‌ای وابسته به تایمر ۱ ثانیه‌ای | حل شد | «rotation seals a ten-minute part from delivered audio alone, with no timer» و `capture-honesty.test.ts` › «rotates parts by delivered audio when timers are frozen» |
 | `durationMs` از ساعت | حل شد | «registers durationMs from the measured audio, within one second»؛ در سرور `staged-capture-audio.int.test.ts`: اعلام ۲۹ دقیقه، decode ۴٫۰۲ ثانیه → رزرو ۵ ثانیه (D59، نه ساعت) |
 | هیچ‌چیز به زبان‌آموز گفته نشد | حل شد | `capture-honesty.test.ts` (`state.missing` برابر فاصله‌های manifest)، `MissingAudioNotice.test.ts`، و e2e `recording-capture.spec.ts` در Chromium واقعی: متن «Part of this class was not recorded…» فقط پس از Stop. حین ضبط هیچ پیامی: «never shows a pop-up, sound, duration or quota message during capture» |
-| decode سرور کمتر از اعلام (۶۷٪ گم‌شده، بی‌صدا) | حل شد | e2e `recording-decode.spec.ts`: MediaRecorder واقعی روی fake device، صفحه frozen (CDP `Page.setWebLifecycleState`) و track خاموش حین ضبط؛ هر قطعه با همان ffmpeg سرور decode می‌شود؛ اختلاف اعلام و decode ≤ ۲٪ و `round(activeMs)+1000 ≥ decode`. نتیجه: {{DECODE}} |
+| decode سرور کمتر از اعلام (۶۷٪ گم‌شده، بی‌صدا) | حل شد | e2e `recording-decode.spec.ts`: MediaRecorder واقعی روی fake device، صفحه frozen (CDP `Page.setWebLifecycleState`) و track خاموش حین ضبط؛ هر قطعه با همان ffmpeg سرور decode می‌شود؛ اختلاف اعلام و decode ≤ ۲٪ و `round(activeMs)+1000 ≥ decode`. نتیجه: `{"parts":[{"segment":1,"declaredMs":14160},{"segment":2,"declaredMs":4080}],"declaredMs":18240,"decodedMs":18240}`؛ اعلام و decode برابر، و mute قطعهٔ دوم را آغاز کرد |
 | آپلود حین ضبط متوقف (D29 قاعدهٔ ۲ قدیم) | حل شد (D60) | `staged-capture-audio.int.test.ts` (staging بدون رزرو، verify با `src.verify_staged_audio`، پذیرش در Run پس از Stop، رزرو یک‌بار، حذف با پایان پنجرهٔ ۲۴ ساعته، نسخهٔ رد‌شده ≤ ۷ روز، اجارهٔ ۱۵ دقیقه‌ای)؛ `capture-lease.int.test.ts` (یادگیری خودکار منتظر اجاره)؛ `capture-uploader.test.ts` (ترتیب قطعه‌ها، سکوت خطا تا Stop، kill switch) |
 | ۲۸ دقیقه از Stop تا جزوه (رونویسی پس از آپلود همه) | حل شد (D61) | `capture-transcription.int.test.ts`: رونویسی پس‌زمینهٔ قطعهٔ staged؛ اجرای دوبارهٔ job هیچ فراخوان تازه‌ای نمی‌کند (۲ attempt می‌ماند)؛ Run کلاس پس از Stop همان transcript را استفاده می‌کند و STT دوباره صدا نمی‌زند؛ هیچ مسیر نمایش متن زنده در `apps/web/src/ui/recording` نیست (`grep -rn transcript` فقط متن ثابت صفحهٔ ضبط را می‌یابد) |
 | PRD-REC-07: «ذخیره شد» فقط پس از ثبت معتبر | حل شد | «says saved only after a valid local registration»: شکست `put` نهایی → `failed`، هرگز `saved` |
@@ -202,7 +202,20 @@
 
 ### شواهد اجرای محلی (CI گیت‌هاب همچنان از کار افتاده)
 
-{{EVIDENCE}}
+روی commit نهایی، Node 24، pnpm 12.4.2، Supabase محلی در Docker؛ e2e با build production (`CI=1`، `RECALINO_DEV_UI=1`، و `env -u SUPABASE_SECRET_KEY -u OPENROUTER_API_KEY` تا کلید ابری محیط جای کلید محلی را نگیرد؛ Playwright 1.63 با مرورگر پیش‌نصب 1194 از طریق symlink در scratchpad):
+
+| دستور | خط خلاصه |
+|---|---|
+| `pnpm lint` | `Checked 1134 files in 2s. No fixes applied.` |
+| `pnpm typecheck` | `packages/core typecheck: Done` · `apps/web typecheck: Done` · `packages/ops-cli typecheck: Done` |
+| `pnpm check:boundaries` | `✔ no dependency violations found (1214 modules, 5564 dependencies cruised)` |
+| `pnpm test:unit` | `Test Files 187 passed (187)` · `Tests 3303 passed (3303)` |
+| `pnpm test:int` | `Test Files 142 passed \| 1 skipped (143)` · `Tests 638 passed \| 1 skipped (639)` |
+| `pnpm db:types && git diff --exit-code -- packages/core/src/db/types.ts` | بدون diff |
+| `pnpm build` و `pnpm check:client-bundle` | `✓ Compiled successfully` · `No secrets in the client-visible build output.` |
+| `CI=1 pnpm test:e2e` (کل مجموعه، ۲۶۷ آزمون) | `267 passed (6.1m)` · `1 flaky` (`automatic-learning.spec.ts › saved audio shows preparation…` یک بار هنگام اجرای هم‌زمان آزمون‌های integration شکست و در تلاش دوم گذشت) |
+| `recording.spec.ts`، `recording-capture.spec.ts`، `recording-decode.spec.ts` (Chromium واقعی) | هر سه سبز؛ خروجی decode در جدول بالا |
+| CI گیت‌هاب | از 22:16 UTC روز 2026-10-12 در کل مخزن بدون runner شکست می‌خورد (خطای حساب، نه کد) |
 
 ### محدودیت‌های باقی‌مانده از ممیزی
 
