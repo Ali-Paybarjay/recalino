@@ -64,7 +64,7 @@
 | `assessPhotoQuality` روی ۶۴۰×۴۸۰ در Node 24.21 | ۵٫۳ تا ۵٫۹ ms (میانگین ۲۰ اجرا، سه بار). آزمون، سقف ۶۰ ms را بررسی می‌کند |
 | main thread در Chromium با کندسازی ۴× CPU (پیش‌تنظیم «mid-tier mobile»)، نسخهٔ اول بدون Worker، dev server | 59 تا 256 ms برای شش عکس؛ میانه حدود ۱۰۰ ms. کوچک‌کردن عکس با `createImageBitmap(resize…)` بیرون از main thread آن را پایین نیاورد (77 تا 256 ms) |
 | تصمیم | چون اندازه از ۱۰۰ ms گذشت، ارزیابی به Web Worker منتقل شد. main thread فقط Blob را می‌فرستد و عدد را می‌گیرد |
-| زمان تا رسیدن حکم با Worker، کندسازی ۴×، build production (`CI=1`) | 98 تا 169 ms برای شش عکس (`performance.measure` با نام `recalino:photo-quality:worker`، از ارسال Blob تا رسیدن پاسخ؛ این زمان کار main thread نیست). در dev server همین عدد 164 تا 1192 ms بود، چون هر Worker تازه module را بارگذاری و JIT را از نو گرم می‌کند |
+| زمان تا رسیدن حکم با Worker، کندسازی ۴×، build production (`CI=1`) | 98 تا 169 ms، و پس از merge با main 84 تا 130 ms، هر بار برای شش عکس (`performance.measure` با نام `recalino:photo-quality:worker`، از ارسال Blob تا رسیدن پاسخ؛ این زمان کار main thread نیست). در dev server همین عدد 164 تا 1192 ms بود، چون هر Worker تازه module را بارگذاری و JIT را از نو گرم می‌کند |
 
 **هشدار:** این اندازه‌ها روی گوشی واقعی متوسط گرفته نشده‌اند. کندسازی ۴× CPU در Chromium روی سرور جایگزین گوشی شده است. اندازه‌گیری روی گوشی واقعی هنوز باز است (پرسش ۵).
 
@@ -118,6 +118,18 @@
 | `pnpm build` | `✓ Compiled successfully in 34.2s`. Worker در chunk جدای `9546` است و فقط کد ارزیابی را دارد |
 | `pnpm check:client-bundle` | `No secrets in the client-visible build output.` |
 | `CI=1 RECALINO_DEV_UI=1 RECALINO_SCREENSHOTS=1 pnpm test:e2e` با `photo-readability.spec.ts`، `photo-readability-screens.spec.ts`، `recording.spec.ts`، `recording-capture.spec.ts` و `recording-decode.spec.ts` | `5 passed (32.2s)`، بدون شکست و بدون flaky. خروجی decode: `{"declaredMs":18120,"decodedMs":18120}` |
+
+**پس از merge با `main` @ `395c834` (PR #50 و #51؛ commit merge `19cee1f`):** `pending-copy.ts` فقط `photoQuality.*` و `fillCopy` را دارد. `UI_COPY_PENDING.md` یادداشت تأیید main را نگه داشته و فقط هشت کلید D72 را فهرست می‌کند. `RecordingView` هم `recordingCopy.introduction` را نگه داشته است.
+
+| دستور | خط خلاصه |
+|---|---|
+| `pnpm lint` | `Checked 1213 files in 1725ms. No fixes applied.` |
+| `pnpm typecheck` | `packages/core typecheck: Done` · `packages/ops-cli typecheck: Done` · `apps/web typecheck: Done` |
+| `pnpm check:boundaries` | `✔ no dependency violations found (1292 modules, 5994 dependencies cruised)` |
+| `pnpm test:unit` | `Test Files 208 passed (208)` · `Tests 3473 passed (3473)` |
+| `pnpm build` / `check:client-bundle` | `✓ Compiled successfully in 20.0s` · `No secrets in the client-visible build output.` |
+| `CI=1 RECALINO_DEV_UI=1 pnpm test:e2e` با `photo-readability.spec.ts`، `recording.spec.ts`، `recording-capture.spec.ts` و `recording-decode.spec.ts` | `4 passed (30.8s)`، بدون flaky. decode: `{"declaredMs":18180,"decodedMs":18180}` |
+| `photo-readability-screens.spec.ts` (`RECALINO_SCREENSHOTS=1`) | `1 passed (9.1s)`. تصویرها روی همین وضعیت دوباره ساخته شدند |
 
 ## ۹. محدودیت‌ها
 
