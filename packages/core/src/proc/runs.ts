@@ -548,11 +548,21 @@ export async function cancelRun(
     return runView(row);
   });
 }
+/**
+ * Stable reasons an awaiting run stops. `audio_upload_rejected` means the verifier refused the
+ * audio; `audio_upload_not_started` and `audio_upload_incomplete` mean the upload deadline passed
+ * before the original arrived, so the saved device original can be sent again.
+ */
+export type AwaitingUploadFailure =
+  | "audio_upload_rejected"
+  | "audio_upload_not_started"
+  | "audio_upload_incomplete"
+  | "new_confirmation_required";
 export async function failAwaitingUploadRun(
   db: Database,
   ctx: LearnerContext,
   id: string,
-  code: "audio_upload_rejected" | "new_confirmation_required",
+  code: AwaitingUploadFailure,
   now = new Date(),
 ): Promise<ProcessingRun> {
   return db.transaction().execute(async (tx) => {

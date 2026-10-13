@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { pendingCopy } from "../ui/pending-copy";
 import { automaticLearningMessage } from "./automatic-learning";
 
 describe("automatic creation recovery guidance", () => {
+  it.each([
+    ["audio_upload_not_started", pendingCopy.uploadReliability.automatic.notStarted],
+    ["audio_upload_incomplete", pendingCopy.uploadReliability.automatic.incomplete],
+  ])("names %s as a lapsed upload whose original can be sent again", (code, text) => {
+    expect(automaticLearningMessage("blocked", code)).toBe(text);
+    expect(text).toContain("Retry failed attempt");
+    expect(text).not.toContain("could not be verified");
+  });
+
   it.each([
     "processing_budget_session",
     "processing_budget_user_month",

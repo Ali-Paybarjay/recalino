@@ -1170,7 +1170,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     const contract = await readInputContract(db, "1");
     await expireAwaitingUploads(db, new Date(Date.now() + contract.uploadTtlSeconds * 1000 + 1000));
     expect((await getRun(db, f.ctx, pending.id)).state).toBe("needs_input");
-    expect((await getRun(db, f.ctx, pending.id)).lastError).toBe("audio_upload_rejected");
+    expect((await getRun(db, f.ctx, pending.id)).lastError).toBe("audio_upload_not_started");
     expect((await allowance(db, f.ctx)).reserved.audio).toBe(0);
     expect((await allowance(db, f.ctx)).consumed.audio).toBe(0);
   });

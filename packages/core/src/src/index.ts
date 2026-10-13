@@ -1,6 +1,7 @@
 export {
   type AudioVerifier,
   audioManifestSchema,
+  audioUploadWindows,
   beginTemporaryAudioUpload,
   confirmTemporaryAudioPart,
   liveTemporaryAudioObject,
@@ -9,6 +10,7 @@ export {
   TEMPORARY_AUDIO_SWEEP_SECONDS,
   temporaryAudioManifest,
   temporaryAudioPartLink,
+  temporaryAudioUploadStates,
   verifyTemporaryAudio,
 } from "./audio";
 export {

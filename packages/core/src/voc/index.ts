@@ -7,4 +7,5 @@ export * from "./policy-registry";
 export * from "./privacy";
 export * from "./profile";
 export * from "./projection";
+export { voiceAnalysisTimes } from "./report";
 export { findRepeatedVoiceEvidence, hasRepeatableVoiceEvidence } from "./spoken-evidence";

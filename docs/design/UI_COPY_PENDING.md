@@ -22,9 +22,21 @@
 
 در Session sources، اعلان پس از بارگذاری و پیام وضعیت بدون رسید بارگذاری همین اقدام‌ها را نشان می‌دهند: کمبود سهمیه «Ask for more allowance» و «Review allowance»، نبود سهمیه «Ask the pilot operator» و «Review allowance»، و سهمیهٔ کافی «Retry processing».
 
-فهرست اکنون خالی است.
+فهرست تأییدشدهٔ بالا خالی است؛ متن‌های در انتظار هر کار در بخش خودش آمده‌اند.
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.
+
+## کار ۱ — پایداری آپلود (2026-10-12)
+
+متن‌های زیر برای جدا کردن حالت‌های خطای آپلود صوت نوشته شده‌اند ([گزارش](../plans/UPLOAD_RELIABILITY_2026-10-12.md)). هیچ‌کدام تأیید نشده‌اند. برچسب‌های «Review and retry» و «Retry failed attempt» از متن‌های موجودند و تازه نیستند.
+
+| کلید | متن | حالت | منشأ | وضعیت |
+|---|---|---|---|---|
+| `uploadReliability.audio.uploadClosed` | This audio upload has ended, so retrying it here cannot work. Your original is still saved on this device. Open processing to see the next step. | صف «Your audio uploads» وقتی سرور آپلود این Run را دیگر نمی‌پذیرد؛ دکمهٔ «Retry saved audio upload» نمایش داده نمی‌شود | جایگزین «Some information is missing or not valid.» | در انتظار تأیید |
+| `uploadReliability.audio.notStarted` | The audio upload did not start before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Review and retry to upload it again. | صفحهٔ Processing، Run با `audio_upload_not_started` | جایگزین «The audio could not be verified…» برای آپلودی که شروع نشد | در انتظار تأیید |
+| `uploadReliability.audio.incomplete` | The audio upload did not finish before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Review and retry to upload it again. | صفحهٔ Processing، Run با `audio_upload_incomplete` | جایگزین «The audio could not be verified…» برای آپلود نیمه‌تمام | در انتظار تأیید |
+| `uploadReliability.automatic.notStarted` | The audio upload did not start before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Retry failed attempt to upload it again. | وضعیت یادگیری خودکار (`blocked`) با `audio_upload_not_started` | جایگزین پیام کلی «Automatic creation could not finish…» | در انتظار تأیید |
+| `uploadReliability.automatic.incomplete` | The audio upload did not finish before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Retry failed attempt to upload it again. | وضعیت یادگیری خودکار (`blocked`) با `audio_upload_incomplete` | جایگزین پیام کلی «Automatic creation could not finish…» | در انتظار تأیید |
