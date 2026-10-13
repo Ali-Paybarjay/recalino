@@ -153,7 +153,10 @@ export function simulate(scenario: Scenario, minScore = 0.6) {
   let fragments = 0,
     total = 0,
     fragmentSuggested = 0;
-  const turns: { learner: boolean; score: number | null }[] = [];
+  // A short turn needs line-level detection only where its speaker has no voiceprint of their
+  // own; it is scored against the sample and, when it sits inside a voice that has a
+  // voiceprint, proposed only if it beats that voice's own score (scoreTargetTurns).
+  const turns: { learner: boolean; score: number | null; own: number | null }[] = [];
   for (let part = 0; part < scenario.parts; part++) {
     const analysisId = `part-${part}`;
     // Not everyone talks in every part; the teacher and the learner always do.
@@ -213,25 +216,38 @@ export function simulate(scenario: Scenario, minScore = 0.6) {
     fragments += candidates.filter((item) => !suggestibleVoice(item, true)).length;
     const suggestion = suggestedVoice(ranked, true);
     if (suggestion && !suggestibleVoice(suggestion, true)) fragmentSuggested++;
-    // Short turns: each scored on its own against the near-field sample.
-    for (let index = 0; index < scenario.learnerTurns; index++)
-      turns.push({
-        learner: true,
-        score: voiceCosine(
-          room(noisy(identity.get("learner") ?? [], scenario.turnNoise, next)),
-          sample,
-        ),
-      });
+    // Short turns: each scored on its own against the near-field sample. The learner's turns
+    // count only in parts without a learner voiceprint (otherwise the class voice covers them);
+    // half of them were merged into the teacher's voice, half form fragments.
+    const teacherVector = vectors.find(
+      (item) => item.speakerId === `${analysisId}:teacher`,
+    )?.vector;
+    const teacherOwn = teacherVector ? voiceCosine(teacherVector, sample) : null;
+    const learnerHasPrint = vectors.some((item) => item.speakerId === `${analysisId}:learner`);
+    if (!learnerHasPrint)
+      for (let index = 0; index < scenario.learnerTurns; index++)
+        turns.push({
+          learner: true,
+          score: voiceCosine(
+            room(noisy(identity.get("learner") ?? [], scenario.turnNoise, next)),
+            sample,
+          ),
+          own: index % 2 === 0 ? teacherOwn : null,
+        });
     for (let index = 0; index < scenario.otherTurns; index++) {
       const person = present.filter((item) => item !== "learner")[
         Math.floor(next() * (present.length - 1))
       ];
+      const ownVector = vectors.find(
+        (item) => item.speakerId === `${analysisId}:${person}`,
+      )?.vector;
       turns.push({
         learner: false,
         score: voiceCosine(
           room(noisy(identity.get(person ?? "teacher") ?? [], scenario.turnNoise, next)),
           sample,
         ),
+        own: ownVector ? voiceCosine(ownVector, sample) : null,
       });
     }
   }
@@ -255,7 +271,10 @@ export function simulate(scenario: Scenario, minScore = 0.6) {
       if (joined) linkedPairs++;
       if (same && joined) correctPairs++;
     }
-  const proposed = turns.filter((turn) => turn.score !== null && turn.score >= minScore);
+  const proposed = turns.filter(
+    (turn) =>
+      turn.score !== null && turn.score >= minScore && (turn.own === null || turn.score > turn.own),
+  );
   const learnerTurns = turns.filter((turn) => turn.learner).length;
   const ratio = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 1000 : null);
   return {
