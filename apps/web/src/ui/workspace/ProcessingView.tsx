@@ -5,13 +5,13 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import { pendingCopy } from "../pending-copy";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import { IndexedRecordingStore } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { requestKey, workspaceRequest } from "./api";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { isRetryableUploadFailure } from "./upload";
+import { uploadCopy } from "./upload-copy";
 
 /** Awaiting-upload stops whose saved device original can be sent again with a new attempt. */
 const AUDIO_UPLOAD_RETRY_CODES: readonly string[] = [
@@ -373,9 +373,9 @@ export function ProcessingView({
                   : latest.lastError === "audio_upload_rejected"
                     ? "The audio could not be verified. Review the selected audio, then retry with the saved original on this device or replace it."
                     : latest.lastError === "audio_upload_not_started"
-                      ? pendingCopy.uploadReliability.audio.notStarted
+                      ? uploadCopy.audio.notStarted
                       : latest.lastError === "audio_upload_incomplete"
-                        ? pendingCopy.uploadReliability.audio.incomplete
+                        ? uploadCopy.audio.incomplete
                         : (outputMessage ??
                           "The selected material could not finish processing. Check your sources, then confirm a new attempt.")}
             </Status>

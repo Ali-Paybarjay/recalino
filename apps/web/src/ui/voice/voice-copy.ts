@@ -107,6 +107,15 @@ export const voiceCopy = {
     ready:
       "Later sessions can be matched automatically when your voice is clearly recognised. Unclear sessions still ask you.",
   },
+  // The voice sample recorded in class conditions (owner's answer to question 8 of 2026-10-13).
+  // The product owner approved these three texts verbatim on 2026-10-13 (D65 review).
+  voiceSample: {
+    classConditions:
+      "Record this sample the way your classes are recorded: the same phone, placed where it is during class, in a room like your classroom. A sample recorded close to your mouth is harder to match with the recording of a class.",
+    recordAgain: "Record a new sample",
+    replaces:
+      "A new sample replaces the saved one. Sessions matched with the old sample will ask you again.",
+  },
 } as const;
 
 /** Fills `{name}` placeholders of a copy text. */

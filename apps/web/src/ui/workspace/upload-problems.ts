@@ -1,6 +1,6 @@
-import { pendingCopy } from "../pending-copy";
 import { WorkspaceRequestError } from "./api";
 import { isRetryableUploadFailure } from "./upload";
+import { uploadCopy } from "./upload-copy";
 
 /**
  * Stable reasons a saved audio upload stopped. Only `unknown` keeps the older behaviour of
@@ -60,9 +60,6 @@ export function audioUploadProblem(failure: unknown): unknown {
     failure.code === "conflict" ||
     (failure.code === "validation_failed" && problems.includes("confirmed_processing_required"))
   )
-    return new AudioUploadProblem(
-      "upload_closed",
-      pendingCopy.uploadReliability.audio.uploadClosed,
-    );
+    return new AudioUploadProblem("upload_closed", uploadCopy.audio.uploadClosed);
   return failure;
 }

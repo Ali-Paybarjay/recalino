@@ -54,7 +54,7 @@ import {
 import type { z } from "zod";
 import { allowanceCopy } from "../ui/allowance-copy";
 import { allowanceLabels, allowanceUnits } from "../ui/allowance-units";
-import { pendingCopy } from "../ui/pending-copy";
+import { uploadCopy } from "../ui/workspace/upload-copy";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
@@ -171,10 +171,9 @@ export function automaticLearningMessage(
     ].includes(code ?? "")
   )
     return "Your material was uploaded, but the AI service rejected a processing request. The service needs a fix before retrying. You do not need to upload the same files again; earlier notes and cards are saved.";
-  if (code === "audio_upload_rejected") return pendingCopy.uploadReliability.automatic.rejected;
-  if (code === "audio_upload_not_started")
-    return pendingCopy.uploadReliability.automatic.notStarted;
-  if (code === "audio_upload_incomplete") return pendingCopy.uploadReliability.automatic.incomplete;
+  if (code === "audio_upload_rejected") return uploadCopy.automatic.rejected;
+  if (code === "audio_upload_not_started") return uploadCopy.automatic.notStarted;
+  if (code === "audio_upload_incomplete") return uploadCopy.automatic.incomplete;
   if (code === "upload_needs_attention")
     return "An upload needs attention. Check the named files in Add material; your earlier notes and cards are available.";
   if (code === "upload_batch_cancelled")

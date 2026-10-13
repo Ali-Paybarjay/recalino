@@ -1,7 +1,6 @@
 "use client";
 import type { ClassVoiceView } from "@recalino/core/voice-contracts";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { pendingCopy } from "../pending-copy";
 import { useRecording } from "../recording/RecordingProvider";
 import type { Recording } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
@@ -17,6 +16,7 @@ import type { AutomaticLearningStatus } from "./automatic-learning";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+import { sessionNavigationCopy } from "./session-navigation-copy";
 import { type SessionAction, sessionNextStep } from "./session-state";
 import { useUploadBatches } from "./UploadProvider";
 
@@ -184,7 +184,7 @@ export function SessionNextStep({
     >
       <div className={styles.statusHeading} role="status" aria-atomic="true">
         <p className={styles.eyebrow} dir={title ? "auto" : undefined}>
-          {title ?? pendingCopy.sessionNavigation.nextStep}
+          {title ?? sessionNavigationCopy.nextStep}
         </p>
         <h2>
           {pending === "retry"
@@ -255,10 +255,10 @@ export function SessionOverviewTop({
 export function VoiceStepCard({ sessionId }: { sessionId: string }) {
   return (
     <Panel title="Your voice in this session">
-      <p>{pendingCopy.sessionNavigation.voice.cardBody}</p>
+      <p>{sessionNavigationCopy.voice.cardBody}</p>
       <Actions>
         <LinkButton secondary href={`/sessions/${sessionId}/voice`}>
-          {pendingCopy.sessionNavigation.voice.action}
+          {sessionNavigationCopy.voice.action}
         </LinkButton>
       </Actions>
     </Panel>
