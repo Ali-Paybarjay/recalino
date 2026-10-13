@@ -1,14 +1,9 @@
-import { pendingCopy } from "../pending-copy";
 import { Status } from "../workspace/primitives";
 import type { MissingAudio } from "./controller";
+import { recordingCopy } from "./recording-copy";
 
-// Pending owner approval (docs/design/UI_COPY_PENDING.md, workstream 2).
-const copy = pendingCopy.recordingCapture as {
-  missingSummary: string;
-  missingInterval: string;
-  missingHint: string;
-  partMissing: string;
-};
+// Approved by the product owner on 2026-10-13 (recording-copy.ts).
+const copy = recordingCopy;
 export const missingMinutes = (ms: number) => String(Math.max(1, Math.ceil(ms / 60000)));
 export function partMissingLabel(ms: number) {
   return copy.partMissing.replace("{minutes}", missingMinutes(ms));

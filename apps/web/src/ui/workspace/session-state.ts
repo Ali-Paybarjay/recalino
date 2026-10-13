@@ -1,10 +1,10 @@
-import { pendingCopy } from "../pending-copy";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { learningProgress } from "./learning-progress";
+import { sessionNavigationCopy } from "./session-navigation-copy";
 import type { UploadBatch } from "./upload-store";
 
-const copy = pendingCopy.sessionNavigation;
+const copy = sessionNavigationCopy;
 
 /**
  * Every action a session can name as its next step. Links carry `href`; the others are commands the

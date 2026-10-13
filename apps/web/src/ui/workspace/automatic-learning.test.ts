@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 import type { ProcessingRun, RunSnapshot } from "@recalino/core/proc";
 import type { InputContract } from "@recalino/core/src";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pendingCopy } from "../pending-copy";
 import type { LocalPhoto, Recording } from "../recording/store";
 import { WorkspaceRequestError, type workspaceRequest } from "./api";
 import {
@@ -18,6 +17,7 @@ import {
   uploadAutomaticAudio,
   uploadAutomaticPhoto,
 } from "./automatic-learning";
+import { uploadCopy } from "./upload-copy";
 import { AudioUploadProblem } from "./upload-problems";
 
 const transport = vi.hoisted(() => ({ upload: vi.fn() }));
@@ -988,7 +988,7 @@ describe("automatic temporary audio upload", () => {
     expect(failure).toBeInstanceOf(AudioUploadProblem);
     expect(failure).toMatchObject({
       reason: "upload_closed",
-      message: pendingCopy.uploadReliability.audio.uploadClosed,
+      message: uploadCopy.audio.uploadClosed,
     });
     // One refused start, no automatic retries of a request that cannot succeed.
     expect(request).toHaveBeenCalledOnce();

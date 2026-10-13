@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { ProcessingRun } from "@recalino/core/proc";
 import { describe, expect, it } from "vitest";
-import { pendingCopy } from "../ui/pending-copy";
 import type { AutomaticLearningStatus } from "../ui/workspace/automatic-learning";
 import { automaticLearningRecovery } from "../ui/workspace/automatic-learning-recovery";
 import { sessionNextStep, uploadRetryCanHelp } from "../ui/workspace/session-state";
+import { uploadCopy } from "../ui/workspace/upload-copy";
 import { type AudioUploadReason, audioUploadRetryable } from "../ui/workspace/upload-problems";
 import { automaticLearningMessage } from "./automatic-learning";
 
@@ -29,8 +29,7 @@ describe("saved audio uploads that stopped", () => {
         runId: randomUUID(),
         phase: "attention",
         message: "Audio upload is saved.",
-        problem:
-          reason === "upload_closed" ? pendingCopy.uploadReliability.audio.uploadClosed : null,
+        problem: reason === "upload_closed" ? uploadCopy.audio.uploadClosed : null,
         reason,
       };
       const retryable = audioUploadRetryable(reason);
@@ -72,23 +71,17 @@ describe("automatic learning stops on the audio path", () => {
     "Automatic creation could not finish. Your material and earlier notes and cards are saved. Check the material or retry this attempt.";
   it.each([
     // A retry recreates the same verifier refusal: the next step replaces the audio.
-    [
-      "audio_upload_rejected",
-      pendingCopy.uploadReliability.automatic.rejected,
-      "material",
-      null,
-      "review_material",
-    ],
+    ["audio_upload_rejected", uploadCopy.automatic.rejected, "material", null, "review_material"],
     [
       "audio_upload_not_started",
-      pendingCopy.uploadReliability.automatic.notStarted,
+      uploadCopy.automatic.notStarted,
       null,
       "Retry failed attempt",
       "retry_processing",
     ],
     [
       "audio_upload_incomplete",
-      pendingCopy.uploadReliability.automatic.incomplete,
+      uploadCopy.automatic.incomplete,
       null,
       "Retry failed attempt",
       "retry_processing",
