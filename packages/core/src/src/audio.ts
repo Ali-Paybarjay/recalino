@@ -44,6 +44,14 @@ export const audioManifestSchema = z.strictObject({
     .max(10000),
 });
 
+/** A staged capture part (D60) has no hold until its run exists; any other upload needs its open hold. */
+export async function holdIsOpen(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  reservationId: string | null,
+) {
+  return reservationId === null || reservationIsOpen(db, ctx, reservationId);
+}
 /** A queued acoustic check may use only its exact, still-live temporary class original. */
 export async function liveTemporaryAudioObject(
   db: Database | Tx,
@@ -269,7 +277,7 @@ export async function temporaryAudioPartLink(
       source.original_deleted_at ||
       manifest.state !== "pending" ||
       manifest.expiresAt <= now ||
-      !(await reservationIsOpen(tx, ctx, manifest.reservationId))
+      !(await holdIsOpen(tx, ctx, manifest.reservationId))
     )
       throw errors.conflict();
     const part = await tx
@@ -305,7 +313,7 @@ export async function confirmTemporaryAudioPart(
       source.original_deleted_at ||
       manifest.state !== "pending" ||
       manifest.expiresAt <= checkedAt ||
-      !(await reservationIsOpen(tx, ctx, manifest.reservationId))
+      !(await holdIsOpen(tx, ctx, manifest.reservationId))
     )
       throw errors.conflict();
     const part = await tx
@@ -323,10 +331,7 @@ export async function confirmTemporaryAudioPart(
       sha256: part.sha256,
     });
     const verifiedAt = new Date(Math.max(checkedAt.getTime(), Date.now()));
-    if (
-      manifest.expiresAt <= verifiedAt ||
-      !(await reservationIsOpen(tx, ctx, manifest.reservationId))
-    )
+    if (manifest.expiresAt <= verifiedAt || !(await holdIsOpen(tx, ctx, manifest.reservationId)))
       throw errors.conflict();
     if (result === "verified")
       await tx
@@ -369,7 +374,7 @@ async function verifyPendingTemporaryAudio(
       if (
         manifest.state !== "pending" ||
         manifest.expiresAt <= now ||
-        !(await reservationIsOpen(tx, ctx, manifest.reservationId))
+        !(await holdIsOpen(tx, ctx, manifest.reservationId))
       )
         throw errors.conflict();
       const source = await getSource(tx, ctx, assetId);
@@ -453,7 +458,7 @@ async function verifyPendingTemporaryAudio(
         live.object_id !== objectId ||
         !["pending", "verified"].includes(live.state) ||
         live.expires_at <= verifiedAt ||
-        !(await reservationIsOpen(tx, ctx, assembled.reservationId))
+        !(await holdIsOpen(tx, ctx, assembled.reservationId))
       )
         throw errors.conflict();
       // The measured duration is published only while the source and hold remain live.

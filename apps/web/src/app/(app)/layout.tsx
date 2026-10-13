@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import "../../ui/preview/preview.css";
 import { getLearner } from "../../server/auth/learner";
+import { captureFlags } from "../../server/capture-staging-jobs";
 import { NotificationCenter } from "../../ui/notifications/NotificationCenter";
 import { RecordingProvider } from "../../ui/recording/RecordingProvider";
 import { AutomaticLearningProvider } from "../../ui/workspace/AutomaticLearningProvider";
@@ -12,7 +13,11 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
   const learner = await getLearner();
   if (!learner) return <div className="preview-root">{children}</div>;
   return (
-    <RecordingProvider key={learner.userId} userId={learner.userId}>
+    <RecordingProvider
+      key={learner.userId}
+      userId={learner.userId}
+      captureEarlyUpload={captureFlags().earlyUpload}
+    >
       <AutomaticLearningProvider>
         <UploadProvider>
           <div className="preview-root">

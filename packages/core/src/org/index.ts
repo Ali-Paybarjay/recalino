@@ -1,5 +1,11 @@
 // Public ORG API. Workers may check/lock sessions; creation belongs to learner routes only.
 
+export {
+  CAPTURE_LEASE_MS,
+  captureInProgress,
+  releaseCaptureLease,
+  renewCaptureLease,
+} from "./capture-lease";
 export type { CreateOptions } from "./common";
 export {
   type Course,

@@ -11,9 +11,12 @@ import {
 } from "react";
 import { workspaceRequest } from "../workspace/api";
 import { Button, Status } from "../workspace/primitives";
+import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
+import { CaptureUploader } from "./capture-uploader";
 import { RecordingController } from "./controller";
+import { MissingAudioNotice } from "./MissingAudioNotice";
 import styles from "./Recording.module.css";
 import { RecordingSourceSync } from "./source-sync";
 import { IndexedRecordingStore, type Recording } from "./store";
@@ -25,7 +28,16 @@ type RecordingContextValue = {
   sourceSync: RecordingSourceSync;
 };
 const RecordingContext = createContext<RecordingContextValue | null>(null);
-export function RecordingProvider({ userId, children }: { userId: string; children: ReactNode }) {
+export function RecordingProvider({
+  userId,
+  children,
+  captureEarlyUpload = false,
+}: {
+  userId: string;
+  children: ReactNode;
+  /** D60, decided on the server (RECALINO_CAPTURE_EARLY_UPLOAD); off means no staging at all. */
+  captureEarlyUpload?: boolean;
+}) {
   const [value] = useState(() => {
     const store = new IndexedRecordingStore();
     const controller = new RecordingController(userId, store);
@@ -38,7 +50,29 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
   });
   useEffect(() => {
     value.sourceSync.start();
+    // D60/D61: sealed parts are staged silently during capture; nothing is shown until Stop.
+    const uploader = captureEarlyUpload
+      ? new CaptureUploader(value.userId, value.store, {
+          snapshot: value.controller.snapshot,
+          subscribe: value.controller.subscribe,
+          attachSession: (sessionId, captureId) =>
+            value.controller.attachSession(sessionId, captureId),
+          report: value.controller.reportStaging,
+        })
+      : null;
+    uploader?.start();
     const unwatchMediaSession = watchRecordingMediaSession(value.controller);
+    const unwatchDiagnostics = watchCaptureDiagnostics(value.controller, {
+      userAgent: navigator.userAgent,
+      // keepalive lets the last batch leave while the page is being hidden or closed.
+      send: (body) =>
+        fetch("/api/recordings/diagnostics", {
+          method: "POST",
+          headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+          body: JSON.stringify(body),
+          keepalive: true,
+        }),
+    });
     const unwatch = watchCaptureLifecycle(value.controller, {
       page: document,
       window,
@@ -48,11 +82,13 @@ export function RecordingProvider({ userId, children }: { userId: string; childr
     });
     return () => {
       unwatch();
+      uploader?.dispose();
+      unwatchDiagnostics();
       unwatchMediaSession();
       value.sourceSync.dispose();
       value.controller.dispose();
     };
-  }, [value]);
+  }, [value, captureEarlyUpload]);
   return (
     <RecordingContext.Provider value={value}>
       {children}
@@ -106,6 +142,7 @@ function RecordingIndicator() {
                   ? "Recording was interrupted. Reconnecting the microphone…"
                   : "Session recording continues"}
       </p>
+      {state.phase === "saved" ? <MissingAudioNotice compact missing={state.missing} /> : null}
       {online ? (
         <Link href="/recordings">Open recording</Link>
       ) : (

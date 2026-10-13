@@ -97,6 +97,20 @@ export const ROUTES = {
   sourceRead: { id: "sourceRead", path: "/api/sources/[id]/read", access: "learner" },
   sourceAudio: { id: "sourceAudio", path: "/api/sources/[id]/audio", access: "learner" },
   recordingSource: { id: "recordingSource", path: "/api/recordings", access: "learner" },
+  sourceStagedAudio: {
+    id: "sourceStagedAudio",
+    path: "/api/sources/[id]/audio/staged",
+    access: "learner",
+  },
+  classCapture: { id: "classCapture", path: "/api/classes/[id]/capture", access: "learner" },
+  captureDiagnostics: {
+    id: "captureDiagnostics",
+    path: "/api/recordings/diagnostics",
+    access: "learner",
+    rateLimit: "support",
+    // One batch is logged once, however often a keepalive request is repeated.
+    idempotency: "required",
+  },
   sourceUnlock: { id: "sourceUnlock", path: "/api/sources/[id]/unlock", access: "learner" },
   classProcessing: {
     id: "classProcessing",

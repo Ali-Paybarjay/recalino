@@ -3,7 +3,7 @@ import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
 import { getLatestVersion } from "@recalino/core/lkm";
 import { getNotebook } from "@recalino/core/note";
-import { getSession } from "@recalino/core/org";
+import { captureInProgress, getSession } from "@recalino/core/org";
 import {
   AppError,
   emptyPayload,
@@ -16,6 +16,7 @@ import {
   sha256Hex,
 } from "@recalino/core/plt";
 import {
+  captureTranscriptionActive,
   chargeableRunAmounts,
   createProcessingRun,
   findProcessingRunByOperationKey,
@@ -313,6 +314,13 @@ export async function automaticLearningSync(
     return view(db, ctx, sessionId, { state, lastError, run }, deps.provider);
   };
   if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
+  // D60: parts registered during an open capture wait for Stop; no lesson from part of a class.
+  // D61: a part still being transcribed in the background is reused, not transcribed twice.
+  if (
+    (await captureInProgress(db, ctx, sessionId, deps.now())) ||
+    (await captureTranscriptionActive(db, ctx, sessionId))
+  )
+    return progress("waiting_sources", null, null);
   const materials = await sessionSources(db, ctx, sessionId);
   if (
     materials.some(

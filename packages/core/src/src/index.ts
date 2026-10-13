@@ -29,6 +29,7 @@ export {
 } from "./contracts";
 export { type ExtractedTextBlock, extractHtml, extractPlainText } from "./extract";
 export {
+  expireTemporaryAudio,
   maintainSources,
   sourceAudioVerificationJob,
   sourceMaintenanceJob,
@@ -86,4 +87,11 @@ export {
   uploadPartLink,
   verifyUpload,
 } from "./service";
+export {
+  beginStagedAudioUpload,
+  recordedPartSessionId,
+  stagedAudioManifest,
+  stagedAudioManifestSchema,
+  stagedAudioVerificationJob,
+} from "./staged-audio";
 export { DefaultSourceVerifier, extractPdfText } from "./verifier";

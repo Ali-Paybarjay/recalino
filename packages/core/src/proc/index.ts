@@ -27,6 +27,12 @@ export {
   scheduleAuxiliaryRun,
 } from "./auxiliary";
 export {
+  type CaptureTranscriptionDependencies,
+  captureTranscriptionActive,
+  captureTranscriptionJob,
+  scheduleCaptureTranscription,
+} from "./capture-transcription";
+export {
   type ChargedCoverage,
   type ChargedMaterial,
   chargeableAmounts,

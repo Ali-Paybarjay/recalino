@@ -22,7 +22,6 @@
 
 در Session sources، اعلان پس از بارگذاری و پیام وضعیت بدون رسید بارگذاری همین اقدام‌ها را نشان می‌دهند: کمبود سهمیه «Ask for more allowance» و «Review allowance»، نبود سهمیه «Ask the pilot operator» و «Review allowance»، و سهمیهٔ کافی «Retry processing».
 
-<<<<<<< HEAD
 فهرست تأییدشدهٔ بالا خالی است؛ متن‌های در انتظار هر کار در بخش خودش آمده‌اند.
 
 ## Workstream 4 — تشخیص صدا (`feat/voice-detection`، 2026-10-12)
@@ -46,7 +45,6 @@
 | `voiceDetection.lineUndo` | Undo | برگرداندن انتخاب خط | D64 | در انتظار تأیید (D65) |
 | `voiceDetection.lineMarkedMine` | Marked as yours | وضعیت خط | D64 | در انتظار تأیید (D65) |
 | `voiceDetection.lineMarkedNotMine` | Marked as not yours | وضعیت خط | D64 | در انتظار تأیید (D65) |
-=======
 ## جریان کار ۵ — ناوبری جلسه و گام بعد (2026-10-12)
 
 متن‌های زیر برای resolver «گام بعد» ([`session-state.ts`](../../apps/web/src/ui/workspace/session-state.ts))، کارت گام بعد در صفحهٔ جلسه و Today، و گام اختیاری تأیید صدا نوشته شده‌اند ([گزارش](../plans/SESSION_NAVIGATION_2026-10-12.md)؛ [تشخیص، بخش ۷](../plans/FIVE_PROBLEMS_ROOT_CAUSE_2026-10-12.md)). سطر وضعیت و برچسب دکمه‌ها تا جای ممکن از متن‌های موجود (`learning-progress.ts`، `AutomaticLearningView.tsx` و صفحهٔ جلسه) آمده‌اند و فقط متن‌های زیر تازه‌اند.
@@ -67,7 +65,16 @@
 | `sessionNavigation.voice.action` | Confirm your voice | دکمهٔ گام اختیاری صدا در صفحهٔ جلسه | تشخیص ۷.۳ بند ۴ | در انتظار تأیید |
 | `sessionNavigation.voice.ready` | Your notes are ready. Confirming your voice in this session is optional. | سطر وضعیت وقتی جزوه آماده است و بررسی صدا منتظر تأیید است | تشخیص ۷.۱ بند ۵ و ۷.۳ بند ۴ | در انتظار تأیید |
 | `sessionNavigation.voice.cardBody` | Optional: listen to a few excerpts and confirm which voice is yours, so spoken mistakes can be included. Your notes are already available. | متن کارت «Your voice in this session» در صفحهٔ جلسه | تشخیص ۷.۳ بند ۴، D55 | در انتظار تأیید |
->>>>>>> origin/feat/session-navigation
+## Workstream 2 — ضبط داخل اپ (`feat/recording-capture`، 2026-10-12)
+
+این متن‌ها فقط **پس از Stop** نمایش داده می‌شوند (PRD-REC-02) و بازه‌هایی را می‌گویند که زبان‌آموز قصد ضبط داشت ولی صدایی به دستگاه نرسید (PRD-REC-03، PRD-REC-05). `{minutes}` عدد دقیقه گردشده به بالا و `{time}` ساعت محلی شروع بازه است. جزئیات در [گزارش ضبط داخل اپ](../plans/RECORDING_CAPTURE_2026-10-12.md).
+
+| کلید | متن | حالت | منشأ | وضعیت |
+|---|---|---|---|---|
+| `recordingCapture.missingSummary` | Part of this class was not recorded: about {minutes} min in total. | پس از Stop، وقتی دست‌کم یک بازهٔ بی‌صدا ثبت شده است؛ در صفحهٔ Recordings و نوار ضبط | تازه؛ در طرح نیست | در انتظار تأیید |
+| `recordingCapture.missingInterval` | About {minutes} min missing from {time}. | یک سطر برای هر بازه، زیر متن بالا | تازه | در انتظار تأیید |
+| `recordingCapture.missingHint` | This usually happens when the screen locks or another app uses the microphone. Keep Recalino open and the screen on during class. | زیر فهرست بازه‌ها | جملهٔ دوم از متن موجود صفحهٔ ضبط («Keep Recalino open and the screen on for reliable capture») | در انتظار تأیید |
+| `recordingCapture.partMissing` | {minutes} min not recorded | کنار مدت هر قطعه در فهرست ضبط‌ها، وقتی آن قطعه بازهٔ بی‌صدا دارد | تازه | در انتظار تأیید |
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.
 

@@ -4,6 +4,12 @@ type LifecycleController = {
   snapshot(): CaptureState;
   subscribe(listener: () => void): () => void;
   checkHealth(): void;
+  observe?(
+    event:
+      | { type: "visibility"; visible: boolean }
+      | { type: "lifecycle"; state: "frozen" | "resumed" }
+      | { type: "wake_lock"; state: "acquired" | "released" | "unavailable" | "failed" },
+  ): void;
 };
 type ScreenWakeLock = EventTarget & { released: boolean; release(): Promise<void> };
 type CaptureEnvironment = {
@@ -19,13 +25,17 @@ export function watchCaptureLifecycle(controller: LifecycleController, env: Capt
   let requesting = false;
   let epoch = 0;
   let phase = controller.snapshot().phase;
+  let reportedUnavailable = false;
   const wantsWakeLock = () =>
     !disposed &&
     env.page.visibilityState === "visible" &&
     ["recording", "recovering"].includes(controller.snapshot().phase);
+  const observe: NonNullable<LifecycleController["observe"]> = (event) =>
+    controller.observe?.(event);
   const released = () => {
     lock?.removeEventListener("release", released);
     lock = null;
+    if (wantsWakeLock()) observe({ type: "wake_lock", state: "released" });
   };
   const releaseLock = (previous: ScreenWakeLock) =>
     Promise.resolve()
@@ -46,7 +56,12 @@ export function watchCaptureLifecycle(controller: LifecycleController, env: Capt
       return;
     }
     if (lock?.released) released();
-    if (lock || requesting || !env.requestScreenWakeLock) return;
+    if (lock || requesting) return;
+    if (!env.requestScreenWakeLock) {
+      if (!reportedUnavailable) observe({ type: "wake_lock", state: "unavailable" });
+      reportedUnavailable = true;
+      return;
+    }
     requesting = true;
     const requestedEpoch = epoch;
     const request = env.requestScreenWakeLock;
@@ -61,9 +76,11 @@ export function watchCaptureLifecycle(controller: LifecycleController, env: Capt
         }
         lock = next;
         next.addEventListener("release", released);
+        observe({ type: "wake_lock", state: "acquired" });
       })
       .catch(() => {
         requesting = false;
+        observe({ type: "wake_lock", state: "failed" });
       });
   };
   const checkHealth = () => {
@@ -86,7 +103,22 @@ export function watchCaptureLifecycle(controller: LifecycleController, env: Capt
     phase = next;
     syncWakeLock();
   });
-  env.page.addEventListener("visibilitychange", checkHealth);
+  const visibility = () => {
+    if (controller.observe)
+      observe({ type: "visibility", visible: env.page.visibilityState === "visible" });
+    else controller.checkHealth();
+    syncWakeLock();
+  };
+  // Page Lifecycle: a frozen page runs no code; on resume the controller measures what it missed.
+  const frozen = () => observe({ type: "lifecycle", state: "frozen" });
+  const resumed = () => {
+    if (controller.observe) observe({ type: "lifecycle", state: "resumed" });
+    else controller.checkHealth();
+    syncWakeLock();
+  };
+  env.page.addEventListener("visibilitychange", visibility);
+  env.page.addEventListener("freeze", frozen);
+  env.page.addEventListener("resume", resumed);
   for (const event of ["pageshow", "online", "focus"]) {
     env.window.addEventListener(event, checkHealth);
   }
@@ -95,7 +127,9 @@ export function watchCaptureLifecycle(controller: LifecycleController, env: Capt
   return () => {
     disposed = true;
     unsubscribe();
-    env.page.removeEventListener("visibilitychange", checkHealth);
+    env.page.removeEventListener("visibilitychange", visibility);
+    env.page.removeEventListener("freeze", frozen);
+    env.page.removeEventListener("resume", resumed);
     for (const event of ["pageshow", "online", "focus"]) {
       env.window.removeEventListener(event, checkHealth);
     }
