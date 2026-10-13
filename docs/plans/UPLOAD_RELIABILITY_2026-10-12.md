@@ -283,3 +283,92 @@ GitHub Actions از حدود 22:16 UTC در کل مخزن job را شروع نم
 1. متن پنج پیام بخش ۹ (D65: بازبینی یک‌جا در پایان).
 2. آیا آپلود صوت فایل انتخاب‌شده می‌تواند پیش از بسته شدن گروه فایل‌ها، یعنی هم‌زمان با تأیید عکس‌ها و PDFها، شروع شود؟ این کار مجوز پردازش (Run و رزرو) را به لحظهٔ ثبت فایل صوتی جلو می‌برد.
 3. ثبت زمان پایان تحلیل صدا و فاصله‌های پیش‌زمینهٔ کلاینت برای NFR-07 (بخش ۷)، هماهنگ با کار صدا و ضبط.
+
+## ممیزی دوم (2026-10-13)
+
+به درخواست مالک، دور دوم با این فرض انجام شد که مشکل ۱ («آپلود صوت طول می‌کشد و بیشتر شکست می‌خورد») حل نشده است، مگر اینکه هر شاهد آن با آزمون یا دستوری اثبات شود. مبنا: `feat/upload-reliability` پس از ادغام نسخهٔ منتشرشده (`main @ 40dda8f`، D60 تا D66). همهٔ آزمون‌ها با دادهٔ مصنوعی، Supabase محلی، فروشگاه آزمون (`MemoryObjectStore`، FR-PLT-014 قاعدهٔ ۲)، provider مصنوعی و decoder مصنوعی اجرا شده‌اند؛ routeها، جدول‌ها، jobها و سرویس یادگیری خودکار واقعی‌اند.
+
+### شواهد مشکل ۱
+
+| شاهد در سند ریشه‌یابی | وضعیت | اثبات |
+|---|---|---|
+| ۱۷ پاسخ HTTP 400 روی `POST /api/sources/{id}/audio` | حل شد | `audio-upload-audit.int.test.ts` › «class B with class A's paid audio (hold audio=0) uploads through ManualAudioManager…»: کلاس دوم با رزرو صوت صفر از خود route شروع، قطعه، تکمیل، تأیید، رونویسی و انتشار را می‌گذراند و به `ready` می‌رسد. هر 400 باقی‌مانده در همان فایل برای درخواست واقعاً نامعتبر است (فهرست پایین) |
+| Runهای `c8f92d7e` و `fbc79e72` ۲۴ ساعت گیر کردند | حل شد | `audio-retry-audit.int.test.ts` › شکل (الف): همان وضعیت production (`needs_input` با `audio_upload_rejected`، کلاس خودکار `blocked`، بدون ردیف آپلود) بدون هیچ ویرایش دیتابیس به‌صورت «شروع نشده» خوانده می‌شود، «Retry failed attempt» Run تازه با `audio: 0` می‌سازد، دستگاه آپلود می‌کند و کلاس `ready` می‌شود |
+| رزرو `audio = 0` رد می‌شد | حل شد | همان دو آزمون بالا و `packages/core/src/proc/audio-charged-material.int.test.ts` (پیش از اصلاح در `audio.ts:89` شکست می‌خورد) |
+| دکمهٔ بی‌نتیجهٔ «Retry saved audio upload» | حل شد | دکمه در نسخهٔ منتشرشده از صف حذف شده است (کار ناوبری). resolver صفحهٔ جلسه فقط وقتی `uploadRetryCanHelp` درست باشد `retry_upload` می‌دهد؛ `audio-dead-ends.test.ts` برابری آن با `audioUploadRetryable` را برای هر `AudioUploadReason` می‌سنجد؛ `upload-problems.test.ts` و `manual-audio-manager.test.ts` دسته‌بندی و ذخیرهٔ دلیل را |
+| پیام «could not be verified» پس از انقضا | حل شد | `audio-retry-audit.int.test.ts` و `audio-dead-ends.test.ts`: آپلود شروع‌نشده و نیمه‌تمام متن خودشان را دارند، و رد واقعی verifier دیگر Retry تکرارشونده ندارد (به «Review material» می‌رود). `ProcessingView` در هیچ route سوار نیست |
+| حدود ۳٬۱۰۰ درخواست polling در ۲ ساعت | حل شد | `automatic-learning-loop.test.ts` › «reads seven idle classes with saved audio once in two hours»: ۷ خواندن در ۲ ساعت با تایمر جعلی روی خود حلقهٔ provider |
+| انتقال پشت‌سرهم منبع‌های صوتی | حل شد | `automatic-learning.test.ts` (دو فایل هم‌زمان، سقف قطعه‌ها) و اندازه‌گیری `audio-upload-speed.int.test.ts` (جدول پایین) |
+| ۲۸ دقیقه از Stop تا جزوه، با ۱۱ دقیقه اپ غیرفعال | در این کار حل نشد | ۱۱ دقیقهٔ غیرفعال بودن اپ، محدودیت وب است (D47) و با آپلود حین ضبط (D60، در نسخهٔ منتشرشده) کوتاه می‌شود، نه با این شاخه. آنچه این شاخه اثبات می‌کند: شروع آپلود حداکثر ۶ ثانیه پس از ساخت Run (`automatic-learning-loop.test.ts`) و در اندازه‌گیری ۳۲۵ تا ۵۳۸ میلی‌ثانیه؛ زمان مراحل بعدی با `ops-cli timings` سنجیده می‌شود |
+
+### بندهای ۱ تا ۸
+
+**۱. D59 سرتاسری از route واقعی.** `apps/web/src/server/audio-upload-audit.int.test.ts` با `audio-audit-support.ts`: `fetch` به `defineRoute` وصل است، پس احراز هویت، same-origin، تجزیهٔ بدنه و پاسخ خطا همان production هستند. مسیر: `ManualAudioManager.enqueue` → `GET /api/runs/{id}?includeSnapshot=1` → `start` → `confirm_part` → `complete` → job `src.verify_audio` (از ردیف واقعی `plt.job`) → `activateProcessingRun` → job پردازش با `finalizeAutomaticRun` → `ready`. دقیقاً یک ردیف `src.audio_upload` برای هر منبع؛ مصرف صوت پس از کلاس دوم بدون تغییر (۴ ثانیه). حالت‌های منفی: رزرو کاربر دیگر (400 از route و 400 از تابع هسته)، رزرو بسته (Run لغوشده: 400 و 400)، Run بیرون از `awaiting_upload` (400)، منبع بیرون از snapshot (400)، منبع و Run کاربر دیگر (404).
+
+**۲. شاخه‌های رد در مسیر start، part و complete.** هر شاخه در همان فایل آزمون دارد:
+
+| شاخه | پاسخ | رسیدن کلاینت سالم به آن |
+|---|---|---|
+| بدنهٔ نامعتبر، Run ناشناخته | 400، 404 | خیر |
+| `validateAudioUploadRun` (وضعیت Run، رزرو، منبع) | 400 `audio: confirmed_processing_required` | بله، فقط وقتی Run تمام یا منقضی شده است؛ کلاینت آن را `upload_closed` می‌نامد و Retry نمی‌دهد |
+| `storage: unavailable`، `verifier_unavailable` | 400 | فقط با پیکربندی سرور بدون فروشگاه فایل (پرسش ۲) |
+| `parts: invalid_manifest` (۴ گونه) | 400 | فقط اگر اپراتور `partBytes` قرارداد را بین ساخت منبع و آپلود عوض کند (پرسش ۱) |
+| manifest متفاوت برای همان رزرو | 422 `idempotency_mismatch` | فقط اگر فایل دستگاه عوض شده باشد؛ کلاینت `integrity_mismatch` بدون Retry |
+| نسخهٔ اصلی حذف‌شده | 409 | بله، پس از حذف منبع؛ `upload_closed` |
+| لینک قطعه: آپلود تأییدشده یا منقضی | 409 | بله؛ برای تأییدشده کلاینت اول manifest را می‌خواند و رد می‌شود، برای منقضی `upload_closed` |
+| شمارهٔ قطعه خارج از محدوده | 404 | خیر |
+| `confirm_part` پیش از PUT | 200 `{confirmed:false}` | بله، رفتار عادی |
+| `part_integrity_mismatch` | 400 | بله، خرابی در انتقال؛ کلاینت با لینک تازه دوباره می‌فرستد (آزمون همان را انجام می‌دهد) |
+| تکمیل نسخهٔ staged (D60) از این route | 400 | خیر |
+| تکمیل دوباره | 202 با `jobId: null` | بله؛ job دوم ساخته نمی‌شود |
+| آپلود کاربر دیگر | 404 | خیر |
+
+**۳. Retry برای دو شکل گیرکرده.** `audio-retry-audit.int.test.ts`: (الف) وضعیت به‌جامانده از کد قدیمی؛ (ب) Run با آپلود شروع‌نشده و سپس نیمه‌تمام که sweep با کد تازه می‌بندد و reconciler روی کلاس ثبت می‌کند. در هر دو، `POST /api/classes/{id}/learning` با `action: "retry"` از route واقعی Run تازه با `audio: 0` می‌سازد، آپلود از مسیر کلاینت انجام می‌شود و کلاس `ready` می‌شود؛ مصرف صوت ثابت می‌ماند. اصلاح لازم: در `view()` سرور، `audio_upload_rejected`ِ به‌جامانده که هیچ رسید آپلودی ندارد، فقط هنگام خواندن (بدون نوشتن) به‌صورت `audio_upload_not_started` ارائه می‌شود. شروع آپلود در پنجرهٔ ۶ ثانیه: `automatic-learning-loop.test.ts` › «starts the device upload within the 6 s cap of the run being created».
+
+**۴. بن‌بست‌ها.** `audio-dead-ends.test.ts`: برای هر `AudioUploadReason` (و بدون دلیل) صف و resolver در ارائهٔ Retry هم‌نظرند و اقدام اصلی `retry_upload` یا `review_material` است؛ برای کدهای `audio_upload_rejected`، `audio_upload_not_started`، `audio_upload_incomplete`، `new_confirmation_required`، `upload_needs_attention` و `upload_batch_cancelled` متن (مصوب یا pending)، نوع بازیابی و اقدام اصلی صفحهٔ جلسه سنجیده می‌شوند. یافتهٔ این دور: `audio_upload_rejected` (رد واقعی verifier) «Retry failed attempt» داشت که با همان فایل دوباره در همان نقطه متوقف می‌شد؛ حالا بازیابی از نوع «material» است، بدون Retry، با متن تازهٔ `uploadReliability.automatic.rejected` (در انتظار تأیید).
+
+**۵. سرعت.** `audio-upload-speed.int.test.ts` روی routeها و جدول‌های واقعی؛ PUT به فروشگاه آزمون در همان فرایند می‌رسد، پس عددها hashing، رفت‌وبرگشت route، ثبت قطعه‌ها و خط لولهٔ کلاینت را می‌سنجند، نه شبکه را. با `RECALINO_MEASURE=1` (شکل ۱۲۸ دقیقه: ۶ قطعهٔ ۸ مگابایتی):
+
+| اندازه‌گیری | عدد |
+|---|---|
+| ساخت Run تا اولین ردیف آپلود (`src.audio_upload.created_at − run.created_at`) | ۳۲۵ میلی‌ثانیه (۴۸ مگابایت)، ۵۳۸ میلی‌ثانیه (۱۶ مگابایت)؛ سقف طراحی ۶ ثانیه |
+| ۶ فایل × ۸ مگابایت، دو فایل هم‌زمان (کد فعلی) | ۱٬۱۴۶ میلی‌ثانیه |
+| همان ۶ فایل، یکی پس از دیگری (رفتار پیش از 2026-10-12) | ۱٬۴۹۳ میلی‌ثانیه |
+| ادامه پس از قطع وسط قطعه (یک فایل ۶ قطعه‌ای) | همان `uploadId`، فقط قطعهٔ قطع‌شده دوباره فرستاده می‌شود، ۶ PUT در کل، بدون ردیف تکراری، ۹۷۳ میلی‌ثانیه |
+
+با PUT در حافظه، سود هم‌زمانی کوچک است؛ روی شبکهٔ واقعی تفاوت بزرگ‌تر است، چون زمان انتقال غالب می‌شود. اوج قطعه‌های هم‌زمان در این اندازه‌گیری ۱ بود (هر PUT در حافظه بی‌درنگ تمام می‌شود)؛ سقف ۴ در `automatic-learning.test.ts` با gate اثبات می‌شود.
+
+**۶. polling.** حلقهٔ provider به [`automatic-learning-loop.ts`](../../apps/web/src/ui/workspace/automatic-learning-loop.ts) منتقل شد (بدون تغییر رفتار؛ provider فقط آن را سیم‌کشی می‌کند) تا با تایمر جعلی سنجیده شود. `automatic-learning-loop.test.ts`: ۷ کلاس بی‌کار در ۲ ساعت → ۷ خواندن؛ صفحهٔ پنهان → هیچ خواندنی جز کار دستگاه، و خواندن فوری پس از نمایش؛ `online`، `learning-changed`، تغییر phase ضبط و باز کردن کلاس → خواندن فوری؛ کلاس در `processing` → سقف ۱۵ ثانیه؛ خطای شبکه در آپلود → تلاش دوباره در بازدید بعدی، و ردّی که سرور تکرار می‌کند → فقط یک بار.
+
+**۷. ثابت‌ها.** مالکیت: در `audio-upload-audit.int.test.ts` کاربر دیگر برای start، complete و manifest پاسخ 404 می‌گیرد (و `sourceCrossAccount("sourceAudio")` موجود). idempotency: تکرار کامل انتقال با همان کلاینت یک ردیف آپلود، یک قطعه و یک job می‌سازد. D29: پس از رونویسی `transcribed_at` ثبت و `expires_at` حداکثر ۲۴ ساعت بعد است (حذف واقعی در `audio-expiry.int.test.ts:161`)؛ نسخهٔ ردشده بلافاصله منقضی می‌شود. لاگ: این شاخه هیچ خط لاگی اضافه نکرده است (`git diff 43f12a9..HEAD | grep` برای `console.`/`log(`: خالی). `expireAwaitingUploads` هرگز کسر نمی‌کند (مصرف ثابت، رزرو صفر).
+
+**۸. تأیید کامل محلی روی commit نهایی.**
+
+روی commit نهایی این دور (پس از ادغام `main @ 40dda8f`)، با `env -u` برای متغیرهای ابری Supabase:
+
+| دستور | خط خلاصه |
+|---|---|
+| `pnpm verify` → `pnpm lint` | `Checked 1199 files in 2s. No fixes applied.` |
+| `pnpm verify` → `pnpm typecheck` | `packages/core typecheck: Done`، `packages/ops-cli typecheck: Done`، `apps/web typecheck: Done` |
+| `pnpm verify` → `pnpm check:boundaries` | `✔ no dependency violations found (1278 modules, 5946 dependencies cruised)` |
+| `pnpm verify` → `pnpm test` (unit و integration) | `Test Files  356 passed \| 1 skipped (357)`؛ `Tests  4151 passed \| 1 skipped (4152)` |
+| `pnpm build` (با `RECALINO_DEV_UI=1`) | موفق (exit 0) |
+| `CI=1 pnpm test:e2e` (اجرای کامل) | `272 passed (9.3m)`، ۲ شکست در `session-navigation.spec.ts` و ۲ ناپایدار که در تلاش دوم گذشتند |
+| اجرای دوبارهٔ `session-navigation`، `session-notes-reader`، `study` و `upload-reliability` پس از اصلاح | `34 passed (1.7m)`، بدون شکست و بدون مورد ناپایدار (روی همان build تولیدی) |
+
+دو شکست e2e از fixture صفحهٔ مرجع `/dev/ui/session` بود که حالت «audio-not-received» را هنوز با کد `audio_upload_rejected` می‌ساخت؛ با قاعدهٔ تازه این حالت `audio_upload_not_started` است. fixture اصلاح شد (`SessionReference.tsx`)؛ انتظارهای آزمون تغییر نکردند. دو مورد ناپایدار (`session-notes-reader` در ۳۹۰ پیکسل و `study` tablet) مهلت ۵ ثانیهٔ CI زیر بار کامل بودند و ربطی به این شاخه ندارند.
+
+### اصلاح‌های این دور
+
+- `apps/web/src/server/automatic-learning.ts`: ارائهٔ `audio_upload_not_started` برای `audio_upload_rejected`ِ به‌جامانده بدون رسید آپلود؛ پیام `audio_upload_rejected`.
+- `apps/web/src/ui/workspace/automatic-learning-recovery.ts`: `audio_upload_rejected` از نوع material.
+- `apps/web/src/ui/workspace/session-state.ts` (مالک: ناوبری؛ ویرایش کوچک): شاخهٔ «did not reach Recalino» به کدهای `audio_upload_not_started` و `audio_upload_incomplete` منتقل شد؛ آزمونش به همین شکل.
+- `apps/web/src/ui/workspace/automatic-learning-loop.ts` (تازه) و `AutomaticLearningProvider.tsx`: جداسازی حلقه برای آزمون.
+- `apps/web/src/ui/pending-copy.ts` و `docs/design/UI_COPY_PENDING.md`: متن `uploadReliability.automatic.rejected`.
+- پرچم یا تصمیم تازه‌ای نیست.
+
+### پرسش‌های تازه برای مالک
+
+1. اگر اپراتور `partBytes` قرارداد ورودی را عوض کند، منبع‌های ساخته‌شده با قرارداد قبلی در شروع آپلود `invalid_manifest` می‌گیرند، چون کلاینت قرارداد جاری را می‌خواند و سرور قرارداد ثبت‌شدهٔ منبع را. امروز رخ نمی‌دهد (یک نسخه قرارداد). پیشنهاد: سرور قطعه‌بندی با قرارداد جاری را هم بپذیرد، یا کلاینت `partBytes` قرارداد ثبت‌شدهٔ منبع را بخواند.
+2. `storage: unavailable` و `verifier_unavailable` با 400 برمی‌گردند، در حالی که خرابی پیکربندی سرورند. کلاینت آن‌ها را خطای ورودی می‌خواند. پیشنهاد: کد پاسخ از جنس سرویس (`internal`/503) تا تلاش خودکار و پیام درست انجام شود.
+3. متن `uploadReliability.automatic.rejected` (در انتظار تأیید، D65).

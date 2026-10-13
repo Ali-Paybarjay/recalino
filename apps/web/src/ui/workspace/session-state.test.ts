@@ -200,7 +200,19 @@ describe("sessionNextStep", () => {
       expect(uploadRetryCanHelp({ ...transfer, reason })).toBe(false);
   });
 
-  it("explains an audio upload that never arrived and keeps material review beside the retry", () => {
+  it.each(["audio_upload_not_started", "audio_upload_incomplete"])(
+    "explains an audio upload that never arrived (%s) and keeps material review beside the retry",
+    (lastError) => {
+      const step = next({
+        status: status({ state: "blocked", lastError, run: run("needs_input", lastError) }),
+      });
+      expect(step.detail).toMatch(/did not reach Recalino/);
+      expect(step.primary).toMatchObject({ id: "retry_processing", label: "Retry failed attempt" });
+      expect(ids(step)).toContain("review_material");
+    },
+  );
+
+  it("sends a verifier rejection to material review instead of a retry that stops at the same point", () => {
     const step = next({
       status: status({
         state: "blocked",
@@ -208,9 +220,8 @@ describe("sessionNextStep", () => {
         run: run("needs_input", "audio_upload_rejected"),
       }),
     });
-    expect(step.detail).toMatch(/did not reach Recalino/);
-    expect(step.primary).toMatchObject({ id: "retry_processing", label: "Retry failed attempt" });
-    expect(ids(step)).toContain("review_material");
+    expect(step.primary).toMatchObject({ id: "review_material" });
+    expect(ids(step)).not.toContain("retry_processing");
   });
 
   describe("allowance stops (FR-QUOTA-007)", () => {

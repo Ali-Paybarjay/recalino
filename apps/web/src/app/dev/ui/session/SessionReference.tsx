@@ -1,5 +1,6 @@
 "use client";
 
+import { pendingCopy } from "../../../../ui/pending-copy";
 import { RecordingProvider } from "../../../../ui/recording/RecordingProvider";
 import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { AutomaticLearningProvider } from "../../../../ui/workspace/AutomaticLearningProvider";
@@ -71,11 +72,13 @@ export const sessionStates: {
   },
   {
     name: "audio-not-received",
+    // The upload lapsed before the audio reached the server (2026-10-13 audit: a verifier
+    // rejection is a material problem with its own text and no retry).
     status: status({
       state: "blocked",
-      lastError: "audio_upload_rejected",
-      run: run("needs_input", "audio_upload_rejected"),
-      message: "The audio could not be verified.",
+      lastError: "audio_upload_not_started",
+      run: run("needs_input", "audio_upload_not_started"),
+      message: pendingCopy.uploadReliability.automatic.notStarted,
     }),
   },
 ];
