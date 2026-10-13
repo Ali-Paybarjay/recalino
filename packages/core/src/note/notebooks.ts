@@ -112,6 +112,29 @@ export async function listPublishedNotebooks(
   }
   return published;
 }
+/** PRD-CORE-05: a readiness check needs live publication references, not the lesson model. */
+export async function hasPublishedNotebook(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+): Promise<boolean> {
+  await getSession(db, ctx, sessionId);
+  const row = await db
+    .selectFrom("note.notebook as notebook")
+    .innerJoin("note.revision as revision", "revision.id", "notebook.current_revision_id")
+    .select("revision.knowledge_version_id")
+    .where("notebook.session_id", "=", sessionId)
+    .where("notebook.user_id", "=", ctx.userId)
+    .where("revision.user_id", "=", ctx.userId)
+    .whereRef("revision.notebook_id", "=", "notebook.id")
+    .executeTakeFirst();
+  if (!row) return false;
+  const available = await listAvailableKnowledgeReferences(db, ctx, [sessionId]);
+  return available.some(
+    (reference) => reference.id === row.knowledge_version_id && reference.sessionId === sessionId,
+  );
+}
+
 export async function getNotebook(
   db: Database | Tx,
   ctx: LearnerContext,

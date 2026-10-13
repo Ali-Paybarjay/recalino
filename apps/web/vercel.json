@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [{ "path": "/api/jobs/run", "schedule": "* * * * *" }]
+  "crons": [{ "path": "/api/jobs/run", "schedule": "* * * * *" }],
+  "git": {
+    "deploymentEnabled": {
+      "codex/reduce-egress": false
+    }
+  }
 }
