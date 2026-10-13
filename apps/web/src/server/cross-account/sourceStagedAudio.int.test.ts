@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { renewCaptureLease } from "@recalino/core/org";
 import { sha256Hex } from "@recalino/core/plt";
 import { beginStagedAudioUpload, createRecordedSource } from "@recalino/core/src";
 import { expect, it } from "vitest";
@@ -37,7 +38,28 @@ it("refuses staging, reading or completing another learner's recorded part (D60)
     randomUUID(),
   );
   expect(refused.status).toBe(404);
+  // Kill switch: the server refuses staging whatever the client sends.
+  process.env.RECALINO_CAPTURE_EARLY_UPLOAD = "off";
+  try {
+    const off = await orgCall(
+      db,
+      ROUTES.sourceStagedAudio,
+      handler,
+      owner.owner,
+      path,
+      "POST",
+      { action: "start", parts },
+      randomUUID(),
+    );
+    expect(off.status).toBe(400);
+    expect(await off.json()).toMatchObject({
+      error: { details: { fields: { audio: ["early_upload_disabled"] } } },
+    });
+  } finally {
+    delete process.env.RECALINO_CAPTURE_EARLY_UPLOAD;
+  }
   // Local tests have no object store; the core call stages the owner's copy directly.
+  await renewCaptureLease(db, owner.actor, owner.session.id);
   const { uploadId } = await beginStagedAudioUpload(db, owner.actor, part.assetId, { parts });
   for (const [method, body] of [
     ["GET", undefined],

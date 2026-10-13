@@ -82,6 +82,8 @@ async function capturePart(operationKey = `recorded-source:${randomUUID()}`) {
   });
   const store = new MemoryObjectStore();
   const parts = [{ index: 0, sizeBytes: bytes.length, sha256: sha256Hex(bytes) }];
+  // The capturing page holds the class lease while it stages parts (S1).
+  await renewCaptureLease(db, x.ctx, x.session.id);
   async function stage() {
     const staged = await beginStagedAudioUpload(db, x.ctx, source.assetId, { parts });
     const link = await temporaryAudioPartLink(
@@ -166,6 +168,27 @@ it("resumes the same staged upload and refuses a different manifest", async () =
   ).rejects.toMatchObject({ code: "idempotency_mismatch" });
 });
 
+it("S1: refuses to stage without an open capture lease, whatever the key prefix says", async () => {
+  const forged = await capturePart(`recorded-source:${randomUUID()}`);
+  await releaseCaptureLease(db, forged.ctx, forged.session.id);
+  await expect(
+    beginStagedAudioUpload(db, forged.ctx, forged.source.assetId, { parts: forged.parts }),
+  ).rejects.toMatchObject({
+    code: "validation_failed",
+    details: { fields: { audio: ["capture_required"] } },
+  });
+  // A lapsed lease (page closed more than 15 minutes ago) is the same as none.
+  await renewCaptureLease(db, forged.ctx, forged.session.id, new Date(Date.now() - 16 * 60000));
+  await expect(
+    beginStagedAudioUpload(db, forged.ctx, forged.source.assetId, { parts: forged.parts }),
+  ).rejects.toMatchObject({ code: "validation_failed" });
+  // The genuine capture part, with its page renewing the lease, is accepted.
+  await renewCaptureLease(db, forged.ctx, forged.session.id);
+  expect(
+    await beginStagedAudioUpload(db, forged.ctx, forged.source.assetId, { parts: forged.parts }),
+  ).toMatchObject({ state: "pending" });
+});
+
 it("stages only the learner's own in-app recording parts", async () => {
   const notRecorded = await capturePart(randomUUID());
   await expect(
@@ -244,6 +267,7 @@ it("deletes a staged copy that no run used when its upload window ends (D29)", a
 
 it("holds automatic learning with a capture lease that Stop releases and that lapses", async () => {
   const x = await capturePart();
+  await releaseCaptureLease(db, x.ctx, x.session.id);
   const now = new Date();
   expect(await captureInProgress(db, x.ctx, x.session.id, now)).toBe(false);
   await renewCaptureLease(db, x.ctx, x.session.id, now);

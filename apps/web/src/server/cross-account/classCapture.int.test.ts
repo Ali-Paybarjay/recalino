@@ -35,6 +35,18 @@ it("opens and closes a capture lease only on the learner's own class (D60)", asy
   expect(await captureInProgress(db, owner.actor, owner.session.id)).toBe(true);
   expect((await call(attacker.owner, "close")).status).toBe(404);
   expect(await captureInProgress(db, owner.actor, owner.session.id)).toBe(true);
+  // Kill switch: no lease is opened and the app is told both behaviours are off.
+  process.env.RECALINO_CAPTURE_EARLY_UPLOAD = "off";
+  try {
+    const off = await call(owner.owner, "open");
+    expect(await off.json()).toEqual({
+      earlyUpload: false,
+      earlyTranscription: false,
+      openUntil: null,
+    });
+  } finally {
+    delete process.env.RECALINO_CAPTURE_EARLY_UPLOAD;
+  }
   expect((await call(owner.owner, "close")).status).toBe(200);
   // Stop wakes automatic learning instead of waiting for the next reconcile.
   expect(jobs).toHaveBeenCalledWith(expect.arrayContaining(["proc.automatic_learning"]), 60, 120);

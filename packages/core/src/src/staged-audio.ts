@@ -2,6 +2,7 @@ import { sql } from "kysely";
 import { z } from "zod";
 import { lockAccount } from "../acc";
 import type { Database, Tx } from "../db";
+import { captureInProgress } from "../org";
 import type { JobDefinition } from "../plt";
 import { createObject, errors, type LearnerContext, type ObjectStore } from "../plt";
 import {
@@ -56,6 +57,10 @@ export async function beginStagedAudioUpload(
       .where("active", "=", true)
       .executeTakeFirst();
     if (!linked) throw errors.validationFailed({ audio: ["class_required"] });
+    // S1: the client-chosen key prefix is no proof; only a class being recorded right now,
+    // whose lease the capturing page renews, may stage audio without a hold (D60).
+    if (!(await captureInProgress(tx, ctx, linked.session_id, now)))
+      throw errors.validationFailed({ audio: ["capture_required"] });
     // A verified copy, staged or bound to a run, is already on the server: nothing to send.
     const verified = await tx
       .selectFrom("src.audio_upload")

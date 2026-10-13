@@ -4,6 +4,7 @@ import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
 import { OpenRouterProvider, type ProviderSettings } from "../aip";
 import { createDatabase } from "../db";
+import { renewCaptureLease } from "../org";
 import {
   DEFAULT_PLT_SETTINGS,
   type JobContext,
@@ -102,6 +103,7 @@ async function stagedPartFixture(audio = 60) {
     operationKey: `recorded-source:${randomUUID()}`,
   });
   const parts = [{ index: 0, sizeBytes: bytes.length, sha256: sha256Hex(bytes) }];
+  await renewCaptureLease(db, x.ctx, x.session.id);
   const staged = await beginStagedAudioUpload(db, x.ctx, source.assetId, { parts });
   const link = await temporaryAudioPartLink(
     db,
