@@ -354,7 +354,7 @@ GitHub Actions از حدود 22:16 UTC در کل مخزن job را شروع نم
 | `pnpm verify` → `pnpm test` (unit و integration) | `Test Files  356 passed \| 1 skipped (357)`؛ `Tests  4151 passed \| 1 skipped (4152)` |
 | `pnpm build` (با `RECALINO_DEV_UI=1`) | موفق (exit 0) |
 | `CI=1 pnpm test:e2e` (اجرای کامل) | `272 passed (9.3m)`، ۲ شکست در `session-navigation.spec.ts` و ۲ ناپایدار که در تلاش دوم گذشتند |
-| اجرای دوبارهٔ `session-navigation`، `session-notes-reader`، `study` و `upload-reliability` پس از اصلاح | <!-- AUDIT_E2E_RERUN --> |
+| اجرای دوبارهٔ `session-navigation`، `session-notes-reader`، `study` و `upload-reliability` پس از اصلاح | `34 passed (1.7m)`، بدون شکست و بدون مورد ناپایدار (روی همان build تولیدی) |
 
 دو شکست e2e از fixture صفحهٔ مرجع `/dev/ui/session` بود که حالت «audio-not-received» را هنوز با کد `audio_upload_rejected` می‌ساخت؛ با قاعدهٔ تازه این حالت `audio_upload_not_started` است. fixture اصلاح شد (`SessionReference.tsx`)؛ انتظارهای آزمون تغییر نکردند. دو مورد ناپایدار (`session-notes-reader` در ۳۹۰ پیکسل و `study` tablet) مهلت ۵ ثانیهٔ CI زیر بار کامل بودند و ربطی به این شاخه ندارند.
 
