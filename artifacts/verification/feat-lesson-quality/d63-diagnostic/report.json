@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-13T22:32:28.274Z",
+  "capUsd": 0.5,
+  "totalSpentUsd": 0.081666,
+  "calls": 2,
+  "stopped": null,
+  "parts": [
+    {
+      "part": 1,
+      "sources": [
+        {
+          "kind": "audio",
+          "blocks": 128
+        },
+        {
+          "kind": "image",
+          "blocks": 4
+        },
+        {
+          "kind": "image",
+          "blocks": 4
+        }
+      ],
+      "budget": {
+        "production": 15,
+        "recognition": 5,
+        "compact": false,
+        "content": {
+          "speechMinutes": 59.7,
+          "pages": 0,
+          "photos": 2,
+          "textPages": 0
+        }
+      },
+      "worstCaseUsd": 0.31599,
+      "costUsd": 0.039811,
+      "outputTokens": 6834,
+      "latencyMs": 46053,
+      "outcome": "provider_schema_invalid:assembly:study_gap_overhidden"
+    },
+    {
+      "part": 0,
+      "sources": [
+        {
+          "kind": "audio",
+          "blocks": 128
+        }
+      ],
+      "budget": {
+        "production": 11,
+        "recognition": 4,
+        "compact": false,
+        "content": {
+          "speechMinutes": 59.7,
+          "pages": 0,
+          "photos": 0,
+          "textPages": 0
+        }
+      },
+      "worstCaseUsd": 0.312627,
+      "costUsd": 0.041855,
+      "outputTokens": 7546,
+      "latencyMs": 50905,
+      "outcome": "valid"
+    }
+  ],
+  "merged": null
+}

@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-13T22:36:44.305Z",
+  "capUsd": 0.5,
+  "totalSpentUsd": 0.397656,
+  "calls": 1,
+  "stopped": null,
+  "parts": [
+    {
+      "part": 1,
+      "sources": [
+        {
+          "kind": "audio",
+          "blocks": 128
+        },
+        {
+          "kind": "image",
+          "blocks": 4
+        },
+        {
+          "kind": "image",
+          "blocks": 4
+        }
+      ],
+      "budget": {
+        "production": 15,
+        "recognition": 5,
+        "compact": false,
+        "content": {
+          "speechMinutes": 59.7,
+          "pages": 0,
+          "photos": 2,
+          "textPages": 0
+        }
+      },
+      "worstCaseUsd": 0.31599,
+      "costUsd": 0.31599,
+      "outputTokens": null,
+      "latencyMs": 228,
+      "outcome": "provider_http_403"
+    }
+  ],
+  "merged": null
+}
