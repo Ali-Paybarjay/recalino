@@ -139,16 +139,16 @@
 | `CI=1 RECALINO_DEV_UI=1 pnpm test:e2e` با `photo-readability.spec.ts`، `recording.spec.ts`، `recording-capture.spec.ts` و `recording-decode.spec.ts` | `4 passed (30.8s)`، بدون flaky. decode: `{"declaredMs":18180,"decodedMs":18180}` |
 | `photo-readability-screens.spec.ts` (`RECALINO_SCREENSHOTS=1`) | `1 passed (9.1s)`. تصویرها روی همین وضعیت دوباره ساخته شدند |
 
-**پس از تأیید متن‌ها و کنترل حذف (همان روز):**
+**پس از تأیید متن‌ها و کنترل حذف، و merge دوم با `main` @ `fe73434` (PR #52، بدون تعارض؛ migration تازهٔ `20261013120000_nfr07_stage_times.sql` فقط روی DB محلی اعمال شد):**
 
 | دستور | خط خلاصه |
 |---|---|
-| `pnpm lint` | `Checked 1215 files in 1820ms. No fixes applied.` |
-| `pnpm typecheck` | `packages/core typecheck: Done` · `apps/web typecheck: Done` · `packages/ops-cli typecheck: Done` |
-| `pnpm check:boundaries` | `✔ no dependency violations found (1294 modules, 6001 dependencies cruised)` |
-| `pnpm test:unit` | `Test Files 209 passed (209)` · `Tests 3473 passed (3473)`. چهار آزمون تازه اضافه شد و چهار آزمونِ ثبت متن کم شد، چون متن‌های در انتظار از هشت به چهار رسیدند |
-| `pnpm build` / `check:client-bundle` | `✓ Compiled successfully in 18.2s` · `No secrets in the client-visible build output.` |
-| `CI=1 RECALINO_DEV_UI=1 RECALINO_SCREENSHOTS=1 pnpm test:e2e` با `photo-readability`، `photo-readability-screens`، `recording`، `recording-capture` و `recording-decode` | `5 passed (31.9s)`، بدون flaky. decode: `{"declaredMs":18240,"decodedMs":18240}`. Worker با کندسازی ۴×: 97 تا 194 ms |
+| `pnpm lint` | `Checked 1218 files in 1803ms. No fixes applied.` |
+| `pnpm typecheck` | `packages/core typecheck: Done` · `packages/ops-cli typecheck: Done` · `apps/web typecheck: Done` |
+| `pnpm check:boundaries` | `✔ no dependency violations found (1297 modules, 6039 dependencies cruised)` |
+| `pnpm test:unit` | `Test Files 209 passed (209)` · `Tests 3485 passed (3485)` |
+| `pnpm build` / `check:client-bundle` | `✓ Compiled successfully in 18.8s` · `No secrets in the client-visible build output.` |
+| `CI=1 RECALINO_DEV_UI=1 RECALINO_SCREENSHOTS=1 pnpm test:e2e` با `photo-readability`، `photo-readability-screens`، `recording`، `recording-capture` و `recording-decode` | `5 passed (31.5s)`، بدون flaky. decode: `{"declaredMs":18120,"decodedMs":18120}`. Worker با کندسازی ۴×: 93 تا 146 ms |
 
 ## ۹. محدودیت‌ها
 
