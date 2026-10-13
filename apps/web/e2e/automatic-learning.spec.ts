@@ -640,6 +640,22 @@ test("saved audio shows preparation and measured XHR bytes before verification a
     async ({ owner, session, source, content }) => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open("recalino-recordings-v1", 3);
+        // The page may not have opened the store yet; seed the same schema the app creates.
+        request.onupgradeneeded = () => {
+          const result = request.result;
+          if (!result.objectStoreNames.contains("recordings")) {
+            result
+              .createObjectStore("recordings", { keyPath: ["userId", "id"] })
+              .createIndex("owner", "userId");
+            result.createObjectStore("chunks", {
+              keyPath: ["userId", "recordingId", "sequence"],
+            });
+          }
+          if (!result.objectStoreNames.contains("photos"))
+            result.createObjectStore("photos", { keyPath: ["userId", "recordingId", "id"] });
+          if (!result.objectStoreNames.contains("deletedAccounts"))
+            result.createObjectStore("deletedAccounts", { keyPath: "userId" });
+        };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
       });
