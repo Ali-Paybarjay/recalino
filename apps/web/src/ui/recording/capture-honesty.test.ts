@@ -230,14 +230,14 @@ describe("honest in-app capture (PRD-REC-03, PRD-REC-05)", () => {
     const test = harness();
     await test.controller.start();
     await test.chunk(5000);
-    test.advance(11000);
+    test.advance(2000);
     test.controller.checkHealth();
     expect(test.recorder.requests).toBe(0);
     test.advance(1000);
     test.controller.checkHealth();
     expect(test.recorder.requests).toBe(1);
     expect(test.controller.state.phase).toBe("recording");
-    test.advance(4000);
+    test.advance(2000);
     test.controller.checkHealth();
     expect(test.controller.state.phase).toBe("recovering");
     expect(test.controller.state.error).toBe(

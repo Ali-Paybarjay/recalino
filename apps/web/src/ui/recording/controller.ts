@@ -58,10 +58,16 @@ export type CaptureHealthEvent =
       missingMs: number;
       gaps: number;
     };
+/**
+ * Recorder timeslice (PRD-REC-05, a technical setting). With STALL_MS and PROBE_MS it bounds how
+ * long a visible page can show a healthy recording after audio stops: at most TIMESLICE_MS +
+ * PROBE_MS, five seconds (PRD-REC-03).
+ */
+export const TIMESLICE_MS = 2000;
 /** A chunk older than this on a visible page is overdue; the recorder is asked for data. */
-const STALL_MS = 12000;
+const STALL_MS = 3000;
 /** After asking, a recorder that still sends nothing is restarted. */
-const PROBE_MS = 4000;
+const PROBE_MS = 2000;
 /** Heartbeats further apart than this mean timers were frozen or throttled. */
 const HEARTBEAT_GAP_MS = 5000;
 let lastTime = 0;
@@ -104,6 +110,8 @@ type Capture = {
   measuring: Promise<void>;
   activeMs: number;
   lastDataAt: number;
+  /** When a chunk last added audio; chunks without audio on a visible page are a stall. */
+  lastMediaAt: number;
   probeAt: number | null;
   stopSeen: boolean;
   acceptLateData: boolean;
@@ -323,6 +331,7 @@ export class RecordingController {
         measuring: Promise.resolve(),
         activeMs: 0,
         lastDataAt: this.deps.clock(),
+        lastMediaAt: this.deps.clock(),
         probeAt: null,
         stopSeen: false,
         acceptLateData: false,
@@ -338,7 +347,7 @@ export class RecordingController {
       this.captures.push(capture);
       this.publish(capture);
       this.bindCapture(capture, session);
-      recorder.start(5000);
+      recorder.start(TIMESLICE_MS);
       capture.meter.run();
       this.report({ type: "started", mime: recorder.mimeType, part: recording.segment ?? 1 });
       this.recordBrokenInterval(capture);
@@ -385,6 +394,7 @@ export class RecordingController {
       this.deps.readChunk ?? (async (blob: Blob) => new Uint8Array(await blob.arrayBuffer()));
     capture.measuring = capture.measuring.then(async () => {
       let gap: CaptureGap | null = null;
+      const before = capture.meter.measured ? capture.meter.mediaMs() : 0;
       try {
         gap = capture.meter.push(await read(chunk.blob), arrivedAt);
         if (gap) this.noteGap(capture, gap);
@@ -392,6 +402,26 @@ export class RecordingController {
         /* An unreadable chunk leaves the measurement to the device clock. */
       }
       chunk.activeMs = capture.meter.mediaMs();
+      // Chunks that carry no audio on a visible page are a failing capture, shown at once
+      // (PRD-REC-03); a hidden page is measured and told after Stop instead.
+      if (
+        capture.meter.measured &&
+        chunk.activeMs <= before &&
+        capture.meter.running &&
+        !this.pageHidden &&
+        this.capture === capture &&
+        this.intent === "recording" &&
+        !capture.interrupted &&
+        arrivedAt - capture.lastMediaAt >= STALL_MS
+      ) {
+        this.interrupt(
+          capture,
+          "Recording stopped producing audio. Restarting automatically…",
+          "stalled",
+        );
+        return;
+      }
+      if (chunk.activeMs > before) capture.lastMediaAt = arrivedAt;
       chunk.gaps = capture.meter.gaps.map((gap) => ({ ...gap }));
       chunk.measuredBy = capture.meter.measured ? "media" : "clock";
       // Timers can be throttled or frozen; chunks still arrive, so rotation follows the audio.
@@ -772,6 +802,7 @@ export class RecordingController {
         measuring: Promise.resolve(),
         activeMs: 0,
         lastDataAt: this.deps.clock(),
+        lastMediaAt: this.deps.clock(),
         probeAt: null,
         stopSeen: false,
         acceptLateData: false,
@@ -802,7 +833,7 @@ export class RecordingController {
       // Final data and disk writes are bound to their own part and never delay the new encoder.
       previous.recorder.stop();
       const finished = this.finishCapture(previous, false);
-      recorder.start(5000);
+      recorder.start(TIMESLICE_MS);
       capture.meter.run();
       this.report({ type: "started", mime: recorder.mimeType, part: recording.segment ?? 1 });
       this.publish(capture);
@@ -850,6 +881,7 @@ export class RecordingController {
         capture.recorder.resume();
         capture.meter.run();
         capture.lastDataAt = this.deps.clock();
+        capture.lastMediaAt = this.deps.clock();
         capture.probeAt = null;
         capture.recording = { ...capture.recording, status: "recording" };
         this.update({ phase: "recording", recording: capture.recording, error: null });

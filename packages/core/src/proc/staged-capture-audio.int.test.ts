@@ -5,7 +5,7 @@ import { studyFixture } from "../../test/study-fixture";
 import type { AiProvider } from "../aip";
 import { createDatabase } from "../db";
 import { captureInProgress, releaseCaptureLease, renewCaptureLease } from "../org";
-import { DEFAULT_PLT_SETTINGS, MemoryObjectStore, sha256Hex } from "../plt";
+import { DEFAULT_PLT_SETTINGS, errors, MemoryObjectStore, sha256Hex } from "../plt";
 import { amounts, grantEntitlement } from "../quota";
 import {
   acceptSourceNotice,
@@ -75,7 +75,8 @@ async function capturePart(operationKey = `recorded-source:${randomUUID()}`) {
     sizeBytes: bytes.length,
     sha256: sha256Hex(bytes),
     displayName: "Session recording 2026-10-12 · Part 1",
-    durationMs: 5000,
+    // What an old client would have declared from its clock; the copy holds 4.02 s.
+    durationMs: 29 * 60 * 1000,
     parts: [],
     operationKey,
   });
@@ -135,7 +136,8 @@ it("stages a sealed part during capture without any hold, and the run after Stop
     },
     { job: processingJob({ store: x.store, provider }), provider },
   );
-  // No second transfer: the run is queued at once and reserves the measured seconds once.
+  // No second transfer: the run is queued at once and reserves the measured seconds once,
+  // never the 29 minutes a clock would have declared (D59, PRD-REC-05).
   expect(run.state).toBe("queued");
   const saved = await db
     .selectFrom("proc.processing_run")
@@ -179,6 +181,51 @@ it("stages only the learner's own in-app recording parts", async () => {
   await expect(
     beginStagedAudioUpload(db, other.ctx, owner.source.assetId, { parts: owner.parts }),
   ).rejects.toMatchObject({ code: "not_found" });
+});
+
+it("deletes a rejected staged copy at the next sweep, far inside D29's seven days", async () => {
+  const x = await capturePart();
+  const staged = await beginStagedAudioUpload(db, x.ctx, x.source.assetId, { parts: x.parts });
+  const link = await temporaryAudioPartLink(
+    db,
+    x.store,
+    x.ctx,
+    x.source.assetId,
+    staged.uploadId,
+    0,
+    DEFAULT_PLT_SETTINGS.storage,
+  );
+  expect(
+    x.store.upload(link.url, new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3]), "audio/webm"),
+  ).toBe(200);
+  await confirmTemporaryAudioPart(db, x.store, x.ctx, x.source.assetId, staged.uploadId, 0);
+  await expect(
+    verifyTemporaryAudio(db, x.store, x.ctx, x.source.assetId, staged.uploadId, {
+      inspect: async () => {
+        throw errors.unsupportedMedia();
+      },
+    }),
+  ).rejects.toThrow();
+  const after = await db
+    .selectFrom("src.audio_upload")
+    .select(["state", "expires_at"])
+    .where("id", "=", staged.uploadId)
+    .executeTakeFirstOrThrow();
+  expect(after.expires_at.getTime()).toBeLessThanOrEqual(Date.now() + 7 * 24 * 3600 * 1000);
+  await expireTemporaryAudio(db, x.store, new Date(Date.now() + 7 * 24 * 3600 * 1000 + 1));
+  const row = await db
+    .selectFrom("src.audio_upload")
+    .select("state")
+    .where("id", "=", staged.uploadId)
+    .executeTakeFirstOrThrow();
+  expect(row.state).toBe("deleted");
+  // The class run after Stop then transfers the part from the device as before.
+  expect(
+    await beginStagedAudioUpload(db, x.ctx, x.source.assetId, { parts: x.parts }),
+  ).toMatchObject({
+    uploadId: staged.uploadId,
+    state: "deleted",
+  });
 });
 
 it("deletes a staged copy that no run used when its upload window ends (D29)", async () => {

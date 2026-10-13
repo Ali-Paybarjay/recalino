@@ -108,6 +108,8 @@ export const ROUTES = {
     path: "/api/recordings/diagnostics",
     access: "learner",
     rateLimit: "support",
+    // One batch is logged once, however often a keepalive request is repeated.
+    idempotency: "required",
   },
   sourceUnlock: { id: "sourceUnlock", path: "/api/sources/[id]/unlock", access: "learner" },
   classProcessing: {

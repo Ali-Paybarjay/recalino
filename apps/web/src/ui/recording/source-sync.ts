@@ -153,7 +153,8 @@ export async function registerRecordingRow(
       sizeBytes: blob.size,
       sha256,
       displayName: `Session recording ${current.createdAt.slice(0, 10)}${current.autoRegister || (current.segment ?? 1) > 1 ? ` · Part ${current.segment ?? 1}` : ""}`,
-      durationMs: Math.max(1, Math.ceil(current.activeMs) + 1000),
+      // The measured audio plus a one-second margin, so the server's decode never exceeds it.
+      durationMs: Math.max(1, Math.round(current.activeMs) + 1000),
       parts: [],
     },
     `recorded-source:${current.id}`,

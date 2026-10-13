@@ -40,9 +40,13 @@ const stagedRequestSchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("complete"), uploadId: z.uuid() }),
 ]);
 /** D60: the temporary server copy of one sealed in-app recording part, sent during capture. */
+/** A manifest of 10000 parts fits in well under this; the route carries no file bytes. */
+export const STAGED_AUDIO_MAX_BYTES = 2 * 1024 * 1024;
 export function stagedAudioHandler(assetId: string): Handler {
   return async ({ db, ctx, input, request }) => {
     const learner = actor(ctx);
+    if (Number(request.headers.get("content-length") ?? 0) > STAGED_AUDIO_MAX_BYTES)
+      throw errors.payloadTooLarge();
     await getSource(db, learner, z.uuid().parse(assetId));
     enabled();
     if (request.method === "GET") {

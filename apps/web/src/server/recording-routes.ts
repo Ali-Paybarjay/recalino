@@ -21,9 +21,13 @@ export function recordingSourceHandler(): Handler {
  * carry no audio, text or class/recording ids (PRD-PRIV-06). `RECALINO_CAPTURE_DIAGNOSTICS=off`
  * accepts and drops the events (202 either way).
  */
+/** Fifty small events never need more than this; anything larger is not a diagnostics batch. */
+export const CAPTURE_DIAGNOSTICS_MAX_BYTES = 16 * 1024;
 export function captureDiagnosticsHandler(log: Logger = createLogger()): Handler {
-  return async ({ ctx, input }) => {
+  return async ({ ctx, input, request }) => {
     if (!ctx.userId) throw errors.unauthenticated();
+    if (Number(request.headers.get("content-length") ?? 0) > CAPTURE_DIAGNOSTICS_MAX_BYTES)
+      throw errors.payloadTooLarge();
     const parsed = captureDiagnosticsSchema.safeParse(input);
     if (!parsed.success) throw errors.validationFailed({ events: ["invalid"] });
     if (process.env.RECALINO_CAPTURE_DIAGNOSTICS === "off")

@@ -162,6 +162,19 @@ it("D61: transcribes a staged part in the background and the class run after Sto
   );
   expect(x.stt).toHaveBeenCalledTimes(2);
   expect(await captureTranscriptionActive(db, x.ctx, x.session.id)).toBe(false);
+  // Re-running the part's transcription calls the provider again for nothing (idempotent checkpoints).
+  await captureTranscriptionJob(x.dependencies).run(
+    { runId: runId as string, userId: x.ctx.userId, subjectId: x.source.assetId },
+    x.context(),
+  );
+  expect(x.stt).toHaveBeenCalledTimes(2);
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .select("id")
+      .where("run_id", "=", runId as string)
+      .execute(),
+  ).toHaveLength(2);
   // Nothing reserved or charged: the hold of the background run settles empty.
   const reservation = await db
     .selectFrom("proc.processing_run as run")

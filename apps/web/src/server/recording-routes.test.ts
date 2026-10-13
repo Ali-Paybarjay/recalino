@@ -6,14 +6,17 @@ import { captureDiagnosticsHandler } from "./recording-routes";
 
 vi.mock("server-only", () => ({}));
 
-function call(input: unknown, lines: string[]) {
+function call(input: unknown, lines: string[], contentLength?: number) {
   const handler = captureDiagnosticsHandler((level, event, fields) =>
     lines.push(formatLogLine(level, event, fields)),
   );
   return handler({
     input,
     ctx: { requestId: randomUUID(), route: "captureDiagnostics", userId: randomUUID() },
-    request: new Request("http://localhost/api/recordings/diagnostics", { method: "POST" }),
+    request: new Request("http://localhost/api/recordings/diagnostics", {
+      method: "POST",
+      headers: contentLength === undefined ? {} : { "content-length": String(contentLength) },
+    }),
     db: undefined as unknown as HandlerArgs["db"],
   });
 }
@@ -72,6 +75,47 @@ describe("capture diagnostics route (PRD-REC-05, PRD-PRIV-06)", () => {
       cause: "hidden",
     });
     expect(records[2]).toMatchObject({ media_ms: 66000, wall_ms: 1752000, measured: true });
+  });
+
+  it("refuses hostile payloads: oversized, too many events, text, identifiers, scripts", async () => {
+    const visible = { ageMs: 0, event: { type: "visibility", visible: false } };
+    const lines: string[] = [];
+    await expect(
+      call({ platform: "ios", browser: "safari", events: [visible] }, lines, 20000),
+    ).rejects.toMatchObject({ code: "payload_too_large" });
+    for (const body of [
+      { platform: "ios", browser: "safari", events: Array(51).fill(visible) },
+      { platform: "ios", browser: "safari", events: [] },
+      {
+        platform: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5)",
+        browser: "safari",
+        events: [visible],
+      },
+      { platform: "ios", browser: "safari", events: [visible], sessionId: randomUUID() },
+      { platform: "ios", browser: "safari", events: [visible], transcript: "The teacher said" },
+      {
+        platform: "ios",
+        browser: "safari",
+        events: [
+          { ageMs: 0, event: { type: "started", mime: "<script>alert(1)</script>", part: 1 } },
+        ],
+      },
+      {
+        platform: "ios",
+        browser: "safari",
+        events: [
+          {
+            ageMs: 1e12,
+            event: { type: "gap", part: 1, offsetMs: -1, missingMs: 1, cause: "hidden" },
+          },
+        ],
+      },
+      "a string",
+      null,
+    ]) {
+      await expect(call(body, lines)).rejects.toMatchObject({ code: "validation_failed" });
+    }
+    expect(lines).toEqual([]);
   });
 
   it("refuses free text, identifiers and unknown fields", async () => {
