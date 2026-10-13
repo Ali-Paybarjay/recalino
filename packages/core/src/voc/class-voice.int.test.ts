@@ -15,7 +15,8 @@ import {
   saveVoiceCandidateMistakes,
 } from "./analysis";
 import type { VoiceAnalysisInput, VoiceCandidate } from "./contracts";
-import { getVoiceEnrollment, saveVoiceSample } from "./profile";
+import { expireVoiceEmbeddings } from "./privacy";
+import { getVoiceEnrollment, revokeVoiceData, saveVoiceSample } from "./profile";
 import { projectVerifiedSpeech } from "./projection";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 4 });
@@ -331,4 +332,112 @@ it("D64: a learner's short turn is proposed from its own score, and a line marke
       choice: "mine",
     }),
   ).rejects.toMatchObject({ code: "validation_failed" });
+});
+
+it("FR-VOC-004/007 audit: links and line choices hold no vectors, outlive the 24 h vector expiry like the candidates, and go with the analysis", async () => {
+  const x = await voiceFixture(db);
+  const part = await addPart(x, {
+    candidates: [voice("other", 30000)],
+    embeddings: [{ speakerId: "other", vector: vector(0, 0.1) }],
+    utterances: [
+      { id: "o1", speakerId: "other", startMs: 1000, endMs: 3000, text: "I goes.", eligible: true },
+    ],
+    turnEmbeddings: [{ utteranceId: "o1", vector: vector(7) }],
+  });
+  await changeVoiceLine(db, x.ctx, x.session.id, {
+    scope: "line",
+    analysisId: part.id,
+    expectedVersion: part.version,
+    utteranceId: "o1",
+    choice: "not_mine",
+  });
+  const raw = async () =>
+    db.selectFrom("voc.analysis").selectAll().where("session_id", "=", x.session.id).execute();
+  let rows = await raw();
+  expect(rows).toHaveLength(2);
+  for (const row of rows) {
+    // No vector outside private_embeddings: not in links, choices, utterances or candidates.
+    const { private_embeddings: _vectors, embeddings_expire_at: _expiry, ...rest } = row;
+    expect(JSON.stringify(rest)).not.toContain("vector");
+    expect(JSON.stringify(rest)).not.toContain("embedding");
+    expect(JSON.stringify(row.speaker_links)).not.toContain("[");
+  }
+  expect(rows.some((row) => Object.keys(row.speaker_links as object).length)).toBe(true);
+  // 24 h later the temporary voiceprints are gone; the links and choices stay with the row.
+  await expireVoiceEmbeddings(db, new Date(Date.now() + 25 * 3600_000));
+  rows = await raw();
+  expect(rows.every((row) => JSON.stringify(row.private_embeddings) === "[]")).toBe(true);
+  expect(rows.find((row) => row.id === part.id)?.line_choices).toEqual({ o1: "not_mine" });
+  expect(rows.some((row) => Object.keys(row.speaker_links as object).length)).toBe(true);
+  // Revocation removes the rows, and with them every link and choice.
+  await revokeVoiceData(db, x.ctx);
+  expect(await raw()).toEqual([]);
+});
+
+it("audit item 7: analyses stored before this change still render and still allow confirmation", async () => {
+  const x = await voiceFixture(db);
+  // What the migration leaves on old rows: the column defaults.
+  await db
+    .updateTable("voc.analysis")
+    .set({ speaker_links: "{}", line_choices: "{}" })
+    .where("id", "=", x.analysis.id)
+    .execute();
+  const view = await getClassVoice(db, x.ctx, x.session.id);
+  expect(view.classVoices).toEqual([]);
+  expect(view.classCandidateId).toBeNull();
+  expect(view.analyses[0]?.lines).toEqual([]);
+  expect(view.analyses[0]?.speakerLinks).toEqual({});
+  const confirmed = await changeVoiceIdentity(db, x.ctx, x.session.id, {
+    action: "confirm",
+    analysisId: x.analysis.id,
+    expectedVersion: view.analyses[0]?.version ?? 0,
+    speakerId: "learner",
+  });
+  expect(confirmed.status).toBe("verified");
+});
+
+it("FR-VOC-005 audit: a line marked as mine shows a mistake only with a second same-voice occurrence", async () => {
+  const x = await voiceFixture(db),
+    model = referenceStudyModel();
+  const part = await addPart(x, {
+    candidates: [voice("solo", 30000)],
+    embeddings: [{ speakerId: "solo", vector: vector(3) }],
+    utterances: [
+      {
+        id: "s1",
+        speakerId: "solo",
+        startMs: 1000,
+        endMs: 3000,
+        text: "She go home.",
+        eligible: true,
+      },
+    ],
+  });
+  await saveVoiceCandidateMistakes(db, x.ctx, {
+    analysisId: part.id,
+    profileVersion: x.input.profileVersion,
+    mistakes: {
+      solo: [
+        {
+          utteranceId: "s1",
+          said: "She **go** home.",
+          correct: "She goes home.",
+          whyFa: "سوم شخص s می‌گیرد.",
+          kind: "grammar",
+          teacherCorrected: false,
+        },
+      ],
+    },
+  });
+  await changeVoiceLine(db, x.ctx, x.session.id, {
+    scope: "line",
+    analysisId: part.id,
+    expectedVersion: part.version,
+    utteranceId: "s1",
+    choice: "mine",
+  });
+  // Marked as the learner's, yet without the repeated evidence it is not shown.
+  expect(
+    renderClassNotesHtml(await projectVerifiedSpeech(db, x.ctx, x.session.id, model)),
+  ).not.toContain("She goes home.");
 });

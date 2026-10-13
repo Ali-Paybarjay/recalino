@@ -22,11 +22,11 @@
         "seed": 4,
         "linking": {
           "voices": 34,
-          "classVoices": 9,
+          "classVoices": 10,
           "people": 7,
-          "precision": 1,
-          "recall": 0.855,
-          "ambiguousRate": 0.444
+          "precision": 0.947,
+          "recall": 0.771,
+          "ambiguousRate": 0.6
         },
         "fragments": {
           "rate": 0.37,
@@ -41,13 +41,13 @@
       "targetSweep": [
         {
           "minScore": 0.3,
-          "precision": 0.556,
-          "recall": 0.833
+          "precision": 1,
+          "recall": 1
         },
         {
           "minScore": 0.4,
-          "precision": 0.714,
-          "recall": 0.167
+          "precision": 1,
+          "recall": 0.3
         },
         {
           "minScore": 0.5,
@@ -81,7 +81,7 @@
       "result": {
         "seed": 1,
         "linking": {
-          "voices": 26,
+          "voices": 30,
           "classVoices": 6,
           "people": 6,
           "precision": 1,
@@ -89,7 +89,7 @@
           "ambiguousRate": 0
         },
         "fragments": {
-          "rate": 0.458,
+          "rate": 0.4,
           "suggestedRate": 0
         },
         "targetSpeaker": {
@@ -101,12 +101,12 @@
       "targetSweep": [
         {
           "minScore": 0.3,
-          "precision": 0.45,
+          "precision": 0.48,
           "recall": 1
         },
         {
           "minScore": 0.4,
-          "precision": 0.818,
+          "precision": 0.857,
           "recall": 1
         },
         {
@@ -141,7 +141,7 @@
       "result": {
         "seed": 2,
         "linking": {
-          "voices": 26,
+          "voices": 29,
           "classVoices": 8,
           "people": 8,
           "precision": 1,
@@ -149,24 +149,24 @@
           "ambiguousRate": 0
         },
         "fragments": {
-          "rate": 0.527,
+          "rate": 0.491,
           "suggestedRate": 0
         },
         "targetSpeaker": {
           "minScore": 0.6,
           "precision": 1,
-          "recall": 0.792
+          "recall": 0.875
         }
       },
       "targetSweep": [
         {
           "minScore": 0.3,
-          "precision": 0.267,
+          "precision": 0.314,
           "recall": 1
         },
         {
           "minScore": 0.4,
-          "precision": 0.75,
+          "precision": 0.696,
           "recall": 1
         },
         {
@@ -177,12 +177,12 @@
         {
           "minScore": 0.6,
           "precision": 1,
-          "recall": 0.792
+          "recall": 0.875
         },
         {
           "minScore": 0.7,
           "precision": 1,
-          "recall": 0.042
+          "recall": 0.063
         }
       ]
     },
@@ -221,12 +221,12 @@
       "targetSweep": [
         {
           "minScore": 0.3,
-          "precision": 0.727,
+          "precision": 0.842,
           "recall": 1
         },
         {
           "minScore": 0.4,
-          "precision": 0.923,
+          "precision": 0.842,
           "recall": 1
         },
         {

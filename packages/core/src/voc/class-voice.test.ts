@@ -122,3 +122,71 @@ it("draft FR-VOC v3: turns are scored against the learner's own sample only, nev
     ),
   ).toEqual([undefined, undefined, undefined]);
 });
+
+it("diagnosis 2026-10-12: a dominant voice scoring 0.70–0.77 does not flood the proposed lines", () => {
+  // Unit vectors with a chosen cosine to the sample e0: [c, sqrt(1 - c²), 0, …].
+  const at = (c: number) => [c, Math.sqrt(1 - c * c), ...Array<number>(14).fill(0)];
+  const sample = at(1);
+  const utterances: VoiceUtterance[] = [
+    {
+      id: "t1",
+      speakerId: "teacher",
+      startMs: 0,
+      endMs: 3000,
+      text: "Open your books.",
+      eligible: true,
+    },
+    {
+      id: "t2",
+      speakerId: "teacher",
+      startMs: 5000,
+      endMs: 8000,
+      text: "Page ten.",
+      eligible: true,
+    },
+    // The learner's own turn, merged into the teacher's voice by the diarizer.
+    {
+      id: "l1",
+      speakerId: "teacher",
+      startMs: 20000,
+      endMs: 22000,
+      text: "I goes there.",
+      eligible: true,
+    },
+    // The learner's turn in a fragment voice without a voiceprint: the plain score counts.
+    {
+      id: "l2",
+      speakerId: "fragment",
+      startMs: 40000,
+      endMs: 42000,
+      text: "Yes, I goes.",
+      eligible: true,
+    },
+  ];
+  const scored = scoreTargetTurns(
+    utterances,
+    [
+      { utteranceId: "t1", vector: at(0.72) },
+      { utteranceId: "t2", vector: at(0.77) },
+      { utteranceId: "l1", vector: at(0.8) },
+      { utteranceId: "l2", vector: at(0.65) },
+    ],
+    { embeddings: [{ vector: sample, modelVersion: "v1", analysisId: null, createdAt: "x" }] },
+    "v1",
+    // The teacher's pooled voiceprint scores 0.75 against the near-field sample (far microphone).
+    [{ speakerId: "teacher", vector: at(0.75) }],
+  );
+  expect(scored.map((item) => item.targetScore?.toFixed(2))).toEqual([
+    undefined,
+    "0.77",
+    "0.80",
+    "0.65",
+  ]);
+  // At the 0.6 floor: the learner's two turns and one teacher turn that beat the teacher's own
+  // voiceprint; the teacher's typical turn is not proposed. Recall 2/2, precision 2/3 here.
+  expect(scored.filter((item) => (item.targetScore ?? -1) >= 0.6).map((item) => item.id)).toEqual([
+    "t2",
+    "l1",
+    "l2",
+  ]);
+});
