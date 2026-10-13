@@ -2,8 +2,8 @@ import type { ProcessingRun } from "@recalino/core/proc";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { pendingCopy } from "../pending-copy";
 import { type ProcessingEstimate, ProcessingView } from "./ProcessingView";
+import { uploadCopy } from "./upload-copy";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }),
@@ -188,8 +188,8 @@ describe("processing next actions", () => {
   });
 
   it.each([
-    ["audio_upload_not_started", pendingCopy.uploadReliability.audio.notStarted],
-    ["audio_upload_incomplete", pendingCopy.uploadReliability.audio.incomplete],
+    ["audio_upload_not_started", uploadCopy.audio.notStarted],
+    ["audio_upload_incomplete", uploadCopy.audio.incomplete],
   ])(
     "names %s as a lapsed upload, not rejected audio, and offers a retry that can succeed",
     (lastError, text) => {

@@ -3,11 +3,11 @@ import type { ProcessingRun, RunSnapshot } from "@recalino/core/proc";
 import type { InputContract } from "@recalino/core/src";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { pendingCopy } from "../pending-copy";
 import type { RecordingStore } from "../recording/store";
 import { WorkspaceRequestError, type workspaceRequest } from "./api";
 import { ManualAudioManager } from "./manual-audio-manager";
 import { IndexedManualAudioStore } from "./manual-audio-store";
+import { uploadCopy } from "./upload-copy";
 import { AudioUploadProblem } from "./upload-problems";
 
 const transport = vi.hoisted(() => ({ upload: vi.fn() }));
@@ -406,10 +406,7 @@ it("D59: the saved queue uploads, completes and activates a confirmed run whose 
 it("does not offer a retry that cannot succeed after the server closed the upload", async () => {
   const f = setup({
     upload: async () => {
-      throw new AudioUploadProblem(
-        "upload_closed",
-        pendingCopy.uploadReliability.audio.uploadClosed,
-      );
+      throw new AudioUploadProblem("upload_closed", uploadCopy.audio.uploadClosed);
     },
   });
   await f.manager.enqueue(run, snapshot, contract);
@@ -418,7 +415,7 @@ it("does not offer a retry that cannot succeed after the server closed the uploa
   expect(f.manager.snapshot()[0]).toMatchObject({
     phase: "attention",
     reason: "upload_closed",
-    problem: pendingCopy.uploadReliability.audio.uploadClosed,
+    problem: uploadCopy.audio.uploadClosed,
   });
   await f.manager.retry(run.id);
   expect(f.manager.snapshot()[0]?.phase).toBe("attention");

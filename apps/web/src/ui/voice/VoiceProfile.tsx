@@ -2,7 +2,6 @@
 import { VOICE_CONSENT_VERSION, type VoiceProfileView } from "@recalino/core/voice-contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
-import { pendingCopy } from "../pending-copy";
 import { useRecording } from "../recording/RecordingProvider";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
@@ -364,7 +363,7 @@ export function VoiceProfileForm({
                 </p>
                 {/* Owner's answer 8 (2026-10-13): a near-mouth sample is hard to match with a
                     far-mic class; the sample is recorded in class conditions. */}
-                <p className="preview-muted">{pendingCopy.voiceSample.classConditions}</p>
+                <p className="preview-muted">{voiceCopy.voiceSample.classConditions}</p>
                 <p lang="en" dir="ltr">
                   “I am learning English so I can speak with more confidence. In class, I like to
                   ask questions, try new expressions, and practise with other people. Making a
@@ -440,7 +439,7 @@ export function VoiceProfileForm({
                         {capture.sample || sampleState === "failed"
                           ? "Record again"
                           : profile.sampleDurationMs !== null
-                            ? pendingCopy.voiceSample.recordAgain
+                            ? voiceCopy.voiceSample.recordAgain
                             : "Record voice sample"}
                       </Button>
                       {capture.sample ? (
@@ -452,7 +451,7 @@ export function VoiceProfileForm({
                       ) : null}
                     </Actions>
                     {profile.sampleDurationMs !== null && !capture.sample ? (
-                      <p className="preview-muted">{pendingCopy.voiceSample.replaces}</p>
+                      <p className="preview-muted">{voiceCopy.voiceSample.replaces}</p>
                     ) : null}
                   </>
                 )}

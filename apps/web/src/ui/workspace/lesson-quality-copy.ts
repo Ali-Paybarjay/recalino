@@ -1,6 +1,6 @@
 /**
- * Workstream 3 (lesson quality, docs/plans/LESSON_QUALITY_2026-10-12.md). Pending owner approval:
- * registered in pending-copy.ts and docs/design/UI_COPY_PENDING.md, never marked approved here.
+ * Workstream 3 (lesson quality, docs/plans/LESSON_QUALITY_2026-10-12.md). The product owner
+ * approved these eight texts word for word on 2026-10-13 (D65 review).
  */
 export const lessonQualityCopy = {
   coverage: {
