@@ -98,3 +98,18 @@
 | `lessonQuality.coverage.reason.no_teaching_content` | This file has nothing to teach on its own. | دلیل `no_teaching_content` | همان | در انتظار تأیید |
 | `lessonQuality.coverage.reason.not_reported` | This file was not used in these notes. | مدل در تنها تولید دوبارهٔ مجاز هم دلیلی نداد | همان | در انتظار تأیید |
 | `lessonQuality.review.tooLarge` | This session has more material than one AI lesson review can check, so a review is not available for it. | به‌جای دکمهٔ بازبینی، وقتی ورودی حتی پس از فشرده‌سازی از سقف بزرگ‌تر است | رفع بن‌بست بازبینی درس (400 `lesson_review_input_too_large`) | در انتظار تأیید |
+
+## D72 — خوانایی عکس تخته روی دستگاه (`feat/photo-readability`، 2026-10-13)
+
+متن‌های لایهٔ ۱ و ۲ D72 ([گزارش](../plans/PHOTO_READABILITY_2026-10-13.md)). فقط در ردیف همان عکس، زیر تصویر کوچک، نمایش داده می‌شوند؛ هیچ پنجره، toast، banner یا صدایی ندارند (PRD-REC-02). عکس همیشه ذخیره می‌ماند و Retake عکس تازه‌ای اضافه می‌کند (PRD-REC-07). هیچ‌کدام تأیید نشده‌اند.
+
+| کلید | متن | حالت | منشأ | وضعیت |
+|---|---|---|---|---|
+| `photoQuality.ok` | Looks sharp | حکم `ok` | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.blurry` | May be hard to read: blurry. Retake? | حکم `blurry`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.too_dark` | May be hard to read: too dark. Retake? | حکم `too_dark`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.too_bright` | May be hard to read: washed out. Retake? | حکم `too_bright`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.glare` | May be hard to read: glare on the board. Retake? | حکم `glare`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.low_detail` | Hard to see writing in this photo. Move closer or retake? | حکم `low_detail`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.retake` | Retake | دکمهٔ گرفتن عکس تازه از همان تخته | D72 لایهٔ ۱ | در انتظار تأیید |
+| `photoQuality.zoomPrompt` | Can you read the smallest writing? If not, retake while the board is still there. | Sheet عکس در اندازهٔ کامل با pinch-zoom | D72 لایهٔ ۲ | در انتظار تأیید |

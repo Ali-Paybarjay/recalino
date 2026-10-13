@@ -2,10 +2,14 @@
 import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Sheet } from "../components/Sheet";
+import { pendingCopy } from "../pending-copy";
 import { workspaceRequest } from "../workspace/api";
 import { notifyAutomaticLearning, uploadAutomaticPhoto } from "../workspace/automatic-learning";
 import { Actions, Button, Panel, Status } from "../workspace/primitives";
 import { MissingAudioNotice, partMissingLabel } from "./MissingAudioNotice";
+import type { PhotoQuality } from "./photo-quality";
+import { photoQuality } from "./photo-quality-client";
 import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
 import { registerRecordingRow } from "./source-sync";
@@ -139,6 +143,38 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
   async function attach(row: Recording) {
     await registerRecordingRow(row, store, controller);
   }
+  /** Whether this part is the one being captured right now. */
+  function capturing(recordingId: string) {
+    return (
+      recordingId === controller.state.recording?.id &&
+      ["starting", "recording", "recovering", "paused", "saving"].includes(controller.state.phase)
+    );
+  }
+  /** Opens the camera for a new photo; a retake never replaces the earlier one (PRD-CORE-05). */
+  function takePhoto(anchor: NonNullable<typeof captureAnchor.current>) {
+    captureAnchor.current = anchor;
+    photoInput.current?.click();
+  }
+  function captureNow() {
+    const recording = controller.state.recording;
+    if (!recording) return;
+    takePhoto({
+      recordingId: recording.id,
+      // Audio already measured in this part, so the anchor never passes its end.
+      offsetMs: controller.anchorMs(),
+      captureState: controller.state.phase === "paused" ? "paused" : "recording",
+    });
+  }
+  function retake(photo: LocalPhoto) {
+    // During capture the new photo is anchored now; after Stop, to the moment of the first one.
+    if (capturing(photo.recordingId)) captureNow();
+    else
+      takePhoto({
+        recordingId: photo.recordingId,
+        offsetMs: photo.offsetMs,
+        captureState: photo.captureState,
+      });
+  }
   async function savePhoto(file: File) {
     const anchor = captureAnchor.current;
     captureAnchor.current = null;
@@ -152,6 +188,13 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
       sourceAssetId: null,
     };
     await store.savePhoto(photo);
+    // On-device readability (D72): numbers only reach diagnostics; failures show nothing.
+    void photoQuality(photo.id, file).then((quality) => {
+      if (quality) controller.reportPhotoQuality(photo.id, quality);
+    });
+    // A retake for a finished part joins its session's photos like any other saved photo.
+    const row = rows.find((candidate) => candidate.id === photo.recordingId);
+    if (row?.sessionId && !capturing(photo.recordingId)) notifyAutomaticLearning(row.sessionId);
     await reload();
   }
   async function attachPhoto(photo: LocalPhoto) {
@@ -221,41 +264,29 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                 Stop and save
               </Button>
               {["recording", "paused"].includes(state.phase) ? (
-                <Button
-                  secondary
-                  disabled={!sourceNotice?.noticeAccepted}
-                  onClick={() => {
-                    const recording = controller.state.recording;
-                    if (!recording) return;
-                    captureAnchor.current = {
-                      recordingId: recording.id,
-                      // Audio already measured in this part, so the anchor never passes its end.
-                      offsetMs: controller.anchorMs(),
-                      captureState: state.phase === "paused" ? "paused" : "recording",
-                    };
-                    photoInput.current?.click();
-                  }}
-                >
+                <Button secondary disabled={!sourceNotice?.noticeAccepted} onClick={captureNow}>
                   Add board photo
                 </Button>
               ) : null}
             </Actions>
-            <input
-              hidden
-              ref={photoInput}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void operation("photo", () => savePhoto(file));
-              }}
-            />
             <p>
               {photos.filter((photo) => photo.recordingId === currentId).length} board photos saved
               on this device
             </p>
+            {currentId ? (
+              <PhotoGallery
+                photos={photos}
+                recordingId={currentId}
+                capturing
+                onAttach={() => {}}
+                onRetake={retake}
+                retakeDisabled={
+                  !sourceNotice?.noticeAccepted || !["recording", "paused"].includes(state.phase)
+                }
+                disabled={busy !== null}
+                automatic={false}
+              />
+            ) : null}
             {sourceNotice && !sourceNotice.noticeAccepted ? (
               <p>
                 <a href="#recording-material-notice">
@@ -273,6 +304,18 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
             <RecordLauncher sessionId={sessionId} />
           </>
         )}
+        <input
+          hidden
+          ref={photoInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void operation("photo", () => savePhoto(file));
+          }}
+        />
         {state.phase === "saved" ? <MissingAudioNotice missing={state.missing} /> : null}
         {state.error ? <Status tone="error">{state.error}</Status> : null}
       </Panel>
@@ -374,6 +417,8 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                     photos={photos}
                     recordingId={row.id}
                     onAttach={(photo) => void operation(photo.id, () => attachPhoto(photo))}
+                    onRetake={retake}
+                    retakeDisabled={!sourceNotice?.noticeAccepted}
                     disabled={busy !== null}
                     automatic={Boolean(row.autoGenerate)}
                   />
@@ -445,41 +490,70 @@ function PhotoGallery({
   photos: allPhotos,
   recordingId,
   onAttach,
+  onRetake,
+  retakeDisabled,
   disabled,
   automatic,
+  capturing = false,
 }: {
   photos: LocalPhoto[];
   recordingId: string;
   onAttach: (photo: LocalPhoto) => void;
+  onRetake: (photo: LocalPhoto) => void;
+  retakeDisabled: boolean;
   disabled: boolean;
   automatic: boolean;
+  /** During capture the row shows only the photo and its readability (PRD-REC-02). */
+  capturing?: boolean;
 }) {
   const photos = useMemo(
-    () => allPhotos.filter((photo) => photo.recordingId === recordingId),
+    // In the order they were taken, so a retake follows the photo it repeats.
+    () =>
+      allPhotos
+        .filter((photo) => photo.recordingId === recordingId)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [allPhotos, recordingId],
   );
-  const [urls, setUrls] = useState<{ photo: LocalPhoto; url: string }[]>([]);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [zoomed, setZoomed] = useState<string | null>(null);
+  const ids = photos.map((photo) => photo.id).join(" ");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: photos are reloaded after every saved audio chunk; URLs change only with the set of photos, so neither the thumbnails nor a zoomed photo reload during capture.
   useEffect(() => {
-    const next = photos.map((photo) => ({ photo, url: URL.createObjectURL(photo.blob) }));
+    const next = Object.fromEntries(
+      photos.map((photo) => [photo.id, URL.createObjectURL(photo.blob)]),
+    );
     setUrls(next);
     return () => {
-      for (const item of next) URL.revokeObjectURL(item.url);
+      for (const url of Object.values(next)) URL.revokeObjectURL(url);
     };
-  }, [photos]);
-  if (!photos.length) return null;
+  }, [ids]);
+  const shown = photos.flatMap((photo) => {
+    const url = urls[photo.id];
+    return url ? [{ photo, url }] : [];
+  });
+  if (!shown.length) return null;
+  const zoom = shown.find((item) => item.photo.id === zoomed);
+  const label = (photo: LocalPhoto) => `Board captured around ${duration(photo.offsetMs)}`;
   return (
     <div className={styles.photoList}>
-      {urls.map(({ photo, url }) => (
+      {shown.map(({ photo, url }) => (
         <figure key={photo.id}>
-          {/* biome-ignore lint/performance/noImgElement: device Blob URLs are temporary and cannot be optimized on the server. */}
-          <img src={url} alt={`Board captured around ${duration(photo.offsetMs)}`} />
+          <button type="button" className={styles.thumb} onClick={() => setZoomed(photo.id)}>
+            {/* biome-ignore lint/performance/noImgElement: device Blob URLs are temporary and cannot be optimized on the server. */}
+            <img src={url} alt={label(photo)} />
+          </button>
+          <PhotoReadability
+            photo={photo}
+            disabled={retakeDisabled}
+            onRetake={() => onRetake(photo)}
+          />
           <figcaption>
             {duration(photo.offsetMs)} ·{" "}
             {photo.captureState === "paused"
               ? "Taken while paused; time needs checking"
               : "Estimated capture position"}
           </figcaption>
-          {!photo.sourceAssetId ? (
+          {capturing ? null : !photo.sourceAssetId ? (
             <>
               {automatic ? <p>Uploads automatically after the recording is saved.</p> : null}
               <Button secondary disabled={disabled} onClick={() => onAttach(photo)}>
@@ -491,6 +565,65 @@ function PhotoGallery({
           )}
         </figure>
       ))}
+      {zoom ? (
+        <Sheet
+          open
+          onClose={() => setZoomed(null)}
+          title={label(zoom.photo)}
+          footer={
+            <Button
+              secondary
+              disabled={retakeDisabled}
+              onClick={() => {
+                setZoomed(null);
+                onRetake(zoom.photo);
+              }}
+            >
+              {pendingCopy.photoQuality.retake}
+            </Button>
+          }
+        >
+          <p>{pendingCopy.photoQuality.zoomPrompt}</p>
+          {/* Native pinch-zoom and scrolling over the full-size photo (D72 layer 2). */}
+          <div className={styles.zoom}>
+            {/* biome-ignore lint/performance/noImgElement: device Blob URLs are temporary and cannot be optimized on the server. */}
+            <img src={zoom.url} alt={label(zoom.photo)} />
+          </div>
+        </Sheet>
+      ) : null}
     </div>
+  );
+}
+
+/** One quiet line under the thumbnail (D72 layer 1); nothing at all if the check fails. */
+function PhotoReadability({
+  photo,
+  disabled,
+  onRetake,
+}: {
+  photo: LocalPhoto;
+  disabled: boolean;
+  onRetake: () => void;
+}) {
+  const [quality, setQuality] = useState<PhotoQuality>();
+  useEffect(() => {
+    let current = true;
+    void photoQuality(photo.id, photo.blob).then((value) => {
+      if (current) setQuality(value);
+    });
+    return () => {
+      current = false;
+    };
+  }, [photo.id, photo.blob]);
+  if (!quality) return null;
+  if (quality.verdict === "ok")
+    return <Status tone="success">{pendingCopy.photoQuality.ok}</Status>;
+  return (
+    <>
+      <Status>{pendingCopy.photoQuality[quality.verdict]}</Status>
+      <Button secondary disabled={disabled} onClick={onRetake}>
+        {pendingCopy.photoQuality.retake}
+      </Button>
+    </>
   );
 }

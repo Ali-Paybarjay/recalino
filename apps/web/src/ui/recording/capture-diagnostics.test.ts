@@ -87,6 +87,28 @@ describe("capture diagnostics client (PRD-PRIV-06)", () => {
     expect(send).toHaveBeenCalledTimes(3);
   });
 
+  it("sends a board photo verdict as integer scores and the local photo id only (D72)", () => {
+    vi.useFakeTimers();
+    const events = source();
+    const send = vi.fn(async () => {});
+    watchCaptureDiagnostics(events, { send, userAgent: "", now: () => 0 });
+    const photoId = crypto.randomUUID();
+    const quality = {
+      type: "photo_quality",
+      photoId,
+      verdict: "glare",
+      sharpness: 433,
+      exposure: 863,
+      glare: 74,
+      edgeDensity: 64,
+    } as const;
+    events.emit(quality);
+    expect(send).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(60000);
+    const body = captureDiagnosticsSchema.parse((send.mock.calls[0] as unknown[])[0]);
+    expect(body.events).toEqual([{ ageMs: 0, event: quality }]);
+  });
+
   it("drops a failed send without affecting capture", async () => {
     const events = source();
     const send = vi.fn(async () => {

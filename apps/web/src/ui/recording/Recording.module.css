@@ -36,3 +36,22 @@
   object-fit: contain;
   border-radius: 12px;
 }
+.thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+/* Full-size photo in the sheet: scroll both ways and let the browser pinch-zoom (D72). */
+.zoom {
+  overflow: auto;
+  touch-action: pinch-zoom pan-x pan-y;
+}
+.zoom img {
+  display: block;
+  width: auto;
+  max-width: none;
+  max-height: none;
+}

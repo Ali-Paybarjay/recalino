@@ -118,6 +118,49 @@ describe("capture diagnostics route (PRD-REC-05, PRD-PRIV-06)", () => {
     expect(lines).toEqual([]);
   });
 
+  it("logs a board photo verdict as numbers and the local photo id only (D72)", async () => {
+    const lines: string[] = [];
+    const photoId = randomUUID();
+    const quality = {
+      type: "photo_quality",
+      photoId,
+      verdict: "blurry",
+      sharpness: 20,
+      exposure: 863,
+      glare: 0,
+      edgeDensity: 121,
+    };
+    // Fifty verdicts, the largest batch, still fit well inside the 16 KiB cap.
+    const body = {
+      platform: "android",
+      browser: "chrome",
+      events: Array.from({ length: 50 }, () => ({ ageMs: 600000, event: quality })),
+    };
+    expect(JSON.stringify(body).length).toBeLessThan(16 * 1024);
+    await expect(call(body, lines)).resolves.toEqual({ status: 202, body: { accepted: 50 } });
+    const record = JSON.parse(lines[0] ?? "{}");
+    expect(record).toMatchObject({
+      capture_event: "photo_quality",
+      photo_id: photoId,
+      verdict: "blurry",
+      sharpness: 20,
+      exposure: 863,
+      glare: 0,
+      edge_density: 121,
+    });
+    expect(record.dropped_fields).toBeUndefined();
+    for (const event of [
+      { ...quality, photoId: "board.jpg" },
+      { ...quality, verdict: "unreadable" },
+      { ...quality, sharpness: 1001 },
+      { ...quality, glare: 0.5 },
+      { ...quality, pixels: [255, 255, 255] },
+    ])
+      await expect(
+        call({ platform: "ios", browser: "safari", events: [{ ageMs: 0, event }] }, []),
+      ).rejects.toMatchObject({ code: "validation_failed" });
+  });
+
   it("refuses free text, identifiers and unknown fields", async () => {
     for (const event of [
       { type: "visibility", visible: false, note: "teacher said hello" },
