@@ -109,6 +109,28 @@ describe("capture diagnostics client (PRD-PRIV-06)", () => {
     expect(body.events).toEqual([{ ageMs: 0, event: quality }]);
   });
 
+  it("withdraws the unsent verdict of a photo removed from this device", () => {
+    vi.useFakeTimers();
+    const events = source();
+    const send = vi.fn(async () => {});
+    watchCaptureDiagnostics(events, { send, userAgent: "", now: () => 0 });
+    const scores = { sharpness: 20, exposure: 863, glare: 0, edgeDensity: 121 };
+    const removed = crypto.randomUUID();
+    const kept = crypto.randomUUID();
+    events.emit({ type: "photo_quality", photoId: removed, verdict: "blurry", ...scores });
+    events.emit({ type: "photo_quality", photoId: kept, verdict: "ok", ...scores });
+    events.emit({ type: "photo_removed", photoId: removed });
+    vi.advanceTimersByTime(60000);
+    expect(send).toHaveBeenCalledTimes(1);
+    const body = captureDiagnosticsSchema.parse((send.mock.calls[0] as unknown[])[0]);
+    expect(body.events.map((item) => item.event)).toEqual([
+      { type: "photo_quality", photoId: kept, verdict: "ok", ...scores },
+    ]);
+    events.emit({ type: "photo_removed", photoId: kept });
+    vi.advanceTimersByTime(60000);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it("drops a failed send without affecting capture", async () => {
     const events = source();
     const send = vi.fn(async () => {

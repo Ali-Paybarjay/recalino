@@ -2,14 +2,19 @@
 import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sheet } from "../components/Sheet";
+import { ConfirmDialog, Sheet } from "../components/Sheet";
 import { pendingCopy } from "../pending-copy";
 import { workspaceRequest } from "../workspace/api";
-import { notifyAutomaticLearning, uploadAutomaticPhoto } from "../workspace/automatic-learning";
+import {
+  notifyAutomaticLearning,
+  pendingLearningBatch,
+  uploadAutomaticPhoto,
+} from "../workspace/automatic-learning";
 import { Actions, Button, Panel, Status } from "../workspace/primitives";
 import { MissingAudioNotice, partMissingLabel } from "./MissingAudioNotice";
 import type { PhotoQuality } from "./photo-quality";
 import { photoQuality } from "./photo-quality-client";
+import { canRemoveLocalPhoto, removeLocalPhoto } from "./photo-removal";
 import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
 import { recordingCopy } from "./recording-copy";
@@ -176,6 +181,20 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
         captureState: photo.captureState,
       });
   }
+  /** The pending upload group of the photo's session, which may already name it on the server. */
+  function uploadJournal(photo: LocalPhoto) {
+    const sessionOf = rows.find((row) => row.id === photo.recordingId)?.sessionId;
+    return sessionOf ? pendingLearningBatch(userId, sessionOf) : null;
+  }
+  const canRemove = (photo: LocalPhoto) => canRemoveLocalPhoto(photo, uploadJournal(photo));
+  const removePhoto = (photo: LocalPhoto) =>
+    void operation(photo.id, async () => {
+      await removeLocalPhoto(photo, {
+        store,
+        uploadJournal: uploadJournal(photo),
+        forgetDiagnostics: controller.forgetPhotoQuality,
+      });
+    });
   async function savePhoto(file: File) {
     const anchor = captureAnchor.current;
     captureAnchor.current = null;
@@ -281,6 +300,8 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                 capturing
                 onAttach={() => {}}
                 onRetake={retake}
+                canRemove={canRemove}
+                onRemove={removePhoto}
                 retakeDisabled={
                   !sourceNotice?.noticeAccepted || !["recording", "paused"].includes(state.phase)
                 }
@@ -416,6 +437,8 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                     recordingId={row.id}
                     onAttach={(photo) => void operation(photo.id, () => attachPhoto(photo))}
                     onRetake={retake}
+                    canRemove={canRemove}
+                    onRemove={removePhoto}
                     retakeDisabled={!sourceNotice?.noticeAccepted}
                     disabled={busy !== null}
                     automatic={Boolean(row.autoGenerate)}
@@ -489,6 +512,8 @@ function PhotoGallery({
   recordingId,
   onAttach,
   onRetake,
+  canRemove,
+  onRemove,
   retakeDisabled,
   disabled,
   automatic,
@@ -498,6 +523,9 @@ function PhotoGallery({
   recordingId: string;
   onAttach: (photo: LocalPhoto) => void;
   onRetake: (photo: LocalPhoto) => void;
+  /** Only a photo that exists nowhere but this device (owner decision 2026-10-13). */
+  canRemove: (photo: LocalPhoto) => boolean;
+  onRemove: (photo: LocalPhoto) => void;
   retakeDisabled: boolean;
   disabled: boolean;
   automatic: boolean;
@@ -514,6 +542,7 @@ function PhotoGallery({
   );
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [zoomed, setZoomed] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<LocalPhoto | null>(null);
   const ids = photos.map((photo) => photo.id).join(" ");
   // biome-ignore lint/correctness/useExhaustiveDependencies: photos are reloaded after every saved audio chunk; URLs change only with the set of photos, so neither the thumbnails nor a zoomed photo reload during capture.
   useEffect(() => {
@@ -561,6 +590,11 @@ function PhotoGallery({
           ) : (
             <p>Added to session sources</p>
           )}
+          {canRemove(photo) ? (
+            <Button secondary disabled={disabled} onClick={() => setRemoving(photo)}>
+              {pendingCopy.photoRemove.action}
+            </Button>
+          ) : null}
         </figure>
       ))}
       {zoom ? (
@@ -569,19 +603,33 @@ function PhotoGallery({
           onClose={() => setZoomed(null)}
           title={label(zoom.photo)}
           footer={
-            <Button
-              secondary
-              disabled={retakeDisabled}
-              onClick={() => {
-                setZoomed(null);
-                onRetake(zoom.photo);
-              }}
-            >
-              {pendingCopy.photoQuality.retake}
-            </Button>
+            <>
+              <Button
+                secondary
+                disabled={retakeDisabled}
+                onClick={() => {
+                  setZoomed(null);
+                  onRetake(zoom.photo);
+                }}
+              >
+                {recordingCopy.photoQuality.retake}
+              </Button>
+              {canRemove(zoom.photo) ? (
+                <Button
+                  secondary
+                  disabled={disabled}
+                  onClick={() => {
+                    setZoomed(null);
+                    setRemoving(zoom.photo);
+                  }}
+                >
+                  {pendingCopy.photoRemove.action}
+                </Button>
+              ) : null}
+            </>
           }
         >
-          <p>{pendingCopy.photoQuality.zoomPrompt}</p>
+          <p>{recordingCopy.photoQuality.zoomPrompt}</p>
           {/* Native pinch-zoom and scrolling over the full-size photo (D72 layer 2). */}
           <div className={styles.zoom}>
             {/* biome-ignore lint/performance/noImgElement: device Blob URLs are temporary and cannot be optimized on the server. */}
@@ -589,6 +637,18 @@ function PhotoGallery({
           </div>
         </Sheet>
       ) : null}
+      <ConfirmDialog
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing) onRemove(removing);
+          setRemoving(null);
+        }}
+        title={pendingCopy.photoRemove.confirm}
+        consequences={[pendingCopy.photoRemove.notUploaded]}
+        safeLabel={pendingCopy.photoRemove.keep}
+        confirmLabel={pendingCopy.photoRemove.action}
+      />
     </div>
   );
 }
@@ -615,12 +675,12 @@ function PhotoReadability({
   }, [photo.id, photo.blob]);
   if (!quality) return null;
   if (quality.verdict === "ok")
-    return <Status tone="success">{pendingCopy.photoQuality.ok}</Status>;
+    return <Status tone="success">{recordingCopy.photoQuality.ok}</Status>;
   return (
     <>
-      <Status>{pendingCopy.photoQuality[quality.verdict]}</Status>
+      <Status>{recordingCopy.photoQuality[quality.verdict]}</Status>
       <Button secondary disabled={disabled} onClick={onRetake}>
-        {pendingCopy.photoQuality.retake}
+        {recordingCopy.photoQuality.retake}
       </Button>
     </>
   );

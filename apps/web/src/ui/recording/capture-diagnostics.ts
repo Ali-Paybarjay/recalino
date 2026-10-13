@@ -148,6 +148,12 @@ export function watchCaptureDiagnostics(source: Source, options: Options) {
     if (queue.length) flush();
   };
   const unsubscribe = source.onHealth((event) => {
+    if (event.type === "photo_removed") {
+      queue = queue.filter(
+        (item) => item.event.type !== "photo_quality" || item.event.photoId !== event.photoId,
+      );
+      return;
+    }
     queue.push({ at: now(), event });
     if (queue.length > 200) queue = queue.slice(-200);
     // A part's summary, a gap or a hidden page are moments worth sending now.

@@ -120,6 +120,11 @@ test("captures the photo rows and the zoom sheet at 390 and 1440 px", async ({ p
     await expect(page.locator("dialog[open]")).toBeVisible();
     await page.screenshot({ path: `${OUT}/zoom-sheet-${width}.png` });
     await page.locator("dialog[open]").getByRole("button", { name: "Close" }).click();
+    // Owner decision 2026-10-13: removing a photo that exists only on this device asks first.
+    await figures.nth(1).getByRole("button", { name: "Remove this photo", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+    await page.screenshot({ path: `${OUT}/photo-remove-confirm-${width}.png` });
+    await page.getByRole("alertdialog").getByRole("button", { name: "Keep", exact: true }).click();
   }
 
   const durations = await page.evaluate(() =>

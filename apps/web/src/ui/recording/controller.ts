@@ -59,6 +59,8 @@ export type CaptureHealthEvent =
       glare: number;
       edgeDensity: number;
     }
+  /** Withdraws a not-yet-sent `photo_quality` event of a removed photo; never sent itself. */
+  | { type: "photo_removed"; photoId: string }
   | {
       type: "part";
       part: number;
@@ -189,6 +191,10 @@ export class RecordingController {
   /** On-device board photo verdict (D72), numbers only, for comparison with server outcomes. */
   reportPhotoQuality = (photoId: string, quality: Pick<PhotoQuality, "verdict" | "scores">) => {
     this.report({ type: "photo_quality", photoId, verdict: quality.verdict, ...quality.scores });
+  };
+  /** A board photo removed from this device takes its unsent verdict with it. */
+  forgetPhotoQuality = (photoId: string) => {
+    this.report({ type: "photo_removed", photoId });
   };
   private report(event: CaptureHealthEvent) {
     for (const listener of this.healthListeners) {

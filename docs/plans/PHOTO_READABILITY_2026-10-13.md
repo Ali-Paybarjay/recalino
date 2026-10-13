@@ -9,6 +9,7 @@
 - زبان‌آموز چند ثانیه پس از گرفتن عکس، زیر تصویر کوچک همان عکس یک خط آرام می‌بیند: «Looks sharp»، یا دلیل مشکل همراه دکمهٔ Retake. پس هنوز تخته جلوی اوست و می‌تواند دوباره عکس بگیرد.
 - تشخیص روی خود دستگاه و در یک Web Worker انجام می‌شود. ورودی نسخهٔ کوچک‌شدهٔ عکس است (لبهٔ بلند حداکثر ۶۴۰ px). تشخیص پنج حالت دارد: تاری، تاریکی، شستگی، بازتاب نور و تخته‌ای که نوشته‌ای در آن دیده نمی‌شود.
 - عکس همیشه ذخیره می‌ماند (PRD-REC-07). Retake عکس تازه‌ای **اضافه** می‌کند و عکس قبلی را پاک نمی‌کند (PRD-CORE-05).
+- عکسی که فقط روی دستگاه است (هنوز آپلود نشده و در گروه آپلود هم نیست) را خود زبان‌آموز می‌تواند پس از یک پیام تأیید حذف کند. این کنترل را مالک محصول در 2026-10-13 تأیید کرد (بخش ۲.۱).
 - با زدن روی تصویر کوچک، عکس در اندازهٔ کامل در همان Sheet موجود باز می‌شود. Sheet قابل اسکرول است و pinch-zoom بومی مرورگر دارد. یک جمله هم می‌پرسد آیا ریزترین نوشته خواناست (لایهٔ ۲).
 - برای هر عکس تازه، رخداد `photo_quality` به diagnostics ضبط می‌رود: شناسهٔ محلی عکس، چهار امتیاز صحیح ۰ تا ۱۰۰۰ و حکم. هیچ پیکسل یا متنی فرستاده نمی‌شود (PRD-PRIV-06). با این داده‌ها مدیر می‌تواند پس از انتشار، حکم دستگاه را با نتیجهٔ `unreadable_image` سرور مقایسه کند.
 
@@ -23,7 +24,8 @@
 | [`RecordingView.tsx`](../../apps/web/src/ui/recording/RecordingView.tsx) | ردیف عکس‌ها **حین ضبط** (فقط عکس‌های قطعهٔ جاری، بدون دکمه‌های آپلود) و پس از Stop. خط وضعیت زیر تصویر کوچک، Retake، Sheet بزرگ‌نمایی، مرتب‌سازی عکس‌ها به ترتیب گرفتن، و ارسال diagnostics. صفحه حین ضبط پس از ذخیرهٔ هر chunk صوت (هر ۲ ثانیه) عکس‌ها را دوباره می‌خواند. blob URLها فقط با تغییر مجموعهٔ عکس‌ها عوض می‌شوند، پس تصویر کوچک و عکسِ در حال بزرگ‌نمایی هر ۲ ثانیه دوباره بارگذاری نمی‌شوند |
 | [`Recording.module.css`](../../apps/web/src/ui/recording/Recording.module.css) | دو کلاس: `.thumb` (بازنشانی دکمه دور تصویر کوچک) و `.zoom` (`overflow: auto`، `touch-action: pinch-zoom pan-x pan-y`). رنگ، اندازه، فاصله یا token تازه‌ای ندارد |
 | [`capture-diagnostics.ts`](../../apps/web/src/ui/recording/capture-diagnostics.ts)، [`controller.ts`](../../apps/web/src/ui/recording/controller.ts) | رخداد `photo_quality` در schema سخت (`strictObject`، `uuid`، enum حکم، عدد صحیح ۰ تا ۱۰۰۰) و `controller.reportPhotoQuality` |
-| [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts)، [`UI_COPY_PENDING.md`](../design/UI_COPY_PENDING.md) | هشت متن `photoQuality.*`، عیناً همان متن‌های پیشنهادی (D65) |
+| [`recording-copy.ts`](../../apps/web/src/ui/recording/recording-copy.ts) | هشت متن `recordingCopy.photoQuality.*`. مالک محصول آن‌ها را در 2026-10-13 عیناً تأیید کرد و از `pending-copy.ts` به اینجا منتقل شدند |
+| [`photo-removal.ts`](../../apps/web/src/ui/recording/photo-removal.ts)، [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts)، [`UI_COPY_PENDING.md`](../design/UI_COPY_PENDING.md) | حذف عکسی که فقط روی دستگاه است (بخش ۲.۱). چهار متن تازهٔ `photoRemove.*` در انتظار تأیید‌اند |
 
 جای عناصر در ردیف هر عکس: تصویر کوچک (دکمهٔ بزرگ‌نمایی)، خط وضعیت (`Status` موجود: `success` برای ok و `neutral` برای هشدار؛ هیچ‌کدام `alert` نیست)، دکمهٔ Retake (`Button` موجود)، زمان تقریبی، و پس از Stop دکمه‌های آپلودِ موجود.
 
@@ -31,6 +33,12 @@
 - حین ضبط، Retake همان «Add board photo» است و لنگرش لحظهٔ حال در قطعهٔ جاری است. فقط در حالت recording یا paused فعال است.
 - برای عکسِ قطعهٔ تمام‌شده (پس از Stop، یا قطعهٔ قبلی حین ضبط)، عکس تازه به همان قطعه و همان لنگر زمانی عکس اول بسته می‌شود. سپس `notifyAutomaticLearning` صدا زده می‌شود تا عکس مثل هر عکس ذخیره‌شدهٔ دیگری به منابع جلسه برود.
 - Retake مثل «Add board photo» به پذیرش material notice نیاز دارد.
+
+### ۲.۱ حذف عکسی که فقط روی دستگاه است (تصمیم مالک محصول 2026-10-13، پاسخ پرسش ۱)
+
+- **کجا:** دکمهٔ «Remove this photo» در ردیف عکس (حین ضبط و پس از Stop) و در footer Sheet بزرگ‌نمایی. پیش از حذف، `ConfirmDialog` موجود باز می‌شود: عنوان «Remove this photo from this device?»، پیامد «It has not been uploaded.»، گزینهٔ امن «Keep» با فوکوس اول، و دکمهٔ `danger` «Remove this photo». پیام فقط پس از لمس خود زبان‌آموز باز می‌شود.
+- **چه عکسی:** فقط عکسی که `sourceAssetId` ندارد و در گروه آپلودِ در جریانِ جلسه‌اش (journal `recalino:learning-batch:*`) نامی از آن نیست، چون منبعش ممکن است روی سرور ساخته شده باشد. عکس آپلودشده یا در جریان آپلود این دکمه را ندارد و همان حذف صفحهٔ منابع برایش می‌ماند. شرط در لحظهٔ تأیید دوباره بررسی می‌شود. اگر آپلود در این فاصله شروع شده باشد، چیزی حذف نمی‌شود.
+- **چه چیزی حذف می‌شود:** فقط همان عکس در IndexedDB (`store.removePhoto`)، حکمِ cache‌شدهٔ آن، و رخداد `photo_quality` آن اگر هنوز در صف دستهٔ diagnostics مانده باشد (رخداد کنترلی `photo_removed` که خودش هرگز فرستاده نمی‌شود). خطی که پیش‌تر به لاگ رفته باشد پاک‌شدنی نیست. آن خط فقط عدد و شناسهٔ تصادفی دارد.
 
 ## ۳. الگوریتم و آستانه‌ها
 
@@ -104,9 +112,9 @@
 
 ## ۸. آزمون‌ها و شواهد
 
-- **unit:** [`photo-quality.test.ts`](../../apps/web/src/ui/recording/photo-quality.test.ts) شامل هر شش حکم روی تصویرهای ساخته‌شده در آزمون (و سه حالت تختهٔ سیاه)، هفت بررسی هشدار نادرست (از جمله تختهٔ سیاه)، ترتیب تاری، کران امتیازها و سقف ۶۰ ms است. [`photo-quality-client.test.ts`](../../apps/web/src/ui/recording/photo-quality-client.test.ts) بررسی می‌کند که تابع throw نمی‌کند و هر عکس یک بار ارزیابی می‌شود. `capture-diagnostics.test.ts` ارسال `photo_quality` را می‌آزماید و `recording-routes.test.ts` لاگ، سقف ۱۶ KiB و ردِ payloadهای نامجاز را.
-- **e2e:** [`photo-readability.spec.ts`](../../apps/web/e2e/photo-readability.spec.ts) دو PNG (تیز و تار) را با canvas صفحه می‌سازد و هر دو خط حکم را بررسی می‌کند. همچنین Sheet بزرگ‌نمایی با `naturalWidth` برابر ۸۰۰، ثابت ماندن `src` تصویر کوچک در ۵ ثانیه ضبط، نبودِ dialog یا alert حین ضبط، Retake و نگه‌داشتن هر سه عکس، حکم‌ها پس از Stop و رسیدن سه رخداد `photo_quality` بدون `data:image` را می‌آزماید. [`photo-readability-screens.spec.ts`](../../apps/web/e2e/photo-readability-screens.spec.ts) فقط با `RECALINO_SCREENSHOTS=1` اجرا می‌شود و تصویرها و اندازه‌ها را می‌سازد.
-- **تصویرها:** [`artifacts/verification/feat-photo-readability/`](../../artifacts/verification/feat-photo-readability/) شامل `photo-row-<verdict>-{390,1440}.png` برای هر شش حکم، `capture-{390,1440}.png` و `zoom-sheet-{390,1440}.png` است.
+- **unit:** [`photo-quality.test.ts`](../../apps/web/src/ui/recording/photo-quality.test.ts) شامل هر شش حکم روی تصویرهای ساخته‌شده در آزمون (و سه حالت تختهٔ سیاه)، هفت بررسی هشدار نادرست (از جمله تختهٔ سیاه)، ترتیب تاری، کران امتیازها و سقف ۶۰ ms است. [`photo-quality-client.test.ts`](../../apps/web/src/ui/recording/photo-quality-client.test.ts) بررسی می‌کند که تابع throw نمی‌کند و هر عکس یک بار ارزیابی می‌شود. `capture-diagnostics.test.ts` ارسال `photo_quality` و پس‌گرفتن رخدادِ فرستاده‌نشدهٔ عکسِ حذف‌شده را می‌آزماید، و `recording-routes.test.ts` لاگ، سقف ۱۶ KiB و ردِ payloadهای نامجاز را. [`photo-removal.test.ts`](../../apps/web/src/ui/recording/photo-removal.test.ts) هم شرط حذف (آپلودشده، در گروه آپلود، فقط محلی) و حذف فقط همان عکس، حکم و رخدادش را می‌آزماید.
+- **e2e:** [`photo-readability.spec.ts`](../../apps/web/e2e/photo-readability.spec.ts) دو PNG (تیز و تار) را با canvas صفحه می‌سازد و هر دو خط حکم را بررسی می‌کند. همچنین Sheet بزرگ‌نمایی با `naturalWidth` برابر ۸۰۰، ثابت ماندن `src` تصویر کوچک در ۵ ثانیه ضبط، نبودِ dialog یا alert حین ضبط، Retake و نگه‌داشتن هر سه عکس، حذف عکس تار حین ضبط (اول Keep و ماندن عکس، بعد حذف و رسیدن به دو عکس، بدون قطع ضبط)، دکمهٔ حذف در Sheet، حکم‌ها پس از Stop، و رسیدن رخدادهای `photo_quality` عکس‌های باقی‌مانده بدون `data:image` را می‌آزماید. [`photo-readability-screens.spec.ts`](../../apps/web/e2e/photo-readability-screens.spec.ts) فقط با `RECALINO_SCREENSHOTS=1` اجرا می‌شود و تصویرها و اندازه‌ها را می‌سازد.
+- **تصویرها:** [`artifacts/verification/feat-photo-readability/`](../../artifacts/verification/feat-photo-readability/) شامل `photo-row-<verdict>-{390,1440}.png` برای هر شش حکم، `capture-{390,1440}.png`، `zoom-sheet-{390,1440}.png` و `photo-remove-confirm-{390,1440}.png` (پیام تأیید حذف) است. ردیف‌های عکس دکمهٔ «Remove this photo» را هم نشان می‌دهند.
 
 ### ۸.۱ اجرای محلی (2026-10-13)
 
@@ -131,6 +139,17 @@
 | `CI=1 RECALINO_DEV_UI=1 pnpm test:e2e` با `photo-readability.spec.ts`، `recording.spec.ts`، `recording-capture.spec.ts` و `recording-decode.spec.ts` | `4 passed (30.8s)`، بدون flaky. decode: `{"declaredMs":18180,"decodedMs":18180}` |
 | `photo-readability-screens.spec.ts` (`RECALINO_SCREENSHOTS=1`) | `1 passed (9.1s)`. تصویرها روی همین وضعیت دوباره ساخته شدند |
 
+**پس از تأیید متن‌ها و کنترل حذف (همان روز):**
+
+| دستور | خط خلاصه |
+|---|---|
+| `pnpm lint` | `Checked 1215 files in 1820ms. No fixes applied.` |
+| `pnpm typecheck` | `packages/core typecheck: Done` · `apps/web typecheck: Done` · `packages/ops-cli typecheck: Done` |
+| `pnpm check:boundaries` | `✔ no dependency violations found (1294 modules, 6001 dependencies cruised)` |
+| `pnpm test:unit` | `Test Files 209 passed (209)` · `Tests 3473 passed (3473)`. چهار آزمون تازه اضافه شد و چهار آزمونِ ثبت متن کم شد، چون متن‌های در انتظار از هشت به چهار رسیدند |
+| `pnpm build` / `check:client-bundle` | `✓ Compiled successfully in 18.2s` · `No secrets in the client-visible build output.` |
+| `CI=1 RECALINO_DEV_UI=1 RECALINO_SCREENSHOTS=1 pnpm test:e2e` با `photo-readability`، `photo-readability-screens`، `recording`، `recording-capture` و `recording-decode` | `5 passed (31.9s)`، بدون flaky. decode: `{"declaredMs":18240,"decodedMs":18240}`. Worker با کندسازی ۴×: 97 تا 194 ms |
+
 ## ۹. محدودیت‌ها
 
 - آستانه‌ها فقط با تصویر مصنوعی کالیبره شده‌اند (بخش ۴). عکس واقعی ممکن است مشکلی داشته باشد که در این تصویرها نبود: نور خورشید، کاغذ به‌جای تخته، یا عکس کج. تختهٔ سیاه با گچ فقط به‌صورت مصنوعی آزموده شده است.
@@ -139,6 +158,7 @@
 - حکم در IndexedDB ذخیره نمی‌شود و با هر باز کردن صفحه دوباره حساب می‌شود (در Worker، و برای هر عکس یک بار).
 - تخته‌ای که تمام زمینه‌اش بریده ولی نوشته‌اش پررنگ است، `ok` می‌گیرد. این عمدی است، چون چنین عکسی خواناست.
 - اندازه‌گیری روی گوشی واقعی انجام نشده است (بخش ۵).
+- حذف عکس: آپلود دستیِ تک‌عکس (دکمهٔ «Retry photo upload» یا «Add photo to session») journal ندارد. اگر چنین آپلودی پس از ساخت منبع روی سرور و پیش از ثبت `sourceAssetId` شکست بخورد، عکس محلی هنوز قابل حذف است و منبع بی‌صاحب روی سرور می‌ماند. آن منبع از صفحهٔ منابع حذف‌شدنی است. حین خود آپلود، همهٔ دکمه‌ها غیرفعال‌اند.
 
 ## ۱۰. فایل‌های بیرون از `recording/**`
 
@@ -147,11 +167,12 @@
 - `apps/web/src/server/recording-routes.test.ts`: آزمون route.
 - `apps/web/e2e/photo-readability*.spec.ts` و `artifacts/verification/feat-photo-readability/`.
 
-## ۱۱. پرسش‌ها (نگه‌داشته برای گزارش پایانی)
+## ۱۱. پرسش‌ها و پاسخ‌ها
 
-1. **حذف یک عکس محلی:** در `RecordingView` کنترلی برای حذف تک‌عکس وجود ندارد. فقط «Remove from this device» هست که کل قطعه را حذف می‌کند، و حذف منبع در Session sources پس از آپلود. پس عکس تار تا آپلود می‌ماند و به منابع جلسه می‌رود، و سرور احتمالاً آن را `unreadable_image` می‌داند. آیا کنترل حذف تک‌عکس (با متن تازه) لازم است؟
-2. **لنگر Retake پس از Stop:** عکس تازه به همان قطعه و همان `offsetMs` و `captureState` عکس اول بسته می‌شود. آیا درست است، یا باید `paused` («time needs checking») باشد چون پس از ضبط گرفته شده است؟
-3. **`photo_id` در لاگ:** سند diagnostics ضبط می‌گفت «بدون شناسهٔ ضبط». شناسهٔ تصادفی محلی عکس برای تطبیق با نتیجهٔ سرور لازم است. آیا با PRD-PRIV-06 پذیرفتنی است؟
-4. **عنوان Sheet:** متن alt موجود («Board captured around {time}») حالا به‌صورت عنوان دیده می‌شود. آیا باید به فهرست متن‌های در انتظار برود؟
-5. **اندازه‌گیری روی گوشی واقعی متوسط:** هنوز انجام نشده است. شاید مالک محصول بتواند روی گوشی خودش زمان نمایش حکم را ببیند (هدف: کمتر از چند ثانیه).
-6. **متن‌ها:** هشت متن `photoQuality.*` در انتظار تأیید مالک محصول‌اند.
+1. **حذف یک عکس محلی:** پاسخ مالک محصول 2026-10-13: ساخته شود (بخش ۲.۱). چهار متن `photoRemove.*` در انتظار تأیید‌اند.
+2. **لنگر Retake پس از Stop:** پاسخ مدیر: همین رفتار بماند (قطعه و `offsetMs` عکس اول؛ حین ضبط، لحظهٔ حال).
+3. **`photo_id` در لاگ:** پاسخ مدیر: پذیرفتنی است. یک uuid تصادفی محلی همراه چند عدد، شناسه است نه محتوا (ثبت ذیل قاعدهٔ ۳ D72).
+4. **عنوان Sheet:** پاسخ مدیر: متن alt موجود و از پیش تأییدشده می‌ماند. استفادهٔ دیدنی آن برای بازبینی بعدی متن‌ها یادداشت شد.
+5. **اندازه‌گیری روی گوشی واقعی متوسط:** هنوز باز است و به مالک محصول رفته است.
+6. **متن‌ها:** هشت متن `photoQuality.*` در 2026-10-13 عیناً تأیید و به `recording-copy.ts` منتقل شدند.
+7. **کالیبره با عکس‌های مالک محصول (قاعدهٔ ۳ D72):** هنوز باز است و به آن عکس‌ها نیاز دارد.

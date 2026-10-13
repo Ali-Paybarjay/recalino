@@ -108,6 +108,7 @@ test("judges board photos on the device, keeps every photo and zooms without int
     ),
   ).toBeVisible();
   await expect(sheet.locator("img")).toHaveJSProperty("naturalWidth", 800);
+  await expect(sheet.getByRole("button", { name: "Remove this photo", exact: true })).toBeVisible();
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 
@@ -124,24 +125,49 @@ test("judges board photos on the device, keeps every photo and zooms without int
     1,
   );
 
+  // Owner decision 2026-10-13: a photo that exists only on this device can be removed after a
+  // confirmation; Keep leaves it, and recording carries on.
+  const blurryRow = page
+    .locator("figure")
+    .filter({ hasText: "May be hard to read: blurry. Retake?" });
+  await blurryRow.getByRole("button", { name: "Remove this photo", exact: true }).click();
+  const confirm = page.getByRole("alertdialog");
+  await expect(
+    confirm.getByText("Remove this photo from this device?", { exact: true }),
+  ).toBeVisible();
+  await expect(confirm.getByText("It has not been uploaded.", { exact: true })).toBeVisible();
+  await confirm.getByRole("button", { name: "Keep", exact: true }).click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect(page.getByText("3 board photos saved on this device")).toBeVisible();
+  await blurryRow.getByRole("button", { name: "Remove this photo", exact: true }).click();
+  await confirm.getByRole("button", { name: "Remove this photo", exact: true }).click();
+  await expect(page.getByText("2 board photos saved on this device")).toBeVisible();
+  await expect(page.getByText("May be hard to read: blurry. Retake?", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText("Looks sharp", { exact: true })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+
   await page.getByRole("button", { name: "Stop and save", exact: true }).click();
   await expect(page.getByText("Saved on this device", { exact: true })).toBeVisible();
   await expect(page.getByText("Looks sharp", { exact: true })).toHaveCount(2);
   await expect(page.getByText("May be hard to read: blurry. Retake?", { exact: true })).toHaveCount(
-    1,
+    0,
   );
 
-  // Diagnostics carry integer scores and the verdict, never pixels.
+  // Diagnostics carry integer scores and the verdict, never pixels. The removed photo's verdict
+  // is withdrawn if it was still waiting for its batch (unit-tested); the kept ones arrive.
   await expect
     .poll(
       () =>
         diagnostics
-          .flatMap((body) => (body as { events: { event: { type: string } }[] }).events)
-          .filter((item) => item.event.type === "photo_quality").length,
+          .flatMap(
+            (body) => (body as { events: { event: { type: string; verdict?: string } }[] }).events,
+          )
+          .filter((item) => item.event.type === "photo_quality" && item.event.verdict === "ok")
+          .length,
       { timeout: 70000 },
     )
-    .toBe(3);
-  const text = JSON.stringify(diagnostics);
-  expect(text).not.toContain("data:image");
-  expect(text).toContain('"verdict":"blurry"');
+    .toBe(2);
+  expect(JSON.stringify(diagnostics)).not.toContain("data:image");
 });

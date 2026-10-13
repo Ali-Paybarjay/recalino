@@ -34,19 +34,15 @@
 
 در همان تأیید، متن مقدمهٔ صفحهٔ ضبط («After Stop, all recorded parts are saved on this device, then uploaded automatically to prepare and save your session notes and flashcards.») که با D60 دقیق نبود، با پیشنهاد گزارش ضبط جایگزین شد: «Recorded parts are saved on this device and sent while you record; after Stop the last part is sent and your notes are prepared.» (`recordingCopy.introduction`).
 
-پس از آن تأیید، فهرست در انتظار تا متن‌های D72 زیر خالی بود.
+**تأیید دوم 2026-10-13 (D72، پیگیری مالک محصول):** مالک محصول هر هشت متن خوانایی عکس تخته (`photoQuality.ok`، `blurry`، `too_dark`، `too_bright`، `glare`، `low_detail`، `retake` و `zoomPrompt`؛ [گزارش](../plans/PHOTO_READABILITY_2026-10-13.md)) را عیناً تأیید کرد. متن‌ها از `pending-copy.ts` به [`recording/recording-copy.ts`](../../apps/web/src/ui/recording/recording-copy.ts) (`recordingCopy.photoQuality.*`) منتقل شدند. عنوان Sheet بزرگ‌نمایی همان متن alt موجود است («Board captured around {time}») و متن تازه نیست.
 
-## D72 — خوانایی عکس تخته روی دستگاه (`feat/photo-readability`، 2026-10-13)
+## D72، پیگیری — حذف عکسی که فقط روی دستگاه است (`feat/photo-readability`، 2026-10-13)
 
-متن‌های لایهٔ ۱ و ۲ D72 ([گزارش](../plans/PHOTO_READABILITY_2026-10-13.md)). فقط در ردیف همان عکس، زیر تصویر کوچک، نمایش داده می‌شوند؛ هیچ پنجره، toast، banner یا صدایی ندارند (PRD-REC-02). عکس همیشه ذخیره می‌ماند و Retake عکس تازه‌ای اضافه می‌کند (PRD-REC-07). هیچ‌کدام تأیید نشده‌اند.
+مالک محصول در 2026-10-13 یک کنترل کوچک را تأیید کرد: حذف عکس تختهٔ آپلودنشده از همین دستگاه. این کنترل در ردیف همان عکس و در footer Sheet بزرگ‌نمایی می‌آید. پیش از حذف، `ConfirmDialog` موجود باز می‌شود. عکسِ آپلودشده یا عکسی که در گروه آپلودِ در جریان است، این کنترل را ندارد و همان حذف صفحهٔ منابع برایش می‌ماند. این متن‌ها هنوز تأیید نشده‌اند. پیشنهاد مدیر کار برای متن تأیید («Remove this photo from this device? It has not been uploaded.») به دو کلید تقسیم شد، چون `ConfirmDialog` عنوان و فهرست پیامدها را جدا می‌گیرد. متن، کلمه‌به‌کلمه همان است.
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
-| `photoQuality.ok` | Looks sharp | حکم `ok` | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.blurry` | May be hard to read: blurry. Retake? | حکم `blurry`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.too_dark` | May be hard to read: too dark. Retake? | حکم `too_dark`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.too_bright` | May be hard to read: washed out. Retake? | حکم `too_bright`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.glare` | May be hard to read: glare on the board. Retake? | حکم `glare`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.low_detail` | Hard to see writing in this photo. Move closer or retake? | حکم `low_detail`، با دکمهٔ Retake | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.retake` | Retake | دکمهٔ گرفتن عکس تازه از همان تخته | D72 لایهٔ ۱ | در انتظار تأیید |
-| `photoQuality.zoomPrompt` | Can you read the smallest writing? If not, retake while the board is still there. | Sheet عکس در اندازهٔ کامل با pinch-zoom | D72 لایهٔ ۲ | در انتظار تأیید |
+| `photoRemove.action` | Remove this photo | دکمهٔ ردیف عکس و footer Sheet، و دکمهٔ تأیید حذف (`danger`) | تصمیم مالک محصول 2026-10-13 (پاسخ پرسش ۱) | در انتظار تأیید |
+| `photoRemove.confirm` | Remove this photo from this device? | عنوان `ConfirmDialog` | همان | در انتظار تأیید |
+| `photoRemove.notUploaded` | It has not been uploaded. | تنها پیامد در `ConfirmDialog` | همان | در انتظار تأیید |
+| `photoRemove.keep` | Keep | گزینهٔ امن `ConfirmDialog` (فوکوس اول) | همان | در انتظار تأیید |

@@ -78,3 +78,8 @@ export function photoQuality(id: string, blob: Blob): Promise<PhotoQuality | und
   }
   return result;
 }
+
+/** Drops the cached verdict of a photo removed from this device. */
+export function forgetPhotoQuality(id: string) {
+  results.delete(id);
+}
