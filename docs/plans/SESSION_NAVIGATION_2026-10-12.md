@@ -72,24 +72,44 @@
 
 ## ۲. آزمون‌ها و شواهد
 
-- `session-state.test.ts`: ۲۳ آزمون واحد برای همهٔ حالت‌های تشخیص و برای این قاعده که اقدام اصلی در اقدام‌های فرعی تکرار نشود.
-- `pnpm lint`، `typecheck`، `check:boundaries` و همهٔ آزمون‌های واحد (۳۲۷۲) به‌صورت محلی سبز شدند.
-- e2e تازه [`session-navigation.spec.ts`](../../apps/web/e2e/session-navigation.spec.ts) روی `/dev/ui/session`: ۳۹۰ و ۱۴۴۰ پیکسل، بدون اسکرول افقی و بدون خطای axe. به‌صورت محلی با Chromium نصب‌شده اجرا شد.
-- e2eهای `automatic-learning` و `processing-review` روی صفحه‌های dev به‌صورت محلی سبز شدند. دو آزمون DB/Auth لازم دارند و فقط در CI اجرا می‌شوند.
+### ۲.۱ اجرای محلی به‌جای CI
+
+GitHub Actions از حدود 22:16 UTC روز 2026-10-12 در کل مخزن کاری را شروع نمی‌کند (پیام مدیر). به همین دلیل همان مراحل CI به‌صورت محلی روی کد نهایی اجرا شدند:
+
+- Node 24.21.0 و pnpm 12.4.2
+- Supabase محلی در Docker، فقط با داده و کاربر مصنوعی
+- بدون کلید ابری و بدون کلید provider: `env -u SUPABASE_SECRET_KEY -u OPENROUTER_API_KEY`. این سشن یک `SUPABASE_SECRET_KEY` ابری دارد که بر `.env.local` مقدم است، پس هیچ اتصال ابری یا فراخوان پولی رخ نداد.
+- build و e2e مثل CI: `CI=1`، `RECALINO_DEV_UI=1`، `next start` روی build تولیدی.
+
+| فرمان | خط خلاصه |
+|---|---|
+| `pnpm lint` | `Checked 1116 files in 3s. No fixes applied.` |
+| `pnpm typecheck` | `packages/core typecheck: Done`، `apps/web typecheck: Done`، `packages/ops-cli typecheck: Done` |
+| `pnpm check:boundaries` | `✔ no dependency violations found (1196 modules, 5436 dependencies cruised)` |
+| `pnpm test` (unit و integration) | `Test Files  316 passed \| 1 skipped (317)` و `Tests  3903 passed \| 1 skipped (3904)` |
+| `pnpm build` | `✓ Compiled successfully in 38.3s`، exit 0 |
+| `pnpm test:e2e` | `268 passed (6.3m)` و `2 flaky`، exit 0 |
+
+- **دو آزمون flaky:** هر دو در تلاش دوم سبز شدند و در اجرای کامل قبلی (`270 passed`، بدون flaky) هم سبز بودند. هیچ‌کدام به فایل‌های این شاخه مربوط نیست:
+  - `automatic-learning.spec.ts:510`: خطای IndexedDB («object store not found») در مرحلهٔ آماده‌سازی خود آزمون (`page.evaluate`)، یعنی رقابت با ساخت پایگاه IndexedDB برنامه. این شاخه IndexedDB را تغییر نداده است.
+  - `session-notes-reader.spec.ts:35` در ۳۹۰ پیکسل: ارتفاع iframe جزوه در ۸ فریم ثابت نشد. این آزمون روی `/dev/ui/study` اجرا می‌شود. `SessionNotesReader`، `NoteView` و آن صفحه در diff این شاخه نیستند.
+- **اجرای نیمه‌کارهٔ شبانه:** نخستین اجرای نهایی ۵۶۰ شکست integration داشت، چون daemon Docker در زمان بیکاری سشن متوقف شده بود. پس از راه‌اندازی دوباره، همان اجرا کاملاً سبز شد (جدول بالا).
+
+### ۲.۲ آزمون‌های تازه و به‌روزشده
+
+- `session-state.test.ts`: ۲۷ آزمون واحد برای همهٔ حالت‌های تشخیص، حالت‌های D60 و بررسی صدا، قاعدهٔ Retry آپلود، و این قاعده که اقدام اصلی در اقدام‌های فرعی تکرار نشود.
+- `run-stage.test.ts`: تصمیم «checking_voices» یا «publishing».
+- `session-navigation.spec.ts` روی `/dev/ui/session`: هر حالت در ۳۹۰ و ۱۴۴۰ پیکسل، بدون اسکرول افقی و بدون خطای axe.
+- `session-navigation-screens.spec.ts`: صفحه‌های واقعی با کاربر محلی مصنوعی، یکی بودن گام Today و صفحهٔ جلسه، و ساخت تصویرهای D65.
 - e2eهای به‌روزشده:
   - `classes-browser`: جلسهٔ خالی دیگر کاشی جزوه و کارت ندارد.
-  - `automatic-learning` و `processing-review`: href تازه.
-- `run-stage.test.ts`: تصمیم «checking_voices» یا «publishing». به `session-state.test.ts` هم آزمون‌های D60 و بررسی صدا اضافه شد.
-- e2e با Supabase محلی (Docker) و کاربر مصنوعی، به‌صورت محلی:
-  - `session-navigation-screens`، `session-navigation`، `classes-browser`، `today`، `automatic-learning`، `processing-review`، `session-notes-reader`، `background-uploads`، `audio-upload`، `organization` و `study` سبز شدند.
-  - `learning-session.spec.ts:55` روی commit پایه (`43f12a9`) هم در این محیط شکست می‌خورد، پس به این تغییرها مربوط نیست.
-  - در اجرای دسته‌ای و سرد سرور dev، چند آزمون از سنگینی بار شکست خوردند و تک‌به‌تک سبز شدند.
-- نکتهٔ محیط: این سشن یک `SUPABASE_SECRET_KEY` ابری دارد که بر `.env.local` مقدم است. آزمون‌ها با `env -u SUPABASE_SECRET_KEY -u OPENROUTER_API_KEY` اجرا شدند تا هیچ اتصال ابری یا فراخوان پولی رخ ندهد.
-- integration و build در CI اجرا می‌شوند. نتیجهٔ نهایی در پیام پایانی به مدیر آمده است.
+  - `automatic-learning` و `processing-review`: href تازهٔ صفحهٔ واحد.
 
 ## ۳. flag و پیش‌فرض
 
 flag تازه‌ای اضافه نشد. این تغییرها همان اصلاح‌هایی‌اند که مالک خواسته است (۷.۳). همهٔ متن‌های تازه در فهرست انتظار ثبت شده‌اند: [`UI_COPY_PENDING.md`](../design/UI_COPY_PENDING.md) و `pendingCopy.sessionNavigation`.
+
+رفتارهای D60، D61 و D64 و kill-switchهایشان در شاخه‌های recording و voice هستند. این شاخه فقط وضعیت آن‌ها را می‌خواند. اگر هر کدام خاموش باشد، حالت متناظرش در resolver هیچ‌وقت فعال نمی‌شود و رفتار امروز می‌ماند.
 
 ## ۴. روش بررسی
 
@@ -128,3 +148,4 @@ flag تازه‌ای اضافه نشد. این تغییرها همان اصلا�
 3. عنوان صفحهٔ واحد «Session material» ماند. نام دیگری مثل «Session material and progress» می‌خواهید؟ این نام متن تازه است.
 4. در Today، کارت گام بعد فقط برای آخرین جلسه نمایش داده می‌شود. برای جلسه‌های دیگرِ در جریان هم لازم است؟
 5. برای مرحلهٔ «Finishing your notes» نمایش درصد یا شمارش منبع‌های بررسی‌شده لازم است؟ این کار ثبت پیشرفت در سرور را می‌خواهد.
+6. در جلسهٔ خالی دو دکمهٔ پررنگ دیده می‌شود: «Add or view material» در کارت گام بعد، و «Record a session» در بخش مصوب «Session material» پایین صفحه (`session-empty-390.png`). بخش مصوب دست نخورده است. ترجیح شما کدام است: اقدام اصلی کارت در جلسهٔ خالی «Record a session» باشد و بخش پایین فقط توضیح بدهد، یا همین وضع بماند؟
