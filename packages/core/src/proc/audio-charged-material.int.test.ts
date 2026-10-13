@@ -206,7 +206,9 @@ it("D59 regression: the same audio in another class of the period uploads, trans
     );
     expect(store.upload(link.url, bytes, "audio/mpeg")).toBe(200);
     const manifest = await temporaryAudioManifest(db, x.ctx, source.assetId, upload.uploadId);
-    await validateAudioUploadRun(db, x.ctx, run.id, source.assetId, manifest.reservationId);
+    const manifestReservationId = manifest.reservationId;
+    if (!manifestReservationId) throw new Error("the temporary upload must carry the run's hold");
+    await validateAudioUploadRun(db, x.ctx, run.id, source.assetId, manifestReservationId);
     expect(
       await confirmTemporaryAudioPart(db, store, x.ctx, source.assetId, upload.uploadId, 0),
     ).toBe("verified");

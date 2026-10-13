@@ -117,15 +117,17 @@ export async function audioUploadWindows(
     .where("reservation_id", "in", [...reservationIds])
     .groupBy("reservation_id")
     .execute();
-  return new Map(
-    rows.map((row) => [
-      row.reservationId,
-      {
-        startedAt: new Date(row.startedAt),
-        verifiedAt: row.verifiedAt && new Date(row.verifiedAt),
-      },
-    ]),
-  );
+  // Staged capture copies (D60) carry no reservation; the filter above excludes them, but the
+  // column is nullable, so the key is narrowed here.
+  const windows = new Map<string, { startedAt: Date; verifiedAt: Date | null }>();
+  for (const row of rows) {
+    if (row.reservationId === null) continue;
+    windows.set(row.reservationId, {
+      startedAt: new Date(row.startedAt),
+      verifiedAt: row.verifiedAt && new Date(row.verifiedAt),
+    });
+  }
+  return windows;
 }
 export async function beginTemporaryAudioUpload(
   db: Database,
