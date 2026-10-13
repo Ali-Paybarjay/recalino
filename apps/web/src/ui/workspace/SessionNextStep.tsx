@@ -1,8 +1,8 @@
 "use client";
 import type { ClassVoiceView } from "@recalino/core/voice-contracts";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { pendingCopy } from "../pending-copy";
-import { useRecording } from "../recording/RecordingProvider";
+import { RecordLauncher, useRecording } from "../recording/RecordingProvider";
 import type { Recording } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import {
@@ -94,6 +94,7 @@ export function SessionNextStep({
   primarySecondary = false,
   title,
   studyShownBelow = false,
+  visibleWhen = "always",
 }: {
   sessionId: string;
   initial: AutomaticLearningStatus | null;
@@ -105,7 +106,13 @@ export function SessionNextStep({
   title?: string;
   /** The session page shows notes and flashcards below; secondary actions do not repeat them. */
   studyShownBelow?: boolean;
+  /**
+   * Today (owner decision 2026-10-13, D71): the latest session shows unless it is still empty,
+   * where Record a session above already leads; other sessions show only while work is in progress.
+   */
+  visibleWhen?: "always" | "not-idle" | "in-progress";
 }) {
+  const titleId = useId();
   const live = useAutomaticLearning(sessionId);
   const batches = useUploadBatches(sessionId);
   const retry = useLearningRetry(sessionId, live);
@@ -135,6 +142,10 @@ export function SessionNextStep({
       : null;
   const pending = retry.action;
   const problem = actionProblem || retry.problem;
+  const hidden =
+    !pending &&
+    ((visibleWhen === "not-idle" && step.tone === "idle") ||
+      (visibleWhen === "in-progress" && (step.tone === "idle" || step.tone === "ready")));
 
   function run(action: SessionAction) {
     setActionProblem("");
@@ -151,6 +162,9 @@ export function SessionNextStep({
         );
   }
   function render(action: SessionAction, secondary: boolean) {
+    // The session page's one-tap capture (D32); in a secondary place it links to the recording page.
+    if (action.id === "record" && !secondary)
+      return <RecordLauncher key={action.id} sessionId={sessionId} />;
     if (action.href)
       return (
         <LinkButton key={action.id} secondary={secondary} href={action.href}>
@@ -174,16 +188,19 @@ export function SessionNextStep({
       </Button>
     );
   }
+  if (hidden) return null;
   return (
     <section
       ref={retry.focusRef}
       tabIndex={-1}
-      aria-label="Session progress"
+      // Several cards on Today are told apart by their session title.
+      aria-label={title ? undefined : "Session progress"}
+      aria-labelledby={title ? titleId : undefined}
       className={styles.card}
       data-tone={pending ? "active" : step.tone === "idle" ? "active" : step.tone}
     >
       <div className={styles.statusHeading} role="status" aria-atomic="true">
-        <p className={styles.eyebrow} dir={title ? "auto" : undefined}>
+        <p className={styles.eyebrow} id={titleId} dir={title ? "auto" : undefined}>
           {title ?? pendingCopy.sessionNavigation.nextStep}
         </p>
         <h2>

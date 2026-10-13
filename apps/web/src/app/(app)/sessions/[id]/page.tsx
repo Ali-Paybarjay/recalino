@@ -11,6 +11,7 @@ import { RecordLauncher } from "../../../../ui/recording/RecordingProvider";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, LinkButton } from "../../../../ui/workspace/primitives";
 import { SessionOverviewTop } from "../../../../ui/workspace/SessionNextStep";
+import { sessionNextStep } from "../../../../ui/workspace/session-state";
 import { LearnerShell } from "../../LearnerShell";
 import styles from "./ClassOverview.module.css";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,10 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
   ]);
   // The same existence rules as the notes and flashcards pages (hasNotes, canOpenCards).
   const content = { notes: !!(notebook || latest), cards: !!notebook };
+  // D71 (owner decision 2026-10-13): an empty session leads with Record a session in its next
+  // step, so the material section below explains instead of repeating the same two buttons.
+  const emptySession =
+    sessionNextStep({ sessionId: id, status: automatic, content }).primary.id === "record";
   const course = groups.courses.find((item) => item.id === session.courseId);
   const unit = groups.units.find((item) => item.id === session.unitId);
   const classDate = session.classDate.split("-").reverse().join("/");
@@ -120,12 +125,14 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
             <h2 id="class-material-heading">Session material</h2>
             <p>Add a recording, handout or photo to update your notes and flashcards.</p>
           </div>
-          <Actions>
-            <RecordLauncher sessionId={id} />
-            <LinkButton secondary href={`/sessions/${id}/sources`}>
-              Add or view material
-            </LinkButton>
-          </Actions>
+          {emptySession ? null : (
+            <Actions>
+              <RecordLauncher sessionId={id} />
+              <LinkButton secondary href={`/sessions/${id}/sources`}>
+                Add or view material
+              </LinkButton>
+            </Actions>
+          )}
         </section>
         <details className={styles.tools}>
           <summary>

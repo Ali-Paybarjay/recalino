@@ -1,4 +1,5 @@
 import { listLearningSessions } from "@recalino/core/note";
+import { getAutomaticLearningSession } from "@recalino/core/proc";
 import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
 import { readAutomaticLearning } from "../../../server/automatic-learning";
@@ -13,6 +14,7 @@ import { strings } from "../../../ui/strings";
 import { ClassRows } from "../../../ui/workspace/ClassRows";
 import { Actions, LinkButton, Panel } from "../../../ui/workspace/primitives";
 import { SessionNextStep } from "../../../ui/workspace/SessionNextStep";
+import { todayNextSteps } from "../../../ui/workspace/session-state";
 import { LearnerShell } from "../LearnerShell";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +29,9 @@ function todayLabel(timezone: string | null): string {
   }).format(new Date());
 }
 
+/** How many recent sessions are checked for work in progress (D71). */
+const PROGRESS_WINDOW = 10;
+
 /** Under Record on every Today state (frame B1 and copy.md, "Today — Record"). */
 const RECORD_HELPER = "Starts right away · saved on this device · name it later";
 
@@ -34,7 +39,7 @@ export default async function TodayPage() {
   const learner = await requireLearner("/today");
   const [groups, sessions, review] = await Promise.all([
     workspaceGroups(learner),
-    listLearningSessions(getDatabase(), workspaceActor(learner), { limit: 3 }),
+    listLearningSessions(getDatabase(), workspaceActor(learner), { limit: PROGRESS_WINDOW }),
     getReviewQueue(getDatabase(), workspaceActor(learner)),
   ]);
   const header = (
@@ -62,12 +67,22 @@ export default async function TodayPage() {
       </LearnerShell>
     );
   // The most recent session's next step comes from the same resolver as the session page.
-  const latest = sessions.items[0];
-  const latestStatus = latest
-    ? await readAutomaticLearning(getDatabase(), workspaceActor(learner), latest.id).catch(
-        () => null,
-      )
-    : null;
+  // D71 (owner decision 2026-10-13): the latest session's next step, then other recent sessions
+  // with work in progress, up to three; each step comes from the same resolver as the session page.
+  const db = getDatabase(),
+    actor = workspaceActor(learner);
+  const intents = await Promise.all(
+    sessions.items
+      .slice(1)
+      .map((item) => getAutomaticLearningSession(db, actor, item.id).catch(() => null)),
+  );
+  const nextSteps = todayNextSteps(
+    sessions.items,
+    intents.map((intent) => intent?.state),
+  );
+  const statuses = await Promise.all(
+    nextSteps.map((item) => readAutomaticLearning(db, actor, item.id).catch(() => null)),
+  );
   const record = (
     <Panel tone="hero" title="Your English, one class at a time.">
       <Icon icon={Microphone} size={40} />
@@ -101,21 +116,23 @@ export default async function TodayPage() {
         ) : (
           record
         )}
-        {latest ? (
+        {nextSteps.map((item, index) => (
           <SessionNextStep
-            sessionId={latest.id}
-            initial={latestStatus}
+            key={item.id}
+            sessionId={item.id}
+            initial={statuses[index] ?? null}
             content={{
-              notes: !!latestStatus?.notesReady,
+              notes: !!statuses[index]?.notesReady,
               // Same rule as the session page: flashcards open once notes are published.
-              cards: !!latestStatus?.notesReady,
+              cards: !!statuses[index]?.notesReady,
             }}
-            title={latest.displayTitle}
+            title={item.displayTitle}
             primarySecondary
+            visibleWhen={index === 0 ? "not-idle" : "in-progress"}
           />
-        ) : null}
+        ))}
         <Panel title="Your recent sessions">
-          <ClassRows sessions={sessions.items} {...groups} />
+          <ClassRows sessions={sessions.items.slice(0, 3)} {...groups} />
           <Actions>
             <LinkButton secondary href="/sessions">
               View all sessions
