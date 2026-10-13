@@ -372,3 +372,41 @@ GitHub Actions از حدود 22:16 UTC در کل مخزن job را شروع نم
 1. اگر اپراتور `partBytes` قرارداد ورودی را عوض کند، منبع‌های ساخته‌شده با قرارداد قبلی در شروع آپلود `invalid_manifest` می‌گیرند، چون کلاینت قرارداد جاری را می‌خواند و سرور قرارداد ثبت‌شدهٔ منبع را. امروز رخ نمی‌دهد (یک نسخه قرارداد). پیشنهاد: سرور قطعه‌بندی با قرارداد جاری را هم بپذیرد، یا کلاینت `partBytes` قرارداد ثبت‌شدهٔ منبع را بخواند.
 2. `storage: unavailable` و `verifier_unavailable` با 400 برمی‌گردند، در حالی که خرابی پیکربندی سرورند. کلاینت آن‌ها را خطای ورودی می‌خواند. پیشنهاد: کد پاسخ از جنس سرویس (`internal`/503) تا تلاش خودکار و پیام درست انجام شود.
 3. متن `uploadReliability.automatic.rejected` (در انتظار تأیید، D65).
+
+## پیگیری تصمیم‌های مالک محصول (2026-10-13، D71)
+
+مرجع: تصمیم مالک محصول 2026-10-13 (D71)، رسیده از راه مدیر. هر مورد با آزمونِ ابتدا شکست‌خورده پیاده شد.
+
+| مورد | تصمیم | پیاده‌سازی |
+|---|---|---|
+| متن‌های `uploadReliability.*` | هر شش متن تأیید شد؛ PR #50 آن‌ها را به `apps/web/src/ui/workspace/upload-copy.ts` (`uploadCopy`) برد | `main @ 395c834` ادغام شد؛ همهٔ مصرف‌کننده‌ها (سرور، upload-problems، تست‌ها، e2e و fixture صفحهٔ مرجع) `uploadCopy` را می‌خوانند و `pending-copy.ts` خالی است |
+| آپلود صوت پیش از بسته شدن گروه فایل | مجاز نیست | تغییری نشد |
+| ثبت زمان پایان تحلیل صدا و فاصله‌های پیش‌زمینهٔ کلاینت برای NFR-07 | تأیید | زیر |
+| پذیرش قطعه‌بندی قرارداد جاری برای منبعِ قرارداد قدیمی‌تر | تأیید | زیر |
+| `storage: unavailable` و `verifier_unavailable` با وضعیت 503 | تأیید | زیر |
+
+### (۳) زمان مراحل: پایان تحلیل صدا و فاصله‌های پیش‌زمینه
+
+- migration تازه [`20261013120000_nfr07_stage_times.sql`](../../supabase/migrations/20261013120000_nfr07_stage_times.sql): دو ستون `analysis_started_at` و `analysis_finished_at` روی `voc.analysis`، و جدول `proc.foreground_gap` (`user_id`، `session_id`، `hidden_at`، `visible_at`؛ یکتا روی `(user_id, session_id, hidden_at)`؛ RLS و grant مثل الگوی `proc.automatic_session`). `packages/core/src/db/types.ts` با `pnpm db:types` بازتولید شد. فقط زمان و شناسه؛ هیچ متن یا صدای کلاس (PRD-PRIV-06).
+- صدا: `processVoiceSource` زمان شروع را در ورودی تحلیل می‌گذارد (`VoiceAnalysisInput.startedAt`)، `saveVoiceAnalysis` آن را با زمان ذخیره در دو ستون تازه می‌نویسد و هیچ به‌روزرسانی بعدی (تأیید صدا) آن‌ها را جابه‌جا نمی‌کند. `voiceAnalysisTimes` اکنون با `run_id` می‌خواند، نه با پنجرهٔ زمانی کلاس. تحلیل‌های ذخیره‌شده پیش از این ستون‌ها مرحلهٔ `voice` را اندازه‌گیری‌نشده می‌گذارند، نه صفر.
+- فاصله‌های پیش‌زمینه: حلقهٔ کلاینت ([`automatic-learning-loop.ts`](../../apps/web/src/ui/workspace/automatic-learning-loop.ts)) زمان پنهان شدن صفحه را نگه می‌دارد و هنگام نمایش دوباره، برای هر کلاسی که در `waiting_upload` یا `processing` است، یک `POST /api/classes/[id]/learning` با `action: "foreground_gap"` می‌فرستد (فاصله‌های زیر ۱ ثانیه فرستاده نمی‌شوند؛ خطای این گزارش هرگز کار یادگیرنده را متوقف نمی‌کند). سرور (`recordForegroundGap` در `packages/core/src/proc/foreground-gaps.ts`) مالکیت کلاس را بررسی می‌کند، بازهٔ بیش از ۷ روز، شروع قدیمی‌تر از ۷ روز یا پایان در آینده (بیش از ۵ دقیقه) را با `gap: out_of_range` رد می‌کند و تکرار همان بازه را بی‌اثر می‌گذارد (`recorded: false`).
+- گزارش: مرحلهٔ تازهٔ `device_hidden` در `pnpm --filter @recalino/ops-cli timings`: مجموع ثانیه‌های پنهان‌بودن گزارش‌شده که داخل `[created_at, finished_at)` اجرا می‌افتد (اجرای ناتمام تا بی‌نهایت). اجرایی که دستگاه هیچ بازه‌ای برایش گزارش نداده اندازه‌گیری‌نشده (null) است، نه صفر؛ صفر یعنی دستگاه گزارش داده و در طول اجرا باز مانده است (پاسخ مدیر به پرسش ۱).
+- آزمون‌ها: `packages/core/src/voc/analysis.int.test.ts` (ثبت و ثبات زمان‌ها)، `packages/core/src/ops/stage-timings.test.ts` (هم‌پوشانی بازه‌ها)، `apps/web/src/ui/workspace/automatic-learning-loop.test.ts` (یک گزارش برای هر کلاس در حال کار، نه برای کلاس آماده و نه برای جابه‌جایی کوتاه)، `apps/web/src/server/foreground-gaps.int.test.ts` (مسیر واقعی، مالکیت، idempotency، کران‌ها و ورود به گزارش).
+
+### (۴) قطعه‌بندی قرارداد جاری برای منبع قدیمی‌تر
+
+`beginTemporaryAudioUpload` ([`src/audio.ts`](../../packages/core/src/src/audio.ts)) قرارداد ثبت‌شدهٔ منبع و قرارداد فعال را می‌خواند و manifest را می‌پذیرد اگر با `partBytes` هر یک سازگار باشد؛ مجموع اندازه‌ها همچنان باید با منبع برابر باشد و manifest ناسازگار با هر دو همان `invalid_manifest` را می‌گیرد. TTL آپلود از قرارداد ثبت‌شدهٔ منبع می‌ماند. آزمون: `audio-upload-audit.int.test.ts` («accepts the part layout of the current contract…») با یک نسخهٔ قرارداد غیرفعال و `partBytes: 2`، بدون دست زدن به قرارداد فعال.
+
+### (۵) وضعیت 503 برای سرویس وصل‌نشده
+
+- `packages/core/src/plt/errors.ts` (بیرون از مالکیت؛ ویرایش کوچک): کد `service_unavailable` با وضعیت 503، پیام پیش‌فرض و `errors.serviceUnavailable(fields)`؛ `details.fields` همان کدهای دلیل قبلی را دارد.
+- `source-routes.ts`: `store()`، نبودِ تعریف job آپلود و `verifier_unavailable` با این کد پاسخ می‌دهند. مسیرهای دیگری که `storage: unavailable` می‌دهند (media، export، capture-staging، `verifier_unavailable` در `src/service.ts`) بیرون از مالکیت‌اند و تغییر نکردند.
+- کلاینت: `isRetryableUploadFailure` هر وضعیت ۵۰۰ به بالا را قابل‌تلاش می‌داند و `audioUploadProblem` آن را دست‌نخورده برمی‌گرداند؛ آزمونش دو ردیف 503 گرفت. `docs/API_CONTRACTS.md` ردیف `service_unavailable` را گرفت.
+
+### پیگیری بعدی (بدون PR، به مالکان مربوط)
+
+مسیرهای دیگری که هنوز `storage: unavailable` یا `verifier_unavailable` را با 400 برمی‌گردانند و باید به `service_unavailable` بروند: `apps/web/src/server/media-routes.ts`، `apps/web/src/server/export-routes.ts`، `apps/web/src/server/capture-staging.ts` و `upload: ["verifier_unavailable"]` در `packages/core/src/src/service.ts`.
+
+### فایل‌های بیرون از مالکیت در این دور
+
+`packages/core/src/plt/errors.ts`، `packages/core/src/voc/{contracts,analysis,report}.ts`، `packages/core/src/proc/voice-processing.ts`، `packages/core/test/voice-fixture.ts`، `apps/web/src/server/automatic-learning-routes.ts`، `docs/API_CONTRACTS.md`. همه ویرایش کوچک و لازم برای همین سه مورد.

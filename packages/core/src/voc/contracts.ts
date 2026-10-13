@@ -266,6 +266,8 @@ export interface VoiceAnalysisInput {
    */
   turnEmbeddings?: { utteranceId: string; vector: number[] }[];
   reason?: string;
+  /** When the analysis of this source began; its save time is the end (NFR-07, D71). */
+  startedAt?: Date;
 }
 export interface PrivateVoiceAnalysis {
   id: string;

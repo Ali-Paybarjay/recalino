@@ -13,6 +13,8 @@ export const ERROR_STATUS = {
   payload_too_large: 413,
   unsupported_media: 415,
   internal: 500,
+  /** A service the request needs (file store, verifier) is not connected: retry later. */
+  service_unavailable: 503,
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_STATUS;
@@ -32,6 +34,7 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   payload_too_large: "This file is too large.",
   unsupported_media: "This type of file isn't supported.",
   internal: "Something went wrong. Please try again.",
+  service_unavailable: "Recalino is not available right now. Please try again in a moment.",
 };
 
 /** Security events the request layer records for an error; never sent to the client. */
@@ -87,6 +90,12 @@ export const errors = {
     new AppError("quota_insufficient", details ? { details } : {}),
   payloadTooLarge: () => new AppError("payload_too_large"),
   unsupportedMedia: () => new AppError("unsupported_media"),
+  /**
+   * A service this request depends on is not connected (D71, 2026-10-13): 503 with the same
+   * stable field reason as before, so clients retry it as a service failure, not as their input.
+   */
+  serviceUnavailable: (fields: FieldProblems) =>
+    new AppError("service_unavailable", { details: { fields } }),
   /**
    * Server configuration the request needs is missing. The client cannot fix it, so it is an
    * internal error; the reason reaches only the server log (FR-PLT-003, FR-PLT-007).

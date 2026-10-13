@@ -47,7 +47,7 @@ function actor(ctx: RequestContext): LearnerContext {
 }
 function store() {
   const value = getObjectStore();
-  if (!value) throw errors.validationFailed({ storage: ["unavailable"] });
+  if (!value) throw errors.serviceUnavailable({ storage: ["unavailable"] });
   return value;
 }
 export function sourceContractHandler(): Handler {
@@ -217,7 +217,7 @@ export function sourceCompleteHandler(id: string): Handler {
     if (["verified", "rejected", "abandoned", "deleted"].includes(manifest.state))
       return { body: manifest };
     const definition = sourceUploadJobDefinition();
-    if (!definition) throw errors.validationFailed({ storage: ["unavailable"] });
+    if (!definition) throw errors.serviceUnavailable({ storage: ["unavailable"] });
     const jobId = await db.transaction().execute((tx) =>
       enqueueJob(tx, definition, {
         payload: { userId: learner.userId, uploadId: id },
@@ -330,7 +330,7 @@ export function sourceAudioHandler(assetId: string): Handler {
       return { body: { confirmed: true } };
     }
     const definition = sourceAudioJobDefinition();
-    if (!definition) throw errors.validationFailed({ audio: ["verifier_unavailable"] });
+    if (!definition) throw errors.serviceUnavailable({ audio: ["verifier_unavailable"] });
     const jobId = await db.transaction().execute((tx) =>
       enqueueJob(tx, definition, {
         payload: { userId: learner.userId, assetId, uploadId: fields.uploadId, runId: run.id },

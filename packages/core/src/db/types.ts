@@ -645,6 +645,15 @@ export interface ProcAutomaticSession {
   user_id: string;
 }
 
+export interface ProcForegroundGap {
+  created_at: Generated<Timestamp>;
+  hidden_at: Timestamp;
+  id: Generated<string>;
+  session_id: string;
+  user_id: string;
+  visible_at: Timestamp;
+}
+
 export interface ProcProcessingRun {
   created_at: Generated<Timestamp>;
   finished_at: Timestamp | null;
@@ -1091,6 +1100,8 @@ export interface SupportThread {
 }
 
 export interface VocAnalysis {
+  analysis_finished_at: Timestamp | null;
+  analysis_started_at: Timestamp | null;
   candidate_id: string | null;
   candidates: Generated<Json>;
   created_at: Generated<Timestamp>;
@@ -1221,6 +1232,7 @@ export interface DB {
   "priv.cleanup_step": PrivCleanupStep;
   "priv.deletion_request": PrivDeletionRequest;
   "proc.automatic_session": ProcAutomaticSession;
+  "proc.foreground_gap": ProcForegroundGap;
   "proc.processing_run": ProcProcessingRun;
   "proc.provider_attempt": ProcProviderAttempt;
   "proc.run_step": ProcRunStep;

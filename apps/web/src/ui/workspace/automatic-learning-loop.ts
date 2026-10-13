@@ -60,6 +60,9 @@ export interface LearningLoop {
  * refreshes a newly ready result. Events (online, page shown, learning change, capture phase)
  * reset the backoff; the page being hidden pauses everything but this device's own work.
  */
+/** Hidden intervals shorter than this (a quick app switch) are not worth a request. */
+const MIN_REPORTED_GAP_MS = 1000;
+
 export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
   const request = deps.request ?? workspaceRequest;
   const upload = deps.upload ?? uploadAutomaticAudio;
@@ -350,8 +353,31 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
     polls.wake(typeof sessionId === "string" ? sessionId : undefined);
     kick();
   };
+  // NFR-07 (D71): the interval the page was hidden is reported for each class with work in
+  // progress, so the operator report can tell the service's time from the device's (D47).
+  let hiddenAt: Date | null = null;
+  const reportHiddenInterval = () => {
+    const since = hiddenAt;
+    hiddenAt = null;
+    const visibleAt = new Date();
+    if (!since || visibleAt.getTime() - since.getTime() < MIN_REPORTED_GAP_MS) return;
+    for (const [sessionId, status] of states)
+      if (status.state === "waiting_upload" || status.state === "processing")
+        void request(`/api/classes/${sessionId}/learning`, "POST", {
+          action: "foreground_gap",
+          hiddenAt: since.toISOString(),
+          visibleAt: visibleAt.toISOString(),
+        }).catch(() => {
+          /* A timing report never blocks the learner's work. */
+        });
+  };
   const shown = () => {
-    if (document.visibilityState !== "hidden") wake();
+    if (document.visibilityState === "hidden") {
+      hiddenAt ??= new Date();
+      return;
+    }
+    reportHiddenInterval();
+    wake();
   };
   let capture = "";
   const unsubscribe = controller.subscribe(() => {

@@ -288,6 +288,9 @@ export async function saveVoiceAnalysis(
         // biometric vectors need not survive this completed identity decision.
         private_embeddings: accepted ? "[]" : JSON.stringify(vectors),
         embeddings_expire_at: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        // Stage times for the operator report (NFR-07): never moved by later confirmations.
+        analysis_started_at: input.startedAt ?? null,
+        analysis_finished_at: now,
         created_at: now,
         updated_at: now,
       })
