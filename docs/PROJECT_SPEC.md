@@ -20,6 +20,7 @@
 | S4 | لایه داده و migration طبق ADR-0002 | ✅ ADR-0002 پذیرفته شد، 2026-09-30 |
 | S5 | یک محیط ابری: پروژه Supabase `recalino` و پروژه Vercel، که محیط پایلوت است. توسعه و آزمون فقط محلی و در CI | ✅ تأیید با spec، 2026-09-30 |
 | S6 | هیچ فراخوانی واقعی AI در آزمون‌ها و CI؛ فقط mock قطعی | ✅ تأیید با spec، 2026-09-30 |
+| S7 | CI کم‌مصرف در همهٔ مخزن‌های مالک محصول: اجرا فقط روی push به `main`، PR به `main` و اجرای دستی؛ e2e فقط روی `main` یا PR با برچسب `e2e`؛ بودجهٔ Actions در حساب GitHub تعریف شده است ([docs/ops/CI_LOW_COST_POLICY.md](ops/CI_LOW_COST_POLICY.md)) | ✅ تصمیم مالک محصول، 2026-10-13 |
 
 ## ۳. Tech Stack
 
@@ -188,14 +189,14 @@ describe("FR-QUOTA-005 reserve", () => {
 5. **ورود در آزمون E2E:** در Supabase محلی کاربر آزمونی مستقیم با Admin API ساخته و وارد می‌شود. این مسیر فقط در پیکربندی محلی و CI فعال است و در پروژه ابری وجود ندارد (Q-SPEC-2).
 6. **پوشش خط‌ها** گزارش می‌شود ولی دروازه نیست. دروازه، پوشش معیارهای پذیرش است.
 
-**CI** (GitHub Actions، روی هر push؛ pull request وضعیت همان commit را نشان می‌دهد و اجرای تکراری ندارد):
+**CI** (GitHub Actions؛ سیاست کم‌مصرف، تصمیم مالک محصول 2026-10-13، [docs/ops/CI_LOW_COST_POLICY.md](ops/CI_LOW_COST_POLICY.md): فقط روی push به `main`، pull request به `main` و اجرای دستی `workflow_dispatch`؛ push ساده به شاخه‌های کاری اجرایی ندارد و پیش از PR، `pnpm verify` محلی اجرا می‌شود؛ تغییرات فقط‌مستندات CI ندارند):
 
 1. نصب با Node 24 و pnpm
 2. `pnpm lint`، `pnpm typecheck`، `pnpm check:boundaries`
 3. بررسی اینکه `db:types` با migrationها هم‌خوان است
 4. `supabase start` در runner، سپس `pnpm test`
 5. `pnpm build`
-6. E2E روی شاخه `main`
+6. E2E روی شاخه `main`، اجرای دستی، و PR با برچسب `e2e`
 
 ## ۸. محیط‌ها و پیکربندی
 
