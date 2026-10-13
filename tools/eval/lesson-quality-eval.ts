@@ -4,6 +4,7 @@ import {
   ProviderError,
   type ProviderSettings,
   providerSettingsSchema,
+  type StructuredInput,
 } from "../../packages/core/src/aip";
 import { type KnowledgeModel, normalizeGeneratedStudyModel } from "../../packages/core/src/lkm";
 import type { RunSource } from "../../packages/core/src/proc/contracts";
@@ -60,11 +61,26 @@ export class BudgetStop extends Error {
 
 /** Hard total cap in microdollars: actual costs are recorded before the next call is allowed. */
 export class BudgetGuard {
-  spentMicros = 0;
+  spentMicros: number;
   calls = 0;
-  constructor(readonly capMicros: number) {}
+  /** Code-owned outcome of every call (error code and validation diagnostic), never text. */
+  readonly outcomes: string[] = [];
+  /** Synthetic evaluation only: the raw JSON of each rejected response, for offline diagnosis. */
+  readonly rejectedResponses: { operation: string; outcome: string; raw: unknown }[] = [];
+  /**
+   * `alreadySpentMicros` carries an earlier run's actual spend into the same total cap;
+   * `maxCalls` stops a diagnostic run after that many dispatches.
+   */
+  constructor(
+    readonly capMicros: number,
+    alreadySpentMicros = 0,
+    readonly maxCalls = Number.POSITIVE_INFINITY,
+  ) {
+    this.spentMicros = alreadySpentMicros;
+  }
   reserve(worstCaseMicros: number) {
-    if (this.spentMicros + worstCaseMicros > this.capMicros) throw new BudgetStop(this.spentMicros);
+    if (this.calls >= this.maxCalls || this.spentMicros + worstCaseMicros > this.capMicros)
+      throw new BudgetStop(this.spentMicros);
   }
   /** An unknown cost counts as the worst case, never as free. */
   record(actualMicros: number | null | undefined, worstCaseMicros: number) {
@@ -162,20 +178,38 @@ export async function generateArmLesson(
     guard.reserve(worst);
     totals.attempts += 1;
     const started = Date.now();
+    let raw: unknown;
+    // Keeps the provider's raw output of this call; nothing else about the call changes.
+    const capturing: AiProvider = {
+      name: provider.name,
+      mode: provider.mode,
+      settings: provider.settings,
+      async structured<T>(request: StructuredInput<T>) {
+        const response = await provider.structured(request);
+        raw = response.output;
+        return response;
+      },
+      transcribe: (request) => provider.transcribe(request),
+      speech: (request) => provider.speech(request),
+    };
     try {
       const result = await generateCanonicalKnowledge(
-        provider,
+        capturing,
         model,
         `${operation}:${totals.attempts}`,
         prepared,
       );
       guard.record(result.actualMicros, worst);
+      guard.outcomes.push(`${operation}:${totals.attempts}:response`);
       totals.costMicros += result.actualMicros ?? worst;
       totals.outputTokens += result.usage.outputTokens ?? 0;
       return { output: result.output as Generated };
     } catch (error) {
       const accounting = error instanceof ProviderError ? error.accounting : undefined;
       guard.record(accounting ? accounting.actualMicros : null, worst);
+      const outcome = `${operation}:${totals.attempts}:${errorCode(error)}${error instanceof ProviderError && error.diagnostic ? `:${error.diagnostic}` : ""}`;
+      guard.outcomes.push(outcome);
+      if (raw !== undefined) guard.rejectedResponses.push({ operation, outcome, raw });
       totals.costMicros += accounting?.actualMicros ?? worst;
       totals.outputTokens += accounting?.usage.outputTokens ?? 0;
       if (error instanceof ProviderError && error.uncertain) throw error;
@@ -201,6 +235,7 @@ export async function generateArmLesson(
         );
         return { output: first.output, first: true };
       } catch (error) {
+        guard.outcomes.push(`${operation}:${totals.attempts}:semantic:${errorCode(error)}`);
         retry = { ...options, repairReason: errorCode(error) };
       }
     } else if (

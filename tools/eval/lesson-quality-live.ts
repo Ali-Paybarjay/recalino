@@ -171,6 +171,11 @@ for (const entry of schedule) {
   );
 }
 await writeFile(resolve(out, "key.json"), JSON.stringify(keyFile, null, 2));
+// Synthetic lessons only: rejected raw responses and code-owned outcomes, for offline diagnosis.
+await writeFile(
+  resolve(out, "outcomes.json"),
+  JSON.stringify({ outcomes: guard.outcomes, rejected: guard.rejectedResponses }, null, 2),
+);
 await writeFile(
   resolve(out, "results.json"),
   JSON.stringify(

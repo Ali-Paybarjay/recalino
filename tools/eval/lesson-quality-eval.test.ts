@@ -202,3 +202,45 @@ describe("D62/D63 offline lesson-quality evaluation (synthetic provider and fixt
     expect(worstCaseMicros(arms.candidate, 0)).toBe(216_000);
   });
 });
+
+/** The first response cites one key twice: an assembly failure, then a valid regeneration. */
+class OnceInvalidProvider extends SyntheticLessonProvider {
+  override async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
+    const result = await super.structured(input);
+    if (this.calls > 1) return result;
+    const output = structuredClone(result.output) as {
+      learningItems: { claim: { evidenceKeys: string[] } }[];
+    };
+    const claim = output.learningItems[0]?.claim;
+    if (claim) claim.evidenceKeys = [claim.evidenceKeys[0] ?? "r0", claim.evidenceKeys[0] ?? "r0"];
+    return { ...result, output: output as T };
+  }
+}
+
+describe("D62 evaluation diagnostics", () => {
+  it("records each rejected response with its code-owned diagnostic for offline review", async () => {
+    const data = cases["LQ-BOARD-15"];
+    if (!data) throw new Error("fixture");
+    const guard = new BudgetGuard(10_000_000);
+    const result = await generateArmLesson(
+      new OnceInvalidProvider(arms.candidate),
+      data,
+      guard,
+      "offline:diagnostic",
+    );
+    expect(result).toMatchObject({ valid: true, firstTry: false, attempts: 2 });
+    expect(guard.outcomes[0]).toBe(
+      "offline:diagnostic:1:provider_schema_invalid:assembly:source_reference_invalid",
+    );
+    expect(guard.rejectedResponses).toHaveLength(1);
+    expect(guard.rejectedResponses[0]?.raw).toMatchObject({ title: "Synthetic lesson" });
+  });
+
+  it("carries an earlier run's spend into the same cap and honours a call limit", () => {
+    const guard = new BudgetGuard(1_500_000, 1_214_859, 1);
+    expect(() => guard.reserve(300_000)).toThrow(BudgetStop);
+    guard.reserve(200_000);
+    guard.record(100_000, 200_000);
+    expect(() => guard.reserve(1)).toThrow(BudgetStop);
+  });
+});
