@@ -14,6 +14,13 @@ for (const width of [390, 1440]) {
       card("empty").getByRole("heading", { name: "Add your session material" }),
     ).toBeVisible();
     await expect(card("empty").getByRole("link")).toHaveCount(1);
+    // D71 (owner decision 2026-10-13): an empty session records first, adds files second.
+    await expect(
+      card("empty").getByRole("button", { name: "Record a session", exact: true }),
+    ).toHaveClass(/btn-primary/);
+    await expect(
+      card("empty").getByRole("link", { name: "Add or view material", exact: true }),
+    ).toHaveClass(/btn-secondary/);
 
     await expect(
       card("ready-voice").getByRole("link", { name: "Read notes", exact: true }),

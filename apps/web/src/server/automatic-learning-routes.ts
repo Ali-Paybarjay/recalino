@@ -5,6 +5,8 @@ import {
   beginAutomaticLearningBatch,
   cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
+  foregroundGapSchema,
+  recordForegroundGap,
   registerAutomaticLearningFile,
   skipAutomaticLearningFile,
 } from "@recalino/core/proc";
@@ -35,6 +37,8 @@ const actions = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("sync") }),
   z.strictObject({ action: z.literal("retry") }),
   z.strictObject({ action: z.literal("request_review"), runId: z.uuid() }),
+  // NFR-07 (D71): an interval this device's page was hidden while the class was in progress.
+  z.strictObject({ action: z.literal("foreground_gap"), ...foregroundGapSchema.shape }),
 ]);
 interface Dependencies {
   read: typeof readAutomaticLearning;
@@ -68,6 +72,11 @@ export function automaticLearningHandler(
         requestId,
       });
       return { body: await deps.read(db, learner, sessionId) };
+    }
+    if (fields.action === "foreground_gap") {
+      const { action: _action, ...gap } = fields;
+      const recorded = await recordForegroundGap(db, learner, sessionId, gap);
+      return { status: 202, body: { recorded } };
     }
     if (fields.action === "begin") {
       await beginAutomaticLearningBatch(

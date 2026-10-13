@@ -2,7 +2,12 @@
 import type { ProcessingRun } from "@recalino/core/proc";
 import { describe, expect, it } from "vitest";
 import type { AutomaticLearningStatus } from "./automatic-learning";
-import { type SessionStateInput, sessionNextStep, uploadRetryCanHelp } from "./session-state";
+import {
+  type SessionStateInput,
+  sessionNextStep,
+  todayNextSteps,
+  uploadRetryCanHelp,
+} from "./session-state";
 
 const sessionId = "10000000-0000-4000-8000-000000000001";
 const base = `/sessions/${sessionId}`;
@@ -36,13 +41,32 @@ const next = (input: Partial<SessionStateInput>) =>
 const ids = (step: ReturnType<typeof sessionNextStep>) => step.secondary.map((action) => action.id);
 
 describe("sessionNextStep", () => {
-  it("asks for material in an empty session and never offers notes that do not exist", () => {
+  it("leads an empty session with Record a session, then material, and never offers notes that do not exist", () => {
+    // Owner decision 2026-10-13 (D71).
     const step = next({ status: status() });
     expect(step.tone).toBe("idle");
     expect(step.heading).toBe("Add your session material");
-    expect(step.primary).toMatchObject({ id: "add_material", href: `${base}/sources` });
+    expect(step.primary).toEqual({
+      id: "record",
+      label: "Record a session",
+      href: `${base}/record`,
+    });
+    expect(step.secondary).toEqual([
+      { id: "add_material", label: "Add or view material", href: `${base}/sources` },
+    ]);
     expect(ids(step)).not.toContain("read_notes");
     expect(ids(step)).not.toContain("practise_cards");
+  });
+
+  it("offers recording first only while a session is empty", () => {
+    const states: Partial<SessionStateInput>[] = [
+      {},
+      { status: status({ state: "processing", run: run("processing") }) },
+      { status: status({ state: "ready", run: run("ready"), notesReady: true }) },
+      { status: status({ state: "blocked", lastError: "provider_output_truncated" }) },
+      { status: status(), recordings: { capturing: false, waiting: 1 } },
+    ];
+    for (const input of states) expect(next(input).primary.id).not.toBe("record");
   });
 
   it("checks progress before the first status read, keeping existing notes reachable", () => {
@@ -381,5 +405,27 @@ describe("states during and after capture (D60, D61) and before publication", ()
       next({ status: status({ state: "processing", run: run("processing"), stage: "publishing" }) })
         .heading,
     ).toBe("Creating notes and flashcards");
+  });
+});
+
+describe("todayNextSteps (owner decision 2026-10-13, D71)", () => {
+  const sessions = ["latest", "a", "b", "c", "d"];
+
+  it("keeps the latest session and adds up to two more with work in progress", () => {
+    expect(todayNextSteps(sessions, ["processing", "idle", "blocked", "waiting_upload"])).toEqual([
+      "latest",
+      "a",
+      "c",
+    ]);
+  });
+
+  it("leaves out sessions that are idle, ready or of unknown state", () => {
+    expect(todayNextSteps(sessions, ["idle", "ready", null, undefined])).toEqual(["latest"]);
+    expect(todayNextSteps(sessions, ["waiting_sources", "ready"])).toEqual(["latest", "a"]);
+  });
+
+  it("shows nothing without sessions and respects a smaller limit", () => {
+    expect(todayNextSteps([], [])).toEqual([]);
+    expect(todayNextSteps(sessions, ["processing", "processing"], 1)).toEqual(["latest"]);
   });
 });

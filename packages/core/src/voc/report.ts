@@ -1,22 +1,21 @@
 import type { Database, Tx } from "../db";
 
 /**
- * Operator report (NFR-07): creation and last update of the voice analyses of the given classes.
- * Times and identifiers only; no utterances, embeddings or class content.
+ * Operator report (NFR-07): start and finish of the voice analyses saved for the given runs
+ * (D71). Times and identifiers only; no utterances, embeddings or class content.
  */
 export async function voiceAnalysisTimes(
   db: Database | Tx,
-  sessionIds: readonly string[],
-): Promise<{ sessionId: string; userId: string; createdAt: Date; updatedAt: Date }[]> {
-  if (!sessionIds.length) return [];
+  runIds: readonly string[],
+): Promise<{ runId: string; startedAt: Date | null; finishedAt: Date | null }[]> {
+  if (!runIds.length) return [];
   return db
     .selectFrom("voc.analysis")
     .select([
-      "session_id as sessionId",
-      "user_id as userId",
-      "created_at as createdAt",
-      "updated_at as updatedAt",
+      "run_id as runId",
+      "analysis_started_at as startedAt",
+      "analysis_finished_at as finishedAt",
     ])
-    .where("session_id", "in", [...sessionIds])
+    .where("run_id", "in", [...runIds])
     .execute();
 }

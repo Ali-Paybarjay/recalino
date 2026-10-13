@@ -776,6 +776,52 @@ export function quotesClassSources(quote: string, sources: ClassQuotationSources
   });
 }
 
+/**
+ * D63 diagnostic (2026-10-13): one blank that hides a separable target together with the object
+ * between its parts ("Could you please ______ and hold this door?" for "do sb a favour") is
+ * rebuilt with that object visible ("______ me ______"), as the prompt requires. Only the parts
+ * as written are recognised, the object is one to three words that are not target words, and
+ * the result must pass every gap check; anything else stays a rejection.
+ */
+export function keepSlotObjectVisible(
+  en: string,
+  fullSentence: string,
+  gapSentence: string,
+): string | undefined {
+  const target = studyLexicalTarget(en);
+  if (!target || target.parts.length < 2) return undefined;
+  const pieces = gapSentence.trim().split(blank);
+  if (pieces.length !== 2) return undefined;
+  const [before = "", after = ""] = pieces;
+  const sentence = fullSentence.trim();
+  if (
+    sentence.length <= before.length + after.length ||
+    !sentence.startsWith(before) ||
+    !sentence.endsWith(after)
+  )
+    return undefined;
+  const hidden = sentence.slice(before.length, sentence.length - after.length);
+  const match = new RegExp(
+    `^${target.parts.map((part) => `(${escapePattern(part)})`).join("(\\s+[\\s\\S]+?\\s+)")}$`,
+    "iu",
+  ).exec(hidden);
+  if (!match) return undefined;
+  const objects = match.slice(1).filter((_, index) => index % 2 === 1);
+  const targetWords = new Set(gapWords(target.text));
+  if (
+    objects.some((value) => {
+      const words = gapWords(value);
+      return words.length < 1 || words.length > 3 || words.some((word) => targetWords.has(word));
+    })
+  )
+    return undefined;
+  const rebuilt = `${before}${target.parts.map((_, index) => `${blank}${objects[index] ?? ""}`).join("")}${after}`;
+  return lexicalGapProblem(en, fullSentence, rebuilt) === undefined &&
+    !studyLexicalTargetMatches(target, rebuilt)
+    ? rebuilt
+    : undefined;
+}
+
 /** True when the gap hides exactly the whole target and that target is a headword, not a label. */
 export function gapHidesWholeTarget(en: string, fullSentence: string, gapSentence: string) {
   return lexicalGapProblem(en, fullSentence, gapSentence) === undefined;
@@ -1363,17 +1409,24 @@ export function buildKnowledgeGenerationInput(
           });
         } else {
           kind = item.kind;
+          const written = item.practice.gapSentence;
+          const gapSentence =
+            lexicalGapProblem(item.meaning.en, item.practice.fullSentence, written) ===
+            "study_gap_overhidden"
+              ? (keepSlotObjectVisible(item.meaning.en, item.practice.fullSentence, written) ??
+                written)
+              : written;
           const gapProblem = lexicalGapProblem(
             item.meaning.en,
             item.practice.fullSentence,
-            item.practice.gapSentence,
+            gapSentence,
           );
           if (gapProblem) throw errors.validationFailed({ output: [gapProblem] });
           if (lexicalIpaExceedsHeadword(item.meaning.en, item.pronunciation.ipa))
             throw errors.validationFailed({ output: ["study_ipa_headword_invalid"] });
           study = productionStudySchema.parse({
             ...content,
-            gapSentence: item.practice.gapSentence,
+            gapSentence,
             ...(item.studyKind === undefined ? {} : { kind: item.studyKind }),
           });
         }

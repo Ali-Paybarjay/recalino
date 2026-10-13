@@ -129,6 +129,18 @@ export async function audioUploadWindows(
   }
   return windows;
 }
+/** Consecutive full parts of `partBytes` and a last part no larger than one (FR-SRC-004). */
+function manifestFitsLayout(
+  parts: readonly { index: number; sizeBytes: number }[],
+  partBytes: number,
+): boolean {
+  return parts.every(
+    (part, i) =>
+      part.index === i &&
+      part.sizeBytes <= partBytes &&
+      (i === parts.length - 1 || part.sizeBytes === partBytes),
+  );
+}
 export async function beginTemporaryAudioUpload(
   db: Database,
   ctx: LearnerContext,
@@ -175,15 +187,14 @@ export async function beginTemporaryAudioUpload(
         throw errors.idempotencyMismatch();
       return { uploadId: previous.id, state: previous.state };
     }
-    const contract = await readInputContract(tx, source.contract_version);
+    // The device computes parts with the contract it reads today. A source registered under
+    // an older contract keeps its own layout valid too (owner decision 2026-10-13, D71).
+    const registered = await readInputContract(tx, source.contract_version);
+    const current = await readInputContract(tx);
+    const layouts = new Set([registered.partBytes, current.partBytes]);
     if (
       input.parts.reduce((sum, part) => sum + part.sizeBytes, 0) !== Number(source.size_bytes) ||
-      input.parts.some(
-        (part, i) =>
-          part.index !== i ||
-          part.sizeBytes > contract.partBytes ||
-          (i < input.parts.length - 1 && part.sizeBytes !== contract.partBytes),
-      )
+      ![...layouts].some((partBytes) => manifestFitsLayout(input.parts, partBytes))
     )
       throw errors.validationFailed({ parts: ["invalid_manifest"] });
     const object = await createObject(tx, {
@@ -201,7 +212,7 @@ export async function beginTemporaryAudioUpload(
         asset_id: assetId,
         reservation_id: input.reservationId,
         object_id: object.id,
-        expires_at: new Date(now.getTime() + contract.uploadTtlSeconds * 1000),
+        expires_at: new Date(now.getTime() + registered.uploadTtlSeconds * 1000),
         created_at: now,
       })
       .returningAll()

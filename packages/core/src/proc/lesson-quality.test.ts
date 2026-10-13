@@ -198,3 +198,73 @@ describe("lesson-quality-1 structured board rows", () => {
     expect(plain.system).not.toContain("layout metadata");
   });
 });
+
+describe("D63 diagnostic 2026-10-13: a blank that also hides the object of a separable target", () => {
+  // The exact card that rejected the second part of the synthetic 128-minute class.
+  function separable(en: string, ipa: string, fullSentence: string, gapSentence: string) {
+    const prepared = buildKnowledgeGenerationInput(input([handout()]), 120000);
+    return () =>
+      prepared.assemble({
+        ...response(),
+        learningItems: [
+          {
+            ...item,
+            meaning: { ...item.meaning, en, faMeaning: "لطفی به کسی کردن" },
+            pronunciation: { ipa, faApprox: "دو اِ فِیوِر" },
+            practice: { fullSentence, gapSentence },
+          },
+        ],
+      });
+  }
+  const gap = (assembled: () => { learningItems: { study?: unknown }[] }) =>
+    (assembled().learningItems[0]?.study as { gapSentence?: string } | undefined)?.gapSentence;
+
+  it("keeps the object visible between the blanks instead of rejecting the whole lesson", () => {
+    expect(
+      gap(
+        separable(
+          "do sb a favour",
+          "/duː ə ˈfeɪvə/",
+          "Could you please do me a favour and hold this door?",
+          "Could you please ______ and hold this door?",
+        ),
+      ),
+    ).toBe("Could you please ______ me ______ and hold this door?");
+    expect(
+      gap(separable("kit sth out", "/kɪt aʊt/", "We need to kit it out.", "We need to ______.")),
+    ).toBe("We need to ______ it ______.");
+  });
+
+  it("still rejects a blank that hides a complement, an inflected form or a long object", () => {
+    const failure = expect.objectContaining({
+      details: expect.objectContaining({ fields: { output: ["study_gap_overhidden"] } }),
+    });
+    // A single-part target never had an object between its parts: nothing to keep visible.
+    expect(
+      separable(
+        "look forward to + -ing / noun",
+        "/lʊk ˈfɔːwəd tə/",
+        "I look forward to meeting my new neighbours.",
+        "I ______ my new neighbours.",
+      ),
+    ).toThrow(failure);
+    // Only the parts as written are recognised; an inflected realisation stays rejected.
+    expect(
+      separable(
+        "do sb a favour",
+        "/duː ə ˈfeɪvə/",
+        "She did me a favour and held the door.",
+        "She ______ and held the door.",
+      ),
+    ).toThrow(failure);
+    // More than three words between the parts is not an object slot.
+    expect(
+      separable(
+        "do sb a favour",
+        "/duː ə ˈfeɪvə/",
+        "Please do my very kind old neighbour a favour today.",
+        "Please ______ today.",
+      ),
+    ).toThrow(failure);
+  });
+});

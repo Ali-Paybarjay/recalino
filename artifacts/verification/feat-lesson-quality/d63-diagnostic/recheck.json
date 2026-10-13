@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-13T22:36:22.761Z",
+  "parts": [
+    {
+      "part": 0,
+      "outcome": "valid",
+      "items": 11
+    },
+    {
+      "part": 1,
+      "outcome": "valid",
+      "items": 9
+    }
+  ],
+  "merged": {
+    "outcome": "valid",
+    "items": [
+      "production: used to + base verb",
+      "production: Would you mind + -ing",
+      "production: be used to + -ing",
+      "production: get used to + -ing",
+      "production: could you possibly",
+      "production: didn't use to + base verb",
+      "production: do you think you could",
+      "production: take up",
+      "production: make a mistake",
+      "production: take after",
+      "production: do sb a favour",
+      "production: take off",
+      "production: make an effort",
+      "production: take pronoun off",
+      "production: unless + present simple",
+      "production: past simple + finished time",
+      "production: unless it rains",
+      "production: present perfect without finished time",
+      "recognition: No, not at all"
+    ],
+    "metrics": {
+      "production": 18,
+      "recognition": 1,
+      "sourceCoveragePercent": 100,
+      "itemsPerSpeechHour": 9.5
+    }
+  }
+}

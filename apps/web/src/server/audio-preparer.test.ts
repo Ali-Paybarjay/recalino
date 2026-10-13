@@ -425,3 +425,161 @@ it("PRD-SEG-01 cuts chunks a few at a time and keeps their order and IDs when wr
   expect(peak).toBeGreaterThan(1);
   expect(peak).toBeLessThanOrEqual(AUDIO_PREPARATION_CONCURRENCY);
 }, 30000);
+
+/** Silence with one 200 ms tone, so a chunk's decoded position of the tone is measurable. */
+function markedWav(seconds: number, toneAtMs: number) {
+  const bytes = syntheticWav(seconds);
+  bytes.fill(0, 44);
+  const start = 44 + toneAtMs * 16 * 2;
+  for (let index = 0; index < 3200; index++)
+    bytes.writeInt16LE(
+      Math.round(Math.sin((index * Math.PI * 1000) / 8000) * 12000),
+      start + index * 2,
+    );
+  return bytes;
+}
+
+/**
+ * When the microphone stops delivering audio for a while (a suspended audio graph, a frozen tab),
+ * MediaRecorder keeps stamping packets with the capture clock: the container's time jumps
+ * forward while its samples continue. The jump here is 4 s at 120 s.
+ */
+function jumpedWebm(wav: Buffer, jumpAtS: number, jumpS: number) {
+  if (!ffmpegPath) throw new Error("Synthetic decoder is unavailable");
+  const encoded = spawnSync(
+    ffmpegPath,
+    [
+      "-nostdin",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      "pipe:0",
+      "-c:a",
+      "libopus",
+      "-b:a",
+      "24k",
+      "-bsf:a",
+      `setts=ts=PTS+gte(PTS\\,${jumpAtS}/TB)*${jumpS}/TB`,
+      "-live",
+      "1",
+      "-f",
+      "webm",
+      "pipe:1",
+    ],
+    { input: wav, windowsHide: true, timeout: 60000, maxBuffer: 50000000 },
+  );
+  expect(encoded.status, encoded.stderr.toString()).toBe(0);
+  return encoded.stdout;
+}
+
+/** Decoded length and the position of the first tone in one prepared chunk. */
+function decodedChunk(bytes: Uint8Array) {
+  if (!ffmpegPath) throw new Error("Synthetic decoder is unavailable");
+  const decoded = spawnSync(
+    ffmpegPath,
+    [
+      "-nostdin",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      "pipe:0",
+      "-f",
+      "s16le",
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      "pipe:1",
+    ],
+    { input: bytes, windowsHide: true, timeout: 60000, maxBuffer: 50000000 },
+  );
+  expect(decoded.status, decoded.stderr.toString()).toBe(0);
+  const pcm = decoded.stdout;
+  let toneAtMs: number | null = null;
+  for (let frame = 0; (frame + 1) * 320 <= pcm.length; frame++) {
+    let energy = 0;
+    for (let index = 0; index < 160; index++) {
+      const sample = pcm.readInt16LE(frame * 320 + index * 2) / 32768;
+      energy += sample * sample;
+    }
+    if (Math.sqrt(energy / 160) > 0.05) {
+      toneAtMs = frame * 10;
+      break;
+    }
+  }
+  return { decodedMs: Math.round(pcm.length / 32), toneAtMs };
+}
+
+// PRD-REC-07: audio after a container-clock jump is transcribed, at the time its samples give.
+it("cuts chunks by decoded samples, so a container-clock jump neither drops nor shifts audio", async () => {
+  // 7 minutes of samples, the tone 400 s in; the container stamps it at 404 s.
+  const original = jumpedWebm(markedWav(420, 400000), 120, 4);
+  const verified = await audioVerifier().inspect(original, "audio/webm");
+  expect(verified.durationMs).toBeGreaterThanOrEqual(419990);
+  expect(verified.durationMs).toBeLessThanOrEqual(420100);
+  storage.read.mockResolvedValue(original);
+  const written = new Map<string, Uint8Array>();
+  storage.write.mockImplementation(async (_db, _store, _ctx, input: { bytes: Uint8Array }) => {
+    const id = randomUUID();
+    written.set(id, input.bytes);
+    return id;
+  });
+  const source: Parameters<AudioPreparer>[0]["source"] = {
+    sourceId: randomUUID(),
+    kind: "audio",
+    sha256: createHash("sha256").update(original).digest("hex"),
+    mimeType: "audio/webm",
+    durationMs: verified.durationMs,
+    pageCount: null,
+    objectId: randomUUID(),
+    contentVersionId: null,
+    captureAnchor: null,
+    ranges: [],
+    units: [],
+    blocks: [],
+  };
+  const chunks = await prepareAudio({
+    db: {} as Parameters<AudioPreparer>[0]["db"],
+    store: new MemoryObjectStore(),
+    ctx: { userId: randomUUID(), requestId: randomUUID() },
+    runId: randomUUID(),
+    source,
+    now: new Date("2026-10-13T10:00:00Z"),
+  });
+  const decoded = chunks.map((chunk) => ({
+    ...chunk,
+    ...decodedChunk(written.get(chunk.objectId) as Uint8Array),
+  }));
+  // Every decoded second is in exactly one chunk, and the chunks cover the whole plan.
+  expect(decoded.map((chunk) => chunk.offsetMs)).toHaveLength(2);
+  expect(decoded[0]?.offsetMs).toBe(0);
+  // The second chunk starts on the first encoded frame at or after the 300 s mark.
+  expect(Math.abs((decoded[1]?.offsetMs ?? 0) - 300000)).toBeLessThanOrEqual(100);
+  expect(decoded.reduce((sum, chunk) => sum + chunk.durationMs, 0)).toBeGreaterThanOrEqual(419900);
+  for (const chunk of decoded) {
+    // A decoder adds the encoder's priming and padding to a chunk cut without gapless metadata.
+    expect(Math.abs(chunk.durationMs - chunk.decodedMs)).toBeLessThanOrEqual(250);
+    expect(chunk.offsetMs + chunk.durationMs).toBeLessThanOrEqual(verified.durationMs);
+  }
+  // The declared time of the tone is its sample time, not the jumped container time.
+  const marked = decoded.find((chunk) => chunk.toneAtMs !== null);
+  expect(marked).toBeTruthy();
+  const declaredToneMs = (marked as (typeof decoded)[number]).offsetMs + (marked?.toneAtMs ?? 0);
+  expect(Math.abs(declaredToneMs - 400000)).toBeLessThanOrEqual(100);
+}, 60000);
+
+// FR-VOC-002: the acoustic check cuts its excerpts on the same clock as the transcript.
+it("cuts voice excerpts by samples when the container clock jumped", async () => {
+  // 40 s of samples, the tone 25 s in; the container stamps it at 29 s (jump of 4 s at 10 s).
+  const original = jumpedWebm(markedWav(40, 25000), 10, 4);
+  const decoded = await decodeVoiceAudioWindows(original, [{ start: 20000, end: 30000 }], 40000);
+  expect(decoded.windows).toEqual([
+    { sourceStartMs: 20000, compositeStartMs: 0, compositeEndMs: 10000 },
+  ]);
+  expect(decoded.partial).toBe(false);
+  const loud = decoded.samples.findIndex((sample) => Math.abs(sample) > 0.1);
+  expect(Math.abs(loud / 16 - 5000)).toBeLessThanOrEqual(100);
+  decoded.samples.fill(0);
+}, 30000);
