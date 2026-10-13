@@ -1,15 +1,46 @@
 name: CI
 
-# Runs on every push; pull requests show the checks of their head commit.
+# Low-cost CI policy (owner decision, 2026-10-13; docs/ops/CI_LOW_COST_POLICY.md).
+# The account's free Actions minutes are shared by every repository, so CI runs
+# only where it gates a change:
+#   push to main          → verify + e2e
+#   pull request to main  → verify on open/synchronize/reopen; e2e only when the
+#                           PR carries the `e2e` label
+#   workflow_dispatch     → verify + e2e on any branch, on demand
+# Plain pushes to feature or integration branches run nothing; run `pnpm verify`
+# (and `pnpm test:e2e` when the change touches the UI) locally instead.
+# Documentation-only changes skip CI entirely (paths-ignore below); docs/legal and
+# docs/design stay in because tests read them.
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - "docs/plans/**"
+      - "docs/adr/**"
+      - "docs/fr/**"
+      - "docs/ops/**"
+      - "docs/*.md"
+      - "artifacts/**"
+      - "*.md"
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+    paths-ignore:
+      - "docs/plans/**"
+      - "docs/adr/**"
+      - "docs/fr/**"
+      - "docs/ops/**"
+      - "docs/*.md"
+      - "artifacts/**"
+      - "*.md"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# One run per pull request (a new push cancels the previous run) and one per branch.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -18,6 +49,8 @@ env:
 jobs:
   verify:
     name: Lint, types, boundaries, tests, build
+    # A `labeled` event starts a run only for the `e2e` label.
+    if: github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'e2e'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -48,10 +81,13 @@ jobs:
       - name: No secrets in the client-visible build (FR-PLT-009)
         run: pnpm check:client-bundle
 
-  # Main and implementation branches; docs branches skip it to save minutes.
+  # Main, manual runs, and pull requests labeled `e2e` (about 20 minutes per run).
   e2e:
-    name: End-to-end (main and implementation branches)
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/feat/') || startsWith(github.ref, 'refs/heads/codex/')
+    name: End-to-end (main, manual runs, PRs labeled e2e)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e'))
     needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 20
