@@ -1,0 +1,640 @@
+{
+  "lessonPlan": [
+    {
+      "concept": "ساختار مودبانه Would you mind همراه با فعل ing-دار",
+      "evidenceKeys": [
+        "r1",
+        "rd",
+        "rp",
+        "r11"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "پاسخ مثبت به Would you mind با عبارت No, not at all",
+      "evidenceKeys": [
+        "r2",
+        "ra",
+        "rm",
+        "ry"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "درخواست ملایم با Could you possibly",
+      "evidenceKeys": [
+        "r3",
+        "r7",
+        "rj",
+        "rv",
+        "r17"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "عبارت مودبانه Do you think you could در انگلیسی بریتانیایی",
+      "evidenceKeys": [
+        "r4",
+        "rg",
+        "rs",
+        "r14"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "تمایز معنایی کلی make برای خلق کردن و do برای کارها و وظایف",
+      "evidenceKeys": [
+        "r1a",
+        "r1e",
+        "r1q",
+        "r22",
+        "r2e",
+        "r3k"
+      ],
+      "teachAs": "notes"
+    },
+    {
+      "concept": "هم‌آیی‌های فعل make مانند make a mistake و make a decision",
+      "evidenceKeys": [
+        "r18",
+        "r1k",
+        "r1w",
+        "r28",
+        "r3l",
+        "r3n"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "هم‌آیی‌های فعل do مانند do homework و do someone a favour",
+      "evidenceKeys": [
+        "r19",
+        "r1h",
+        "r1t",
+        "r25",
+        "r3m"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "ترکیب‌های ثابت do your best و make an effort",
+      "evidenceKeys": [
+        "r1b",
+        "r1n",
+        "r1z",
+        "r2b"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "کاربرد حرف ربط unless به معنای if not به همراه حال ساده برای آینده",
+      "evidenceKeys": [
+        "r2f",
+        "r2h",
+        "r2l",
+        "r2r",
+        "r2x",
+        "r33",
+        "r39",
+        "r3f",
+        "r3o",
+        "r3p",
+        "r3q"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "عدم استفاده از فعل منفی پس از unless",
+      "evidenceKeys": [
+        "r2g",
+        "r2o",
+        "r30",
+        "r3c",
+        "r3r"
+      ],
+      "teachAs": "card"
+    },
+    {
+      "concept": "مقایسه کاربرد since برای مبدا زمان و for برای طول دوره زمانی",
+      "evidenceKeys": [
+        "r0"
+      ],
+      "teachAs": "notes"
+    },
+    {
+      "concept": "مقایسه جمله‌واره شرطی منفی با if و جمله با unless",
+      "evidenceKeys": [
+        "r2i",
+        "r2u",
+        "r36",
+        "r3i"
+      ],
+      "teachAs": "notes"
+    }
+  ],
+  "title": "درخواست‌های محترمانه، هم‌آیی‌های Make و Do و کاربرد Unless",
+  "learningItems": [
+    {
+      "type": "grammar",
+      "claim": {
+        "text": "برای بیان یک درخواست بسیار محترمانه، عبارت Would you mind به کار می‌رود و پس از آن شکل ing-دار فعل قرار می‌گیرد.",
+        "evidenceKeys": [
+          "r1",
+          "rd",
+          "rp",
+          "r11"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "Would you mind + -ing",
+        "faMeaning": "ممکنه لطفاً... / زحمتی نیست اگر...",
+        "topic": "درخواست محترمانه"
+      },
+      "pronunciation": {
+        "ipa": "/wʊd juː maɪnd ˈəʊpnɪŋ/",
+        "faApprox": "وود یو مایند اوپنِنگ",
+        "spokenChunk": "Would you mind opening"
+      },
+      "practice": {
+        "taskFa": "با استفاده از عبارت مودبانه داخل پرانتز و تغییر دادن شکل فعل، جمله درخواست را کامل کنید.",
+        "prompt": "(Would you mind / Do you mind to) ______ (open) the window?",
+        "fullSentence": "Would you mind opening the window?"
+      },
+      "teaching": {
+        "collocations": [
+          "Would you mind opening",
+          "Would you mind helping",
+          "Would you mind waiting"
+        ],
+        "noteFa": "عبارت Would you mind ساختاری بسیار رسمی و مودبانه است. توجه داشته باشید که پس از آن همیشه شکل ing-دار فعل مانند opening می‌آید و مصدر با to به کار نمی‌رود.",
+        "imageFa": "شخصی در قطار با لبخندی آرام و لحنی بسیار محترمانه از مسافر کناری می‌خواهد پنجره را باز کند."
+      }
+    },
+    {
+      "type": "recognition",
+      "kind": "expression",
+      "studyKind": "register",
+      "claim": {
+        "text": "برای موافقت با درخواستی که با Would you mind شروع شده است، پاسخ منفی No, not at all به کار می‌رود چون فرد از انجام آن ناراحت نمی‌شود.",
+        "evidenceKeys": [
+          "r2",
+          "ra",
+          "rm",
+          "ry"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "No, not at all",
+        "faMeaning": "اصلاً و ابداً (خواهش می‌کنم، مشکلی نیست)",
+        "topic": "پاسخ به درخواست"
+      },
+      "pronunciation": {
+        "ipa": "/nəʊ nɒt ət ɔːl/",
+        "faApprox": "نو، نات اَت آل"
+      },
+      "practice": {
+        "example": "To say yes to would you mind, we say no, not at all, because you do not mind."
+      },
+      "teaching": {
+        "noteFa": "چون معنی mind یعنی 'به زحمت افتادن' یا 'ناراحت شدن'، پاسخ No, not at all یعنی 'اصلاً ناراحت نمی‌شوم' و نشان‌دهنده رضایت کامل شما برای انجام آن کار است."
+      }
+    },
+    {
+      "type": "lexical",
+      "kind": "expression",
+      "studyKind": "register",
+      "claim": {
+        "text": "عبارت Could you possibly برای بیان درخواستی نرم‌تر و محترمانه‌تر از can you استفاده می‌شود.",
+        "evidenceKeys": [
+          "r3",
+          "r7",
+          "rj",
+          "rv",
+          "r17"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "could you possibly",
+        "faMeaning": "آیا برایتان مقدور هست که...",
+        "topic": "درخواست محترمانه"
+      },
+      "pronunciation": {
+        "ipa": "/kəd jʊ ˈpɒsəbli/",
+        "faApprox": "کود یو پاسِبلی"
+      },
+      "practice": {
+        "fullSentence": "Could you possibly lend me your notes?",
+        "gapSentence": "______ lend me your notes?"
+      },
+      "teaching": {
+        "collocations": [
+          "could you possibly lend",
+          "could you possibly help",
+          "could you possibly tell"
+        ],
+        "noteFa": "کلمه possibly در این ساختار لحن درخواست را بسیار نرم‌تر و محتاطانه‌تر از شکل مستقیم can you می‌کند.",
+        "imageFa": "دانشجویی که با احترام جزوه هم‌کلاسی‌اش را برای یادداشت‌برداری امانت می‌گیرد."
+      }
+    },
+    {
+      "type": "lexical",
+      "kind": "expression",
+      "studyKind": "british",
+      "claim": {
+        "text": "عبارت Do you think you could یک ساختار مودبانه و رایج در انگلیسی بریتانیایی برای تقاضای انجام کار است.",
+        "evidenceKeys": [
+          "r4",
+          "rg",
+          "rs",
+          "r14"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "do you think you could",
+        "faMeaning": "فکر می‌کنید بتوانید...",
+        "topic": "درخواست محترمانه"
+      },
+      "pronunciation": {
+        "ipa": "/də juː θɪŋk juː kʊd/",
+        "faApprox": "دو یو ثینک یو کود"
+      },
+      "practice": {
+        "fullSentence": "Do you think you could help me with this bag?",
+        "gapSentence": "______ help me with this bag?"
+      },
+      "teaching": {
+        "collocations": [
+          "do you think you could help",
+          "do you think you could check",
+          "do you think you could call"
+        ],
+        "noteFa": "این عبارت در انگلیسی روزمره بریتانیا برای پرسیدن توانایی طرف مقابل به صورتی بسیار مودبانه و بدون تحمیل تقاضا استفاده می‌شود.",
+        "imageFa": "فردی در ایستگاه قطار که مودبانه از رهگذری می‌خواهد چمدان سنگینش را بالا بگذارد."
+      }
+    },
+    {
+      "type": "lexical",
+      "kind": "vocabulary",
+      "studyKind": "collocation",
+      "claim": {
+        "text": "با واژه‌هایی مانند mistake، decision و phone call از فعل make به عنوان هم‌آیی ثابت استفاده می‌شود.",
+        "evidenceKeys": [
+          "r18",
+          "r1k",
+          "r1w",
+          "r28",
+          "r3l",
+          "r3n"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "make a mistake",
+        "faMeaning": "اشتباه کردن",
+        "topic": "هم‌آیی فعل Make"
+      },
+      "pronunciation": {
+        "ipa": "/meɪk ə mɪˈsteɪk/",
+        "faApprox": "میک اِ مِستیک"
+      },
+      "practice": {
+        "fullSentence": "I was nervous and worried I might make a mistake during the test.",
+        "gapSentence": "I was nervous and worried I might ______ during the test."
+      },
+      "teaching": {
+        "collocations": [
+          "make a mistake",
+          "make a decision",
+          "make a phone call"
+        ],
+        "noteFa": "ترکیب do a mistake اشتباه است؛ این واژه منحصراً با فعل make همنشین می‌شود.",
+        "imageFa": "دانش‌آموزی که با مداد غلطی روی کاغذ نوشته و با پاک‌کن آن را پاک می‌کند."
+      }
+    },
+    {
+      "type": "lexical",
+      "kind": "vocabulary",
+      "studyKind": "collocation",
+      "claim": {
+        "text": "برای تقاضای لطف یا کمک از فعل do همراه با favour استفاده می‌شود.",
+        "evidenceKeys": [
+          "r19",
+          "r1h",
+          "r1t",
+          "r25"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "do sb a favour",
+        "faMeaning": "به کسی لطف کردن / در حق کسی خوبی کردن",
+        "topic": "هم‌آیی فعل Do"
+      },
+      "pronunciation": {
+        "ipa": "/duː ˈfeɪvə/",
+        "faApprox": "دو فیوِر"
+      },
+      "practice": {
+        "fullSentence": "Could you please do me a favour and hold this door?",
+        "gapSentence": "Could you please ______ and hold this door?"
+      },
+      "teaching": {
+        "collocations": [
+          "do someone a favour",
+          "do homework",
+          "do the shopping"
+        ],
+        "noteFa": "کارهای مربوط به وظایف و خدمات روزمره مثل shopping و homework و favour همیشه با do می‌آیند و نباید با make به کار روند.",
+        "imageFa": "همسایه‌ای که بسته‌ای پستی را با خوش‌رویی برای همسایه غایبش تحویل می‌گیرد."
+      }
+    },
+    {
+      "type": "lexical",
+      "kind": "vocabulary",
+      "studyKind": "collocation",
+      "claim": {
+        "text": "ترکیب‌های do your best و make an effort به عنوان هم‌آیی‌های ثابت در زبان انگلیسی آموخته می‌شوند.",
+        "evidenceKeys": [
+          "r1b",
+          "r1n",
+          "r1z",
+          "r2b"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "make an effort",
+        "faMeaning": "تلاش کردن / زحمت کشیدن",
+        "topic": "هم‌آیی‌های ثابت"
+      },
+      "pronunciation": {
+        "ipa": "/meɪk ən ˈefət/",
+        "faApprox": "میک اَن اِفِرت"
+      },
+      "practice": {
+        "fullSentence": "You should make an effort to arrive on time every morning.",
+        "gapSentence": "You should ______ to arrive on time every morning."
+      },
+      "teaching": {
+        "collocations": [
+          "make an effort",
+          "do your best"
+        ],
+        "noteFa": "این دو عبارت جفت متضاد گرامری دارند: برای تلاش کردن از make an effort استفاده می‌شود ولی برای نهایت سعی خود را کردن از do your best استفاده می‌کنیم.",
+        "imageFa": "ورزشکاری که قبل از مسابقه با تمرکز بالا گرم می‌کند و تمام توانش را به کار می‌بندد."
+      }
+    },
+    {
+      "type": "grammar",
+      "claim": {
+        "text": "کلمه unless به معنی if not است و در جمله‌واره پیرو آن برای اشاره به آینده، زمان حال ساده به کار می‌رود.",
+        "evidenceKeys": [
+          "r2f",
+          "r2h",
+          "r2l",
+          "r2r",
+          "r2x",
+          "r33",
+          "r39",
+          "r3f",
+          "r3o",
+          "r3p",
+          "r3q"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "unless + present simple",
+        "faMeaning": "مگر اینکه / اگر... نه",
+        "topic": "جملات شرطی با unless"
+      },
+      "pronunciation": {
+        "ipa": "/ənˈles wiː liːv/",
+        "faApprox": "اَنلِس وی لیو",
+        "spokenChunk": "unless we leave"
+      },
+      "practice": {
+        "taskFa": "با استفاده از کلمه ربط مناسب و زمان حال ساده، جمله شرطی را برای بیان نتیجه در آینده کامل کنید.",
+        "prompt": "We will miss the bus (if / unless) we ______ (leave / will leave) now.",
+        "fullSentence": "We will miss the bus unless we leave now."
+      },
+      "teaching": {
+        "collocations": [
+          "unless we leave",
+          "unless you hurry",
+          "unless it rains"
+        ],
+        "noteFa": "پس از unless فعل به زمان حال ساده می‌آید (مانند leave) و در بخش اصلی جمله نتیجه آینده با will بیان می‌شود.",
+        "imageFa": "دو دوست که ساعت مچی‌شان را نگاه می‌کنند و با عجله به سمت ایستگاه اتوبوس می‌دوند."
+      }
+    },
+    {
+      "type": "grammar",
+      "claim": {
+        "text": "پس از حرف ربط unless نباید از فعل منفی استفاده کرد زیرا خود unless معنای منفی دارد.",
+        "evidenceKeys": [
+          "r2g",
+          "r2o",
+          "r30",
+          "r3c",
+          "r3r"
+        ],
+        "uncertain": false
+      },
+      "meaning": {
+        "en": "unless it rains",
+        "faMeaning": "مگر اینکه باران ببارد (اگر باران نبارد)",
+        "topic": "پرهیز از منفی مضاعف با unless"
+      },
+      "pronunciation": {
+        "ipa": "/ənˈles ɪt reɪnz/",
+        "faApprox": "اَنلِس ایت رینز",
+        "spokenChunk": "unless it rains"
+      },
+      "practice": {
+        "taskFa": "از بین گزینه‌ها شکل صحیح گرامری پس از unless را انتخاب کنید تا از منفی مضاعف جلوگیری شود.",
+        "prompt": "We will have a picnic tomorrow (unless it doesn't rain / unless it rains).",
+        "fullSentence": "We will have a picnic tomorrow unless it rains."
+      },
+      "teaching": {
+        "noteFa": "چون unless معادل if not است، گفتن unless it doesn't rain منفی مضاعف بوده و نادرست است؛ عبارت درست unless it rains است.",
+        "imageFa": "خانواده‌ای در پارک زیر آسمانی نیمه‌ابری که در صورت نبود باران می‌خواهند زیرانداز پهن کنند."
+      }
+    }
+  ],
+  "summary": [
+    {
+      "text": "در این درس روش‌های مودبانه برای درخواست کردن مانند Would you mind با فعل ing-دار، Could you possibly و Do you think you could بررسی شد.",
+      "evidenceKeys": [
+        "r1",
+        "r3",
+        "r4"
+      ],
+      "uncertain": false
+    },
+    {
+      "text": "هم‌آیی‌های ساختاری فعل‌های make و do به همراه کاربرد حرف ربط شرطی unless و پرهیز از منفی مضاعف مرور شد.",
+      "evidenceKeys": [
+        "r18",
+        "r19",
+        "r2f",
+        "r2g"
+      ],
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "title": "درخواست‌های مودبانه در انگلیسی",
+      "claims": [
+        {
+          "text": "ساختارهایی مانند Could you possibly و Do you think you could لحن درخواست را نسبت به can you ملایم‌تر می‌کنند.",
+          "evidenceKeys": [
+            "r3",
+            "r4"
+          ],
+          "uncertain": false
+        },
+        {
+          "text": "پاسخ به Would you mind به دلیل معنای واژه mind به صورت منفی No, not at all ادا می‌شود.",
+          "evidenceKeys": [
+            "r2"
+          ],
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "title": "هم‌آیی‌های Make و Do",
+      "claims": [
+        {
+          "text": "فعل make معمولاً برای پدید آوردن چیزی و do برای انجام وظایف به کار می‌رود، اگرچه ترکیب‌هایی مثل make an effort و do your best به عنوان هم‌آیی ثابت حفظ می‌شوند.",
+          "evidenceKeys": [
+            "r1a",
+            "r1b"
+          ],
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "title": "شرط با Unless و مقایسه زمان‌ها",
+      "claims": [
+        {
+          "text": "کلمه unless معادل if not بوده و در جمله‌واره آن حال ساده می‌آید و نباید مجدداً منفی شود.",
+          "evidenceKeys": [
+            "r2f",
+            "r2g",
+            "r2h"
+          ],
+          "uncertain": false
+        },
+        {
+          "text": "حرف اضافه since برای آغاز زمان و for برای بیان مدت زمان به کار می‌رود.",
+          "evidenceKeys": [
+            "r0"
+          ],
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "classNotes": {
+    "coverage": "آشنایی با عبارات محترمانه تقاضا، تفکیک هم‌آیی‌های افعال make و do و قوانین نحوی حرف ربط unless.",
+    "orientation": {
+      "coreIntro": "در این درس یاد می‌گیرید چگونه درخواست‌های خود را بسیار مودبانه مطرح کنید، کاربردهای دقیق افعال پرکاربرد make و do را از هم تفکیک کنید و با حرف ربط شرطی unless جملات روان بسازید."
+    },
+    "activities": {
+      "chunks": [
+        {
+          "pattern": "Would you mind + -ing",
+          "classSentence": "Would you mind opening the window?",
+          "noteFa": "الگوی درخواست مودبانه رسمی که پس از آن همیشه شکل سوم یا مصدر نمی‌آید بلکه فعل با پسوند ing قرار می‌گیرد."
+        },
+        {
+          "pattern": "Could you possibly + verb",
+          "classSentence": "Could you possibly lend me your notes?",
+          "noteFa": "بیان درخواست نرم‌تر و منعطف‌تر نسبت به عبارت مستقیم can you."
+        },
+        {
+          "pattern": "unless + present simple",
+          "classSentence": "We will miss the bus unless we leave now.",
+          "noteFa": "کاربرد unless با مفهوم منفی در زمان حال برای بیان شرط آینده."
+        }
+      ],
+      "board": [
+        {
+          "text": "make / do",
+          "evidenceKeys": [
+            "r3k"
+          ]
+        },
+        {
+          "text": "make a mistake, make a decision",
+          "evidenceKeys": [
+            "r3l"
+          ]
+        },
+        {
+          "text": "do homework, do the shopping",
+          "evidenceKeys": [
+            "r3m"
+          ]
+        },
+        {
+          "text": "do a mistake → make a mistake",
+          "evidenceKeys": [
+            "r3n"
+          ]
+        },
+        {
+          "text": "unless = if not",
+          "evidenceKeys": [
+            "r3o"
+          ]
+        },
+        {
+          "text": "unless + present simple → future result",
+          "evidenceKeys": [
+            "r3p"
+          ]
+        },
+        {
+          "text": "We will miss the bus unless we leave now.",
+          "evidenceKeys": [
+            "r3q"
+          ]
+        },
+        {
+          "text": "unless it rains (not: unless it doesn't rain)",
+          "evidenceKeys": [
+            "r3r"
+          ]
+        }
+      ],
+      "register": [
+        {
+          "notThis": "Can you lend me your notes?",
+          "sayThis": "Could you possibly lend me your notes?",
+          "whyFa": "کلمه possibly لحن گفتار را ملایم‌تر، مودبانه‌تر و غیرتحمیلی‌تر می‌کند."
+        },
+        {
+          "notThis": "Yes, I would.",
+          "sayThis": "No, not at all.",
+          "whyFa": "در پاسخ به Would you mind، گفتن No نشان‌دهنده این است که شما زحمتی نمی‌بینید و درخواست را می‌پذیرید."
+        },
+        {
+          "notThis": "do a mistake",
+          "sayThis": "make a mistake",
+          "whyFa": "واژه mistake در زبان انگلیسی منحصراً با فعل make هم‌آیی دارد."
+        }
+      ]
+    }
+  }
+}

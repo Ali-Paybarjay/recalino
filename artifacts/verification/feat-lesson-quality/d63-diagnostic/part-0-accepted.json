@@ -1,0 +1,1245 @@
+{
+  "schemaVersion": "1",
+  "title": "عادت‌های گذشته، افعال عبارتی و تفاوت گذشته ساده با حال کامل",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [
+    {
+      "id": "claim-2754e26445b5a9cdfe5f8ddc-1",
+      "text": "تفاوت‌های سه ساختار used to do (عادت‌های پایان‌یافته)، be used to doing (آشنا بودن وضعیت) و get used to doing (روند عادت کردن) آموزش داده شد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "audio",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 0,
+            "endMs": 28000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 30000,
+            "endMs": 58000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 60000,
+            "endMs": 88000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 90000,
+            "endMs": 118000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-4a6cafdbe40439088993742b-1",
+      "text": "افعال عبارتی take up، take after و take off همراه با قانون قرارگیری ضمیر در وسط افعال جداشدنی بررسی شدند.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "audio",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1290000,
+            "endMs": 1318000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1320000,
+            "endMs": 1348000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1350000,
+            "endMs": 1378000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1380000,
+            "endMs": 1408000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-513a23abf64224cb57b3dbe5-1",
+      "text": "گذشته ساده با زمان‌های پایان‌یافته و حال کامل با تجربیات بدون زمان مشخص به کار می‌روند؛ همچنین since با مبدا زمان و for با طول مدت همراه است.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "audio",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 2580000,
+            "endMs": 2608000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 2610000,
+            "endMs": 2638000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 2640000,
+            "endMs": 2668000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 2670000,
+            "endMs": 2698000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-59912c62b188d9e8fbf83c78-1",
+      "title": "عادت‌ها و انطباق در گذشته و حال",
+      "claims": [
+        {
+          "id": "claim-d0452bbf4bf09b3250c5a198-1",
+          "text": "حالت منفی used to در گذشته به صورت didn't use to و بدون حرف d نوشته می‌شود.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "audio",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 90000,
+                "endMs": 118000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 450000,
+                "endMs": 478000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 810000,
+                "endMs": 838000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1170000,
+                "endMs": 1198000
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "id": "topic-bbb81de0fbb2893d981174a8-1",
+      "title": "افعال عبارتی با take",
+      "claims": [
+        {
+          "id": "claim-b97d5228c4bfb5cbae2abe22-1",
+          "text": "هرگاه مفعول عبارت فعلی ضمیر باشد، باید در میان دو بخش فعل و حرف اضافه قرار گیرد مانند take it off.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "audio",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1380000,
+                "endMs": 1408000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1740000,
+                "endMs": 1768000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 2100000,
+                "endMs": 2128000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 2460000,
+                "endMs": 2488000
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "id": "topic-91c4641dbfcb04d9f2c4e077-1",
+      "title": "کاربرد زمان‌های گذشته و حال کامل",
+      "claims": [
+        {
+          "id": "claim-0f97848e8334797785d464f8-1",
+          "text": "کلمات ever و never معمولاً با زمان حال کامل برای پرسش و پاسخ درباره تجربیات زندگی به کار می‌روند.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "audio",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 2670000,
+                "endMs": 2698000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 3030000,
+                "endMs": 3058000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 3390000,
+                "endMs": 3418000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 3750000,
+                "endMs": 3778000
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-fa1b124738b4b882cd545b10-1",
+      "kind": "grammar",
+      "front": "used to + base verb",
+      "back": "در گذشته عادت داشتن به انجام کاری که اکنون متوقف شده است",
+      "claim": {
+        "id": "claim-a7cec4d77341e4b22880f38d-1",
+        "text": "برای بیان عادت‌ها و وضعیت‌هایی در گذشته که اکنون تمام شده‌اند، از used to به همراه شکل ساده فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 0,
+              "endMs": 28000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 360000,
+              "endMs": 388000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 720000,
+              "endMs": 748000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1080000,
+              "endMs": 1108000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "used to + base verb",
+        "faMeaning": "در گذشته عادت داشتن به انجام کاری که اکنون متوقف شده است",
+        "topic": "عادت‌های گذشته",
+        "kind": "grammar",
+        "ipa": "/ˈjuːst tə wɔːk/",
+        "ipaText": "used to walk",
+        "faApprox": "یوست تو وُک",
+        "fullSentence": "I used to walk to school.",
+        "collocations": [],
+        "noteFa": "عبارت used to walk نشان می‌دهد که پیاده رفتن به مدرسه عادتی در گذشته بوده و اکنون دیگر ادامه ندارد. پس از used to شکل ساده فعل می‌آید.",
+        "imageFa": "کودکی با کیف مدرسه که در گذشته هر روز پیاده به مدرسه می‌رفت اما اکنون با اتوبوس تردد می‌کند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "جمله زیر را با ساختار used to برای بیان عادت تمام‌شده در گذشته کامل کنید.",
+        "prompt": "I (used to walk / am used to walking) to school."
+      }
+    },
+    {
+      "id": "item-3c67448b9ed3564cfced25f2-1",
+      "kind": "grammar",
+      "front": "be used to + -ing",
+      "back": "عادت داشتن به چیزی و عادی بودن آن در حال حاضر",
+      "claim": {
+        "id": "claim-3573f53c7bb44d9934dae2cd-1",
+        "text": "ساختار be used to همراه با فعل دارای ing برای بیان امری آشنا و عادی استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 30000,
+              "endMs": 58000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 270000,
+              "endMs": 298000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 630000,
+              "endMs": 658000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 990000,
+              "endMs": 1018000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "be used to + -ing",
+        "faMeaning": "عادت داشتن به چیزی و عادی بودن آن در حال حاضر",
+        "topic": "عادت و آشنایی",
+        "kind": "grammar",
+        "ipa": "/əm ˈjuːst tə ˈɡetɪŋ ʌp/",
+        "ipaText": "am used to getting up",
+        "faApprox": "اَم یوست تو گِتینگ آپ",
+        "fullSentence": "I am used to getting up early now.",
+        "collocations": [],
+        "noteFa": "در جمله I am used to getting up early now، عبارت am used to getting up بیان می‌کند که سحرخیزی اکنون برای گوینده امری طبیعی و آشناست. دقت کنید که بعد از be used to شکل ing-دار فعل می‌آید.",
+        "imageFa": "فردی با چهره آرام که ساعت ۶ صبح بدون زنگ ساعت و با راحتی کامل بیدار می‌شود.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به مفهوم عادی بودن کار در زمان حال، گزینه صحیح را انتخاب کنید.",
+        "prompt": "I (am used to getting up / used to get up) early now."
+      }
+    },
+    {
+      "id": "item-8eb09be47047b8b52cc9b2ae-1",
+      "kind": "grammar",
+      "front": "get used to + -ing",
+      "back": "به تدریج به چیزی عادت کردن یا در حال خو گرفتن بودن",
+      "claim": {
+        "id": "claim-ddd6de5cccdaf6452517b221-1",
+        "text": "ساختار get used to همراه با فعل دارای ing برای بیان فرایند عادت کردن و تغییر تدریجی به کار می‌رود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 60000,
+              "endMs": 88000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 180000,
+              "endMs": 208000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 540000,
+              "endMs": 568000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 900000,
+              "endMs": 928000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1260000,
+              "endMs": 1288000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "get used to + -ing",
+        "faMeaning": "به تدریج به چیزی عادت کردن یا در حال خو گرفتن بودن",
+        "topic": "تغییر و انطباق",
+        "kind": "grammar",
+        "ipa": "/ɪz ˈɡetɪŋ ˈjuːst tə ˈdraɪvɪŋ/",
+        "ipaText": "is getting used to driving",
+        "faApprox": "ایز گِتینگ یوست تو درایوینگ",
+        "fullSentence": "She is getting used to driving on the left.",
+        "collocations": [],
+        "noteFa": "عبارت is getting used to driving فرایند انطباق با رانندگی در سمت چپ جاده را نشان می‌دهد. فعل get نشان‌دهنده تغییر و طی شدن مرحله عادت کردن است.",
+        "imageFa": "راننده‌ای در یک کشور جدید با احتیاط فرمان را در دست گرفته و گام‌به‌گام به مسیر سمت چپ عادت می‌کند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "برای نشان دادن روند تطبیق یافتن با شرایط جدید، گزینه درست را انتخاب کنید.",
+        "prompt": "She (is getting used to driving / used to drive) on the left."
+      }
+    },
+    {
+      "id": "item-b6f8ab5c2fea22a38fc7b7cd-1",
+      "kind": "grammar",
+      "front": "didn't use to + base verb",
+      "back": "در گذشته عادت نداشتن به کاری یا وجود نداشتن وضعیتی",
+      "claim": {
+        "id": "claim-f157df0a132bb4665dcd0374-1",
+        "text": "حالت منفی عادت گذشته با didn't use to و بدون حرف d نوشته می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 90000,
+              "endMs": 118000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 450000,
+              "endMs": 478000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 810000,
+              "endMs": 838000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1170000,
+              "endMs": 1198000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "didn't use to + base verb",
+        "faMeaning": "در گذشته عادت نداشتن به کاری یا وجود نداشتن وضعیتی",
+        "topic": "عادت‌های گذشته",
+        "kind": "grammar",
+        "ipa": "/ˈdɪdnt juːs tə hæv/",
+        "ipaText": "didn't use to have",
+        "faApprox": "دیدِنت یوس تو هَو",
+        "fullSentence": "We didn't use to have a car.",
+        "collocations": [],
+        "noteFa": "در جمله We didn't use to have a car، با آمدن فعل کمکی didn't، کلمه use به صورت پایه و بدون d نوشته می‌شود.",
+        "imageFa": "خانواده‌ای در سال‌های دور که اتومبیل نداشتند و با پای پیاده رفت‌وآمد می‌کردند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "شکل صحیح منفی عادت گذشته را با املای درست انتخاب کنید.",
+        "prompt": "We (didn't use to have / didn't used to have) a car."
+      }
+    },
+    {
+      "id": "item-be89be1b01a94b980e2b07c4-1",
+      "kind": "vocabulary",
+      "front": "take up",
+      "back": "شروع کردن یک سرگرمی یا فعالیت نو",
+      "claim": {
+        "id": "claim-a27a2125e2c464ec338d72be-1",
+        "text": "فعل عبارتی take up به معنای شروع کردن یک سرگرمی، ورزش یا فعالیت جدید است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1290000,
+              "endMs": 1318000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1650000,
+              "endMs": 1678000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2010000,
+              "endMs": 2038000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2370000,
+              "endMs": 2398000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take up",
+        "faMeaning": "شروع کردن یک سرگرمی یا فعالیت نو",
+        "topic": "سرگرمی‌ها",
+        "kind": "collocation",
+        "ipa": "/teɪk ʌp/",
+        "faApprox": "تِیک آپ",
+        "gapSentence": "Last year my brother ______ the guitar.",
+        "fullSentence": "Last year my brother took up the guitar.",
+        "collocations": [
+          "take up a hobby",
+          "take up an instrument"
+        ],
+        "noteFa": "در این جمله took up نشان می‌دهد که برادر گوینده سال گذشته یادگیری گیتار را به عنوان یک سرگرمی جدید آغاز کرده است.",
+        "imageFa": "فردی با ذوق و اشتیاق یک گیتار تازه خریده و در حال یادگیری اولین آکوردهای آن است.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-d96b8625b76ef13e7e246054-1",
+      "kind": "vocabulary",
+      "front": "take after",
+      "back": "به کسی از بستگان بزرگتر رفتن از نظر چهره یا رفتار",
+      "claim": {
+        "id": "claim-4b9819751205f78846900d50-1",
+        "text": "فعل عبارتی take after به معنای شباهت ظاهری یا رفتاری به یکی از بستگان مسن‌تر است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1320000,
+              "endMs": 1348000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1560000,
+              "endMs": 1588000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1920000,
+              "endMs": 1948000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2280000,
+              "endMs": 2308000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take after",
+        "faMeaning": "به کسی از بستگان بزرگتر رفتن از نظر چهره یا رفتار",
+        "topic": "خانواده و ویژگی‌ها",
+        "kind": "collocation",
+        "ipa": "/teɪk ˈɑːftə/",
+        "faApprox": "تِیک آفتِر",
+        "gapSentence": "Anna ______ her grandmother.",
+        "fullSentence": "Anna takes after her grandmother.",
+        "collocations": [
+          "take after one's mother",
+          "take after one's father"
+        ],
+        "noteFa": "عبارت takes after بیانگر این است که آنا چه از لحاظ چهره و چه از نظر رفتاری شباهت زیادی به مادربزرگش دارد.",
+        "imageFa": "دختر جوانی که لبخند و شیوه صحبت کردنش کاملاً یادآور مادربزرگ مهربانش است.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-514de6ffe71e52be4aa7166f-1",
+      "kind": "vocabulary",
+      "front": "take off",
+      "back": "بلند شدن هواپیما از زمین؛ درآوردن لباس یا کفش",
+      "claim": {
+        "id": "claim-b542a809633235cd9f0ecc9e-1",
+        "text": "فعل عبارتی take off هم به معنای برخاستن هواپیما از زمین و هم به معنای درآوردن لباس است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1350000,
+              "endMs": 1378000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1470000,
+              "endMs": 1498000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1830000,
+              "endMs": 1858000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2190000,
+              "endMs": 2218000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2550000,
+              "endMs": 2578000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take off",
+        "faMeaning": "بلند شدن هواپیما از زمین؛ درآوردن لباس یا کفش",
+        "topic": "افعال عبارتی",
+        "kind": "register",
+        "ipa": "/teɪk ɒf/",
+        "faApprox": "تِیک آف",
+        "gapSentence": "______ your coat before you come inside.",
+        "fullSentence": "Take off your coat before you come inside.",
+        "collocations": [
+          "take off a coat",
+          "take off shoes"
+        ],
+        "noteFa": "فعل take off بسته به بافت معنایی دو کاربرد متداول دارد: در هوانوردی برای جدا شدن هواپیما از باند، و در پوشاک برای درآوردن کت یا لباس.",
+        "imageFa": "فردی که به محض ورود به خانه گرم، پالتوی زمستانی خود را درمی‌آورد و روی چوب‌لباسی آویزان می‌کند.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-9740ae0e0e78fb16afeec8ea-1",
+      "kind": "grammar",
+      "front": "take pronoun off",
+      "back": "قرار گرفتن ضمیر مفعولی میان فعل و حرف اضافه در افعال جداشدنی",
+      "claim": {
+        "id": "claim-1e34d0fae64766854f6f92af-1",
+        "text": "هنگامی که مفعول فعل عبارتی جداشدنی یک ضمیر باشد، حتماً بین فعل و حرف اضافه قرار می‌گیرد (مانند take it off).",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1380000,
+              "endMs": 1408000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1740000,
+              "endMs": 1768000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2100000,
+              "endMs": 2128000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2460000,
+              "endMs": 2488000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take pronoun off",
+        "faMeaning": "قرار گرفتن ضمیر مفعولی میان فعل و حرف اضافه در افعال جداشدنی",
+        "topic": "ساختار افعال عبارتی",
+        "kind": "grammar",
+        "ipa": "/teɪk ɪt ɒf/",
+        "ipaText": "take it off",
+        "faApprox": "تِیک ایت آف",
+        "fullSentence": "Your jacket is wet; please take it off.",
+        "collocations": [],
+        "noteFa": "در ساختار take it off، ضمیر it حتماً باید بین take و off قرار بگیرد. آوردن ضمیر بعد از حرف اضافه (take off it) از نظر دستوری نادرست است.",
+        "imageFa": "کتی خیس از باران که فرد بلافاصله آن را از تن بیرون می‌آورد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به قاعده جایگاه ضمیر مفعولی در فعل عبارتی جداشدنی، عبارت درست را انتخاب کنید.",
+        "prompt": "Your jacket is wet; please (take it off / take off it)."
+      }
+    },
+    {
+      "id": "item-db06c57b1bbb02f0ad02ac65-1",
+      "kind": "grammar",
+      "front": "past simple + finished time",
+      "back": "بیان رویداد در زمان مشخص و پایان‌یافته در گذشته",
+      "claim": {
+        "id": "claim-8fde4a2cc6bebc8792a4d516-1",
+        "text": "زمان گذشته ساده همراه با یک قید زمان مشخص و پایان‌یافته در گذشته استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2580000,
+              "endMs": 2608000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2940000,
+              "endMs": 2968000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 3300000,
+              "endMs": 3328000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 3660000,
+              "endMs": 3688000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "past simple + finished time",
+        "faMeaning": "بیان رویداد در زمان مشخص و پایان‌یافته در گذشته",
+        "topic": "زمان‌های گذشته",
+        "kind": "grammar",
+        "ipa": "/ˈvɪzɪtɪd liːdz lɑːst ˈsʌmə/",
+        "ipaText": "visited Leeds last summer",
+        "faApprox": "ویزیتید لیدز لاست سامِر",
+        "fullSentence": "I visited Leeds last summer.",
+        "collocations": [],
+        "noteFa": "قید زمان last summer دوره‌ای کاملاً سپری‌شده است؛ بنابراین باید از شکل گذشته ساده (visited) استفاده شود و کاربرد حال کامل مجاز نیست.",
+        "imageFa": "تقویم تابستان سال گذشته با علامت دور روزهای اقامت در شهر لیدز.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به وجود قید زمان مشخص و تمام‌شده (last summer)، شکل مناسب فعل را انتخاب کنید.",
+        "prompt": "I (visited / have visited) Leeds last summer."
+      }
+    },
+    {
+      "id": "item-9908150f7b2f50142953fd24-1",
+      "kind": "grammar",
+      "front": "present perfect without finished time",
+      "back": "بیان تجربه یا رویدادی بدون قید زمان پایان‌یافته",
+      "claim": {
+        "id": "claim-7d1417919bcc3e077bdb3e03-1",
+        "text": "زمان حال کامل زمانی به کار می‌رود که زمان مشخص و پایان‌یافته‌ای برای عمل ذکر نشده باشد.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2610000,
+              "endMs": 2638000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2850000,
+              "endMs": 2878000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 3210000,
+              "endMs": 3238000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 3570000,
+              "endMs": 3598000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "present perfect without finished time",
+        "faMeaning": "بیان تجربه یا رویدادی بدون قید زمان پایان‌یافته",
+        "topic": "حال کامل",
+        "kind": "grammar",
+        "ipa": "/hæv ˈvɪzɪtɪd liːdz twaɪs/",
+        "ipaText": "have visited Leeds twice",
+        "faApprox": "هَو ویزیتید لیدز توایس",
+        "fullSentence": "I have visited Leeds twice.",
+        "collocations": [],
+        "noteFa": "در جمله I have visited Leeds twice، هیچ زمان مشخص پایان‌یافته‌ای ذکر نشده و تأکید روی تجربه سفر در طول زندگی است؛ از این رو زمان حال کامل (have visited) به کار رفته است.",
+        "imageFa": "آلبوم عکسی که دو سفر مجزا در سال‌های متفاوت را بدون اشاره به تاریخ خاصی ثبت کرده است.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به عدم ذکر زمان دقیق در گذشته و بیان تجربه، ساختار صحیح را برگزینید.",
+        "prompt": "I (have visited / visited) Leeds twice."
+      }
+    },
+    {
+      "id": "item-4cd1b9ca007b4fc26d5578ad-1",
+      "kind": "grammar",
+      "front": "since vs for",
+      "back": "since برای نقطه شروع زمان و for برای طول بازه زمانی",
+      "claim": {
+        "id": "claim-219681eefe393dda3ada21f1-1",
+        "text": "حرف اضافه since برای مبدا و نقطه آغاز زمان، و for برای بیان طول مدت زمان به کار می‌رود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2640000,
+              "endMs": 2668000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2760000,
+              "endMs": 2788000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 3120000,
+              "endMs": 3148000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 3480000,
+              "endMs": 3508000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "since vs for",
+        "faMeaning": "since برای نقطه شروع زمان و for برای طول بازه زمانی",
+        "topic": "حروف اضافه زمان",
+        "kind": "grammar",
+        "ipa": "/sɪns ˈmʌndeɪ fə θriː deɪz/",
+        "ipaText": "since Monday, for three days",
+        "faApprox": "سینس ماندِی فور تری دِیز",
+        "fullSentence": "He has been here since Monday, so he stayed for three days.",
+        "collocations": [],
+        "noteFa": "عبارت since Monday نقطه شروع رویداد را از روز دوشنبه تعیین می‌کند، در حالی که for three days کل طول بازه زمانی (سه روز) را گزارش می‌دهد.",
+        "imageFa": "خط زمانی که در آن یک نقطه شروع روی روز دوشنبه علامت خورده و یک فلش بازه سه روزه بعد از آن را نشان می‌دهد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به اینکه Monday یک نقطه آغاز و three days یک طول مدت است، حروف اضافه درست را انتخاب کنید.",
+        "prompt": "He has been here (since / for) Monday, so he stayed (for / since) three days."
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ce000901-2222-4222-8222-000000000001",
+        "status": "used"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-12",
+    "course": "Everyday English B1",
+    "coverage": "در این درس سه ساختار پرکاربرد used to، be used to و get used to، چند فعل عبارتی رایج با take و قواعد دستوری تفاوت گذشته ساده با حال کامل بررسی شدند.",
+    "coreIntro": "این درس به شما کمک می‌کند درباره عادت‌های گذشته و روند عادت کردن به شرایط جدید صحبت کنید، افعال عبارتی پرکاربرد را با جایگاه درست ضمیر به کار ببرید و میان زمان گذشته ساده و حال کامل بر پایه قیدهای زمان تفاوت بگذارید.",
+    "chunks": [
+      {
+        "pattern": "used to + base verb",
+        "classSentence": "I used to walk to school.",
+        "noteFa": "بیان عادتی در گذشته که در حال حاضر دیگر وجود ندارد."
+      },
+      {
+        "pattern": "be used to + -ing form",
+        "classSentence": "I am used to getting up early now.",
+        "noteFa": "بیان آشنا بودن و احساس راحتی با یک وضعیت در زمان حال."
+      },
+      {
+        "pattern": "get used to + -ing form",
+        "classSentence": "She is getting used to driving on the left.",
+        "noteFa": "نشان‌دهنده فرایند سازگاری و خو گرفتن تدریجی با یک موقعیت جدید."
+      },
+      {
+        "pattern": "didn't use to + base verb",
+        "classSentence": "We didn't use to have a car.",
+        "noteFa": "شکل منفی عادت گذشته بدون d در فعل use."
+      },
+      {
+        "pattern": "take up + noun",
+        "classSentence": "Last year my brother took up the guitar.",
+        "noteFa": "شروع کردن یک ساز یا سرگرمی جدید."
+      },
+      {
+        "pattern": "take after + noun",
+        "classSentence": "Anna takes after her grandmother.",
+        "noteFa": "شباهت داشتن به فردی از اعضای مسن‌تر خانواده."
+      },
+      {
+        "pattern": "separable phrasal verb with pronoun",
+        "classSentence": "With a pronoun the object goes in the middle: take it off, never take off it.",
+        "noteFa": "قرار گرفتن اجباری ضمیر در وسط فعل عبارتی جداشدنی."
+      },
+      {
+        "pattern": "past simple with finished time",
+        "classSentence": "I visited Leeds last summer.",
+        "noteFa": "استفاده از گذشته ساده به دلیل پایان یافتن زمان last summer."
+      },
+      {
+        "pattern": "present perfect without finished time",
+        "classSentence": "I have visited Leeds twice.",
+        "noteFa": "استفاده از حال کامل برای بیان تجربه زندگی بدون تعیین تاریخ مشخص."
+      },
+      {
+        "pattern": "since + point in time / for + duration",
+        "classSentence": "Since takes a starting point and for takes a period: since Monday, for three days.",
+        "noteFa": "کاربرد since برای نقطه آغازین و for برای بازه زمانی."
+      },
+      {
+        "pattern": "ever with present perfect",
+        "classSentence": "Have you ever tried sushi?",
+        "noteFa": "پرسش از تجربه کلی در طول زندگی با استفاده از ever و حال کامل."
+      }
+    ],
+    "board": [],
+    "tasks": [
+      {
+        "title": "مرور تفاوت used to و be/get used to",
+        "blocks": [
+          {
+            "type": "text",
+            "textFa": "توجه داشته باشید که used to با شکل ساده فعل برای عادات گذشته می‌آید، در حالی که be used to و get used to با شکل ing-دار فعل برای بیان آشنایی و فرایند عادت کردن به کار می‌روند."
+          },
+          {
+            "type": "table",
+            "headers": [
+              "ساختار",
+              "الگوی فعل پس از آن",
+              "مفهوم"
+            ],
+            "rows": [
+              [
+                "used to",
+                "شکل ساده فعل (base verb)",
+                "عادت پایان‌یافته در گذشته"
+              ],
+              [
+                "be used to",
+                "فعل با ing",
+                "عادی و آشنا بودن در حال حاضر"
+              ],
+              [
+                "get used to",
+                "فعل با ing",
+                "روند تطبیق یافتن و تغییر"
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "unverified",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "take off it",
+        "sayThis": "take it off",
+        "whyFa": "در افعال عبارتی جداشدنی، ضمیر مفعولی حتماً باید بین فعل و حرف اضافه قرار گیرد و نمی‌تواند بعد از حرف اضافه بیاید."
+      },
+      {
+        "notThis": "We didn't used to have a car.",
+        "sayThis": "We didn't use to have a car.",
+        "whyFa": "پس از فعل کمکی didn't، فعل use به شکل ساده و بدون d نوشته می‌شود."
+      }
+    ],
+    "gapfill": [],
+    "culture": []
+  },
+  "sourceClassifications": [
+    {
+      "sourceId": "ce000901-2222-4222-8222-000000000001",
+      "classification": {
+        "role": "class_material",
+        "confidence": "uncertain"
+      }
+    }
+  ]
+}
