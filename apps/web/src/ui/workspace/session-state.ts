@@ -11,6 +11,7 @@ const copy = sessionNavigationCopy;
  * session card runs itself (retry, review request, saved-audio retry).
  */
 export type SessionActionId =
+  | "record"
   | "read_notes"
   | "practise_cards"
   | "view_progress"
@@ -90,6 +91,9 @@ export function uploadRetryCanHelp(transfer: SessionAudioTransfer) {
 function actions(sessionId: string) {
   const session = `/sessions/${sessionId}`;
   return {
+    // On the session page this starts capture at once (RecordLauncher); as a link it opens the
+    // session's recording page.
+    record: { id: "record", label: "Record a session", href: `${session}/record` },
     read_notes: { id: "read_notes", label: "Read notes", href: `${session}/notes` },
     practise_cards: { id: "practise_cards", label: "Practise cards", href: `${session}/cards` },
     view_progress: {
@@ -346,10 +350,31 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
     ]);
   }
 
+  // An empty session: recording comes first, adding files second (owner decision 2026-10-13, D71).
   return step(
     "idle",
     "Add your session material",
     "Add documents, audio or photos to start creating notes and flashcards.",
-    go.add_material,
+    go.record,
+    [go.add_material],
   );
+}
+
+/** Automatic learning states with work still in progress, including stops that need an action. */
+const workInProgress = new Set(["waiting_sources", "waiting_upload", "processing", "blocked"]);
+
+/**
+ * Today (owner decision 2026-10-13, D71): the latest session's next step, then other recent
+ * sessions with work in progress, up to `limit` in all. `olderStates` are the automatic learning
+ * states of `sessions` after the first, in the same order; an unknown state is not in progress.
+ */
+export function todayNextSteps<T>(
+  sessions: readonly T[],
+  olderStates: readonly (string | null | undefined)[],
+  limit = 3,
+): T[] {
+  const [latest, ...older] = sessions;
+  if (latest === undefined) return [];
+  const working = older.filter((_, index) => workInProgress.has(olderStates[index] ?? ""));
+  return [latest, ...working.slice(0, Math.max(0, limit - 1))];
 }
