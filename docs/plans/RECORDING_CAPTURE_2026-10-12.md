@@ -200,7 +200,18 @@
 | PRD-PRIV-06 و سخت‌گیری route تشخیص | حل شد | `recording-routes.test.ts` › «refuses hostile payloads…» (بدنهٔ بزرگ → 413، ۵۱ رخداد، user agent کامل، شناسهٔ کلاس، متن، script، اعداد خارج از بازه)؛ `captureDiagnostics.int.test.ts`: مالکیت، replay با همان کلید یک بار لاگ می‌شود، کلید با محتوای دیگر رد می‌شود، بدون کلید 400 | `ff42fe1`؛ سقف و idempotency در `6af4aef` |
 | سازگاری | حل شد | «loads and registers an older manifest without measurement or gap markers»؛ migration روی DB محلیِ تازه (`supabase start` همهٔ ۴۷ migration را به ترتیب اعمال کرد) و `pnpm db:types` بدون diff | —؛ آزمون `6af4aef` |
 
-### شواهد اجرای محلی (CI گیت‌هاب همچنان از کار افتاده)
+### شواهد اجرای محلی پس از انتشار (2026-10-13، شاخه = main `878b148` + S2، commit کد `c7b60ab`)
+
+| دستور | خط خلاصه |
+|---|---|
+| `git merge origin/main` | بدون تعارض |
+| `pnpm verify` | `Checked 1194 files in 2s. No fixes applied.` · typecheck هر سه بسته `Done` · `✔ no dependency violations found (1273 modules, 5893 dependencies cruised)` · `Test Files 353 passed \| 1 skipped (354)` · `Tests 4115 passed \| 1 skipped (4116)` · `Duration 339.38s` |
+| `pnpm db:types` + diff | بدون diff |
+| `pnpm build` / `check:client-bundle` | `✓ Compiled successfully in 28.8s` · `No secrets in the client-visible build output.` |
+| `CI=1 RECALINO_DEV_UI=1 pnpm test:e2e` | `276 passed (5.8m)`، بدون شکست و بدون flaky |
+| `recording-decode.spec.ts` | `{"parts":[{"segment":1,"declaredMs":14130},{"segment":2,"declaredMs":4080}],"declaredMs":18210,"decodedMs":18180}` — اختلاف ۳۰ ms (۰٫۲٪) |
+
+### شواهد اجرای محلی دور اول ممیزی (2026-10-13 بامداد؛ CI گیت‌هاب از کار افتاده)
 
 روی commit نهایی، Node 24، pnpm 12.4.2، Supabase محلی در Docker؛ e2e با build production (`CI=1`، `RECALINO_DEV_UI=1`، و `env -u SUPABASE_SECRET_KEY -u OPENROUTER_API_KEY` تا کلید ابری محیط جای کلید محلی را نگیرد؛ Playwright 1.63 با مرورگر پیش‌نصب 1194 از طریق symlink در scratchpad):
 
