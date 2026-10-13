@@ -28,6 +28,9 @@ const unavailableService = new Set([
 ]);
 const materialProblems = new Set([
   "upload_needs_attention",
+  // The verifier refused the audio itself: the same file would be refused again, so the next
+  // step is to replace or deselect it, never a retry (2026-10-13 audit).
+  "audio_upload_rejected",
   "selection_too_large",
   "no_selected_sources",
   "select_at_least_one",

@@ -9,6 +9,7 @@ import { DEFAULT_PLT_SETTINGS, errors, MemoryObjectStore, sha256Hex } from "../p
 import { amounts, grantEntitlement } from "../quota";
 import {
   acceptSourceNotice,
+  adoptStagedAudio,
   beginStagedAudioUpload,
   confirmTemporaryAudioPart,
   createSource,
@@ -204,6 +205,101 @@ it("stages only the learner's own in-app recording parts", async () => {
   await expect(
     beginStagedAudioUpload(db, other.ctx, owner.source.assetId, { parts: owner.parts }),
   ).rejects.toMatchObject({ code: "not_found" });
+});
+
+it("S2: the class run that adopts a staged copy keeps it for its own upload window (D29)", async () => {
+  const x = await capturePart();
+  // Staged 23.5 hours ago: half an hour of the 24-hour window is left when the class run starts.
+  const stagedAt = new Date(Date.now() - 23.5 * 3600 * 1000);
+  const bytes = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3]);
+  const staged = await beginStagedAudioUpload(
+    db,
+    x.ctx,
+    x.source.assetId,
+    { parts: x.parts },
+    stagedAt,
+  );
+  const link = await temporaryAudioPartLink(
+    db,
+    x.store,
+    x.ctx,
+    x.source.assetId,
+    staged.uploadId,
+    0,
+    DEFAULT_PLT_SETTINGS.storage,
+  );
+  expect(x.store.upload(link.url, bytes, "audio/webm")).toBe(200);
+  await confirmTemporaryAudioPart(db, x.store, x.ctx, x.source.assetId, staged.uploadId, 0);
+  await verifyTemporaryAudio(db, x.store, x.ctx, x.source.assetId, staged.uploadId, {
+    inspect: async () => ({ durationMs: 4020, audioOnly: true }),
+  });
+  const before = await db
+    .selectFrom("src.audio_upload")
+    .select("expires_at")
+    .where("id", "=", staged.uploadId)
+    .executeTakeFirstOrThrow();
+  expect(before.expires_at.getTime()).toBeLessThan(Date.now() + 3600 * 1000);
+  const snapshot = await selectSourceSnapshot(db, x.ctx, x.session.id);
+  const run = await createProcessingRun(
+    db,
+    x.ctx,
+    {
+      sessionId: x.session.id,
+      operationKey: randomUUID(),
+      expectedFingerprint: snapshot.fingerprint,
+      expectedSourcesVersion: snapshot.sourcesVersion,
+    },
+    { job: processingJob({ store: x.store, provider }), provider },
+  );
+  expect(run.state).toBe("queued");
+  // An hour later the sweep runs; the copy the run is transcribing is still there.
+  await expireTemporaryAudio(db, x.store, new Date(Date.now() + 3600 * 1000));
+  const after = await db
+    .selectFrom("src.audio_upload")
+    .select(["state", "expires_at"])
+    .where("id", "=", staged.uploadId)
+    .executeTakeFirstOrThrow();
+  expect(after.state).toBe("verified");
+  expect(after.expires_at.getTime()).toBeGreaterThan(Date.now() + 23 * 3600 * 1000);
+  // Never past seven days from staging (D29 rule 3).
+  expect(after.expires_at.getTime()).toBeLessThanOrEqual(stagedAt.getTime() + 7 * 24 * 3600 * 1000);
+});
+
+it("S2: adoption never extends a copy past seven days from staging", async () => {
+  const x = await capturePart();
+  const stagedAt = new Date(Date.now() - 6.9 * 24 * 3600 * 1000);
+  await db.transaction().execute(async (tx) => {
+    // A copy staged almost seven days ago whose window was already extended once.
+    const bytes = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3]);
+    void bytes;
+    const staged = await beginStagedAudioUpload(
+      db,
+      x.ctx,
+      x.source.assetId,
+      { parts: x.parts },
+      stagedAt,
+    );
+    await tx
+      .updateTable("src.audio_upload")
+      .set({ state: "verified", expires_at: new Date(Date.now() + 1000) })
+      .where("id", "=", staged.uploadId)
+      .execute();
+    const extended = await adoptStagedAudio(tx, x.ctx, [x.source.assetId], new Date());
+    expect(extended).toBe(1);
+    const row = await tx
+      .selectFrom("src.audio_upload")
+      .select("expires_at")
+      .where("id", "=", staged.uploadId)
+      .executeTakeFirstOrThrow();
+    expect(row.expires_at.getTime()).toBe(stagedAt.getTime() + 7 * 24 * 3600 * 1000);
+    // A transcribed copy keeps its D29 deadline: no extension.
+    await tx
+      .updateTable("src.audio_upload")
+      .set({ transcribed_at: new Date() })
+      .where("id", "=", staged.uploadId)
+      .execute();
+    expect(await adoptStagedAudio(tx, x.ctx, [x.source.assetId], new Date())).toBe(0);
+  });
 });
 
 it("deletes a rejected staged copy at the next sweep, far inside D29's seven days", async () => {

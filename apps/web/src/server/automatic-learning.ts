@@ -49,6 +49,7 @@ import {
   receivedSourceUploadIds,
   sessionSources,
   sourceVerificationJob,
+  temporaryAudioUploadStates,
 } from "@recalino/core/src";
 import type { z } from "zod";
 import { allowanceCopy } from "../ui/allowance-copy";
@@ -170,6 +171,7 @@ export function automaticLearningMessage(
     ].includes(code ?? "")
   )
     return "Your material was uploaded, but the AI service rejected a processing request. The service needs a fix before retrying. You do not need to upload the same files again; earlier notes and cards are saved.";
+  if (code === "audio_upload_rejected") return pendingCopy.uploadReliability.automatic.rejected;
   if (code === "audio_upload_not_started")
     return pendingCopy.uploadReliability.automatic.notStarted;
   if (code === "audio_upload_incomplete") return pendingCopy.uploadReliability.automatic.incomplete;
@@ -241,7 +243,14 @@ async function view(
     run?.lastError === "quota_insufficient" &&
     ["failed", "needs_input"].includes(run.state)
       ? "service_processing_blocked"
-      : storedCode;
+      : storedCode === "audio_upload_rejected" &&
+          run?.lastError === "audio_upload_rejected" &&
+          run.state === "needs_input" &&
+          (await temporaryAudioUploadStates(db, ctx, run.reservationId)).size === 0
+        ? // Before 2026-10-12 the upload sweep named every lapsed run as rejected audio. With no
+          // upload receipt the audio never reached the server, so the saved original can be sent.
+          "audio_upload_not_started"
+        : storedCode;
   const shortage =
     state === "blocked" && code === "quota_insufficient"
       ? await readAllowanceShortage(db, ctx, sessionId, provider())

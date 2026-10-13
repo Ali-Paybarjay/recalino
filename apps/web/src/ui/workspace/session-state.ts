@@ -228,9 +228,13 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
       return step("attention", heading, detail, go.review_material, after);
     if (recovery.kind === "setup")
       return step("attention", heading, detail, go.account_setup, after);
-    // The saved audio never reached the server. A retry starts its upload again from this device;
-    // the material page shows whether the original is still here.
-    if (status.lastError === "audio_upload_rejected")
+    // The saved audio never reached the server in time (not started or incomplete). A retry
+    // starts its upload again from this device; the material page shows whether the original is
+    // still here. A verifier rejection is a material problem and never reaches this branch.
+    if (
+      status.lastError === "audio_upload_not_started" ||
+      status.lastError === "audio_upload_incomplete"
+    )
       return step(
         "attention",
         heading,

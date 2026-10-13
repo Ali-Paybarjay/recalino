@@ -88,6 +88,7 @@ export {
   verifyUpload,
 } from "./service";
 export {
+  adoptStagedAudio,
   beginStagedAudioUpload,
   recordedPartSessionId,
   stagedAudioManifest,
