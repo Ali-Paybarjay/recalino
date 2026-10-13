@@ -165,6 +165,50 @@ export async function beginStagedAudioUpload(
   });
 }
 
+/** A staged copy that no run ever used is gone this long after staging (D29 rule 3). */
+const STAGED_COPY_MAX_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * S2: a class run that adopts verified staged copies keeps them for its own upload window, so the
+ * hourly sweep cannot delete one mid-transcription when the run starts late in the copy's window.
+ * A copy already transcribed keeps its D29 deadline (24 h after transcription); none lives past
+ * seven days from staging. Runs in the run's transaction, after the snapshot it adopts.
+ */
+export async function adoptStagedAudio(
+  tx: Tx,
+  ctx: LearnerContext,
+  sourceIds: readonly string[],
+  now = new Date(),
+): Promise<number> {
+  if (!sourceIds.length) return 0;
+  const contract = await readInputContract(tx);
+  const rows = await tx
+    .selectFrom("src.audio_upload")
+    .select(["id", "expires_at", "staged_at"])
+    .where("user_id", "=", ctx.userId)
+    .where("asset_id", "in", [...sourceIds])
+    .where("reservation_id", "is", null)
+    .where("state", "=", "verified")
+    .where("transcribed_at", "is", null)
+    .where("expires_at", ">", now)
+    .execute();
+  let extended = 0;
+  for (const row of rows) {
+    const stagedAt = row.staged_at?.getTime() ?? now.getTime();
+    const until = new Date(
+      Math.min(now.getTime() + contract.uploadTtlSeconds * 1000, stagedAt + STAGED_COPY_MAX_MS),
+    );
+    if (until <= row.expires_at) continue;
+    await tx
+      .updateTable("src.audio_upload")
+      .set({ expires_at: until })
+      .where("id", "=", row.id)
+      .execute();
+    extended++;
+  }
+  return extended;
+}
+
 /** The class a recorded part is linked to, for work that follows its staged copy (D61). */
 export async function recordedPartSessionId(
   db: Database | Tx,
