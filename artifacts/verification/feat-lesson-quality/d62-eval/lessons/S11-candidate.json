@@ -1,0 +1,328 @@
+{
+  "schemaVersion": "1",
+  "title": "英米発音の差異と品詞による強勢変化",
+  "language": {
+    "learning": "en",
+    "explanation": "ja"
+  },
+  "summary": [
+    {
+      "id": "claim-96f5313b6eec4b74f96ae0bd-1",
+      "text": "tomatoやleisureのように、英米で母音の選択が異なる単語の発音バリエーションを整理しました。",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000131-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "tomato",
+            "start": 0,
+            "end": 178
+          }
+        },
+        {
+          "sourceId": "ad000131-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "leisure",
+            "start": 0,
+            "end": 186
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-6a91e09b87b45f9e5ea6317f-1",
+      "text": "increaseのように品詞（名詞・動詞）の切り替えに伴って強勢の位置が移動するアクセント規則を学びました。",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000131-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "increase",
+            "start": 0,
+            "end": 260
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-b3a744e504144a538e7617da-1",
+      "title": "英米による発音バリエーション",
+      "claims": [
+        {
+          "id": "claim-5d414114712afd66e58fb361-1",
+          "text": "tomatoは英音/təˈmɑːtəʊ/と米音/təˈmeɪtoʊ/、leisureは英音/ˈleʒə/と北米音/ˈliːʒər/の差があります。",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000131-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "tomato",
+                "start": 0,
+                "end": 178
+              }
+            },
+            {
+              "sourceId": "ad000131-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "leisure",
+                "start": 0,
+                "end": 186
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "id": "topic-84fc07991af78315bf05621d-1",
+      "title": "品詞による強勢移動（名前動後）",
+      "claims": [
+        {
+          "id": "claim-77917bd9b884c998f8391e07-1",
+          "text": "increaseは名詞形では第1音節に強勢があり（/ˈɪŋkriːs/）、動詞形では第2音節に強勢が移動します（/ɪnˈkriːs/）。",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000131-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "increase",
+                "start": 0,
+                "end": 260
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-33343d23c90e129c0f9a9ee7-1",
+      "kind": "vocabulary",
+      "front": "tomato",
+      "back": "トマト",
+      "claim": {
+        "id": "claim-5b62647ef4dd6be4afc706e4-1",
+        "text": "イギリス英語ではtomatoの第2音節を/ɑː/と発音し（/təˈmɑːtəʊ/）、アメリカ英語では/eɪ/（/təˈmeɪtoʊ/）と発音します。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "tomato",
+              "start": 0,
+              "end": 178
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "tomato",
+        "faMeaning": "トマト",
+        "topic": "Pronunciation & Food",
+        "kind": "pronunciation",
+        "ipa": "/təˈmɑːtəʊ/",
+        "trap": "アメリカ英語の/təˈmeɪtoʊ/（メイ）に対して、イギリス標準発音では/təˈmɑːtəʊ/（マー）となります。",
+        "gapSentence": "Slice one ______ and add it to the salad.",
+        "fullSentence": "Slice one tomato and add it to the salad.",
+        "collocations": [
+          "slice a tomato",
+          "ripe tomato"
+        ],
+        "noteFa": "イギリス標準発音では /təˈmɑːtəʊ/ です。例文中の 'tomato' は第2音節が長母音 /ɑː/ で発音され、米音の /eɪ/ とは母音の質が異なります。",
+        "imageFa": "キッチンで赤く熟したトマトを包丁でスライスしている場面。",
+        "sourceFa": "授業から"
+      }
+    },
+    {
+      "id": "item-5c7518c23b6bd5b36a424aad-1",
+      "kind": "vocabulary",
+      "front": "leisure",
+      "back": "余暇、レジャー",
+      "claim": {
+        "id": "claim-f92d547744bf4c8ac136b13c-1",
+        "text": "leisureはイギリス英語で第一音節が/e/（/ˈleʒə/）、北米英語で/iː/（/ˈliːʒər/）となり、授業では双方が標準的な形として認められています。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "leisure",
+              "start": 0,
+              "end": 186
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "leisure",
+        "faMeaning": "余暇、レジャー",
+        "topic": "Pronunciation & Free Time",
+        "kind": "pronunciation",
+        "ipa": "/ˈleʒə/",
+        "trap": "イギリス英語の短い母音/e/（レジャ）と、北米英語の長い母音/iː/（リージャー）の違いに注意してください。",
+        "gapSentence": "Swimming is my favourite ______ activity.",
+        "fullSentence": "Swimming is my favourite leisure activity.",
+        "collocations": [
+          "leisure activity",
+          "leisure time"
+        ],
+        "noteFa": "イギリス英語では主に /ˈleʒə/ と発音されます。例文の 'leisure activity' でも短母音 /e/ が使われますが、北米英語の /ˈliːʒər/ も広く認知された標準形です。",
+        "imageFa": "休日に明るい屋内プールでゆったりと泳いで余暇を過ごしている光景。",
+        "sourceFa": "授業から"
+      }
+    },
+    {
+      "id": "item-146adea32ca8972248fded83-1",
+      "kind": "vocabulary",
+      "front": "increase",
+      "back": "増加、上昇（名詞）",
+      "claim": {
+        "id": "claim-cc03c5b66a01e2c0aef36212-1",
+        "text": "increaseは品詞によって強勢位置が変わり、名詞では第1音節（/ˈɪŋkriːs/）、動詞では第2音節（/ɪnˈkriːs/）に置かれます。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "increase",
+              "start": 0,
+              "end": 260
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "increase",
+        "faMeaning": "増加、上昇（名詞）",
+        "topic": "Word Stress",
+        "kind": "pronunciation",
+        "ipa": "/ˈɪŋkriːs/",
+        "trap": "動詞の/ɪnˈkriːs/と混同しないよう、名詞では最初の音節 /ˈɪŋ/ を高く強く発音します。",
+        "gapSentence": "There has been a sharp ______ in rents this year.",
+        "fullSentence": "There has been a sharp increase in rents this year.",
+        "collocations": [
+          "sharp increase",
+          "increase in rents"
+        ],
+        "noteFa": "名詞として機能する場合、語頭に強勢を置いて /ˈɪŋkriːs/ と発音します。例文の 'a sharp increase' では名詞のため第1音節が強調されます。これに対し、動詞（例: Prices usually increase...）では語尾の /ɪnˈkriːs/ に強勢が移ります。",
+        "imageFa": "家賃の推移を示すグラフの折れ線が急激に跳ね上がっている図。",
+        "sourceFa": "授業から"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ad000131-1111-4111-8111-000000000001",
+        "status": "used"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Pronunciation Workshop",
+    "coverage": "英米英語における母音発音の差異（tomato, leisure）および、品詞による強勢位置の移動（increase）",
+    "coreIntro": "日常的によく使われる単語について、英米での母音の違いと、品詞（名詞・動詞）によるアクセントの移動規則を理解します。",
+    "chunks": [
+      {
+        "pattern": "Slice one tomato",
+        "classSentence": "Slice one tomato and add it to the salad.",
+        "noteFa": "イギリス英語ではtomatoの第2音節を/ɑː/と長く発音します（/təˈmɑːtəʊ/）。"
+      },
+      {
+        "pattern": "leisure activity",
+        "classSentence": "Swimming is my favourite leisure activity.",
+        "noteFa": "イギリス英語ではleisureの第1音節を/e/（/ˈleʒə/）、北米英語では/iː/（/ˈliːʒər/）と発音します。"
+      },
+      {
+        "pattern": "a sharp increase in",
+        "classSentence": "There has been a sharp increase in rents this year.",
+        "noteFa": "名詞のincreaseは第1音節に強勢が置かれます（/ˈɪŋkriːs/）。"
+      },
+      {
+        "pattern": "usually increase in",
+        "classSentence": "Prices usually increase in January.",
+        "noteFa": "動詞のincreaseは第2音節に強勢が置かれます（/ɪnˈkriːs/）。"
+      }
+    ],
+    "board": [],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [],
+    "gapfill": [
+      {
+        "sentence": "Slice one ______ and add it to the salad.",
+        "answer": "tomato"
+      },
+      {
+        "sentence": "Swimming is my favourite ______ activity.",
+        "answer": "leisure"
+      },
+      {
+        "sentence": "There has been a sharp ______ in rents this year.",
+        "answer": "increase"
+      }
+    ],
+    "culture": []
+  }
+}

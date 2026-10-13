@@ -12,7 +12,10 @@ interface KnowledgeInput {
   learnerContext?: ModelTeachingContext;
 }
 type Block = RunSource["blocks"][number];
-type BlockMetadata = Pick<Block, "kind" | "level" | "speakerRole" | "speakerId" | "timeStatus">;
+type BlockMetadata = Pick<
+  Block,
+  "kind" | "level" | "speakerRole" | "speakerId" | "timeStatus" | "layout"
+>;
 
 const fullReferencePrompt =
   "For each SourceRef choose and copy an allowedSourceRefs entry exactly, including its locator. Do not count or invent character offsets. Use the provided full block, page or native time span unchanged. If the source cannot support a claim, omit it or mark uncertainty rather than inventing evidence.";
@@ -43,6 +46,7 @@ function blockMetadata(block: Block): BlockMetadata {
     ...(block.level !== undefined ? { level: block.level } : {}),
     ...(block.speakerId !== undefined ? { speakerId: block.speakerId } : {}),
     ...(block.timeStatus !== undefined ? { timeStatus: block.timeStatus } : {}),
+    ...(block.layout !== undefined ? { layout: block.layout } : {}),
   };
 }
 

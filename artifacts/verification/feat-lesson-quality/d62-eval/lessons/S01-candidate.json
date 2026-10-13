@@ -1,0 +1,246 @@
+{
+  "schemaVersion": "1",
+  "title": "سؤالات با Have got، ضمایر ملکی و اصطلاح Out of order",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [],
+  "topics": [],
+  "learningItems": [
+    {
+      "id": "item-704e0e06b713636799675038-1",
+      "kind": "grammar",
+      "front": "Have / Has + subject + got ...?",
+      "back": "ساختار سؤالی داشتن و مالکیت با have got",
+      "claim": {
+        "id": "claim-d81de0ed8d050725f1dd2125-1",
+        "text": "برای پرسیدن درباره مالکیت و اعضای خانواده، have یا has قبل از فاعل و got بعد از آن قرار می‌گیرد و در پاسخ‌های کوتاه have یا has تکرار می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000121-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000121-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "have-got-questions",
+              "start": 0,
+              "end": 251
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "Have / Has + subject + got ...?",
+        "faMeaning": "ساختار سؤالی داشتن و مالکیت با have got",
+        "topic": "مالکیت و روابط خانوادگی",
+        "kind": "grammar",
+        "ipa": "/hæv juː ɡɒt/",
+        "ipaText": "Have you got",
+        "faApprox": "هَو یو گات",
+        "fullSentence": "Have you got a car?",
+        "collocations": [
+          "Have you got a car?",
+          "Has your sister got"
+        ],
+        "noteFa": "در جمله «Have you got a car?» واژه‌های «Have» و «got» ساختار سؤالی را تشکیل می‌دهند؛ فعل کمکی پیش از فاعل «you» و کلمه «got» پس از آن نشسته است. طبق آموزش درس، نباید از do استفاده کرد و گفتن «Do you have got» اشتباه است. در پاسخ کوتاه نیز می‌گوییم «Yes, I have» و got را تکرار نمی‌کنیم.",
+        "imageFa": "فردی با سوئیچ خودرو در دست که با حالتی دوستانه از مخاطبش می‌پرسد آیا اتومبیل دارد یا خیر.",
+        "sourceFa": "از کلاس",
+        "taskFa": "شکل سؤالی درست را با ساختار have got انتخاب کنید.",
+        "prompt": "Choose the correct question form: (Do you have got / Have you got) a car?"
+      }
+    },
+    {
+      "id": "item-fecab92e09e15b0f916e1f0c-1",
+      "kind": "vocabulary",
+      "front": "mine",
+      "back": "مال من",
+      "claim": {
+        "id": "claim-32837ecac471417955feedab-1",
+        "text": "ضمایر ملکی مانند mine به صورت مستقل و بدون قرار گرفتن اسم پس از آن‌ها به کار می‌روند.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000121-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000121-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "possessive-pronouns",
+              "start": 0,
+              "end": 173
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "mine",
+        "faMeaning": "مال من",
+        "topic": "مالکیت",
+        "ipa": "/maɪn/",
+        "faApprox": "ماین",
+        "gapSentence": "This coat is ______.",
+        "fullSentence": "This coat is mine.",
+        "collocations": [
+          "is mine",
+          "coat is mine"
+        ],
+        "noteFa": "در جمله «This coat is mine»، واژه «mine» در نقش ضمیر ملکی به تنهایی در پایان جمله قرار گرفته است و نیازی به اسم پس از خود ندارد. طبق درس، گفتن «This coat is my» نادرست است زیرا my صفت ملکی بوده و همیشه قبل از اسم می‌آید.",
+        "imageFa": "پالتویی روی چوب‌لباسی که فردی با اشاره دست تأکید می‌کند این لباس متعلق به خود اوست.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-21a7d2f6cc3f3697fe61ddb5-1",
+      "kind": "expression",
+      "front": "out of order",
+      "back": "خراب و از کار افتاده (برای دستگاه‌ها و وسایل عمومی)",
+      "claim": {
+        "id": "claim-1f88053971b96c3292442aef-1",
+        "text": "عبارت «out of order» برای بیان خراب بودن دستگاه یا تلفن در اماکن عمومی استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000121-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000121-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "out-of-order",
+              "start": 0,
+              "end": 230
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "out of order",
+        "faMeaning": "خراب و از کار افتاده (برای دستگاه‌ها و وسایل عمومی)",
+        "topic": "اماکن عمومی و خدمات",
+        "ipa": "/ˌaʊt əv ˈɔːdə/",
+        "faApprox": "آوت اَو اُردِر",
+        "gapSentence": "The lift is ______, so please use the stairs.",
+        "fullSentence": "The lift is out of order, so please use the stairs.",
+        "collocations": [
+          "ticket machine is out of order",
+          "a sign that says out of order"
+        ],
+        "noteFa": "در جمله «The lift is out of order, so please use the stairs»، عبارت «out of order» علت استفاده از پله‌ها را خراب بودن و کار نکردن آسانسور توضیح می‌دهد. این عبارت معمولاً روی تابلوها و علائم نصب‌شده در اماکن عمومی دیده می‌شود.",
+        "imageFa": "علامت کاغذی نصب‌شده روی در آسانسور که روی آن عبارت out of order چاپ شده است.",
+        "sourceFa": "از کلاس"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ad000121-1111-4111-8111-000000000001",
+        "status": "used"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Community English A1",
+    "coverage": "آموزش نحوه ساخت سؤال و پاسخ کوتاه با have got، استفاده از ضمایر ملکی مستقل نظیر mine بدون اسم، و اصطلاح out of order برای دستگاه‌های خراب عمومی.",
+    "coreIntro": "در این درس یاد می‌گیرید چگونه با ساختار have got درباره مالکیت اشیا و روابط خانوادگی سؤال بپرسید، از ضمیر ملکی مستقل استفاده کنید، و تابلوهای خرابی دستگاه‌ها در اماکن عمومی را بشناسید.",
+    "chunks": [
+      {
+        "pattern": "Have/Has + subject + got",
+        "classSentence": "Have you got a car?",
+        "noteFa": "فعل کمکی have قبل از فاعل و got بعد از آن قرار گرفته است."
+      },
+      {
+        "pattern": "subject + be + possessive pronoun",
+        "classSentence": "This coat is mine.",
+        "noteFa": "ضمیر ملکی mine به تنهایی و بدون اسم در پایان جمله قرار می‌گیرد."
+      },
+      {
+        "pattern": "subject + be + out of order",
+        "classSentence": "The lift is out of order, so please use the stairs.",
+        "noteFa": "بیان خرابی آسانسور با عبارت out of order."
+      }
+    ],
+    "board": [],
+    "tasks": [
+      {
+        "title": "تمرین دونفره کلاسی درباره مالکیت",
+        "blocks": [
+          {
+            "type": "text",
+            "textFa": "این تمرین در طول کلاس به صورت دونفره انجام می‌شود: با استفاده از have got از هم‌کلاسی خود درباره دوچرخه، حیوان خانگی و حیاط سؤال کنید و پاسخ‌های کوتاه او را یادداشت نمایید."
+          },
+          {
+            "type": "quote",
+            "quoteEn": "Use have got to ask your partner about a bicycle, a pet and a garden. Write your partner's short answers in the table."
+          },
+          {
+            "type": "items",
+            "items": [
+              {
+                "prompt": "Ask about a bicycle:",
+                "model": "Have you got a bicycle?",
+                "whyFa": "استفاده از have پیش از فاعل you و got بعد از آن برای پرسیدن درباره دوچرخه."
+              },
+              {
+                "prompt": "Ask about a pet:",
+                "model": "Have you got a pet?",
+                "whyFa": "سؤال درباره داشتن حیوان خانگی با have got."
+              },
+              {
+                "prompt": "Ask about a garden:",
+                "model": "Have you got a garden?",
+                "whyFa": "سؤال درباره داشتن حیاط با ساختار have got."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "Do you have got a car?",
+        "sayThis": "Have you got a car?",
+        "whyFa": "در ساختار have got نباید از فعل کمکی do برای سؤالی کردن استفاده کرد."
+      },
+      {
+        "notThis": "This coat is my.",
+        "sayThis": "This coat is mine.",
+        "whyFa": "واژه my صفت ملکی است و نیاز به اسم دارد؛ در جایگاه مستقل و بدون اسم باید از ضمیر ملکی mine استفاده کرد."
+      }
+    ],
+    "gapfill": [
+      {
+        "sentence": "This coat is ______.",
+        "answer": "mine"
+      },
+      {
+        "sentence": "The lift is out of ______, so please use the stairs.",
+        "answer": "order"
+      }
+    ],
+    "culture": []
+  }
+}

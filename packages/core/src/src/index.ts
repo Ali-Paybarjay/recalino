@@ -57,6 +57,8 @@ export {
   appendContentVersion,
   assertSourcesLive,
   attachSource,
+  blockLayoutSchema,
+  blockLayoutTypes,
   cleanupSourceContent,
   confirmUploadPart,
   createRecordedSource,

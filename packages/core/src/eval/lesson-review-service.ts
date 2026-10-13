@@ -31,7 +31,6 @@ import { assertSourcesLive } from "../src";
 import {
   buildLessonReviewInput,
   LESSON_REVIEW_RUBRIC_VERSION,
-  LESSON_REVIEW_SYSTEM_PROMPT,
   type LessonReviewResponse,
   type LessonReviewVerdict,
   lessonReviewVerdict,
@@ -233,7 +232,7 @@ export function lessonReviewJob(dependencies: {
               model: settings.llmModel,
               schema: input.schema,
               schemaName: "lesson_quality_review",
-              system: LESSON_REVIEW_SYSTEM_PROMPT,
+              system: input.system,
               input: input.input,
             }),
           onCommit: async (tx) => {

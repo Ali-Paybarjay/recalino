@@ -4,6 +4,7 @@ import type { LessonReviewView } from "@recalino/core/eval";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { lessonQualityCopy } from "./lesson-quality-copy";
 import { lessonReviewCopy as copy } from "./lesson-review-copy";
 import {
   canRequestLessonReview,
@@ -160,17 +161,21 @@ function VersionLessonReview({ sessionId, knowledgeVersionId, knowledgeVersion, 
       const unresolved = reasons.includes("provider_outcome_unresolved");
       const removed =
         failure instanceof WorkspaceRequestError && [401, 403, 404].includes(failure.status ?? 0);
+      // A definite refusal of this lesson's size: no request or retry button can change it.
+      const tooLarge = reasons.includes("lesson_review_input_too_large");
       setOperatorRequired(unresolved);
-      setUnavailable(removed);
-      setUncertainRequest(!unresolved && !removed);
+      setUnavailable(removed || tooLarge);
+      setUncertainRequest(!unresolved && !removed && !tooLarge);
       setProblem(
         unresolved
           ? copy.unresolved
-          : removed
-            ? copy.unavailable
-            : reasons.includes("configuration_unavailable")
-              ? copy.providerUnavailable
-              : copy.requestError,
+          : tooLarge
+            ? lessonQualityCopy.review.tooLarge
+            : removed
+              ? copy.unavailable
+              : reasons.includes("configuration_unavailable")
+                ? copy.providerUnavailable
+                : copy.requestError,
       );
     } finally {
       if (mounted.current && !request.signal.aborted) {

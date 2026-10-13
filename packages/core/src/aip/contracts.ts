@@ -31,6 +31,25 @@ export const providerSettingsSchema = z.strictObject({
       }),
     )
     .optional(),
+  /**
+   * Lesson quality (lesson-quality-1). Absent in older snapshots, which keep the fixed planning
+   * budget, the plain OCR prompt and a single lesson call exactly as before.
+   */
+  lessonQuality: z
+    .strictObject({
+      version: z.literal("lesson-quality-1"),
+      /** Item limits from the model's own output limit and the measured class material. */
+      budget: z.literal("lesson-budget-1"),
+      /** Every source with extracted text is cited or listed as not used, with a reason code. */
+      sourceCoverage: z.boolean(),
+      /** Photos and scanned pages keep typed blocks, reading order and uncertainty. */
+      structuredBoard: z.boolean(),
+      /** Photos not already marked as personal notes use this model; PDF pages keep visionModel. */
+      boardVisionModel: z.string().min(1).max(200).optional(),
+      /** D17: a class with more speech than this is taught part by part, then merged. */
+      classPartMinutes: z.number().int().min(30).max(90).optional(),
+    })
+    .optional(),
   timeoutMs: z.number().int().positive().max(600000),
   maximumMicros: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   modelMaximumMicros: z

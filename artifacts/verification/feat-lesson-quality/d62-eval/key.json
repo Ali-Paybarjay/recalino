@@ -1,0 +1,66 @@
+{
+  "S01": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S02": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S03": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S04": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "S05": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S06": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "S07": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "S08": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "S09": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S10": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "S11": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "S12": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S03-repeat": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "S10-repeat": {
+    "A": "candidate",
+    "B": "production"
+  },
+  "LQ-LONG-128": {
+    "A": "production",
+    "B": "candidate"
+  },
+  "LQ-BOARD-15": {
+    "A": "production",
+    "B": "candidate"
+  }
+}

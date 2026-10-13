@@ -847,6 +847,23 @@ async function verifyPendingUpload(
   return uploadManifest(db, ctx, uploadId);
 }
 
+/** Board block types; the text stays the exact reading, this only describes its place. */
+export const blockLayoutTypes = [
+  "heading",
+  "list_item",
+  "table",
+  "relation",
+  "example",
+  "correction",
+  "text",
+] as const;
+export const blockLayoutSchema = z.strictObject({
+  type: z.enum(blockLayoutTypes),
+  /** Reading order on the photo or page, from 1. */
+  order: z.number().int().positive().max(100000),
+  /** The reading of this block is not certain. */
+  uncertain: z.literal(true).optional(),
+});
 export const sourceContentSchema = z.strictObject({
   originKey: z.string().min(1).max(200),
   schemaVersion: z.literal("1"),
@@ -875,6 +892,8 @@ export const sourceContentSchema = z.strictObject({
         speakerRole: z.enum(["teacher", "student", "unknown"]).optional(),
         speakerId: z.string().min(1).max(100).optional(),
         timeStatus: z.enum(["exact", "estimated", "unknown"]).optional(),
+        /** Structured reading of a photo or scanned page (lesson-quality-1); absent before. */
+        layout: blockLayoutSchema.optional(),
       }),
     )
     .max(100000),

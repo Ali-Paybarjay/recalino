@@ -446,3 +446,83 @@ describe("AC-EE-03/04 exact selected evidence and untrusted input", () => {
     expect(input).not.toContain("sha256");
   });
 });
+
+describe("2026-10-12 lesson review of a normal-length class (no 400 dead end)", () => {
+  /** A synthetic 25-minute class: one transcript segment every 3.5 seconds plus 5 board photos. */
+  function recordedClass() {
+    const options = fixture();
+    const audio: RunSource = {
+      ...(options.sources[0] as RunSource),
+      sourceId: randomUUID(),
+      contentVersionId: randomUUID(),
+      kind: "audio",
+      role: "class_audio",
+      durationMs: 25 * 60_000,
+      units: Array.from({ length: 430 }, (_, index) => ({
+        id: `chunk-${Math.floor(index / 70)}-${index}`,
+        kind: "time" as const,
+        start: index * 3500,
+        end: index * 3500 + 3000,
+        status: "extracted" as const,
+      })),
+      blocks: Array.from({ length: 430 }, (_, index) => ({
+        id: `chunk-${Math.floor(index / 70)}-${index}-text`,
+        kind: "transcript" as const,
+        unitId: `chunk-${Math.floor(index / 70)}-${index}`,
+        speakerRole: "unknown" as const,
+        text: "Synthetic speech about getting on with neighbours.",
+      })),
+    };
+    const photos = Array.from(
+      { length: 5 },
+      (): RunSource => ({
+        ...(options.sources[0] as RunSource),
+        sourceId: randomUUID(),
+        contentVersionId: randomUUID(),
+        kind: "image",
+        role: "board_photo",
+        units: [{ id: "image-1", kind: "document", start: 1, status: "extracted" }],
+        blocks: Array.from({ length: 15 }, (_, index) => ({
+          id: `b${index}`,
+          kind: "paragraph" as const,
+          unitId: "image-1",
+          text: "Synthetic board line about phrasal verbs and their meanings.",
+        })),
+      }),
+    );
+    options.sources.push(audio, ...photos);
+    return options;
+  }
+
+  it("reproduces the legacy size problem and reviews the class in the compact format", () => {
+    const options = recordedClass();
+    const result = buildLessonReviewInput(options);
+    const input = JSON.parse(result.input);
+    expect(input.format).toBe("lesson_review_compact_v1");
+    expect(result.system).toContain("Input format lesson_review_compact_v1");
+    expect(Array.from(result.input + result.system).length).toBeLessThanOrEqual(120000);
+    // The same keys as the legacy format, so findings and saved reports validate unchanged.
+    expect(input.evidence[1].rows[0]).toEqual([
+      "source:1:block:0",
+      "Synthetic speech about getting on with neighbours.",
+      [0, 3000],
+    ]);
+    expect(input.targets[0]).toEqual({ id: "lesson" });
+    const finding = concern("source_grounding");
+    expect(result.schema.safeParse(finding).success).toBe(true);
+  });
+
+  it("keeps the benchmarked legacy format whenever it fits", () => {
+    const result = buildLessonReviewInput(fixture());
+    expect(JSON.parse(result.input).format).toBeUndefined();
+    expect(result.system).toBe(LESSON_REVIEW_SYSTEM_PROMPT);
+  });
+
+  it("still refuses an input too large even in the compact format", () => {
+    expect(() => buildLessonReviewInput({ ...recordedClass(), maxInputCharacters: 30000 })).toThrow(
+      expect.objectContaining({
+        details: { fields: { review: ["lesson_review_input_too_large"] } },
+      }),
+    );
+  });
+});

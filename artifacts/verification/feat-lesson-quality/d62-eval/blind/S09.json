@@ -1,0 +1,317 @@
+{
+  "caseId": "S09",
+  "explanationLanguage": "es",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "C1",
+    "goal": "ielts"
+  },
+  "sources": [
+    {
+      "kind": "text",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "Nominalisation turns a verb or an adjective into a noun phrase, which makes academic writing more formal and more compact. Instead of Tourist numbers grew rapidly, a report might say: The rapid growth in tourist numbers has put pressure on local housing. Instead of The council decided to close the library, write: The council's decision to close the library caused widespread anger."
+        },
+        {
+          "text": "In formal English, an adjective or adverb + as + subject + verb can open a sentence with the meaning of although: Tired as we were, we kept walking until sunset. Much as I admire her courage, I think the plan is too risky. Though can replace as in this pattern: Strange though it may seem, the older printer is faster."
+        },
+        {
+          "text": "In the long run means over a long period in the future, not immediately. Class example: Insulating old buildings is expensive, but it saves energy in the long run. Common combinations: cheaper in the long run, pay off in the long run."
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "Recursos estilísticos y léxicos avanzados para la redacción académica",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "nominalisation",
+        "back": "Técnica gramatical que convierte verbos o adjetivos en sustantivos para condensar la información y elevar la formalidad del texto.",
+        "claim": "La nominalización transforma verbos o adjetivos en sintagmas nominales, dotando a la redacción académica de mayor concisión y formalidad.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "nominalisation",
+          "faMeaning": "Técnica gramatical que convierte verbos o adjetivos en sustantivos para condensar la información y elevar la formalidad del texto.",
+          "topic": "Academic Writing",
+          "kind": "grammar",
+          "ipa": "/ðə ˈræpɪd ɡrəʊθ/",
+          "ipaText": "The rapid growth",
+          "fullSentence": "The rapid growth in tourist numbers has put pressure on local housing.",
+          "collocations": [],
+          "noteFa": "En la oración «The rapid growth in tourist numbers has put pressure on local housing», el sintagma nominal «The rapid growth» sustituye a la construcción verbal «Tourist numbers grew rapidly». Esta transformación compacta las oraciones y traslada el foco de la acción al concepto, un rasgo indispensable para obtener puntuaciones altas en IELTS Writing.",
+          "imageFa": "Un gráfico de barras que ilustra un ascenso demográfico, encabezado formalmente con el título «The rapid growth» en un informe oficial.",
+          "sourceFa": "De clase",
+          "taskFa": "Elige la opción que emplea nominalización para dar un tono formal y académico a la frase.",
+          "prompt": "Select the formal academic phrasing: (Rapidly growing / The rapid growth) in tourist numbers has put pressure on local housing."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "adjective / adverb + as + subject + verb",
+        "back": "Estructura concesiva enfática equivalente a 'a pesar de que' o 'aunque', formada por un adjetivo o adverbio en posición inicial seguido de 'as'.",
+        "claim": "En inglés formal, anteponer un adjetivo o adverbio seguido de 'as' y de sujeto más verbo expresa concesión con el significado de 'although'.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "adjective / adverb + as + subject + verb",
+          "faMeaning": "Estructura concesiva enfática equivalente a 'a pesar de que' o 'aunque', formada por un adjetivo o adverbio en posición inicial seguido de 'as'.",
+          "topic": "Concession Clauses",
+          "kind": "grammar",
+          "ipa": "/ˈtaɪəd əz wi wɜː/",
+          "ipaText": "Tired as we were",
+          "fullSentence": "Tired as we were, we kept walking until sunset.",
+          "collocations": [],
+          "noteFa": "En «Tired as we were, we kept walking until sunset», las palabras «Tired as we were» colocan el adjetivo en primer lugar para enfatizar la intensidad del cansancio antes de introducir la acción principal. Esta estructura equivale a «Although we were tired», pero aporta un registro notablemente más sofisticado.",
+          "imageFa": "Dos senderistas visiblemente exhaustos que avanzan con paso firme al atardecer sin detener su marcha.",
+          "sourceFa": "De clase",
+          "taskFa": "Selecciona la variante que utiliza la inversión concesiva con 'as' para expresar contraste de manera formal.",
+          "prompt": "Choose the correct formal concessive structure: (Tired as / Although tired) we were, we kept walking until sunset."
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "in the long run",
+        "back": "a largo plazo; con el paso del tiempo",
+        "claim": "La locución 'in the long run' hace referencia a lo que sucede o se consigue a lo largo de un período prolongado en el futuro, no de forma inmediata.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "in the long run",
+          "faMeaning": "a largo plazo; con el paso del tiempo",
+          "topic": "Time Expressions",
+          "kind": "collocation",
+          "ipa": "/ɪn ðə ˈlɒŋ rʌn/",
+          "gapSentence": "Insulating old buildings is expensive, but it saves energy ______.",
+          "fullSentence": "Insulating old buildings is expensive, but it saves energy in the long run.",
+          "collocations": [
+            "cheaper in the long run",
+            "pay off in the long run"
+          ],
+          "noteFa": "En la frase «Insulating old buildings is expensive, but it saves energy in the long run», la expresión «in the long run» contrasta el desembolso inicial inmediato con el beneficio acumulado a largo plazo. Se combina con frecuencia con verbos y adjetivos como «cheaper» o «pay off».",
+          "imageFa": "Un edificio antiguo al que se le coloca aislamiento térmico exterior, con un calendario proyectando ahorro monetario durante los próximos diez años.",
+          "sourceFa": "De clase"
+        }
+      }
+    ],
+    "summary": [
+      "La nominalización sustituye estructuras con verbos o adjetivos por sintagmas nominales, produciendo textos académicos más compactos y objetivos.",
+      "La inversión concesiva mediante la fórmula adjetivo/adverbio + 'as' (o 'though') + sujeto + verbo aporta un registro formal equivalente a 'although'.",
+      "La expresión fija 'in the long run' denota efectos duraderos o consecuencias a largo plazo, en contraposición a resultados inmediatos."
+    ],
+    "topics": [
+      {
+        "title": "Registro académico y cohesión avanzada",
+        "claims": [
+          "El uso de sintagmas nominales y patrones concesivos formales enriquece la variedad gramatical requerida en exámenes de nivel C1 como IELTS."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "IELTS Preparation",
+      "coverage": "Técnicas de registro formal para IELTS: nominalización en textos académicos, estructuras concesivas con 'as' y 'though', y la locución temporal 'in the long run'.",
+      "coreIntro": "Esta lección examina recursos para transformar un estilo descriptivo estándar en prosa formal y académica: compactar oraciones mediante la nominalización, matizar argumentos con cláusulas concesivas avanzadas y expresar perspectivas temporales a largo plazo.",
+      "chunks": [
+        {
+          "pattern": "adjective + as + subject + verb",
+          "classSentence": "Tired as we were, we kept walking until sunset.",
+          "noteFa": "Anteposición del adjetivo 'Tired' seguido de 'as' para expresar concesión con énfasis."
+        },
+        {
+          "pattern": "adverb + as + subject + verb",
+          "classSentence": "Much as I admire her courage, I think the plan is too risky.",
+          "noteFa": "Anteposición del adverbio 'Much' seguido de 'as' para contrastar admiración con cautela."
+        },
+        {
+          "pattern": "adjective + though + subject + verb",
+          "classSentence": "Strange though it may seem, the older printer is faster.",
+          "noteFa": "Variante formal donde 'though' reemplaza a 'as' tras el adjetivo 'Strange'."
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "Transformaciones estilísticas hacia el registro académico",
+          "blocks": [
+            {
+              "type": "text",
+              "textFa": "Reescribe las oraciones aplicando nominalización o inversión concesiva formal según el modelo de la clase."
+            },
+            {
+              "type": "items",
+              "items": [
+                {
+                  "prompt": "Transform using nominalisation: The council decided to close the library, which caused widespread anger.",
+                  "model": "The council's decision to close the library caused widespread anger.",
+                  "whyFa": "El verbo 'decided' pasa a ser el núcleo nominal 'decision', encabezado por el determinante posesivo."
+                },
+                {
+                  "prompt": "Rewrite with concessive fronting using 'though': Although it may seem strange, the older printer is faster.",
+                  "model": "Strange though it may seem, the older printer is faster.",
+                  "whyFa": "El adjetivo 'Strange' se traslada a la posición inicial seguido de 'though' y el sujeto y verbo subordinados."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [],
+      "gapfill": [
+        {
+          "sentence": "Insulating old buildings is expensive, but it saves energy in the long ______.",
+          "answer": "run"
+        }
+      ],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "Recursos formales y concesivos para la redacción académica",
+    "learningItems": [
+      {
+        "kind": "expression",
+        "front": "in the long run",
+        "back": "a largo plazo; con el paso del tiempo",
+        "claim": "La locución 'in the long run' describe consecuencias o beneficios que suceden a lo largo de un período prolongado y no de forma inmediata.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "in the long run",
+          "faMeaning": "a largo plazo; con el paso del tiempo",
+          "topic": "Expresiones temporales",
+          "kind": "collocation",
+          "ipa": "/ɪn ðə lɒŋ rʌn/",
+          "gapSentence": "Insulating old buildings is expensive, but it saves energy ______.",
+          "fullSentence": "Insulating old buildings is expensive, but it saves energy in the long run.",
+          "collocations": [
+            "cheaper in the long run",
+            "pay off in the long run"
+          ],
+          "noteFa": "En la frase 'saves energy in the long run', la expresión 'in the long run' señala que el retorno del gasto inicial se percibe con el tiempo.",
+          "imageFa": "Una vivienda con aislamiento nuevo donde las facturas eléctricas disminuyen mes a mes a lo largo de varios años.",
+          "sourceFa": "De clase"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "adjective / adverb + as + subject + verb",
+        "back": "estructura concesiva formal para expresar contraste ('por más que / a pesar de que')",
+        "claim": "En estilo formal, la combinación de adjetivo o adverbio seguido de 'as' y de sujeto y verbo forma una oración subordinada concesiva equivalente a 'although'.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "adjective / adverb + as + subject + verb",
+          "faMeaning": "estructura concesiva formal para expresar contraste ('por más que / a pesar de que')",
+          "topic": "Estructuras de concesión",
+          "kind": "grammar",
+          "ipa": "/ˈtaɪəd əz wi wɜː/",
+          "ipaText": "Tired as we were",
+          "fullSentence": "Tired as we were, we kept walking until sunset.",
+          "collocations": [
+            "Much as I admire",
+            "Tired as we were"
+          ],
+          "noteFa": "En 'Tired as we were, we kept walking until sunset', el adjetivo 'Tired' encabeza la cláusula con 'as' para destacar el contraste de manera formal.",
+          "imageFa": "Un grupo de excursionistas visiblemente cansados que continúan su marcha hacia el horizonte sin descansar.",
+          "sourceFa": "De clase",
+          "taskFa": "Transforma la cláusula concesiva comenzando por el adjetivo y la partícula 'as'.",
+          "prompt": "Rewrite the clause with as: Although we were tired, we kept walking until sunset."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "adjective + though + subject + verb",
+        "back": "variante de concesión enfática formal con 'though'",
+        "claim": "La conjunción 'though' puede sustituir a 'as' dentro del mismo patrón concesivo con adjetivo antepuesto.",
+        "origin": "from_class",
+        "study": {
+          "set": "recognition",
+          "en": "adjective + though + subject + verb",
+          "faMeaning": "variante de concesión enfática formal con 'though'",
+          "topic": "Estructuras de concesión",
+          "kind": "register",
+          "example": "Strange though it may seem, the older printer is faster.",
+          "ipa": "/streɪndʒ ðəʊ ɪt meɪ siːm/",
+          "noteFa": "En 'Strange though it may seem, the older printer is faster', la conjunción 'though' cumple exactamente la misma función que 'as' al crear una concesión formal.",
+          "spoken": false
+        }
+      }
+    ],
+    "summary": [
+      "La nominalización transforma verbos o adjetivos en frases sustantivadas, haciendo los textos académicos más concisos y formales.",
+      "Las construcciones con 'as' o 'though' pospuestos a un adjetivo o adverbio reemplazan con mayor formalidad a cláusulas introducidas por 'although'."
+    ],
+    "topics": [
+      {
+        "title": "Nominalización académica",
+        "claims": [
+          "Sustituir oraciones verbales simples por sintagmas nominales como 'The rapid growth in tourist numbers' eleva el registro y permite condensar información en informes."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "IELTS Preparation",
+      "coverage": "Estructuras formales para escritura y expresión avanzada en IELTS: nominalización léxica, cláusulas concesivas invertidas con 'as' y 'though', y la frase 'in the long run'.",
+      "coreIntro": "Esta lección se centra en recursos estilísticos de nivel avanzado para añadir concisión, rigor académico y variedad sintáctica en redacciones y exposiciones orales formales.",
+      "chunks": [
+        {
+          "pattern": "adverb + as + subject + verb",
+          "classSentence": "Much as I admire her courage, I think the plan is too risky.",
+          "noteFa": "Uso de 'Much' en posición inicial para matizar una concesión antes de expresar una discrepancia."
+        },
+        {
+          "pattern": "adjective + though + subject + verb",
+          "classSentence": "Strange though it may seem, the older printer is faster.",
+          "noteFa": "Construcción idéntica al modelo con 'as', conservando el adjetivo en primer lugar."
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "Transformaciones mediante nominalización",
+          "blocks": [
+            {
+              "type": "text",
+              "textFa": "En lugar de construir oraciones con verbos conjugados corrientes, los informes formales recurren a sustantivos derivados para compactar las ideas principales."
+            },
+            {
+              "type": "quote",
+              "quoteEn": "The rapid growth in tourist numbers has put pressure on local housing."
+            },
+            {
+              "type": "quote",
+              "quoteEn": "The council's decision to close the library caused widespread anger."
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [],
+      "gapfill": [
+        {
+          "sentence": "Insulating old buildings is expensive, but it saves energy in the long ______.",
+          "answer": "run"
+        }
+      ],
+      "culture": []
+    }
+  }
+}

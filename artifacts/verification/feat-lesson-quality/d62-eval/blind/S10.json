@@ -1,0 +1,391 @@
+{
+  "caseId": "S10",
+  "explanationLanguage": "ja",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "A2",
+    "goal": "general"
+  },
+  "sources": [
+    {
+      "kind": "text",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "Use the present perfect with just for an action that happened a very short time ago, and with already for an action that happened sooner than expected. Both words go between have or has and the past participle: I've just made some coffee. The film has already started, so we can't go in now."
+        },
+        {
+          "text": "Use yet at the end of a question or a negative sentence for something that you expect to happen: Have you packed your suitcase yet? We haven't booked the tickets yet. Do not use yet in a positive sentence with this meaning: say I've already booked them, not I've booked them yet."
+        },
+        {
+          "text": "Somewhere means in or to a place that you do not know or do not name. Class example: I've put my passport somewhere safe, but now I can't remember where. Common combinations: somewhere safe, somewhere else, somewhere near here."
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "現在完了形と副詞（just・already・yet）および somewhere の使い方",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "have / has just + past participle",
+        "back": "たった今〜したところだ",
+        "claim": "現在完了形において、just は「ごく最近起きた動作」を表し、have/has と過去分詞の間に置かれます。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "have / has just + past participle",
+          "faMeaning": "たった今〜したところだ",
+          "topic": "現在完了形",
+          "kind": "grammar",
+          "ipa": "/aɪv dʒʌst ˈmeɪd/",
+          "ipaText": "I've just made",
+          "fullSentence": "I've just made some coffee.",
+          "collocations": [],
+          "noteFa": "「I've just made」のように have と過去分詞 made の間に just を挟んで、直前に完了した動作を表します。",
+          "imageFa": "淹れたてのコーヒーカップから白い湯気がふわりと立ち上っている様子。",
+          "sourceFa": "授業から",
+          "taskFa": "カッコ内から適切な語を選び、文を完成させましょう。",
+          "prompt": "I've (yet / just) made some coffee."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "have / has already + past participle",
+        "back": "すでに〜してしまった",
+        "claim": "現在完了形において、already は「予想よりも早く起きた動作」を表し、have/has と過去分詞の間に置かれます。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "have / has already + past participle",
+          "faMeaning": "すでに〜してしまった",
+          "topic": "現在完了形",
+          "kind": "grammar",
+          "ipa": "/həz ɔːlˈredi ˈstɑːtɪd/",
+          "ipaText": "has already started",
+          "fullSentence": "The film has already started, so we can't go in now.",
+          "collocations": [],
+          "noteFa": "「has already started」のように has と動詞の過去分詞 started の間に already を置き、予定より早く始まったことを表します。",
+          "imageFa": "劇場のドアが閉まり、スクリーンの本編上映がすでに始まっている様子。",
+          "sourceFa": "授業から",
+          "taskFa": "カッコ内から適切な語を選び、文を完成させましょう。",
+          "prompt": "The film has (yet / already) started, so we can't go in now."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "haven't / hasn't + past participle ... yet",
+        "back": "まだ〜していない",
+        "claim": "yet は疑問文や否定文の末尾に置き、期待されている出来事について「もう」「まだ」という意味を表します。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "haven't / hasn't + past participle ... yet",
+          "faMeaning": "まだ〜していない",
+          "topic": "現在完了形",
+          "kind": "grammar",
+          "ipa": "/ˈhævnt bʊkt ðə ˈtɪkɪts jet/",
+          "ipaText": "haven't booked the tickets yet",
+          "fullSentence": "We haven't booked the tickets yet.",
+          "collocations": [],
+          "noteFa": "否定文「We haven't booked the tickets yet」では文末に yet を置き、予定している動作がまだ完了していないことを示します。",
+          "imageFa": "予約完了していないチケットの座席表をスマートフォンの画面で見つめている様子。",
+          "sourceFa": "授業から",
+          "taskFa": "否定文脈に適した語をカッコ内から選び、文を完成させましょう。",
+          "prompt": "We haven't booked the tickets (already / yet)."
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "somewhere",
+        "back": "どこかに、どこかへ",
+        "claim": "somewhere は、話し手が知らない場所や具体的に名前を挙げない場所を表します。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "somewhere",
+          "faMeaning": "どこかに、どこかへ",
+          "topic": "場所の表現",
+          "kind": "collocation",
+          "ipa": "/ˈsʌmweə/",
+          "gapSentence": "I've put my passport ______ safe, but now I can't remember where.",
+          "fullSentence": "I've put my passport somewhere safe, but now I can't remember where.",
+          "collocations": [
+            "somewhere safe",
+            "somewhere else",
+            "somewhere near here"
+          ],
+          "noteFa": "「somewhere safe」のように形容詞を直後に続けて、具体的な名前を出さずに「どこか安全な場所」と表現します。",
+          "imageFa": "大切なパスポートを部屋の安全な引き出しにしまい、場所を思い出そうとしている様子。",
+          "sourceFa": "授業から"
+        }
+      }
+    ],
+    "summary": [
+      "just と already は have/has と過去分詞の間に挟み、それぞれ「ごく最近」と「予想より早い」出来事を表します。",
+      "yet は疑問文や否定文の末尾に置き、肯定文で同じ意味を表すときは already を使います。"
+    ],
+    "topics": [
+      {
+        "title": "不特定の場所を表す語",
+        "claims": [
+          "somewhere は具体的な名前を言わない場所を指し、somewhere safe や somewhere else などの形でよく用いられます。"
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "General English A2",
+      "coverage": "現在完了形とともに使われる副詞 just, already, yet の語順と用法、および代名詞 somewhere の用法",
+      "coreIntro": "このレッスンでは、完了した時期や期待を表す副詞（just, already, yet）の位置と使い分け、および場所を表す somewhere の表現を学びます。",
+      "chunks": [
+        {
+          "pattern": "have/has + just + past participle",
+          "classSentence": "I've just made some coffee.",
+          "noteFa": "have と過去分詞の間に just を挟みます。"
+        },
+        {
+          "pattern": "have/has + already + past participle",
+          "classSentence": "The film has already started, so we can't go in now.",
+          "noteFa": "予想より早い出来事を示します。"
+        },
+        {
+          "pattern": "haven't/hasn't + past participle + ... + yet",
+          "classSentence": "We haven't booked the tickets yet.",
+          "noteFa": "否定文の文末に yet を配置します。"
+        },
+        {
+          "pattern": "somewhere + adjective",
+          "classSentence": "I've put my passport somewhere safe, but now I can't remember where.",
+          "noteFa": "形容詞 safe が後ろから somewhere を修飾します。"
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "疑問文における yet の確認",
+          "blocks": [
+            {
+              "type": "items",
+              "items": [
+                {
+                  "prompt": "Have you packed your suitcase (already / yet)?",
+                  "model": "Have you packed your suitcase yet?",
+                  "whyFa": "期待している出来事について疑問文で「もう〜しましたか」と尋ねる際は、文末に yet を用います。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "I've booked them yet.",
+          "sayThis": "I've already booked them.",
+          "whyFa": "肯定文で予定通りの完了を表す場合は yet ではなく already を使います。"
+        }
+      ],
+      "gapfill": [
+        {
+          "sentence": "I've put my passport ______ safe, but now I can't remember where.",
+          "answer": "somewhere"
+        }
+      ],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "現在完了形と副詞（just / already / yet）および somewhere の使い方",
+    "learningItems": [
+      {
+        "kind": "vocabulary",
+        "front": "just",
+        "back": "たった今、ちょうど",
+        "claim": "justは現在完了形において、ごくわずか前に起きた動作を表し、have/hasと過去分詞の間に置かれます。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "just",
+          "faMeaning": "たった今、ちょうど",
+          "topic": "時・完了を表す副詞",
+          "ipa": "/dʒʌst/",
+          "gapSentence": "I've ______ made some coffee.",
+          "fullSentence": "I've just made some coffee.",
+          "collocations": [
+            "have just made",
+            "have just arrived"
+          ],
+          "noteFa": "例文の「I've just made」のように、haveと過去分詞madeの間に「just」を置くことで、コーヒーを淹れ終えたばかりであることを表します。",
+          "imageFa": "淹れたてで白い湯気がふわっと立ち上っている熱いコーヒーカップ。",
+          "sourceFa": "授業から"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "already",
+        "back": "すでに、もう",
+        "claim": "alreadyは現在完了形において、予想よりも早く起きた動作を表し、have/hasと過去分詞の間に置かれます。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "already",
+          "faMeaning": "すでに、もう",
+          "topic": "時・完了を表す副詞",
+          "ipa": "/ɔːlˈredi/",
+          "gapSentence": "The film has ______ started, so we can't go in now.",
+          "fullSentence": "The film has already started, so we can't go in now.",
+          "collocations": [
+            "has already started",
+            "have already seen"
+          ],
+          "noteFa": "例文の「has already started」のように、hasと過去分詞startedの間に「already」を挟み、映画が思っていたよりも早く始まってしまったことを示します。",
+          "imageFa": "上映が始まって客席の照明が落ち、すでに映像が映し出されている映画館のスクリーン。",
+          "sourceFa": "授業から"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "yet",
+        "back": "（否定文で）まだ、（疑問文で）もう",
+        "claim": "yetは疑問文や否定文の末尾に置き、起こることが期待されている事柄について述べるときに使います。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "yet",
+          "faMeaning": "（否定文で）まだ、（疑問文で）もう",
+          "topic": "時・完了を表す副詞",
+          "ipa": "/jɛt/",
+          "gapSentence": "We haven't booked the tickets ______.",
+          "fullSentence": "We haven't booked the tickets yet.",
+          "collocations": [
+            "haven't booked ... yet",
+            "not yet"
+          ],
+          "noteFa": "例文の「haven't booked the tickets yet」のように、否定文の末尾に「yet」を置くことで、期待されているチケット予約がまだ済んでいないことを表します。肯定文ではこの意味でyetを使えません。",
+          "imageFa": "スマートフォンの予約画面で、チケット購入の手続きがまだ完了していない未チェックの状態。",
+          "sourceFa": "授業から"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "somewhere",
+        "back": "どこかに、どこかへ",
+        "claim": "somewhereは、正確な場所を知らないか、名前を特定しない「どこか」を表します。",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "somewhere",
+          "faMeaning": "どこかに、どこかへ",
+          "topic": "場所を表す不定代名詞",
+          "ipa": "/ˈsʌmweə/",
+          "gapSentence": "I've put my passport ______ safe, but now I can't remember where.",
+          "fullSentence": "I've put my passport somewhere safe, but now I can't remember where.",
+          "collocations": [
+            "somewhere safe",
+            "somewhere else",
+            "somewhere near here"
+          ],
+          "noteFa": "例文の「somewhere safe」のように、「somewhere」の後ろに形容詞safeを置いて「どこか安全な場所」という意味を表します。",
+          "imageFa": "部屋の引き出しや棚の奥など、安全な場所にしまい込まれたパスポート。",
+          "sourceFa": "授業から"
+        }
+      }
+    ],
+    "summary": [
+      "現在完了形において、justは直前の出来事、alreadyは予想より早い出来事を表し、いずれもhave/hasと過去分詞の間に配置します。",
+      "yetは期待される動作について疑問文や否定文の末尾で用いられます。肯定文で同じ意味を表す場合はalreadyを使います。"
+    ],
+    "topics": [
+      {
+        "title": "不定代名詞 somewhere の用法",
+        "claims": [
+          "somewhereは具体的に特定しない場所を表し、somewhere safeやsomewhere elseなどの組み合わせで用いられます。"
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "General English A2",
+      "coverage": "現在完了形とともに使われる副詞（just, already, yet）の位置と意味の違い、および場所を表すsomewhereの用法。",
+      "coreIntro": "「〜したばかり」「もう〜した」「まだ〜していない」といった日常の状況報告を正確に伝えるための表現を学びます。",
+      "chunks": [
+        {
+          "pattern": "have / has + just + past participle",
+          "classSentence": "I've just made some coffee.",
+          "noteFa": "たった今起きた動作を表すパターンです。"
+        },
+        {
+          "pattern": "have / has + already + past participle",
+          "classSentence": "The film has already started, so we can't go in now.",
+          "noteFa": "予想よりも早くすでに完了している動作を表すパターンです。"
+        },
+        {
+          "pattern": "haven't / hasn't + past participle ... yet",
+          "classSentence": "We haven't booked the tickets yet.",
+          "noteFa": "期待されている動作がまだ完了していないことを表すパターンです。"
+        },
+        {
+          "pattern": "somewhere + safe",
+          "classSentence": "I've put my passport somewhere safe, but now I can't remember where.",
+          "noteFa": "somewhereの後ろに形容詞を置いて修飾するパターンです。"
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "疑問文におけるyetの使い方",
+          "blocks": [
+            {
+              "type": "quote",
+              "quoteEn": "Have you packed your suitcase yet?"
+            },
+            {
+              "type": "text",
+              "textFa": "荷造りなど、完了が期待されている行為について相手に尋ねる疑問文では文末にyetを置きます。"
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "I've booked them yet.",
+          "sayThis": "I've already booked them.",
+          "whyFa": "「もう予約した」という肯定文ではyetではなくalreadyを使います。"
+        }
+      ],
+      "gapfill": [
+        {
+          "sentence": "I've ______ made some coffee.",
+          "answer": "just"
+        },
+        {
+          "sentence": "The film has ______ started, so we can't go in now.",
+          "answer": "already"
+        },
+        {
+          "sentence": "We haven't booked the tickets ______.",
+          "answer": "yet"
+        },
+        {
+          "sentence": "I've put my passport ______ safe, but now I can't remember where.",
+          "answer": "somewhere"
+        }
+      ],
+      "culture": []
+    }
+  }
+}

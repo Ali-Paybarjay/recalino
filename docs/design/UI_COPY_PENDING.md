@@ -59,3 +59,18 @@
 | `uploadReliability.audio.incomplete` | The audio upload did not finish before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Review and retry to upload it again. | صفحهٔ Processing، Run با `audio_upload_incomplete` | جایگزین «The audio could not be verified…» برای آپلود نیمه‌تمام | در انتظار تأیید |
 | `uploadReliability.automatic.notStarted` | The audio upload did not start before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Retry failed attempt to upload it again. | وضعیت یادگیری خودکار (`blocked`) با `audio_upload_not_started` | جایگزین پیام کلی «Automatic creation could not finish…» | در انتظار تأیید |
 | `uploadReliability.automatic.incomplete` | The audio upload did not finish before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Retry failed attempt to upload it again. | وضعیت یادگیری خودکار (`blocked`) با `audio_upload_incomplete` | جایگزین پیام کلی «Automatic creation could not finish…» | در انتظار تأیید |
+
+## Workstream 3 — کیفیت درس و عکس تخته (`feat/lesson-quality`، 2026-10-12)
+
+متن‌های تازهٔ این بخش در [`workspace/lesson-quality-copy.ts`](../../apps/web/src/ui/workspace/lesson-quality-copy.ts) هستند و از `pending-copy.ts` ثبت می‌شوند. توضیح کامل در [گزارش کیفیت درس](../plans/LESSON_QUALITY_2026-10-12.md). هیچ‌کدام تأیید نشده‌اند. برچسب «File N · نام فایل» و پیوند «Review session material» از متن‌های موجود همان صفحه‌اند.
+
+| کلید | متن | حالت | منشأ | وضعیت |
+|---|---|---|---|---|
+| `lessonQuality.coverage.title` | Material not used in these notes | عنوان فهرست منبع‌هایی که متن داشتند ولی در جزوه استفاده نشدند | کنترل پوشش منبع (lesson-quality-1) | در انتظار تأیید |
+| `lessonQuality.coverage.reason.unreadable` | This file could not be read clearly enough to teach from. | دلیل `unreadable` | همان | در انتظار تأیید |
+| `lessonQuality.coverage.reason.duplicate` | This file repeats material that another file already teaches. | دلیل `duplicate` | همان | در انتظار تأیید |
+| `lessonQuality.coverage.reason.off_topic` | This file does not contain lesson content. | دلیل `off_topic` | همان | در انتظار تأیید |
+| `lessonQuality.coverage.reason.outside_selection` | This file is outside the part of the session you selected. | دلیل `outside_selection` | همان | در انتظار تأیید |
+| `lessonQuality.coverage.reason.no_teaching_content` | This file has nothing to teach on its own. | دلیل `no_teaching_content` | همان | در انتظار تأیید |
+| `lessonQuality.coverage.reason.not_reported` | This file was not used in these notes. | مدل در تنها تولید دوبارهٔ مجاز هم دلیلی نداد | همان | در انتظار تأیید |
+| `lessonQuality.review.tooLarge` | This session has more material than one AI lesson review can check, so a review is not available for it. | به‌جای دکمهٔ بازبینی، وقتی ورودی حتی پس از فشرده‌سازی از سقف بزرگ‌تر است | رفع بن‌بست بازبینی درس (400 `lesson_review_input_too_large`) | در انتظار تأیید |

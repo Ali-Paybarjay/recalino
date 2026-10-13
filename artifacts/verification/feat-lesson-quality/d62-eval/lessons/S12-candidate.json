@@ -1,0 +1,280 @@
+{
+  "schemaVersion": "1",
+  "title": "Causative Have / Get та вираз For Good",
+  "language": {
+    "learning": "en",
+    "explanation": "uk"
+  },
+  "summary": [
+    {
+      "id": "claim-32238078c2d5f346a3648568-1",
+      "text": "Конструкції have або get + додаток + past participle вживаються для вираження дій, які для нас виконують інші спеціалісти (get є більш неформальним).",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000132-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "have-done",
+            "start": 0,
+            "end": 214
+          }
+        },
+        {
+          "sourceId": "ad000132-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "get-done",
+            "start": 0,
+            "end": 159
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-b91a7454439d9ca752999859-1",
+      "text": "Вираз «for good» описує постійну, незворотну подію чи стан і перекладається як «назавжди».",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000132-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "for-good",
+            "start": 0,
+            "end": 162
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-b50b4b17e5af50eb7b6340cd-1",
+      "title": "Каузативні конструкції в англійській мові",
+      "claims": [
+        {
+          "id": "claim-09a881a9fdd575aeb0f102d3-1",
+          "text": "У каузативній структурі додаток завжди передує дієприкметнику минулого часу (have/get + object + past participle).",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000132-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "have-done",
+                "start": 0,
+                "end": 214
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-d20d6d84d6473b5ad91d4e18-1",
+      "kind": "grammar",
+      "front": "have sth done",
+      "back": "замовляти послугу, робити щось чужими руками",
+      "claim": {
+        "id": "claim-93a4fdab3a850e009af91b49-1",
+        "text": "Конструкція «have + додаток + past participle» означає, що ви домовляєтеся з іншою людиною про виконання певної послуги чи роботи для вас.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000132-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "have-done",
+              "start": 0,
+              "end": 214
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "have sth done",
+        "faMeaning": "замовляти послугу, робити щось чужими руками",
+        "topic": "Послуги та домашні справи",
+        "kind": "grammar",
+        "ipa": "/hæd maɪ heə kʌt/",
+        "ipaText": "had my hair cut",
+        "fullSentence": "I had my hair cut on Saturday.",
+        "collocations": [
+          "have my hair cut",
+          "have the kitchen painted"
+        ],
+        "noteFa": "У реченні «I had my hair cut on Saturday» слова «had my hair cut» показують, що стрижку робив майстер, а не сам мовець. Зверніть увагу: додаток (my hair) обов'язково ставиться перед дієприкметником (cut).",
+        "imageFa": "Клієнт сидить у кріслі перукаря, поки майстер робить стрижку ножицями.",
+        "sourceFa": "З уроку",
+        "taskFa": "Розкрийте дужки, утворивши каузативну конструкцію в минулому часі з правильним порядком слів.",
+        "prompt": "I (have / cut / my hair) on Saturday."
+      }
+    },
+    {
+      "id": "item-6df41bb9109e1d8812fd8e97-1",
+      "kind": "grammar",
+      "front": "get sth done",
+      "back": "віддати щось у ремонт або чистку (розмовний варіант)",
+      "claim": {
+        "id": "claim-f8dfb257dde66db38e6dcd7c-1",
+        "text": "Конструкція «get + додаток + past participle» має таке саме каузативне значення, як і з дієсловом have, але звучить більш неформально.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000132-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "get-done",
+              "start": 0,
+              "end": 159
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "get sth done",
+        "faMeaning": "віддати щось у ремонт або чистку (розмовний варіант)",
+        "topic": "Послуги та побут",
+        "kind": "grammar",
+        "ipa": "/ɡet maɪ baɪk rɪˈpeəd/",
+        "ipaText": "get my bike repaired",
+        "fullSentence": "I need to get my bike repaired before the trip.",
+        "collocations": [
+          "get my bike repaired",
+          "get a jacket cleaned"
+        ],
+        "noteFa": "У фразі «get my bike repaired» дієслово get виступає розмовною заміною have. Структура залишається незмінною: дієслово get + об'єкт (my bike) + третя форма дієслова (repaired).",
+        "imageFa": "Велосипед закріплено на спеціальній стійці в майстерні, де механік лагодить ланцюг.",
+        "sourceFa": "З уроку",
+        "taskFa": "Оберіть правильний варіант для неформальної розмовної фрази про замовлення послуги ремонту.",
+        "prompt": "I need to (get my bike repaired / repair my bike myself) before the trip."
+      }
+    },
+    {
+      "id": "item-6e8e149db6ec1bd44eae548c-1",
+      "kind": "expression",
+      "front": "for good",
+      "back": "назавжди, остаточно",
+      "claim": {
+        "id": "claim-c40aa24e5e90ff8232bc30ca-1",
+        "text": "Вираз «for good» означає назавжди, остаточно (permanently, for ever).",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000132-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "for-good",
+              "start": 0,
+              "end": 162
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "for good",
+        "faMeaning": "назавжди, остаточно",
+        "topic": "Зміни в житті",
+        "kind": "collocation",
+        "ipa": "/fə ɡʊd/",
+        "gapSentence": "After ten years abroad, my uncle has come home ______.",
+        "fullSentence": "After ten years abroad, my uncle has come home for good.",
+        "collocations": [
+          "leave for good",
+          "close for good",
+          "come home for good"
+        ],
+        "noteFa": "Фраза «for good» означає, що дія є остаточною та безповоротною. Вона часто вживається з дієсловами руху чи припинення діяльності, такими як come home, leave або close.",
+        "imageFa": "Розпаковані дорожні валізи в передпокої будинку, куди людина повернулася жити назавжди.",
+        "sourceFa": "З уроку"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ad000132-1111-4111-8111-000000000001",
+        "status": "used"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Everyday English B1",
+    "coverage": "У цьому уроці розглянуто вживання каузативних форм have/get + object + past participle для опису замовлених послуг, а також сталий вираз for good.",
+    "coreIntro": "Цей матеріал допоможе впевнено розповідати про послуги майстрів і побутові ремонти, а також описувати остаточні життєві зміни.",
+    "chunks": [
+      {
+        "pattern": "have + object + past participle",
+        "classSentence": "We're having the kitchen painted next week.",
+        "noteFa": "Показує домовленість про малярні роботи, які виконуватимуть робітники."
+      },
+      {
+        "pattern": "get + object + past participle",
+        "classSentence": "Where can I get this jacket cleaned?",
+        "noteFa": "Питання про послугу хімчистки в невимушеному розмовному стилі."
+      },
+      {
+        "pattern": "verb + for good",
+        "classSentence": "After ten years abroad, my uncle has come home for good.",
+        "noteFa": "Ілюструє повернення на батьківщину назавжди."
+      }
+    ],
+    "board": [],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [],
+    "gapfill": [
+      {
+        "sentence": "After ten years abroad, my uncle has come home for ______.",
+        "answer": "good"
+      }
+    ],
+    "culture": []
+  }
+}

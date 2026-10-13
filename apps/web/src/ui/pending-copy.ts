@@ -3,6 +3,8 @@
  * Every entry is registered verbatim in docs/design/UI_COPY_PENDING.md; pending-copy.test.ts
  * keeps the two in step. Once approved, an entry moves to its screen's copy and the register.
  */
+import { lessonQualityCopy } from "./workspace/lesson-quality-copy";
+
 export const pendingCopy = {
   /** Workstream 1, upload reliability (2026-10-12). */
   uploadReliability: {
@@ -44,6 +46,7 @@ export const pendingCopy = {
     lineMarkedMine: "Marked as yours",
     lineMarkedNotMine: "Marked as not yours",
   },
+  lessonQuality: lessonQualityCopy,
 } as const;
 
 /** Fills `{name}` placeholders of a pending text. */
