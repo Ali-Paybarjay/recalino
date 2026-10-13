@@ -218,7 +218,7 @@ it("shape (a): a run the old sweep closed as audio_upload_rejected, with no uplo
   const retried = await retry(classB.id);
   expect(retried).toMatchObject({ state: "waiting_upload" });
   const run = retried.run;
-  if (!run || run.state !== "awaiting_upload") throw new Error("expected a new awaiting run");
+  if (run?.state !== "awaiting_upload") throw new Error("expected a new awaiting run");
   expect(run.id).not.toBe(stuck.id);
   const reserved = await db
     .selectFrom("proc.processing_run")
@@ -284,7 +284,7 @@ it("shape (b): a run whose upload lapsed (not started, then incomplete) is retri
     });
     const retried = await retry(klass.id);
     const run = retried.run;
-    if (!run || run.state !== "awaiting_upload") throw new Error("expected a new awaiting run");
+    if (run?.state !== "awaiting_upload") throw new Error("expected a new awaiting run");
     await deviceUpload(learner, klass.id, source.assetId, run.id);
     await verifyAndProcess(learner, run.id);
     expect(await learning(klass.id)).toMatchObject({ state: "ready" });

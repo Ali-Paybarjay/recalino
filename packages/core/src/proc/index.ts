@@ -52,6 +52,13 @@ export {
   sourceSnapshotSchema,
 } from "./contracts";
 export {
+  FOREGROUND_GAP_MAX_MS,
+  type ForegroundGap,
+  foregroundGapSchema,
+  foregroundGaps,
+  recordForegroundGap,
+} from "./foreground-gaps";
+export {
   type LessonAdaptationView,
   lessonAdaptationView,
   MAX_PRACTICE_CANDIDATES,

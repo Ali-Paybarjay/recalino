@@ -556,6 +556,7 @@ export async function processVoiceSource(input: {
     runId: input.runId,
   };
   const analysis = await findVoiceAnalysis(input.db, input.ctx, key);
+  const startedAt = input.now();
   if (!analysis) {
     let prepared: VoiceAnalysisInput;
     try {
@@ -567,14 +568,14 @@ export async function processVoiceSource(input: {
         ...(input.options ? { options: input.options } : {}),
       });
       prepared = buildVoiceAnalysis(
-        { ...key, profileVersion: enrollment.version },
+        { ...key, profileVersion: enrollment.version, startedAt },
         input.source,
         diarization,
         input.explanationLanguage,
       );
     } catch (error) {
       prepared = buildTranscriptVoiceAnalysis(
-        { ...key, profileVersion: enrollment.version },
+        { ...key, profileVersion: enrollment.version, startedAt },
         input.source,
         input.explanationLanguage,
       );

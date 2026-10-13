@@ -92,11 +92,15 @@ function harness(rows: Recording[], server: Map<string, AutomaticLearningStatus>
   let phase = "idle";
   let path = "/today";
   let uploadFailure: unknown = null;
-  const request = vi.fn(async (requestPath: string) => {
-    if (requestPath.endsWith("/processing")) return [];
-    if (requestPath === "/api/sources/contract") return { contract: { partBytes: 4 } };
-    throw new Error(`Unexpected request ${requestPath}`);
-  });
+  const request = vi.fn(
+    async (requestPath: string, _method?: string, body?: unknown, _key?: string) => {
+      if (requestPath.endsWith("/processing")) return [];
+      if (requestPath === "/api/sources/contract") return { contract: { partBytes: 4 } };
+      if ((body as { action?: string } | undefined)?.action === "foreground_gap")
+        return { recorded: true };
+      throw new Error(`Unexpected request ${requestPath}`);
+    },
+  );
   const loop = startLearningLoop({
     userId,
     store: {
@@ -201,6 +205,48 @@ describe("learning loop timing (audit item 6)", () => {
     expect(
       x.refreshes.at(-1)?.id === remote.sessionId || x.refreshes.at(-2)?.id === remote.sessionId,
     ).toBe(true);
+    x.loop.stop();
+  });
+
+  it("reports the hidden interval once for each class in progress when the page is shown again (D71)", async () => {
+    const server = new Map<string, AutomaticLearningStatus>();
+    const rows = [recording(randomUUID()), recording(randomUUID()), recording(randomUUID())];
+    const [busy, waiting, done] = rows.map((row) => row.sessionId ?? "");
+    server.set(busy ?? "", status("processing"));
+    server.set(waiting ?? "", awaiting(waiting ?? "", rows[1]?.sourceAssetId ?? ""));
+    server.set(done ?? "", status("ready"));
+    const x = harness(rows, server);
+    await vi.advanceTimersByTimeAsync(LEARNING_POLL.baseMs);
+    const gaps = () =>
+      x.request.mock.calls.filter(
+        (call) => (call[2] as { action?: string } | undefined)?.action === "foreground_gap",
+      );
+    // A quick app switch is not reported.
+    document.visibilityState = "hidden";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(500);
+    document.visibilityState = "visible";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(gaps()).toHaveLength(0);
+    const hiddenAt = new Date();
+    document.visibilityState = "hidden";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(minutes(3));
+    expect(gaps()).toHaveLength(0);
+    document.visibilityState = "visible";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(0);
+    const reported = gaps();
+    expect(reported.map((call) => call[0]).sort()).toEqual(
+      [busy, waiting].map((id) => `/api/classes/${id}/learning`).sort(),
+    );
+    expect(reported[0]?.[2]).toEqual({
+      action: "foreground_gap",
+      hiddenAt: hiddenAt.toISOString(),
+      visibleAt: new Date(hiddenAt.getTime() + minutes(3)).toISOString(),
+    });
+    expect(reported.every((call) => call[3] === undefined)).toBe(true);
     x.loop.stop();
   });
 

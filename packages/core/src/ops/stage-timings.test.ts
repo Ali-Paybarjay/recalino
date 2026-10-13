@@ -1,5 +1,11 @@
 import { expect, it } from "vitest";
-import { percentile, type RunTimes, stageDurations, summarize } from "./stage-timings";
+import {
+  hiddenSeconds,
+  percentile,
+  type RunTimes,
+  stageDurations,
+  summarize,
+} from "./stage-timings";
 
 const at = (minute: number, second = 0) => new Date(Date.UTC(2026, 9, 12, 11, minute, second));
 // The in-app capture of 2026-10-12 (FIVE_PROBLEMS_ROOT_CAUSE section 3.3), as timestamps only.
@@ -18,6 +24,7 @@ const capture: RunTimes = {
   lessonFinishedAt: at(19, 3),
   voiceStartedAt: at(17, 54),
   voiceFinishedAt: at(25, 48),
+  foregroundGaps: [],
 };
 
 it("NFR-07 splits a class run into upload, provider, voice and publication stages", () => {
@@ -31,6 +38,26 @@ it("NFR-07 splits a class run into upload, provider, voice and publication stage
     voice: 474,
     publication: 7,
     total: 1250,
+    device_hidden: 0,
+  });
+});
+
+it("counts the device's reported hidden time inside the run only (D71)", () => {
+  const gaps = [
+    { hiddenAt: at(3), visibleAt: at(6) }, // before the run: 55 s inside
+    { hiddenAt: at(8), visibleAt: at(9, 30) }, // 90 s inside
+    { hiddenAt: at(25), visibleAt: at(40) }, // past the finish: 55 s inside
+  ];
+  expect(hiddenSeconds(gaps, capture.createdAt, capture.finishedAt)).toBe(200);
+  expect(stageDurations({ ...capture, foregroundGaps: gaps }).device_hidden).toBe(200);
+  // An unfinished run counts everything after its creation.
+  expect(stageDurations({ ...capture, finishedAt: null, foregroundGaps: gaps }).device_hidden).toBe(
+    1045,
+  );
+  expect(summarize([{ ...capture, foregroundGaps: gaps }, capture]).stages.device_hidden).toEqual({
+    runs: 2,
+    p50: 0,
+    p95: 200,
   });
 });
 

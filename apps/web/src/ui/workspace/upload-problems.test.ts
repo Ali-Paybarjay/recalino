@@ -46,6 +46,9 @@ it.each([
   new UploadInterruptedError("Audio upload was interrupted."),
   new TypeError("Failed to fetch"),
   rejection("internal", 500),
+  // A disconnected store or verifier (D71): a service failure the device retries later.
+  rejection("service_unavailable", 503, { storage: ["unavailable"] }),
+  rejection("service_unavailable", 503, { audio: ["verifier_unavailable"] }),
   new DOMException("Paused", "AbortError"),
   rejection("validation_failed", 400, { audio: ["something_new"] }),
   rejection("validation_failed", 400, { audio: ["part_integrity_mismatch"] }),
