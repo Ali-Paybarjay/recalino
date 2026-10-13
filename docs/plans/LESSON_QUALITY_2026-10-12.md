@@ -112,7 +112,35 @@
 
 ### ۹.۴ بازبینی کورِ کنارِ هم (D56)
 
-(پس از پایان بازبینی تکمیل می‌شود.)
+- **روش:** چهار بازبین مستقل AI (معلم انسانی نیستند)، دو نفر برای گروه فارسی (S01–S05، S03-repeat و دو درس LQ) و دو نفر برای گروه عربی، اسپانیایی، ژاپنی و اوکراینی. برچسب A/B هر درس تصادفی بود و کلید (`key.json`) بیرون از پوشهٔ بازبینی ماند. بسته‌ها از نظر نام مدل، provider، نسخهٔ تنظیمات و نام بازو بررسی شدند و پاک بودند. معیار همان D56: نمره‌های ۰ تا ۴ در correctness، grounding، coverage، learnerFit، clarityCardUsability (و کیفیت زبان توضیح)، خطای مهم، مفهوم‌های الزامی، و ترجیح کنارِ هم. merge محافظه‌کارانه: اجتماع خطاهای مهم، مفهوم فقط با تأیید هر دو بازبین، نمرهٔ بازبینِ با میانگین کمتر؛ «قابل‌قبول» = معتبر + بدون خطای مهم + همهٔ مفهوم‌ها + میانگین ≥ ۳. ابزار: [`lesson-quality-review-merge.ts`](../../tools/eval/lesson-quality-review-merge.ts).
+- **نتیجهٔ ۱۴ درس holdout-5:**
+
+  | سنجه | production | نامزد D62 |
+  |---|---:|---:|
+  | درس قابل‌قبول | 12 از 14 | **13 از 14** |
+  | میانگین نمره (از ۴) | 3.65 | **3.84** |
+  | درس با خطای مهم | 0 | 0 |
+  | رأی ترجیح کنارِ هم (۲۸ رأی) | 5 | **23** |
+
+  - S05: production مفهوم so/not را کامل آموزش نداد؛ نامزد قابل‌قبول بود.
+  - S07: هر دو بازو whoever، wherever و whenever را کافی آموزش ندادند؛ هیچ‌کدام قابل‌قبول نبود. هیچ‌کدام از دستور جاسازی‌شده در منبع پیروی نکرد.
+  - ترجیح با production فقط در دو اجرای تکراری (S03-repeat و S10-repeat، هر دو با فاصلهٔ اندک) و یک رأی در S10.
+- **دو درس LQ:** در LQ-BOARD-15 هر دو قابل‌قبول و هر دو بازبین نامزد را ترجیح دادند (۳.۸ در برابر ۳.۷). در LQ-LONG-128 فقط production درس داشت (۳.۲، با پوشش ۲ از ۴ چون بخش «حال کامل و گذشتهٔ ساده» را کامل جا انداخت).
+- **حکم طبق معیار D56:** نسخهٔ تازه با تنظیمات `openrouter-2026-10-12-1` (بودجهٔ D62، پوشش منبع و خواندن ساختاری، **بدون** `classPartMinutes`) در همان بازبینی کورِ کنارِ هم **از production بهتر است**. D63 (`classPartMinutes`) تأیید نشد و نباید روشن شود.
+- **ریسک باقی‌مانده:** کلاس طولانی در حالت تک‌فراخوان با بودجهٔ تازه (تا ۱۸ آیتم) زنده سنجیده نشده است. آزمون‌ها نشان داده‌اند پاسخ ردشده فقط یک تولید دوبارهٔ محدود دارد و در صورت شکست، Run با خطا متوقف می‌شود و کسری از سهمیه ندارد. پیشنهاد: پس از تغییر، اولین کلاس‌های بلند بررسی شوند؛ بازگشت فقط تغییر env به JSON قبلی است.
+
+### ۹.۵ JSON پیشنهادی برای انتشار (`OPENROUTER_SETTINGS_JSON`)
+
+همان [`config/openrouter-defaults.json`](../../config/openrouter-defaults.json):
+
+```json
+{"version":"openrouter-2026-10-12-1","llmModel":"google/gemini-3.8-flash","voiceCorrectionModel":"anthropic/claude-haiku-4.5","visionModel":"anthropic/claude-haiku-4.5","sttModel":"openai/whisper-large-v3-turbo","ttsModel":"hexgrad/kokoro-82m","voice":"af_heart","promptVersion":"recalino-knowledge-11","structuredTemperature":0,"structuredModelOverrides":{"google/gemini-3.8-flash":{"maxOutputTokens":32000,"reasoningEffort":"medium","maxRequestBytes":400000,"structuredOutputMode":"json_schema","omitTemperature":true,"knowledgeContract":"content","timeoutMs":180000}},"lessonQuality":{"version":"lesson-quality-1","budget":"lesson-budget-1","sourceCoverage":true,"structuredBoard":true},"maxInputCharacters":120000,"maxOutputTokens":6144,"timeoutMs":90000,"maximumMicros":760000,"modelMaximumMicros":{"google/gemini-3.8-flash":760000,"anthropic/claude-haiku-4.5":300000,"openai/whisper-large-v3-turbo":5000,"hexgrad/kokoro-82m":5000},"currency":"USD","priceVersion":"openrouter-models-2026-10-09","charactersPerPage":3000,"audioUrlSupported":false,"sttProviderOptions":{},"dataContractApproved":true}
+```
+
+- اگر JSON فعلی production در فیلد دیگری با `openrouter-2026-10-10-1` فرق دارد (مثلاً `voiceCorrectionModel` پس از D57)، همان مقدار production نگه داشته شود و فقط `version`، `promptVersion` و بلوک `lessonQuality` عوض یا اضافه شوند.
+- Runهای در جریان با قاعدهٔ `settings_changed` متوقف می‌شوند؛ تغییر وقتی انجام شود که پردازشی در جریان نیست (D66).
+- بازگشت: JSON قبلی `openrouter-2026-10-10-1` (همان `43f12a9:config/openrouter-defaults.json`).
+- `classPartMinutes` و `boardVisionModel` در این JSON نیستند.
 
 ## ۱۰. آزمون‌ها و شواهد
 
@@ -148,11 +176,12 @@
 - **P-LQ-1:** `VISION_CONCURRENCY = 4` برای عکس و صفحهٔ PDF، هم‌اندازهٔ رونویسی.
 - **P-LQ-2:** پوشش منبع: پاسخ اول بدون حساب‌کردن همهٔ منبع‌ها رد می‌شود؛ در تنها تولید دوباره، منبع گزارش‌نشده با `not_reported` ثبت و درس منتشر می‌شود.
 - **P-LQ-3:** منبع غیرصوتی بدون anchor در کلاس بلند به بخش اول می‌رود.
+- **P-LQ-4:** انتشار D62 با JSON بخش ۹.۵ (بدون D63)، چون معیار D56 برقرار است.
 
 ## ۱۴. پرسش‌ها برای مالک محصول
 
 1. هشت متن رابط بخش ۸ (و تصویرهای D65).
-2. آیا مقدار `classPartMinutes` در انتشار ۹۰ باشد (حداکثر D17) یا کمتر (مثلاً ۶۰)؟
+2. D63: بخش دوم کلاس ۱۲۸ دقیقه‌ای در ارزیابی زنده دو بار رد شد و علت آن در سقف ۱٫۵ دلار قابل تشخیص نبود. آیا یک اجرای تشخیصی جدا (حدود ۰٫۴ دلار، فقط همان بخش با ثبت diagnostic) مجاز است؟ تا آن زمان `classPartMinutes` خاموش می‌ماند. پس از آن: مقدار ۹۰ (حداکثر D17) یا کمتر؟
 3. مدل جدا برای عکس تخته: چون نوع عکس پس از فراخوان بینایی معلوم می‌شود، `boardVisionModel` برای همهٔ عکس‌ها به‌جز یادداشت شخصی اعمال می‌شود. آیا این تفسیر پذیرفته است، و پس از مقایسه روی عکس‌های تخته کدام مدل؟
 4. P-LQ-2: انتشار درس با `not_reported` به‌جای شکست Run.
 5. کلاس‌های بسیار بلند در بازبینی درس: پیام «not available» بماند یا بازبینی بخش‌به‌بخش (هر بخش یک فراخوان پولی جدا) ساخته شود؟
