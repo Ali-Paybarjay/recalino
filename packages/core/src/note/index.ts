@@ -21,6 +21,7 @@ export {
 export {
   getNotebook,
   getNotebookRevision,
+  hasPublishedNotebook,
   listNotebookRevisions,
   type Notebook,
   type NotebookRevision,

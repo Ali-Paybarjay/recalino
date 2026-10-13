@@ -40,6 +40,7 @@ vi.mock("@recalino/core/org", async (original) => ({
 vi.mock("@recalino/core/note", async (original) => ({
   ...(await original<object>()),
   getNotebook: vi.fn(async () => null),
+  hasPublishedNotebook: vi.fn(async () => false),
 }));
 
 const db = {} as Database;

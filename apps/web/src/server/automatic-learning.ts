@@ -2,7 +2,7 @@ import "server-only";
 import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
 import { getLatestVersion } from "@recalino/core/lkm";
-import { getNotebook } from "@recalino/core/note";
+import { hasPublishedNotebook } from "@recalino/core/note";
 import { captureInProgress, getSession } from "@recalino/core/org";
 import {
   AppError,
@@ -231,7 +231,7 @@ async function view(
   provider: () => AiProvider | undefined = defaults.provider,
 ): Promise<AutomaticLearningStatus> {
   const intent = await getAutomaticLearningSession(db, ctx, sessionId);
-  const notebook = await getNotebook(db, ctx, sessionId);
+  const notesReady = await hasPublishedNotebook(db, ctx, sessionId);
   const run = progress ? progress.run : intent?.runId ? await getRun(db, ctx, intent.runId) : null;
   const state = progress?.state ?? intent?.state ?? "idle";
   const storedCode = progress ? progress.lastError : (intent?.lastError ?? null);
@@ -268,8 +268,8 @@ async function view(
     lastError: code,
     message: automaticLearningMessage(state, code, shortage),
     allowance: shortage,
-    notesReady: !!notebook,
-    cardsReady: intent?.state === "ready" && !!notebook,
+    notesReady,
+    cardsReady: intent?.state === "ready" && notesReady,
     processingReview: await readClassProcessingReview(db, ctx, sessionId),
     // Present only while it applies, so earlier status shapes stay unchanged.
     ...(stage ? { stage } : {}),
