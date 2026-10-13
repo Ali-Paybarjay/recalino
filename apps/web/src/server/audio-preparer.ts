@@ -215,6 +215,8 @@ export interface VoiceWindowCoverage {
 export async function decodeVoiceAudioWindows(
   bytes: Uint8Array,
   windows: readonly VoiceSourceWindow[],
+  /** The verified (decoded) duration; with it, a jumped container clock is detected and ignored. */
+  durationMs?: number,
 ): Promise<{
   samples: Float32Array;
   sampleRate: 16000;
@@ -241,6 +243,10 @@ export async function decodeVoiceAudioWindows(
   )
     throw errors.validationFailed({ audio: ["voice_selection_invalid"] });
   return withAudioFile(bytes, async (path, directory) => {
+    // A container that cannot be read here fails each window below, as it always did.
+    const bySamples =
+      durationMs !== undefined &&
+      (await containerExtentMs(path).catch(() => 0)) > durationMs + CLOCK_TOLERANCE_MS;
     const samples = new Float32Array(maximumMs * 16);
     const mapped: VoiceWindowMap[] = [];
     let cursor = 0;
@@ -260,11 +266,12 @@ export async function decodeVoiceAudioWindows(
         try {
           await ffmpeg(
             [
-              // Seek by container time, exactly as the transcript chunks were cut.
-              "-ss",
-              String(window.start / 1000),
-              "-i",
-              path,
+              // The transcript's clock is the samples' (see prepareAudio). While the container
+              // clock agrees with it, seeking by container time is exact enough and fast; after a
+              // jump the recording is decoded from its start and cut by sample time instead.
+              ...(bySamples
+                ? ["-i", path, "-af", "asetpts=N/SR/TB", "-ss", String(window.start / 1000)]
+                : ["-ss", String(window.start / 1000), "-i", path]),
               "-t",
               String((plannedMs + VOICE_WINDOW_READ_SLACK_MS) / 1000),
               "-map",
@@ -283,7 +290,7 @@ export async function decodeVoiceAudioWindows(
               "-y",
               outputPath,
             ],
-            120000,
+            bySamples ? decodeTimeoutMs(window.end) : 120000,
           );
         } catch (failure) {
           // A demuxer can refuse one estimated seek target (e.g. a drifted end). The other
@@ -365,13 +372,108 @@ function selectedRanges(ranges: { start: number; end: number }[], durationMs: nu
   }
   return merged;
 }
+/** Provider chunk length; the transcript's time units are the recording's decoded samples. */
+const CHUNK_MS = 300000;
 /**
- * Chunks cut at once. Each chunk's upload and read-back verification overlap the next chunk's
- * encoding, which is where a long class spent most of its preparation time.
+ * Browser recordings stamp packets with the capture clock. When the microphone delivers nothing
+ * for a while (a suspended audio graph, a frozen tab), that clock jumps forward while the samples
+ * continue, so a cut by container time skips the audio after the jump and runs past the verified
+ * duration. Chunks are therefore cut on the samples' clock: one decode per selected range, with
+ * `asetpts` giving each sample its position, split into provider chunks as it is encoded. The
+ * verified duration counts the same samples, so the chunks cover exactly the audio it describes.
+ */
+const CHUNK_FILTER = (range: { start: number; end: number }) =>
+  `asetpts=N/SR/TB,atrim=start=${range.start / 1000}:end=${range.end / 1000},asetpts=PTS-STARTPTS`;
+/** Container and decoded clocks that agree within this are the same clock for seeking. */
+const CLOCK_TOLERANCE_MS = 1000;
+/** A whole range is decoded in one pass; allow for a slow host without waiting on a hung one. */
+const decodeTimeoutMs = (spanMs: number) => 180000 + Math.ceil(spanMs / 20);
+
+/** The container's audio extent (last packet end) without decoding: a demux pass only. */
+async function containerExtentMs(path: string): Promise<number> {
+  const output = await ffmpeg(
+    ["-progress", "pipe:1", "-i", path, "-map", "0:a:0", "-c", "copy", "-f", "null", "-"],
+    60000,
+  );
+  const reported = output.progress.match(/out_time_us=(\d+)/g)?.at(-1);
+  return reported ? Math.ceil(Number(reported.slice("out_time_us=".length)) / 1000) : 0;
+}
+
+/** The chunks one decoded range produced, as the segmenter listed them: path and sample times. */
+async function cutRange(
+  path: string,
+  directory: string,
+  range: { start: number; end: number; first: number; count: number },
+): Promise<{ index: number; path: string; offsetMs: number; durationMs: number }[]> {
+  const list = join(directory, `range-${range.first}.csv`);
+  await ffmpeg(
+    [
+      "-i",
+      path,
+      "-map",
+      "0:a:0",
+      "-vn",
+      "-sn",
+      "-dn",
+      "-af",
+      CHUNK_FILTER(range),
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "32k",
+      // Each chunk starts on a frame no earlier frame's bits are needed for.
+      "-reservoir",
+      "0",
+      "-map_metadata",
+      "-1",
+      "-f",
+      "segment",
+      // No gapless header per chunk: decoders would trim the encoder's delay from real audio.
+      "-segment_format_options",
+      "write_xing=0",
+      "-segment_time",
+      String(CHUNK_MS / 1000),
+      "-reset_timestamps",
+      "1",
+      "-segment_list",
+      list,
+      "-segment_list_type",
+      "csv",
+      "-y",
+      join(directory, `part-${range.first}-%d.mp3`),
+    ],
+    decodeTimeoutMs(range.end - range.start),
+  );
+  const cuts: { index: number; path: string; offsetMs: number; durationMs: number }[] = [];
+  const lines = (await readFile(list, "utf8")).split("\n").filter((line) => line.length);
+  for (const [number, line] of lines.entries()) {
+    const [, startS, endS] = line.split(",");
+    const offsetMs = range.start + Math.round(Number(startS) * 1000);
+    // The encoder's padding can add a final sliver past the range; the plan never has it.
+    const durationMs = Math.min(
+      Math.round((Number(endS) - Number(startS)) * 1000),
+      range.end - offsetMs,
+    );
+    if (number >= range.count || !(durationMs > 0)) continue;
+    cuts.push({
+      index: range.first + number,
+      path: join(directory, `part-${range.first}-${number}.mp3`),
+      offsetMs,
+      durationMs,
+    });
+  }
+  return cuts;
+}
+
+/**
+ * Decodes and uploads a few at a time. Each range's upload and read-back verification overlap
+ * the next range's decoding, which is where a long class spent most of its preparation time.
  */
 export const AUDIO_PREPARATION_CONCURRENCY = 3;
-/** Provider chunk length; the transcript's time units keep the original recording's clock. */
-const CHUNK_MS = 300000;
 /** Temporary extraction artifacts only (D29); source ranges remain in original time coordinates. */
 export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, source, now }) => {
   if (!source.objectId || !source.durationMs)
@@ -381,78 +483,73 @@ export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, sourc
     throw errors.validationFailed({ audio: ["integrity_mismatch"] });
   // Positions are fixed before any work starts, so chunk IDs and checkpoints stay the same on a
   // retry whatever order the parallel cuts finish in.
-  const planned: { offsetMs: number; durationMs: number }[] = [];
-  for (const range of selectedRanges(source.ranges, source.durationMs ?? 0))
-    for (let offsetMs = range.start; offsetMs < range.end; offsetMs += CHUNK_MS)
-      planned.push({ offsetMs, durationMs: Math.min(CHUNK_MS, range.end - offsetMs) });
+  const planned: { start: number; end: number; first: number; count: number }[] = [];
+  for (const range of selectedRanges(source.ranges, source.durationMs ?? 0)) {
+    const first = planned.reduce((sum, previous) => sum + previous.count, 0);
+    planned.push({ ...range, first, count: Math.ceil((range.end - range.start) / CHUNK_MS) });
+  }
   const created: AudioChunk[] = [];
   try {
     return await withAudioFile(bytes, async (path, directory) => {
-      const chunks: AudioChunk[] = new Array(planned.length);
-      let next = 0;
+      const chunks: (AudioChunk | undefined)[] = [];
       let failure: { error: unknown } | null = null;
+      // Lanes take range decodes first; the uploads a decode produces join the same queue.
+      const queue: (() => Promise<void>)[] = [];
+      let active = 0;
+      const sleeping: (() => void)[] = [];
+      const wakeAll = () => {
+        for (const wake of sleeping.splice(0)) wake();
+      };
+      const upload = (cut: Awaited<ReturnType<typeof cutRange>>[number]) => async () => {
+        const output = await readFile(cut.path);
+        await rm(cut.path, { force: true });
+        const objectId = await writeOwnedObject(db, store, ctx, {
+          module: "src",
+          retention: "temporary",
+          contentType: "audio/mpeg",
+          bytes: output,
+          now,
+          onRegistered: async (objectId) => {
+            await registerProcessingTemporaryObject(db, ctx, runId, objectId, now);
+          },
+        });
+        const chunk: AudioChunk = {
+          // A class run can contain several independently recorded audio sources.
+          id: `${runId}-${source.sourceId}-${cut.index}`,
+          sourceId: source.sourceId,
+          objectId,
+          offsetMs: cut.offsetMs,
+          durationMs: cut.durationMs,
+          format: "mp3",
+        };
+        chunks[cut.index] = chunk;
+        created.push(chunk);
+      };
+      for (const range of planned)
+        queue.push(async () => {
+          for (const cut of await cutRange(path, directory, range)) queue.push(upload(cut));
+          wakeAll();
+        });
       const lane = async () => {
-        while (!failure && next < planned.length) {
-          const index = next++;
-          const { offsetMs, durationMs } = planned[index] as (typeof planned)[number];
-          try {
-            const outputPath = join(directory, `part-${index}.mp3`);
-            await ffmpeg([
-              "-ss",
-              String(offsetMs / 1000),
-              "-i",
-              path,
-              "-t",
-              String(durationMs / 1000),
-              "-map",
-              "0:a:0",
-              "-vn",
-              "-sn",
-              "-dn",
-              "-ac",
-              "1",
-              "-ar",
-              "16000",
-              "-b:a",
-              "32k",
-              "-map_metadata",
-              "-1",
-              "-y",
-              outputPath,
-            ]);
-            const output = await readFile(outputPath);
-            await rm(outputPath, { force: true });
-            const objectId = await writeOwnedObject(db, store, ctx, {
-              module: "src",
-              retention: "temporary",
-              contentType: "audio/mpeg",
-              bytes: output,
-              now,
-              onRegistered: async (objectId) => {
-                await registerProcessingTemporaryObject(db, ctx, runId, objectId, now);
-              },
-            });
-            const chunk: AudioChunk = {
-              // A class run can contain several independently recorded audio sources.
-              id: `${runId}-${source.sourceId}-${index}`,
-              sourceId: source.sourceId,
-              objectId,
-              offsetMs,
-              durationMs,
-              format: "mp3",
-            };
-            chunks[index] = chunk;
-            created.push(chunk);
-          } catch (error) {
-            failure ??= { error };
-          }
+        while (!failure) {
+          const task = queue.shift();
+          if (task) {
+            active += 1;
+            try {
+              await task();
+            } catch (error) {
+              failure ??= { error };
+            } finally {
+              active -= 1;
+              wakeAll();
+            }
+          } else if (active) await new Promise<void>((wake) => sleeping.push(wake));
+          else return;
         }
       };
-      await Promise.all(
-        Array.from({ length: Math.min(AUDIO_PREPARATION_CONCURRENCY, planned.length) }, lane),
-      );
+      await Promise.all(Array.from({ length: AUDIO_PREPARATION_CONCURRENCY }, lane));
       if (failure) throw (failure as { error: unknown }).error;
-      return chunks;
+      return chunks.filter((chunk): chunk is AudioChunk => chunk !== undefined);
     });
   } catch (failure) {
     await Promise.allSettled(
