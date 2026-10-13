@@ -72,14 +72,15 @@ test("one course is selected automatically and a dated class opens its details b
   await row.getByRole("link", { name: "Go to session", exact: true }).click();
   await expect(page).toHaveURL(`/sessions/${lesson.id}`);
   await expect(page.getByRole("heading", { level: 1, name: "Travel conversations" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveAttribute(
-    "href",
-    `/sessions/${lesson.id}/notes`,
-  );
-  await expect(page.getByRole("link", { name: "Flashcards", exact: true })).toHaveAttribute(
-    "href",
-    `/sessions/${lesson.id}/cards`,
-  );
+  // Session navigation (FIVE_PROBLEMS §7.3): a session without material leads with one next
+  // step and does not offer notes or flashcards that do not exist yet.
+  const next = page.getByRole("region", { name: "Session progress", exact: true });
+  await expect(next.getByRole("heading", { name: "Add your session material" })).toBeVisible();
+  await expect(
+    next.getByRole("link", { name: "Add or view material", exact: true }),
+  ).toHaveAttribute("href", `/sessions/${lesson.id}/sources`);
+  await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Flashcards", exact: true })).toHaveCount(0);
   await expectNoAxeViolations(page);
   await page.screenshot({
     path: testInfo.outputPath("class-overview-desktop.png"),

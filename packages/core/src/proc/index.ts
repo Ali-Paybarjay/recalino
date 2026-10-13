@@ -71,6 +71,7 @@ export {
   type SourceExtractionRetryResult,
   sourceExtractionRetrySchema,
 } from "./recovery";
+export { finishingStage, type RunFinishingStage, runFinishingStage } from "./run-stage";
 export {
   type AwaitingUploadFailure,
   activateProcessingRun,

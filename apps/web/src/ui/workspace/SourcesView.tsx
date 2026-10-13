@@ -43,6 +43,7 @@ export function SourcesView({
   contract,
   noticeAccepted: initiallyAccepted,
   storageConfigured,
+  withStatus = false,
 }: {
   sessionId: string;
   userId: string;
@@ -50,6 +51,11 @@ export function SourcesView({
   contract: InputContract;
   noticeAccepted: boolean;
   storageConfigured: boolean;
+  /**
+   * The session status card is shown above on the same page; its retry and recovery actions are
+   * not repeated here (one place for material and status).
+   */
+  withStatus?: boolean;
 }) {
   const router = useRouter(),
     fileInput = useRef<HTMLInputElement>(null),
@@ -409,10 +415,12 @@ export function SourcesView({
       );
   }
   return (
-    <div className="preview-stack">
-      <Link className="preview-back" href={`/sessions/${sessionId}`}>
-        ← Back to session
-      </Link>
+    <div className="preview-stack" id="session-material">
+      {withStatus ? null : (
+        <Link className="preview-back" href={`/sessions/${sessionId}`}>
+          ← Back to session
+        </Link>
+      )}
       <Actions>
         <LinkButton href={`/sessions/${sessionId}/record`}>Record a session</LinkButton>
         <Button
@@ -519,17 +527,19 @@ export function SourcesView({
                     </LinkButton>
                   </>
                 ) : (
-                  <>
-                    {feedback.retry && (
-                      <Button disabled={busy} onClick={() => void action(retryProcessing)}>
-                        Retry processing
-                      </Button>
-                    )}
-                    <AllowanceRequest block={feedback.allowance} />
-                    <LinkButton secondary href={`/sessions/${sessionId}/estimate`}>
-                      Review processing
-                    </LinkButton>
-                  </>
+                  !withStatus && (
+                    <>
+                      {feedback.retry && (
+                        <Button disabled={busy} onClick={() => void action(retryProcessing)}>
+                          Retry processing
+                        </Button>
+                      )}
+                      <AllowanceRequest block={feedback.allowance} />
+                      <LinkButton secondary href={`/sessions/${sessionId}/estimate`}>
+                        Review processing
+                      </LinkButton>
+                    </>
+                  )
                 )}
               </Actions>
             </>
@@ -792,20 +802,22 @@ export function SourcesView({
           </ul>
         )}
       </Panel>
-      {!receipt && learning.status && learning.status.state !== "idle" && (
+      {!withStatus && !receipt && learning.status && learning.status.state !== "idle" && (
         <Status tone={learning.status.state === "blocked" ? "error" : "neutral"}>
           {learning.status.message}
         </Status>
       )}
       {/* Without this device's upload receipt, an allowance stop still names its next step. */}
-      {!receipt && (
+      {!withStatus && !receipt && (
         <AllowanceActions
           status={learning.status}
           busy={busy}
           onRetry={() => void action(retryProcessing)}
         />
       )}
-      {!receipt && learning.problem && <Status tone="error">{learning.problem}</Status>}
+      {!withStatus && !receipt && learning.problem && (
+        <Status tone="error">{learning.problem}</Status>
+      )}
       {interruptedBatch && (
         <Panel title="Resume an interrupted upload">
           <Status>

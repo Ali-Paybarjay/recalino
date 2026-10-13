@@ -27,10 +27,12 @@ import {
   type ProcessingReview,
   type ProcessingRun,
   processingSelectionFingerprint,
+  type RunFinishingStage,
   type RunSnapshot,
   readClassProcessingReview,
   reconcileAutomaticLearningBatch,
   requestAutomaticLearning,
+  runFinishingStage,
   selectProcessingSourceSnapshot,
   sourceSnapshotSchema,
   updateAutomaticLearningProgress,
@@ -71,6 +73,8 @@ export interface AutomaticLearningStatus {
   processingReview?: ProcessingReview | null;
   /** FR-QUOTA-007: for a learner-allowance block, what this class needs and what is left now. */
   allowance?: AllowanceShortage | null;
+  /** A processing run whose lesson is written: publication waits for the voice check. */
+  stage?: RunFinishingStage | null;
 }
 export interface AllowanceShortage {
   /** False when the account has no active allowance period. */
@@ -241,6 +245,10 @@ async function view(
     state === "blocked" && code === "quota_insufficient"
       ? await readAllowanceShortage(db, ctx, sessionId, provider())
       : null;
+  const stage =
+    state === "processing" && run?.state === "processing"
+      ? await runFinishingStage(db, ctx, run.id)
+      : null;
   return {
     state,
     revision: intent?.requestVersion ?? 0,
@@ -254,6 +262,8 @@ async function view(
     notesReady: !!notebook,
     cardsReady: intent?.state === "ready" && !!notebook,
     processingReview: await readClassProcessingReview(db, ctx, sessionId),
+    // Present only while it applies, so earlier status shapes stay unchanged.
+    ...(stage ? { stage } : {}),
   };
 }
 /** Read-only polling never reserves allowance or starts provider work. */

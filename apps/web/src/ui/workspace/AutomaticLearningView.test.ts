@@ -119,7 +119,7 @@ describe("retry from the class notice", () => {
     expect(html).toMatch(/<button[^>]*>Retry failed attempt<\/button>/);
     expect(html).toContain("Your session needs attention");
     expect(html).toContain('aria-label="Session progress"');
-    expect(html).toContain(`href="/sessions/${sessionId}/processing"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/sources#session-progress"`);
   });
 
   it.each(["notice", "progress"] as const)(
@@ -365,7 +365,7 @@ describe("recovery actions match the processing blocker", () => {
     };
     const html = render();
     expect(html).toContain("View processing review");
-    expect(html).toContain(`href="/sessions/${sessionId}/processing"`);
+    expect(html).toContain(`href="/sessions/${sessionId}/sources#session-progress"`);
     expect(html).not.toContain("Review allowance");
     mocks.request.mockResolvedValue({
       ...mocks.status,

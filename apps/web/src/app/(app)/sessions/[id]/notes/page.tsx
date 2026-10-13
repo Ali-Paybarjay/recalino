@@ -5,7 +5,6 @@ import { requireLearner } from "../../../../../server/auth/learner";
 import { getDatabase } from "../../../../../server/db";
 import { lessonAdaptationFor } from "../../../../../server/teaching-memory";
 import { workspaceActor, workspaceCourse, workspaceSession } from "../../../../../server/workspace";
-import { VoiceConfirmation } from "../../../../../ui/voice/VoiceConfirmation";
 import { NoteView } from "../../../../../ui/workspace/NoteView";
 import { SessionNotesReader } from "../../../../../ui/workspace/SessionNotesReader";
 import { LearnerTermsNotice } from "../../../LearnerShell";
@@ -46,19 +45,18 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
       revisionNumber={initial?.current.number}
     >
       <LearnerTermsNotice learner={learner} />
-      <VoiceConfirmation sessionId={id} userId={learner.userId} compact>
-        <NoteView
-          standalone
-          sessionId={id}
-          userId={learner.userId}
-          initial={initial}
-          latest={latest}
-          courseId={session.courseId}
-          sourceIssues={sourceStatus.issues}
-          materialSources={sourceStatus.materials}
-          adaptation={adaptation}
-        />
-      </VoiceConfirmation>
+      {/* Voice confirmation is an optional step on the session page (/sessions/[id]/voice). */}
+      <NoteView
+        standalone
+        sessionId={id}
+        userId={learner.userId}
+        initial={initial}
+        latest={latest}
+        courseId={session.courseId}
+        sourceIssues={sourceStatus.issues}
+        materialSources={sourceStatus.materials}
+        adaptation={adaptation}
+      />
     </SessionNotesReader>
   );
 }

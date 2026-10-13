@@ -9,9 +9,10 @@ import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+import { uploadRetryCanHelp } from "./session-state";
 import { useUploadBatches } from "./UploadProvider";
 
-function subscribeConnection(changed: () => void) {
+export function subscribeConnection(changed: () => void) {
   window.addEventListener("online", changed);
   window.addEventListener("offline", changed);
   return () => {
@@ -19,8 +20,8 @@ function subscribeConnection(changed: () => void) {
     window.removeEventListener("offline", changed);
   };
 }
-const connectionSnapshot = () => navigator.onLine;
-const connectedServerSnapshot = () => true;
+export const connectionSnapshot = () => navigator.onLine;
+export const connectedServerSnapshot = () => true;
 
 type Recovery = ReturnType<typeof automaticLearningRecovery>;
 
@@ -51,7 +52,7 @@ function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: R
       : kind === "service"
         ? [
             {
-              href: `/sessions/${sessionId}/processing#processing-review`,
+              href: `/sessions/${sessionId}/sources#processing-review`,
               label: "View processing review",
             },
           ]
@@ -67,7 +68,7 @@ function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: R
   ));
 }
 
-function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomaticLearning>) {
+export function useLearningRetry(sessionId: string, live: ReturnType<typeof useAutomaticLearning>) {
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<"retry" | "review" | "refresh" | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -186,6 +187,7 @@ function LearningStatusCard({
   live,
   retry,
   compact = false,
+  id,
   children,
 }: {
   sessionId: string;
@@ -193,6 +195,7 @@ function LearningStatusCard({
   live: ReturnType<typeof useAutomaticLearning>;
   retry: ReturnType<typeof useLearningRetry>;
   compact?: boolean;
+  id?: string;
   children: ReactNode;
 }) {
   const batches = useUploadBatches(sessionId);
@@ -243,6 +246,7 @@ function LearningStatusCard({
   return (
     <section
       ref={retry.focusRef}
+      id={id}
       tabIndex={-1}
       aria-label="Session progress"
       className={styles.card}
@@ -370,7 +374,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
         ) : null}
         <LinkButton
           secondary={canRetry || !!recovery.kind || status?.state === "ready"}
-          href={`/sessions/${sessionId}/processing`}
+          href={`/sessions/${sessionId}/sources#session-progress`}
         >
           View progress
         </LinkButton>
@@ -381,13 +385,21 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
 export function AutomaticLearningView({
   sessionId,
   initial,
+  withMaterial = false,
 }: {
   sessionId: string;
   initial: AutomaticLearningStatus;
+  /** The session material is shown below on the same page (one place for material and status). */
+  withMaterial?: boolean;
 }) {
   const live = useAutomaticLearning(sessionId);
   const status = live.status ?? initial;
   const retry = useLearningRetry(sessionId, live);
+  const [uploadProblem, setUploadProblem] = useState("");
+  // The saved-audio retry lives here, not in the upload tray, and only while it can pass.
+  const stoppedUpload = live.manualAudio?.find(
+    (entry) => entry.phase === "attention" && uploadRetryCanHelp(entry),
+  );
   const recovery = automaticLearningRecovery(status);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
@@ -396,8 +408,32 @@ export function AutomaticLearningView({
       <Link className="preview-back" href={`/sessions/${sessionId}`}>
         ← Back to session
       </Link>
-      <LearningStatusCard sessionId={sessionId} status={status} live={live} retry={retry}>
+      <LearningStatusCard
+        sessionId={sessionId}
+        status={status}
+        live={live}
+        retry={retry}
+        id="session-progress"
+      >
+        {uploadProblem ? <Status tone="error">{uploadProblem}</Status> : null}
         <Actions>
+          {stoppedUpload ? (
+            <Button
+              disabled={retry.busy}
+              onClick={() => {
+                setUploadProblem("");
+                void live
+                  .retryManualAudio(stoppedUpload.runId)
+                  .catch((failure: unknown) =>
+                    setUploadProblem(
+                      failure instanceof Error ? failure.message : "The upload could not resume.",
+                    ),
+                  );
+              }}
+            >
+              Retry saved audio upload
+            </Button>
+          ) : null}
           {recovery.kind !== "service" ? (
             <RecoveryLinks sessionId={sessionId} recovery={recovery} />
           ) : null}
@@ -423,7 +459,9 @@ export function AutomaticLearningView({
               Flashcards
             </LinkButton>
           ) : null}
-          {(status.state === "idle" || status.state === "ready") && !recovery.kind ? (
+          {!withMaterial &&
+          (status.state === "idle" || status.state === "ready") &&
+          !recovery.kind ? (
             <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
               Add material
             </LinkButton>

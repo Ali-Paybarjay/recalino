@@ -36,6 +36,8 @@ export interface AutomaticLearningStatus {
   processingReview?: ProcessingReview | null;
   /** FR-QUOTA-007: for a learner-allowance block, what this class needs and what is left now. */
   allowance?: { active: boolean; required: Amounts; available: Amounts } | null;
+  /** The lesson is written; publication waits for the voice check (owner decision 2026-10-12). */
+  stage?: "checking_voices" | "publishing" | null;
 }
 
 export function automaticResultNeedsRefresh(

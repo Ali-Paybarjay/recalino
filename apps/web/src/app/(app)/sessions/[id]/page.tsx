@@ -1,12 +1,16 @@
+import { getLatestVersion } from "@recalino/core/lkm";
+import { getNotebook } from "@recalino/core/note";
 import Link from "next/link";
 import { requireLearner } from "../../../../server/auth/learner";
-import { workspaceGroups, workspaceSession } from "../../../../server/workspace";
+import { readAutomaticLearning } from "../../../../server/automatic-learning";
+import { getDatabase } from "../../../../server/db";
+import { workspaceActor, workspaceGroups, workspaceSession } from "../../../../server/workspace";
 import { Icon } from "../../../../ui/components/Icon";
 import { Cards, CaretLeft, CaretRight, FileText } from "../../../../ui/icons";
 import { RecordLauncher } from "../../../../ui/recording/RecordingProvider";
 import { PageHeader } from "../../../../ui/shell/AppShell";
-import { AutomaticLearningNotice } from "../../../../ui/workspace/AutomaticLearningView";
 import { Actions, LinkButton } from "../../../../ui/workspace/primitives";
+import { SessionOverviewTop } from "../../../../ui/workspace/SessionNextStep";
 import { LearnerShell } from "../../LearnerShell";
 import styles from "./ClassOverview.module.css";
 export const dynamic = "force-dynamic";
@@ -14,7 +18,16 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const learner = await requireLearner(`/sessions/${id}`);
   const session = await workspaceSession(learner, id);
-  const groups = await workspaceGroups(learner);
+  const db = getDatabase(),
+    actor = workspaceActor(learner);
+  const [groups, notebook, latest, automatic] = await Promise.all([
+    workspaceGroups(learner),
+    getNotebook(db, actor, id),
+    getLatestVersion(db, actor, id),
+    readAutomaticLearning(db, actor, id).catch(() => null),
+  ]);
+  // The same existence rules as the notes and flashcards pages (hasNotes, canOpenCards).
+  const content = { notes: !!(notebook || latest), cards: !!notebook };
   const course = groups.courses.find((item) => item.id === session.courseId);
   const unit = groups.units.find((item) => item.id === session.unitId);
   const classDate = session.classDate.split("-").reverse().join("/");
@@ -33,45 +46,52 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           <Icon icon={CaretLeft} size={18} />
           Back to course
         </Link>
-        <section className={styles.learning} aria-label="Study this session">
-          <Link
-            href={`/sessions/${id}/notes`}
-            prefetch={false}
-            className={`${styles.destination} ${styles.notes}`}
-            aria-labelledby="class-notes-heading"
-            aria-describedby="class-notes-description"
-          >
-            <span className={styles.destinationIcon}>
-              <Icon icon={FileText} size={28} />
-            </span>
-            <div className={styles.destinationBody}>
-              <h2 id="class-notes-heading">Session notes</h2>
-              <p id="class-notes-description">Read the lesson and revisit what you learned.</p>
-            </div>
-            <span className={styles.destinationAction}>
-              Read notes <Icon icon={CaretRight} size={18} />
-            </span>
-          </Link>
-          <Link
-            href={`/sessions/${id}/cards`}
-            prefetch={false}
-            className={`${styles.destination} ${styles.cards}`}
-            aria-labelledby="class-flashcards-heading"
-            aria-describedby="class-flashcards-description"
-          >
-            <span className={styles.destinationIcon}>
-              <Icon icon={Cards} size={28} />
-            </span>
-            <div className={styles.destinationBody}>
-              <h2 id="class-flashcards-heading">Flashcards</h2>
-              <p id="class-flashcards-description">Practise this lesson, one card at a time.</p>
-            </div>
-            <span className={styles.destinationAction}>
-              Practise cards <Icon icon={CaretRight} size={18} />
-            </span>
-          </Link>
-        </section>
-        <AutomaticLearningNotice sessionId={id} />
+        {/* One next step first (FIVE_PROBLEMS §7.3): state and one primary action. */}
+        <SessionOverviewTop sessionId={id} initial={automatic} content={content} />
+        {content.notes || content.cards ? (
+          <section className={styles.learning} aria-label="Study this session">
+            {content.notes ? (
+              <Link
+                href={`/sessions/${id}/notes`}
+                prefetch={false}
+                className={`${styles.destination} ${styles.notes}`}
+                aria-labelledby="class-notes-heading"
+                aria-describedby="class-notes-description"
+              >
+                <span className={styles.destinationIcon}>
+                  <Icon icon={FileText} size={28} />
+                </span>
+                <div className={styles.destinationBody}>
+                  <h2 id="class-notes-heading">Session notes</h2>
+                  <p id="class-notes-description">Read the lesson and revisit what you learned.</p>
+                </div>
+                <span className={styles.destinationAction}>
+                  Read notes <Icon icon={CaretRight} size={18} />
+                </span>
+              </Link>
+            ) : null}
+            {content.cards ? (
+              <Link
+                href={`/sessions/${id}/cards`}
+                prefetch={false}
+                className={`${styles.destination} ${styles.cards}`}
+                aria-labelledby="class-flashcards-heading"
+                aria-describedby="class-flashcards-description"
+              >
+                <span className={styles.destinationIcon}>
+                  <Icon icon={Cards} size={28} />
+                </span>
+                <div className={styles.destinationBody}>
+                  <h2 id="class-flashcards-heading">Flashcards</h2>
+                  <p id="class-flashcards-description">Practise this lesson, one card at a time.</p>
+                </div>
+                <span className={styles.destinationAction}>
+                  Practise cards <Icon icon={CaretRight} size={18} />
+                </span>
+              </Link>
+            ) : null}
+          </section>
+        ) : null}
         <section id="topics" aria-labelledby="class-topics-heading" className={styles.topics}>
           <h2 id="class-topics-heading">Topics covered</h2>
           {session.titleSource !== "date" ? (
@@ -114,9 +134,11 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           </summary>
           <div className={styles.toolsContent}>
             <Actions>
-              <LinkButton secondary href={`/sessions/${id}/estimate`}>
-                View progress
-              </LinkButton>
+              {content.notes ? (
+                <LinkButton secondary href={`/sessions/${id}/voice`}>
+                  Your voice in this session
+                </LinkButton>
+              ) : null}
               <LinkButton secondary href={`/sessions/${id}/export`}>
                 Download notes and cards
               </LinkButton>
