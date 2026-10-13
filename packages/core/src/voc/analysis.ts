@@ -214,6 +214,7 @@ export async function saveVoiceAnalysis(
           turnEmbeddingsSchema.parse(input.turnEmbeddings ?? []),
           profile,
           input.modelVersion,
+          vectors,
         )
       : utterances;
     const account = await accountVoiceCalibration(tx, ctx, input.modelVersion);
@@ -298,17 +299,28 @@ export async function saveVoiceAnalysis(
 }
 /**
  * Each scored turn's similarity to the learner's own sample of the same model revision. Turn
- * voiceprints are transient: they are compared here and never stored.
+ * voiceprints are transient: they are compared here and never stored. A far microphone inflates
+ * every score (the dominant voice of the 2026-10-12 class scored 0.70–0.77), so a turn of a voice
+ * that has its own voiceprint is scored only when it resembles the sample more than that voice
+ * does: the learner's turn merged into the teacher's voice beats the teacher's voiceprint, while
+ * the teacher's own turns do not. A turn of a voice without a voiceprint keeps its plain score.
  */
 export function scoreTargetTurns(
   utterances: readonly VoiceUtterance[],
   turns: readonly { utteranceId: string; vector: number[] }[],
   enrollment: Pick<VoiceEnrollment, "embeddings">,
   modelVersion: string,
+  voices: readonly { speakerId: string; vector: number[] }[] = [],
 ): VoiceUtterance[] {
   const sample = enrollment.embeddings.find(
     (entry) => entry.analysisId === null && entry.modelVersion === modelVersion,
   )?.vector;
+  const voiceScore = new Map<string, number>();
+  if (sample)
+    for (const voice of voices) {
+      const value = voiceCosine(voice.vector, sample);
+      if (value !== null) voiceScore.set(voice.speakerId, value);
+    }
   return utterances.map((item) => {
     const { targetScore: _ignored, ...rest } = item;
     const scores = sample
@@ -318,7 +330,10 @@ export function scoreTargetTurns(
           return value === null ? [] : [value];
         })
       : [];
-    return scores.length ? { ...rest, targetScore: Math.max(...scores) } : rest;
+    if (!scores.length) return rest;
+    const best = Math.max(...scores);
+    const own = voiceScore.get(item.speakerId);
+    return own === undefined || best > own ? { ...rest, targetScore: best } : rest;
   });
 }
 /**
@@ -586,7 +601,9 @@ export async function getClassVoice(
 /**
  * The class's linked voices from its parts' views. Only linked voices (each with a voiceprint)
  * are class voices; the suggestion is the best-scored suggestible one that no part rejected,
- * never an unscored tie broken by id, and none at all while every part is already decided.
+ * never an unscored tie broken by id. Once a class voice is confirmed, it is suggested again only
+ * for parts that joined it later and still wait (a new recording part, D60); parts where it was
+ * never heard are left as they are, so a confirmed class is not asked again.
  */
 export function classVoiceEntries(analyses: readonly VoiceAnalysisView[]): {
   voices: ClassVoiceEntry[];
@@ -601,6 +618,8 @@ export function classVoiceEntries(analyses: readonly VoiceAnalysisView[]): {
       suggestible: boolean;
       persian: boolean;
       ambiguous: boolean;
+      verified: boolean;
+      pending: boolean;
     }
   >();
   for (const analysis of analyses)
@@ -614,8 +633,12 @@ export function classVoiceEntries(analyses: readonly VoiceAnalysisView[]): {
         suggestible: false,
         persian: candidate.label.startsWith("گوینده"),
         ambiguous: false,
+        verified: false,
+        pending: false,
       };
       group.ambiguous ||= ambiguous;
+      group.verified ||= analysis.status === "verified" && analysis.verifiedSpeakerId === speakerId;
+      group.pending ||= analysis.status === "unverified";
       group.members.push({ analysisId: analysis.id, speakerId });
       group.cleanSpeechMs += candidate.cleanSpeechMs;
       if (candidate.score !== null) group.score = Math.max(group.score ?? -1, candidate.score);
@@ -636,8 +659,12 @@ export function classVoiceEntries(analyses: readonly VoiceAnalysisView[]): {
     cleanSpeechMs: group.cleanSpeechMs,
     members: group.members,
   }));
-  const open = analyses.some((analysis) => analysis.status === "unverified");
-  const candidate = open ? ranked.find(([, group]) => group.suggestible) : undefined;
+  const confirmed = ranked.find(([, group]) => group.verified);
+  const candidate = confirmed
+    ? confirmed[1].pending
+      ? confirmed
+      : undefined
+    : ranked.find(([, group]) => group.suggestible && group.pending);
   return { voices, candidateId: candidate?.[0] ?? null };
 }
 /** Name, length and checksum of the learner's own registered recording, for local playback. */

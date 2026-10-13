@@ -126,9 +126,17 @@ export function ClassVoiceConfirmation({
       ),
     ),
   );
-  const open = view.analyses.some((item) => item.status === "unverified");
   const suggested = voices.find((voice) => voice.id === view.classCandidateId);
-  const listed = !open ? [] : suggested && !chooseAll ? [suggested] : voices;
+  // After a confirmation the only question left is a part that joined the confirmed voice later.
+  const listed = verifiedVoice
+    ? suggested
+      ? [suggested]
+      : []
+    : suggested && !chooseAll
+      ? [suggested]
+      : voices;
+  const pending = (member: ClassVoiceEntry["members"][number]) =>
+    view.analyses.some((item) => item.id === member.analysisId && item.status === "unverified");
   const act = (action: ClassVoiceAction["action"], classVoiceId?: string) =>
     void onAction({ scope: "class", action, ...(classVoiceId ? { classVoiceId } : {}), expected });
   return (
@@ -136,80 +144,83 @@ export function ClassVoiceConfirmation({
       <div className={styles.heading}>
         <h3>{copy.classHeading}</h3>
       </div>
-      {verifiedVoice && !open ? (
+      {verifiedVoice ? (
         <>
           <Status tone="success">{copy.classConfirmed}</Status>
-          <Actions>
-            <Button secondary disabled={disabled} onClick={() => act("revoke", verifiedVoice.id)}>
-              This is not my voice
-            </Button>
-          </Actions>
-        </>
-      ) : (
-        <>
-          <p className="preview-muted">{copy.classIntro}</p>
-          {listed.map((voice) => {
-            const members = voice.members.flatMap((member) => {
-              const found = memberCandidate(view, member);
-              return found?.candidate.clips.length ? [found] : [];
-            });
-            const canConfirm = members.some(({ analysis, candidate }) =>
-              playable.has(`${analysis.id}:${candidate.id}`),
-            );
-            return (
-              <div key={voice.id} className={styles.aside}>
-                <strong dir="auto">{voice.label}</strong>
-                <p className="preview-muted">
-                  {fillCopy(copy.heardIn, { count: voice.members.length, total })}
-                </p>
-                {voice.ambiguous ? <Status>{copy.ambiguous}</Status> : null}
-                {members.slice(0, 2).map(({ analysis, candidate }) => (
-                  <MemberExcerpts
-                    key={`${analysis.id}:${candidate.id}`}
-                    userId={userId}
-                    analysis={analysis}
-                    candidate={candidate}
-                    onPlayable={reportPlayable}
-                    onPlayback={onPlayback}
-                  />
-                ))}
-                {canConfirm ? (
-                  <>
-                    <p className={styles.question} lang="fa" dir="rtl">
-                      این صدای توست؟
-                    </p>
-                    <Actions>
-                      <Button disabled={disabled} onClick={() => act("confirm", voice.id)}>
-                        Yes, this is my voice
-                      </Button>
-                      {suggested && !chooseAll ? (
-                        <Button
-                          secondary
-                          disabled={disabled}
-                          onClick={() => {
-                            setChooseAll(true);
-                            act("reject", voice.id);
-                          }}
-                        >
-                          No, show other speakers
-                        </Button>
-                      ) : null}
-                    </Actions>
-                  </>
-                ) : (
-                  <p className="preview-muted">{voiceCopy.playback.listenFirst}</p>
-                )}
-              </div>
-            );
-          })}
-          {open ? (
+          {listed.length ? null : (
             <Actions>
-              <Button secondary disabled={disabled} onClick={() => act("none")}>
-                None of these voices is mine
+              <Button secondary disabled={disabled} onClick={() => act("revoke", verifiedVoice.id)}>
+                This is not my voice
               </Button>
             </Actions>
-          ) : null}
+          )}
         </>
+      ) : (
+        <p className="preview-muted">{copy.classIntro}</p>
+      )}
+      {listed.map((voice) => {
+        const members = voice.members.flatMap((member) => {
+          const found = memberCandidate(view, member);
+          // With a confirmed voice, only the parts still waiting are listened to.
+          return found?.candidate.clips.length && (!verifiedVoice || pending(member))
+            ? [found]
+            : [];
+        });
+        const canConfirm = members.some(({ analysis, candidate }) =>
+          playable.has(`${analysis.id}:${candidate.id}`),
+        );
+        return (
+          <div key={voice.id} className={styles.aside}>
+            <strong dir="auto">{voice.label}</strong>
+            <p className="preview-muted">
+              {fillCopy(copy.heardIn, { count: voice.members.length, total })}
+            </p>
+            {voice.ambiguous ? <Status>{copy.ambiguous}</Status> : null}
+            {members.slice(0, 2).map(({ analysis, candidate }) => (
+              <MemberExcerpts
+                key={`${analysis.id}:${candidate.id}`}
+                userId={userId}
+                analysis={analysis}
+                candidate={candidate}
+                onPlayable={reportPlayable}
+                onPlayback={onPlayback}
+              />
+            ))}
+            {canConfirm ? (
+              <>
+                <p className={styles.question} lang="fa" dir="rtl">
+                  این صدای توست؟
+                </p>
+                <Actions>
+                  <Button disabled={disabled} onClick={() => act("confirm", voice.id)}>
+                    Yes, this is my voice
+                  </Button>
+                  {suggested && !chooseAll && !verifiedVoice ? (
+                    <Button
+                      secondary
+                      disabled={disabled}
+                      onClick={() => {
+                        setChooseAll(true);
+                        act("reject", voice.id);
+                      }}
+                    >
+                      No, show other speakers
+                    </Button>
+                  ) : null}
+                </Actions>
+              </>
+            ) : (
+              <p className="preview-muted">{voiceCopy.playback.listenFirst}</p>
+            )}
+          </div>
+        );
+      })}
+      {verifiedVoice ? null : (
+        <Actions>
+          <Button secondary disabled={disabled} onClick={() => act("none")}>
+            None of these voices is mine
+          </Button>
+        </Actions>
       )}
     </section>
   );
