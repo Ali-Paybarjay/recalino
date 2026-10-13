@@ -34,7 +34,7 @@ import {
   reserveAllowance,
   settleAllowance,
 } from "../quota";
-import { selectSourceSnapshot } from "../src";
+import { adoptStagedAudio, selectSourceSnapshot } from "../src";
 import {
   CHARGE_STEP_PATTERN,
   chargeableRunAmounts,
@@ -344,6 +344,17 @@ export async function createProcessingRun(
     const reservation = await reserveAllowance(tx, ctx, `processing:${id}`, requested, now);
     const awaiting = snapshot.sources.some(
       (source) => source.kind === "audio" && !source.contentVersionId && !source.objectId,
+    );
+    // D60/S2: staged capture copies this run adopts stay alive for the run's own upload window.
+    await adoptStagedAudio(
+      tx,
+      ctx,
+      snapshot.sources.flatMap((source) =>
+        source.kind === "audio" && source.objectId && !source.contentVersionId
+          ? [source.sourceId]
+          : [],
+      ),
+      now,
     );
     const preferences = await listTeachingPreferences(tx, ctx);
     const explicit = (key: (typeof preferences)[number]["key"]) =>
