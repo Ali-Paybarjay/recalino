@@ -22,26 +22,17 @@
 
 در Session sources، اعلان پس از بارگذاری و پیام وضعیت بدون رسید بارگذاری همین اقدام‌ها را نشان می‌دهند: کمبود سهمیه «Ask for more allowance» و «Review allowance»، نبود سهمیه «Ask the pilot operator» و «Review allowance»، و سهمیهٔ کافی «Retry processing».
 
-## Workstream 4 — تشخیص صدا (`feat/voice-detection`، 2026-10-12)
+**تأیید 2026-10-13:** مالک محصول هر پانزده متن تشخیص صدا (`voiceDetection.*`: تأیید یک‌بارهٔ کلاس، گروه «Short voices» و انتخاب در سطح خط، D64/D65) را عیناً تأیید کرد. متن‌ها به [`voice/voice-copy.ts`](../../apps/web/src/ui/voice/voice-copy.ts) منتقل شدند. متن راهنمای ضبط نمونه در شرایط کلاس (پاسخ ۸ همان روز) در بخش زیر در انتظار است.
 
-متن‌های تأیید یک‌بارهٔ کلاس و انتخاب در سطح خط (D64). طبق D65، مالک محصول همه را یک‌جا در پایان بازبینی می‌کند. متن‌های موجود و مصوب («Yes, this is my voice»، «No, show other speakers»، «None of these voices is mine»، «This is not my voice» و «این صدای توست؟») بدون تغییر دوباره به کار رفته‌اند.
+## Workstream 4 — تشخیص صدا، دور دوم (`feat/voice-detection`، 2026-10-13)
+
+راهنمای ضبط نمونهٔ صدا در شرایط کلاس، طبق پاسخ مالک محصول به پرسش ۸ (2026-10-13). تفاوت کانال بین نمونهٔ نزدیک به دهان و صدای دور کلاس امتیاز همهٔ صداها را به هم نزدیک می‌کند (۰٫۷۰ تا ۰٫۷۷ در کلاس 2026-10-12).
 
 | کلید | متن | حالت | منشأ | وضعیت |
 |---|---|---|---|---|
-| `voiceDetection.classHeading` | Your voice in this class | عنوان بخش تأیید صدا برای کل کلاس | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.classIntro` | Recalino matched the same voices across this class's recordings. Confirm your voice once for the whole class. | توضیح بالای تأیید یک‌بارهٔ کلاس | D64، PRD-SPK-02 | در انتظار تأیید (D65) |
-| `voiceDetection.heardIn` | Heard in {count} of {total} recordings | زیر هر صدای کلاس: در چند بخش ضبط شنیده شده | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.ambiguous` | This voice sounded like more than one voice in another recording, so those recordings were not joined. Check them separately below. | پیوند مبهم بین بخش‌ها | FR-VOC-002، D64 | در انتظار تأیید (D65) |
-| `voiceDetection.classConfirmed` | Your voice is confirmed for this whole class. | پس از تأیید کلاس | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.coveredByClass` | Your choice for the whole class above covers this recording. | کارت هر بخش وقتی تأیید کلاس آن را پوشش می‌دهد | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.shortVoices` | Short voices ({count}) | گروه بسته‌شدهٔ صداهای کوتاه | وظیفهٔ ۱ (صداهای تکه‌ای) | در انتظار تأیید (D65) |
-| `voiceDetection.shortVoicesDetail` | These voices have too little clear speech to suggest. Choose one only if you recognise it. | داخل گروه صداهای کوتاه | وظیفهٔ ۱ | در انتظار تأیید (D65) |
-| `voiceDetection.linesHeading` | Lines that may be yours | عنوان فهرست خط‌های پیشنهادی | D64 (تشخیص گویندهٔ هدف) | در انتظار تأیید (D65) |
-| `voiceDetection.linesIntro` | These short lines sound like your voice sample. Mark the lines you said. Only lines you mark can add spoken mistakes. | توضیح فهرست خط‌ها | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.lineMine` | This is me | دکمهٔ هر خط | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.lineNotMine` | Not me | دکمهٔ هر خط | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.lineUndo` | Undo | برگرداندن انتخاب خط | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.lineMarkedMine` | Marked as yours | وضعیت خط | D64 | در انتظار تأیید (D65) |
-| `voiceDetection.lineMarkedNotMine` | Marked as not yours | وضعیت خط | D64 | در انتظار تأیید (D65) |
+| `voiceSample.classConditions` | Record this sample the way your classes are recorded: the same phone, placed where it is during class, in a room like your classroom. A sample recorded close to your mouth is harder to match with the recording of a class. | زیر عنوان «Record 30 seconds in your own voice»، پیش از شروع ضبط | پاسخ ۸ مالک، 2026-10-13 | در انتظار تأیید (D65) |
+| `voiceSample.recordAgain` | Record a new sample | دکمهٔ ضبط دوباره وقتی نمونه‌ای ذخیره شده است | پاسخ ۸ مالک، 2026-10-13 | در انتظار تأیید (D65) |
+| `voiceSample.replaces` | A new sample replaces the saved one. Sessions matched with the old sample will ask you again. | زیر دکمهٔ ضبط دوباره | پاسخ ۸ مالک؛ D54 (جایگزینی نمونه پذیرش‌های خودکار را باطل می‌کند) | در انتظار تأیید (D65) |
+
 
 متن‌های پیشین همین صفحه‌ها که پیش از 2026-10-08 مستقیم در کد نوشته شده‌اند در این فهرست نیستند؛ ثبت آن‌ها کار جداگانه‌ای است.

@@ -1,10 +1,10 @@
 "use client";
 import type { VoiceAnalysisView } from "@recalino/core/voice-contracts";
-import { pendingCopy } from "../pending-copy";
 import { Actions, Button } from "../workspace/primitives";
 import styles from "./Voice.module.css";
+import { voiceCopy } from "./voice-copy";
 
-const copy = pendingCopy.voiceDetection;
+const copy = voiceCopy;
 
 /** The learner marks one line of one part as theirs or not (D64), as sent to the voice route. */
 export type VoiceLineAction = {

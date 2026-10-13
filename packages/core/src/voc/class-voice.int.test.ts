@@ -441,3 +441,17 @@ it("FR-VOC-005 audit: a line marked as mine shows a mistake only with a second s
     renderClassNotesHtml(await projectVerifiedSpeech(db, x.ctx, x.session.id, model)),
   ).not.toContain("She goes home.");
 });
+
+it("owner decision 2026-10-13 (question 5): parts are listed in recording order, not by id", async () => {
+  const x = await voiceFixture(db);
+  const later = await addPart(x, { candidates: [voice("later", 30000)], embeddings: [] });
+  const earlier = await addPart(x, { candidates: [voice("earlier", 30000)], embeddings: [] });
+  // The third source was registered last, whatever its id sorts like.
+  await db
+    .updateTable("src.asset")
+    .set({ created_at: new Date(x.now.getTime() - 60_000) })
+    .where("id", "=", earlier.sourceId)
+    .execute();
+  const view = await getClassVoice(db, x.ctx, x.session.id);
+  expect(view.analyses.map((item) => item.id)).toEqual([earlier.id, x.analysis.id, later.id]);
+});

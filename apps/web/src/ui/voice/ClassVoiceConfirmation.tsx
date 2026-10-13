@@ -6,13 +6,12 @@ import type {
   VoiceCandidate,
 } from "@recalino/core/voice-contracts";
 import { useCallback, useEffect, useState } from "react";
-import { fillCopy, pendingCopy } from "../pending-copy";
 import { Actions, Button, Status } from "../workspace/primitives";
 import styles from "./Voice.module.css";
 import { useLocalVoiceAudio, VoiceClips } from "./VoiceClips";
-import { voiceCopy } from "./voice-copy";
+import { fillCopy, voiceCopy } from "./voice-copy";
 
-const copy = pendingCopy.voiceDetection;
+const copy = voiceCopy;
 
 /** One choice for the whole class (D64), as sent to `/api/classes/:id/voice`. */
 export type ClassVoiceAction = {

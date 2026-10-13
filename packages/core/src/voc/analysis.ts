@@ -588,6 +588,20 @@ export async function getClassVoice(
       };
     }),
   );
+  // Parts in recording order (owner decision 2026-10-13, question 5): by the time each source
+  // was registered, never by its random id.
+  const registered = new Map(
+    (
+      await Promise.all(
+        rows.map(async (row) => [row.id, await sourceRegisteredAt(db, ctx, row)] as const),
+      )
+    ).map(([id, at]) => [id, at]),
+  );
+  analyses.sort(
+    (a, b) =>
+      (registered.get(a.id) ?? 0) - (registered.get(b.id) ?? 0) ||
+      a.sourceId.localeCompare(b.sourceId),
+  );
   const classView = classVoiceEntries(analyses);
   return {
     features: { classConfirmation: settings.classConfirmation, lineChoices: settings.targetTurns },
@@ -666,6 +680,10 @@ export function classVoiceEntries(analyses: readonly VoiceAnalysisView[]): {
       : undefined
     : ranked.find(([, group]) => group.suggestible && group.pending);
   return { voices, candidateId: candidate?.[0] ?? null };
+}
+async function sourceRegisteredAt(db: Database | Tx, ctx: LearnerContext, row: Row) {
+  const asset = await getSource(db, ctx, row.source_id).catch(() => null);
+  return asset ? new Date(asset.created_at).getTime() : 0;
 }
 /** Name, length and checksum of the learner's own registered recording, for local playback. */
 async function sourceIdentity(db: Database | Tx, ctx: LearnerContext, row: Row) {
