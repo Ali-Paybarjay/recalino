@@ -71,20 +71,40 @@ for (const width of [390, 1440]) {
     await expect(frame.locator("#core .entry")).toHaveCount(3);
     await expect(page.locator(frameSelector)).toHaveAttribute("sandbox", "allow-scripts");
     await expect(page.locator(frameSelector)).not.toHaveAttribute("sandbox", /allow-same-origin/);
-    const contentHeight = await frame.locator("html").evaluate((element) => element.scrollHeight);
+    // The frame reports its document height asynchronously and measures again after late layout
+    // (observers, loads, fonts). Under full-suite load that layout can still grow after a first
+    // read, so each check reads the content height afresh instead of comparing with one sample.
+    const frameElement = page.locator(frameSelector);
+    const frameSize = async () => {
+      const [box, content] = await Promise.all([
+        frameElement.boundingBox(),
+        frame.locator("html").evaluate((element) => element.scrollHeight),
+      ]);
+      return { height: box?.height ?? 0, content };
+    };
     await expect
-      .poll(async () => (await page.locator(frameSelector).boundingBox())?.height ?? 0)
-      .toBeGreaterThan(contentHeight - 5);
-    expect(contentHeight).toBeGreaterThan(2000);
-    const settledHeights = await page.locator(frameSelector).evaluate(async (element) => {
-      const heights: number[] = [];
-      for (let frame = 0; frame < 8; frame++) {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-        heights.push(element.getBoundingClientRect().height);
-      }
-      return heights;
-    });
-    expect(Math.max(...settledHeights) - Math.min(...settledHeights)).toBeLessThan(2);
+      .poll(async () => {
+        const { height, content } = await frameSize();
+        return height - content;
+      })
+      .toBeGreaterThan(-5);
+    // Settled: 16 consecutive frames at one height that still covers the current content. A
+    // resize loop or runaway growth never gives such a window, so this fails on either; it only
+    // waits out late layout rather than sampling one fixed moment.
+    await expect(async () => {
+      const heights = await frameElement.evaluate(async (element) => {
+        const values: number[] = [];
+        for (let frame = 0; frame < 16; frame++) {
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+          values.push(element.getBoundingClientRect().height);
+        }
+        return values;
+      });
+      expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(2);
+      const { height, content } = await frameSize();
+      expect(height).toBeGreaterThan(content - 5);
+    }).toPass({ timeout: 10_000 });
+    expect((await frameSize()).content).toBeGreaterThan(2000);
     await mkdir(output, { recursive: true });
     for (const theme of ["light", "dark"] as const) {
       await page.evaluate((value) => {
