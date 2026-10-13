@@ -206,3 +206,46 @@ export function mergeVoices(segments, embedSpan, threshold, minSpeechMs = 4000) 
     })),
   );
 }
+
+/**
+ * Clean single turns for target-speaker scoring: a detected turn's parts at least 200 ms from any
+ * other voice, away from the composite's edges and splices, at least `minMs` long. Unlike
+ * voiceprint spans these keep short turns (1.5–2.4 s); each yields at most one 10-second span.
+ */
+export function targetTurnSpans(segments, durationMs, offsetMs = 0, boundaries = [], minMs = 1500) {
+  const end = offsetMs + Math.floor(durationMs);
+  const spans = [];
+  for (const segment of segments) {
+    if (
+      segment.startMs < offsetMs + 200 ||
+      segment.endMs > end - 200 ||
+      boundaries.some(
+        (boundary) =>
+          segment.startMs < offsetMs + boundary + 200 && segment.endMs > offsetMs + boundary - 200,
+      )
+    )
+      continue;
+    let parts = [{ startMs: segment.startMs + 100, endMs: segment.endMs - 100 }];
+    for (const other of segments) {
+      if (other.speakerId === segment.speakerId) continue;
+      const cutStart = other.startMs - 200;
+      const cutEnd = other.endMs + 200;
+      parts = parts.flatMap((part) =>
+        cutEnd <= part.startMs || cutStart >= part.endMs
+          ? [part]
+          : [
+              { startMs: part.startMs, endMs: Math.min(part.endMs, cutStart) },
+              { startMs: Math.max(part.startMs, cutEnd), endMs: part.endMs },
+            ].filter((piece) => piece.endMs > piece.startMs),
+      );
+    }
+    const longest = parts.sort((a, b) => b.endMs - b.startMs - (a.endMs - a.startMs))[0];
+    if (!longest || longest.endMs - longest.startMs < minMs) continue;
+    spans.push({
+      speakerId: segment.speakerId,
+      startMs: longest.startMs,
+      endMs: Math.min(longest.endMs, longest.startMs + 10000),
+    });
+  }
+  return spans.slice(0, 2000);
+}

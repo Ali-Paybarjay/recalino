@@ -16,7 +16,9 @@ import {
 import { voiceAnalysisBlockedReason, voiceProcessingStatus } from "@recalino/core/proc";
 import {
   beginVoiceEnrollment,
+  changeClassVoiceIdentity,
   changeVoiceIdentity,
+  changeVoiceLine,
   cleanupVoiceSampleObjects,
   completeVoiceEnrollment,
   failVoiceEnrollment,
@@ -25,7 +27,9 @@ import {
   revokeVoiceData,
   saveVoiceSample,
   voiceActionSchema,
+  voiceClassActionSchema,
   voiceEnrollmentSchema,
+  voiceLineActionSchema,
 } from "@recalino/core/voc";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
@@ -163,7 +167,11 @@ export function classVoiceHandler(sessionId: string): Handler {
       );
       return { status: 202, body: run ?? {} };
     }
-    const change = voiceActionSchema.parse(input);
+    // One choice for the whole class, a line choice, or one part's choice (FR-VOC-004).
+    const change = z
+      .union([voiceClassActionSchema, voiceLineActionSchema, voiceActionSchema])
+      .parse(input);
+    const confirms = "action" in change && change.action === "confirm";
     await runIdempotent(
       db,
       {
@@ -175,8 +183,13 @@ export function classVoiceHandler(sessionId: string): Handler {
         beforeKey: (tx) => lockAccount(tx, learner.userId),
       },
       async (tx) => {
-        await changeVoiceIdentity(tx, learner, sessionId, change);
-        if (change.action === "confirm") await tombstoneSessionHtmlExports(tx, learner, sessionId);
+        if (!("scope" in change)) await changeVoiceIdentity(tx, learner, sessionId, change);
+        else if (change.scope === "class")
+          await changeClassVoiceIdentity(tx, learner, sessionId, change);
+        else await changeVoiceLine(tx, learner, sessionId, change);
+        // Exports showing this class's spoken mistakes are rebuilt from the new attribution.
+        if (confirms || "choice" in change)
+          await tombstoneSessionHtmlExports(tx, learner, sessionId);
         else await tombstoneAccountHtmlExports(tx, learner);
         return { status: 200, body: {} };
       },
@@ -187,7 +200,7 @@ export function classVoiceHandler(sessionId: string): Handler {
         db,
         store,
         learner,
-        change.action === "confirm" ? { sessionId } : {},
+        confirms || "choice" in change ? { sessionId } : {},
       );
     return {
       body: {

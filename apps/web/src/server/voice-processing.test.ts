@@ -205,3 +205,39 @@ it("refuses an expired exact class original before reading bytes or dispatching 
   expect(mocks.decode).not.toHaveBeenCalled();
   expect(mocks.diarize).not.toHaveBeenCalled();
 });
+
+it("workstream 4: a background check may cover more excerpts and remaps turn voiceprints", async () => {
+  const samples = new Float32Array(22000 * 16).fill(0.1);
+  mocks.decode.mockResolvedValue({
+    samples,
+    sampleRate: 16000,
+    windows: [
+      { sourceStartMs: 100000, compositeStartMs: 0, compositeEndMs: 10000 },
+      { sourceStartMs: 7500000, compositeStartMs: 12000, compositeEndMs: 22000 },
+    ],
+  });
+  mocks.diarize.mockImplementation(async (_pcm, options) => {
+    expect(options.targetTurnMinMs).toBe(1500);
+    return {
+      modelRevision: "same-enrollment-model",
+      speakers: [],
+      segments: [],
+      turns: [
+        { speakerId: "global-1", startMs: 1000, endMs: 2800, embedding: [1, 0] },
+        // Next to the splice between excerpts: its speech may be cut, so it is dropped.
+        { speakerId: "global-1", startMs: 9900, endMs: 11500, embedding: [1, 0] },
+        { speakerId: "global-2", startMs: 13000, endMs: 15000, embedding: [0, 1] },
+      ],
+    };
+  });
+  const result = await diarizeSourceVoice({
+    ...input,
+    options: { plan: { windowMs: 58000, maxWindows: 16 }, targetTurnMinMs: 1500 },
+  });
+  expect(mocks.decode.mock.calls[0]?.[1]).toHaveLength(16);
+  expect(result.turns?.map((turn) => [turn.speakerId, turn.startMs, turn.endMs])).toEqual([
+    ["global-1", 101000, 102800],
+    ["global-2", 7501000, 7503000],
+  ]);
+  expect(samples.every((sample) => sample === 0)).toBe(true);
+});

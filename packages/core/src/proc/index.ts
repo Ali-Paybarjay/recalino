@@ -111,13 +111,17 @@ export {
 } from "./voice-jobs";
 export {
   alignVoiceUtterances,
+  analyzeVoiceSources,
   buildVoiceAnalysis,
   correctVoiceCandidates,
   processVoiceSource,
   scopedVoiceSpeakerId,
+  turnEmbeddings,
   type VoiceCorrectionExecutor,
   type VoiceDiarization,
+  type VoiceDiarizationOptions,
   type VoiceDiarizer,
+  voiceDiarizationOptions,
 } from "./voice-processing";
 export {
   type AudioChunk,

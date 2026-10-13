@@ -1,6 +1,7 @@
 export * from "./analysis";
 export * from "./contracts";
 export * from "./enrollment";
+export * from "./linking";
 export * from "./matching";
 export * from "./policy";
 export * from "./policy-registry";
@@ -8,4 +9,5 @@ export * from "./privacy";
 export * from "./profile";
 export * from "./projection";
 export { voiceAnalysisTimes } from "./report";
+export * from "./settings";
 export { findRepeatedVoiceEvidence, hasRepeatableVoiceEvidence } from "./spoken-evidence";

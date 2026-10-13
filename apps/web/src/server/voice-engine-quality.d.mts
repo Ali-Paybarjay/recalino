@@ -26,3 +26,10 @@ export function mergeVoices(
   threshold: number,
   minSpeechMs?: number,
 ): QualifiedVoiceSegment[];
+export function targetTurnSpans(
+  segments: QualifiedVoiceSegment[],
+  durationMs: number,
+  offsetMs?: number,
+  boundaries?: number[],
+  minMs?: number,
+): { speakerId: string; startMs: number; endMs: number }[];

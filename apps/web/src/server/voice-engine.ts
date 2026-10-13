@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { arch, platform } from "node:os";
+import { arch, availableParallelism, platform } from "node:os";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import type { QualifiedVoiceSegment } from "./voice-engine-quality.mjs";
@@ -25,12 +25,19 @@ export type VoiceDiarization = {
   modelRevision: string;
   segments: VoiceSegment[];
   speakers: { speakerId: string; embedding: number[]; cleanSpeechMs: number }[];
+  /** Transient voiceprints of clean single turns, only when `targetTurnMinMs` was requested. */
+  turns?: { speakerId: string; startMs: number; endMs: number; embedding: number[] }[];
 };
 export interface VoiceEngine {
   readonly modelRevision: string;
   diarize(
     samples: Float32Array,
-    options?: { sampleRate?: number; offsetMs?: number; boundaries?: number[] },
+    options?: {
+      sampleRate?: number;
+      offsetMs?: number;
+      boundaries?: number[];
+      targetTurnMinMs?: number;
+    },
   ): Promise<VoiceDiarization>;
   embed(samples: Float32Array, sampleRate?: number): Promise<number[]>;
 }
@@ -42,6 +49,8 @@ type Configuration = {
   spanMode: VoiceSpanMode;
   mergeThreshold: number | null;
   numThreads: number;
+  /** Native workers that may run at once (voiceEnginePool). */
+  workers: number;
   timeoutMs: number;
 };
 
@@ -75,8 +84,27 @@ export function workerFailureCode(code: unknown): string {
     : "voice_inference_failed";
 }
 
-let running: Promise<unknown> = Promise.resolve();
+/**
+ * Native workers that run at once, and the threads each uses: recording parts are diarized side
+ * by side when the function has several CPUs, never more workers than CPUs (at most three).
+ */
+export function voiceEnginePool(cpus = availableParallelism()) {
+  const workers = Math.max(1, Math.min(3, Math.floor(cpus)));
+  return { workers, threadsPerWorker: Math.max(1, Math.min(2, Math.floor(cpus / workers))) };
+}
+/** Requests waiting or running before a new one is refused as busy. */
+export const VOICE_ENGINE_QUEUE_LIMIT = 8;
+let active = 0;
 let pending = 0;
+const waiting: (() => void)[] = [];
+async function slot(limit: number): Promise<() => void> {
+  if (active >= limit) await new Promise<void>((resume) => waiting.push(resume));
+  active++;
+  return () => {
+    active--;
+    waiting.shift()?.();
+  };
+}
 function workerPath(): string {
   // Keep the worker as a traced source asset; webpack cannot inline its relative native imports.
   const candidates = [
@@ -93,47 +121,50 @@ function execute<T>(
   configuration: Configuration,
   offsetMs = 0,
   boundaries: number[] = [],
+  targetTurnMinMs: number | null = null,
 ): Promise<T> {
-  if (pending >= 2) return Promise.reject(new Error("voice_engine_busy"));
+  if (pending >= VOICE_ENGINE_QUEUE_LIMIT) return Promise.reject(new Error("voice_engine_busy"));
   pending++;
   // Capture before queueing: validation and inference must see the same samples.
   const ownedSamples = Float32Array.from(samples);
-  const task = running
-    .catch(() => {})
-    .then(
-      () =>
-        new Promise<T>((accept, reject) => {
-          const worker = new Worker(workerPath(), {
-            workerData: { operation, samples: ownedSamples, configuration, offsetMs, boundaries },
-            transferList: [ownedSamples.buffer],
-          });
-          let finished = false;
-          const timer = setTimeout(
-            () => finish(new Error("voice_inference_timeout")),
-            configuration.timeoutMs,
-          );
-          const finish = (error?: Error, value?: T) => {
-            if (finished) return;
-            finished = true;
-            clearTimeout(timer);
-            void worker.terminate().finally(() => (error ? reject(error) : accept(value as T)));
-          };
-          worker.once("message", (message: { ok: boolean; value?: T; error?: unknown }) =>
-            message.ok
-              ? finish(undefined, message.value)
-              : finish(new Error(workerFailureCode(message.error))),
-          );
-          worker.once("error", () => finish(new Error("voice_inference_failed")));
-          worker.once("exit", () => {
-            if (!finished) finish(new Error("voice_worker_interrupted"));
-          });
-        }),
-    );
-  const settled = task.finally(() => {
+  const task = slot(configuration.workers).then((release) =>
+    new Promise<T>((accept, reject) => {
+      const worker = new Worker(workerPath(), {
+        workerData: {
+          operation,
+          samples: ownedSamples,
+          configuration,
+          offsetMs,
+          boundaries,
+          targetTurnMinMs,
+        },
+        transferList: [ownedSamples.buffer],
+      });
+      let finished = false;
+      const timer = setTimeout(
+        () => finish(new Error("voice_inference_timeout")),
+        configuration.timeoutMs,
+      );
+      const finish = (error?: Error, value?: T) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        void worker.terminate().finally(() => (error ? reject(error) : accept(value as T)));
+      };
+      worker.once("message", (message: { ok: boolean; value?: T; error?: unknown }) =>
+        message.ok
+          ? finish(undefined, message.value)
+          : finish(new Error(workerFailureCode(message.error))),
+      );
+      worker.once("error", () => finish(new Error("voice_inference_failed")));
+      worker.once("exit", () => {
+        if (!finished) finish(new Error("voice_worker_interrupted"));
+      });
+    }).finally(release),
+  );
+  return task.finally(() => {
     pending--;
   });
-  running = settled;
-  return settled;
 }
 
 /**
@@ -178,6 +209,7 @@ export async function loadVoiceEngine(
       .digest("hex");
     if (actual !== expected) throw new Error("voice_model_integrity_mismatch");
   }
+  const pool = voiceEnginePool();
   const configuration: Configuration = {
     segmentationPath,
     embeddingPath,
@@ -186,7 +218,8 @@ export async function loadVoiceEngine(
     spanMode: options.spanMode ?? VOICE_SPAN_MODE,
     mergeThreshold:
       options.mergeThreshold === undefined ? VOICE_MERGE_THRESHOLD : options.mergeThreshold,
-    numThreads: 2,
+    numThreads: pool.threadsPerWorker,
+    workers: pool.workers,
     timeoutMs: 600000,
   };
   return {
@@ -203,7 +236,17 @@ export async function loadVoiceEngine(
         )
       )
         throw new Error("voice_boundary_invalid");
-      return execute<VoiceDiarization>("diarize", samples, configuration, offsetMs, boundaries);
+      const turnMinMs = options.targetTurnMinMs ?? null;
+      if (turnMinMs !== null && (!Number.isSafeInteger(turnMinMs) || turnMinMs < 1500))
+        throw new Error("voice_turn_minimum_invalid");
+      return execute<VoiceDiarization>(
+        "diarize",
+        samples,
+        configuration,
+        offsetMs,
+        boundaries,
+        turnMinMs,
+      );
     },
     embed(samples, sampleRate = 16000) {
       validateVoicePcm(samples, sampleRate);

@@ -9,6 +9,7 @@ import {
   canonicalJson,
   enqueueJob,
   errors,
+  type JobContext,
   type JobDefinition,
   type LearnerContext,
   readPltSettings,
@@ -16,7 +17,7 @@ import {
 } from "../plt";
 import { amounts, amountsSchema, emptyAmounts } from "../quota";
 import { liveTemporaryAudioObject, TEMPORARY_AUDIO_SWEEP_SECONDS } from "../src";
-import { getVoiceEnrollment, type VoiceAnalysisBlockedReason } from "../voc";
+import { getVoiceEnrollment, readVoiceSettings, type VoiceAnalysisBlockedReason } from "../voc";
 import {
   completeAuxiliaryRun,
   executeAuxiliaryProviderStep,
@@ -26,10 +27,12 @@ import {
 import { sourceSnapshotSchema } from "./contracts";
 import { ownedRun, selectProcessingSourceSnapshot } from "./runs";
 import {
+  analyzeVoiceSources,
   correctVoiceCandidates,
   hasTranscriptVoiceEvidence,
   processVoiceSource,
   type VoiceDiarizer,
+  voiceDiarizationOptions,
 } from "./voice-processing";
 
 const payloadSchema = z.strictObject({ runId: z.uuid(), userId: z.uuid(), subjectId: z.uuid() });
@@ -214,6 +217,32 @@ export async function voiceProcessingStatus(
   );
 }
 
+type VoicePayload = z.infer<typeof payloadSchema>;
+/** Each saved step continues in a fresh job, so no job holds both a check and a paid call. */
+async function continueVoiceJob(
+  job: JobContext,
+  ctx: LearnerContext,
+  runId: string,
+  definition: JobDefinition<VoicePayload>,
+  payload: VoicePayload,
+) {
+  await job.db.transaction().execute(async (tx) => {
+    const current = await ownedRun(tx, ctx, runId, true);
+    if (!["queued", "processing"].includes(current.state)) return;
+    const jobId = await enqueueJob(tx, definition, {
+      payload,
+      singletonKey: `${runId}:${job.job.id}`,
+      now: job.now(),
+      defaults: readPltSettings().jobs,
+    });
+    await tx
+      .updateTable("proc.processing_run")
+      .set({ job_id: jobId, state: "processing", updated_at: job.now() })
+      .where("id", "=", runId)
+      .execute();
+  });
+}
+
 export function voiceAnalysisJob(
   dependencies: VoiceJobDependencies,
 ): JobDefinition<z.infer<typeof payloadSchema>> {
@@ -238,7 +267,23 @@ export function voiceAnalysisJob(
         if (!enrollment.enabled || enrollment.version !== settings.profileVersion)
           throw errors.validationFailed({ voice: ["consent_changed"] });
         const snapshot = snapshotSchema.parse(run.input_snapshot).request;
-        for (const source of snapshot.sources) {
+        const voiceSettings = readVoiceSettings();
+        // A background check: its parts are diarized together, and it may cover more audio.
+        const options = voiceDiarizationOptions(voiceSettings, true);
+        const analyzed = await analyzeVoiceSources({
+          db: job.db,
+          ctx,
+          sessionId: run.session_id,
+          runId: run.id,
+          sources: snapshot.sources,
+          diarize: dependencies.diarize,
+          ...(options ? { options } : {}),
+          explanationLanguage: settings.explanationLanguage,
+          concurrency: voiceSettings.diarizationConcurrency,
+          canStart: () => true,
+          now: job.now,
+        });
+        for (const source of analyzed ? [] : snapshot.sources) {
           const progress = await processVoiceSource({
             db: job.db,
             ctx,
@@ -246,6 +291,7 @@ export function voiceAnalysisJob(
             sessionId: run.session_id,
             source,
             diarize: dependencies.diarize,
+            ...(options ? { options } : {}),
             explanationLanguage: settings.explanationLanguage,
             now: job.now,
             correct: (analysis) =>
@@ -264,23 +310,13 @@ export function voiceAnalysisJob(
               }),
           });
           if (progress !== "unchanged") {
-            await job.db.transaction().execute(async (tx) => {
-              const current = await ownedRun(tx, ctx, run.id, true);
-              if (!["queued", "processing"].includes(current.state)) return;
-              const jobId = await enqueueJob(tx, definition, {
-                payload,
-                singletonKey: `${run.id}:${job.job.id}`,
-                now: job.now(),
-                defaults: readPltSettings().jobs,
-              });
-              await tx
-                .updateTable("proc.processing_run")
-                .set({ job_id: jobId, state: "processing", updated_at: job.now() })
-                .where("id", "=", run.id)
-                .execute();
-            });
+            await continueVoiceJob(job, ctx, run.id, definition, payload);
             return;
           }
+        }
+        if (analyzed) {
+          await continueVoiceJob(job, ctx, run.id, definition, payload);
+          return;
         }
         const charged = await job.db
           .selectFrom("proc.provider_attempt")
