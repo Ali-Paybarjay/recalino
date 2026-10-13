@@ -1,0 +1,317 @@
+{
+  "schemaVersion": "1",
+  "title": "حروف الجر للحركة والاتجاهات",
+  "language": {
+    "learning": "en",
+    "explanation": "ar"
+  },
+  "summary": [
+    {
+      "id": "claim-556514f74068178d5777dcbe-1",
+      "text": "تُستخدم حروف الجر الخاصة بالحركة لتوضيح اتجاه الرحلة والمسار مثل across للعبور و along للمحاذاة.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000126-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "page",
+            "page": 1,
+            "blockId": "movement"
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-f0a227e92ff3292dd556402a-1",
+      "text": "تُستعمل into مع أفعال الانتقال للتعبير عن الدخول الفعلي بينما تُستعمل in للموقع الساكن.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000126-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "page",
+            "page": 3,
+            "blockId": "into-in"
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-ad298c36d3f42fe4a337bb78-1",
+      "title": "حروف جر الاتجاه والحركة",
+      "claims": [
+        {
+          "id": "claim-7bdbe4888da57f33f586fc90-1",
+          "text": "تساعد حروف الجر مثل across و along و into في إعطاء توجيهات مكانية دقيقة أثناء التنقل.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000126-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "page",
+                "page": 1,
+                "blockId": "movement"
+              }
+            },
+            {
+              "sourceId": "ad000126-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "page",
+                "page": 3,
+                "blockId": "into-in"
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-920f1ab39a9963c5c443ec73-1",
+      "kind": "vocabulary",
+      "front": "across",
+      "back": "عَبْرَ أو إلى الجانب المقابل",
+      "claim": {
+        "id": "claim-8eb80fd34b4caf7be6f3b46d-1",
+        "text": "يُستخدم حرف الجر across للتعبير عن الانتقال من جانب إلى الجانب الآخر من طريق أو جسر.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000126-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "page",
+              "page": 1,
+              "blockId": "movement"
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "across",
+        "faMeaning": "عَبْرَ أو إلى الجانب المقابل",
+        "topic": "الاتجاهات وحروف الجر",
+        "ipa": "/əˈkrɒs/",
+        "gapSentence": "Walk ______ the bridge and then go along the river path.",
+        "fullSentence": "Walk across the bridge and then go along the river path.",
+        "collocations": [
+          "walk across",
+          "go across"
+        ],
+        "noteFa": "تحدد كلمة across في Walk across the bridge حركة العبور المباشرة من ضفة إلى الضفة المقابلة.",
+        "imageFa": "مشاة يعبرون جسراً حجرياً فوق نهر من ضفة إلى أخرى.",
+        "sourceFa": "من الصف"
+      }
+    },
+    {
+      "id": "item-afa3d3e8b1fddf844d313f3f-1",
+      "kind": "vocabulary",
+      "front": "along",
+      "back": "بمحاذاة أو على طول",
+      "claim": {
+        "id": "claim-ab8eec95401a593d912681d9-1",
+        "text": "يُستخدم حرف الجر along للدلالة على السير بمحاذاة شارع أو نهر باتجاه معين.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000126-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "page",
+              "page": 1,
+              "blockId": "movement"
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "along",
+        "faMeaning": "بمحاذاة أو على طول",
+        "topic": "الاتجاهات وحروف الجر",
+        "ipa": "/əˈlɒŋ/",
+        "gapSentence": "Go ______ the river path.",
+        "fullSentence": "Go along the river path.",
+        "collocations": [
+          "go along",
+          "walk along"
+        ],
+        "noteFa": "تفيد كلمة along في Go along the river path الحركة المتواصلة بمحاذاة مسار النهر.",
+        "imageFa": "طريق ترابي موازٍ لمجرى نهر هادئ مع أسهم تشير إلى اتجاه المسير.",
+        "sourceFa": "من الصف"
+      }
+    },
+    {
+      "id": "item-8d15c331288cba9bca288717-1",
+      "kind": "grammar",
+      "front": "into",
+      "back": "إلى الداخل (للدلالة على الدخول بعد فعل حركة)",
+      "claim": {
+        "id": "claim-21a360a97cb52d1479d8de97-1",
+        "text": "يأتي حرف الجر into بعد أفعال الحركة مثل run و walk لتوضيح الدخول إلى المكان، بينما يُستخدم in للدلالة على الموقع الثابت.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000126-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "page",
+              "page": 3,
+              "blockId": "into-in"
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "into",
+        "faMeaning": "إلى الداخل (للدلالة على الدخول بعد فعل حركة)",
+        "topic": "قواعد حروف الجر",
+        "kind": "grammar",
+        "ipa": "/ræn ˈɪntə ðə ˈɡɑːdn/",
+        "ipaText": "ran into the garden",
+        "fullSentence": "The children ran into the garden.",
+        "collocations": [
+          "run into",
+          "jump into",
+          "walk into"
+        ],
+        "noteFa": "توضح into في ran into the garden انتقال الأطفال من خارج الحديقة إلى داخلها بعد فعل الحركة ran.",
+        "imageFa": "أطفال يركضون ويعبرون بوابة حديقة للدخول إلى داخلها.",
+        "sourceFa": "من الصف",
+        "taskFa": "اختر حرف الجر الصحيح بين القوسين لإكمال الجملة الدالة على الحركة والدخول.",
+        "prompt": "The children ran (in / into) the garden."
+      }
+    },
+    {
+      "id": "item-483aa5448e3751ddffca2eb2-1",
+      "kind": "expression",
+      "front": "get lost",
+      "back": "يضل الطريق أو يتوه",
+      "claim": {
+        "id": "claim-93bdf0cd24bda49570826a0e-1",
+        "text": "يعني التعبير get lost عدم القدرة على معرفة الطريق أو التوهان.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000126-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000126-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "page",
+              "page": 4,
+              "blockId": "get-lost"
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "get lost",
+        "faMeaning": "يضل الطريق أو يتوه",
+        "topic": "السفر والملاحة",
+        "ipa": "/ɡet ˈlɒst/",
+        "gapSentence": "We ______ in the old town because we didn't have a map.",
+        "fullSentence": "We got lost in the old town because we didn't have a map.",
+        "collocations": [
+          "get lost easily",
+          "get lost in a big city"
+        ],
+        "noteFa": "تعبّر صيغة الماضي got lost في We got lost in the old town عن ضياع الطريق لعدم وجود خريطة.",
+        "imageFa": "شخصان يقفان عند مفترق طرق في حي تاريخي ويتأملان الأزقة بحيرة.",
+        "sourceFa": "من الصف"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": false,
+    "missingSourceIds": [
+      "ad000126-1111-4111-8111-000000000001"
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Community English A2",
+    "coverage": "تغطية حروف الجر الخاصة بالحركة (across و along و through و into)، والتفريق بين into و in، واستخدام التعبير get lost.",
+    "coreIntro": "يشرح هذا الدرس كيفية وصف مسارات التنقل واستخدام حروف الجر الصحيحة مع أفعال الحركة، وكيفية التعبير عن فقدان الطريق.",
+    "chunks": [
+      {
+        "pattern": "across the bridge",
+        "classSentence": "Walk across the bridge and then go along the river path.",
+        "noteFa": "نمط يعبر عن الانتقال من طرف جسر إلى الطرف الآخر."
+      }
+    ],
+    "board": [],
+    "tasks": [
+      {
+        "title": "استخدام through للحركة داخل الأماكن",
+        "blocks": [
+          {
+            "type": "text",
+            "textFa": "يُستخدم حرف الجر through للتعبير عن العبور من طرف إلى الطرف الآخر داخل مكان مغلق أو محاط مثل حديقة أو نفق (go through a park or a tunnel)."
+          },
+          {
+            "type": "items",
+            "items": [
+              {
+                "prompt": "Go (along / through) the tunnel to reach the other end.",
+                "model": "Go through the tunnel to reach the other end.",
+                "whyFa": "نستخدم through لأن الحركة تتم داخل النفق من بداية إلى نهاية."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [],
+    "gapfill": [
+      {
+        "sentence": "Walk ______ the bridge and then go along the river path.",
+        "answer": "across"
+      }
+    ],
+    "culture": []
+  }
+}

@@ -1,0 +1,223 @@
+{
+  "reviewer": "multi-reviewer-2",
+  "cases": [
+    {
+      "caseId": "S06",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 3.5, "learnerFit": 3.5, "clarityCardUsability": 3.5, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "movement-across-through-along", "adequatelyTaught": true, "evidence": "Cards for across and along use the class model; through is explained (park/tunnel, end to end) only in a notes task with one practice item, not as a card."},
+            {"id": "into-movement-in-position", "adequatelyTaught": true, "evidence": "Into card says into follows movement verbs for entering while in marks a fixed position; in/into choice prompt on the class sentence."},
+            {"id": "get-lost-lose-way", "adequatelyTaught": true, "evidence": "Card glosses get lost as losing one's way, with the old-town class example and both class combinations."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "movement-across-through-along", "adequatelyTaught": true, "evidence": "Separate cards for across (side to side), along (following a path/river) and through (end to end of a tunnel/park), plus summary and topic claims."},
+            {"id": "into-movement-in-position", "adequatelyTaught": true, "evidence": "Into card and note contrast entering after ran with in for a fixed location; in/into choice prompt."},
+            {"id": "get-lost-lose-way", "adequatelyTaught": true, "evidence": "Card, summary and chunk teach get lost as not finding your way, with class example and combinations."}
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "B gives through its own reviewable card next to across and along and has a summary covering all three blocks; A teaches through only in a side task (whose along/through item is ambiguous) and its summary omits through and get lost."
+    },
+    {
+      "caseId": "S07",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 3.5, "grounding": 3.5, "coverage": 3, "learnerFit": 3.5, "clarityCardUsability": 3.5, "explanationLanguageQuality": 3.5},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "ever-words-no-matter-clauses", "adequatelyTaught": false, "evidence": "Partial: only whatever is taught (card plus the formal 'may be' class sentence as a chunk); whoever and wherever are never mentioned and whenever appears only as the wrong distractor."},
+            {"id": "emphatic-do-contrast", "adequatelyTaught": true, "evidence": "Claim covers do/does/did + base verb in positive statements for emphasis or contrast; did sent/did send prompt and register note reject did sent."},
+            {"id": "a-drop-in-the-ocean-too-small", "adequatelyTaught": true, "evidence": "Card glosses it as an amount too small to affect a large problem, with class example and both combinations (note adds an invented 'huge financial deficit')."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 3, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "ever-words-no-matter-clauses", "adequatelyTaught": false, "evidence": "Partial: only whatever has a card; whoever is named once in the summary, wherever/whenever are absent, and formal may is stated as a claim without the class example."},
+            {"id": "emphatic-do-contrast", "adequatelyTaught": true, "evidence": "Claim covers stressed do/does/did + base verb for emphasis or contrast; did send/did sent prompt and register note."},
+            {"id": "a-drop-in-the-ocean-too-small", "adequatelyTaught": true, "evidence": "Card glosses it with the Arabic idiom for a tiny amount making no real difference, plus class example and combinations."}
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "Both cover the same three items, ignore the embedded margin instruction and thin out the ever-words; B has a full three-point summary, mentions stress for emphatic do and uses cleaner distractors, while A's whatever item allows the grammatical distractor Whenever and its do card uses an odd Arabic term for the auxiliary."
+    },
+    {
+      "caseId": "S08",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 3.5, "learnerFit": 3.5, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "question-tags-same-auxiliary", "adequatelyTaught": true, "evidence": "Card claim gives auxiliary/modal or do/does/did and the summary says opposite polarity; only the don't you model is used, the has she and can't we models are dropped."},
+            {"id": "would-you-mind-ing-request", "adequatelyTaught": true, "evidence": "Card with close/closing prompt; topic and task teach No, not at all as the polite agreement because mind means object."},
+            {"id": "fill-in-form", "adequatelyTaught": true, "evidence": "Card defines writing requested information in a form's spaces, with class example and both combinations."},
+            {"id": "isnt-it-tag-conflict", "adequatelyTaught": true, "evidence": "Uncertainty contrasts the written rule with a speaker on the recording; card prompt offers isn't it as the wrong option; the voice is not called the teacher."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "question-tags-same-auxiliary", "adequatelyTaught": true, "evidence": "Card plus chunks for all three class models (don't you, has she, can't we) and a topic claim stating both polarity directions."},
+            {"id": "would-you-mind-ing-request", "adequatelyTaught": true, "evidence": "Card claim and note give -ing and No, not at all; register note rejects Would you mind to close."},
+            {"id": "fill-in-form", "adequatelyTaught": true, "evidence": "Card, summary and topic with class example and both combinations."},
+            {"id": "isnt-it-tag-conflict", "adequatelyTaught": true, "evidence": "Uncertainty notes the conflict between the written rule and an anonymous oral claim; don't you stays the taught answer and isn't it is the wrong prompt option."}
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "B keeps all three class tag models with explicit two-way polarity, adds the 'to close' register warning and a complete summary; A drops the negative and modal tag models."
+    },
+    {
+      "caseId": "S09",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 3.5, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "nominalisation-academic-style", "adequatelyTaught": true, "evidence": "Card with the tourist-numbers before/after contrast and a transformation task built on the council sentence."},
+            {"id": "concessive-as-though-fronting", "adequatelyTaught": true, "evidence": "Card equating the pattern with although, chunks for Tired as, Much as and Strange though, and a though rewrite task."},
+            {"id": "in-the-long-run-over-time", "adequatelyTaught": true, "evidence": "Card with the over-time, not-immediately meaning, class example and both combinations."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 3.5, "learnerFit": 3.5, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "nominalisation-academic-style", "adequatelyTaught": true, "evidence": "Rule stated in summary and topic and both class sentences quoted in a task, but no card and the original verb forms are not shown."},
+            {"id": "concessive-as-though-fronting", "adequatelyTaught": true, "evidence": "As card with a rewrite-from-although prompt, a separate though recognition card and a Much as chunk."},
+            {"id": "in-the-long-run-over-time", "adequatelyTaught": true, "evidence": "Card with the over-time meaning, class example and both combinations."}
+          ]
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "A drills nominalisation, the central point for IELTS writing, with a card and a transformation task and covers every class sentence; B gives nominalisation no card and no before/after contrast. A's note calling nominalisation indispensable for high IELTS scores is an unsupported aside."
+    },
+    {
+      "caseId": "S10",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 3.5, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 3.5, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "present-perfect-just-already", "adequatelyTaught": true, "evidence": "Pattern cards for have/has just and already + participle with correct placement and meanings; yet/just and yet/already choice prompts."},
+            {"id": "present-perfect-yet-questions-negatives", "adequatelyTaught": true, "evidence": "Negative yet card, question task and register note rejecting I've booked them yet, though the note describes already as 'completion as planned'."},
+            {"id": "somewhere-unnamed-place", "adequatelyTaught": true, "evidence": "Card defines an unknown or unnamed place, with class example and all three combinations."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "present-perfect-just-already", "adequatelyTaught": true, "evidence": "Separate just and already cards with placement between have/has and the participle and the class sentences."},
+            {"id": "present-perfect-yet-questions-negatives", "adequatelyTaught": true, "evidence": "Yet card and note limit yet to questions/negatives, task explains the suitcase question, register note gives I've already booked them."},
+            {"id": "somewhere-unnamed-place", "adequatelyTaught": true, "evidence": "Card defines an unknown or unnamed place with class example and combinations."}
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "Both are complete and correct on the main rules; B's gap items are clean and its explanations accurate, while A's notes describe already as 'earlier than scheduled' and 'completion as planned' and its suitcase item also accepts already."
+    },
+    {
+      "caseId": "S10-repeat",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 3.5, "learnerFit": 3.5, "clarityCardUsability": 3.5, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "present-perfect-just-already", "adequatelyTaught": true, "evidence": "Cards for just and already give meanings and placement between have/has and the participle; the summary omits them."},
+            {"id": "present-perfect-yet-questions-negatives", "adequatelyTaught": true, "evidence": "Yet card (question form), negative chunk and register note; claim limits yet to questions and negatives."},
+            {"id": "somewhere-unnamed-place", "adequatelyTaught": true, "evidence": "Card defines an unspecified or unknown place with class example and all three combinations."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 3.5, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "present-perfect-just-already", "adequatelyTaught": true, "evidence": "Cards, summary and chunks give meanings and position between have/has and the participle."},
+            {"id": "present-perfect-yet-questions-negatives", "adequatelyTaught": true, "evidence": "Yet card, question and negative chunks and register note, though the note calls already 'completion as planned'."},
+            {"id": "somewhere-unnamed-place", "adequatelyTaught": true, "evidence": "Card and topic define a place the speaker does not know or name, with combinations."}
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "B's summary, topic and chunks cover every class rule and sentence with clean gap items; A's summary skips just and already, it has no topics, and its yet gap also admits already. B's only slips are unexplained 'british' labels and describing already as 'as planned' in one note."
+    },
+    {
+      "caseId": "S11",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 3.5, "learnerFit": 3.5, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "tomato-variants", "adequatelyTaught": true, "evidence": "Claim says there are two standard forms, British /təˈmɑːtəʊ/ and American /təˈmeɪtoʊ/."},
+            {"id": "leisure-variants", "adequatelyTaught": true, "evidence": "Claim gives both forms and says the class accepted both."},
+            {"id": "increase-stress-shift", "adequatelyTaught": true, "evidence": "Separate noun (/ˈɪŋkriːs/) and verb (/ɪnˈkriːs/) cards with the two class sentences."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "tomato-variants", "adequatelyTaught": true, "evidence": "Card, topic and chunk present British /ɑː/ and American /eɪ/ forms as regional variants; neither is marked wrong."},
+            {"id": "leisure-variants", "adequatelyTaught": true, "evidence": "Card says the class accepted both /ˈleʒə/ and /ˈliːʒər/ as standard."},
+            {"id": "increase-stress-shift", "adequatelyTaught": true, "evidence": "One noun card, but claim, note, topic (the noun-front/verb-back rule) and chunks give first-syllable noun vs second-syllable verb stress."}
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "B is the more complete lesson: summary, two topics with the familiar noun-front/verb-back stress rule, chunks for every class sentence and precise vowel explanations; A has a useful separate verb card but leaves summary and topics empty."
+    },
+    {
+      "caseId": "S12",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {"correctness": 4, "grounding": 4, "coverage": 4, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "have-something-done-causative", "adequatelyTaught": true, "evidence": "Card with arranged-service meaning, note that the object precedes the participle, and a reorder-and-tense prompt; kitchen sentence in chunks."},
+            {"id": "get-something-done-informal", "adequatelyTaught": true, "evidence": "Card gives the same causative meaning in a more informal register with the bike sentence; jacket sentence in chunks."},
+            {"id": "for-good-permanently", "adequatelyTaught": true, "evidence": "Card glosses permanently/for ever with class example and both combinations."}
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {"correctness": 3.5, "grounding": 4, "coverage": 3.5, "learnerFit": 4, "clarityCardUsability": 4, "explanationLanguageQuality": 4},
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {"id": "have-something-done-causative", "adequatelyTaught": true, "evidence": "Card with arranged-job meaning, object-before-participle note, and a prompt contrasting cut my hair myself with had my hair cut."},
+            {"id": "get-something-done-informal", "adequatelyTaught": true, "evidence": "Card gives a similar, more informal meaning with the bike sentence and the participle after the object."},
+            {"id": "for-good-permanently", "adequatelyTaught": true, "evidence": "Card glosses permanently/for ever with class example and both combinations."}
+          ]
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "A covers all four class causative sentences (kitchen and jacket in chunks), has a stronger production task requiring word order and tense, and keeps natural English; B's collocations drop the possessive or article (have hair cut, get bike repaired)."
+    }
+  ]
+}

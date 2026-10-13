@@ -1,0 +1,670 @@
+{
+  "date": "2026-10-12T22:57:39.865Z",
+  "capUsd": 1.5,
+  "spentUsd": 1.214859,
+  "calls": 36,
+  "stoppedBefore": null,
+  "production": "openrouter-2026-10-10-1",
+  "candidate": "openrouter-2026-10-12-1 (recalino-knowledge-11)",
+  "rows": [
+    {
+      "caseId": "S01",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 20756,
+        "latencyMs": 26001,
+        "outputTokens": 3405,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S01",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": false,
+        "parts": 1,
+        "costMicros": 71411,
+        "latencyMs": 107066,
+        "outputTokens": 14623,
+        "attempts": 2
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S02",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 20588,
+        "latencyMs": 25102,
+        "outputTokens": 3368,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S02",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 34533,
+        "latencyMs": 48712,
+        "outputTokens": 7012,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S03",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 24255,
+        "latencyMs": 31043,
+        "outputTokens": 4284,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 600
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S03",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 20906,
+        "latencyMs": 27405,
+        "outputTokens": 3314,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 600
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S04",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 25569,
+        "latencyMs": 35215,
+        "outputTokens": 4653,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 50,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 4,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S04",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 27431,
+        "latencyMs": 37632,
+        "outputTokens": 5073,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 5,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 4,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S05",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 27206,
+        "latencyMs": 34228,
+        "outputTokens": 5105,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S05",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 30043,
+        "latencyMs": 47535,
+        "outputTokens": 5787,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S06",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 27742,
+        "latencyMs": 44992,
+        "outputTokens": 5365,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S06",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 29074,
+        "latencyMs": 40854,
+        "outputTokens": 5645,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 5,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S07",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 20308,
+        "latencyMs": 28776,
+        "outputTokens": 3375,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S07",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 21503,
+        "latencyMs": 29537,
+        "outputTokens": 3619,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S08",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 27322,
+        "latencyMs": 41930,
+        "outputTokens": 5208,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 900
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S08",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 25522,
+        "latencyMs": 36874,
+        "outputTokens": 4651,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 900
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S09",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 22775,
+        "latencyMs": 30209,
+        "outputTokens": 4041,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 2,
+        "recognition": 1,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S09",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 32722,
+        "latencyMs": 38442,
+        "outputTokens": 6619,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S10",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": false,
+        "parts": 1,
+        "costMicros": 68834,
+        "latencyMs": 96582,
+        "outputTokens": 14276,
+        "attempts": 2
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S10",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 38753,
+        "latencyMs": 62201,
+        "outputTokens": 8232,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S11",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 43054,
+        "latencyMs": 65570,
+        "outputTokens": 9459,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 7,
+      "goldTotal": 7
+    },
+    {
+      "caseId": "S11",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 33494,
+        "latencyMs": 47934,
+        "outputTokens": 6835,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 7,
+      "goldTotal": 7
+    },
+    {
+      "caseId": "S12",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 17622,
+        "latencyMs": 24067,
+        "outputTokens": 2684,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S12",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 20347,
+        "latencyMs": 26353,
+        "outputTokens": 3336,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S03-repeat",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 26351,
+        "latencyMs": 38474,
+        "outputTokens": 4843,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 600
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S03-repeat",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 21562,
+        "latencyMs": 27243,
+        "outputTokens": 3489,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 3,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 600
+      },
+      "goldPassed": 6,
+      "goldTotal": 6
+    },
+    {
+      "caseId": "S10-repeat",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 43468,
+        "latencyMs": 63172,
+        "outputTokens": 9564,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "S10-repeat",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 44033,
+        "latencyMs": 80374,
+        "outputTokens": 9640,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": null
+      },
+      "goldPassed": 5,
+      "goldTotal": 5
+    },
+    {
+      "caseId": "LQ-LONG-128",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 42858,
+        "latencyMs": 50882,
+        "outputTokens": 7352,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 0,
+        "sourceCoveragePercent": 100,
+        "itemsPerSpeechHour": 2
+      }
+    },
+    {
+      "caseId": "LQ-LONG-128",
+      "arm": "candidate",
+      "result": {
+        "valid": false,
+        "firstTry": false,
+        "parts": 2,
+        "costMicros": 189664,
+        "latencyMs": 288386,
+        "outputTokens": 39365,
+        "attempts": 3,
+        "error": "provider_schema_invalid"
+      }
+    },
+    {
+      "caseId": "LQ-BOARD-15",
+      "arm": "production",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 39981,
+        "latencyMs": 50633,
+        "outputTokens": 7855,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 4,
+        "recognition": 1,
+        "sourceCoveragePercent": 75,
+        "itemsPerSpeechHour": 21.4
+      }
+    },
+    {
+      "caseId": "LQ-BOARD-15",
+      "arm": "candidate",
+      "result": {
+        "valid": true,
+        "firstTry": true,
+        "parts": 1,
+        "costMicros": 75172,
+        "latencyMs": 115338,
+        "outputTokens": 17158,
+        "attempts": 1
+      },
+      "metrics": {
+        "production": 8,
+        "recognition": 0,
+        "sourceCoveragePercent": 75,
+        "itemsPerSpeechHour": 34.3
+      }
+    }
+  ]
+}

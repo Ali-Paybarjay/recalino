@@ -1,0 +1,247 @@
+{
+  "schemaVersion": "1",
+  "title": "Pronunciation: Regional Variations and Word Stress",
+  "language": {
+    "learning": "en",
+    "explanation": "ja"
+  },
+  "summary": [],
+  "topics": [],
+  "learningItems": [
+    {
+      "id": "item-9956da9b0f230f916fd843e8-1",
+      "kind": "vocabulary",
+      "front": "tomato",
+      "back": "トマト（野菜・果実）",
+      "claim": {
+        "id": "claim-1897089d8f6dedcf8946afe6-1",
+        "text": "tomatoの発音にはイギリス英語の/təˈmɑːtəʊ/とアメリカ英語の/təˈmeɪtoʊ/という2つの標準形が存在します。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "tomato",
+              "start": 0,
+              "end": 178
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "tomato",
+        "faMeaning": "トマト（野菜・果実）",
+        "topic": "Food & Pronunciation",
+        "kind": "pronunciation",
+        "ipa": "/təˈmɑːtəʊ/",
+        "trap": "アメリカ英語の/təˈmeɪtoʊ/に対して、イギリス標準発音では第2音節が長母音/ɑː/になります。",
+        "gapSentence": "Slice one ______ and add it to the salad.",
+        "fullSentence": "Slice one tomato and add it to the salad.",
+        "collocations": [
+          "ripe tomato",
+          "fresh tomato",
+          "sliced tomato"
+        ],
+        "noteFa": "例文中の「tomato」はイギリス標準英語では第2音節に主強勢を置いて/təˈmɑːtəʊ/と発音します。",
+        "imageFa": "まな板の上で赤く熟したトマトを包丁でスライスしてサラダに加える様子。",
+        "sourceFa": "授業から"
+      }
+    },
+    {
+      "id": "item-c069824bb46aef2338f153e6-1",
+      "kind": "vocabulary",
+      "front": "leisure",
+      "back": "余暇、自由時間",
+      "claim": {
+        "id": "claim-7590aa708ed94837bec7d86b-1",
+        "text": "leisureの発音はイギリス英語で/ˈleʒə/、北米英語で/ˈliːʒər/と発音され、授業では双方が認められています。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "leisure",
+              "start": 0,
+              "end": 186
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "leisure",
+        "faMeaning": "余暇、自由時間",
+        "topic": "Daily Life & Pronunciation",
+        "kind": "pronunciation",
+        "ipa": "/ˈleʒə/",
+        "trap": "北米英語の/ˈliːʒər/と異なり、イギリス標準発音では第1音節が短母音/e/で発音されます。",
+        "gapSentence": "Swimming is my favourite ______ activity.",
+        "fullSentence": "Swimming is my favourite leisure activity.",
+        "collocations": [
+          "leisure activity",
+          "leisure time",
+          "leisure centre"
+        ],
+        "noteFa": "例文の「leisure activity」に含まれる「leisure」は、イギリス英語では短母音を用いて/ˈleʒə/と発音されます。",
+        "imageFa": "休日に自然光が差し込む屋内プールでゆったりと水泳を楽しんでいる様子。",
+        "sourceFa": "授業から"
+      }
+    },
+    {
+      "id": "item-3e7a3806f36016ab93a5b6f8-1",
+      "kind": "vocabulary",
+      "front": "increase",
+      "back": "増加、上昇（名詞）",
+      "claim": {
+        "id": "claim-b9c02546c94e2a5a57b1c776-1",
+        "text": "名詞のincreaseは語頭の第1音節に強勢が置かれ、/ˈɪŋkriːs/と発音されます。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "increase",
+              "start": 0,
+              "end": 260
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "increase",
+        "faMeaning": "増加、上昇（名詞）",
+        "topic": "Business & General Vocabulary",
+        "kind": "pronunciation",
+        "ipa": "/ˈɪŋkriːs/",
+        "trap": "動詞形とは異なり、名詞として用いる際は語頭の第1音節に主強勢が置かれます。",
+        "gapSentence": "There has been a sharp ______ in rents this year.",
+        "fullSentence": "There has been a sharp increase in rents this year.",
+        "collocations": [
+          "sharp increase",
+          "significant increase",
+          "price increase"
+        ],
+        "noteFa": "名詞として用いられている例文の「increase」は、第1音節を強く発音して/ˈɪŋkriːs/となります。",
+        "imageFa": "グラフ上で家賃を示す赤い折れ線が急激に右肩上がりに跳ね上がっている様子。",
+        "sourceFa": "授業から"
+      }
+    },
+    {
+      "id": "item-a96c23c3d62b0dbaf815e213-1",
+      "kind": "vocabulary",
+      "front": "increase",
+      "back": "増加する、増える（動詞）",
+      "claim": {
+        "id": "claim-90d46488fa17b5f2d8868821-1",
+        "text": "動詞のincreaseは語尾の第2音節に強勢が置かれ、/ɪnˈkriːs/と発音されます。",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000131-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000131-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "increase",
+              "start": 0,
+              "end": 260
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "increase",
+        "faMeaning": "増加する、増える（動詞）",
+        "topic": "Business & General Vocabulary",
+        "kind": "pronunciation",
+        "ipa": "/ɪnˈkriːs/",
+        "trap": "名詞形とは異なり、動詞として用いる際は第2音節に主強勢が移動します。",
+        "gapSentence": "Prices usually ______ in January.",
+        "fullSentence": "Prices usually increase in January.",
+        "collocations": [
+          "increase rapidly",
+          "increase slightly",
+          "prices increase"
+        ],
+        "noteFa": "動詞として述語の位置にある例文の「increase」は、第2音節に強勢を置いて/ɪnˈkriːs/と発音します。",
+        "imageFa": "新年1月のカレンダーの横で店頭の価格ラベルが順々に引き上げられていく様子。",
+        "sourceFa": "授業から"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": []
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Pronunciation Workshop",
+    "coverage": "イギリス英語と北米英語における発音の差異（tomato, leisure）および、品詞の変化に伴う単語の強勢移動（名詞・動詞のincrease）",
+    "coreIntro": "このレッスンでは、英米で異なる母音の標準形を持つ語（tomato, leisure）と、品詞によって強勢位置が変化する語（increase）の正しい発音を学びます。",
+    "chunks": [
+      {
+        "pattern": "leisure activity",
+        "classSentence": "Swimming is my favourite leisure activity.",
+        "noteFa": "「余暇の活動、レジャー活動」を表す定着したコロケーションです。"
+      },
+      {
+        "pattern": "a sharp increase in sth",
+        "classSentence": "There has been a sharp increase in rents this year.",
+        "noteFa": "「〜の急激な増加」を表す名詞表現で、前置詞inの後に対象が続きます。"
+      }
+    ],
+    "board": [],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [],
+    "gapfill": [
+      {
+        "sentence": "Slice one ______ and add it to the salad.",
+        "answer": "tomato"
+      },
+      {
+        "sentence": "Swimming is my favourite ______ activity.",
+        "answer": "leisure"
+      },
+      {
+        "sentence": "There has been a sharp ______ in rents this year.",
+        "answer": "increase"
+      },
+      {
+        "sentence": "Prices usually ______ in January.",
+        "answer": "increase"
+      }
+    ],
+    "culture": []
+  }
+}

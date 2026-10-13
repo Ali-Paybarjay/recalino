@@ -1,0 +1,302 @@
+{
+  "schemaVersion": "1",
+  "title": "نتیجه‌گیری منطقی و بیان حدس و گمان در انگلیسی",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [
+    {
+      "id": "claim-92e4b01f1a163d1c1e59629b-1",
+      "text": "برای نتیجه‌گیری در زمان حال از must و can't به همراه شکل ساده فعل استفاده می‌شود، در حالی که mustn't در این معنا کاربرد ندارد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000124-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "deduction-present",
+            "start": 0,
+            "end": 350
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-a8136889ba036fc84ccdabeb-1",
+      "text": "برای نتیجه‌گیری درباره زمان گذشته از ترکیب must have یا can't have به همراه شکل سوم فعل استفاده می‌شود.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000124-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "deduction-past",
+            "start": 0,
+            "end": 198
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-eff61648ccbe7874cecda263-1",
+      "text": "اصطلاح کاربردی rule of thumb به قواعد تجربی و راهنماهای عملی در نوشتار و گفتار اشاره می‌کند.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000124-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "rule-of-thumb",
+            "start": 0,
+            "end": 251
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-dc786a147c9583c153ec6cd2-1",
+      "title": "افعال کمکی برای استنتاج و امکان",
+      "claims": [
+        {
+          "id": "claim-94db566bd9c9805bd7ca17c0-1",
+          "text": "افعال might و could فقط احتمال وقوع یا ممکن بودن چیزی را نشان می‌دهند، نه اطمینان قوی حاصل از شواهد.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000124-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "deduction-present",
+                "start": 0,
+                "end": 350
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        },
+        {
+          "id": "claim-2e08a4d96f7534427446bc7c-1",
+          "text": "برای بیان احتمال درباره گذشته، ساختار might have به همراه شکل سوم فعل استفاده می‌شود.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000124-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "deduction-past",
+                "start": 0,
+                "end": 198
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-9f071c1bcac6c6fcb6a54cf2-1",
+      "kind": "grammar",
+      "front": "must + base verb",
+      "back": "باید ... باشد (نتیجه‌گیری قطعی مثبت در زمان حال)",
+      "claim": {
+        "id": "claim-d7d8129cdded5054a0510012-1",
+        "text": "وقتی بر اساس شواهد تقریباً مطمئن هستیم که چیزی در زمان حال درست است، از ساختار must همراه با شکل ساده فعل استفاده می‌کنیم.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000124-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "deduction-present",
+              "start": 0,
+              "end": 350
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "must + base verb",
+        "faMeaning": "باید ... باشد (نتیجه‌گیری قطعی مثبت در زمان حال)",
+        "topic": "Modals of Deduction",
+        "kind": "grammar",
+        "ipa": "/mʌs bi ɪɡˈzɔːstɪd/",
+        "ipaText": "must be exhausted",
+        "faApprox": "مَس بی ایگزوستید",
+        "fullSentence": "She must be exhausted after such a long flight.",
+        "collocations": [],
+        "noteFa": "عبارت must be exhausted نشان‌دهنده نتیجه‌گیری قطعی بر اساس خستگی پرواز طولانی است؛ در این ساختار پس از must، شکل ساده فعل یعنی be می‌آید.",
+        "imageFa": "مسافری که پس از پروازی دوازده‌ساعته با چمدان روی مبل فرودگاه به خواب رفته است.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به بافت جمله و نشان دادن اطمینان از درستی موقعیت، گزینه مناسب را انتخاب کنید.",
+        "prompt": "Choose the correct modal: She (must / can't) be exhausted after such a long flight."
+      }
+    },
+    {
+      "id": "item-8f571495158926567b71e4d9-1",
+      "kind": "grammar",
+      "front": "can't have + past participle",
+      "back": "غیرممکن است که ... رخ داده باشد (نتیجه‌گیری قطعی منفی در گذشته)",
+      "claim": {
+        "id": "claim-373859be15d5782a26d4651e-1",
+        "text": "برای بیان نتیجه‌گیری منطقی منفی در زمان گذشته وقتی بر اساس شواهد اطمینان داریم کاری رخ نداده است، ساختار can't have به همراه شکل سوم فعل به کار می‌رود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000124-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "deduction-past",
+              "start": 0,
+              "end": 198
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "can't have + past participle",
+        "faMeaning": "غیرممکن است که ... رخ داده باشد (نتیجه‌گیری قطعی منفی در گذشته)",
+        "topic": "Past Modals of Deduction",
+        "kind": "grammar",
+        "ipa": "/kɑːnt həv siːn/",
+        "ipaText": "can't have seen",
+        "faApprox": "کانت هَو سین",
+        "fullSentence": "He can't have seen my email; he was on a plane all day.",
+        "collocations": [],
+        "noteFa": "ترکیب can't have seen نشان می‌دهد دیدن ایمیل به دلیل حضور در هواپیما غیرممکن بوده است و هرگز نباید برای نتیجه‌گیری منفی در گذشته از mustn't have استفاده کرد.",
+        "imageFa": "تلفن همراهی خاموش در جیب مسافری که تمام روز در صندلی هواپیما نشسته و به ایمیل‌ها دسترسی ندارد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با انتخاب ساختار مناسب برای نتیجه‌گیری قطعی منفی در گذشته، جمله را کامل کنید.",
+        "prompt": "Choose the correct past deduction: He (can't have / mustn't have) seen my email; he was on a plane all day."
+      }
+    },
+    {
+      "id": "item-6e7f2e33ced5cfe8c3de89da-1",
+      "kind": "expression",
+      "front": "rule of thumb",
+      "back": "قاعده کلی تجربی، قانون سرانگشتی",
+      "claim": {
+        "id": "claim-2fde591c02f0a5ef46941a0d-1",
+        "text": "اصطلاح rule of thumb به یک راهنمای عملی و سرانگشتی اشاره دارد که بر پایه تجربه به دست آمده است، نه اندازه‌گیری دقیق علمی.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000124-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000124-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "rule-of-thumb",
+              "start": 0,
+              "end": 251
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "rule of thumb",
+        "faMeaning": "قاعده کلی تجربی، قانون سرانگشتی",
+        "topic": "Academic Writing and Vocabulary",
+        "ipa": "/ˌruːl əv ˈθʌm/",
+        "faApprox": "رول اَو ثام",
+        "gapSentence": "As a ______, each paragraph of an essay should develop one main idea.",
+        "fullSentence": "As a rule of thumb, each paragraph of an essay should develop one main idea.",
+        "collocations": [
+          "as a rule of thumb",
+          "a useful rule of thumb"
+        ],
+        "noteFa": "عبارت As a rule of thumb در ابتدای جمله به عنوان یک اصل تجربی و مفید برای ساختار پاراگراف در مقاله‌نویسی آیلتس به کار رفته است.",
+        "imageFa": "استاد راهنمایی که با انگشت شست به یک پاراگراف منسجم در مقاله اشاره می‌کند و آن را معیاری کاربردی می‌داند.",
+        "sourceFa": "از کلاس"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": []
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "IELTS Preparation",
+    "coverage": "این درس به آموزش افعال کمکی وجهی برای استنتاج در زمان حال و گذشته (must، can't و ساختارهای have) و اصطلاح rule of thumb می‌پردازد.",
+    "coreIntro": "در این درس می‌آموزید چگونه با توجه به شواهد موجود، حدس‌های قوی و قطعی یا احتمالات را در زمان حال و گذشته بیان کنید و از اشتباه رایج استفاده از mustn't بپرهیزید.",
+    "chunks": [
+      {
+        "pattern": "That can't be + noun",
+        "classSentence": "That can't be our bus; ours is number twelve.",
+        "noteFa": "استفاده از can't be برای رد قاطعانه یک هویت یا واقعیت در زمان حال بر اساس شواهد موجود."
+      },
+      {
+        "pattern": "must have + past participle",
+        "classSentence": "The lights are off, so they must have gone to bed.",
+        "noteFa": "استفاده از must have به همراه شکل سوم فعل برای نتیجه‌گیری قطعی مثبت درباره گذشته."
+      }
+    ],
+    "board": [],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "She mustn't be at home; her car isn't outside.",
+        "sayThis": "She can't be at home; her car isn't outside.",
+        "whyFa": "برای بیان نتیجه‌گیری منفی بر اساس شواهد، فقط از can't استفاده می‌شود؛ mustn't به معنای نهی و ممنوعیت است نه استنتاج منفی."
+      }
+    ],
+    "gapfill": [
+      {
+        "sentence": "As a rule of ______, each paragraph of an essay should develop one main idea.",
+        "answer": "thumb"
+      }
+    ],
+    "culture": []
+  }
+}

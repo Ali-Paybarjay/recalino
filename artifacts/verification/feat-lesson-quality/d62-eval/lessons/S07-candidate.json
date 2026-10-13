@@ -1,0 +1,289 @@
+{
+  "schemaVersion": "1",
+  "title": "Advanced Structures and Idiomatic Usage",
+  "language": {
+    "learning": "en",
+    "explanation": "ar"
+  },
+  "summary": [
+    {
+      "id": "claim-abfb54c30ff820218ff870dc-1",
+      "text": "تفيد أدوات ever-clauses مثل whatever وwhoever عدم التأثر بالخيار أو الظرف، وترتبط بجملة رئيسية.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000127-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "ever-clauses",
+            "start": 0,
+            "end": 391
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-54450d724206fa76908ea54c-1",
+      "text": "يُستخدم الفعل المساعد do أو did المشدد في الجمل المثبتة لتأكيد وقوع الفعل أو الرد على سوء فهم.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000127-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "emphatic-do",
+            "start": 0,
+            "end": 292
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-cc9e24c8029f575b05873572-1",
+      "text": "يصف التعبير a drop in the ocean أي كمية غير كافية ولا تترك أثراً ملموساً في حل معضلة واسعة.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000127-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "drop-in-ocean",
+            "start": 0,
+            "end": 435
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-0d360c750f55567a9ccb679b-1",
+      "title": "الأساليب المتقدمة والتأكيد اللغوي",
+      "claims": [
+        {
+          "id": "claim-19adeaa4ddfb2060d2659a84-1",
+          "text": "في الأسلوب الرسمي، كثيراً ما يتبع الفعل may الفاعل بعد whatever في جمل ever-clauses.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000127-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "ever-clauses",
+                "start": 0,
+                "end": 391
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-1e1acaff22cd6a2601cd7070-1",
+      "kind": "expression",
+      "front": "a drop in the ocean",
+      "back": "قطرة في بحر (مقدار ضئيل للغاية لا يُحدث فرقاً ملموساً)",
+      "claim": {
+        "id": "claim-5e8693fba112bf3a6d5d9364-1",
+        "text": "يُستخدم التعبير a drop in the ocean للإشارة إلى كمية أو مساهمة ضئيلة جداً مقارنة بحجم المشكلة الكلي بحيث لا تُحدث فارقاً حقيقياً.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000127-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "drop-in-ocean",
+              "start": 0,
+              "end": 435
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "a drop in the ocean",
+        "faMeaning": "قطرة في بحر (مقدار ضئيل للغاية لا يُحدث فرقاً ملموساً)",
+        "topic": "المصطلحات والتعبيرات المجازية",
+        "ipa": "/ə ˌdrɒp ɪn ði ˈəʊʃn/",
+        "gapSentence": "The extra funding is welcome, but it is only ______.",
+        "fullSentence": "The extra funding is welcome, but it is only a drop in the ocean.",
+        "collocations": [
+          "just a drop in the ocean",
+          "little more than a drop in the ocean"
+        ],
+        "noteFa": "توضح الكلمات 'a drop in the ocean' في المثال أن التمويل الإضافي ضئيل للغاية أمام حجم التحدي المطلوب معالجته.",
+        "imageFa": "قطرة ماء صغيرة تسقط في محيط شاسع وتتلاشى فوراً دون أن ترفع منسوبه.",
+        "sourceFa": "من الصف"
+      }
+    },
+    {
+      "id": "item-c049a12ba773e1f309229309-1",
+      "kind": "grammar",
+      "front": "did + base verb",
+      "back": "صيغة توكيد الفعل الماضي بإضافة did قبل المصدر",
+      "claim": {
+        "id": "claim-ad21a5eb040f5a654f4ac5cd-1",
+        "text": "يُضاف الفعل المساعد do أو does أو did بنبرة صوتية مشددة قبل الفعل المجرد في الجمل المثبتة لإضافة توكيد أو لتوضيح التناقض مع ما كان يُعتقد.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000127-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "emphatic-do",
+              "start": 0,
+              "end": 292
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "did + base verb",
+        "faMeaning": "صيغة توكيد الفعل الماضي بإضافة did قبل المصدر",
+        "topic": "التوكيد النحوي (Emphatic do)",
+        "kind": "grammar",
+        "ipa": "/dɪd ˈsend/",
+        "ipaText": "did send",
+        "fullSentence": "She did send the invoice; it went to your spam folder.",
+        "collocations": [],
+        "noteFa": "في الجملة 'She did send the invoice'، يحمل التركيب 'did send' معنى التأكيد القاطع على إرسال الفاتورة، مع بقاء send في صيغة المصدر المجرد.",
+        "imageFa": "شخص يشير بإصبعه بوضوح إلى سجل البريد ليثبت أن الرسالة أُرسلت بالفعل رغم الشكوك.",
+        "sourceFa": "من الصف",
+        "taskFa": "اختر الصيغة الصحيحة لإضافة توكيد على حدوث الفعل في الماضي.",
+        "prompt": "She [did send / did sent] the invoice; it went to your spam folder."
+      }
+    },
+    {
+      "id": "item-737a75c0f3e94e4352e845ef-1",
+      "kind": "grammar",
+      "front": "whatever + clause",
+      "back": "أياً كان / مهما (أداة تفيد عدم المبالاة بالخيار أو الظرف)",
+      "claim": {
+        "id": "claim-d6318a699f14b9a7ea153ed6-1",
+        "text": "تُستخدم الكلمات المركبة مع ever مثل whatever لتبدأ جملة تفيد بأنه 'لا يهم ماذا'، وتتصل بجملة رئيسية.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000127-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000127-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "ever-clauses",
+              "start": 0,
+              "end": 391
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "whatever + clause",
+        "faMeaning": "أياً كان / مهما (أداة تفيد عدم المبالاة بالخيار أو الظرف)",
+        "topic": "جمل ever-clauses الشرطية",
+        "kind": "grammar",
+        "ipa": "/wɒtˈevə juː dɪˈsaɪd/",
+        "ipaText": "Whatever you decide",
+        "fullSentence": "Whatever you decide, the committee will support you.",
+        "collocations": [],
+        "noteFa": "تفيد 'Whatever you decide' معنى 'مهما قررت' أو 'أياً كان ما تقرره'، وتعمل كجملة تمهيدية ترتبط مباشرة بالجملة الرئيسية.",
+        "imageFa": "مفترق طرق متعدد واللجنة تقف خلف الشخص لتدعمه بالكامل أياً كان الطريق المختار.",
+        "sourceFa": "من الصف",
+        "taskFa": "اختر الأداة الصحيحة للدلالة على معنى 'مهما كان قرارك'.",
+        "prompt": "[Whatever / Whoever] you decide, the committee will support you."
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ad000127-1111-4111-8111-000000000001",
+        "status": "used"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Advanced English",
+    "coverage": "تغطي هذه الوحدة استخدام أدوات ever-clauses في الربط، وأسلوب التوكيد النحوي باستخدام emphatic do، ومصطلح a drop in the ocean.",
+    "coreIntro": "تهدف هذه الملاحظات إلى صقل مهارات الربط والتعبير المؤكد واختيار التراكيب البلاغية المناسبة في السياقات المهنية والأكاديمية.",
+    "chunks": [
+      {
+        "pattern": "Whatever + subject + verb, [main clause]",
+        "classSentence": "Whatever you decide, the committee will support you.",
+        "noteFa": "تأتي جملة whatever هنا في البداية متبوعة بفاصلة لربطها بالجملة المستقلة."
+      },
+      {
+        "pattern": "did + base verb",
+        "classSentence": "She did send the invoice; it went to your spam folder.",
+        "noteFa": "استخدام did أمام المصدر يركز على تأكيد الحقيقة وتصحيح الافتراض الخاطئ."
+      },
+      {
+        "pattern": "only + a drop in the ocean",
+        "classSentence": "The extra funding is welcome, but it is only a drop in the ocean.",
+        "noteFa": "يقترن التعبير غالباً بكلمات حصر وتقليل مثل only أو just."
+      }
+    ],
+    "board": [],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "She did sent the invoice.",
+        "sayThis": "She did send the invoice.",
+        "whyFa": "يجب دائماً استخدام الفعل في صيغة المصدر الأساسي بعد فعل التأكيد did، ولا يجوز تصريفه في الماضي مرتين."
+      }
+    ],
+    "gapfill": [
+      {
+        "sentence": "The extra funding is welcome, but it is only a drop in the ______.",
+        "answer": "ocean"
+      }
+    ],
+    "culture": []
+  }
+}

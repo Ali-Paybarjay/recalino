@@ -1,0 +1,471 @@
+{
+  "reviewer": "fa-reviewer-1",
+  "cases": [
+    {
+      "caseId": "S01",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "have-got-possession-questions",
+              "adequatelyTaught": true,
+              "evidence": "Card states have/has before the subject and got after it, short answer Yes, I have without got; Do you have got is explicitly rejected (card note and register pair)."
+            },
+            {
+              "id": "possessive-pronouns-stand-alone",
+              "adequatelyTaught": true,
+              "evidence": "Rule stated for possessive pronouns via mine (no noun after it) with This coat is my flagged as wrong; yours/his/hers/ours/theirs are not listed."
+            },
+            {
+              "id": "out-of-order-not-working",
+              "adequatelyTaught": true,
+              "evidence": "Glossed as broken/not working for public machines, with the lift example and both class combinations."
+            }
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3,
+            "learnerFit": 3.5,
+            "clarityCardUsability": 3.5,
+            "explanationLanguageQuality": 3.5
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "have-got-possession-questions",
+              "adequatelyTaught": true,
+              "evidence": "Card gives the have/has + subject + got order and rejects Do you have got; short answers appear only in the task note (Yes, I have, got not repeated)."
+            },
+            {
+              "id": "possessive-pronouns-stand-alone",
+              "adequatelyTaught": true,
+              "evidence": "mine card says no noun can follow it, contrasted with my; only mine is shown, other forms not listed and no possessive chunk."
+            },
+            {
+              "id": "out-of-order-not-working",
+              "adequatelyTaught": true,
+              "evidence": "Correct 'broken / out of service' meaning for public machines and phones, with class example and combinations."
+            }
+          ]
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "A puts the short-answer rule on the card, gives explicit wrong/right contrasts (Do you have got, This coat is my) and a model question for each partner-task item; B covers the same points more thinly and drops the possessive chunk and contrasts."
+    },
+    {
+      "caseId": "S02",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 4,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "shall-offers-suggestions",
+              "adequatelyTaught": true,
+              "evidence": "Separate Shall I (offer) and Shall we (suggest together) cards with base verb, each with a polite answer (Yes, please / That's a good idea)."
+            },
+            {
+              "id": "how-about-ing-suggestion",
+              "adequatelyTaught": true,
+              "evidence": "Card and register pair teach How about + -ing and reject How about go."
+            },
+            {
+              "id": "set-off-start-journey",
+              "adequatelyTaught": true,
+              "evidence": "Glossed as starting a journey/setting out, with class example and both combinations."
+            }
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 3.5,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "shall-offers-suggestions",
+              "adequatelyTaught": true,
+              "evidence": "Both Shall cards correct with base verb; prompts reject Shall I to carry and Shall we meeting."
+            },
+            {
+              "id": "how-about-ing-suggestion",
+              "adequatelyTaught": true,
+              "evidence": "Card teaches -ing after How about; prompt and note reject How about go."
+            },
+            {
+              "id": "set-off-start-journey",
+              "adequatelyTaught": true,
+              "evidence": "Glossed as setting out on a journey, with class example and combinations."
+            }
+          ]
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "Both are accurate and complete; A gives fuller explanations (polite answers on each card), a How about go -> going contrast and a more useful summary, while B is correct but terse."
+    },
+    {
+      "caseId": "S03",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "infinitive-of-purpose-to",
+              "adequatelyTaught": true,
+              "evidence": "to + base verb card, for + noun chunk and topic, for buy / for to buy rejected; in order not to taught as the formal negative, positive in order to only implied."
+            },
+            {
+              "id": "pop-out-short-trip",
+              "adequatelyTaught": true,
+              "evidence": "Short trip out to do something quick nearby, informal British, with class example and combinations."
+            },
+            {
+              "id": "for-to-purpose-conflict",
+              "adequatelyTaught": true,
+              "evidence": "Uncertainty cites the printed rule and 'one of the speakers' on the audio without calling it the teacher; to buy stays the taught form."
+            }
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 3.5,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "infinitive-of-purpose-to",
+              "adequatelyTaught": true,
+              "evidence": "to + base verb card with a for buy distractor, for + noun chunk and topic; in order not to as formal negative, positive in order to not stated."
+            },
+            {
+              "id": "pop-out-short-trip",
+              "adequatelyTaught": true,
+              "evidence": "Short trip out for something quick nearby, informal British English."
+            },
+            {
+              "id": "for-to-purpose-conflict",
+              "adequatelyTaught": true,
+              "evidence": "Uncertainty contrasts the printed text with one speaker on the audio; to buy kept as correct."
+            }
+          ]
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "Both handle the for to buy conflict correctly as an uncertainty; A has richer notes and collocations and uses both class example sentences, so it is slightly more useful to study from."
+    },
+    {
+      "caseId": "S03-repeat",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 3.5
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "infinitive-of-purpose-to",
+              "adequatelyTaught": true,
+              "evidence": "to + base verb card, for + noun in topics and register, both for to buy and for buy rejected; in order not to taught as formal negative, positive in order to not explained."
+            },
+            {
+              "id": "pop-out-short-trip",
+              "adequatelyTaught": true,
+              "evidence": "Short time out for something quick nearby, informal British, with class example and combinations."
+            },
+            {
+              "id": "for-to-purpose-conflict",
+              "adequatelyTaught": true,
+              "evidence": "Uncertainty cites the printed rule and an anonymous speaker on the audio; to buy kept as the taught form."
+            }
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 4,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "infinitive-of-purpose-to",
+              "adequatelyTaught": true,
+              "evidence": "to + base verb card (for visit distractor), for + noun chunk, and topic states in order to is more formal with in order not to as its negative."
+            },
+            {
+              "id": "pop-out-short-trip",
+              "adequatelyTaught": true,
+              "evidence": "Going out briefly for something quick, British; informality only implied ('everyday/friendly tone')."
+            },
+            {
+              "id": "for-to-purpose-conflict",
+              "adequatelyTaught": true,
+              "evidence": "Uncertainty contrasts the printed text with one speaker in the class audio; to buy stays taught."
+            }
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "Both are accurate and handle the conflict well; B also states that in order to is the formal equivalent and uses both class examples, while A leaves in order to implicit and uses English topic labels, so B is marginally more complete despite A's extra for to buy / for buy contrasts."
+    },
+    {
+      "caseId": "S04",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 3.5,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 3.5
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "modal-deduction-present",
+              "adequatelyTaught": true,
+              "evidence": "must card; can't via chunk, summary and the worksheet correction; might/could described as only possible; mustn't rejected as prohibition."
+            },
+            {
+              "id": "modal-deduction-past",
+              "adequatelyTaught": true,
+              "evidence": "can't have card, must have chunk, might have in topics, all with past participle; mustn't have rejected."
+            },
+            {
+              "id": "a-rule-of-thumb-practical-guide",
+              "adequatelyTaught": true,
+              "evidence": "Practical guide based on experience, not exact measurement, with class example and combinations."
+            }
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 3.5,
+            "coverage": 4,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "modal-deduction-present",
+              "adequatelyTaught": true,
+              "evidence": "Separate must and can't cards; mustn't rejected; might/could = only possibility in summary and chunk."
+            },
+            {
+              "id": "modal-deduction-past",
+              "adequatelyTaught": true,
+              "evidence": "must have and can't have cards with past participle and correct prompts; might have is not mentioned."
+            },
+            {
+              "id": "a-rule-of-thumb-practical-guide",
+              "adequatelyTaught": true,
+              "evidence": "Simple practical guide from experience rather than exact measurement; thumb image is only a mnemonic."
+            }
+          ]
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "B gives practice cards for all four deduction forms (must, can't, must have, can't have) and turns the worksheet correction into an exercise; A has only three cards and English topic labels, though it does mention might have."
+    },
+    {
+      "caseId": "S05",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 4,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "negative-questions-surprise",
+              "adequatelyTaught": true,
+              "evidence": "Card on surprise/inviting agreement with Didn't you / Isn't it; topic says Did you not is the more formal form; task keeps base verb after Didn't."
+            },
+            {
+              "id": "so-not-clause-substitution",
+              "adequatelyTaught": true,
+              "evidence": "Lists think/hope/expect/be afraid, so for positive and not for negative clauses, I don't think so as the usual negative with think, I'm afraid not for bad news; rejects I don't hope so."
+            },
+            {
+              "id": "the-last-straw-patience",
+              "adequatelyTaught": true,
+              "evidence": "Final problem in a series that ends someone's patience; IPA covers only the phrase."
+            },
+            {
+              "id": "negative-question-dialogue-homework",
+              "adequatelyTaught": true,
+              "evidence": "Homework for next Monday stated exactly; printed task kept as an in-class exercise."
+            }
+          ]
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 3.5,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 3.5,
+            "clarityCardUsability": 3.5,
+            "explanationLanguageQuality": 4
+          },
+          "criticalIssues": [],
+          "requiredConcepts": [
+            {
+              "id": "negative-questions-surprise",
+              "adequatelyTaught": true,
+              "evidence": "Card covers surprise/agreement and topics say Did you not is more formal, but a register pair lists Did you not get my message...? under 'not this' (explained as very formal), which risks implying it is wrong."
+            },
+            {
+              "id": "so-not-clause-substitution",
+              "adequatelyTaught": false,
+              "evidence": "Teaches I hope not and rejects I don't hope so, but never gives I don't think so as the usual negative with think (summary just says so/not after think and hope) and omits expect."
+            },
+            {
+              "id": "the-last-straw-patience",
+              "adequatelyTaught": true,
+              "evidence": "Final problem that makes patience run out; IPA covers only the phrase (mislabelled as British)."
+            },
+            {
+              "id": "negative-question-dialogue-homework",
+              "adequatelyTaught": true,
+              "evidence": "Homework stated correctly; printed task kept as in-class exercise."
+            }
+          ]
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "A teaches the full so/not rule including I don't think so and all four verbs, with homework and the in-class task correctly separated; B omits I don't think so and puts the correct formal Did you not...? under 'not this', which may mislead."
+    },
+    {
+      "caseId": "LQ-BOARD-15",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 3.5,
+            "learnerFit": 3.5,
+            "clarityCardUsability": 3.5,
+            "explanationLanguageQuality": 3.5
+          },
+          "criticalIssues": [],
+          "requiredConcepts": []
+        },
+        "B": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 3.5,
+            "coverage": 4,
+            "learnerFit": 4,
+            "clarityCardUsability": 4,
+            "explanationLanguageQuality": 3.5
+          },
+          "criticalIssues": [],
+          "requiredConcepts": []
+        }
+      },
+      "preference": "B",
+      "preferenceReason": "B gives cards for all four used-to structures and both take off uses and includes the board correction I use to live -> I used to live; A leaves get used to and didn't use to in chunks and files the canteen notice as a task."
+    },
+    {
+      "caseId": "LQ-LONG-128",
+      "labels": {
+        "A": {
+          "technicallyValid": true,
+          "scores": {
+            "correctness": 4,
+            "grounding": 4,
+            "coverage": 2,
+            "learnerFit": 3,
+            "clarityCardUsability": 3.5,
+            "explanationLanguageQuality": 3.5
+          },
+          "criticalIssues": [],
+          "requiredConcepts": []
+        },
+        "B": {
+          "technicallyValid": false,
+          "scores": {
+            "correctness": 0,
+            "grounding": 0,
+            "coverage": 0,
+            "learnerFit": 0,
+            "clarityCardUsability": 0,
+            "explanationLanguageQuality": 0
+          },
+          "criticalIssues": [],
+          "requiredConcepts": []
+        }
+      },
+      "preference": "A",
+      "preferenceReason": "B produced no valid lesson; A is accurate but covers only part of the class (past simple vs present perfect is missing entirely, and polite requests, make/do and take off meanings are thin)."
+    }
+  ]
+}

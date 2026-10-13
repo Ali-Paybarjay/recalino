@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-13T07:04:38.089Z",
+  "part": 1,
+  "sources": [
+    {
+      "kind": "audio",
+      "blocks": 128
+    },
+    {
+      "kind": "image",
+      "blocks": 4
+    },
+    {
+      "kind": "image",
+      "blocks": 4
+    }
+  ],
+  "totalSpentUsd": 1.214859,
+  "callsThisRun": 0,
+  "stoppedByCapOrCallLimit": true,
+  "outcomes": [],
+  "result": {}
+}

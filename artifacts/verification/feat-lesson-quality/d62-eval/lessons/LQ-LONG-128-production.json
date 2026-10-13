@@ -1,0 +1,733 @@
+{
+  "schemaVersion": "1",
+  "title": "عادت‌های گذشته، افعال عبارتی و جملات شرطی با unless",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [
+    {
+      "id": "claim-64f6a26b7ebf218961846dc4-1",
+      "text": "در این درس تفاوت ساختارهای used to (عادت تمام‌شده)، be used to (عادی بودن شرایط) و get used to (روند عادت کردن) آموزش داده شد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "audio",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 0,
+            "endMs": 28000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 30000,
+            "endMs": 58000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 60000,
+            "endMs": 88000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-4c420428557cf1010f112464-1",
+      "text": "افعال عبارتی با take، کاربرد زمان گذشته در مقایسه با حال کامل و روش‌های بیان درخواست مؤدبانه تمرین شدند.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "audio",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1290000,
+            "endMs": 1318000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1320000,
+            "endMs": 1348000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 1350000,
+            "endMs": 1378000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 2580000,
+            "endMs": 2608000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 2610000,
+            "endMs": 2638000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 3870000,
+            "endMs": 3898000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-9203e59abfc4d3cbf15254ae-1",
+      "text": "همچنین تفاوت همنشینی‌های make و do و قانون ساختار شرطی unless همراه با فعل مثبت بررسی گردید.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 5160000,
+            "endMs": 5188000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 5190000,
+            "endMs": 5218000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 6450000,
+            "endMs": 6478000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 6480000,
+            "endMs": 6508000
+          }
+        },
+        {
+          "sourceId": "ce000901-2222-4222-8222-000000000002",
+          "contentVersionId": "cd000901-2222-4222-8222-000000000002",
+          "locator": {
+            "kind": "text",
+            "blockId": "b1",
+            "start": 0,
+            "end": 9
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-3abf1f6d0ad468db478da1a6-1",
+      "title": "ساختارهای used to و منفی‌سازی آن",
+      "claims": [
+        {
+          "id": "claim-a8f6a94aa7e9dc574e274c2e-1",
+          "text": "در شکل منفی used to، حرف d حذف می‌شود و ساختار didn't use to همراه با شکل ساده فعل به کار می‌رود.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "audio",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 90000,
+                "endMs": 118000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 450000,
+                "endMs": 478000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 810000,
+                "endMs": 838000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1170000,
+                "endMs": 1198000
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        },
+        {
+          "id": "claim-0d7142fbfecd3808e86b6609-1",
+          "text": "ساختار get used to به همراه شکل ingدار فعل، بیانگر فرآیند و تغییر برای خو گرفتن به شرایط جدید است.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "audio",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 60000,
+                "endMs": 88000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 180000,
+                "endMs": 208000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 540000,
+                "endMs": 568000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 900000,
+                "endMs": 928000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1260000,
+                "endMs": 1288000
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "id": "topic-c38c35db2e6554136abe1718-1",
+      "title": "نکات افعال عبارتی و شرطی‌ها",
+      "claims": [
+        {
+          "id": "claim-afc2cf841f315f6e0b389f4c-1",
+          "text": "هنگامی که مفعول take off یک ضمیر باشد، ضمیر در میان دو بخش فعل قرار می‌گیرد مانند take it off.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "audio",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1380000,
+                "endMs": 1408000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 1740000,
+                "endMs": 1768000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 2100000,
+                "endMs": 2128000
+              }
+            },
+            {
+              "sourceId": "ce000901-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 2460000,
+                "endMs": 2488000
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-495b1b422bf9d77cd83bda36-1",
+      "kind": "grammar",
+      "front": "used to + base verb",
+      "back": "در گذشته به انجام کاری عادت داشتن که اکنون پایان یافته است",
+      "claim": {
+        "id": "claim-3433ffcbe9149712369dac1c-1",
+        "text": "برای بیان عادت‌ها و وضعیت‌های گذشته که اکنون تمام شده‌اند از used to همراه با شکل ساده فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 0,
+              "endMs": 28000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 360000,
+              "endMs": 388000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 720000,
+              "endMs": 748000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1080000,
+              "endMs": 1108000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "used to + base verb",
+        "faMeaning": "در گذشته به انجام کاری عادت داشتن که اکنون پایان یافته است",
+        "topic": "Past habits",
+        "kind": "grammar",
+        "ipa": "/ˌjuːst tə ˈwɔːk/",
+        "ipaText": "used to walk",
+        "faApprox": "یوست تو واک",
+        "fullSentence": "I used to walk to school.",
+        "collocations": [],
+        "noteFa": "در جمله «I used to walk to school»، عبارت «used to walk» به عادتی در گذشته اشاره می‌کند که در حال حاضر متوقف شده است.",
+        "imageFa": "دانش‌آموزی که سال‌ها پیش پیاده به مدرسه می‌رفته اما اکنون با اتوبوس رفت‌وآمد می‌کند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "از میان گزینه‌ها، ساختار مناسب برای بیان عادت گذشته را انتخاب کنید.",
+        "prompt": "I [used to / was used to] walk to school."
+      }
+    },
+    {
+      "id": "item-613783e8fe98c74134ca5ea5-1",
+      "kind": "grammar",
+      "front": "be used to + -ing",
+      "back": "به چیزی عادت داشتن و آشنا بودن با شرایط",
+      "claim": {
+        "id": "claim-6f1f3b3d52c1aaa266d15cc9-1",
+        "text": "پس از be used to، شکل دارای ing فعل می‌آید تا نشان دهد چیزی برای فرد آشنا و عادی است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 30000,
+              "endMs": 58000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 270000,
+              "endMs": 298000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 630000,
+              "endMs": 658000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 990000,
+              "endMs": 1018000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "be used to + -ing",
+        "faMeaning": "به چیزی عادت داشتن و آشنا بودن با شرایط",
+        "topic": "Familiarity",
+        "kind": "grammar",
+        "ipa": "/əm ˌjuːst tə ˈɡetɪŋ/",
+        "ipaText": "am used to getting",
+        "faApprox": "اَم یوست تو گِتینگ",
+        "fullSentence": "I am used to getting up early now.",
+        "collocations": [],
+        "noteFa": "در جمله «I am used to getting up early now»، پس از «am used to»، شکل اسم مصدر «getting» آمده تا عادی‌بودن سحرخیزی را بیان کند.",
+        "imageFa": "فردی که ساعت شش صبح به راحتی و با عادت قبلی از خواب برمی‌خیزد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "شکل صحیح فعل را پس از ساختار be used to برگزینید.",
+        "prompt": "I am used to [get / getting] up early now."
+      }
+    },
+    {
+      "id": "item-0c92093f70e08c7b29c21e3f-1",
+      "kind": "expression",
+      "front": "take up",
+      "back": "شروع کردن سرگرمی یا فعالیت جدید",
+      "claim": {
+        "id": "claim-8944432e441101fadc171e1f-1",
+        "text": "فعل عبارتی take up به معنای شروع کردن یک سرگرمی یا مهارت جدید است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1290000,
+              "endMs": 1318000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 1650000,
+              "endMs": 1678000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2010000,
+              "endMs": 2038000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 2370000,
+              "endMs": 2398000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take up",
+        "faMeaning": "شروع کردن سرگرمی یا فعالیت جدید",
+        "topic": "Hobbies",
+        "kind": "collocation",
+        "ipa": "/ˌteɪk ˈʌp/",
+        "faApprox": "تِیک آپ",
+        "gapSentence": "Last year my brother ______ the guitar.",
+        "fullSentence": "Last year my brother took up the guitar.",
+        "collocations": [
+          "take up a hobby",
+          "take up the guitar"
+        ],
+        "noteFa": "در جمله نمونه، «took up» شکل گذشته این فعل عبارتی است و نشان می‌دهد برادر سال گذشته یادگیری گیتار را شروع کرده است.",
+        "imageFa": "نوجوانی که جعبه گیتار تازه خریداری‌شده‌اش را باز می‌کند تا تمرین موسیقی را آغاز کند.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-6893175f9190f4da7ef2bbd1-1",
+      "kind": "grammar",
+      "front": "unless",
+      "back": "مگر اینکه / اگر ... نشود",
+      "claim": {
+        "id": "claim-b435abcf82cbd1cedbd673a9-1",
+        "text": "واژه unless به معنای «اگر ... نه» است و پس از آن حال ساده برای زمان آینده به کار می‌رود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 6450000,
+              "endMs": 6478000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 6510000,
+              "endMs": 6538000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 6810000,
+              "endMs": 6838000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 7170000,
+              "endMs": 7198000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 7530000,
+              "endMs": 7558000
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b1",
+              "start": 0,
+              "end": 15
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b2",
+              "start": 0,
+              "end": 39
+            }
+          },
+          {
+            "sourceId": "ce000901-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000901-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b3",
+              "start": 0,
+              "end": 41
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "unless",
+        "faMeaning": "مگر اینکه / اگر ... نشود",
+        "topic": "Conditionals",
+        "kind": "grammar",
+        "ipa": "/ənˌles wi ˈliːv/",
+        "ipaText": "unless we leave",
+        "faApprox": "آنلِس وی لیو",
+        "fullSentence": "We will miss the bus unless we leave now.",
+        "collocations": [],
+        "noteFa": "در جمله «We will miss the bus unless we leave now»، پس از «unless»، فعل در حالت مثبت «leave» آمده و مفهوم منفی در خود unless نهفته است.",
+        "imageFa": "دو نفر که به ساعت نگاه می‌کنند و نگران دیر رسیدن به ایستگاه اتوبوس هستند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "کلمه ربط شرطی مناسب را انتخاب کنید تا معنی «اگر الان حرکت نکنیم» برسد.",
+        "prompt": "We will miss the bus [unless / if] we leave now."
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": []
+  },
+  "classNotes": {
+    "date": "2026-10-12",
+    "course": "Everyday English B1",
+    "coverage": "مرور تفاوت‌های used to و مشتقات آن، افعال عبارتی رایج، مقایسه گذشته ساده و حال کامل، درخواست‌های مؤدبانه، تفاوت make و do، و جمله شرطی با unless.",
+    "coreIntro": "این درس به شما کمک می‌کند عادت‌های گذشته و وضعیت‌های آشنا را دقیق‌تر بیان کنید و جملات شرطی منفی را با unless به کار ببرید.",
+    "chunks": [
+      {
+        "pattern": "didn't use to + base verb",
+        "classSentence": "We didn't use to have a car.",
+        "noteFa": "حالت منفی used to بدون حرف d نوشته می‌شود."
+      },
+      {
+        "pattern": "get used to + -ing",
+        "classSentence": "She is getting used to driving on the left.",
+        "noteFa": "نشان‌دهنده روند انطباق و عادت تدریجی به رانندگی در سمت چپ."
+      },
+      {
+        "pattern": "take after + person",
+        "classSentence": "Anna takes after her grandmother.",
+        "noteFa": "شباهت رفتاری یا ظاهری به یکی از اعضای خانواده."
+      }
+    ],
+    "board": [
+      "make / do",
+      "make a mistake, make a decision",
+      "do homework, do the shopping",
+      "do a mistake → make a mistake",
+      "unless = if not",
+      "unless + present simple → future result",
+      "We will miss the bus unless we leave now.",
+      "unless it rains (not: unless it doesn't rain)"
+    ],
+    "tasks": [
+      {
+        "title": "درخواست‌های مؤدبانه",
+        "blocks": [
+          {
+            "type": "text",
+            "textFa": "هنگام پاسخ مثبت به Would you mind، از پاسخ منفی استفاده می‌کنیم زیرا منظور این است که انجام آن کار برای ما مانعی ندارد."
+          },
+          {
+            "type": "quote",
+            "quoteEn": "Would you mind opening the window?"
+          },
+          {
+            "type": "quote",
+            "quoteEn": "Could you possibly lend me your notes?"
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "unverified",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "do a mistake",
+        "sayThis": "make a mistake",
+        "whyFa": "کلمه mistake همواره با فعل make همنشین می‌شود نه با do."
+      },
+      {
+        "notThis": "take off it",
+        "sayThis": "take it off",
+        "whyFa": "در افعال عبارتی جداشدنی، ضمیر مفعولی باید بین فعل و حرف اضافه قرار گیرد."
+      }
+    ],
+    "gapfill": [],
+    "culture": []
+  }
+}

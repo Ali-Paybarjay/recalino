@@ -1,0 +1,351 @@
+{
+  "caseId": "S05",
+  "explanationLanguage": "fa",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "C1",
+    "goal": "general"
+  },
+  "sources": [
+    {
+      "kind": "text",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "A negative question such as Didn't you...? or Isn't it...? often shows surprise, or invites the listener to agree: Didn't you get my message this morning? Isn't it a beautiful view from up here? Did you not...? is the same question in a more formal style."
+        },
+        {
+          "text": "After think, hope, expect and be afraid, so can replace a whole positive clause, and not can replace a negative one: Will the shop be open on Sunday? I think so. Is the flight delayed? I hope not. With think, the usual negative is I don't think so. I'm afraid not gives bad news politely."
+        },
+        {
+          "text": "Printed task: Complete the negative question with the verb in brackets. Didn't you ___ (see) the sign at the entrance? We checked the answer together in class."
+        },
+        {
+          "text": "Homework for next Monday: write a short dialogue of eight lines that includes two negative questions and one reply with I hope not or I'm afraid not. Bring it to the next class."
+        },
+        {
+          "text": "The last straw is the final problem in a series of problems that makes someone lose patience. Class example: When the train was cancelled for the third time, that was the last straw. Common combinations: the final straw, the last straw for many residents."
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "کاربرد سؤال‌های منفی، جایگزینی با so و not، و اصطلاح the last straw",
+    "learningItems": [
+      {
+        "kind": "expression",
+        "front": "the last straw",
+        "back": "کاسه صبر را لبریز کردن / آخرین قطره صبر",
+        "claim": "اصطلاح the last straw به معنای آخرین مشکل از یک رشته دشواری‌هاست که صبر انسان را لبریز می‌کند.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "the last straw",
+          "faMeaning": "کاسه صبر را لبریز کردن / آخرین قطره صبر",
+          "topic": "اصطلاحات روزمره",
+          "kind": "collocation",
+          "ipa": "/ðə ˌlɑːst ˈstrɔː/",
+          "faApprox": "ذِ لاست استرو",
+          "gapSentence": "When the train was cancelled for the third time, that was ______.",
+          "fullSentence": "When the train was cancelled for the third time, that was the last straw.",
+          "collocations": [
+            "the final straw",
+            "the last straw for many residents"
+          ],
+          "noteFa": "این عبارت استعاری دقیقاً برای نقطه‌ای به کار می‌رود که پس از تکرار چند مشکل، تحمل شخص به پایان می‌رسد. در جمله When the train was cancelled for the third time, that was the last straw عبارت the last straw نقش مسند را دارد و نشان‌دهنده پایان شکیبایی است.",
+          "imageFa": "کاهی بسیار سبک که با قرار گرفتن بر روی بار سنگین یک شتر، کمر او را می‌شکند.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "negative questions for surprise or agreement",
+        "back": "سؤال‌های منفی برای ابراز شگفتی یا جلب توافق",
+        "claim": "سؤال‌های منفی با Didn't you یا Isn't it اغلب برای نشان دادن تعجب یا دعوت از مخاطب برای اعلام موافقت استفاده می‌شوند.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "negative questions for surprise or agreement",
+          "faMeaning": "سؤال‌های منفی برای ابراز شگفتی یا جلب توافق",
+          "topic": "دستور زبان و ساختار جملات سؤالی",
+          "kind": "grammar",
+          "ipa": "/ˈdɪdnt juː ɡɛt/",
+          "ipaText": "Didn't you get",
+          "faApprox": "دیدِنت یو گِت",
+          "fullSentence": "Didn't you get my message this morning?",
+          "collocations": [],
+          "noteFa": "سؤال‌های منفی محاوره‌ای با ترکیب فعل کمکی منفی‌شده و فاعل ساخته می‌شوند. در عبارت Didn't you get my message this morning? گوینده انتظار داشته پیام رسیده باشد و اکنون از نرسیدن آن تعجب کرده است.",
+          "imageFa": "فردی که با حالتی متعجب به صفحه تلفن همراهش اشاره می‌کند و منتظر شنیدن تأیید طرف مقابل است.",
+          "sourceFa": "از کلاس",
+          "taskFa": "برای بیان شگفتی از دریافت نشدن پیام، صورت سؤالی درست را انتخاب کنید.",
+          "prompt": "(Did you / Didn't you) get my message this morning?"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "clause substitution with so and not",
+        "back": "جایگزینی جمله با so و not پس از افعال نظر و انتظار",
+        "claim": "پس از افعالی مانند think، hope، expect و be afraid می‌توان از so برای جانشینی بند مثبت و از not برای جانشینی بند منفی استفاده کرد.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "clause substitution with so and not",
+          "faMeaning": "جایگزینی جمله با so و not پس از افعال نظر و انتظار",
+          "topic": "پاسخ‌های کوتاه و جایگزینی",
+          "kind": "grammar",
+          "ipa": "/aɪ həʊp nɒt/",
+          "ipaText": "I hope not",
+          "faApprox": "آی هوپ نات",
+          "fullSentence": "Is the flight delayed? I hope not.",
+          "collocations": [],
+          "noteFa": "در زبان انگلیسی برای فعل hope بر خلاف think از ساختار منفی I hope not استفاده می‌شود، در حالی که برای think ساختار معمول I don't think so است. در جمله Is the flight delayed? I hope not کلمه not جایگزین بند منفی that the flight is not delayed شده است.",
+          "imageFa": "مسافری در سالن انتظار فرودگاه که با نگاه به تابلوی اعلام پروازها ابراز امیدواری می‌کند که پروازش تأخیر نخورد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "برای ابراز امیدواری منفی در پاسخ به سؤال زیر، گزینه صحیح را انتخاب کنید.",
+          "prompt": "Is the flight delayed? (I don't hope so / I hope not)."
+        }
+      }
+    ],
+    "summary": [
+      "سؤال‌های منفی مانند Didn't you برای ابراز تعجب یا همراه کردن شنونده به کار می‌روند و پاسخ‌های کوتاه پس از افعالی نظیر hope و think با so و not جایگزین می‌شوند.",
+      "اصطلاح the last straw به رویداد نهایی اشاره دارد که باعث از بین رفتن صبر و تحمل فرد در برابر مشکلات مداوم می‌شود."
+    ],
+    "topics": [
+      {
+        "title": "سؤال‌های منفی و لحن رسمی",
+        "claims": [
+          "ساختار Did you not صورت رسمی‌تر و بدون مخفف سؤال منفی نسبت به Didn't you است."
+        ]
+      },
+      {
+        "title": "پاسخ‌های مؤدبانه با so و not",
+        "claims": [
+          "عبارت I'm afraid not برای انتقال مؤدبانه اخبار منفی و ناخوشایند به مخاطب استفاده می‌شود."
+        ]
+      },
+      {
+        "title": "تمرین کلاسی ساختار سؤال منفی",
+        "claims": [
+          "در ساختار سؤال منفی گذشته با Didn't، شکل پایه فعل به کار می‌رود."
+        ]
+      }
+    ],
+    "homework": [
+      "برای روز دوشنبه آینده یک مکالمه کوتاه هشت‌خطی بنویسید که شامل دو سؤال منفی و یک پاسخ با I hope not یا I'm afraid not باشد و آن را به کلاس بعدی بیاورید."
+    ],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "Advanced English",
+      "coverage": "آموزش سؤال‌های منفی برای بیان تعجب و توافق، جایگزینی عبارات با so و not، تمرین کلاسی فعل پایه در سؤال منفی، و کاربرد اصطلاح the last straw.",
+      "coreIntro": "در این درس با روش‌های محاوره‌ای پرسیدن سؤال‌های منفی، کوتاه کردن پاسخ‌ها پس از افعال نظری، و یک اصطلاح پرکاربرد برای تمام شدن شکیبایی آشنا می‌شوید.",
+      "chunks": [
+        {
+          "pattern": "Didn't you + base verb",
+          "classSentence": "Didn't you get my message this morning?",
+          "noteFa": "ساخت سؤال منفی در گذشته ساده برای ابراز شگفتی از وقوع نیافتن یک امر."
+        },
+        {
+          "pattern": "the last straw",
+          "classSentence": "When the train was cancelled for the third time, that was the last straw.",
+          "noteFa": "استفاده از اصطلاح به عنوان مسند جمله برای بیان سرآمدن تحمل."
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "تمرین کلاسی گرامر سؤال منفی",
+          "blocks": [
+            {
+              "type": "items",
+              "items": [
+                {
+                  "prompt": "Didn't you ___ (see) the sign at the entrance?",
+                  "model": "Didn't you see the sign at the entrance?",
+                  "whyFa": "پس از فعل کمکی didn't همیشه شکل ساده و بدون تغییر فعل می‌آید."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [],
+      "gapfill": [
+        {
+          "sentence": "When the train was cancelled for the third time, that was the last ______.",
+          "answer": "straw"
+        }
+      ],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "پرسش‌های منفی، کلمات جانشین و اصطلاحات روزمره",
+    "learningItems": [
+      {
+        "kind": "vocabulary",
+        "front": "the last straw",
+        "back": "آخرین قطره از کاسه صبر؛ مشکل نهایی که تحمل فرد را پایان می‌دهد",
+        "claim": "اصطلاح «the last straw» به آخرین مشکل از مجموعه‌ای از دشواری‌ها گفته می‌شود که موجب لبریز شدن کاسه صبر فرد می‌گردد.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "the last straw",
+          "faMeaning": "آخرین قطره از کاسه صبر؛ مشکل نهایی که تحمل فرد را پایان می‌دهد",
+          "topic": "اصطلاحات روزمره",
+          "kind": "british",
+          "ipa": "/ðə ˌlɑːst ˈstrɔː/",
+          "faApprox": "دِ لاست استْرا",
+          "gapSentence": "When the train was cancelled for the third time, that was ______.",
+          "fullSentence": "When the train was cancelled for the third time, that was the last straw.",
+          "collocations": [
+            "the final straw",
+            "the last straw for many residents"
+          ],
+          "noteFa": "در جمله، واژه‌های «the last straw» برای نشان دادن حادثه‌ای به کار رفته‌اند که پس از تکرار لغو قطارها، صبر مسافران را کاملاً لبریز کرد.",
+          "imageFa": "کاه ناچیزی که روی بار شتر قرار می‌گیرد و موجب شکستن پشت آن می‌شود.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "negative questions",
+        "back": "پرسش‌های منفی برای ابراز شگفتی یا جلب توافق",
+        "claim": "پرسش‌های منفی مخفف با فعل کمکی اغلب برای ابراز شگفتی یا دعوت از شنونده برای تأیید نظر به کار می‌روند.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "negative questions",
+          "faMeaning": "پرسش‌های منفی برای ابراز شگفتی یا جلب توافق",
+          "topic": "ساختار پرسش‌های منفی",
+          "kind": "grammar",
+          "ipa": "/ˈdɪdnt juː ɡet/",
+          "ipaText": "Didn't you get",
+          "faApprox": "دیدِنت یو گِت",
+          "fullSentence": "Didn't you get my message this morning?",
+          "collocations": [
+            "Didn't you get...?",
+            "Isn't it...?",
+            "Did you not...?"
+          ],
+          "noteFa": "در این جمله، ترکیب «Didn't you get» آغازگر سؤالی منفی است که نشان‌دهنده تعجب گوینده از دریافت نشدن پیام است.",
+          "imageFa": "فردی با چهره‌ای پرسشگر و متعجب که صفحه پیام‌های ارسالی گوشی همراهش را به دوستش نشان می‌دهد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "پرسش را با انتخاب ساختار منفی مناسب برای نشان دادن شگفتی و بررسی موضوع کامل کنید.",
+          "prompt": "Choose the correct form to express surprise: (Did you / Didn't you) get my message this morning?"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "I hope not",
+        "back": "امیدوارم این‌طور نباشد (پاسخ کوتاه جانشین بند منفی)",
+        "claim": "پس از فعل‌هایی مانند hope برای جانشینی یک بند منفی کامل و جلوگیری از تکرار آن، واژه not استفاده می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "I hope not",
+          "faMeaning": "امیدوارم این‌طور نباشد (پاسخ کوتاه جانشین بند منفی)",
+          "topic": "کلمات جانشین‌ساز",
+          "kind": "grammar",
+          "ipa": "/aɪ həʊp nɒt/",
+          "ipaText": "I hope not",
+          "faApprox": "آی هوپ نات",
+          "fullSentence": "Is the flight delayed? I hope not.",
+          "collocations": [
+            "I hope not",
+            "I think so",
+            "I'm afraid not"
+          ],
+          "noteFa": "در عبارت «I hope not»، کلمه not کل بند منفی محتمل را بدون نیاز به تکرار جمله قبلی جانشین می‌کند.",
+          "imageFa": "مسافری نگران در سالن انتظار فرودگاه که با امیدواری به تابلوی پرواز نگاه می‌کند.",
+          "sourceFa": "از کلاس",
+          "taskFa": "پاسخ کوتاه و طبیعی را برای جانشینی بند منفی در پاسخ به پرسش داده‌شده انتخاب کنید.",
+          "prompt": "Choose the natural reply: Is the flight delayed? (I don't hope so / I hope not)"
+        }
+      }
+    ],
+    "summary": [
+      "پرسش‌های منفی نظیر Didn't you معمولاً برای ابراز شگفتی یا جلب موافقت مخاطب به کار برده می‌شوند.",
+      "برای پرهیز از تکرار بندهای کامل، پس از فعل‌هایی چون think و hope از کلمات so و not به عنوان جانشین استفاده می‌گردد.",
+      "اصطلاح the last straw نقطه پایانی صبر افراد را در مواجهه با مشکلات زنجیره‌ای توصیف می‌کند."
+    ],
+    "topics": [
+      {
+        "title": "کاربرد پرسش‌های منفی و لحن گفتار",
+        "claims": [
+          "صورت مخفف پرسش منفی مانند Didn't you در گفتار روزمره رایج است، در حالی که Did you not لحنی رسمی‌تر دارد.",
+          "ترکیب I'm afraid not برای انتقال پاسخ منفی به شیوه‌ای مؤدبانه به کار می‌رود."
+        ]
+      }
+    ],
+    "homework": [
+      "برای دوشنبه آینده، یک مکالمه کوتاه هشت‌خطی شامل دو پرسش منفی و یک پاسخ کوتاه با I hope not یا I'm afraid not بنویسید و همراه بیاورید."
+    ],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "Advanced English",
+      "coverage": "آموزش پرسش‌های منفی برای ابراز تعجب یا همراهی، واژه‌های جانشین so و not و اصطلاح the last straw",
+      "coreIntro": "این درس ساختارهای پرسش منفی برای گفت‌وگوهای روزمره و ابراز احساسات، شیوه‌های مختصر پاسخ‌گویی با جانشین‌سازی و بیان لبریز شدن صبر را آموزش می‌دهد.",
+      "chunks": [
+        {
+          "pattern": "Didn't you + base verb...?",
+          "classSentence": "Didn't you get my message this morning?",
+          "noteFa": "برای پرسیدن با لحن تعجب درباره کاری که انتظار می‌رفت انجام شده باشد."
+        },
+        {
+          "pattern": "Isn't it + noun phrase...?",
+          "classSentence": "Isn't it a beautiful view from up here?",
+          "noteFa": "برای دعوت از شنونده برای هم‌نظری و تأیید یک واقعیت مشهود."
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "تمرین کلاسی تکمیل پرسش منفی",
+          "blocks": [
+            {
+              "type": "items",
+              "items": [
+                {
+                  "prompt": "Didn't you ___ (see) the sign at the entrance?",
+                  "model": "Didn't you see the sign at the entrance?",
+                  "whyFa": "پس از فعل کمکی منفی Didn't، شکل ساده و مصدر بدون to به کار می‌رود."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "Did you not get my message this morning?",
+          "sayThis": "Didn't you get my message this morning?",
+          "whyFa": "فرم مخفف در مکالمه روزمره بسیار طبیعی‌تر است؛ فرم غیرمخفف رسمیت زیادی دارد."
+        },
+        {
+          "notThis": "I don't hope so.",
+          "sayThis": "I hope not.",
+          "whyFa": "در زبان انگلیسی برای فعل hope ساختار منفی استاندارد I hope not است نه I don't hope so."
+        }
+      ],
+      "gapfill": [
+        {
+          "sentence": "When the train was cancelled for the third time, that was the last ______.",
+          "answer": "straw"
+        }
+      ],
+      "culture": []
+    }
+  }
+}
