@@ -12,7 +12,6 @@ import { allowance } from "@recalino/core/quota";
 import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
-import { pendingCopy } from "../ui/pending-copy";
 import { workspaceRequest } from "../ui/workspace/api";
 import {
   type AutomaticLearningStatus,
@@ -20,6 +19,7 @@ import {
 } from "../ui/workspace/automatic-learning";
 import { automaticLearningRecovery } from "../ui/workspace/automatic-learning-recovery";
 import { sessionNextStep } from "../ui/workspace/session-state";
+import { uploadCopy } from "../ui/workspace/upload-copy";
 import {
   auditAudio,
   auditClass,
@@ -206,7 +206,7 @@ it("shape (a): a run the old sweep closed as audio_upload_rejected, with no uplo
   expect(before).toMatchObject({
     state: "blocked",
     lastError: "audio_upload_not_started",
-    message: pendingCopy.uploadReliability.automatic.notStarted,
+    message: uploadCopy.automatic.notStarted,
   });
   expect(before.message).not.toMatch(/could not be verified/);
   expect(automaticLearningRecovery(before).retryLabel).toBe("Retry failed attempt");
@@ -275,9 +275,7 @@ it("shape (b): a run whose upload lapsed (not started, then incomplete) is retri
     expect(synced).toMatchObject({ state: "blocked", lastError: code });
     const before = await learning(klass.id);
     expect(before.message).toBe(
-      started
-        ? pendingCopy.uploadReliability.automatic.incomplete
-        : pendingCopy.uploadReliability.automatic.notStarted,
+      started ? uploadCopy.automatic.incomplete : uploadCopy.automatic.notStarted,
     );
     expect(sessionNextStep({ sessionId: klass.id, status: before }).primary).toMatchObject({
       id: "retry_processing",

@@ -12,6 +12,7 @@ import type { PhotoQuality } from "./photo-quality";
 import { photoQuality } from "./photo-quality-client";
 import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
+import { recordingCopy } from "./recording-copy";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 
@@ -297,10 +298,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
           </>
         ) : (
           <>
-            <p>
-              After Stop, all recorded parts are saved on this device, then uploaded automatically
-              to prepare and save your session notes and flashcards.
-            </p>
+            <p>{recordingCopy.introduction}</p>
             <RecordLauncher sessionId={sessionId} />
           </>
         )}
