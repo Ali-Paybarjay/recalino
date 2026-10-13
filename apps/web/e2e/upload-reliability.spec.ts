@@ -14,7 +14,7 @@ import { amounts, grantEntitlement } from "@recalino/core/quota";
 import { acceptSourceNotice, createSource, readInputContract } from "@recalino/core/src";
 import { z } from "zod";
 import { LOCAL_APP_DATABASE_URL } from "../../../packages/core/test/local-db";
-import { pendingCopy } from "../src/ui/pending-copy";
+import { uploadCopy } from "../src/ui/workspace/upload-copy";
 import { signInAsNewLearner } from "./learner";
 
 const unavailable = async () => {
@@ -132,9 +132,7 @@ test.describe("Workstream 1 upload reliability", () => {
       await f.db.destroy();
     }
     await page.goto(`/sessions/${f.session.id}/processing`);
-    await expect(
-      page.getByText(pendingCopy.uploadReliability.automatic.notStarted).first(),
-    ).toBeVisible();
+    await expect(page.getByText(uploadCopy.automatic.notStarted).first()).toBeVisible();
     await expect(page.getByText("could not be verified")).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Retry failed attempt", exact: true }).first(),
@@ -179,14 +177,14 @@ test.describe("Workstream 1 upload reliability", () => {
           createdAt: Date.now(),
           phase: "attention",
           message: "Audio upload is saved. You can use other pages while it continues.",
-          problem: pendingCopy.uploadReliability.audio.uploadClosed,
+          problem: uploadCopy.audio.uploadClosed,
           reason: "upload_closed",
         },
       },
     );
     await page.reload();
     const tray = page.getByRole("complementary", { name: "Saved audio uploads" });
-    await expect(tray.getByText(pendingCopy.uploadReliability.audio.uploadClosed)).toBeVisible();
+    await expect(tray.getByText(uploadCopy.audio.uploadClosed)).toBeVisible();
     await expect(
       tray.getByRole("link", { name: "View audio upload and processing" }),
     ).toBeVisible();

@@ -1,12 +1,12 @@
 "use client";
 
-import { pendingCopy } from "../../../../ui/pending-copy";
 import { RecordingProvider } from "../../../../ui/recording/RecordingProvider";
 import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { AutomaticLearningProvider } from "../../../../ui/workspace/AutomaticLearningProvider";
 import type { AutomaticLearningStatus } from "../../../../ui/workspace/automatic-learning";
 import { SessionNextStep, VoiceStepCard } from "../../../../ui/workspace/SessionNextStep";
 import { UploadProvider } from "../../../../ui/workspace/UploadProvider";
+import { uploadCopy } from "../../../../ui/workspace/upload-copy";
 
 const userId = "10000000-0000-4000-8000-000000000002";
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -78,7 +78,7 @@ export const sessionStates: {
       state: "blocked",
       lastError: "audio_upload_not_started",
       run: run("needs_input", "audio_upload_not_started"),
-      message: pendingCopy.uploadReliability.automatic.notStarted,
+      message: uploadCopy.automatic.notStarted,
     }),
   },
 ];

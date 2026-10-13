@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
-import { pendingCopy } from "../pending-copy";
 import { WorkspaceRequestError } from "./api";
 import { UploadInterruptedError } from "./upload";
+import { uploadCopy } from "./upload-copy";
 import { AudioUploadProblem, audioUploadProblem, audioUploadRetryable } from "./upload-problems";
 
 const rejection = (code: string, status: number, fields?: Record<string, string[]>) =>
@@ -39,7 +39,7 @@ it("replaces the generic validation text of a closed upload with an action that 
         rejection("validation_failed", 400, { reservation: ["confirmed_processing_required"] }),
       ) as Error
     ).message,
-  ).toBe(pendingCopy.uploadReliability.audio.uploadClosed);
+  ).toBe(uploadCopy.audio.uploadClosed);
 });
 
 it.each([

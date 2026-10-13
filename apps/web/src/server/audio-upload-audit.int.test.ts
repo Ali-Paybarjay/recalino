@@ -7,11 +7,11 @@ import { beginTemporaryAudioUpload } from "@recalino/core/src";
 import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
-import { pendingCopy } from "../ui/pending-copy";
 import { type WorkspaceRequestError, workspaceRequest } from "../ui/workspace/api";
 import { uploadAutomaticAudio } from "../ui/workspace/automatic-learning";
 import { ManualAudioManager } from "../ui/workspace/manual-audio-manager";
 import { IndexedManualAudioStore } from "../ui/workspace/manual-audio-store";
+import { uploadCopy } from "../ui/workspace/upload-copy";
 import { AudioUploadProblem, audioUploadProblem } from "../ui/workspace/upload-problems";
 import {
   auditAudio,
@@ -417,7 +417,7 @@ describe("audit 2: every rejection on the start, part and complete paths", () =>
     // The client names it as a closed upload, with no retry that would hit the same answer.
     expect(audioUploadProblem(deleted)).toMatchObject({
       reason: "upload_closed",
-      message: pendingCopy.uploadReliability.audio.uploadClosed,
+      message: uploadCopy.audio.uploadClosed,
     });
     await db
       .updateTable("src.asset")
