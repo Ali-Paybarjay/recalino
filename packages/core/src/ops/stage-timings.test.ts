@@ -38,7 +38,7 @@ it("NFR-07 splits a class run into upload, provider, voice and publication stage
     voice: 474,
     publication: 7,
     total: 1250,
-    device_hidden: 0,
+    device_hidden: null,
   });
 });
 
@@ -54,9 +54,14 @@ it("counts the device's reported hidden time inside the run only (D71)", () => {
   expect(stageDurations({ ...capture, finishedAt: null, foregroundGaps: gaps }).device_hidden).toBe(
     1045,
   );
+  // A device that reported only intervals outside the run stayed open during it: 0, not null.
+  expect(
+    stageDurations({ ...capture, foregroundGaps: [{ hiddenAt: at(40), visibleAt: at(50) }] })
+      .device_hidden,
+  ).toBe(0);
   expect(summarize([{ ...capture, foregroundGaps: gaps }, capture]).stages.device_hidden).toEqual({
-    runs: 2,
-    p50: 0,
+    runs: 1,
+    p50: 200,
     p95: 200,
   });
 });

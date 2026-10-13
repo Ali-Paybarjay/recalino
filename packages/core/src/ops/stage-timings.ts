@@ -71,7 +71,7 @@ export function hiddenSeconds(
  * Stage boundaries. Upload: run creation → first upload start → last verified original. Queue:
  * ready input → first provider call. Provider stages span their first start to last finish and
  * may overlap. Publication: last provider or voice result → run finished. Device hidden: the
- * reported hidden time within the run, 0 when nothing was reported (a device that stayed open).
+ * reported hidden time within the run; unmeasured when the device never reported.
  */
 export function stageDurations(run: RunTimes): Record<Stage, number | null> {
   const inputReady = run.uploadVerifiedAt ?? run.createdAt;
@@ -92,7 +92,11 @@ export function stageDurations(run: RunTimes): Record<Stage, number | null> {
     voice: seconds(run.voiceStartedAt, run.voiceFinishedAt),
     publication: seconds(lastResult, run.finishedAt),
     total: seconds(run.createdAt, run.finishedAt),
-    device_hidden: hiddenSeconds(run.foregroundGaps, run.createdAt, run.finishedAt),
+    // Null when the device reported nothing at all (closed tab, no event); 0 when it reported
+    // intervals that all fall outside the run.
+    device_hidden: run.foregroundGaps.length
+      ? hiddenSeconds(run.foregroundGaps, run.createdAt, run.finishedAt)
+      : null,
   };
 }
 
