@@ -1,0 +1,317 @@
+{
+  "schemaVersion": "1",
+  "title": "بیان هدف و کاربرد اصطلاح pop out",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [
+    {
+      "id": "claim-293caf3b56f4e8bf01a29389-1",
+      "text": "برای بیان هدف از to به همراه شکل ساده فعل استفاده می‌شود و حرف اضافه for تنها پیش از اسم قرار می‌گیرد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000123-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "purpose",
+            "start": 0,
+            "end": 428
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-d3672ff05c3c5ecbaed53d91-1",
+      "text": "اصطلاح pop out در گفتار غیررسمی بریتانیایی برای بیرون رفتن‌های کوتاه و سریع کاربرد فراوان دارد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000123-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "pop-out",
+            "start": 0,
+            "end": 270
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-3dee14ea991c32988aac6fcb-1",
+      "title": "بیان هدف و تفاوت to و for",
+      "claims": [
+        {
+          "id": "claim-191dba01371259e2b3ed4555-1",
+          "text": "حرف اضافه for قبل از اسم می‌آید و برای بیان هدف فعل مستقیماً پس از آن قرار نمی‌گیرد.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000123-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "purpose",
+                "start": 0,
+                "end": 428
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-d50f4499c1ea0fdb247e131b-1",
+      "kind": "grammar",
+      "front": "to + base verb",
+      "back": "برای انجام کاری (بیان هدف)",
+      "claim": {
+        "id": "claim-cbd9a0514e6a1ad3981e4201-1",
+        "text": "برای بیان دلیل و هدف انجام یک کار، از ترکیب to به همراه شکل ساده فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000123-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "purpose",
+              "start": 0,
+              "end": 428
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "to + base verb",
+        "faMeaning": "برای انجام کاری (بیان هدف)",
+        "topic": "گرامر بیان هدف",
+        "kind": "grammar",
+        "ipa": "/tə ˈbaɪ səm ˈplɑːstəz/",
+        "ipaText": "to buy some plasters",
+        "faApprox": "تَ بای سَم پلاستِرز",
+        "fullSentence": "I went to the chemist's to buy some plasters.",
+        "collocations": [],
+        "noteFa": "در این جمله عبارت «to buy» نشان‌دهنده دلیل و هدف رفتن به داروخانه است و پس از to شکل ساده فعل می‌آید.",
+        "imageFa": "شخصی که وارد داروخانه می‌شود تا یک بسته چسب زخم بخرد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با انتخاب ساختار درست میان دو گزینه داخل قلاب، هدف از رفتن به داروخانه را مشخص کنید.",
+        "prompt": "I went to the chemist's [to buy / for buy] some plasters."
+      }
+    },
+    {
+      "id": "item-7f727a47461049f3cafcb054-1",
+      "kind": "grammar",
+      "front": "in order not to + base verb",
+      "back": "برای اینکه کاری اتفاق نیفتد (هدف منفی رسمی)",
+      "claim": {
+        "id": "claim-bfc1a78ffee92414daea4485-1",
+        "text": "برای بیان هدف منفی به شکل رسمی، ساختار in order not to به همراه شکل ساده فعل به کار می‌رود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000123-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "purpose",
+              "start": 0,
+              "end": 428
+            }
+          },
+          {
+            "sourceId": "ad000123-1111-4111-8111-000000000002",
+            "contentVersionId": "bd000123-1111-4111-8111-000000000002",
+            "locator": {
+              "kind": "time",
+              "startMs": 10000,
+              "endMs": 20000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "in order not to + base verb",
+        "faMeaning": "برای اینکه کاری اتفاق نیفتد (هدف منفی رسمی)",
+        "topic": "گرامر بیان هدف منفی",
+        "kind": "grammar",
+        "ipa": "/ɪn ˈɔːdə nɒt tə ˈmɪs/",
+        "ipaText": "in order not to miss",
+        "faApprox": "این اودِ نات تَ میس",
+        "fullSentence": "We left home early in order not to miss the train.",
+        "collocations": [],
+        "noteFa": "در جمله مورد نظر، عبارت «in order not to miss» به شیوه‌ای رسمی نشان می‌دهد که زود خارج شدن برای از دست ندادن قطار بوده است.",
+        "imageFa": "مسافرانی که با بستن چمدان در صبح زود از در خانه خارج می‌شوند تا به قطار برسند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "گزینه درست را برای ساختار هدف منفی انتخاب کنید تا جمله کامل شود.",
+        "prompt": "We left home early [in order not to / in order to not] miss the train."
+      }
+    },
+    {
+      "id": "item-4a6cddcfe1113b2a2b1068b1-1",
+      "kind": "expression",
+      "front": "pop out",
+      "back": "برای مدت کوتاهی بیرون رفتن",
+      "claim": {
+        "id": "claim-f1765e80fd7e543834222733-1",
+        "text": "اصطلاح pop out در انگلیسی بریتانیایی و غیررسمی به معنای خروج کوتاه از محل برای انجام کاری سریع در همان نزدیکی است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000123-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "pop-out",
+              "start": 0,
+              "end": 270
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "pop out",
+        "faMeaning": "برای مدت کوتاهی بیرون رفتن",
+        "topic": "اصطلاحات روزمره بریتانیایی",
+        "kind": "british",
+        "ipa": "/ˌpɒp ˈaʊt/",
+        "faApprox": "پاپ آوت",
+        "gapSentence": "I'm just ______ to get some milk, so I'll be back in ten minutes.",
+        "fullSentence": "I'm just popping out to get some milk, so I'll be back in ten minutes.",
+        "collocations": [
+          "pop out for lunch",
+          "pop out to the shops"
+        ],
+        "noteFa": "در این عبارت، «popping out» خروج سریع برای خرید مقداری شیر و بازگشت ده‌دقیقه‌ای را توصیف می‌کند.",
+        "imageFa": "فردی که بدون پوشیدن پالتوی ضخیم و با عجله برای خرید شیر به فروشگاه سر کوچه می‌رود.",
+        "sourceFa": "از کلاس"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [
+    {
+      "id": "claim-1b8dfe189e30d049773f3b55-1",
+      "text": "در متن آموزشی تأکید شده است که نباید از ساختار for to buy استفاده کرد، اما در فایل صوتی یکی از گویندگان مدعی است که این عبارت در میان گویشوران رایج و پذیرفته است.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000123-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000123-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "purpose",
+            "start": 0,
+            "end": 428
+          }
+        },
+        {
+          "sourceId": "ad000123-1111-4111-8111-000000000002",
+          "contentVersionId": "bd000123-1111-4111-8111-000000000002",
+          "locator": {
+            "kind": "time",
+            "startMs": 0,
+            "endMs": 10000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": true
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": []
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Everyday English B1",
+    "coverage": "این درس به بررسی شیوه‌های بیان هدف با استفاده از to و in order not to، تفاوت آن با کاربرد for قبل از اسم، و همچنین اصطلاح بریتانیایی pop out می‌پردازد.",
+    "coreIntro": "در این درس یاد می‌گیرید چگونه دلیل و هدف کارهای روزمره خود را به انگلیسی بیان کنید و از اصطلاحات پرکاربرد بریتانیایی برای رفت‌وآمدهای کوتاه استفاده نمایید.",
+    "chunks": [
+      {
+        "pattern": "to + base verb",
+        "classSentence": "I went to the chemist's to buy some plasters.",
+        "noteFa": "بیان دلیل مراجعه به داروخانه با استفاده از مصدر ساده."
+      },
+      {
+        "pattern": "for + noun",
+        "classSentence": "I went to the chemist's for some plasters.",
+        "noteFa": "بیان هدف با استفاده از حرف اضافه for به همراه اسم."
+      },
+      {
+        "pattern": "pop out to + base verb",
+        "classSentence": "I'm just popping out to get some milk, so I'll be back in ten minutes.",
+        "noteFa": "استفاده از اصطلاح pop out برای بیرون رفتن کوتاه."
+      }
+    ],
+    "board": [],
+    "tasks": [
+      {
+        "title": "تمرین چاپی کلاس",
+        "blocks": [
+          {
+            "type": "items",
+            "items": [
+              {
+                "prompt": "I'm going to the library to ___ (return) these books before it closes.",
+                "model": "I'm going to the library to return these books before it closes.",
+                "whyFa": "پس از to شکل ساده فعل برای بیان هدف قرار می‌گیرد."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "unverified",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "I went to the chemist's for buy some plasters.",
+        "sayThis": "I went to the chemist's to buy some plasters.",
+        "whyFa": "برای فعل نمی‌توان از for استفاده کرد؛ بیان هدف با فعل نیازمند to است."
+      }
+    ],
+    "gapfill": [],
+    "culture": []
+  }
+}

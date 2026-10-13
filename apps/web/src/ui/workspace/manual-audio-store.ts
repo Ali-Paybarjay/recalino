@@ -1,4 +1,5 @@
 import type { InputContract } from "@recalino/core/src";
+import type { AudioUploadReason } from "./upload-problems";
 
 /** Only confirmed run identity and public upload settings; originals remain in RecordingStore. */
 export interface ManualAudioTransfer {
@@ -10,6 +11,8 @@ export interface ManualAudioTransfer {
   phase: "queued" | "uploading" | "verifying" | "attention";
   message: string;
   problem: string | null;
+  /** Stable reason of a non-retryable stop; absent on entries saved before reasons existed. */
+  reason?: AudioUploadReason | null;
 }
 export interface ManualAudioStore {
   put(transfer: ManualAudioTransfer, preserveExisting?: boolean): Promise<ManualAudioTransfer>;

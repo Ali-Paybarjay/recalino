@@ -1,6 +1,7 @@
 export {
   type AudioVerifier,
   audioManifestSchema,
+  audioUploadWindows,
   beginTemporaryAudioUpload,
   confirmTemporaryAudioPart,
   liveTemporaryAudioObject,
@@ -9,6 +10,7 @@ export {
   TEMPORARY_AUDIO_SWEEP_SECONDS,
   temporaryAudioManifest,
   temporaryAudioPartLink,
+  temporaryAudioUploadStates,
   verifyTemporaryAudio,
 } from "./audio";
 export {
@@ -27,6 +29,7 @@ export {
 } from "./contracts";
 export { type ExtractedTextBlock, extractHtml, extractPlainText } from "./extract";
 export {
+  expireTemporaryAudio,
   maintainSources,
   sourceAudioVerificationJob,
   sourceMaintenanceJob,
@@ -55,6 +58,8 @@ export {
   appendContentVersion,
   assertSourcesLive,
   attachSource,
+  blockLayoutSchema,
+  blockLayoutTypes,
   cleanupSourceContent,
   confirmUploadPart,
   createRecordedSource,
@@ -82,4 +87,11 @@ export {
   uploadPartLink,
   verifyUpload,
 } from "./service";
+export {
+  beginStagedAudioUpload,
+  recordedPartSessionId,
+  stagedAudioManifest,
+  stagedAudioManifestSchema,
+  stagedAudioVerificationJob,
+} from "./staged-audio";
 export { DefaultSourceVerifier, extractPdfText } from "./verifier";

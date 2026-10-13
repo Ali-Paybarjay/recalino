@@ -20,6 +20,8 @@ coverage/
 # Existing tracked evidence remains versioned; retain only the reviewed release summaries.
 /artifacts/releases/
 /artifacts/verification/*
+# D65 (owner decision 2026-10-12): screenshots of changed screens for the owner's review.
+!/artifacts/verification/feat-session-navigation/
 !/artifacts/verification/classes-browser-deployment-2026-10-07.json
 !/artifacts/verification/classes-browser-production-checks.json
 !/artifacts/verification/classes-browser-production-audit.json

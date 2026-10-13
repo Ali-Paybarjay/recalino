@@ -42,6 +42,30 @@ export const learningItemSchema = z.strictObject({
   study: studyContentSchema.optional(),
 });
 export type LearningItem = z.infer<typeof learningItemSchema>;
+/** Why a source with extracted text taught nothing in the lesson (lesson-quality-1). */
+export const sourceNotUsedReasons = [
+  "unreadable",
+  "duplicate",
+  "off_topic",
+  "outside_selection",
+  "no_teaching_content",
+  /** The model did not account for the source in its single allowed regeneration. */
+  "not_reported",
+] as const;
+/** Source availability only; the provider wire contracts of older snapshots keep this shape. */
+export const coverageBaseSchema = z.strictObject({
+  complete: z.boolean(),
+  missingSourceIds: z.array(z.uuid()).max(100),
+});
+export const sourceCoverageSchema = z.discriminatedUnion("status", [
+  z.strictObject({ sourceId: z.uuid(), status: z.literal("used") }),
+  z.strictObject({
+    sourceId: z.uuid(),
+    status: z.literal("not_used"),
+    reason: z.enum(sourceNotUsedReasons),
+  }),
+]);
+export type SourceCoverage = z.infer<typeof sourceCoverageSchema>;
 export const knowledgeModelSchema = z.strictObject({
   schemaVersion: z.literal(LKM_SCHEMA_VERSION),
   title: z.string().min(1).max(300),
@@ -59,7 +83,10 @@ export const knowledgeModelSchema = z.strictObject({
   learningItems: z.array(learningItemSchema).max(500),
   homework: z.array(claimSchema).max(100),
   uncertainties: z.array(claimSchema).max(100),
-  coverage: z.strictObject({ complete: z.boolean(), missingSourceIds: z.array(z.uuid()).max(100) }),
+  coverage: coverageBaseSchema.extend({
+    /** Per-source use, server derived from citations; absent in older versions. */
+    sources: z.array(sourceCoverageSchema).max(100).optional(),
+  }),
   classNotes: classNotesSchema.optional(),
 });
 export type KnowledgeModel = z.infer<typeof knowledgeModelSchema>;
@@ -231,6 +258,12 @@ export function validateKnowledgeModel(
     new Set(missing).size !== missing.length ||
     missing.some((sid) => !sources.some((s) => s.sourceId === sid)) ||
     model.coverage.complete !== (missing.length === 0)
+  )
+    fail("coverage_invalid");
+  const perSource = model.coverage.sources ?? [];
+  if (
+    new Set(perSource.map((entry) => entry.sourceId)).size !== perSource.length ||
+    perSource.some((entry) => !sources.some((s) => s.sourceId === entry.sourceId))
   )
     fail("coverage_invalid");
   if (

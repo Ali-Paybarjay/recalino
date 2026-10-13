@@ -1,0 +1,288 @@
+{
+  "caseId": "S12",
+  "explanationLanguage": "uk",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "B1",
+    "goal": "general"
+  },
+  "sources": [
+    {
+      "kind": "text",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "Have + object + past participle means that you arrange for another person to do a job for you: I had my hair cut on Saturday. We're having the kitchen painted next week. The object comes before the past participle."
+        },
+        {
+          "text": "Get + object + past participle has a similar meaning and is more informal: I need to get my bike repaired before the trip. Where can I get this jacket cleaned?"
+        },
+        {
+          "text": "For good means permanently, for ever. Class example: After ten years abroad, my uncle has come home for good. Common combinations: leave for good, close for good."
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "Causative Have / Get та вираз For Good",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "have sth done",
+        "back": "замовляти послугу, робити щось чужими руками",
+        "claim": "Конструкція «have + додаток + past participle» означає, що ви домовляєтеся з іншою людиною про виконання певної послуги чи роботи для вас.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "have sth done",
+          "faMeaning": "замовляти послугу, робити щось чужими руками",
+          "topic": "Послуги та домашні справи",
+          "kind": "grammar",
+          "ipa": "/hæd maɪ heə kʌt/",
+          "ipaText": "had my hair cut",
+          "fullSentence": "I had my hair cut on Saturday.",
+          "collocations": [
+            "have my hair cut",
+            "have the kitchen painted"
+          ],
+          "noteFa": "У реченні «I had my hair cut on Saturday» слова «had my hair cut» показують, що стрижку робив майстер, а не сам мовець. Зверніть увагу: додаток (my hair) обов'язково ставиться перед дієприкметником (cut).",
+          "imageFa": "Клієнт сидить у кріслі перукаря, поки майстер робить стрижку ножицями.",
+          "sourceFa": "З уроку",
+          "taskFa": "Розкрийте дужки, утворивши каузативну конструкцію в минулому часі з правильним порядком слів.",
+          "prompt": "I (have / cut / my hair) on Saturday."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "get sth done",
+        "back": "віддати щось у ремонт або чистку (розмовний варіант)",
+        "claim": "Конструкція «get + додаток + past participle» має таке саме каузативне значення, як і з дієсловом have, але звучить більш неформально.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "get sth done",
+          "faMeaning": "віддати щось у ремонт або чистку (розмовний варіант)",
+          "topic": "Послуги та побут",
+          "kind": "grammar",
+          "ipa": "/ɡet maɪ baɪk rɪˈpeəd/",
+          "ipaText": "get my bike repaired",
+          "fullSentence": "I need to get my bike repaired before the trip.",
+          "collocations": [
+            "get my bike repaired",
+            "get a jacket cleaned"
+          ],
+          "noteFa": "У фразі «get my bike repaired» дієслово get виступає розмовною заміною have. Структура залишається незмінною: дієслово get + об'єкт (my bike) + третя форма дієслова (repaired).",
+          "imageFa": "Велосипед закріплено на спеціальній стійці в майстерні, де механік лагодить ланцюг.",
+          "sourceFa": "З уроку",
+          "taskFa": "Оберіть правильний варіант для неформальної розмовної фрази про замовлення послуги ремонту.",
+          "prompt": "I need to (get my bike repaired / repair my bike myself) before the trip."
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "for good",
+        "back": "назавжди, остаточно",
+        "claim": "Вираз «for good» означає назавжди, остаточно (permanently, for ever).",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "for good",
+          "faMeaning": "назавжди, остаточно",
+          "topic": "Зміни в житті",
+          "kind": "collocation",
+          "ipa": "/fə ɡʊd/",
+          "gapSentence": "After ten years abroad, my uncle has come home ______.",
+          "fullSentence": "After ten years abroad, my uncle has come home for good.",
+          "collocations": [
+            "leave for good",
+            "close for good",
+            "come home for good"
+          ],
+          "noteFa": "Фраза «for good» означає, що дія є остаточною та безповоротною. Вона часто вживається з дієсловами руху чи припинення діяльності, такими як come home, leave або close.",
+          "imageFa": "Розпаковані дорожні валізи в передпокої будинку, куди людина повернулася жити назавжди.",
+          "sourceFa": "З уроку"
+        }
+      }
+    ],
+    "summary": [
+      "Конструкції have або get + додаток + past participle вживаються для вираження дій, які для нас виконують інші спеціалісти (get є більш неформальним).",
+      "Вираз «for good» описує постійну, незворотну подію чи стан і перекладається як «назавжди»."
+    ],
+    "topics": [
+      {
+        "title": "Каузативні конструкції в англійській мові",
+        "claims": [
+          "У каузативній структурі додаток завжди передує дієприкметнику минулого часу (have/get + object + past participle)."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "Everyday English B1",
+      "coverage": "У цьому уроці розглянуто вживання каузативних форм have/get + object + past participle для опису замовлених послуг, а також сталий вираз for good.",
+      "coreIntro": "Цей матеріал допоможе впевнено розповідати про послуги майстрів і побутові ремонти, а також описувати остаточні життєві зміни.",
+      "chunks": [
+        {
+          "pattern": "have + object + past participle",
+          "classSentence": "We're having the kitchen painted next week.",
+          "noteFa": "Показує домовленість про малярні роботи, які виконуватимуть робітники."
+        },
+        {
+          "pattern": "get + object + past participle",
+          "classSentence": "Where can I get this jacket cleaned?",
+          "noteFa": "Питання про послугу хімчистки в невимушеному розмовному стилі."
+        },
+        {
+          "pattern": "verb + for good",
+          "classSentence": "After ten years abroad, my uncle has come home for good.",
+          "noteFa": "Ілюструє повернення на батьківщину назавжди."
+        }
+      ],
+      "board": [],
+      "tasks": [],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [],
+      "gapfill": [
+        {
+          "sentence": "After ten years abroad, my uncle has come home for ______.",
+          "answer": "good"
+        }
+      ],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "Послуги та каузативні форми: have/get something done і вираз for good",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "have + sth + past participle",
+        "back": "організувати виконання роботи або послуги іншою особою (мати щось зробленим)",
+        "claim": "Конструкція have + додаток + past participle означає, що ви організували виконання певної роботи іншою людиною для вас.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "have + sth + past participle",
+          "faMeaning": "організувати виконання роботи або послуги іншою особою (мати щось зробленим)",
+          "topic": "Послуги та повсякденні справи",
+          "kind": "grammar",
+          "ipa": "/hæd maɪ heə kʌt/",
+          "ipaText": "had my hair cut",
+          "fullSentence": "I had my hair cut on Saturday.",
+          "collocations": [
+            "have hair cut",
+            "have the kitchen painted"
+          ],
+          "noteFa": "У реченні I had my hair cut on Saturday додаток my hair стоїть перед дієприкметником cut, показуючи, що стрижку робив перукар.",
+          "imageFa": "Людина сидить у перукарському кріслі, поки майстер робить їй стрижку.",
+          "sourceFa": "З уроку",
+          "taskFa": "Виберіть каузативну форму для вираження дії, виконаної спеціалістом, а не самостійно.",
+          "prompt": "Choose the correct causative structure: I (cut my hair myself / had my hair cut) on Saturday."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "get + sth + past participle",
+        "back": "віддати щось у ремонт чи чистку, організувати послугу (неформальний варіант)",
+        "claim": "Конструкція get + додаток + past participle має схоже каузативне значення, але використовується в більш розмовному й неформальному мовленні.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "get + sth + past participle",
+          "faMeaning": "віддати щось у ремонт чи чистку, організувати послугу (неформальний варіант)",
+          "topic": "Послуги та повсякденні справи",
+          "kind": "grammar",
+          "ipa": "/ɡet maɪ baɪk rɪˈpeəd/",
+          "ipaText": "get my bike repaired",
+          "fullSentence": "I need to get my bike repaired before the trip.",
+          "collocations": [
+            "get bike repaired",
+            "get jacket cleaned"
+          ],
+          "noteFa": "Фраза get my bike repaired вказує на ремонт у майстерні, де додаток my bike розташований перед пасивним дієприкметником repaired.",
+          "imageFa": "Велосипед на стійці в майстерні, де механік лагодить колесо.",
+          "sourceFa": "З уроку",
+          "taskFa": "Виберіть неформальний каузативний варіант із дієсловом get для ситуації, коли ремонт робить інша людина.",
+          "prompt": "Choose the correct phrase: I need to (get my bike repaired / repair my bike myself) before the trip."
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "for good",
+        "back": "назавжди, остаточно",
+        "claim": "Вираз for good означає «назавжди» або «остаточно» (permanently, for ever).",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "for good",
+          "faMeaning": "назавжди, остаточно",
+          "topic": "Зміни в житті",
+          "kind": "collocation",
+          "ipa": "/fə ɡʊd/",
+          "gapSentence": "After ten years abroad, my uncle has come home ______.",
+          "fullSentence": "After ten years abroad, my uncle has come home for good.",
+          "collocations": [
+            "leave for good",
+            "close for good"
+          ],
+          "noteFa": "У реченні After ten years abroad, my uncle has come home for good слова for good підкреслюють, що повернення є постійним і остаточним.",
+          "imageFa": "Розпаковані валізи у передпокої рідного дому, куди людина повернулася жити назавжди.",
+          "sourceFa": "З уроку"
+        }
+      }
+    ],
+    "summary": [
+      "Каузативні конструкції з have та get у сполученні з додатком і третьою формою дієслова описують послуги, які для нас виконують інші.",
+      "Вираз for good підкреслює незворотність чи остаточність дії й часто вживається з дієсловами руху або закриття."
+    ],
+    "topics": [
+      {
+        "title": "Каузативні дієслова та життєві зміни",
+        "claims": [
+          "У структурах have/get something done додаток обов'язково передує дієприкметнику минулого часу."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "Everyday English B1",
+      "coverage": "У цьому уроці розглянуто каузативні структури have/get something done для делегування роботи іншим людям, а також стійкий вираз for good.",
+      "coreIntro": "Урок знайомить із тим, як говорити про замовлення послуг (стрижка, ремонт, фарбування) та як описувати остаточні зміни.",
+      "chunks": [
+        {
+          "pattern": "have + object + past participle",
+          "classSentence": "I had my hair cut on Saturday.",
+          "noteFa": "Порядок слів фіксований: додаток (my hair) стоїть перед дієприкметником (cut)."
+        },
+        {
+          "pattern": "get + object + past participle",
+          "classSentence": "I need to get my bike repaired before the trip.",
+          "noteFa": "Більш розмовний варіант для вираження ремонту чи сервісу сторонньою особою."
+        }
+      ],
+      "board": [],
+      "tasks": [],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [],
+      "gapfill": [
+        {
+          "sentence": "After ten years abroad, my uncle has come home for ______.",
+          "answer": "good"
+        }
+      ],
+      "culture": []
+    }
+  }
+}

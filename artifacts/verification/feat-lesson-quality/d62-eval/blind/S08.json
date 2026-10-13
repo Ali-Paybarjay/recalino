@@ -1,0 +1,331 @@
+{
+  "caseId": "S08",
+  "explanationLanguage": "es",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "B1",
+    "goal": "esol"
+  },
+  "sources": [
+    {
+      "kind": "text",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "A question tag is a short question at the end of a statement. It uses the auxiliary or modal verb from the statement, or do, does or did when there is none: a positive statement takes a negative tag, and a negative statement takes a positive tag. Class models: You work at the hospital, don't you? She hasn't paid the rent, has she? We can park here, can't we?"
+        },
+        {
+          "text": "Would you mind + -ing asks someone politely to do something: Would you mind closing the window? Would you mind waiting here for a moment? Mind means object to, so the polite way to agree is No, not at all."
+        },
+        {
+          "text": "Fill in means write the information that is asked for in the spaces on a form. Class example: Please fill in this form and sign it at the bottom. Common combinations: fill in an application form, fill in your details."
+        }
+      ]
+    },
+    {
+      "kind": "audio",
+      "role": "class_audio",
+      "blocks": [
+        {
+          "text": "A voice on the recording says: You don't have to change the tag, just say isn't it every time, like You work at the hospital, isn't it? Everyone understands that."
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "Question Tags y Peticiones de Cortesía",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "don't you?",
+        "back": "¿verdad? / ¿no es así?",
+        "claim": "Las coletillas interrogativas al final de una frase emplean el verbo auxiliar o modal de la oración principal, o bien 'do/does/did' si no hay auxiliar, invirtiendo la polaridad de afirmativa a negativa.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "don't you?",
+          "faMeaning": "¿verdad? / ¿no es así?",
+          "topic": "Gramática comunicativa",
+          "kind": "grammar",
+          "ipa": "/dəʊnt juː/",
+          "ipaText": "don't you",
+          "fullSentence": "You work at the hospital, don't you?",
+          "collocations": [],
+          "noteFa": "En 'You work at the hospital, don't you?', al ser una afirmación en presente simple sin auxiliar, la coletilla requiere el auxiliar 'don't' y el pronombre 'you'.",
+          "imageFa": "Una persona conversando cordialmente con un compañero mientras señala su credencial del hospital para confirmar dónde trabaja.",
+          "sourceFa": "De clase",
+          "taskFa": "Elige la coletilla interrogativa gramaticalmente correcta para completar la frase.",
+          "prompt": "You work at the hospital, [isn't it / don't you]?"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "would you mind + -ing",
+        "back": "¿te importaría / le importaría hacer algo?",
+        "claim": "La estructura 'Would you mind' seguida de un verbo en terminación '-ing' se emplea para pedirle a alguien de forma educada que realice una acción.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "would you mind + -ing",
+          "faMeaning": "¿te importaría / le importaría hacer algo?",
+          "topic": "Peticiones formales y cortesía",
+          "kind": "grammar",
+          "ipa": "/wʊd juː maɪnd ˈkləʊzɪŋ/",
+          "ipaText": "Would you mind closing",
+          "fullSentence": "Would you mind closing the window?",
+          "collocations": [],
+          "noteFa": "En 'Would you mind closing the window?', la construcción exige obligatoriamente el verbo con terminación en gerundio tras la fórmula de cortesía.",
+          "imageFa": "Una persona en una sala con corriente de aire pidiendo con amabilidad a otra que cierre la ventana.",
+          "sourceFa": "De clase",
+          "taskFa": "Selecciona la forma adecuada del verbo entre corchetes para formular una petición cortés.",
+          "prompt": "Would you mind [close / closing] the window?"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "fill in",
+        "back": "rellenar o cumplimentar un formulario",
+        "claim": "El verbo frasal 'fill in' significa escribir los datos solicitados en los espacios en blanco de un formulario o documento.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "fill in",
+          "faMeaning": "rellenar o cumplimentar un formulario",
+          "topic": "Trámites y vida diaria",
+          "kind": "collocation",
+          "ipa": "/ˌfɪl ˈɪn/",
+          "gapSentence": "Please ______ this form and sign it at the bottom.",
+          "fullSentence": "Please fill in this form and sign it at the bottom.",
+          "collocations": [
+            "fill in an application form",
+            "fill in your details"
+          ],
+          "noteFa": "En la frase 'Please fill in this form and sign it at the bottom', 'fill in' describe la acción de introducir los datos personales en las casillas del documento.",
+          "imageFa": "Una persona sentada frente a un mostrador rellenando con bolígrafo las casillas de una solicitud impresa.",
+          "sourceFa": "De clase"
+        }
+      }
+    ],
+    "summary": [
+      "En inglés estándar, las question tags se forman con el auxiliar correspondiente y polaridad opuesta a la frase principal para pedir confirmación.",
+      "Para solicitar un favor con educación se utiliza 'Would you mind' seguido del verbo en terminación '-ing'."
+    ],
+    "topics": [
+      {
+        "title": "Respuestas de cortesía ante Would you mind",
+        "claims": [
+          "Dado que el verbo 'mind' significa importar o poner objeciones, la fórmula cortés para aceptar la petición es responder de manera negativa con 'No, not at all'."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [
+      "Existe discrepancia entre las fuentes: la lección formal enseña que las coletillas interrogativas deben concordar con el auxiliar y el sujeto de la oración, mientras que un hablante en la grabación sugiere emplear de manera invariable 'isn't it' en todas las situaciones."
+    ],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "Community English B1",
+      "coverage": "Reglas de formación de question tags, solicitudes corteses con 'Would you mind + -ing' y el uso de 'fill in' en trámites.",
+      "coreIntro": "Esta sesión trabaja herramientas clave para la vida cotidiana y laboral en el Reino Unido: confirmar información con soltura, pedir favores con alto grado de cortesía y rellenar impresos oficiales.",
+      "chunks": [
+        {
+          "pattern": "Positive statement + negative question tag",
+          "classSentence": "You work at the hospital, don't you?",
+          "noteFa": "Al no haber verbo auxiliar explícito en la afirmación en presente, se introduce 'don't' para construir la coletilla."
+        },
+        {
+          "pattern": "Would you mind + -ing",
+          "classSentence": "Would you mind waiting here for a moment?",
+          "noteFa": "Petición formal dirigida a un usuario para solicitar una espera breve."
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "Práctica de respuestas a peticiones",
+          "blocks": [
+            {
+              "type": "text",
+              "textFa": "Comprender el sentido literal de 'mind' evita malentendidos comunes al aceptar favores en situaciones cotidianas o administrativas."
+            },
+            {
+              "type": "items",
+              "items": [
+                {
+                  "prompt": "Would you mind waiting here for a moment?",
+                  "model": "No, not at all.",
+                  "whyFa": "Indica que no causa molestia alguna acceder a la petición formulada."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "unverified",
+        "patterns": [],
+        "items": []
+      },
+      "register": [],
+      "gapfill": [
+        {
+          "sentence": "Please fill ______ this form and sign it at the bottom.",
+          "answer": "in"
+        }
+      ],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "Question Tags, Polite Requests and Completing Forms",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "question tag",
+        "back": "coletilla interrogativa para confirmar o comprobar información",
+        "claim": "Las question tags son preguntas breves al final de una frase que emplean el auxiliar o modal correspondiente con polaridad opuesta a la del enunciado.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "question tag",
+          "faMeaning": "coletilla interrogativa para confirmar o comprobar información",
+          "topic": "Question tags",
+          "kind": "grammar",
+          "ipa": "/dəʊnt juː/",
+          "ipaText": "don't you",
+          "fullSentence": "You work at the hospital, don't you?",
+          "collocations": [],
+          "noteFa": "En 'You work at the hospital, don't you?', la oración principal está en presente simple afirmativo sin auxiliar expreso, por lo que la coletilla requiere 'do' en negativa con su sujeto.",
+          "imageFa": "Una persona conversando en una recepción y asintiendo levemente mientras busca la confirmación de su interlocutor.",
+          "sourceFa": "De clase",
+          "taskFa": "Elige la coletilla interrogativa correspondiente según la polaridad y el tiempo verbal de la oración.",
+          "prompt": "You work at the hospital, (isn't it / don't you)?"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "would you mind + -ing",
+        "back": "¿te importaría...? (petición de cortesía)",
+        "claim": "La estructura 'Would you mind + -ing' se utiliza para pedir educadamente a alguien que haga algo, respondiéndose 'No, not at all' para aceptar.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "would you mind + -ing",
+          "faMeaning": "¿te importaría...? (petición de cortesía)",
+          "topic": "Polite requests",
+          "kind": "grammar",
+          "ipa": "/wʊd juː maɪnd ˈkləʊzɪŋ/",
+          "ipaText": "Would you mind closing",
+          "fullSentence": "Would you mind closing the window?",
+          "collocations": [],
+          "noteFa": "En 'Would you mind closing the window?', la expresión exige la forma en '-ing'. Dado que 'mind' significa literalmente tener inconveniente, la respuesta de cortesía afirmativa es 'No, not at all'.",
+          "imageFa": "Un pasajero en una sala de espera señalando cortésmente una ventana entreabierta para solicitar que se cierre.",
+          "sourceFa": "De clase",
+          "taskFa": "Selecciona la forma gramatical correcta tras la fórmula de petición 'Would you mind'.",
+          "prompt": "Would you mind (to close / closing) the window?"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "fill in",
+        "back": "rellenar o completar un formulario con datos personales",
+        "claim": "'Fill in' significa escribir la información solicitada en los espacios en blanco de un formulario o documento.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "fill in",
+          "faMeaning": "rellenar o completar un formulario con datos personales",
+          "topic": "Daily paperwork",
+          "ipa": "/ˌfɪl ˈɪn/",
+          "gapSentence": "Please ______ this form and sign it at the bottom.",
+          "fullSentence": "Please fill in this form and sign it at the bottom.",
+          "collocations": [
+            "fill in an application form",
+            "fill in your details"
+          ],
+          "noteFa": "En la frase 'Please fill in this form and sign it at the bottom', 'fill in' indica la acción de consignar los datos requeridos en cada campo.",
+          "imageFa": "Un solicitante completando sus datos con bolígrafo en las casillas vacías de una solicitud impresa.",
+          "sourceFa": "De clase"
+        }
+      }
+    ],
+    "summary": [
+      "Las question tags se forman alternando la polaridad y usando el auxiliar o modal de la frase, o las formas de 'do'.",
+      "'Would you mind' va seguido de verbo en '-ing' para hacer peticiones muy amables, y se acepta diciendo 'No, not at all'.",
+      "'Fill in' se emplea al introducir datos e información en un formulario oficial o documento."
+    ],
+    "topics": [
+      {
+        "title": "Interacción social y peticiones de cortesía",
+        "claims": [
+          "Una oración afirmativa lleva una tag negativa y una negativa lleva una tag afirmativa para comprobar información.",
+          "El verbo 'mind' implica molestia u objeción, por lo que responder negativamente indica plena disposición a ayudar."
+        ]
+      },
+      {
+        "title": "Trámites y formularios en la vida cotidiana",
+        "claims": [
+          "Colocaciones habituales en gestiones incluyen 'fill in an application form' y 'fill in your details'."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [
+      "Existe un conflicto entre la norma formal enseñada en el material escrito, que requiere cambiar el auxiliar según la frase (por ejemplo, 'don't you?'), y una intervención oral que sugiere emplear siempre de forma invariable 'isn't it'."
+    ],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "Community English B1",
+      "coverage": "Reglas de formación de question tags, peticiones formales con 'would you mind' y uso de 'fill in' en trámites.",
+      "coreIntro": "Esta sesión aborda recursos clave para la comunicación cotidiana en el Reino Unido: confirmar datos con coletillas interrogativas, solicitar favores de forma educada y completar trámites burocráticos.",
+      "chunks": [
+        {
+          "pattern": "Statement + auxiliary tag",
+          "classSentence": "You work at the hospital, don't you?",
+          "noteFa": "Afirmación en presente simple que añade coletilla negativa con 'do'."
+        },
+        {
+          "pattern": "Negative statement + positive tag",
+          "classSentence": "She hasn't paid the rent, has she?",
+          "noteFa": "Oración negativa en presente perfecto con coletilla afirmativa usando 'has'."
+        },
+        {
+          "pattern": "Modal statement + modal tag",
+          "classSentence": "We can park here, can't we?",
+          "noteFa": "Afirmación con el modal 'can' seguida de 'can't we?'."
+        },
+        {
+          "pattern": "Would you mind + -ing",
+          "classSentence": "Would you mind waiting here for a moment?",
+          "noteFa": "Fórmula cortés con verbo en gerundio."
+        },
+        {
+          "pattern": "Fill in + noun phrase",
+          "classSentence": "Please fill in this form and sign it at the bottom.",
+          "noteFa": "Instrucción formal para completar y firmar un documento."
+        }
+      ],
+      "board": [],
+      "tasks": [],
+      "mistakes": {
+        "speechStatus": "unverified",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "Would you mind to close the window?",
+          "sayThis": "Would you mind closing the window?",
+          "whyFa": "'Would you mind' se construye gramaticalmente con un gerundio (-ing) y nunca con infinitivo con 'to'."
+        }
+      ],
+      "gapfill": [
+        {
+          "sentence": "Please fill ______ this form and sign it at the bottom.",
+          "answer": "in"
+        }
+      ],
+      "culture": []
+    }
+  }
+}

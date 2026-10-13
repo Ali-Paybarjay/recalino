@@ -27,6 +27,12 @@ export {
   scheduleAuxiliaryRun,
 } from "./auxiliary";
 export {
+  type CaptureTranscriptionDependencies,
+  captureTranscriptionActive,
+  captureTranscriptionJob,
+  scheduleCaptureTranscription,
+} from "./capture-transcription";
+export {
   type ChargedCoverage,
   type ChargedMaterial,
   chargeableAmounts,
@@ -55,7 +61,7 @@ export {
   type TeachingAdaptation,
   teachingAdaptationSchema,
 } from "./learner-context";
-export { expireAwaitingUploads, processingPeriodicJobs } from "./maintenance";
+export { expireAwaitingUploads, expiredUploadCode, processingPeriodicJobs } from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
 export { forgetPracticeSources } from "./practice-privacy";
@@ -71,7 +77,9 @@ export {
   type SourceExtractionRetryResult,
   sourceExtractionRetrySchema,
 } from "./recovery";
+export { finishingStage, type RunFinishingStage, runFinishingStage } from "./run-stage";
 export {
+  type AwaitingUploadFailure,
   activateProcessingRun,
   assertKnownSourceInputBound,
   cancelAccountRuns,
@@ -100,6 +108,7 @@ export {
   type NoteMaterialSource,
   type NoteSourceIssue,
 } from "./source-issues";
+export { type ClassRunTimes, classRunTimes, type ProviderWindow } from "./stage-times";
 export {
   scheduleVoiceReanalysis,
   type VoiceJobDependencies,
@@ -109,13 +118,17 @@ export {
 } from "./voice-jobs";
 export {
   alignVoiceUtterances,
+  analyzeVoiceSources,
   buildVoiceAnalysis,
   correctVoiceCandidates,
   processVoiceSource,
   scopedVoiceSpeakerId,
+  turnEmbeddings,
   type VoiceCorrectionExecutor,
   type VoiceDiarization,
+  type VoiceDiarizationOptions,
   type VoiceDiarizer,
+  voiceDiarizationOptions,
 } from "./voice-processing";
 export {
   type AudioChunk,

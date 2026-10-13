@@ -27,6 +27,24 @@ const ALLOWED_FIELDS = new Set([
   "windows_short",
   "audio_planned_ms",
   "audio_used_ms",
+  // In-app capture health (PRD-REC-05): enums, coarse device family and integers only.
+  "capture_event",
+  "platform",
+  "browser",
+  "mime",
+  "codec",
+  "state",
+  "visible",
+  "part",
+  "cause",
+  "measured",
+  "age_ms",
+  "offset_ms",
+  "missing_ms",
+  "media_ms",
+  "wall_ms",
+  "gaps",
+  "result",
 ]);
 
 const IDENTIFIER = /^[A-Za-z0-9_.:/\-[\]]{1,128}$/;

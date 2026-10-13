@@ -1,0 +1,896 @@
+{
+  "schemaVersion": "1",
+  "title": "Past Habits, Familiarity, and Phrasal Verbs with Take",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [
+    {
+      "id": "claim-83ba7279d0fffbdb3b3c1659-1",
+      "text": "ساختار used to با شکل ساده فعل برای عادت‌های خاتمه‌یافته گذشته به کار می‌رود، در حالی که be used to و get used to همراه با فعل ing-دار به ترتیب بر عادی بودن فعلی و فرآیند عادت کردن دلالت دارند.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 0,
+            "endMs": 28000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 30000,
+            "endMs": 58000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 60000,
+            "endMs": 88000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000002",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+          "locator": {
+            "kind": "text",
+            "blockId": "b2",
+            "start": 0,
+            "end": 55
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000002",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+          "locator": {
+            "kind": "text",
+            "blockId": "b3",
+            "start": 0,
+            "end": 65
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-84de5c56edff84759090917f-1",
+      "text": "افعال عبارتی با take با توجه به حرف اضافه خود معانی متمایزی مانند شروع سرگرمی (take up)، شباهت به خویشاوندان (take after) یا برخاستن هواپیما و درآوردن لباس (take off) ایجاد می‌کنند و ضمایر مفعولی در میان take off قرار می‌گیرند.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 450000,
+            "endMs": 478000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 480000,
+            "endMs": 508000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 510000,
+            "endMs": 538000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000001",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+          "locator": {
+            "kind": "time",
+            "startMs": 540000,
+            "endMs": 568000
+          }
+        },
+        {
+          "sourceId": "ce000902-2222-4222-8222-000000000003",
+          "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+          "locator": {
+            "kind": "text",
+            "blockId": "b4",
+            "start": 0,
+            "end": 31
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-12415e8f3a7b71c344842689-1",
+      "title": "ساختارهای used to",
+      "claims": [
+        {
+          "id": "claim-c54433376da279a39a35a860-1",
+          "text": "برای عادت‌های تمام‌شده گذشته از used to با فعل ساده استفاده می‌شود و در حالت منفی didn't use to بدون d می‌آید.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 0,
+                "endMs": 28000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 90000,
+                "endMs": 118000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000002",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+              "locator": {
+                "kind": "text",
+                "blockId": "b2",
+                "start": 0,
+                "end": 55
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        },
+        {
+          "id": "claim-4172fabc80996d6d5db05e17-1",
+          "text": "ترکیب be used to و get used to نیازمند شکل ing-دار فعل است و به ترتیب بر آشنا بودن موقعیت یا در حال تطبیق بودن تمرکز دارد.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 30000,
+                "endMs": 58000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 60000,
+                "endMs": 88000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000002",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+              "locator": {
+                "kind": "text",
+                "blockId": "b3",
+                "start": 0,
+                "end": 65
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "id": "topic-ad2890a76cd21b902e432f40-1",
+      "title": "افعال عبارتی با take",
+      "claims": [
+        {
+          "id": "claim-cda83ece398f475089f38f37-1",
+          "text": "ترکیب فعل take با up به معنای شروع یک فعالیت تازه، با after به معنای شباهت ارثی، و با off به معنای برخاستن هواپیما یا درآوردن لباس است.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 450000,
+                "endMs": 478000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 480000,
+                "endMs": 508000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 510000,
+                "endMs": 538000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000003",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+              "locator": {
+                "kind": "text",
+                "blockId": "b2",
+                "start": 0,
+                "end": 23
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000003",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+              "locator": {
+                "kind": "text",
+                "blockId": "b3",
+                "start": 0,
+                "end": 33
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        },
+        {
+          "id": "claim-e15a8b0481af2e33f789a666-1",
+          "text": "هرگاه مفعول عبارت take off ضمیر باشد، الزاماً در میان فعل و حرف اضافه قرار می‌گیرد.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000001",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+              "locator": {
+                "kind": "time",
+                "startMs": 540000,
+                "endMs": 568000
+              }
+            },
+            {
+              "sourceId": "ce000902-2222-4222-8222-000000000003",
+              "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+              "locator": {
+                "kind": "text",
+                "blockId": "b4",
+                "start": 0,
+                "end": 31
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-8ea7e7fdea926780152e36eb-1",
+      "kind": "grammar",
+      "front": "used to + base verb",
+      "back": "عادت داشتن به انجام کاری در گذشته که اکنون پایان یافته است",
+      "claim": {
+        "id": "claim-ccda99a0fc0a9eefe59af311-1",
+        "text": "برای بیان عادت‌ها و کارهای تکراری در گذشته که اکنون متوقف شده‌اند، از ساختار «used to + شکل ساده فعل» استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 0,
+              "endMs": 28000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 360000,
+              "endMs": 388000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000002",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+            "locator": {
+              "kind": "text",
+              "blockId": "b1",
+              "start": 0,
+              "end": 7
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000002",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+            "locator": {
+              "kind": "text",
+              "blockId": "b2",
+              "start": 0,
+              "end": 55
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "used to + base verb",
+        "faMeaning": "عادت داشتن به انجام کاری در گذشته که اکنون پایان یافته است",
+        "topic": "Past habits",
+        "kind": "grammar",
+        "ipa": "/ˌjuːst tə ˈwɔːk/",
+        "ipaText": "used to walk",
+        "faApprox": "یوست تو واک",
+        "fullSentence": "I used to walk to school.",
+        "collocations": [
+          "used to live",
+          "used to play",
+          "used to have"
+        ],
+        "noteFa": "در جمله «I used to walk to school»، عبارت «used to walk» نشان می‌دهد که گوینده قبلاً پیاده به مدرسه می‌رفته اما این کار اکنون تمام شده است. پس از used to همیشه شکل ساده فعل به کار می‌رود.",
+        "imageFa": "دانش‌آموزی با کوله‌پشتی که سال‌ها پیش پیاده در مسیر مدرسه حرکت می‌کرد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "با توجه به مفهوم عادت تمام‌شده در گذشته، گزینه مناسب را برای کامل کردن جمله انتخاب کنید.",
+        "prompt": "Choose the correct form: I (used to walk / am used to walk) to school."
+      }
+    },
+    {
+      "id": "item-6016cd6369ce8378b706701a-1",
+      "kind": "grammar",
+      "front": "didn't use to",
+      "back": "در گذشته عادت نداشتن به کاری یا عدم وجود وضعیتی",
+      "claim": {
+        "id": "claim-eb485a5ba5f9883a7c98cd5c-1",
+        "text": "شکل منفی ساختار بیان عادت‌های گذشته به صورت «didn't use to» همراه با شکل ساده فعل و بدون حرف d در use نوشته می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 90000,
+              "endMs": 118000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "didn't use to",
+        "faMeaning": "در گذشته عادت نداشتن به کاری یا عدم وجود وضعیتی",
+        "topic": "Negative past habits",
+        "kind": "grammar",
+        "ipa": "/ˌdɪdnt ˈjuːs tə hæv/",
+        "ipaText": "didn't use to have",
+        "faApprox": "دیدِنت یوس تو هَو",
+        "fullSentence": "We didn't use to have a car.",
+        "collocations": [
+          "didn't use to like",
+          "didn't use to know"
+        ],
+        "noteFa": "در جمله «We didn't use to have a car»، به دلیل آمدن فعل کمکی didn't، حرف d از use حذف می‌شود و شکل ساده use به کار می‌رود.",
+        "imageFa": "خانواده‌ای در سال‌های گذشته که به دلیل نداشتن خودرو با وسایل نقلیه عمومی رفت‌وآمد می‌کردند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "شکل گرامری صحیح حالت منفی برای عادت گذشته را انتخاب کنید.",
+        "prompt": "Choose the correct form: We (didn't use to / didn't used to) have a car."
+      }
+    },
+    {
+      "id": "item-2d5eddc532aebc5c36fd076f-1",
+      "kind": "grammar",
+      "front": "be used to + -ing",
+      "back": "عادت داشتن به شرایطی در زمان حال و عادی بودن آن",
+      "claim": {
+        "id": "claim-0b15dbcbd412f0ba025382e8-1",
+        "text": "ساختار «be used to + -ing» برای بیان این موضوع به کار می‌رود که موقعیت یا کاری برای فرد عادی، آشنا و جاافتاده است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 30000,
+              "endMs": 58000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 270000,
+              "endMs": 298000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000002",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000002",
+            "locator": {
+              "kind": "text",
+              "blockId": "b3",
+              "start": 0,
+              "end": 65
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "be used to + -ing",
+        "faMeaning": "عادت داشتن به شرایطی در زمان حال و عادی بودن آن",
+        "topic": "Present familiarity",
+        "kind": "grammar",
+        "ipa": "/æm ˌjuːst tə ˈɡetɪŋ ʌp/",
+        "ipaText": "am used to getting up",
+        "faApprox": "اَم یوست تو گتینگ آپ",
+        "fullSentence": "I am used to getting up early now.",
+        "collocations": [
+          "be used to the noise",
+          "be used to living alone"
+        ],
+        "noteFa": "در جمله «I am used to getting up early now»، پس از am used to فعل با پسوند ing یعنی getting آمده است که نشان می‌دهد بیدار شدن در صبح زود برای گوینده کاملاً طبیعی و عادی شده است.",
+        "imageFa": "فردی که با صدای زنگ ساعت در اول صبح بدون خستگی و با لبخند بیدار می‌شود.",
+        "sourceFa": "از کلاس",
+        "taskFa": "شکل درست فعل پس از ساختار be used to را انتخاب کنید.",
+        "prompt": "Choose the correct form: I am used to (getting / get) up early now."
+      }
+    },
+    {
+      "id": "item-b83c54c9ee5f06036adc0148-1",
+      "kind": "grammar",
+      "front": "get used to + -ing",
+      "back": "به تدریج به وضعیت جدید عادت کردن",
+      "claim": {
+        "id": "claim-9701f0a063355dd2d668c62a-1",
+        "text": "ساختار «get used to + -ing» فرآیند تغییر و به تدریج خو گرفتن با موقعیت و شرایط جدید را بیان می‌کند.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 60000,
+              "endMs": 88000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 180000,
+              "endMs": 208000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "get used to + -ing",
+        "faMeaning": "به تدریج به وضعیت جدید عادت کردن",
+        "topic": "Adapting to change",
+        "kind": "grammar",
+        "ipa": "/ɪz ˌɡetɪŋ ˌjuːst tə ˈdraɪvɪŋ/",
+        "ipaText": "is getting used to driving",
+        "faApprox": "ایز گتینگ یوست تو درایوینگ",
+        "fullSentence": "She is getting used to driving on the left.",
+        "collocations": [
+          "get used to the weather",
+          "get used to working nights"
+        ],
+        "noteFa": "در جمله «She is getting used to driving on the left»، عبارت is getting used to روند سازگاری با رانندگی در سمت چپ را نشان می‌دهد و پس از آن driving با ing می‌آید.",
+        "imageFa": "راننده‌ای در کشوری جدید که با تمرکز و آرامش تلاش می‌کند در سمت چپ خیابان براند تا کاملاً به آن عادت کند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "برای نشان دادن فرآیند عادت کردن به موقعیت تازه، شکل صحیح فعل را انتخاب نمایید.",
+        "prompt": "Choose the correct form: She is getting used to (drive / driving) on the left."
+      }
+    },
+    {
+      "id": "item-588c5f310a73053896f8960f-1",
+      "kind": "vocabulary",
+      "front": "take up",
+      "back": "شروع کردن سرگرمی یا مهارت جدید",
+      "claim": {
+        "id": "claim-f330251640e3fae4d183dd4f-1",
+        "text": "فعل عبارتی «take up» به معنای آغاز کردن یک سرگرمی، ورزش یا فعالیت جدید است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 450000,
+              "endMs": 478000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 810000,
+              "endMs": 838000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b1",
+              "start": 0,
+              "end": 15
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b2",
+              "start": 0,
+              "end": 23
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take up",
+        "faMeaning": "شروع کردن سرگرمی یا مهارت جدید",
+        "topic": "Hobbies",
+        "ipa": "/ˌteɪk ˈʌp/",
+        "faApprox": "تِیک آپ",
+        "gapSentence": "Last year my brother ______ the guitar.",
+        "fullSentence": "Last year my brother took up the guitar.",
+        "collocations": [
+          "take up a hobby",
+          "take up a sport",
+          "take up tennis"
+        ],
+        "noteFa": "در این جمله «took up» شکل گذشته take up است و معنای آغاز کردن یادگیری گیتار به عنوان سرگرمی جدید را می‌رساند.",
+        "imageFa": "فردی که با هیجان یک جعبه ساز موسیقی نو را باز می‌کند تا نواختن آن را یاد بگیرد.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-625b3df671c3a19e18153bee-1",
+      "kind": "vocabulary",
+      "front": "take after",
+      "back": "شباهت داشتن به یکی از بستگان بزرگ‌تر در ظاهر یا رفتار",
+      "claim": {
+        "id": "claim-fa9cdb0f799e6c5e23d57e05-1",
+        "text": "فعل عبارتی «take after» به معنای شباهت ظاهری یا رفتاری به یکی از بستگان مسن‌تر خانواده است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 480000,
+              "endMs": 508000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 720000,
+              "endMs": 748000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b1",
+              "start": 0,
+              "end": 15
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b3",
+              "start": 0,
+              "end": 33
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take after",
+        "faMeaning": "شباهت داشتن به یکی از بستگان بزرگ‌تر در ظاهر یا رفتار",
+        "topic": "Family traits",
+        "ipa": "/ˌteɪk ˈɑːftə/",
+        "faApprox": "تِیک آفتِر",
+        "gapSentence": "Anna ______ her grandmother.",
+        "fullSentence": "Anna takes after her grandmother.",
+        "collocations": [
+          "take after one's mother",
+          "take after one's father"
+        ],
+        "noteFa": "در عبارت «takes after»، مقصود این است که آنا ویژگی‌های ظاهری یا اخلاقی مادربزرگ خود را به ارث برده است.",
+        "imageFa": "تصویر دختری جوان در کنار پرتره مادربزرگش با خنده‌ای کاملاً یکسان.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-c2d11382cda2b056213c582a-1",
+      "kind": "vocabulary",
+      "front": "take off",
+      "back": "برخاستن هواپیما از باند فرودگاه",
+      "claim": {
+        "id": "claim-878808b1bea1681ebc91252f-1",
+        "text": "فعل عبارتی «take off» برای هواپیما به معنای بلند شدن از روی زمین و شروع پرواز است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "audio",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 510000,
+              "endMs": 538000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 630000,
+              "endMs": 658000
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take off",
+        "faMeaning": "برخاستن هواپیما از باند فرودگاه",
+        "topic": "Air travel",
+        "ipa": "/ˌteɪk ˈɒf/",
+        "faApprox": "تِیک آف",
+        "gapSentence": "The plane ______.",
+        "fullSentence": "The plane takes off.",
+        "collocations": [
+          "take off smoothly",
+          "take off on time"
+        ],
+        "noteFa": "در جمله «The plane takes off»، فعل take off ناگذر است و به جدا شدن هواپیما از سطح باند اشاره دارد.",
+        "imageFa": "هواپیمایی که چرخ‌هایش از زمین باند جدا شده و در حال اوج‌گیری در آسمان است.",
+        "sourceFa": "از کلاس"
+      }
+    },
+    {
+      "id": "item-93e0e1f064149ae95d39abf5-1",
+      "kind": "grammar",
+      "front": "take + pronoun + off",
+      "back": "قرار گرفتن ضمیر مفعولی در میان دو بخش فعل عبارتی",
+      "claim": {
+        "id": "claim-ccc30367356f3d19beb94ef8-1",
+        "text": "در فعل عبارتی take off، اگر مفعول جمله ضمیر باشد، حتماً بین فعل و حرف اضافه قرار می‌گیرد و ساختار «take it off» ایجاد می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000001",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000001",
+            "locator": {
+              "kind": "time",
+              "startMs": 540000,
+              "endMs": 568000
+            }
+          },
+          {
+            "sourceId": "ce000902-2222-4222-8222-000000000003",
+            "contentVersionId": "cd000902-2222-4222-8222-000000000003",
+            "locator": {
+              "kind": "text",
+              "blockId": "b4",
+              "start": 0,
+              "end": 31
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "take + pronoun + off",
+        "faMeaning": "قرار گرفتن ضمیر مفعولی در میان دو بخش فعل عبارتی",
+        "topic": "Phrasal verbs with pronouns",
+        "kind": "grammar",
+        "ipa": "/ˌteɪk ɪt ˈɒf/",
+        "ipaText": "take it off",
+        "faApprox": "تِیک ایت آف",
+        "fullSentence": "Your coat is wet, so please take it off.",
+        "collocations": [
+          "take it off",
+          "take them off"
+        ],
+        "noteFa": "در عبارت «take it off»، ضمیر it در میان take و off قرار گرفته است. گفتن «take off it» طبق قاعده نادرست است. همچنین این فعل برای لباس به معنای درآوردن پوشش است.",
+        "imageFa": "شخصی که پس از ورود به اتاق کتش را درمی‌آورد و روی جالباسی می‌گذارد.",
+        "sourceFa": "از کلاس",
+        "taskFa": "جایگاه درست ضمیر مفعولی را در فعل عبارتی انتخاب کنید.",
+        "prompt": "Choose the correct order: Your coat is wet, so please (take off it / take it off)."
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ce000902-2222-4222-8222-000000000001",
+        "status": "used"
+      },
+      {
+        "sourceId": "ce000902-2222-4222-8222-000000000002",
+        "status": "used"
+      },
+      {
+        "sourceId": "ce000902-2222-4222-8222-000000000003",
+        "status": "used"
+      },
+      {
+        "sourceId": "ce000902-2222-4222-8222-000000000004",
+        "status": "not_used",
+        "reason": "off_topic"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-12",
+    "course": "General English A2",
+    "coverage": "آموزش تفاوت‌های ساختاری used to، be used to، get used to و آشنایی با افعال عبارتی take up، take after و take off همراه با قانون قرارگیری ضمیر مفعولی.",
+    "sourceNote": "محتوای این درس از روی فایل صوتی تدریس و دو تصویر تخته کلاس تدوین شده است.",
+    "coreIntro": "در این درس یاد می‌گیرید چگونه درباره عادت‌های گذشته و سازگاری با شرایط فعلی صحبت کنید و سه فعل عبارتی پرکاربرد با take را در مکالمه به کار ببرید.",
+    "chunks": [
+      {
+        "pattern": "used to + base verb",
+        "classSentence": "I used to walk to school.",
+        "noteFa": "عادت سپری‌شده در گذشته با شکل ساده فعل."
+      },
+      {
+        "pattern": "be used to + -ing",
+        "classSentence": "I am used to getting up early now.",
+        "noteFa": "عادی بودن انجام کاری در زمان حال."
+      },
+      {
+        "pattern": "get used to + -ing",
+        "classSentence": "She is getting used to driving on the left.",
+        "noteFa": "مراحل خو گرفتن و تطبیق یافتن با شرایط جدید."
+      },
+      {
+        "pattern": "take up + noun",
+        "classSentence": "Last year my brother took up the guitar.",
+        "noteFa": "شروع یک فعالیت یا سرگرمی نو."
+      },
+      {
+        "pattern": "take after + person",
+        "classSentence": "Anna takes after her grandmother.",
+        "noteFa": "شباهت اخلاقی یا چهره‌ای به یکی از بستگان."
+      },
+      {
+        "pattern": "take + pronoun + off",
+        "classSentence": "Take it off.",
+        "noteFa": "قرار گرفتن ضمیر در میان فعل و حرف اضافه."
+      }
+    ],
+    "board": [
+      "used to",
+      "past habit | used to + verb | I used to walk to school.",
+      "familiar now | be used to + -ing | I am used to getting up early.",
+      "I use to live → I used to live",
+      "take + particle",
+      "take up → start a hobby",
+      "take after → look like a relative",
+      "Take it off. (not: take off it)"
+    ],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "unverified",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "take off it",
+        "sayThis": "take it off",
+        "whyFa": "ضمایر مفعولی مانند it باید الزاماً بین فعل و حرف اضافه قرار گیرند."
+      },
+      {
+        "notThis": "I use to live",
+        "sayThis": "I used to live",
+        "whyFa": "در جملات مثبت برای بیان عادت گذشته، حرف d نباید از used حذف شود."
+      }
+    ],
+    "gapfill": [],
+    "culture": []
+  }
+}

@@ -6,7 +6,8 @@ import type { LocalPhoto, Recording, RecordingStore } from "../recording/store";
 import { workspaceRequest } from "./api";
 import { prepareFileHashes } from "./file-hashes";
 import { retryUploadRequest, type UploadRecovery, uploadWithConfirmation } from "./upload";
-import { concurrentUploads } from "./upload-concurrency";
+import { concurrentUploads, uploadSlots } from "./upload-concurrency";
+import { AudioUploadProblem, audioUploadProblem } from "./upload-problems";
 import { uploadWithProgress } from "./upload-progress";
 
 export interface AutomaticUploadProgress {
@@ -35,6 +36,8 @@ export interface AutomaticLearningStatus {
   processingReview?: ProcessingReview | null;
   /** FR-QUOTA-007: for a learner-allowance block, what this class needs and what is left now. */
   allowance?: { active: boolean; required: Amounts; available: Amounts } | null;
+  /** The lesson is written; publication waits for the voice check (owner decision 2026-10-12). */
+  stage?: "checking_voices" | "publishing" | null;
 }
 
 export function automaticResultNeedsRefresh(
@@ -521,6 +524,22 @@ export async function prepareAutomaticRecordingPhotos(
     );
 }
 
+/** Audio files transferred side by side; each needs a full local hash before its first part. */
+export const AUDIO_SOURCE_CONCURRENCY = 2;
+/** Simultaneous part uploads of one audio file (unchanged from the sequential transfer). */
+export const AUDIO_FILE_PART_CONCURRENCY = 3;
+/** Simultaneous part uploads across every audio file of one run, so a second file progresses too. */
+export const AUDIO_PART_CONCURRENCY = 4;
+
+/**
+ * Send a confirmed run's saved audio originals (D29: only after processing was confirmed).
+ * Files go side by side, at most `AUDIO_SOURCE_CONCURRENCY` at once, sharing
+ * `AUDIO_PART_CONCURRENCY` part slots (`AUDIO_FILE_PART_CONCURRENCY` per file). Each file keeps
+ * its checksum check, server-side resume, idempotent start/complete keys and its own entry in
+ * `onTransferProgress`. A server rejection a retry cannot change is thrown as
+ * `AudioUploadProblem` with a stable reason; transport failures keep their retryable types.
+ * Reusable by any caller that holds an `awaiting_upload` run.
+ */
 export async function uploadAutomaticAudio(
   run: ProcessingRun,
   snapshot: RunSnapshot,
@@ -578,10 +597,11 @@ export async function uploadAutomaticAudio(
     });
   };
   reportTransfer();
-  for (const [sourceIndex, source] of sources.entries()) {
+  const partSlot = uploadSlots(AUDIO_PART_CONCURRENCY);
+  const transfer = async ([sourceIndex, source]: [number, (typeof sources)[number]]) => {
     check();
     const file = files[sourceIndex];
-    if (!file) continue;
+    if (!file) return;
     const local = localFor(source.sourceId);
     if (!local) {
       const files = await request<{ assetId: string; displayName: string }[]>(
@@ -591,7 +611,8 @@ export async function uploadAutomaticAudio(
       const name =
         files.find((file) => file.assetId === source.sourceId)?.displayName ??
         `Audio file ${snapshot.sources.indexOf(source) + 1}`;
-      throw new Error(
+      throw new AudioUploadProblem(
+        "original_missing",
         `${name} is not on this device. Open the device that saved it to resume the upload.`,
       );
     }
@@ -605,7 +626,10 @@ export async function uploadAutomaticAudio(
     reportTransfer();
     const prepared = await prepareFileHashes(blob, contract.partBytes, true, options.signal);
     if (prepared.sha256 !== source.sha256)
-      throw new Error("The local recording does not match this session material.");
+      throw new AudioUploadProblem(
+        "integrity_mismatch",
+        "The local recording does not match this session material.",
+      );
     const parts = prepared.parts;
     const started = await request<{ uploadId: string }>(
       `/api/sources/${source.sourceId}/audio`,
@@ -621,7 +645,7 @@ export async function uploadAutomaticAudio(
       file.sentBytes = blob.size;
       file.phase = manifest.state === "verified" ? "complete" : "verifying";
       reportTransfer();
-      continue;
+      return;
     }
     const sentParts = new Map(
       parts.map((part) => [
@@ -647,63 +671,64 @@ export async function uploadAutomaticAudio(
         (part) =>
           !manifest.parts.some((stored) => stored.index === part.index && stored.verifiedAt),
       ),
-      3,
-      async (part) => {
-        check();
-        options.onProgress?.(`Uploading audio part ${part.index + 1} of ${parts.length}…`);
-        await uploadWithConfirmation(
-          async (signal) => {
-            check();
-            const link = await api<{ url: string }>(
-              `/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}&index=${part.index}`,
-              "GET",
-              undefined,
-              undefined,
-              { signal },
-            );
-            check();
-            const bytes = blob.slice(
-              part.index * contract.partBytes,
-              Math.min(blob.size, (part.index + 1) * contract.partBytes),
-            );
-            return options.put
-              ? options.put(link.url, bytes, source.mimeType, signal)
-              : uploadWithProgress(
-                  link.url,
-                  bytes,
-                  source.mimeType,
-                  (sentBytes) => reportPart(part.index, sentBytes),
-                  signal,
-                );
-          },
-          async (signal) => {
-            check();
-            return api(
-              `/api/sources/${source.sourceId}/audio`,
-              "POST",
-              {
-                action: "confirm_part",
-                runId: run.id,
-                uploadId: started.uploadId,
-                index: part.index,
-              },
-              undefined,
-              { signal },
-            );
-          },
-          "Audio upload was interrupted. The original is saved on this device.",
-          {
-            ...recovery,
-            onRetry: (attempt) => {
-              reportPart(part.index, 0);
-              recovery.onRetry?.(attempt);
+      AUDIO_FILE_PART_CONCURRENCY,
+      (part) =>
+        partSlot(async () => {
+          check();
+          options.onProgress?.(`Uploading audio part ${part.index + 1} of ${parts.length}…`);
+          await uploadWithConfirmation(
+            async (signal) => {
+              check();
+              const link = await api<{ url: string }>(
+                `/api/sources/${source.sourceId}/audio?uploadId=${started.uploadId}&index=${part.index}`,
+                "GET",
+                undefined,
+                undefined,
+                { signal },
+              );
+              check();
+              const bytes = blob.slice(
+                part.index * contract.partBytes,
+                Math.min(blob.size, (part.index + 1) * contract.partBytes),
+              );
+              return options.put
+                ? options.put(link.url, bytes, source.mimeType, signal)
+                : uploadWithProgress(
+                    link.url,
+                    bytes,
+                    source.mimeType,
+                    (sentBytes) => reportPart(part.index, sentBytes),
+                    signal,
+                  );
             },
-            confirmBeforeWrite: true,
-            confirmSuccess: true,
-          },
-        );
-        reportPart(part.index, part.sizeBytes);
-      },
+            async (signal) => {
+              check();
+              return api(
+                `/api/sources/${source.sourceId}/audio`,
+                "POST",
+                {
+                  action: "confirm_part",
+                  runId: run.id,
+                  uploadId: started.uploadId,
+                  index: part.index,
+                },
+                undefined,
+                { signal },
+              );
+            },
+            "Audio upload was interrupted. The original is saved on this device.",
+            {
+              ...recovery,
+              onRetry: (attempt) => {
+                reportPart(part.index, 0);
+                recovery.onRetry?.(attempt);
+              },
+              confirmBeforeWrite: true,
+              confirmSuccess: true,
+            },
+          );
+          reportPart(part.index, part.sizeBytes);
+        }),
     );
     file.phase = "verifying";
     reportTransfer();
@@ -713,6 +738,11 @@ export async function uploadAutomaticAudio(
       { action: "complete", runId: run.id, uploadId: started.uploadId },
       `audio-complete:${run.id}:${source.sourceId}`,
     );
+  };
+  try {
+    await concurrentUploads([...sources.entries()], AUDIO_SOURCE_CONCURRENCY, transfer);
+  } catch (failure) {
+    throw audioUploadProblem(failure);
   }
   options.onProgress?.("Audio uploaded. Preparing your notes and flashcards…");
 }

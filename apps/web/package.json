@@ -8,7 +8,8 @@
     "build": "node --conditions=react-server ../../tools/voice/prepare-build.mjs && node tools/check-native-runtime.mjs && next build --webpack && node tools/trace-native-dependencies.mjs && node tools/trace-voice-native.mjs",
     "start": "next start",
     "typecheck": "next typegen --webpack && tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:smoke": "playwright test -c e2e/smoke/playwright.config.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "1.0.10",

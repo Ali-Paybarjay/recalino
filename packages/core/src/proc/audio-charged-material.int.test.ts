@@ -13,10 +13,12 @@ import {
   beginTemporaryAudioUpload,
   confirmTemporaryAudioPart,
   createSource,
+  readInputContract,
   sourceAudioVerificationJob,
   temporaryAudioManifest,
   temporaryAudioPartLink,
 } from "../src";
+import { expireAwaitingUploads } from "./maintenance";
 import { activateProcessingRun, createProcessingRun, getRun, validateAudioUploadRun } from "./runs";
 import { processingJob } from "./worker";
 
@@ -204,7 +206,9 @@ it("D59 regression: the same audio in another class of the period uploads, trans
     );
     expect(store.upload(link.url, bytes, "audio/mpeg")).toBe(200);
     const manifest = await temporaryAudioManifest(db, x.ctx, source.assetId, upload.uploadId);
-    await validateAudioUploadRun(db, x.ctx, run.id, source.assetId, manifest.reservationId);
+    const manifestReservationId = manifest.reservationId;
+    if (!manifestReservationId) throw new Error("the temporary upload must carry the run's hold");
+    await validateAudioUploadRun(db, x.ctx, run.id, source.assetId, manifestReservationId);
     expect(
       await confirmTemporaryAudioPart(db, store, x.ctx, source.assetId, upload.uploadId, 0),
     ).toBe("verified");
@@ -272,5 +276,60 @@ it("D59 keeps the upload bound to the run's own open reservation", async () => {
   ).rejects.toMatchObject({
     code: "validation_failed",
     details: { fields: { reservation: ["confirmed_processing_required"] } },
+  });
+});
+
+it("FR-SRC-007 names an expired awaiting run by what reached the server, not as rejected audio", async () => {
+  const x = await studyFixture(db);
+  await acceptSourceNotice(db, x.ctx, "0.1", true);
+  await grantEntitlement(db, {
+    userId: x.ctx.userId,
+    startsAt: new Date(Date.now() - 1000),
+    endsAt: new Date(Date.now() + 3600000),
+    amounts: amounts({ audio: 10, regeneration: 2 }),
+    operationKey: randomUUID(),
+    actorId: "synthetic",
+    reason: "Synthetic upload expiry codes",
+  });
+  const provider = syntheticProvider();
+  const job = processingJob({ provider, store: new MemoryObjectStore() });
+  const bytes = new Uint8Array([0x49, 0x44, 0x33]);
+  async function awaiting(started: boolean) {
+    const session = await createSession(db, x.ctx, {}, { key: randomUUID() });
+    const source = await createSource(db, x.ctx, {
+      sessionId: session.id,
+      kind: "audio",
+      mimeType: "audio/mpeg",
+      sizeBytes: bytes.length,
+      sha256: sha256Hex(bytes),
+      displayName: "Synthetic expiry.mp3",
+      durationMs: 2000,
+      parts: [],
+      operationKey: randomUUID(),
+    });
+    const run = await createProcessingRun(
+      db,
+      x.ctx,
+      { sessionId: session.id, operationKey: randomUUID() },
+      { provider, job },
+    );
+    if (started)
+      await beginTemporaryAudioUpload(db, x.ctx, source.assetId, {
+        reservationId: run.reservationId,
+        parts: [{ index: 0, sizeBytes: bytes.length, sha256: sha256Hex(bytes) }],
+      });
+    return run;
+  }
+  const never = await awaiting(false);
+  const partial = await awaiting(true);
+  const contract = await readInputContract(db, "1");
+  await expireAwaitingUploads(db, new Date(Date.now() + contract.uploadTtlSeconds * 1000 + 1000));
+  expect(await getRun(db, x.ctx, never.id)).toMatchObject({
+    state: "needs_input",
+    lastError: "audio_upload_not_started",
+  });
+  expect(await getRun(db, x.ctx, partial.id)).toMatchObject({
+    state: "needs_input",
+    lastError: "audio_upload_incomplete",
   });
 });

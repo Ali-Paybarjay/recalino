@@ -1,0 +1,536 @@
+{
+  "method": "D56 conservative merge: union of critical issues, concept taught only if every reviewer agrees, scores of the lowest-mean reviewer, acceptable = valid + no critical issue + all concepts + mean >= 3",
+  "holdout": {
+    "production": {
+      "acceptable": 12,
+      "of": 14,
+      "meanScore": 3.65,
+      "withCriticalIssues": 0
+    },
+    "candidate": {
+      "acceptable": 13,
+      "of": 14,
+      "meanScore": 3.84,
+      "withCriticalIssues": 0
+    },
+    "preferenceVotes": {
+      "candidate": 23,
+      "production": 5,
+      "tie": 0
+    }
+  },
+  "rows": [
+    {
+      "caseId": "S01",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.6,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.4,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "candidate",
+          "reason": "A puts the short-answer rule on the card, gives explicit wrong/right contrasts (Do you have got, This coat is my) and a model question for each partner-task item; B covers the same points more thinly and drops the possessive chunk and contrasts."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "candidate",
+          "reason": "Both are accurate, but A puts the short-answer rule in the have-got card, explicitly corrects both class errors (Do you have got / This coat is my) and models each partner-task question; B drops the possessive chunk and the error contrasts."
+        }
+      ]
+    },
+    {
+      "caseId": "S02",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.9,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.7,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "candidate",
+          "reason": "Both are accurate and complete; A gives fuller explanations (polite answers on each card), a How about go -> going contrast and a more useful summary, while B is correct but terse."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "candidate",
+          "reason": "Both have the same four correct cards, but A ties each polite reply to its structure, corrects How about go in a register note and gives a fuller summary; B's notes and summary are thin."
+        }
+      ]
+    },
+    {
+      "caseId": "S03",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.6,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "candidate",
+          "reason": "Both handle the for to buy conflict correctly as an uncertainty; A has richer notes and collocations and uses both class example sentences, so it is slightly more useful to study from."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "candidate",
+          "reason": "Both handle the for-to-buy conflict correctly, but A also uses both class purpose examples, flags for to buy as non-standard in the core card and explains more; B is correct but thinner."
+        }
+      ]
+    },
+    {
+      "caseId": "S03-repeat",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.7,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "production",
+          "reason": "Both are accurate and handle the conflict well; B also states that in order to is the formal equivalent and uses both class examples, while A leaves in order to implicit and uses English topic labels, so B is marginally more complete despite A's extra for to buy / for buy contrasts."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "production",
+          "reason": "Very close. B practises both class purpose examples, explains that in order to is the formal equivalent and uses an unambiguous distractor; A has English topic labels and never explains in order to, though its register corrects both forbidden forms."
+        }
+      ]
+    },
+    {
+      "caseId": "S04",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "candidate",
+          "reason": "B gives practice cards for all four deduction forms (must, can't, must have, can't have) and turns the worksheet correction into an exercise; A has only three cards and English topic labels, though it does mention might have."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "candidate",
+          "reason": "B gives a contrastive practice card for each of must, can't, must have and can't have, plus the might example, which suits an IELTS B2 learner better. A is correct but thinner (three cards), though only A mentions might have."
+        }
+      ]
+    },
+    {
+      "caseId": "S05",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.7,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "4/4",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.4,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/4",
+        "acceptable": false
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "candidate",
+          "reason": "A teaches the full so/not rule including I don't think so and all four verbs, with homework and the in-class task correctly separated; B omits I don't think so and puts the correct formal Did you not...? under 'not this', which may mislead."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "candidate",
+          "reason": "A teaches the full so/not rule, including I don't think so, and keeps Did you not as a valid formal variant; B omits the negative with think and lists Did you not under 'not this'."
+        }
+      ]
+    },
+    {
+      "caseId": "LQ-BOARD-15",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.7,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "0/0",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "0/0",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "candidate",
+          "reason": "B gives cards for all four used-to structures and both take off uses and includes the board correction I use to live -> I used to live; A leaves get used to and didn't use to in chunks and files the canteen notice as a task."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "candidate",
+          "reason": "B drills every class point (didn't use to, get used to, both meanings of take off, pronoun placement) and explains both board corrections. A is accurate but leaves several points to chunks and the summary, and files the canteen notice as a task. B adds one invented example sentence and omits the notice."
+        }
+      ]
+    },
+    {
+      "caseId": "LQ-LONG-128",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.2,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "0/0",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": false,
+        "mean": 0,
+        "explanationLanguageQuality": 0,
+        "criticalIssues": [],
+        "conceptsTaught": "0/0",
+        "acceptable": false
+      },
+      "preferences": [
+        {
+          "reviewer": "fa-reviewer-1",
+          "prefers": "production",
+          "reason": "B produced no valid lesson; A is accurate but covers only part of the class (past simple vs present perfect is missing entirely, and polite requests, make/do and take off meanings are thin)."
+        },
+        {
+          "reviewer": "fa-reviewer-2",
+          "prefers": "production",
+          "reason": "B produced no valid lesson. A is accurate but covers only part of the long class: past simple vs present perfect, since/for and ever/never are not taught, and make/do, polite requests and take off are thin."
+        }
+      ]
+    },
+    {
+      "caseId": "S06",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.6,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 3.9,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "candidate",
+          "reason": "Both are accurate and grounded, but B gives through its own card and a summary that covers all three source blocks, whereas A leaves through to a side task and its summary omits through and get lost."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "B gives through its own reviewable card next to across and along and has a summary covering all three blocks; A teaches through only in a side task (whose along/through item is ambiguous) and its summary omits through and get lost."
+        }
+      ]
+    },
+    {
+      "caseId": "S07",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.4,
+        "explanationLanguageQuality": 3.5,
+        "criticalIssues": [],
+        "conceptsTaught": "2/3",
+        "acceptable": false
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "2/3",
+        "acceptable": false
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "candidate",
+          "reason": "Both ignore the embedded German/HERON-41 instruction and teach the same three points correctly; B adds the stress on emphatic do, names whoever, reads more naturally in Arabic and its whatever exercise has a clearly wrong distractor, while A's Whenever distractor is also grammatical."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "Both cover the same three items, ignore the embedded margin instruction and thin out the ever-words; B has a full three-point summary, mentions stress for emphatic do and uses cleaner distractors, while A's whatever item allows the grammatical distractor Whenever and its do card uses an odd Arabic term for the auxiliary."
+        }
+      ]
+    },
+    {
+      "caseId": "S08",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.7,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "4/4",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 4,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "4/4",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "candidate",
+          "reason": "Both handle the isn't-it conflict correctly, but B shows all three class tag models in both polarities and explicitly rejects Would you mind to close, while A teaches tags from a single model."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "B keeps all three class tag models with explicit two-way polarity, adds the 'to close' register warning and a complete summary; A drops the negative and modal tag models."
+        }
+      ]
+    },
+    {
+      "caseId": "S09",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.9,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.6,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "candidate",
+          "reason": "A turns all three class points into practised cards, including nominalisation with both class transformations; B leaves nominalisation, the most important IELTS-writing point here, without a card or exercise. A's only flaw is an unsupported aside that nominalisation is indispensable for high IELTS scores."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "A drills nominalisation, the central point for IELTS writing, with a card and a transformation task and covers every class sentence; B gives nominalisation no card and no before/after contrast. A's note calling nominalisation indispensable for high IELTS scores is an unsupported aside."
+        }
+      ]
+    },
+    {
+      "caseId": "S10",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 3.9,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "production",
+          "reason": "Very close: both are accurate and complete. A's choice tasks make the learner tell just, already and yet apart, while B's uncued gap-fills (I've ___ made some coffee; The film has ___ started) accept just and already interchangeably."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "Both are complete and correct on the main rules; B's gap items are clean and its explanations accurate, while A's notes describe already as 'earlier than scheduled' and 'completion as planned' and its suitcase item also accepts already."
+        }
+      ]
+    },
+    {
+      "caseId": "S10-repeat",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 3.7,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.9,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "production",
+          "reason": "The cards are nearly identical, but B's summary and chunks restate the meaning and position of just, already and yet and include the yet question, while A's summary skips just and already and it has no topics."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "production",
+          "reason": "B's summary, topic and chunks cover every class rule and sentence with clean gap items; A's summary skips just and already, it has no topics, and its yet gap also admits already. B's only slips are unexplained 'british' labels and describing already as 'as planned' in one note."
+        }
+      ]
+    },
+    {
+      "caseId": "S11",
+      "reviewers": 2,
+      "production": {
+        "valid": true,
+        "mean": 3.8,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "candidate": {
+        "valid": true,
+        "mean": 4,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "candidate",
+          "reason": "A gives the verb increase its own card but has an empty summary and no topics; B explains all three points more clearly for a Japanese learner, with katakana cues, the noun-front verb-back rule, a summary and topics."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "B is the more complete lesson: summary, two topics with the familiar noun-front/verb-back stress rule, chunks for every class sentence and precise vowel explanations; A has a useful separate verb card but leaves summary and topics empty."
+        }
+      ]
+    },
+    {
+      "caseId": "S12",
+      "reviewers": 2,
+      "candidate": {
+        "valid": true,
+        "mean": 4,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "production": {
+        "valid": true,
+        "mean": 3.6,
+        "explanationLanguageQuality": 4,
+        "criticalIssues": [],
+        "conceptsTaught": "3/3",
+        "acceptable": true
+      },
+      "preferences": [
+        {
+          "reviewer": "multi-reviewer-1",
+          "prefers": "candidate",
+          "reason": "Both are accurate, but A uses all four class examples and a word-order production task, while B's tasks only check meaning and its collocations are clipped into non-standard English (get bike repaired, get jacket cleaned)."
+        },
+        {
+          "reviewer": "multi-reviewer-2",
+          "prefers": "candidate",
+          "reason": "A covers all four class causative sentences (kitchen and jacket in chunks), has a stronger production task requiring word order and tense, and keeps natural English; B's collocations drop the possessive or article (have hair cut, get bike repaired)."
+        }
+      ]
+    }
+  ]
+}

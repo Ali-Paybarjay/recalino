@@ -3,7 +3,7 @@ import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
 import { getLatestVersion } from "@recalino/core/lkm";
 import { getNotebook } from "@recalino/core/note";
-import { getSession } from "@recalino/core/org";
+import { captureInProgress, getSession } from "@recalino/core/org";
 import {
   AppError,
   emptyPayload,
@@ -16,6 +16,7 @@ import {
   sha256Hex,
 } from "@recalino/core/plt";
 import {
+  captureTranscriptionActive,
   chargeableRunAmounts,
   createProcessingRun,
   findProcessingRunByOperationKey,
@@ -27,10 +28,12 @@ import {
   type ProcessingReview,
   type ProcessingRun,
   processingSelectionFingerprint,
+  type RunFinishingStage,
   type RunSnapshot,
   readClassProcessingReview,
   reconcileAutomaticLearningBatch,
   requestAutomaticLearning,
+  runFinishingStage,
   selectProcessingSourceSnapshot,
   sourceSnapshotSchema,
   updateAutomaticLearningProgress,
@@ -50,6 +53,7 @@ import {
 import type { z } from "zod";
 import { allowanceCopy } from "../ui/allowance-copy";
 import { allowanceLabels, allowanceUnits } from "../ui/allowance-units";
+import { pendingCopy } from "../ui/pending-copy";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
@@ -70,6 +74,8 @@ export interface AutomaticLearningStatus {
   processingReview?: ProcessingReview | null;
   /** FR-QUOTA-007: for a learner-allowance block, what this class needs and what is left now. */
   allowance?: AllowanceShortage | null;
+  /** A processing run whose lesson is written: publication waits for the voice check. */
+  stage?: RunFinishingStage | null;
 }
 export interface AllowanceShortage {
   /** False when the account has no active allowance period. */
@@ -164,6 +170,9 @@ export function automaticLearningMessage(
     ].includes(code ?? "")
   )
     return "Your material was uploaded, but the AI service rejected a processing request. The service needs a fix before retrying. You do not need to upload the same files again; earlier notes and cards are saved.";
+  if (code === "audio_upload_not_started")
+    return pendingCopy.uploadReliability.automatic.notStarted;
+  if (code === "audio_upload_incomplete") return pendingCopy.uploadReliability.automatic.incomplete;
   if (code === "upload_needs_attention")
     return "An upload needs attention. Check the named files in Add material; your earlier notes and cards are available.";
   if (code === "upload_batch_cancelled")
@@ -237,6 +246,10 @@ async function view(
     state === "blocked" && code === "quota_insufficient"
       ? await readAllowanceShortage(db, ctx, sessionId, provider())
       : null;
+  const stage =
+    state === "processing" && run?.state === "processing"
+      ? await runFinishingStage(db, ctx, run.id)
+      : null;
   return {
     state,
     revision: intent?.requestVersion ?? 0,
@@ -250,6 +263,8 @@ async function view(
     notesReady: !!notebook,
     cardsReady: intent?.state === "ready" && !!notebook,
     processingReview: await readClassProcessingReview(db, ctx, sessionId),
+    // Present only while it applies, so earlier status shapes stay unchanged.
+    ...(stage ? { stage } : {}),
   };
 }
 /** Read-only polling never reserves allowance or starts provider work. */
@@ -299,6 +314,13 @@ export async function automaticLearningSync(
     return view(db, ctx, sessionId, { state, lastError, run }, deps.provider);
   };
   if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
+  // D60: parts registered during an open capture wait for Stop; no lesson from part of a class.
+  // D61: a part still being transcribed in the background is reused, not transcribed twice.
+  if (
+    (await captureInProgress(db, ctx, sessionId, deps.now())) ||
+    (await captureTranscriptionActive(db, ctx, sessionId))
+  )
+    return progress("waiting_sources", null, null);
   const materials = await sessionSources(db, ctx, sessionId);
   if (
     materials.some(

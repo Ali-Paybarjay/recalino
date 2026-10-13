@@ -1,0 +1,278 @@
+{
+  "schemaVersion": "1",
+  "title": "Послуги та каузативні форми: have/get something done і вираз for good",
+  "language": {
+    "learning": "en",
+    "explanation": "uk"
+  },
+  "summary": [
+    {
+      "id": "claim-a9d4afdc45e885493621f3f5-1",
+      "text": "Каузативні конструкції з have та get у сполученні з додатком і третьою формою дієслова описують послуги, які для нас виконують інші.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000132-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "have-done",
+            "start": 0,
+            "end": 214
+          }
+        },
+        {
+          "sourceId": "ad000132-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "get-done",
+            "start": 0,
+            "end": 159
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-132f63f68ce98edd75c21ba3-1",
+      "text": "Вираз for good підкреслює незворотність чи остаточність дії й часто вживається з дієсловами руху або закриття.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000132-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "for-good",
+            "start": 0,
+            "end": 162
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-9c24a6a69050eedaa1a7e41a-1",
+      "title": "Каузативні дієслова та життєві зміни",
+      "claims": [
+        {
+          "id": "claim-e9666d04ac0034c1c2521b47-1",
+          "text": "У структурах have/get something done додаток обов'язково передує дієприкметнику минулого часу.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000132-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "have-done",
+                "start": 0,
+                "end": 214
+              }
+            },
+            {
+              "sourceId": "ad000132-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "get-done",
+                "start": 0,
+                "end": 159
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-96f4a3178276bf04070f761a-1",
+      "kind": "grammar",
+      "front": "have + sth + past participle",
+      "back": "організувати виконання роботи або послуги іншою особою (мати щось зробленим)",
+      "claim": {
+        "id": "claim-37483124c3c0b03b05e72b05-1",
+        "text": "Конструкція have + додаток + past participle означає, що ви організували виконання певної роботи іншою людиною для вас.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000132-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "have-done",
+              "start": 0,
+              "end": 214
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "have + sth + past participle",
+        "faMeaning": "організувати виконання роботи або послуги іншою особою (мати щось зробленим)",
+        "topic": "Послуги та повсякденні справи",
+        "kind": "grammar",
+        "ipa": "/hæd maɪ heə kʌt/",
+        "ipaText": "had my hair cut",
+        "fullSentence": "I had my hair cut on Saturday.",
+        "collocations": [
+          "have hair cut",
+          "have the kitchen painted"
+        ],
+        "noteFa": "У реченні I had my hair cut on Saturday додаток my hair стоїть перед дієприкметником cut, показуючи, що стрижку робив перукар.",
+        "imageFa": "Людина сидить у перукарському кріслі, поки майстер робить їй стрижку.",
+        "sourceFa": "З уроку",
+        "taskFa": "Виберіть каузативну форму для вираження дії, виконаної спеціалістом, а не самостійно.",
+        "prompt": "Choose the correct causative structure: I (cut my hair myself / had my hair cut) on Saturday."
+      }
+    },
+    {
+      "id": "item-456320a35a4e4be95be3bc3f-1",
+      "kind": "grammar",
+      "front": "get + sth + past participle",
+      "back": "віддати щось у ремонт чи чистку, організувати послугу (неформальний варіант)",
+      "claim": {
+        "id": "claim-11fea666f873d6ecffc2320d-1",
+        "text": "Конструкція get + додаток + past participle має схоже каузативне значення, але використовується в більш розмовному й неформальному мовленні.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000132-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "get-done",
+              "start": 0,
+              "end": 159
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "get + sth + past participle",
+        "faMeaning": "віддати щось у ремонт чи чистку, організувати послугу (неформальний варіант)",
+        "topic": "Послуги та повсякденні справи",
+        "kind": "grammar",
+        "ipa": "/ɡet maɪ baɪk rɪˈpeəd/",
+        "ipaText": "get my bike repaired",
+        "fullSentence": "I need to get my bike repaired before the trip.",
+        "collocations": [
+          "get bike repaired",
+          "get jacket cleaned"
+        ],
+        "noteFa": "Фраза get my bike repaired вказує на ремонт у майстерні, де додаток my bike розташований перед пасивним дієприкметником repaired.",
+        "imageFa": "Велосипед на стійці в майстерні, де механік лагодить колесо.",
+        "sourceFa": "З уроку",
+        "taskFa": "Виберіть неформальний каузативний варіант із дієсловом get для ситуації, коли ремонт робить інша людина.",
+        "prompt": "Choose the correct phrase: I need to (get my bike repaired / repair my bike myself) before the trip."
+      }
+    },
+    {
+      "id": "item-15565832a87f63c16f9a1523-1",
+      "kind": "expression",
+      "front": "for good",
+      "back": "назавжди, остаточно",
+      "claim": {
+        "id": "claim-6fe6bdccc16c42304085e90e-1",
+        "text": "Вираз for good означає «назавжди» або «остаточно» (permanently, for ever).",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000132-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000132-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "for-good",
+              "start": 0,
+              "end": 162
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "for good",
+        "faMeaning": "назавжди, остаточно",
+        "topic": "Зміни в житті",
+        "kind": "collocation",
+        "ipa": "/fə ɡʊd/",
+        "gapSentence": "After ten years abroad, my uncle has come home ______.",
+        "fullSentence": "After ten years abroad, my uncle has come home for good.",
+        "collocations": [
+          "leave for good",
+          "close for good"
+        ],
+        "noteFa": "У реченні After ten years abroad, my uncle has come home for good слова for good підкреслюють, що повернення є постійним і остаточним.",
+        "imageFa": "Розпаковані валізи у передпокої рідного дому, куди людина повернулася жити назавжди.",
+        "sourceFa": "З уроку"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": []
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Everyday English B1",
+    "coverage": "У цьому уроці розглянуто каузативні структури have/get something done для делегування роботи іншим людям, а також стійкий вираз for good.",
+    "coreIntro": "Урок знайомить із тим, як говорити про замовлення послуг (стрижка, ремонт, фарбування) та як описувати остаточні зміни.",
+    "chunks": [
+      {
+        "pattern": "have + object + past participle",
+        "classSentence": "I had my hair cut on Saturday.",
+        "noteFa": "Порядок слів фіксований: додаток (my hair) стоїть перед дієприкметником (cut)."
+      },
+      {
+        "pattern": "get + object + past participle",
+        "classSentence": "I need to get my bike repaired before the trip.",
+        "noteFa": "Більш розмовний варіант для вираження ремонту чи сервісу сторонньою особою."
+      }
+    ],
+    "board": [],
+    "tasks": [],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [],
+    "gapfill": [
+      {
+        "sentence": "After ten years abroad, my uncle has come home for ______.",
+        "answer": "good"
+      }
+    ],
+    "culture": []
+  }
+}

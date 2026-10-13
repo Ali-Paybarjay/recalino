@@ -1,0 +1,373 @@
+{
+  "caseId": "S04",
+  "explanationLanguage": "fa",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "B2",
+    "goal": "ielts"
+  },
+  "sources": [
+    {
+      "kind": "text",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "Use must + base verb when you are almost sure that something is true, and can't + base verb when you are almost sure that it is not true: She must be exhausted after such a long flight. That can't be our bus; ours is number twelve. Might or could means only that something is possible: He might be in the library. Do not use mustn't for this meaning."
+        },
+        {
+          "text": "For a conclusion about the past, use must have, can't have or might have + past participle: The lights are off, so they must have gone to bed. He can't have seen my email; he was on a plane all day."
+        },
+        {
+          "text": "A rule of thumb is a simple practical guide based on experience rather than exact measurement. Class example: As a rule of thumb, each paragraph of an essay should develop one main idea. Common combinations: a useful rule of thumb, as a rule of thumb."
+        }
+      ]
+    },
+    {
+      "kind": "text",
+      "role": "user_notes",
+      "blocks": [
+        {
+          "text": "Bruno's worksheet, photographed at the end of class. Bruno's answer to question 3: She mustn't be at home; her car isn't outside. Someone has crossed it out and written above it: She can't be at home; her car isn't outside."
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "نتیجه‌گیری منطقی و بیان حدس و گمان در انگلیسی",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "must + base verb",
+        "back": "باید ... باشد (نتیجه‌گیری قطعی مثبت در زمان حال)",
+        "claim": "وقتی بر اساس شواهد تقریباً مطمئن هستیم که چیزی در زمان حال درست است، از ساختار must همراه با شکل ساده فعل استفاده می‌کنیم.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "must + base verb",
+          "faMeaning": "باید ... باشد (نتیجه‌گیری قطعی مثبت در زمان حال)",
+          "topic": "Modals of Deduction",
+          "kind": "grammar",
+          "ipa": "/mʌs bi ɪɡˈzɔːstɪd/",
+          "ipaText": "must be exhausted",
+          "faApprox": "مَس بی ایگزوستید",
+          "fullSentence": "She must be exhausted after such a long flight.",
+          "collocations": [],
+          "noteFa": "عبارت must be exhausted نشان‌دهنده نتیجه‌گیری قطعی بر اساس خستگی پرواز طولانی است؛ در این ساختار پس از must، شکل ساده فعل یعنی be می‌آید.",
+          "imageFa": "مسافری که پس از پروازی دوازده‌ساعته با چمدان روی مبل فرودگاه به خواب رفته است.",
+          "sourceFa": "از کلاس",
+          "taskFa": "با توجه به بافت جمله و نشان دادن اطمینان از درستی موقعیت، گزینه مناسب را انتخاب کنید.",
+          "prompt": "Choose the correct modal: She (must / can't) be exhausted after such a long flight."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "can't have + past participle",
+        "back": "غیرممکن است که ... رخ داده باشد (نتیجه‌گیری قطعی منفی در گذشته)",
+        "claim": "برای بیان نتیجه‌گیری منطقی منفی در زمان گذشته وقتی بر اساس شواهد اطمینان داریم کاری رخ نداده است، ساختار can't have به همراه شکل سوم فعل به کار می‌رود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "can't have + past participle",
+          "faMeaning": "غیرممکن است که ... رخ داده باشد (نتیجه‌گیری قطعی منفی در گذشته)",
+          "topic": "Past Modals of Deduction",
+          "kind": "grammar",
+          "ipa": "/kɑːnt həv siːn/",
+          "ipaText": "can't have seen",
+          "faApprox": "کانت هَو سین",
+          "fullSentence": "He can't have seen my email; he was on a plane all day.",
+          "collocations": [],
+          "noteFa": "ترکیب can't have seen نشان می‌دهد دیدن ایمیل به دلیل حضور در هواپیما غیرممکن بوده است و هرگز نباید برای نتیجه‌گیری منفی در گذشته از mustn't have استفاده کرد.",
+          "imageFa": "تلفن همراهی خاموش در جیب مسافری که تمام روز در صندلی هواپیما نشسته و به ایمیل‌ها دسترسی ندارد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "با انتخاب ساختار مناسب برای نتیجه‌گیری قطعی منفی در گذشته، جمله را کامل کنید.",
+          "prompt": "Choose the correct past deduction: He (can't have / mustn't have) seen my email; he was on a plane all day."
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "rule of thumb",
+        "back": "قاعده کلی تجربی، قانون سرانگشتی",
+        "claim": "اصطلاح rule of thumb به یک راهنمای عملی و سرانگشتی اشاره دارد که بر پایه تجربه به دست آمده است، نه اندازه‌گیری دقیق علمی.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "rule of thumb",
+          "faMeaning": "قاعده کلی تجربی، قانون سرانگشتی",
+          "topic": "Academic Writing and Vocabulary",
+          "ipa": "/ˌruːl əv ˈθʌm/",
+          "faApprox": "رول اَو ثام",
+          "gapSentence": "As a ______, each paragraph of an essay should develop one main idea.",
+          "fullSentence": "As a rule of thumb, each paragraph of an essay should develop one main idea.",
+          "collocations": [
+            "as a rule of thumb",
+            "a useful rule of thumb"
+          ],
+          "noteFa": "عبارت As a rule of thumb در ابتدای جمله به عنوان یک اصل تجربی و مفید برای ساختار پاراگراف در مقاله‌نویسی آیلتس به کار رفته است.",
+          "imageFa": "استاد راهنمایی که با انگشت شست به یک پاراگراف منسجم در مقاله اشاره می‌کند و آن را معیاری کاربردی می‌داند.",
+          "sourceFa": "از کلاس"
+        }
+      }
+    ],
+    "summary": [
+      "برای نتیجه‌گیری در زمان حال از must و can't به همراه شکل ساده فعل استفاده می‌شود، در حالی که mustn't در این معنا کاربرد ندارد.",
+      "برای نتیجه‌گیری درباره زمان گذشته از ترکیب must have یا can't have به همراه شکل سوم فعل استفاده می‌شود.",
+      "اصطلاح کاربردی rule of thumb به قواعد تجربی و راهنماهای عملی در نوشتار و گفتار اشاره می‌کند."
+    ],
+    "topics": [
+      {
+        "title": "افعال کمکی برای استنتاج و امکان",
+        "claims": [
+          "افعال might و could فقط احتمال وقوع یا ممکن بودن چیزی را نشان می‌دهند، نه اطمینان قوی حاصل از شواهد.",
+          "برای بیان احتمال درباره گذشته، ساختار might have به همراه شکل سوم فعل استفاده می‌شود."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "IELTS Preparation",
+      "coverage": "این درس به آموزش افعال کمکی وجهی برای استنتاج در زمان حال و گذشته (must، can't و ساختارهای have) و اصطلاح rule of thumb می‌پردازد.",
+      "coreIntro": "در این درس می‌آموزید چگونه با توجه به شواهد موجود، حدس‌های قوی و قطعی یا احتمالات را در زمان حال و گذشته بیان کنید و از اشتباه رایج استفاده از mustn't بپرهیزید.",
+      "chunks": [
+        {
+          "pattern": "That can't be + noun",
+          "classSentence": "That can't be our bus; ours is number twelve.",
+          "noteFa": "استفاده از can't be برای رد قاطعانه یک هویت یا واقعیت در زمان حال بر اساس شواهد موجود."
+        },
+        {
+          "pattern": "must have + past participle",
+          "classSentence": "The lights are off, so they must have gone to bed.",
+          "noteFa": "استفاده از must have به همراه شکل سوم فعل برای نتیجه‌گیری قطعی مثبت درباره گذشته."
+        }
+      ],
+      "board": [],
+      "tasks": [],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "She mustn't be at home; her car isn't outside.",
+          "sayThis": "She can't be at home; her car isn't outside.",
+          "whyFa": "برای بیان نتیجه‌گیری منفی بر اساس شواهد، فقط از can't استفاده می‌شود؛ mustn't به معنای نهی و ممنوعیت است نه استنتاج منفی."
+        }
+      ],
+      "gapfill": [
+        {
+          "sentence": "As a rule of ______, each paragraph of an essay should develop one main idea.",
+          "answer": "thumb"
+        }
+      ],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "افعال کمکی برای استنتاج و نتیجه‌گیری در زمان حال و گذشته",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "must + base verb",
+        "back": "باید ... باشد (نتیجه‌گیری قطعی بر اساس شواهد موجود در زمان حال)",
+        "claim": "هنگامی که تقریباً مطمئن هستیم موضوعی در زمان حال حقیقت دارد، از ساختار must به همراه شکل ساده فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "must + base verb",
+          "faMeaning": "باید ... باشد (نتیجه‌گیری قطعی بر اساس شواهد موجود در زمان حال)",
+          "topic": "افعال معین استنتاج",
+          "kind": "grammar",
+          "ipa": "/mʌst bi ɪɡˈzɔːstɪd/",
+          "ipaText": "must be exhausted",
+          "faApprox": "مَست بی ایگزاستید",
+          "fullSentence": "She must be exhausted after such a long flight.",
+          "collocations": [
+            "must be true",
+            "must be tired"
+          ],
+          "noteFa": "عبارت must be exhausted نشان‌دهنده نتیجه‌گیری قطعی گوینده از ظاهر یا شرایط فرد پس از یک پرواز طولانی است. دقت کنید که پس از must شکل ساده فعل می‌آید.",
+          "imageFa": "مسافری که چمدان به دست دارد و پس از پروازی طولانی چشمانش از خستگی بسته می‌شود.",
+          "sourceFa": "از کلاس",
+          "taskFa": "با توجه به شواهد و مفهوم قطعیت مثبت، گزینه درست را انتخاب کنید.",
+          "prompt": "She (can't / must) be exhausted after such a long flight."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "can't + base verb",
+        "back": "امکان ندارد که ... باشد (نتیجه‌گیری منفی قطعی در زمان حال)",
+        "claim": "برای بیان قطعیت منفی در زمان حال، از can't به همراه شکل ساده فعل استفاده می‌شود و mustn't در این معنی کاربرد ندارد.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "can't + base verb",
+          "faMeaning": "امکان ندارد که ... باشد (نتیجه‌گیری منفی قطعی در زمان حال)",
+          "topic": "افعال معین استنتاج",
+          "kind": "grammar",
+          "ipa": "/kɑːnt bi aʊə bʌs/",
+          "ipaText": "can't be our bus",
+          "faApprox": "کانت بی آوِ باس",
+          "fullSentence": "That can't be our bus; ours is number twelve.",
+          "collocations": [
+            "can't be true",
+            "can't be right"
+          ],
+          "noteFa": "در جمله That can't be our bus، گوینده بر اساس شماره اتوبوس با قطعیت نتیجه می‌گیرد که این اتوبوس مد نظر آن‌ها نیست. برای استنتاج منفی هرگز از mustn't استفاده نکنید.",
+          "imageFa": "نگاه کردن به شماره روی تابلوی جلوی اتوبوس و مقایسه آن با شماره بلیت.",
+          "sourceFa": "از کلاس",
+          "taskFa": "با انتخاب فعل معین مناسب، قطعیت منفی را بر اساس شواهد کامل کنید.",
+          "prompt": "That (can't / mustn't) be our bus; ours is number twelve."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "must have + past participle",
+        "back": "حتماً باید (در گذشته) اتفاق افتاده باشد",
+        "claim": "برای نتیجه‌گیری قطعی مثبت درباره رویدادی در گذشته، از ساختار must have به همراه شکل سوم فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "must have + past participle",
+          "faMeaning": "حتماً باید (در گذشته) اتفاق افتاده باشد",
+          "topic": "استنتاج در گذشته",
+          "kind": "grammar",
+          "ipa": "/mʌst əv ɡɒn/",
+          "ipaText": "must have gone",
+          "faApprox": "مَست اَو گان",
+          "fullSentence": "The lights are off, so they must have gone to bed.",
+          "collocations": [
+            "must have forgotten",
+            "must have left"
+          ],
+          "noteFa": "عبارت must have gone نشان‌دهنده استنتاج گوینده در زمان حال بر اساس نشانه خاموش بودن چراغ‌ها درباره عملی است که در گذشته رخ داده است.",
+          "imageFa": "خانه‌ای کاملاً تاریک در نیمه‌شب که خاموش بودن چراغ‌هایش نشانه خوابیدن ساکنان است.",
+          "sourceFa": "از کلاس",
+          "taskFa": "جمله را برای بیان استنتاج منطقی گذشته با ساختار صحیح کامل کنید.",
+          "prompt": "The lights are off, so they (must have / can't have) gone to bed."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "can't have + past participle",
+        "back": "امکان نداشته که (در گذشته) چنین شده باشد",
+        "claim": "برای استنتاج و نتیجه‌گیری منفی در مورد گذشته از ساختار can't have به همراه شکل سوم فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "can't have + past participle",
+          "faMeaning": "امکان نداشته که (در گذشته) چنین شده باشد",
+          "topic": "استنتاج در گذشته",
+          "kind": "grammar",
+          "ipa": "/kɑːnt əv siːn/",
+          "ipaText": "can't have seen",
+          "faApprox": "کانت اَو سین",
+          "fullSentence": "He can't have seen my email; he was on a plane all day.",
+          "collocations": [
+            "can't have known",
+            "can't have done"
+          ],
+          "noteFa": "در جمله He can't have seen my email، حضور در هواپیما دلیلی قاطع است که دیدن ایمیل در گذشته غیرممکن بوده است. در انگلیسی بریتانیایی استاندارد برای این ساختار mustn't have به کار نمی‌رود.",
+          "imageFa": "هواپیمایی در حال پرواز بالای ابرها بدون دسترسی به اینترنت.",
+          "sourceFa": "از کلاس",
+          "taskFa": "با توجه به دلیل ارائه شده، گزینه بیان‌کننده قطعیت منفی در گذشته را انتخاب کنید.",
+          "prompt": "He (can't have / mustn't have) seen my email; he was on a plane all day."
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "rule of thumb",
+        "back": "قاعده سرانگشتی؛ اصل تجربی و کاربردی",
+        "claim": "اصطلاح rule of thumb به معنی یک راهنمای عملی و تجربی ساده است که بر پایه تجربه شکل گرفته، نه اندازه‌گیری دقیق علمی.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "rule of thumb",
+          "faMeaning": "قاعده سرانگشتی؛ اصل تجربی و کاربردی",
+          "topic": "اصطلاحات نگارش و مکالمه",
+          "kind": "collocation",
+          "ipa": "/ˌruːl əv ˈθʌm/",
+          "faApprox": "رول اَو ثام",
+          "gapSentence": "As a ______, each paragraph of an essay should develop one main idea.",
+          "fullSentence": "As a rule of thumb, each paragraph of an essay should develop one main idea.",
+          "collocations": [
+            "as a rule of thumb",
+            "a useful rule of thumb"
+          ],
+          "noteFa": "عبارت rule of thumb اغلب با حرف اضافه as به صورت as a rule of thumb برای بیان دستورالعمل‌های کلی نگارش و تصمیم‌گیری استفاده می‌شود.",
+          "imageFa": "اندازه‌گیری تقریبی طول یک وسیله با بند انگشت شست به عنوان معیار تجربی.",
+          "sourceFa": "از کلاس"
+        }
+      }
+    ],
+    "summary": [
+      "افعال can't و must برای بیان قطعیت منفی و مثبت بر اساس شواهد در زمان حال به کار می‌روند، در حالی که might و could تنها احتمال را نشان می‌دهند.",
+      "برای نتیجه‌گیری و استنتاج در زمان گذشته از ترکیب must have یا can't have به همراه شکل سوم فعل استفاده می‌شود."
+    ],
+    "topics": [
+      {
+        "title": "افعال کمکی وجهی برای استنتاج",
+        "claims": [
+          "در زبان انگلیسی نباید از mustn't برای استنتاج و نتیجه‌گیری منفی استفاده کرد و ساختار صحیح can't است."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-08",
+      "course": "IELTS Preparation",
+      "coverage": "قواعد مربوط به افعال کمکی استنتاج منطقی در زمان حال و گذشته، تفاوت قطعیت با احتمال و کاربرد اصطلاح rule of thumb در نگارش مقالات آیلتس.",
+      "coreIntro": "در این درس با نحوه بیان نتیجه‌گیری‌های منطقی و قطعی در زبان انگلیسی با استفاده از افعال کمکی و کاربرد یک اصطلاح پرکاربرد در انشانویسی آشنا می‌شوید.",
+      "chunks": [
+        {
+          "pattern": "might + base verb",
+          "classSentence": "He might be in the library.",
+          "noteFa": "استفاده از might نشان‌دهنده یک احتمال ساده است و قطعیت ندارد."
+        }
+      ],
+      "board": [],
+      "tasks": [
+        {
+          "title": "بررسی و تصحیح تمرین کلاسی",
+          "blocks": [
+            {
+              "type": "text",
+              "textFa": "در برگه‌های کلاسی، یک اشتباه متداول استفاده از mustn't به جای can't برای نتیجه‌گیری منفی است که در زیر تصحیح شده است:"
+            },
+            {
+              "type": "items",
+              "items": [
+                {
+                  "prompt": "She mustn't be at home; her car isn't outside.",
+                  "model": "She can't be at home; her car isn't outside.",
+                  "whyFa": "در انگلیسی استنتاج منفی با can't بیان می‌شود؛ mustn't به معنای نهی و ممنوعیت است نه عدم امکان منطقی."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "no_audio",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "She mustn't be at home.",
+          "sayThis": "She can't be at home.",
+          "whyFa": "برای بیان ناممکن بودن یک فرضیه در زمان حال، همیشه از can't استفاده می‌شود."
+        }
+      ],
+      "gapfill": [
+        {
+          "sentence": "As a rule of ______, each paragraph of an essay should develop one main idea.",
+          "answer": "thumb"
+        }
+      ],
+      "culture": []
+    }
+  }
+}

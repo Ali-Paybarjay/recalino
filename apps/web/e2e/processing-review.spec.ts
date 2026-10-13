@@ -74,7 +74,7 @@ for (const view of ["notice", "progress"] as const) {
     if (view === "notice") {
       await expect(
         page.getByRole("link", { name: "View processing review", exact: true }),
-      ).toHaveAttribute("href", `/sessions/${sessionId}/processing#processing-review`);
+      ).toHaveAttribute("href", `/sessions/${sessionId}/sources#processing-review`);
     } else {
       await expect(page.getByText(/Your request is recorded for this session/)).toBeVisible();
       await expect(page.getByRole("link", { name: "Add material", exact: true })).toHaveCount(0);

@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   assignGeneratedKnowledgeIds,
   type Claim,
+  coverageBaseSchema,
   knowledgeModelSchema,
   normalizeGeneratedStudyModel,
   validateKnowledgeModel,
@@ -50,7 +51,7 @@ export function buildKnowledgeRepairInput(data: RepairInput, maxInputCharacters:
       .max(500),
     homework: z.array(claim).max(100),
     uncertainties: z.array(claim).max(100),
-    coverage: knowledgeModelSchema.shape.coverage,
+    coverage: coverageBaseSchema,
     classNotes: knowledgeModelSchema.shape.classNotes,
   });
   const system = [

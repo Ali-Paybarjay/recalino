@@ -5,6 +5,7 @@ import { WorkspaceRequestError, workspaceRequest } from "./api";
 import { uploadAutomaticAudio } from "./automatic-learning";
 import type { ManualAudioStore, ManualAudioTransfer } from "./manual-audio-store";
 import { isRetryableUploadFailure } from "./upload";
+import { AudioUploadProblem, audioUploadRetryable } from "./upload-problems";
 
 type RunRead = { run: ProcessingRun; snapshot: RunSnapshot | null };
 /** Lifetime belongs to the application layout. A page merely persists an already-confirmed run. */
@@ -69,7 +70,7 @@ export class ManualAudioManager {
     ++this.revision;
     const prior = this.entries.find((entry) => entry.runId === run.id);
     const entry: ManualAudioTransfer = prior
-      ? { ...prior, phase: "queued", problem: null }
+      ? { ...prior, phase: "queued", problem: null, reason: null }
       : {
           userId: this.userId,
           runId: run.id,
@@ -97,8 +98,9 @@ export class ManualAudioManager {
         this.publish();
         return;
       }
-      if (latest.phase === "attention")
-        await this.patch(latest, { phase: "queued", problem: null });
+      // A stop a retry cannot change keeps its message; processing shows the next step.
+      if (latest.phase === "attention" && audioUploadRetryable(latest.reason))
+        await this.patch(latest, { phase: "queued", problem: null, reason: null });
     };
     if (this.deps.lock)
       await this.deps.lock(`recalino-learning:${this.userId}:${entry.sessionId}`, change);
@@ -178,7 +180,7 @@ export class ManualAudioManager {
                 "The confirmed audio selection is unavailable. Open processing and review it.",
               );
             if (entry.phase !== "verifying") {
-              await this.patch(entry, { phase: "uploading", problem: null });
+              await this.patch(entry, { phase: "uploading", problem: null, reason: null });
               await (this.deps.upload ?? uploadAutomaticAudio)(
                 current.run,
                 current.snapshot,
@@ -263,6 +265,11 @@ export class ManualAudioManager {
                   error instanceof Error
                     ? error.message
                     : "The saved audio needs attention. Open processing or retry.",
+                reason: isRetryableUploadFailure(error)
+                  ? null
+                  : error instanceof AudioUploadProblem
+                    ? error.reason
+                    : "unknown",
               });
             }
           } finally {

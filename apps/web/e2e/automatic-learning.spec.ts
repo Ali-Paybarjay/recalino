@@ -81,7 +81,7 @@ test("retry immediately focuses a clear progress card and prevents duplicate sub
   );
   await expect(page.getByRole("link", { name: "View progress", exact: true })).toHaveAttribute(
     "href",
-    `/sessions/${sessionId}/processing`,
+    `/sessions/${sessionId}/sources#session-progress`,
   );
   const target = await retry.boundingBox();
   const horizontalOverflow = await page.evaluate(

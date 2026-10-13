@@ -311,6 +311,9 @@ export function sourceAudioHandler(assetId: string): Handler {
       };
     }
     const manifest = await temporaryAudioManifest(db, learner, assetId, fields.uploadId);
+    // A staged capture copy (D60) is completed only through its own route.
+    if (manifest.reservationId === null)
+      throw errors.validationFailed({ audio: ["confirmed_processing_required"] });
     await validateAudioUploadRun(db, learner, run.id, assetId, manifest.reservationId);
     if (fields.action === "confirm_part") {
       const result = await confirmTemporaryAudioPart(

@@ -1,0 +1,410 @@
+{
+  "schemaVersion": "1",
+  "title": "پیشنهاد دادن، تعارف و بیان آغاز سفر",
+  "language": {
+    "learning": "en",
+    "explanation": "fa"
+  },
+  "summary": [
+    {
+      "id": "claim-1dc91d11e2840c4cac9471f6-1",
+      "text": "برای پیشنهاد کمک به دیگران از Shall I و برای پیشنهاد کار مشترک از Shall we به همراه شکل ساده فعل استفاده می‌شود و پاسخ‌های مؤدبانه می‌تواند Yes, please یا That's a good idea باشد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000122-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "shall-offer",
+            "start": 0,
+            "end": 259
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-ac58725938f54a5e01ce7e6d-1",
+      "text": "ساختار How about روش دیگری برای ارائه پیشنهاد است که حتما پس از آن فعل با پسوند -ing قرار می‌گیرد.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000122-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "how-about",
+            "start": 0,
+            "end": 176
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-2b516284b9614bf41a731c53-1",
+      "text": "فعل عبارتی set off به معنی شروع سفر و به راه افتادن است و با عبارت‌هایی نظیر early یا for the airport به کار می‌رود.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000122-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "set-off",
+            "start": 0,
+            "end": 154
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-06f2caca0728f0d7bc5c3a31-1",
+      "title": "تعارف و پیشنهاد در انگلیسی (Offers & Suggestions)",
+      "claims": [
+        {
+          "id": "claim-3357540897968148e5c8259b-1",
+          "text": "با Shall I برای انجام کاری به فرد دیگر تعارف یا پیشنهاد کمک می‌کنیم، در حالی که Shall we برای پیشنهاد انجام یک کار به شکل مشترک به کار می‌رود.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000122-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "shall-offer",
+                "start": 0,
+                "end": 259
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        },
+        {
+          "id": "claim-bed765bebef466df91eb5dcb-1",
+          "text": "پس از عبارت پیشنهادی How about، شکل دارای -ing فعل می‌آید و نباید شکل ساده فعل به کار برود.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000122-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "how-about",
+                "start": 0,
+                "end": 176
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    },
+    {
+      "id": "topic-0fd6c8f55587583e99651fde-1",
+      "title": "واژگان سفر (Travel Vocabulary)",
+      "claims": [
+        {
+          "id": "claim-1ba3e571e31a3cc6a04f3c1a-1",
+          "text": "فعل set off به معنای آغاز سفر است و همراه با قیدها یا مقصدهایی مانند early و for the airport استفاده می‌شود.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000122-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "set-off",
+                "start": 0,
+                "end": 154
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-b484a212c771ea34d2d03f50-1",
+      "kind": "grammar",
+      "front": "Shall I + base verb",
+      "back": "می‌خواهی / اجازه می‌دهی کاری را برایت انجام دهم؟",
+      "claim": {
+        "id": "claim-5e287c051502dec5f76fc730-1",
+        "text": "برای پیشنهاد دادن کمک یا انجام کاری برای شخص دیگر، از ساختار Shall I به همراه شکل ساده فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000122-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "shall-offer",
+              "start": 0,
+              "end": 259
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "Shall I + base verb",
+        "faMeaning": "می‌خواهی / اجازه می‌دهی کاری را برایت انجام دهم؟",
+        "topic": "تعارف و پیشنهاد کمک",
+        "kind": "grammar",
+        "ipa": "/ʃəl aɪ ˈkæri/",
+        "ipaText": "Shall I carry",
+        "faApprox": "شَل آی کَری",
+        "fullSentence": "Shall I carry your shopping bags?",
+        "collocations": [],
+        "noteFa": "برای پیشنهاد دادن کمک از ساختار Shall I به همراه شکل ساده فعل استفاده می‌شود؛ در جمله Shall I carry your shopping bags عبارت Shall I carry حامل این الگو است که در آن فعل carry بدون پسوند آمده است. پاسخی مؤدبانه برای قبول آن Yes, please است.",
+        "imageFa": "فردی مهربان در فروشگاه که دستش را به سمت کیسه‌های سنگین دوستش دراز می‌کند تا در حمل آن‌ها کمک کند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "گزینه مناسب را برای پیشنهاد دادن کمک انتخاب کنید.",
+        "prompt": "(Shall I carry / Shall I carrying) your shopping bags?"
+      }
+    },
+    {
+      "id": "item-927193aaae1b661953c663af-1",
+      "kind": "grammar",
+      "front": "Shall we + base verb",
+      "back": "موافقی با هم کاری را انجام دهیم؟ / چطوره که با هم...",
+      "claim": {
+        "id": "claim-8fdaaa175b853f7f23a4bc6f-1",
+        "text": "برای پیشنهاد انجام کاری مشترک به شکل گروهی، از ساختار Shall we به همراه شکل ساده فعل استفاده می‌شود.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000122-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "shall-offer",
+              "start": 0,
+              "end": 259
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "Shall we + base verb",
+        "faMeaning": "موافقی با هم کاری را انجام دهیم؟ / چطوره که با هم...",
+        "topic": "پیشنهاد انجام کار مشترک",
+        "kind": "grammar",
+        "ipa": "/ʃəl wi ˈmiːt/",
+        "ipaText": "Shall we meet",
+        "faApprox": "شَل وی میت",
+        "fullSentence": "Shall we meet outside the cinema at seven?",
+        "collocations": [],
+        "noteFa": "برای ارائه پیشنهاد انجام کار مشترک، ساختار Shall we به کار می‌رود و پس از آن شکل پایه فعل قرار می‌گیرد؛ در جمله Shall we meet outside the cinema at seven کلمات Shall we meet نشان‌دهنده پیشنهاد هستند و فعل meet بدون هیچ تغییری آمده است. یک پاسخ مناسب برای پذیرش آن That's a good idea است.",
+        "imageFa": "دو دوست در حال گفت‌وگو که به تابلوی سردر سینما و ساعت هفت اشاره می‌کنند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "گزینه صحیح را برای پیشنهاد یک فعالیت دونفره یا گروهی انتخاب کنید.",
+        "prompt": "Shall we (meeting / meet) outside the cinema at seven?"
+      }
+    },
+    {
+      "id": "item-32ed4ea39e45a7884e4abaf0-1",
+      "kind": "grammar",
+      "front": "How about + -ing form",
+      "back": "نظرت چیه که...؟ / چطوره که...؟",
+      "claim": {
+        "id": "claim-6cf42c95e129a1d048e4dd4b-1",
+        "text": "برای بیان پیشنهاد می‌توان از How about استفاده کرد که پس از آن فعل با پسوند -ing می‌آید.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000122-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "how-about",
+              "start": 0,
+              "end": 176
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "How about + -ing form",
+        "faMeaning": "نظرت چیه که...؟ / چطوره که...؟",
+        "topic": "پیشنهاد دادن فعالیت‌ها",
+        "kind": "grammar",
+        "ipa": "/haʊ əˌbaʊt ˈɡəʊɪŋ/",
+        "ipaText": "How about going",
+        "faApprox": "هاو اَباوت گوئینگ",
+        "fullSentence": "How about going to the beach on Saturday?",
+        "collocations": [],
+        "noteFa": "عبارت How about برای مطرح کردن ایده یا پیشنهاد به کار می‌رود و باید بعد از آن حتما از فعل ing‌دار استفاده شود؛ در جمله How about going to the beach on Saturday بخش How about going این ساختار را نشان می‌دهد و به کار بردن شکل ساده فعل یعنی How about go نادرست است.",
+        "imageFa": "گروهی از دوستان که به تصویر ساحل شنی روی گوشی خود نگاه می‌کنند و برای رفتن به آن روزشماری می‌کنند.",
+        "sourceFa": "از کلاس",
+        "taskFa": "شکل درست فعل را پس از عبارت How about انتخاب کنید.",
+        "prompt": "How about (go / going) to the beach on Saturday?"
+      }
+    },
+    {
+      "id": "item-9cb17671309e8759f2945739-1",
+      "kind": "vocabulary",
+      "front": "set off",
+      "back": "حرکت کردن، سفر را آغاز کردن",
+      "claim": {
+        "id": "claim-e42d3b51f9363c0bba71fc48-1",
+        "text": "فعل عبارتی set off به معنای راه افتادن و آغاز کردن یک سفر است.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000122-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000122-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "set-off",
+              "start": 0,
+              "end": 154
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "set off",
+        "faMeaning": "حرکت کردن، سفر را آغاز کردن",
+        "topic": "سفر و جابه‌جایی",
+        "kind": "collocation",
+        "ipa": "/ˌset ˈɒf/",
+        "faApprox": "سِت آف",
+        "gapSentence": "We ______ at six to avoid the morning traffic.",
+        "fullSentence": "We set off at six to avoid the morning traffic.",
+        "collocations": [
+          "set off early",
+          "set off for the airport"
+        ],
+        "noteFa": "عبارت set off یک phrasal verb به معنی شروع کردن سفر است؛ در جمله We set off at six to avoid the morning traffic فعل set off زمان آغاز حرکت مسافران را در ساعت شش مشخص می‌کند تا در ترافیک نمانند.",
+        "imageFa": "ماشینی در ساعت شش صبح با صندوق پر از چمدان که وارد خیابان خلوت شهر می‌شود.",
+        "sourceFa": "از کلاس"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": [],
+    "sources": [
+      {
+        "sourceId": "ad000122-1111-4111-8111-000000000001",
+        "status": "used"
+      }
+    ]
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "General English A2",
+    "coverage": "این درس به آموزش الگوهای مختلف ارائه تعارف و پیشنهاد با Shall I، Shall we و How about و همچنین یادگیری فعل دوکلمه‌ای set off در زمینه مسافرت اختصاص دارد.",
+    "coreIntro": "در این جلسه می‌آموزید که چطور به زبان انگلیسی به دیگران پیشنهاد کمک دهید، برای فعالیت‌های مشترک پیشنهاد مطرح کنید و درباره شروع سفر صحبت کنید.",
+    "chunks": [
+      {
+        "pattern": "Shall I + base verb",
+        "classSentence": "Shall I carry your shopping bags?",
+        "noteFa": "استفاده از شکل ساده فعل پس از Shall I برای پیشنهاد کمک کردن به دیگری."
+      },
+      {
+        "pattern": "Shall we + base verb",
+        "classSentence": "Shall we meet outside the cinema at seven?",
+        "noteFa": "به‌کارگیری شکل ساده فعل پس از Shall we برای پیشنهاد فعالیت مشترک."
+      },
+      {
+        "pattern": "How about + -ing",
+        "classSentence": "How about going to the beach on Saturday?",
+        "noteFa": "آمدن شکل -ing فعل بعد از How about برای مطرح کردن ایده و پیشنهاد."
+      },
+      {
+        "pattern": "set off at + time",
+        "classSentence": "We set off at six to avoid the morning traffic.",
+        "noteFa": "بیان زمان شروع حرکت و راه افتادن در سفر با استفاده از set off."
+      }
+    ],
+    "board": [],
+    "tasks": [
+      {
+        "title": "تمرین کلاسی با هم‌گروهی",
+        "blocks": [
+          {
+            "type": "text",
+            "textFa": "تمرین چاپ‌شده در کلاس: سؤال را با شکل صحیح فعل داخل پرانتز کامل کنید و سپس به پرسش هم‌کلاسی خود پاسخ دهید."
+          },
+          {
+            "type": "items",
+            "items": [
+              {
+                "prompt": "Shall we ___ (take) a taxi to the station?",
+                "model": "Shall we take a taxi to the station?",
+                "whyFa": "پس از Shall we از شکل ساده فعل (take) استفاده می‌شود."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "no_audio",
+      "patterns": [],
+      "items": []
+    },
+    "register": [
+      {
+        "notThis": "How about go to the beach?",
+        "sayThis": "How about going to the beach?",
+        "whyFa": "پس از عبارت How about همواره فعل با پسوند -ing می‌آید، نه شکل ساده فعل."
+      }
+    ],
+    "gapfill": [
+      {
+        "sentence": "We set ______ at six to avoid the morning traffic.",
+        "answer": "off"
+      }
+    ],
+    "culture": []
+  }
+}

@@ -39,7 +39,49 @@ export function rankVoiceCandidates(
         score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
       };
     })
-    .sort((a, b) => (b.score ?? -2) - (a.score ?? -2) || a.id.localeCompare(b.id));
+    .sort(compareVoiceCandidates);
+}
+/**
+ * Scored voices first, by score. Unscored voices follow by clean speech, then by excerpts, so a
+ * hash id never decides which fragment comes first.
+ */
+export function compareVoiceCandidates(a: VoiceCandidate, b: VoiceCandidate): number {
+  return (
+    Number(b.score !== null) - Number(a.score !== null) ||
+    (b.score ?? 0) - (a.score ?? 0) ||
+    b.cleanSpeechMs - a.cleanSpeechMs ||
+    b.clips.length - a.clips.length ||
+    a.id.localeCompare(b.id)
+  );
+}
+/** Clean speech a voice needs before it is suggested; the same as a voiceprint's minimum. */
+export const VOICE_SUGGESTION_MIN_SPEECH_MS = 20000;
+/**
+ * Whether a voice may be suggested or offered on its own. It needs an acoustic voiceprint (built
+ * only from at least 20 s of clean speech) and an excerpt to listen to (D55). Anything else is a
+ * short voice: still selectable from its group, never the suggested candidate.
+ */
+export function suggestibleVoice(
+  candidate: Pick<VoiceCandidate, "cleanSpeechMs" | "clips">,
+  acoustic: boolean,
+): boolean {
+  return (
+    acoustic &&
+    candidate.cleanSpeechMs >= VOICE_SUGGESTION_MIN_SPEECH_MS &&
+    candidate.clips.length > 0
+  );
+}
+/** The first suggestible voice of a ranked list, or none. */
+export function suggestedVoice(
+  ranked: readonly VoiceCandidate[],
+  acoustic: boolean,
+  excluded: readonly string[] = [],
+): VoiceCandidate | null {
+  return (
+    ranked.find(
+      (candidate) => !excluded.includes(candidate.id) && suggestibleVoice(candidate, acoustic),
+    ) ?? null
+  );
 }
 export interface VoiceCalibration {
   modelVersion: string;

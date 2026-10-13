@@ -1,0 +1,303 @@
+{
+  "schemaVersion": "1",
+  "title": "Question Tags y Peticiones de Cortesía",
+  "language": {
+    "learning": "en",
+    "explanation": "es"
+  },
+  "summary": [
+    {
+      "id": "claim-02086d86f0699500b22daea5-1",
+      "text": "En inglés estándar, las question tags se forman con el auxiliar correspondiente y polaridad opuesta a la frase principal para pedir confirmación.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000128-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "question-tags",
+            "start": 0,
+            "end": 360
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    },
+    {
+      "id": "claim-50747d95f489823d4040c40a-1",
+      "text": "Para solicitar un favor con educación se utiliza 'Would you mind' seguido del verbo en terminación '-ing'.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000128-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "would-you-mind",
+            "start": 0,
+            "end": 205
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-155554d4e091064c45e4f2ad-1",
+      "title": "Respuestas de cortesía ante Would you mind",
+      "claims": [
+        {
+          "id": "claim-8877237054188982822aa677-1",
+          "text": "Dado que el verbo 'mind' significa importar o poner objeciones, la fórmula cortés para aceptar la petición es responder de manera negativa con 'No, not at all'.",
+          "origin": "from_class",
+          "creation": "ai_generation",
+          "evidence": "material",
+          "sourceRefs": [
+            {
+              "sourceId": "ad000128-1111-4111-8111-000000000001",
+              "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+              "locator": {
+                "kind": "text",
+                "blockId": "would-you-mind",
+                "start": 0,
+                "end": 205
+              }
+            }
+          ],
+          "speakerRole": "unknown",
+          "uncertain": false
+        }
+      ]
+    }
+  ],
+  "learningItems": [
+    {
+      "id": "item-20e902ca64f447502066a8fb-1",
+      "kind": "grammar",
+      "front": "don't you?",
+      "back": "¿verdad? / ¿no es así?",
+      "claim": {
+        "id": "claim-60c67ca54b07b7dc12804c5d-1",
+        "text": "Las coletillas interrogativas al final de una frase emplean el verbo auxiliar o modal de la oración principal, o bien 'do/does/did' si no hay auxiliar, invirtiendo la polaridad de afirmativa a negativa.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000128-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "question-tags",
+              "start": 0,
+              "end": 360
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "don't you?",
+        "faMeaning": "¿verdad? / ¿no es así?",
+        "topic": "Gramática comunicativa",
+        "kind": "grammar",
+        "ipa": "/dəʊnt juː/",
+        "ipaText": "don't you",
+        "fullSentence": "You work at the hospital, don't you?",
+        "collocations": [],
+        "noteFa": "En 'You work at the hospital, don't you?', al ser una afirmación en presente simple sin auxiliar, la coletilla requiere el auxiliar 'don't' y el pronombre 'you'.",
+        "imageFa": "Una persona conversando cordialmente con un compañero mientras señala su credencial del hospital para confirmar dónde trabaja.",
+        "sourceFa": "De clase",
+        "taskFa": "Elige la coletilla interrogativa gramaticalmente correcta para completar la frase.",
+        "prompt": "You work at the hospital, [isn't it / don't you]?"
+      }
+    },
+    {
+      "id": "item-cfc1e2c19a753b5eecd4df0c-1",
+      "kind": "grammar",
+      "front": "would you mind + -ing",
+      "back": "¿te importaría / le importaría hacer algo?",
+      "claim": {
+        "id": "claim-402c0466360b79eadc0936d8-1",
+        "text": "La estructura 'Would you mind' seguida de un verbo en terminación '-ing' se emplea para pedirle a alguien de forma educada que realice una acción.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000128-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "would-you-mind",
+              "start": 0,
+              "end": 205
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "would you mind + -ing",
+        "faMeaning": "¿te importaría / le importaría hacer algo?",
+        "topic": "Peticiones formales y cortesía",
+        "kind": "grammar",
+        "ipa": "/wʊd juː maɪnd ˈkləʊzɪŋ/",
+        "ipaText": "Would you mind closing",
+        "fullSentence": "Would you mind closing the window?",
+        "collocations": [],
+        "noteFa": "En 'Would you mind closing the window?', la construcción exige obligatoriamente el verbo con terminación en gerundio tras la fórmula de cortesía.",
+        "imageFa": "Una persona en una sala con corriente de aire pidiendo con amabilidad a otra que cierre la ventana.",
+        "sourceFa": "De clase",
+        "taskFa": "Selecciona la forma adecuada del verbo entre corchetes para formular una petición cortés.",
+        "prompt": "Would you mind [close / closing] the window?"
+      }
+    },
+    {
+      "id": "item-0f105103f04f0a02e9314a92-1",
+      "kind": "vocabulary",
+      "front": "fill in",
+      "back": "rellenar o cumplimentar un formulario",
+      "claim": {
+        "id": "claim-81d729c7ea061ce9a05d99ed-1",
+        "text": "El verbo frasal 'fill in' significa escribir los datos solicitados en los espacios en blanco de un formulario o documento.",
+        "origin": "from_class",
+        "creation": "ai_generation",
+        "evidence": "material",
+        "sourceRefs": [
+          {
+            "sourceId": "ad000128-1111-4111-8111-000000000001",
+            "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+            "locator": {
+              "kind": "text",
+              "blockId": "fill-in",
+              "start": 0,
+              "end": 217
+            }
+          }
+        ],
+        "speakerRole": "unknown",
+        "uncertain": false
+      },
+      "study": {
+        "set": "production",
+        "en": "fill in",
+        "faMeaning": "rellenar o cumplimentar un formulario",
+        "topic": "Trámites y vida diaria",
+        "kind": "collocation",
+        "ipa": "/ˌfɪl ˈɪn/",
+        "gapSentence": "Please ______ this form and sign it at the bottom.",
+        "fullSentence": "Please fill in this form and sign it at the bottom.",
+        "collocations": [
+          "fill in an application form",
+          "fill in your details"
+        ],
+        "noteFa": "En la frase 'Please fill in this form and sign it at the bottom', 'fill in' describe la acción de introducir los datos personales en las casillas del documento.",
+        "imageFa": "Una persona sentada frente a un mostrador rellenando con bolígrafo las casillas de una solicitud impresa.",
+        "sourceFa": "De clase"
+      }
+    }
+  ],
+  "homework": [],
+  "uncertainties": [
+    {
+      "id": "claim-81045eaba691fd286f14a9b4-1",
+      "text": "Existe discrepancia entre las fuentes: la lección formal enseña que las coletillas interrogativas deben concordar con el auxiliar y el sujeto de la oración, mientras que un hablante en la grabación sugiere emplear de manera invariable 'isn't it' en todas las situaciones.",
+      "origin": "from_class",
+      "creation": "ai_generation",
+      "evidence": "material",
+      "sourceRefs": [
+        {
+          "sourceId": "ad000128-1111-4111-8111-000000000001",
+          "contentVersionId": "bd000128-1111-4111-8111-000000000001",
+          "locator": {
+            "kind": "text",
+            "blockId": "question-tags",
+            "start": 0,
+            "end": 360
+          }
+        },
+        {
+          "sourceId": "ad000128-1111-4111-8111-000000000002",
+          "contentVersionId": "bd000128-1111-4111-8111-000000000002",
+          "locator": {
+            "kind": "time",
+            "startMs": 0,
+            "endMs": 10000
+          }
+        }
+      ],
+      "speakerRole": "unknown",
+      "uncertain": true
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "missingSourceIds": []
+  },
+  "classNotes": {
+    "date": "2026-10-08",
+    "course": "Community English B1",
+    "coverage": "Reglas de formación de question tags, solicitudes corteses con 'Would you mind + -ing' y el uso de 'fill in' en trámites.",
+    "coreIntro": "Esta sesión trabaja herramientas clave para la vida cotidiana y laboral en el Reino Unido: confirmar información con soltura, pedir favores con alto grado de cortesía y rellenar impresos oficiales.",
+    "chunks": [
+      {
+        "pattern": "Positive statement + negative question tag",
+        "classSentence": "You work at the hospital, don't you?",
+        "noteFa": "Al no haber verbo auxiliar explícito en la afirmación en presente, se introduce 'don't' para construir la coletilla."
+      },
+      {
+        "pattern": "Would you mind + -ing",
+        "classSentence": "Would you mind waiting here for a moment?",
+        "noteFa": "Petición formal dirigida a un usuario para solicitar una espera breve."
+      }
+    ],
+    "board": [],
+    "tasks": [
+      {
+        "title": "Práctica de respuestas a peticiones",
+        "blocks": [
+          {
+            "type": "text",
+            "textFa": "Comprender el sentido literal de 'mind' evita malentendidos comunes al aceptar favores en situaciones cotidianas o administrativas."
+          },
+          {
+            "type": "items",
+            "items": [
+              {
+                "prompt": "Would you mind waiting here for a moment?",
+                "model": "No, not at all.",
+                "whyFa": "Indica que no causa molestia alguna acceder a la petición formulada."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "mistakes": {
+      "speechStatus": "unverified",
+      "patterns": [],
+      "items": []
+    },
+    "register": [],
+    "gapfill": [
+      {
+        "sentence": "Please fill ______ this form and sign it at the bottom.",
+        "answer": "in"
+      }
+    ],
+    "culture": []
+  }
+}

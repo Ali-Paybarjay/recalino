@@ -1,0 +1,717 @@
+{
+  "caseId": "LQ-BOARD-15",
+  "explanationLanguage": "fa",
+  "learner": {
+    "version": 1,
+    "declaredLevel": "A2",
+    "goal": "general"
+  },
+  "sources": [
+    {
+      "kind": "audio",
+      "role": "class_audio",
+      "blocks": [
+        {
+          "text": "We use used to plus the base verb for past habits that are finished now: I used to walk to school."
+        },
+        {
+          "text": "Be used to plus an -ing form means something is familiar: I am used to getting up early now."
+        },
+        {
+          "text": "Get used to plus -ing describes the change: She is getting used to driving on the left."
+        },
+        {
+          "text": "The negative is didn't use to, without d: We didn't use to have a car."
+        },
+        {
+          "text": "Okay, let's look at another example together."
+        },
+        {
+          "text": "Can everyone read this one aloud with me?"
+        },
+        {
+          "text": "Student model: Get used to plus -ing describes the change: She is getting used to driving on the left."
+        },
+        {
+          "text": "Right, any questions before we move on?"
+        },
+        {
+          "text": "Okay, let's look at another example together."
+        },
+        {
+          "text": "Student model: Be used to plus an -ing form means something is familiar: I am used to getting up early now."
+        },
+        {
+          "text": "Good. Now turn to your partner and make one sentence."
+        },
+        {
+          "text": "Right, any questions before we move on?"
+        },
+        {
+          "text": "Student model: We use used to plus the base verb for past habits that are finished now: I used to walk to school."
+        },
+        {
+          "text": "Can everyone read this one aloud with me?"
+        },
+        {
+          "text": "Good. Now turn to your partner and make one sentence."
+        },
+        {
+          "text": "Take up means start a new hobby: Last year my brother took up the guitar."
+        },
+        {
+          "text": "Take after means look or behave like an older relative: Anna takes after her grandmother."
+        },
+        {
+          "text": "Take off has two meanings today: the plane takes off, and you take off your coat."
+        },
+        {
+          "text": "With a pronoun the object goes in the middle: take it off, never take off it."
+        },
+        {
+          "text": "Okay, let's look at another example together."
+        },
+        {
+          "text": "Can everyone read this one aloud with me?"
+        },
+        {
+          "text": "Student model: Take off has two meanings today: the plane takes off, and you take off your coat."
+        },
+        {
+          "text": "Right, any questions before we move on?"
+        },
+        {
+          "text": "Okay, let's look at another example together."
+        },
+        {
+          "text": "Student model: Take after means look or behave like an older relative: Anna takes after her grandmother."
+        },
+        {
+          "text": "Good. Now turn to your partner and make one sentence."
+        },
+        {
+          "text": "Right, any questions before we move on?"
+        },
+        {
+          "text": "Student model: Take up means start a new hobby: Last year my brother took up the guitar."
+        },
+        {
+          "text": "Can everyone read this one aloud with me?"
+        },
+        {
+          "text": "Good. Now turn to your partner and make one sentence."
+        }
+      ]
+    },
+    {
+      "kind": "image",
+      "role": "board_photo",
+      "blocks": [
+        {
+          "text": "used to",
+          "layout": {
+            "type": "heading",
+            "order": 1
+          }
+        },
+        {
+          "text": "past habit | used to + verb | I used to walk to school.",
+          "layout": {
+            "type": "table",
+            "order": 2
+          }
+        },
+        {
+          "text": "familiar now | be used to + -ing | I am used to getting up early.",
+          "layout": {
+            "type": "table",
+            "order": 3
+          }
+        },
+        {
+          "text": "I use to live → I used to live",
+          "layout": {
+            "type": "correction",
+            "order": 4
+          }
+        }
+      ]
+    },
+    {
+      "kind": "image",
+      "role": "board_photo",
+      "blocks": [
+        {
+          "text": "take + particle",
+          "layout": {
+            "type": "heading",
+            "order": 1
+          }
+        },
+        {
+          "text": "take up → start a hobby",
+          "layout": {
+            "type": "relation",
+            "order": 2
+          }
+        },
+        {
+          "text": "take after → look like a relative",
+          "layout": {
+            "type": "relation",
+            "order": 3
+          }
+        },
+        {
+          "text": "Take it off. (not: take off it)",
+          "layout": {
+            "type": "example",
+            "order": 4
+          }
+        }
+      ]
+    },
+    {
+      "kind": "image",
+      "role": "class_material",
+      "blocks": [
+        {
+          "text": "Canteen notice",
+          "layout": {
+            "type": "heading",
+            "order": 1
+          }
+        },
+        {
+          "text": "The canteen closes at 2 pm on Fridays.",
+          "layout": {
+            "type": "text",
+            "order": 2
+          }
+        }
+      ]
+    }
+  ],
+  "A": {
+    "title": "Past Habits, Familiarity, and Phrasal Verbs with Take",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "used to + base verb",
+        "back": "در گذشته کاری را طبق عادت انجام دادن (که دیگر انجام نمی‌شود)",
+        "claim": "برای بیان عادت‌های گذشته که اکنون پایان یافته‌اند، پس از used to شکل ساده فعل می‌آید.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "used to + base verb",
+          "faMeaning": "در گذشته کاری را طبق عادت انجام دادن (که دیگر انجام نمی‌شود)",
+          "topic": "Grammar: Past habits",
+          "kind": "grammar",
+          "ipa": "/ˌjuːst tə ˈwɔːk/",
+          "ipaText": "used to walk",
+          "faApprox": "یوست تو واک",
+          "fullSentence": "I used to walk to school.",
+          "collocations": [
+            "used to live",
+            "used to play"
+          ],
+          "noteFa": "در جمله «I used to walk to school»، عبارت «used to walk» نشان‌دهنده کاری است که قبلاً به طور منظم انجام می‌شد ولی اکنون متوقف شده است.",
+          "imageFa": "فردی که در گذشته پیاده به مدرسه می‌رفت و اکنون دیگر این کار را انجام نمی‌دهد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "برای بیان یک عادت سپری‌شده در گذشته، شکل درست را از بین گزینه‌های داخل پرانتز انتخاب کنید.",
+          "prompt": "Complete the sentence about a finished past habit: I (walk / used to walk) to school."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "be used to + -ing form",
+        "back": "به چیزی عادت داشتن یا با آن مأنوس بودن در زمان حال",
+        "claim": "برای بیان کارهایی که در حال حاضر برای فرد آشنا و عادی شده‌اند، ساختار be used to همراه با فعل دارای ing به کار می‌رود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "be used to + -ing form",
+          "faMeaning": "به چیزی عادت داشتن یا با آن مأنوس بودن در زمان حال",
+          "topic": "Grammar: Familiarity",
+          "kind": "grammar",
+          "ipa": "/əm ˌjuːst tə ˈɡetɪŋ ʌp/",
+          "ipaText": "am used to getting up",
+          "faApprox": "اَم یوست تو گِتینگ آپ",
+          "fullSentence": "I am used to getting up early now.",
+          "collocations": [
+            "be used to getting up",
+            "be used to waking up"
+          ],
+          "noteFa": "در عبارت «am used to getting up»، پس از used to شکل ing‌دار فعل آمده است تا نشان دهد بیدار شدن در صبح زود اکنون عادی است.",
+          "imageFa": "شخصی که ساعت شش صبح به راحتی و بدون کسالت از خواب برمی‌خیزد چون به آن عادت دارد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "برای نشان دادن اینکه یک کار برای شما در زمان حال عادی و آشناست، گزینه صحیح را انتخاب کنید.",
+          "prompt": "Complete the sentence to show familiarity: I (am used to getting / used to get) up early now."
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "take up",
+        "back": "شروع کردن یک سرگرمی جدید",
+        "claim": "فعل عبارتی take up به معنای شروع کردن یک سرگرمی یا فعالیت جدید است.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "take up",
+          "faMeaning": "شروع کردن یک سرگرمی جدید",
+          "topic": "Phrasal verbs: Hobbies",
+          "kind": "register",
+          "ipa": "/ˌteɪk ˈʌp/",
+          "faApprox": "تِیک آپ",
+          "gapSentence": "Last year my brother ______ the guitar.",
+          "fullSentence": "Last year my brother took up the guitar.",
+          "collocations": [
+            "take up a hobby",
+            "take up the guitar"
+          ],
+          "noteFa": "در جمله بالا، صورت گذشته «took up» به کار رفته تا آغاز یادگیری ساز گیتار به عنوان یک سرگرمی جدید را بیان کند.",
+          "imageFa": "فردی که به تازگی گیتار خریده و با اشتیاق شروع به آموختن آن کرده است.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "take after",
+        "back": "به بزرگ‌تر فامیل رفتن و شباهت ظاهری یا رفتاری داشتن به او",
+        "claim": "فعل عبارتی take after به معنای شباهت ظاهری یا رفتاری به یکی از خویشاوندان بزرگ‌تر است.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "take after",
+          "faMeaning": "به بزرگ‌تر فامیل رفتن و شباهت ظاهری یا رفتاری داشتن به او",
+          "topic": "Phrasal verbs: Family",
+          "kind": "register",
+          "ipa": "/ˌteɪk ˈɑːftə/",
+          "faApprox": "تِیک آفتِر",
+          "gapSentence": "Anna ______ her grandmother.",
+          "fullSentence": "Anna takes after her grandmother.",
+          "collocations": [
+            "take after sb",
+            "take after her mother"
+          ],
+          "noteFa": "عبارت «takes after» نشان می‌دهد که ویژگی‌ها و خصوصیات رفتاری یا چهره آنا به مادربزرگش شباهت دارد.",
+          "imageFa": "دختری که لبخند و نگاهش شباهت چشمگیری به عکس جوانی مادربزرگش دارد.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "expression",
+        "front": "take off",
+        "back": "درآوردن لباس؛ بلند شدن هواپیما",
+        "claim": "فعل take off هم به معنای برخاستن هواپیما از زمین و هم به معنای درآوردن لباس است، و ضمیر مفعولی در میان آن قرار می‌گیرد.",
+        "origin": "from_class",
+        "study": {
+          "set": "recognition",
+          "en": "take off",
+          "faMeaning": "درآوردن لباس؛ بلند شدن هواپیما",
+          "topic": "Phrasal verbs: Double meaning",
+          "kind": "register",
+          "example": "Take it off.",
+          "ipa": "/ˌteɪk ˈɒf/",
+          "faApprox": "تِیک آف",
+          "noteFa": "این فعل دو کاربرد دارد: پرواز هواپیما و درآوردن پوشاک. اگر مفعول ضمیر باشد، همیشه بین فعل و حرف اضافه می‌آید (مانند Take it off) و گفتن take off it نادرست است.",
+          "spoken": false
+        }
+      }
+    ],
+    "summary": [
+      "برای بیان عادت‌های گذشته که پایان یافته‌اند از used to و شکل ساده فعل استفاده می‌شود، و صورت منفی آن didn't use to (بدون حرف d) است.",
+      "ساختار be used to و get used to همراه با شکل ing‌دار فعل، به ترتیب برای بیان عادی بودن فعلی یک کار یا فرآیند تدریجی عادت کردن به آن به کار می‌روند.",
+      "افعال عبارتی با take کاربردهای گوناگونی دارند؛ مانند شروع سرگرمی جدید (take up)، شباهت به والدین یا خویشاوندان (take after)، و درآوردن لباس یا پرواز هواپیما (take off)."
+    ],
+    "topics": [
+      {
+        "title": "عادت‌ها در گذشته و حال",
+        "claims": [
+          "ساختار used to با فعل ساده برای بیان گذشته تمام‌شده و ساختار be used to با فعل ing‌دار برای آشنایی و عادت در زمان حال است."
+        ]
+      },
+      {
+        "title": "کاربرد افعال عبارتی با take",
+        "claims": [
+          "در فعل عبارتی جداشدنی take off، ضمیر مفعولی باید حتماً در میان فعل و حرف اضافه قرار گیرد (take it off)."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-12",
+      "course": "General English A2",
+      "coverage": "آشنایی با ساختارهای used to، be used to، get used to و افعال عبارتی take up، take after و take off به همراه اطلاعیه سلف.",
+      "sourceNote": "نکات آموزشی برگرفته از فایل صوتی کلاس، نوشته‌های تخته و اطلاعیه کلاسی است.",
+      "coreIntro": "در این درس تفاوت کاربرد used to و be used to را یاد می‌گیرید و نحوه قرارگیری ضمایر در افعال عبارتی با take را تمرین می‌کنید.",
+      "chunks": [
+        {
+          "pattern": "used to + base verb",
+          "classSentence": "I used to walk to school.",
+          "noteFa": "بیان عادتی در گذشته که در حال حاضر ادامه ندارد."
+        },
+        {
+          "pattern": "didn't use to + base verb",
+          "classSentence": "We didn't use to have a car.",
+          "noteFa": "حالت منفی عادت گذشته که حرف d در آن نوشته نمی‌شود."
+        },
+        {
+          "pattern": "be used to + -ing form",
+          "classSentence": "I am used to getting up early now.",
+          "noteFa": "بیان کاری که در حال حاضر برای فرد طبیعی و آشنا است."
+        },
+        {
+          "pattern": "get used to + -ing form",
+          "classSentence": "She is getting used to driving on the left.",
+          "noteFa": "بیان فرآیند و روند تغییر و عادت کردن به شرایط تازه."
+        }
+      ],
+      "board": [
+        "used to",
+        "past habit | used to + verb | I used to walk to school.",
+        "familiar now | be used to + -ing | I am used to getting up early.",
+        "I use to live → I used to live",
+        "take + particle",
+        "take up → start a hobby",
+        "take after → look like a relative",
+        "Take it off. (not: take off it)"
+      ],
+      "tasks": [
+        {
+          "title": "اطلاعیه ساعات کار سلف",
+          "blocks": [
+            {
+              "type": "quote",
+              "quoteEn": "The canteen closes at 2 pm on Fridays."
+            },
+            {
+              "type": "text",
+              "textFa": "طبق اطلاعیه کلاسی، سلف در روزهای جمعه ساعت ۲ بعدازظهر بسته می‌شود."
+            }
+          ]
+        }
+      ],
+      "mistakes": {
+        "speechStatus": "unverified",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "take off it",
+          "sayThis": "take it off",
+          "whyFa": "در افعال عبارتی جداشدنی، ضمیر مفعولی باید در میان فعل و حرف اضافه قرار بگیرد."
+        }
+      ],
+      "gapfill": [],
+      "culture": []
+    }
+  },
+  "B": {
+    "title": "Past Habits, Familiarity, and Phrasal Verbs with Take",
+    "learningItems": [
+      {
+        "kind": "grammar",
+        "front": "used to + base verb",
+        "back": "عادت داشتن به انجام کاری در گذشته که اکنون پایان یافته است",
+        "claim": "برای بیان عادت‌ها و کارهای تکراری در گذشته که اکنون متوقف شده‌اند، از ساختار «used to + شکل ساده فعل» استفاده می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "used to + base verb",
+          "faMeaning": "عادت داشتن به انجام کاری در گذشته که اکنون پایان یافته است",
+          "topic": "Past habits",
+          "kind": "grammar",
+          "ipa": "/ˌjuːst tə ˈwɔːk/",
+          "ipaText": "used to walk",
+          "faApprox": "یوست تو واک",
+          "fullSentence": "I used to walk to school.",
+          "collocations": [
+            "used to live",
+            "used to play",
+            "used to have"
+          ],
+          "noteFa": "در جمله «I used to walk to school»، عبارت «used to walk» نشان می‌دهد که گوینده قبلاً پیاده به مدرسه می‌رفته اما این کار اکنون تمام شده است. پس از used to همیشه شکل ساده فعل به کار می‌رود.",
+          "imageFa": "دانش‌آموزی با کوله‌پشتی که سال‌ها پیش پیاده در مسیر مدرسه حرکت می‌کرد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "با توجه به مفهوم عادت تمام‌شده در گذشته، گزینه مناسب را برای کامل کردن جمله انتخاب کنید.",
+          "prompt": "Choose the correct form: I (used to walk / am used to walk) to school."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "didn't use to",
+        "back": "در گذشته عادت نداشتن به کاری یا عدم وجود وضعیتی",
+        "claim": "شکل منفی ساختار بیان عادت‌های گذشته به صورت «didn't use to» همراه با شکل ساده فعل و بدون حرف d در use نوشته می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "didn't use to",
+          "faMeaning": "در گذشته عادت نداشتن به کاری یا عدم وجود وضعیتی",
+          "topic": "Negative past habits",
+          "kind": "grammar",
+          "ipa": "/ˌdɪdnt ˈjuːs tə hæv/",
+          "ipaText": "didn't use to have",
+          "faApprox": "دیدِنت یوس تو هَو",
+          "fullSentence": "We didn't use to have a car.",
+          "collocations": [
+            "didn't use to like",
+            "didn't use to know"
+          ],
+          "noteFa": "در جمله «We didn't use to have a car»، به دلیل آمدن فعل کمکی didn't، حرف d از use حذف می‌شود و شکل ساده use به کار می‌رود.",
+          "imageFa": "خانواده‌ای در سال‌های گذشته که به دلیل نداشتن خودرو با وسایل نقلیه عمومی رفت‌وآمد می‌کردند.",
+          "sourceFa": "از کلاس",
+          "taskFa": "شکل گرامری صحیح حالت منفی برای عادت گذشته را انتخاب کنید.",
+          "prompt": "Choose the correct form: We (didn't use to / didn't used to) have a car."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "be used to + -ing",
+        "back": "عادت داشتن به شرایطی در زمان حال و عادی بودن آن",
+        "claim": "ساختار «be used to + -ing» برای بیان این موضوع به کار می‌رود که موقعیت یا کاری برای فرد عادی، آشنا و جاافتاده است.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "be used to + -ing",
+          "faMeaning": "عادت داشتن به شرایطی در زمان حال و عادی بودن آن",
+          "topic": "Present familiarity",
+          "kind": "grammar",
+          "ipa": "/æm ˌjuːst tə ˈɡetɪŋ ʌp/",
+          "ipaText": "am used to getting up",
+          "faApprox": "اَم یوست تو گتینگ آپ",
+          "fullSentence": "I am used to getting up early now.",
+          "collocations": [
+            "be used to the noise",
+            "be used to living alone"
+          ],
+          "noteFa": "در جمله «I am used to getting up early now»، پس از am used to فعل با پسوند ing یعنی getting آمده است که نشان می‌دهد بیدار شدن در صبح زود برای گوینده کاملاً طبیعی و عادی شده است.",
+          "imageFa": "فردی که با صدای زنگ ساعت در اول صبح بدون خستگی و با لبخند بیدار می‌شود.",
+          "sourceFa": "از کلاس",
+          "taskFa": "شکل درست فعل پس از ساختار be used to را انتخاب کنید.",
+          "prompt": "Choose the correct form: I am used to (getting / get) up early now."
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "get used to + -ing",
+        "back": "به تدریج به وضعیت جدید عادت کردن",
+        "claim": "ساختار «get used to + -ing» فرآیند تغییر و به تدریج خو گرفتن با موقعیت و شرایط جدید را بیان می‌کند.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "get used to + -ing",
+          "faMeaning": "به تدریج به وضعیت جدید عادت کردن",
+          "topic": "Adapting to change",
+          "kind": "grammar",
+          "ipa": "/ɪz ˌɡetɪŋ ˌjuːst tə ˈdraɪvɪŋ/",
+          "ipaText": "is getting used to driving",
+          "faApprox": "ایز گتینگ یوست تو درایوینگ",
+          "fullSentence": "She is getting used to driving on the left.",
+          "collocations": [
+            "get used to the weather",
+            "get used to working nights"
+          ],
+          "noteFa": "در جمله «She is getting used to driving on the left»، عبارت is getting used to روند سازگاری با رانندگی در سمت چپ را نشان می‌دهد و پس از آن driving با ing می‌آید.",
+          "imageFa": "راننده‌ای در کشوری جدید که با تمرکز و آرامش تلاش می‌کند در سمت چپ خیابان براند تا کاملاً به آن عادت کند.",
+          "sourceFa": "از کلاس",
+          "taskFa": "برای نشان دادن فرآیند عادت کردن به موقعیت تازه، شکل صحیح فعل را انتخاب نمایید.",
+          "prompt": "Choose the correct form: She is getting used to (drive / driving) on the left."
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "take up",
+        "back": "شروع کردن سرگرمی یا مهارت جدید",
+        "claim": "فعل عبارتی «take up» به معنای آغاز کردن یک سرگرمی، ورزش یا فعالیت جدید است.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "take up",
+          "faMeaning": "شروع کردن سرگرمی یا مهارت جدید",
+          "topic": "Hobbies",
+          "ipa": "/ˌteɪk ˈʌp/",
+          "faApprox": "تِیک آپ",
+          "gapSentence": "Last year my brother ______ the guitar.",
+          "fullSentence": "Last year my brother took up the guitar.",
+          "collocations": [
+            "take up a hobby",
+            "take up a sport",
+            "take up tennis"
+          ],
+          "noteFa": "در این جمله «took up» شکل گذشته take up است و معنای آغاز کردن یادگیری گیتار به عنوان سرگرمی جدید را می‌رساند.",
+          "imageFa": "فردی که با هیجان یک جعبه ساز موسیقی نو را باز می‌کند تا نواختن آن را یاد بگیرد.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "take after",
+        "back": "شباهت داشتن به یکی از بستگان بزرگ‌تر در ظاهر یا رفتار",
+        "claim": "فعل عبارتی «take after» به معنای شباهت ظاهری یا رفتاری به یکی از بستگان مسن‌تر خانواده است.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "take after",
+          "faMeaning": "شباهت داشتن به یکی از بستگان بزرگ‌تر در ظاهر یا رفتار",
+          "topic": "Family traits",
+          "ipa": "/ˌteɪk ˈɑːftə/",
+          "faApprox": "تِیک آفتِر",
+          "gapSentence": "Anna ______ her grandmother.",
+          "fullSentence": "Anna takes after her grandmother.",
+          "collocations": [
+            "take after one's mother",
+            "take after one's father"
+          ],
+          "noteFa": "در عبارت «takes after»، مقصود این است که آنا ویژگی‌های ظاهری یا اخلاقی مادربزرگ خود را به ارث برده است.",
+          "imageFa": "تصویر دختری جوان در کنار پرتره مادربزرگش با خنده‌ای کاملاً یکسان.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "vocabulary",
+        "front": "take off",
+        "back": "برخاستن هواپیما از باند فرودگاه",
+        "claim": "فعل عبارتی «take off» برای هواپیما به معنای بلند شدن از روی زمین و شروع پرواز است.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "take off",
+          "faMeaning": "برخاستن هواپیما از باند فرودگاه",
+          "topic": "Air travel",
+          "ipa": "/ˌteɪk ˈɒf/",
+          "faApprox": "تِیک آف",
+          "gapSentence": "The plane ______.",
+          "fullSentence": "The plane takes off.",
+          "collocations": [
+            "take off smoothly",
+            "take off on time"
+          ],
+          "noteFa": "در جمله «The plane takes off»، فعل take off ناگذر است و به جدا شدن هواپیما از سطح باند اشاره دارد.",
+          "imageFa": "هواپیمایی که چرخ‌هایش از زمین باند جدا شده و در حال اوج‌گیری در آسمان است.",
+          "sourceFa": "از کلاس"
+        }
+      },
+      {
+        "kind": "grammar",
+        "front": "take + pronoun + off",
+        "back": "قرار گرفتن ضمیر مفعولی در میان دو بخش فعل عبارتی",
+        "claim": "در فعل عبارتی take off، اگر مفعول جمله ضمیر باشد، حتماً بین فعل و حرف اضافه قرار می‌گیرد و ساختار «take it off» ایجاد می‌شود.",
+        "origin": "from_class",
+        "study": {
+          "set": "production",
+          "en": "take + pronoun + off",
+          "faMeaning": "قرار گرفتن ضمیر مفعولی در میان دو بخش فعل عبارتی",
+          "topic": "Phrasal verbs with pronouns",
+          "kind": "grammar",
+          "ipa": "/ˌteɪk ɪt ˈɒf/",
+          "ipaText": "take it off",
+          "faApprox": "تِیک ایت آف",
+          "fullSentence": "Your coat is wet, so please take it off.",
+          "collocations": [
+            "take it off",
+            "take them off"
+          ],
+          "noteFa": "در عبارت «take it off»، ضمیر it در میان take و off قرار گرفته است. گفتن «take off it» طبق قاعده نادرست است. همچنین این فعل برای لباس به معنای درآوردن پوشش است.",
+          "imageFa": "شخصی که پس از ورود به اتاق کتش را درمی‌آورد و روی جالباسی می‌گذارد.",
+          "sourceFa": "از کلاس",
+          "taskFa": "جایگاه درست ضمیر مفعولی را در فعل عبارتی انتخاب کنید.",
+          "prompt": "Choose the correct order: Your coat is wet, so please (take off it / take it off)."
+        }
+      }
+    ],
+    "summary": [
+      "ساختار used to با شکل ساده فعل برای عادت‌های خاتمه‌یافته گذشته به کار می‌رود، در حالی که be used to و get used to همراه با فعل ing-دار به ترتیب بر عادی بودن فعلی و فرآیند عادت کردن دلالت دارند.",
+      "افعال عبارتی با take با توجه به حرف اضافه خود معانی متمایزی مانند شروع سرگرمی (take up)، شباهت به خویشاوندان (take after) یا برخاستن هواپیما و درآوردن لباس (take off) ایجاد می‌کنند و ضمایر مفعولی در میان take off قرار می‌گیرند."
+    ],
+    "topics": [
+      {
+        "title": "ساختارهای used to",
+        "claims": [
+          "برای عادت‌های تمام‌شده گذشته از used to با فعل ساده استفاده می‌شود و در حالت منفی didn't use to بدون d می‌آید.",
+          "ترکیب be used to و get used to نیازمند شکل ing-دار فعل است و به ترتیب بر آشنا بودن موقعیت یا در حال تطبیق بودن تمرکز دارد."
+        ]
+      },
+      {
+        "title": "افعال عبارتی با take",
+        "claims": [
+          "ترکیب فعل take با up به معنای شروع یک فعالیت تازه، با after به معنای شباهت ارثی، و با off به معنای برخاستن هواپیما یا درآوردن لباس است.",
+          "هرگاه مفعول عبارت take off ضمیر باشد، الزاماً در میان فعل و حرف اضافه قرار می‌گیرد."
+        ]
+      }
+    ],
+    "homework": [],
+    "uncertainties": [],
+    "classNotes": {
+      "date": "2026-10-12",
+      "course": "General English A2",
+      "coverage": "آموزش تفاوت‌های ساختاری used to، be used to، get used to و آشنایی با افعال عبارتی take up، take after و take off همراه با قانون قرارگیری ضمیر مفعولی.",
+      "sourceNote": "محتوای این درس از روی فایل صوتی تدریس و دو تصویر تخته کلاس تدوین شده است.",
+      "coreIntro": "در این درس یاد می‌گیرید چگونه درباره عادت‌های گذشته و سازگاری با شرایط فعلی صحبت کنید و سه فعل عبارتی پرکاربرد با take را در مکالمه به کار ببرید.",
+      "chunks": [
+        {
+          "pattern": "used to + base verb",
+          "classSentence": "I used to walk to school.",
+          "noteFa": "عادت سپری‌شده در گذشته با شکل ساده فعل."
+        },
+        {
+          "pattern": "be used to + -ing",
+          "classSentence": "I am used to getting up early now.",
+          "noteFa": "عادی بودن انجام کاری در زمان حال."
+        },
+        {
+          "pattern": "get used to + -ing",
+          "classSentence": "She is getting used to driving on the left.",
+          "noteFa": "مراحل خو گرفتن و تطبیق یافتن با شرایط جدید."
+        },
+        {
+          "pattern": "take up + noun",
+          "classSentence": "Last year my brother took up the guitar.",
+          "noteFa": "شروع یک فعالیت یا سرگرمی نو."
+        },
+        {
+          "pattern": "take after + person",
+          "classSentence": "Anna takes after her grandmother.",
+          "noteFa": "شباهت اخلاقی یا چهره‌ای به یکی از بستگان."
+        },
+        {
+          "pattern": "take + pronoun + off",
+          "classSentence": "Take it off.",
+          "noteFa": "قرار گرفتن ضمیر در میان فعل و حرف اضافه."
+        }
+      ],
+      "board": [
+        "used to",
+        "past habit | used to + verb | I used to walk to school.",
+        "familiar now | be used to + -ing | I am used to getting up early.",
+        "I use to live → I used to live",
+        "take + particle",
+        "take up → start a hobby",
+        "take after → look like a relative",
+        "Take it off. (not: take off it)"
+      ],
+      "tasks": [],
+      "mistakes": {
+        "speechStatus": "unverified",
+        "patterns": [],
+        "items": []
+      },
+      "register": [
+        {
+          "notThis": "take off it",
+          "sayThis": "take it off",
+          "whyFa": "ضمایر مفعولی مانند it باید الزاماً بین فعل و حرف اضافه قرار گیرند."
+        },
+        {
+          "notThis": "I use to live",
+          "sayThis": "I used to live",
+          "whyFa": "در جملات مثبت برای بیان عادت گذشته، حرف d نباید از used حذف شود."
+        }
+      ],
+      "gapfill": [],
+      "culture": []
+    }
+  }
+}

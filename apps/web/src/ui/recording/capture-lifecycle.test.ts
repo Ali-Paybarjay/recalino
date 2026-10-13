@@ -163,3 +163,64 @@ describe("capture across browser lifecycle changes", () => {
     test.dispose();
   });
 });
+
+describe("capture health facts from the page lifecycle", () => {
+  it("reports visibility, freeze/resume and wake lock state to a controller that observes", async () => {
+    const page = Object.assign(new EventTarget(), {
+      visibilityState: "visible" as DocumentVisibilityState,
+    });
+    const observe = vi.fn();
+    const lock = new ScreenLock();
+    const dispose = watchCaptureLifecycle(
+      {
+        snapshot: (): CaptureState => ({
+          phase: "recording",
+          recording: null,
+          error: null,
+          accountDeletionBlocked: false,
+        }),
+        subscribe: () => () => {},
+        checkHealth: vi.fn(),
+        observe,
+      },
+      { page, window: new EventTarget(), requestScreenWakeLock: async () => lock },
+    );
+    await flush();
+    expect(observe).toHaveBeenCalledWith({ type: "wake_lock", state: "acquired" });
+    page.visibilityState = "hidden";
+    page.dispatchEvent(new Event("visibilitychange"));
+    expect(observe).toHaveBeenCalledWith({ type: "visibility", visible: false });
+    page.dispatchEvent(new Event("freeze"));
+    page.dispatchEvent(new Event("resume"));
+    expect(observe).toHaveBeenCalledWith({ type: "lifecycle", state: "frozen" });
+    expect(observe).toHaveBeenCalledWith({ type: "lifecycle", state: "resumed" });
+    page.visibilityState = "visible";
+    page.dispatchEvent(new Event("visibilitychange"));
+    expect(observe).toHaveBeenCalledWith({ type: "visibility", visible: true });
+    dispose();
+  });
+
+  it("reports a browser without screen wake lock once", () => {
+    const observe = vi.fn();
+    watchCaptureLifecycle(
+      {
+        snapshot: (): CaptureState => ({
+          phase: "recording",
+          recording: null,
+          error: null,
+          accountDeletionBlocked: false,
+        }),
+        subscribe: () => () => {},
+        checkHealth: vi.fn(),
+        observe,
+      },
+      {
+        page: Object.assign(new EventTarget(), { visibilityState: "visible" as const }),
+        window: new EventTarget(),
+      },
+    )();
+    expect(observe.mock.calls.filter(([event]) => event.type === "wake_lock")).toEqual([
+      [{ type: "wake_lock", state: "unavailable" }],
+    ]);
+  });
+});

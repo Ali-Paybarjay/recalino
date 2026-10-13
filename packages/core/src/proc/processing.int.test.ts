@@ -1170,7 +1170,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     const contract = await readInputContract(db, "1");
     await expireAwaitingUploads(db, new Date(Date.now() + contract.uploadTtlSeconds * 1000 + 1000));
     expect((await getRun(db, f.ctx, pending.id)).state).toBe("needs_input");
-    expect((await getRun(db, f.ctx, pending.id)).lastError).toBe("audio_upload_rejected");
+    expect((await getRun(db, f.ctx, pending.id)).lastError).toBe("audio_upload_not_started");
     expect((await allowance(db, f.ctx)).reserved.audio).toBe(0);
     expect((await allowance(db, f.ctx)).consumed.audio).toBe(0);
   });
@@ -1576,19 +1576,25 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
         { provider: f.provider, job },
       );
       if (renderer === "batch") {
+        // Diagnosis 2026-10-12 (0.5): the rendered batch is read in parallel within the vision
+        // bound; each page is still its own paid step and checkpoint.
         await runFixtureProcessingStep(db, job, { userId: f.ctx.userId, runId: run.id });
         expect(batches).toEqual([[2, 3, 4]]);
-        expect(f.provider.calls).toBe(1);
+        expect(f.provider.calls).toBe(3);
         expect(
-          await db
-            .selectFrom("proc.provider_attempt")
-            .select(["step", "state"])
-            .where("run_id", "=", run.id)
-            .execute(),
-        ).toEqual([{ step: `vision:pdf:${asset.id}:2`, state: "succeeded" }]);
+          (
+            await db
+              .selectFrom("proc.provider_attempt")
+              .select(["step", "state"])
+              .where("run_id", "=", run.id)
+              .execute()
+          ).sort((left, right) => left.step.localeCompare(right.step)),
+        ).toEqual(
+          [2, 3, 4].map((page) => ({ step: `vision:pdf:${asset.id}:${page}`, state: "succeeded" })),
+        );
         await runFixtureProcessingStep(db, job, { userId: f.ctx.userId, runId: run.id });
-        expect(batches).toEqual([[2, 3, 4]]);
-        expect(f.provider.calls).toBe(2);
+        expect(batches).toEqual([[2, 3, 4], [5]]);
+        expect(f.provider.calls).toBe(4);
       }
       for (
         let invocation = 0;
