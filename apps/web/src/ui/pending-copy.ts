@@ -17,6 +17,8 @@ export const pendingCopy = {
         "The audio upload did not finish before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Review and retry to upload it again.",
     },
     automatic: {
+      rejected:
+        "The audio could not be verified, so sending the same file again would stop at the same point. Open Review material to replace the audio or remove it from the selection.",
       notStarted:
         "The audio upload did not start before its time limit. The audio was not rejected, and the original is still saved on this device. Choose Retry failed attempt to upload it again.",
       incomplete:
