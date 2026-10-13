@@ -62,7 +62,7 @@ export async function diarizeVoiceRecording(
   let samples: Float32Array | undefined;
   try {
     const selection = voiceSourceWindows(durationMs, ranges, plan);
-    const pcm = await decodeVoiceAudioWindows(bytes, selection.windows);
+    const pcm = await decodeVoiceAudioWindows(bytes, selection.windows, durationMs);
     samples = pcm.samples;
     const result = await engine.diarize(pcm.samples, {
       sampleRate: pcm.sampleRate,
