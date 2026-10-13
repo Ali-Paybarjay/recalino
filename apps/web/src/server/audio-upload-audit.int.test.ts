@@ -309,6 +309,54 @@ describe("audit 2: every rejection on the start, part and complete paths", () =>
     return { learner, source, run, parts, path, start };
   }
 
+  it("start: accepts the part layout of the current contract for a source registered under an older one (D71)", async () => {
+    const x = await awaiting();
+    const active = await auditContract(db);
+    // The source was registered when parts were 2 bytes; the device computes parts with the
+    // contract it reads today (8 MiB), so its one-part manifest fits only the current contract.
+    const olderVersion = `audit-older-${randomUUID()}`;
+    await db
+      .insertInto("src.input_contract")
+      .values({
+        version: olderVersion,
+        rules: JSON.stringify({ ...active, version: olderVersion, partBytes: 2 }),
+        active: false,
+        created_at: new Date(Date.now() - 86_400_000),
+      })
+      .execute();
+    await db
+      .updateTable("src.asset")
+      .set({ contract_version: olderVersion })
+      .where("id", "=", x.source.assetId)
+      .execute();
+    // Neither contract's layout: still refused.
+    expect(
+      await failure(
+        x.start([
+          { index: 0, sizeBytes: 1, sha256: sha256Hex(bytes.subarray(0, 1)) },
+          { index: 1, sizeBytes: 1, sha256: sha256Hex(bytes.subarray(1, 2)) },
+          { index: 2, sizeBytes: 1, sha256: sha256Hex(bytes.subarray(2)) },
+        ]),
+      ),
+    ).toMatchObject({ status: 400, fields: { parts: ["invalid_manifest"] } });
+    const started = (await x.start()) as { uploadId: string; state: string };
+    expect(started.uploadId).toEqual(expect.any(String));
+    expect(started.state).toBe("pending");
+    // The older contract's own layout (2 + 1 bytes) is accepted as well.
+    const y = await awaiting();
+    await db
+      .updateTable("src.asset")
+      .set({ contract_version: olderVersion })
+      .where("id", "=", y.source.assetId)
+      .execute();
+    expect(
+      await y.start([
+        { index: 0, sizeBytes: 2, sha256: sha256Hex(bytes.subarray(0, 2)) },
+        { index: 1, sizeBytes: 1, sha256: sha256Hex(bytes.subarray(2)) },
+      ]),
+    ).toMatchObject({ state: "pending" });
+  });
+
   it("start: malformed body, unknown run, missing store, invalid manifests and a changed manifest", async () => {
     const x = await awaiting();
     const contract = await auditContract(db);
@@ -325,9 +373,11 @@ describe("audit 2: every rejection on the start, part and complete paths", () =>
     ).toMatchObject({ status: 404 });
     const store = synthetic.store;
     synthetic.store = null;
-    // Server configuration, never a client state: no file store is connected.
+    // Server configuration, never a client state: no file store is connected. Answered as a
+    // service failure (503, D71) so the device retries it later instead of blaming its input.
     expect(await failure(x.start())).toMatchObject({
-      status: 400,
+      status: 503,
+      code: "service_unavailable",
       fields: { storage: ["unavailable"] },
     });
     synthetic.store = store;
@@ -448,7 +498,8 @@ describe("audit 2: every rejection on the start, part and complete paths", () =>
     const store = synthetic.store;
     synthetic.store = null;
     expect(await failure(complete())).toMatchObject({
-      status: 400,
+      status: 503,
+      code: "service_unavailable",
       fields: { audio: ["verifier_unavailable"] },
     });
     synthetic.store = store;
@@ -547,7 +598,7 @@ describe("audit 7: invariants the route must keep", () => {
     const provider = auditProvider();
     const processing = getProcessingDefinition();
     if (!processing) throw new Error("processing unavailable");
-    const source = await auditSource(db, learner.ctx, learner.session.id, bytes);
+    await auditSource(db, learner.ctx, learner.session.id, bytes);
     const run = await auditConfirmedRun(db, learner.ctx, learner.session.id, {
       provider,
       job: processing,

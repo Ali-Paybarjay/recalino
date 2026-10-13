@@ -67,6 +67,7 @@ export async function voiceFixture(db: Database) {
     sessionId: x.session.id,
     sourceId: source.id,
     sourceVersionId: version.id,
+    startedAt: new Date(now.getTime() - 5000),
     runId: randomUUID(),
     profileVersion: enrollment.version,
     modelVersion: "synthetic-voice-v1",

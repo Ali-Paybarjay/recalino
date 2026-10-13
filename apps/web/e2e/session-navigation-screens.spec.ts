@@ -47,14 +47,28 @@ for (const width of [390, 1440]) {
     await expect(step.locator(".btn-primary")).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Session notes", exact: true })).toBeVisible();
     const sessionHeading = await step.getByRole("heading").innerText();
+    const sessionTitle = await page.getByRole("heading", { level: 1 }).innerText();
     await expect(page.locator("summary").filter({ hasText: "More session tools" })).toBeVisible();
     await expectNoAxeViolations(page);
     await capture(page, "session-with-notes", width);
 
-    // Empty session: no notes or flashcards offered.
+    // Empty session: no notes or flashcards offered. D71 (owner decision 2026-10-13): it leads
+    // with Record a session, then Add or view material, and the material section only explains.
     await page.goto(`/sessions/${emptyId}`);
     await expect(step.getByRole("heading", { name: "Add your session material" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Session notes", exact: true })).toHaveCount(0);
+    await expect(step.locator(".btn-primary")).toHaveText("Record a session");
+    await expect(step.getByRole("link", { name: "Add or view material", exact: true })).toHaveClass(
+      /btn-secondary/,
+    );
+    await expect(page.getByRole("button", { name: "Record a session", exact: true })).toHaveCount(
+      1,
+    );
+    await expect(page.getByRole("link", { name: "Add or view material", exact: true })).toHaveCount(
+      1,
+    );
+    const emptyTitle = await page.getByRole("heading", { level: 1 }).innerText();
+    await expectNoAxeViolations(page);
     await capture(page, "session-empty", width);
 
     // One page for material and status; the kept routes show the same page.
@@ -79,14 +93,13 @@ for (const width of [390, 1440]) {
 
     // Today: the latest session's step, with Record a session still the only filled primary.
     await page.goto("/today");
-    await expect(page.getByRole("main").locator(".btn-primary:visible")).toHaveCount(1);
-    // The same resolver: Today names the same step as the session page.
-    await expect(
-      page.getByRole("main").getByRole("region", { name: "Session progress" }).getByRole("heading"),
-    ).toHaveText(sessionHeading);
-    await expect(
-      page.getByRole("main").getByRole("region", { name: "Session progress" }),
-    ).toBeVisible();
+    const today = page.getByRole("main");
+    await expect(today.locator(".btn-primary:visible")).toHaveCount(1);
+    // The same resolver: Today names the same step as the session page, in a card named by the
+    // session. D71: the older empty session has no work in progress, so it has no card.
+    const latestCard = today.getByRole("region", { name: sessionTitle, exact: true });
+    await expect(latestCard.getByRole("heading", { level: 2 })).toHaveText(sessionHeading);
+    await expect(today.getByRole("region", { name: emptyTitle, exact: true })).toHaveCount(0);
     await expectNoAxeViolations(page);
     await capture(page, "today", width);
   });

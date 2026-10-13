@@ -1,6 +1,6 @@
 import { sql } from "kysely";
 import type { Database } from "../db";
-import { classRunTimes } from "../proc";
+import { classRunTimes, foregroundGaps } from "../proc";
 import { audioUploadWindows } from "../src";
 import { voiceAnalysisTimes } from "../voc";
 
@@ -18,6 +18,8 @@ export const STAGES = [
   "voice",
   "publication",
   "total",
+  /** Time the learner's device reported its page hidden while the run was open (D47, D71). */
+  "device_hidden",
 ] as const;
 export type Stage = (typeof STAGES)[number];
 
@@ -36,6 +38,8 @@ export interface RunTimes {
   lessonFinishedAt: Date | null;
   voiceStartedAt: Date | null;
   voiceFinishedAt: Date | null;
+  /** Hidden intervals the learner's device reported for the class (`recordForegroundGap`). */
+  foregroundGaps: readonly { hiddenAt: Date; visibleAt: Date }[];
 }
 
 const seconds = (from: Date | null, to: Date | null) =>
@@ -48,10 +52,26 @@ const earliest = (...times: (Date | null)[]) =>
     null,
   );
 
+/** Seconds of the reported hidden intervals that fall inside [from, to); to = null is open. */
+export function hiddenSeconds(
+  gaps: readonly { hiddenAt: Date; visibleAt: Date }[],
+  from: Date,
+  to: Date | null,
+): number {
+  let total = 0;
+  for (const gap of gaps) {
+    const start = Math.max(gap.hiddenAt.getTime(), from.getTime());
+    const end = Math.min(gap.visibleAt.getTime(), to?.getTime() ?? Number.POSITIVE_INFINITY);
+    if (end > start) total += (end - start) / 1000;
+  }
+  return total;
+}
+
 /**
  * Stage boundaries. Upload: run creation → first upload start → last verified original. Queue:
  * ready input → first provider call. Provider stages span their first start to last finish and
- * may overlap. Publication: last provider or voice result → run finished.
+ * may overlap. Publication: last provider or voice result → run finished. Device hidden: the
+ * reported hidden time within the run; unmeasured when the device never reported.
  */
 export function stageDurations(run: RunTimes): Record<Stage, number | null> {
   const inputReady = run.uploadVerifiedAt ?? run.createdAt;
@@ -72,6 +92,11 @@ export function stageDurations(run: RunTimes): Record<Stage, number | null> {
     voice: seconds(run.voiceStartedAt, run.voiceFinishedAt),
     publication: seconds(lastResult, run.finishedAt),
     total: seconds(run.createdAt, run.finishedAt),
+    // Null when the device reported nothing at all (closed tab, no event); 0 when it reported
+    // intervals that all fall outside the run.
+    device_hidden: run.foregroundGaps.length
+      ? hiddenSeconds(run.foregroundGaps, run.createdAt, run.finishedAt)
+      : null,
   };
 }
 
@@ -107,8 +132,8 @@ export function summarize(runs: readonly RunTimes[]) {
 
 /**
  * Class runs created in [since, until), read through each module inside one read-only
- * transaction. Voice: analyses of the class created during the run (their last update can move
- * later when the learner confirms a voice, so its end is approximate).
+ * transaction. Voice: the analyses saved for the run, from their recorded start and finish
+ * (D71); analyses saved before those were recorded leave the stage unmeasured.
  */
 export async function readRunTimes(db: Database, since: Date, until: Date): Promise<RunTimes[]> {
   return db.transaction().execute(async (tx) => {
@@ -118,15 +143,13 @@ export async function readRunTimes(db: Database, since: Date, until: Date): Prom
       tx,
       runs.map((run) => run.reservationId),
     );
-    const voice = await voiceAnalysisTimes(tx, [...new Set(runs.map((run) => run.sessionId))]);
+    const voice = await voiceAnalysisTimes(
+      tx,
+      runs.map((run) => run.runId),
+    );
+    const gaps = await foregroundGaps(tx, [...new Set(runs.map((run) => run.sessionId))]);
     return runs.map((run) => {
-      const analyses = voice.filter(
-        (analysis) =>
-          analysis.sessionId === run.sessionId &&
-          analysis.userId === run.userId &&
-          analysis.createdAt >= run.createdAt &&
-          (!run.finishedAt || analysis.createdAt <= run.finishedAt),
-      );
+      const analyses = voice.filter((analysis) => analysis.runId === run.runId);
       const upload = uploads.get(run.reservationId);
       return {
         runId: run.runId,
@@ -141,8 +164,11 @@ export async function readRunTimes(db: Database, since: Date, until: Date): Prom
         visionFinishedAt: run.boardPhotos.finishedAt,
         lessonStartedAt: run.lesson.startedAt,
         lessonFinishedAt: run.lesson.finishedAt,
-        voiceStartedAt: earliest(...analyses.map((analysis) => analysis.createdAt)),
-        voiceFinishedAt: latest(...analyses.map((analysis) => analysis.updatedAt)),
+        voiceStartedAt: earliest(...analyses.map((analysis) => analysis.startedAt)),
+        voiceFinishedAt: latest(...analyses.map((analysis) => analysis.finishedAt)),
+        foregroundGaps: gaps
+          .filter((gap) => gap.sessionId === run.sessionId && gap.userId === run.userId)
+          .map((gap) => ({ hiddenAt: gap.hiddenAt, visibleAt: gap.visibleAt })),
       };
     });
   });

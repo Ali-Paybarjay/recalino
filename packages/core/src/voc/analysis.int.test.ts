@@ -50,6 +50,25 @@ it("preserves sampled coverage through correction failures and later successful 
     "voice_correction_sampled_audio_service_blocked",
   );
 });
+it("records when the analysis started and finished, untouched by later confirmations (NFR-07, D71)", async () => {
+  const x = await voiceFixture(db);
+  const times = () =>
+    db
+      .selectFrom("voc.analysis")
+      .select(["analysis_started_at", "analysis_finished_at", "created_at"])
+      .where("id", "=", x.analysis.id)
+      .executeTakeFirstOrThrow();
+  const saved = await times();
+  expect(saved.analysis_finished_at?.getTime()).toBe(saved.created_at.getTime());
+  expect(saved.analysis_started_at?.getTime()).toBe(saved.created_at.getTime() - 5000);
+  await changeVoiceIdentity(db, x.ctx, x.session.id, {
+    action: "confirm",
+    analysisId: x.analysis.id,
+    expectedVersion: 1,
+    speakerId: "learner",
+  });
+  expect(await times()).toEqual(saved);
+});
 it("Part6: hidden suggestions reveal only for the confirmed voice; reject and stale writes cannot leak another speaker", async () => {
   const x = await voiceFixture(db),
     model = referenceStudyModel();
