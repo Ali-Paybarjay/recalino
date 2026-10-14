@@ -68,13 +68,13 @@ SELECT فقط‌خواندنی روی پروژه ابری در 2026-10-14، با
   Kysely با پاسخ دیتابیس مصنوعی استفاده می‌کنند. در محیط Codex، Docker و binary صوتی
   build در دسترس نبودند.
 - تکمیل، با Node 24.21 و pnpm 12.4.2 و Supabase محلی در Docker:
-  - `pnpm verify`: lint، typecheck، مرز ماژول‌ها و 4,142 آزمون در 361 فایل پاس شدند
-    (یک فایل و یک آزمون از پیش skip هستند).
+  - `pnpm verify` روی head ادغام‌شده با main `b06c9ca`: lint، typecheck، مرز ماژول‌ها و
+    4,174 آزمون در 364 فایل پاس شدند (یک فایل و یک آزمون از پیش skip هستند).
   - آزمون integration `cross-account/processingRun` روی `getRun` نسخه Codex شکست
     می‌خورد (یک رخداد `ownership_denied` به‌جای چهار) و با اصلاح پاس می‌شود.
   - `pnpm build` و `pnpm check:client-bundle` پاس شدند.
-  - `CI=1 RECALINO_DEV_UI=1 pnpm test:e2e` روی build production: 276 آزمون پاس شدند،
-    بدون flaky.
+  - `CI=1 RECALINO_DEV_UI=1 pnpm test:e2e` روی build production همان head: 277 آزمون پاس
+    و یک آزمون skip، بدون flaky.
 - روی production بررسی نشد: Auth تا رفع محدودیت با 402 `exceed_egress_quota` پاسخ می‌دهد.
   شواهد، آزمون‌های محلی و اندازه‌گیری SQL بالا هستند.
 
