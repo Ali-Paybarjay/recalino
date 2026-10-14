@@ -45,6 +45,13 @@ const ALLOWED_FIELDS = new Set([
   "wall_ms",
   "gaps",
   "result",
+  // On-device board photo readability (D72): the local photo id and integer scores 0–1000 only.
+  "photo_id",
+  "verdict",
+  "sharpness",
+  "exposure",
+  "glare",
+  "edge_density",
 ]);
 
 const IDENTIFIER = /^[A-Za-z0-9_.:/\-[\]]{1,128}$/;

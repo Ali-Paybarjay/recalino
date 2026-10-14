@@ -1,17 +1,21 @@
 import { z } from "zod";
 import { GAP_CAUSES } from "./capture-meter";
 import type { CaptureHealthEvent } from "./controller";
+import { PHOTO_VERDICTS } from "./photo-quality";
 
 /**
  * Capture-health diagnostics (PRD-REC-03, PRD-REC-05) without content (PRD-PRIV-06): enums,
  * bounded integers and the recorder MIME only. No audio, text, class or recording identifiers;
- * the server log line adds only the request and user ids every request already carries.
+ * the server log line adds only the request and user ids every request already carries. The one
+ * exception is `photo_quality` (D72): the random local id of a board photo, which is also its
+ * upload operation key, so the on-device verdict can be compared with the server's outcome.
  */
 const ms = z
   .int()
   .min(0)
   .max(24 * 60 * 60 * 1000);
 const part = z.int().min(1).max(1000);
+const score = z.int().min(0).max(1000);
 const mime = z
   .string()
   .regex(/^audio\/[a-z0-9.+-]+(;\s?codecs=[a-z0-9.,-]+)?$/i)
@@ -41,6 +45,15 @@ export const captureHealthEventSchema = z.discriminatedUnion("type", [
     part,
     result: z.enum(["staged", "skipped", "failed"]),
     durationMs: ms,
+  }),
+  z.strictObject({
+    type: z.literal("photo_quality"),
+    photoId: z.uuid(),
+    verdict: z.enum(PHOTO_VERDICTS),
+    sharpness: score,
+    exposure: score,
+    glare: score,
+    edgeDensity: score,
   }),
   z.strictObject({
     type: z.literal("part"),
@@ -135,6 +148,12 @@ export function watchCaptureDiagnostics(source: Source, options: Options) {
     if (queue.length) flush();
   };
   const unsubscribe = source.onHealth((event) => {
+    if (event.type === "photo_removed") {
+      queue = queue.filter(
+        (item) => item.event.type !== "photo_quality" || item.event.photoId !== event.photoId,
+      );
+      return;
+    }
     queue.push({ at: now(), event });
     if (queue.length > 200) queue = queue.slice(-200);
     // A part's summary, a gap or a hidden page are moments worth sending now.
