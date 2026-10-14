@@ -36,13 +36,8 @@
 
 **تأیید دوم 2026-10-13 (D72، پیگیری مالک محصول):** مالک محصول هر هشت متن خوانایی عکس تخته (`photoQuality.ok`، `blurry`، `too_dark`، `too_bright`، `glare`، `low_detail`، `retake` و `zoomPrompt`؛ [گزارش](../plans/PHOTO_READABILITY_2026-10-13.md)) را عیناً تأیید کرد. متن‌ها از `pending-copy.ts` به [`recording/recording-copy.ts`](../../apps/web/src/ui/recording/recording-copy.ts) (`recordingCopy.photoQuality.*`) منتقل شدند. عنوان Sheet بزرگ‌نمایی همان متن alt موجود است («Board captured around {time}») و متن تازه نیست.
 
-## D72، پیگیری — حذف عکسی که فقط روی دستگاه است (`feat/photo-readability`، 2026-10-13)
+**تأیید 2026-10-14 (D76):** مالک محصول چهار متن حذف عکسی که فقط روی دستگاه است را عیناً تأیید کرد: «Remove this photo» (دکمهٔ ردیف عکس، footer Sheet و دکمهٔ تأیید حذف)، «Remove this photo from this device?» (عنوان `ConfirmDialog`)، «It has not been uploaded.» (تنها پیامد) و «Keep» (گزینهٔ امن). متن‌ها از `pending-copy.ts` به [`recording/recording-copy.ts`](../../apps/web/src/ui/recording/recording-copy.ts) (`recordingCopy.photoRemove.*`) منتقل شدند.
 
-مالک محصول در 2026-10-13 یک کنترل کوچک را تأیید کرد: حذف عکس تختهٔ آپلودنشده از همین دستگاه. این کنترل در ردیف همان عکس و در footer Sheet بزرگ‌نمایی می‌آید. پیش از حذف، `ConfirmDialog` موجود باز می‌شود. عکسِ آپلودشده یا عکسی که در گروه آپلودِ در جریان است، این کنترل را ندارد و همان حذف صفحهٔ منابع برایش می‌ماند. این متن‌ها هنوز تأیید نشده‌اند. پیشنهاد مدیر کار برای متن تأیید («Remove this photo from this device? It has not been uploaded.») به دو کلید تقسیم شد، چون `ConfirmDialog` عنوان و فهرست پیامدها را جدا می‌گیرد. متن، کلمه‌به‌کلمه همان است.
+در همان روز، متن بخش «Topics covered» جلسهٔ خالی که هنوز به دکمه‌های «below» اشاره می‌کرد، با متن تأییدشدهٔ مالک محصول جایگزین شد: «Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically.» (`app/(app)/sessions/[id]/page.tsx`). این متن به جای دکمه‌ها اشاره نمی‌کند، چون اقدام‌ها در کارت بالای صفحه‌اند (D71).
 
-| کلید | متن | حالت | منشأ | وضعیت |
-|---|---|---|---|---|
-| `photoRemove.action` | Remove this photo | دکمهٔ ردیف عکس و footer Sheet، و دکمهٔ تأیید حذف (`danger`) | تصمیم مالک محصول 2026-10-13 (پاسخ پرسش ۱) | در انتظار تأیید |
-| `photoRemove.confirm` | Remove this photo from this device? | عنوان `ConfirmDialog` | همان | در انتظار تأیید |
-| `photoRemove.notUploaded` | It has not been uploaded. | تنها پیامد در `ConfirmDialog` | همان | در انتظار تأیید |
-| `photoRemove.keep` | Keep | گزینهٔ امن `ConfirmDialog` (فوکوس اول) | همان | در انتظار تأیید |
+پس از این تأیید فهرست خالی است.

@@ -45,6 +45,17 @@ env | cut -d= -f1 | grep SUPABASE
 
 اگر Node 22 یا متغیر `SUPABASE_*` دیده شد، سشن در environment اشتباه (Default) باز شده است: به مالک محصول گزارش بده، از آن مقدارها استفاده نکن، و تا باز شدن سشن در environment درست فقط با `PATH=/opt/node24/bin:$PATH` کار کن اگر Node 24 نصب است.
 
+## آزمون integration و e2e
+
+Docker در تصویر نصب است، ولی daemon آن خودکار روشن نمی‌شود (2026-10-14). بدون آن Supabase محلی بالا نمی‌آید و آزمون‌های integration (بخشی از `pnpm verify`) و `pnpm test:e2e` با `ECONNREFUSED 127.0.0.1:54322` شکست می‌خورند. پیش از این آزمون‌ها:
+
+```bash
+nohup dockerd > /tmp/dockerd.log 2>&1 &
+pnpm db:start   # بار اول imageها را می‌کشد و چند دقیقه طول می‌کشد
+```
+
+اگر پس از restart سشن، `db:start` با `supabase_db_recalino container is not ready: unhealthy` شکست خورد، `pnpm db:stop` و دوباره `pnpm db:start` را اجرا کن. setup script عمداً Docker را روشن نمی‌کند تا شروع سشن کند نشود (D76).
+
 ## قاعده‌ها
 
 - هر سشن تازهٔ ریکالینو، از جمله سشن‌های کارگری که سشن مدیر می‌سازد، در environment «Recalino» باز می‌شود. سشن‌های موجود environment خود را عوض نمی‌کنند.

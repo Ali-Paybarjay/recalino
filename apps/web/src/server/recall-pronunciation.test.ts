@@ -63,7 +63,7 @@ it("AC-D46-01/02 derives the owned structured target and routes through cached p
     },
     mocks.dependencies(),
   );
-  expect(mocks.jobs).toHaveBeenCalledWith(["media.tts"], 90, 120, {
+  expect(mocks.jobs).toHaveBeenCalledWith(["media.tts"], 90, 300, {
     userId: ctx.userId,
     subjectId: cardId,
   });

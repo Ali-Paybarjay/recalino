@@ -177,3 +177,4 @@ flag تازه‌ای اضافه نشد. این تغییرها همان اصلا�
 
 - متن مصوب «Topics covered» در جلسهٔ خالی می‌گوید: «Add session material below…». دکمه‌ها حالا در کارت بالای صفحه‌اند و بخش پایین فقط توضیح می‌دهد.
 - آیا این متن اصلاح شود؟ هر متن تازه تأیید شما را می‌خواهد.
+- **پاسخ 2026-10-14 (D76):** مالک محصول متن «Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically.» را تأیید کرد و جایگزین شد.

@@ -14,4 +14,6 @@ export async function POST(request: Request, context: Context) {
     classMediaHandler(id),
   )(request);
 }
-export const maxDuration = 120;
+// The speech job starts on this request: its call may use the speech model's whole deadline
+// (D74: 180 s) and still finish, and record its outcome, before the function stops.
+export const maxDuration = 300;

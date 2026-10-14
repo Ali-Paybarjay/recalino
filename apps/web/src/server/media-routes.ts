@@ -121,7 +121,8 @@ export function classMediaHandler(sessionId: string): Handler {
       dependencies,
     );
     if (media.state === "queued")
-      runJobsSoon(["media.tts"], 90, 120, { userId: learner.userId, subjectId: media.id });
+      // 300: the class media route's maxDuration (D74).
+      runJobsSoon(["media.tts"], 90, 300, { userId: learner.userId, subjectId: media.id });
     return {
       status: 202,
       body: speech.purpose === "pronunciation" ? await withPlayback(db, learner, media) : media,

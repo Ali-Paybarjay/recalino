@@ -3,7 +3,6 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog, Sheet } from "../components/Sheet";
-import { pendingCopy } from "../pending-copy";
 import { workspaceRequest } from "../workspace/api";
 import {
   notifyAutomaticLearning,
@@ -592,7 +591,7 @@ function PhotoGallery({
           )}
           {canRemove(photo) ? (
             <Button secondary disabled={disabled} onClick={() => setRemoving(photo)}>
-              {pendingCopy.photoRemove.action}
+              {recordingCopy.photoRemove.action}
             </Button>
           ) : null}
         </figure>
@@ -623,7 +622,7 @@ function PhotoGallery({
                     setRemoving(zoom.photo);
                   }}
                 >
-                  {pendingCopy.photoRemove.action}
+                  {recordingCopy.photoRemove.action}
                 </Button>
               ) : null}
             </>
@@ -644,10 +643,10 @@ function PhotoGallery({
           if (removing) onRemove(removing);
           setRemoving(null);
         }}
-        title={pendingCopy.photoRemove.confirm}
-        consequences={[pendingCopy.photoRemove.notUploaded]}
-        safeLabel={pendingCopy.photoRemove.keep}
-        confirmLabel={pendingCopy.photoRemove.action}
+        title={recordingCopy.photoRemove.confirm}
+        consequences={[recordingCopy.photoRemove.notUploaded]}
+        safeLabel={recordingCopy.photoRemove.keep}
+        confirmLabel={recordingCopy.photoRemove.action}
       />
     </div>
   );

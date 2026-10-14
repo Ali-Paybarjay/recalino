@@ -87,7 +87,7 @@ it("AC-D46-01/02 pronounces an owned published note without requiring a card", a
     },
     mocks.dependencies(),
   );
-  expect(mocks.jobs).toHaveBeenCalledWith(["media.tts"], 90, 120, {
+  expect(mocks.jobs).toHaveBeenCalledWith(["media.tts"], 90, 300, {
     userId: ctx.userId,
     subjectId: otherId,
   });

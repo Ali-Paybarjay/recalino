@@ -27,4 +27,12 @@ export const recordingCopy = {
     retake: "Retake",
     zoomPrompt: "Can you read the smallest writing? If not, retake while the board is still there.",
   },
+  // D72 follow-up, approved word for word by the product owner on 2026-10-14 (D76): remove a board
+  // photo that exists only on this device, from its row or the zoom sheet, after a confirmation.
+  photoRemove: {
+    action: "Remove this photo",
+    confirm: "Remove this photo from this device?",
+    notUploaded: "It has not been uploaded.",
+    keep: "Keep",
+  },
 } as const;
