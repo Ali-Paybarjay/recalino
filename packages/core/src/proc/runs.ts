@@ -130,12 +130,14 @@ export async function getRun(
   ctx: LearnerContext,
   id: string,
 ): Promise<ProcessingRun> {
+  // By id alone, like ownedRun: a foreign id must reach assertOwner so the
+  // ownership_denied security signal is still recorded behind the same 404.
   const row = await db
     .selectFrom("proc.processing_run")
     .select(runViewColumns)
     .where("id", "=", id)
-    .where("user_id", "=", ctx.userId)
     .executeTakeFirst();
+  assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
   if (!row) throw errors.notFound();
   await getSession(db, ctx, row.session_id);
   return runView(row);

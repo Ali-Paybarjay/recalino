@@ -66,7 +66,10 @@ it("PRD-PROC-03: selection identity survives removal of extraction text from a s
     ...snapshot,
     sources: snapshot.sources.map((source) => ({ ...source, blocks: [], units: [] })),
   };
-  expect(runView(row(compact))).toEqual(runView(row(snapshot)));
+  const full = runView(row(snapshot));
+  // A fixture that stopped parsing would make both views lack the fingerprint and still match.
+  expect(full.selectionFingerprint).toMatch(/^[a-f0-9]{64}$/);
+  expect(runView(row(compact))).toEqual(full);
   expect(JSON.stringify(compact).length).toBeLessThan(JSON.stringify(snapshot).length / 100);
 });
 
@@ -83,8 +86,13 @@ it.each(["get", "list", "acknowledgement"])(
       expect(queries[0]?.sql).toContain("jsonb_array_elements");
       expect(queries[0]?.sql).toContain("'units', '[]'::jsonb, 'blocks', '[]'::jsonb");
       expect(queries[0]?.sql).not.toContain('"settings"');
-      expect(queries[0]?.sql).toContain('"user_id" =');
-      expect(queries[0]?.parameters).toContain(USER);
+      if (mode === "get") {
+        // Ownership is checked after the read, so a foreign id still records ownership_denied.
+        expect(queries[0]?.parameters).toEqual([RUN]);
+      } else {
+        expect(queries[0]?.sql).toContain('"user_id" =');
+        expect(queries[0]?.parameters).toContain(USER);
+      }
       expect(gates.session).toHaveBeenCalledWith(db, ctx, SESSION);
     } finally {
       await db.destroy();
@@ -103,10 +111,26 @@ it("PRD-PROC-03: resumable uploads still receive the complete immutable source s
   }
 });
 
-it("FR-PLT-002: a missing or unowned run returns no status", async () => {
+it("FR-PLT-002: a missing run returns no status", async () => {
   const { db } = database([[]]);
   try {
-    await expect(getRun(db, ctx, RUN)).rejects.toMatchObject({ code: "not_found" });
+    await expect(getRun(db, ctx, RUN)).rejects.toMatchObject({
+      code: "not_found",
+      securitySignal: undefined,
+    });
+    expect(gates.session).not.toHaveBeenCalled();
+  } finally {
+    await db.destroy();
+  }
+});
+
+it("FR-PLT-002: a foreign run answers not found and signals ownership_denied", async () => {
+  const { db } = database([[{ ...row({}), user_id: "44444444-4444-4444-8444-444444444444" }]]);
+  try {
+    await expect(getRun(db, ctx, RUN)).rejects.toMatchObject({
+      code: "not_found",
+      securitySignal: "ownership_denied",
+    });
     expect(gates.session).not.toHaveBeenCalled();
   } finally {
     await db.destroy();
