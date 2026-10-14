@@ -201,12 +201,13 @@ export function ProcessingView({
     }
   }, [latest?.state]);
   useEffect(() => {
-    if (!active) return;
+    // A hidden or offline page reads nothing; checking resumes when it is shown or reconnects.
+    if (!active || !visible || !online) return;
     const timer = setInterval(() => {
       void refreshProcessing().catch(progressUnavailable);
     }, 3000);
     return () => clearInterval(timer);
-  }, [active, refreshProcessing, progressUnavailable]);
+  }, [active, visible, online, refreshProcessing, progressUnavailable]);
   function action(effect: () => Promise<void>): Promise<void> {
     // React state updates are asynchronous. This ref blocks rapid double clicks
     // and reconnect/visibility events from starting overlapping uploads.
