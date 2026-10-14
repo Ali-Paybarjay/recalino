@@ -11,7 +11,7 @@ vi.mock("@recalino/core/src", async (original) => ({
 }));
 vi.mock("@recalino/core/lkm", async (original) => ({
   ...(await original<object>()),
-  getLatestVersion: async () => null,
+  listAvailableKnowledgeReferences: async () => [],
 }));
 vi.mock("@recalino/core/quota", async (original) => ({
   ...(await original<object>()),

@@ -1,7 +1,7 @@
 import "server-only";
 import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
-import { getLatestVersion } from "@recalino/core/lkm";
+import { listAvailableKnowledgeReferences } from "@recalino/core/lkm";
 import { hasPublishedNotebook } from "@recalino/core/note";
 import { captureInProgress, getSession } from "@recalino/core/org";
 import {
@@ -213,7 +213,7 @@ async function readAllowanceShortage(
       entitlementId: balance.entitlementId,
       sources: snapshot.sources,
       charactersPerPage: provider.settings.charactersPerPage,
-      regeneration: (await getLatestVersion(db, ctx, sessionId)) !== null,
+      regeneration: (await listAvailableKnowledgeReferences(db, ctx, [sessionId])).length > 0,
     });
     return { active: balance.entitlementId !== null, required, available: balance.remaining };
   } catch (failure) {

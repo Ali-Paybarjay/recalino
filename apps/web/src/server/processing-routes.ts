@@ -1,6 +1,6 @@
 import "server-only";
 import type { Database } from "@recalino/core/db";
-import { getLatestVersion } from "@recalino/core/lkm";
+import { listAvailableKnowledgeReferences } from "@recalino/core/lkm";
 import { getSession } from "@recalino/core/org";
 import { errors, type LearnerContext } from "@recalino/core/plt";
 import {
@@ -87,7 +87,9 @@ export async function readProcessingEstimate(
   const provider = getAiProvider();
   const balance = await allowance(db, learner);
   if (provider) assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
-  const regeneration = (await getLatestVersion(db, learner, sessionId)) !== null;
+  // Existence only: version references, never the stored lesson model.
+  const regeneration =
+    (await listAvailableKnowledgeReferences(db, learner, [sessionId])).length > 0;
   // D59: the same charge-once amounts the confirmation will reserve.
   const requested = provider
     ? await chargeableRunAmounts(db, learner, {
