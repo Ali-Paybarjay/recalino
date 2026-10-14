@@ -1,5 +1,6 @@
 import { type CaptureGap, CaptureMeter, GAP_MIN_MS, type GapCause } from "./capture-meter";
 import type { MediaTimeline } from "./media-timeline";
+import type { PhotoQuality, PhotoVerdict } from "./photo-quality";
 import type { Recording, RecordingStore } from "./store";
 
 export type CaptureState = {
@@ -48,6 +49,18 @@ export type CaptureHealthEvent =
   | { type: "gap"; part: number; offsetMs: number; missingMs: number; cause: GapCause }
   | { type: "interrupted"; part: number }
   | { type: "staged"; part: number; result: "staged" | "skipped" | "failed"; durationMs: number }
+  | {
+      type: "photo_quality";
+      /** Random local photo id, also the photo's upload operation key; never pixels or text. */
+      photoId: string;
+      verdict: PhotoVerdict;
+      sharpness: number;
+      exposure: number;
+      glare: number;
+      edgeDensity: number;
+    }
+  /** Withdraws a not-yet-sent `photo_quality` event of a removed photo; never sent itself. */
+  | { type: "photo_removed"; photoId: string }
   | {
       type: "part";
       part: number;
@@ -174,6 +187,14 @@ export class RecordingController {
   /** D60 staging outcome of one part, for diagnostics only; never shown during capture. */
   reportStaging = (part: number, result: "staged" | "skipped" | "failed", durationMs = 0) => {
     this.report({ type: "staged", part, result, durationMs });
+  };
+  /** On-device board photo verdict (D72), numbers only, for comparison with server outcomes. */
+  reportPhotoQuality = (photoId: string, quality: Pick<PhotoQuality, "verdict" | "scores">) => {
+    this.report({ type: "photo_quality", photoId, verdict: quality.verdict, ...quality.scores });
+  };
+  /** A board photo removed from this device takes its unsent verdict with it. */
+  forgetPhotoQuality = (photoId: string) => {
+    this.report({ type: "photo_removed", photoId });
   };
   private report(event: CaptureHealthEvent) {
     for (const listener of this.healthListeners) {

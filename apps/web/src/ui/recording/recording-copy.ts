@@ -14,4 +14,17 @@ export const recordingCopy = {
   missingHint:
     "This usually happens when the screen locks or another app uses the microphone. Keep Recalino open and the screen on during class.",
   partMissing: "{minutes} min not recorded",
+  // D72 layers 1 and 2 (docs/plans/PHOTO_READABILITY_2026-10-13.md), approved word for word by the
+  // product owner on 2026-10-13: on-device photo readability, shown only inside the photo row,
+  // never as a dialog, toast or sound (PRD-REC-02).
+  photoQuality: {
+    ok: "Looks sharp",
+    blurry: "May be hard to read: blurry. Retake?",
+    too_dark: "May be hard to read: too dark. Retake?",
+    too_bright: "May be hard to read: washed out. Retake?",
+    glare: "May be hard to read: glare on the board. Retake?",
+    low_detail: "Hard to see writing in this photo. Move closer or retake?",
+    retake: "Retake",
+    zoomPrompt: "Can you read the smallest writing? If not, retake while the board is still there.",
+  },
 } as const;

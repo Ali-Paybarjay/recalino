@@ -3,11 +3,20 @@
  * Every entry is registered verbatim in docs/design/UI_COPY_PENDING.md; pending-copy.test.ts
  * keeps the two in step. Once approved, an entry moves to its screen's copy and the register.
  *
- * Empty since the owner's review of 2026-10-13 (D65): the approved texts live in
- * workspace/upload-copy.ts, workspace/session-navigation-copy.ts, workspace/lesson-quality-copy.ts,
+ * The texts approved by the owner on 2026-10-13 (D65, then D72) live in workspace/upload-copy.ts,
+ * workspace/session-navigation-copy.ts, workspace/lesson-quality-copy.ts,
  * recording/recording-copy.ts and voice/voice-copy.ts.
  */
-export const pendingCopy = {} as const;
+export const pendingCopy = {
+  // Owner decision 2026-10-13 (D72 follow-up): remove a board photo that exists only on this
+  // device, from its row or the zoom sheet, after a confirmation.
+  photoRemove: {
+    action: "Remove this photo",
+    confirm: "Remove this photo from this device?",
+    notUploaded: "It has not been uploaded.",
+    keep: "Keep",
+  },
+} as const;
 
 /** Fills `{name}` placeholders of a pending text. */
 export function fillCopy(text: string, values: Record<string, string | number>): string {
