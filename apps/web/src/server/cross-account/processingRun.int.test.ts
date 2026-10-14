@@ -64,4 +64,13 @@ it("treats missing and foreign run identifiers as not found without dispatching 
     expect(response.status).toBe(404);
     expect(await response.json()).not.toHaveProperty("snapshot");
   }
+  // Behind the same 404, each foreign-id call (GET, DELETE, POST, GET ?includeSnapshot)
+  // records ownership_denied; a missing id records nothing.
+  expect(
+    await db
+      .selectFrom("plt.security_event")
+      .select(["kind", "route"])
+      .where("user_id", "=", attacker.owner)
+      .execute(),
+  ).toEqual(Array(4).fill({ kind: "ownership_denied", route: ROUTES.processingRun.id }));
 });

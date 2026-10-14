@@ -26,6 +26,9 @@ import type { UploadEntry } from "./upload-store";
 
 export type { SourceRow } from "./source-types";
 
+/** How long the page keeps refreshing for the result of a PDF unlock attempt. */
+const UNLOCK_REFRESH_MS = 60_000;
+
 interface OwnSource {
   id: string;
   display_name: string;
@@ -97,6 +100,8 @@ export function SourcesView({
     [previous, setPrevious] = useState<OwnSource[]>([]),
     [reuse, setReuse] = useState("");
   const [localAudio, setLocalAudio] = useState<Set<string> | null>(null);
+  // When the last unlock attempt was sent; its result arrives without a state change to wait on.
+  const [unlockSentAt, setUnlockSentAt] = useState<number | null>(null);
   const localOriginalUrls = useRef(new Map<string, string>());
   const originalViewActive = useRef(true);
   const [originalLink, setOriginalLink] = useState<{ url: string; name: string } | null>(null);
@@ -223,19 +228,36 @@ export function SourcesView({
       active = false;
     };
   }, [userId, localSavedIds]);
+  const passwordNeeded = visibleSources.some((source) =>
+    ["needs_password", "wrong_password"].includes(source.rejectionReason ?? ""),
+  );
   const waiting =
     batch?.active ||
     processingBatch ||
-    visibleSources.some(
-      (source) =>
-        ["pending", "verifying"].includes(source.uploadState ?? "") ||
-        ["needs_password", "wrong_password"].includes(source.rejectionReason ?? ""),
-    );
+    (passwordNeeded && unlockSentAt !== null) ||
+    visibleSources.some((source) => ["pending", "verifying"].includes(source.uploadState ?? ""));
   useEffect(() => {
-    if (!waiting) return;
-    const timer = setInterval(() => router.refresh(), 3000);
-    return () => clearInterval(timer);
-  }, [waiting, router]);
+    if (unlockSentAt === null) return;
+    const timer = setTimeout(() => setUnlockSentAt(null), UNLOCK_REFRESH_MS);
+    return () => clearTimeout(timer);
+  }, [unlockSentAt]);
+  useEffect(() => {
+    // Each refresh renders the page on the server again. A hidden or offline page reads nothing;
+    // returning to it reads once. A file waiting for its password waits for the learner, so it
+    // refreshes on a timer only after an unlock attempt.
+    if (!waiting && !passwordNeeded) return;
+    const refresh = () => {
+      if (!document.hidden && navigator.onLine) router.refresh();
+    };
+    const timer = waiting ? setInterval(refresh, 3000) : undefined;
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
+    };
+  }, [waiting, passwordNeeded, router]);
   useEffect(() => {
     if (!selectedFiles.length) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -735,6 +757,7 @@ export function SourcesView({
                     await workspaceRequest(`/api/sources/${source.assetId}/unlock`, "POST", {
                       password,
                     });
+                    setUnlockSentAt(Date.now());
                     setMessage("Trying the password. It is not stored.");
                   })
                 }

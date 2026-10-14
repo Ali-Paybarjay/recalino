@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Selectable } from "kysely";
+import { type Selectable, sql } from "kysely";
 import { z } from "zod";
 import {
   getAccountState,
@@ -64,7 +64,40 @@ export interface ProcessingRun {
   createdAt: string;
   updatedAt: string;
 }
-export function runView(row: Selectable<DB["proc.processing_run"]>): ProcessingRun {
+const runViewFields = [
+  "id",
+  "session_id",
+  "user_id",
+  "state",
+  "reservation_id",
+  "sources_version",
+  "last_error",
+  "output_version_id",
+  "created_at",
+  "updated_at",
+] as const;
+type RunViewRow = Pick<
+  Selectable<DB["proc.processing_run"]>,
+  (typeof runViewFields)[number] | "input_snapshot"
+>;
+
+// PRD-PROC-03: status reads need selection metadata, not transcript/extraction text
+// or provider settings. Compact in Postgres so unused content never crosses the pooler.
+const runViewColumns = [
+  ...runViewFields,
+  sql<RunViewRow["input_snapshot"]>`case
+    when kind = 'class' and jsonb_typeof(input_snapshot->'sources') = 'array'
+      and input_snapshot - 'sourcesVersion' - 'fingerprint' - 'sources' = '{}'::jsonb then
+      input_snapshot || jsonb_build_object('sources', (
+        select coalesce(jsonb_agg(case when jsonb_typeof(source) = 'object'
+          then source || jsonb_build_object('units', '[]'::jsonb, 'blocks', '[]'::jsonb)
+          else source end order by ordinal), '[]'::jsonb)
+        from jsonb_array_elements(input_snapshot->'sources') with ordinality as sources(source, ordinal)
+      ))
+    else '{}'::jsonb end`.as("input_snapshot"),
+] as const;
+
+export function runView(row: RunViewRow): ProcessingRun {
   const snapshot = sourceSnapshotSchema.safeParse(row.input_snapshot);
   return {
     id: row.id,
@@ -97,7 +130,15 @@ export async function getRun(
   ctx: LearnerContext,
   id: string,
 ): Promise<ProcessingRun> {
-  const row = await ownedRun(db, ctx, id);
+  // By id alone, like ownedRun: a foreign id must reach assertOwner so the
+  // ownership_denied security signal is still recorded behind the same 404.
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .select(runViewColumns)
+    .where("id", "=", id)
+    .executeTakeFirst();
+  assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
+  if (!row) throw errors.notFound();
   await getSession(db, ctx, row.session_id);
   return runView(row);
 }
@@ -121,7 +162,7 @@ export async function findProcessingRunByOperationKey(
   await getSession(db, ctx, sessionId);
   const row = await db
     .selectFrom("proc.processing_run")
-    .selectAll()
+    .select(runViewColumns)
     .where("user_id", "=", ctx.userId)
     .where("session_id", "=", sessionId)
     .where("operation_key", "=", operationKey)
@@ -136,7 +177,7 @@ export async function listRuns(
   await getSession(db, ctx, sessionId);
   const rows = await db
     .selectFrom("proc.processing_run")
-    .selectAll()
+    .select(runViewColumns)
     .where("user_id", "=", ctx.userId)
     .where("session_id", "=", sessionId)
     .where("kind", "=", "class")
