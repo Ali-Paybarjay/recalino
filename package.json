@@ -21,6 +21,7 @@
     "db:types": "node tools/db-types.mjs",
     "db:env": "node tools/local-env.ts",
     "db:url-check": "node tools/db-url/check.ts",
+    "db:apply": "node tools/db-apply/apply.ts",
     "auth:check": "node tools/auth/check-google.mjs",
     "db:new-password": "node tools/db-url/rotate.ts",
     "dev": "pnpm --filter @recalino/web dev",

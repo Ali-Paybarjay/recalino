@@ -3,6 +3,7 @@
     "allow": [
       "Bash(pnpm exec supabase db push:*)",
       "Bash(supabase db push:*)",
+      "Bash(pnpm db:apply:*)",
       "mcp__Supabase__list_projects",
       "mcp__Supabase__get_project",
       "mcp__Supabase__get_project_url",

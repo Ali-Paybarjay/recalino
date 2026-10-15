@@ -61,6 +61,9 @@ pnpm db:stop               # supabase stop
 pnpm db:new-password       # رمز تازه recalino_app؛ رشته اتصال در ~/.recalino/database-url.txt، و فقط verifier برای SQL Editor
 pnpm db:url-check          # همان فایل را با تنظیم اتصال و TLS اپ می‌سنجد؛ هیچ سری چاپ نمی‌شود
 
+# migration ابری از سشن ابری Claude Code (D77؛ توکن Network secret همان environment است)
+pnpm db:apply              # dry run؛ با --apply اجرا، با --approve-data-loss <version> فقط پس از اجازهٔ مالک محصول
+
 # توسعه
 pnpm dev                   # next dev روی http://localhost:3000
 pnpm build                 # next build
