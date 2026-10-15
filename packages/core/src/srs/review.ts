@@ -31,12 +31,12 @@ import {
   sha256Hex,
   studyDay,
 } from "../plt";
+import { orderNewCards } from "./queue-order";
 import {
   DEFAULT_REVIEW_SETTINGS,
   type ReviewInput,
   type ReviewQueueQuery,
   type ReviewSettings,
-  type ReviewStudySet,
   reviewInputSchema,
   reviewQueueQuerySchema,
   reviewSettingsSchema,
@@ -52,9 +52,8 @@ export interface CardSchedule {
 }
 export interface ReviewQueue {
   cards: { card: StudyCard; schedule: CardSchedule }[];
-  /** Active reviewable groups before quota selection and truncation, including future cards. */
-  availableStudySets: ReviewStudySet[];
-  studySet?: ReviewStudySet;
+  /** Whether any active reviewable card exists, including cards scheduled for later. */
+  hasCards: boolean;
   dueCount: number;
   newRemaining: number;
   buriedSiblings: number;
@@ -245,10 +244,7 @@ export async function getReviewQueue(
   ctx: LearnerContext,
   options: ReviewQueueQuery & { now?: Date; limit?: number } = {},
 ): Promise<ReviewQueue> {
-  const selection = reviewQueueQuerySchema.parse({
-    sessionId: options.sessionId,
-    studySet: options.studySet,
-  });
+  const selection = reviewQueueQuerySchema.parse({ sessionId: options.sessionId });
   const now = options.now ?? new Date();
   // A rejected ownership read must not leave other reads queued when the caller closes its pool.
   const reads = await Promise.allSettled([
@@ -276,14 +272,11 @@ export async function getReviewQueue(
   const due: ReviewQueue["cards"] = [];
   const newCards: ReviewQueue["cards"] = [];
   const future: number[] = [];
-  const available = new Set<ReviewStudySet>();
   let buriedSiblings = 0;
+  let hasCards = false;
   for (const card of cards) {
     if (!(await isCardReviewable(db, ctx, card))) continue;
-    const studySet = card.studySet ?? "legacy";
-    available.add(studySet);
-    // Choose the set before applying the shared daily new-card allowance or the page limit.
-    if (selection.studySet && studySet !== selection.studySet) continue;
+    hasCards = true;
     const current = schedules.get(card.id) ?? fresh(card);
     const siblings = reviewedItems.get(card.learningItemId);
     if (siblings && [...siblings].some((id) => id !== card.id)) {
@@ -304,7 +297,7 @@ export async function getReviewQueue(
   );
   const queue = [...due];
   const seenItems = new Set(due.map((item) => item.card.learningItemId));
-  for (const item of newCards) {
+  for (const item of orderNewCards(newCards, cards)) {
     if (queue.length - due.length >= newRemaining) break;
     if (seenItems.has(item.card.learningItemId)) {
       buriedSiblings++;
@@ -315,10 +308,7 @@ export async function getReviewQueue(
   }
   return {
     cards: queue.slice(0, Math.min(100, Math.max(1, options.limit ?? 30))),
-    availableStudySets: (["production", "recognition", "legacy"] as const).filter((set) =>
-      available.has(set),
-    ),
-    ...(selection.studySet ? { studySet: selection.studySet } : {}),
+    hasCards,
     dueCount: due.length,
     newRemaining,
     buriedSiblings,

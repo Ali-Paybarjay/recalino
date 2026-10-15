@@ -1,11 +1,11 @@
 import { expect, it } from "vitest";
 import { reviewQueueQuerySchema } from "./schema";
 
-it("accepts only the supported public review-set selectors and valid owned-session identifiers", () => {
-  for (const studySet of ["production", "recognition", "legacy"])
-    expect(reviewQueueQuerySchema.parse({ studySet })).toEqual({ studySet });
+it("D78: accepts one optional owned-session filter and no card-set selector", () => {
   expect(reviewQueueQuerySchema.parse({})).toEqual({});
-  for (const studySet of ["", "all", "Production", "production,recognition", null])
-    expect(reviewQueueQuerySchema.safeParse({ studySet }).success).toBe(false);
+  const sessionId = "6f1c1a52-6f4e-4d5b-9b55-5f2b8f0a4c11";
+  expect(reviewQueueQuerySchema.parse({ sessionId })).toEqual({ sessionId });
   expect(reviewQueueQuerySchema.safeParse({ sessionId: "not-a-uuid" }).success).toBe(false);
+  for (const studySet of ["production", "recognition", "legacy"])
+    expect(reviewQueueQuerySchema.safeParse({ studySet }).success).toBe(false);
 });

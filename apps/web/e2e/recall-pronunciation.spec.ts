@@ -10,7 +10,7 @@ const mediaId = "10000000-0000-4000-8000-000000000099";
 const mediaPath = `**/api/classes/${sessionId}/media`;
 const ready = { id: mediaId, kind: "tts", state: "ready", mimeType: "audio/mpeg", synthetic: true };
 
-function queue(studySet = "production", skipFirst = false) {
+function queue(skipFirst = false) {
   const createdAt = "2026-10-05T12:00:00.000Z";
   const cards = referenceStudyModel()
     .learningItems.map((item, index) => ({
@@ -34,10 +34,11 @@ function queue(studySet = "production", skipFirst = false) {
       studySet: item.study?.set,
       pronunciationTarget: studyPronunciationTarget(item),
     }))
-    .filter((card) => card.studySet === studySet && (!skipFirst || card.id !== "reference-card-0"));
+    .filter((card) => !skipFirst || card.id !== "reference-card-0")
+    // D78: one queue, core cards before supplementary ones within the session.
+    .sort((a, b) => Number(a.studySet !== "production") - Number(b.studySet !== "production"));
   return {
-    studySet,
-    availableStudySets: ["production", "recognition"],
+    hasCards: true,
     cards: cards.map((card) => ({
       card,
       schedule: {
@@ -68,7 +69,20 @@ function queue(studySet = "production", skipFirst = false) {
   };
 }
 
-async function fixtures(page: Page, skipFirst = () => false) {
+async function fixtures(page: Page, skipFirst?: () => boolean) {
+  let answered = false;
+  await page.route("**/api/review/events", (route) => {
+    answered = true;
+    return route.fulfill({
+      json: {
+        ...route.request().postDataJSON(),
+        version: 1,
+        dueAt: "2026-10-06T12:00:00.000Z",
+        rating: 3,
+        studyDay: "2026-10-05",
+      },
+    });
+  });
   await page.addInitScript(() => {
     const events: Array<{ kind: string; src: string }> = [];
     Object.assign(window, { pronunciationEvents: events });
@@ -93,10 +107,7 @@ async function fixtures(page: Page, skipFirst = () => false) {
   });
   await page.route("**/api/review?*", (route) =>
     route.fulfill({
-      json: queue(
-        new URL(route.request().url()).searchParams.get("studySet") ?? "production",
-        skipFirst(),
-      ),
+      json: queue(skipFirst ? skipFirst() : answered),
     }),
   );
   const wav = Buffer.alloc(44 + 16000);
@@ -181,7 +192,7 @@ test("AC-D46-01/02 pronunciation follows reveal, prepares saved audio and replay
       fullPage: true,
     });
   }
-  await page.getByRole("button", { name: /Supplementary · recognition/ }).click();
+  await page.getByRole("button", { name: "Remembered", exact: true }).click();
   await expect(audio).toHaveCount(0);
   expect(
     await page.evaluate(
@@ -339,15 +350,19 @@ for (const width of [390, 1440]) {
       });
       if (studySet === "recognition") {
         await page.route("**/api/review?*", (route) => {
-          const value = queue("recognition");
+          const value = queue();
           value.cards = value.cards.filter(({ card }) => card.learningItemId === "manager");
           return route.fulfill({ json: value });
         });
       }
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/dev/ui/study?view=review");
-      if (studySet === "recognition")
-        await page.getByRole("button", { name: /Supplementary · recognition/ }).click();
+      if (studySet === "recognition") {
+        // D78: the supplementary card follows the core card in the same queue.
+        await page.getByRole("button", { name: "Show answer", exact: true }).click();
+        await page.getByRole("button", { name: "Remembered", exact: true }).click();
+        await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();
+      }
       await expect(page.getByRole("button", { name: /^Hear pronunciation of/ })).toHaveCount(0);
       await page.getByRole("button", { name: "Show answer", exact: true }).click();
       const target = studySet === "production" ? "wear and tear" : "manager";
@@ -507,7 +522,7 @@ test("AC-D46-01 pronunciation pauses the current listening attachment while leav
   await fixtures(page);
   const listeningId = "10000000-0000-4000-8000-000000000097";
   await page.route("**/api/review?*", (route) => {
-    const value = queue("production");
+    const value = queue();
     const first = value.cards[0];
     if (!first) throw new Error("Synthetic listening card must exist");
     return route.fulfill({
@@ -527,7 +542,8 @@ test("AC-D46-01 pronunciation pauses the current listening attachment while leav
   );
   await page.route(mediaPath, (route) => route.fulfill({ json: ready }));
   await page.goto("/dev/ui/study?view=review");
-  await page.getByRole("button", { name: /Core · production/ }).click();
+  await page.getByRole("button", { name: "Show answer", exact: true }).click();
+  await page.getByRole("button", { name: "Remembered", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Listen and recall", exact: true })).toBeVisible();
   const listening = page.locator('audio[src$="#listening-front"]');
   await expect(listening).toBeVisible();

@@ -6,7 +6,7 @@ import { referenceStudyModel } from "../../../packages/core/test/reference-study
 
 const output = resolve(import.meta.dirname, "../../../artifacts/verification");
 
-function referenceReviewQueue(studySet: string, skipFirst = false) {
+function referenceReviewQueue(answered = 0) {
   const createdAt = "2026-10-05T12:00:00.000Z";
   const cards = referenceStudyModel()
     .learningItems.map((item, index) => ({
@@ -29,10 +29,11 @@ function referenceReviewQueue(studySet: string, skipFirst = false) {
       contentFormat: "lesson_html",
       studySet: item.study?.set,
     }))
-    .filter((card) => card.studySet === studySet && (!skipFirst || card.id !== "reference-card-0"));
+    // D78: one queue, core cards before supplementary ones within the session.
+    .sort((a, b) => Number(a.studySet !== "production") - Number(b.studySet !== "production"))
+    .slice(answered);
   return {
-    studySet,
-    availableStudySets: ["production", "recognition"],
+    hasCards: true,
     cards: cards.map((card) => ({
       card,
       schedule: {
@@ -63,11 +64,36 @@ function referenceReviewQueue(studySet: string, skipFirst = false) {
   };
 }
 
-async function mockReviewSets(page: import("@playwright/test").Page, skipFirst = () => false) {
-  await page.route("**/api/review?*", async (route) => {
-    const studySet = new URL(route.request().url()).searchParams.get("studySet");
-    await route.fulfill({ json: referenceReviewQueue(studySet ?? "production", skipFirst()) });
+const coreCards = referenceStudyModel().learningItems.filter(
+  (item) => item.study?.set === "production",
+).length;
+
+async function mockReviewQueue(page: import("@playwright/test").Page, answered?: () => number) {
+  let saved = 0;
+  await page.route("**/api/review/events", async (route) => {
+    saved++;
+    const body = route.request().postDataJSON();
+    await route.fulfill({
+      json: {
+        eventId: body.eventId,
+        cardId: body.cardId,
+        version: 1,
+        dueAt: "2026-10-06T12:00:00.000Z",
+        rating: 3,
+        studyDay: "2026-10-05",
+      },
+    });
   });
+  await page.route("**/api/review?*", async (route) => {
+    await route.fulfill({ json: referenceReviewQueue(answered ? answered() : saved) });
+  });
+}
+
+async function answerCards(page: import("@playwright/test").Page, count: number) {
+  for (let index = 0; index < count; index++) {
+    await page.getByRole("button", { name: "Show answer", exact: true }).click();
+    await page.getByRole("button", { name: "Remembered", exact: true }).click();
+  }
 }
 
 test("reference notes keep navigation, responsive tables, theme and print inside their frame", async ({
@@ -142,13 +168,13 @@ test("reference notes keep navigation, responsive tables, theme and print inside
   await expect(frame.locator("#check details").first()).toBeHidden();
 });
 
-test("production review reveals the reference front, rule and back and keeps supplementary cards separate", async ({
+test("production review reveals the reference front, rule and back and labels supplementary cards that follow", async ({
   page,
 }) => {
   await mkdir(output, { recursive: true });
   await page.setViewportSize({ width: 420, height: 2400 });
   await page.emulateMedia({ colorScheme: "light" });
-  await mockReviewSets(page);
+  await mockReviewQueue(page);
   await page.goto("/dev/ui/study?view=review");
   const face = page.locator(".fc-face");
   await expect(face).toContainText("______");
@@ -165,7 +191,10 @@ test("production review reveals the reference front, rule and back and keeps sup
   await page.locator(".preview-panel").screenshot({
     path: resolve(output, "reference-study-card-revealed.png"),
   });
-  await page.getByRole("button", { name: /Supplementary · recognition/ }).click();
+  await expect(page.getByText("Core · production", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Remembered", exact: true }).click();
+  await answerCards(page, coreCards - 1);
+  await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();
   await expect(face).toContainText("I was about to");
   await expect(face.locator("hr")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Show answer", exact: true })).toBeVisible();
@@ -206,12 +235,12 @@ test("Anki text downloads preserve separate sets and custom deck settings", asyn
   }
 });
 
-test("a failed grade stays on the same card and reuses its event before set switching", async ({
+test("a failed grade stays on the same card and reuses its event before the queue moves on", async ({
   page,
 }) => {
   const submitted: Array<{ cardId: string; eventId: string }> = [];
-  let saved = false;
-  await mockReviewSets(page, () => saved);
+  let saved = 0;
+  await mockReviewQueue(page, () => saved);
   await page.route("**/api/review/events", async (route) => {
     const body = route.request().postDataJSON();
     submitted.push(body);
@@ -223,7 +252,7 @@ test("a failed grade stays on the same card and reuses its event before set swit
         },
       });
     } else {
-      saved = true;
+      saved++;
       await route.fulfill({
         json: {
           eventId: body.eventId,
@@ -240,18 +269,13 @@ test("a failed grade stays on the same card and reuses its event before set swit
   await page.getByRole("button", { name: "Show answer", exact: true }).click();
   await page.getByRole("button", { name: "Remembered", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Synthetic save failure" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Supplementary · recognition/ })).toBeDisabled();
   await expect(page.locator(".fc-face")).toContainText("wear and tear");
   await page.getByRole("button", { name: "Remembered", exact: true }).click();
   await expect(page.locator(".fc-face")).toContainText("new office");
   expect(submitted).toHaveLength(2);
   expect(submitted[1]).toEqual(submitted[0]);
-  const nextSet = page.waitForRequest(
-    (request) =>
-      request.url().includes("/api/review?") && request.url().includes("studySet=recognition"),
-  );
-  await page.getByRole("button", { name: /Supplementary · recognition/ }).click();
-  await nextSet;
+  await answerCards(page, coreCards - 1);
+  await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();
   await expect(page.locator(".fc-face")).toContainText("I was about to");
   await expect(page.locator(".fc-face hr")).toHaveCount(0);
 });

@@ -162,7 +162,6 @@ export function reviewQueueHandler(): Handler {
     const query = new URL(request.url).searchParams;
     const selection = reviewQueueQuerySchema.parse({
       sessionId: query.get("sessionId") ?? undefined,
-      studySet: query.get("studySet") ?? undefined,
     });
     return { body: await getReviewQueue(db, actor(ctx), selection) };
   };

@@ -97,7 +97,7 @@ export default async function TodayPage() {
     <LearnerShell learner={learner} current="today" header={header}>
       <div className="preview-stack">
         {/* B1-empty note: no review card until cards exist, so no "0 due" placeholder. */}
-        {review.availableStudySets.length ? (
+        {review.hasCards ? (
           <div className="preview-grid">
             {record}
             <Panel title="Ready for a little practice?">

@@ -1,11 +1,8 @@
 import { z } from "zod";
 export const reviewChoiceSchema = z.enum(["forgot", "remembered", "again", "hard", "good", "easy"]);
-export const reviewStudySetSchema = z.enum(["production", "recognition", "legacy"]);
 export const reviewQueueQuerySchema = z.strictObject({
   sessionId: z.uuid().optional(),
-  studySet: reviewStudySetSchema.optional(),
 });
-export type ReviewStudySet = z.infer<typeof reviewStudySetSchema>;
 export type ReviewQueueQuery = z.infer<typeof reviewQueueQuerySchema>;
 export const reviewInputSchema = z.strictObject({
   eventId: z.uuid(),
@@ -27,6 +24,6 @@ export type ReviewSettings = z.infer<typeof reviewSettingsSchema>;
 export const DEFAULT_REVIEW_SETTINGS: ReviewSettings = {
   mode: "simple",
   desiredRetention: 0.9,
-  dailyNewLimit: 5,
+  dailyNewLimit: 20,
   timeBudgetMinutes: 15,
 };
