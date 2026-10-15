@@ -141,4 +141,10 @@ describe("D63 lesson parts merge", () => {
     expect(merged.learningItems.map((entry) => entry.front)).toEqual(["c", "b", "a"]);
     expect(merged.coverage.sources).toEqual([{ sourceId, status: "used" }]);
   });
+
+  it("D78 keeps a card for each marked span within the raised production limit", () => {
+    const first = Array.from({ length: 15 }, (_, index) => item(`first ${index}`));
+    const second = Array.from({ length: 15 }, (_, index) => item(`second ${index}`));
+    expect(mergeLessonParts([part(first), part(second)], 21).learningItems).toHaveLength(21);
+  });
 });

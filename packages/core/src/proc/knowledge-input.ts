@@ -1,5 +1,6 @@
 import { ProviderError } from "../aip";
 import type { StudyLessonContext } from "../lkm";
+import { learnerMarksIn } from "../src";
 import type { RunSource } from "./contracts";
 import type { ModelTeachingContext } from "./learner-context";
 
@@ -50,6 +51,25 @@ function blockMetadata(block: Block): BlockMetadata {
   };
 }
 
+/** D78: the model sees only marks whose text is still in their block (learnerMarksIn). */
+export function withLearnerMarks<T extends { blocks: readonly Block[] }>(
+  sources: readonly T[],
+): T[] {
+  return sources.map((source) =>
+    source.blocks.some((block) => block.layout?.marks)
+      ? {
+          ...source,
+          blocks: source.blocks.map((block) => {
+            if (!block.layout?.marks) return block;
+            const { marks, ...layout } = block.layout;
+            const kept = learnerMarksIn(block.text, marks);
+            return { ...block, layout: kept.length ? { ...layout, marks: kept } : layout };
+          }),
+        }
+      : source,
+  );
+}
+
 function compactSource(source: RunSource) {
   const units = new Map(source.units.map((unit) => [unit.id, unit]));
   const metadata = source.blocks.map(blockMetadata);
@@ -89,7 +109,8 @@ function compactSource(source: RunSource) {
 }
 
 /** Compress repeated transport metadata only; evidence text and native locators stay unchanged. */
-export function buildKnowledgeInput(data: KnowledgeInput, maxInputCharacters: number) {
+export function buildKnowledgeInput(input: KnowledgeInput, maxInputCharacters: number) {
+  const data = { ...input, sources: withLearnerMarks(input.sources) };
   const full = JSON.stringify({
     ...data,
     sources: data.sources.map(({ objectId: _objectId, sha256: _sha256, ...source }) => {

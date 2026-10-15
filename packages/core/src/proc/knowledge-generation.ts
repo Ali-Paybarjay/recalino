@@ -1138,6 +1138,9 @@ export function buildKnowledgeGenerationInput(
   const structuredRows = data.sources.some((source) =>
     source.blocks.some((block) => block.layout !== undefined),
   );
+  const markedRows = data.sources.some((source) =>
+    source.blocks.some((block) => block.layout?.marks !== undefined),
+  );
   // A Persian phrase shown to other languages that share its script primes Persian output.
   const persianOrder = isPersian
     ? ' For Persian explanations, use "پس از X، Y می‌آید". NEVER explain X + Y as "X بعد از Y می‌آید", which reverses the source order. These are abstract X/Y placeholders, not lesson facts.'
@@ -1181,7 +1184,7 @@ export function buildKnowledgeGenerationInput(
     `The hard response budget is ${outputTokens} output tokens. Aim below ${Math.floor(outputTokens * 0.75)}. Select at most ${productionLimit} complete production items and ${recognitionLimit} optional recognition items. Across summary/topics use at most ${claimLimit} short supplementary claims and avoid duplicating cards. Homework and uncertainties have their own source-driven priority. Homework is only work a class source explicitly sets for after class: a printed or in-class task belongs in classNotes.activities.tasks, and another person's work is never homework. Retain each such assignment and relevant conflicts concisely; never suppress them to meet the summary budget, invent them when absent, or replace uncertainty with unqualified agreement. Core concepts not given separate cards stay in concise grounded teaching notes or activities. Keep introductions and explanations concise and finish the whole object. Read all source text; these are response limits, never source limits.`,
     ...(budget && !compactTeaching && !options.compact
       ? [
-          `This class material (${budget.content.speechMinutes} minutes of speech, ${budget.content.photos} photos, ${budget.content.pages} PDF pages, ${budget.content.textPages} text pages) justifies up to ${productionLimit} production items and the response can hold them: teach every distinct core point of every source with full one-to-three-sentence teaching notes. Use fewer items only when the sources teach fewer points; never pad.`,
+          `This class material (${budget.content.speechMinutes} minutes of speech, ${budget.content.photos} photos, ${budget.content.pages} PDF pages, ${budget.content.textPages} text pages${budget.content.markedSpans ? `, ${budget.content.markedSpans} marked spans` : ""}) justifies up to ${productionLimit} production items and the response can hold them: teach every distinct core point of every source with full one-to-three-sentence teaching notes. Use fewer items only when the sources teach fewer points; never pad.`,
         ]
       : []),
     ...(coverageWire.unusedSources
@@ -1192,6 +1195,11 @@ export function buildKnowledgeGenerationInput(
     ...(structuredRows
       ? [
           "Rows read from a photo or scanned page may carry layout metadata {type, order, uncertain}: type is heading, list_item, table, relation (an arrow or link between items), example, correction or text; order is the reading order. Follow reading order, keep a relation or table together with what it connects, teach a correction as a correction, and treat an uncertain row as a possibly misread line: never build a card on an uncertain reading alone.",
+        ]
+      : []),
+    ...(markedRows
+      ? [
+          "Some photo or page rows also carry layout.marks: spans highlighted, underlined or circled on the page, each copied exactly from its row. A marked span is something this learner found important or hard to understand: teach every marked span at the same priority as board and slide content. Plan each learnable marked word, phrase, collocation or pattern as a card and write those cards before other cards. For a marked sentence, explain its meaning, key chunk or structure with an example in the teaching notes, and make a card of its most useful chunk. Skip a marked span only when its row is uncertain or it teaches nothing; when the card limit is reached, explain the remaining marked spans in the notes. A mark shows what to teach, never a fact: claims still cite the row.",
         ]
       : []),
     options.compact

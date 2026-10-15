@@ -1,3 +1,4 @@
+import { learnerMarksIn } from "../src";
 import type { RunSource } from "./contracts";
 
 /**
@@ -11,6 +12,11 @@ const PRODUCTION_ITEM_TOKENS = 1280;
 const RECOGNITION_ITEM_TOKENS = 3072;
 const CLAIM_TOKENS = 2048;
 export const LESSON_PRODUCTION_MAXIMUM = 18;
+/**
+ * D78: each span the learner marked adds one production item, up to this lesson limit: what one
+ * response of the lesson model (32000 output tokens) still holds.
+ */
+export const LESSON_MARKED_PRODUCTION_MAXIMUM = 25;
 export const LESSON_RECOGNITION_MAXIMUM = 6;
 const CLAIM_MAXIMUM = 8;
 /** Every lesson, however small, may keep a few core items. */
@@ -29,6 +35,13 @@ export interface LessonContentSize {
   photos: number;
   /** Typed text or HTML, in page equivalents. */
   textPages: number;
+  /** D78: distinct spans marked on photos or pages; absent when there are none. */
+  markedSpans?: number;
+}
+
+/** D78: the lesson's production limit; without marks it stays LESSON_PRODUCTION_MAXIMUM. */
+export function lessonProductionLimit(markedSpans = 0): number {
+  return Math.min(LESSON_MARKED_PRODUCTION_MAXIMUM, LESSON_PRODUCTION_MAXIMUM + markedSpans);
 }
 
 export interface LessonBudget {
@@ -57,8 +70,12 @@ export function measureLessonContent(
   let pages = 0;
   let photos = 0;
   let textCharacters = 0;
+  const marked = new Set<string>();
   for (const source of sources) {
     const withText = new Set(source.blocks.filter(hasText).map((block) => block.unitId));
+    for (const block of source.blocks)
+      for (const mark of learnerMarksIn(block.text, block.layout?.marks))
+        marked.add(mark.text.toLowerCase());
     if (source.kind === "audio") {
       for (const unit of source.units)
         if (
@@ -88,17 +105,20 @@ export function measureLessonContent(
     pages,
     photos,
     textPages: textCharacters ? Math.ceil(textCharacters / Math.max(1, charactersPerPage)) : 0,
+    ...(marked.size ? { markedSpans: marked.size } : {}),
   };
 }
 
 export function lessonBudget(outputTokens: number, content: LessonContentSize): LessonBudget {
   if (!Number.isSafeInteger(outputTokens) || outputTokens <= 0)
     throw new RangeError("lesson budget output tokens");
+  const marked = content.markedSpans ?? 0;
   const contentProduction = Math.min(
-    LESSON_PRODUCTION_MAXIMUM,
+    lessonProductionLimit(marked),
     BASE_PRODUCTION +
       Math.floor(content.speechMinutes / SPEECH_MINUTES_PER_ITEM) +
-      ITEMS_PER_VISUAL_PAGE * (content.pages + content.photos + content.textPages),
+      ITEMS_PER_VISUAL_PAGE * (content.pages + content.photos + content.textPages) +
+      marked,
   );
   const capacity = Math.max(1, Math.floor(outputTokens / PRODUCTION_ITEM_TOKENS));
   const production = Math.max(1, Math.min(contentProduction, capacity));

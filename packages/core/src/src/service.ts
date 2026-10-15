@@ -857,13 +857,46 @@ export const blockLayoutTypes = [
   "correction",
   "text",
 ] as const;
+/** D78: how a span was marked on the photo or page, by the learner or in print. */
+export const learnerMarkStyles = ["highlight", "underline", "circle"] as const;
+export const LEARNER_MARKS_PER_BLOCK = 40;
+const LEARNER_MARK_TEXT_MAXIMUM = 500;
+export const learnerMarkSchema = z.strictObject({
+  style: z.enum(learnerMarkStyles),
+  /** The marked words, copied exactly from the block text. */
+  text: z.string().min(1).max(LEARNER_MARK_TEXT_MAXIMUM),
+});
+export type LearnerMark = z.infer<typeof learnerMarkSchema>;
 export const blockLayoutSchema = z.strictObject({
   type: z.enum(blockLayoutTypes),
   /** Reading order on the photo or page, from 1. */
   order: z.number().int().positive().max(100000),
   /** The reading of this block is not certain. */
   uncertain: z.literal(true).optional(),
+  /** D78: highlighted, underlined or circled spans; absent when none was read. */
+  marks: z.array(learnerMarkSchema).min(1).max(LEARNER_MARKS_PER_BLOCK).optional(),
 });
+
+/**
+ * D78: the marks a block can still show. A mark is kept only when its text occurs exactly in the
+ * block text (the model's reading is never trusted for that), once per text.
+ */
+export function learnerMarksIn(
+  text: string,
+  marks: readonly LearnerMark[] | undefined,
+): LearnerMark[] {
+  const kept: LearnerMark[] = [];
+  const seen = new Set<string>();
+  for (const mark of marks ?? []) {
+    const span = mark.text.trim();
+    if (!span || span.length > LEARNER_MARK_TEXT_MAXIMUM || !text.includes(span) || seen.has(span))
+      continue;
+    seen.add(span);
+    kept.push({ style: mark.style, text: span });
+    if (kept.length === LEARNER_MARKS_PER_BLOCK) break;
+  }
+  return kept;
+}
 export const sourceContentSchema = z.strictObject({
   originKey: z.string().min(1).max(200),
   schemaVersion: z.literal("1"),
