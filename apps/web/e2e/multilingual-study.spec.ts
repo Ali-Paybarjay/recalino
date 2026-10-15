@@ -83,35 +83,47 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
     await page.setViewportSize({ width: 390, height: 844 });
     const model = multilingualStudyModel(value);
     const createdAt = "2026-10-05T12:00:00.000Z";
-    await page.route("**/api/review?*", async (route) => {
-      const studySet = new URL(route.request().url()).searchParams.get("studySet") ?? "production";
-      const cards = model.learningItems
-        .map((item, index) => ({
-          id: `reference-card-${index}`,
-          ownerId: "10000000-0000-4000-8000-000000000002",
-          learningItemId: item.id,
-          sessionIds: ["10000000-0000-4000-8000-000000000001"],
-          template: "basic",
-          direction: "forward",
-          ...renderStudyCard(item, model.language.explanation),
-          provenance: item.claim,
-          status: "active",
-          contentVersion: 1,
-          important: false,
-          qualityConfirmed: true,
-          frontMediaId: null,
-          backMediaId: null,
-          createdAt,
-          updatedAt: createdAt,
-          contentFormat: "lesson_html",
-          studySet: item.study?.set,
-        }))
-        .filter((card) => card.studySet === studySet);
+    const cards = model.learningItems
+      .map((item, index) => ({
+        id: `reference-card-${index}`,
+        ownerId: "10000000-0000-4000-8000-000000000002",
+        learningItemId: item.id,
+        sessionIds: ["10000000-0000-4000-8000-000000000001"],
+        template: "basic",
+        direction: "forward",
+        ...renderStudyCard(item, model.language.explanation),
+        provenance: item.claim,
+        status: "active",
+        contentVersion: 1,
+        important: false,
+        qualityConfirmed: true,
+        frontMediaId: null,
+        backMediaId: null,
+        createdAt,
+        updatedAt: createdAt,
+        contentFormat: "lesson_html",
+        studySet: item.study?.set,
+      }))
+      .sort((a, b) => Number(a.studySet !== "production") - Number(b.studySet !== "production"));
+    let answered = 0;
+    await page.route("**/api/review/events", async (route) => {
+      const card = cards[answered++];
       await route.fulfill({
         json: {
-          studySet,
-          availableStudySets: ["production", "recognition"],
-          cards: cards.map((card) => ({
+          eventId: "20000000-0000-4000-8000-000000000001",
+          cardId: card?.id,
+          version: 1,
+          dueAt: "2026-10-06T12:00:00.000Z",
+          rating: 3,
+          studyDay: "2026-10-05",
+        },
+      });
+    });
+    await page.route("**/api/review?*", async (route) => {
+      await route.fulfill({
+        json: {
+          hasCards: true,
+          cards: cards.slice(answered).map((card) => ({
             card,
             schedule: {
               cardId: card.id,
@@ -163,7 +175,10 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
     expect(
       await page.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth),
     ).toBe(true);
-    await page.getByRole("button", { name: /Supplementary · recognition/ }).click();
+    // D79: one queue; the recognition card follows the core card without choosing a set.
+    await expect(page.getByText("Core · production", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Remembered", exact: true }).click();
+    await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();
     await expect(face).toContainText("normal use");
     await expect(face).not.toContainText(value.meaning);
     await expect(face.locator("hr")).toHaveCount(0);

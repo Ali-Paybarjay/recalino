@@ -1,6 +1,6 @@
 import { type StudyCard, studyPronunciationTarget } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
-import type { ReviewQueue } from "@recalino/core/srs";
+import { orderNewCards, type ReviewQueue } from "@recalino/core/srs";
 import { renderClassNotesHtml, renderStudyCard } from "@recalino/core/study-render";
 import Link from "next/link";
 import {
@@ -159,11 +159,9 @@ export default async function StudyReferencePage({
   const firstCard = cards[0];
   if (!firstCard) throw new Error("The reference lesson must contain a study card.");
   const queue: ReviewQueue = {
-    availableStudySets: ["production", "recognition"],
-    studySet: "production",
-    cards: cards
-      .filter((card) => card.studySet === "production")
-      .map((card) => ({
+    hasCards: true,
+    cards: orderNewCards(
+      cards.map((card) => ({
         card,
         schedule: {
           cardId: card.id,
@@ -183,6 +181,8 @@ export default async function StudyReferencePage({
           },
         },
       })),
+      cards,
+    ),
     dueCount: 0,
     newRemaining: cards.length,
     buriedSiblings: 0,

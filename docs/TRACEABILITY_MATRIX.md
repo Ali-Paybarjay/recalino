@@ -113,7 +113,7 @@
 | PRD-SRS-02 | ۱۶.۱. الگوریتم | SRS | — | — | — |
 | PRD-SRS-03 | ۱۶.۱. الگوریتم | SRS | — | — | — |
 | PRD-SRS-04 | ۱۶.۱. الگوریتم | SRS | — | — | — |
-| PRD-SRS-05 | ۱۶.۲. صف روزانه | SRS | CARD | — | — |
+| PRD-SRS-05 | ۱۶.۲. صف روزانه | SRS | CARD | [D79](PRODUCT_DECISIONS_LOG.md) | core `srs/queue-order.test.ts`، `srs/review.int.test.ts`؛ web `e2e/reference-study.spec.ts` |
 | PRD-SRS-06 | ۱۶.۲. صف روزانه | SRS | — | — | — |
 | PRD-SRS-07 | ۱۶.۲. صف روزانه | SRS | — | — | — |
 | PRD-SRS-08 | ۱۶.۲. صف روزانه | SRS | CARD | — | — |

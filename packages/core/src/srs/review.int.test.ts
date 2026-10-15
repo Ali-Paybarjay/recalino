@@ -51,7 +51,7 @@ it("undoes the last committed answer when different cards share a timestamp", as
     version: 2,
   });
   const queue = await getReviewQueue(db, fixture.ctx, { now });
-  expect(queue.availableStudySets).toEqual(["legacy"]);
+  expect(queue.hasCards).toBe(true);
   expect(queue.cards.find((item) => item.card.id === second.id)?.schedule).toMatchObject({
     version: 2,
     introducedAt: null,
@@ -169,7 +169,7 @@ it("enforces the daily new cap, buries sisters and restores an undone review wit
   ).toHaveLength(1);
 });
 
-it("selects the requested set before queue truncation while sharing one daily introduction quota", async () => {
+it("D79: reviews every card set in one queue, core cards first, under one daily introduction quota", async () => {
   const fixture = await studyFixture(db, { count: 35, autoAdd: true });
   const now = new Date(fixture.now.getTime() + 1000);
   await db.transaction().execute(async (tx) => {
@@ -193,45 +193,34 @@ it("selects the requested set before queue truncation while sharing one daily in
   await updateReviewSettings(db, fixture.ctx, { ...settings, dailyNewLimit: 100 });
   const combined = await getReviewQueue(db, fixture.ctx, { sessionId: fixture.session.id, now });
   expect(combined.cards).toHaveLength(30);
-  expect(combined.cards.every((item) => item.card.studySet === "recognition")).toBe(true);
-  expect(combined.availableStudySets).toEqual(["production", "recognition"]);
-  const production = await getReviewQueue(db, fixture.ctx, {
-    sessionId: fixture.session.id,
-    studySet: "production",
-    now,
-  });
-  expect(production.studySet).toBe("production");
-  expect(production.cards).toHaveLength(5);
-  expect(production.cards.every((item) => item.card.studySet === "production")).toBe(true);
-  expect(production.availableStudySets).toEqual(["production", "recognition"]);
-  expect(production.newRemaining).toBe(100);
+  expect(combined.cards.slice(0, 5).map((item) => item.card.studySet)).toEqual(
+    Array(5).fill("production"),
+  );
+  expect(combined.cards.slice(5).every((item) => item.card.studySet === "recognition")).toBe(true);
+  expect(combined.newRemaining).toBe(100);
 
   await updateReviewSettings(db, fixture.ctx, { ...settings, dailyNewLimit: 1 });
-  const limitedProduction = await getReviewQueue(db, fixture.ctx, { studySet: "production", now });
-  expect(limitedProduction.cards).toHaveLength(1);
-  expect(limitedProduction.cards[0]?.card.studySet).toBe("production");
-  const recognition = combined.cards[0];
-  if (!recognition) throw new Error("Missing recognition fixture");
+  const limited = await getReviewQueue(db, fixture.ctx, { now });
+  expect(limited.cards).toHaveLength(1);
+  const first = limited.cards[0];
+  if (!first) throw new Error("Missing production fixture");
+  expect(first.card.studySet).toBe("production");
   await submitReview(
     db,
     fixture.ctx,
     {
       eventId: randomUUID(),
-      cardId: recognition.card.id,
-      expectedVersion: recognition.schedule.version,
-      expectedContentVersion: recognition.card.contentVersion,
+      cardId: first.card.id,
+      expectedVersion: first.schedule.version,
+      expectedContentVersion: first.card.contentVersion,
       mode: "simple",
       choice: "remembered",
     },
     now,
   );
-  const capped = await getReviewQueue(db, fixture.ctx, { studySet: "production", now });
+  const capped = await getReviewQueue(db, fixture.ctx, { now });
   expect(capped.cards).toEqual([]);
   expect(capped.newRemaining).toBe(0);
-  expect(capped.availableStudySets).toEqual(["production", "recognition"]);
-  await expect(
-    getReviewQueue(db, fixture.ctx, { studySet: "all" as never, now }),
-  ).rejects.toThrow();
 });
 it("D49: offers exactly the cards the review queue shows, including sibling burying", async () => {
   const today = new Date();
