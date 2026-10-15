@@ -63,10 +63,12 @@ class BoardProvider implements AiProvider {
   inFlight = 0;
   maxInFlight = 0;
   knowledgeInputs: unknown[] = [];
+  visionSystems: string[] = [];
   constructor(readonly settings: ProviderSettings) {}
   async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
     if (input.schemaName === "source_extraction") {
       this.visionModels.push(input.model);
+      this.visionSystems.push(input.system);
       this.inFlight += 1;
       this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
       // Calls in flight overlap only if the worker starts them together.
@@ -76,7 +78,20 @@ class BoardProvider implements AiProvider {
       const blocks = structured
         ? [
             { id: "h", type: "heading", text: "Present perfect" },
-            { id: "r", type: "relation", text: "have + past participle → result now" },
+            {
+              id: "r",
+              type: "relation",
+              text: "have + past participle → result now",
+              // D78: one mark on the block and one the reading invented.
+              ...(this.settings.lessonQuality?.learnerMarks
+                ? {
+                    marks: [
+                      { style: "underline", text: "past participle" },
+                      { style: "highlight", text: "not on this block" },
+                    ],
+                  }
+                : {}),
+            },
             { id: "e", type: "example", text: "I have lost my keys.", uncertain: true },
           ]
         : [{ id: "ocr-1", text: "Present perfect" }];
@@ -303,6 +318,34 @@ describe("lesson-quality-1 board photos (diagnosis 2026-10-12 §5.3, 0.5)", () =
       ]);
     // The structure reaches the lesson request as block metadata.
     expect(JSON.stringify(f.provider.knowledgeInputs)).toContain('"type":"relation"');
+  });
+
+  it("D78 keeps the spans marked on a photo and passes them to the lesson", async () => {
+    const settings: ProviderSettings = {
+      ...base,
+      lessonQuality: {
+        version: "lesson-quality-1",
+        budget: "lesson-budget-1",
+        sourceCoverage: true,
+        structuredBoard: true,
+        learnerMarks: true,
+      },
+    };
+    const f = await photosFixture(settings, 1);
+    await f.work();
+    expect((await getRun(db, f.ctx, f.run.id)).state).toBe("ready");
+    expect(f.provider.visionSystems[0]).toContain("highlighted with a marker");
+    const [blocks] = await f.contentBlocks();
+    expect(blocks?.[1]).toMatchObject({
+      layout: {
+        type: "relation",
+        order: 2,
+        marks: [{ style: "underline", text: "past participle" }],
+      },
+    });
+    expect(JSON.stringify(f.provider.knowledgeInputs)).toContain(
+      '"marks":[{"style":"underline","text":"past participle"}]',
+    );
   });
 
   it("keeps the plain OCR contract and the vision model for snapshots without lessonQuality", async () => {

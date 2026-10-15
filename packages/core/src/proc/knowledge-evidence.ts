@@ -3,7 +3,7 @@ import { type Claim, type SourceRef, type StudyLessonContext, sourceRefSchema } 
 import { errors } from "../plt";
 import type { SourceClassification } from "../src";
 import type { RunSource } from "./contracts";
-import { buildKnowledgeInput } from "./knowledge-input";
+import { buildKnowledgeInput, withLearnerMarks } from "./knowledge-input";
 import type { ModelTeachingContext } from "./learner-context";
 
 export interface KnowledgeEvidenceInput {
@@ -41,11 +41,12 @@ export function sourceKey(sourceIndex: number): string {
 
 /** Finite keys select exact native evidence; text is never truncated or reinterpreted. */
 export function buildKnowledgeEvidenceInput(
-  data: KnowledgeEvidenceInput,
+  evidenceData: KnowledgeEvidenceInput,
   maxInputCharacters: number,
   format = "knowledge_repair_keys_v1",
   options: { sourceKeys?: boolean } = {},
 ) {
+  const data = { ...evidenceData, sources: withLearnerMarks(evidenceData.sources) };
   const prepared = buildKnowledgeInput(data, maxInputCharacters);
   const encoded = JSON.parse(prepared.input);
   const references = new Map<string, KnowledgeEvidence>();

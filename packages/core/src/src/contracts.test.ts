@@ -6,6 +6,7 @@ import {
   inputContractSchema,
 } from "./contracts";
 import { extractHtml, extractPlainText } from "./extract";
+import { blockLayoutSchema, learnerMarksIn } from "./service";
 
 describe("passive source handling (FR-SRC-002,005,006)", () => {
   it("strips controls and bidi overrides from display metadata", () => {
@@ -101,5 +102,43 @@ describe("passive source handling (FR-SRC-002,005,006)", () => {
   });
   it("rejects missing contract instead of inventing limits", () => {
     expect(inputContractSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("D78 marks read on a photo or page", () => {
+  it("keeps only exact spans of the block text, once each, trimmed and short enough to store", () => {
+    const text = "We need to kit the office out before Monday.";
+    expect(
+      learnerMarksIn(text, [
+        { style: "highlight", text: " kit the office out " },
+        { style: "underline", text: "kit the office out" },
+        { style: "circle", text: "Monday" },
+        { style: "underline", text: "monday" },
+        { style: "highlight", text: "not on the page" },
+        { style: "underline", text: "   " },
+      ]),
+    ).toEqual([
+      { style: "highlight", text: "kit the office out" },
+      { style: "circle", text: "Monday" },
+    ]);
+    expect(learnerMarksIn(text, undefined)).toEqual([]);
+    expect(
+      learnerMarksIn("x".repeat(600), [{ style: "highlight", text: "x".repeat(501) }]),
+    ).toEqual([]);
+  });
+
+  it("stores marks as optional layout, so earlier readings stay valid", () => {
+    expect(blockLayoutSchema.safeParse({ type: "text", order: 1 }).success).toBe(true);
+    expect(
+      blockLayoutSchema.safeParse({
+        type: "text",
+        order: 1,
+        marks: [{ style: "underline", text: "kit out" }],
+      }).success,
+    ).toBe(true);
+    expect(
+      blockLayoutSchema.safeParse({ type: "text", order: 1, marks: [{ style: "bold", text: "x" }] })
+        .success,
+    ).toBe(false);
   });
 });
