@@ -42,7 +42,7 @@
 1. کار روی شاخهٔ `feat/*` یا شاخهٔ تعیین‌شدهٔ سشن؛ پیش از PR، `pnpm verify` محلی (و برای UI، `pnpm test:e2e`)؛ یک PR برای هر کار، با برچسب `e2e` اگر UI یا مسیر کاربر تغییر کرده است. push به شاخه‌های کاری CI ندارد.
 2. CI سبز (verify حدود ۱۱ دقیقه، e2e ۱۲ تا ۱۵ دقیقه). بازبینی diff مدیر + lint/typecheck/boundaries/unit محلی روی همان سرشاخه.
 3. بررسی بیکاری با SQL فقط‌خواندنی: `plt.job` فعال، `proc.processing_run` در حال اجرا، `org.class_session.capture_open_until > now()`، `src.audio_upload` تأییدنشدهٔ ۳۰ دقیقهٔ اخیر؛ همه باید صفر باشند.
-4. ادغام (merge commit) → اگر migration دارد، فقط با فایل migration در مخزن و اجازهٔ صریح مالک محصول برای همان migration → `create_deployment` → حدود ۵ دقیقه → `get_deployment` READY → گرم کردن `/`, `/preview` با curl → smoke: `cd apps/web && BASE_URL=https://recalino.vercel.app PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers pnpm run test:smoke` (۱۹ آزمون؛ cold start گاهی یک timeout می‌دهد، اجرای دوم باید ۱۹ از ۱۹ باشد) → runtime logs (error/warning) → گزارش فارسی به مالک محصول.
+4. ادغام (merge commit) → اگر migration دارد: `pnpm db:apply` (dry run) و بعد `pnpm db:apply --apply`؛ حذف داده فقط پس از اجازهٔ صریح مالک محصول برای همان migration (D77) → `create_deployment` → حدود ۵ دقیقه → `get_deployment` READY → گرم کردن `/`, `/preview` با curl → smoke: `cd apps/web && BASE_URL=https://recalino.vercel.app PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers pnpm run test:smoke` (۱۹ آزمون؛ cold start گاهی یک timeout می‌دهد، اجرای دوم باید ۱۹ از ۱۹ باشد) → runtime logs (error/warning) → گزارش فارسی به مالک محصول.
 5. سند‌های فقط‌متنی (`docs/*.md`, `docs/ops/**`, `docs/plans/**`, `*.md`) CI ندارند و بدون هزینه ادغام می‌شوند.
 
 ## ۷. قواعد سشن‌های کارگری

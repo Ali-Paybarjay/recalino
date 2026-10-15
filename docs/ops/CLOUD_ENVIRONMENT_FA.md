@@ -14,7 +14,8 @@
 
 - **Name:** `Recalino`
 - **Network access:** هم‌سطح Default. سطح Trusted کافی نیست، چون `*.supabase.co`، `api.supabase.com`، `openrouter.ai` و `*.vercel.app` در فهرست پیش‌فرض نیستند و برای `supabase db push`، اجرای واقعی provider و smoke test لازم‌اند. اگر Custom انتخاب می‌شود: فهرست پیش‌فرض تیک‌خورده به‌علاوهٔ همین چهار دامنه.
-- **Environment variables:** فقط `OPENROUTER_API_KEY`، آن هم اختیاری و با کلیدی که سقف هزینهٔ کوچک دارد. هیچ متغیر `SUPABASE_*` یا `NEXT_PUBLIC_*` تعریف نمی‌شود: Supabase ابری از طریق کانکتور، و Supabase محلی با Docker و `pnpm db:env`.
+- **Environment variables:** فقط `OPENROUTER_API_KEY`، آن هم اختیاری و با کلیدی که سقف هزینهٔ کوچک دارد. هیچ متغیر `SUPABASE_*` یا `NEXT_PUBLIC_*` تعریف نمی‌شود: Supabase ابری از طریق کانکتور و `pnpm db:apply`، و Supabase محلی با Docker و `pnpm db:env`.
+- **Network secrets (D77، 2026-10-15):** «Supabase migrations (recalino)»: نوع Bearer، میزبان `api.supabase.com` و پیشوند مسیر `/v1/projects/twowhuzhvyuzjrpraikm/`. مقدار آن access token محدود Supabase است: فقط پروژهٔ recalino، Database Read-write و Migrations Read-write. proxy توکن را خودش به درخواست اضافه می‌کند و سشن آن را نمی‌بیند. هنگام چرخش توکن فقط مقدار همین secret عوض می‌شود.
 - **Setup script:** Node 24 را کنار نسخه‌های تصویر نصب می‌کند. PATH این تصویر از `/etc/profile.d/` ساخته نمی‌شود، پس symlink در `/root/.local/bin` (که در ابتدای PATH هر سشن است) لازم است:
 
 ```bash
@@ -55,6 +56,16 @@ pnpm db:start   # بار اول imageها را می‌کشد و چند دقیق�
 ```
 
 اگر پس از restart سشن، `db:start` با `supabase_db_recalino container is not ready: unhealthy` شکست خورد، `pnpm db:stop` و دوباره `pnpm db:start` را اجرا کن. setup script عمداً Docker را روشن نمی‌کند تا شروع سشن کند نشود (D76).
+
+## اجرای migration ابری (D77)
+
+```bash
+pnpm db:apply            # dry run: migrationهای در انتظار روی origin/main و یافته‌های حذف داده
+pnpm db:apply --apply    # اجرای همه، از قدیمی به جدید، هر کدام با ردیف تاریخچه‌اش در یک تراکنش
+```
+
+- migrationی که داده را پاک می‌کند فقط پس از «بله» صریح مالک محصول در چت اجرا می‌شود: `pnpm db:apply --apply --approve-data-loss <version>`.
+- خطای HTTP 401 یا 403 یعنی توکن منقضی یا لغو شده است، یا secret در این environment نیست. گزارش بده و توکن را در چت نخواه.
 
 ## قاعده‌ها
 
