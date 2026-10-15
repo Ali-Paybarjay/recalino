@@ -48,6 +48,12 @@ export const providerSettingsSchema = z.strictObject({
       boardVisionModel: z.string().min(1).max(200).optional(),
       /** D17: a class with more speech than this is taught part by part, then merged. */
       classPartMinutes: z.number().int().min(30).max(90).optional(),
+      /**
+       * D78: structured readings also return the spans highlighted, underlined or circled on the
+       * photo or page. The lesson teaches them at board level, and each adds one card to the item
+       * limit, up to LESSON_MARKED_PRODUCTION_MAXIMUM. Needs structuredBoard.
+       */
+      learnerMarks: z.boolean().optional(),
     })
     .optional(),
   timeoutMs: z.number().int().positive().max(600000),

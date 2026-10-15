@@ -46,7 +46,7 @@ export function ReviewView({
   const requestInFlight = useRef(false);
   const current = queue.cards[0];
   const waiting = !current;
-  // D78: when only a learning step remains a few minutes away, continue without a manual reload.
+  // D79: when only a learning step remains a few minutes away, continue without a manual reload.
   useEffect(() => {
     if (!waiting || !queue.nextDueAt) return;
     const wait = Date.parse(queue.nextDueAt) - Date.now();

@@ -35,7 +35,7 @@ function queue(skipFirst = false) {
       pronunciationTarget: studyPronunciationTarget(item),
     }))
     .filter((card) => !skipFirst || card.id !== "reference-card-0")
-    // D78: one queue, core cards before supplementary ones within the session.
+    // D79: one queue, core cards before supplementary ones within the session.
     .sort((a, b) => Number(a.studySet !== "production") - Number(b.studySet !== "production"));
   return {
     hasCards: true,
@@ -358,7 +358,7 @@ for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/dev/ui/study?view=review");
       if (studySet === "recognition") {
-        // D78: the supplementary card follows the core card in the same queue.
+        // D79: the supplementary card follows the core card in the same queue.
         await page.getByRole("button", { name: "Show answer", exact: true }).click();
         await page.getByRole("button", { name: "Remembered", exact: true }).click();
         await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();

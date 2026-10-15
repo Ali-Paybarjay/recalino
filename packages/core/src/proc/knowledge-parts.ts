@@ -96,17 +96,21 @@ const capText = (value: string, limit: number) => Array.from(value).slice(0, lim
 
 /**
  * One lesson from its parts' validated content: items are taken round-robin across parts so every
- * part keeps its core points, the same target is taught once, and the D62 limits hold. Claim and
- * item IDs are reassigned by assignGeneratedKnowledgeIds afterwards.
+ * part keeps its core points, the same target is taught once, and the D62 limits hold (production
+ * raised for marked spans, D78). Claim and item IDs are reassigned by assignGeneratedKnowledgeIds
+ * afterwards.
  */
-export function mergeLessonParts(parts: readonly GeneratedKnowledge[]): GeneratedKnowledge {
+export function mergeLessonParts(
+  parts: readonly GeneratedKnowledge[],
+  productionLimit = LESSON_PRODUCTION_MAXIMUM,
+): GeneratedKnowledge {
   const [first] = parts;
   if (!first) throw new RangeError("lesson parts");
   const itemKey = (item: LearningItem) =>
     `${item.study?.set ?? item.kind}|${normalized(item.study?.en ?? item.front)}`;
   const picked: { part: number; item: LearningItem }[] = [];
   const seen = new Set<string>();
-  const limits = { production: LESSON_PRODUCTION_MAXIMUM, recognition: LESSON_RECOGNITION_MAXIMUM };
+  const limits = { production: productionLimit, recognition: LESSON_RECOGNITION_MAXIMUM };
   const counts = { production: 0, recognition: 0 };
   const rounds = Math.max(...parts.map((part) => part.learningItems.length));
   for (let round = 0; round < rounds; round++)

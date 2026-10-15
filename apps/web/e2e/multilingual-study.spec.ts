@@ -175,7 +175,7 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
     expect(
       await page.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth),
     ).toBe(true);
-    // D78: one queue; the recognition card follows the core card without choosing a set.
+    // D79: one queue; the recognition card follows the core card without choosing a set.
     await expect(page.getByText("Core · production", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Remembered", exact: true }).click();
     await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();

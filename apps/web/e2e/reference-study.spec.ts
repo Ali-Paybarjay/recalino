@@ -29,7 +29,7 @@ function referenceReviewQueue(answered = 0) {
       contentFormat: "lesson_html",
       studySet: item.study?.set,
     }))
-    // D78: one queue, core cards before supplementary ones within the session.
+    // D79: one queue, core cards before supplementary ones within the session.
     .sort((a, b) => Number(a.studySet !== "production") - Number(b.studySet !== "production"))
     .slice(answered);
   return {

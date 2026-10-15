@@ -199,6 +199,56 @@ describe("lesson-quality-1 structured board rows", () => {
   });
 });
 
+describe("D78 spans marked on a photo", () => {
+  it("passes only marks still in the row text and teaches them at board level", () => {
+    const photo = source("image", "", {
+      blocks: [
+        {
+          id: "b1",
+          unitId: "unit",
+          kind: "heading",
+          text: "Office move",
+          layout: { type: "heading", order: 1 },
+        },
+        {
+          id: "b2",
+          unitId: "unit",
+          kind: "paragraph",
+          text: "We need to kit the office out.",
+          layout: {
+            type: "text",
+            order: 2,
+            marks: [
+              { style: "highlight", text: "kit the office out" },
+              { style: "underline", text: "a word that was corrected away" },
+            ],
+          },
+        },
+      ],
+    });
+    const prepared = buildKnowledgeGenerationInput(input([photo]), 120000);
+    const rows = JSON.parse(prepared.input).sources[0].evidence;
+    expect(rows[1].at(-1)).toMatchObject({
+      layout: {
+        type: "text",
+        order: 2,
+        marks: [{ style: "highlight", text: "kit the office out" }],
+      },
+    });
+    expect(prepared.system).toContain("layout.marks");
+    expect(prepared.system).toContain("same priority as board and slide content");
+    const unmarked = buildKnowledgeGenerationInput(input([board()]), 120000);
+    expect(unmarked.system).not.toContain("layout.marks");
+  });
+
+  it("sizes a marked photo with one card per marked span", () => {
+    const budget = lessonBudget(32000, { ...empty, photos: 1, markedSpans: 10 });
+    const prepared = buildKnowledgeGenerationInput(input([board()]), 120000, { budget });
+    expect(prepared.system).toContain("Select at most 16 complete production items");
+    expect(prepared.system).toContain("0 text pages, 10 marked spans) justifies up to 16");
+  });
+});
+
 describe("D63 diagnostic 2026-10-13: a blank that also hides the object of a separable target", () => {
   // The exact card that rejected the second part of the synthetic 128-minute class.
   function separable(en: string, ipa: string, fullSentence: string, gapSentence: string) {

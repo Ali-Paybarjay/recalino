@@ -6,7 +6,7 @@ const setRank = (card: QueueCard) =>
   card.studySet === "production" ? 0 : card.studySet === "recognition" ? 1 : 2;
 
 /**
- * D78: new cards from the most recently generated session come first. A session's generation
+ * D79: new cards from the most recently generated session come first. A session's generation
  * time is its earliest card, so a card added later does not move an older session forward.
  * Within one session, core (production) cards precede supplementary (recognition) and older
  * cards; otherwise the session's own order, as given, is kept.

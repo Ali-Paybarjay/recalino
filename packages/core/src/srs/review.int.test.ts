@@ -169,7 +169,7 @@ it("enforces the daily new cap, buries sisters and restores an undone review wit
   ).toHaveLength(1);
 });
 
-it("D78: reviews every card set in one queue, core cards first, under one daily introduction quota", async () => {
+it("D79: reviews every card set in one queue, core cards first, under one daily introduction quota", async () => {
   const fixture = await studyFixture(db, { count: 35, autoAdd: true });
   const now = new Date(fixture.now.getTime() + 1000);
   await db.transaction().execute(async (tx) => {

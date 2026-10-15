@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { RunSource } from "./contracts";
-import { LESSON_BUDGET_VERSION, lessonBudget, measureLessonContent } from "./lesson-budget";
+import {
+  LESSON_BUDGET_VERSION,
+  LESSON_MARKED_PRODUCTION_MAXIMUM,
+  lessonBudget,
+  lessonProductionLimit,
+  measureLessonContent,
+} from "./lesson-budget";
 
 function source(kind: RunSource["kind"], patch: Partial<RunSource> = {}): RunSource {
   return {
@@ -110,5 +116,70 @@ describe("lesson-quality-1 lesson budget (diagnosis 2026-10-12 §5.2)", () => {
       compact: false,
     });
     expect(() => lessonBudget(0, content)).toThrow();
+  });
+});
+
+/** A synthetic photo whose one block carries D78 marks. */
+function markedPhoto(
+  text: string,
+  marks: { style: "highlight" | "underline" | "circle"; text: string }[],
+): RunSource {
+  return source("image", {
+    units: [{ id: "image-1", kind: "document", start: 1, status: "extracted" }],
+    blocks: [
+      {
+        id: "b1",
+        kind: "paragraph",
+        unitId: "image-1",
+        text,
+        layout: { type: "text", order: 1, marks },
+      },
+    ],
+  });
+}
+
+describe("D78 marked spans in the lesson budget", () => {
+  it("counts each distinct marked span once, across photos, and only marks in the text", () => {
+    const content = measureLessonContent(
+      [
+        markedPhoto("We need to kit the office out.", [
+          { style: "highlight", text: "kit the office out" },
+          { style: "underline", text: "We need" },
+        ]),
+        markedPhoto("Kit The Office Out today.", [{ style: "circle", text: "Kit The Office Out" }]),
+        markedPhoto("No marks here.", [{ style: "underline", text: "not in the text" }]),
+      ],
+      3000,
+    );
+    expect(content).toEqual({
+      speechMinutes: 0,
+      pages: 0,
+      photos: 3,
+      textPages: 0,
+      markedSpans: 2,
+    });
+  });
+
+  it("adds one card per marked span, raising the limit up to 25", () => {
+    const empty = { speechMinutes: 0, pages: 0, photos: 0, textPages: 0 };
+    // One photo: 4 base + 2 for the photo + 10 marks, all within the limit.
+    expect(lessonBudget(32000, { ...empty, photos: 1, markedSpans: 10 })).toMatchObject({
+      production: 16,
+      compact: false,
+    });
+    // A long class keeps its 18 and gains one per mark, never past 25.
+    expect(lessonBudget(32000, { ...empty, speechMinutes: 128, markedSpans: 3 }).production).toBe(
+      21,
+    );
+    expect(lessonBudget(32000, { ...empty, speechMinutes: 128, markedSpans: 40 }).production).toBe(
+      LESSON_MARKED_PRODUCTION_MAXIMUM,
+    );
+    expect(lessonProductionLimit()).toBe(18);
+    expect(lessonProductionLimit(40)).toBe(25);
+    // The model's own response limit still binds.
+    expect(lessonBudget(6144, { ...empty, photos: 1, markedSpans: 10 })).toMatchObject({
+      production: 4,
+      compact: true,
+    });
   });
 });
