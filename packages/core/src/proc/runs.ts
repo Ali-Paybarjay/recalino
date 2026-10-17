@@ -49,7 +49,11 @@ import {
 } from "./contracts";
 import { buildKnowledgeInput } from "./knowledge-input";
 import { reuseCompletedKnowledge } from "./knowledge-reuse";
-import { type PracticeCandidate, snapshotLearnerTeachingContext } from "./learner-context";
+import {
+  learnerTeachingContextSchema,
+  type PracticeCandidate,
+  snapshotLearnerTeachingContext,
+} from "./learner-context";
 import { processingSelectionFingerprint } from "./selection";
 
 export interface ProcessingRun {
@@ -674,21 +678,39 @@ async function inheritedPracticeCandidates(
   sessionId: string,
   runId?: string,
 ): Promise<PracticeCandidate[]> {
+  // D73: one row and only its learner context, so a run request never pulls snapshot text or
+  // provider settings across the pooler.
+  const columns = [
+    "user_id",
+    "session_id",
+    sql<unknown>`settings -> 'learnerContext'`.as("learner_context"),
+  ] as const;
   const row = runId
-    ? await ownedRun(tx, ctx, runId)
+    ? await tx
+        .selectFrom("proc.processing_run")
+        .select(columns)
+        .where("id", "=", runId)
+        .executeTakeFirst()
     : await tx
         .selectFrom("proc.processing_run")
-        .selectAll()
+        .select(columns)
         .where("user_id", "=", ctx.userId)
         .where("session_id", "=", sessionId)
         .where("kind", "=", "class")
         .orderBy("created_at", "desc")
         .orderBy("id", "desc")
+        .limit(1)
         .executeTakeFirst();
+  if (runId) {
+    // Like ownedRun: a foreign id reaches assertOwner, which records ownership_denied behind the 404.
+    assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
+    if (!row) throw errors.notFound();
+  }
   if (!row || row.session_id !== sessionId) return [];
-  const settings = runSettingsSchema.safeParse(row.settings);
-  const context = settings.success ? settings.data.learnerContext : undefined;
-  return context?.version === 2 ? [...(context.practiceCandidates ?? [])] : [];
+  const context = learnerTeachingContextSchema.safeParse(row.learner_context);
+  return context.success && context.data.version === 2
+    ? [...(context.data.practiceCandidates ?? [])]
+    : [];
 }
 export async function cancelSessionRuns(
   tx: Tx,
