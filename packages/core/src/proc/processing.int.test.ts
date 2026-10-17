@@ -1416,6 +1416,68 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       learnerContext: { version: 2, practiceCandidates: original },
     });
   });
+  it("D73 a named run hands over its memory points from a light read and must be owned", async () => {
+    const f = await fixture();
+    const original = [
+      {
+        target: "used to",
+        reason: "asked_simpler" as const,
+        scope: "this_class" as const,
+        againCount: 0,
+        lastEvidenceDate: "2026-10-05",
+        sourceSessionId: f.session.id,
+      },
+    ];
+    const first = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      {
+        provider: f.provider,
+        job: f.job,
+        teachingMemory: true,
+        practiceCandidates: async () => original,
+      },
+    );
+    await f.work();
+    const named = await createProcessingRun(
+      db,
+      f.ctx,
+      { sessionId: f.session.id, operationKey: randomUUID() },
+      {
+        provider: f.provider,
+        job: f.job,
+        teachingMemory: true,
+        inheritPracticeCandidatesFrom: first.id,
+        practiceCandidates: async () => {
+          throw new Error("A named run's points must not be replaced by a fresh snapshot");
+        },
+      },
+    );
+    const saved = await db
+      .selectFrom("proc.processing_run")
+      .select("settings")
+      .where("id", "=", named.id)
+      .executeTakeFirstOrThrow();
+    expect(saved.settings).toMatchObject({
+      learnerContext: { version: 2, practiceCandidates: original },
+    });
+    const other = await fixture();
+    await expect(
+      createProcessingRun(
+        db,
+        other.ctx,
+        { sessionId: other.session.id, operationKey: randomUUID() },
+        {
+          provider: other.provider,
+          job: other.job,
+          teachingMemory: true,
+          inheritPracticeCandidatesFrom: first.id,
+          practiceCandidates: async () => [],
+        },
+      ),
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
   it("D49 without memory or a simpler choice keeps the version 1 snapshot and no extra call", async () => {
     const f = await fixture();
     const run = await createProcessingRun(
