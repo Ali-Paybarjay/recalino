@@ -21,15 +21,23 @@ export {
   encryptBackupArchive,
 } from "./backup-crypto";
 export {
+  alertStaleBackups,
   type BackupOperator,
+  type BackupRetentionSettings,
   type BackupSettings,
+  backupRetentionSettingsSchema,
   backupSettingsSchema,
+  backupStaleness,
+  backupsToExpire,
   createDatabaseBackup,
+  DEFAULT_BACKUP_RETENTION,
   databaseBackupMaintenanceJob,
   getDatabaseBackupMetadata,
   maintainDatabaseBackups,
+  readBackupRetentionSettings,
   readDatabaseBackup,
   recordBackupRestoreDrill,
+  retainedReadyBackupIds,
 } from "./backups";
 export {
   appendEncryptedDeletionJournal,
