@@ -121,6 +121,16 @@
   text-decoration: none;
 }
 
+/* A row that opens a sheet is a button; it looks like the link rows around it (UX-07). */
+button.row {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
 .row + .row {
   border-top: 1px solid var(--color-divider);
 }

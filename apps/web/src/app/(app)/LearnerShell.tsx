@@ -33,16 +33,24 @@ export function LearnerShell({
   learner,
   current,
   header,
+  reviewDue,
   children,
 }: {
   learner: Learner;
   current: NavId;
   /** The page title (PageHeader). */
   header: ReactNode;
+  /** Cards due now, for the badge on Review. Only pages that already read the queue pass it. */
+  reviewDue?: number;
   children: ReactNode;
 }) {
   return (
-    <AppShell current={current} hrefs={NAV_HREFS} newClassHref="/sessions/new">
+    <AppShell
+      current={current}
+      hrefs={NAV_HREFS}
+      newClassHref="/sessions/new"
+      reviewDue={reviewDue}
+    >
       {header}
       <LearnerTermsNotice learner={learner} />
       {children}

@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
 import { type ReactNode, useRef, useState, useSyncExternalStore } from "react";
+import { strings } from "../strings";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
+import { useAccountGate } from "./account-gate";
 import { requestKey, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
@@ -10,6 +12,7 @@ import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { uploadRetryCanHelp } from "./session-state";
+import { openTermsNotice } from "./terms-notice-event";
 import { useUploadBatches } from "./UploadProvider";
 
 export function subscribeConnection(changed: () => void) {
@@ -22,6 +25,12 @@ export function subscribeConnection(changed: () => void) {
 }
 export const connectionSnapshot = () => navigator.onLine;
 export const connectedServerSnapshot = () => true;
+
+/** No new Terms wait and setup is done, so a stop for `acceptance_required` is out of date. */
+function useTermsAccepted() {
+  const gate = useAccountGate();
+  return gate.setupComplete && !gate.termsPending;
+}
 
 type Recovery = ReturnType<typeof automaticLearningRecovery>;
 
@@ -46,6 +55,9 @@ function allowanceLinks(sessionId: string, { allowance, lessMaterial }: Recovery
 
 function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: Recovery }) {
   const { kind } = recovery;
+  // New Terms stop processing; the way on is the Terms sheet, not setup (UX-09).
+  if (kind === "setup")
+    return <Button onClick={() => openTermsNotice()}>{strings.settings.readAndAccept}</Button>;
   const links =
     kind === "allowance"
       ? allowanceLinks(sessionId, recovery)
@@ -58,9 +70,7 @@ function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: R
           ]
         : kind === "material"
           ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }]
-          : kind === "setup"
-            ? [{ href: "/setup", label: "Review account setup" }]
-            : [];
+          : [];
   return links.map(({ href, label }, index) => (
     <LinkButton key={href} href={href} secondary={index > 0}>
       {label}
@@ -199,7 +209,8 @@ function LearningStatusCard({
   children: ReactNode;
 }) {
   const batches = useUploadBatches(sessionId);
-  const progress = learningProgress(status, batches, live.uploadProgress);
+  const termsAccepted = useTermsAccepted();
+  const progress = learningProgress(status, batches, live.uploadProgress, termsAccepted);
   const online = useSyncExternalStore(
     subscribeConnection,
     connectionSnapshot,
@@ -314,7 +325,8 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const batches = useUploadBatches(sessionId);
   const { status, problem } = live;
   const retry = useLearningRetry(sessionId, live);
-  const recovery = automaticLearningRecovery(status);
+  const termsAccepted = useTermsAccepted();
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const fallback: AutomaticLearningStatus = {
@@ -328,7 +340,12 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     notesReady: false,
     cardsReady: false,
   };
-  const progress = learningProgress(status ?? fallback, batches, live.uploadProgress);
+  const progress = learningProgress(
+    status ?? fallback,
+    batches,
+    live.uploadProgress,
+    termsAccepted,
+  );
   if (
     !problem &&
     (!status || status.state === "idle") &&
@@ -400,7 +417,8 @@ export function AutomaticLearningView({
   const stoppedUpload = live.manualAudio?.find(
     (entry) => entry.phase === "attention" && uploadRetryCanHelp(entry),
   );
-  const recovery = automaticLearningRecovery(status);
+  const termsAccepted = useTermsAccepted();
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
   return (

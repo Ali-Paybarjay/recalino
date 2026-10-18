@@ -145,3 +145,32 @@ it("keeps a hidden class whose deletion receipt is pending, so the form can say 
       "It is now hidden from your list, but deleting it is not finished yet. Try deleting it again in a few minutes.",
   });
 });
+
+// UX-12: processing is automatic, so no message asks the learner to confirm an estimate.
+it.each(["changed_after_estimate", "changed_after_confirmation", "new_confirmation_required"])(
+  "explains %s without asking for an estimate to be confirmed",
+  async (reason) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: "validation_failed",
+              message: "Sources changed",
+              details: { fields: { sources: [reason] } },
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const failure = await workspaceRequest("/api/classes/x/learning", "POST").catch(
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(WorkspaceRequestError);
+    const message = (failure as Error).message;
+    expect(message).toContain("The selected sources have changed.");
+    expect(message).not.toMatch(/estimate|confirm/i);
+  },
+);

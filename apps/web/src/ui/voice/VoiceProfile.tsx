@@ -493,7 +493,7 @@ export function VoiceProfileForm({
           <Button secondary disabled={busy} onClick={() => setDeleting(false)}>
             Keep voice data
           </Button>
-          <Button disabled={busy} onClick={() => void remove()}>
+          <Button danger disabled={busy} onClick={() => void remove()}>
             {busy ? "Deleting…" : "Delete voice data"}
           </Button>
         </Actions>

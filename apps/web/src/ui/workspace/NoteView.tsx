@@ -10,6 +10,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { directionOf } from "../direction";
 import { SpeakerHigh } from "../icons";
+import { strings } from "../strings";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
@@ -47,8 +48,8 @@ export function ClaimEvidence({
   const evidence = (
     <>
       <p className="preview-muted">
-        {claim.origin === "from_class" ? "From class" : "AI expansion"}
-        {claim.creation === "user_edit" ? " · Edited by you" : ""}
+        {claim.origin === "from_class" ? strings.provenance.class : strings.provenance.ai}
+        {claim.creation === "user_edit" ? ` · ${strings.provenance.edited}` : ""}
         {claim.origin === "from_class"
           ? ` · ${claim.evidence} · Speaker: ${claim.speakerRole}`
           : ""}
@@ -66,7 +67,7 @@ export function ClaimEvidence({
   return collapsed ? (
     <details className={styles.evidence}>
       <summary>
-        {claim.origin === "from_class" ? "Session sources" : "AI explanation"}
+        {claim.origin === "from_class" ? "Session sources" : strings.provenance.ai}
         {claim.uncertain ? " · Check this" : ""}
       </summary>
       <div className={styles.evidenceBody}>{evidence}</div>

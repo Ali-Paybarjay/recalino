@@ -107,3 +107,17 @@ describe("flashcard next actions", () => {
     expect(html).not.toContain("Prepare cards");
   });
 });
+
+describe("rejecting a suggested card (UX-03)", () => {
+  it("offers Reject, and no Undo message exists until a card was rejected", () => {
+    const html = render({ notebook, initial: [candidate] });
+    expect(html).toContain("Reject");
+    expect(html).not.toContain("Card rejected");
+    expect(html).not.toContain(">Undo<");
+  });
+
+  it("keeps Reject out of the way of the confirming action", () => {
+    const html = render({ notebook, initial: [candidate] });
+    expect(html.indexOf("Confirm and add")).toBeLessThan(html.indexOf("Reject"));
+  });
+});

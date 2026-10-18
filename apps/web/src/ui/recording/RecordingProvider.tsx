@@ -14,6 +14,7 @@ import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
+import { captureIsQuiet } from "./capture-phase";
 import { CaptureUploader } from "./capture-uploader";
 import { RecordingController } from "./controller";
 import { MissingAudioNotice } from "./MissingAudioNotice";
@@ -196,6 +197,19 @@ export function useRecording() {
     value.sourceSync.snapshot,
   );
   return { ...value, state, syncState };
+}
+const NO_UPDATES = () => () => {};
+/**
+ * Whether a capture is running and no message may appear yet (PRD-REC-02). Unlike
+ * `useRecording`, it is safe outside the provider (then nothing is being captured).
+ */
+export function useCaptureQuiet(): boolean {
+  const value = useContext(RecordingContext);
+  return useSyncExternalStore(
+    value ? value.controller.subscribe : NO_UPDATES,
+    () => (value ? captureIsQuiet(value.controller.snapshot().phase) : false),
+    () => false,
+  );
 }
 export async function ensureRecordingClass(recording: Recording, controller: RecordingController) {
   if (recording.sessionId) return recording.sessionId;

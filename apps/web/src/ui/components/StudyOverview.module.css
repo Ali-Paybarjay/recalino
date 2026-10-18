@@ -55,13 +55,6 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.pilotNote {
-  max-width: 450px;
-  margin: 20px 0 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--rc-hero-muted);
-}
 .paperStack {
   display: none;
 }
@@ -198,48 +191,6 @@
 }
 .profile .textLink {
   margin-top: auto;
-}
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: clamp(32px, 6vw, 72px) 24px;
-  border: 1px solid var(--color-divider);
-  border-radius: var(--rc-card-radius);
-  background: var(--color-surface);
-  text-align: center;
-}
-.emptyIcon {
-  display: grid;
-  place-items: center;
-  width: 88px;
-  height: 88px;
-  margin-bottom: 26px;
-  border-radius: 24px;
-  background: var(--rc-primary-tint);
-  color: var(--color-accent);
-}
-.empty h2 {
-  max-width: 400px;
-  margin: 0;
-  font-size: clamp(26px, 3vw, 32px);
-  font-weight: 600;
-  line-height: 1.25;
-  text-wrap: balance;
-}
-.emptyText {
-  max-width: 460px;
-  margin: 16px 0;
-  font-size: 16px;
-  color: var(--rc-text-muted);
-  line-height: 1.7;
-}
-.emptyNote {
-  max-width: 450px;
-  margin: 0 0 28px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--rc-text-muted);
 }
 @media (min-width: 600px) {
   .steps {

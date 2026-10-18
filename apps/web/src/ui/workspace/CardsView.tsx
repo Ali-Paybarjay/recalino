@@ -2,9 +2,14 @@
 import type { StudyCard } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
 import { useEffect, useRef, useState } from "react";
+import { Snackbar } from "../components/Snackbar";
+import { XCircle } from "../icons";
+import { pendingCopy } from "../pending-copy";
+import { useCaptureQuiet } from "../recording/RecordingProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { cardActionBody, undoBody } from "./card-actions";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 
@@ -56,8 +61,11 @@ export function CardsView({
     groups.find((group) => group.cards.length);
   const visibleCards = grouped ? (activeGroup?.cards ?? []) : cards;
   useEffect(() => setCards(initial), [initial]);
-  async function accept(card: StudyCard, action: "activate" | "reject") {
-    const body = { expectedVersion: card.contentVersion, action, confirmQuality: true };
+  // UX-03: Reject can be taken back for a few seconds. Nothing pops up while a class is being
+  // recorded (PRD-REC-02); the rejected card still shows its state and can be undone from its page.
+  const [undo, setUndo] = useState<StudyCard | null>(null);
+  const recordingQuietly = useCaptureQuiet();
+  async function change(card: StudyCard, body: ReturnType<typeof cardActionBody>) {
     setBusy(true);
     setProblem("");
     try {
@@ -69,11 +77,21 @@ export function CardsView({
       );
       setCards((items) => items.map((item) => (item.id === changed.id ? changed : item)));
       key.current = null;
+      return changed;
     } catch (failure) {
       setProblem(failure instanceof Error ? failure.message : "Card could not be changed.");
     } finally {
       setBusy(false);
     }
+  }
+  async function accept(card: StudyCard, action: "activate" | "reject") {
+    setUndo(null);
+    const changed = await change(card, cardActionBody(card, action));
+    if (changed && action === "reject" && !recordingQuietly) setUndo(changed);
+  }
+  async function undoReject(rejected: StudyCard) {
+    setUndo(null);
+    await change(rejected, undoBody(rejected));
   }
   return (
     <div className="preview-stack">
@@ -149,6 +167,15 @@ export function CardsView({
           ))
         )}
       </Panel>
+      {undo ? (
+        <Snackbar
+          key={`${undo.id}:${undo.contentVersion}`}
+          icon={XCircle}
+          message={pendingCopy.cardActions.rejected}
+          onUndo={() => void undoReject(undo)}
+          onDismiss={() => setUndo(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -192,6 +192,29 @@ describe("retry from the class notice", () => {
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
   });
 
+  // UX-09: /setup sends a learner with finished setup back to Today, so new Terms use their sheet.
+  it.each(["notice", "progress"] as const)(
+    "%s sends a stop for new Terms to the Terms sheet, not to setup",
+    (view) => {
+      mocks.status = { ...blocked, lastError: "acceptance_required" };
+      const html = render(view);
+      expect(html).toContain("Read and accept");
+      expect(html).toContain("Read and accept the updated Terms to continue.");
+      expect(html).not.toContain("Review account setup");
+      expect(html).not.toContain('href="/setup"');
+      const dispatchEvent = vi.fn(() => true);
+      vi.stubGlobal("window", { dispatchEvent });
+      try {
+        mocks.buttons.get("Read and accept")?.();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+      expect(dispatchEvent).toHaveBeenCalledTimes(1);
+      const [event] = dispatchEvent.mock.calls[0] as unknown as [Event];
+      expect(event.type).toBe("recalino:open-terms-notice");
+    },
+  );
+
   it("replaces the failure notice with a ready state and next actions", () => {
     mocks.status = { ...blocked, state: "ready", lastError: null, cardsReady: true };
     const html = render();

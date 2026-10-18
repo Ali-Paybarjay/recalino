@@ -2,11 +2,13 @@
 import type { MediaAsset } from "@recalino/core/media";
 import type { ReviewInput, ReviewQueue, ReviewReceipt } from "@recalino/core/srs";
 import { useEffect, useRef, useState } from "react";
+import { strings } from "../strings";
 import { workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { RecallPronunciation } from "./RecallPronunciation";
+import { type FocusIntent, reviewFocusTarget } from "./review-focus";
 
 /** Learning and relearning steps are minutes apart; an open page picks such a card up when due. */
 const LEARNING_STEP_WAIT_MS = 15 * 60000;
@@ -46,6 +48,27 @@ export function ReviewView({
   const requestInFlight = useRef(false);
   const current = queue.cards[0];
   const waiting = !current;
+  // A11Y-03: the button that had focus is replaced by the next state, so focus is moved on purpose.
+  const focusIntent = useRef<FocusIntent>(null);
+  const cardRegion = useRef<HTMLDivElement>(null);
+  const showAnswerButton = useRef<HTMLButtonElement>(null);
+  const donePanel = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run when the card, its answer or the busy state changes.
+  useEffect(() => {
+    const target = reviewFocusTarget(focusIntent.current, { shown, hasCard: !!current });
+    if (!target) return;
+    const element =
+      target === "answer"
+        ? cardRegion.current
+        : target === "show-answer"
+          ? showAnswerButton.current
+          : donePanel.current;
+    // A button that is still disabled (the answer is being saved) cannot take focus: wait for
+    // the next change, which is when `busy` ends.
+    if (!element || (element instanceof HTMLButtonElement && element.disabled)) return;
+    focusIntent.current = null;
+    element.focus();
+  }, [shown, current?.card.id, current?.card.contentVersion, busy]);
   // D79: when only a learning step remains a few minutes away, continue without a manual reload.
   useEffect(() => {
     if (!waiting || !queue.nextDueAt) return;
@@ -139,6 +162,7 @@ export function ReviewView({
     requestInFlight.current = true;
     setBusy(true);
     setProblem("");
+    focusIntent.current = "next";
     if (!pending.current)
       pending.current = {
         eventId: crypto.randomUUID(),
@@ -161,6 +185,7 @@ export function ReviewView({
       await refresh();
       if (Date.now() - started.current >= softBudget.current) setSoftStop(true);
     } catch (failure) {
+      focusIntent.current = null;
       setProblem(
         failure instanceof Error
           ? failure.message
@@ -175,6 +200,7 @@ export function ReviewView({
     if (!receipt) return;
     setBusy(true);
     setProblem("");
+    focusIntent.current = "next";
     try {
       await workspaceRequest(`/api/review/events/${receipt.eventId}/undo`, "POST", {
         expectedVersion: receipt.version,
@@ -183,6 +209,7 @@ export function ReviewView({
       setReviewed((n) => Math.max(0, n - 1));
       await refresh();
     } catch (failure) {
+      focusIntent.current = null;
       setProblem(
         failure instanceof Error ? failure.message : "The last answer could not be undone.",
       );
@@ -247,107 +274,128 @@ export function ReviewView({
                 : "Supplementary · recognition"}
             </p>
           )}
-          {current.card.template === "listening" ? (
-            frontMedia ? (
-              media(frontMedia)
+          {/* The card and its answer: focus moves here when the answer appears (A11Y-03). */}
+          <div ref={cardRegion} tabIndex={-1}>
+            {current.card.template === "listening" ? (
+              frontMedia ? (
+                media(frontMedia)
+              ) : (
+                <p>Loading listening audio…</p>
+              )
             ) : (
-              <p>Loading listening audio…</p>
-            )
-          ) : (
-            <CardFace
-              card={current.card}
-              revealed={shown}
-              pronunciation={
-                current.card.pronunciationTarget && current.card.sessionIds[0]
-                  ? {
-                      target: current.card.pronunciationTarget,
-                      control: (
-                        <RecallPronunciation
-                          key={`${current.card.id}:${current.card.contentVersion}`}
-                          cardId={current.card.id}
-                          contentVersion={current.card.contentVersion}
-                          sessionId={sessionId ?? current.card.sessionIds[0]}
-                          target={current.card.pronunciationTarget}
-                        />
-                      ),
-                    }
-                  : undefined
-              }
-            />
-          )}
-          {current.card.template !== "listening" && frontMedia && media(frontMedia)}
+              <CardFace
+                card={current.card}
+                revealed={shown}
+                pronunciation={
+                  current.card.pronunciationTarget && current.card.sessionIds[0]
+                    ? {
+                        target: current.card.pronunciationTarget,
+                        control: (
+                          <RecallPronunciation
+                            key={`${current.card.id}:${current.card.contentVersion}`}
+                            cardId={current.card.id}
+                            contentVersion={current.card.contentVersion}
+                            sessionId={sessionId ?? current.card.sessionIds[0]}
+                            target={current.card.pronunciationTarget}
+                          />
+                        ),
+                      }
+                    : undefined
+                }
+              />
+            )}
+            {current.card.template !== "listening" && frontMedia && media(frontMedia)}
+            {shown ? (
+              <div className="preview-stack">
+                {current.card.template === "listening" &&
+                  (current.card.contentFormat === "lesson_html" ? (
+                    <CardFace
+                      card={current.card}
+                      revealed
+                      pronunciation={
+                        current.card.pronunciationTarget && current.card.sessionIds[0]
+                          ? {
+                              target: current.card.pronunciationTarget,
+                              control: (
+                                <RecallPronunciation
+                                  key={`${current.card.id}:${current.card.contentVersion}`}
+                                  cardId={current.card.id}
+                                  contentVersion={current.card.contentVersion}
+                                  sessionId={sessionId ?? current.card.sessionIds[0]}
+                                  target={current.card.pronunciationTarget}
+                                />
+                              ),
+                            }
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
+                  ))}
+                {backMedia && media(backMedia)}
+                <ClaimEvidence claim={current.card.provenance} userId={userId} />
+                <Actions>
+                  {(queue.settings.mode === "simple"
+                    ? (["forgot", "remembered"] as const)
+                    : (["again", "hard", "good", "easy"] as const)
+                  ).map((choice) => (
+                    <Button
+                      key={choice}
+                      secondary={choice === "forgot" || choice === "again"}
+                      disabled={busy || (!!pending.current && pending.current.choice !== choice)}
+                      onClick={() => grade(choice)}
+                    >
+                      {choice === "forgot"
+                        ? "Forgot"
+                        : choice === "remembered"
+                          ? "Remembered"
+                          : choice[0]?.toUpperCase() + choice.slice(1)}
+                    </Button>
+                  ))}
+                </Actions>
+                <LinkButton secondary href={`/cards/${current.card.id}`}>
+                  Fix this card
+                </LinkButton>
+              </div>
+            ) : null}
+          </div>
           {!shown ? (
-            <Button disabled={busy} onClick={() => setShown(true)}>
+            <Button
+              ref={showAnswerButton}
+              disabled={busy}
+              onClick={() => {
+                focusIntent.current = "answer";
+                setShown(true);
+              }}
+            >
               Show answer
             </Button>
-          ) : (
-            <div className="preview-stack">
-              {current.card.template === "listening" &&
-                (current.card.contentFormat === "lesson_html" ? (
-                  <CardFace
-                    card={current.card}
-                    revealed
-                    pronunciation={
-                      current.card.pronunciationTarget && current.card.sessionIds[0]
-                        ? {
-                            target: current.card.pronunciationTarget,
-                            control: (
-                              <RecallPronunciation
-                                key={`${current.card.id}:${current.card.contentVersion}`}
-                                cardId={current.card.id}
-                                contentVersion={current.card.contentVersion}
-                                sessionId={sessionId ?? current.card.sessionIds[0]}
-                                target={current.card.pronunciationTarget}
-                              />
-                            ),
-                          }
-                        : undefined
-                    }
-                  />
-                ) : (
-                  <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
-                ))}
-              {backMedia && media(backMedia)}
-              <ClaimEvidence claim={current.card.provenance} userId={userId} />
-              <Actions>
-                {(queue.settings.mode === "simple"
-                  ? (["forgot", "remembered"] as const)
-                  : (["again", "hard", "good", "easy"] as const)
-                ).map((choice) => (
-                  <Button
-                    key={choice}
-                    secondary={choice === "forgot" || choice === "again"}
-                    disabled={busy || (!!pending.current && pending.current.choice !== choice)}
-                    onClick={() => grade(choice)}
-                  >
-                    {choice === "forgot"
-                      ? "Forgot"
-                      : choice === "remembered"
-                        ? "Remembered"
-                        : choice[0]?.toUpperCase() + choice.slice(1)}
-                  </Button>
-                ))}
-              </Actions>
-              <LinkButton secondary href={`/cards/${current.card.id}`}>
-                Fix this card
-              </LinkButton>
-            </div>
-          )}
+          ) : null}
         </Panel>
       ) : (
-        <Panel title="You’re ready for a break">
-          <p>{reviewed ? `You reviewed ${reviewed} cards.` : "No cards are due right now."}</p>
-          {queue.nextDueAt && (
-            <p>
-              Next scheduled review:{" "}
-              {new Date(queue.nextDueAt).toLocaleString("en-GB", { timeZone: queue.timezone })}
-            </p>
+        // UX-12: "no cards yet" and "done for now" are different, so they say different things.
+        <div ref={donePanel} tabIndex={-1}>
+          {!queue.hasCards && !reviewed ? (
+            <Panel>
+              <p>{strings.empty.review}</p>
+              <LinkButton href="/sessions">Open your courses</LinkButton>
+            </Panel>
+          ) : (
+            <Panel title="You’re ready for a break">
+              <p>{reviewed ? `You reviewed ${reviewed} cards.` : "No cards are due right now."}</p>
+              {queue.nextDueAt && (
+                <p>
+                  Next scheduled review:{" "}
+                  {new Date(queue.nextDueAt).toLocaleString("en-GB", { timeZone: queue.timezone })}
+                </p>
+              )}
+              {queue.buriedSiblings > 0 && (
+                <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
+              )}
+              <LinkButton href="/sessions">Open your courses</LinkButton>
+            </Panel>
           )}
-          {queue.buriedSiblings > 0 && (
-            <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
-          )}
-          <LinkButton href="/sessions">Open your courses</LinkButton>
-        </Panel>
+        </div>
       )}
       {receipt && (
         <Status tone="success">

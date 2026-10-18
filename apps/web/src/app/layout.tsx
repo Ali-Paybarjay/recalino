@@ -10,6 +10,8 @@ import { THEME_COLORS, THEME_SCRIPT } from "../ui/theme";
 export const metadata: Metadata = {
   title: strings.brand.name,
   description: strings.brand.tagline,
+  // PRD-04: a private pilot. Search engines get no page and follow no link until the pilot ends.
+  robots: { index: false, follow: false },
   // Design round 2, section 5c.
   icons: {
     icon: [

@@ -3,6 +3,7 @@ import { allowance, DIMENSIONS } from "@recalino/core/quota";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
 import { allowanceLabels as labels, allowanceUnits as units } from "../../../../ui/allowance-units";
+import { pendingCopy } from "../../../../ui/pending-copy";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
 import { LearnerShell } from "../../LearnerShell";
@@ -63,10 +64,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Reserved and used">
-        <p>
-          Reserved allowance is held for work you confirmed. Only usable published output is
-          charged.
-        </p>
+        <p>{pendingCopy.allowanceHelp.reserved}</p>
         <dl>
           {DIMENSIONS.map((d) => (
             <div key={d}>
@@ -79,10 +77,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Need more allowance?">
-        <p>
-          The pilot operator sets your allowance. Processing starts only after you confirm its
-          estimate.
-        </p>
+        <p>{pendingCopy.allowanceHelp.need}</p>
         {contact ? (
           <a href={contact} className="btn btn-secondary rc-btn-lg">
             Contact the pilot operator

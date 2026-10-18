@@ -9,7 +9,8 @@ import {
   pendingLearningBatch,
   uploadAutomaticPhoto,
 } from "../workspace/automatic-learning";
-import { Actions, Button, Panel, Status } from "../workspace/primitives";
+import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
+import { captureIsQuiet } from "./capture-phase";
 import { MissingAudioNotice, partMissingLabel } from "./MissingAudioNotice";
 import type { PhotoQuality } from "./photo-quality";
 import { photoQuality } from "./photo-quality-client";
@@ -17,6 +18,7 @@ import { canRemoveLocalPhoto, removeLocalPhoto } from "./photo-removal";
 import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
 import { recordingCopy } from "./recording-copy";
+import { formatPartDate } from "./recording-format";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 
@@ -32,7 +34,16 @@ function download(blob: Blob, name: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
-export function RecordingView({ sessionId }: { sessionId?: string }) {
+export function RecordingView({
+  sessionId,
+  backHref,
+  backLabel = "Back to session",
+}: {
+  sessionId?: string;
+  /** Where the way back leads once capture is over (UX-02); the page has no navigation. */
+  backHref?: string;
+  backLabel?: string;
+}) {
   const { controller, state, store, userId, sourceSync, syncState } = useRecording();
   const [rows, setRows] = useState<Recording[]>([]);
   const [time, setTime] = useState({ elapsed: 0, segmentElapsed: 0 });
@@ -241,9 +252,19 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     notifyAutomaticLearning(recording.sessionId);
   }
   const active = ["starting", "recording", "recovering", "paused", "saving"].includes(state.phase);
+  // PRD-REC-02: until Stop, only a real capture failure may speak (state.error below). Upload
+  // and list problems wait; they stay in state and appear as soon as Stop is pressed (UX-11).
+  const quiet = captureIsQuiet(state.phase);
   const currentId = state.recording?.id;
   return (
     <div className="preview-stack">
+      {backHref && !active ? (
+        <Actions>
+          <LinkButton secondary href={backHref}>
+            {backLabel}
+          </LinkButton>
+        </Actions>
+      ) : null}
       <Panel
         tone="hero"
         title={active ? "Your session is being recorded" : "Recordings on this device"}
@@ -253,19 +274,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
             <p role="timer" className="preview-rec-time" aria-label="Active recording time">
               {duration(time.elapsed)}
             </p>
-            <p>
-              {state.phase === "paused"
-                ? "Paused. The microphone is not being recorded."
-                : state.phase === "saving"
-                  ? "Saving the final audio parts…"
-                  : state.phase === "recovering"
-                    ? "Reconnecting the microphone automatically. Audio already saved is kept as a separate part."
-                    : "Recording continues in ten-minute parts, saved on this device."}
-            </p>
-            <p className="preview-muted">
-              Recording and lock-screen controls depend on your browser. Keep Recalino open and the
-              screen on for reliable capture.
-            </p>
+            {/* Pause and Stop come before the explanations, so Stop is on screen without scrolling (UX-02). */}
             <Actions>
               {["recording", "recovering"].includes(state.phase) ? (
                 <Button secondary onClick={() => controller.pause()}>
@@ -288,6 +297,19 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                 </Button>
               ) : null}
             </Actions>
+            <p>
+              {state.phase === "paused"
+                ? "Paused. The microphone is not being recorded."
+                : state.phase === "saving"
+                  ? "Saving the final audio parts…"
+                  : state.phase === "recovering"
+                    ? "Reconnecting the microphone automatically. Audio already saved is kept as a separate part."
+                    : "Recording continues in ten-minute parts, saved on this device."}
+            </p>
+            <p className="preview-muted">
+              Recording and lock-screen controls depend on your browser. Keep Recalino open and the
+              screen on for reliable capture.
+            </p>
             <p>
               {photos.filter((photo) => photo.recordingId === currentId).length} board photos saved
               on this device
@@ -337,8 +359,8 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
         {state.phase === "saved" ? <MissingAudioNotice missing={state.missing} /> : null}
         {state.error ? <Status tone="error">{state.error}</Status> : null}
       </Panel>
-      {error ? <Status tone="error">{error}</Status> : null}
-      {syncState.pending > 0 ? (
+      {error && !quiet ? <Status tone="error">{error}</Status> : null}
+      {syncState.pending > 0 && !quiet ? (
         <Panel title="Adding recorded parts to your session">
           <p role={syncState.phase === "failed" ? "alert" : "status"}>
             {syncState.phase === "syncing"
@@ -357,12 +379,11 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
           rows.map((row) => (
             <article key={row.id} className="preview-panel">
               <h3>
-                {new Date(row.createdAt).toLocaleString()}
+                {formatPartDate(row.createdAt)}
                 {(row.segment ?? 1) > 1 ? ` · Part ${row.segment}` : null}
               </h3>
               <p>
-                {duration(row.id === currentId && active ? time.segmentElapsed : row.activeMs)} ·{" "}
-                {Math.ceil(row.bytes / 1024)} KB
+                {duration(row.id === currentId && active ? time.segmentElapsed : row.activeMs)}
                 {row.gaps?.length && !(row.id === currentId && active)
                   ? ` · ${partMissingLabel(row.gaps.reduce((sum, gap) => sum + gap.missingMs, 0))}`
                   : null}

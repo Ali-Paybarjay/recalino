@@ -41,3 +41,23 @@
 در همان روز، متن بخش «Topics covered» جلسهٔ خالی که هنوز به دکمه‌های «below» اشاره می‌کرد، با متن تأییدشدهٔ مالک محصول جایگزین شد: «Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically.» (`app/(app)/sessions/[id]/page.tsx`). این متن به جای دکمه‌ها اشاره نمی‌کند، چون اقدام‌ها در کارت بالای صفحه‌اند (D71).
 
 پس از این تأیید فهرست خالی است.
+
+## ممیزی 2026-10-18، دستهٔ ۴ — مسیر زبان‌آموز (`fix/audit-4`)
+
+متن‌های زیر برای رفع یافته‌های UX-03، UX-09، UX-10، UX-12 و UX-14 لازم شدند و نه در `handoff/copy.md` هستند و نه در قاب‌های طرح. همه در [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) هستند و هنوز تأیید نشده‌اند. هر جا متن از قاب یا از متن موجود اپ آمده، در این فهرست نیست (مثلاً Sheet حذف کارت از قاب E3-delete، دکمهٔ «Read and accept» از `strings.settings`، و «Sign out» از `strings.settings.signOut`).
+
+| کلید | متن | حالت | منشأ | وضعیت |
+|---|---|---|---|---|
+| `cardActions.rejected` | Card rejected | Snackbar با دکمهٔ Undo پس از Reject روی کارت پیشنهادی (UX-03)؛ هنگام ضبط فعال نمایش داده نمی‌شود | الگوی قاب E3 («Card suspended») | در انتظار تأیید |
+| `termsAcceptance.guidance` | Read and accept the updated Terms to continue. | راهنمای پیشرفت وقتی پردازش به‌خاطر Terms تازه ایستاده است (UX-09)؛ جایگزین «Open Review account setup to continue.» | UX-09 | در انتظار تأیید |
+| `allowanceHelp.need` | The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it. | صفحهٔ Allowance، بخش «Need more allowance?» (UX-12)؛ جایگزین «Processing starts only after you confirm its estimate.» | UX-12 | در انتظار تأیید |
+| `allowanceHelp.reserved` | Reserved allowance is held while your material is processed. Only usable published output is charged. | صفحهٔ Allowance، بخش «Reserved and used» (UX-12)؛ جایگزین «…held for work you confirmed…» | UX-12 | در انتظار تأیید |
+| `workspaceErrors.sourcesChanged` | The selected sources have changed. Check your session material, then try again. | خطای تغییر منابع پس از برآورد (UX-12)؛ جایگزین «Review the processing estimate and confirm again.» | UX-12 | در انتظار تأیید |
+| `yourData.downloadFirst` | To keep a copy first, open a session, choose More session tools, then Download notes and cards. | بالای صفحهٔ Your data (UX-14) | UX-14 | در انتظار تأیید |
+| `accountDeletion.needsOperator` | Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below. | صفحهٔ /deletion وقتی رسید حذف در وضعیت `needs_operator` است (UX-10) | UX-10 | در انتظار تأیید |
+
+### پیشنهادهای ثبت‌شده که هنوز در رابط نیستند (UX-01 و UX-13)
+
+- **UX-01:** جملهٔ «Class capture, notes and reviews are coming next in the pilot.» از صفحهٔ ورود حذف شد. اگر مالک محصول جملهٔ جایگزین بخواهد، پیشنهاد: «Built for a small pilot group. Sign in with Google to start.» (فقط پیشنهاد؛ در رابط نیست.)
+- **UX-13، برآورد انتظار:** پیشنهاد برای زیر «Waiting to process» و «Creating notes and flashcards»: «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» نیاز به داده‌های واقعی زمان مرحله‌ها (NFR-07) دارد؛ بدون آن عبارت «within a few minutes» تعهد بی‌پشتوانه است.
+- **UX-13، دعوت به اعلان:** پیشنهاد: «Want a message when your notes are ready? Turn on notifications in Settings.» (نیازمند تأیید مالک و تصمیم دربارهٔ جای دکمه).

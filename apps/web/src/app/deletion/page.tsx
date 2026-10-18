@@ -14,6 +14,11 @@ export const metadata = {
 export default async function DeletionRecoveryPage() {
   const pending = await getPendingAccountDeletion();
   if (!pending) redirect("/");
+  const email = process.env.PILOT_OPERATOR_EMAIL;
+  const operatorMailto =
+    email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      ? `mailto:${encodeURIComponent(email)}`
+      : null;
   return (
     <main
       className="preview-root"
@@ -27,6 +32,8 @@ export default async function DeletionRecoveryPage() {
             kind: "account",
             state: "acknowledgement_pending",
           }}
+          recoveryStage={pending.stage}
+          operatorMailto={operatorMailto}
         />
       </RecordingProvider>
     </main>

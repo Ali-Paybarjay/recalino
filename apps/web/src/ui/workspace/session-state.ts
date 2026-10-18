@@ -1,3 +1,4 @@
+import { strings } from "../strings";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { learningProgress } from "./learning-progress";
@@ -23,6 +24,7 @@ export type SessionActionId =
   | "ask_operator"
   | "review_allowance"
   | "account_setup"
+  | "accept_terms"
   | "processing_review"
   | "retry_processing"
   | "request_review"
@@ -32,7 +34,7 @@ export interface SessionAction {
   id: SessionActionId;
   label: string;
   href?: string;
-  /** For `request_review` and `retry_upload`: the run the command applies to. */
+  /** For `request_review`, `retry_upload`: the run the command applies to. */
   runId?: string;
 }
 
@@ -74,6 +76,11 @@ export interface SessionStateInput {
   recordings?: { capturing: boolean; waiting: number; background?: boolean };
   /** Whether this session's voice check waits for the learner's optional confirmation. */
   voicePending?: boolean;
+  /**
+   * What the account still lacks. `acceptance_required` means unfinished setup or new Terms; the
+   * next step differs. Unknown means the Terms, because app pages need finished setup (UX-09).
+   */
+  account?: { setupComplete: boolean; termsPending: boolean };
 }
 
 /**
@@ -117,6 +124,8 @@ function actions(sessionId: string) {
     ask_operator: { id: "ask_operator", label: "Ask the pilot operator", href: "/help/new" },
     review_allowance: { id: "review_allowance", label: "Review allowance", href: "/me/quota" },
     account_setup: { id: "account_setup", label: "Review account setup", href: "/setup" },
+    // A command: the session card opens the Terms notice that every page shows (TermsNotice).
+    accept_terms: { id: "accept_terms", label: strings.settings.readAndAccept },
     processing_review: {
       id: "processing_review",
       label: "View processing review",
@@ -195,8 +204,10 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
     return step("idle", "Checking session progress…", "", study ?? go.add_material, studyActions);
   }
 
-  const progress = learningProgress(status, input.batches ?? [], input.uploadProgress);
-  const recovery = automaticLearningRecovery(status);
+  // A stop for `acceptance_required` is out of date once setup is finished and no Terms wait.
+  const accepted = !!input.account && input.account.setupComplete && !input.account.termsPending;
+  const progress = learningProgress(status, input.batches ?? [], input.uploadProgress, accepted);
+  const recovery = automaticLearningRecovery(status, accepted);
 
   if (status.state === "blocked") {
     const detail = status.message;
@@ -231,7 +242,13 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
     if (recovery.kind === "material")
       return step("attention", heading, detail, go.review_material, after);
     if (recovery.kind === "setup")
-      return step("attention", heading, detail, go.account_setup, after);
+      return step(
+        "attention",
+        heading,
+        detail,
+        input.account?.setupComplete === false ? go.account_setup : go.accept_terms,
+        after,
+      );
     // The saved audio never reached the server in time (not started or incomplete). A retry
     // starts its upload again from this device; the material page shows whether the original is
     // still here. A verifier rejection is a material problem and never reaches this branch.
