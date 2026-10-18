@@ -30,6 +30,7 @@
     "test:e2e": "pnpm --filter @recalino/web test:e2e",
     "verify": "pnpm lint && pnpm typecheck && pnpm check:boundaries && pnpm test",
     "check:client-bundle": "node tools/client-bundle/check.ts",
+    "check:function-size": "node tools/function-size/check.ts --dir apps/web/.next/server/app",
     "legal:build": "node tools/legal/build.ts"
   },
   "devDependencies": {

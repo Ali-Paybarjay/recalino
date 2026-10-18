@@ -12,6 +12,10 @@ An expired class original without usable scoped speaker transcripts is rejected 
 
 Run `node tools/voice/fetch-models.mjs` after installing dependencies. It downloads about 33 MB from the model maintainer's public release, verifies pinned SHA-256 hashes before using either model, and keeps the weights out of Git. It requires `tar` for the verified segmentation archive. Downloads happen only in this explicit provisioning command, never while processing user recordings.
 
+Each download attempt has a 120 s timeout (headers and body together). A busy or unreachable host is retried twice more, after 2 s and then 4 s; a missing file (HTTP 4xx other than 408 and 429) and a checksum mismatch are not retried. When the attempts run out the build stops with one fixed code: `model_download_timeout`, `model_download_network_error` or `model_download_http_<status>`. The URL is never part of the message. Every verified download is also kept in `node_modules/.cache/recalino-voice/`, named by its SHA-256, so a later build in the same checkout needs no network; a cache entry is hashed again on every use, and an entry that does not match is ignored. Whether Vercel keeps that directory between deployments is not something this repository controls, and a cold cache still downloads.
+
+After the build, `tools/function-size/check.ts` (run by `pnpm build`, or alone with `pnpm check:function-size`) adds up the distinct file bytes of every `.next/server/app/**/*.nft.json` Function manifest, logs the result as one JSON line and fails above 225 MB, which keeps the platform's 250 MB limit in sight. Reference numbers (2026-10-18, Linux x64, `api/sources/uploads/[id]/parts/[index]`, the largest Function): 171.1 MB without the voice weights and 202.1 MB with them. Raise or lower the limit with `--limit-mb` or `RECALINO_FUNCTION_SIZE_LIMIT_MB`; do not raise it past what Vercel accepts.
+
 The default paths are the verified `tools/voice/models/` directory beside the traced source worker. An operator-managed installation can override them with these **absolute server paths**, for example in `apps/web/.env.local`:
 
 ```dotenv

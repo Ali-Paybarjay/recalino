@@ -69,6 +69,97 @@ describe("D75/D77 data-loss scan", () => {
   });
 });
 
+describe("OPS-08 data-loss scan inside dollar-quoted bodies", () => {
+  it.each([
+    "do $$ begin delete from x; end $$;",
+    "DO $$ BEGIN DELETE FROM x; END $$;",
+    "do $body$ begin delete from x; end $body$;",
+    "do language plpgsql $$ begin delete from x; end $$;",
+    "do $$ begin delete from x; end $$ language plpgsql;",
+    "do $$ begin truncate plt.job; end $$;",
+    "do $$ begin drop table src.asset; end $$;",
+    "do $$ begin drop schema anki cascade; end $$;",
+    "do $$ begin alter table src.asset drop column duration_ms; end $$;",
+    "do $$ begin update org.class_session set title = null; end $$;",
+    "do $$ declare r record; begin for r in select 1 loop update org.class_session set title = null; end loop; end $$;",
+    "do $$ begin if exists (select 1 from pg_class) then delete from x where id = 1; end if; end $$;",
+    "do $$ begin perform 1; exception when others then delete from x; end $$;",
+    "do $$ begin execute 'delete from x'; end $$;",
+    "do $$ begin execute format('drop table %I.%I', 's', 't'); end $$;",
+    "do $outer$ begin execute $inner$ delete from x $inner$; end $outer$;",
+    "create function plt.purge() returns void language plpgsql as $$ begin delete from plt.job; end $$;",
+    "create or replace function plt.purge() returns void as $fn$ begin delete from plt.job; end $fn$ language plpgsql;",
+    "create procedure plt.purge() language plpgsql as $$ begin truncate plt.job; end $$;",
+    "create function plt.purge() returns void language sql as $$ delete from plt.job $$;",
+    "create function plt.purge() returns void language sql as 'delete from plt.job';",
+    "do $$ begin null; end $$; delete from x;",
+    "delete from x; do $$ begin null; end $$;",
+  ])("needs the owner's yes: %s", (sql) => {
+    expect(findDataLoss(sql)).toHaveLength(1);
+  });
+
+  it("names where the finding is", () => {
+    expect(findDataLoss("do $$ begin delete from x; end $$;")).toEqual([
+      "in do block: delete from x",
+    ]);
+    expect(
+      findDataLoss(
+        "create function plt.purge() returns void language sql as $$ truncate plt.job $$;",
+      ),
+    ).toEqual(["in function body: truncate plt.job"]);
+  });
+
+  it("reports each destructive statement of one block", () => {
+    expect(findDataLoss("do $$ begin delete from x; truncate y; end $$;")).toHaveLength(2);
+  });
+
+  it.each([
+    "do $$ begin if not exists (select 1 from pg_roles where rolname = 'x') then create role x; end if; end $$;",
+    "do $$ declare item record; begin for item in select 1 loop execute format('alter table %I.%I enable row level security', 's', 't'); end loop; end $$;",
+    "do $$ begin insert into a (id, n) values (1, 2) on conflict (id) do update set n = excluded.n; end $$;",
+    "do $$ begin update org.class_session set title = 'x' where id = 1; end $$;",
+    "do $$ -- delete from x\n begin null; end $$;",
+    "do $$ /* truncate x; */ begin null; end $$;",
+    "do $$ begin raise notice 'delete from x'; end $$;",
+    "do $$ begin alter table src.asset alter column a drop not null; end $$;",
+    "create function f() returns trigger language plpgsql as $$ begin raise exception 'cannot delete from x'; end $$;",
+    "create function f() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end $$;",
+    "create function f() returns void language sql as $$ select 1 $$;",
+    "comment on table src.asset is $$delete from x; drop table y$$;",
+    "insert into note.template (body) values ($$delete from x$$);",
+    "insert into note.template (body) values ($tag$ truncate x; $tag$);",
+    "select $1, $2 from t where a = $1;",
+    "select a$b$c from t;",
+    "select 'it''s -- not a comment', 1; create index a on b (c);",
+    "drop index if exists a.b_idx;",
+  ])("keeps every row: %s", (sql) => {
+    expect(findDataLoss(sql)).toEqual([]);
+  });
+
+  it("does not stop at an unterminated body", () => {
+    expect(findDataLoss("do $$ begin delete from x; end")).toHaveLength(1);
+  });
+
+  it("finds nothing new in the migrations that contain dollar-quoted bodies", () => {
+    for (const file of [
+      "20260930175238_baseline.sql",
+      "20261004045720_note_card_srs.sql",
+      "20261005234639_branded_email_snapshots.sql",
+    ])
+      expect(findDataLoss(readFileSync(resolve(migrations, file), "utf8")), file).toEqual([]);
+  });
+
+  it("gives every existing migration the result it had before the scan learned bodies", () => {
+    // Recorded 2026-10-18: no migration on main removes data. A new finding here is a real
+    // review item (list it and ask the owner), not a reason to loosen the scan.
+    const files = readdirSync(migrations).filter((file) => file.endsWith(".sql"));
+    const found = files.filter(
+      (file) => findDataLoss(readFileSync(resolve(migrations, file), "utf8")).length > 0,
+    );
+    expect(found).toEqual([]);
+  });
+});
+
 describe("D77 apply transaction", () => {
   const migration = {
     version: "20261101120000",
