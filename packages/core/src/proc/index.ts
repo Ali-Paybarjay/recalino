@@ -68,7 +68,16 @@ export {
   type TeachingAdaptation,
   teachingAdaptationSchema,
 } from "./learner-context";
-export { expireAwaitingUploads, expiredUploadCode, processingPeriodicJobs } from "./maintenance";
+export {
+  ENDED_JOB_RUN_ERROR,
+  endedJobRunOutcome,
+  expireAwaitingUploads,
+  expiredUploadCode,
+  processingPeriodicJobs,
+  type RunClosedHook,
+  reconcileEndedJobRuns,
+  runsLeftByEndedJobs,
+} from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
 export { forgetPracticeSources } from "./practice-privacy";

@@ -1,8 +1,18 @@
+import { lockAccount } from "../acc";
 import type { Database } from "../db";
-import { AppError, emptyPayload, type PeriodicJob } from "../plt";
+import {
+  AppError,
+  emptyPayload,
+  type JobState,
+  jobStates,
+  type LearnerContext,
+  type PeriodicJob,
+} from "../plt";
+import { emptyAmounts, settleAllowance } from "../quota";
 import { getSource, readInputContract, temporaryAudioUploadStates } from "../src";
+import { failAuxiliaryRun } from "./auxiliary";
 import { sourceSnapshotSchema } from "./contracts";
-import { type AwaitingUploadFailure, failAwaitingUploadRun } from "./runs";
+import { type AwaitingUploadFailure, failAwaitingUploadRun, ownedRun } from "./runs";
 
 /**
  * Why an awaiting run ran out of time. Only a verifier rejection says the audio itself failed; an
@@ -58,7 +68,140 @@ export async function expireAwaitingUploads(db: Database, now = new Date()): Pro
   }
   return expired;
 }
-export function processingPeriodicJobs(): PeriodicJob[] {
+/**
+ * PRD-02: the fixed code of a run whose job ended without settling it, e.g. when the function
+ * was stopped at its time limit on the last attempt and the sweep failed the job (`lease_expired`).
+ * The learner sees the generic "could not finish" message with a retry.
+ */
+export const ENDED_JOB_RUN_ERROR = "processing_interrupted";
+/** Run states only their job moves on; `awaiting_upload` has its own expiry above. */
+const JOB_OWNED_RUN_STATES = new Set(["queued", "processing"]);
+/** No handler runs such a job again. A finished job is purged later, so absence counts too. */
+function jobEnded(state: JobState | undefined): boolean {
+  return state === undefined || state === "failed" || state === "cancelled";
+}
+/**
+ * How the worker itself ends such a run. A provider request still marked in flight may have been
+ * answered and billed, so, like a reclaimed worker (`provider_outcome_unresolved`), the run waits
+ * for the operator's review instead of offering a retry; otherwise it fails with the fixed code.
+ */
+export function endedJobRunOutcome(providerOutcomeUnresolved: boolean) {
+  return providerOutcomeUnresolved
+    ? ({ state: "needs_input", code: "provider_outcome_unresolved" } as const)
+    : ({ state: "failed", code: ENDED_JOB_RUN_ERROR } as const);
+}
+/** The runs reconciliation closes: job-owned runs whose current job has ended. */
+export function runsLeftByEndedJobs(
+  runs: readonly { id: string; state: string; jobId: string | null }[],
+  states: ReadonlyMap<string, JobState>,
+): string[] {
+  return runs
+    .filter(
+      (run) =>
+        JOB_OWNED_RUN_STATES.has(run.state) &&
+        run.jobId !== null &&
+        jobEnded(states.get(run.jobId)),
+    )
+    .map((run) => run.id);
+}
+/**
+ * Closes one run through the worker's own final-failure path: the whole reservation is released
+ * (nothing is charged, FR-QUOTA-006) and the run ends as `endedJobRunOutcome` says. Re-checked
+ * under the account and run locks, so a run the worker settled or a continuation re-queued is
+ * left alone, and running it again has no further effect (PRD-COST-02).
+ */
+async function closeEndedJobRun(db: Database, ctx: LearnerContext, runId: string, now: Date) {
+  return db.transaction().execute(async (tx) => {
+    await lockAccount(tx, ctx.userId);
+    const run = await ownedRun(tx, ctx, runId, true);
+    const states = run.job_id ? await jobStates(tx, [run.job_id]) : new Map<string, JobState>();
+    if (!runsLeftByEndedJobs([{ id: run.id, state: run.state, jobId: run.job_id }], states).length)
+      return null;
+    const inFlight = await tx
+      .selectFrom("proc.provider_attempt")
+      .select("id")
+      .where("run_id", "=", run.id)
+      .where("state", "in", ["started", "uncertain"])
+      .executeTakeFirst();
+    const outcome = endedJobRunOutcome(inFlight !== undefined);
+    if (run.kind === "auxiliary") {
+      await failAuxiliaryRun(
+        tx,
+        ctx,
+        run.id,
+        { code: outcome.code, uncertain: outcome.state === "needs_input" },
+        now,
+      );
+      return run.kind;
+    }
+    await settleAllowance(tx, ctx, run.reservation_id, emptyAmounts(), now);
+    await tx
+      .updateTable("proc.processing_run")
+      .set({
+        state: outcome.state,
+        last_error: outcome.code,
+        finished_at: now,
+        updated_at: now,
+      })
+      .where("id", "=", run.id)
+      .execute();
+    return run.kind;
+  });
+}
+export type RunClosedHook = (
+  db: Database,
+  ctx: LearnerContext,
+  runId: string,
+  now: Date,
+) => Promise<void>;
+/**
+ * PRD-02: closes runs whose job ended without the worker settling them, so the reservation is
+ * released, the learner is told, and the same session can be processed again (or, with a provider
+ * request in flight, reviewed by the operator first). Stuck runs are never updated, so they sort
+ * first. One failing run does not hold back the others; the first failure is rethrown at the end,
+ * so the job is logged as failed and retried next period.
+ */
+export async function reconcileEndedJobRuns(
+  db: Database,
+  now = new Date(),
+  options: { afterClose?: RunClosedHook; userId?: string; limit?: number } = {},
+): Promise<number> {
+  const runs = await db
+    .selectFrom("proc.processing_run")
+    .select(["id", "user_id", "state", "job_id as jobId"])
+    .where("state", "in", [...JOB_OWNED_RUN_STATES])
+    .where("job_id", "is not", null)
+    .$if(!!options.userId, (query) => query.where("user_id", "=", options.userId as string))
+    .orderBy("updated_at")
+    .limit(Math.min(250, options.limit ?? 250))
+    .execute();
+  const states = await jobStates(
+    db,
+    runs.flatMap((run) => (run.jobId ? [run.jobId] : [])),
+  );
+  const owners = new Map(runs.map((run) => [run.id, run.user_id]));
+  let closed = 0;
+  let failure: unknown;
+  for (const runId of runsLeftByEndedJobs(runs, states)) {
+    const ctx = { userId: owners.get(runId) as string, requestId: `reconcile:${runId}` };
+    try {
+      const kind = await closeEndedJobRun(db, ctx, runId, now);
+      if (!kind) continue;
+      closed++;
+      // Like the worker's completion hook; the minute notification sweep repairs a failure here.
+      if (kind === "class") await options.afterClose?.(db, ctx, runId, now);
+    } catch (error) {
+      // A deleted account or run is cleaned up by its own deletion path.
+      if (error instanceof AppError && error.code === "not_found") continue;
+      failure ??= error;
+    }
+  }
+  if (failure) throw failure;
+  return closed;
+}
+export function processingPeriodicJobs(
+  options: { afterRunClosed?: RunClosedHook } = {},
+): PeriodicJob[] {
   return [
     {
       everySeconds: 300,
@@ -68,6 +211,17 @@ export function processingPeriodicJobs(): PeriodicJob[] {
         payload: emptyPayload,
         async run(_payload, job) {
           await expireAwaitingUploads(job.db, job.now());
+        },
+      },
+    },
+    {
+      everySeconds: 300,
+      definition: {
+        kind: "proc.reconcile_ended_jobs",
+        version: 1,
+        payload: emptyPayload,
+        async run(_payload, job) {
+          await reconcileEndedJobRuns(job.db, job.now(), { afterClose: options.afterRunClosed });
         },
       },
     },
