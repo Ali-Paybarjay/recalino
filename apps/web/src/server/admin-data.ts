@@ -9,6 +9,7 @@ import {
 import { emailConfigStatus } from "@recalino/core/support";
 import approvedPilot from "../../../../config/pilot-defaults.json";
 import { getAiProvider } from "./ai";
+import { EXPECTED_SCHEMA_VERSION } from "./schema-version.generated";
 
 export type { AdminDirectory, AdminSnapshotParameters } from "@recalino/core/ops";
 
@@ -23,5 +24,6 @@ export function readAdminSnapshot(
     approvedPilot,
     email: emailConfigStatus(env),
     aiConfigured: !!getAiProvider(env),
+    expectedSchemaVersion: EXPECTED_SCHEMA_VERSION,
   });
 }

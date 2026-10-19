@@ -48,6 +48,18 @@ export {
   maintainDeletionJournals,
   readEncryptedDeletionJournals,
 } from "./deletion-journals";
+export {
+  DEFAULT_HEALTH_SETTINGS,
+  evaluateHealth,
+  type HealthCheckOptions,
+  type HealthSettings,
+  type HealthSignal,
+  healthSettingsSchema,
+  readHealthSettings,
+  readSystemHealth,
+  runHealthCheck,
+  systemHealthJob,
+} from "./health";
 export { executeOperatorRequest, type OperatorRequest, operatorRequestSchema } from "./operator";
 export { requestClassProcessingReview } from "./processing-review";
 export {

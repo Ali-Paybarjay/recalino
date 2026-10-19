@@ -719,6 +719,15 @@ export async function providerStep<T>(
         );
       }
     });
+    // OPS-02: the provider's code and transport cause only, never its output (PRD-PRIV-06).
+    job.log?.("warn", "provider_step_failed", {
+      module: "proc",
+      job_id: job.job.id,
+      attempt: job.job.attempt,
+      code: providerError.code,
+      cause_code: providerError.causeCode,
+      state: providerError.uncertain ? "uncertain" : "failed",
+    });
     throw providerError;
   }
 }

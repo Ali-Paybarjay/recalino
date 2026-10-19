@@ -54,7 +54,7 @@
 
 | شناسه | مسیر | دسترسی | idempotency | کنترل نرخ |
 |---|---|---|---|---|
-| `health` | `GET /api/health` | عمومی | — | — |
+| `health` | `GET /api/health` | عمومی؛ با `?deep=1` فقط bearer `CRON_SECRET` (OPS-02): `select 1` و مقایسهٔ نسخهٔ schema، با 503 وقتی دیتابیس در دسترس نیست یا migration لازم کد را ندارد | — | — |
 | `admin` | `GET /api/admin` | مالک معتبر سمت سرور | — | قاعدهٔ جدا در route جاری ندارد |
 | `admin` | `POST /api/admin` | مالک معتبر سمت سرور | کلید و receipt دامنهٔ OPS | قاعدهٔ جدا در route جاری ندارد |
 | `supportFeedback` | `GET /api/support` | زبان‌آموز؛ فقط پیام‌های خودش | — | `support` |

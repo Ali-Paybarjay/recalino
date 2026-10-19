@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readEstimateRates } from "../aip";
 import type { Database } from "../db";
 import { getSession } from "../org";
-import { errors } from "../plt";
+import { compareSchemaVersions, errors, readAppliedSchemaVersion } from "../plt";
 import { readClassProcessingReview } from "../proc";
 import {
   emptyAmounts,
@@ -26,7 +26,9 @@ import type {
   AuditItem,
   FeedbackSummary,
   PilotSummary,
+  SystemHealth,
 } from "./admin-contracts";
+import { readSystemHealth } from "./health";
 
 export interface AdminDirectory {
   getUser(
@@ -58,6 +60,8 @@ export interface AdminReadConfiguration {
     appLink: string | null;
   };
   aiConfigured: boolean;
+  /** OPS-05: the newest migration of the deployed code, compared with the database. */
+  expectedSchemaVersion?: string;
 }
 const PAGE_SIZE = 50;
 const cursorSchema = z.strictObject({ createdAt: z.iso.datetime(), id: z.uuid() });
@@ -145,14 +149,23 @@ export async function readAdminSnapshot(
   };
   switch (params.view) {
     case "overview": {
-      const [pilot, costs, counts, tasks, audit] = await Promise.all([
+      const [pilot, costs, counts, tasks, audit, health] = await Promise.all([
         pilotSummary(db, now, configuration.approvedPilot),
         costsSummary(db, now),
         dashboardCounts(db),
         readTasks(db, now),
         readAudit(db),
+        overviewHealth(db, now, configuration.expectedSchemaVersion),
       ]);
-      return { view: params.view, pilot, ...(costs ? { costs } : {}), counts, tasks, audit };
+      return {
+        view: params.view,
+        pilot,
+        ...(costs ? { costs } : {}),
+        counts,
+        health,
+        tasks,
+        audit,
+      };
     }
     case "tasks":
       return { view: params.view, tasks: await readTasks(db, now, params.userId) };
@@ -459,6 +472,24 @@ async function costsSummary(db: Database, now: Date): Promise<AdminCosts | null>
     killSwitch: summary.policy.killSwitch,
     limits: summary.policy.limits,
   };
+}
+/**
+ * OPS-02/OPS-05: the hourly health check's signals, read now. The applied schema version needs a
+ * grant the application role may not have; without it the comparison is "unknown".
+ */
+async function overviewHealth(
+  db: Database,
+  now: Date,
+  expected: string | undefined,
+): Promise<SystemHealth> {
+  const applied =
+    expected === undefined ? null : await readAppliedSchemaVersion(db).catch(() => null);
+  return readSystemHealth(db, now, {
+    schema:
+      expected === undefined
+        ? null
+        : { state: compareSchemaVersions(expected, applied), expected, applied },
+  });
 }
 async function dashboardCounts(db: Database) {
   const { rows } = await sql<{

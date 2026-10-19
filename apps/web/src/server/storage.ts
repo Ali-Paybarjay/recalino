@@ -1,5 +1,5 @@
 import "server-only";
-import type { ObjectStore } from "@recalino/core/plt";
+import { type ObjectStore, readPltSettings } from "@recalino/core/plt";
 import { VercelBlobStore } from "@recalino/core/plt/vercel-blob";
 
 let store: ObjectStore | undefined;
@@ -13,6 +13,7 @@ export function getObjectStore(
   env: Record<string, string | undefined> = process.env,
 ): ObjectStore | null {
   if (!env.BLOB_STORE_ID && !env.BLOB_READ_WRITE_TOKEN) return null;
-  store ??= new VercelBlobStore();
+  // PERF-05: each request has the configured deadline (PLT_SETTINGS_JSON storage.blobTimeoutMs).
+  store ??= new VercelBlobStore({ timeoutMs: readPltSettings(env).storage.blobTimeoutMs });
   return store;
 }

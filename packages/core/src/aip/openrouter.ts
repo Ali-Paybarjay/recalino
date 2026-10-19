@@ -64,6 +64,19 @@ const sttSegments = z
   .max(100000);
 type Fetch = typeof fetch;
 
+/**
+ * OPS-02: why a request has no answer, as a code for the log: the request deadline, an abort, or
+ * the network error code (e.g. ECONNRESET). Never the error's message.
+ */
+function transportCauseCode(failure: unknown): string {
+  if (failure instanceof Error && failure.name === "TimeoutError") return "timeout";
+  if (failure instanceof Error && failure.name === "AbortError") return "aborted";
+  const cause =
+    failure instanceof Error ? (failure.cause as { code?: unknown } | undefined) : undefined;
+  const code = cause?.code;
+  return typeof code === "string" && /^[A-Z][A-Z0-9_]{1,40}$/.test(code) ? code : "network_error";
+}
+
 /** Only the fixed HTTPS OpenRouter API receives credentials; provider errors never contain content. */
 export class OpenRouterProvider implements AiProvider {
   readonly name = "openrouter";
@@ -106,8 +119,15 @@ export class OpenRouterProvider implements AiProvider {
           effectiveProviderTimeoutMs(this.settings, typeof model === "string" ? model : undefined),
         ),
       });
-    } catch {
-      throw new ProviderError("provider_outcome_unknown", false, true);
+    } catch (failure) {
+      throw new ProviderError(
+        "provider_outcome_unknown",
+        false,
+        true,
+        undefined,
+        undefined,
+        transportCauseCode(failure),
+      );
     }
     if (!response.ok) {
       const retryable = response.status === 429;

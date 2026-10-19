@@ -5,8 +5,10 @@ import type { Database } from "@recalino/core/db";
 import {
   AppError,
   canonicalJson,
+  causeCode,
   checkRateLimit,
   createLogger,
+  errorLocation,
   errors,
   hmacSha256Hex,
   isValidIdempotencyKey,
@@ -146,7 +148,9 @@ export function defineRoute(
           request_id: requestId,
           route: meta.id,
           error_name: error instanceof Error ? error.name : typeof error,
+          error_location: errorLocation(error),
           pg_code: postgresCode(error),
+          cause_code: causeCode(error),
           reason: error instanceof AppError ? error.reason : undefined,
         });
       }
@@ -276,7 +280,7 @@ async function recordSignal(
 }
 
 /** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; compared in constant time. */
-function assertSystemCaller(request: Request, secret: string): void {
+export function assertSystemCaller(request: Request, secret: string): void {
   const digest = (value: string) => createHash("sha256").update(value).digest();
   const given = request.headers.get("authorization") ?? "";
   if (!timingSafeEqual(digest(given), digest(`Bearer ${secret}`))) throw errors.unauthenticated();

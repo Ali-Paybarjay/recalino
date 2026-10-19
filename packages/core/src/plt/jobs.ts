@@ -4,7 +4,7 @@ import { sql } from "kysely";
 import type { z } from "zod";
 import type { Database, Tx } from "../db";
 import { AppError } from "./errors";
-import type { Logger } from "./log";
+import { causeCode, errorLocation, type Logger } from "./log";
 import { recordSecurityEvent } from "./security";
 import type { PltSettings } from "./settings";
 
@@ -49,6 +49,8 @@ export interface JobContext {
    * finish before this, and checkpoints instead. Absent when the runner does not know its limit.
    */
   deadline?: Date;
+  /** The runner's allow-listed logger, when it has one (FR-PLT-007); identifiers only. */
+  log?: Logger;
   /**
    * Runs `effect` at most once for this job, in one transaction with the step's record
    * (FR-PLT-005 rule 6). Throws `JobCancelled` when the job was cancelled meanwhile (rule 7).
@@ -483,6 +485,7 @@ export async function runDueJobs(
       now,
       job: { id: job.id, attempt: job.attempt },
       ...(options.finishBy ? { deadline: options.finishBy } : {}),
+      ...(options.log ? { log: options.log } : {}),
       step: (name, effect) => runJobStep(db, job, name, effect, now()),
     };
     const stopRenewal = keepLease(db, job, now, options);
@@ -508,6 +511,8 @@ export async function runDueJobs(
         ...fields,
         code,
         error_name: error instanceof Error ? error.name : typeof error,
+        error_location: errorLocation(error),
+        cause_code: causeCode(error),
         reason: error instanceof AppError ? error.reason : undefined,
       });
     }

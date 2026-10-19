@@ -76,8 +76,6 @@ const exceptions: Record<string, string> = {
   DB_TYPES_URL: "tools/db-types.mjs: optional override of the local database used for db:types",
   // Local test switch: only honoured outside Vercel (apps/web/src/server/local-test-policy.ts).
   RECALINO_TEST_JOURNAL: "local end-to-end test switch; never set in a deployed environment",
-  // Added to the code by the legal-text batch, which also decides whether to list it.
-  RECALINO_ALLOW_DRAFT_LEGAL: "development switch for the draft legal texts (audit batch 1/3)",
 };
 /** Host-provided family: every Vercel system variable. */
 const exceptionPrefixes = ["VERCEL"];

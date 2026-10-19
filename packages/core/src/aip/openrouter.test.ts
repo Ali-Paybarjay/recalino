@@ -1023,6 +1023,32 @@ describe("AIP OpenRouter boundary", () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    [Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNRESET" } }), "ECONNRESET"],
+    [new DOMException("The operation timed out.", "TimeoutError"), "timeout"],
+    [new DOMException("This operation was aborted", "AbortError"), "aborted"],
+    [new Error("Synthetic CANARY-class-text"), "network_error"],
+  ])(
+    "keeps the transport cause of an uncertain outcome as a code (OPS-02)",
+    async (failure, cause) => {
+      const request = vi.fn<typeof fetch>().mockRejectedValue(failure);
+      const provider = new OpenRouterProvider("synthetic-private-key", settings, request);
+      const error = await provider
+        .structured({
+          operationKey: "uncertain-cause",
+          model: settings.llmModel,
+          schema: z.strictObject({ answer: z.string() }),
+          schemaName: "test",
+          system: "Synthetic test",
+          input: "Synthetic material",
+        })
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(ProviderError);
+      expect(error).toMatchObject({ code: "provider_outcome_unknown", uncertain: true });
+      expect((error as ProviderError).causeCode).toBe(cause);
+    },
+  );
+
   it("never starts a fallback after an uncertain network outcome", async () => {
     const request = vi.fn<typeof fetch>().mockRejectedValue(new Error("Synthetic timeout"));
     const provider = new OpenRouterProvider("synthetic-private-key", settings, request);

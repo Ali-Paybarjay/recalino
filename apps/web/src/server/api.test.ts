@@ -101,6 +101,24 @@ describe("route wrapper (FR-PLT-003, FR-PLT-007)", () => {
     expect(lines.map((line) => JSON.parse(line).event)).toEqual(["request_failed", "request"]);
   });
 
+  it("logs where an unexpected error was thrown and its provider cause, never its text (OPS-02)", async () => {
+    const lines: string[] = [];
+    const response = await call(
+      publicRoute,
+      async () => {
+        throw Object.assign(new TypeError(`cannot read "${CANARY}"`), { causeCode: "ECONNRESET" });
+      },
+      testDeps(lines),
+    );
+    expect(response.status).toBe(500);
+    expect(lines.join("\n")).not.toContain(CANARY);
+    const failed = lines
+      .map((line) => JSON.parse(line))
+      .find((line) => line.event === "request_failed");
+    expect(failed).toMatchObject({ error_name: "TypeError", cause_code: "ECONNRESET" });
+    expect(failed.error_location).toMatch(/^apps\/web\/src\/server\/api\.test\.ts:\d+:\d+$/);
+  });
+
   it("logs the reason of a server error without sending it to the client", async () => {
     const lines: string[] = [];
     const response = await call(
