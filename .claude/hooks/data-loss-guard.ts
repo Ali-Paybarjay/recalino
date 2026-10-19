@@ -10,9 +10,11 @@
 //     line ('a'<newline>'b' is 'ab') are read the way Postgres reads them; the bodies of `do` and
 //     every literal that reads like a statement are checked as SQL; quoted names such as
 //     `"cron"."schedule"` and `"dblink_exec"` count like unquoted ones;
-//   - any Bash command carrying --approve-data-loss, even when quoted or escaped, is denied: the
-//     product owner runs data-loss migrations themselves. db:apply runs without a prompt only as
-//     `pnpm db:apply` or `pnpm db:apply --apply`; any other db:apply command asks first.
+//   - any Bash command carrying --approve-data-loss, even when quoted or escaped, asks first
+//     (owner decision 2026-10-19): Claude runs it only after the product owner's explicit yes in
+//     chat for that migration version (CLAUDE.md, D77), and the prompt is a second check at run
+//     time. db:apply runs without a prompt only as `pnpm db:apply` or `pnpm db:apply --apply`;
+//     any other db:apply command asks first.
 // It is a safety net, not a parser: a function that changes rows or jobs when selected, SQL built
 // from pieces at run time, a where clause that keeps every row in another way (`id > 0`,
 // `id in (select id from t)`), or a Bash command that hides both `approve-data-loss` and
@@ -26,11 +28,11 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-export type HookDecision = { decision: "ask" | "deny"; reason: string } | null;
+export type HookDecision = { decision: "ask"; reason: string } | null;
 
 const SQL_TOOLS = new Set(["mcp__Supabase__execute_sql", "mcp__claude_ai_Supabase__execute_sql"]);
-const DENY_DATA_LOSS =
-  "Commands carrying --approve-data-loss are not run by Claude: the product owner runs data-loss migrations themselves (D81). Report the migration and the data it removes instead. To search text for the flag, search for data-loss.";
+const ASK_DATA_LOSS =
+  "This command carries --approve-data-loss. Run it only after the product owner's explicit yes in chat for this exact migration version (CLAUDE.md, D77, D81); without that yes, decline and report the migration and the data it removes. To search text for the flag, search for data-loss.";
 const ASK_APPLY =
   "db:apply runs without a prompt only as `pnpm db:apply` (dry run) or `pnpm db:apply --apply`, alone on the line. Any other argument, pipe or chained command needs the product owner's yes (D81).";
 const UNREADABLE: NonNullable<HookDecision> = {
@@ -559,7 +561,7 @@ function field(value: unknown, key: string): unknown {
 /** The decision for one Bash command; quotes and backslashes cannot hide the flag. */
 function decideCommand(command: string): HookDecision {
   const plain = command.replace(/['"\\]/g, "").toLowerCase();
-  if (plain.includes("approve-data-loss")) return { decision: "deny", reason: DENY_DATA_LOSS };
+  if (plain.includes("approve-data-loss")) return { decision: "ask", reason: ASK_DATA_LOSS };
   // `$…` expansions, eval, pipes or extra arguments must not ride on the allow-listed prefix.
   if (/db[:-]apply/.test(plain) && !PLAIN_APPLY.test(command))
     return { decision: "ask", reason: ASK_APPLY };

@@ -1,6 +1,7 @@
 // SEC-05 (audit 2026-10-18), D81: the PreToolUse hook in .claude/hooks keeps the allow list of
 // .claude/settings.json fast for reads, but asks before SQL that can remove or rewrite data and
-// denies every command that carries --approve-data-loss.
+// before every command that carries --approve-data-loss (owner decision 2026-10-19: ask, not
+// deny, so the CLAUDE.md / D77 procedure still works and the harness asks again at run time).
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmdirSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -264,10 +265,10 @@ describe("Bash", () => {
     "pnpm db:apply --apply $'\\x2d-approve-data-loss' 20261101120000",
     "pnpm db:apply --apply --APPROVE-DATA-LOSS 1",
     "grep -rn approve-data-loss docs",
-  ])("denies a data-loss approval: %s", (command) => {
+  ])("asks before a data-loss approval: %s", (command) => {
     const result = bash(command);
-    expect(result?.decision).toBe("deny");
-    expect(result?.reason).toMatch(/product owner runs/);
+    expect(result?.decision).toBe("ask");
+    expect(result?.reason).toMatch(/explicit yes in chat for this exact migration version/);
     expect(result?.reason).toMatch(/search for data-loss/);
   });
 
@@ -305,7 +306,7 @@ describe("as a Claude Code hook", () => {
       hookEventName: "PreToolUse",
       permissionDecision: "ask",
     });
-    const denied = JSON.parse(
+    const approval = JSON.parse(
       run(
         JSON.stringify({
           tool_name: "Bash",
@@ -313,7 +314,7 @@ describe("as a Claude Code hook", () => {
         }),
       ),
     );
-    expect(denied.hookSpecificOutput.permissionDecision).toBe("deny");
+    expect(approval.hookSpecificOutput.permissionDecision).toBe("ask");
   });
 
   it("still decides when the project path is a symlink", () => {
@@ -341,7 +342,7 @@ describe("as a Claude Code hook", () => {
             command: "pnpm db:apply --apply --approve-data-loss 1",
           },
         }),
-      ).toBe("deny");
+      ).toBe("ask");
     } finally {
       unlinkSync(link);
       rmdirSync(parent);
