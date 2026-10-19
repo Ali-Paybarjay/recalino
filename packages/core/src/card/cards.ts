@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Selectable } from "kysely";
+import { type Selectable, sql } from "kysely";
 import { z } from "zod";
 import { lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
@@ -213,6 +213,87 @@ export async function getCard(
   const sessionIds = await sessionsFor(db, ctx, id);
   if (!sessionIds.length) throw errors.notFound();
   return (await withPronunciationTargets(db, ctx, [view(row, sessionIds)]))[0] as StudyCard;
+}
+/** Cards read together by readCards; each is taken in turn, as getCard would return it. */
+export interface CardReads {
+  /** The card getCard would return for `id`, or the error it would throw for it. */
+  take(id: string): StudyCard;
+}
+/**
+ * PERF-04: getCard for many identifiers in a constant number of reads instead of three or more
+ * per card. With `lock`, every row is locked by one statement in the given order, the order in
+ * which one getCard call after another would lock them. A card's own failure (missing, foreign,
+ * deleted, or on no live session) is thrown only when that card is taken.
+ */
+export async function readCards(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+  lock = false,
+): Promise<CardReads> {
+  const unique = [...new Set(ids)];
+  const outcomes = new Map<string, { card: StudyCard } | { failure: unknown }>();
+  if (unique.length) {
+    let query = db
+      .selectFrom("card.card")
+      .selectAll()
+      .where("id", "in", unique)
+      .where("deleted_at", "is", null);
+    if (lock)
+      query = query
+        .orderBy(sql`array_position(${sql.val(unique)}::uuid[], ${sql.ref("id")})`)
+        .forUpdate();
+    const rows = new Map((await query.execute()).map((row) => [row.id, row]));
+    const owned = [...rows.values()].filter((row) => row.user_id === ctx.userId);
+    const links = owned.length
+      ? await db
+          .selectFrom("card.session_link")
+          .select(["card.session_link.card_id", "card.session_link.session_id"])
+          .where(
+            "card.session_link.card_id",
+            "in",
+            owned.map((row) => row.id),
+          )
+          .where("card.session_link.user_id", "=", ctx.userId)
+          .execute()
+      : [];
+    const live = new Set(
+      await filterLiveSessionIds(
+        db,
+        ctx,
+        links.map((link) => link.session_id),
+      ),
+    );
+    const sessions = new Map<string, string[]>();
+    for (const link of links)
+      if (live.has(link.session_id))
+        sessions.set(link.card_id, [...(sessions.get(link.card_id) ?? []), link.session_id]);
+    const cards: StudyCard[] = [];
+    for (const id of unique) {
+      try {
+        const row = rows.get(id);
+        assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
+        if (!row) throw errors.notFound();
+        const sessionIds = sessions.get(id) ?? [];
+        if (!sessionIds.length) throw errors.notFound();
+        const card = view(row, sessionIds);
+        cards.push(card);
+        outcomes.set(id, { card });
+      } catch (failure) {
+        outcomes.set(id, { failure });
+      }
+    }
+    // One resolution for every readable card; it reads each class's notebook once.
+    await withPronunciationTargets(db, ctx, cards);
+  }
+  return {
+    take(id) {
+      const outcome = outcomes.get(id);
+      if (!outcome) throw errors.notFound();
+      if ("failure" in outcome) throw outcome.failure;
+      return outcome.card;
+    },
+  };
 }
 export async function getActiveCard(
   db: Database | Tx,

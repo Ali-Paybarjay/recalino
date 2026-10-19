@@ -1,7 +1,7 @@
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
-import { cardTemplateSchema, getCard, liveCardIds } from "../card";
+import { cardTemplateSchema, liveCardIds, readCards } from "../card";
 import type { Database, DB, Tx } from "../db";
 import { getMediaAsset, readMediaBytes } from "../media";
 import { getSession } from "../org";
@@ -110,8 +110,14 @@ async function owned(db: Database | Tx, ctx: LearnerContext, id: string, now: Da
   assertOwner(row && !row.tombstoned_at ? { ownerId: row.user_id } : undefined, ctx);
   if (!row || row.expires_at <= now || !row.snapshot) throw errors.notFound();
   await getSession(db, ctx, row.session_id);
-  for (const card of parseSnapshot(ankiSnapshotCardIdsSchema, row.snapshot).cards)
-    await getCard(db, ctx, card.id);
+  // PERF-04: every copied card read at once and checked in snapshot order, as getCard checked it.
+  const cards = parseSnapshot(ankiSnapshotCardIdsSchema, row.snapshot).cards;
+  const live = await readCards(
+    db,
+    ctx,
+    cards.map((card) => card.id),
+  );
+  for (const card of cards) live.take(card.id);
   return row;
 }
 async function describe(db: Database | Tx, ctx: LearnerContext, id: string): Promise<ExportMedia> {
@@ -170,8 +176,11 @@ export async function requestAnkiExport(
     const session = await getSession(tx, ctx, input.sessionId);
     const cards: AnkiSnapshot["cards"] = [];
     const mediaMap = new Map<string, ExportMedia>();
+    // PERF-04: the selected cards are read and locked by one statement in the learner's order,
+    // then checked one after another in that order, as one locked getCard per card did.
+    const selected = await readCards(tx, ctx, input.cardIds, true);
     for (const id of input.cardIds) {
-      const card = await getCard(tx, ctx, id, true);
+      const card = selected.take(id);
       if (input.expectedVersions && input.expectedVersions[id] !== card.contentVersion)
         throw errors.conflict();
       if (!card.sessionIds.includes(session.id) || ["rejected", "deleted"].includes(card.status))
