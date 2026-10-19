@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SpeakerHigh } from "../icons";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import styles from "./PronunciationAudio.module.css";
 import {
   freshPronunciationPlayback,
@@ -55,7 +55,7 @@ function pronunciationProblem(failure: unknown): string {
     )
   )
     return "Pronunciation is not configured yet. You can keep studying.";
-  return failure instanceof Error ? failure.message : "Pronunciation is unavailable. Try again.";
+  return userMessage(failure, "Pronunciation is unavailable. Try again.");
 }
 
 function pauseOtherStudyAudio(player: HTMLAudioElement) {

@@ -361,7 +361,7 @@ for (const width of [390, 1440]) {
         // D79: the supplementary card follows the core card in the same queue.
         await page.getByRole("button", { name: "Show answer", exact: true }).click();
         await page.getByRole("button", { name: "Remembered", exact: true }).click();
-        await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();
+        await expect(page.getByText("Supplementary cards", { exact: true })).toBeVisible();
       }
       await expect(page.getByRole("button", { name: /^Hear pronunciation of/ })).toHaveCount(0);
       await page.getByRole("button", { name: "Show answer", exact: true }).click();

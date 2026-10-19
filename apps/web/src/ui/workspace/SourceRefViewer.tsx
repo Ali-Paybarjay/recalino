@@ -2,7 +2,7 @@
 import type { SourceRef } from "@recalino/core/lkm";
 import { useEffect, useRef, useState } from "react";
 import { IndexedRecordingStore } from "../recording/store";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import { Actions, Button, Status } from "./primitives";
 
 interface ContentVersion {
@@ -107,7 +107,7 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
         setMedia(link.url);
       }
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "The source could not be opened.");
+      setProblem(userMessage(error, "The source could not be opened."));
     } finally {
       setLoading(false);
     }

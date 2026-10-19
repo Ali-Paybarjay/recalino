@@ -147,7 +147,7 @@ describe("generated previews and automatic preparation", () => {
       "Preview homework",
       "Preview uncertainty",
       "AI explanation",
-      "Some source details need checking.",
+      "Some material details need checking.",
       "Read-only preview",
       "New uploads automatically save your notes and flashcards.",
     ])

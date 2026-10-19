@@ -27,7 +27,7 @@ export default async function CoursesPage({
     >
       <div className="preview-stack">
         <Link className="preview-back" href="/sessions">
-          ← Back to courses
+          ← Back to sessions
         </Link>
         <Panel title="Your courses">
           <p className="preview-muted">{courseCopy.goalHelp}</p>

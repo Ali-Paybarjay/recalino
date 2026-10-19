@@ -3,7 +3,7 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog, Sheet } from "../components/Sheet";
-import { workspaceRequest } from "../workspace/api";
+import { userMessage, workspaceRequest } from "../workspace/api";
 import {
   notifyAutomaticLearning,
   pendingLearningBatch,
@@ -113,11 +113,7 @@ export function RecordingView({
         })
         .catch((failure) => {
           if (!abort.signal.aborted)
-            setError(
-              failure instanceof Error
-                ? failure.message
-                : "The material notice could not be opened.",
-            );
+            setError(userMessage(failure, "The material notice could not be opened."));
         });
     };
     load();
@@ -152,7 +148,7 @@ export function RecordingView({
       await action();
       await reload();
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "The recording could not be opened.");
+      setError(userMessage(failure, "The recording could not be opened."));
     } finally {
       setBusy(null);
     }

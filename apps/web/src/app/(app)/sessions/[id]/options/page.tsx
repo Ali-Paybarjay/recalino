@@ -13,12 +13,7 @@ export default async function ClassOptionsPage({ params }: { params: Promise<{ i
     <LearnerShell
       learner={learner}
       current="classes"
-      header={
-        <PageHeader
-          title="Keep your sessions organised"
-          subtitle="Rename, move or remove a session."
-        />
-      }
+      header={<PageHeader title="Session options" subtitle="Rename, move or remove a session." />}
     >
       <ClassForm {...groups} today={calendarDate(learner.state.timezone)} initial={initial} />
     </LearnerShell>

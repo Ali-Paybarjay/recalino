@@ -8,6 +8,7 @@ import { useRecording } from "../recording/RecordingProvider";
 import { WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { notificationCopy, notificationMessage } from "./copy";
 import styles from "./NotificationCenter.module.css";
+import { OPEN_NOTIFICATIONS_EVENT } from "./open-notifications-event";
 import {
   applicationServerKey,
   devicePushSubscription,
@@ -166,6 +167,14 @@ export function NotificationCenter({ userId }: { userId: string }) {
       setSaving(false);
     }
   }
+  // A page that invites the learner to turn on notifications asks this panel to open.
+  const showInboxRef = useRef(showInbox);
+  showInboxRef.current = showInbox;
+  useEffect(() => {
+    const show = () => void showInboxRef.current();
+    window.addEventListener(OPEN_NOTIFICATIONS_EVENT, show);
+    return () => window.removeEventListener(OPEN_NOTIFICATIONS_EVENT, show);
+  }, []);
   return (
     <>
       <div className={styles.toolbar}>

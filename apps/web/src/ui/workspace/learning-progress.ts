@@ -1,8 +1,7 @@
 import { retryAllowanceCopy } from "../retry-allowance-copy";
-import { fill } from "../strings-fill";
-import { settingsStrings as strings } from "../strings-settings";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
+import { learningProgressCopy } from "./learning-progress-copy";
 import type { UploadBatch, UploadEntry } from "./upload-store";
 
 export type LearningStage = "upload" | "verify" | "process" | "ready";
@@ -19,6 +18,8 @@ export interface LearningProgress {
   stage: LearningStage;
   heading: string;
   guidance: string;
+  /** Processing is under way or queued, so the wait estimate and the notification invite fit. */
+  showsWait: boolean;
   active: boolean;
   preparing: boolean;
   needsMaterialReview: boolean;
@@ -110,11 +111,7 @@ function blockedStage(status: AutomaticLearningStatus, batch: UploadBatch | unde
   return "process";
 }
 
-function recoveryGuidance(
-  status: AutomaticLearningStatus,
-  termsAccepted: boolean,
-  termsChangedOn: string | null,
-) {
+function recoveryGuidance(status: AutomaticLearningStatus, termsAccepted: boolean) {
   const recovery = automaticLearningRecovery(status, termsAccepted);
   if (recovery.kind === "allowance") {
     if (recovery.allowance === "covered")
@@ -133,10 +130,8 @@ function recoveryGuidance(
     return status.lastError === "upload_batch_cancelled"
       ? "Add a new group of files to continue."
       : "Open Review material and resolve the message for the affected file to continue.";
-  // New Terms: the approved Settings sentence names the date; without a date there is no sentence
-  // and the "Read and accept" button next to it carries the message.
-  if (recovery.kind === "setup")
-    return termsChangedOn ? fill(strings.settings.termsChanged, { date: termsChangedOn }) : "";
+  // New Terms: the "Read and accept" button next to this sentence opens the Terms sheet (UX-09).
+  if (recovery.kind === "setup") return learningProgressCopy.termsGuidance;
   return `Retry this attempt to continue. ${retryAllowanceCopy(status)}`;
 }
 
@@ -147,8 +142,6 @@ export function learningProgress(
   uploadProgress?: AutomaticUploadProgress | null,
   /** The learner has no new Terms waiting, so a stop for them is out of date (UX-09). */
   termsAccepted = false,
-  /** The date the Terms changed, for the sentence that goes with "Read and accept". */
-  termsChangedOn: string | null = null,
 ): LearningProgress {
   const batch = currentBatch(status, batches);
   const entries = batch?.entries.filter((entry) => entry.phase !== "skipped") ?? [];
@@ -208,12 +201,13 @@ export function learningProgress(
   const active = !idle && !blocked && !ready;
   let heading: string;
   let guidance: string;
+  let showsWait = false;
   if (needsMaterialReview) {
     heading = "Your upload needs attention";
     guidance = "Open Review material and retry the affected file to continue.";
   } else if (blocked) {
     heading = "Your session needs attention";
-    guidance = recoveryGuidance(status, termsAccepted, termsChangedOn);
+    guidance = recoveryGuidance(status, termsAccepted);
   } else if (idle) {
     heading = "Add your session material";
     guidance = "Add documents, audio or photos to start creating notes and flashcards.";
@@ -257,8 +251,9 @@ export function learningProgress(
   } else {
     heading =
       status.run?.state === "queued" ? "Waiting to process" : "Creating notes and flashcards";
-    guidance =
-      "You can leave this page. Processing continues automatically, and progress updates here.";
+    // UX-13: a rough wait (approved 2026-10-19) before the sentence that was here already.
+    guidance = `${learningProgressCopy.waitEstimate} Processing continues automatically, and progress updates here.`;
+    showsWait = true;
   }
 
   const cloudProcessing = status.state === "processing" || ready;
@@ -325,6 +320,7 @@ export function learningProgress(
     stage,
     heading,
     guidance,
+    showsWait,
     active,
     preparing,
     needsMaterialReview,

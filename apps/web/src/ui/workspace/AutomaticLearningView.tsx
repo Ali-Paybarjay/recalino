@@ -5,11 +5,12 @@ import { settingsStrings as strings } from "../strings-settings";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
 import { useAccountGate } from "./account-gate";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
+import { NotificationInvite } from "./NotificationInvite";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { uploadRetryCanHelp } from "./session-state";
 import { openTermsNotice } from "./terms-notice-event";
@@ -26,13 +27,10 @@ export function subscribeConnection(changed: () => void) {
 export const connectionSnapshot = () => navigator.onLine;
 export const connectedServerSnapshot = () => true;
 
-/**
- * `accepted`: no new Terms wait and setup is done, so a stop for `acceptance_required` is out of
- * date. `changedOn` is the date for the Terms sentence shown while they do wait.
- */
-function useTermsGate() {
+/** No new Terms wait and setup is done, so a stop for `acceptance_required` is out of date. */
+function useTermsAccepted() {
   const gate = useAccountGate();
-  return { accepted: gate.setupComplete && !gate.termsPending, changedOn: gate.termsChangedOn };
+  return gate.setupComplete && !gate.termsPending;
 }
 
 type Recovery = ReturnType<typeof automaticLearningRecovery>;
@@ -145,7 +143,7 @@ export function useLearningRetry(sessionId: string, live: ReturnType<typeof useA
         );
       }
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "This attempt could not be resumed.");
+      setProblem(userMessage(failure, "This attempt could not be resumed."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -170,11 +168,7 @@ export function useLearningRetry(sessionId: string, live: ReturnType<typeof useA
       setFeedback("Your processing review request is recorded. You can follow its status below.");
       notifyAutomaticLearning(sessionId);
     } catch (failure) {
-      setProblem(
-        failure instanceof Error
-          ? failure.message
-          : "The processing review could not be requested. Try again.",
-      );
+      setProblem(userMessage(failure, "The processing review could not be requested. Try again."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -212,14 +206,8 @@ function LearningStatusCard({
   children: ReactNode;
 }) {
   const batches = useUploadBatches(sessionId);
-  const terms = useTermsGate();
-  const progress = learningProgress(
-    status,
-    batches,
-    live.uploadProgress,
-    terms.accepted,
-    terms.changedOn,
-  );
+  const termsAccepted = useTermsAccepted();
+  const progress = learningProgress(status, batches, live.uploadProgress, termsAccepted);
   const online = useSyncExternalStore(
     subscribeConnection,
     connectionSnapshot,
@@ -312,6 +300,7 @@ function LearningStatusCard({
               {status.message}
             </p>
           ) : null}
+          {progress.showsWait && !attention ? <NotificationInvite /> : null}
         </>
       )}
       <div className={styles.cardActions}>
@@ -334,8 +323,8 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const batches = useUploadBatches(sessionId);
   const { status, problem } = live;
   const retry = useLearningRetry(sessionId, live);
-  const terms = useTermsGate();
-  const recovery = automaticLearningRecovery(status, terms.accepted);
+  const termsAccepted = useTermsAccepted();
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const fallback: AutomaticLearningStatus = {
@@ -353,8 +342,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     status ?? fallback,
     batches,
     live.uploadProgress,
-    terms.accepted,
-    terms.changedOn,
+    termsAccepted,
   );
   if (
     !problem &&
@@ -427,8 +415,8 @@ export function AutomaticLearningView({
   const stoppedUpload = live.manualAudio?.find(
     (entry) => entry.phase === "attention" && uploadRetryCanHelp(entry),
   );
-  const terms = useTermsGate();
-  const recovery = automaticLearningRecovery(status, terms.accepted);
+  const termsAccepted = useTermsAccepted();
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
   return (
@@ -453,9 +441,7 @@ export function AutomaticLearningView({
                 void live
                   .retryManualAudio(stoppedUpload.runId)
                   .catch((failure: unknown) =>
-                    setUploadProblem(
-                      failure instanceof Error ? failure.message : "The upload could not resume.",
-                    ),
+                    setUploadProblem(userMessage(failure, "The upload could not resume.")),
                   );
               }}
             >
@@ -515,7 +501,7 @@ export function AutomaticLearningView({
               {review?.state === "resolved"
                 ? review.partialResult
                   ? // Approved by the product owner on 2026-10-10.
-                    "Your session notes and flashcards are available with some source limitations. Open the notes to see what could not be processed."
+                    "Your session notes and flashcards are available with some material limitations. Open the notes to see what could not be processed."
                   : "Processing has finished. Your session notes and flashcards are ready."
                 : review?.state === "retrying"
                   ? "Processing is continuing with your saved material. You will receive a notification when the result is ready."

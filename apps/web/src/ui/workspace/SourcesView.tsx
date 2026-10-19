@@ -8,7 +8,7 @@ import { UploadProgress } from "../components/UploadProgress";
 import { IndexedRecordingStore } from "../recording/store";
 import { AllowanceActions, AllowanceRequest } from "./AllowanceActions";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import {
   type AutomaticLearningStatus,
   inAutomaticLearningBatch,
@@ -20,6 +20,7 @@ import { type FileProcessingReceipt, fileProcessingFeedback } from "./file-proce
 import { appendSelectedFiles, type SelectedFile, selectedFileProblem } from "./file-selection";
 import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
+import { sourceKindLabel } from "./source-labels";
 import type { SourceRow } from "./source-types";
 import { useUploads } from "./UploadProvider";
 import type { UploadEntry } from "./upload-store";
@@ -274,7 +275,7 @@ export function SourcesView({
       await effect();
       router.refresh();
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "The change could not be saved.");
+      setProblem(userMessage(error, "The change could not be saved."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -286,7 +287,7 @@ export function SourcesView({
       confirmed,
     });
     setAccepted(true);
-    setMessage("Source notice accepted.");
+    setMessage("Material notice accepted.");
   }
   function openOriginal(source: SourceRow) {
     return action(async () => {
@@ -445,7 +446,7 @@ export function SourcesView({
       )}
       {/* UX-13: the one tick that unlocks adding files comes before the buttons it unlocks. */}
       {!accepted ? (
-        <Panel title="Before adding sources">
+        <Panel title="Before adding material">
           <p>
             Choosing Upload &amp; Process creates and saves your session notes and flashcards. Audio
             remains on this device, with a temporary copy uploaded for transcription. Other files
@@ -482,11 +483,11 @@ export function SourcesView({
           onClick={() =>
             action(async () => {
               setPrevious(await workspaceRequest<OwnSource[]>("/api/sources", "GET"));
-              setMessage("Choose an existing source below.");
+              setMessage("Choose existing material below.");
             })
           }
         >
-          Use an existing source
+          Use existing material
         </Button>
       </Actions>
       <input
@@ -595,10 +596,10 @@ export function SourcesView({
         />
       )}
       {previous.length ? (
-        <Panel title="Your existing sources">
-          <Field label="Source">
+        <Panel title="Your existing material">
+          <Field label="Material">
             <select value={reuse} onChange={(event) => setReuse(event.target.value)}>
-              <option value="">Choose a source</option>
+              <option value="">Choose material</option>
               {previous.map((source) => (
                 <option key={source.id} value={source.id}>
                   {source.display_name}
@@ -615,7 +616,7 @@ export function SourcesView({
                 );
                 setPrevious([]);
                 setReuse("");
-                setMessage("Source added without uploading it again.");
+                setMessage("Material added without uploading it again.");
               })
             }
           >
@@ -686,13 +687,13 @@ export function SourcesView({
           </Button>
         </Panel>
       )}
-      <Panel title="Session sources">
+      <Panel title="Session material">
         <p className="preview-muted">
           Files added to this session. Checked files are used to create your notes and flashcards.
         </p>
         {!visibleSources.length && !pendingFiles.length ? (
           <div className="preview-empty">
-            <h3>Add your first source</h3>
+            <h3>Add your first material</h3>
             <p>Bring together your recording, handouts, photos and notes.</p>
           </div>
         ) : (
@@ -793,7 +794,7 @@ export function SourcesView({
                     setMessage(
                       mode === "original"
                         ? "Original file deleted. The saved extraction is retained."
-                        : "Source deleted from all sessions.",
+                        : "Material deleted from all sessions.",
                     );
                   })
                 }
@@ -817,7 +818,7 @@ export function SourcesView({
                     setFileUploads((previous) =>
                       previous.filter((file) => file.source?.assetId !== source.assetId),
                     );
-                    setMessage("Source removed from this session.");
+                    setMessage("Material removed from this session.");
                   })
                 }
                 read={() => openOriginal(source)}
@@ -1042,7 +1043,7 @@ function SourceItem({
               ? "Board photo"
               : source.role === "user_notes"
                 ? "Notes"
-                : source.kind}{" "}
+                : sourceKindLabel(source.kind)}{" "}
           · {(source.sizeBytes / 1_000_000).toFixed(1)} MB
         </span>
       </div>
@@ -1187,12 +1188,12 @@ function SourceItem({
         <summary>Delete options</summary>
         {deletionBlocked && (
           <p className="preview-muted">
-            Skip this file or cancel its upload group before deleting the source.
+            Skip this file or cancel its upload group before deleting this material.
           </p>
         )}
         <p className="preview-muted">
-          Deleting the original file keeps its saved extraction. Deleting the entire source removes
-          it from every session.
+          Deleting the original file keeps its saved extraction. Deleting from all sessions removes
+          this material from every session.
         </p>
         <label className="preview-check">
           <input
@@ -1217,7 +1218,7 @@ function SourceItem({
             disabled={busy || !deleteConfirmed || deletionBlocked}
             onClick={() => void deleteSource("all")}
           >
-            Delete entire source
+            Delete from all sessions
           </Button>
         </Actions>
       </details>

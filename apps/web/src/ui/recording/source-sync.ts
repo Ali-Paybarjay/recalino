@@ -1,4 +1,4 @@
-import { WorkspaceRequestError, workspaceRequest } from "../workspace/api";
+import { userMessage, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { retryUploadRequest } from "../workspace/upload";
 import type { RecordingController } from "./controller";
 import type { IndexedRecordingStore, Recording, RecordingStore } from "./store";
@@ -373,8 +373,7 @@ export class RecordingSourceSync {
         this.update({ phase: "waiting", error: error.message });
         return;
       }
-      const message =
-        error instanceof Error ? error.message : "Session sources could not be updated.";
+      const message = userMessage(error, "Session material could not be updated.");
       if (current) {
         await this.store
           .updateRegistration(this.userId, current.id, { syncError: message })

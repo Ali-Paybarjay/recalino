@@ -3,7 +3,7 @@ import { Banner } from "../ui/components/Feedback";
 import { Icon } from "../ui/components/Icon";
 import { ProvenanceBlock } from "../ui/components/Status";
 import { experienceCopy } from "../ui/experience-copy";
-import { Cards, IdentificationBadge, Play, Warning } from "../ui/icons";
+import { Cards, IdentificationBadge, Info, Play, Warning } from "../ui/icons";
 import { Wordmark } from "../ui/shell/Wordmark";
 import { strings } from "../ui/strings";
 import styles from "./SignIn.module.css";
@@ -51,6 +51,10 @@ export function SignIn({ failed, next, terms, privacy }: SignInProps) {
                 </li>
               ))}
             </ol>
+            <p className={styles.hint}>
+              <Icon icon={Info} className={styles.hintIcon} />
+              {experienceCopy.welcome.pilotNote}
+            </p>
           </div>
           <div className={styles.signInPanel}>
             <div className={styles.panelHeading}>

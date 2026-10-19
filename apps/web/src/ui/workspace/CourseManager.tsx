@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { InfoTip } from "../components/InfoTip";
 import { Sheet } from "../components/Sheet";
 import { unitCopy } from "../course-copy";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 
 export function CourseManager({
@@ -55,9 +55,7 @@ export function CourseManager({
       setNotice("Your changes are saved.");
       return result;
     } catch (failure) {
-      setError(
-        failure instanceof Error ? failure.message : "The change could not be saved. Try again.",
-      );
+      setError(userMessage(failure, "The change could not be saved. Try again."));
       return null;
     } finally {
       setBusy(false);

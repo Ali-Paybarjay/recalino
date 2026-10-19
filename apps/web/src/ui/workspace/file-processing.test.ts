@@ -259,7 +259,7 @@ describe("truthful file processing feedback", () => {
       status({
         state: "blocked",
         lastError: "quota_insufficient",
-        message: "Your allowance now covers this class.",
+        message: "Your allowance now covers this session.",
         allowance: { active: true, required: amounts(1), available: amounts(1) },
       }),
       [source()],

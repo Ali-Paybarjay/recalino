@@ -2,7 +2,7 @@
 
 متن رابط باید از طرح مصوب بیاید (CLAUDE.md، «پیاده‌سازی رابط کاربری»؛ D34 و D35). متن‌های زیر برای حالت‌هایی نوشته شده‌اند که نه در `handoff/copy.md` هستند و نه در گزارش‌های بازطراحی 2026-10-04. هیچ‌کدام هنوز تأیید نشده‌اند. همه در [`apps/web/src/ui/pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) نگه داشته می‌شوند و آزمون `pending-copy.test.ts` بررسی می‌کند که هر متن عیناً در همین فهرست ثبت شده باشد.
 
-پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود.
+پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A) هستند. بخش «System health» دستهٔ ۳ تأیید نشده است.
 
 **تأیید 2026-10-10:** مالک محصول همهٔ ۴۳ متنی را که در این تاریخ در فهرست بودند تأیید کرد (پیگیری D54). ۳۴ متن عیناً منتقل شدند: متن‌های صدا به [`voice/voice-copy.ts`](../../apps/web/src/ui/voice/voice-copy.ts)، متن‌های بازبینی پردازش به `AutomaticLearningView.tsx` و متن‌های `learningMemory.*` به `learning-memory-copy.ts`. نُه متن صدا (`voice.reference.short`، `expired` و `missing`؛ `voice.match.no_sample`، `no_reference` و `policy_unavailable`؛ `voice.readiness.needs_sample`، `needs_class` و `unavailable`) با D54 نمی‌خواندند، چون ممکن بود در حالتی نمایش داده شوند که calibration خود حساب (۲۰ تأیید و ۲۰ رد) کلاس‌های بعد را خودکار بپذیرد. مالک محصول در همان روز متن اصلاح‌شدهٔ هر نُه متن را عیناً تأیید کرد و آن‌ها هم به `voice-copy.ts` رفتند. پیشنهاد PR #23 برای `voice.readiness.unavailable` بدون جملهٔ سوم پذیرفته شد، چون آن جمله با سیاست `autoAccept: false` درست نیست.
 
@@ -42,25 +42,69 @@
 
 پس از این تأیید فهرست خالی است.
 
-## ممیزی 2026-10-18، دستهٔ ۴ — مسیر زبان‌آموز (`fix/audit-4`)
+## تأیید 2026-10-19 (ممیزی 2026-10-18، دستهٔ ۵ — متن و اصطلاحات، `fix/audit-5`)
 
-متن‌های زیر برای رفع یافته‌های UX-03، UX-09، UX-10، UX-12 و UX-14 پیشنهاد شدند، ولی نه در `handoff/copy.md` هستند و نه در قاب‌های طرح و مالک محصول هنوز تأییدشان نکرده است. طبق CLAUDE.md متن رابط عیناً از طرح یا متن موجود می‌آید، پس **هیچ‌کدام در رابط نیستند** و [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) خالی می‌ماند. هر مورد می‌گوید رابط تا تأیید چه نشان می‌دهد. اگر مالک محصول متنی را عیناً در چت تأیید کند، آن متن به فایل نهایی صفحه می‌رود (نه به `pending-copy.ts`).
+مالک محصول در این تاریخ ده متن را عیناً تأیید کرد: هفت متن دستهٔ ۴ (UX-03، UX-09، UX-10، UX-12 و UX-14) و سه پیشنهاد UX-01 و UX-13. تأیید فقط برای دستهٔ ۵ است. شمارهٔ D بعداً در دستهٔ تصمیم‌ها داده می‌شود و `PRODUCT_DECISIONS_LOG.md` این‌جا تغییر نکرد. هر متن از [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) (که خالی ماند) مستقیم به فایل متن صفحهٔ خودش رفت و «تا تأیید» موقت دستهٔ ۴ برداشته شد. آزمون `approved-copy.test.ts` بررسی می‌کند که هر متن عیناً در رابط و در همین بخش باشد.
 
-هر جا متن از قاب یا از متن موجود اپ آمده، در این فهرست نیست (مثلاً Sheet حذف کارت از قاب E3-delete، دکمهٔ «Read and accept» و جملهٔ «The Terms changed on {date}…» از `strings.settings`، و «Sign out» از `strings.settings.signOut`).
+- **UX-03، پیام Undo پس از Reject** (`cardActionsCopy.rejected` در [`workspace/card-actions-copy.ts`](../../apps/web/src/ui/workspace/card-actions-copy.ts)): «Card rejected». Snackbar با دکمهٔ Undo و الگوی قاب E3؛ هنگام ضبط فعال نمایش داده نمی‌شود (PRD-REC-02). دکمهٔ موقت «Undo last card change» روی کارت ردشده برداشته شد.
+- **UX-09، راهنمای پیشرفت وقتی Terms تازه پردازش را نگه داشته** (`learningProgressCopy.termsGuidance` در [`workspace/learning-progress-copy.ts`](../../apps/web/src/ui/workspace/learning-progress-copy.ts)): «Read and accept the updated Terms to continue.» جملهٔ موقت `strings.settings.termsChanged` و تاریخ آن (`termsChangedOn`) از مسیر پیشرفت برداشته شد.
+- **UX-10، رسید حذف حساب در وضعیت `needs_operator`** (`privacyCopy.needsOperator` در [`workspace/privacy-copy.ts`](../../apps/web/src/ui/workspace/privacy-copy.ts)): «Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below.»
+- **UX-12، صفحهٔ Allowance، «Need more allowance?»** (`allowanceHelp.need` در [`allowance-copy.ts`](../../apps/web/src/ui/allowance-copy.ts)): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.»
+- **UX-12، صفحهٔ Allowance، «Reserved and used»** (`allowanceHelp.reserved`): «Reserved allowance is held while your material is processed. Only usable published output is charged.»
+- **UX-12، خطای تغییر منابع پس از برآورد** (`workspaceErrors.sourcesChanged` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts)): «The selected sources have changed. Check your session material, then try again.» عیناً مانده است، حتی با واژهٔ «sources»؛ بند «واژهٔ material» پایین‌تر را ببینید.
+- **UX-14، بالای صفحهٔ Your data** (`privacyCopy.downloadFirst`): «To keep a copy first, open a session, choose More session tools, then Download notes and cards.»
+- **UX-01، صفحهٔ ورود** (`experienceCopy.welcome.pilotNote` در [`experience-copy.ts`](../../apps/web/src/ui/experience-copy.ts)): «Built for a small pilot group. Sign in with Google to start.» همان جایی است که یادداشت حذف‌شدهٔ «coming next» بود.
+- **UX-13، برآورد انتظار** (`learningProgressCopy.waitEstimate`): «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» زیر «Waiting to process» و «Creating notes and flashcards» می‌آید و پیش از جملهٔ قبلی «Processing continues automatically, and progress updates here.» است. بدون عدد و بدون داده‌های NFR-07 است.
+- **UX-13، دعوت به اعلان** (`learningProgressCopy.notificationQuestion` و `notificationAction`): «Want a message when your notes are ready? Turn on notifications in Settings.» جملهٔ دوم دکمه‌ای است که پنل «Notifications» را باز می‌کند؛ کلید روشن‌کردن اعلان دستگاه همان‌جاست و در صفحهٔ `/me` چنین ردیفی نیست. فقط وقتی دیده می‌شود که مرورگر Push را بشناسد و اجازه هنوز پرسیده نشده باشد، و هرگز هنگام ضبط فعال.
 
-- **UX-03، پیام Undo پس از Reject** (`cardActions.rejected`): «Card rejected». الگوی قاب E3 («Card suspended»)، Snackbar با دکمهٔ Undo؛ هنگام ضبط فعال نمایش داده نشود. تا تأیید: کارت ردشده دکمهٔ «Undo last card change» (متن موجود `CardEditor`) دارد.
-- **UX-09، راهنمای پیشرفت وقتی Terms تازه پردازش را نگه داشته** (`termsAcceptance.guidance`): «Read and accept the updated Terms to continue.» جایگزین «Open Review account setup to continue.». تا تأیید: جملهٔ مصوب `strings.settings.termsChanged` با تاریخی که سرور می‌دهد؛ اگر تاریخ معلوم نباشد جمله‌ای نمایش داده نمی‌شود و دکمهٔ «Read and accept» می‌ماند.
-- **UX-10، رسید حذف حساب در وضعیت `needs_operator`** (`accountDeletion.needsOperator`): «Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below.» تا تأیید: فقط «Request reference: …»، پیوند «Ask the pilot operator» (وقتی نشانی تنظیم شده) و «Sign out»؛ جملهٔ «Server cleanup has been queued.» در این حالت نمایش داده نمی‌شود، چون نادرست است.
-- **UX-12، صفحهٔ Allowance، بخش «Need more allowance?»** (`allowanceHelp.need`): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.» تا تأیید: فقط «The pilot operator sets your allowance.».
-- **UX-12، صفحهٔ Allowance، بخش «Reserved and used»** (`allowanceHelp.reserved`): «Reserved allowance is held while your material is processed. Only usable published output is charged.» تا تأیید: فقط «Only usable published output is charged.» (جملهٔ قدیمی دربارهٔ «work you confirmed» حذف شد، چون پردازش خودکار است).
-- **UX-12، خطای تغییر منابع پس از برآورد** (`workspaceErrors.sourcesChanged`): «The selected sources have changed. Check your session material, then try again.» تا تأیید: فقط «The selected sources have changed.» (بدون «Review the processing estimate and confirm again.»).
-- **UX-14، بالای صفحهٔ Your data** (`yourData.downloadFirst`): «To keep a copy first, open a session, choose More session tools, then Download notes and cards.» تا تأیید: متنی اضافه نمی‌شود؛ پیوند «Choose a session» به `/sessions` که از قبل بود می‌ماند.
+## تأیید 2026-10-19 — واژگان A (تصمیم مالک محصول برای دستهٔ ۵، UX-06)
 
-### پیشنهادهای ثبت‌شده که هنوز در رابط نیستند (UX-01 و UX-13)
+«session» برای جلسهٔ کلاس، «course» برای درس، «material» برای همهٔ فایل‌های بارگذاری‌شده و هر پیوند به `/courses` با برچسب «Manage courses». «class» فقط برای کلاس واقعی می‌ماند («From class»، «Class audio»، «During class»). برچسب‌هایی که این واژگان می‌خواهند و در `handoff/copy.md` نیستند، با همین تصمیم تأیید شده‌اند. آزمون `strings.test.ts` برای تنها رشتهٔ `strings` آن (نام تب «Sessions») یک ورودی در `APPROVED_DEVIATIONS` دارد.
 
-- **UX-01:** جملهٔ «Class capture, notes and reviews are coming next in the pilot.» از صفحهٔ ورود حذف شد. اگر مالک محصول جملهٔ جایگزین بخواهد، پیشنهاد: «Built for a small pilot group. Sign in with Google to start.» (فقط پیشنهاد؛ در رابط نیست.)
-- **UX-13، برآورد انتظار:** پیشنهاد برای زیر «Waiting to process» و «Creating notes and flashcards»: «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» نیاز به داده‌های واقعی زمان مرحله‌ها (NFR-07) دارد؛ بدون آن عبارت «within a few minutes» تعهد بی‌پشتوانه است.
-- **UX-13، دعوت به اعلان:** پیشنهاد: «Want a message when your notes are ready? Turn on notifications in Settings.» (نیازمند تأیید مالک و تصمیم دربارهٔ جای دکمه).
+| برچسب قدیمی | برچسب تازه | محل |
+|---|---|---|
+| Courses (تب به `/sessions`) | Sessions | `strings.nav.classes`، تب پایین/کنار |
+| Courses (عنوان صفحهٔ `/sessions`) | Sessions | `app/(app)/sessions/page.tsx` |
+| Courses (ردیف Settings به `/courses`) | Manage courses | `me/ProfileSettings.tsx` |
+| Courses (پیوند راهنمای Goal به `/courses`) | Manage courses | `me/edit/[field]/EditField.tsx` |
+| View courses (Course tools به `/courses`) | Manage courses | `workspace/ClassDirectory.tsx` |
+| View courses (صفحهٔ Allowance به `/sessions`) | View sessions | `me/quota/page.tsx` |
+| Open your courses (Review به `/sessions`، دو جا) | Open your sessions | `workspace/ReviewView.tsx` |
+| Go to courses (Your learning به `/sessions`) | Go to sessions | `learning-memory-copy.ts` |
+| ← Back to courses (در `/courses`، به `/sessions`) | ← Back to sessions | `courses/page.tsx` |
+| ← Back to courses (در `/sessions/organize`، به `/sessions`) | ← Back to sessions | `sessions/organize/page.tsx` |
+| ← Back to courses (در مواد درس، به `/courses`) | ← Manage courses | `courses/[id]/materials/page.tsx` |
+| Keep your sessions organised (عنوان صفحهٔ گزینه‌های جلسه) | Session options | `sessions/[id]/options/page.tsx` (برابر پیوند «Session options»؛ عنوان `/sessions/organize` همان ماند) |
+| this class needs more allowance / covers this class | this session needs more allowance / covers this session | `allowance-copy.ts` (دو متن) |
+| Your voice in this class؛ across this class's recordings…whole class؛ confirmed for this whole class؛ the whole class above | همان‌ها با session | `voice/voice-copy.ts` (چهار متن) |
+| Session sources (عنوان پنل، پیوند مواد درس، برچسب منشأ، خلاصهٔ «Session sources and explanations») | Session material | `SourcesView.tsx`، `courses/[id]/materials/page.tsx`، `NoteView.tsx` |
+| Before adding sources؛ Your existing sources؛ Use an existing source؛ Choose a source؛ فیلد Source؛ Add your first source | Before adding material؛ Your existing material؛ Use existing material؛ Choose material؛ Material؛ Add your first material | `SourcesView.tsx` |
+| Source notice accepted؛ Source added…؛ Source deleted from all sessions؛ Source removed from this session | با Material | `SourcesView.tsx` |
+| Delete entire source؛ «Deleting the entire source removes it…»؛ «before deleting the source» | Delete from all sessions؛ «Deleting from all sessions removes this material…»؛ «before deleting this material» | `SourcesView.tsx` |
+| Change sources؛ Review sources؛ Your sources have changed…؛ selected sources؛ session sources | Change material؛ Review material؛ Your material has changed…؛ selected material؛ session material | `ProcessingView.tsx` |
+| Some source details need checking؛ some source limitations | Some material details need checking؛ some material limitations | `NoteView.tsx`، `AutomaticLearningView.tsx` |
+| «…remove a source from its Sources page»؛ «Removing a source from one session…»؛ «Shared cards and source files…» | «…remove material from its Session material page»؛ «Removing material from one session…»؛ «Shared cards and material files…» | `PrivacyView.tsx` |
+| in Session sources (سه پیام) و «Review the sources…» | in Session material و «Review the material…» | `file-processing.ts` |
+| Select fewer sources…؛ in Sources؛ Your sources remain saved | Select less material…؛ in Session material؛ Your material remains saved | `workspace/api.ts` |
+| Session sources could not be updated | Session material could not be updated | `recording/source-sync.ts` |
+| check its current sources؛ the session sources | check its current material؛ the session material | `voice/VoiceConfirmation.tsx` |
+
+واژهٔ «sources» در جاهای زیر عمداً ماند: متن تأییدشدهٔ `workspaceErrors.sourcesChanged`، برچسب‌های ارزیابی درس (`lesson-review-copy.ts`: «Source evidence»، «Support from the sources») که به SourceRef اشاره دارند، متن‌های تأییدشدهٔ `voice-copy.ts` که از «this source» می‌گویند و خطاهای داخلی بارگذاری. «lesson» برای نتیجهٔ تولیدشده («Lesson quality review»، «generated lesson») ماند.
+
+## ممیزی 2026-10-18، دستهٔ ۵ — پیشنهادهای ثبت‌شده (UX-04 و UX-05)
+
+دو دسته‌اند. **پیشنهادهای تازه** (جملهٔ جایگزین برای `provider_outcome_unresolved`، رسید حذف حساب و پیام‌های سرور) هنوز تأیید نشده‌اند و **در رابط نیستند**؛ هر مورد می‌گوید رابط تا تأیید چه نشان می‌دهد. **برچسب‌های ساخته‌شده از واژه‌های موجود طرح** (کارت، نوع فایل، رسانه) در رابط‌اند، چون تنها یک واژهٔ پیش‌تر مصوب را به‌جای مقدار خام می‌گذارند؛ مالک محصول آن‌ها را برای تأیید نهایی ببیند.
+
+- **UX-04، پیام اتصال:** از متن موجود `accountCopy.error.connection` استفاده شد: «We couldn't connect. Check your internet connection and try again.» متن تازه لازم نبود. هر `catch` در `ui/workspace` (و صدا و ضبط) از `userMessage(failure, fallback)` می‌گذرد؛ خطای شبکه این پیام را می‌گیرد، کد `idempotency_mismatch` و `cross_site` متن عمومی همان صفحه را می‌گیرند و هیچ متن خام استثنا دیده نمی‌شود.
+- **UX-05، خطای `provider_outcome_unresolved`** (`workspace/api.ts`): پیشنهاد: «A result is still being checked. Contact the pilot operator before trying again.» جمله‌ٔ قدیمی «A provider result is still being checked…» واژهٔ داخلی provider داشت. تا تأیید: متن عمومی موجود «The change could not be saved. Try again.»؛ کارت پیشرفت جملهٔ مصوب «Open Processing review below for the next step.» را همچنان نشان می‌دهد.
+- **UX-05، رسید حذف حساب در حالت جاری** (`PrivacyView.tsx`): جمله‌ٔ «Server cleanup has been queued.» برداشته شد. پیشنهاد: «Your account and sessions are hidden. The rest of your data is being removed.» تا تأیید: فقط «Your account and sessions are hidden.»
+- **UX-05، پیام‌های سرور با واژهٔ provider** (`apps/web/src/server/automatic-learning.ts`، به رابط از راه `status.message` می‌رسد): «Processing is paused while a provider result is checked…» و «…the AI service rejected a processing request…». پیشنهاد: «Processing is paused while a result is checked. Your earlier notes and cards are available. Contact the pilot operator before retrying.» این فایل سمت سرور است و آزمون‌های سرور متن را می‌سنجند، پس بدون تأیید عوض نشد.
+- **UX-05، برچسب‌های کارت** (`workspace/card-labels.ts`): از واژه‌های موجود طرح ساخته شد: «Suggested» (قاب)، «Suspended»، «Known»، «Rejected» (واژهٔ وضعیت از «Card suspended»، «Known · chosen by you» و «Card rejected»)، و نام نوع‌ها از قاب‌ها و `/preview`: «Question and answer»، «Vocabulary»، «Cloze»، «Grammar point»، «Error correction»، «Listening». کارت فعال برچسب وضعیت ندارد. پیشنهاد برای وضعیت فعال: «In your review queue». مالک محصول برچسب‌ها را عیناً تأیید کند.
+- **UX-05، مجموعه‌ها** (`studySetLabel`): «Core cards»، «Supplementary cards»، «Other cards» از `learning-memory-copy.ts` (حرف اول بزرگ). **تعارض با D79:** D79 همین دو برچسب را «Core · production» و «Supplementary · recognition» نوشته بود. طبق UX-05 جایگزین شد، ولی `PRODUCT_DECISIONS_LOG.md` تغییر نکرد؛ تصمیم دستهٔ تصمیم‌ها باید D79 را اصلاح کند.
+- **UX-05، نوع فایل و رسانه** (`source-labels.ts`، `card-labels.ts`): «Audio»، «Photo»، «PDF»، «HTML»، «Plain text» از متن «Choose audio, JPEG, PNG, WebP, PDF, HTML or plain text.»؛ برای نوع ناشناخته «File». «Computer voice N · Ready» با «Computer voice» از `strings.provenance` و وضعیت‌ها از `strings.classStatus`، به‌جای «Synthetic TTS · ready · شناسه».
+- **UX-05، منطقهٔ زمانی:** `Europe/London` به نام شهر «London» تبدیل شد، مثل Settings (`timeZoneCity`).
+- **UX-05، «Processing review»:** نام قابلیتی است که مالک محصول در 2026-10-10 تأیید کرده («View processing review»، «Request processing review»). بدون تأیید تازه عوض نشد.
+- **UX-05، «queued» در متن‌های تأییدشده:** «The lesson review is queued…» (`lesson-review-copy.ts`) و «…are queued for removal» (حذف جلسه، `ClassForm.tsx`) انگلیسی ساده‌اند و متن مصوب‌اند؛ تغییر نکردند.
 
 ## ممیزی 2026-10-18، دستهٔ ۳ — پایش و ایمنی انتشار (`fix/audit-3`)
 

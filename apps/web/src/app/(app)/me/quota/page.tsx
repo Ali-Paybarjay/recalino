@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { allowance, DIMENSIONS } from "@recalino/core/quota";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
+import { allowanceHelp } from "../../../../ui/allowance-copy";
 import { allowanceLabels as labels, allowanceUnits as units } from "../../../../ui/allowance-units";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
@@ -63,7 +64,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Reserved and used">
-        <p>Only usable published output is charged.</p>
+        <p>{allowanceHelp.reserved}</p>
         <dl>
           {DIMENSIONS.map((d) => (
             <div key={d}>
@@ -76,7 +77,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Need more allowance?">
-        <p>The pilot operator sets your allowance.</p>
+        <p>{allowanceHelp.need}</p>
         {contact ? (
           <a href={contact} className="btn btn-secondary rc-btn-lg">
             Contact the pilot operator
@@ -86,7 +87,7 @@ export default async function AllowancePage() {
         )}
       </Panel>
       <Actions>
-        <LinkButton href="/sessions">View courses</LinkButton>
+        <LinkButton href="/sessions">View sessions</LinkButton>
         <LinkButton href="/me" secondary>
           Back to settings
         </LinkButton>

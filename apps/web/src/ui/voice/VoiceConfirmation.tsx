@@ -7,7 +7,7 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import {
   type ClassVoiceAction,
@@ -123,9 +123,7 @@ export function VoiceConfirmation({
       .then(setView)
       .catch((error) => {
         if (!abort.signal.aborted)
-          setProblem(
-            error instanceof Error ? error.message : "Voice confirmation could not be loaded.",
-          );
+          setProblem(userMessage(error, "Voice confirmation could not be loaded."));
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
@@ -161,11 +159,7 @@ export function VoiceConfirmation({
         })
         .catch((error) => {
           if (!abort.signal.aborted)
-            setProblem(
-              error instanceof Error
-                ? error.message
-                : "Voice analysis status could not be refreshed.",
-            );
+            setProblem(userMessage(error, "Voice analysis status could not be refreshed."));
         });
     }, 4000);
     return () => {
@@ -210,9 +204,7 @@ export function VoiceConfirmation({
         error instanceof WorkspaceRequestError &&
           error.fields?.voice?.includes("original_audio_required")
           ? "The temporary session recording is no longer available. Checking session voices needs the original session recording, even if you have saved a personal voice sample."
-          : error instanceof Error
-            ? error.message
-            : "Your choice could not be saved. Try again.",
+          : userMessage(error, "Your choice could not be saved. Try again."),
       );
       if (
         "action" in payload &&
@@ -250,7 +242,7 @@ export function VoiceConfirmation({
           refreshNotes();
           setProblem(
             "action" in payload && payload.action === "analyze"
-              ? "The session changed or is already being processed. Check its current sources and voice status before trying again."
+              ? "The session changed or is already being processed. Check its current material and voice status before trying again."
               : "These voice excerpts have changed. Please check the current excerpts before choosing again.",
           );
         } catch {
@@ -292,9 +284,7 @@ export function VoiceConfirmation({
             setProblem("");
             void load()
               .catch((error) =>
-                setProblem(
-                  error instanceof Error ? error.message : "Could not load voice confirmation.",
-                ),
+                setProblem(userMessage(error, "Could not load voice confirmation.")),
               )
               .finally(() => setLoading(false));
           }}
@@ -313,9 +303,7 @@ export function VoiceConfirmation({
                 refreshNotes();
               })
               .catch((error) =>
-                setProblem(
-                  error instanceof Error ? error.message : "Could not refresh voice confirmation.",
-                ),
+                setProblem(userMessage(error, "Could not refresh voice confirmation.")),
               )
               .finally(() => setBusy(false));
           }}
@@ -356,7 +344,8 @@ export function VoiceConfirmation({
             (view.analysisBlockedReason === "transcript_required" ||
             view.analysisBlockedReason === "sources_unavailable" ? (
               <Status>
-                Select a session recording in Sources and process it before checking session voices.
+                Select a session recording in Session material and process it before checking
+                session voices.
                 <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
                   Open session sources
                 </LinkButton>
@@ -388,7 +377,7 @@ export function VoiceConfirmation({
             </LinkButton>
           </Actions>
           {processing ? (
-            <Status>Preparing speaker excerpts from the session sources…</Status>
+            <Status>Preparing speaker excerpts from the session material…</Status>
           ) : !view.analyses.length ? (
             <p>No speaker excerpts have been prepared for this session yet.</p>
           ) : (

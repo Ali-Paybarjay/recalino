@@ -1,6 +1,6 @@
 import type { InputContract } from "@recalino/core/src";
 import type { RecordingStore } from "../recording/store";
-import { WorkspaceRequestError, workspaceRequest } from "./api";
+import { userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import type { SelectedFile } from "./file-selection";
 import { createSourceUploadRequest } from "./source-upload";
@@ -60,9 +60,7 @@ export class UploadManager {
         failure instanceof WorkspaceRequestError &&
         failure.fields?.batch?.includes("select_at_least_one")
           ? "This is the last file in the upload group. Cancel this saved upload before adding a replacement."
-          : failure instanceof Error
-            ? failure.message
-            : "Saved uploads need attention. Retry when connected.";
+          : userMessage(failure, "Saved uploads need attention. Retry when connected.");
     }
     this.publish();
   }
@@ -463,10 +461,7 @@ export class UploadManager {
         } catch (failure) {
           controller.signal.throwIfAborted();
           entry.phase = "failed";
-          entry.problem =
-            failure instanceof Error
-              ? failure.message
-              : "Upload interrupted. Retry this saved file.";
+          entry.problem = userMessage(failure, "Upload interrupted. Retry this saved file.");
           entry.finishedAt = Date.now();
           await this.store.save(batch);
           this.publish();
@@ -499,10 +494,7 @@ export class UploadManager {
     } catch (failure) {
       if (!controller.signal.aborted) {
         batch.phase = "attention";
-        batch.problem =
-          failure instanceof Error
-            ? failure.message
-            : "Your upload is saved. Retry when connected.";
+        batch.problem = userMessage(failure, "Your upload is saved. Retry when connected.");
         await this.store.save(batch);
         this.publish();
       }

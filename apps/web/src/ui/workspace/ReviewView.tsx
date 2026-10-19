@@ -2,9 +2,11 @@
 import type { MediaAsset } from "@recalino/core/media";
 import type { ReviewInput, ReviewQueue, ReviewReceipt } from "@recalino/core/srs";
 import { useEffect, useRef, useState } from "react";
+import { timeZoneCity } from "../../app/setup/languages";
 import { shellStrings as strings } from "../strings-shell";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { studySetLabel } from "./card-labels";
 import { mediaAlt } from "./media-alt";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
@@ -198,11 +200,7 @@ export function ReviewView({
       if (Date.now() - started.current >= softBudget.current) setSoftStop(true);
     } catch (failure) {
       focusIntent.current = null;
-      setProblem(
-        failure instanceof Error
-          ? failure.message
-          : "Your answer could not be saved. Retry the same answer.",
-      );
+      setProblem(userMessage(failure, "Your answer could not be saved. Retry the same answer."));
     } finally {
       requestInFlight.current = false;
       setBusy(false);
@@ -222,9 +220,7 @@ export function ReviewView({
       await refresh();
     } catch (failure) {
       focusIntent.current = null;
-      setProblem(
-        failure instanceof Error ? failure.message : "The last answer could not be undone.",
-      );
+      setProblem(userMessage(failure, "The last answer could not be undone."));
     } finally {
       setBusy(false);
     }
@@ -248,7 +244,7 @@ export function ReviewView({
       </Actions>
       <p className="preview-muted">
         {reviewed} reviewed · {queue.dueCount} due · Up to {queue.newRemaining} new today ·{" "}
-        {queue.timezone}
+        {timeZoneCity(queue.timezone)}
       </p>
       {problem && <Status tone="error">{problem}</Status>}
       {mediaProblem && <Status>{mediaProblem}</Status>}
@@ -280,11 +276,7 @@ export function ReviewView({
           }
         >
           {current.card.studySet && (
-            <p className="preview-muted">
-              {current.card.studySet === "production"
-                ? "Core · production"
-                : "Supplementary · recognition"}
-            </p>
+            <p className="preview-muted">{studySetLabel(current.card.studySet)}</p>
           )}
           {/* The card and its answer: focus moves here when the answer appears (A11Y-03). */}
           <div ref={cardRegion} tabIndex={-1}>
@@ -390,7 +382,7 @@ export function ReviewView({
           {!queue.hasCards && !reviewed ? (
             <Panel>
               <p>{strings.empty.review}</p>
-              <LinkButton href="/sessions">Open your courses</LinkButton>
+              <LinkButton href="/sessions">Open your sessions</LinkButton>
             </Panel>
           ) : (
             <Panel title="You’re ready for a break">
@@ -404,7 +396,7 @@ export function ReviewView({
               {queue.buriedSiblings > 0 && (
                 <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
               )}
-              <LinkButton href="/sessions">Open your courses</LinkButton>
+              <LinkButton href="/sessions">Open your sessions</LinkButton>
             </Panel>
           )}
         </div>

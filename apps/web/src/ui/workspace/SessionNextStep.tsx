@@ -12,7 +12,7 @@ import {
 } from "./AutomaticLearningView";
 import styles from "./AutomaticLearningView.module.css";
 import { useAccountGate } from "./account-gate";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import type { AutomaticLearningStatus } from "./automatic-learning";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
@@ -147,7 +147,6 @@ export function SessionNextStep({
           batches,
           live.uploadProgress,
           account.setupComplete && !account.termsPending,
-          account.termsChangedOn,
         )
       : null;
   const pending = retry.action;
@@ -167,9 +166,7 @@ export function SessionNextStep({
       return void live
         .retryManualAudio(action.runId)
         .catch((failure: unknown) =>
-          setActionProblem(
-            failure instanceof Error ? failure.message : "The upload could not resume.",
-          ),
+          setActionProblem(userMessage(failure, "The upload could not resume.")),
         );
   }
   function render(action: SessionAction, secondary: boolean) {

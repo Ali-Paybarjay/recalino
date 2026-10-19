@@ -4,10 +4,11 @@ import { cardHtmlToText } from "@recalino/core/card-html";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
 import { CardMedia } from "./CardMedia";
 import { cardDeleteCopy } from "./card-actions-copy";
+import { cardSummary } from "./card-labels";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export function CardEditor({
@@ -66,7 +67,7 @@ export function CardEditor({
       setNotice("Card saved.");
       return result;
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "The card could not be saved.");
+      setProblem(userMessage(failure, "The card could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -93,7 +94,7 @@ export function CardEditor({
       {notice && <Status tone="success">{notice}</Status>}
       <Panel title="Edit your card">
         <p className="preview-muted">
-          {card.status} · {card.template} · Version {card.contentVersion}
+          {cardSummary(card)} · Version {card.contentVersion}
         </p>
         <ClaimEvidence claim={card.provenance} userId={userId} />
         {card.contentFormat === "lesson_html" && (

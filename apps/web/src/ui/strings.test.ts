@@ -11,7 +11,10 @@ const APPROVED_DEVIATIONS: Record<string, string> = {
   "Sign out": "HANDOFF_R1_REVIEW.md, item 8: FR-ACC-002 needs sign-out; approved 2026-10-01",
   "Clear search":
     "HANDOFF_R1_REVIEW.md, item 10: names the clear button of frame A2-1b; approved 2026-10-02",
-  Courses: "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
+  // Vocabulary A, decided by the product owner on 2026-10-19: "session" for a class meeting. The
+  // tab opens the list of sessions (it was "Courses", which D50 approved on 2026-10-08).
+  Sessions:
+    "UI_COPY_PENDING.md, vocabulary A: nav tab to /sessions, approved by the owner 2026-10-19",
   "New session": "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
   "Record your first session. We'll help you make notes and cards from it.":
     "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",

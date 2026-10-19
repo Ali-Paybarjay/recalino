@@ -728,7 +728,7 @@ test("a rejected voice check keeps notes visible and permits a fresh request aft
   await page.goto("/dev/ui/voice?view=class");
   await page.getByRole("button", { name: "Check session voices", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
-    "Select a session recording in Sources and process it before checking session voices.",
+    "Select a session recording in Session material and process it before checking session voices.",
   );
   await expect(page.getByRole("region", { name: "Synthetic session notes" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Retry voice/ })).toHaveCount(0);

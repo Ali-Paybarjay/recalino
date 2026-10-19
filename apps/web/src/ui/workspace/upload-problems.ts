@@ -1,4 +1,4 @@
-import { WorkspaceRequestError } from "./api";
+import { userMessage, WorkspaceRequestError } from "./api";
 import { isRetryableUploadFailure } from "./upload";
 import { uploadCopy } from "./upload-copy";
 
@@ -16,6 +16,9 @@ export type AudioUploadReason =
   /** The verifier refused the media. */
   | "audio_unsupported"
   | "unknown";
+
+/** The learner's sentence when the device original differs from the saved session material. */
+export const LOCAL_MISMATCH = "The local recording does not match this session material.";
 
 /** A non-retryable audio upload failure with its stable reason; the message is learner copy. */
 export class AudioUploadProblem extends Error {
@@ -51,11 +54,15 @@ export function audioUploadProblem(failure: unknown): unknown {
     return failure;
   const problems = reasons(failure);
   if (failure.code === "unsupported_media")
-    return new AudioUploadProblem("audio_unsupported", failure.message);
+    return new AudioUploadProblem(
+      "audio_unsupported",
+      userMessage(failure, uploadCopy.automatic.rejected),
+    );
   // A part corrupted in transit is sent again with a fresh link, so its retry stays offered. A
-  // changed manifest means the device original differs from the one this upload started with.
+  // changed manifest means the device original differs from the one this upload started with. The
+  // server's words for it are about request keys, so the learner reads the device sentence (UX-04).
   if (failure.code === "idempotency_mismatch")
-    return new AudioUploadProblem("integrity_mismatch", failure.message);
+    return new AudioUploadProblem("integrity_mismatch", LOCAL_MISMATCH);
   if (
     failure.code === "conflict" ||
     (failure.code === "validation_failed" && problems.includes("confirmed_processing_required"))

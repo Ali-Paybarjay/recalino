@@ -67,8 +67,8 @@ export function fileProcessingFeedback(
       state: "error",
       message: "A file needs attention before processing can finish.",
       detail: ["needs_password", "wrong_password"].includes(rejected.rejectionReason ?? "")
-        ? `Enter the correct password for ${rejected.displayName} in Session sources below. Processing resumes after verification.`
-        : `Review ${rejected.displayName} in Session sources below. Skip this file, or cancel the upload group before choosing a replacement.`,
+        ? `Enter the correct password for ${rejected.displayName} in Session material below. Processing resumes after verification.`
+        : `Review ${rejected.displayName} in Session material below. Skip this file, or cancel the upload group before choosing a replacement.`,
     };
   const current =
     receipt.revision !== null && status && status.revision >= receipt.revision && !status.batchId;
@@ -102,7 +102,7 @@ export function fileProcessingFeedback(
         state: "error",
         message: "Processing completed with some issues.",
         detail:
-          "Some material could not be processed. Your available notes are saved. Review the sources and processing details before retrying.",
+          "Some material could not be processed. Your available notes are saved. Review the material and processing details before retrying.",
       };
     if (status.run.state === "ready" && status.notesReady && status.cardsReady)
       return {
@@ -133,12 +133,12 @@ function processingRecovery(status: AutomaticLearningStatus) {
   if (operatorErrors.includes(code) || /operator|provider.*configur|storage_unavailable/.test(code))
     return `${status.message} Your files are saved. Processing can continue when the service is available.`;
   if (/selection_too_large/.test(code))
-    return `${status.message} Select fewer files or smaller ranges in Session sources, then retry.`;
+    return `${status.message} Select fewer files or smaller ranges in Session material, then retry.`;
   if (/no_selected|select_at_least_one/.test(code))
-    return `${status.message} Select verified material in Session sources before retrying.`;
+    return `${status.message} Select verified material in Session material before retrying.`;
   if (code === "acceptance_required")
     return `${status.message} Review and accept the required material notices before processing.`;
   if (code === "upload_needs_attention")
-    return `${status.message} Check the file errors in Session sources below. Enter the PDF password, skip a rejected file, or cancel the upload group before choosing replacements.`;
+    return `${status.message} Check the file errors in Session material below. Enter the PDF password, skip a rejected file, or cancel the upload group before choosing replacements.`;
   return `${status.message} Your files are saved. Review the processing details or retry processing; you do not need to upload them again.`;
 }

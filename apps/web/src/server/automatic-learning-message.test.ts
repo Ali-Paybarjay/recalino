@@ -47,7 +47,7 @@ describe("automatic creation recovery guidance", () => {
         available: units({ audio: 4162, document: 77 }),
       }),
     ).toBe(
-      "Your material is saved, but this class needs more allowance than is left. Class audio: 127 min 56 sec needed, 69 min 22 sec left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
+      "Your material is saved, but this session needs more allowance than is left. Class audio: 127 min 56 sec needed, 69 min 22 sec left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
     );
     expect(
       automaticLearningMessage("blocked", "quota_insufficient", {
@@ -74,7 +74,7 @@ describe("automatic creation recovery guidance", () => {
         required: units({ audio: 0, regeneration: 1 }),
         available: units({ audio: 10, regeneration: 1 }),
       }),
-    ).toContain("Your allowance now covers this class. Retry");
+    ).toContain("Your allowance now covers this session. Retry");
   });
 
   it("keeps learner-unit shortage guidance separate from AI spending", () => {

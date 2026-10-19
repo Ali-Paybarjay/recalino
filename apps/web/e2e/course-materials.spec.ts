@@ -88,7 +88,7 @@ test("course materials open published notes from dated session cards when classe
     ["Open session", ""],
     ["Read session notes", "/notes"],
     ["Flashcards", "/cards"],
-    ["Session sources", "/sources"],
+    ["Session material", "/sources"],
   ]) {
     await expect(first.getByRole("link", { name: label, exact: true })).toHaveAttribute(
       "href",

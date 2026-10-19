@@ -1,7 +1,7 @@
 "use client";
 import type { LearningOverview } from "@recalino/core/pers";
 import { useState } from "react";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import { LearningMemoryPanel, NextStepPanel } from "./LearningMemory";
 import { learningMemoryCopy } from "./learning-memory-copy";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
@@ -30,7 +30,7 @@ export function LearningProfile({
       );
       setNotice("Your learning preference is saved.");
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Preference could not be saved.");
+      setProblem(userMessage(failure, "Preference could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -46,7 +46,7 @@ export function LearningProfile({
       setNotice(learningMemoryCopy.saved);
       return true;
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : learningMemoryCopy.failed);
+      setProblem(userMessage(failure, learningMemoryCopy.failed));
       return false;
     } finally {
       setBusy(false);

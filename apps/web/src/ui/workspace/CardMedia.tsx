@@ -2,7 +2,8 @@
 import type { StudyCard } from "@recalino/core/card";
 import type { MediaAsset } from "@recalino/core/media";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
+import { mediaAssetLabel } from "./card-labels";
 import { mediaAlt } from "./media-alt";
 import { Actions, Button, Field, Panel, Status } from "./primitives";
 import type { SourceRow } from "./SourcesView";
@@ -88,7 +89,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           : "Media requested. It will appear when processing finishes.",
       );
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Media could not be requested.");
+      setProblem(userMessage(failure, "Media could not be requested."));
     } finally {
       setBusy(false);
     }
@@ -114,7 +115,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
       key.current = null;
       setNotice("Card media saved.");
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Media could not be attached.");
+      setProblem(userMessage(failure, "Media could not be attached."));
     } finally {
       setBusy(false);
     }
@@ -149,10 +150,9 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           }}
         >
           <option value="">Choose media</option>
-          {assets.map((asset) => (
+          {assets.map((asset, index) => (
             <option key={asset.id} value={asset.id} disabled={asset.state !== "ready"}>
-              {asset.synthetic ? "Synthetic TTS" : "Class image"} · {asset.state} ·{" "}
-              {asset.id.slice(0, 8)}
+              {mediaAssetLabel(asset, index)}
             </option>
           ))}
         </select>
@@ -241,11 +241,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
                 );
                 setAssets((items) => items.map((item) => (item.id === value.id ? value : item)));
               } catch (failure) {
-                setProblem(
-                  failure instanceof Error
-                    ? failure.message
-                    : "Export permission could not be saved.",
-                );
+                setProblem(userMessage(failure, "Export permission could not be saved."));
               } finally {
                 setBusy(false);
               }

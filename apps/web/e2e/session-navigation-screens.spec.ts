@@ -75,7 +75,7 @@ for (const width of [390, 1440]) {
     for (const route of ["sources", "processing"]) {
       await page.goto(`/sessions/${sessionId}/${route}`);
       await expect(page.locator("#session-progress")).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Session sources" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Session material" })).toBeVisible();
       await expect(page.getByRole("link", { name: /Back to session/ })).toHaveCount(1);
       await capture(page, `material-and-status-${route}`, width);
     }

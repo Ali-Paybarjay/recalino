@@ -86,7 +86,7 @@ export function EditField({
             note={
               <>
                 <p className={styles.note}>
-                  {courseCopy.goalHelp} <Link href="/courses">Courses</Link>
+                  {courseCopy.goalHelp} <Link href="/courses">Manage courses</Link>
                 </p>
                 {note}
               </>

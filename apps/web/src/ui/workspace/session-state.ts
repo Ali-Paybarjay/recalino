@@ -80,7 +80,7 @@ export interface SessionStateInput {
    * What the account still lacks. `acceptance_required` means unfinished setup or new Terms; the
    * next step differs. Unknown means the Terms, because app pages need finished setup (UX-09).
    */
-  account?: { setupComplete: boolean; termsPending: boolean; termsChangedOn?: string | null };
+  account?: { setupComplete: boolean; termsPending: boolean };
 }
 
 /**
@@ -206,13 +206,7 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
 
   // A stop for `acceptance_required` is out of date once setup is finished and no Terms wait.
   const accepted = !!input.account && input.account.setupComplete && !input.account.termsPending;
-  const progress = learningProgress(
-    status,
-    input.batches ?? [],
-    input.uploadProgress,
-    accepted,
-    input.account?.termsChangedOn ?? null,
-  );
+  const progress = learningProgress(status, input.batches ?? [], input.uploadProgress, accepted);
   const recovery = automaticLearningRecovery(status, accepted);
 
   if (status.state === "blocked") {
