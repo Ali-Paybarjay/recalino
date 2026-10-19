@@ -1,7 +1,7 @@
 # پاسخ به درخواست دسترسی و حمل داده
 
 > **تاریخ:** 2026-10-19 · **مالک:** مالک محصول (اپراتور پایلوت) · **یافته:** SEC-08 [ممیزی 2026-10-18](../audit/2026-10-18-project-audit.md)
-> **مبنا:** [اطلاعیهٔ حریم خصوصی](../legal/privacy-notice.md) بخش ۱۱ (پیش‌نویس ۰٫۲): «give you a copy of your data»، «give you your data in a form that you can move to another service» و «We will answer within one month.» این رویه وعدهٔ تازه‌ای اضافه نمی‌کند و فقط با قابلیت‌های موجود اپ و دسترسی فقط‌خواندنی دیتابیس اجرا می‌شود.
+> **مبنا:** [اطلاعیهٔ حریم خصوصی](../legal/privacy-notice.md) بخش ۱۱ (پیش‌نویس ۰٫۳): «give you a copy of your data»، «give you your data in a form that you can move to another service» و «We will answer within one month.» این رویه وعدهٔ تازه‌ای اضافه نمی‌کند و فقط با قابلیت‌های موجود اپ و دسترسی فقط‌خواندنی دیتابیس اجرا می‌شود.
 
 ## دامنه
 

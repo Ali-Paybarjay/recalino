@@ -14,28 +14,28 @@ const PHASES: CaptureState["phase"][] = [
   "failed",
 ];
 
-// UX-02, owner decision 2026-10-19: the navigation is hidden only while capture is in progress.
+// UX-02, owner decision 2026-10-19 (D90 as amended): full focus mode, no navigation in any phase.
 describe("recording focus mode", () => {
-  it("is set to hide the navigation only while capturing", () => {
-    expect(RECORDING_FOCUS_MODE).toBe("while-capturing");
+  it("is set to the full focus mode", () => {
+    expect(RECORDING_FOCUS_MODE).toBe("always");
   });
 
+  it.each(PHASES)("hides the navigation when the phase is %s", (phase) => {
+    expect(recordingFocusActive(RECORDING_FOCUS_MODE, captureIsQuiet(phase))).toBe(true);
+  });
+
+  // The alternative, one constant away: navigation only outside capture.
   it.each(["starting", "recording", "recovering", "paused"] as const)(
-    "hides the navigation while %s",
+    '"while-capturing" hides the navigation while %s',
     (phase) => {
       expect(recordingFocusActive("while-capturing", captureIsQuiet(phase))).toBe(true);
     },
   );
 
   it.each(["idle", "saving", "saved", "failed"] as const)(
-    "shows the navigation when the phase is %s",
+    '"while-capturing" shows the navigation when the phase is %s',
     (phase) => {
       expect(recordingFocusActive("while-capturing", captureIsQuiet(phase))).toBe(false);
     },
   );
-
-  it('"always" is the full focus mode of batch 4: no navigation in any phase', () => {
-    for (const phase of PHASES)
-      expect(recordingFocusActive("always", captureIsQuiet(phase))).toBe(true);
-  });
 });

@@ -7,10 +7,10 @@ import { RecordingShell } from "../../../RecordingShell";
 
 export const dynamic = "force-dynamic";
 /**
- * The session's recording page. The navigation is hidden only while capture is in progress
- * (UX-02, owner decision 2026-10-19; RECORDING_FOCUS_MODE) and is back before Start and after
- * Stop; the Terms notice waits as well, so that nothing but the recording speaks (PRD-REC-02).
- * RecordingView offers "Back to session" once capture is over.
+ * The session's recording page, in full focus mode without navigation (UX-02, owner decision
+ * 2026-10-19, D90 as amended; RECORDING_FOCUS_MODE); the Terms notice waits as well, so that
+ * nothing but the recording speaks (PRD-REC-02). RecordingView offers "Back to session" outside
+ * capture.
  */
 export default async function ClassRecordingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * The shell of the recording pages in its two states (UX-02, owner decision 2026-10-19), for
- * comparing at 390 and 1440px: `/dev/ui/recording-shell` is the page before Start (the learner
- * navigation is there), `?state=recording` is capture in progress (no navigation, Stop and save on
- * screen). The real pages need Supabase and a microphone; this page renders the same
- * `RecordingShellFrame` around sample content with the texts of RecordingView and no capture.
- * Guarded by /dev/layout.
+ * The shell of the recording pages in its two states (UX-02, owner decision 2026-10-19, D90 as
+ * amended), for comparing at 390 and 1440px: `/dev/ui/recording-shell` is the page before Start,
+ * `?state=recording` is capture in progress (Stop and save on screen). With RECORDING_FOCUS_MODE
+ * "always" neither has navigation; with "while-capturing" the first has the learner navigation.
+ * The real pages need Supabase and a microphone; this page renders the same `RecordingShellFrame`
+ * around sample content with the texts of RecordingView and no capture. Guarded by /dev/layout.
  */
 export default async function RecordingShellPage({
   searchParams,

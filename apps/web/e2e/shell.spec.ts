@@ -110,22 +110,21 @@ for (const [name, viewport] of [
   });
 }
 
-// UX-02 (owner decision 2026-10-19): the recording pages' shell has the navigation before Start
-// and none while capture runs. /dev/ui/recording-shell renders the same RecordingShellFrame around
-// sample content, as the real pages need Supabase and a microphone.
+// UX-02 (owner decision 2026-10-19, D90 as amended): the recording pages' shell is a full focus
+// mode with no navigation before Start or while capture runs. /dev/ui/recording-shell renders the
+// same RecordingShellFrame around sample content, as the real pages need Supabase and a microphone.
 for (const [name, viewport] of [
   ["mobile", { width: 390, height: 664 }],
   ["desktop", VIEWPORTS.desktop],
 ] as const) {
-  test(`${name}: the recording page shell shows the navigation only outside capture`, async ({
-    page,
-  }) => {
+  test(`${name}: the recording page shell has no navigation in any phase`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto("/dev/ui/recording-shell");
     await expect(page.getByRole("heading", { level: 1, name: "Record a session" })).toBeVisible();
-    await expect(page.getByRole("navigation").getByRole("link")).toHaveCount(4);
-    if (viewport.width >= 768)
-      await expect(page.getByRole("link", { name: "New session", exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    await expect(page.locator("aside")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "New session", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Skip to content" })).toHaveCount(0);
     await expectNoAxeViolations(page);
 
     await page.goto("/dev/ui/recording-shell?state=recording");

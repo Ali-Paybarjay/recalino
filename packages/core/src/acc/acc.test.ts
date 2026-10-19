@@ -61,6 +61,15 @@ describe("text versions", () => {
       expect(row?.[1], document).toBe(CURRENT_VERSIONS[document]);
     }
   });
+
+  // A new version of a text needs a new accepted version, so learners accept it once (FR-ACC-007).
+  it.each([
+    ["terms", "terms-of-use.md"],
+    ["privacy", "privacy-notice.md"],
+  ] as const)("match the header of the %s text", (document, file) => {
+    const text = readFileSync(resolve(import.meta.dirname, "../../../../docs/legal", file), "utf8");
+    expect(/^Version (\d+\.\d+) · /m.exec(text)?.[1], file).toBe(CURRENT_VERSIONS[document]);
+  });
 });
 
 describe("profile changes", () => {

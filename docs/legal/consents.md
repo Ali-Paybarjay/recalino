@@ -11,7 +11,7 @@ These are the short legal texts inside the app. The exact words come from the de
 | Text | ID | Version | Status |
 |---|---|---|---|
 | [Terms of Use](terms-of-use.md) | `terms` | 0.1 | Draft |
-| [Privacy Notice](privacy-notice.md) | `privacy` | 0.2 | Draft |
+| [Privacy Notice](privacy-notice.md) | `privacy` | 0.3 | Draft |
 | Recording consent (section 2) | `recording-consent` | 0.1 | Draft |
 | Sources notice (section 3) | `sources-notice` | 0.1 | Draft |
 

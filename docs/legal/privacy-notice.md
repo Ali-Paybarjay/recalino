@@ -1,6 +1,6 @@
 # Recalino Privacy Notice
 
-Version 0.2 · Draft · 4 October 2026
+Version 0.3 · Draft · 19 October 2026
 
 > **Draft for development only.** This text is not final and has not had a legal review. Parts marked ⟨…⟩ are not finished.
 
@@ -119,7 +119,7 @@ We do not send the password for a PDF, a private file link or a storage key to t
 
 | Data | How long we keep it |
 |---|---|
-| Copy of class audio on our server | The current temporary upload expires 24 hours after the upload begins, whether processing succeeds or fails. Completing a transcript can shorten this period. An hourly cleanup job removes expired copies and retries failures; a service failure can delay physical removal. A retry after expiry needs a new copy from your device. |
+| Copy of class audio on our server | The current temporary upload expires 24 hours after the upload begins, whether processing succeeds or fails. Completing a transcript can shorten this period. A cleanup job runs at least once an hour, removes expired copies and retries failures; a service failure can delay physical removal. A retry after expiry needs a new copy from your device. |
 | Recordings on your device | Until you delete them. Recalino doesn't delete them automatically. |
 | Photos, PDFs and other files | Until you delete them or your account |
 | Transcripts, notes, cards and review history | Until you delete them or your account |

@@ -749,11 +749,11 @@
 - **گزینهٔ B مصوب:** فهرست `permissions.allow` در `.claude/settings.json` بی‌تغییر می‌ماند. یک hook از نوع `PreToolUse` ([`.claude/hooks/data-loss-guard.ts`](../.claude/hooks/data-loss-guard.ts)، آزمون: `tools/claude-hooks/data-loss-guard.test.ts`) اضافه شد:
   - `execute_sql` در هر دو کانکتور Supabase برای `select` و نوشتن محدود بی‌پرسش می‌ماند. پیش از `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا یا زمان‌بندی‌شده (`execute`، `dblink`، `cron.schedule`)، `delete` یا `update` که `where` آن همهٔ ردیف‌ها را می‌گیرد (بی `where`، `where true`، `where 2=2`، `where id = id`، `… or true`، `where exists (select 1)`)، upsert با `on conflict … do update` که ردیف‌هایش را از یک query می‌گیرد، و تغییر `standard_conforming_strings` پنجرهٔ تأیید (ask) باز می‌شود. همین قاعده‌ها روی بدنهٔ dollar-quote، همهٔ رشته‌های یک دستور `do` و هر رشته‌ای که با واژهٔ آغاز یک دستور Postgres شروع می‌شود (پس از کنار گذاشتن فاصله، توضیح، `(` و `;` و اعمال escape) هم اجرا می‌شوند. توضیح‌ها، `E'…'`، `U&'…'`، dollar-quote و ادامهٔ رشته در خط بعد مثل Postgres خوانده می‌شوند: دو رشته که فقط فاصله‌ای با دست‌کم یک خط تازه (و شاید توضیح `--`) میانشان است یک رشته‌اند، با همان حالت escape رشتهٔ اول (پس `do 'begin dele'` و در خط بعد `'te from t; end'` یعنی `delete from t`). نام‌های داخل `"…"` (از جمله `U&"…"`) هم مثل نام بی‌نقل‌قول بررسی می‌شوند، پس `"cron"."schedule"`، `cron."schedule"`، `"cron"."alter_job"` و `"dblink_exec"` هم پنجرهٔ تأیید می‌گیرند (بازبینی سوم، 2026-10-19).
   - فراخوانی‌ای که hook نمی‌تواند بخواند (JSON نامعتبر، بی `tool_name`، یا Bash بی `command`) پنجرهٔ تأیید می‌گیرد، تا اگر Claude Code نام فیلدها را عوض کند، گارد بی‌صدا خاموش نشود و allow list (از جمله `Bash(pnpm db:apply:*)` و `execute_sql`) بی‌پرسش اجرا نشود (بازبینی سوم، 2026-10-19).
-  - هر دستور Bash که `approve-data-loss` دارد، حتی با نقل‌قول یا backslash، رد (deny) می‌شود، با این پیام که migration حذف داده را خود مالک محصول اجرا می‌کند. فقط `pnpm db:apply` (dry run) و `pnpm db:apply --apply`، تنها روی خط، و `supabase db push` مثل قبل بی‌پرسش‌اند؛ هر دستور دیگری که `db:apply` یا `db-apply` دارد (آرگومان اضافه، `$…`، pipe یا دستور زنجیره‌ای) پنجرهٔ تأیید باز می‌کند.
+  - هر دستور Bash که `approve-data-loss` دارد، حتی با نقل‌قول یا backslash، پنجرهٔ تأیید (ask) می‌گیرد، با این پیام که Claude آن را فقط پس از «بله» صریح مالک محصول در چت برای همان نسخهٔ migration اجرا می‌کند (CLAUDE.md، D77). پس روال D77 کار می‌کند و هارنس هنگام اجرا بررسی دوم را انجام می‌دهد. فقط `pnpm db:apply` (dry run) و `pnpm db:apply --apply`، تنها روی خط، و `supabase db push` مثل قبل بی‌پرسش‌اند؛ هر دستور دیگری که `db:apply` یا `db-apply` دارد (آرگومان اضافه، `$…`، pipe یا دستور زنجیره‌ای) پنجرهٔ تأیید باز می‌کند.
   - `update` پس از `for` یا `for no key` فقط وقتی قفل ردیف (row lock) است و بی‌پرسش می‌ماند که پس از آن پایان دستور، `;`، `)`، `of`، `nowait`، `skip`، `for`، `limit`، `offset`، `fetch` یا `into` بیاید؛ `open cur for update t set …` در plpgsql مثل هر `update` دیگری بررسی می‌شود (بازبینی دوم، 2026-10-19).
   - کار hook محدود است، چون اگر از مهلت ۱۰ ثانیه‌ای بگذرد Claude Code فراخوانی allow-list را بی‌تصمیم اجرا می‌کند: SQL بلندتر از ۱۰۰٬۰۰۰ نویسه بی‌خواندن، و SQL که بررسی‌اش از سقف کار hook بیشتر شود، پنجرهٔ تأیید می‌گیرد. بدترین ورودی زیر این سقف در آزمون‌ها زیر ۲ ثانیه (در عمل زیر ۱۰۰ میلی‌ثانیه) تصمیم می‌گیرد.
   - hook از مسیر symlink هم اجرا می‌شود و نه SQL را چاپ می‌کند و نه دستور را. پارسر کامل نیست و این‌ها دیده نمی‌شوند: تابعی که هنگام `select` داده یا job را تغییر می‌دهد (مثل `pgmq.drop_queue`، `cron.unschedule` یا `setval`)، SQL ساخته‌شده از تکه‌ها در زمان اجرا، `where` همیشه‌درستی با شکل دیگر (`id > 0`، `id in (select id from t)`)، `UESCAPE` پس از توضیح، تابع `cron` بی‌نام schema پس از `set search_path = cron`، و دستور Bash که هر دو رشتهٔ `approve-data-loss` و `db-apply`/`db:apply` را با متغیر یا glob پنهان کند (مثل `F=loss; node tools/db-*/apply.ts --approve-data-$F <v>`). این دستور آخر به جریان عادی مجوز می‌رود: در حالت پیش‌فرض، چون `node` در allow list نیست، پنجرهٔ تأیید باز می‌شود، ولی در `bypassPermissions` اجرا می‌شود. پس قاعدهٔ «اجازهٔ صریح» CLAUDE.md همچنان پابرجاست. فهرست کامل در [CLOUD_ENVIRONMENT_FA.md](ops/CLOUD_ENVIRONMENT_FA.md) بخش «گارد هارنس».
-- **تعارض ثبت‌شده با CLAUDE.md و D77:** CLAUDE.md (بخش Supabase MCP) و D77 می‌گویند Claude پس از «بله» صریح مالک در چت، migration حذف داده را با `--approve-data-loss <version>` اجرا می‌کند. با این hook، Claude دیگر نمی‌تواند آن را اجرا کند و مالک باید خودش دستور را اجرا کند (یا hook را برای همان بار کنار بگذارد). CLAUDE.md در این دسته ویرایش نشد؛ هم‌خوان کردن متن آن (یا تغییر hook به ask) تصمیم جدای مالک محصول است.
+- **اصلاح 2026-10-19 (دستهٔ ۱۲، تصمیم مالک محصول):** متن نخست D81 دستورهای `--approve-data-loss` را رد (deny) می‌کرد و با روال CLAUDE.md و D77 در تعارض بود. مالک محصول ask را انتخاب کرد؛ با این تغییر تعارضی باقی نیست و CLAUDE.md بی‌تغییر می‌ماند.
 
 ### D82 — Preview بدون اسرار پایلوت (OPS-03)
 
@@ -776,7 +776,7 @@
 ### D85 — نگهداری سه پشتیبان آمادهٔ آخر (OPS-01)
 
 - چرخهٔ ۳۰ روزهٔ پشتیبان می‌ماند، ولی سه پشتیبان آمادهٔ (ready) آخر حتی پس از ۳۰ روز نگه داشته می‌شوند تا یک دورهٔ شکست پشتیبان شبانه هیچ‌وقت نسخهٔ قابل بازیابی را از بین نبرد. پیاده‌سازی در `packages/core/src/ops/backups.ts` (`DEFAULT_BACKUP_RETENTION.keepReady = 3`، قابل تغییر با `RECALINO_BACKUP_RETENTION_JSON`) در دستهٔ ۱ ساخته شد.
-- اصلاح نسخه‌دار: جملهٔ نگهداری ۳۰ روزه در [ADR-0001](adr/0001-stack-and-hosting.md)، و جملهٔ نگهداری پشتیبان در پیش‌نویس [privacy-notice.md](legal/privacy-notice.md) و [PILOT_TECHNICAL_FACTS.md](legal/PILOT_TECHNICAL_FACTS.md). نسخهٔ متن حریم خصوصی (۰٫۲) عوض نشد؛ بالا بردن آن پذیرش دوباره را فعال می‌کند و تصمیم جدا می‌خواهد ([راهنمای متن‌های حقوقی](legal/README.md)، نسخه‌گذاری).
+- اصلاح نسخه‌دار: جملهٔ نگهداری ۳۰ روزه در [ADR-0001](adr/0001-stack-and-hosting.md)، و جملهٔ نگهداری پشتیبان در پیش‌نویس [privacy-notice.md](legal/privacy-notice.md) و [PILOT_TECHNICAL_FACTS.md](legal/PILOT_TECHNICAL_FACTS.md). نسخهٔ متن حریم خصوصی (۰٫۲) عوض نشد؛ بالا بردن آن پذیرش دوباره را فعال می‌کند و تصمیم جدا می‌خواهد ([راهنمای متن‌های حقوقی](legal/README.md)، نسخه‌گذاری). آن تصمیم در D94 گرفته شد.
 
 ### D86 — ده متن دستهٔ ۵ و واژگان A (UX-01، UX-03، UX-06، UX-09، UX-10، UX-12، UX-13، UX-14)
 
@@ -796,11 +796,11 @@
 
 - وقتی نتیجهٔ یک تأمین‌کننده هنوز باید بررسی شود، رابط این جمله را نشان می‌دهد: «A result is still being checked. Contact the pilot operator before trying again.» (`workspaceErrors.outcomeUnresolved`). جای متن موقت «The change could not be saved. Try again.» را می‌گیرد که برخلاف سرور به تلاش دوباره دعوت می‌کرد.
 
-### D90 — ناوبری صفحهٔ ضبط فقط هنگام ضبط فعال پنهان است (UX-02)
+### D90 — ناوبری صفحهٔ ضبط: focus mode کامل (UX-02)
 
-- در `/recordings` و `/sessions/<id>/record` ناوبری پوسته فقط در فازهای ضبط فعال (`starting`، `recording`، `recovering`، `paused`) پنهان است و پیش از شروع و پس از Stop، از جمله فاز `saving`، نمایش داده می‌شود. PRD-REC-02 حین ضبط بی‌تغییر است. جزئیات: [RECORDING_NAVIGATION_2026-10-19.md](design/RECORDING_NAVIGATION_2026-10-19.md).
-- بازگشت با یک ثابت: `RECORDING_FOCUS_MODE = "always"` در `apps/web/src/ui/recording/recording-focus.ts`.
-- **وضعیت:** تأیید نهایی نگه‌داشتن یا بازگرداندن، طبق خواست مالک محصول، در پایان همین اجرای اصلاح ممیزی گرفته می‌شود. تفاوت با HANDOFF §4 در بند ۱۲ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) ثبت شد.
+- **متن فعلی (اصلاح 2026-10-19، دستهٔ ۱۲):** در `/recordings` و `/sessions/<id>/record` ناوبری پوسته در **هیچ فازی** نمایش داده نمی‌شود: نه sidebar، نه bottom nav، نه «New session»، نه skip link و نه اعلان Terms (HANDOFF §4 و قاب C2، «full-screen focus mode, no nav»). راه بازگشت خود صفحه («Back to session» / «Back to Today») بیرون از ضبط هست. PRD-REC-02 حین ضبط بی‌تغییر است. جزئیات: [RECORDING_NAVIGATION_2026-10-19.md](design/RECORDING_NAVIGATION_2026-10-19.md).
+- پیاده‌سازی: `RECORDING_FOCUS_MODE = "always"` در `apps/web/src/ui/recording/recording-focus.ts`. کد سوئیچ می‌ماند، پس گزینهٔ دیگر یک ثابت فاصله دارد: `"while-capturing"` ناوبری را فقط در فازهای ضبط فعال پنهان می‌کند.
+- **یادداشت اصلاح:** متن نخست D90 (دستهٔ ۹، 2026-10-19) ناوبری را فقط هنگام ضبط فعال (`starting`، `recording`، `recovering`، `paused`) پنهان می‌کرد و پیش از شروع و پس از Stop، از جمله `saving`، نشان می‌داد، و تأیید نهایی را به پایان اجرای اصلاح ممیزی موکول کرده بود. مالک محصول پس از دیدن پیش‌نمایش هر دو حالت (`/dev/ui/recording-shell`) focus mode کامل را انتخاب کرد (تصمیم مالک محصول، 2026-10-19). با این اصلاح، صفحه با HANDOFF §4 هم‌خوان است و بند ۱۲ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) دیگر تفاوتی ثبت نمی‌کند.
 
 ### D91 — cooldown سخت انتشار بسته‌ها (OPS-12)
 
@@ -813,6 +813,17 @@
 ### D93 — محاسبهٔ فعلی برآورد هزینه می‌ماند (QUA-09)
 
 - حساب برآورد هزینه در `packages/core/src/aip/pricing.ts` همان رفتار پایه می‌ماند و گرد کردن عدد صحیح برای هر نرخ اعمال نمی‌شود، چون خروجی `estimated_micros` و سقف‌های هزینه را جابه‌جا می‌کرد. آزمون QUA-09 خروجی‌های فعلی را قفل می‌کند. بازنویسی `lockAccount(db: Tx)` می‌ماند.
+
+## D94 — نسخهٔ ۰٫۳ اطلاعیهٔ حریم خصوصی و دورهٔ پاک‌سازی صوت (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (پیگیری ممیزی 2026-10-18، دستهٔ ۱۲)؛ یافته‌های PRD-05 و OPS-01 و D85. شمارهٔ آزاد بعدی پس از D93.
+
+- [privacy-notice.md](legal/privacy-notice.md) از پیش‌نویس ۰٫۲ به **۰٫۳** (`Version 0.3 · Draft · 19 October 2026`) رسید، با دو اصلاح و بی هیچ جمله یا وعدهٔ تازهٔ دیگر:
+  1. جملهٔ نگهداری پشتیبان که در D85 اصلاح شده بود (سه پشتیبان آمادهٔ آخر حتی پس از ۳۰ روز نگه داشته می‌شوند) با این نسخه منتشر و پذیرفته می‌شود.
+  2. «An hourly cleanup job removes expired copies and retries failures;» جای خود را به «A cleanup job runs at least once an hour, removes expired copies and retries failures;» داد، چون پاک‌سازی صوت موقت هر ۳۰۰ ثانیه اجرا می‌شود (`TEMPORARY_AUDIO_SWEEP_SECONDS` در `packages/core/src/src/audio.ts`) و متن نباید دورهٔ دقیقی بگوید که با کد نمی‌خواند (PRD-05).
+- [CLASSROOM_NOTICE.md](legal/CLASSROOM_NOTICE.md): «cleanup is hourly and retries failures» به «cleanup runs at least once an hour and retries failures» تغییر کرد. نسخهٔ این متن تاریخ «Review copy» آن است و طبق [راهنمای متن‌های حقوقی](legal/README.md) (هر تغییر معنا نسخهٔ تازه) به 19 October 2026 رسید. این متن در اپ پذیرفته نمی‌شود.
+- نسخهٔ پذیرش: `CURRENT_VERSIONS.privacy = "0.3"` در `packages/core/src/acc/documents.ts` و جدول [consents.md](legal/consents.md). زبان‌آموزی که ۰٫۲ را پذیرفته، یک بار اعلان تغییر Terms را می‌بیند و دوباره می‌پذیرد (FR-ACC-007، D33 قاعدهٔ ۳). Terms و رضایت ضبط ۰٫۱ می‌مانند. `apps/web/src/legal/texts.generated.ts` با `pnpm legal:build` بازسازی شد؛ `acc.test.ts` نسخهٔ سرعنوان دو متن را هم با `CURRENT_VERSIONS` می‌سنجد.
+- متن همچنان Draft است و G11 باز می‌ماند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 

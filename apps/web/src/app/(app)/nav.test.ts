@@ -22,7 +22,7 @@ describe("shell section of a signed-in path", () => {
     ["/courses/0f0a/materials", "classes"],
     ["/cards/0f0a", "classes"],
     ["/notes/0f0a", "classes"],
-    // UX-02: the recording pages draw the navigation before Start and after Stop.
+    // UX-02: the recording pages load in the shell, in focus whenever the page draws no navigation.
     ["/recordings", "classes"],
     ["/sessions/0f0a/record", "classes"],
   ] as const)("%s belongs to %s", (path, section) => {

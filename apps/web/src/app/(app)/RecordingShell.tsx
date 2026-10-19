@@ -24,10 +24,12 @@ type FrameProps = {
 };
 
 /**
- * The recording pages' shell for a known capture state (UX-02, owner decision 2026-10-19): the
- * normal learner shell before Start and after Stop, and no navigation at all while capture runs.
- * It is one AppShell whose `focus` switches, so the recording view keeps its place and state when
- * the phase changes. With RECORDING_FOCUS_MODE "always" the pages use FocusShell as in batch 4.
+ * The recording pages' shell for a known capture state (UX-02, owner decision 2026-10-19, D90 as
+ * amended). With RECORDING_FOCUS_MODE "always" (the current setting) the pages use FocusShell, the
+ * full focus mode without navigation or Terms notice in any phase. With "while-capturing" it is
+ * one AppShell whose `focus` switches: the normal learner shell before Start and after Stop, and no
+ * navigation while capture runs; the recording view keeps its place and state when the phase
+ * changes.
  */
 export function RecordingShellFrame({
   capturing,
