@@ -20,6 +20,12 @@
 5. مرحله‌های گران (e2e، build کامل، نصب مرورگر) فقط در جایی که نتیجه‌شان مصرف می‌شود؛ cache وابستگی‌ها (`cache: pnpm`) همیشه روشن.
 6. بودجهٔ Actions در GitHub → Settings → Billing → Budgets and alerts تعریف شده است تا پر شدن سهمیه، کار را بی‌خبر متوقف نکند. هر افزایش بودجه تصمیم مالک محصول است.
 
+### در ریکالینو (2026-10-19)
+
+7. **e2e بدون build دوباره (D84، OPS-10):** job `verify` خروجی `apps/web/.next` (بدون `.next/cache`) را فقط وقتی e2e اجرا می‌شود با `actions/upload-artifact` (نگهداری یک روز) نگه می‌دارد و job `e2e` همان را با `actions/download-artifact` می‌گیرد. در هر اجرای `main`، `pnpm build` یک بار اجرا می‌شود. triggerها، concurrency، برچسب `e2e` و شرط jobها بی‌تغییرند.
+8. **Dependabot فقط امنیتی (D84):** `.github/dependabot.yml` به‌روزرسانی نسخه‌ای را خاموش نگه می‌دارد. PR امنیتی Dependabot مثل هر PR به `main` CI می‌خورد؛ دقیقهٔ دیگری مصرف نمی‌شود.
+9. **دروازهٔ production (D83، OPS-04):** پس از اجرای [چک‌لیست مالک](BRANCH_PROTECTION_FA.md)، `main` فقط با PR و check سبز «Lint, types, boundaries, tests, build» تغییر می‌کند و Vercel دامنهٔ production را فقط پس از سبز شدن همان check به استقرار تازه می‌دهد. این با الگوی کم‌مصرف سازگار است، چون CI روی PR به `main` اجرا می‌شود. PR فقط‌مستندات CI ندارد؛ راه‌حلش در همان سند است. تا اجرای چک‌لیست، هر push به `main` مثل قبل مستقر می‌شود.
+
 ## قالب `on:` برای مخزن‌های دیگر
 
 ```yaml

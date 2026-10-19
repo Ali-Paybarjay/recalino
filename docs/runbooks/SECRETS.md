@@ -1,10 +1,11 @@
 # روال اسرار و چرخش کلیدها (FR-PLT-009)
 
-> **تاریخ:** 2026-10-01 · **به‌روز:** 2026-10-18 (QUA-02، فهرست کامل اسرار تولید) · **مالک:** مالک محصول (اپراتور پایلوت)
+> **تاریخ:** 2026-10-01 · **به‌روز:** 2026-10-19 (D82، اسرار فقط در Production؛ پیش‌تر 2026-10-18، QUA-02) · **مالک:** مالک محصول (اپراتور پایلوت)
 
 ## قواعد
 
 - اسرار فقط در متغیرهای محیطی سرور هستند: Vercel برای محیط ابری و `.env.local` برای محیط محلی. هیچ سری در مخزن، چت یا لاگ نمی‌آید.
+- **در Vercel، اسرار پایلوت فقط در target Production و با گزینهٔ Sensitive‌اند** (Q-SPEC-1 در [PROJECT_SPEC](../PROJECT_SPEC.md)، [D82](../PRODUCT_DECISIONS_LOG.md)). Preview و Development هیچ سری پایلوت ندارند؛ Preview فقط در حالت fixture (`RECALINO_UI_PREVIEW=1`) ساخته می‌شود. چک‌لیست اجرا: [CLOUD_SETUP.md](CLOUD_SETUP.md)، «جداسازی Preview از پایلوت».
 - فهرست نام‌ها در [`.env.example`](../../.env.example) است، بدون مقدار. همه این نام‌ها سمت سرورند.
 - آزمون `tools/env-example.test.ts` هر نام `process.env.X` یا `env.X` در کد تحویلی را با `.env.example` مقایسه می‌کند. نام تازه‌ای که در فهرست نباشد و در فهرست استثنای همان آزمون هم نیامده باشد، `pnpm test:unit` را می‌شکند. اگر نام تازه سری است، در همان تغییر سطرش را به جدول زیر هم اضافه کنید؛ آزمون این بخش را نمی‌سنجد.
 - CI پس از build فایل‌هایی را که به مرورگر می‌رسند برای این نام‌ها و الگوهای شناخته‌شده کلید جست‌وجو می‌کند و در صورت یافتن شکست می‌خورد (`pnpm check:client-bundle`).
@@ -36,7 +37,7 @@
 ## چرخش یک کلید
 
 1. مقدار تازه را بسازید (برای `RATE_LIMIT_IP_KEY` و `CRON_SECRET`، دست‌کم ۳۲ نویسه تصادفی).
-2. در داشبورد Vercel، مقدار تازه را برای همه محیط‌های لازم ثبت کنید.
+2. در داشبورد Vercel، مقدار تازه را فقط برای Production و با گزینهٔ Sensitive ثبت کنید (D82).
 3. **رمز دیتابیس:** طبق بخش «چرخش رمز دیتابیس» در پایین.
    **کلید secret سوپابیس:** در Project Settings ← API Keys یک کلید secret تازه بسازید و در Vercel ثبت کنید. کلید قبلی را پس از استقرار تازه (گام ۴) حذف کنید.
 4. یک استقرار تازه بسازید تا مقدار تازه خوانده شود.
@@ -50,7 +51,7 @@
 | سری | مقدار تازه از کجا | همراه آن |
 |---|---|---|
 | `OPENROUTER_API_KEY` | داشبورد OpenRouter، کلید تازه | در Vercel Production با گزینهٔ Sensitive ثبت شود (ابزار `tools/configure-runtime-env.mjs` هم همین کار را با `--sensitive` می‌کند). پس از استقرار تازه، کلید قبلی در OpenRouter حذف شود |
-| `BLOB_READ_WRITE_TOKEN` | Blob store `recalino-files` در داشبورد Vercel، توکن تازه | هم در Vercel و هم در فایل پیکربندی خصوصی پشتیبان روی میزبان اپراتور به‌روز شود، وگرنه پشتیبان روزانه می‌ایستد |
+| `BLOB_READ_WRITE_TOKEN` | Blob store `recalino-files` در داشبورد Vercel، توکن تازه | فقط Production و Sensitive (D82؛ پیش از 2026-10-19 خواندنی و مشترک بین سه محیط بود و یک بار چرخش لازم دارد). هم در Vercel و هم در فایل پیکربندی خصوصی پشتیبان روی میزبان اپراتور به‌روز شود، وگرنه پشتیبان روزانه می‌ایستد |
 | `RECALINO_GMAIL_APP_PASSWORD` | حساب Google پایلوت، App Passwords، رمز تازه (نام `Recalino pilot email`) | رمز قبلی در همان صفحه حذف شود؛ جزئیات در [GMAIL_PILOT_SETUP.md](GMAIL_PILOT_SETUP.md) و [EMAIL_DELIVERY_AUTH_RECOVERY.md](EMAIL_DELIVERY_AUTH_RECOVERY.md) |
 | `RESEND_API_KEY` | داشبورد Resend، کلید API تازه | کلید قبلی پس از استقرار تازه در Resend حذف شود |
 | `RECALINO_WEB_PUSH_PRIVATE_KEY` | جفت‌کلید VAPID تازه (کتابخانهٔ `web-push`)؛ `tools/web-push/configure-local.mjs` فقط برای محیط محلی است و به تنظیمات ابری نمی‌نویسد | کلید عمومی و خصوصی هم‌زمان عوض شوند. اشتراک‌های قبلی کار نمی‌کنند و کاربران هشدار را دوباره روشن می‌کنند. چرخش فقط با تصمیم مالک محصول |
@@ -65,7 +66,7 @@
    - رشته اتصال تازه در `%USERPROFILE%\.recalino\database-url.txt` نوشته می‌شود و نمایش داده نمی‌شود.
    - خط `alter role recalino_app with password 'SCRAM-SHA-256$…';` را که ابزار چاپ می‌کند، در SQL Editor پروژه Supabase اجرا کنید.
 2. **بررسی:** `pnpm db:url-check`. نتیجه باید `RESULT: OK` باشد، همراه `TLSv1.3` و `certificate verified …: yes`.
-3. **ثبت در Vercel:** محتوای همان فایل را در `DATABASE_URL` ثبت کنید، برای Production و Preview و با گزینه Sensitive.
+3. **ثبت در Vercel:** محتوای همان فایل را در `DATABASE_URL` ثبت کنید، **فقط برای Production** و با گزینه Sensitive (Q-SPEC-1، D82).
    - فایل را در Notepad باز کنید، با Ctrl+A و Ctrl+C کپی کنید، و **بلافاصله تب را با Ctrl+W ببندید**. Notepad ویندوز ۱۱ تب‌های باز را جدا روی دیسک نگه می‌دارد، حتی پس از حذف فایل.
    - تا وقتی فایل باز است، عکس صفحه نگیرید و صفحه را به اشتراک نگذارید.
    - اگر «Clipboard history ← Sync across your devices» روشن است، پیش از کپی خاموشش کنید.
