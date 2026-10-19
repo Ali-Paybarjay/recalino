@@ -23,6 +23,7 @@ export {
   getNotebookRevision,
   hasPublishedNotebook,
   listNotebookRevisions,
+  liveNotebookRevisionIds,
   type Notebook,
   type NotebookRevision,
   publishNotebook,

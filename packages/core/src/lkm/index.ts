@@ -75,6 +75,7 @@ export {
   listAvailableKnowledgeReferences,
   listLatestAvailableKnowledgeVersions,
   listVersions,
+  liveKnowledgeVersionIds,
   liveKnowledgeVersionIdsForCleanup,
   publishKnowledgeVersion,
   redactVersionGenerations,

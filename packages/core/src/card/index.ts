@@ -23,7 +23,7 @@ export {
   tombstoneAccountCards,
   tombstoneSourceCards,
 } from "./privacy";
-export { learningItemIdsForOwnedCards } from "./projections";
+export { learningItemIdsForOwnedCards, liveCardIds } from "./projections";
 export {
   type CardActionInput,
   type CardStatus,

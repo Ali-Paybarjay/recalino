@@ -2,7 +2,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import type { Database, DB, Tx } from "../db";
-import { getNotebookRevision } from "../note";
+import { getNotebookRevision, liveNotebookRevisionIds } from "../note";
 import {
   AppError,
   assertExportSize,
@@ -189,15 +189,17 @@ export async function listHtmlExports(
     .where("expires_at", ">", now)
     .orderBy("created_at", "desc")
     .execute();
-  const result: ExportArtifact[] = [];
-  for (const row of rows) {
-    try {
-      result.push(await getHtmlExport(db, ctx, row.id, now));
-    } catch (e) {
-      if (!(e instanceof AppError && e.code === "not_found")) throw e;
-    }
-  }
-  return result;
+  // PERF-04: the same checks as getHtmlExport for every listed export, in a constant number of
+  // reads: an export is listed only while the notes revision it copied is readable.
+  const snapshots = rows.flatMap((row) =>
+    row.snapshot ? [{ row, revisionId: (row.snapshot as unknown as HtmlSnapshot).revisionId }] : [],
+  );
+  const live = await liveNotebookRevisionIds(
+    db,
+    ctx,
+    snapshots.map(({ revisionId }) => revisionId),
+  );
+  return snapshots.filter(({ revisionId }) => live.has(revisionId)).map(({ row }) => view(row));
 }
 export async function htmlExportReadLink(
   db: Database,
