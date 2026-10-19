@@ -12,7 +12,7 @@ allowBuilds:
   esbuild: true
 
 # Release cooldown (OPS-12): a package version published less than 24 hours (1440 minutes) ago is
-# selected. pnpm 12 applies 1440 minutes without this key, but not strictly; the explicit value
+# not selected. pnpm 12 applies 1440 minutes without this key, but not strictly; the explicit value
 # makes the policy visible and strict (an immature version is refused, not silently added to the
 # exclude list). The exclude list below exempts only those exact versions, never a whole package.
 minimumReleaseAge: 1440
