@@ -1,4 +1,4 @@
-import { longestProviderTimeoutMs, ProviderError } from "../aip";
+import { longestProviderTimeoutMs } from "../aip";
 import {
   GENERATED_IDENTITY_VERSION,
   normalizeGeneratedStudyModel,
@@ -6,28 +6,15 @@ import {
 } from "../lkm";
 import type { JobDefinition } from "../plt";
 import { amountsSchema } from "../quota";
-import { assertSourcesLive, sourceClassificationPrompt, updateAutomaticSourceRoles } from "../src";
+import { assertSourcesLive, updateAutomaticSourceRoles } from "../src";
 import { settleClassMaterial } from "./charged-material";
 import { processingQueue } from "./contracts";
-import { generatedKnowledgeSchema, legacyKnowledgeWireSchema } from "./generated-knowledge";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
-import {
-  compactKnowledgeBudget,
-  compactKnowledgeInstruction,
-  knowledgeTruncationSchema,
-} from "./knowledge-compact";
-import { buildKnowledgeGenerationInput } from "./knowledge-generation";
-import {
-  generateCanonicalKnowledge,
-  knowledgeSchemaFailureSchema,
-} from "./knowledge-generation-step";
-import { knowledgeInputContextSchema } from "./knowledge-input-context";
-import { declaredTeachingContext, teachingAdaptation } from "./learner-context";
+import { teachingAdaptation } from "./learner-context";
 
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
 import { planLessonParts } from "./knowledge-parts";
-import { buildKnowledgeStudyRepairInput } from "./knowledge-study-repair";
 import { correctVoiceCandidates, processVoiceSource } from "./voice-processing";
 
 export { knowledgePrompt, validateGeneratedKnowledge } from "./steps/knowledge-checks";
@@ -50,23 +37,17 @@ export {
 import { YIELDED } from "./steps/context";
 import { extractSources } from "./steps/extract-sources";
 import { failRun } from "./steps/fail-run";
-import {
-  knowledgePrompt,
-  semanticRepairReason,
-  validateGeneratedKnowledge,
-} from "./steps/knowledge-checks";
-import { repairLegacyKnowledge } from "./steps/legacy-knowledge-repair";
+import { validateGeneratedKnowledge } from "./steps/knowledge-checks";
 import { prepareLesson } from "./steps/lesson-input";
+import { generateLessonKnowledge } from "./steps/lesson-knowledge";
 import { generateLessonParts } from "./steps/lesson-parts";
 import {
-  cached,
   checkpointAndContinue,
   hasTime,
   liveRun,
   PROVIDER_CALL_SAFETY_MS,
   type ProcessingDependencies,
   providerStep,
-  saveStep,
   YIELD_DELAY_SECONDS,
 } from "./steps/runtime";
 import { startRun } from "./steps/start";
@@ -96,17 +77,7 @@ export function processingJob(
         if (voiceCheck === YIELDED) return;
         const lessonStage = async (): Promise<"checkpoint" | "published"> => {
           const prepared = await prepareLesson(stage, extracted);
-          const {
-            missing,
-            lessonContext,
-            practiceFocus,
-            teaching,
-            generationData,
-            compactGeneration,
-            quality,
-            qualityOptions,
-            knowledgeInput,
-          } = prepared;
+          const { missing, lessonContext, practiceFocus, compactGeneration, quality } = prepared;
           let knowledgeDispatched = false;
           let validated: ReturnType<typeof validateGeneratedKnowledge>;
           // D63: a class longer than one part is taught part by part and merged by code.
@@ -124,261 +95,11 @@ export function processingJob(
               settings.explanationLanguage,
             );
           } else {
-            const priorKnowledge = await cached(
-              job.db,
-              payload.runId,
-              "knowledge",
-              generatedKnowledgeSchema,
-            );
-            knowledgeDispatched = !priorKnowledge;
-            let generated = priorKnowledge;
-            if (!generated) {
-              const compact = await cached(
-                job.db,
-                payload.runId,
-                "knowledge:truncated",
-                knowledgeTruncationSchema,
-              );
-              const schemaFailure = compactGeneration
-                ? await cached(
-                    job.db,
-                    payload.runId,
-                    "knowledge:schema-invalid",
-                    knowledgeSchemaFailureSchema,
-                  )
-                : null;
-              // Deterministic request validation runs before reserving a paid attempt.
-              const generation = compactGeneration
-                ? buildKnowledgeGenerationInput(
-                    generationData,
-                    settings.provider.maxInputCharacters,
-                    {
-                      maxOutputTokens: compact
-                        ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
-                        : settings.provider.maxOutputTokens,
-                      // The single compact recovery keeps its fixed small budget.
-                      ...(compact ? {} : qualityOptions),
-                      compact: Boolean(compact),
-                      ...(schemaFailure
-                        ? {
-                            repairReason: schemaFailure.reason,
-                            ...(schemaFailure.detail ? { repairDetail: schemaFailure.detail } : {}),
-                          }
-                        : {}),
-                    },
-                  )
-                : undefined;
-              try {
-                generated = await providerStep(
-                  job,
-                  ctx,
-                  payload.runId,
-                  compact ? "knowledge:compact" : schemaFailure ? "knowledge:repair" : "knowledge",
-                  settings.provider.llmModel,
-                  provider,
-                  generatedKnowledgeSchema,
-                  (operationKey) =>
-                    generation
-                      ? generateCanonicalKnowledge(
-                          provider,
-                          settings.provider.llmModel,
-                          operationKey,
-                          generation,
-                        )
-                      : provider.structured({
-                          operationKey,
-                          model: settings.provider.llmModel,
-                          // The checkpoint contract without study.ipaText: no provider writes it.
-                          schema: legacyKnowledgeWireSchema,
-                          schemaName: "class_knowledge",
-                          system: [
-                            knowledgePrompt(
-                              settings.explanationLanguage,
-                              settings.teachingPreferences.shorterExamples,
-                              compact
-                                ? compactKnowledgeBudget(settings.provider.maxOutputTokens)
-                                : settings.provider.maxOutputTokens,
-                              false,
-                              teaching,
-                            ),
-                            knowledgeInput.sourceRefPrompt,
-                            "Return one sourceClassifications entry per source, using the exact sourceId. " +
-                              sourceClassificationPrompt +
-                              " Audio always uses evidence audio; use class_material as its classification placeholder. Images already have an automatically detected role from vision: preserve that category. Use the detected category when choosing claim evidence, but never treat personal notes as proof of authorship or a speaker's identity.",
-                            ...(compact
-                              ? [compactKnowledgeInstruction(settings.explanationLanguage)]
-                              : []),
-                          ].join(" "),
-                          input: knowledgeInput.input,
-                        }),
-                  {
-                    onCommit: async (tx, output) => {
-                      await saveStep(
-                        tx,
-                        payload.runId,
-                        "knowledge:input-context",
-                        knowledgeInputContextSchema.parse({ version: 1, ...lessonContext }),
-                        job.now(),
-                      );
-                      if (compact || schemaFailure) {
-                        await saveStep(tx, payload.runId, "knowledge", output, job.now());
-                      }
-                    },
-                  },
-                );
-              } catch (error) {
-                if (
-                  !compact &&
-                  !schemaFailure &&
-                  error instanceof ProviderError &&
-                  !error.uncertain &&
-                  error.accounting &&
-                  ((error.code === "provider_output_truncated" &&
-                    (await cached(
-                      job.db,
-                      payload.runId,
-                      "knowledge:truncated",
-                      knowledgeTruncationSchema,
-                    ))) ||
-                    (compactGeneration &&
-                      error.code === "provider_schema_invalid" &&
-                      (await cached(
-                        job.db,
-                        payload.runId,
-                        "knowledge:schema-invalid",
-                        knowledgeSchemaFailureSchema,
-                      ))))
-                ) {
-                  return "checkpoint";
-                }
-                throw error;
-              }
-            }
-            try {
-              validated = validateGeneratedKnowledge(
-                generated,
-                extracted,
-                missing,
-                settings.explanationLanguage,
-              );
-            } catch (error) {
-              // Only a complete, saved response with a known semantic failure permits repair.
-              // Provider uncertainty, changed settings and account/source failures never enter here.
-              if (!semanticRepairReason(error)) throw error;
-              // A known invalid response or truncation and its recovery consume both
-              // content-contract attempts. Never buy a third generation after semantic validation.
-              if (
-                compactGeneration &&
-                ((await cached(
-                  job.db,
-                  payload.runId,
-                  "knowledge:truncated",
-                  knowledgeTruncationSchema,
-                )) ||
-                  (await cached(
-                    job.db,
-                    payload.runId,
-                    "knowledge:schema-invalid",
-                    knowledgeSchemaFailureSchema,
-                  )))
-              )
-                throw error;
-              // Persist each paid result before the next provider call gets its own job budget.
-              if (!priorKnowledge) {
-                return "checkpoint";
-              }
-              if (semanticRepairReason(error) === "study_sentence_mismatch") {
-                const studyRepair = buildKnowledgeStudyRepairInput(
-                  generated,
-                  settings.provider.maxInputCharacters,
-                  declaredTeachingContext(teaching),
-                );
-                const priorStudyRepair = await cached(
-                  job.db,
-                  payload.runId,
-                  "knowledge:study-repair",
-                  studyRepair.schema,
-                );
-                const answerParts =
-                  priorStudyRepair ??
-                  (await providerStep(
-                    job,
-                    ctx,
-                    payload.runId,
-                    "knowledge:study-repair",
-                    settings.provider.llmModel,
-                    provider,
-                    studyRepair.schema,
-                    (operationKey) =>
-                      provider.structured({
-                        operationKey,
-                        model: settings.provider.llmModel,
-                        schema: studyRepair.schema,
-                        schemaName: "class_study_sentence_repair",
-                        system: studyRepair.system,
-                        input: studyRepair.input,
-                      }),
-                  ));
-                if (!priorStudyRepair) knowledgeDispatched = true;
-                // Only gap fields change. A remaining semantic failure stops this attempt;
-                // it never triggers a second repair or regenerates the saved lesson.
-                validated = validateGeneratedKnowledge(
-                  studyRepair.apply(answerParts),
-                  extracted,
-                  missing,
-                  settings.explanationLanguage,
-                );
-              } else if (compactGeneration) {
-                const repair = buildKnowledgeGenerationInput(
-                  generationData,
-                  settings.provider.maxInputCharacters,
-                  {
-                    maxOutputTokens: settings.provider.maxOutputTokens,
-                    ...qualityOptions,
-                    repairReason: semanticRepairReason(error) ?? undefined,
-                  },
-                );
-                const priorRepair = await cached(
-                  job.db,
-                  payload.runId,
-                  "knowledge:repair",
-                  generatedKnowledgeSchema,
-                );
-                const repaired =
-                  priorRepair ??
-                  (await providerStep(
-                    job,
-                    ctx,
-                    payload.runId,
-                    "knowledge:repair",
-                    settings.provider.llmModel,
-                    provider,
-                    generatedKnowledgeSchema,
-                    (operationKey) =>
-                      generateCanonicalKnowledge(
-                        provider,
-                        settings.provider.llmModel,
-                        operationKey,
-                        repair,
-                        "class_knowledge_content_repair",
-                      ),
-                  ));
-                if (!priorRepair) knowledgeDispatched = true;
-                // A complete second response is final: no recursive regeneration or translation.
-                validated = validateGeneratedKnowledge(
-                  repaired,
-                  extracted,
-                  missing,
-                  settings.explanationLanguage,
-                );
-              } else {
-                const dispatch = { knowledgeDispatched };
-                const repaired = await repairLegacyKnowledge(stage, { lesson: prepared, dispatch });
-                knowledgeDispatched = dispatch.knowledgeDispatched;
-                if (repaired === "checkpoint") return "checkpoint";
-                validated = repaired;
-              }
-            }
+            const dispatch = { knowledgeDispatched };
+            const knowledge = await generateLessonKnowledge(stage, { lesson: prepared, dispatch });
+            knowledgeDispatched = dispatch.knowledgeDispatched;
+            if (knowledge === "checkpoint") return "checkpoint";
+            validated = knowledge;
           }
           const { classified } = validated;
           const { model, audit: practiceAudit } = finalizeGeneratedStudyPractice(
