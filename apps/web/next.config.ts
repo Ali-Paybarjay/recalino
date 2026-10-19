@@ -21,6 +21,25 @@ const nativeProcessingResources = [
   "../../tools/voice/models/ATTRIBUTION.md",
 ];
 
+/**
+ * SEC-03: baseline security headers on every response. No page may be framed (clickjacking), no
+ * plugin content loads, and only the app itself may use the microphone. The notes reader and the
+ * admin email preview are srcdoc frames: they send no response headers, keep their own sandbox and
+ * CSP, and inherit this policy. base-uri therefore also allows the non-network about: scheme, so
+ * the notes frame keeps its <base href="about:srcdoc"> and in-notes links stay inside the frame.
+ * A full CSP (script-src with a nonce) is a later step that needs the end-to-end run.
+ */
+export const SECURITY_HEADERS = [
+  { key: "X-Frame-Options", value: "DENY" },
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self' about:",
+  },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+];
+
 const nextConfig: NextConfig = {
   // Domain code is shipped as TypeScript source from the workspace (PROJECT_SPEC §5).
   transpilePackages: ["@recalino/core"],
@@ -55,6 +74,9 @@ const nextConfig: NextConfig = {
     "/api/runs/**": nativeProcessingResources,
     "/api/voice/**": nativeProcessingResources,
     "/api/me/voice": nativeProcessingResources,
+  },
+  headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
   // D51: learner pages moved from /classes to /sessions. Saved notifications, bookmarks and
   // installed shortcuts keep working; the /api/classes routes are unchanged.
