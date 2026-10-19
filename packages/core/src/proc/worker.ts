@@ -1,16 +1,8 @@
 import { longestProviderTimeoutMs } from "../aip";
-import {
-  GENERATED_IDENTITY_VERSION,
-  normalizeGeneratedStudyModel,
-  publishKnowledgeVersion,
-} from "../lkm";
+import { normalizeGeneratedStudyModel } from "../lkm";
 import type { JobDefinition } from "../plt";
-import { amountsSchema } from "../quota";
-import { assertSourcesLive, updateAutomaticSourceRoles } from "../src";
-import { settleClassMaterial } from "./charged-material";
 import { processingQueue } from "./contracts";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
-import { teachingAdaptation } from "./learner-context";
 
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
@@ -40,10 +32,10 @@ import { validateGeneratedKnowledge } from "./steps/knowledge-checks";
 import { prepareLesson } from "./steps/lesson-input";
 import { generateLessonKnowledge } from "./steps/lesson-knowledge";
 import { generateLessonParts } from "./steps/lesson-parts";
+import { publishLesson } from "./steps/publish";
 import {
   checkpointAndContinue,
   hasTime,
-  liveRun,
   PROVIDER_CALL_SAFETY_MS,
   type ProcessingDependencies,
   YIELD_DELAY_SECONDS,
@@ -62,7 +54,7 @@ export function processingJob(
       const ctx = { userId: payload.userId, requestId: job.job.id };
       try {
         const stage = await startRun({ job, ctx, payload, definition, dependencies });
-        const { provider, settings, snapshot } = stage;
+        const { provider, settings } = stage;
         const extracted = await extractSources(stage);
         if (extracted === YIELDED) return;
         // Each lesson stage makes at most one provider call, on any model of the run. A stage
@@ -76,7 +68,7 @@ export function processingJob(
         if (voiceCheck === YIELDED) return;
         const lessonStage = async (): Promise<"checkpoint" | "published"> => {
           const prepared = await prepareLesson(stage, extracted);
-          const { missing, lessonContext, practiceFocus, compactGeneration, quality } = prepared;
+          const { missing, lessonContext, compactGeneration, quality } = prepared;
           let knowledgeDispatched = false;
           let validated: ReturnType<typeof validateGeneratedKnowledge>;
           // D63: a class longer than one part is taught part by part and merged by code.
@@ -119,81 +111,7 @@ export function processingJob(
             })) === "checkpoint"
           )
             return "checkpoint";
-          await job.db.transaction().execute(async (tx) => {
-            const run = await liveRun(tx, ctx, payload.runId);
-            // The source's own lock prevents a late worker from publishing after an asset tombstone.
-            await assertSourcesLive(
-              tx,
-              ctx,
-              snapshot.sources.map((source) => source.sourceId),
-            );
-            await updateAutomaticSourceRoles(
-              tx,
-              ctx,
-              run.session_id,
-              classified.map((source) => ({
-                sourceId: source.sourceId,
-                role: source.role ?? "class_material",
-              })),
-              job.now(),
-            );
-            const version = await publishKnowledgeVersion(
-              tx,
-              ctx,
-              {
-                runId: run.id,
-                sessionId: run.session_id,
-                sourcesVersion: snapshot.sourcesVersion,
-                sourceFingerprint: snapshot.fingerprint,
-                model,
-                sources: classified,
-                explanationLanguage: settings.explanationLanguage,
-                generation: {
-                  provider: provider.name,
-                  model: settings.provider.llmModel,
-                  promptVersion: settings.provider.promptVersion,
-                  identityVersion: GENERATED_IDENTITY_VERSION,
-                  settings: settings.provider,
-                  profileVersion: settings.profileVersion,
-                  teachingPreferences: settings.teachingPreferences,
-                  ...(practiceAudit.applied ? { studyPractice: practiceAudit } : {}),
-                  ...(settings.learnerContext
-                    ? {
-                        teachingAdaptation: teachingAdaptation({
-                          context: settings.learnerContext,
-                          shorterExamples: settings.teachingPreferences.shorterExamples,
-                          focus: practiceFocus,
-                          items: model.learningItems,
-                        }),
-                      }
-                    : {}),
-                },
-              },
-              job.now(),
-            );
-            // D59: charge only material no earlier publication paid for, within the reservation.
-            await settleClassMaterial(tx, ctx, {
-              runId: run.id,
-              sessionId: run.session_id,
-              reservationId: run.reservation_id,
-              held: amountsSchema.parse(run.requested_amounts),
-              sources: extracted.filter((source) => source.blocks.length),
-              charactersPerPage: settings.provider.charactersPerPage,
-              now: job.now(),
-            });
-            await tx
-              .updateTable("proc.processing_run")
-              .set({
-                state: missing.length ? "partial_ready" : "ready",
-                output_version_id: version.id,
-                finished_at: job.now(),
-                updated_at: job.now(),
-                last_error: null,
-              })
-              .where("id", "=", run.id)
-              .execute();
-          });
-          return "published";
+          return publishLesson(stage, { lesson: prepared, classified, model, practiceAudit });
         };
         let outcome: "checkpoint" | "published";
         try {
