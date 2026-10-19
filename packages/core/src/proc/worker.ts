@@ -1,5 +1,4 @@
 import type { z } from "zod";
-import { lockAccount } from "../acc";
 import {
   effectiveStructuredMaxOutputTokens,
   longestProviderTimeoutMs,
@@ -11,8 +10,8 @@ import {
   publishKnowledgeVersion,
 } from "../lkm";
 import { getCourse, getSession } from "../org";
-import { AppError, JobCancelled, type JobDefinition, readPltSettings } from "../plt";
-import { amountsSchema, emptyAmounts, settleAllowance } from "../quota";
+import type { JobDefinition } from "../plt";
+import { amountsSchema } from "../quota";
 import { assertSourcesLive, sourceClassificationPrompt, updateAutomaticSourceRoles } from "../src";
 import { settleClassMaterial } from "./charged-material";
 import { processingQueue } from "./contracts";
@@ -45,7 +44,6 @@ import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { buildKnowledgeStudyRepairInput } from "./knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "./knowledge-translation";
 import { lessonBudget, lessonProductionLimit, measureLessonContent } from "./lesson-budget";
-import { ownedRun } from "./runs";
 import { correctVoiceCandidates, processVoiceSource } from "./voice-processing";
 
 export { knowledgePrompt, validateGeneratedKnowledge } from "./steps/knowledge-checks";
@@ -67,9 +65,9 @@ export {
 
 import { YIELDED } from "./steps/context";
 import { extractSources } from "./steps/extract-sources";
+import { failRun } from "./steps/fail-run";
 import {
   knowledgePrompt,
-  processingFailureCode,
   semanticRepairReason,
   validateGeneratedKnowledge,
 } from "./steps/knowledge-checks";
@@ -900,35 +898,7 @@ export function processingJob(
         if (outcome === "checkpoint")
           await checkpointAndContinue(job, ctx, payload.runId, definition);
       } catch (error) {
-        if (error instanceof JobCancelled) return;
-        if (
-          error instanceof ProviderError &&
-          error.retryable &&
-          job.job.attempt < readPltSettings().jobs.maxAttempts
-        )
-          throw error;
-        await job.db.transaction().execute(async (tx) => {
-          await lockAccount(tx, ctx.userId);
-          const run = await ownedRun(tx, ctx, payload.runId, true);
-          if (!["queued", "processing"].includes(run.state)) return;
-          const code =
-            error instanceof ProviderError
-              ? error.code
-              : error instanceof AppError
-                ? (processingFailureCode(error) ?? error.code)
-                : "processing_failed";
-          await settleAllowance(tx, ctx, run.reservation_id, emptyAmounts(), job.now());
-          await tx
-            .updateTable("proc.processing_run")
-            .set({
-              state: error instanceof ProviderError && error.uncertain ? "needs_input" : "failed",
-              last_error: code,
-              finished_at: job.now(),
-              updated_at: job.now(),
-            })
-            .where("id", "=", run.id)
-            .execute();
-        });
+        await failRun({ job, ctx, payload }, error);
         return;
       }
     },
