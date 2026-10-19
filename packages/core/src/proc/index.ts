@@ -8,6 +8,7 @@ export {
   cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
   getAutomaticLearningSession,
+  listAutomaticLearningSessions,
   listPendingAutomaticLearning,
   reconcileAutomaticLearningBatch,
   registerAutomaticLearningFile,
