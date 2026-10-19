@@ -47,7 +47,7 @@ import {
   requestAutomaticLearning,
   updateAutomaticLearningProgress,
 } from "./automatic-state";
-import { expireAwaitingUploads } from "./maintenance";
+import { awaitingUploadRuns, expireAwaitingUploads } from "./maintenance";
 import { forgetPracticeSources } from "./practice-privacy";
 import {
   cancelRun,
@@ -1165,6 +1165,14 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     const pending = await f.start();
     expect(pending.state).toBe("awaiting_upload");
     expect((await allowance(db, f.ctx)).reserved.audio).toBe(1);
+    // D73: the five-minute check reads only the audio source ids, never the class snapshot.
+    expect((await awaitingUploadRuns(db)).find((run) => run.id === pending.id)).toEqual({
+      id: pending.id,
+      user_id: f.ctx.userId,
+      reservation_id: expect.any(String),
+      created_at: expect.any(Date),
+      audio_source_ids: [audio.id],
+    });
     await expireAwaitingUploads(db, now);
     expect((await getRun(db, f.ctx, pending.id)).state).toBe("awaiting_upload");
     const contract = await readInputContract(db, "1");
