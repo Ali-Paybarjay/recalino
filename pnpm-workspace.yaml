@@ -51,6 +51,12 @@ minimumReleaseAgeExclude:
 # Record exact versions in package.json (PROJECT_SPEC §3).
 saveExact: true
 
+# Security overrides (audit SEC-10, 2026-10-19). pnpm 12 reads overrides only from this file,
+# not from the "pnpm" field of package.json. source-map-js below 1.2.2 has GHSA-68fv-2mgg-jv7q;
+# it reaches the build through next > postcss. Remove the entry once next ships 1.2.2 or later.
+overrides:
+  source-map-js: 1.2.2
+
 # A dependency whose `engines` rules out the running Node.js fails the install instead of warning.
 # The repository's own Node range (>=24 <25) is in package.json `engines` and .nvmrc; pnpm does not
 # enforce a workspace's own `engines.node`.
