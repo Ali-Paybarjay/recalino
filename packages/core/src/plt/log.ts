@@ -14,6 +14,8 @@ const ALLOWED_FIELDS = new Set([
   "kind",
   "job_id",
   "object_id",
+  // D100: an export left out of a list because its stored snapshot is malformed (id only).
+  "export_id",
   "attempt",
   "module",
   "error_name",

@@ -6,7 +6,9 @@ import { learningMemoryCopy } from "./learning-memory-copy";
  * Words for what a card is, never the stored value (UX-05). Each label reuses a word the design
  * already shows: the card-type names of the frames and /preview ("Vocabulary", "Cloze", "Grammar
  * point", "Error correction", "Listening", "Question and answer"), "Suggested" (frame E3 list)
- * and the state words of the card actions ("Suspended", "Known", "Rejected").
+ * and the state words of the card actions ("Suspended", "Known", "Rejected"). The owner approved
+ * these labels as they are on 2026-10-19 (D100); approved-copy.test.ts keeps them equal to the
+ * register in docs/design/UI_COPY_PENDING.md.
  */
 const TEMPLATE_LABELS: Record<string, string> = {
   basic: "Question and answer",

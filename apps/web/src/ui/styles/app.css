@@ -8,7 +8,9 @@
   --color-text: #1c3028;
   --rc-text-muted: #58685f;
   --color-divider: #dce3d9;
-  --rc-border-strong: #8c9c91;
+  /* A11Y-01, D99: darkened from #8c9c91 (same hue) so control borders reach 3:1 on the page,
+     surface, surface-2 and primary tint (contrast.test.ts). */
+  --rc-border-strong: #7a8d80;
   --color-accent: #28634a;
   --rc-primary-text: #245b43;
   --rc-primary-tint: #e7f0e6;
@@ -114,6 +116,12 @@ body {
 .btn.rc-btn-lg {
   min-height: 52px;
   font-size: var(--rc-text-md);
+}
+
+/* A11Y-01, D99: a text field's border is a control boundary, so it takes the 3:1 border token
+   instead of the divider (1.31:1 on white). Hover and focus keep the base layer's colours. */
+.input {
+  border-color: var(--rc-border-strong);
 }
 
 /* Text fields: the focus ring sits on the border (Design System, text field "Focus"). */

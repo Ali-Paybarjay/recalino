@@ -99,7 +99,7 @@
   padding: 0 14px;
   border-radius: 12px;
   color: var(--rc-text-muted);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   text-decoration: none;
   transition: background var(--rc-dur-fast);
 }
@@ -151,7 +151,7 @@
 }
 .sidebarFooter {
   padding: 12px;
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }
 .pageHeader {
@@ -160,7 +160,7 @@
   gap: 8px;
 }
 .kicker {
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }
 .pageTitle {
@@ -171,7 +171,7 @@
 }
 .subtitle {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   line-height: 1.6;
   color: var(--rc-text-muted);
 }

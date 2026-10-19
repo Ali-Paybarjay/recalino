@@ -10,6 +10,7 @@ import {
   assertExportSize,
   assertOwner,
   canonicalJson,
+  createLogger,
   createObject,
   deleteObject,
   type ExportArtifact,
@@ -23,6 +24,7 @@ import {
   isValidIdempotencyKey,
   type JobDefinition,
   type LearnerContext,
+  type Logger,
   type ObjectStore,
   ownedObjectMetadata,
   type PeriodicJob,
@@ -248,6 +250,7 @@ export async function listAnkiExports(
   ctx: LearnerContext,
   sessionId: string,
   now = new Date(),
+  log: Logger = createLogger(),
 ): Promise<ExportArtifact[]> {
   await getSession(db, ctx, sessionId);
   const rows = await db
@@ -261,11 +264,17 @@ export async function listAnkiExports(
     .execute();
   // PERF-04: the same checks as getAnkiExport for every listed export, in a constant number of
   // reads. The session was checked above; an export is listed only while all its cards are.
-  const snapshots = rows.flatMap((row) =>
-    row.snapshot
-      ? [{ row, cards: parseSnapshot(ankiSnapshotCardIdsSchema, row.snapshot).cards }]
-      : [],
-  );
+  const snapshots = rows.flatMap((row) => {
+    if (!row.snapshot) return [];
+    // D100: one export whose stored snapshot is malformed is left out (logged by its id only, no
+    // content) so the others still list; reading or downloading it still fails as snapshot_invalid.
+    const snapshot = ankiSnapshotCardIdsSchema.safeParse(row.snapshot);
+    if (!snapshot.success) {
+      log("error", "anki_export_snapshot_invalid", { export_id: row.id });
+      return [];
+    }
+    return [{ row, cards: snapshot.data.cards }];
+  });
   const live = await liveCardIds(
     db,
     ctx,

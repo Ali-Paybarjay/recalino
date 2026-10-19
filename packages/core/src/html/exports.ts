@@ -8,6 +8,7 @@ import {
   assertExportSize,
   assertOwner,
   canonicalJson,
+  createLogger,
   createObject,
   deleteObject,
   type ExportArtifact,
@@ -21,6 +22,7 @@ import {
   isValidIdempotencyKey,
   type JobDefinition,
   type LearnerContext,
+  type Logger,
   type ObjectStore,
   ownedObjectMetadata,
   type PeriodicJob,
@@ -189,6 +191,7 @@ export async function listHtmlExports(
   ctx: LearnerContext,
   sessionId: string,
   now = new Date(),
+  log: Logger = createLogger(),
 ): Promise<ExportArtifact[]> {
   const rows = await db
     .selectFrom("html.export_artifact")
@@ -201,11 +204,17 @@ export async function listHtmlExports(
     .execute();
   // PERF-04: the same checks as getHtmlExport for every listed export, in a constant number of
   // reads: an export is listed only while the notes revision it copied is readable.
-  const snapshots = rows.flatMap((row) =>
-    row.snapshot
-      ? [{ row, revisionId: parseSnapshot(htmlSnapshotRevisionSchema, row.snapshot).revisionId }]
-      : [],
-  );
+  const snapshots = rows.flatMap((row) => {
+    if (!row.snapshot) return [];
+    // D100: one export whose stored snapshot is malformed is left out (logged by its id only, no
+    // content) so the others still list; reading or downloading it still fails as snapshot_invalid.
+    const snapshot = htmlSnapshotRevisionSchema.safeParse(row.snapshot);
+    if (!snapshot.success) {
+      log("error", "html_export_snapshot_invalid", { export_id: row.id });
+      return [];
+    }
+    return [{ row, revisionId: snapshot.data.revisionId }];
+  });
   const live = await liveNotebookRevisionIds(
     db,
     ctx,

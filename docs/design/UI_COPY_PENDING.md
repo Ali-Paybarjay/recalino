@@ -2,7 +2,7 @@
 
 متن رابط باید از طرح مصوب بیاید (CLAUDE.md، «پیاده‌سازی رابط کاربری»؛ D34 و D35). متن‌های زیر برای حالت‌هایی نوشته شده‌اند که نه در `handoff/copy.md` هستند و نه در گزارش‌های بازطراحی 2026-10-04. هیچ‌کدام هنوز تأیید نشده‌اند. همه در [`apps/web/src/ui/pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) نگه داشته می‌شوند و آزمون `pending-copy.test.ts` بررسی می‌کند که هر متن عیناً در همین فهرست ثبت شده باشد.
 
-پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A، [D86](../PRODUCT_DECISIONS_LOG.md) و D87؛ و جملهٔ `provider_outcome_unresolved` و برچسب مجموعه‌های کارت، D89 و D88) هستند. ۱۶ متن کارت «System health» (پیشنهاد دستهٔ ۳) هم در 2026-10-19 تأیید شدند ([D97](../PRODUCT_DECISIONS_LOG.md)، بخش پایانی). هشت متن پیشرفت پایلوت و وظیفه‌های تازه (پیشنهاد دستهٔ ۱۳) هم در همان روز تأیید شدند ([D98](../PRODUCT_DECISIONS_LOG.md)). پیشنهادهای دیگر دستهٔ ۵ تأیید نشده‌اند.
+پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A، [D86](../PRODUCT_DECISIONS_LOG.md) و D87؛ و جملهٔ `provider_outcome_unresolved` و برچسب مجموعه‌های کارت، D89 و D88) هستند. ۱۶ متن کارت «System health» (پیشنهاد دستهٔ ۳) هم در 2026-10-19 تأیید شدند ([D97](../PRODUCT_DECISIONS_LOG.md)، بخش پایانی). هشت متن پیشرفت پایلوت و وظیفه‌های تازه (پیشنهاد دستهٔ ۱۳) هم در همان روز تأیید شدند ([D98](../PRODUCT_DECISIONS_LOG.md)). ده برچسب کارت دستهٔ ۵ (`workspace/card-labels.ts`) هم در همان روز عیناً تأیید شدند ([D100](../PRODUCT_DECISIONS_LOG.md)، بخش «تأیید 2026-10-19 — برچسب‌های کارت»). پیشنهادهای دیگر دستهٔ ۵ تأیید نشده‌اند.
 
 **تأیید 2026-10-10:** مالک محصول همهٔ ۴۳ متنی را که در این تاریخ در فهرست بودند تأیید کرد (پیگیری D54). ۳۴ متن عیناً منتقل شدند: متن‌های صدا به [`voice/voice-copy.ts`](../../apps/web/src/ui/voice/voice-copy.ts)، متن‌های بازبینی پردازش به `AutomaticLearningView.tsx` و متن‌های `learningMemory.*` به `learning-memory-copy.ts`. نُه متن صدا (`voice.reference.short`، `expired` و `missing`؛ `voice.match.no_sample`، `no_reference` و `policy_unavailable`؛ `voice.readiness.needs_sample`، `needs_class` و `unavailable`) با D54 نمی‌خواندند، چون ممکن بود در حالتی نمایش داده شوند که calibration خود حساب (۲۰ تأیید و ۲۰ رد) کلاس‌های بعد را خودکار بپذیرد. مالک محصول در همان روز متن اصلاح‌شدهٔ هر نُه متن را عیناً تأیید کرد و آن‌ها هم به `voice-copy.ts` رفتند. پیشنهاد PR #23 برای `voice.readiness.unavailable` بدون جملهٔ سوم پذیرفته شد، چون آن جمله با سیاست `autoAccept: false` درست نیست.
 
@@ -109,7 +109,7 @@
 - **UX-05، خطای `provider_outcome_unresolved`** (`workspace/api.ts`) — **تأییدشده، D89 (2026-10-19)؛ متن نهایی در بخش دستهٔ ۹ پایین. شرح زیر وضعیت پیش از تأیید است.** پیشنهاد: «A result is still being checked. Contact the pilot operator before trying again.» جمله‌ٔ قدیمی «A provider result is still being checked…» واژهٔ داخلی provider داشت. تا تأیید: متن عمومی موجود «The change could not be saved. Try again.»؛ کارت پیشرفت جملهٔ مصوب «Open Processing review below for the next step.» را همچنان نشان می‌دهد. **هشدار برای مالک:** متن موقت به «Try again» دعوت می‌کند، در حالی که سرور می‌گوید تا بررسی اپراتور تلاش نکن؛ جملهٔ پیشنهادی را زودتر تأیید کن. «Open Processing review below…» را به‌جای آن نگذاشتیم، چون این خطا در صفحه‌هایی مثل Notes و Processing هم دیده می‌شود که کارت «Processing review» پایین آن‌ها نیست.
 - **UX-05، رسید حذف حساب در حالت جاری** (`PrivacyView.tsx`): جمله‌ٔ «Server cleanup has been queued.» برداشته شد. پیشنهاد: «Your account and sessions are hidden. The rest of your data is being removed.» تا تأیید: فقط «Your account and sessions are hidden.»
 - **UX-05، پیام‌های سرور با واژهٔ provider** (`apps/web/src/server/automatic-learning.ts`، به رابط از راه `status.message` می‌رسد): «Processing is paused while a provider result is checked…» و «…the AI service rejected a processing request…». پیشنهاد: «Processing is paused while a result is checked. Your earlier notes and cards are available. Contact the pilot operator before retrying.» این فایل سمت سرور است و آزمون‌های سرور متن را می‌سنجند، پس بدون تأیید عوض نشد.
-- **UX-05، برچسب‌های کارت** (`workspace/card-labels.ts`): از واژه‌های موجود طرح ساخته شد: «Suggested» (قاب)، «Suspended»، «Known»، «Rejected» (واژهٔ وضعیت از «Card suspended»، «Known · chosen by you» و «Card rejected»)، و نام نوع‌ها از قاب‌ها و `/preview`: «Question and answer»، «Vocabulary»، «Cloze»، «Grammar point»، «Error correction»، «Listening». کارت فعال برچسب وضعیت ندارد. پیشنهاد برای وضعیت فعال: «In your review queue». مالک محصول برچسب‌ها را عیناً تأیید کند.
+- **UX-05، برچسب‌های کارت** (`workspace/card-labels.ts`): از واژه‌های موجود طرح ساخته شد: «Suggested» (قاب)، «Suspended»، «Known»، «Rejected» (واژهٔ وضعیت از «Card suspended»، «Known · chosen by you» و «Card rejected»)، و نام نوع‌ها از قاب‌ها و `/preview`: «Question and answer»، «Vocabulary»، «Cloze»، «Grammar point»، «Error correction»، «Listening». کارت فعال برچسب وضعیت ندارد. پیشنهاد برای وضعیت فعال: «In your review queue». **تأییدشده همان‌طور که هست، D100 (2026-10-19)؛ بخش «تأیید 2026-10-19 — برچسب‌های کارت» پایین. پیشنهاد «In your review queue» جزو آن تأیید نیست.**
 - **UX-05، مجموعه‌ها** (`studySetLabel`) — **تأییدشده برای «Core cards» و «Supplementary cards»، D88 (2026-10-19)، اصلاح D79:** «Core cards»، «Supplementary cards»، «Other cards» از `learning-memory-copy.ts` (حرف اول بزرگ). **تعارض با D79 (حل‌شده با D88):** D79 همین دو برچسب را «Core · production» و «Supplementary · recognition» نوشته بود. طبق UX-05 جایگزین شد و D88 در `PRODUCT_DECISIONS_LOG.md` همراه یادداشت اصلاحیه روی D79 آن را ثبت کرد.
 - **UX-05، نوع فایل و رسانه** (`source-labels.ts`، `card-labels.ts`): «Audio»، «Photo»، «PDF»، «HTML»، «Plain text» از متن «Choose audio, JPEG, PNG, WebP, PDF, HTML or plain text.»؛ برای نوع ناشناخته «File». «Computer voice N · Ready» با «Computer voice» از `strings.provenance` و وضعیت‌ها از `strings.classStatus`، به‌جای «Synthetic TTS · ready · شناسه».
 - **UX-05، منطقهٔ زمانی:** `Europe/London` به نام شهر «London» تبدیل شد، مثل Settings (`timeZoneCity`).
@@ -142,7 +142,27 @@
 - **D89، خطای `provider_outcome_unresolved` (UX-05):** `workspaceErrors.outcomeUnresolved` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts)، که `workspace/api.ts` به‌جای متن عمومی «The change could not be saved. Try again.» نشان می‌دهد: «A result is still being checked. Contact the pilot operator before trying again.» هشدار قبلی («Try again» در حالی که سرور می‌گوید تا بررسی اپراتور تلاش نکن) با این تأیید برطرف شد. آزمون `approved-copy.test.ts` این بخش را می‌سنجد.
 - **D88، برچسب مجموعه‌های کارت (UX-05، اصلاح D79):** «Core cards» و «Supplementary cards» (`studySetLabel` در `workspace/card-labels.ts`، از `learningMemoryCopy.setProduction` و `setRecognition`). جای «Core · production» و «Supplementary · recognition» در D79 را می‌گیرند. «Other cards» (کارت‌های قدیمی) همان متن پیش‌تر مصوب `learning-memory-copy.ts` است و تغییری نکرد.
 
-هنوز در انتظار تأیید: از دستهٔ ۵ رسید حذف حساب در حالت جاری، پیام‌های سرور با واژهٔ provider، برچسب‌های کارت و نوع فایل و پیشنهاد «In your review queue».
+هنوز در انتظار تأیید: از دستهٔ ۵ رسید حذف حساب در حالت جاری، پیام‌های سرور با واژهٔ provider، برچسب‌های نوع فایل و رسانه و پیشنهاد «In your review queue». برچسب‌های کارت در 2026-10-19 تأیید شدند (D100، بخش بعد).
+
+## تأیید 2026-10-19 — برچسب‌های کارت (دستهٔ ۱۷، `fix/audit-17`، D100)
+
+مالک محصول در 2026-10-19 برچسب‌هایی را که دستهٔ ۵ برای UX-05 از واژه‌های موجود طرح ساخته بود، همان‌طور که هستند تأیید کرد. ثبت نسخه‌دار: [D100](../PRODUCT_DECISIONS_LOG.md). برچسب‌ها در [`workspace/card-labels.ts`](../../apps/web/src/ui/workspace/card-labels.ts) می‌مانند (`cardStatusLabel` و `cardTemplateLabel`، که `cardSummary` آن‌ها را در فهرست کارت‌ها، ویرایشگر کارت و صفحهٔ خروجی نشان می‌دهد) و آزمون `approved-copy.test.ts` هر برچسب را عیناً با جدول زیر می‌سنجد. جای مقدار خام ذخیره‌شده (`status` و `template`) را می‌گیرند و هیچ مقدار خامی در رابط نمی‌آید.
+
+- کارتی که فقط در مرور زبان‌آموز است (`active`) و کارت حذف‌شده (`deleted`) برچسب وضعیت ندارند. پیشنهاد «In your review queue» جزو این تأیید نیست و در رابط نمی‌آید.
+- نوعی که اینجا نیست برچسب ندارد و در خلاصهٔ کارت حذف می‌شود.
+
+| جا | مقدار ذخیره‌شده | برچسب |
+|---|---|---|
+| وضعیت (`cardStatusLabel`) | `candidate` | «Suggested» |
+| وضعیت (`cardStatusLabel`) | `suspended` | «Suspended» |
+| وضعیت (`cardStatusLabel`) | `known` | «Known» |
+| وضعیت (`cardStatusLabel`) | `rejected` | «Rejected» |
+| نوع کارت (`cardTemplateLabel`) | `basic` | «Question and answer» |
+| نوع کارت (`cardTemplateLabel`) | `vocabulary` | «Vocabulary» |
+| نوع کارت (`cardTemplateLabel`) | `cloze` | «Cloze» |
+| نوع کارت (`cardTemplateLabel`) | `grammar` | «Grammar point» |
+| نوع کارت (`cardTemplateLabel`) | `correction` | «Error correction» |
+| نوع کارت (`cardTemplateLabel`) | `listening` | «Listening» |
 
 ## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 

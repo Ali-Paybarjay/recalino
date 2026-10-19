@@ -62,7 +62,7 @@
 
 .evidence {
   color: var(--rc-text-muted);
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   margin-top: 4px;
 }
 
@@ -189,7 +189,7 @@
 
 .readerToolbar > span {
   color: var(--rc-text-muted);
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   font-weight: 600;
 }
 
@@ -217,7 +217,7 @@
 
 .readerTools > summary::after {
   content: "+";
-  font-size: 18px;
+  font-size: var(--rc-text-read);
 }
 
 .readerTools[open] > summary::after {
