@@ -60,6 +60,19 @@ describe("execute_sql", () => {
     "select 'a'\n'b'",
     // Reading pg_cron's tables through quoted names schedules nothing.
     `select * from "cron"."job" where "jobname" = 'x'`,
+    // Postgres honours UESCAPE after a comment, so `\` is no escape here (follow-up 2026-10-19).
+    "select x(u&'\\0064rop table t' /* c */ uescape '!')",
+    "select u&'d!0061ta' -- c\n uescape '!'",
+    // A search_path without cron, or a read of it, changes nothing (follow-up 2026-10-19).
+    "set search_path = public",
+    "set search_path to public, extensions",
+    "set local search_path = cron_archive, public",
+    "select set_config('search_path', 'public', false)",
+    "select set_config('app.mode', 'cron', false)",
+    "show search_path",
+    "select current_setting('search_path')",
+    "set search_path = public; select * from cron.job",
+    "select * from cron.job where command like '%search_path%'",
   ])("runs without a prompt: %s", (query) => {
     expect(sql(query)).toBeNull();
   });
@@ -153,6 +166,33 @@ describe("execute_sql", () => {
     `select "CRON".schedule('j','* * * * *','select 1')`,
     `select u&"\\0063ron".schedule('j','* * * * *','select 1')`,
     `select u&"!0064blink" uescape '!'('x', 'select 1')`,
+    // UESCAPE after a comment, as Postgres reads it (follow-up 2026-10-19).
+    "select x(u&'!0064rop table t' /* c */ uescape '!')",
+    "select x(u&'!0064rop table t' -- c\n uescape '!')",
+    "select x(u&'!0064rop table t' uescape /* c */ '!')",
+    "select x(u&'!0064rop table t' /* a /* nested */ b */ uescape -- c\n '!')",
+    "select x(u&'!0064rop'\n' table t' /* c */ uescape '!')",
+    `select u&"!0064blink" /* c */ uescape '!'('x', 'select 1')`,
+    `select u&"!0063ron" -- c\n uescape '!'.schedule('j','* * * * *','select 1')`,
+    `select u&"!0063ron" uescape '!'.schedule('j','* * * * *','select 1')`,
+    // A UESCAPE clause the guard cannot read asks instead of guessing the escape character.
+    "select x(u&'!0064rop table t' uescape e'!')",
+    "select x(u&'!0064rop table t' uescape $$!$$)",
+    // A search_path that includes cron lets cron's functions run without the schema name.
+    "set search_path = cron",
+    "set search_path to public, cron",
+    "SET LOCAL search_path TO public, CRON",
+    "set session search_path = 'cron'",
+    'set search_path = "cron", public',
+    "set search_path = /* c */ cron",
+    "set search_path = $$cron$$",
+    "select set_config('search_path', 'cron, public', false)",
+    "select pg_catalog.set_config('search_path', 'public,cron', true)",
+    "select set_config(e'search\\x5fpath', 'cron', false)",
+    "select set_config('search_path', current_setting('search_path') || ', cron', false)",
+    "begin; set local search_path = cron; select schedule('j', '* * * * *', 'select 1'); commit",
+    "do $$ begin perform set_config('search_path', 'cron', true); end $$",
+    "update pg_settings set setting = 'cron' where name = 'search_path'",
   ])("asks first: %s", (query) => {
     expect(sql(query)?.decision).toBe("ask");
     expect(sql(query, "mcp__Supabase__execute_sql")?.decision).toBe("ask");
@@ -209,6 +249,11 @@ describe("execute_sql", () => {
       ],
       ["many dollar signs", `select ${"$ ".repeat(49_000)}; drop table t`],
       ["many quoted bodies", `select ${"'select 1', ".repeat(8_000)}1; drop table t`],
+      [
+        "many U& literals with a comment before UESCAPE",
+        `select ${"u&'a' /* c */ uescape '!', ".repeat(3_000)}1; drop table t`,
+      ],
+      ["many search_path settings", `${"set search_path = public; ".repeat(3_000)}drop table t`],
     ])("asks within 2 s for %s", (_label, query) => {
       const { result, ms } = timed(query);
       expect(result?.decision).toBe("ask");
@@ -233,6 +278,16 @@ describe("execute_sql", () => {
       expect(result).toBeNull();
       expect(ms).toBeLessThan(2_000);
     });
+  });
+
+  it("names a UESCAPE it cannot read and a search_path that includes cron", () => {
+    expect(riskySql("select u&'a' uescape e'!'")).toBe("a UESCAPE clause the guard cannot read");
+    expect(riskySql("set local search_path to public, cron")).toBe(
+      "a search_path that includes cron",
+    );
+    expect(riskySql("do 'begin perform set_config(''search_path'', ''cron'', true); end'")).toMatch(
+      /^a search_path that includes cron/,
+    );
   });
 
   it("names what it found without echoing the query", () => {
