@@ -19,7 +19,7 @@ test("capture survives app navigation and offline time, saves final parts and re
       timeout: 10000,
     })
     .not.toBe("0:00");
-  // The recording page has no navigation while capturing (UX-02); the browser's Back is a client
+  // The recording page has no navigation (UX-02); the browser's Back is a client
   // navigation, so the capture keeps running and the recording bar takes over on the page before.
   await page.goBack();
   await expect(
@@ -51,15 +51,15 @@ test("capture survives app navigation and offline time, saves final parts and re
   await expect(page.getByText("No recordings on this device yet.", { exact: true })).toBeVisible();
 });
 
-// UX-02 and UX-11 (frame C2, owner decision 2026-10-19): the session's recording page has the
-// learner navigation before Start and after Stop and none while capture runs, Stop is on screen
-// without scrolling, and an upload failure stays quiet until Stop. To return to the full focus
-// mode, set RECORDING_FOCUS_MODE to "always" and expect no navigation in the first and last steps.
+// UX-02 and UX-11 (frame C2, owner decision 2026-10-19, D90 as amended): the session's recording
+// page is a full focus mode without navigation in any phase, with its own way back outside
+// capture; Stop is on screen without scrolling, and an upload failure stays quiet until Stop. With
+// RECORDING_FOCUS_MODE "while-capturing" the first and last steps would expect the navigation.
 for (const [name, viewport] of [
   ["mobile", { width: 390, height: 664 }],
   ["desktop", { width: 1440, height: 900 }],
 ] as const) {
-  test(`${name}: the session recording page shows the navigation only outside capture`, async ({
+  test(`${name}: the session recording page has no navigation and a way back outside capture`, async ({
     page,
   }) => {
     test.setTimeout(90000);
@@ -78,11 +78,11 @@ for (const [name, viewport] of [
     const newSession = page.getByRole("link", { name: "New session", exact: true });
     const back = page.getByRole("link", { name: "Back to session", exact: true });
 
-    // Before Start: the learner navigation is there (the sidebar from 768px, else the bottom bar).
+    // Before Start: no navigation and no New session; the explicit way back is there.
     await page.goto(`/sessions/${id}/record`);
-    await expect(navigation.first()).toBeVisible();
-    if (viewport.width >= 768) await expect(newSession).toBeVisible();
     await expect(back).toBeVisible();
+    await expect(navigation).toHaveCount(0);
+    await expect(newSession).toHaveCount(0);
 
     // While capturing: no navigation, no New session, and Stop and save is on screen.
     await page.getByRole("button", { name: "Record a session", exact: true }).click();
@@ -98,11 +98,11 @@ for (const [name, viewport] of [
     await expect(navigation).toHaveCount(0);
     await expect(stop).toBeInViewport();
 
-    // After Stop: the navigation and the explicit way back are there again.
+    // After Stop: the explicit way back is there again, still without navigation.
     await stop.click();
     await expect(page.getByText("Saved on this device", { exact: true }).first()).toBeVisible();
     await expect(back).toBeVisible();
-    await expect(navigation.first()).toBeVisible();
-    if (viewport.width >= 768) await expect(newSession).toBeVisible();
+    await expect(navigation).toHaveCount(0);
+    await expect(newSession).toHaveCount(0);
   });
 }

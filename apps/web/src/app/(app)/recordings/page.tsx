@@ -7,9 +7,9 @@ import { RecordingShell } from "../RecordingShell";
 
 export const dynamic = "force-dynamic";
 /**
- * Where "Record a session" on Today lands: the recording itself. The navigation is hidden only
- * while capture is in progress (UX-02, owner decision 2026-10-19; RECORDING_FOCUS_MODE) and is
- * back before Start and after Stop. Once capture is over, "Back to Today" is also offered.
+ * Where "Record a session" on Today lands: the recording itself, in full focus mode without
+ * navigation (UX-02, owner decision 2026-10-19, D90 as amended; RECORDING_FOCUS_MODE). Outside
+ * capture the page offers "Back to Today".
  */
 export default async function RecordingsPage() {
   const learner = await requireLearner("/recordings");

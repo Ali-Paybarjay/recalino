@@ -13,8 +13,9 @@ export const NAV_HREFS: Record<NavId, string> = {
  * the reader itself is listed: `/sessions/<id>/notes/versions` uses `LearnerShell` for "classes".
  * The processing screen is not listed: it re-exports the estimate page, which renders
  * `SessionMaterialPage` inside `LearnerShell` for "classes". The recording pages are not listed:
- * they draw the shell with its navigation before Start and after Stop and hide it only while
- * capture is in progress (UX-02, `RecordingShell`).
+ * their loading screen draws the shell in `focus` (no navigation) whenever the page draws none,
+ * and with RECORDING_FOCUS_MODE "while-capturing" the page draws the navigation outside capture
+ * (UX-02, `RecordingShell`).
  */
 const WITHOUT_SHELL = [/^\/sessions\/[^/]+\/notes\/?$/, /^\/me\/edit(?:\/|$)/];
 

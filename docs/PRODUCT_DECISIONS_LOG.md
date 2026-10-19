@@ -796,11 +796,11 @@
 
 - وقتی نتیجهٔ یک تأمین‌کننده هنوز باید بررسی شود، رابط این جمله را نشان می‌دهد: «A result is still being checked. Contact the pilot operator before trying again.» (`workspaceErrors.outcomeUnresolved`). جای متن موقت «The change could not be saved. Try again.» را می‌گیرد که برخلاف سرور به تلاش دوباره دعوت می‌کرد.
 
-### D90 — ناوبری صفحهٔ ضبط فقط هنگام ضبط فعال پنهان است (UX-02)
+### D90 — ناوبری صفحهٔ ضبط: focus mode کامل (UX-02)
 
-- در `/recordings` و `/sessions/<id>/record` ناوبری پوسته فقط در فازهای ضبط فعال (`starting`، `recording`، `recovering`، `paused`) پنهان است و پیش از شروع و پس از Stop، از جمله فاز `saving`، نمایش داده می‌شود. PRD-REC-02 حین ضبط بی‌تغییر است. جزئیات: [RECORDING_NAVIGATION_2026-10-19.md](design/RECORDING_NAVIGATION_2026-10-19.md).
-- بازگشت با یک ثابت: `RECORDING_FOCUS_MODE = "always"` در `apps/web/src/ui/recording/recording-focus.ts`.
-- **وضعیت:** تأیید نهایی نگه‌داشتن یا بازگرداندن، طبق خواست مالک محصول، در پایان همین اجرای اصلاح ممیزی گرفته می‌شود. تفاوت با HANDOFF §4 در بند ۱۲ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) ثبت شد.
+- **متن فعلی (اصلاح 2026-10-19، دستهٔ ۱۲):** در `/recordings` و `/sessions/<id>/record` ناوبری پوسته در **هیچ فازی** نمایش داده نمی‌شود: نه sidebar، نه bottom nav، نه «New session»، نه skip link و نه اعلان Terms (HANDOFF §4 و قاب C2، «full-screen focus mode, no nav»). راه بازگشت خود صفحه («Back to session» / «Back to Today») بیرون از ضبط هست. PRD-REC-02 حین ضبط بی‌تغییر است. جزئیات: [RECORDING_NAVIGATION_2026-10-19.md](design/RECORDING_NAVIGATION_2026-10-19.md).
+- پیاده‌سازی: `RECORDING_FOCUS_MODE = "always"` در `apps/web/src/ui/recording/recording-focus.ts`. کد سوئیچ می‌ماند، پس گزینهٔ دیگر یک ثابت فاصله دارد: `"while-capturing"` ناوبری را فقط در فازهای ضبط فعال پنهان می‌کند.
+- **یادداشت اصلاح:** متن نخست D90 (دستهٔ ۹، 2026-10-19) ناوبری را فقط هنگام ضبط فعال (`starting`، `recording`، `recovering`، `paused`) پنهان می‌کرد و پیش از شروع و پس از Stop، از جمله `saving`، نشان می‌داد، و تأیید نهایی را به پایان اجرای اصلاح ممیزی موکول کرده بود. مالک محصول پس از دیدن پیش‌نمایش هر دو حالت (`/dev/ui/recording-shell`) focus mode کامل را انتخاب کرد (تصمیم مالک محصول، 2026-10-19). با این اصلاح، صفحه با HANDOFF §4 هم‌خوان است و بند ۱۲ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) دیگر تفاوتی ثبت نمی‌کند.
 
 ### D91 — cooldown سخت انتشار بسته‌ها (OPS-12)
 

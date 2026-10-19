@@ -2,37 +2,39 @@
 
 ## تصمیم
 
-در صفحه‌های ضبط (`/recordings` و `/sessions/<id>/record`) ناوبری پوسته **فقط هنگام ضبط فعال** پنهان است:
+در صفحه‌های ضبط (`/recordings` و `/sessions/<id>/record`) ناوبری پوسته **در هیچ فازی** نمایش داده نمی‌شود: focus mode کامل HANDOFF §4 و قاب C2 («full-screen focus mode, no nav»).
 
 | فاز controller | ناوبری |
 |---|---|
-| `idle` (پیش از شروع) | نمایش داده می‌شود |
+| `idle` (پیش از شروع) | پنهان؛ «Back to session» / «Back to Today» در محتوای صفحه |
 | `starting`، `recording`، `recovering`، `paused` | پنهان: نه sidebar، نه bottom nav، نه «New session»، نه skip link، نه اعلان Terms |
-| `saving`، `saved`، `failed` (پس از Stop) | نمایش داده می‌شود |
+| `saving`، `saved`، `failed` (پس از Stop) | پنهان؛ «Back to session» / «Back to Today» در محتوای صفحه |
 
-مجموعهٔ فاز‌های «ضبط فعال» همان `captureIsQuiet` در `apps/web/src/ui/recording/capture-phase.ts` است. این تصمیم، حالت «focus mode بدون ناوبری، همیشه» را که دستهٔ 4 ساخته بود (`FocusShell`، HANDOFF §4 و قاب C2) در دو حالت پیش از شروع و پس از Stop برمی‌دارد. حین ضبط چیزی تغییر نکرده است: PRD-REC-02 (هیچ قطع، پنجره، صدا یا هشداری) و منطق controller دست‌نخورده‌اند، «Stop and save» پیش از توضیح‌ها آمده و در ۳۹۰×۶۶۴ بدون اسکرول دیده می‌شود، و «Back to session» / «Back to Today» پس از Stop همچنان هست.
+حین ضبط PRD-REC-02 (هیچ قطع، پنجره، صدا یا هشداری) و منطق controller دست‌نخورده‌اند و «Stop and save» پیش از توضیح‌ها آمده و در ۳۹۰×۶۶۴ بدون اسکرول دیده می‌شود.
 
-این تفاوت با HANDOFF §4 («Recording = full-screen focus mode, no nav») تصمیم صریح مالک محصول است و به‌صورت نسخه‌دار در [D90](../PRODUCT_DECISIONS_LOG.md) و بند ۱۲ [بازبینی تحویل](HANDOFF_R1_REVIEW.md) ثبت شد (دستهٔ ۹، 2026-10-19). تأیید نهایی نگه‌داشتن یا بازگرداندن در پایان همین اجرای اصلاح ممیزی گرفته می‌شود.
+## سابقه
+
+دستهٔ ۹ (2026-10-19) به تصمیم موقت مالک محصول ناوبری را فقط هنگام ضبط فعال (`captureIsQuiet` در `apps/web/src/ui/recording/capture-phase.ts`) پنهان کرد و پیش از شروع و پس از Stop نشان داد، با تأیید نهایی در پایان اجرای اصلاح ممیزی. مالک محصول پس از دیدن پیش‌نمایش هر دو حالت focus mode کامل را انتخاب کرد (دستهٔ ۱۲، 2026-10-19). این اصلاح به‌صورت نسخه‌دار در [D90](../PRODUCT_DECISIONS_LOG.md) و بند ۱۲ [بازبینی تحویل](HANDOFF_R1_REVIEW.md) ثبت شد.
 
 ## پیاده‌سازی
 
-- `apps/web/src/ui/recording/recording-focus.ts`: ثابت `RECORDING_FOCUS_MODE` و تابع `recordingFocusActive`.
-- `apps/web/src/app/(app)/RecordingShell.tsx`: پوستهٔ دو صفحه. فاز را از `useCaptureQuiet()` (در `RecordingProvider`) می‌خواند و `focus` را روی `AppShell` تنظیم می‌کند. `AppShell` در حالت `focus` فقط ستون محتوا را می‌کشد؛ چون `main` و محتوا جایشان را نگه می‌دارند، `RecordingView` با تغییر فاز دوباره ساخته نمی‌شود.
-- `apps/web/src/app/(app)/loading.tsx`: صفحهٔ بارگذاری ضبط همان ناوبری را می‌کشد، ولی هنگام ضبط فعال بدون آن، تا با شروع ضبط یک لحظه ناوبری ظاهر نشود.
-- `apps/web/src/app/(app)/nav.ts`: دو صفحهٔ ضبط دیگر «بدون پوسته» حساب نمی‌شوند (`shellSectionFor` برای هر دو `classes` برمی‌گرداند).
-- `/dev/ui/recording-shell` و `/dev/ui/recording-shell?state=recording`: همان `RecordingShellFrame` با محتوای نمونه در دو حالت، برای مقایسه در ۳۹۰ و ۱۴۴۰ پیکسل (فقط dev، در production پاسخ 404).
+- `apps/web/src/ui/recording/recording-focus.ts`: ثابت `RECORDING_FOCUS_MODE` (اکنون `"always"`) و تابع `recordingFocusActive`.
+- `apps/web/src/app/(app)/RecordingShell.tsx`: پوستهٔ دو صفحه. با `"always"` همان `FocusShell` دستهٔ ۴ را می‌کشد، بدون ناوبری و بدون اعلان Terms در هر فاز. با `"while-capturing"` فاز را از `useCaptureQuiet()` (در `RecordingProvider`) می‌خواند و `focus` را روی `AppShell` تنظیم می‌کند.
+- `apps/web/src/app/(app)/loading.tsx`: صفحهٔ بارگذاری ضبط `AppShell` را در حالت `focus` می‌کشد، یعنی با `"always"` همیشه بدون ناوبری.
+- `apps/web/src/app/(app)/nav.ts`: دو صفحهٔ ضبط «بدون پوسته» حساب نمی‌شوند (`shellSectionFor` برای هر دو `classes` برمی‌گرداند) تا صفحهٔ بارگذاری همان ستون محتوا را بکشد.
+- `/dev/ui/recording-shell` و `/dev/ui/recording-shell?state=recording`: همان `RecordingShellFrame` با محتوای نمونه در دو حالت، برای مقایسه در ۳۹۰ و ۱۴۴۰ پیکسل (فقط dev، در production پاسخ 404). با `"always"` هیچ‌کدام ناوبری ندارند.
 
-## بازگشت به focus mode کامل
+## گزینهٔ دیگر: ناوبری فقط بیرون از ضبط
 
-در `apps/web/src/ui/recording/recording-focus.ts` مقدار `RECORDING_FOCUS_MODE` را از `"while-capturing"` به `"always"` ببرید. بقیه خودکار است:
+کد سوئیچ نگه داشته شده است. در `apps/web/src/ui/recording/recording-focus.ts` مقدار `RECORDING_FOCUS_MODE` را از `"always"` به `"while-capturing"` ببرید. بقیه خودکار است:
 
-- صفحه‌ها دوباره `FocusShell` (رفتار دستهٔ 4) را می‌کشند، بدون ناوبری و بدون اعلان Terms در هر فاز؛
-- صفحهٔ بارگذاری ضبط همیشه بدون ناوبری است؛
-- «Back to session» / «Back to Today» همچنان پس از Stop در محتوای صفحه هست.
+- صفحه‌ها `AppShell` را با ناوبری و اعلان Terms پیش از شروع و پس از Stop (از جمله `saving`) می‌کشند و فقط حین ضبط فعال آن را پنهان می‌کنند؛
+- صفحهٔ بارگذاری ضبط فقط هنگام ضبط فعال بدون ناوبری است؛
+- «Back to session» / «Back to Today» همچنان بیرون از ضبط در محتوای صفحه هست.
 
-آزمون‌های واحد `recording-focus.test.ts` و `RecordingShell.test.ts` هر دو حالت را می‌سنجند. در e2e، `recording.spec.ts` و `shell.spec.ts` ناوبری پیش از شروع و پس از Stop را انتظار دارند؛ با حالت `"always"` آن گام‌ها باید «بدون ناوبری» شوند.
+این تغییر، تصمیم نسخه‌دار تازه در D90 و بند ۱۲ بازبینی تحویل می‌خواهد. آزمون‌های واحد `recording-focus.test.ts` و `RecordingShell.test.ts` هر دو حالت را می‌سنجند. در e2e، `recording.spec.ts` و `shell.spec.ts` اکنون «بدون ناوبری» را در همهٔ گام‌ها انتظار دارند؛ با `"while-capturing"` گام‌های پیش از شروع و پس از Stop باید ناوبری را انتظار داشته باشند، و `recording-capture.spec.ts` می‌تواند از پیوند «Today» ناوبری استفاده کند.
 
 ## محدودیت‌ها
 
-- e2e این دسته (`recording.spec`، `recording-capture.spec`، `learning-privacy.spec`، `shell.spec`) به Supabase محلی نیاز دارد و در محیط کار اجرا نشد.
-- هنگام `saving` (چند ثانیهٔ پس از Stop) ناوبری نمایش داده می‌شود، چون تصمیم می‌گوید «پس از Stop». ضبط و ذخیره در provider سطح layout ادامه می‌یابد و ناوبری کلاینتی آن را قطع نمی‌کند؛ نوار «Active recording» در صفحه‌های دیگر وضعیت را نشان می‌دهد.
+- e2e این تغییر (`recording.spec`، `recording-capture.spec`، `learning-privacy.spec`، `shell.spec`) به Supabase محلی نیاز دارد و در محیط کار اجرا نشد؛ فقط با خواندن به‌روز شد.
+- پس از Stop تنها راه برگشت درون اپ پیوند «Back to session» / «Back to Today» است؛ ضبط و ذخیره در provider سطح layout ادامه می‌یابد و Back مرورگر (ناوبری کلاینتی) آن را قطع نمی‌کند؛ نوار «Active recording» در صفحه‌های دیگر وضعیت را نشان می‌دهد.

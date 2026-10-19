@@ -12,8 +12,8 @@ import { isRecordingPage, NAV_HREFS, shellSectionFor } from "./nav";
  * Shown while a signed-in page loads (UX-08). The layout above keeps its providers; this draws the
  * same navigation the page will draw, so the bottom navigation and the sidebar stay where they
  * are and only the content area waits. A page that draws no shell gets the plain loading screen
- * it had before. The recording pages load without navigation while capture is in progress, as
- * the page itself will draw them (UX-02): a capture that has just started does not flash it.
+ * it had before. The recording pages load without navigation whenever the page itself draws none
+ * (UX-02, RECORDING_FOCUS_MODE): in full focus mode always, so a capture does not flash it.
  */
 export default function Loading() {
   const pathname = usePathname();

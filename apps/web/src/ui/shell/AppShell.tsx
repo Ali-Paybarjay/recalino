@@ -41,8 +41,8 @@ type AppShellProps = {
 
 /**
  * Mobile: content and a bottom navigation (Today, Courses, Review, Me). From 768px a sidebar
- * replaces it, with icons only until 1024px (HANDOFF §4). The recording pages switch `focus` on
- * while capture is in progress (UX-02, owner decision 2026-10-19; see RecordingShell).
+ * replaces it, with icons only until 1024px (HANDOFF §4). `focus` drops the navigation for the
+ * recording pages (UX-02, owner decision 2026-10-19, D90 as amended; see RecordingShell).
  */
 export function AppShell({
   current,
