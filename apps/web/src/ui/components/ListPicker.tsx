@@ -1,7 +1,7 @@
 // No "use client": it always lives inside a client screen that owns the value.
 import { type KeyboardEvent, type ReactNode, useId, useMemo, useRef, useState } from "react";
 import { Check, MagnifyingGlass, XCircle } from "../icons";
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import { IconButton } from "./Button";
 import { Icon } from "./Icon";
 import styles from "./ListPicker.module.css";

@@ -3,7 +3,7 @@ import type { Selectable } from "kysely";
 import { lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
 import { type Claim, claimSchema } from "../lkm";
-import { getMediaAsset } from "../media";
+import { getLiveMediaAssets, getMediaAsset, type MediaAsset } from "../media";
 import { getNotebook } from "../note";
 import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
@@ -200,6 +200,19 @@ export async function getActiveCard(
     throw errors.validationFailed({ media: ["listening_audio_unavailable"] });
   return card;
 }
+/** A listening card needs its own ready computer-voice audio, from one of its sessions. */
+export function isCardReviewableWith(card: StudyCard, asset: MediaAsset | undefined): boolean {
+  if (card.template !== "listening") return true;
+  return (
+    !!asset &&
+    asset.id === card.frontMediaId &&
+    asset.state === "ready" &&
+    asset.kind === "tts" &&
+    !!asset.objectId &&
+    !!asset.mimeType?.startsWith("audio/") &&
+    card.sessionIds.includes(asset.sessionId)
+  );
+}
 export async function isCardReviewable(
   db: Database | Tx,
   ctx: LearnerContext,
@@ -208,18 +221,32 @@ export async function isCardReviewable(
   if (card.template !== "listening") return true;
   if (!card.frontMediaId) return false;
   try {
-    const asset = await getMediaAsset(db, ctx, card.frontMediaId);
-    return (
-      asset.state === "ready" &&
-      asset.kind === "tts" &&
-      !!asset.objectId &&
-      !!asset.mimeType?.startsWith("audio/") &&
-      card.sessionIds.includes(asset.sessionId)
-    );
+    return isCardReviewableWith(card, await getMediaAsset(db, ctx, card.frontMediaId));
   } catch (failure) {
     if (failure instanceof AppError && failure.code === "not_found") return false;
     throw failure;
   }
+}
+/**
+ * PERF-02: isCardReviewable for many cards in a constant number of owner-scoped reads (the
+ * review queue would otherwise read each listening card's audio one after another).
+ */
+export async function reviewableCardIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  cards: readonly StudyCard[],
+): Promise<Set<string>> {
+  const mediaIds = cards.flatMap((card) =>
+    card.template === "listening" && card.frontMediaId ? [card.frontMediaId] : [],
+  );
+  const assets = await getLiveMediaAssets(db, ctx, mediaIds);
+  return new Set(
+    cards
+      .filter((card) =>
+        isCardReviewableWith(card, card.frontMediaId ? assets.get(card.frontMediaId) : undefined),
+      )
+      .map((card) => card.id),
+  );
 }
 export async function listCards(
   db: Database | Tx,

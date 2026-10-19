@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Banner } from "../components/Feedback";
 import { WarningCircle } from "../icons";
 import { IndexedRecordingStore } from "../recording/store";
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import { prepareFileHashes } from "../workspace/file-hashes";
 import { Button, Status } from "../workspace/primitives";
 import { RelinkError, relinkOriginalRecording } from "./relink-original";

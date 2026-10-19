@@ -1,55 +1,58 @@
-import { z } from "zod";
+// PERF-06: the browser bundles zod/mini, which has the same parsing without the method chain.
+// Its numbers are finite, as zod's are.
+import { z } from "zod/mini";
 import { GAP_CAUSES } from "./capture-meter";
 
 export const recordingSchema = z.strictObject({
   id: z.uuid(),
   userId: z.uuid(),
-  sessionId: z.uuid().nullable(),
-  mimeType: z.string().max(100),
+  sessionId: z.nullable(z.uuid()),
+  mimeType: z.string().check(z.maxLength(100)),
   status: z.enum(["recording", "paused", "saved", "interrupted"]),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  activeMs: z.number().finite().nonnegative(),
-  chunks: z.int().nonnegative(),
-  bytes: z.int().nonnegative(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  activeMs: z.number().check(z.nonnegative()),
+  chunks: z.int().check(z.nonnegative()),
+  bytes: z.int().check(z.nonnegative()),
   creationKey: z.uuid(),
-  sourceAssetId: z.uuid().nullable().default(null),
+  sourceAssetId: z._default(z.nullable(z.uuid()), null),
   // Optional for recordings made before automatic recovery was introduced.
-  captureId: z.uuid().optional(),
-  segment: z.int().positive().optional(),
-  awaitingFinalData: z.boolean().optional(),
-  autoRegister: z.boolean().optional(),
+  captureId: z.optional(z.uuid()),
+  segment: z.optional(z.int().check(z.positive())),
+  awaitingFinalData: z.optional(z.boolean()),
+  autoRegister: z.optional(z.boolean()),
   // Only captures made after automatic learning was introduced authorize paid preparation.
-  autoGenerate: z.boolean().optional(),
-  completedAt: z.string().datetime().optional(),
+  autoGenerate: z.optional(z.boolean()),
+  completedAt: z.optional(z.iso.datetime()),
   /** How `activeMs` was measured: the audio's own timestamps, or the device clock (PRD-REC-05). */
-  measuredBy: z.enum(["media", "clock"]).optional(),
+  measuredBy: z.optional(z.enum(["media", "clock"])),
   /** Intervals meant to be recorded for which no audio reached this device. */
-  gaps: z
-    .array(
-      z.strictObject({
-        from: z.string().datetime(),
-        to: z.string().datetime(),
-        offsetMs: z.number().finite().nonnegative(),
-        missingMs: z.number().finite().positive(),
-        cause: z.enum(GAP_CAUSES),
-      }),
-    )
-    .max(500)
-    .optional(),
-  syncError: z.string().max(1000).nullable().optional(),
+  gaps: z.optional(
+    z
+      .array(
+        z.strictObject({
+          from: z.iso.datetime(),
+          to: z.iso.datetime(),
+          offsetMs: z.number().check(z.nonnegative()),
+          missingMs: z.number().check(z.positive()),
+          cause: z.enum(GAP_CAUSES),
+        }),
+      )
+      .check(z.maxLength(500)),
+  ),
+  syncError: z.optional(z.nullable(z.string().check(z.maxLength(1000)))),
 });
 export type Recording = z.infer<typeof recordingSchema>;
 export type RegistrationPatch = Partial<
   Pick<Recording, "sessionId" | "sourceAssetId" | "syncError">
 >;
-const registrationPatchSchema = recordingSchema
-  .pick({
+const registrationPatchSchema = z.partial(
+  z.pick(recordingSchema, {
     sessionId: true,
     sourceAssetId: true,
     syncError: true,
-  })
-  .partial();
+  }),
+);
 export interface RecordingStore {
   put(manifest: Recording): Promise<void>;
   append(manifest: Recording, chunk: Blob): Promise<Recording>;

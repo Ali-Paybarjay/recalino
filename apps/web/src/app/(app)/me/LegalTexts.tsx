@@ -6,9 +6,13 @@ import { Button } from "../../../ui/components/Button";
 import { Icon } from "../../../ui/components/Icon";
 import { Sheet } from "../../../ui/components/Sheet";
 import { CaretRight, FileText } from "../../../ui/icons";
-import { strings } from "../../../ui/strings";
+import { shellStrings } from "../../../ui/strings-shell";
+import { signInStrings } from "../../../ui/strings-sign-in";
 import appStyles from "../app.module.css";
 import styles from "./profile.module.css";
+
+// PERF-06: only the string areas this component shows.
+const strings = { ...shellStrings, ...signInStrings };
 
 /**
  * UX-07: the Terms and the Privacy Notice stay readable after sign-in, from Settings. The same

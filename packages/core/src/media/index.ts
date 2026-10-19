@@ -3,6 +3,7 @@ export {
   cleanupSessionMedia,
   cleanupSourceMedia,
   createImageMedia,
+  getLiveMediaAssets,
   getMediaAsset,
   listMediaAssets,
   type MediaAsset,

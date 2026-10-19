@@ -1,21 +1,22 @@
-import { z } from "zod";
+// PERF-06: the browser bundles zod/mini, which has the same parsing without the method chain.
+import { z } from "zod/mini";
 
 const failureSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
-    details: z
-      .object({
-        fields: z.record(z.string(), z.array(z.string())).optional(),
-        deletion: z
-          .strictObject({
+    details: z.optional(
+      z.object({
+        fields: z.optional(z.record(z.string(), z.array(z.string()))),
+        deletion: z.optional(
+          z.strictObject({
             requestId: z.uuid(),
             kind: z.enum(["account", "session"]),
             state: z.literal("acknowledgement_pending"),
-          })
-          .optional(),
-      })
-      .optional(),
+          }),
+        ),
+      }),
+    ),
   }),
 });
 

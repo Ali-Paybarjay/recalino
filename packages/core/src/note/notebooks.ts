@@ -8,8 +8,9 @@ import {
   knowledgeModelSchema,
   listAvailableKnowledgeReferences,
   listVersions,
+  liveKnowledgeVersionIds,
 } from "../lkm";
-import { assertSessionOwner, getSession } from "../org";
+import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
   assertOwner,
   canonicalJson,
@@ -196,6 +197,47 @@ export async function getNotebookRevision(
       revision(row, notebook.session_id).model,
     ),
   };
+}
+/**
+ * PERF-04: which of these revisions getNotebookRevision would return, in a constant number of
+ * reads: owned, of a live knowledge version and of a notebook whose session is live.
+ */
+export async function liveNotebookRevisionIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Set();
+  const rows = await db
+    .selectFrom("note.revision as revision")
+    .innerJoin("note.notebook as notebook", "notebook.id", "revision.notebook_id")
+    .select([
+      "revision.id as id",
+      "revision.knowledge_version_id as versionId",
+      "notebook.session_id as sessionId",
+    ])
+    .where("revision.user_id", "=", ctx.userId)
+    .where("revision.id", "in", unique)
+    .execute();
+  if (!rows.length) return new Set();
+  const versions = await liveKnowledgeVersionIds(
+    db,
+    ctx,
+    rows.map((row) => row.versionId),
+  );
+  const sessions = new Set(
+    await filterLiveSessionIds(
+      db,
+      ctx,
+      rows.map((row) => row.sessionId),
+    ),
+  );
+  return new Set(
+    rows
+      .filter((row) => versions.has(row.versionId) && sessions.has(row.sessionId))
+      .map((row) => row.id),
+  );
 }
 export async function listNotebookRevisions(
   db: Database | Tx,

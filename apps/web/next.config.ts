@@ -6,6 +6,8 @@ const nativeProcessingResources = [
   "../../node_modules/.pnpm/ffmpeg-static@*/node_modules/ffmpeg-static/ffmpeg",
   // Platform packages hold the real binary; traversing canvas's dependency symlink breaks function packaging.
   "../../node_modules/.pnpm/@napi-rs+canvas-*@*/node_modules/@napi-rs/canvas-*/*.node",
+  // The PDF renderer resolves its installed resources from the package metadata at runtime.
+  "../../node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/package.json",
   "../../node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
   "../../node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/wasm/**",
   "../../node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/cmaps/**",
@@ -65,10 +67,13 @@ const nextConfig: NextConfig = {
     "sharp",
     "sherpa-onnx-node",
   ],
+  // PERF-01: native processing resources ship only with the job runner and the routes that run
+  // processing jobs right after their response (runJobsSoon). Pages and other API routes load no
+  // preparer, PDF.js or Canvas; the post-build tracers add native links to these functions only.
   outputFileTracingIncludes: {
-    // Native PDF resource lookup reads metadata at runtime, including server-rendered estimate pages.
-    "/*": ["../../node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/package.json"],
     "/api/jobs/run": nativeProcessingResources,
+    // An operator retry runs the processing job right after the response.
+    "/api/admin": nativeProcessingResources,
     "/api/sources/**": nativeProcessingResources,
     "/api/classes/**": nativeProcessingResources,
     "/api/runs/**": nativeProcessingResources,

@@ -5,7 +5,8 @@ import { IconButton } from "../../ui/components/Button";
 import { experienceCopy } from "../../ui/experience-copy";
 import { CaretLeft } from "../../ui/icons";
 import { Wordmark } from "../../ui/shell/Wordmark";
-import { fill, strings } from "../../ui/strings";
+import { fill } from "../../ui/strings-fill";
+import { setupStrings as strings } from "../../ui/strings-setup";
 import styles from "./setup.module.css";
 
 /** The required profile choices and optional voice sample share one setup progress indicator. */

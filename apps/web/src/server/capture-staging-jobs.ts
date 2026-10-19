@@ -10,20 +10,10 @@ import { markSourceAudioTranscribed, stagedAudioVerificationJob } from "@recalin
 import { getAiProvider } from "./ai";
 import { audioVerifier, prepareAudio } from "./audio-preparer";
 import { notifyAutomaticLearning } from "./automatic-learning-notifications";
+import { captureFlags } from "./capture-flags";
 import { getObjectStore } from "./storage";
 
-/**
- * Approved by the owner on 2026-10-12 and on by default; each has a kill switch:
- * - D60 `RECALINO_CAPTURE_EARLY_UPLOAD=off`: sealed parts wait for Stop again.
- * - D61 `RECALINO_CAPTURE_EARLY_TRANSCRIPTION=off`: staged parts wait for the class run.
- */
-export function captureFlags() {
-  const earlyUpload = process.env.RECALINO_CAPTURE_EARLY_UPLOAD !== "off";
-  return {
-    earlyUpload,
-    earlyTranscription: earlyUpload && process.env.RECALINO_CAPTURE_EARLY_TRANSCRIPTION !== "off",
-  };
-}
+export { captureFlags };
 
 function transcriptionDependencies() {
   const store = getObjectStore();

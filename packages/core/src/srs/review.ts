@@ -15,9 +15,9 @@ import { getAccountState, lockAccount } from "../acc";
 import {
   getActiveCard,
   getCard,
-  isCardReviewable,
   learningItemIdsForOwnedCards,
   listCards,
+  reviewableCardIds,
   type StudyCard,
 } from "../card";
 import type { Database, DB, Tx } from "../db";
@@ -228,16 +228,16 @@ export async function cardsOfferedForReview(
   const local = settledRead(reads[1]);
   const events = await todayEvents(db, ctx, local.day);
   const schedules = new Map(rows.map((row) => [row.card_id, schedule(row)]));
-  const offered = new Set<string>();
-  for (const card of active) {
+  const candidates = active.filter((card) => {
     const current = schedules.get(card.id);
-    if (!current?.introducedAt || new Date(current.dueAt).getTime() > now.getTime()) continue;
-    const buried = events.some(
+    if (!current?.introducedAt || new Date(current.dueAt).getTime() > now.getTime()) return false;
+    return !events.some(
       (event) => event.learning_item_id === card.learningItemId && event.card_id !== card.id,
     );
-    if (!buried && (await isCardReviewable(db, ctx, card))) offered.add(card.id);
-  }
-  return offered;
+  });
+  // PERF-02: one owner-scoped media read for every listening card, not one per card.
+  const reviewable = await reviewableCardIds(db, ctx, candidates);
+  return new Set(candidates.filter((card) => reviewable.has(card.id)).map((card) => card.id));
 }
 export async function getReviewQueue(
   db: Database | Tx,
@@ -274,8 +274,10 @@ export async function getReviewQueue(
   const future: number[] = [];
   let buriedSiblings = 0;
   let hasCards = false;
+  // PERF-02: one owner-scoped media read for every listening card, not one per card.
+  const reviewable = await reviewableCardIds(db, ctx, cards);
   for (const card of cards) {
-    if (!(await isCardReviewable(db, ctx, card))) continue;
+    if (!reviewable.has(card.id)) continue;
     hasCards = true;
     const current = schedules.get(card.id) ?? fresh(card);
     const siblings = reviewedItems.get(card.learningItemId);

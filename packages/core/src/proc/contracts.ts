@@ -66,3 +66,8 @@ export const runSettingsSchema = z.strictObject({
     .default({ shorterExamples: false }),
 });
 export const runJobPayload = z.strictObject({ runId: z.uuid(), userId: z.uuid() });
+/**
+ * PERF-01: the processing job's enqueue contract. Pages and status reads enqueue with it; only the
+ * job runner composes processingJob() with the native preparers.
+ */
+export const processingQueue = { kind: "proc.process", version: 1, payload: runJobPayload };

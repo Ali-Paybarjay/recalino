@@ -1,5 +1,5 @@
 import { listLearningSessions } from "@recalino/core/note";
-import { getAutomaticLearningSession } from "@recalino/core/proc";
+import { listAutomaticLearningSessions } from "@recalino/core/proc";
 import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
 import { readAutomaticLearning } from "../../../server/automatic-learning";
@@ -71,14 +71,16 @@ export default async function TodayPage() {
   // with work in progress, up to three; each step comes from the same resolver as the session page.
   const db = getDatabase(),
     actor = workspaceActor(learner);
-  const intents = await Promise.all(
-    sessions.items
-      .slice(1)
-      .map((item) => getAutomaticLearningSession(db, actor, item.id).catch(() => null)),
-  );
+  // PERF-04: the older sessions' intents in one read; an unreadable intent shows no step.
+  const older = sessions.items.slice(1);
+  const intents = await listAutomaticLearningSessions(
+    db,
+    actor,
+    older.map((item) => item.id),
+  ).catch(() => new Map<string, never>());
   const nextSteps = todayNextSteps(
     sessions.items,
-    intents.map((intent) => intent?.state),
+    older.map((item) => intents.get(item.id)?.state),
   );
   const statuses = await Promise.all(
     nextSteps.map((item) => readAutomaticLearning(db, actor, item.id).catch(() => null)),

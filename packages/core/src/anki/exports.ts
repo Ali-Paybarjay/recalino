@@ -1,7 +1,7 @@
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
-import { getCard } from "../card";
+import { getCard, liveCardIds } from "../card";
 import type { Database, DB, Tx } from "../db";
 import { getMediaAsset, readMediaBytes } from "../media";
 import { getSession } from "../org";
@@ -224,15 +224,19 @@ export async function listAnkiExports(
     .where("expires_at", ">", now)
     .orderBy("created_at", "desc")
     .execute();
-  const result: ExportArtifact[] = [];
-  for (const row of rows) {
-    try {
-      result.push(await getAnkiExport(db, ctx, row.id, now));
-    } catch (e) {
-      if (!(e instanceof AppError && e.code === "not_found")) throw e;
-    }
-  }
-  return result;
+  // PERF-04: the same checks as getAnkiExport for every listed export, in a constant number of
+  // reads. The session was checked above; an export is listed only while all its cards are.
+  const snapshots = rows.flatMap((row) =>
+    row.snapshot ? [{ row, cards: (row.snapshot as unknown as AnkiSnapshot).cards }] : [],
+  );
+  const live = await liveCardIds(
+    db,
+    ctx,
+    snapshots.flatMap(({ cards }) => cards.map((card) => card.id)),
+  );
+  return snapshots
+    .filter(({ cards }) => cards.every((card) => live.has(card.id)))
+    .map(({ row }) => view(row));
 }
 export async function ankiExportReadLink(
   db: Database,

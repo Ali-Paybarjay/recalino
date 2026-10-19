@@ -8,6 +8,7 @@ export {
   cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
   getAutomaticLearningSession,
+  listAutomaticLearningSessions,
   listPendingAutomaticLearning,
   reconcileAutomaticLearningBatch,
   registerAutomaticLearningFile,
@@ -44,6 +45,7 @@ export {
 } from "./charged-material";
 export {
   createRunSchema,
+  processingQueue,
   type RunSnapshot,
   type RunSource,
   type RunState,
