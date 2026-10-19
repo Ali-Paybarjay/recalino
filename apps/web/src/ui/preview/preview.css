@@ -290,18 +290,14 @@
   padding: 12px;
 }
 .preview-note-preview {
-  border-left: 3px solid var(--color-accent);
-  padding-left: 20px;
+  border-inline-start: 3px solid var(--color-accent);
+  padding-inline-start: 20px;
 }
 .preview-index-link {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
   color: var(--color-accent);
-}
-.preview-root :focus-visible {
-  outline: 3px solid var(--rc-focus);
-  outline-offset: 3px;
 }
 .preview-root :is(p, h2, h3, li, span, a) {
   overflow-wrap: anywhere;
