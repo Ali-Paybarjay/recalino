@@ -122,6 +122,31 @@ pnpm db:apply --apply    # اجرای همه، از قدیمی به جدید، �
 
 - خطای HTTP 401 یا 403 یعنی توکن منقضی یا لغو شده است، یا secret در این environment نیست. گزارش بده و توکن را در چت نخواه.
 
+### گارد هارنس (D81، SEC-05، 2026-10-19)
+
+فهرست `permissions.allow` در `.claude/settings.json` بی‌تغییر است، ولی hook `PreToolUse` ([`.claude/hooks/data-loss-guard.ts`](../../.claude/hooks/data-loss-guard.ts)) پیش از هر Bash و هر `execute_sql` اجرا می‌شود:
+
+| فراخوانی | نتیجه |
+|---|---|
+| `execute_sql` با `select`، یا `insert`، `update` و `delete` با `where` محدودکننده | بی‌پرسش، مثل قبل |
+| `execute_sql` با `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا یا زمان‌بندی‌شده (`execute`، `dblink`، `cron.schedule`)، `delete`/`update` که `where` آن همهٔ ردیف‌ها را می‌گیرد (بی `where`، `where true`، `where 2=2`، `where id = id`، `… or true`، `where exists (select 1)`)، upsert با `on conflict … do update` که ردیف‌هایش را از یک query می‌گیرد، یا تغییر `standard_conforming_strings` | پنجرهٔ تأیید (ask) |
+| `execute_sql` بلندتر از ۱۰۰٬۰۰۰ نویسه، یا آن‌قدر پیچیده که بررسی‌اش از سقف کار hook بگذرد | پنجرهٔ تأیید (ask) بی‌خواندن SQL؛ hook هیچ‌وقت به مهلت ۱۰ ثانیه نمی‌رسد، چون پس از آن Claude Code فراخوانی را بی‌تصمیم اجرا می‌کند |
+| همان قاعده‌ها داخل بدنه‌ها: بدنهٔ dollar-quote، همهٔ رشته‌های یک دستور `do`، و هر رشته‌ای که پس از فاصله، توضیح، `(` یا `;` با واژهٔ آغاز یک دستور Postgres شروع می‌شود (پس از اعمال escape در `E'…'` و `U&'…'` و پیوستن رشته‌ای که در خط بعد ادامه می‌یابد) | پنجرهٔ تأیید (ask) |
+| فراخوانی که hook نمی‌تواند بخواند: JSON نامعتبر، بی `tool_name`، یا Bash بی `command` | پنجرهٔ تأیید (ask)، تا اگر Claude Code نام فیلدها را عوض کند گارد بی‌صدا خاموش نشود |
+| هر دستور Bash که `approve-data-loss` دارد، حتی با نقل‌قول یا backslash (مثل `--approve-data-'loss'`) | رد (deny): migration حذف داده را خود مالک محصول اجرا می‌کند. برای جست‌وجوی متن، `data-loss` را جست‌وجو کن |
+| فقط `pnpm db:apply` و `pnpm db:apply --apply`، تنها روی خط؛ و `supabase db push` | بی‌پرسش، مثل قبل |
+| هر دستور دیگری که `db:apply` یا `db-apply` دارد (آرگومان اضافه، `$…`، pipe، `;` یا `&&`) | پنجرهٔ تأیید (ask) |
+
+- در سشن ابری پنجرهٔ تأیید ممکن است نمایش داده نشود (D77)؛ آن‌وقت فراخوانی انجام نمی‌شود و سشن گزارش می‌دهد.
+- hook توضیح‌ها (`--` تا `\n` یا `\r`)، رشته‌ها، `E'…'`، `U&'…'` و dollar-quote (با برچسب غیر ASCII) را مثل Postgres می‌خواند و از مسیر symlink هم اجرا می‌شود.
+- ادامهٔ رشته هم مثل Postgres خوانده می‌شود: دو رشته که فقط فاصله‌ای با دست‌کم یک خط تازه (و شاید توضیح `--`) میانشان است، با همان حالت escape رشتهٔ اول یک رشته‌اند؛ پس `do 'begin dele'` و در خط بعد `'te from t; end'` همان `delete from t` است و می‌پرسد. دو رشته روی یک خط (`select 'a' 'b'`) یا با توضیح `/* */` میانشان به هم نمی‌پیوندند، همان‌طور که در Postgres.
+- نام‌های داخل `"…"` (از جمله `U&"…"`) مثل نام بی‌نقل‌قول بررسی می‌شوند: `"cron"."schedule"`، `cron."schedule"`، `"cron"."alter_job"` و `"dblink_exec"` می‌پرسند؛ خواندن `"cron"."job"` بی‌پرسش است.
+- `update` پس از `for` یا `for no key` فقط وقتی قفل ردیف حساب می‌شود که پس از آن پایان دستور، `;`، `)`، `of`، `nowait`، `skip`، `for`، `limit`، `offset`، `fetch` یا `into` بیاید. `open cur for update t set …` در plpgsql مثل هر `update` دیگری بررسی می‌شود.
+- روی Windows آزموده نشده است. یک بار روی دستگاه مالک بسنج که این دستور `deny` چاپ کند؛ اگر چیزی چاپ نشد، hook آن‌جا اجرا نمی‌شود و باید گزارش شود: `echo '{"tool_name":"Bash","tool_input":{"command":"x --approve-data-loss"}}' | node .claude/hooks/data-loss-guard.ts`
+- **محدودیت‌ها (پارسر کامل نیست):** این‌ها دیده نمی‌شوند و قاعدهٔ «اجازهٔ صریح» CLAUDE.md برایشان پابرجاست: تابعی که هنگام `select` داده یا job را تغییر می‌دهد (مثل `pgmq.drop_queue`، `cron.unschedule` یا `setval`)؛ دستور Bash که هر دو رشتهٔ `approve-data-loss` و `db-apply`/`db:apply` را با متغیر یا glob پنهان کند (مثل `F=loss; node tools/db-*/apply.ts --approve-data-$F <v>`؛ در حالت پیش‌فرض چون `node` در allow list نیست پنجرهٔ تأیید باز می‌شود، ولی در `bypassPermissions` اجرا می‌شود)؛ SQL که در زمان اجرا از تکه‌ها ساخته می‌شود (مثل `'dr' || 'op table t'`؛ `cron.schedule` و `dblink` همیشه می‌پرسند)؛ و `where` همیشه‌درستی که شکل دیگری دارد (`id > 0`، `id is not null`، `id in (select id from t)`). در جهت مقابل، رشتهٔ داده‌ای که با واژهٔ دستور شروع می‌شود (مثل `'Drop the ball'`) پرسش اضافه می‌آورد.
+- **تعارض باز:** CLAUDE.md و D77 می‌گویند Claude پس از «بله» صریح مالک، `--approve-data-loss` را اجرا می‌کند؛ hook این را رد می‌کند. تا تصمیم مالک محصول دربارهٔ هم‌خوان کردن CLAUDE.md، دستور حذف داده را مالک خودش اجرا می‌کند و سشن فقط نسخه و یافته‌های dry run را گزارش می‌دهد.
+- آزمون: `tools/claude-hooks/data-loss-guard.test.ts` (در `pnpm test:unit` و CI).
+
 ## قاعده‌ها
 
 - هر سشن تازهٔ ریکالینو، از جمله سشن‌های کارگری که سشن مدیر می‌سازد، در environment «Recalino» باز می‌شود. سشن‌های موجود environment خود را عوض نمی‌کنند.

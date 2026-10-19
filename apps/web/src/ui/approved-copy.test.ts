@@ -83,3 +83,17 @@ describe("texts approved by the owner on 2026-10-19", () => {
     },
   );
 });
+
+// D89 (owner decision 2026-10-19, audit batch 9): the sentence for a result the operator still
+// checks (UX-05, `provider_outcome_unresolved`), recorded in its own section of the register.
+describe("the provider_outcome_unresolved sentence approved on 2026-10-19", () => {
+  const section = register.slice(register.indexOf("## تأیید 2026-10-19 — دستهٔ ۹"));
+  it("is in the interface and in the register, word for word", () => {
+    const owner =
+      "A result is still being checked. Contact the pilot operator before trying again.";
+    expect(section.length).toBeGreaterThan(100);
+    expect(workspaceErrors.outcomeUnresolved).toBe(owner);
+    expect(section).toContain(`«${owner}»`);
+    expect(section).toContain("workspaceErrors.outcomeUnresolved");
+  });
+});

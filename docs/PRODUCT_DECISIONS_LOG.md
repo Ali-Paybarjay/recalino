@@ -376,6 +376,8 @@
 - مسیرها، API، نام جدول‌ها و شناسه‌های کد (`/classes`، `org.class_session`، `kind = 'class'`) و پرامپت‌های AI تغییر نمی‌کنند (مسیر صفحه‌ها با D51 به `/sessions` منتقل شد). migration یا تغییر داده لازم نیست. این تصمیم مجوز استقرار نیست.
 - تفاوت با متن طرح در [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md)، مورد ۱۱، ثبت شده است.
 
+> **اصلاحیه (2026-10-19، D87، پایین‌تر در همین سند):** نام تب ناوبری «Sessions» است، نه «Courses»، چون تب به `/sessions` می‌رود و فهرست جلسه‌ها را نشان می‌دهد. بقیهٔ D50، از جمله «Manage courses»، بی‌تغییر است.
+
 ## D51 — دوره پیش‌فرض «My Courses»، آدرس `/sessions` و نام جلسه فقط در ویرایش
 
 > شناسه: پیش از ادغام با نام D49 ثبت شد و به همان دلیل به D51 تغییر کرد.
@@ -728,6 +730,89 @@
 - **هم‌خوانی با D78:** کارت‌های بخش‌های علامت‌دار عکس که در ترتیب خود جلسه پیش از کارت‌های دیگر نوشته می‌شوند، در صف هم پیش از دیگر کارت‌های Core همان جلسه می‌آیند.
 - **شماره:** این تصمیم در 2026-10-15 روی شاخهٔ `claude/relaxed-allen-okw4q3` با شناسهٔ D78 ثبت شد. چون `main` همان روز D78 را برای «بخش‌های علامت‌دار در عکس متن» گرفت، هنگام ادغام `main` به D79 رفت. متن آن تغییر نکرده است.
 - **وضعیت production (2026-10-16):** با ادغام #62 (`4b4fa05`) روشن است. migration `20261015120000` در 2026-10-15 با `pnpm db:apply --apply` اعمال شد. deploy: `dpl_4etGBqoY9uqth9jDLp1ymSc5QifK`، آماده در 01:16 UTC پس از بررسی بیکاری صف.
+
+> **اصلاحیه (2026-10-19، D88، پایین‌تر در همین سند):** برچسب نوع کارت روی کارت مرور «Core cards» و «Supplementary cards» است، نه «Core · production» و «Supplementary · recognition». بقیهٔ D79 بی‌تغییر است.
+
+## D80 تا D93 — تصمیم‌های ممیزی 2026-10-18 (2026-10-19)
+
+مبنا: تصمیم‌های صریح مالک محصول در 2026-10-19 برای [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) (بخش ۱۰، «تصمیم‌های لازم») که دستهٔ ۹ (`fix/audit-9`) ثبت کرد. هر موضوع یک شناسه دارد. شمارهٔ آزاد بعدی، پس از بررسی همهٔ شاخه‌های `fix/audit-*` و `audit-fixes/2026-10-18` (آخرین شناسه همه D79)، D80 بود. هیچ‌کدام مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست؛ گام‌های تنظیمات با خود مالک محصول است.
+
+### D80 — جزوه و کارت بدون فونت وب (SEC-04)
+
+- **گزینهٔ A مصوب:** کارت‌های `lesson_html` و جزوهٔ کلاس (نمای داخل اپ و HTML دانلودی) دیگر از `fonts.googleapis.com` و `fonts.gstatic.com` فونت نمی‌گیرند. همان پشته‌های فونت موجود دستگاه (`CardFace.module.css` و stylesheet جزوه، با fallback `Tahoma, sans-serif` و stack جدای IPA) به کار می‌روند. نام‌هایی مثل Vazirmatn و Lora در این پشته‌ها فقط فونت نصب‌شده روی دستگاه را برمی‌دارند و درخواست شبکه نمی‌سازند.
+- CSP فریم جزوه (`class-notes-pronunciation.ts`) دامنه‌های Google را ندارد: `style-src 'unsafe-inline'` و برای فونت همان `default-src 'none'`.
+- با قاعدهٔ «هرگز web font اضافه نکن» در CLAUDE.md و قاعدهٔ فونت دستگاه در همین دفتر یکی است و تعارض با brief بازتولید «دقیق» جزوه را به نفع حریم خصوصی حل می‌کند. ظاهر روی دستگاهی که Vazirmatn یا Lora ندارد کمی با نمونهٔ مرجع فرق می‌کند. نمونه‌های مرجع بایگانی‌شده در `packages/core/test/reference-output/` تغییر نکردند.
+- متن حقوقی تغییری لازم ندارد، چون Google دیگر برای فونت داده‌ای نمی‌گیرد.
+
+### D81 — گارد هارنس برای SQL مخرب و `--approve-data-loss` (SEC-05)
+
+- **گزینهٔ B مصوب:** فهرست `permissions.allow` در `.claude/settings.json` بی‌تغییر می‌ماند. یک hook از نوع `PreToolUse` ([`.claude/hooks/data-loss-guard.ts`](../.claude/hooks/data-loss-guard.ts)، آزمون: `tools/claude-hooks/data-loss-guard.test.ts`) اضافه شد:
+  - `execute_sql` در هر دو کانکتور Supabase برای `select` و نوشتن محدود بی‌پرسش می‌ماند. پیش از `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا یا زمان‌بندی‌شده (`execute`، `dblink`، `cron.schedule`)، `delete` یا `update` که `where` آن همهٔ ردیف‌ها را می‌گیرد (بی `where`، `where true`، `where 2=2`، `where id = id`، `… or true`، `where exists (select 1)`)، upsert با `on conflict … do update` که ردیف‌هایش را از یک query می‌گیرد، و تغییر `standard_conforming_strings` پنجرهٔ تأیید (ask) باز می‌شود. همین قاعده‌ها روی بدنهٔ dollar-quote، همهٔ رشته‌های یک دستور `do` و هر رشته‌ای که با واژهٔ آغاز یک دستور Postgres شروع می‌شود (پس از کنار گذاشتن فاصله، توضیح، `(` و `;` و اعمال escape) هم اجرا می‌شوند. توضیح‌ها، `E'…'`، `U&'…'`، dollar-quote و ادامهٔ رشته در خط بعد مثل Postgres خوانده می‌شوند: دو رشته که فقط فاصله‌ای با دست‌کم یک خط تازه (و شاید توضیح `--`) میانشان است یک رشته‌اند، با همان حالت escape رشتهٔ اول (پس `do 'begin dele'` و در خط بعد `'te from t; end'` یعنی `delete from t`). نام‌های داخل `"…"` (از جمله `U&"…"`) هم مثل نام بی‌نقل‌قول بررسی می‌شوند، پس `"cron"."schedule"`، `cron."schedule"`، `"cron"."alter_job"` و `"dblink_exec"` هم پنجرهٔ تأیید می‌گیرند (بازبینی سوم، 2026-10-19).
+  - فراخوانی‌ای که hook نمی‌تواند بخواند (JSON نامعتبر، بی `tool_name`، یا Bash بی `command`) پنجرهٔ تأیید می‌گیرد، تا اگر Claude Code نام فیلدها را عوض کند، گارد بی‌صدا خاموش نشود و allow list (از جمله `Bash(pnpm db:apply:*)` و `execute_sql`) بی‌پرسش اجرا نشود (بازبینی سوم، 2026-10-19).
+  - هر دستور Bash که `approve-data-loss` دارد، حتی با نقل‌قول یا backslash، رد (deny) می‌شود، با این پیام که migration حذف داده را خود مالک محصول اجرا می‌کند. فقط `pnpm db:apply` (dry run) و `pnpm db:apply --apply`، تنها روی خط، و `supabase db push` مثل قبل بی‌پرسش‌اند؛ هر دستور دیگری که `db:apply` یا `db-apply` دارد (آرگومان اضافه، `$…`، pipe یا دستور زنجیره‌ای) پنجرهٔ تأیید باز می‌کند.
+  - `update` پس از `for` یا `for no key` فقط وقتی قفل ردیف (row lock) است و بی‌پرسش می‌ماند که پس از آن پایان دستور، `;`، `)`، `of`، `nowait`، `skip`، `for`، `limit`، `offset`، `fetch` یا `into` بیاید؛ `open cur for update t set …` در plpgsql مثل هر `update` دیگری بررسی می‌شود (بازبینی دوم، 2026-10-19).
+  - کار hook محدود است، چون اگر از مهلت ۱۰ ثانیه‌ای بگذرد Claude Code فراخوانی allow-list را بی‌تصمیم اجرا می‌کند: SQL بلندتر از ۱۰۰٬۰۰۰ نویسه بی‌خواندن، و SQL که بررسی‌اش از سقف کار hook بیشتر شود، پنجرهٔ تأیید می‌گیرد. بدترین ورودی زیر این سقف در آزمون‌ها زیر ۲ ثانیه (در عمل زیر ۱۰۰ میلی‌ثانیه) تصمیم می‌گیرد.
+  - hook از مسیر symlink هم اجرا می‌شود و نه SQL را چاپ می‌کند و نه دستور را. پارسر کامل نیست و این‌ها دیده نمی‌شوند: تابعی که هنگام `select` داده یا job را تغییر می‌دهد (مثل `pgmq.drop_queue`، `cron.unschedule` یا `setval`)، SQL ساخته‌شده از تکه‌ها در زمان اجرا، `where` همیشه‌درستی با شکل دیگر (`id > 0`، `id in (select id from t)`)، و دستور Bash که هر دو رشتهٔ `approve-data-loss` و `db-apply`/`db:apply` را با متغیر یا glob پنهان کند (مثل `F=loss; node tools/db-*/apply.ts --approve-data-$F <v>`). این دستور آخر به جریان عادی مجوز می‌رود: در حالت پیش‌فرض، چون `node` در allow list نیست، پنجرهٔ تأیید باز می‌شود، ولی در `bypassPermissions` اجرا می‌شود. پس قاعدهٔ «اجازهٔ صریح» CLAUDE.md همچنان پابرجاست. فهرست کامل در [CLOUD_ENVIRONMENT_FA.md](ops/CLOUD_ENVIRONMENT_FA.md) بخش «گارد هارنس».
+- **تعارض ثبت‌شده با CLAUDE.md و D77:** CLAUDE.md (بخش Supabase MCP) و D77 می‌گویند Claude پس از «بله» صریح مالک در چت، migration حذف داده را با `--approve-data-loss <version>` اجرا می‌کند. با این hook، Claude دیگر نمی‌تواند آن را اجرا کند و مالک باید خودش دستور را اجرا کند (یا hook را برای همان بار کنار بگذارد). CLAUDE.md در این دسته ویرایش نشد؛ هم‌خوان کردن متن آن (یا تغییر hook به ask) تصمیم جدای مالک محصول است.
+
+### D82 — Preview بدون اسرار پایلوت (OPS-03)
+
+- **گزینهٔ A مصوب:** اسرار پایلوت (`DATABASE_URL`، `SUPABASE_*`، `BLOB_*`، `CRON_SECRET`، `RATE_LIMIT_IP_KEY`، `OPENROUTER_*` و بقیهٔ اسرار [SECRETS.md](runbooks/SECRETS.md)) فقط در target **Production** و با گزینهٔ Sensitive. Preview فقط در حالت fixture (`RECALINO_UI_PREVIEW=1`، الگوی `tools/deploy-ui-preview.ps1`) ساخته می‌شود. این همان Q-SPEC-1 در [PROJECT_SPEC](PROJECT_SPEC.md) است.
+- `BLOB_READ_WRITE_TOKEN` چون خواندنی و مشترک بین سه محیط بوده، چرخش داده و Sensitive و فقط Production می‌شود. پیگیری D76 دربارهٔ همین توکن («پس از راه‌اندازی پشتیبان دوباره بررسی می‌شود») با این تصمیم پاسخ می‌گیرد. فایل پیکربندی پشتیبان میزبان اپراتور (D53) باید هم‌زمان با توکن تازه به‌روز شود. `NODE_ENV` دستی Production حذف می‌شود.
+- تغییرات Vercel با خود مالک محصول است: چک‌لیست در [CLOUD_SETUP.md](runbooks/CLOUD_SETUP.md) بخش «جداسازی Preview از پایلوت». دو runbook `CLOUD_SETUP.md` و `SECRETS.md` با Q-SPEC-1 هم‌خوان شدند.
+- گارد کد پیشنهادی ممیزی (رد اتصال دیتابیس در Preview بدون حالت fixture، در `packages/core/src/db/connection.ts`) در این دسته ساخته نشد.
+
+### D83 — دروازهٔ CI پیش از production (OPS-04)
+
+- **گزینهٔ A مصوب:** ruleset برای `main` با PR اجباری و check الزامی «Lint, types, boundaries, tests, build»، منع force push و حذف شاخه، به‌علاوهٔ Vercel Deployment Checks که دامنهٔ production را فقط پس از سبز شدن همان check به استقرار تازه می‌دهد. با سیاست CI کم‌مصرف سازگار است، چون CI روی PR به `main` اجرا می‌شود.
+- تنظیم GitHub و Vercel با خود مالک محصول است: گام‌ها در [docs/ops/BRANCH_PROTECTION_FA.md](ops/BRANCH_PROTECTION_FA.md). تا اجرای آن چک‌لیست، قاعدهٔ قبلی (هر push به `main` مستقر می‌شود) برقرار است.
+- D67 (انتشار بر پایهٔ شواهد محلی وقتی Actions از کار افتاده) با ruleset فقط با bypass مالک ممکن است؛ این در همان سند آمده است.
+
+### D84 — CI: e2e بدون build دوباره و Dependabot فقط امنیتی (OPS-10)
+
+- **گزینهٔ A مصوب:** job `e2e` خروجی `apps/web/.next` (بدون `.next/cache`) را از job `verify` همان اجرا با `actions/upload-artifact` و `actions/download-artifact` (pin شده به SHA) می‌گیرد و `pnpm build` را دوباره اجرا نمی‌کند. artifact فقط وقتی e2e اجرا می‌شود ساخته و یک روز نگه داشته می‌شود. triggerها، concurrency، برچسب `e2e` و شرط jobها تغییر نکردند.
+- `.github/dependabot.yml` فقط برای security updates اکوسیستم npm است (`open-pull-requests-limit: 0`، یعنی بی‌PR نسخه‌ای). روشن کردن Dependabot alerts و security updates در تنظیمات مخزن با مالک محصول است ([BRANCH_PROTECTION_FA.md](ops/BRANCH_PROTECTION_FA.md)).
+
+### D85 — نگهداری سه پشتیبان آمادهٔ آخر (OPS-01)
+
+- چرخهٔ ۳۰ روزهٔ پشتیبان می‌ماند، ولی سه پشتیبان آمادهٔ (ready) آخر حتی پس از ۳۰ روز نگه داشته می‌شوند تا یک دورهٔ شکست پشتیبان شبانه هیچ‌وقت نسخهٔ قابل بازیابی را از بین نبرد. پیاده‌سازی در `packages/core/src/ops/backups.ts` (`DEFAULT_BACKUP_RETENTION.keepReady = 3`، قابل تغییر با `RECALINO_BACKUP_RETENTION_JSON`) در دستهٔ ۱ ساخته شد.
+- اصلاح نسخه‌دار: جملهٔ نگهداری ۳۰ روزه در [ADR-0001](adr/0001-stack-and-hosting.md)، و جملهٔ نگهداری پشتیبان در پیش‌نویس [privacy-notice.md](legal/privacy-notice.md) و [PILOT_TECHNICAL_FACTS.md](legal/PILOT_TECHNICAL_FACTS.md). نسخهٔ متن حریم خصوصی (۰٫۲) عوض نشد؛ بالا بردن آن پذیرش دوباره را فعال می‌کند و تصمیم جدا می‌خواهد ([راهنمای متن‌های حقوقی](legal/README.md)، نسخه‌گذاری).
+
+### D86 — ده متن دستهٔ ۵ و واژگان A (UX-01، UX-03، UX-06، UX-09، UX-10، UX-12، UX-13، UX-14)
+
+- ده متنی که مالک محصول در 2026-10-19 عیناً تأیید کرد، و جدول برچسب‌های واژگان A («session» برای جلسه، «course» برای درس، «material» برای فایل‌ها و «Manage courses» برای پیوند `/courses`)، همان‌اند که در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش‌های «تأیید 2026-10-19») آمده است. آزمون `approved-copy.test.ts` متن‌ها را با همان فهرست می‌سنجد.
+- «class» فقط برای کلاس واقعی می‌ماند («From class»، «Class audio»، «During class»). متن نسخه‌دار رضایت ضبط و متن‌های حقوقی تغییر نکردند.
+
+### D87 — نام تب ناوبری «Sessions» (اصلاح D50)
+
+- تب ناوبری که به `/sessions` می‌رود و فهرست جلسه‌ها را نشان می‌دهد، «Sessions» نام دارد، نه «Courses». جای جملهٔ «زبانهٔ ناوبری Classes به Courses تغییر می‌کند» در D50 را می‌گیرد. «Manage courses» برای صفحهٔ مدیریت کورس‌ها (D50) بی‌تغییر است. `strings.test.ts` این تفاوت با `copy.md` را در `APPROVED_DEVIATIONS` دارد.
+- بند ۱۱ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) هم‌خوان شد.
+
+### D88 — برچسب مجموعه‌های کارت (UX-05، اصلاح D79)
+
+- روی کارت مرور، برچسب مجموعه «Core cards» و «Supplementary cards» است (`studySetLabel`، از متن مصوب `learning-memory-copy.ts`)، به‌جای «Core · production» و «Supplementary · recognition» که D79 نوشته بود. ترتیب صف، سقف کارت جدید و بقیهٔ D79 تغییر نمی‌کند.
+
+### D89 — پیام `provider_outcome_unresolved` (UX-05)
+
+- وقتی نتیجهٔ یک تأمین‌کننده هنوز باید بررسی شود، رابط این جمله را نشان می‌دهد: «A result is still being checked. Contact the pilot operator before trying again.» (`workspaceErrors.outcomeUnresolved`). جای متن موقت «The change could not be saved. Try again.» را می‌گیرد که برخلاف سرور به تلاش دوباره دعوت می‌کرد.
+
+### D90 — ناوبری صفحهٔ ضبط فقط هنگام ضبط فعال پنهان است (UX-02)
+
+- در `/recordings` و `/sessions/<id>/record` ناوبری پوسته فقط در فازهای ضبط فعال (`starting`، `recording`، `recovering`، `paused`) پنهان است و پیش از شروع و پس از Stop، از جمله فاز `saving`، نمایش داده می‌شود. PRD-REC-02 حین ضبط بی‌تغییر است. جزئیات: [RECORDING_NAVIGATION_2026-10-19.md](design/RECORDING_NAVIGATION_2026-10-19.md).
+- بازگشت با یک ثابت: `RECORDING_FOCUS_MODE = "always"` در `apps/web/src/ui/recording/recording-focus.ts`.
+- **وضعیت:** تأیید نهایی نگه‌داشتن یا بازگرداندن، طبق خواست مالک محصول، در پایان همین اجرای اصلاح ممیزی گرفته می‌شود. تفاوت با HANDOFF §4 در بند ۱۲ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) ثبت شد.
+
+### D91 — cooldown سخت انتشار بسته‌ها (OPS-12)
+
+- `minimumReleaseAge: 1440` (۲۴ ساعت) در `pnpm-workspace.yaml` صریح و سخت است: نسخه‌ای که کمتر از ۲۴ ساعت از انتشارش گذشته انتخاب نمی‌شود، و فهرست `minimumReleaseAgeExclude` فقط نسخه‌های دقیق را معاف می‌کند. `engineStrict: true` نسخهٔ Node را اجباری می‌کند. (پیاده‌سازی در دستهٔ ۸.)
+
+### D92 — `getUser` با سقف ۲٫۵ ثانیه برای هر گام Auth (PERF-03)
+
+- سنجش نشست سمت سرور همچنان با `getUser` است (FR-PLT-001)، نه خواندن محلی JWT. هر گام Auth یک درخواست (refresh در proxy، یا سنجش صفحه یا route)، با retryها، حداکثر ۲٫۵ ثانیه منتظر می‌ماند (`AUTH_STEP_TIMEOUT_MS = 2500` در `apps/web/src/server/auth/supabase.ts`، دستهٔ ۷).
+
+### D93 — محاسبهٔ فعلی برآورد هزینه می‌ماند (QUA-09)
+
+- حساب برآورد هزینه در `packages/core/src/aip/pricing.ts` همان رفتار پایه می‌ماند و گرد کردن عدد صحیح برای هر نرخ اعمال نمی‌شود، چون خروجی `estimated_micros` و سقف‌های هزینه را جابه‌جا می‌کرد. آزمون QUA-09 خروجی‌های فعلی را قفل می‌کند. بازنویسی `lockAccount(db: Tx)` می‌ماند.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 

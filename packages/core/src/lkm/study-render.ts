@@ -59,19 +59,6 @@ function context(language: string): RenderContext {
       (locale.isPersian ? "" : ` lang="${attr(locale.language)}"`),
   };
 }
-function fonts(locale: StudyLocale): string {
-  const families = locale.isPersian
-    ? "Lora:ital,wght@0,400;0,600;1,400&amp;family=Vazirmatn:wght@400;600;800"
-    : "Lora:ital,wght@0,400;0,600;1,400&amp;family=" +
-      locale.fontGoogleFamily +
-      ":wght@400;600;800";
-  return (
-    '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link href="https://fonts.googleapis.com/css2?family=' +
-    families +
-    '&amp;display=swap" rel="stylesheet">'
-  );
-}
-
 function labelNote(key: StudyLabelKey, ctx: RenderContext): string {
   return `<p class="note">${ctx.label(key)}</p>`;
 }
@@ -601,5 +588,7 @@ export function renderClassNotesHtml(
         : `<span lang="en" dir="ltr">${text(studyWeekday(parsedDate, weekdayLanguage))}</span>`
       : "";
   const institution = [notes?.institution, notes?.course].filter(Boolean).join(" · ");
-  return `<!doctype html>\n<html lang="${attr(ctx.locale.language)}" dir="${ctx.locale.direction}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>${text(model.title)}${date ? ` · ${text(date)}` : ""}</title>\n${fonts(ctx.locale)}\n<style>${CLASS_NOTES_STYLES}${localizedStudyStyles(ctx.locale)}</style>\n</head>\n<body id="top">\n${sections.length ? `<nav>${sections.map((section) => `<a href="#${section.id}">${section.pill}</a>`).join("")}</nav>` : ""}\n<main>\n<header>\n<h1>${prose(model.title)}</h1>\n${institution || date ? `<p>${institution ? `${prose(institution)}${date ? " · " : ""}` : ""}${date ? `${weekday} <bdi ${ctx.englishAttrs} class="date">${text(date)}</bdi>` : ""}</p>` : ""}\n${notes?.coverage ? `<p>${prose(notes.coverage)}</p>` : ""}\n${note(notes?.sourceNote, ctx)}\n</header>\n${sections.map((section, index) => `<section id="${section.id}">\n<h2>${ctx.number(index + 1)}. ${section.heading}</h2>\n${section.body}\n<a class="top" href="#top">${ctx.label("backToTop")}</a>\n</section>`).join("\n\n")}\n</main>\n</body>\n</html>`;
+  // SEC-04 (owner decision 2026-10-19): no web font link. The styles name the device's own font
+  // stacks, so opening the notes, in the app or as the downloaded file, reaches no other server.
+  return `<!doctype html>\n<html lang="${attr(ctx.locale.language)}" dir="${ctx.locale.direction}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>${text(model.title)}${date ? ` · ${text(date)}` : ""}</title>\n<style>${CLASS_NOTES_STYLES}${localizedStudyStyles(ctx.locale)}</style>\n</head>\n<body id="top">\n${sections.length ? `<nav>${sections.map((section) => `<a href="#${section.id}">${section.pill}</a>`).join("")}</nav>` : ""}\n<main>\n<header>\n<h1>${prose(model.title)}</h1>\n${institution || date ? `<p>${institution ? `${prose(institution)}${date ? " · " : ""}` : ""}${date ? `${weekday} <bdi ${ctx.englishAttrs} class="date">${text(date)}</bdi>` : ""}</p>` : ""}\n${notes?.coverage ? `<p>${prose(notes.coverage)}</p>` : ""}\n${note(notes?.sourceNote, ctx)}\n</header>\n${sections.map((section, index) => `<section id="${section.id}">\n<h2>${ctx.number(index + 1)}. ${section.heading}</h2>\n${section.body}\n<a class="top" href="#top">${ctx.label("backToTop")}</a>\n</section>`).join("\n\n")}\n</main>\n</body>\n</html>`;
 }

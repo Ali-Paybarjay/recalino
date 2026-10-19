@@ -29,7 +29,7 @@
 
 ## ۲. بررسی بی‌کاری پردازش (فقط‌خواندنی، پیش از ادغام در `main`)
 
-ادغام در `main` بلافاصله استقرار production می‌سازد؛ پس این بررسی **پیش از ادغام PR** انجام شود. فقط `select`، با پروژهٔ `twowhuzhvyuzjrpraikm`:
+ادغام در `main` بلافاصله استقرار production می‌سازد؛ پس این بررسی **پیش از ادغام PR** انجام شود. *(به‌روزرسانی 2026-10-19، [D83](../PRODUCT_DECISIONS_LOG.md): پس از اجرای [چک‌لیست دروازهٔ CI](../ops/BRANCH_PROTECTION_FA.md)، استقرار production فقط پس از سبز شدن check «Lint, types, boundaries, tests, build» روی همان commit promote می‌شود؛ این بررسی همچنان پیش از ادغام انجام شود.)* فقط `select`، با پروژهٔ `twowhuzhvyuzjrpraikm`:
 
 ```sql
 -- باید صفر ردیف برگرداند؛ هر ردیف یعنی کاری در جریان است.
@@ -217,7 +217,7 @@ where reservation_id is null and state <> 'deleted' and expires_at < now() - int
    - `org.class_session.capture_open_until`: کد قدیمی نمی‌خواند؛ پردازش خودکار دیگر منتظر lease نمی‌ماند.
    - اگر حذف schema لازم شد، فقط با migration تازهٔ رو به جلو و اجازهٔ صریح مالک. پیش از `set not null` دوباره روی `reservation_id`، ردیف‌های staged باید حذف شده باشند.
 4. داده: rollback هیچ دادهٔ کاربر را تغییر نمی‌دهد. حذف دستی ردیف‌ها لازم نیست.
-5. **Vercel مستقل از GitHub Actions است:** استقرار production را Git integration مستقیم از `main` می‌سازد، نه CI. از کار افتادن Actions نه استقرار را متوقف می‌کند و نه rollback را. هر push به `main`، حتی با CI ازکارافتاده یا قرمز، استقرار می‌شود؛ پس push اصلاحی به `main` جایگزین rollback نیست، مگر اینکه محلی `pnpm verify` و `pnpm test:e2e` را گذرانده باشد. Instant Rollback در Vercel همیشه بدون CI کار می‌کند.
+5. **Vercel مستقل از GitHub Actions است:** استقرار production را Git integration مستقیم از `main` می‌سازد، نه CI. از کار افتادن Actions نه استقرار را متوقف می‌کند و نه rollback را. هر push به `main`، حتی با CI ازکارافتاده یا قرمز، استقرار می‌شود؛ پس push اصلاحی به `main` جایگزین rollback نیست، مگر اینکه محلی `pnpm verify` و `pnpm test:e2e` را گذرانده باشد. Instant Rollback در Vercel همیشه بدون CI کار می‌کند. *(به‌روزرسانی 2026-10-19، [D83](../PRODUCT_DECISIONS_LOG.md)، OPS-04: با ruleset `main` و Vercel Deployment Checks طبق [BRANCH_PROTECTION_FA.md](../ops/BRANCH_PROTECTION_FA.md)، push مستقیم به `main` رد می‌شود و استقرار production به سبز بودن همان check وابسته است. تا مالک محصول آن چک‌لیست را اجرا نکرده، جملهٔ قبلی برقرار است. با Actions ازکارافتاده، ادغام فقط با bypass مالک و شواهد محلی D67 ممکن است.)*
 
 ## ۱۱. گزارش پایانی انتشار
 

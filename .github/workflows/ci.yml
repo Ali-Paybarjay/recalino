@@ -80,6 +80,23 @@ jobs:
       - run: pnpm build
       - name: No secrets in the client-visible build (FR-PLT-009)
         run: pnpm check:client-bundle
+      # OPS-10 (D84): the e2e job starts this build instead of running `pnpm build` again. Kept
+      # only when the e2e job will run (same condition as that job) and for one day.
+      - name: Keep the build for the end-to-end job
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e'))
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-build
+          # .next is a hidden folder; the build cache stays out.
+          path: |
+            apps/web/.next
+            !apps/web/.next/cache
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
 
   # Main, manual runs, and pull requests labeled `e2e` (about 20 minutes per run).
   e2e:
@@ -109,5 +126,11 @@ jobs:
         run: pnpm db:start
       - name: Write the local server configuration
         run: pnpm db:env
-      - run: pnpm build
+      # OPS-10 (D84): the same commit's build from the verify job; server settings are read when
+      # the server starts, so the build does not need this job's local configuration.
+      - name: Use the verify job's build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: web-build
+          path: apps/web/.next
       - run: pnpm test:e2e

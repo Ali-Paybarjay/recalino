@@ -53,6 +53,9 @@ describe("bounded pronunciation frame", () => {
     expect(html).toContain("base-uri about:");
     expect(html).not.toContain("unsafe-eval");
     expect(html).not.toContain("script-src 'unsafe-inline'");
+    // SEC-04: the frame allows no font or stylesheet origin, so notes reach no other server.
+    expect(html).not.toMatch(/fonts\.googleapis|fonts\.gstatic|https:/);
+    expect(html).toContain("style-src 'unsafe-inline';");
   });
   it("rejects an injected CSP nonce or channel", () => {
     expect(() =>

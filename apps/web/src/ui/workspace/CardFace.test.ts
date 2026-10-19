@@ -72,6 +72,22 @@ describe("study card faces", () => {
   });
 });
 
+describe("SEC-04 study card fonts", () => {
+  // Owner decision 2026-10-19: no web font; a lesson card uses the device's own font stacks.
+  it("adds no stylesheet from another origin to a lesson card", () => {
+    const card = {
+      contentFormat: "lesson_html",
+      front: '<div dir="rtl">استهلاک</div>',
+      back: '<div dir="ltr"><b>wear and tear</b></div>',
+    };
+    for (const revealed of [false, true]) {
+      const html = renderToStaticMarkup(createElement(CardFace, { card, revealed }));
+      expect(html).not.toMatch(/fonts\.googleapis|fonts\.gstatic/);
+      expect(html).not.toContain("<link");
+    }
+  });
+});
+
 describe("framed class notes", () => {
   it("adds only a local base URL and the selected theme", () => {
     const source =
