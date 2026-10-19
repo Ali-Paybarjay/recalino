@@ -11,10 +11,13 @@
 //   - any Bash command carrying --approve-data-loss, even when quoted or escaped, is denied: the
 //     product owner runs data-loss migrations themselves. db:apply runs without a prompt only as
 //     `pnpm db:apply` or `pnpm db:apply --apply`; any other db:apply command asks first.
-// It is a safety net, not a parser: a function that deletes rows when selected, SQL built from
-// pieces at run time, or a where clause that keeps every row in another way (`id > 0`,
-// `id in (select id from t)`) is not seen, so the CLAUDE.md rule (explicit permission for
-// irreversible data changes) still applies.
+// It is a safety net, not a parser: a function that changes rows or jobs when selected, SQL built
+// from pieces at run time, a where clause that keeps every row in another way (`id > 0`,
+// `id in (select id from t)`), or a Bash command that hides both `approve-data-loss` and
+// `db-apply` behind a variable or glob is not seen, so the CLAUDE.md rule (explicit permission
+// for irreversible data changes) still applies.
+// Work is bounded: SQL longer than MAX_SQL_LENGTH, or SQL that needs more than WORK_LIMIT steps
+// to check, asks first, so a slow check never runs into the hook timeout (which lets the call run).
 // It prints nothing for a call it has no concern with, and never prints the SQL or the command.
 // Tests: tools/claude-hooks/data-loss-guard.test.ts.
 import { readFileSync, realpathSync } from "node:fs";
@@ -29,26 +32,59 @@ const ASK_APPLY =
   "db:apply runs without a prompt only as `pnpm db:apply` (dry run) or `pnpm db:apply --apply`, alone on the line. Any other argument, pipe or chained command needs the product owner's yes (D81).";
 /** The only db:apply commands that keep the allow list's no-prompt run. */
 const PLAIN_APPLY = /^\s*pnpm\s+db:apply(?:\s+--apply)?\s*$/;
+/** Longer SQL asks first without being read: reading it could outlast the 10 s hook timeout. */
+export const MAX_SQL_LENGTH = 100_000;
+const ASK_TOO_LONG = `This SQL is longer than ${MAX_SQL_LENGTH} characters, too long for the data-loss guard to check. CLAUDE.md needs the product owner's explicit yes before an irreversible data change (D81).`;
+/** Characters the checks may visit for one query, across every pass and quoted body. */
+const WORK_LIMIT = 10_000_000;
+const ASK_TOO_COMPLEX =
+  "This SQL is too complex for the data-loss guard to check in time. CLAUDE.md needs the product owner's explicit yes before an irreversible data change (D81).";
 
 /** Statements and clauses that change the schema, grants or many rows at once. */
 const RISKY_WORDS =
   /\b(drop|truncate|alter|create|grant|revoke|merge|copy|vacuum|cluster|reindex|lock|execute|call|reassign|security\s+label|comment\s+on|import\s+foreign|refresh\s+materialized)\b/;
 /** The first word of every Postgres statement: a literal that starts with one is checked as SQL. */
 const STATEMENT_START =
-  /^(abort|alter|analy[sz]e|begin|call|checkpoint|close|cluster|comment|commit|copy|create|deallocate|declare|delete|discard|do|drop|end|execute|explain|fetch|grant|import|insert|listen|load|lock|merge|move|notify|prepare|reassign|refresh|reindex|release|reset|revoke|rollback|savepoint|security|select|set|show|start|table|truncate|unlisten|update|vacuum|values|with)(?![\w$])/i;
+  /(abort|alter|analy[sz]e|begin|call|checkpoint|close|cluster|comment|commit|copy|create|deallocate|declare|delete|discard|do|drop|end|execute|explain|fetch|grant|import|insert|listen|load|lock|merge|move|notify|prepare|reassign|refresh|reindex|release|reset|revoke|rollback|savepoint|security|select|set|show|start|table|truncate|unlisten|update|vacuum|values|with)(?![\w$])/iy;
 /** Characters that continue a Postgres identifier; every non-ASCII character counts. */
 const IDENT_CHAR = /[A-Za-z0-9_$\u0080-\uffff]/;
 const IDENT_START = /[A-Za-z_\u0080-\uffff]/;
-const DOLLAR_TAG = /^\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/;
+const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/y;
+const UESCAPE = /\s*uescape\s*'([^'])'/iy;
 /** Words in a where clause that name no column. */
 const CONSTANT_WORDS = new Set(
-  "true false null not and or is isnull notnull unknown distinct from in between symmetric like ilike similar to escape any all some array case when then else end collate current_date current_time current_timestamp localtime localtimestamp current_user session_user user current_role".split(
+  "true false null not and or is isnull notnull unknown distinct from in between symmetric like ilike similar to escape any all some array case when then else end collate current_date current_time current_timestamp localtime localtimestamp current_user session_user user current_role select exists".split(
     " ",
   ),
 );
 
 /** A keyword as a whole word; `$` continues a word in Postgres. */
-const keyword = (words: string) => new RegExp(`(?<![\\w$])(?:${words})(?![\\w$])`);
+const keyword = (words: string, flags = "") =>
+  new RegExp(`(?<![\\w$])(?:${words})(?![\\w$])`, flags);
+const WHERE = keyword("where");
+const RETURNING = keyword("returning");
+const INSERT = keyword("insert");
+const VALUES = keyword("values");
+const OR = keyword("or", "g");
+const AND = keyword("and", "g");
+const NOT_DISTINCT = keyword("is\\s+not\\s+distinct\\s+from");
+const OPERATORS = /[<>=~!@#%^&|`?+\-*/]+/g;
+const IDENTIFIER = /(?<![\w$])(?:""|[a-z_][\w$]*)/g;
+/** What a row-lock clause (`for update`, `for no key update`) can continue with. */
+const LOCK_CLAUSE_GOES_ON =
+  /\s*(?:$|[;)]|(?:of|nowait|skip|for|limit|offset|fetch|into)(?![\w$]))/y;
+/** `update [only] name[.name] [*] [[as] alias] set`: an update statement, also after `for`. */
+const UPDATE_TARGET =
+  /\s*(?:only\s+)?(?:""|[a-z_][\w$]*)(?:\s*\.\s*(?:""|[a-z_][\w$]*))*(?:\s*\*)?(?:\s+(?:as\s+)?(?:""|[a-z_][\w$]*))?\s+set(?![\w$])/y;
+
+/** Thrown when one query needs more than WORK_LIMIT steps; the hook then asks. */
+class TooMuchWork extends Error {}
+let work = 0;
+/** Counts `chars` visited; every pass over the SQL pays for its length, so no input runs long. */
+function spend(chars: number): void {
+  work += chars;
+  if (work > WORK_LIMIT) throw new TooMuchWork();
+}
 
 interface Scanned {
   /** Lower-cased SQL without comments; literal and quoted-identifier contents are blanked. */
@@ -85,11 +121,21 @@ function closingQuote(sql: string, i: number, quote: string, backslash: boolean)
   return sql.length;
 }
 
-/** True when the `$` at `i` continues an identifier such as `a$b`, so it opens no dollar quote. */
-function inIdentifier(sql: string, i: number): boolean {
-  let start = i;
-  while (start > 0 && IDENT_CHAR.test(sql[start - 1] as string)) start--;
-  return start < i && IDENT_START.test(sql[start] as string);
+/**
+ * For every index, 1 when the character belongs to a run of identifier characters that began
+ * with a letter or `_`: a `$` right after such a character continues an identifier such as `a$b`
+ * and opens no dollar quote. One pass, so a long run of `$` costs no more than its length.
+ */
+function identifierRuns(sql: string): Uint8Array {
+  const runs = new Uint8Array(sql.length);
+  let run: "none" | "identifier" | "other" = "none";
+  for (let k = 0; k < sql.length; k++) {
+    const char = sql[k] as string;
+    if (!IDENT_CHAR.test(char)) run = "none";
+    else if (run === "none") run = IDENT_START.test(char) ? "identifier" : "other";
+    runs[k] = run === "identifier" ? 1 : 0;
+  }
+  return runs;
 }
 
 function codePoint(hex: string): string {
@@ -129,19 +175,22 @@ function decodeUnicode(raw: string, escapeChar: string): string {
 
 /** True when `text`, after leading blanks, `(`, `;` and comments, starts like a statement. */
 function startsLikeStatement(text: string): boolean {
-  let rest = text;
-  for (;;) {
-    rest = rest.replace(/^[\s(;]+/, "");
-    if (rest.startsWith("--")) {
-      const end = rest.search(/[\n\r]/);
-      rest = end === -1 ? "" : rest.slice(end);
-    } else if (rest.startsWith("/*")) rest = rest.slice(blockCommentEnd(rest, 0));
-    else return STATEMENT_START.test(rest);
+  let i = 0;
+  while (i < text.length) {
+    if (/[\s(;]/.test(text[i] as string)) i++;
+    else if (text.startsWith("--", i)) {
+      while (i < text.length && text[i] !== "\n" && text[i] !== "\r") i++;
+    } else if (text.startsWith("/*", i)) i = blockCommentEnd(text, i);
+    else break;
   }
+  STATEMENT_START.lastIndex = i;
+  return STATEMENT_START.test(text);
 }
 
 /** Removes comments and sets literals aside, the way Postgres reads them. */
 function scan(sql: string): Scanned {
+  spend(sql.length);
+  const runs = identifierRuns(sql);
   const parts: string[] = [];
   const bodies: string[] = [];
   // The first characters of the current statement, to recognise a `do` statement.
@@ -170,16 +219,18 @@ function scan(sql: string): Scanned {
         sql[i - 1] === "&" && /[uU]/.test(sql[i - 2] ?? "") && !IDENT_CHAR.test(sql[i - 3] ?? "");
       const end = closingQuote(sql, i, char, escapes);
       const raw = sql.slice(i + 1, end);
+      UESCAPE.lastIndex = end + 1;
       const content = escapes
         ? decodeEscapes(raw)
         : unicode
-          ? decodeUnicode(raw, /^\s*uescape\s*'([^'])'/i.exec(sql.slice(end + 1))?.[1] ?? "\\")
+          ? decodeUnicode(raw, UESCAPE.exec(sql)?.[1] ?? "\\")
           : raw.replaceAll("''", "'");
       if (/^do(?![\w$])/i.test(head) || startsLikeStatement(content)) bodies.push(content);
       push("''");
       i = end + 1;
-    } else if (char === "$" && !inIdentifier(sql, i)) {
-      const tag = DOLLAR_TAG.exec(sql.slice(i))?.[0];
+    } else if (char === "$" && runs[i - 1] !== 1) {
+      DOLLAR_TAG.lastIndex = i;
+      const tag = DOLLAR_TAG.exec(sql)?.[0];
       if (!tag) {
         push(char);
         i++;
@@ -205,54 +256,79 @@ function scan(sql: string): Scanned {
 
 /** `text` with the inside of every parenthesis blanked, so its indexes still line up. */
 function topLevel(text: string): string {
+  spend(text.length);
   let depth = 0;
   let out = "";
+  // Start of the stretch not yet copied: kept as is at depth 0, blanked inside parentheses.
+  let from = 0;
   for (let i = 0; i < text.length; i++) {
-    const char = text[i] as string;
+    const char = text[i];
     if (char === "(") {
-      out += depth === 0 ? char : " ";
+      if (depth === 0) {
+        out += text.slice(from, i + 1);
+        from = i + 1;
+      }
       depth++;
-    } else if (char === ")") {
-      depth = Math.max(0, depth - 1);
-      out += depth === 0 ? char : " ";
-    } else out += depth === 0 ? char : " ";
+    } else if (char === ")" && depth > 0) {
+      depth--;
+      if (depth === 0) {
+        out += `${" ".repeat(i - from)})`;
+        from = i + 1;
+      }
+    }
   }
-  return out;
+  return out + (depth === 0 ? text.slice(from) : " ".repeat(text.length - from));
 }
 
 /** The statement that starts at `start`, up to its `;` or the `)` that closes its level. */
 function statementFrom(code: string, start: number): string {
   let depth = 0;
+  let end = code.length;
   for (let i = start; i < code.length; i++) {
     const char = code[i];
     if (char === "(") depth++;
     else if (char === ")") {
-      if (depth === 0) return code.slice(start, i);
+      if (depth === 0) {
+        end = i;
+        break;
+      }
       depth--;
-    } else if (char === ";" && depth === 0) return code.slice(start, i);
+    } else if (char === ";" && depth === 0) {
+      end = i;
+      break;
+    }
   }
-  return code.slice(start);
+  spend(end - start);
+  return code.slice(start, end);
 }
 
 /** Where the statement around index `at` starts: after its `;` or the `(` that opens its level. */
 function statementStart(code: string, at: number): number {
   let depth = 0;
+  let start = 0;
   for (let i = at - 1; i >= 0; i--) {
     const char = code[i];
     if (char === ")") depth++;
     else if (char === "(") {
-      if (depth === 0) return i + 1;
+      if (depth === 0) {
+        start = i + 1;
+        break;
+      }
       depth--;
-    } else if (char === ";" && depth === 0) return i + 1;
+    } else if (char === ";" && depth === 0) {
+      start = i + 1;
+      break;
+    }
   }
-  return 0;
+  spend(at - start);
+  return start;
 }
 
-/** Splits `text` where `separator` matches outside parentheses. */
-function splitTopLevel(text: string, separator: string): string[] {
+/** Splits `text` where the global `separator` matches outside parentheses. */
+function splitTopLevel(text: string, separator: RegExp): string[] {
   const pieces: string[] = [];
   let from = 0;
-  for (const match of topLevel(text).matchAll(new RegExp(keyword(separator).source, "g"))) {
+  for (const match of topLevel(text).matchAll(separator)) {
     pieces.push(text.slice(from, match.index));
     from = match.index + match[0].length;
   }
@@ -260,21 +336,42 @@ function splitTopLevel(text: string, separator: string): string[] {
   return pieces;
 }
 
-/** `text` without the parentheses that wrap all of it. */
+/** `text` without the parentheses that wrap all of it; pairs are matched once, in one pass. */
 function unwrap(text: string): string {
-  let inner = text.trim();
-  while (inner.startsWith("(") && topLevel(inner).indexOf(")") === inner.length - 1)
-    inner = inner.slice(1, -1).trim();
-  return inner;
+  const inner = text.trim();
+  spend(inner.length);
+  if (!inner.startsWith("(")) return inner;
+  // closing[i]: index of the `)` that closes the `(` at i, or -1.
+  const closing = new Int32Array(inner.length).fill(-1);
+  const open: number[] = [];
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] === "(") open.push(i);
+    else if (inner[i] === ")") {
+      const at = open.pop();
+      if (at !== undefined) closing[at] = i;
+    }
+  }
+  let start = 0;
+  let end = inner.length - 1;
+  while (inner[start] === "(" && closing[start] === end) {
+    start++;
+    end--;
+    while (start <= end && /\s/.test(inner[start] as string)) start++;
+    while (end >= start && /\s/.test(inner[end] as string)) end--;
+  }
+  return inner.slice(start, end + 1);
 }
 
 /** True when `text` names a column: an identifier that is not a keyword, a function or a type. */
 function namesColumn(text: string): boolean {
-  for (const match of text.matchAll(/(?<![\w$])(?:""|[a-z_][\w$]*)/g)) {
-    const before = text.slice(0, match.index).trimEnd();
-    const after = text.slice(match.index + match[0].length).trimStart();
+  spend(text.length);
+  for (const match of text.matchAll(IDENTIFIER)) {
+    let before = match.index;
+    while (before > 0 && /\s/.test(text[before - 1] as string)) before--;
+    let after = match.index + match[0].length;
+    while (after < text.length && /\s/.test(text[after] as string)) after++;
     // A type after `::`, a function call, or the prefix of a typed literal such as date '…'.
-    if (before.endsWith("::") || after.startsWith("(") || after.startsWith("'")) continue;
+    if (text.startsWith("::", before - 2) || text[after] === "(" || text[after] === "'") continue;
     if (match[0] === '""' || !CONSTANT_WORDS.has(match[0])) return true;
   }
   return false;
@@ -289,19 +386,19 @@ function same(left: string, right: string): boolean {
 function keepsEveryRow(clause: string): boolean {
   const text = unwrap(clause);
   if (!text) return true;
-  const ors = splitTopLevel(text, "or");
+  const ors = splitTopLevel(text, OR);
   if (ors.length > 1) return ors.some(keepsEveryRow);
-  const ands = splitTopLevel(text, "and");
+  const ands = splitTopLevel(text, AND);
   if (ands.length > 1) return ands.every(keepsEveryRow);
   if (!namesColumn(text)) return true;
   const top = topLevel(text);
-  const notDistinct = keyword("is\\s+not\\s+distinct\\s+from").exec(top);
+  const notDistinct = NOT_DISTINCT.exec(top);
   if (notDistinct)
     return same(
       text.slice(0, notDistinct.index),
       text.slice(notDistinct.index + notDistinct[0].length),
     );
-  const comparisons = [...top.matchAll(/[<>=~!@#%^&|`?+\-*/]+/g)].filter((match) =>
+  const comparisons = [...top.matchAll(OPERATORS)].filter((match) =>
     ["=", "<=", ">=", "<>", "!=", "<", ">"].includes(match[0]),
   );
   const [only] = comparisons;
@@ -316,35 +413,69 @@ function keepsEveryRow(clause: string): boolean {
 /** True when the upsert whose `do update` is at `at` takes its rows from a query, not a values list. */
 function upsertFromQuery(code: string, at: number): boolean {
   const top = topLevel(code.slice(statementStart(code, at), at));
-  const insert = keyword("insert").exec(top);
+  const insert = INSERT.exec(top);
   if (!insert) return true;
   const own = top.slice(insert.index);
-  return /\b(select|table)\b/.test(own) || !keyword("values").test(own);
+  return /\b(select|table)\b/.test(own) || !VALUES.test(own);
+}
+
+/** True when the word just before `at` (one space allowed: blanks are collapsed) is one of `words`. */
+function afterWord(code: string, at: number, words: string[]): boolean {
+  const end = code[at - 1] === " " ? at - 1 : at;
+  return words.some(
+    (word) => code.endsWith(word, end) && !/[\w$]/.test(code[end - word.length - 1] ?? ""),
+  );
+}
+
+/** True when the `update` at `at`, after `for` or `for no key`, is a row lock and changes no row. */
+function rowLock(code: string, at: number): boolean {
+  const after = at + "update".length;
+  // `open cur for update t set …` in plpgsql is an update statement.
+  UPDATE_TARGET.lastIndex = after;
+  if (UPDATE_TARGET.test(code)) return false;
+  LOCK_CLAUSE_GOES_ON.lastIndex = after;
+  return LOCK_CLAUSE_GOES_ON.test(code);
 }
 
 /** A delete or update that can reach every row, or null. */
 function unrestricted(code: string): string | null {
   for (const match of code.matchAll(/\b(delete|update)\b/g)) {
-    const before = code.slice(0, match.index).trimEnd();
-    if (match[1] === "update" && /(?<![\w$])do$/.test(before)) {
+    if (match[1] === "update" && afterWord(code, match.index, ["do"])) {
       if (upsertFromQuery(code, match.index)) return "an upsert that copies rows from a query";
       continue;
     }
     // `select … for update` and `for no key update` lock rows but change none.
-    if (match[1] === "update" && /(?<![\w$])(for|key)$/.test(before)) continue;
+    if (match[1] === "update" && afterWord(code, match.index, ["for", "key"])) {
+      if (rowLock(code, match.index)) continue;
+    }
     const statement = statementFrom(code, match.index);
-    const where = keyword("where").exec(topLevel(statement));
+    const where = WHERE.exec(topLevel(statement));
     if (!where) return `${match[1]} without a where clause`;
     let clause = statement.slice(where.index + where[0].length);
-    const returning = keyword("returning").exec(topLevel(clause));
+    const returning = RETURNING.exec(topLevel(clause));
     if (returning) clause = clause.slice(0, returning.index);
     if (keepsEveryRow(clause)) return `${match[1]} with a where clause that keeps every row`;
   }
   return null;
 }
 
-/** A short description of the first risk in the SQL, or null. Never contains the SQL itself. */
-export function riskySql(sql: string, depth = 0): string | null {
+export const TOO_COMPLEX = "too complex to check in time";
+
+/**
+ * A short description of the first risk in the SQL, or null. Never contains the SQL itself.
+ * Returns TOO_COMPLEX when checking it would take more than WORK_LIMIT steps.
+ */
+export function riskySql(sql: string): string | null {
+  work = 0;
+  try {
+    return findRisk(sql, 0);
+  } catch (error) {
+    if (error instanceof TooMuchWork) return TOO_COMPLEX;
+    throw error;
+  }
+}
+
+function findRisk(sql: string, depth: number): string | null {
   if (depth > 5) return "deeply nested SQL";
   // These settings change how Postgres reads backslashes in literals, which this scan relies on.
   if (/standard_conforming_strings|backslash_quote/i.test(sql)) return "a string-reading setting";
@@ -357,7 +488,7 @@ export function riskySql(sql: string, depth = 0): string | null {
   const rows = unrestricted(code);
   if (rows) return rows;
   for (const body of bodies) {
-    const inner = riskySql(body, depth + 1);
+    const inner = findRisk(body, depth + 1);
     if (inner) return `${inner} (inside a quoted body)`;
   }
   return null;
@@ -392,7 +523,9 @@ export function decide(input: unknown): HookDecision {
         decision: "ask",
         reason: "The SQL of this call could not be read.",
       };
+    if (query.length > MAX_SQL_LENGTH) return { decision: "ask", reason: ASK_TOO_LONG };
     const found = riskySql(query);
+    if (found === TOO_COMPLEX) return { decision: "ask", reason: ASK_TOO_COMPLEX };
     return found
       ? {
           decision: "ask",
@@ -416,12 +549,15 @@ function output(decision: NonNullable<HookDecision>): string {
 /**
  * True when Node runs this file, also through a symlinked project path: argv[1] keeps the
  * symlink, import.meta.url is the real path. import.meta.main needs Node 24.2, engines allow 24.0.
+ * The native realpath spells a Windows path one way, but the drive letter's case may still differ.
  */
 function runAsHook(): boolean {
   const entry = process.argv[1];
   if (!entry) return false;
   try {
-    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+    const self = realpathSync.native(fileURLToPath(import.meta.url));
+    const run = realpathSync.native(entry);
+    return process.platform === "win32" ? run.toLowerCase() === self.toLowerCase() : run === self;
   } catch {
     return false;
   }

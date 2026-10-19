@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { decide, riskySql } from "../../.claude/hooks/data-loss-guard.ts";
+import { decide, MAX_SQL_LENGTH, riskySql } from "../../.claude/hooks/data-loss-guard.ts";
 
 const script = fileURLToPath(new URL("../../.claude/hooks/data-loss-guard.ts", import.meta.url));
 const sql = (query: string, tool = "mcp__claude_ai_Supabase__execute_sql") =>
@@ -46,6 +46,14 @@ describe("execute_sql", () => {
     "select e'it\\'s', 'it''s', $é$ text $é$",
     "select * from cron.job",
     "select 'Select a card' as hint",
+    // Row locks change no row (review 2026-10-19, round 2).
+    "select * from t for update of t nowait",
+    "select * from t for no key update skip locked",
+    "select * from t order by id for update limit 1",
+    "select * from (select * from t for update) s where id = 1",
+    "do $$ declare r record; begin select * into r from t where id = 1 for update; end $$",
+    "do $$ declare c refcursor; begin open c for update t set x = 1 where id = 1; end $$",
+    "delete from t where exists (select 1 from u where u.t_id = t.id)",
   ])("runs without a prompt: %s", (query) => {
     expect(sql(query)).toBeNull();
   });
@@ -105,6 +113,17 @@ describe("execute_sql", () => {
     "delete from t where id is not distinct from id",
     "insert into t (id,x) select id,0 from t on conflict (id) do update set x = excluded.x",
     "with s as (select id from t) insert into t (id) table s on conflict (id) do update set id = excluded.id",
+    // An update that follows `for` in plpgsql (`open cur for update …`) is an update, not a lock.
+    "do $$ declare c refcursor; r record; begin open c for update t set x = 1 returning 1; fetch c into r; end $$",
+    "do 'declare c refcursor; r record; begin open c for update t set x = 1 returning 1; fetch c into r; end'",
+    "do $$ declare c refcursor; begin open c for update only acc.profile * as p set x = 1; end $$",
+    'do $$ declare c refcursor; begin open c for no key update "T" set x = 1; end $$',
+    "do $$ declare c refcursor; begin open c for update of set x = 1; end $$",
+    "do $$ declare c refcursor; begin open c for update only (t) set x = 1; end $$",
+    // Where clauses that keep every row through a constant subquery.
+    "delete from t where exists (select 1)",
+    "delete from t where (select true)",
+    "update t set x = 1 where exists (select 1)",
   ])("asks first: %s", (query) => {
     expect(sql(query)?.decision).toBe("ask");
     expect(sql(query, "mcp__Supabase__execute_sql")?.decision).toBe("ask");
@@ -117,6 +136,74 @@ describe("execute_sql", () => {
         tool_input: { project_id: "p" },
       })?.decision,
     ).toBe("ask");
+  });
+
+  describe("bounded work: a slow check would let the call run when the hook times out", () => {
+    const timed = (query: string) => {
+      const start = performance.now();
+      const result = sql(query);
+      return { result, ms: performance.now() - start };
+    };
+
+    it.each([
+      [
+        "a 200,000-character identifier of $ before a drop",
+        `select a${"$".repeat(200_000)}; drop table t`,
+      ],
+      [
+        "a 90,000-character identifier of $ before a drop",
+        `select a${"$".repeat(90_000)}; drop table t`,
+      ],
+      [
+        "20,000 nested parentheses in a delete's where clause",
+        `delete from t where ${"(".repeat(20_000)}true${")".repeat(20_000)}`,
+      ],
+      [
+        "45,000 nested parentheses in a delete's where clause",
+        `delete from t where ${"(".repeat(45_000)}true${")".repeat(45_000)}`,
+      ],
+      [
+        "a deep chain of nested or",
+        `delete from t where ${"(id = 1 or ".repeat(8_000)}id = 1${")".repeat(8_000)}`,
+      ],
+      [
+        "many upserts in one insert",
+        `insert into t values (1) on conflict do update set a = 1${" do update set a = 1".repeat(4_900)}`,
+      ],
+      [
+        "many row locks before a delete",
+        `select * from t${" for update".repeat(9_000)}; delete from t`,
+      ],
+      [
+        "many nested updates",
+        `update t set x = 1 where id = ${"(update t set x = 1 where id = ".repeat(3_000)}1${")".repeat(3_000)}`,
+      ],
+      ["many dollar signs", `select ${"$ ".repeat(49_000)}; drop table t`],
+      ["many quoted bodies", `select ${"'select 1', ".repeat(8_000)}1; drop table t`],
+    ])("asks within 2 s for %s", (_label, query) => {
+      const { result, ms } = timed(query);
+      expect(result?.decision).toBe("ask");
+      expect(ms).toBeLessThan(2_000);
+    });
+
+    it("asks with a fixed reason for a query just over the length limit", () => {
+      const query = `select 1 from t where note = '${"x".repeat(MAX_SQL_LENGTH)}'`;
+      expect(query.length).toBeGreaterThan(MAX_SQL_LENGTH);
+      const { result, ms } = timed(query);
+      expect(result?.decision).toBe("ask");
+      expect(result?.reason).toMatch(/too long/);
+      expect(result?.reason).not.toContain("xxx");
+      expect(ms).toBeLessThan(2_000);
+    });
+
+    it("still checks a long ordinary query just under the limit", () => {
+      const rows = Array.from({ length: 4_000 }, (_, i) => `(${i}, 'name ${i}')`).join(", ");
+      const query = `insert into t (id, name) values ${rows}`;
+      expect(query.length).toBeLessThan(MAX_SQL_LENGTH);
+      const { result, ms } = timed(query);
+      expect(result).toBeNull();
+      expect(ms).toBeLessThan(2_000);
+    });
   });
 
   it("names what it found without echoing the query", () => {
@@ -204,7 +291,8 @@ describe("as a Claude Code hook", () => {
   it("still decides when the project path is a symlink", () => {
     const parent = mkdtempSync(join(tmpdir(), "recalino-hook-"));
     const link = join(parent, "hooks");
-    symlinkSync(dirname(script), link, "dir");
+    // A junction needs no Developer Mode on Windows; elsewhere the type is ignored.
+    symlinkSync(dirname(script), link, "junction");
     try {
       const viaLink = (input: object) =>
         JSON.parse(
