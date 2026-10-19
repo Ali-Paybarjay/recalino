@@ -49,7 +49,7 @@
 1. در بخش **Audience**، وضعیت انتشار (Publishing status) باید **Testing** بماند. **دکمهٔ Publish app را نزنید.**
 2. در **Test users** → **Add users** → ایمیل Google خودتان را وارد کنید → **Save**.
 
-چرا Testing: انتشار برای همه (In production) به نشانی عمومی Privacy policy نیاز دارد. متن‌های `docs/legal` پیش‌نویس‌اند (Terms ۰٫۱، Privacy ۰٫۲)، بازبینی حقوقی نشده‌اند و دروازهٔ G11 هنوز باز است. پس تا تصمیم شما و بسته‌شدن G11 در Testing بمانید.
+چرا Testing: انتشار برای همه (In production) به نشانی عمومی Privacy policy نیاز دارد. متن‌های `docs/legal` پیش‌نویس‌اند (Terms ۰٫۱، Privacy ۰٫۳)، بازبینی حقوقی نشده‌اند و دروازهٔ G11 هنوز باز است. پس تا تصمیم شما و بسته‌شدن G11 در Testing بمانید.
 
 یادآوری: برای scopeهای پایه (`openid`، email، profile) Google در حالت Testing هم ورود افراد خارج از فهرست را مسدود نمی‌کند؛ این فهرست کنترل ورود ریکالینو نیست. سهمیهٔ پایلوت را ابزار اپراتور (`pilot.grant`) کنترل می‌کند.
 

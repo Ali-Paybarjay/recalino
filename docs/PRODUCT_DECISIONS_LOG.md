@@ -776,7 +776,7 @@
 ### D85 — نگهداری سه پشتیبان آمادهٔ آخر (OPS-01)
 
 - چرخهٔ ۳۰ روزهٔ پشتیبان می‌ماند، ولی سه پشتیبان آمادهٔ (ready) آخر حتی پس از ۳۰ روز نگه داشته می‌شوند تا یک دورهٔ شکست پشتیبان شبانه هیچ‌وقت نسخهٔ قابل بازیابی را از بین نبرد. پیاده‌سازی در `packages/core/src/ops/backups.ts` (`DEFAULT_BACKUP_RETENTION.keepReady = 3`، قابل تغییر با `RECALINO_BACKUP_RETENTION_JSON`) در دستهٔ ۱ ساخته شد.
-- اصلاح نسخه‌دار: جملهٔ نگهداری ۳۰ روزه در [ADR-0001](adr/0001-stack-and-hosting.md)، و جملهٔ نگهداری پشتیبان در پیش‌نویس [privacy-notice.md](legal/privacy-notice.md) و [PILOT_TECHNICAL_FACTS.md](legal/PILOT_TECHNICAL_FACTS.md). نسخهٔ متن حریم خصوصی (۰٫۲) عوض نشد؛ بالا بردن آن پذیرش دوباره را فعال می‌کند و تصمیم جدا می‌خواهد ([راهنمای متن‌های حقوقی](legal/README.md)، نسخه‌گذاری).
+- اصلاح نسخه‌دار: جملهٔ نگهداری ۳۰ روزه در [ADR-0001](adr/0001-stack-and-hosting.md)، و جملهٔ نگهداری پشتیبان در پیش‌نویس [privacy-notice.md](legal/privacy-notice.md) و [PILOT_TECHNICAL_FACTS.md](legal/PILOT_TECHNICAL_FACTS.md). نسخهٔ متن حریم خصوصی (۰٫۲) عوض نشد؛ بالا بردن آن پذیرش دوباره را فعال می‌کند و تصمیم جدا می‌خواهد ([راهنمای متن‌های حقوقی](legal/README.md)، نسخه‌گذاری). آن تصمیم در D94 گرفته شد.
 
 ### D86 — ده متن دستهٔ ۵ و واژگان A (UX-01، UX-03، UX-06، UX-09، UX-10، UX-12، UX-13، UX-14)
 
@@ -813,6 +813,17 @@
 ### D93 — محاسبهٔ فعلی برآورد هزینه می‌ماند (QUA-09)
 
 - حساب برآورد هزینه در `packages/core/src/aip/pricing.ts` همان رفتار پایه می‌ماند و گرد کردن عدد صحیح برای هر نرخ اعمال نمی‌شود، چون خروجی `estimated_micros` و سقف‌های هزینه را جابه‌جا می‌کرد. آزمون QUA-09 خروجی‌های فعلی را قفل می‌کند. بازنویسی `lockAccount(db: Tx)` می‌ماند.
+
+## D94 — نسخهٔ ۰٫۳ اطلاعیهٔ حریم خصوصی و دورهٔ پاک‌سازی صوت (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (پیگیری ممیزی 2026-10-18، دستهٔ ۱۲)؛ یافته‌های PRD-05 و OPS-01 و D85. شمارهٔ آزاد بعدی پس از D93.
+
+- [privacy-notice.md](legal/privacy-notice.md) از پیش‌نویس ۰٫۲ به **۰٫۳** (`Version 0.3 · Draft · 19 October 2026`) رسید، با دو اصلاح و بی هیچ جمله یا وعدهٔ تازهٔ دیگر:
+  1. جملهٔ نگهداری پشتیبان که در D85 اصلاح شده بود (سه پشتیبان آمادهٔ آخر حتی پس از ۳۰ روز نگه داشته می‌شوند) با این نسخه منتشر و پذیرفته می‌شود.
+  2. «An hourly cleanup job removes expired copies and retries failures;» جای خود را به «A cleanup job runs at least once an hour, removes expired copies and retries failures;» داد، چون پاک‌سازی صوت موقت هر ۳۰۰ ثانیه اجرا می‌شود (`TEMPORARY_AUDIO_SWEEP_SECONDS` در `packages/core/src/src/audio.ts`) و متن نباید دورهٔ دقیقی بگوید که با کد نمی‌خواند (PRD-05).
+- [CLASSROOM_NOTICE.md](legal/CLASSROOM_NOTICE.md): «cleanup is hourly and retries failures» به «cleanup runs at least once an hour and retries failures» تغییر کرد. نسخهٔ این متن تاریخ «Review copy» آن است و طبق [راهنمای متن‌های حقوقی](legal/README.md) (هر تغییر معنا نسخهٔ تازه) به 19 October 2026 رسید. این متن در اپ پذیرفته نمی‌شود.
+- نسخهٔ پذیرش: `CURRENT_VERSIONS.privacy = "0.3"` در `packages/core/src/acc/documents.ts` و جدول [consents.md](legal/consents.md). زبان‌آموزی که ۰٫۲ را پذیرفته، یک بار اعلان تغییر Terms را می‌بیند و دوباره می‌پذیرد (FR-ACC-007، D33 قاعدهٔ ۳). Terms و رضایت ضبط ۰٫۱ می‌مانند. `apps/web/src/legal/texts.generated.ts` با `pnpm legal:build` بازسازی شد؛ `acc.test.ts` نسخهٔ سرعنوان دو متن را هم با `CURRENT_VERSIONS` می‌سنجد.
+- متن همچنان Draft است و G11 باز می‌ماند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
