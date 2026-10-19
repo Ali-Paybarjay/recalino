@@ -10,7 +10,7 @@ const ctx = { userId: randomUUID(), requestId: "spend-totals" };
 const sessionId = randomUUID();
 const now = new Date("2026-10-19T15:30:00Z");
 
-describe("provider spend totals (PERF-04)", () => {
+describe("provider spend totals (PERF-04, FR-QUOTA-009)", () => {
   it("reads every scope's spend in one aggregate over recorded costs and open holds", async () => {
     const { db, queries } = queryBudgetDatabase([
       [{ unknown: "0", session: "120", user_month: "300", system_day: "450", system_month: "900" }],

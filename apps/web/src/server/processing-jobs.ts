@@ -12,8 +12,10 @@ import { finalizeAutomaticRun } from "./automatic-learning-publication";
 import { getObjectStore } from "./storage";
 import { diarizeSourceVoice } from "./voice-processing";
 
-// PERF-01: the preparers load on first use inside a processing job. The PDF renderer loads Canvas
-// when it is evaluated, and only the processing routes and the job runner ship Canvas.
+// PERF-01: the image and PDF preparers load on first use inside a processing job. The PDF
+// renderer loads Canvas when it is evaluated, and only the processing routes and the job runner
+// ship Canvas. voice-processing.ts still imports audio-preparer, so this module's importers load
+// ffmpeg-static at start; learner pages and the review routes do not import this module.
 const prepareAudio: AudioPreparer = async (input) =>
   (await import("./audio-preparer")).prepareAudio(input);
 const prepareProcessingImage: NonNullable<ProcessingDependencies["prepareImage"]> = async (input) =>
