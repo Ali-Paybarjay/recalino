@@ -269,7 +269,7 @@ export function ExportView({
             Download the same card faces you study here. Import the UTF-8 text file into Anki; the
             core and supplementary sets stay separate.
           </p>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Each text file includes all remaining cards in that set, including cards awaiting
             confirmation or paused from review. Rejected and deleted cards are excluded. The package
             selection below applies only to the Anki package download.
@@ -331,7 +331,7 @@ export function ExportView({
           Anki cards
         </Button>
       </fieldset>
-      <div className="preview-grid">
+      <div className="workspace-grid">
         <Panel title={kind === "html" ? "A standalone notebook" : "Your cards in Anki"}>
           {kind === "html" ? (
             <>
@@ -503,7 +503,7 @@ export function ExportView({
               .filter((c) => cardIds.includes(c.id))
               .slice(0, 3)
               .map((card) => (
-                <article key={card.id} className="preview-list-item">
+                <article key={card.id} className="workspace-list-item">
                   <CardFace card={card} revealed />
                 </article>
               ))
@@ -544,7 +544,7 @@ export function ExportView({
         ]
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
           .map((artifact) => (
-            <article className="preview-list-item" key={artifact.id}>
+            <article className="workspace-list-item" key={artifact.id}>
               <div>
                 <strong>{artifact.kind === "html" ? "HTML notebook" : "Anki package"}</strong>
                 <p>

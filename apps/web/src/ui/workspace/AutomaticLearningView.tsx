@@ -420,8 +420,8 @@ export function AutomaticLearningView({
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
   return (
-    <div className="preview-stack">
-      <Link className="preview-back" href={`/sessions/${sessionId}`}>
+    <div className="workspace-stack">
+      <Link className="workspace-back" href={`/sessions/${sessionId}`}>
         ← Back to session
       </Link>
       <LearningStatusCard
@@ -517,7 +517,7 @@ export function AutomaticLearningView({
               </Button>
             ) : null}
             {!review ? (
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 No failed session attempt is available to attach yet. Check the current status
                 again.
               </p>

@@ -204,7 +204,7 @@
   display: none;
 }
 
-.cardActions :global(.preview-actions) {
+.cardActions :global(.workspace-actions) {
   margin-top: 0;
 }
 
@@ -251,7 +251,7 @@
     background: var(--rc-border-strong);
   }
 
-  .cardActions :global(.preview-actions) {
+  .cardActions :global(.workspace-actions) {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;

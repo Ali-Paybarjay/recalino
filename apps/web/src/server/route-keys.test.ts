@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Database } from "@recalino/core/db";
 import { describe, expect, it } from "vitest";
 import { type Handler, idempotencyKey, learnerActor, type RequestContext } from "./api";
+import { classCaptureHandler, stagedAudioHandler } from "./capture-staging";
 import { coursesHandler } from "./org-routes";
 import { cardActionsHandler } from "./study-routes";
 import { supportFeedbackHandler } from "./support-routes";
@@ -70,6 +71,25 @@ describe("shared route helpers (FR-PLT-002, FR-PLT-004)", () => {
           handler({ request: post(key), input, ctx, db: untouched }),
         ).rejects.toMatchObject(problem(code));
       }
+    },
+  );
+
+  // capture-staging.ts used a private copy of the learner check; it now uses learnerActor.
+  const captureRoutes: [string, Handler][] = [
+    ["capture: staged audio", stagedAudioHandler(randomUUID())],
+    ["capture: class capture", classCaptureHandler(randomUUID())],
+  ];
+  it.each(captureRoutes)(
+    "%s rejects a missing session before any database work",
+    async (_, handler) => {
+      await expect(
+        handler({
+          request: post(randomUUID()),
+          input: { action: "open" },
+          ctx: { ...ctx, userId: null },
+          db: untouched,
+        }),
+      ).rejects.toMatchObject({ code: "unauthenticated" });
     },
   );
 });

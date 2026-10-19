@@ -325,7 +325,7 @@ export function VoiceConfirmation({
         <div className={styles.stack}>
           {/* With one choice per class (D64) the parts are not checked one by one. */}
           {classConfirmationActive(view) ? null : (
-            <p className="preview-muted">
+            <p className="workspace-muted">
               Check each source separately. A speaker label in one recording may belong to someone
               else in another. Written mistakes remain available independently.
             </p>
@@ -336,7 +336,7 @@ export function VoiceConfirmation({
               checking the excerpts below.
             </Status>
           ) : null}
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Check the selected session recordings for speakers, then identify which voice is yours.
             A saved voice sample can help suggest a match.
           </p>
@@ -453,7 +453,7 @@ export function VoiceConfirmation({
       )}
       {children ? (
         notesSafe ? (
-          <div id="class-notes" className="preview-stack">
+          <div id="class-notes" className="workspace-stack">
             {children}
           </div>
         ) : (
@@ -586,20 +586,20 @@ function Analysis({
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
       {analysis.source ? (
-        <p className="preview-muted">
+        <p className="workspace-muted">
           Session material {index + 1}
           {analysis.source.durationMs ? ` · ${duration(analysis.source.durationMs)}` : ""}
         </p>
       ) : null}
       {coverage === "sampled_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">
+        <p className="workspace-muted">
           This long recording was checked using excerpts sampled across your selected class audio.
           Only speech in those checked excerpts can contribute spoken mistakes. Your full transcript
           and session notes remain available.
         </p>
       ) : null}
       {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">{voiceCopy.partialCoverage}</p>
+        <p className="workspace-muted">{voiceCopy.partialCoverage}</p>
       ) : null}
       {isServiceBlocked(analysis) ? (
         <Status>{voiceCopy.serviceBlockedDetail}</Status>
@@ -617,11 +617,11 @@ function Analysis({
               ? "Matched from your previously confirmed voice."
               : "Confirmed by you."}
           </p>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Only eligible speech attributed to this speaker can contribute spoken mistakes.
           </p>
           {analysis.verificationMethod === "manual" && analysis.referenceStatus ? (
-            <p className="preview-muted">{voiceCopy.reference[analysis.referenceStatus]}</p>
+            <p className="workspace-muted">{voiceCopy.reference[analysis.referenceStatus]}</p>
           ) : null}
           <Button secondary disabled={disabled} onClick={() => action("revoke")}>
             This is not my voice
@@ -660,7 +660,7 @@ function Analysis({
       ) : (
         <>
           {analysis.matchReason ? (
-            <p className="preview-muted">{voiceCopy.match[analysis.matchReason]}</p>
+            <p className="workspace-muted">{voiceCopy.match[analysis.matchReason]}</p>
           ) : null}
           {audio.state === "playable" ? (
             <>
@@ -682,7 +682,7 @@ function Analysis({
                           count: grouped.length,
                         })}
                       </summary>
-                      <p className="preview-muted">{voiceCopy.shortVoicesDetail}</p>
+                      <p className="workspace-muted">{voiceCopy.shortVoicesDetail}</p>
                       {grouped.map(card)}
                     </details>
                   ) : null}

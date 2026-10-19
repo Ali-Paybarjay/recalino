@@ -257,7 +257,7 @@ function ManualAudioIndicator({
             <p role="status">{entry.problem ?? entry.message}</p>
             {audioUploadRetryable(entry.reason) ? (
               // A closed upload never resumes; its message names the next step instead.
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 You can use other pages. If your browser closes or pauses, the saved original
                 resumes when you return.
               </p>

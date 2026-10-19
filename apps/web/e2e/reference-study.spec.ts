@@ -180,7 +180,7 @@ test("production review reveals the reference front, rule and back and labels su
   await expect(face).toContainText("______");
   await expect(face).not.toContainText("wear and tear");
   expect(await face.locator("[title], [alt]").count()).toBe(0);
-  await page.locator(".preview-panel").screenshot({
+  await page.locator(".workspace-panel").screenshot({
     path: resolve(output, "reference-study-card-front.png"),
   });
   await page.getByRole("button", { name: "Show answer", exact: true }).click();
@@ -188,7 +188,7 @@ test("production review reveals the reference front, rule and back and labels su
   await expect(face).toContainText("wear and tear");
   await expect(face.locator("hr")).toHaveCount(1);
   await expect(face).toContainText("/ˌweər ən ˈteə/");
-  await page.locator(".preview-panel").screenshot({
+  await page.locator(".workspace-panel").screenshot({
     path: resolve(output, "reference-study-card-revealed.png"),
   });
   await expect(page.getByText("Core cards", { exact: true })).toBeVisible();

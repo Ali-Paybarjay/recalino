@@ -137,8 +137,11 @@
 - `ExportView` قاعده‌های `.layout`، `.choices`، `.check`، `.muted` و `.tabs` را از `ui/workspace/ExportView.module.css` می‌گیرد؛ این قاعده‌ها رونوشت عین همان قاعده‌های `preview/LearningViews.module.css` هستند.
 - inline style صفحهٔ `/deletion` به `app/deletion/deletion.module.css` با همان مقدارها رفت.
 
-باقی‌مانده برای دستهٔ بعد (پس از ادغام دستهٔ ۵ که هم‌زمان همین فایل‌ها را ویرایش می‌کند):
+انجام‌شده در دستهٔ ۱۶ (2026-10-19)، باز هم بدون تغییر بدنهٔ هیچ قاعدهٔ CSS:
 
-- تغییر نام کلاس‌های `preview-*` به نام خنثی (مثلاً `ws-*`) در `workspace.css` و همهٔ مصرف‌کننده‌ها: ۲۴ فایل در `ui/workspace`، `ui/components/FileSelectionQueue.tsx`، `app/(app)`، `app/deletion`، `app/setup/voice`، `app/dev/ui` و فایل‌های `ui/preview`. پرکاربردترین‌ها `preview-muted`، `preview-stack`، `preview-root`، `preview-list-item`، `preview-list`، `preview-index-link`، `preview-back` و `preview-actions` هستند. نام کلاس در این دسته عمداً عوض نشد.
+- همهٔ کلاس‌های `preview-*` در `workspace.css` و دو کلاس بی‌قاعدهٔ `preview-list-item` و `preview-metrics` به پیشوند خنثی `workspace-*` تغییر نام دادند (مثلاً `workspace-muted`، `workspace-stack`، `workspace-root`، `workspace-panel`). همهٔ مصرف‌کننده‌ها به‌روز شدند: `ui/workspace`، `ui/components/FileSelectionQueue.tsx`، `ui/recording`، `ui/voice`، `app/(app)`، `app/deletion`، `app/dev/ui`، selectorهای `:global(...)` در CSS Moduleها، فایل‌های `ui/preview` (پس `/preview` همان کلاس‌ها را دارد) و selectorهای `e2e/reference-study.spec.ts` و `e2e-preview/sources.spec.ts`. بدنهٔ قاعده‌ها بایت‌به‌بایت همان است؛ با برگرداندن نام‌ها، هر فایل دقیقاً با نسخهٔ پیشین برابر می‌شود. ارجاع‌های بالای این یادداشت به `.preview-*` همین کلاس‌ها با نام تازه‌اند.
+
+باقی‌مانده برای دستهٔ بعد:
+
 - inline styleهای باقی‌مانده در `ui/workspace/ReviewView.tsx` (`whiteSpace: "pre-wrap"` و `maxWidth: "100%", height: "auto"`) و `ui/workspace/CardMedia.tsx` (`maxWidth: "100%", height: "auto"` و `minHeight: 44, display: "flex", alignItems: "center", cursor: "pointer"`) به CSS Module بروند.
 - رونوشت قاعده‌ها در `ExportView.module.css` و `preview/LearningViews.module.css` یکی شود: fixtureهای `/preview` می‌توانند همان module فضای کار را import کنند.

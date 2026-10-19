@@ -105,10 +105,10 @@ export function CourseManager({
   }
 
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       {error ? <Status tone="error">{error}</Status> : null}
       {notice ? <Status tone="success">{notice}</Status> : null}
-      <div className="preview-grid">
+      <div className="workspace-grid">
         <Panel title="Create a course">
           <form
             onSubmit={(event) => {
@@ -198,11 +198,11 @@ export function CourseManager({
                 ) : null}
               </Actions>
               {course.isDefault ? (
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   Your default course can be renamed. It always remains available for new sessions.
                 </p>
               ) : (
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   Move or delete its sessions before deleting this course.
                 </p>
               )}
@@ -248,7 +248,7 @@ export function CourseManager({
             </Button>
           </form>
           {courseUnits.length ? (
-            <ul className="preview-list">
+            <ul className="workspace-list">
               {courseUnits.map((item) => (
                 <li key={`${item.id}-${item.name}-${item.position}`}>
                   <form
@@ -300,7 +300,7 @@ export function CourseManager({
               ))}
             </ul>
           ) : (
-            <p className="preview-muted">No units yet.</p>
+            <p className="workspace-muted">No units yet.</p>
           )}
         </Panel>
       ) : null}

@@ -438,9 +438,9 @@ export function SourcesView({
       );
   }
   return (
-    <div className="preview-stack" id="session-material">
+    <div className="workspace-stack" id="session-material">
       {withStatus ? null : (
-        <Link className="preview-back" href={`/sessions/${sessionId}`}>
+        <Link className="workspace-back" href={`/sessions/${sessionId}`}>
           ← Back to session
         </Link>
       )}
@@ -453,7 +453,7 @@ export function SourcesView({
             are stored privately.
           </p>
           <p>Follow your institution’s rules for recording and using class materials.</p>
-          <label className="preview-check">
+          <label className="workspace-check">
             <input
               type="checkbox"
               checked={confirmed}
@@ -688,16 +688,16 @@ export function SourcesView({
         </Panel>
       )}
       <Panel title="Session material">
-        <p className="preview-muted">
+        <p className="workspace-muted">
           Files added to this session. Checked files are used to create your notes and flashcards.
         </p>
         {!visibleSources.length && !pendingFiles.length ? (
-          <div className="preview-empty">
+          <div className="workspace-empty">
             <h3>Add your first material</h3>
             <p>Bring together your recording, handouts, photos and notes.</p>
           </div>
         ) : (
-          <ul className="preview-list" ref={uploadList}>
+          <ul className="workspace-list" ref={uploadList}>
             {pendingFiles
               .slice()
               .reverse()
@@ -858,12 +858,12 @@ export function SourcesView({
         </Panel>
       )}
       {learning.status?.notesReady && (
-        <nav aria-label="Session learning" className="preview-actions">
-          <Link href={`/sessions/${sessionId}/notes`} className="preview-index-link">
+        <nav aria-label="Session learning" className="workspace-actions">
+          <Link href={`/sessions/${sessionId}/notes`} className="workspace-index-link">
             Read session notes
           </Link>
           {learning.status.cardsReady && (
-            <Link href={`/sessions/${sessionId}/cards`} className="preview-index-link">
+            <Link href={`/sessions/${sessionId}/cards`} className="workspace-index-link">
               Flashcards
             </Link>
           )}
@@ -872,7 +872,7 @@ export function SourcesView({
       {unsavedSelections.size > 0 ? (
         <Status>Save your file selection to use it in the automatic update.</Status>
       ) : null}
-      <p className="preview-muted">
+      <p className="workspace-muted">
         Choose Upload &amp; Process when all your files are selected. Your earlier notes stay
         available while added material is processed.
       </p>
@@ -907,10 +907,10 @@ function FileUploadItem({
                 : "Uploading…";
   const measured = ["uploading", "verifying"].includes(file.phase);
   return (
-    <li aria-busy={active || undefined} className="preview-upload-file">
-      <div className="preview-row">
+    <li aria-busy={active || undefined} className="workspace-upload-file">
+      <div className="workspace-row">
         <strong dir="auto">{file.displayName}</strong>
-        <span className="preview-muted">{(file.sizeBytes / 1_000_000).toFixed(1)} MB</span>
+        <span className="workspace-muted">{(file.sizeBytes / 1_000_000).toFixed(1)} MB</span>
       </div>
       <UploadProgress
         label={`Upload progress for ${file.displayName}`}
@@ -1026,8 +1026,8 @@ function SourceItem({
   const ready = source.kind === "audio" || (!!source.verifiedAt && !needsPassword);
   return (
     <li>
-      <div className="preview-row">
-        <label className="preview-check">
+      <div className="workspace-row">
+        <label className="workspace-check">
           <input
             type="checkbox"
             checked={source.selected}
@@ -1036,7 +1036,7 @@ function SourceItem({
           />
           <strong dir="auto">{source.displayName}</strong>
         </label>
-        <span className="preview-muted">
+        <span className="workspace-muted">
           {source.kind === "audio"
             ? "Class audio"
             : source.role === "board_photo"
@@ -1047,10 +1047,10 @@ function SourceItem({
           · {(source.sizeBytes / 1_000_000).toFixed(1)} MB
         </span>
       </div>
-      <p className="preview-muted">{status}</p>
+      <p className="workspace-muted">{status}</p>
       {source.anchorSourceId && source.captureOffsetMs !== null && (
-        <div className="preview-stack">
-          <p className="preview-muted">
+        <div className="workspace-stack">
+          <p className="workspace-muted">
             Taken around {(source.captureOffsetMs / 1000).toFixed(1)} seconds into the recording
             {source.captureState === "paused" ? " while recording was paused" : ""} ·{" "}
             {source.timeStatus === "user_confirmed" ? "Time confirmed by you" : "Estimated time"}
@@ -1093,7 +1093,7 @@ function SourceItem({
       ) : null}
       {ready && supportsRange ? (
         <form
-          className="preview-stack"
+          className="workspace-stack"
           onSubmit={(event) => {
             event.preventDefault();
             void change({
@@ -1108,10 +1108,10 @@ function SourceItem({
             });
           }}
         >
-          <fieldset disabled={busy} className="preview-source-selection preview-stack">
+          <fieldset disabled={busy} className="workspace-source-selection workspace-stack">
             <legend>Use for processing</legend>
-            <div className="preview-row">
-              <label className="preview-check">
+            <div className="workspace-row">
+              <label className="workspace-check">
                 <input
                   type="radio"
                   name={`extent-${source.assetId}`}
@@ -1120,7 +1120,7 @@ function SourceItem({
                 />
                 Whole file
               </label>
-              <label className="preview-check">
+              <label className="workspace-check">
                 <input
                   type="radio"
                   name={`extent-${source.assetId}`}
@@ -1131,7 +1131,7 @@ function SourceItem({
               </label>
             </div>
             {partial ? (
-              <div className="preview-grid">
+              <div className="workspace-grid">
                 <Field label={isAudio ? "Start (seconds)" : "Start page"}>
                   <input
                     type="number"
@@ -1169,7 +1169,7 @@ function SourceItem({
               Save selection
             </Button>
           </Actions>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             This saves what to use for your next processing run. The original file stays intact.
           </p>
         </form>
@@ -1187,15 +1187,15 @@ function SourceItem({
       <details>
         <summary>Delete options</summary>
         {deletionBlocked && (
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Skip this file or cancel its upload group before deleting this material.
           </p>
         )}
-        <p className="preview-muted">
+        <p className="workspace-muted">
           Deleting the original file keeps its saved extraction. Deleting from all sessions removes
           this material from every session.
         </p>
-        <label className="preview-check">
+        <label className="workspace-check">
           <input
             type="checkbox"
             checked={deleteConfirmed}

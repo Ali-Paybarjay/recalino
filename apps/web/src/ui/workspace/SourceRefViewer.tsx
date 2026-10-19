@@ -113,12 +113,12 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
     }
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Button secondary disabled={loading} onClick={() => void show()} aria-expanded={open}>
         {label}
       </Button>
       {open ? (
-        <div className="preview-panel">
+        <div className="workspace-panel">
           <strong dir="auto">{name || "Session material"}</strong>
           {loading ? <Status>Opening source…</Status> : null}
           {text ? (
@@ -143,7 +143,7 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
                     audio.current.pause();
                 }}
               />
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 Plays the original saved on this device. Speaker attribution follows the
                 transcript’s confidence.
               </p>

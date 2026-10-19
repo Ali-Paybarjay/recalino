@@ -82,7 +82,7 @@ export default async function StudyReferencePage({
   };
   if (view === "reader" || view === "reader-readonly")
     return (
-      <div className="preview-root">
+      <div className="workspace-root">
         <SessionNotesReader
           sessionId={sessionId}
           title={model.title}
@@ -108,7 +108,7 @@ export default async function StudyReferencePage({
     );
   if (view === "reader-session")
     return (
-      <div className="preview-root">
+      <div className="workspace-root">
         <AppShell
           current="classes"
           hrefs={{
@@ -192,7 +192,7 @@ export default async function StudyReferencePage({
     settings: { mode: "simple", desiredRetention: 0.9, dailyNewLimit: 20, timeBudgetMinutes: 10 },
   };
   return (
-    <div className="preview-root">
+    <div className="workspace-root">
       <AppShell
         current="classes"
         hrefs={{

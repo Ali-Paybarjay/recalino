@@ -90,7 +90,7 @@ function Goal({ item }: { item: GoalContext }) {
         </p>
       ) : null}
       {item.classDate ? (
-        <p className="preview-muted">
+        <p className="workspace-muted">
           {copy.fromClass(classDate(item.classDate), item.courseName)}
         </p>
       ) : null}
@@ -140,13 +140,13 @@ export function LearningMemoryPanel({
     !simplerRequests.length;
   return (
     <Panel title={copy.noticedTitle}>
-      <p className="preview-muted">{copy.noticedIntro}</p>
+      <p className="workspace-muted">{copy.noticedIntro}</p>
       {memory.lastEvidenceAt ? <p>{copy.latestEvidence(date(memory.lastEvidenceAt))}</p> : null}
       {empty ? <p>{copy.noEvidence}</p> : null}
       {memory.needsPractice.length ? (
         <section aria-labelledby="memory-practise">
           <h3 id="memory-practise">{copy.practiseTitle}</h3>
-          <ul className="preview-list">
+          <ul className="workspace-list">
             {memory.needsPractice.map((item) => (
               <li key={item.learningItemId}>
                 <Goal item={item} />
@@ -157,7 +157,7 @@ export function LearningMemoryPanel({
                     item.evidence.recalledSinceLastAgain,
                   )}
                 </p>
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {copy.evidence(item.amount, item.evidence.reviews, sets(item))}
                 </p>
                 <Actions>
@@ -208,7 +208,7 @@ export function LearningMemoryPanel({
       {memory.recalledRecently.length ? (
         <section aria-labelledby="memory-recalled">
           <h3 id="memory-recalled">{copy.recalledTitle}</h3>
-          <ul className="preview-list">
+          <ul className="workspace-list">
             {memory.recalledRecently.map((item) => (
               <li key={item.learningItemId}>
                 <Goal item={item} />
@@ -218,7 +218,7 @@ export function LearningMemoryPanel({
                     date(item.evidence.lastReviewedAt),
                   )}
                 </p>
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {copy.evidence(item.amount, item.evidence.reviews, sets(item))}
                 </p>
               </li>
@@ -229,7 +229,7 @@ export function LearningMemoryPanel({
       {memory.dismissed.length ? (
         <section aria-labelledby="memory-dismissed">
           <h3 id="memory-dismissed">{copy.dismissedTitle}</h3>
-          <ul className="preview-list">
+          <ul className="workspace-list">
             {memory.dismissed.map((item) => (
               <li key={item.learningItemId}>
                 <Goal item={item} />
@@ -255,7 +255,7 @@ export function LearningMemoryPanel({
       {simplerRequests.length ? (
         <section aria-labelledby="memory-simpler">
           <h3 id="memory-simpler">{copy.simplerTitle}</h3>
-          <ul className="preview-list">
+          <ul className="workspace-list">
             {simplerRequests.map((item) => (
               <li key={item.learningItemId}>
                 <Goal item={item} />
@@ -278,7 +278,7 @@ export function LearningMemoryPanel({
           </ul>
         </section>
       ) : null}
-      <p className="preview-muted">{copy.definitions}</p>
+      <p className="workspace-muted">{copy.definitions}</p>
     </Panel>
   );
 }

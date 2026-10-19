@@ -17,7 +17,7 @@ export default async function NoteHistoryPage({ params }: { params: Promise<{ id
       current="classes"
       header={<PageHeader title="Note version history" subtitle={session.displayTitle} />}
     >
-      <div className="preview-stack">
+      <div className="workspace-stack">
         <Actions>
           <LinkButton secondary href={`/sessions/${id}/notes`}>
             Current notes
@@ -26,7 +26,7 @@ export default async function NoteHistoryPage({ params }: { params: Promise<{ id
         <Panel title="Earlier versions">
           {revisions.length ? (
             revisions.map((item) => (
-              <article key={item.id} className="preview-list-item">
+              <article key={item.id} className="workspace-list-item">
                 <h3>Version {item.number}</h3>
                 <p>
                   {new Date(item.createdAt).toLocaleString("en-GB")} · {item.model.title}

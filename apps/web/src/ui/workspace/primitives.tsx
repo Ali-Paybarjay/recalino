@@ -4,9 +4,8 @@ import { type ComponentProps, cloneElement, isValidElement, type ReactNode, useI
 import { buttonClassName } from "../components/Button";
 
 // Shared layout primitives of the learner workspace (audit QUA-08). The /preview fixtures import
-// them from here and keep their own preview-only links (preview-links.tsx). The class names still
-// carry the historical `preview-` prefix (workspace.css); renaming them is a recorded follow-up
-// in docs/design/UI_TOKEN_FOLLOWUPS_2026-10-19.md.
+// them from here and keep their own preview-only links (preview-links.tsx). Their class names use
+// the neutral `workspace-` prefix defined in workspace.css.
 export function Panel({
   title,
   info,
@@ -20,9 +19,9 @@ export function Panel({
   tone?: "hero" | "plain";
 }) {
   return (
-    <section className={`preview-panel ${tone === "hero" ? "preview-hero" : ""}`}>
+    <section className={`workspace-panel ${tone === "hero" ? "workspace-hero" : ""}`}>
       {title && info ? (
-        <div className="preview-panel-title">
+        <div className="workspace-panel-title">
           <h2>{title}</h2>
           {info}
         </div>
@@ -34,7 +33,7 @@ export function Panel({
   );
 }
 export function Actions({ children }: { children: ReactNode }) {
-  return <div className="preview-actions">{children}</div>;
+  return <div className="workspace-actions">{children}</div>;
 }
 export function LinkButton({
   href,
@@ -90,11 +89,11 @@ export function Field({
     : children;
   const controlId = isValidElement<{ id?: string }>(control) ? control.props.id : id;
   return (
-    <div className="preview-field">
+    <div className="workspace-field">
       <label htmlFor={controlId}>{label}</label>
       {control}
       {hint ? (
-        <p id={`${id}-hint`} className="preview-muted">
+        <p id={`${id}-hint`} className="workspace-muted">
           {hint}
         </p>
       ) : null}
@@ -111,7 +110,7 @@ export function Status({
   return (
     <p
       role={tone === "error" ? "alert" : "status"}
-      className={`preview-status preview-status-${tone}`}
+      className={`workspace-status workspace-status-${tone}`}
     >
       {children}
     </p>

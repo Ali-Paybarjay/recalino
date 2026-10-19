@@ -5,9 +5,12 @@
 //   - execute_sql (both Supabase connectors) asks first for SQL that can remove or rewrite data
 //     or change the schema or grants: drop, truncate, alter, create, grant, revoke, merge, copy,
 //     dynamic and scheduled SQL, a delete or update whose where clause keeps every row (none,
-//     `true`, `2 = 2`, `id = id`, `… or true`), and an upsert that copies rows from a query.
-//     Comments, string literals, E'…', U&'…', dollar quotes and literals that continue on the next
-//     line ('a'<newline>'b' is 'ab') are read the way Postgres reads them; the bodies of `do` and
+//     `true`, `2 = 2`, `id = id`, `… or true`), an upsert that copies rows from a query, and a
+//     statement that sets search_path to include cron (`set [local] search_path`, `set_config`),
+//     after which cron's functions run without the schema name.
+//     Comments, string literals, E'…', U&'…' with its UESCAPE clause (also after a comment), dollar
+//     quotes and literals that continue on the next line ('a'<newline>'b' is 'ab') are read the
+//     way Postgres reads them, and a UESCAPE it cannot read asks; the bodies of `do` and
 //     every literal that reads like a statement are checked as SQL; quoted names such as
 //     `"cron"."schedule"` and `"dblink_exec"` count like unquoted ones;
 //   - any Bash command carrying --approve-data-loss, even when quoted or escaped, asks first
@@ -59,7 +62,11 @@ const STATEMENT_START =
 const IDENT_CHAR = /[A-Za-z0-9_$\u0080-\uffff]/;
 const IDENT_START = /[A-Za-z_\u0080-\uffff]/;
 const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/y;
-const UESCAPE = /\s*uescape\s*'([^'])'/iy;
+/** The UESCAPE keyword, and the one-character literal that names the escape character. */
+const UESCAPE = /uescape(?![\w$])/iy;
+const UESCAPE_CHAR = /'([^'])'/y;
+/** Postgres's whitespace (scan.l `space`); a no-break space continues an identifier instead. */
+const PG_SPACE = /[ \t\n\r\f\v]/;
 /** Words in a where clause that name no column. */
 const CONSTANT_WORDS = new Set(
   "true false null not and or is isnull notnull unknown distinct from in between symmetric like ilike similar to escape any all some array case when then else end collate current_date current_time current_timestamp localtime localtimestamp current_user session_user user current_role select exists".split(
@@ -102,6 +109,13 @@ interface Scanned {
   bodies: string[];
   /** `code` with the contents of quoted identifiers kept (`""` and U&"…" escapes applied). */
   named: string;
+  /**
+   * `named` with the contents of literals and dollar quotes kept too, without `;`, quotes or
+   * parentheses, so a statement still ends at its own `;`. Only for finding words in a setting.
+   */
+  valued: string;
+  /** True when a UESCAPE clause names its escape character in a way this scan does not read. */
+  unreadableEscape: boolean;
 }
 
 /** Index just past the block comment that starts at `i`; block comments nest in Postgres. */
@@ -205,6 +219,37 @@ function decodeUnicode(raw: string, escapeChar: string, quote: "'" | '"' = "'"):
   );
 }
 
+/** Index just past the whitespace and comments at `i`, which Postgres skips between tokens. */
+function skipBlanks(sql: string, i: number): number {
+  let j = i;
+  while (j < sql.length) {
+    if (PG_SPACE.test(sql[j] as string)) j++;
+    else if (sql.startsWith("--", j)) {
+      while (j < sql.length && sql[j] !== "\n" && sql[j] !== "\r") j++;
+    } else if (sql.startsWith("/*", j)) j = blockCommentEnd(sql, j);
+    else break;
+  }
+  spend(j - i);
+  return j;
+}
+
+/**
+ * The UESCAPE clause of the U&'…' literal or U&"…" identifier that ends just before `i`: the
+ * escape character it names (`\` without a clause) and the index just past the clause. Postgres
+ * reads the clause as the next tokens, so comments may sit before and after the keyword, and the
+ * clause belongs to the token: `u&"x" uescape '!'.f()` calls x.f. `escapeChar` is undefined when
+ * the clause names it in a form this scan does not read (such as E'!' or $$!$$).
+ */
+function uescapeClause(sql: string, i: number): { escapeChar: string | undefined; end: number } {
+  UESCAPE.lastIndex = skipBlanks(sql, i);
+  if (!UESCAPE.test(sql)) return { escapeChar: "\\", end: i };
+  UESCAPE_CHAR.lastIndex = skipBlanks(sql, UESCAPE.lastIndex);
+  const found = UESCAPE_CHAR.exec(sql);
+  return found
+    ? { escapeChar: found[1], end: UESCAPE_CHAR.lastIndex }
+    : { escapeChar: undefined, end: i };
+}
+
 /** True when `text`, after leading blanks, `(`, `;` and comments, starts like a statement. */
 function startsLikeStatement(text: string): boolean {
   let i = 0;
@@ -232,6 +277,15 @@ function scan(sql: string): Scanned {
   const bodies: string[] = [];
   // Contents of quoted identifiers, by their index in `parts`.
   const names = new Map<number, string>();
+  // Contents of literals and dollar quotes, by their index in `parts`.
+  const values = new Map<number, string>();
+  let unreadableEscape = false;
+  /** The UESCAPE clause after the U& token that ends at `end`, noting one it cannot read. */
+  const clauseAfter = (end: number) => {
+    const clause = uescapeClause(sql, end + 1);
+    if (clause.escapeChar === undefined) unreadableEscape = true;
+    return { escapeChar: clause.escapeChar ?? "\\", end: clause.end };
+  };
   // The first characters of the current statement, to recognise a `do` statement.
   let head = "";
   const push = (text: string) => {
@@ -251,15 +305,13 @@ function scan(sql: string): Scanned {
     } else if (char === '"') {
       const end = closingQuote(sql, i, char, false);
       const raw = sql.slice(i + 1, end);
-      UESCAPE.lastIndex = end + 1;
+      const clause = unicodePrefix(sql, i) ? clauseAfter(end) : undefined;
       names.set(
         parts.length,
-        unicodePrefix(sql, i)
-          ? decodeUnicode(raw, UESCAPE.exec(sql)?.[1] ?? "\\", '"')
-          : raw.replaceAll('""', '"'),
+        clause ? decodeUnicode(raw, clause.escapeChar, '"') : raw.replaceAll('""', '"'),
       );
       push('""');
-      i = end + 1;
+      i = clause ? clause.end : end + 1;
     } else if (char === "'") {
       // E'…' and U&'…' only when the prefix starts a token: in `name'…'` the e ends an identifier.
       const escapes = /[eE]/.test(sql[i - 1] ?? "") && !IDENT_CHAR.test(sql[i - 2] ?? "");
@@ -271,16 +323,17 @@ function scan(sql: string): Scanned {
         end = closingQuote(sql, next, char, escapes);
         pieces.push(sql.slice(next + 1, end));
       }
-      UESCAPE.lastIndex = end + 1;
+      const clause = unicode ? clauseAfter(end) : undefined;
       // Postgres applies E'…' escapes piece by piece, but U&'…' escapes to the joined text.
       const content = escapes
         ? pieces.map(decodeEscapes).join("")
-        : unicode
-          ? decodeUnicode(pieces.join(""), UESCAPE.exec(sql)?.[1] ?? "\\")
+        : clause
+          ? decodeUnicode(pieces.join(""), clause.escapeChar)
           : pieces.join("").replaceAll("''", "'");
       if (/^do(?![\w$])/i.test(head) || startsLikeStatement(content)) bodies.push(content);
+      values.set(parts.length, content);
       push("''");
-      i = end + 1;
+      i = clause ? clause.end : end + 1;
     } else if (char === "$" && runs[i - 1] !== 1) {
       DOLLAR_TAG.lastIndex = i;
       const tag = DOLLAR_TAG.exec(sql)?.[0];
@@ -290,7 +343,9 @@ function scan(sql: string): Scanned {
         continue;
       }
       const close = sql.indexOf(tag, i + tag.length);
-      bodies.push(sql.slice(i + tag.length, close === -1 ? sql.length : close));
+      const body = sql.slice(i + tag.length, close === -1 ? sql.length : close);
+      bodies.push(body);
+      values.set(parts.length, body);
       push("$$");
       i = close === -1 ? sql.length : close + tag.length;
     } else {
@@ -308,7 +363,16 @@ function scan(sql: string): Scanned {
   const code = normalise(parts.join(""));
   const named = normalise(parts.map((part, k) => names.get(k) ?? part).join(""));
   spend(named.length);
-  return { code, named, bodies };
+  const valued = normalise(
+    parts
+      .map((part, k) => {
+        const value = names.get(k) ?? values.get(k);
+        return value === undefined ? part : ` ${value.replace(/[;'"()]/g, " ")} `;
+      })
+      .join(""),
+  );
+  spend(valued.length);
+  return { code, named, valued, bodies, unreadableEscape };
 }
 
 /** `text` with the inside of every parenthesis blanked, so its indexes still line up. */
@@ -516,6 +580,23 @@ function unrestricted(code: string): string | null {
   return null;
 }
 
+const SEARCH_PATH = keyword("search_path");
+const CRON = keyword("cron");
+const SETTER = keyword("set|set_config");
+
+/**
+ * True when a statement sets search_path (`set [session | local] search_path`, `set_config` or
+ * an update of pg_settings) and names cron: cron's functions then run without the schema name,
+ * which the `cron.schedule` check cannot see. Any statement naming search_path, cron and a
+ * setter counts, so a value built from an expression still asks.
+ */
+function searchPathWithCron(valued: string): boolean {
+  for (const statement of valued.split(";")) {
+    if (SEARCH_PATH.test(statement) && CRON.test(statement) && SETTER.test(statement)) return true;
+  }
+  return false;
+}
+
 export const TOO_COMPLEX = "too complex to check in time";
 
 /**
@@ -536,7 +617,8 @@ function findRisk(sql: string, depth: number): string | null {
   if (depth > 5) return "deeply nested SQL";
   // These settings change how Postgres reads backslashes in literals, which this scan relies on.
   if (/standard_conforming_strings|backslash_quote/i.test(sql)) return "a string-reading setting";
-  const { code, named, bodies } = scan(sql);
+  const { code, named, valued, bodies, unreadableEscape } = scan(sql);
+  if (unreadableEscape) return "a UESCAPE clause the guard cannot read";
   const word = RISKY_WORDS.exec(code)?.[1];
   if (word) return word.replace(/\s+/, " ");
   // Also with quoted names read: `cron."schedule"` and `"dblink_exec"` name the same functions.
@@ -545,6 +627,7 @@ function findRisk(sql: string, depth: number): string | null {
     if (/\bcron\s?\.\s?(schedule|schedule_in_database|alter_job)\b/.test(text))
       return "scheduled SQL";
   }
+  if (searchPathWithCron(valued)) return "a search_path that includes cron";
   const rows = unrestricted(code);
   if (rows) return rows;
   for (const body of bodies) {

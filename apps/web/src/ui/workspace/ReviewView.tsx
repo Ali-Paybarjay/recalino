@@ -2,8 +2,8 @@
 import type { MediaAsset } from "@recalino/core/media";
 import type { ReviewInput, ReviewQueue, ReviewReceipt } from "@recalino/core/srs";
 import { useEffect, useRef, useState } from "react";
-import { timeZoneCity } from "../../app/setup/languages";
 import { shellStrings as strings } from "../strings-shell";
+import { timeZoneCity } from "../time-zone";
 import { userMessage, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
 import { studySetLabel } from "./card-labels";
@@ -142,7 +142,7 @@ export function ReviewView({
   function media(value: { url: string; mime: string; synthetic: boolean }, side: "front" | "back") {
     return (
       <div>
-        {value.synthetic && <p className="preview-muted">Synthetic audio</p>}
+        {value.synthetic && <p className="workspace-muted">Synthetic audio</p>}
         {value.mime.startsWith("audio/") ? (
           <audio controls src={value.url}>
             <track kind="captions" />
@@ -226,7 +226,7 @@ export function ReviewView({
     }
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Actions>
         <LinkButton secondary href="/me/review-settings">
           Review settings
@@ -242,7 +242,7 @@ export function ReviewView({
           </>
         )}
       </Actions>
-      <p className="preview-muted">
+      <p className="workspace-muted">
         {reviewed} reviewed · {queue.dueCount} due · Up to {queue.newRemaining} new today ·{" "}
         {timeZoneCity(queue.timezone)}
       </p>
@@ -276,7 +276,7 @@ export function ReviewView({
           }
         >
           {current.card.studySet && (
-            <p className="preview-muted">{studySetLabel(current.card.studySet)}</p>
+            <p className="workspace-muted">{studySetLabel(current.card.studySet)}</p>
           )}
           {/* The card and its answer: focus moves here when the answer appears (A11Y-03). */}
           <div ref={cardRegion} tabIndex={-1}>
@@ -310,7 +310,7 @@ export function ReviewView({
             )}
             {current.card.template !== "listening" && frontMedia && media(frontMedia, "front")}
             {shown ? (
-              <div className="preview-stack">
+              <div className="workspace-stack">
                 {current.card.template === "listening" &&
                   (current.card.contentFormat === "lesson_html" ? (
                     <CardFace

@@ -220,7 +220,7 @@ function VersionLessonReview({ sessionId, knowledgeVersionId, knowledgeVersion, 
           <strong>{version ? copy.generatedVersion(version) : copy.originalVersion}</strong>
         </p>
         <p>{hasEdits ? copy.edited : copy.scope}</p>
-        <p className="preview-muted">{copy.advisory}</p>
+        <p className="workspace-muted">{copy.advisory}</p>
         {stateText ? <Status>{stateText}</Status> : null}
         {problem ? <Status tone="error">{problem}</Status> : null}
         {complete && review?.response && review.verdict ? (
@@ -236,7 +236,7 @@ function VersionLessonReview({ sessionId, knowledgeVersionId, knowledgeVersion, 
                     {check.reason}
                   </ContentBlock>
                   {check.findings.map((finding) => (
-                    <article className="preview-list-item" key={JSON.stringify(finding)}>
+                    <article className="workspace-list-item" key={JSON.stringify(finding)}>
                       <p className={styles.issueName}>
                         {copy.target}: <bdi>{finding.targetId}</bdi>
                       </p>

@@ -148,6 +148,21 @@ it("chooses script fonts without changing Persian reference styling", () => {
   expect(localizedStudyStyles(resolveStudyLocale("ru"))).toContain("Noto Sans");
 });
 
+it("resolves a locale with a local font stack and no web font family (audit SEC-04)", () => {
+  expect(resolveStudyLocale("ru")).toEqual({
+    language: "ru",
+    direction: "ltr",
+    isPersian: false,
+    fontFamily: '"Noto Sans", Arial, Tahoma, sans-serif',
+  });
+  expect(resolveStudyLocale("zh-Hant")).toEqual({
+    language: "zh-Hant",
+    direction: "ltr",
+    isPersian: false,
+    fontFamily: '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
+  });
+});
+
 it.each(FIRST_LANGUAGES.filter((language) => language !== "fa"))(
   "preserves catalog language %s and explicitly tags untranslated chrome as English",
   (language) => {

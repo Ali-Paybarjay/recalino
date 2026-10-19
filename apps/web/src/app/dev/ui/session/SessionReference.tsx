@@ -88,7 +88,7 @@ export function SessionReference() {
     <RecordingProvider userId={userId}>
       <AutomaticLearningProvider>
         <UploadProvider>
-          <div className="preview-root">
+          <div className="workspace-root">
             <AppShell
               current="classes"
               hrefs={{
@@ -102,9 +102,9 @@ export function SessionReference() {
                 title="Synthetic session"
                 subtitle="Session next step fixture · No real class data"
               />
-              <div className="preview-stack">
+              <div className="workspace-stack">
                 {sessionStates.map((state, index) => (
-                  <div key={state.name} data-state={state.name} className="preview-stack">
+                  <div key={state.name} data-state={state.name} className="workspace-stack">
                     <SessionNextStep
                       sessionId={id(index + 1)}
                       initial={state.status}

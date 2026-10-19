@@ -187,7 +187,7 @@ function ProfileView() {
     <>
       <PageHeader title={copy.profile} description={copy.profileHelp} />
       <Panel title={copy.learning}>
-        <p className="preview-muted">{courseCopy.goalHelp}</p>
+        <p className="workspace-muted">{courseCopy.goalHelp}</p>
         <div className={styles.rows}>
           {rows.map((row) => (
             <Link key={row.to} href={`/preview/${row.to}`} className={styles.row}>
@@ -548,7 +548,7 @@ function GoalEditor({ setup = false }: { setup?: boolean }) {
       </Panel>
       <Panel title={copy.chooseGoal}>
         <p>{copy.goalHelp}</p>
-        <p className="preview-muted">{courseCopy.goalHelp}</p>
+        <p className="workspace-muted">{courseCopy.goalHelp}</p>
         <RadioCards
           name="sample-goal"
           label={copy.chooseGoal}

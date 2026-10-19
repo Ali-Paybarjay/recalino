@@ -263,7 +263,7 @@ export function VoiceProfileForm({
           Help Recalino tell your speech apart from your teacher’s and classmates’. Spoken mistakes
           appear only after your voice is verified.
         </p>
-        <p className="preview-muted">
+        <p className="workspace-muted">
           A voice sample is optional. If you save one, the audio and voice patterns are kept
           privately for your account. Confirmed session samples can improve future matches. You can
           turn this off and delete the voice data {onComplete ? "in Settings" : "here"} at any time.
@@ -316,7 +316,7 @@ export function VoiceProfileForm({
             profile.engineAvailable &&
             profile.readiness &&
             profile.readiness.automatic !== "off" ? (
-              <p className="preview-muted">{voiceCopy.readiness[profile.readiness.automatic]}</p>
+              <p className="workspace-muted">{voiceCopy.readiness[profile.readiness.automatic]}</p>
             ) : null}
             {!profile.engineAvailable ? (
               <Status>
@@ -353,7 +353,7 @@ export function VoiceProfileForm({
                 </p>
                 {/* Owner's answer 8 (2026-10-13): a near-mouth sample is hard to match with a
                     far-mic class; the sample is recorded in class conditions. */}
-                <p className="preview-muted">{voiceCopy.voiceSample.classConditions}</p>
+                <p className="workspace-muted">{voiceCopy.voiceSample.classConditions}</p>
                 <p lang="en" dir="ltr">
                   “I am learning English so I can speak with more confidence. In class, I like to
                   ask questions, try new expressions, and practise with other people. Making a
@@ -441,7 +441,7 @@ export function VoiceProfileForm({
                       ) : null}
                     </Actions>
                     {profile.sampleDurationMs !== null && !capture.sample ? (
-                      <p className="preview-muted">{voiceCopy.voiceSample.replaces}</p>
+                      <p className="workspace-muted">{voiceCopy.voiceSample.replaces}</p>
                     ) : null}
                   </>
                 )}

@@ -50,7 +50,7 @@ export default async function TodayPage() {
     return (
       <LearnerShell learner={learner} current="today" header={header} reviewDue={review.dueCount}>
         {/* B1-empty, in D50 wording: one first step and its quiet alternative, then the routine. */}
-        <div className="preview-stack">
+        <div className="workspace-stack">
           <Panel tone="hero" title="Your first session starts here.">
             <Icon icon={Microphone} size={40} />
             <p>Record your first session. We'll help you make notes and cards from it.</p>
@@ -60,7 +60,7 @@ export default async function TodayPage() {
                 New session without recording
               </LinkButton>
             </Actions>
-            <p className="preview-muted">{RECORD_HELPER}</p>
+            <p className="workspace-muted">{RECORD_HELPER}</p>
           </Panel>
           <LearningLoop />
         </div>
@@ -92,15 +92,15 @@ export default async function TodayPage() {
       <Actions>
         <RecordLauncher />
       </Actions>
-      <p className="preview-muted">{RECORD_HELPER}</p>
+      <p className="workspace-muted">{RECORD_HELPER}</p>
     </Panel>
   );
   return (
     <LearnerShell learner={learner} current="today" header={header} reviewDue={review.dueCount}>
-      <div className="preview-stack">
+      <div className="workspace-stack">
         {/* B1-empty note: no review card until cards exist, so no "0 due" placeholder. */}
         {review.hasCards ? (
-          <div className="preview-grid">
+          <div className="workspace-grid">
             {record}
             <Panel title="Ready for a little practice?">
               <Icon icon={Cards} size={32} />
@@ -112,7 +112,7 @@ export default async function TodayPage() {
                   Open review
                 </LinkButton>
               </Actions>
-              <p className="preview-muted">Your learning stays with your account.</p>
+              <p className="workspace-muted">Your learning stays with your account.</p>
             </Panel>
           </div>
         ) : (

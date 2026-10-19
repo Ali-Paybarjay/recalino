@@ -222,7 +222,7 @@ export function PrivacyView({
       </Panel>
     );
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Panel title="Your data, your choices">
         <p>{privacyCopy.downloadFirst}</p>
         <p>

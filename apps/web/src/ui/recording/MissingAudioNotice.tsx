@@ -40,7 +40,7 @@ export function MissingAudioNotice({
           </li>
         ))}
       </ul>
-      <p className="preview-muted">{copy.missingHint}</p>
+      <p className="workspace-muted">{copy.missingHint}</p>
     </div>
   );
 }

@@ -70,7 +70,7 @@ function MemberExcerpts({
   }, [key, audio.state, onPlayable]);
   return (
     <div>
-      <p className="preview-muted" dir="auto">
+      <p className="workspace-muted" dir="auto">
         {analysis.source?.name ?? candidate.label}
       </p>
       <VoiceClips
@@ -155,7 +155,7 @@ export function ClassVoiceConfirmation({
           )}
         </>
       ) : (
-        <p className="preview-muted">{copy.classIntro}</p>
+        <p className="workspace-muted">{copy.classIntro}</p>
       )}
       {listed.map((voice) => {
         const members = voice.members.flatMap((member) => {
@@ -171,7 +171,7 @@ export function ClassVoiceConfirmation({
         return (
           <div key={voice.id} className={styles.aside}>
             <strong dir="auto">{voice.label}</strong>
-            <p className="preview-muted">
+            <p className="workspace-muted">
               {fillCopy(copy.heardIn, { count: voice.members.length, total })}
             </p>
             {voice.ambiguous ? <Status>{copy.ambiguous}</Status> : null}
@@ -209,7 +209,7 @@ export function ClassVoiceConfirmation({
                 </Actions>
               </>
             ) : (
-              <p className="preview-muted">{voiceCopy.playback.listenFirst}</p>
+              <p className="workspace-muted">{voiceCopy.playback.listenFirst}</p>
             )}
           </div>
         );

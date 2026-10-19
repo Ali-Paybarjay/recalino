@@ -312,7 +312,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           </select>
         </Field>
         {crop && (
-          <div className="preview-grid">
+          <div className="workspace-grid">
             {(["left", "top", "width", "height"] as const).map((part) => (
               <Field key={part} label={`${part[0]?.toUpperCase()}${part.slice(1)} (pixels)`}>
                 <input

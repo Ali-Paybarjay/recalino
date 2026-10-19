@@ -44,7 +44,7 @@ export function LessonAdaptation({ adaptation }: { adaptation: LessonAdaptationV
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p className="preview-muted">{copy.adaptationNote}</p>
+        <p className="workspace-muted">{copy.adaptationNote}</p>
       </div>
     </details>
   );

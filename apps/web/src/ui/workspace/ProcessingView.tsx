@@ -324,7 +324,7 @@ export function ProcessingView({
       .filter((source) => source.kind === "audio")
       .every((source) => source.objectId || source.contentVersionId);
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       {error ? <Status tone="error">{error}</Status> : null}
       {progressError && active ? <Status tone="error">{progressError}</Status> : null}
       {message || transfer?.message ? <Status>{message ?? transfer?.message}</Status> : null}
@@ -357,7 +357,7 @@ export function ProcessingView({
           </p>
           {completed ? (
             <>
-              <p className="preview-muted">Step 3 of 3 · Read notes and prepare flashcards</p>
+              <p className="workspace-muted">Step 3 of 3 · Read notes and prepare flashcards</p>
               <p>
                 Next, read and save your session notes. Then prepare flashcards from the learning
                 items and add the cards you want to practise.
@@ -400,7 +400,7 @@ export function ProcessingView({
       ) : null}
       {active ? (
         <Panel tone="hero" title="Preparing your session">
-          <p className="preview-muted">
+          <p className="workspace-muted">
             {latest.state === "awaiting_upload"
               ? "Step 1 of 3 · Upload and verify material"
               : "Step 2 of 3 · Create session notes"}

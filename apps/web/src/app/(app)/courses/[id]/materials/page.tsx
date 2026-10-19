@@ -41,8 +41,8 @@ export default async function CourseMaterialsPage({
       current="classes"
       header={<PageHeader title="Course materials" subtitle={course.name} />}
     >
-      <div className="preview-stack">
-        <Link className="preview-back" href="/courses">
+      <div className="workspace-stack">
+        <Link className="workspace-back" href="/courses">
           ← Manage courses
         </Link>
         <CourseNavigation course={course} courses={courses} current="materials" />
@@ -52,9 +52,9 @@ export default async function CourseMaterialsPage({
             flashcards and sources.
           </p>
           {materials.items.length ? (
-            <nav className="preview-actions" aria-label="Jump to a session">
+            <nav className="workspace-actions" aria-label="Jump to a session">
               {materials.items.map(({ session }) => (
-                <a key={session.id} className="preview-index-link" href={`#class-${session.id}`}>
+                <a key={session.id} className="workspace-index-link" href={`#class-${session.id}`}>
                   <span>
                     <time dateTime={session.classDate}>{session.classDate}</time>
                     {session.titleSource !== "date" ? (
@@ -166,13 +166,13 @@ export default async function CourseMaterialsPage({
         ) : null}
         {materials.total > PAGE_SIZE ? (
           <Panel>
-            <nav className="preview-actions" aria-label="Course material pages">
+            <nav className="workspace-actions" aria-label="Course material pages">
               {page > 1 ? (
                 <LinkButton secondary href={pageHref(page - 1)}>
                   Previous sessions
                 </LinkButton>
               ) : null}
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 Page {page} · {materials.total} sessions · Oldest first
               </p>
               {page * PAGE_SIZE < materials.total ? (
