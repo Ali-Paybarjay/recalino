@@ -307,8 +307,20 @@ function assertSameOrigin(request: Request): void {
 function redirectTo(path: string, request: Request, requestId: string): Response {
   return new Response(null, {
     status: 303,
-    headers: { location: new URL(path, request.url).toString(), "x-request-id": requestId },
+    headers: { location: redirectLocation(path, request.url), "x-request-id": requestId },
   });
+}
+
+/**
+ * SEC-01: a relative target ("/today", but also "//host" or "/\\host") must stay on the request's
+ * origin, or it falls back to the start page. An absolute URL, such as the hand-off to Google,
+ * is the handler's own choice and is kept.
+ */
+function redirectLocation(path: string, requestUrl: string): string {
+  if (URL.canParse(path)) return new URL(path).toString();
+  const base = new URL(requestUrl);
+  const target = new URL(path, base);
+  return target.origin === base.origin ? target.toString() : new URL("/", base).toString();
 }
 
 async function readBody(request: Request): Promise<unknown> {
