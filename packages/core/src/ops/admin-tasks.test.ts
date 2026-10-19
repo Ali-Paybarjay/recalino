@@ -7,9 +7,10 @@ const configuration = {} as AdminReadConfiguration;
 const directory = { getUser: async () => ({ name: null, email: null, language: "en" as const }) };
 const createdAt = new Date("2026-10-19T09:00:00.000Z");
 
-// PRD-03 and the OPS-02 follow-up (D96): a stopped deletion and an open health alert are tasks.
+// PRD-03 and the OPS-02 follow-up (D96): a stopped deletion and an open health alert are tasks,
+// titled with the texts the owner approved on 2026-10-19 (D98).
 describe("admin tasks for stopped deletions and health alerts", () => {
-  it("lists them without naming an account, with the approved alert sentence", async () => {
+  it("lists them without naming an account, with the approved titles and alert sentence", async () => {
     const requestId = randomUUID();
     const { db } = queryBudgetDatabase([
       [
@@ -45,12 +46,16 @@ describe("admin tasks for stopped deletions and health alerts", () => {
       directory,
       configuration,
     );
-    const general = { en: "Review this task", fa: "بررسی این کار" };
+    const privacy = {
+      en: "Finish a stopped data deletion",
+      fa: "تکمیل حذف داده‌ای که متوقف شده است",
+    };
+    const health = { en: "Review a system health alert", fa: "بررسی هشدار سلامت سامانه" };
     expect(snapshot.tasks).toEqual([
       {
         id: `privacy:${requestId}`,
         kind: "privacy",
-        title: general,
+        title: privacy,
         userIds: [],
         state: "needs_operator",
         createdAt: createdAt.toISOString(),
@@ -58,7 +63,7 @@ describe("admin tasks for stopped deletions and health alerts", () => {
       {
         id: "health:41",
         kind: "health",
-        title: general,
+        title: health,
         detail: {
           en: "The job runner has not run recently.",
           fa: "اجراکنندهٔ کارها اخیراً اجرا نشده است.",
@@ -70,7 +75,7 @@ describe("admin tasks for stopped deletions and health alerts", () => {
       {
         id: "health:42",
         kind: "health",
-        title: general,
+        title: health,
         userIds: [],
         state: "open",
         createdAt: createdAt.toISOString(),

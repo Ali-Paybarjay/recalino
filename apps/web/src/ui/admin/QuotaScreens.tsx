@@ -3,7 +3,7 @@
 import { useState } from "react";
 import styles from "./Admin.module.css";
 import type { AdminScreenProps } from "./AdminScreenProps";
-import { dateLabel } from "./CoreScreens";
+import { dateLabel, PilotProgressCells, pilotProgressColumns } from "./CoreScreens";
 import type { AdminQuota, Dimension, PriceRate, QuotaAmounts } from "./contracts";
 import { dimensionNames, stageNames, unitNames } from "./copy";
 import {
@@ -183,6 +183,13 @@ function UserQuota(props: AdminScreenProps) {
     <>
       <Panel title={user.name || t("Unnamed account", "حساب بدون نام")}>
         <bdi className={styles.muted}>{user.email ?? "—"}</bdi>
+        {user.progress && (
+          <Table columns={pilotProgressColumns(locale)}>
+            <tr>
+              <PilotProgressCells progress={user.progress} locale={locale} />
+            </tr>
+          </Table>
+        )}
         <div className={styles.actions}>
           <Button primary onClick={() => compose([user.id])}>
             {t("Send email", "ارسال ایمیل")}

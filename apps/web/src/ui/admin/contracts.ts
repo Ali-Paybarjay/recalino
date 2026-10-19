@@ -23,6 +23,7 @@ export type {
   FeedbackThread,
   HealthCondition,
   LocalizedText,
+  PilotProgress,
   PilotSummary,
   PriceRate,
   PrivacyItem,

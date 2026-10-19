@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { systemHealthCopy } from "./admin/copy";
+import { adminTaskTitleCopy, pilotProgressCopy, systemHealthCopy } from "./admin/copy";
 import { allowanceHelp } from "./allowance-copy";
 import { experienceCopy } from "./experience-copy";
 import { cardActionsCopy } from "./workspace/card-actions-copy";
@@ -115,6 +115,34 @@ describe("the System health texts approved on 2026-10-19", () => {
     expect(section.length).toBeGreaterThan(500);
     expect(texts).toHaveLength(16);
     expect(section.match(/^\| .+ \| «.+» \| «.+» \|$/gm)).toHaveLength(16);
+  });
+
+  it.each(texts)("%s is in the admin console and in the register, word for word", (key, en, fa) => {
+    expect(section).toContain(`(\`${key}\`) | «${en}» | «${fa}» |`);
+  });
+});
+
+// D98 (owner decision 2026-10-19, audit batch 15, PRD-03 and OPS-02): the pilot progress columns,
+// their empty value and the titles of the stopped-deletion and health-alert tasks, in English and
+// Persian, each recorded word for word in its own section of the register.
+describe("the pilot progress and task texts approved on 2026-10-19", () => {
+  const start = register.indexOf("## تأیید 2026-10-19 — پیشرفت پایلوت و وظیفه‌های تازه");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+  const entries = (node: object, path: string[]): Array<[string, string, string]> =>
+    Object.entries(node).flatMap(([key, value]) =>
+      "en" in value && "fa" in value
+        ? [[[...path, key].join("."), value.en as string, value.fa as string]]
+        : entries(value, [...path, key]),
+    );
+  const texts = [
+    ...entries(pilotProgressCopy, ["pilotProgressCopy"]),
+    ...entries(adminTaskTitleCopy, ["adminTaskTitleCopy"]),
+  ];
+
+  it("are the eight texts of the register section", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(texts).toHaveLength(8);
+    expect(section.match(/^\| .+ \| «.+» \| «.+» \|$/gm)).toHaveLength(8);
   });
 
   it.each(texts)("%s is in the admin console and in the register, word for word", (key, en, fa) => {

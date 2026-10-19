@@ -8,6 +8,7 @@ export {
   updateAdminTask,
 } from "./admin-operations";
 export {
+  ADMIN_TASK_TITLE,
   type AdminDirectory,
   type AdminReadConfiguration,
   type AdminSnapshotParameters,

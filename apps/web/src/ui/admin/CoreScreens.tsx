@@ -2,10 +2,18 @@
 
 import { useEffect, useState } from "react";
 import styles from "./Admin.module.css";
-import type { AdminScreenProps } from "./AdminScreenProps";
+import type { AdminScreenProps, PanelMode } from "./AdminScreenProps";
 import { adminQuery } from "./api";
-import type { AdminLocale, AdminTask, AdminUser, SystemHealth } from "./contracts";
-import { errorMessage, localized, systemHealthCopy, systemHealthSize } from "./copy";
+import type { AdminLocale, AdminTask, AdminUser, PilotProgress, SystemHealth } from "./contracts";
+import {
+  errorMessage,
+  localized,
+  pilotProgressCopy,
+  pilotProgressSteps,
+  systemHealthCopy,
+  systemHealthSize,
+  taskTitle,
+} from "./copy";
 import { formatMegabytes, formatMoney, formatNumber, formatWait } from "./model";
 import { ProcessingReviewDetails } from "./ProcessingReviewDetails";
 import { Badge, Button, Empty, Field, Notice, Panel, Table } from "./primitives";
@@ -17,28 +25,73 @@ export function dateLabel(value: string | null | undefined, locale: "en" | "fa")
     timeStyle: "short",
   }).format(new Date(value));
 }
+/**
+ * Where a task's main button leads. A stopped deletion (`privacy`) opens the Privacy view and a
+ * health alert (`health`) the overview with its System health card (owner decision D98).
+ */
+export function taskDestination(
+  task: AdminTask,
+): { view: PanelMode; id?: string } | { compose: string[] } {
+  if (task.threadId) return { view: "thread", id: task.threadId };
+  if (
+    task.kind === "email" ||
+    /email_failed|email_unknown|failed_email|unknown_email/.test(task.kind)
+  )
+    return { view: "history" };
+  if (/email|welcome|invitation|quota_updated|followup/.test(task.kind))
+    return { compose: task.userIds };
+  if (task.runId) return { view: "processing", id: task.runId };
+  if (task.kind === "privacy") return { view: "privacy" };
+  if (task.kind === "health") return { view: "overview" };
+  return { view: "users" };
+}
+/** PRD-03 (D96, D98): the pilot step column labels, in step order. */
+export function pilotProgressColumns(locale: AdminLocale): string[] {
+  return pilotProgressSteps.map((step) => pilotProgressCopy.column[step][locale]);
+}
+/**
+ * One cell per pilot step: the date in the panel's date format, "Not yet" before the step, or "—"
+ * when no progress was read for the account. Dates only, never class content (PRD-03).
+ */
+export function PilotProgressCells({
+  progress,
+  locale,
+}: {
+  progress: PilotProgress | undefined;
+  locale: AdminLocale;
+}) {
+  return (
+    <>
+      {pilotProgressSteps.map((step) => {
+        const reached = progress?.[step];
+        return (
+          <td key={step}>
+            {!progress
+              ? "—"
+              : reached
+                ? dateLabel(reached, locale)
+                : pilotProgressCopy.notYet[locale]}
+          </td>
+        );
+      })}
+    </>
+  );
+}
 function TaskList(props: AdminScreenProps & { tasks: AdminTask[] }) {
   const { tasks, t, locale, compose, navigate, act, busy, reload } = props;
   const [editId, setEditId] = useState("");
   const [reason, setReason] = useState("");
   function open(task: AdminTask) {
-    if (task.threadId) navigate("thread", task.threadId);
-    else if (
-      task.kind === "email" ||
-      /email_failed|email_unknown|failed_email|unknown_email/.test(task.kind)
-    )
-      navigate("history");
-    else if (/email|welcome|invitation|quota_updated|followup/.test(task.kind))
-      compose(task.userIds);
-    else if (task.runId) navigate("processing", task.runId);
-    else navigate("users");
+    const destination = taskDestination(task);
+    if ("compose" in destination) compose(destination.compose);
+    else navigate(destination.view, destination.id);
   }
   return tasks.length ? (
     tasks.map((task) => (
       <div key={task.id}>
         <div className={styles.task}>
           <div>
-            <strong>{localized(task.title, locale)}</strong>
+            <strong>{taskTitle(task, locale)}</strong>
             {task.detail && <p className={styles.muted}>{localized(task.detail, locale)}</p>}
             <small className={styles.muted}>{dateLabel(task.createdAt, locale)}</small>
           </div>
@@ -222,6 +275,7 @@ function Users(props: AdminScreenProps) {
               t("Participation", "عضویت"),
               t("Allowance", "سهمیه"),
               t("Welcome", "خوشامدگویی"),
+              ...pilotProgressColumns(locale),
               t("Action", "اقدام"),
             ]}
           >
@@ -241,7 +295,7 @@ function Users(props: AdminScreenProps) {
                   }
                 />
               </td>
-              <td colSpan={5}>
+              <td colSpan={10}>
                 <small className={styles.muted}>
                   {t(
                     "Selects only the accounts currently shown, including loaded pages.",
@@ -279,6 +333,7 @@ function Users(props: AdminScreenProps) {
                 <td>
                   <Badge state={user.welcomeState} locale={locale} />
                 </td>
+                <PilotProgressCells progress={user.progress} locale={locale} />
                 <td>
                   <Button onClick={() => compose([user.id])}>
                     {t("Send email", "ارسال ایمیل")}

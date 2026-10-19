@@ -55,7 +55,7 @@ export type AdminUser = {
   pilot: boolean;
   quotaActive: boolean;
   welcomeState: string;
-  /** Read for the users list and one user; the console shows it once its labels are approved. */
+  /** Read for the users list and one user; the console shows it as dated columns (D98). */
   progress?: PilotProgress;
 };
 export type AdminQuota = {
