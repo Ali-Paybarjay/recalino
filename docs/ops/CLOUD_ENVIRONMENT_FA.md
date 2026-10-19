@@ -122,6 +122,21 @@ pnpm db:apply --apply    # اجرای همه، از قدیمی به جدید، �
 
 - خطای HTTP 401 یا 403 یعنی توکن منقضی یا لغو شده است، یا secret در این environment نیست. گزارش بده و توکن را در چت نخواه.
 
+### گارد هارنس (D81، SEC-05، 2026-10-19)
+
+فهرست `permissions.allow` در `.claude/settings.json` بی‌تغییر است، ولی hook `PreToolUse` ([`.claude/hooks/data-loss-guard.ts`](../../.claude/hooks/data-loss-guard.ts)) پیش از هر Bash و هر `execute_sql` اجرا می‌شود:
+
+| فراخوانی | نتیجه |
+|---|---|
+| `execute_sql` با `select`، یا `insert`، `update` و `delete` با `where` محدودکننده | بی‌پرسش، مثل قبل |
+| `execute_sql` با `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا (`execute`، `dblink`، بدنهٔ `do`)، یا `delete`/`update` بدون `where` (یا `where true`) | پنجرهٔ تأیید (ask) |
+| هر دستور Bash که `--approve-data-loss` دارد | رد (deny): migration حذف داده را خود مالک محصول اجرا می‌کند |
+| `pnpm db:apply` و `pnpm db:apply --apply`، `supabase db push` | بی‌پرسش، مثل قبل |
+
+- در سشن ابری پنجرهٔ تأیید ممکن است نمایش داده نشود (D77)؛ آن‌وقت فراخوانی انجام نمی‌شود و سشن گزارش می‌دهد.
+- **تعارض باز:** CLAUDE.md و D77 می‌گویند Claude پس از «بله» صریح مالک، `--approve-data-loss` را اجرا می‌کند؛ hook این را رد می‌کند. تا تصمیم مالک محصول دربارهٔ هم‌خوان کردن CLAUDE.md، دستور حذف داده را مالک خودش اجرا می‌کند و سشن فقط نسخه و یافته‌های dry run را گزارش می‌دهد.
+- آزمون: `tools/claude-hooks/data-loss-guard.test.ts` (در `pnpm test:unit` و CI).
+
 ## قاعده‌ها
 
 - هر سشن تازهٔ ریکالینو، از جمله سشن‌های کارگری که سشن مدیر می‌سازد، در environment «Recalino» باز می‌شود. سشن‌های موجود environment خود را عوض نمی‌کنند.
