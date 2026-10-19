@@ -1,0 +1,13 @@
+# OPS-10 (D84, owner decision 2026-10-19): Dependabot security updates only.
+# Version updates are off (open-pull-requests-limit: 0). When GitHub publishes a security advisory
+# for an npm dependency, Dependabot opens one pull request to main, and CI runs on it like on any
+# other pull request (docs/ops/CI_LOW_COST_POLICY.md). Dependabot alerts and Dependabot security
+# updates must also be switched on in the repository settings; that is the owner's step
+# (docs/ops/BRANCH_PROTECTION_FA.md).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
