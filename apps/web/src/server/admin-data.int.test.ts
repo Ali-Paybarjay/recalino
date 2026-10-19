@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { CURRENT_VERSIONS, completeSignIn, createSignupIntent } from "@recalino/core/acc";
 import { createDatabase } from "@recalino/core/db";
+import { recordAudit } from "@recalino/core/plt";
 import {
   amounts,
   configurePilot,
@@ -11,11 +12,13 @@ import {
   setAllowanceAllocation,
   settleAllowance,
 } from "@recalino/core/quota";
+import { submitReview } from "@recalino/core/srs";
 import { createReplyDraft, submitFeedback } from "@recalino/core/support";
 import { sql } from "kysely";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAuthUser } from "../../../../packages/core/test/auth-users";
 import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
+import { studyFixture } from "../../../../packages/core/test/study-fixture";
 import { type AdminDirectory, readAdminSnapshot } from "./admin-data";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 5 });
@@ -77,7 +80,8 @@ describe("admin metadata snapshots (ADM-I02/I03/I07/I12/I13)", () => {
         or has_table_privilege('authenticated',c.oid,'SELECT')) as browser_read
       from pg_class c join pg_namespace n on n.oid=c.relnamespace
       where n.nspname='ops' and c.relkind='v' and c.relname like 'admin_%'`.execute(db);
-    expect(rows).toHaveLength(12);
+    // 12 projections, and ops.admin_user_progress (PRD-03, migration 20261019120300).
+    expect(rows).toHaveLength(13);
     for (const row of rows) {
       expect(row.options).toContain("security_invoker=true");
       expect(row).toMatchObject({ app_read: true, app_write: false, browser_read: false });
@@ -544,5 +548,141 @@ describe("admin metadata snapshots (ADM-I02/I03/I07/I12/I13)", () => {
         expect(JSON.stringify(result)).not.toContain(secret);
       }
     }
+  });
+
+  // PRD-03 (decision 9 option A, D96): the first time of each pilot step, dates only.
+  it("reads each learner's pilot steps as dates only", async () => {
+    const { rows: columns } = await sql<{ column_name: string; data_type: string }>`
+      select column_name,data_type from information_schema.columns
+      where table_schema='ops' and table_name='admin_user_progress' order by column_name`.execute(
+      db,
+    );
+    expect(columns).toEqual([
+      { column_name: "first_processed_at", data_type: "timestamp with time zone" },
+      { column_name: "first_recording_at", data_type: "timestamp with time zone" },
+      { column_name: "first_review_at", data_type: "timestamp with time zone" },
+      { column_name: "first_sign_in_at", data_type: "timestamp with time zone" },
+      { column_name: "setup_completed_at", data_type: "timestamp with time zone" },
+      { column_name: "user_id", data_type: "uuid" },
+    ]);
+    const fixture = await studyFixture(db, { count: 1, autoAdd: true });
+    const card = fixture.cards[0];
+    if (!card) throw new Error("missing fixture card");
+    const reviewedAt = new Date(fixture.now.getTime() + 1000);
+    await submitReview(
+      db,
+      fixture.ctx,
+      {
+        eventId: randomUUID(),
+        cardId: card.id,
+        expectedVersion: 0,
+        expectedContentVersion: 1,
+        mode: "simple",
+        choice: "remembered",
+      },
+      reviewedAt,
+    );
+    const user = (
+      await readAdminSnapshot(
+        db,
+        { view: "user", actorId, userId: fixture.ctx.userId },
+        directory,
+        {},
+      )
+    ).user;
+    // The fixture publishes notes directly: no class audio and no processing run yet.
+    expect(user?.progress).toEqual({
+      firstSignInAt: expect.any(String),
+      setupCompletedAt: expect.any(String),
+      firstRecordingAt: null,
+      firstProcessedAt: null,
+      firstReviewAt: reviewedAt.toISOString(),
+    });
+    const fresh = await learner();
+    const listed = await readAdminSnapshot(
+      db,
+      { view: "users", actorId, search: `Synthetic ${fresh.userId}` },
+      directory,
+      {},
+    );
+    expect(listed.users?.find((item) => item.id === fresh.userId)?.progress).toEqual({
+      firstSignInAt: expect.any(String),
+      setupCompletedAt: null,
+      firstRecordingAt: null,
+      firstProcessedAt: null,
+      firstReviewAt: null,
+    });
+  });
+
+  it("lists a stopped deletion and an open health alert as tasks without naming an account", async () => {
+    const userId = randomUUID();
+    const stopped = randomUUID();
+    const pending = randomUUID();
+    for (const [id, state, kind] of [
+      [stopped, "needs_operator", "session"],
+      [pending, "pending", "account"],
+    ] as const)
+      await db
+        .insertInto("priv.deletion_request")
+        .values({
+          id,
+          user_id: userId,
+          kind,
+          subject_id: kind === "account" ? userId : randomUUID(),
+          operation_key: randomUUID(),
+          state,
+        })
+        .execute();
+    const task = async (where: ReturnType<typeof sql>) =>
+      (
+        await sql<{
+          id: string;
+          kind: string;
+          user_id: string | null;
+          resource_id: string;
+          state: string;
+          preference_state: string | null;
+        }>`select id,kind,user_id,resource_id,state,preference_state from ops.admin_task
+          where ${where} order by created_at,id`.execute(db)
+      ).rows;
+    expect(await task(sql`id=${`privacy:${stopped}`}`)).toEqual([
+      {
+        id: `privacy:${stopped}`,
+        kind: "privacy",
+        user_id: null,
+        resource_id: stopped,
+        state: "needs_operator",
+        preference_state: null,
+      },
+    ]);
+    expect(await task(sql`id=${`privacy:${pending}`}`)).toEqual([]);
+
+    // One task per open episode of the hourly health check (OPS-02); the audit events stay.
+    const condition = `synthetic_${randomUUID()}`;
+    const health = {
+      actorKind: "system",
+      actorId: "ops.health_check",
+      subjectType: "system_health",
+      subjectId: condition,
+    } as const;
+    const healthTasks = () => task(sql`kind='health' and resource_id=${condition}`);
+    await recordAudit(db, { ...health, action: "ops.health_alert" });
+    const [first] = await healthTasks();
+    expect(first).toMatchObject({ kind: "health", user_id: null, state: "open" });
+    await recordAudit(db, { ...health, action: "ops.health_recovered" });
+    expect(await healthTasks()).toEqual([]);
+    await recordAudit(db, { ...health, action: "ops.health_alert" });
+    const [second] = await healthTasks();
+    expect(second?.id).not.toBe(first?.id);
+    expect(
+      await db
+        .selectFrom("plt.audit_event")
+        .select("action")
+        .where("subject_id", "=", condition)
+        .execute(),
+    ).toHaveLength(3);
+    await sql`insert into ops.task_preference(task_id,state,reason)
+      values(${second?.id ?? ""},'dismissed','Synthetic dismissal')`.execute(db);
+    expect((await healthTasks())[0]?.preference_state).toBe("dismissed");
   });
 });

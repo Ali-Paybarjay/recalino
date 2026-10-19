@@ -21,6 +21,8 @@ export const pltSettingsSchema = z.strictObject({
   rateLimitRepeatThreshold: z.int().positive(),
   /** Local hour at which a new study day starts. */
   studyDayStartHour: z.int().min(0).max(23),
+  /** SEC-07 (D95): days a security event is kept before the daily purge removes it. */
+  securityEventRetentionDays: z.int().positive(),
   /** FR-PLT-005 job queue defaults; a job kind may override the first four. */
   jobs: z.strictObject({
     maxAttempts: z.int().min(1).max(20),
@@ -66,6 +68,8 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
   },
   rateLimitRepeatThreshold: 5,
   studyDayStartHour: 4,
+  // SEC-07 (audit 2026-10-18): the owner set 90 days on 2026-10-19 (D95).
+  securityEventRetentionDays: 90,
   // Proposed in M4 (2026-10-02). Since 2026-10-10 the runner renews a running job's lease, so it
   // no longer has to outlast the 800-second function limit (ADR-0001): a job whose runner stopped
   // is claimed again about two minutes later instead of fifteen.

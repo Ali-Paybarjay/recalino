@@ -290,6 +290,6 @@ select 'auth.identities', coalesce(jsonb_agg(jsonb_build_object(
 
 ## محدودیت‌ها
 
-- مدت نگهداری `plt.security_event` و `plt.audit_event` هنوز تعیین نشده است (SEC-07، منتظر تصمیم و migration).
+- نگهداری ([D95](../PRODUCT_DECISIONS_LOG.md)، SEC-07): ردیف‌های `plt.security_event` پس از ۹۰ روز با job روزانهٔ `plt.purge_security_events` پاک می‌شوند. در `plt.audit_event` پس از حذف کامل حساب، `actor_id` به `deleted_account` تغییر می‌کند؛ پس کوئری بالا برای حسابی که حذفش کامل شده، ردیف ممیزی‌ای برنمی‌گرداند.
 - این رویه دستی است و برای پایلوت هشت‌نفره است؛ خروجی خودسرویس با تصمیم جدا ساخته می‌شود.
 - Claude در این رویه فقط می‌تواند شمار ردیف‌ها یا وجود حساب را بررسی کند؛ اجرای کوئری کامل و دیدن محتوا با خود اپراتور است.

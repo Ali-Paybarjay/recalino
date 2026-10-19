@@ -116,6 +116,27 @@
 - **UX-05، «Processing review»:** نام قابلیتی است که مالک محصول در 2026-10-10 تأیید کرده («View processing review»، «Request processing review»). بدون تأیید تازه عوض نشد.
 - **UX-05، «queued» در متن‌های تأییدشده:** «The lesson review is queued…» (`lesson-review-copy.ts`) و «…are queued for removal» (حذف جلسه، `ClassForm.tsx`) انگلیسی ساده‌اند و متن مصوب‌اند؛ تغییر نکردند.
 
+## ممیزی 2026-10-18، دستهٔ ۱۳ — پیشرفت پایلوت و وظیفه‌های تازه (`fix/audit-13`)
+
+داده‌های PRD-03 و پیگیری OPS-02 ([D96](../PRODUCT_DECISIONS_LOG.md)) آماده‌اند، ولی برچسب مصوبی برایشان در طرح پنل، `ADMIN_COMMUNICATION_COPY_2026-10-05.json` یا متن موجود `apps/web/src/ui/admin/` نیست، پس **ستون‌ها هنوز در رابط نیستند**:
+
+- `readAdminSnapshot` در نماهای `users` و `user` برای هر کاربر فیلد `progress` (نوع `PilotProgress` در `packages/core/src/ops/admin-contracts.ts`) را برمی‌گرداند: پنج تاریخ یا `null`.
+- وظیفه‌های تازهٔ `privacy` (حذف در وضعیت `needs_operator`) و `health` (هشدار باز سلامت) فعلاً عنوان عمومی موجود «Review this task» / «بررسی این کار» را دارند. توضیح وظیفهٔ `health` جملهٔ هشدار همان شاخص از متن‌های «System health» است که در 2026-10-19 تأیید شد.
+- دکمهٔ «Take action» این دو نوع فعلاً به فهرست کاربران می‌رود، چون مسیر دکمه در `CoreScreens.tsx` است و این دسته به کامپوننت‌های پنل دست نزد. پیشنهاد: `privacy` به نمای Privacy و `health` به نمای کلی (کارت System health).
+
+پیشنهاد، به همان قالب دوزبانهٔ `t(en, fa)` پنل و فقط با کامپوننت‌های موجود (`Table` فهرست کاربران و جزئیات کاربر):
+
+| کلید پیشنهادی | English | فارسی |
+|---|---|---|
+| ستون ورود | First sign-in | نخستین ورود |
+| ستون پایان setup | Setup finished | پایان راه‌اندازی |
+| ستون صوت کلاس | First class audio | نخستین صوت کلاس |
+| ستون پردازش | First session processed | نخستین جلسهٔ پردازش‌شده |
+| ستون مرور | First review | نخستین مرور |
+| مقدار خالی | Not yet | هنوز نه |
+| عنوان وظیفهٔ `privacy` | Finish a stopped data deletion | تکمیل حذف داده‌ای که متوقف شده است |
+| عنوان وظیفهٔ `health` | Review a system health alert | بررسی هشدار سلامت سامانه |
+
 ## تأیید 2026-10-19 — دستهٔ ۹ (تصمیم‌ها، `fix/audit-9`)
 
 مالک محصول در 2026-10-19 این متن‌ها را عیناً تأیید کرد. ثبت نسخه‌دار در [`PRODUCT_DECISIONS_LOG.md`](../PRODUCT_DECISIONS_LOG.md).

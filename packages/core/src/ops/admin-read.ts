@@ -25,6 +25,8 @@ import type {
   AdminView,
   AuditItem,
   FeedbackSummary,
+  HealthCondition,
+  PilotProgress,
   PilotSummary,
   SystemHealth,
 } from "./admin-contracts";
@@ -329,10 +331,50 @@ async function withIdentity(row: UserRow, directory: AdminDirectory): Promise<Ad
     welcomeState: row.welcome_state,
   };
 }
+/** PRD-03 (D96): the pilot steps of the listed users only, dates and nothing else. */
+async function readProgress(db: Database, userIds: string[]): Promise<Map<string, PilotProgress>> {
+  if (!userIds.length) return new Map();
+  const rows = await db
+    .selectFrom("ops.admin_user_progress")
+    .select([
+      "user_id",
+      "first_sign_in_at",
+      "setup_completed_at",
+      "first_recording_at",
+      "first_processed_at",
+      "first_review_at",
+    ])
+    .where("user_id", "in", userIds)
+    .execute();
+  const date = (value: Date | null) => value?.toISOString() ?? null;
+  const progress = new Map<string, PilotProgress>();
+  for (const row of rows)
+    if (row.user_id)
+      progress.set(row.user_id, {
+        firstSignInAt: date(row.first_sign_in_at),
+        setupCompletedAt: date(row.setup_completed_at),
+        firstRecordingAt: date(row.first_recording_at),
+        firstProcessedAt: date(row.first_processed_at),
+        firstReviewAt: date(row.first_review_at),
+      });
+  return progress;
+}
+async function withProgress(db: Database, users: AdminUser[]): Promise<AdminUser[]> {
+  const progress = await readProgress(
+    db,
+    users.map((user) => user.id),
+  );
+  return users.map((user) => {
+    const steps = progress.get(user.id);
+    return steps ? { ...user, progress: steps } : user;
+  });
+}
 async function readUser(db: Database, directory: AdminDirectory, userId: string, now: Date) {
   const rows = await userRows(db, now, null, 1, userId);
   if (!rows[0]) throw errors.notFound();
-  return withIdentity(rows[0], directory);
+  const [user] = await withProgress(db, [await withIdentity(rows[0], directory)]);
+  if (!user) throw errors.notFound();
+  return user;
 }
 
 async function readUsers(
@@ -377,7 +419,10 @@ async function readUsers(
   const displayed = matched.slice(0, PAGE_SIZE);
   const last = displayed.at(-1);
   return {
-    users: displayed.map((result) => result.user),
+    users: await withProgress(
+      db,
+      displayed.map((result) => result.user),
+    ),
     nextCursor: matched.length > PAGE_SIZE && last ? encodeCursor(last.row) : null,
   };
 }
@@ -548,6 +593,29 @@ async function readThreads(db: Database, directory: AdminDirectory): Promise<Fee
   );
 }
 
+/**
+ * OPS-02 (D96): the alert sentence of each health condition, the System health texts the owner
+ * approved verbatim on 2026-10-19 (docs/design/UI_COPY_PENDING.md, batch 3 section).
+ */
+const HEALTH_ALERT_TEXT: Record<HealthCondition, { en: string; fa: string }> = {
+  database_size: {
+    en: "The database is near its size limit.",
+    fa: "دیتابیس به سقف حجم نزدیک است.",
+  },
+  failed_jobs: {
+    en: "A job failed and will not retry.",
+    fa: "کاری ناموفق شد و دوباره اجرا نمی‌شود.",
+  },
+  queue_delay: {
+    en: "Jobs are waiting longer than expected.",
+    fa: "کارها بیش از حد انتظار در صف مانده‌اند.",
+  },
+  runner_stale: {
+    en: "The job runner has not run recently.",
+    fa: "اجراکنندهٔ کارها اخیراً اجرا نشده است.",
+  },
+};
+
 async function readTasks(db: Database, now: Date, userId?: string): Promise<AdminTask[]> {
   if (userId) z.uuid().parse(userId);
   const { rows } = await sql<{
@@ -563,6 +631,8 @@ async function readTasks(db: Database, now: Date, userId?: string): Promise<Admi
         or (c.preference_state='snoozed' and c.snoozed_until<=${now}))
       ${userId ? sql`and c.user_id=${userId}::uuid` : sql``}
       order by c.created_at asc,c.id asc limit ${PAGE_SIZE}`.execute(db);
+  // The new kinds `privacy` (PRD-03) and `health` (OPS-02) keep the general title until their own
+  // titles are approved (docs/design/UI_COPY_PENDING.md, batch 13).
   const titles = {
     pilot_welcome: { en: "Prepare a pilot welcome email", fa: "تهیهٔ ایمیل خوشامدگویی پایلوت" },
     feedback: { en: "Reply to a learner's message", fa: "پاسخ به پیام زبان‌آموز" },
@@ -583,6 +653,9 @@ async function readTasks(db: Database, now: Date, userId?: string): Promise<Admi
             fa: "پیش از تلاش دوباره، نتیجهٔ سرویس را بررسی کنید.",
           },
         }
+      : {}),
+    ...(row.kind === "health" && Object.hasOwn(HEALTH_ALERT_TEXT, row.resource_id)
+      ? { detail: HEALTH_ALERT_TEXT[row.resource_id as HealthCondition] }
       : {}),
     userIds: row.user_id ? [row.user_id] : [],
     state: row.state,

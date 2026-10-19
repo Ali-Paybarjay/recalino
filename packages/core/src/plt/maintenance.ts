@@ -3,6 +3,7 @@ import { z } from "zod";
 import { purgeExpiredIdempotencyKeys } from "./idempotency";
 import { type JobDefinition, purgeFinishedJobs } from "./jobs";
 import { purgeRateLimitBuckets } from "./rate-limit";
+import { purgeSecurityEvents } from "./security";
 import type { PltSettings } from "./settings";
 import { type ObjectStore, reconcileStorage } from "./storage";
 
@@ -55,6 +56,19 @@ export function pltPeriodicJobs(settings: PltSettings): PeriodicJob[] {
         run: async (_payload, ctx) => {
           const days = settings.jobs.retentionDays;
           await purgeFinishedJobs(ctx.db, new Date(ctx.now().getTime() - days * 86_400_000));
+        },
+      },
+    },
+    {
+      // SEC-07 (D95): security events carry a user id and are kept for a fixed period only.
+      everySeconds: 24 * HOUR,
+      definition: {
+        kind: "plt.purge_security_events",
+        version: 1,
+        payload: emptyPayload,
+        run: async (_payload, ctx) => {
+          const days = settings.securityEventRetentionDays;
+          await purgeSecurityEvents(ctx.db, new Date(ctx.now().getTime() - days * 86_400_000));
         },
       },
     },

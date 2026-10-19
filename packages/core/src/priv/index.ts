@@ -13,4 +13,5 @@ export {
   requestAccountDeletion,
   requestSessionDeletion,
 } from "./deletion";
+export { anonymiseDeletedAccountActors, privacyPeriodicJobs } from "./jobs";
 export { deletionJournalEntrySchema, replayDeletionJournals } from "./recovery";
