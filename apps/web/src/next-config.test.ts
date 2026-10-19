@@ -43,3 +43,22 @@ describe("baseline security headers (SEC-03)", () => {
     for (const { key } of SECURITY_HEADERS) expect(applied).toContain(key);
   });
 });
+
+describe("native processing tracing (PERF-01)", () => {
+  it("ships native resources only with the job runner and the routes that run processing jobs", () => {
+    const routes = Object.keys(nextConfig.outputFileTracingIncludes ?? {}).sort();
+    expect(routes).toEqual(
+      [
+        "/api/admin",
+        "/api/classes/**",
+        "/api/jobs/run",
+        "/api/me/voice",
+        "/api/runs/**",
+        "/api/sources/**",
+        "/api/voice/**",
+      ].sort(),
+    );
+    // No catch-all: learner pages and the review API carry no PDF, audio or voice runtime.
+    expect(routes.some((route) => !route.startsWith("/api/"))).toBe(false);
+  });
+});
