@@ -6,7 +6,8 @@ packages:
 allowBuilds:
   # Downloads the pinned Supabase CLI binary used by the db:* scripts.
   supabase: true
-  # SPIKE-05 only (M4, T5): downloads a static ffmpeg for the platform. Removed with the spike.
+  # Downloads the platform's static ffmpeg: the production decoder of the recording verifier and
+  # the audio preparer (apps/web/src/server/audio-preparer.ts). Not a spike-only package.
   ffmpeg-static: true
   # Pinned tsx operator runtime uses esbuild's platform binary.
   esbuild: true

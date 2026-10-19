@@ -33,8 +33,6 @@
 
 `SUPABASE_URL` و `SUPABASE_PUBLISHABLE_KEY` سری نیستند، ولی اپ آن‌ها را هم فقط سمت سرور می‌خواند. همین‌طور `BLOB_STORE_ID`، `RECALINO_GMAIL_USER`، `RECALINO_EMAIL_*`، `RECALINO_WEB_PUSH_PUBLIC_KEY`، `RECALINO_WEB_PUSH_SUBJECT`، `PILOT_OPERATOR_*` و `*_SETTINGS_JSON` سری نیستند. با هر سرویس تازه، سطر تازه‌ای به جدول بالا و بخش «روال چرخش هر سری» اضافه می‌شود.
 
-مقدارهای کوتاه‌عمر سری ماندگار نیستند: `VOICE_RELEASE_CHECK_TOKEN` و `VOICE_RELEASE_CHECK_EXPIRES_AT` فقط اعتبارسنجی شش‌ساعتهٔ مسیر SPIKE-05 را می‌پوشانند و با حذف آن مسیر از کد و از این سند کنار می‌روند.
-
 ## چرخش یک کلید
 
 1. مقدار تازه را بسازید (برای `RATE_LIMIT_IP_KEY` و `CRON_SECRET`، دست‌کم ۳۲ نویسه تصادفی).

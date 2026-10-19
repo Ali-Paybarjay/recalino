@@ -49,7 +49,6 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     // Native PDF resource lookup reads metadata at runtime, including server-rendered estimate pages.
     "/*": ["../../node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/package.json"],
-    "/dev/spike/**": nativeProcessingResources,
     "/api/jobs/run": nativeProcessingResources,
     "/api/sources/**": nativeProcessingResources,
     "/api/classes/**": nativeProcessingResources,

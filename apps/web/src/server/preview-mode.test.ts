@@ -46,7 +46,7 @@ describe("isolated UI preview boundary", () => {
     ["POST", "/api/consents"],
     ["GET", "/api/jobs/run"],
     ["POST", "/dev/auth/session"],
-    ["GET", "/dev/spike/health"],
+    ["GET", "/dev/ui"],
     ["POST", "/preview/profile"],
     ["POST", "/me"],
     ["DELETE", "/preview/classes"],

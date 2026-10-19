@@ -117,7 +117,6 @@ export {
   type RateLimitRule,
   readPltSettings,
 } from "./settings";
-export { spikeCleanup, spikeJobReport, spikeObjects } from "./spike";
 export {
   type ConfirmResult,
   composeOwnedObjects,

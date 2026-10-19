@@ -28,7 +28,6 @@ const configuration = {
   RECALINO_EXPORT_SETTINGS_JSON: JSON.stringify(
     JSON.parse(await readFile(resolve(root, "config/export-defaults.json"), "utf8")),
   ),
-  RECALINO_SPIKE: "0",
   ...((process.argv.includes("--local") || process.argv.includes("--include-backup-key")) &&
   process.env.RECALINO_BACKUP_KEY_ID &&
   process.env.RECALINO_BACKUP_KEY_BASE64
