@@ -3,6 +3,7 @@ import type { StudyCard } from "@recalino/core/card";
 import type { MediaAsset } from "@recalino/core/media";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { requestKey, workspaceRequest } from "./api";
+import { mediaAlt } from "./media-alt";
 import { Actions, Button, Field, Panel, Status } from "./primitives";
 import type { SourceRow } from "./SourcesView";
 export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: StudyCard): void }) {
@@ -21,7 +22,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
     [notice, setNotice] = useState(""),
-    [preview, setPreview] = useState<{ url: string; mime: string } | null>(null);
+    [preview, setPreview] = useState<{ url: string; mime: string; alt: string } | null>(null);
   const key = useRef<{ payload: string; key: string } | null>(null);
   const load = useCallback(async () => {
     if (!sessionId) return;
@@ -190,7 +191,13 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
                   `/api/media/${selected}/read`,
                   "GET",
                 );
-                setPreview({ url: value.url, mime: asset?.mimeType ?? "" });
+                // A11Y-05: the image is named by its source file, then by the card text on this side.
+                const source = sources.find((item) => item.assetId === asset?.sourceId);
+                setPreview({
+                  url: value.url,
+                  mime: asset?.mimeType ?? "",
+                  alt: mediaAlt(source?.displayName, side === "front" ? card.front : card.back),
+                });
               } catch {
                 setProblem("The media preview is unavailable.");
               }
@@ -210,7 +217,8 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           // biome-ignore lint/performance/noImgElement: Signed private URLs must not pass through an image proxy.
           <img
             src={preview.url}
-            alt="Selected session material"
+            alt={preview.alt}
+            dir="auto"
             style={{ maxWidth: "100%", height: "auto" }}
           />
         ))}
@@ -269,6 +277,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
         </Field>
         <Field label="Short English text for synthetic audio">
           <textarea
+            dir="auto"
             value={text}
             onChange={(event) => setText(event.target.value)}
             maxLength={500}

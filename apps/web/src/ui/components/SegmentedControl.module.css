@@ -20,7 +20,7 @@
 }
 
 .small .option {
-  min-height: 40px;
+  min-height: var(--rc-target);
   font-size: var(--rc-text-sm);
 }
 

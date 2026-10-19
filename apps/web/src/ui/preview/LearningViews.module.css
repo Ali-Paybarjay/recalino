@@ -166,7 +166,7 @@
   border: 1px solid var(--color-divider);
   border-radius: 12px;
   background: var(--color-surface);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 4%);
+  box-shadow: var(--shadow-md);
   line-height: 1.7;
 }
 
@@ -218,7 +218,8 @@
   margin: 0;
 }
 
-.card h3 {
+/* The question of a card is the list's level-2 heading (A11Y-04); it keeps the size it had as h3. */
+.card :is(h2, h3) {
   font-size: 20px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -378,11 +379,6 @@
   height: 12px;
   grid-column: 1 / -1;
   accent-color: var(--color-accent);
-}
-
-.layout :is(input, textarea, select, button, a):focus-visible {
-  outline: 3px solid var(--rc-focus);
-  outline-offset: 3px;
 }
 
 .layout audio {

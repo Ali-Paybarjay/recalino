@@ -56,7 +56,7 @@
 .back:focus-visible,
 .quietLink:focus-visible,
 .evidence summary:focus-visible {
-  outline: 3px solid var(--rc-focus);
+  outline: 2px solid var(--rc-focus);
   outline-offset: 3px;
 }
 
@@ -240,7 +240,7 @@
   border: 1px solid var(--color-divider);
   border-radius: 14px;
   background: var(--color-surface);
-  box-shadow: 0 12px 36px rgb(0 0 0 / 10%);
+  box-shadow: var(--shadow-md);
 }
 
 .readerTools .quietLink {

@@ -73,6 +73,17 @@ body {
   border-color: var(--color-divider);
 }
 
+/* The rule above has the same specificity as the base layer's hover/active and comes later, so it
+   hid them (UI-01). Restate both with the base layer's 7% / 14% mix, laid over the surface fill.
+   The danger variant is this class plus .rc-btn-danger, so it follows. */
+[data-theme] .btn-secondary:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, var(--color-surface));
+}
+
+[data-theme] .btn-secondary:active {
+  background: color-mix(in srgb, var(--color-text) 14%, var(--color-surface));
+}
+
 /* Native controls and scrollbars follow the theme. */
 :root[data-theme="light"] {
   color-scheme: light;

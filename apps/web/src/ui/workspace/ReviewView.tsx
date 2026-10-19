@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { strings } from "../strings";
 import { workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { mediaAlt } from "./media-alt";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { RecallPronunciation } from "./RecallPronunciation";
@@ -12,6 +13,15 @@ import { type FocusIntent, reviewFocusTarget } from "./review-focus";
 
 /** Learning and relearning steps are minutes apart; an open page picks such a card up when due. */
 const LEARNING_STEP_WAIT_MS = 15 * 60000;
+/** The back of a plain listening card. It is learner text, so its direction follows its first letters (A11Y-02). */
+export function ListeningAnswer({ text }: { text: string }) {
+  return (
+    <p dir="auto" style={{ whiteSpace: "pre-wrap" }}>
+      {text}
+    </p>
+  );
+}
+
 function reviewQueuePath(sessionId: string | undefined): string {
   return sessionId ? `/api/review?${new URLSearchParams({ sessionId })}` : "/api/review";
 }
@@ -127,7 +137,7 @@ export function ReviewView({
       active = false;
     };
   }, [current?.card.frontMediaId, current?.card.backMediaId]);
-  function media(value: { url: string; mime: string; synthetic: boolean }) {
+  function media(value: { url: string; mime: string; synthetic: boolean }, side: "front" | "back") {
     return (
       <div>
         {value.synthetic && <p className="preview-muted">Synthetic audio</p>}
@@ -140,7 +150,9 @@ export function ReviewView({
           // biome-ignore lint/performance/noImgElement: Private signed media must not be sent through an image proxy.
           <img
             src={value.url}
-            alt="Card learning material"
+            // A11Y-05: described by the text of the card side that carries it; "" when it has none.
+            alt={mediaAlt(current?.card[side])}
+            dir="auto"
             style={{ maxWidth: "100%", height: "auto" }}
           />
         )}
@@ -278,7 +290,7 @@ export function ReviewView({
           <div ref={cardRegion} tabIndex={-1}>
             {current.card.template === "listening" ? (
               frontMedia ? (
-                media(frontMedia)
+                media(frontMedia, "front")
               ) : (
                 <p>Loading listening audio…</p>
               )
@@ -304,7 +316,7 @@ export function ReviewView({
                 }
               />
             )}
-            {current.card.template !== "listening" && frontMedia && media(frontMedia)}
+            {current.card.template !== "listening" && frontMedia && media(frontMedia, "front")}
             {shown ? (
               <div className="preview-stack">
                 {current.card.template === "listening" &&
@@ -330,9 +342,9 @@ export function ReviewView({
                       }
                     />
                   ) : (
-                    <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
+                    <ListeningAnswer text={current.card.back} />
                   ))}
-                {backMedia && media(backMedia)}
+                {backMedia && media(backMedia, "back")}
                 <ClaimEvidence claim={current.card.provenance} userId={userId} />
                 <Actions>
                   {(queue.settings.mode === "simple"

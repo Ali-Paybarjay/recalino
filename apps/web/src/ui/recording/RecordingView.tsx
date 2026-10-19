@@ -272,21 +272,22 @@ export function RecordingView({
       >
         {active ? (
           <>
-            <p role="timer" className="preview-rec-time" aria-label="Active recording time">
+            <p role="timer" className={styles.timer} aria-label="Active recording time">
               {duration(time.elapsed)}
             </p>
             {/* Pause and Stop come before the explanations, so Stop is on screen without scrolling (UX-02). */}
             <Actions>
               {["recording", "recovering"].includes(state.phase) ? (
-                <Button secondary onClick={() => controller.pause()}>
+                <Button secondary className={styles.control} onClick={() => controller.pause()}>
                   Pause recording
                 </Button>
               ) : state.phase === "paused" ? (
-                <Button secondary onClick={() => controller.resume()}>
+                <Button secondary className={styles.control} onClick={() => controller.resume()}>
                   Resume recording
                 </Button>
               ) : null}
               <Button
+                className={styles.control}
                 disabled={["starting", "saving"].includes(state.phase)}
                 onClick={() => void controller.stop()}
               >

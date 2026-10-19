@@ -98,7 +98,7 @@
   border-radius: 6px;
   background: var(--rc-warning-tint);
   color: var(--rc-warning);
-  font-size: 11px;
+  font-size: var(--rc-text-xs);
 }
 .page [role="listbox"] {
   max-height: min(36dvh, 300px);

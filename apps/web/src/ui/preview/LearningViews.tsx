@@ -901,7 +901,7 @@ function Cards() {
                   </label>
                 </div>
                 <CardInstruction type={card.type} />
-                <h3>{card.question}</h3>
+                <h2>{card.question}</h2>
                 <p>{card.answer}</p>
                 <SourceLabel source={card.source} classId={card.classId} />
                 {card.status !== "suggested" ? (
@@ -1059,7 +1059,7 @@ function CardTypes() {
           <article className={styles.card} key={card.type}>
             <span className="preview-chip">{TYPES[card.type]}</span>
             <CardInstruction type={card.type} />
-            <h3>{card.question}</h3>
+            <h2>{card.question}</h2>
             {card.type === "listening" ? <ComputerVoice text={card.answer} /> : null}
             <Button
               secondary

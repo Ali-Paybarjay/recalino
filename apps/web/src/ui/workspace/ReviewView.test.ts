@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { strings } from "../strings";
-import { ReviewView } from "./ReviewView";
+import { ListeningAnswer, ReviewView } from "./ReviewView";
 
 const userId = "10000000-0000-4000-8000-000000000002";
 const claim = {
@@ -94,5 +94,15 @@ describe("review card focus (A11Y-03)", () => {
     expect(html.indexOf("Already?")).toBeGreaterThan(region);
     expect(html.indexOf("Show answer")).toBeGreaterThan(html.indexOf("Already?"));
     expect(html).not.toContain("Before now");
+  });
+});
+
+describe("listening answer (A11Y-02)", () => {
+  it("follows the direction of the learner's own text and keeps its line breaks", () => {
+    const html = renderToStaticMarkup(
+      createElement(ListeningAnswer, { text: "او گفت: «I can\u2019t fault it»\nدرست است" }),
+    );
+    expect(html).toContain('<p dir="auto" style="white-space:pre-wrap">');
+    expect(html).toContain("I can\u2019t fault it");
   });
 });

@@ -147,7 +147,7 @@
 
 .newClass:focus-visible,
 .manage summary:focus-visible {
-  outline: 3px solid var(--rc-focus);
+  outline: 2px solid var(--rc-focus);
   outline-offset: 4px;
   border-radius: 4px;
 }
