@@ -11,6 +11,12 @@ allowBuilds:
   # Pinned tsx operator runtime uses esbuild's platform binary.
   esbuild: true
 
+# Release cooldown (OPS-12): a package version published less than 24 hours (1440 minutes) ago is
+# not selected. pnpm 12 applies 1440 minutes without this key, but not strictly; the explicit value
+# makes the policy visible and strict (an immature version is refused, not silently added to the
+# exclude list). The exclude list below exempts only those exact versions, never a whole package.
+minimumReleaseAge: 1440
+
 minimumReleaseAgeExclude:
   - '@biomejs/biome@2.5.15'
   - '@biomejs/cli-darwin-arm64@2.5.15'
@@ -43,3 +49,8 @@ minimumReleaseAgeExclude:
 
 # Record exact versions in package.json (PROJECT_SPEC §3).
 saveExact: true
+
+# A dependency whose `engines` rules out the running Node.js fails the install instead of warning.
+# The repository's own Node range (>=24 <25) is in package.json `engines` and .nvmrc; pnpm does not
+# enforce a workspace's own `engines.node`.
+engineStrict: true

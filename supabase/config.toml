@@ -157,6 +157,8 @@ max_indexes = 5
 
 [auth]
 enabled = true
+# LOCAL values only. The cloud project's Auth settings live in the dashboard (docs/runbooks/CLOUD_AUTH_CONFIG.md);
+# `supabase config push` would overwrite them with the values below and needs the product owner's explicit yes.
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "http://localhost:3000"
