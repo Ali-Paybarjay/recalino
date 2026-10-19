@@ -9,7 +9,6 @@ import {
   normalizeGeneratedStudyModel,
   publishKnowledgeVersion,
 } from "../lkm";
-import { getCourse, getSession } from "../org";
 import type { JobDefinition } from "../plt";
 import { amountsSchema } from "../quota";
 import { assertSourcesLive, sourceClassificationPrompt, updateAutomaticSourceRoles } from "../src";
@@ -22,20 +21,13 @@ import {
   compactKnowledgeInstruction,
   knowledgeTruncationSchema,
 } from "./knowledge-compact";
-import { usesContentKnowledgeContract } from "./knowledge-contract";
 import { buildKnowledgeGenerationInput, knowledgeRepairDetailSchema } from "./knowledge-generation";
 import {
   generateCanonicalKnowledge,
   knowledgeSchemaFailureSchema,
 } from "./knowledge-generation-step";
-import { buildKnowledgeInput } from "./knowledge-input";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
-import {
-  declaredTeachingContext,
-  modelTeachingContext,
-  selectPracticeFocus,
-  teachingAdaptation,
-} from "./learner-context";
+import { declaredTeachingContext, teachingAdaptation } from "./learner-context";
 
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
@@ -71,6 +63,7 @@ import {
   semanticRepairReason,
   validateGeneratedKnowledge,
 } from "./steps/knowledge-checks";
+import { prepareLesson } from "./steps/lesson-input";
 import {
   cached,
   checkpointAndContinue,
@@ -108,56 +101,18 @@ export function processingJob(
         const voiceCheck = await beginVoiceCheck(stage, extracted);
         if (voiceCheck === YIELDED) return;
         const lessonStage = async (): Promise<"checkpoint" | "published"> => {
-          const missing = extracted
-            .filter(
-              (source) =>
-                !source.blocks.length || source.units.some((unit) => unit.status !== "extracted"),
-            )
-            .map((source) => source.sourceId);
-          const lesson = await getSession(job.db, ctx, initial.session_id);
-          const course = await getCourse(job.db, ctx, lesson.courseId);
-          const lessonContext = {
-            date: lesson.classDate,
-            ...(course.isDefault ? {} : { course: course.name }),
-          };
-          // D49: memory points were frozen at run start; only those this class's extracted text
-          // supports reach the model, without counts or dates.
-          const practiceFocus = selectPracticeFocus(settings.learnerContext, extracted);
-          const teaching = modelTeachingContext(settings.learnerContext, practiceFocus);
-          const generationData = {
-            explanationLanguage: settings.explanationLanguage,
-            teachingPreferences: settings.teachingPreferences,
-            ...(teaching ? { learnerContext: teaching } : {}),
-            sources: extracted,
-            missingSourceIds: missing,
+          const prepared = await prepareLesson(stage, extracted);
+          const {
+            missing,
             lessonContext,
-          };
-          // Selected from the run's settings snapshot; legacy snapshots keep their original
-          // wire contract and rollback behavior.
-          const compactGeneration = usesContentKnowledgeContract(settings.provider);
-          // lesson-quality-1: limits from the lesson model's own output limit and the measured
-          // material. Snapshots without it keep the fixed planning budget unchanged.
-          const quality = settings.provider.lessonQuality;
-          const qualityOptions = quality
-            ? (() => {
-                const outputTokens = effectiveStructuredMaxOutputTokens(
-                  settings.provider,
-                  settings.provider.llmModel,
-                );
-                return {
-                  maxOutputTokens: outputTokens,
-                  budget: lessonBudget(
-                    outputTokens,
-                    measureLessonContent(extracted, settings.provider.charactersPerPage),
-                  ),
-                  sourceCoverage: quality.sourceCoverage,
-                };
-              })()
-            : {};
-          const knowledgeInput = buildKnowledgeInput(
+            practiceFocus,
+            teaching,
             generationData,
-            settings.provider.maxInputCharacters,
-          );
+            compactGeneration,
+            quality,
+            qualityOptions,
+            knowledgeInput,
+          } = prepared;
           /**
            * D63: each part has one paid generation and at most one bounded regeneration, each
            * saved before the next call; a job returns after any paid call. Parts are merged by
