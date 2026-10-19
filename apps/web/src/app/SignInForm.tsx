@@ -5,7 +5,8 @@ import { Button } from "../ui/components/Button";
 import { Icon } from "../ui/components/Icon";
 import { Sheet } from "../ui/components/Sheet";
 import { Check, GoogleLogo, Info } from "../ui/icons";
-import { fill, strings } from "../ui/strings";
+import { fill } from "../ui/strings-fill";
+import { signInStrings as strings } from "../ui/strings-sign-in";
 import styles from "./SignIn.module.css";
 
 type SignInFormProps = {

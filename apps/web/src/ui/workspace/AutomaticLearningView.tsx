@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { type ReactNode, useRef, useState, useSyncExternalStore } from "react";
-import { strings } from "../strings";
+import { settingsStrings as strings } from "../strings-settings";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
 import { useAccountGate } from "./account-gate";

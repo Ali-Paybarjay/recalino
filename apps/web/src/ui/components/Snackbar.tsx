@@ -1,7 +1,7 @@
 // No "use client": a snackbar always lives inside a client component that owns it and passes
 // callbacks, so it joins that client bundle.
 import { useEffect, useRef } from "react";
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import { Icon, type IconComponent } from "./Icon";
 import styles from "./Snackbar.module.css";
 

@@ -62,6 +62,27 @@ describe("UI strings", () => {
     }
   });
 
+  // PERF-06: the words live in one module per area; every area must be part of `strings`, so the
+  // origin check above covers each of its strings.
+  it("composes every area module into strings", async () => {
+    const areas = readdirSync(import.meta.dirname).filter(
+      (name) =>
+        /^strings-.+\.ts$/.test(name) && name !== "strings-fill.ts" && !name.includes(".test."),
+    );
+    expect(areas.length).toBeGreaterThan(0);
+    for (const name of areas) {
+      const area: Record<string, Record<string, unknown>> = await import(
+        join(import.meta.dirname, name)
+      );
+      expect(Object.keys(area).length, name).toBeGreaterThan(0);
+      for (const [exported, groups] of Object.entries(area))
+        for (const [key, group] of Object.entries(groups))
+          expect((strings as Record<string, unknown>)[key], `${name}: ${exported}.${key}`).toBe(
+            group,
+          );
+    }
+  });
+
   it("fills placeholders and refuses a missing value", () => {
     expect(fill(strings.classStatus.partlyReady, { detail: "Part 2 missing" })).toBe(
       "Partly ready · Part 2 missing",

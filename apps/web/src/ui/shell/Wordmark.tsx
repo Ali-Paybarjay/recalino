@@ -1,4 +1,4 @@
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import styles from "./Wordmark.module.css";
 
 /** Shared brand mark; standalone pages can load it without the app navigation styles. */

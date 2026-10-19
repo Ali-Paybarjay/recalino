@@ -10,7 +10,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { directionOf } from "../direction";
 import { SpeakerHigh } from "../icons";
-import { strings } from "../strings";
+import { statusStrings as strings } from "../strings-status";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";

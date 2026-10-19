@@ -1,5 +1,6 @@
 import { retryAllowanceCopy } from "../retry-allowance-copy";
-import { fill, strings } from "../strings";
+import { fill } from "../strings-fill";
+import { settingsStrings as strings } from "../strings-settings";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import type { UploadBatch, UploadEntry } from "./upload-store";

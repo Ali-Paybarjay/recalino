@@ -2,7 +2,7 @@
 // passes callbacks, so it joins that client bundle.
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { X } from "../icons";
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import { Button, IconButton } from "./Button";
 import { Checkbox } from "./Checkbox";
 import styles from "./Sheet.module.css";

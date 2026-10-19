@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ArrowClockwise, WarningCircle } from "../icons";
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import { Button } from "./Button";
 import styles from "./Feedback.module.css";
 import { Icon, type IconComponent } from "./Icon";

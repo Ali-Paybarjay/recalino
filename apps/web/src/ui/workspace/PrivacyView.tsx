@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
 import { PushSafeSignOut } from "../notifications/PushSafeSignOut";
 import { useRecording } from "../recording/RecordingProvider";
-import { strings } from "../strings";
+import { settingsStrings as strings } from "../strings-settings";
 import { type PendingDeletion, requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
 import { IndexedManualAudioStore } from "./manual-audio-store";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";

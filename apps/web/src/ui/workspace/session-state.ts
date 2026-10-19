@@ -1,4 +1,4 @@
-import { strings } from "../strings";
+import { settingsStrings as strings } from "../strings-settings";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { learningProgress } from "./learning-progress";

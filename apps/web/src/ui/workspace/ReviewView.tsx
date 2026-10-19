@@ -2,7 +2,7 @@
 import type { MediaAsset } from "@recalino/core/media";
 import type { ReviewInput, ReviewQueue, ReviewReceipt } from "@recalino/core/srs";
 import { useEffect, useRef, useState } from "react";
-import { strings } from "../strings";
+import { shellStrings as strings } from "../strings-shell";
 import { workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
 import { mediaAlt } from "./media-alt";
