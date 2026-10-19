@@ -126,15 +126,17 @@ describe("as a Claude Code hook", () => {
       permissionDecision: "ask",
     });
     const denied = JSON.parse(
-      run(JSON.stringify({ tool_name: "Bash", tool_input: { command: "x --approve-data-loss 1" } })),
+      run(
+        JSON.stringify({ tool_name: "Bash", tool_input: { command: "x --approve-data-loss 1" } }),
+      ),
     );
     expect(denied.hookSpecificOutput.permissionDecision).toBe("deny");
   });
 
   it("prints nothing for a safe call, and asks when the input cannot be read", () => {
-    expect(
-      run(JSON.stringify({ tool_name: "Bash", tool_input: { command: "git status" } })),
-    ).toBe("");
+    expect(run(JSON.stringify({ tool_name: "Bash", tool_input: { command: "git status" } }))).toBe(
+      "",
+    );
     expect(JSON.parse(run("not json")).hookSpecificOutput.permissionDecision).toBe("ask");
   });
 

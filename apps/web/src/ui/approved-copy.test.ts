@@ -89,7 +89,8 @@ describe("texts approved by the owner on 2026-10-19", () => {
 describe("the provider_outcome_unresolved sentence approved on 2026-10-19", () => {
   const section = register.slice(register.indexOf("## تأیید 2026-10-19 — دستهٔ ۹"));
   it("is in the interface and in the register, word for word", () => {
-    const owner = "A result is still being checked. Contact the pilot operator before trying again.";
+    const owner =
+      "A result is still being checked. Contact the pilot operator before trying again.";
     expect(section.length).toBeGreaterThan(100);
     expect(workspaceErrors.outcomeUnresolved).toBe(owner);
     expect(section).toContain(`«${owner}»`);
