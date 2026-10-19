@@ -185,7 +185,7 @@ export function interactiveClassNotesHtml(
 ): string {
   if (!/^[a-zA-Z0-9_-]{10,100}$/.test(channel) || !/^[a-zA-Z0-9_-]{10,100}$/.test(nonce))
     throw new Error("Invalid pronunciation frame channel");
-  const policy = `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri about:`;
+  const policy = `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri about:`;
   const config = attribute(JSON.stringify({ channel, items }));
   const reader = options.fitContent
     ? `<meta name="recalino-notes-reader" content="${attribute(JSON.stringify({ channel }))}"><style>html{height:auto!important;min-height:0!important;overflow:hidden!important}body{height:auto!important;min-height:0!important}main>header>h1{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}</style>`

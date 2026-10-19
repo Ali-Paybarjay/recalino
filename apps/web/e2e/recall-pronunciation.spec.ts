@@ -341,8 +341,13 @@ for (const width of [390, 1440]) {
       page,
     }) => {
       await fixtures(page);
-      // The target and control must stay together when optional web fonts fail.
-      await page.route("https://fonts.googleapis.com/**", (route) => route.abort());
+      // SEC-04 (owner decision 2026-10-19): the card uses the device's own fonts, so opening it
+      // sends no request to another origin.
+      const origins = new Set<string>();
+      page.on("request", (request) => {
+        const url = new URL(request.url());
+        if (url.protocol === "http:" || url.protocol === "https:") origins.add(url.origin);
+      });
       const requests: unknown[] = [];
       await page.route(mediaPath, (route) => {
         requests.push(route.request().postDataJSON());
@@ -372,6 +377,7 @@ for (const width of [390, 1440]) {
       });
       await expect(speaker).toBeVisible();
       expect(requests).toHaveLength(0);
+      expect([...origins]).toEqual([new URL(page.url()).origin]);
       const word = page
         .locator(".fc-face:visible")
         .getByText(studySet === "production" ? target : "manager (pronunciation)", { exact: true });
