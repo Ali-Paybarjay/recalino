@@ -20,13 +20,17 @@
 
 | مقدار خام | تعداد | نگاشت پیشنهادی | تغییر ظاهر | جایگزین |
 |---|---|---|---|---|
-| 13px | 26 | `var(--rc-text-sm)` (14px) | +1px | `var(--rc-text-xs)` (12px) برای برچسب و راهنمای ریز، −1px |
-| 15px | 14 | `var(--rc-text-md)` (16px) | +1px | `var(--rc-text-sm)` (14px)، −1px |
-| 18px | 3 | `var(--rc-text-read)` (17px) | −1px | `var(--rc-text-lg)` (20px)، +2px |
+| 13px | 33 (26 در `ui/`، 7 در `app/`) | `var(--rc-text-sm)` (14px) | +1px | `var(--rc-text-xs)` (12px) برای برچسب و راهنمای ریز، −1px |
+| 15px | 20 (14 در `ui/`، 6 در `app/`) | `var(--rc-text-md)` (16px) | +1px | `var(--rc-text-sm)` (14px)، −1px |
+| 18px | 5 (3 در `ui/`، 2 در `app/`) | `var(--rc-text-read)` (17px) | −1px | `var(--rc-text-lg)` (20px)، +2px |
 
 اگر مالک محصول نگه‌داشتن 13 و 15 را می‌خواهد، راه دوم این است که آن‌ها یک بار در `app.css` به‌عنوان token لایهٔ بازطراحی (مثلاً `--rc-text-13`) ثبت شوند و CSS Moduleها به آن‌ها ارجاع دهند. این کار مقدار تازه‌ای وارد نمی‌کند، فقط مقدار موجود را نام‌گذاری می‌کند، ولی تصمیم طراحی است.
 
-### جای مقدارها (شماره خط در `apps/web/src/ui`، وضعیت 2026-10-19)
+### جای مقدارها (شماره خط در `apps/web/src/ui` و `apps/web/src/app`، وضعیت 2026-10-19)
+
+فهرست کل `apps/web/src` را پوشش می‌دهد (بیرون از `ui/styles/vendor`). نتیجهٔ `grep -rnE "font-size:\s*(13|15|18)px" apps/web/src --include=*.css` است: 33، 20 و 5 مورد.
+
+زیر `apps/web/src/ui`:
 
 13px:
 
@@ -42,6 +46,14 @@
 - `workspace/NoteView.module.css`: 65، 192
 - `workspace/SessionNotesReader.module.css`: 75، 189، 220، 227، 246
 
+زیر `apps/web/src/app`:
+
+- `SignIn.module.css`: 98، 216
+- `setup/setup.module.css`: 113، 210
+- `(app)/me/profile.module.css`: 76
+- `(app)/app.module.css`: 28
+- `dev/ui/shell/page.module.css`: 16
+
 15px:
 
 - `components/Feedback.module.css`: 133
@@ -55,11 +67,23 @@
 - `shell/AppShell.module.css`: 102، 174
 - `workspace/AutomaticLearningView.module.css`: 72، 154، 194، 237
 
+زیر `apps/web/src/app`:
+
+- `SignIn.module.css`: 148
+- `setup/setup.module.css`: 200، 317
+- `(app)/me/profile.module.css`: 165
+- `(app)/me/edit/[field]/EditField.module.css`: 15
+- `dev/ui/UiKit.module.css`: 81
+
 18px:
 
 - `components/Feedback.module.css`: 25
 - `voice/Voice.module.css`: 48
 - `workspace/NoteView.module.css`: 220
+
+زیر `apps/web/src/app`:
+
+- `dev/ui/shell/page.module.css`: 12، 28
 
 ### مقدارهای خامِ دیگر بیرون از مقیاس
 
@@ -77,10 +101,10 @@
 
 | الگو | جاها |
 |---|---|
-| `max-width: 600px` / `min-width: 600px` | `workspace/ClassDirectory`، `AutomaticLearningView`، `ClassRows`، `support/Support`، `preview/LearningViews`، `components/StudyOverview` (min) |
+| `max-width: 600px` / `min-width: 600px` | `workspace/ClassDirectory`، `AutomaticLearningView`، `ClassRows`، `support/Support`، `preview/LearningViews`، `components/StudyOverview` (min)، `app/(app)/me/profile.module.css` (max) |
 | `max-width: 850px` | `preview/LearningViews` |
 | `max-width: 520px` / `480px` / `400px` | `voice/Voice`، `workspace/NoteView`، `notifications/NotificationCenter` |
-| `min-width: 1100px` | `components/StudyOverview` |
+| `min-width: 1100px` | `components/StudyOverview`، `app/SignIn.module.css` |
 | `max-width: 720px`، `1050px`، `min-width: 1600px` | `admin/Admin` (رابط ادمین، جدا از پوستهٔ زبان‌آموز) |
 | `max-height: 700px` | `preview/AccountViews` |
 
@@ -97,3 +121,9 @@
 به‌جای تغییر خروجی ذخیره‌شده و خروجی دانلودی، `cardHtmlWithLanguages` (`packages/core/src/lkm/card-html.ts`) هنگام نمایش در `CardFace` زبان را اضافه می‌کند: بلوک سطح بالای بدون `lang` با `dir="ltr"` انگلیسی و با `dir="rtl"` فارسی می‌شود، و `<bdi>` بدون `lang` داخل بلوک فارسی انگلیسی. کارت ذخیره‌شده، خروجی TSV و APKG، و فایل جزوهٔ مستقل دست نخوردند.
 
 باقی‌مانده: در جزوهٔ مستقل فارسی (iframe `ClassNotesFrame` و فایل دانلودی) بلوک‌های انگلیسی هنوز `lang="en"` ندارند و زیر `<html lang="fa">` خوانده می‌شوند. رفعش نیازمند تصمیم مالک محصول برای نرمال‌سازی `lang` در مقایسهٔ مرجع است.
+
+## UX-08: محدودیت‌های شناخته‌شدهٔ `(app)/loading.tsx`
+
+- `shellSectionFor` (`apps/web/src/app/(app)/nav.ts`) فقط مسیری را به بخش ناوبری نگاشت می‌کند که صفحه‌اش `LearnerShell` می‌کشد. خواندنگر جزوهٔ جلسه (`/sessions/<id>/notes`) `SessionNotesReader` را بدون پوسته می‌کشد و `loading.tsx` خودش را دارد، پس `null` برمی‌گرداند؛ `/sessions/<id>/notes/versions` همچنان `classes` است.
+- `/me/voice` بسته به `returnHref` گاهی `current="classes"` می‌کشد، ولی حالت بارگذاری `me` را نشان می‌دهد. اثرش فقط چند ده میلی‌ثانیه نشانگر نادرست ناوبری است و برای رفعش باید پوستهٔ صفحه به layout برود (تصمیم باز مالک محصول در گزارش UX-08).
+- نشان «Review due» هنگام بارگذاری نیست.

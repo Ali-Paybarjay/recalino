@@ -9,11 +9,14 @@ export const NAV_HREFS: Record<NavId, string> = {
 
 /**
  * Pages of the (app) segment that draw no app shell: the recording and processing screens use the
- * focus shell, and the profile edit page and the recordings list have none (UX-02).
+ * focus shell, the profile edit page and the recordings list have none (UX-02), and the session
+ * notes reader renders `SessionNotesReader` on its own (with its own `loading.tsx`). Only the
+ * reader itself is listed: `/sessions/<id>/notes/versions` uses `LearnerShell` for "classes".
  */
 const WITHOUT_SHELL = [
   /^\/recordings(?:\/|$)/,
   /^\/sessions\/[^/]+\/(?:record|processing)(?:\/|$)/,
+  /^\/sessions\/[^/]+\/notes\/?$/,
   /^\/me\/edit(?:\/|$)/,
 ];
 
