@@ -9,7 +9,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { workspaceRequest } from "../workspace/api";
+import { userMessage, workspaceRequest } from "../workspace/api";
 import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
@@ -158,7 +158,7 @@ function RecordingIndicator() {
       ) : null}
       {syncState.phase === "failed" ? (
         <Button secondary onClick={() => sourceSync.retry()}>
-          Retry adding session sources
+          Retry adding session material
         </Button>
       ) : null}
       {["recording", "recovering"].includes(state.phase) ? (
@@ -247,7 +247,7 @@ export function RecordLauncher({ sessionId }: { sessionId?: string }) {
           .catch(() => {});
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Recording could not start.");
+      setError(userMessage(failure, "Recording could not start."));
     }
   }
   return (

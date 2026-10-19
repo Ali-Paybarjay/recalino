@@ -51,11 +51,16 @@ test("account deletion requires explicit acknowledgement and hides the account",
   expect(response.status()).toBe(401);
 });
 
-// UX-14: the data page links to the session list. The sentence that says where the download is
-// waits for the owner (docs/design/UI_COPY_PENDING.md), so only the link is checked.
-test("Your data links to the session list", async ({ page }) => {
+// UX-14: the data page tells where the download is (sentence approved by the owner on 2026-10-19)
+// and links to the session list.
+test("Your data points to the download of notes and cards", async ({ page }) => {
   await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/me/data");
+  await expect(
+    page.getByText(
+      "To keep a copy first, open a session, choose More session tools, then Download notes and cards.",
+    ),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Choose a session", exact: true }).click();
   await expect(page).toHaveURL(/\/sessions$/);
   await expectNoAxeViolations(page);

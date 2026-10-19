@@ -259,7 +259,7 @@ async function selectAndSend(page: Page, sessionId: string, bytes: Buffer) {
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(queueTitle).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Session sources", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Session material", exact: true })).toBeVisible();
   await expect(page.getByText("synthetic-background.pdf", { exact: true }).first()).toBeVisible();
 }
 for (const viewport of [

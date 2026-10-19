@@ -78,6 +78,12 @@ test("Continue stores the declarations and requests Google account selection thr
 test("the welcome page does not say its main features are still coming", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("main")).not.toContainText(/coming next/i);
+  // The sentence the owner approved on 2026-10-19 takes its place.
+  await expect(
+    page.getByText("Built for a small pilot group. Sign in with Google to start.", {
+      exact: true,
+    }),
+  ).toBeVisible();
 });
 
 // PRD-04: the pilot is private, so the start page is not offered to search engines.

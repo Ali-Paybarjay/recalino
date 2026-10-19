@@ -3,8 +3,9 @@ import { cardHtmlToText } from "@recalino/core/card-html";
 import type { ExportArtifact, ExportSettings } from "@recalino/core/plt";
 import { buildStudyAnkiText, studyExportFilename } from "@recalino/core/study-export";
 import { useEffect, useRef, useState } from "react";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { cardSummary } from "./card-labels";
 import styles from "./ExportView.module.css";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export interface ExportRevision {
@@ -98,9 +99,7 @@ export function ExportView({
       setProblem("");
       setNotice(`${set === "production" ? "Core" : "Supplementary"} Anki text download started.`);
     } catch (error) {
-      setProblem(
-        error instanceof Error ? error.message : "The Anki text file could not be prepared.",
-      );
+      setProblem(userMessage(error, "The Anki text file could not be prepared."));
     }
   }
   const revision = revisions.find((r) => r.id === revisionId),
@@ -155,9 +154,7 @@ export function ExportView({
       changed();
       setNotice("This image is permitted in exports. Select it to include it in this download.");
     } catch (error) {
-      setProblem(
-        error instanceof Error ? error.message : "The image permission could not be saved.",
-      );
+      setProblem(userMessage(error, "The image permission could not be saved."));
     } finally {
       setBusy(false);
     }
@@ -173,7 +170,7 @@ export function ExportView({
       else setProblem("Allow pop-ups to view this image, then try again.");
     } catch (error) {
       tab?.close();
-      setProblem(error instanceof Error ? error.message : "The image could not be opened.");
+      setProblem(userMessage(error, "The image could not be opened."));
     } finally {
       setBusy(false);
     }
@@ -189,7 +186,7 @@ export function ExportView({
       setPreview({ value, payload });
       setConfirmed(false);
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "The preview could not be made.");
+      setProblem(userMessage(error, "The preview could not be made."));
     } finally {
       setBusy(false);
     }
@@ -217,7 +214,7 @@ export function ExportView({
       setConfirmed(false);
       setNotice("Your export is being built. Its contents stay fixed to this selection.");
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "The export could not be created.");
+      setProblem(userMessage(error, "The export could not be created."));
     } finally {
       setBusy(false);
     }
@@ -239,7 +236,7 @@ export function ExportView({
       link.remove();
       setNotice("Download started. Keep the file somewhere private.");
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "The download could not be opened.");
+      setProblem(userMessage(error, "The download could not be opened."));
     } finally {
       setBusy(false);
     }
@@ -440,10 +437,7 @@ export function ExportView({
                       {card.contentFormat === "lesson_html"
                         ? cardHtmlToText(card.front)
                         : card.front}
-                      <small className={styles.muted}>
-                        {" "}
-                        · {card.template} · {card.status}
-                      </small>
+                      <small className={styles.muted}> · {cardSummary(card)}</small>
                     </span>
                   </label>
                 ))}

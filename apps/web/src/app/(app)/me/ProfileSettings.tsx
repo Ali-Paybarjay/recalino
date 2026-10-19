@@ -99,7 +99,7 @@ export function ProfileSettings({
       />
       <Row
         href="/courses"
-        label="Courses"
+        label="Manage courses"
         value="Sessions and learning materials"
         icon={ChalkboardSimple}
       />

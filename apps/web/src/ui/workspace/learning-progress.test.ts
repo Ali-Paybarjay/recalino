@@ -3,6 +3,7 @@ import type { InputContract } from "@recalino/core/src";
 import { describe, expect, it } from "vitest";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { learningProgress } from "./learning-progress";
+import { learningProgressCopy } from "./learning-progress-copy";
 import type { SourceRow } from "./source-types";
 import type { UploadBatch, UploadEntry } from "./upload-store";
 
@@ -347,6 +348,7 @@ describe("learning progress", () => {
         "pending",
       ]);
       expect(result.guidance).toContain("You can leave this page");
+      expect(result.guidance).toContain(learningProgressCopy.waitEstimate);
     },
   );
 
@@ -507,26 +509,41 @@ describe("learning progress", () => {
     expect(result.steps.every((step) => step.state === "pending")).toBe(true);
   });
 
-  // UX-09: new Terms speak with the approved Settings sentence (frame G3), never an invented one.
+  // UX-09: new Terms speak with the sentence the owner approved on 2026-10-19.
   describe("a stop for new Terms", () => {
     const stopped = status({ state: "blocked", lastError: "acceptance_required" });
 
-    it("uses the approved Terms sentence with the date from the server", () => {
-      expect(learningProgress(stopped, [], null, false, "1 Oct").guidance).toBe(
-        "The Terms changed on 1 Oct. Please read and accept them to keep processing new sessions.",
-      );
-    });
-
-    it("has no sentence when the date is not known, and never points to setup", () => {
+    it("uses the approved sentence and never points to setup", () => {
       const result = learningProgress(stopped);
-      expect(result.guidance).toBe("");
+      expect(result.guidance).toBe("Read and accept the updated Terms to continue.");
+      expect(result.guidance).toBe(learningProgressCopy.termsGuidance);
       expect(result.guidance).not.toContain("setup");
     });
 
     it("reads like any failed attempt once the Terms were accepted", () => {
-      const result = learningProgress(stopped, [], null, true, "1 Oct");
-      expect(result.guidance).not.toContain("Terms changed");
+      const result = learningProgress(stopped, [], null, true);
+      expect(result.guidance).not.toContain("Terms");
       expect(result.guidance).toContain("Retry");
+    });
+  });
+
+  // UX-13: the wait gets the owner's estimate (2026-10-19) and nothing else is promised.
+  describe("the wait for notes and flashcards", () => {
+    it.each(["queued", "processing"] as const)("shows the approved estimate while %s", (state) => {
+      const result = learningProgress(
+        status({ state: "processing", batchId: null, lastError: null, run: run(state) }),
+      );
+      expect(result.showsWait).toBe(true);
+      expect(result.guidance).toContain(learningProgressCopy.waitEstimate);
+      expect(result.guidance).toContain("Processing continues automatically");
+    });
+
+    it("shows it only while processing", () => {
+      for (const idle of [status({ state: "idle" }), status({ state: "ready" })]) {
+        const result = learningProgress(idle);
+        expect(result.showsWait).toBe(false);
+        expect(result.guidance).not.toContain(learningProgressCopy.waitEstimate);
+      }
     });
   });
 });

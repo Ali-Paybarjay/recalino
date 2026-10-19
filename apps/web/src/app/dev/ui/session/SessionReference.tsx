@@ -62,7 +62,7 @@ export const sessionStates: {
       state: "blocked",
       lastError: "quota_insufficient",
       message:
-        "Your material is saved, but this class needs more allowance than is left. You do not need to upload the same files again.",
+        "Your material is saved, but this session needs more allowance than is left. You do not need to upload the same files again.",
       allowance: {
         active: true,
         required: { audio: 7_680_000, document: 0, regeneration: 0 },

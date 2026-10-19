@@ -43,7 +43,7 @@ export default async function CourseMaterialsPage({
     >
       <div className="preview-stack">
         <Link className="preview-back" href="/courses">
-          ← Back to courses
+          ← Manage courses
         </Link>
         <CourseNavigation course={course} courses={courses} current="materials" />
         <Panel title="Learn through this course">
@@ -143,7 +143,7 @@ export default async function CourseMaterialsPage({
                   Flashcards
                 </Link>
                 <Link href={`/sessions/${session.id}/sources`} prefetch={false}>
-                  Session sources
+                  Session material
                 </Link>
               </div>
             </div>

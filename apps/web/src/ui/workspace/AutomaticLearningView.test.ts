@@ -200,17 +200,10 @@ describe("retry from the class notice", () => {
     "%s sends a stop for new Terms to the Terms sheet, not to setup",
     (view) => {
       mocks.status = { ...blocked, lastError: "acceptance_required" };
-      const html = render(view, {
-        setupComplete: true,
-        termsPending: true,
-        termsChangedOn: "1 Oct",
-      });
+      const html = render(view, { setupComplete: true, termsPending: true });
       expect(html).toContain("Read and accept");
-      // The approved Settings sentence (frame G3), with the date the server gives.
-      expect(html).toContain(
-        "The Terms changed on 1 Oct. Please read and accept them to keep processing new sessions.",
-      );
-      expect(html).not.toContain("Read and accept the updated Terms to continue.");
+      // The sentence the owner approved on 2026-10-19 (UX-09).
+      expect(html).toContain("Read and accept the updated Terms to continue.");
       expect(html).not.toContain("Review account setup");
       expect(html).not.toContain('href="/setup"');
       const dispatchEvent = vi.fn(() => true);
@@ -226,13 +219,21 @@ describe("retry from the class notice", () => {
     },
   );
 
-  it("shows no made-up sentence for new Terms when the date is not known", () => {
-    mocks.status = { ...blocked, lastError: "acceptance_required" };
+  // UX-13: the wait gets the owner's estimate of 2026-10-19 and promises nothing more than that.
+  it("shows the approved wait estimate while notes are being made, and no failure text", () => {
+    mocks.status = {
+      ...blocked,
+      state: "processing",
+      lastError: null,
+      message: "Creating your notes and flashcards automatically…",
+      run: { id: "run-1", sessionId, state: "processing" } as AutomaticLearningStatus["run"],
+    };
     const html = render("progress");
-    expect(html).toContain("Read and accept");
-    expect(html).not.toContain("Terms changed on");
-    expect(html).not.toContain("Read and accept the updated Terms");
-    expect(html).not.toContain("Review account setup");
+    expect(html).toContain("Creating notes and flashcards");
+    expect(html).toContain(
+      "Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.",
+    );
+    expect(html).not.toContain("Action needed");
   });
 
   it("replaces the failure notice with a ready state and next actions", () => {
@@ -344,7 +345,7 @@ describe("recovery actions match the processing blocker", () => {
         ...blocked,
         lastError: "quota_insufficient",
         message:
-          "Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again.",
+          "Your material is saved. Your allowance now covers this session. Retry to create the notes and flashcards. You do not need to upload the same files again.",
         allowance: { active: true, required: amounts(1), available: amounts(1) },
       };
       const html = render(view);
@@ -486,7 +487,7 @@ describe("recovery actions match the processing blocker", () => {
       },
     };
     const html = render("progress");
-    expect(html).toContain("notes and flashcards are available with some source limitations");
+    expect(html).toContain("notes and flashcards are available with some material limitations");
     expect(html).toContain(`href="/sessions/${sessionId}/notes"`);
     expect(html).toContain("Open session notes");
     expect(mocks.buttons.has("Request processing review")).toBe(false);

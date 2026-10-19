@@ -16,3 +16,16 @@ export function cardActionBody(
 export function undoBody(changed: Pick<StudyCard, "contentVersion">): CardActionInput {
   return { expectedVersion: changed.contentVersion, action: "undo" };
 }
+
+/**
+ * The card the Undo snackbar offers to take back (UX-03): the one a Reject has just changed.
+ * Nothing is offered after another action, after a failure (`changed` is undefined), or while a
+ * session is being recorded (`recording`), because no message may appear then (PRD-REC-02).
+ */
+export function undoOffer<T extends Pick<StudyCard, "contentVersion">>(
+  action: CardActionInput["action"],
+  changed: T | undefined,
+  recording: boolean,
+): T | null {
+  return changed && action === "reject" && !recording ? changed : null;
+}

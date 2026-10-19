@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { PrivacyView } from "./PrivacyView";
+import { privacyCopy } from "./privacy-copy";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock("../recording/RecordingProvider", () => ({
@@ -36,9 +37,13 @@ describe("account deletion recovery page", () => {
     expect(html).toContain("Sign out");
     // "Return to Recalino" only led back to this page until cleanup ended the session.
     expect(html).not.toContain("Return to Recalino");
+    // UX-05: no "queue" or "server cleanup" for the learner, and no text the owner has not seen.
+    expect(html).toContain("Your account and sessions are hidden.");
+    expect(html).not.toMatch(/queued|server cleanup/i);
+    expect(html).not.toContain(privacyCopy.needsOperator);
   });
 
-  it("offers the operator link, not a claim that cleanup is queued, when cleanup is stopped", () => {
+  it("tells a stopped cleanup to contact the operator, with a link when one is configured", () => {
     const html = render({
       initialPending: pending,
       recoveryStage: "needs_operator",
@@ -46,7 +51,12 @@ describe("account deletion recovery page", () => {
     });
     expect(html).toContain("Account deletion requested");
     expect(html).toContain(`Request reference: ${requestId}`);
-    expect(html).not.toContain("Server cleanup has been queued");
+    // The text the owner approved word for word on 2026-10-19 (UX-10).
+    expect(html).toContain(privacyCopy.needsOperator);
+    expect(privacyCopy.needsOperator).toBe(
+      "Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below.",
+    );
+    expect(html).not.toMatch(/queued|server cleanup/i);
     expect(html).toContain("Ask the pilot operator");
     expect(html).toContain('href="mailto:operator%40example.org"');
     expect(html).not.toContain("Finish deletion");
@@ -57,11 +67,15 @@ describe("account deletion recovery page", () => {
     expect(withoutLink).toContain("Sign out");
   });
 
-  it("keeps the link to the session list on the normal data page, with no new text (UX-14)", () => {
+  it("points to the download before the delete options on the normal data page (UX-14)", () => {
     const html = render({});
+    expect(html).toContain(privacyCopy.downloadFirst);
+    expect(privacyCopy.downloadFirst).toBe(
+      "To keep a copy first, open a session, choose More session tools, then Download notes and cards.",
+    );
+    expect(html.indexOf(privacyCopy.downloadFirst)).toBeLessThan(html.indexOf("Session options"));
     expect(html).toContain('href="/sessions"');
     expect(html).toContain("Choose a session");
-    expect(html).not.toContain("To keep a copy first");
     expect(html).not.toContain("Sign out");
   });
 });

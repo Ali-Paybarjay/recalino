@@ -4,7 +4,13 @@ import { Sheet } from "../components/Sheet";
 import { PushSafeSignOut } from "../notifications/PushSafeSignOut";
 import { useRecording } from "../recording/RecordingProvider";
 import { settingsStrings as strings } from "../strings-settings";
-import { type PendingDeletion, requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import {
+  type PendingDeletion,
+  requestKey,
+  userMessage,
+  WorkspaceRequestError,
+  workspaceRequest,
+} from "./api";
 import { IndexedManualAudioStore } from "./manual-audio-store";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import {
@@ -12,7 +18,10 @@ import {
   type DeletionReceipt,
   submitAccountDeletion,
 } from "./privacy-actions";
+import { privacyCopy } from "./privacy-copy";
 import { IndexedUploadStore } from "./upload-store";
+
+const DELETION_FAILED = "Your account deletion request could not be saved. Try again.";
 
 /**
  * `initialPending` is an account that is already hidden. `recoveryStage` says what is left (UX-10):
@@ -96,14 +105,10 @@ export function PrivacyView({
         setConfirm(false);
       } else if (failure instanceof DeletionOutcomeUnknownError) {
         setUncertain(true);
-        setProblem(failure.message);
+        setProblem(userMessage(failure, DELETION_FAILED));
         setConfirm(false);
       } else {
-        setProblem(
-          failure instanceof Error
-            ? failure.message
-            : "Your account deletion request could not be saved. Try again.",
-        );
+        setProblem(userMessage(failure, DELETION_FAILED));
       }
     } finally {
       setBusy(false);
@@ -138,10 +143,13 @@ export function PrivacyView({
   if (receipt)
     return (
       <Panel title="Account deletion requested">
-        {/* "Server cleanup has been queued" would be untrue when cleanup waits for the operator;
-            the text for that case waits for the owner (UI_COPY_PENDING.md, UX-10). */}
-        {receipt.state === "needs_operator" ? null : (
-          <Status>Your account and sessions are hidden. Server cleanup has been queued.</Status>
+        {/* UX-10: while cleanup waits for the pilot operator the receipt says so (approved
+            2026-10-19). UX-05: the other state no longer speaks of a "queue"; the sentence that
+            would replace it waits for the owner in UI_COPY_PENDING.md. */}
+        {receipt.state === "needs_operator" ? (
+          <Status tone="error">{privacyCopy.needsOperator}</Status>
+        ) : (
+          <Status>Your account and sessions are hidden.</Status>
         )}
         <p>Request reference: {receipt.id}</p>
         {deviceCleanup === "complete" ? (
@@ -216,18 +224,19 @@ export function PrivacyView({
   return (
     <div className="preview-stack">
       <Panel title="Your data, your choices">
+        <p>{privacyCopy.downloadFirst}</p>
         <p>
-          You can remove an individual session from its Session options page, or remove a source
-          from its Sources page.
+          You can remove an individual session from its Session options page, or remove material
+          from its Session material page.
         </p>
         <p>
-          Removing a source from one session keeps its other uses. Deleting its original file keeps
+          Removing material from one session keeps its other uses. Deleting its original file keeps
           saved extraction and derived notes. Complete deletion removes derived content from every
           affected session.
         </p>
         <p>
-          Shared cards and source files are checked before session cleanup. Files already downloaded
-          cannot be removed from your devices by Recalino.
+          Shared cards and material files are checked before session cleanup. Files already
+          downloaded cannot be removed from your devices by Recalino.
         </p>
         <Actions>
           <LinkButton secondary href="/sessions">

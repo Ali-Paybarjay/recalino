@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { DateInput } from "../components/DateInput";
 import { Sheet } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 
 const CREATE_NEW_COURSE = "__create_new_course__";
@@ -68,9 +68,7 @@ export function ClassForm({
       router.push(`/sessions/${saved.id}`);
       router.refresh();
     } catch (failure) {
-      setError(
-        failure instanceof Error ? failure.message : "Your session could not be saved. Try again.",
-      );
+      setError(userMessage(failure, "Your session could not be saved. Try again."));
       setBusy(false);
     }
   }
@@ -99,9 +97,7 @@ export function ClassForm({
       setCourseNotice("Course created and selected.");
       courseIdempotency.current = null;
     } catch (failure) {
-      setCourseError(
-        failure instanceof Error ? failure.message : "The course could not be created. Try again.",
-      );
+      setCourseError(userMessage(failure, "The course could not be created. Try again."));
     } finally {
       setCreatingCourse(false);
     }
@@ -121,9 +117,7 @@ export function ClassForm({
       router.push("/sessions");
       router.refresh();
     } catch (failure) {
-      setError(
-        failure instanceof Error ? failure.message : "The session could not be deleted. Try again.",
-      );
+      setError(userMessage(failure, "The session could not be deleted. Try again."));
       setBusy(false);
       setConfirm(false);
     }

@@ -7,7 +7,7 @@ import { workspaceRequest } from "./api";
 import { prepareFileHashes } from "./file-hashes";
 import { retryUploadRequest, type UploadRecovery, uploadWithConfirmation } from "./upload";
 import { concurrentUploads, uploadSlots } from "./upload-concurrency";
-import { AudioUploadProblem, audioUploadProblem } from "./upload-problems";
+import { AudioUploadProblem, audioUploadProblem, LOCAL_MISMATCH } from "./upload-problems";
 import { uploadWithProgress } from "./upload-progress";
 
 export interface AutomaticUploadProgress {
@@ -626,10 +626,7 @@ export async function uploadAutomaticAudio(
     reportTransfer();
     const prepared = await prepareFileHashes(blob, contract.partBytes, true, options.signal);
     if (prepared.sha256 !== source.sha256)
-      throw new AudioUploadProblem(
-        "integrity_mismatch",
-        "The local recording does not match this session material.",
-      );
+      throw new AudioUploadProblem("integrity_mismatch", LOCAL_MISMATCH);
     const parts = prepared.parts;
     const started = await request<{ uploadId: string }>(
       `/api/sources/${source.sourceId}/audio`,

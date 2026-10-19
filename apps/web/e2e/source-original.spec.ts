@@ -386,12 +386,12 @@ test.describe("FR-SRC-012 original-file access", () => {
     ).toBe(true);
     await page.locator("summary").filter({ hasText: "Delete options" }).click();
     await page.getByLabel("I understand that deletion cannot be undone.", { exact: true }).check();
-    await page.getByRole("button", { name: "Delete entire source", exact: true }).click();
+    await page.getByRole("button", { name: "Delete from all sessions", exact: true }).click();
     await deletionStarted.promise;
     expect(revoked).not.toContain(originalUrl);
     deletionResponse.resolve();
     await expect(
-      page.getByText("Source deleted from all sessions.", { exact: true }),
+      page.getByText("Material deleted from all sessions.", { exact: true }),
     ).toBeVisible();
     await expect.poll(() => revoked.filter((url) => url === originalUrl)).toEqual([originalUrl]);
     expect(

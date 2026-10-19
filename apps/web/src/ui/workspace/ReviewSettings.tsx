@@ -1,7 +1,7 @@
 "use client";
 import type { ReviewSettings as Settings } from "@recalino/core/srs";
 import { useState } from "react";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export function ReviewSettings({ initial }: { initial: Settings }) {
   const [settings, setSettings] = useState(initial),
@@ -21,7 +21,7 @@ export function ReviewSettings({ initial }: { initial: Settings }) {
             );
             setNotice("Review settings saved.");
           } catch (failure) {
-            setProblem(failure instanceof Error ? failure.message : "Settings could not be saved.");
+            setProblem(userMessage(failure, "Settings could not be saved."));
           } finally {
             setBusy(false);
           }

@@ -1,5 +1,7 @@
 // PERF-06: the browser bundles zod/mini, which has the same parsing without the method chain.
 import { z } from "zod/mini";
+import { accountCopy } from "../account-copy";
+import { workspaceErrors } from "./error-copy";
 
 const failureSchema = z.object({
   error: z.object({
@@ -23,6 +25,8 @@ const failureSchema = z.object({
 export type PendingDeletion = NonNullable<
   NonNullable<z.infer<typeof failureSchema>["error"]["details"]>["deletion"]
 >;
+const DEFAULT_FAILURE = "The change could not be saved. Try again.";
+
 export class WorkspaceRequestError extends Error {
   constructor(
     message: string,
@@ -70,9 +74,7 @@ export async function workspaceRequest<T>(
     const failure = failureSchema.safeParse(value);
     const fields = failure.success ? failure.data.error.details?.fields : undefined;
     const reasons = Object.values(fields ?? {}).flat();
-    let message = failure.success
-      ? failure.data.error.message
-      : "The change could not be saved. Try again.";
+    let message = failure.success ? failure.data.error.message : DEFAULT_FAILURE;
     // A hidden session whose durable deletion receipt is not saved yet; deleting again with the
     // same key finishes it (FR-ORG-007). Text approved by the product owner on 2026-10-09.
     if (failure.success && failure.data.error.details?.deletion?.kind === "session")
@@ -110,18 +112,18 @@ export async function workspaceRequest<T>(
     if (reasons.includes("configuration_unavailable") && path.includes("/exports"))
       message = "Exports are not configured yet.";
     if (fields?.provider?.includes("configuration_unavailable"))
-      message = "AI is awaiting operator configuration. Your sources remain saved.";
-    if (reasons.includes("provider_outcome_unresolved"))
-      message =
-        "A provider result is still being checked. Contact the operator before trying again.";
+      message = "AI is awaiting operator configuration. Your material remains saved.";
+    // UX-05: the learner never reads "provider". The progress card names the next step (Processing
+    // review); the proposed sentence waits for the owner in docs/design/UI_COPY_PENDING.md.
+    if (reasons.includes("provider_outcome_unresolved")) message = DEFAULT_FAILURE;
     if (
       reasons.includes("changed_after_estimate") ||
       reasons.includes("changed_after_confirmation") ||
       reasons.includes("new_confirmation_required")
     )
-      message = "The selected sources have changed.";
+      message = workspaceErrors.sourcesChanged;
     if (reasons.includes("source_limit") || reasons.includes("input_too_large"))
-      message = "Select fewer sources or smaller ranges before processing.";
+      message = "Select less material or smaller ranges before processing.";
     if (reasons.includes("part_integrity_mismatch"))
       message =
         "The uploaded audio part did not match the saved recording. Keep the local original and check the selected audio before trying again.";
@@ -131,7 +133,7 @@ export async function workspaceRequest<T>(
         fields?.sources?.some((reason) => ["select_at_least_one", "not_verified"].includes(reason))
       )
         message =
-          "Select a session recording in Sources and process it before checking session voices.";
+          "Select a session recording in Session material and process it before checking session voices.";
       if (reasons.includes("consent_required") || reasons.includes("consent_changed"))
         message = "Enable voice identification in Voice settings, then check the session again.";
       if (
@@ -157,4 +159,53 @@ export async function workspaceRequest<T>(
       502,
     );
   return value as T;
+}
+
+/** Codes whose server message is written for developers, not for a learner (UX-04). */
+const TECHNICAL_CODES = new Set(["idempotency_mismatch", "cross_site"]);
+/** Wording that only a developer or the network stack uses; it is never shown to a learner. */
+const RAW_TEXT =
+  /idempoten|\bsame key\b|failed to fetch|load failed|networkerror|network request failed|\bprovider\b|\[object|^\w+Error:/i;
+/** What the browser says when a request never reached the server (Chrome, Firefox and Safari). */
+const NETWORK_TEXT =
+  /fetch|network|load failed|internet|connection|offline|timed out|timeout|disconnected/i;
+const RUNTIME_ERRORS = [TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError];
+
+/**
+ * Whether a request failed because the device could not reach the server (offline, a dropped
+ * connection, a blocked request): `fetch` rejects with a TypeError then, which carries browser
+ * words such as "Failed to fetch". A rejection from the server is never a connection failure.
+ */
+export function isConnectionFailure(failure: unknown): boolean {
+  if (failure instanceof WorkspaceRequestError) return false;
+  if (failure instanceof DOMException) return failure.name === "NetworkError";
+  if (!(failure instanceof TypeError)) return false;
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  return offline || NETWORK_TEXT.test(failure.message);
+}
+
+/**
+ * The words a learner reads for a failed request or action (UX-04). Never the exception text:
+ * a lost connection gets the connection message, a server rejection its saved or mapped sentence,
+ * and anything else the `fallback` of the screen that asked. Errors the app itself wrote for
+ * learners (a plain `Error` or one of its own classes) keep their sentence.
+ */
+export function userMessage(failure: unknown, fallback: string): string {
+  if (isConnectionFailure(failure)) return accountCopy.error.connection;
+  if (failure instanceof WorkspaceRequestError) {
+    if (failure.code && TECHNICAL_CODES.has(failure.code)) return fallback;
+    return learnerText(failure.message) ?? fallback;
+  }
+  if (
+    failure instanceof Error &&
+    !(failure instanceof DOMException) &&
+    !RUNTIME_ERRORS.some((type) => failure instanceof type)
+  )
+    return learnerText(failure.message) ?? fallback;
+  return fallback;
+}
+
+function learnerText(message: string): string | null {
+  const text = message.trim();
+  return text && !RAW_TEXT.test(text) ? text : null;
 }

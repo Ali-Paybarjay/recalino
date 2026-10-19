@@ -250,7 +250,7 @@ export function ClassDirectory({
               </LinkButton>
             ) : null}
             <LinkButton secondary href="/courses">
-              View courses
+              Manage courses
             </LinkButton>
           </Actions>
         </details>

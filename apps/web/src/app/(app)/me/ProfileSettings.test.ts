@@ -37,3 +37,12 @@ describe("Settings row for the legal texts", () => {
     expect(render()).not.toContain("Terms and Privacy Notice");
   });
 });
+
+// UX-06 (vocabulary A, owner decision 2026-10-19): every link to /courses is called "Manage courses".
+describe("Settings row for the courses", () => {
+  it("is called Manage courses and opens /courses", () => {
+    const html = render();
+    expect(html).toMatch(/href="\/courses"[^>]*>[\s\S]*?Manage courses/);
+    expect(html).not.toMatch(/>Courses</);
+  });
+});

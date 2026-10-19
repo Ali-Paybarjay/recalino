@@ -3,7 +3,7 @@ import { VOICE_CONSENT_VERSION, type VoiceProfileView } from "@recalino/core/voi
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
 import { useRecording } from "../recording/RecordingProvider";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { sampleBase64, type VoiceCaptureState, VoiceSampleCapture } from "./sample-capture";
 import styles from "./Voice.module.css";
@@ -73,9 +73,7 @@ export function VoiceProfileForm({
     void load(abort.signal)
       .catch((error) => {
         if (!abort.signal.aborted)
-          setProblem(
-            error instanceof Error ? error.message : "Your voice settings could not be loaded.",
-          );
+          setProblem(userMessage(error, "Your voice settings could not be loaded."));
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
@@ -181,11 +179,7 @@ export function VoiceProfileForm({
         );
         return;
       }
-      setProblem(
-        error instanceof Error
-          ? error.message
-          : "Your voice settings could not be saved. Try again.",
-      );
+      setProblem(userMessage(error, "Your voice settings could not be saved. Try again."));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -241,9 +235,7 @@ export function VoiceProfileForm({
         "Voice confirmation is off. Your saved sample and voice identification data have been deleted.",
       );
     } catch (error) {
-      setProblem(
-        error instanceof Error ? error.message : "Voice data could not be deleted. Try again.",
-      );
+      setProblem(userMessage(error, "Voice data could not be deleted. Try again."));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -297,9 +289,7 @@ export function VoiceProfileForm({
               setLoading(true);
               setProblem("");
               void load()
-                .catch((error) =>
-                  setProblem(error instanceof Error ? error.message : "Could not load settings."),
-                )
+                .catch((error) => setProblem(userMessage(error, "Could not load settings.")))
                 .finally(() => setLoading(false));
             }}
           >

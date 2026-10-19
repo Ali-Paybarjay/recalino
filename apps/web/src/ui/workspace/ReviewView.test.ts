@@ -97,6 +97,49 @@ describe("review card focus (A11Y-03)", () => {
   });
 });
 
+// UX-05 and UX-06: the learner reads a city and plain words, and a link says where it goes.
+describe("review wording", () => {
+  const withCard = (studySet: "production" | "recognition"): ReviewQueue => ({
+    ...queue,
+    hasCards: true,
+    dueCount: 1,
+    cards: [
+      {
+        card: { ...card, studySet },
+        schedule: {
+          cardId: card.id,
+          version: 1,
+          state: {} as ReviewQueue["cards"][number]["schedule"]["state"],
+          dueAt: "2026-10-18T08:00:00Z",
+          introducedAt: null,
+        },
+      },
+    ],
+  });
+
+  it("shows the city of the time zone, not its IANA name", () => {
+    const html = render(withCard("production"));
+    expect(html).toContain("· London");
+    expect(html).not.toContain("Europe/London");
+  });
+
+  it.each([
+    ["production", "Core cards"],
+    ["recognition", "Supplementary cards"],
+  ] as const)("calls the %s set %s", (studySet, label) => {
+    const html = render(withCard(studySet));
+    expect(html).toContain(`>${label}<`);
+    expect(html).not.toMatch(/production|recognition/);
+  });
+
+  it("sends an empty review to the sessions, by that name", () => {
+    expect(render(queue)).toContain(">Open your sessions<");
+    const done = render({ ...queue, hasCards: true });
+    expect(done).toContain(">Open your sessions<");
+    expect(done).not.toContain("courses");
+  });
+});
+
 describe("listening answer (A11Y-02)", () => {
   it("follows the direction of the learner's own text and keeps its line breaks", () => {
     const html = renderToStaticMarkup(

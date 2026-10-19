@@ -11,7 +11,7 @@ export const shellStrings = {
   },
   nav: {
     today: "Today",
-    classes: "Courses",
+    classes: "Sessions",
     review: "Review",
     me: "Me",
     newClass: "New session",

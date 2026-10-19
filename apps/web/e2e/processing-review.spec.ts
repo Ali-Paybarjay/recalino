@@ -114,7 +114,7 @@ for (const view of ["notice", "progress"] as const) {
         page.getByRole("link", { name: "Open session notes", exact: true }),
       ).toHaveAttribute("href", `/sessions/${sessionId}/notes`);
       await expect(
-        page.getByText(/notes and flashcards are available with some source limitations/),
+        page.getByText(/notes and flashcards are available with some material limitations/),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Request processing review", exact: true }),

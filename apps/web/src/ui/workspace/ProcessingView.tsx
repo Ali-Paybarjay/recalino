@@ -8,8 +8,9 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import { IndexedRecordingStore } from "../recording/store";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+import { sourceKindLabel } from "./source-labels";
 import { isRetryableUploadFailure } from "./upload";
 import { uploadCopy } from "./upload-copy";
 
@@ -221,7 +222,7 @@ export function ProcessingView({
         setMessage(null);
         if (failure instanceof DOMException && failure.name === "AbortError") return;
         recoverable.current = isRetryableUploadFailure(failure);
-        setError(failure instanceof Error ? failure.message : "Processing could not start.");
+        setError(userMessage(failure, "Processing could not start."));
       })
       .finally(() => {
         inFlight.current = null;
@@ -290,7 +291,7 @@ export function ProcessingView({
     ) {
       setEstimate(current);
       setError(
-        "The session sources have changed. Review the updated estimate and confirm again to include the saved recording parts.",
+        "The session material has changed. Review the updated estimate and confirm again to include the saved recording parts.",
       );
       return;
     }
@@ -343,7 +344,7 @@ export function ProcessingView({
         >
           <p role="status">
             {previousSelection
-              ? "Your sources have changed since this attempt. Review the current selection below."
+              ? "Your material has changed since this attempt. Review the current selection below."
               : latest.state === "ready"
                 ? "Your session is ready."
                 : latest.state === "partial_ready"
@@ -370,7 +371,7 @@ export function ProcessingView({
                 : latest.lastError === "new_confirmation_required"
                   ? verifiedAudioNeedsConfirmation
                     ? "Your audio is uploaded and verified. Note creation has not started. Review the allowance below and confirm to create your session notes; you do not need to upload the audio again."
-                    : "The verified source has changed. Review the selected sources and allowance before confirming again."
+                    : "The verified material has changed. Review the selected material and allowance before confirming again."
                   : latest.lastError === "audio_upload_rejected"
                     ? "The audio could not be verified. Review the selected audio, then retry with the saved original on this device or replace it."
                     : latest.lastError === "audio_upload_not_started"
@@ -378,7 +379,7 @@ export function ProcessingView({
                       : latest.lastError === "audio_upload_incomplete"
                         ? uploadCopy.audio.incomplete
                         : (outputMessage ??
-                          "The selected material could not finish processing. Check your sources, then confirm a new attempt.")}
+                          "The selected material could not finish processing. Check your material, then confirm a new attempt.")}
             </Status>
           ) : null}
           <Actions>
@@ -391,7 +392,7 @@ export function ProcessingView({
               </>
             ) : null}
             <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-              {completed ? "Add or change material" : "Change sources"}
+              {completed ? "Add or change material" : "Change material"}
             </LinkButton>
             <Link href={`/sessions/${sessionId}`}>Back to session</Link>
           </Actions>
@@ -411,7 +412,7 @@ export function ProcessingView({
                 : "Waiting for selected audio to be uploaded and verified."
               : latest.state === "queued"
                 ? "Queued. You can leave this page; progress is saved."
-                : "Extracting the selected sources and building your session notes."}
+                : "Extracting the selected material and building your session notes."}
           </p>
           <p>
             When processing finishes, select Read session notes. Save the notes, then choose the
@@ -468,7 +469,7 @@ export function ProcessingView({
                 <LinkButton href={`/sessions/${sessionId}/sources`}>
                   {estimateProblem === "no_selected_sources"
                     ? "Add or select material"
-                    : "Review sources"}
+                    : "Review material"}
                 </LinkButton>
               </Actions>
             </>
@@ -482,7 +483,7 @@ export function ProcessingView({
               <ul>
                 {estimate.snapshot.sources.map((source) => (
                   <li key={source.sourceId}>
-                    {source.kind} ·{" "}
+                    {sourceKindLabel(source.kind)} ·{" "}
                     {source.durationMs
                       ? `${Math.ceil(source.durationMs / 60000)} minutes`
                       : source.pageCount
@@ -509,7 +510,7 @@ export function ProcessingView({
                 </p>
               ) : null}
               {!estimate.providerConfigured ? (
-                <Status>AI is awaiting operator configuration. Your sources remain saved.</Status>
+                <Status>AI is awaiting operator configuration. Your material remains saved.</Status>
               ) : !enough ? (
                 <Status>More allowance is needed. Recording and review remain available.</Status>
               ) : null}
@@ -546,7 +547,7 @@ export function ProcessingView({
                           : "Confirm and process"}
                 </Button>
                 <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                  Change sources
+                  Change material
                 </LinkButton>
               </Actions>
             </>

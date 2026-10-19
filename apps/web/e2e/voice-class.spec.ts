@@ -146,7 +146,7 @@ test("D64 one confirmation for the whole class, short voices grouped, lines mark
   });
   await page.setViewportSize({ width: 390, height: 1000 });
   await page.goto("/dev/ui/voice?view=class");
-  const whole = page.getByRole("region", { name: "Your voice in this class" });
+  const whole = page.getByRole("region", { name: "Your voice in this session" });
   await expect(whole).toBeVisible();
   // D55: a voice is confirmed by ear; nothing is offered until an excerpt can play here.
   await expect(whole.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
@@ -160,14 +160,14 @@ test("D64 one confirmation for the whole class, short voices grouped, lines mark
   // Each part defers to the class choice instead of asking again.
   const first = page.getByRole("region", { name: "Source 1 voice confirmation" });
   await expect(
-    first.getByText("Your choice for the whole class above covers this recording."),
+    first.getByText("Your choice for the whole session above covers this recording."),
   ).toBeVisible();
   await expect(first.getByRole("button", { name: "Yes, this is my voice" })).toHaveCount(0);
   await expect(first.getByText("Lines that may be yours")).toBeVisible();
   await shoot(page, "voice-class-confirmation");
 
   await whole.getByRole("button", { name: "Yes, this is my voice" }).click();
-  await expect(whole.getByText("Your voice is confirmed for this whole class.")).toBeVisible();
+  await expect(whole.getByText("Your voice is confirmed for this whole session.")).toBeVisible();
   expect(writes.at(-1)).toEqual({
     scope: "class",
     action: "confirm",
@@ -192,7 +192,7 @@ test("D64 kill switch: without class confirmation, short voices are grouped per 
   await page.route("**/api/classes/*/voice", (route) => route.fulfill({ json: view }));
   await page.setViewportSize({ width: 390, height: 1000 });
   await page.goto("/dev/ui/voice?view=class");
-  await expect(page.getByRole("region", { name: "Your voice in this class" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Your voice in this session" })).toHaveCount(0);
   const first = page.getByRole("region", { name: "Source 1 voice confirmation" });
   // The page creates the device store once a part says its original is not here.
   await expect(first.getByText("The original audio isn't on this device.")).toBeVisible();

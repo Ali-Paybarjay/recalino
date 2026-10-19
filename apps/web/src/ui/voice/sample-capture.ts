@@ -1,4 +1,5 @@
 import { supportedMime } from "../recording/controller";
+import { userMessage } from "../workspace/api";
 
 export const VOICE_SAMPLE_MIN_MS = 20_000;
 export const VOICE_SAMPLE_MAX_MS = 30_000;
@@ -132,9 +133,7 @@ export class VoiceSampleCapture {
       const message =
         error instanceof Error && error.name === "NotAllowedError"
           ? "Microphone access was not allowed. You can try again or enable voice confirmation without a sample."
-          : error instanceof Error
-            ? error.message
-            : "The microphone could not start.";
+          : userMessage(error, "The microphone could not start.");
       this.changed({ phase: "failed", elapsedMs: 0, sample: null, error: message });
     }
   }
