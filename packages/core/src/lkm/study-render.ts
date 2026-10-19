@@ -48,6 +48,9 @@ function context(language: string): RenderContext {
         : html;
     },
     number: (value) => studyNumber(value, locale.language),
+    // Persian output is the owner's reference HTML: `dir` without `lang`, and the reference tests
+    // compare attributes. Other languages name theirs. Do not add `lang` here to fix A11Y-02;
+    // `cardHtmlWithLanguages` adds it when the app displays a card face.
     englishAttrs: `dir="ltr"${locale.isPersian ? "" : ' lang="en"'}`,
     explanatoryAttrs:
       'dir="' +

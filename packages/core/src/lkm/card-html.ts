@@ -47,3 +47,40 @@ export function cardHtmlToText(value: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/**
+ * `safeCardHtml` for display, with the language the Persian reference output leaves unsaid.
+ *
+ * That output reproduces the owner's reference faces, which carry `dir` but no `lang`
+ * (`study-render.ts`, `englishAttrs`; the reference comparison tests check attributes). In the app
+ * page, which is `lang="en"`, a screen reader then reads the Persian in English. Here, for display
+ * only and without touching the stored or exported card, a top-level block without `lang` gets
+ * the language that output means by its direction: `ltr` is English, `rtl` is Persian, and a
+ * bare `<bdi>` inside a Persian block is a Latin-script run. Anything that already names its
+ * language, nested blocks and `dir="auto"` wrappers are left as they are.
+ */
+export function cardHtmlWithLanguages(value: string): string {
+  if (!isStudyCardHtml(value)) return safeCardHtml(value);
+  let depth = 0;
+  let persianBlockDepth = -1;
+  return value.replace(/<[^>]*>/g, (tag) => {
+    if (/^<(?:br|hr)>$/.test(tag)) return tag;
+    if (tag.startsWith("</")) {
+      depth = Math.max(0, depth - 1);
+      if (persianBlockDepth === depth) persianBlockDepth = -1;
+      return tag;
+    }
+    const opening = /^<(div|b|i|span|bdi)((?: [a-z]+="[^"]*")*)>$/.exec(tag);
+    const here = depth++;
+    if (!opening || / lang="/.test(opening[2] ?? "")) return tag;
+    const [, name = "", attributes = ""] = opening;
+    const direction = / dir="(ltr|rtl|auto)"/.exec(attributes)?.[1];
+    if (here === 0 && persianBlockDepth < 0 && (direction === "ltr" || direction === "rtl")) {
+      if (direction === "rtl") persianBlockDepth = here;
+      return `<${name}${attributes} lang="${direction === "rtl" ? "fa" : "en"}">`;
+    }
+    if (persianBlockDepth >= 0 && name === "bdi" && direction !== "rtl")
+      return `<bdi${attributes} lang="en">`;
+    return tag;
+  });
+}

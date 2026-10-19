@@ -97,3 +97,37 @@ describe("deleting a card", () => {
     expect(render("candidate")).not.toContain("Suspend instead");
   });
 });
+
+// A11Y-02: the question and answer fields hold learner text in any script, so each picks its own
+// direction, as the shared TextInput and TextArea do.
+describe("card text fields", () => {
+  it("lets Persian text sit right-to-left and English left-to-right in both fields", () => {
+    const item = referenceStudyModel().learningItems[0];
+    if (!item) throw new Error("Missing reference card");
+    const card: StudyCard = {
+      id: "card",
+      ownerId: "owner",
+      learningItemId: item.id,
+      sessionIds: ["class"],
+      template: "basic",
+      direction: "forward",
+      front: "معنی «wear and tear» چیست؟",
+      back: "Everyday damage",
+      provenance: item.claim,
+      status: "active",
+      contentVersion: 1,
+      important: false,
+      qualityConfirmed: true,
+      frontMediaId: null,
+      backMediaId: null,
+      createdAt: "2026-10-05T12:00:00.000Z",
+      updatedAt: "2026-10-05T12:00:00.000Z",
+    };
+    const html = renderToStaticMarkup(
+      createElement(CardEditor, { initial: card, initialProposals: [], userId: "owner" }),
+    );
+    const areas = html.match(/<textarea[^>]*>/g) ?? [];
+    expect(areas.length).toBeGreaterThanOrEqual(2);
+    expect(areas.slice(0, 2).every((area) => area.includes('dir="auto"'))).toBe(true);
+  });
+});

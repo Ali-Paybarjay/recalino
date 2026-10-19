@@ -1,5 +1,5 @@
 "use client";
-import { safeCardHtml } from "@recalino/core/card-html";
+import { cardHtmlWithLanguages } from "@recalino/core/card-html";
 import { studyLexicalTarget, studyLexicalTargetMatches } from "@recalino/core/study-target";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -67,7 +67,10 @@ export function CardFace({
             ref={content}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: escaped template fields checked against an inert tag and attribute allowlist.
             dangerouslySetInnerHTML={{
-              __html: safeCardHtml(card.front) + (revealed ? `<hr>${safeCardHtml(card.back)}` : ""),
+              // A11Y-02: the stored faces stay as rendered; display adds the lang they leave out.
+              __html:
+                cardHtmlWithLanguages(card.front) +
+                (revealed ? `<hr>${cardHtmlWithLanguages(card.back)}` : ""),
             }}
           />
         </>

@@ -119,6 +119,7 @@ export function CardEditor({
           <Field label="Question">
             <textarea
               required
+              dir="auto"
               rows={3}
               maxLength={20000}
               value={front}
@@ -128,6 +129,7 @@ export function CardEditor({
           <Field label="Answer">
             <textarea
               required
+              dir="auto"
               rows={4}
               maxLength={20000}
               value={back}
