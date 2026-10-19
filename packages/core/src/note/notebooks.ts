@@ -113,6 +113,40 @@ export async function listPublishedNotebooks(
   }
   return published;
 }
+/**
+ * PERF-04: hasPublishedNotebook for many classes the caller found live, in a constant number of
+ * reads: the classes whose current revision is a live publication of that class.
+ */
+export async function publishedNotebookSessionIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(sessionIds)];
+  if (!ids.length) return new Set();
+  const [rows, available] = await Promise.all([
+    db
+      .selectFrom("note.notebook as notebook")
+      .innerJoin("note.revision as revision", "revision.id", "notebook.current_revision_id")
+      .select(["notebook.session_id", "revision.knowledge_version_id"])
+      .where("notebook.session_id", "in", ids)
+      .where("notebook.user_id", "=", ctx.userId)
+      .where("revision.user_id", "=", ctx.userId)
+      .whereRef("revision.notebook_id", "=", "notebook.id")
+      .execute(),
+    listAvailableKnowledgeReferences(db, ctx, ids),
+  ]);
+  return new Set(
+    rows
+      .filter((row) =>
+        available.some(
+          (reference) =>
+            reference.id === row.knowledge_version_id && reference.sessionId === row.session_id,
+        ),
+      )
+      .map((row) => row.session_id),
+  );
+}
 /** PRD-CORE-05: a readiness check needs live publication references, not the lesson model. */
 export async function hasPublishedNotebook(
   db: Database | Tx,

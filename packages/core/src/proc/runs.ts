@@ -192,6 +192,42 @@ export async function listRuns(
   return rows.map(runView);
 }
 
+/**
+ * PERF-04: listRuns for many classes the caller found live, in one read keyed by class: each
+ * class's newest class runs, at most fifty, newest first.
+ */
+export async function listClassRunsBySession(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<Map<string, ProcessingRun[]>> {
+  const ids = [...new Set(sessionIds)];
+  const runs = new Map<string, ProcessingRun[]>(ids.map((id) => [id, []]));
+  if (!ids.length) return runs;
+  const rows = await db
+    .selectFrom((eb) =>
+      eb
+        .selectFrom("proc.processing_run")
+        .select([
+          ...runViewColumns,
+          sql<number>`row_number() over (partition by session_id order by created_at desc, id desc)`.as(
+            "position",
+          ),
+        ])
+        .where("user_id", "=", ctx.userId)
+        .where("session_id", "in", ids)
+        .where("kind", "=", "class")
+        .as("ranked"),
+    )
+    .selectAll()
+    .where("position", "<=", 50)
+    .orderBy("session_id")
+    .orderBy("position")
+    .execute();
+  for (const row of rows) runs.get(row.session_id)?.push(runView(row));
+  return runs;
+}
+
 /** Processing owns historical run provenance; sources own selection and cache validity. */
 export function selectProcessingSourceSnapshot(
   db: Database | Tx,

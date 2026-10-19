@@ -53,3 +53,53 @@ export async function runFinishingStage(
     voiceEnabled: (await getVoiceEnrollment(db, ctx)).enabled,
   });
 }
+
+/**
+ * PERF-04: runFinishingStage for many runs in a constant number of reads, keyed by run: one run
+ * read, one lesson-step read and, only when a lesson is written, one voice enrollment read.
+ */
+export async function runFinishingStages(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  runIds: readonly string[],
+): Promise<Map<string, RunFinishingStage | null>> {
+  const ids = [...new Set(runIds)];
+  const stages = new Map<string, RunFinishingStage | null>(ids.map((id) => [id, null]));
+  if (!ids.length) return stages;
+  const runs = await db
+    .selectFrom("proc.processing_run")
+    .select(["id", "state", "input_snapshot"])
+    .where("id", "in", ids)
+    .where("user_id", "=", ctx.userId)
+    .execute();
+  const processing = runs.filter((run) => run.state === "processing");
+  if (!processing.length) return stages;
+  const written = new Set(
+    (
+      await db
+        .selectFrom("proc.run_step")
+        .select("run_id")
+        .where(
+          "run_id",
+          "in",
+          processing.map((run) => run.id),
+        )
+        .where("step", "=", "knowledge")
+        .execute()
+    ).map((row) => row.run_id),
+  );
+  if (!written.size) return stages;
+  const voiceEnabled = (await getVoiceEnrollment(db, ctx)).enabled;
+  for (const run of processing)
+    if (written.has(run.id))
+      stages.set(
+        run.id,
+        finishingStage({
+          state: run.state,
+          lessonWritten: true,
+          snapshot: run.input_snapshot,
+          voiceEnabled,
+        }),
+      );
+  return stages;
+}
