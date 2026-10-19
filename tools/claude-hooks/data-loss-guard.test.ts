@@ -54,6 +54,11 @@ describe("execute_sql", () => {
     "do $$ declare r record; begin select * into r from t where id = 1 for update; end $$",
     "do $$ declare c refcursor; begin open c for update t set x = 1 where id = 1; end $$",
     "delete from t where exists (select 1 from u where u.t_id = t.id)",
+    // Literals with no newline between them stay apart, as in Postgres (review 2026-10-19, round 3).
+    "select 'a' 'b'",
+    "select 'a'\n'b'",
+    // Reading pg_cron's tables through quoted names schedules nothing.
+    `select * from "cron"."job" where "jobname" = 'x'`,
   ])("runs without a prompt: %s", (query) => {
     expect(sql(query)).toBeNull();
   });
@@ -124,6 +129,29 @@ describe("execute_sql", () => {
     "delete from t where exists (select 1)",
     "delete from t where (select true)",
     "update t set x = 1 where exists (select 1)",
+    // Postgres joins literals that whitespace with a newline separates, `--` comments included,
+    // and keeps the first literal's escape mode (review 2026-10-19, round 3).
+    "do 'begin dele'\n'te from t; end'",
+    "do 'begin dr'\n'op table t; end'",
+    "do 'begin trunc'\n'ate t; end'",
+    "do 'begin up'\n'date t set x = 1; end'",
+    "do 'begin dele' -- c\n'te from t; end'",
+    "do e'begin dele'\n'te from t; end'",
+    "do language plpgsql 'begin dele'\n'te from t; end'",
+    "select cron.schedule('j','* * * * *','dele'\n'te from t')",
+    "do 'begin dele'\r\n  -- c\n\t'te from t; end'",
+    "do e'begin dele'\n'\\x74e from t; end'",
+    "do u&'begin \\00'\n'64rop table t; end'",
+    "select x('dr'\n'op table t')",
+    // Quoted identifiers name the same schema and functions (review 2026-10-19, round 3).
+    `select "cron"."schedule"('j','* * * * *','select 1')`,
+    `select cron."schedule"('j','* * * * *','select 1')`,
+    `select "cron"."alter_job"(1, command := 'x')`,
+    `select "dblink_exec"('dbname=x', 'dr'\n'op table t')`,
+    `select "dblink_exec"('dbname=x', 'select 1')`,
+    `select "CRON".schedule('j','* * * * *','select 1')`,
+    `select u&"\\0063ron".schedule('j','* * * * *','select 1')`,
+    `select u&"!0064blink" uescape '!'('x', 'select 1')`,
   ])("asks first: %s", (query) => {
     expect(sql(query)?.decision).toBe("ask");
     expect(sql(query, "mcp__Supabase__execute_sql")?.decision).toBe("ask");
@@ -331,6 +359,17 @@ describe("as a Claude Code hook", () => {
     ).toBe("");
     expect(JSON.parse(run("not json")).hookSpecificOutput.permissionDecision).toBe("ask");
   });
+
+  // If Claude Code renamed a field, a silent hook would leave the allow list running unasked.
+  it.each(["null", "[]", "{}", JSON.stringify({ tool_name: "Bash", tool_input: {} })])(
+    "asks when it cannot read the tool call: %s",
+    (input) => {
+      expect(JSON.parse(run(input)).hookSpecificOutput).toMatchObject({
+        permissionDecision: "ask",
+        permissionDecisionReason: "The data-loss guard could not read this tool call.",
+      });
+    },
+  );
 
   it("is registered for Bash and both execute_sql tools, next to the unchanged allow list", () => {
     const settings = JSON.parse(

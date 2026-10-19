@@ -6,8 +6,10 @@
 //     or change the schema or grants: drop, truncate, alter, create, grant, revoke, merge, copy,
 //     dynamic and scheduled SQL, a delete or update whose where clause keeps every row (none,
 //     `true`, `2 = 2`, `id = id`, `… or true`), and an upsert that copies rows from a query.
-//     Comments, string literals, E'…', U&'…' and dollar quotes are read the way Postgres reads
-//     them; the bodies of `do` and every literal that reads like a statement are checked as SQL;
+//     Comments, string literals, E'…', U&'…', dollar quotes and literals that continue on the next
+//     line ('a'<newline>'b' is 'ab') are read the way Postgres reads them; the bodies of `do` and
+//     every literal that reads like a statement are checked as SQL; quoted names such as
+//     `"cron"."schedule"` and `"dblink_exec"` count like unquoted ones;
 //   - any Bash command carrying --approve-data-loss, even when quoted or escaped, is denied: the
 //     product owner runs data-loss migrations themselves. db:apply runs without a prompt only as
 //     `pnpm db:apply` or `pnpm db:apply --apply`; any other db:apply command asks first.
@@ -18,6 +20,7 @@
 // for irreversible data changes) still applies.
 // Work is bounded: SQL longer than MAX_SQL_LENGTH, or SQL that needs more than WORK_LIMIT steps
 // to check, asks first, so a slow check never runs into the hook timeout (which lets the call run).
+// A call it cannot read (no tool name, or a Bash call without a command) asks first.
 // It prints nothing for a call it has no concern with, and never prints the SQL or the command.
 // Tests: tools/claude-hooks/data-loss-guard.test.ts.
 import { readFileSync, realpathSync } from "node:fs";
@@ -30,6 +33,10 @@ const DENY_DATA_LOSS =
   "Commands carrying --approve-data-loss are not run by Claude: the product owner runs data-loss migrations themselves (D81). Report the migration and the data it removes instead. To search text for the flag, search for data-loss.";
 const ASK_APPLY =
   "db:apply runs without a prompt only as `pnpm db:apply` (dry run) or `pnpm db:apply --apply`, alone on the line. Any other argument, pipe or chained command needs the product owner's yes (D81).";
+const UNREADABLE: NonNullable<HookDecision> = {
+  decision: "ask",
+  reason: "The data-loss guard could not read this tool call.",
+};
 /** The only db:apply commands that keep the allow list's no-prompt run. */
 const PLAIN_APPLY = /^\s*pnpm\s+db:apply(?:\s+--apply)?\s*$/;
 /** Longer SQL asks first without being read: reading it could outlast the 10 s hook timeout. */
@@ -91,6 +98,8 @@ interface Scanned {
   code: string;
   /** Contents of dollar-quoted bodies, of every literal in a `do`, and of literals that read like statements. */
   bodies: string[];
+  /** `code` with the contents of quoted identifiers kept (`""` and U&"…" escapes applied). */
+  named: string;
 }
 
 /** Index just past the block comment that starts at `i`; block comments nest in Postgres. */
@@ -107,6 +116,27 @@ function blockCommentEnd(sql: string, i: number): number {
     } else j++;
   }
   return j;
+}
+
+/**
+ * Index of the quote that continues the literal closed at `end`, or -1. Postgres joins two
+ * literals when only whitespace with at least one newline separates them; `--` comments may sit
+ * in it, block comments may not. Scanned by hand: a regex here could backtrack on runs of `-`.
+ */
+function continuedAt(sql: string, end: number): number {
+  let j = end + 1;
+  let newline = false;
+  while (j < sql.length) {
+    const char = sql[j] as string;
+    if (char === "\n" || char === "\r") {
+      newline = true;
+      j++;
+    } else if (char === " " || char === "\t" || char === "\f" || char === "\v") j++;
+    else if (char === "-" && sql[j + 1] === "-") {
+      while (j < sql.length && sql[j] !== "\n" && sql[j] !== "\r") j++;
+    } else break;
+  }
+  return newline && sql[j] === "'" ? j : -1;
 }
 
 /** Index of the quote that closes the literal or identifier opened at `i`. */
@@ -160,13 +190,13 @@ function decodeEscapes(raw: string): string {
   );
 }
 
-/** The text of a U&'…' literal, with its Unicode escapes applied. */
-function decodeUnicode(raw: string, escapeChar: string): string {
+/** The text of a U&'…' literal or U&"…" identifier, with its Unicode escapes applied. */
+function decodeUnicode(raw: string, escapeChar: string, quote: "'" | '"' = "'"): string {
   const e = escapeChar.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&");
   return raw.replace(
-    new RegExp(`''|${e}(${e}|\\+[0-9a-fA-F]{6}|[0-9a-fA-F]{4})`, "g"),
+    new RegExp(`${quote}${quote}|${e}(${e}|\\+[0-9a-fA-F]{6}|[0-9a-fA-F]{4})`, "g"),
     (_all: string, value: string | undefined) => {
-      if (value === undefined) return "'";
+      if (value === undefined) return quote;
       if (value === escapeChar) return escapeChar;
       return codePoint(value.replace("+", ""));
     },
@@ -187,12 +217,19 @@ function startsLikeStatement(text: string): boolean {
   return STATEMENT_START.test(text);
 }
 
+/** True when the quote at `i` follows a `U&` that starts a token, as in U&'…' and U&"…". */
+function unicodePrefix(sql: string, i: number): boolean {
+  return sql[i - 1] === "&" && /[uU]/.test(sql[i - 2] ?? "") && !IDENT_CHAR.test(sql[i - 3] ?? "");
+}
+
 /** Removes comments and sets literals aside, the way Postgres reads them. */
 function scan(sql: string): Scanned {
   spend(sql.length);
   const runs = identifierRuns(sql);
   const parts: string[] = [];
   const bodies: string[] = [];
+  // Contents of quoted identifiers, by their index in `parts`.
+  const names = new Map<number, string>();
   // The first characters of the current statement, to recognise a `do` statement.
   let head = "";
   const push = (text: string) => {
@@ -210,21 +247,35 @@ function scan(sql: string): Scanned {
       i = blockCommentEnd(sql, i);
       push(" ");
     } else if (char === '"') {
-      i = closingQuote(sql, i, char, false) + 1;
+      const end = closingQuote(sql, i, char, false);
+      const raw = sql.slice(i + 1, end);
+      UESCAPE.lastIndex = end + 1;
+      names.set(
+        parts.length,
+        unicodePrefix(sql, i)
+          ? decodeUnicode(raw, UESCAPE.exec(sql)?.[1] ?? "\\", '"')
+          : raw.replaceAll('""', '"'),
+      );
       push('""');
+      i = end + 1;
     } else if (char === "'") {
       // E'…' and U&'…' only when the prefix starts a token: in `name'…'` the e ends an identifier.
       const escapes = /[eE]/.test(sql[i - 1] ?? "") && !IDENT_CHAR.test(sql[i - 2] ?? "");
-      const unicode =
-        sql[i - 1] === "&" && /[uU]/.test(sql[i - 2] ?? "") && !IDENT_CHAR.test(sql[i - 3] ?? "");
-      const end = closingQuote(sql, i, char, escapes);
-      const raw = sql.slice(i + 1, end);
+      const unicode = unicodePrefix(sql, i);
+      // A continued literal keeps the first one's escape mode, as Postgres does.
+      let end = closingQuote(sql, i, char, escapes);
+      const pieces = [sql.slice(i + 1, end)];
+      for (let next = continuedAt(sql, end); next !== -1; next = continuedAt(sql, end)) {
+        end = closingQuote(sql, next, char, escapes);
+        pieces.push(sql.slice(next + 1, end));
+      }
       UESCAPE.lastIndex = end + 1;
+      // Postgres applies E'…' escapes piece by piece, but U&'…' escapes to the joined text.
       const content = escapes
-        ? decodeEscapes(raw)
+        ? pieces.map(decodeEscapes).join("")
         : unicode
-          ? decodeUnicode(raw, UESCAPE.exec(sql)?.[1] ?? "\\")
-          : raw.replaceAll("''", "'");
+          ? decodeUnicode(pieces.join(""), UESCAPE.exec(sql)?.[1] ?? "\\")
+          : pieces.join("").replaceAll("''", "'");
       if (/^do(?![\w$])/i.test(head) || startsLikeStatement(content)) bodies.push(content);
       push("''");
       i = end + 1;
@@ -247,11 +298,15 @@ function scan(sql: string): Scanned {
     }
   }
   // Non-ASCII characters continue identifiers in Postgres, so they never separate words here.
-  const code = parts
-    .join("")
-    .replace(/[\u0080-\uffff]/g, "_")
-    .replace(/\s+/g, " ");
-  return { code: code.toLowerCase(), bodies };
+  const normalise = (text: string) =>
+    text
+      .replace(/[\u0080-\uffff]/g, "_")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  const code = normalise(parts.join(""));
+  const named = normalise(parts.map((part, k) => names.get(k) ?? part).join(""));
+  spend(named.length);
+  return { code, named, bodies };
 }
 
 /** `text` with the inside of every parenthesis blanked, so its indexes still line up. */
@@ -479,12 +534,15 @@ function findRisk(sql: string, depth: number): string | null {
   if (depth > 5) return "deeply nested SQL";
   // These settings change how Postgres reads backslashes in literals, which this scan relies on.
   if (/standard_conforming_strings|backslash_quote/i.test(sql)) return "a string-reading setting";
-  const { code, bodies } = scan(sql);
+  const { code, named, bodies } = scan(sql);
   const word = RISKY_WORDS.exec(code)?.[1];
   if (word) return word.replace(/\s+/, " ");
-  if (/\bdblink/.test(code)) return "dblink";
-  if (/\bcron\s?\.\s?(schedule|schedule_in_database|alter_job)\b/.test(code))
-    return "scheduled SQL";
+  // Also with quoted names read: `cron."schedule"` and `"dblink_exec"` name the same functions.
+  for (const text of [code, named]) {
+    if (/\bdblink/.test(text)) return "dblink";
+    if (/\bcron\s?\.\s?(schedule|schedule_in_database|alter_job)\b/.test(text))
+      return "scheduled SQL";
+  }
   const rows = unrestricted(code);
   if (rows) return rows;
   for (const body of bodies) {
@@ -508,15 +566,19 @@ function decideCommand(command: string): HookDecision {
   return null;
 }
 
-/** The hook's decision for one tool call; null leaves the normal permission flow. */
+/**
+ * The hook's decision for one tool call; null leaves the normal permission flow. A call it cannot
+ * read asks: if Claude Code renamed a field, a silent guard would leave the allow list unasked.
+ */
 export function decide(input: unknown): HookDecision {
   const tool = field(input, "tool_name");
   const toolInput = field(input, "tool_input");
+  if (typeof tool !== "string") return UNREADABLE;
   if (tool === "Bash") {
     const command = field(toolInput, "command");
-    return typeof command === "string" ? decideCommand(command) : null;
+    return typeof command === "string" ? decideCommand(command) : UNREADABLE;
   }
-  if (typeof tool === "string" && SQL_TOOLS.has(tool)) {
+  if (SQL_TOOLS.has(tool)) {
     const query = field(toolInput, "query");
     if (typeof query !== "string")
       return {
@@ -569,10 +631,7 @@ if (runAsHook()) {
     decision = decide(JSON.parse(readFileSync(0, "utf8")));
   } catch {
     // A guard that cannot read the call asks instead of letting it through silently.
-    decision = {
-      decision: "ask",
-      reason: "The data-loss guard could not read this tool call.",
-    };
+    decision = UNREADABLE;
   }
   if (decision) process.stdout.write(output(decision));
 }
