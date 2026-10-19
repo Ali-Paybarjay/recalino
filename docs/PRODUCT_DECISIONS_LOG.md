@@ -761,7 +761,7 @@
 - **گزینهٔ A مصوب:** اسرار پایلوت (`DATABASE_URL`، `SUPABASE_*`، `BLOB_*`، `CRON_SECRET`، `RATE_LIMIT_IP_KEY`، `OPENROUTER_*` و بقیهٔ اسرار [SECRETS.md](runbooks/SECRETS.md)) فقط در target **Production** و با گزینهٔ Sensitive. Preview فقط در حالت fixture (`RECALINO_UI_PREVIEW=1`، الگوی `tools/deploy-ui-preview.ps1`) ساخته می‌شود. این همان Q-SPEC-1 در [PROJECT_SPEC](PROJECT_SPEC.md) است.
 - `BLOB_READ_WRITE_TOKEN` چون خواندنی و مشترک بین سه محیط بوده، چرخش داده و Sensitive و فقط Production می‌شود. پیگیری D76 دربارهٔ همین توکن («پس از راه‌اندازی پشتیبان دوباره بررسی می‌شود») با این تصمیم پاسخ می‌گیرد. فایل پیکربندی پشتیبان میزبان اپراتور (D53) باید هم‌زمان با توکن تازه به‌روز شود. `NODE_ENV` دستی Production حذف می‌شود.
 - تغییرات Vercel با خود مالک محصول است: چک‌لیست در [CLOUD_SETUP.md](runbooks/CLOUD_SETUP.md) بخش «جداسازی Preview از پایلوت». دو runbook `CLOUD_SETUP.md` و `SECRETS.md` با Q-SPEC-1 هم‌خوان شدند.
-- گارد کد پیشنهادی ممیزی (رد اتصال دیتابیس در Preview بدون حالت fixture، در `packages/core/src/db/connection.ts`) در این دسته ساخته نشد.
+- گارد کد پیشنهادی ممیزی (رد اتصال دیتابیس در Preview بدون حالت fixture، در `packages/core/src/db/connection.ts`) در این دسته ساخته نشد. **پیگیری 2026-10-19:** در دستهٔ ۱۴ ساخته شد (D97، پایین).
 
 ### D83 — دروازهٔ CI پیش از production (OPS-04)
 
@@ -825,6 +825,13 @@
 - [CLASSROOM_NOTICE.md](legal/CLASSROOM_NOTICE.md): «cleanup is hourly and retries failures» به «cleanup runs at least once an hour and retries failures» تغییر کرد. نسخهٔ این متن تاریخ «Review copy» آن است و طبق [راهنمای متن‌های حقوقی](legal/README.md) (هر تغییر معنا نسخهٔ تازه) به 19 October 2026 رسید. این متن در اپ پذیرفته نمی‌شود.
 - نسخهٔ پذیرش: `CURRENT_VERSIONS.privacy = "0.3"` در `packages/core/src/acc/documents.ts` و جدول [consents.md](legal/consents.md). زبان‌آموزی که ۰٫۲ را پذیرفته، یک بار اعلان تغییر Terms را می‌بیند و دوباره می‌پذیرد (FR-ACC-007، D33 قاعدهٔ ۳). Terms و رضایت ضبط ۰٫۱ می‌مانند. `apps/web/src/legal/texts.generated.ts` با `pnpm legal:build` بازسازی شد؛ `acc.test.ts` نسخهٔ سرعنوان دو متن را هم با `CURRENT_VERSIONS` می‌سنجد.
 - متن همچنان Draft است و G11 باز می‌ماند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
+
+## D97 — کارت System health و گارد دیتابیس Preview (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای موج ۶ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md)، دستهٔ ۱۴ (`fix/audit-14`)؛ یافته‌های OPS-02 و OPS-03. D95 و D96 برای دستهٔ ۱۳ کنار گذاشته شده‌اند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
+
+- **کارت «System health» (OPS-02؛ ADM-01 و ADM-12):** مالک محصول هر ۱۶ متن پیشنهادی دستهٔ ۳ را، انگلیسی و فارسی، عیناً تأیید کرد. متن‌ها در `systemHealthCopy` در `apps/web/src/ui/admin/copy.ts` هستند و در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش «تأیید 2026-10-19 — System health») ثبت شده‌اند؛ `approved-copy.test.ts` آن‌ها را با هم می‌سنجد. کارت در نمای کلی پنل مالک، پیش از «Recent activity»، از داده‌های موجود `SystemHealth` (`packages/core/src/ops/health.ts`) و فقط با کامپوننت‌های موجود پنل ساخته شد. قرارداد `admin-read` و ساختار دیتابیس تغییر نکردند. هشدار هنوز رخداد audit است (`ops.health_alert` و `ops.health_recovered`) و وظیفهٔ ادمین یا ایمیل نمی‌سازد.
+- **گارد دیتابیس Preview (OPS-03، پیگیری D82):** `connectionConfig` در `packages/core/src/db/connection.ts`، که هر pool و client اپ با آن ساخته می‌شود، وقتی `VERCEL_ENV` برابر `preview` است و `RECALINO_UI_PREVIEW` برابر `1` نیست، پیش از ساختن pool با خطای `ConfigurationError` و پیامی که نام دو متغیر و قاعده را می‌گوید (نه مقدار) متوقف می‌شود. Production، Preview در حالت fixture و اجرای محلی (بدون `VERCEL_ENV` یا با `development`) بی‌تغییرند. این گارد فقط دیتابیس را می‌بندد؛ کلیدهای Supabase Auth و توکن Blob را همچنان چک‌لیست D82 در [CLOUD_SETUP.md](runbooks/CLOUD_SETUP.md) از Preview برمی‌دارد.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 

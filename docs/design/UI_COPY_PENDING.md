@@ -2,7 +2,7 @@
 
 متن رابط باید از طرح مصوب بیاید (CLAUDE.md، «پیاده‌سازی رابط کاربری»؛ D34 و D35). متن‌های زیر برای حالت‌هایی نوشته شده‌اند که نه در `handoff/copy.md` هستند و نه در گزارش‌های بازطراحی 2026-10-04. هیچ‌کدام هنوز تأیید نشده‌اند. همه در [`apps/web/src/ui/pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) نگه داشته می‌شوند و آزمون `pending-copy.test.ts` بررسی می‌کند که هر متن عیناً در همین فهرست ثبت شده باشد.
 
-پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A، [D86](../PRODUCT_DECISIONS_LOG.md) و D87؛ و جملهٔ `provider_outcome_unresolved` و برچسب مجموعه‌های کارت، D89 و D88) هستند. بخش «System health» دستهٔ ۳ و پیشنهادهای دیگر دستهٔ ۵ تأیید نشده‌اند.
+پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A، [D86](../PRODUCT_DECISIONS_LOG.md) و D87؛ و جملهٔ `provider_outcome_unresolved` و برچسب مجموعه‌های کارت، D89 و D88) هستند. ۱۶ متن کارت «System health» (پیشنهاد دستهٔ ۳) هم در 2026-10-19 تأیید شدند ([D97](../PRODUCT_DECISIONS_LOG.md)، بخش پایانی). پیشنهادهای دیگر دستهٔ ۵ تأیید نشده‌اند.
 
 **تأیید 2026-10-10:** مالک محصول همهٔ ۴۳ متنی را که در این تاریخ در فهرست بودند تأیید کرد (پیگیری D54). ۳۴ متن عیناً منتقل شدند: متن‌های صدا به [`voice/voice-copy.ts`](../../apps/web/src/ui/voice/voice-copy.ts)، متن‌های بازبینی پردازش به `AutomaticLearningView.tsx` و متن‌های `learningMemory.*` به `learning-memory-copy.ts`. نُه متن صدا (`voice.reference.short`، `expired` و `missing`؛ `voice.match.no_sample`، `no_reference` و `policy_unavailable`؛ `voice.readiness.needs_sample`، `needs_class` و `unavailable`) با D54 نمی‌خواندند، چون ممکن بود در حالتی نمایش داده شوند که calibration خود حساب (۲۰ تأیید و ۲۰ رد) کلاس‌های بعد را خودکار بپذیرد. مالک محصول در همان روز متن اصلاح‌شدهٔ هر نُه متن را عیناً تأیید کرد و آن‌ها هم به `voice-copy.ts` رفتند. پیشنهاد PR #23 برای `voice.readiness.unavailable` بدون جملهٔ سوم پذیرفته شد، چون آن جمله با سیاست `autoAccept: false` درست نیست.
 
@@ -123,29 +123,31 @@
 - **D89، خطای `provider_outcome_unresolved` (UX-05):** `workspaceErrors.outcomeUnresolved` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts)، که `workspace/api.ts` به‌جای متن عمومی «The change could not be saved. Try again.» نشان می‌دهد: «A result is still being checked. Contact the pilot operator before trying again.» هشدار قبلی («Try again» در حالی که سرور می‌گوید تا بررسی اپراتور تلاش نکن) با این تأیید برطرف شد. آزمون `approved-copy.test.ts` این بخش را می‌سنجد.
 - **D88، برچسب مجموعه‌های کارت (UX-05، اصلاح D79):** «Core cards» و «Supplementary cards» (`studySetLabel` در `workspace/card-labels.ts`، از `learningMemoryCopy.setProduction` و `setRecognition`). جای «Core · production» و «Supplementary · recognition» در D79 را می‌گیرند. «Other cards» (کارت‌های قدیمی) همان متن پیش‌تر مصوب `learning-memory-copy.ts` است و تغییری نکرد.
 
-هنوز در انتظار تأیید: بخش «System health» دستهٔ ۳ (پایین)، و از دستهٔ ۵ رسید حذف حساب در حالت جاری، پیام‌های سرور با واژهٔ provider، برچسب‌های کارت و نوع فایل و پیشنهاد «In your review queue».
+هنوز در انتظار تأیید: از دستهٔ ۵ رسید حذف حساب در حالت جاری، پیام‌های سرور با واژهٔ provider، برچسب‌های کارت و نوع فایل و پیشنهاد «In your review queue».
 
-## ممیزی 2026-10-18، دستهٔ ۳ — پایش و ایمنی انتشار (`fix/audit-3`)
+## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 
-یافتهٔ OPS-02 کارت «System health» را در نمای کلی پنل مالک خواسته است (ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`). داده‌اش آماده است: `readAdminSnapshot` در نمای `overview` فیلد `health` (نوع `SystemHealth` در `packages/core/src/ops/admin-contracts.ts`) را برمی‌گرداند. ولی هیچ‌کدام از برچسب‌های زیر در طرح پنل، `ADMIN_COMMUNICATION_COPY_2026-10-05.json` یا متن موجود `apps/web/src/ui/admin/` نیست، پس **کارت هنوز در رابط نیست**. تا تأیید، هشدارها در «Recent activity» و «Activity history» پنل با شناسهٔ اقدام دیده می‌شوند: `ops.health_alert` و `ops.health_recovered` (موضوع: نام شاخص)، و `ops.schema_behind` (موضوع: نسخهٔ migration مورد انتظار).
+مالک محصول در 2026-10-19 هر ۱۶ متن کارت «System health» را که دستهٔ ۳ (`fix/audit-3`، یافتهٔ OPS-02؛ ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`) پیشنهاد کرده بود، عیناً تأیید کرد. ثبت نسخه‌دار: [D97](../PRODUCT_DECISIONS_LOG.md). متن‌ها از این فهرست به `systemHealthCopy` در [`admin/copy.ts`](../../apps/web/src/ui/admin/copy.ts) منتقل شدند و آزمون `approved-copy.test.ts` هر متن انگلیسی و فارسی را عیناً با همین بخش می‌سنجد.
 
-پیشنهاد، به همان قالب دوزبانهٔ `t(en, fa)` کارت‌های دیگر نمای کلی و فقط با کامپوننت‌های موجود (`Panel`، `Table`، `Empty`، `statusName`):
+- **کارت:** `SystemHealthCard` در [`admin/CoreScreens.tsx`](../../apps/web/src/ui/admin/CoreScreens.tsx)، در نمای کلی پنل مالک پس از سه کارت شاخص و پیش از «Recent activity». فقط با کامپوننت‌ها و کلاس‌های موجود پنل ساخته شده است: `Panel`، `Notice` (هشدار، یکی برای هر شاخص باز)، ردیف‌های `.task` و متن `.muted`. رنگ، اندازه یا کلاس CSS تازه‌ای ندارد.
+- **داده:** همان فیلد `health` نمای `overview` در `readAdminSnapshot` (نوع `SystemHealth` در `packages/core/src/ops/admin-contracts.ts`)؛ فقط شمار و زمان، بدون متن کلاس، ایمیل یا کلید. آستانه‌ها همان `RECALINO_HEALTH_JSON` هستند. حجم با MB دهدهی (واحد سقف پلن Supabase)، انتظار صف با دقیقه، ساعت یا روزِ خود `Intl` و نسبت به زمان بررسی سرور، و آخرین اجرای runner با همان قالب تاریخ پنل نمایش داده می‌شود. نام واحدها را `Intl` می‌سازد و متن تازه نیست. وقتی صفی نیست یا runner هرگز اجرا نشده، مقدار «—» است، مثل بقیهٔ پنل. اگر نسخهٔ schema مقایسه نشده باشد (`schema: null`)، وضعیت «Cannot be checked» است.
+- هشدارها همچنان در «Recent activity» و «Activity history» با شناسهٔ اقدام هم دیده می‌شوند: `ops.health_alert` و `ops.health_recovered` (موضوع: نام شاخص)، و `ops.schema_behind` (موضوع: نسخهٔ migration مورد انتظار).
 
-| کلید پیشنهادی | English | فارسی |
+| جا (کلید در `systemHealthCopy`) | English | فارسی |
 |---|---|---|
-| عنوان کارت | System health | سلامت سامانه |
-| ردیف حجم دیتابیس | Database size | حجم دیتابیس |
-| توضیح حجم | {size} of {limit} alert limit | {size} از آستانهٔ هشدار {limit} |
-| ردیف کارهای ناموفق | Jobs failed in the last hour | کارهای ناموفق در ساعت گذشته |
-| ردیف صف | Longest wait in the queue | طولانی‌ترین انتظار در صف |
-| ردیف runner | Last job runner run | آخرین اجرای اجراکنندهٔ کارها |
-| ردیف schema | Database schema | نسخهٔ schema دیتابیس |
-| وضعیت schema: `current` | Up to date | به‌روز |
-| وضعیت schema: `ahead` | Newer than the app | جلوتر از اپ |
-| وضعیت schema: `behind` | A migration is missing; jobs are paused | یک migration اعمال نشده است؛ اجرای کارها متوقف است |
-| وضعیت schema: `unknown` | Cannot be checked | قابل بررسی نیست |
-| بدون هشدار | No signal is over its threshold. | هیچ شاخصی از آستانه‌اش نگذشته است. |
-| هشدار `database_size` | The database is near its size limit. | دیتابیس به سقف حجم نزدیک است. |
-| هشدار `failed_jobs` | A job failed and will not retry. | کاری ناموفق شد و دوباره اجرا نمی‌شود. |
-| هشدار `queue_delay` | Jobs are waiting longer than expected. | کارها بیش از حد انتظار در صف مانده‌اند. |
-| هشدار `runner_stale` | The job runner has not run recently. | اجراکنندهٔ کارها اخیراً اجرا نشده است. |
+| عنوان کارت (`title`) | «System health» | «سلامت سامانه» |
+| ردیف حجم دیتابیس (`databaseSize`) | «Database size» | «حجم دیتابیس» |
+| توضیح حجم (`databaseSizeDetail`) | «{size} of {limit} alert limit» | «{size} از آستانهٔ هشدار {limit}» |
+| ردیف کارهای ناموفق (`failedJobs`) | «Jobs failed in the last hour» | «کارهای ناموفق در ساعت گذشته» |
+| ردیف صف (`queueWait`) | «Longest wait in the queue» | «طولانی‌ترین انتظار در صف» |
+| ردیف runner (`lastRunner`) | «Last job runner run» | «آخرین اجرای اجراکنندهٔ کارها» |
+| ردیف schema (`schema`) | «Database schema» | «نسخهٔ schema دیتابیس» |
+| وضعیت schema: `current` (`schemaState.current`) | «Up to date» | «به‌روز» |
+| وضعیت schema: `ahead` (`schemaState.ahead`) | «Newer than the app» | «جلوتر از اپ» |
+| وضعیت schema: `behind` (`schemaState.behind`) | «A migration is missing; jobs are paused» | «یک migration اعمال نشده است؛ اجرای کارها متوقف است» |
+| وضعیت schema: `unknown` (`schemaState.unknown`) | «Cannot be checked» | «قابل بررسی نیست» |
+| بدون هشدار (`noAlert`) | «No signal is over its threshold.» | «هیچ شاخصی از آستانه‌اش نگذشته است.» |
+| هشدار `database_size` (`alert.database_size`) | «The database is near its size limit.» | «دیتابیس به سقف حجم نزدیک است.» |
+| هشدار `failed_jobs` (`alert.failed_jobs`) | «A job failed and will not retry.» | «کاری ناموفق شد و دوباره اجرا نمی‌شود.» |
+| هشدار `queue_delay` (`alert.queue_delay`) | «Jobs are waiting longer than expected.» | «کارها بیش از حد انتظار در صف مانده‌اند.» |
+| هشدار `runner_stale` (`alert.runner_stale`) | «The job runner has not run recently.» | «اجراکنندهٔ کارها اخیراً اجرا نشده است.» |

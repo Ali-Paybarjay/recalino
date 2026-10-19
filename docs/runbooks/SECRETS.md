@@ -5,7 +5,7 @@
 ## قواعد
 
 - اسرار فقط در متغیرهای محیطی سرور هستند: Vercel برای محیط ابری و `.env.local` برای محیط محلی. هیچ سری در مخزن، چت یا لاگ نمی‌آید.
-- **در Vercel، اسرار پایلوت فقط در target Production و با گزینهٔ Sensitive‌اند** (Q-SPEC-1 در [PROJECT_SPEC](../PROJECT_SPEC.md)، [D82](../PRODUCT_DECISIONS_LOG.md)). Preview و Development هیچ سری پایلوت ندارند؛ Preview فقط در حالت fixture (`RECALINO_UI_PREVIEW=1`) ساخته می‌شود. چک‌لیست اجرا: [CLOUD_SETUP.md](CLOUD_SETUP.md)، «جداسازی Preview از پایلوت».
+- **در Vercel، اسرار پایلوت فقط در target Production و با گزینهٔ Sensitive‌اند** (Q-SPEC-1 در [PROJECT_SPEC](../PROJECT_SPEC.md)، [D82](../PRODUCT_DECISIONS_LOG.md)). Preview و Development هیچ سری پایلوت ندارند؛ Preview فقط در حالت fixture (`RECALINO_UI_PREVIEW=1`) ساخته می‌شود و اپ در Preview بدون این حالت دیتابیس را باز نمی‌کند (گارد `connectionConfig` در `packages/core/src/db/connection.ts`، [D97](../PRODUCT_DECISIONS_LOG.md)). چک‌لیست اجرا: [CLOUD_SETUP.md](CLOUD_SETUP.md)، «جداسازی Preview از پایلوت».
 - فهرست نام‌ها در [`.env.example`](../../.env.example) است، بدون مقدار. همه این نام‌ها سمت سرورند.
 - آزمون `tools/env-example.test.ts` هر نام `process.env.X` یا `env.X` در کد تحویلی را با `.env.example` مقایسه می‌کند. نام تازه‌ای که در فهرست نباشد و در فهرست استثنای همان آزمون هم نیامده باشد، `pnpm test:unit` را می‌شکند. اگر نام تازه سری است، در همان تغییر سطرش را به جدول زیر هم اضافه کنید؛ آزمون این بخش را نمی‌سنجد.
 - CI پس از build فایل‌هایی را که به مرورگر می‌رسند برای این نام‌ها و الگوهای شناخته‌شده کلید جست‌وجو می‌کند و در صورت یافتن شکست می‌خورد (`pnpm check:client-bundle`).

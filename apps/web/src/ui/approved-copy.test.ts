@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { systemHealthCopy } from "./admin/copy";
 import { allowanceHelp } from "./allowance-copy";
 import { experienceCopy } from "./experience-copy";
 import { cardActionsCopy } from "./workspace/card-actions-copy";
@@ -95,5 +96,28 @@ describe("the provider_outcome_unresolved sentence approved on 2026-10-19", () =
     expect(workspaceErrors.outcomeUnresolved).toBe(owner);
     expect(section).toContain(`«${owner}»`);
     expect(section).toContain("workspaceErrors.outcomeUnresolved");
+  });
+});
+
+// D97 (owner decision 2026-10-19, audit batch 14, OPS-02): the 16 texts of the admin overview's
+// System health card, in English and Persian, each recorded word for word in its own section.
+describe("the System health texts approved on 2026-10-19", () => {
+  const section = register.slice(register.indexOf("## تأیید 2026-10-19 — System health"));
+  const entries = (node: object, path: string[] = []): Array<[string, string, string]> =>
+    Object.entries(node).flatMap(([key, value]) =>
+      "en" in value && "fa" in value
+        ? [[[...path, key].join("."), value.en as string, value.fa as string]]
+        : entries(value, [...path, key]),
+    );
+  const texts = entries(systemHealthCopy);
+
+  it("are the sixteen texts of the register section", () => {
+    expect(section.length).toBeGreaterThan(500);
+    expect(texts).toHaveLength(16);
+    expect(section.match(/^\| .+ \| «.+» \| «.+» \|$/gm)).toHaveLength(16);
+  });
+
+  it.each(texts)("%s is in the admin console and in the register, word for word", (key, en, fa) => {
+    expect(section).toContain(`(\`${key}\`) | «${en}» | «${fa}» |`);
   });
 });

@@ -68,11 +68,28 @@ function invalid(reason?: string): Error {
   return error;
 }
 
+/**
+ * OPS-03 (Q-SPEC-1, D82): a Vercel preview deployment never opens the pilot database. Pilot
+ * secrets belong to Production only and a preview is built in fixture mode (RECALINO_UI_PREVIEW=1,
+ * as tools/deploy-ui-preview.ps1 does), where the proxy answers every route before any secret is
+ * read. A preview without that flag is refused here, before a pool exists, even if Vercel still
+ * hands it a DATABASE_URL. Production and local development are unaffected.
+ */
+function assertDatabaseAllowed(env: Record<string, string | undefined>): void {
+  if (env.VERCEL_ENV !== "preview" || env.RECALINO_UI_PREVIEW === "1") return;
+  const error = new Error(
+    "Database access is not allowed in a Vercel preview deployment: pilot secrets belong to Production only, and a preview runs in fixture mode (RECALINO_UI_PREVIEW=1)",
+  );
+  error.name = "ConfigurationError";
+  throw error;
+}
+
 /** The settings every pool and client of the app connects with. */
 export function connectionConfig(
   connectionString: string,
   env: Record<string, string | undefined> = process.env,
 ): pg.ClientConfig {
+  assertDatabaseAllowed(env);
   return {
     connectionString,
     ssl: databaseTls(connectionString, env),
