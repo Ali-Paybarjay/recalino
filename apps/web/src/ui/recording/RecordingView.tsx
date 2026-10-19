@@ -254,7 +254,7 @@ export function RecordingView({
   const quiet = captureIsQuiet(state.phase);
   const currentId = state.recording?.id;
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       {backHref && !active ? (
         <Actions>
           <LinkButton secondary href={backHref}>
@@ -304,7 +304,7 @@ export function RecordingView({
                     ? "Reconnecting the microphone automatically. Audio already saved is kept as a separate part."
                     : "Recording continues in ten-minute parts, saved on this device."}
             </p>
-            <p className="preview-muted">
+            <p className="workspace-muted">
               Recording and lock-screen controls depend on your browser. Keep Recalino open and the
               screen on for reliable capture.
             </p>
@@ -372,10 +372,10 @@ export function RecordingView({
       ) : null}
       <Panel title="Saved and recoverable recordings">
         {!rows.length ? (
-          <p className="preview-muted">No recordings on this device yet.</p>
+          <p className="workspace-muted">No recordings on this device yet.</p>
         ) : (
           rows.map((row) => (
-            <article key={row.id} className="preview-panel">
+            <article key={row.id} className="workspace-panel">
               <h3>
                 {formatPartDate(row.createdAt)}
                 {(row.segment ?? 1) > 1 ? ` · Part ${row.segment}` : null}
@@ -492,7 +492,7 @@ export function RecordingView({
                 · saved on this device, waiting for this notice.
               </p>
             ) : null}
-            <label className="preview-check">
+            <label className="workspace-check">
               <input
                 type="checkbox"
                 checked={noticeConfirmed}
@@ -511,7 +511,7 @@ export function RecordingView({
           </Panel>
         </section>
       ) : null}
-      <p className="preview-muted">
+      <p className="workspace-muted">
         Clearing this browser's site data removes local audio. Keep a copy of recordings you need.
       </p>
     </div>

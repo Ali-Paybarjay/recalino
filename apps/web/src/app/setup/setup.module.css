@@ -154,7 +154,7 @@
   min-width: 0;
 }
 
-.voiceStep :global(.preview-panel) {
+.voiceStep :global(.workspace-panel) {
   padding: 0;
   border: 0;
   border-radius: 0;

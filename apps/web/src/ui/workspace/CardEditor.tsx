@@ -79,7 +79,7 @@ export function CardEditor({
       confirmQuality: true,
     });
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Actions>
         <LinkButton secondary href={`/sessions/${card.sessionIds[0]}/cards`}>
           Back to session cards
@@ -93,14 +93,14 @@ export function CardEditor({
       )}
       {notice && <Status tone="success">{notice}</Status>}
       <Panel title="Edit your card">
-        <p className="preview-muted">
+        <p className="workspace-muted">
           {cardSummary(card)} · Version {card.contentVersion}
         </p>
         <ClaimEvidence claim={card.provenance} userId={userId} />
         {card.contentFormat === "lesson_html" && (
           <>
             <CardFace card={card} revealed />
-            <p className="preview-muted">
+            <p className="workspace-muted">
               Saving text changes replaces the lesson formatting with your wording.
             </p>
           </>
@@ -235,7 +235,7 @@ export function CardEditor({
       {!!proposals.length && (
         <Panel title="Suggested updates from newer notes">
           {proposals.map((proposal) => (
-            <article key={proposal.id} className="preview-list-item">
+            <article key={proposal.id} className="workspace-list-item">
               <h3>Proposed card</h3>
               <CardFace card={proposal} revealed />
               <ClaimEvidence claim={proposal.provenance} userId={userId} />

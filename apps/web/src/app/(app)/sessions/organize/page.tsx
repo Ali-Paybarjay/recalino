@@ -25,8 +25,8 @@ export default async function OrganizePage({
         />
       }
     >
-      <div className="preview-stack">
-        <Link className="preview-back" href="/sessions">
+      <div className="workspace-stack">
+        <Link className="workspace-back" href="/sessions">
           ← Back to sessions
         </Link>
         <CourseManager {...groups} courseId={query.courseId} />

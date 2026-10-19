@@ -11,7 +11,7 @@ export function SessionLearningSummary({
   const topics = showTopics ? session.topics.slice(0, 3) : [];
   return (
     <div>
-      <p className="preview-muted">
+      <p className="workspace-muted">
         Session date: <time dateTime={session.classDate}>{session.classDate}</time>
         {" · "}
         {session.titleSource === "manual"

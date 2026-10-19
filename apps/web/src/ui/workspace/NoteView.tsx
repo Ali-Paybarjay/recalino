@@ -47,7 +47,7 @@ export function ClaimEvidence({
 }) {
   const evidence = (
     <>
-      <p className="preview-muted">
+      <p className="workspace-muted">
         {claim.origin === "from_class" ? strings.provenance.class : strings.provenance.ai}
         {claim.creation === "user_edit" ? ` · ${strings.provenance.edited}` : ""}
         {claim.origin === "from_class"
@@ -73,7 +73,7 @@ export function ClaimEvidence({
       <div className={styles.evidenceBody}>{evidence}</div>
     </details>
   ) : (
-    <div className="preview-stack">{evidence}</div>
+    <div className="workspace-stack">{evidence}</div>
   );
 }
 
@@ -391,7 +391,7 @@ export function NoteView({
 
   function claim(claim: Claim) {
     return (
-      <article key={claim.id} className="preview-list-item">
+      <article key={claim.id} className="workspace-list-item">
         <NoteText text={claim.text} lang={explanationLanguage} />
         <ClaimEvidence claim={claim} userId={userId} collapsed />
         {canEdit && editMode && (
@@ -524,7 +524,7 @@ export function NoteView({
                       File {source.order} · <bdi>{source.name}</bdi>
                     </strong>
                   </p>
-                  <p className="preview-muted">
+                  <p className="workspace-muted">
                     {source.status === "ready"
                       ? "Ready"
                       : source.status === "uploading"
@@ -604,7 +604,7 @@ export function NoteView({
                     {model.title}
                   </ContentBlock>
                 )}
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {current
                     ? `Note version ${current.number} · ${new Date(current.createdAt).toLocaleString("en-GB")}`
                     : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
@@ -635,7 +635,7 @@ export function NoteView({
                       item.id === legacyPlayback?.itemId &&
                       target === legacyPlayback?.target;
                     return (
-                      <article className="preview-list-item" key={item.id}>
+                      <article className="workspace-list-item" key={item.id}>
                         <ContentBlock as="h3" lang={learningLanguage}>
                           {item.front}
                         </ContentBlock>
@@ -726,18 +726,18 @@ export function NoteView({
                 here and in version history.
               </p>
               {unmatchedClaims.map(([id, value]) => (
-                <article key={id} className="preview-list-item">
+                <article key={id} className="workspace-list-item">
                   <NoteText text={value} />
-                  <p className="preview-muted">Edited by you · Earlier item {id}</p>
+                  <p className="workspace-muted">Edited by you · Earlier item {id}</p>
                 </article>
               ))}
               {unmatchedItems.map(([id, value]) => (
-                <article key={id} className="preview-list-item">
+                <article key={id} className="workspace-list-item">
                   <ContentBlock as="h3" dir="auto">
                     {value.front ?? "Earlier question"}
                   </ContentBlock>
                   <NoteText text={value.back ?? "No answer edit"} />
-                  <p className="preview-muted">Edited by you · Earlier item {id}</p>
+                  <p className="workspace-muted">Edited by you · Earlier item {id}</p>
                 </article>
               ))}
             </Panel>

@@ -21,7 +21,7 @@ export default async function DeletionRecoveryPage() {
       ? `mailto:${encodeURIComponent(email)}`
       : null;
   return (
-    <main className={`preview-root ${styles.page}`}>
+    <main className={`workspace-root ${styles.page}`}>
       <h1>Account deletion</h1>
       <RecordingProvider userId={pending.userId}>
         <PrivacyView

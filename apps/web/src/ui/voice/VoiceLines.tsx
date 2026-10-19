@@ -46,7 +46,7 @@ export function VoiceLines({
   return (
     <div className={styles.aside}>
       <strong>{copy.linesHeading}</strong>
-      <p className="preview-muted">{copy.linesIntro}</p>
+      <p className="workspace-muted">{copy.linesIntro}</p>
       <ol className={styles.clips} aria-label={copy.linesHeading}>
         {lines.map((line) => (
           <li key={line.utteranceId} className={styles.clip}>

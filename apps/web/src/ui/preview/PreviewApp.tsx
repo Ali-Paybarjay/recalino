@@ -64,9 +64,9 @@ export function PreviewApp({ screen }: { screen: string }) {
     !state.noteText;
   const content = (
     <>
-      <div className="preview-toolbar">
+      <div className="workspace-toolbar">
         <p>Sample workspace — changes affect this preview only</p>
-        <label className="preview-explorer">
+        <label className="workspace-explorer">
           Explore screens
           <select
             aria-label="Explore screens"
@@ -85,11 +85,11 @@ export function PreviewApp({ screen }: { screen: string }) {
         </Button>
       </div>
       {!recording && message ? (
-        <p role="status" className="preview-muted">
+        <p role="status" className="workspace-muted">
           {message}
         </p>
       ) : null}
-      <div className="preview-stack" key={screen}>
+      <div className="workspace-stack" key={screen}>
         {needsLearning ? (
           <>
             <PageHeader
@@ -147,10 +147,10 @@ export function PreviewApp({ screen }: { screen: string }) {
     </>
   );
   return (
-    <div className="preview-root">
+    <div className="workspace-root">
       {spec?.focused ? (
-        <main id="content" className="preview-focus">
-          <div className="preview-wordmark">
+        <main id="content" className="workspace-focus">
+          <div className="workspace-wordmark">
             <Wordmark />
           </div>
           {content}
@@ -173,7 +173,7 @@ export function PreviewApp({ screen }: { screen: string }) {
           newClassHref="/preview/new-class"
           reviewDue={due}
           sidebarFooter={
-            <p className="preview-muted">
+            <p className="workspace-muted">
               {state.allowance.minutes} audio minutes · {state.allowance.pages} pages / photos
               <br />
               Sample allowance

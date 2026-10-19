@@ -94,7 +94,7 @@ export function CardsView({
     await change(rejected, undoBody(rejected));
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Actions>
         <LinkButton disabled={busy} secondary href={`/sessions/${sessionId}/notes`}>
           Session notes
@@ -138,9 +138,9 @@ export function CardsView({
           </p>
         ) : (
           visibleCards.map((card) => (
-            <article key={card.id} className="preview-list-item">
+            <article key={card.id} className="workspace-list-item">
               <CardPreview card={card} userId={userId} />
-              <p className="preview-muted">{cardSummary(card)}</p>
+              <p className="workspace-muted">{cardSummary(card)}</p>
               <Actions>
                 <LinkButton secondary href={`/cards/${card.id}`}>
                   Edit card

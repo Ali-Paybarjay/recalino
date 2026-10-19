@@ -60,7 +60,7 @@ function pronunciationProblem(failure: unknown): string {
 
 function pauseOtherStudyAudio(player: HTMLAudioElement) {
   // Listening attachments and inline players share a study Panel; other app audio stays alone.
-  const panel = player.closest(".preview-panel");
+  const panel = player.closest(".workspace-panel");
   if (!panel) return;
   for (const other of panel.querySelectorAll("audio")) {
     if (other !== player) other.pause();

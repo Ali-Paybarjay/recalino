@@ -16,9 +16,9 @@ export function PageHeader({
   back?: string;
 }) {
   return (
-    <header className="preview-header">
+    <header className="workspace-header">
       {back ? (
-        <Link className="preview-back" href={previewHref(back)}>
+        <Link className="workspace-back" href={previewHref(back)}>
           ← Back
         </Link>
       ) : null}

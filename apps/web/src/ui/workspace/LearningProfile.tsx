@@ -53,12 +53,12 @@ export function LearningProfile({
     }
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       {problem && <Status tone="error">{problem}</Status>}
       {notice && <Status tone="success">{notice}</Status>}
       <NextStepPanel memory={overview.memory} timeZone={overview.timezone} />
       <Panel title="Your practice in the last 30 days">
-        <dl className="preview-metrics">
+        <dl className="workspace-metrics">
           <div>
             <dt>Answers saved</dt>
             <dd>{overview.activity.answers}</dd>
@@ -79,7 +79,7 @@ export function LearningProfile({
         {!overview.activity.answers && (
           <p>Not enough practice history yet. A short review will start your record.</p>
         )}
-        <p className="preview-muted">
+        <p className="workspace-muted">
           Undone answers are excluded. Review choices describe this practice; they are not a
           language test.
         </p>
@@ -98,7 +98,7 @@ export function LearningProfile({
         </h3>
         <p>Chosen by you · Goal: {overview.profile.goal ?? "Not chosen"}</p>
         <p>Estimated support level: Unknown.</p>
-        <p className="preview-muted">
+        <p className="workspace-muted">
           {overview.supportEstimate.evidenceCount} review answers in the last 30 days. Flashcard
           answers alone cannot establish a CEFR level. Speaking is unknown without an appropriate
           assessment.
@@ -198,7 +198,7 @@ export function LearningProfile({
         <Button secondary disabled={busy} onClick={() => change({ action: "reset_suggestions" })}>
           Reset suggested preferences
         </Button>
-        <p className="preview-muted">Reset keeps your explicit choice.</p>
+        <p className="workspace-muted">Reset keeps your explicit choice.</p>
       </Panel>
     </div>
   );

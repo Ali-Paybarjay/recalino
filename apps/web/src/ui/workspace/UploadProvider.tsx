@@ -130,7 +130,7 @@ function UploadIndicator({ problem }: { problem: string | null }) {
                   ? batch.problem
                   : `Uploading ${batch.entries.length} files · ${Math.min(100, Math.floor((sent / Math.max(1, total)) * 100))}%`}
               </p>
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 You can use other pages. If your browser pauses, your saved upload resumes when you
                 return.
               </p>

@@ -124,7 +124,7 @@ export function ClassForm({
   }
 
   return (
-    <div className="preview-reader">
+    <div className="workspace-reader">
       <Panel title={initial ? "Session details" : undefined}>
         <form
           onSubmit={(event) => {
@@ -205,7 +205,7 @@ export function ClassForm({
             </Actions>
           ) : null}
           {initial && !title.trim() ? (
-            <p className="preview-muted">
+            <p className="workspace-muted">
               Save changes to use the title from your learning material.
             </p>
           ) : null}

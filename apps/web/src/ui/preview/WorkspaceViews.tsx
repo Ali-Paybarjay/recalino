@@ -381,7 +381,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                       </div>
                     ) : null}
                   </dl>
-                  <p className="preview-muted">
+                  <p className="workspace-muted">
                     <time dateTime={item.date}>{displayClassDate(item.date)}</time> ·{" "}
                     {titleStatus(summary.titleSource)} · {item.status}
                   </p>
@@ -411,7 +411,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           title="Your English, one class at a time."
           description="Pick up where you left off. A short review is enough for today."
         />
-        <div className="preview-grid">
+        <div className="workspace-grid">
           <Panel tone="hero" title="Record a session">
             <Icon icon={Microphone} size={40} />
             <p>Keep useful moments from your next English class.</p>
@@ -434,7 +434,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 {due ? "Start review" : "Choose cards"}
               </LinkButton>
             </Actions>
-            <p className="preview-muted">
+            <p className="workspace-muted">
               A few minutes is enough. This sample does not calculate an FSRS schedule.
             </p>
           </Panel>
@@ -443,13 +443,13 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           {state.classes.length ? (
             rows(recentClasses.slice(0, 2))
           ) : (
-            <div className="preview-empty">
+            <div className="workspace-empty">
               <p>Your first session starts here.</p>
               <LinkButton to="new-class">New session</LinkButton>
             </div>
           )}
         </Panel>
-        <div className="preview-row">
+        <div className="workspace-row">
           <LinkButton secondary to="progress">
             View progress
           </LinkButton>
@@ -514,7 +514,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
             <section className={directoryStyles.classes} aria-label="Session list">
               <div className={directoryStyles.listHeading}>
                 <h2>{allCourses ? "All sessions" : "Sessions"}</h2>
-                <p className="preview-muted">Most recent first · Select a session to see more</p>
+                <p className="workspace-muted">Most recent first · Select a session to see more</p>
               </div>
               {visible.length ? (
                 rows(visible.slice(0, visibleCount))
@@ -527,7 +527,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               )}
               {visible.length ? (
                 <div className={directoryStyles.listFooter}>
-                  <p className="preview-muted" role="status" aria-live="polite">
+                  <p className="workspace-muted" role="status" aria-live="polite">
                     {Math.min(visibleCount, visible.length)} of {visible.length}{" "}
                     {visible.length === 1 ? "session" : "sessions"}
                   </p>
@@ -585,7 +585,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
               {screen === "course" && selectedCourse ? (
                 <div id="course-materials">
                   <Panel title="Course materials">
-                    <p className="preview-muted">
+                    <p className="workspace-muted">
                       Current sample notes from each session, from earliest to latest.
                     </p>
                     {courseSessions.length ? (
@@ -593,12 +593,12 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                         const content =
                           item.id === lesson?.id ? state : state.classWorkspaces[item.id];
                         return (
-                          <article className="preview-panel" key={item.id}>
-                            <p className="preview-muted">
+                          <article className="workspace-panel" key={item.id}>
+                            <p className="workspace-muted">
                               <time dateTime={item.date}>{item.date}</time>
                             </p>
                             <h3 dir="auto">{summaryFor(item).title}</h3>
-                            <p className="preview-muted">
+                            <p className="workspace-muted">
                               {titleStatus(summaryFor(item).titleSource)}
                             </p>
                             {content?.materialMetadata ? (
@@ -611,7 +611,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                             ) : null}
                             {content?.noteText.trim() ? (
                               <>
-                                <p className="preview-muted">
+                                <p className="workspace-muted">
                                   Current sample notes · Version {content.noteHistory.length}
                                   {content.noteHistory.at(-1)?.label
                                     ? ` · ${content.noteHistory.at(-1)?.label}`
@@ -622,12 +622,12 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                                 </p>
                               </>
                             ) : (
-                              <p className="preview-muted">
+                              <p className="workspace-muted">
                                 No notes yet. Open this session to add material.
                               </p>
                             )}
                             {content?.sources.length ? (
-                              <p className="preview-muted">
+                              <p className="workspace-muted">
                                 Sample sources:{" "}
                                 {content.sources.map((source) => source.name).join(" · ")}
                               </p>
@@ -661,7 +661,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                         >
                           Previous materials
                         </Button>
-                        <p className="preview-muted">Page {materialsPage + 1}</p>
+                        <p className="workspace-muted">Page {materialsPage + 1}</p>
                         <Button
                           secondary
                           disabled={(materialsPage + 1) * 5 >= courseSessions.length}
@@ -681,7 +681,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
     );
   if (screen === "new-class")
     return (
-      <div className="preview-reader">
+      <div className="workspace-reader">
         <PageHeader
           title="New session"
           description="Choose a course and date. The title will come from your learning material."
@@ -781,7 +781,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           back="classes"
         />
         {lesson ? (
-          <div className="preview-grid">
+          <div className="workspace-grid">
             <Panel tone="hero" title="Session notes">
               <Icon icon={FileText} size={32} />
               {notesAvailable ? (
@@ -836,7 +836,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           </Actions>
           {lesson ? (
             <Panel title="Session overview">
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 <time dateTime={lesson.date}>{lesson.date}</time> ·{" "}
                 {titleStatus(summaryFor(lesson).titleSource)}
               </p>
@@ -853,23 +853,23 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                   </ul>
                 </>
               ) : (
-                <p className="preview-muted">Topics appear when session material is ready.</p>
+                <p className="workspace-muted">Topics appear when session material is ready.</p>
               )}
             </Panel>
           ) : null}
           <Panel title="Session material">
             {state.sources.length ? (
               <>
-                <ul className="preview-list">
+                <ul className="workspace-list">
                   {state.sources.map((source) => (
                     <li key={source.id}>
-                      <div className="preview-row">
+                      <div className="workspace-row">
                         <span>
                           <Icon icon={FileText} /> {source.name}
                         </span>
-                        <span className="preview-chip">{source.status}</span>
+                        <span className="workspace-chip">{source.status}</span>
                       </div>
-                      <p className="preview-muted">
+                      <p className="workspace-muted">
                         {source.kind === "audio"
                           ? `${source.durationMinutes} audio minutes`
                           : `${source.pages} ${source.kind === "photo" ? "photo" : "pages"}`}
@@ -887,9 +887,9 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 </Actions>
               </>
             ) : (
-              <div className="preview-empty">
+              <div className="workspace-empty">
                 <p>No sources in this session yet.</p>
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   Add a session recording, handout or photo to get started.
                 </p>
                 <LinkButton to={lesson ? "first-upload" : "new-class"}>
@@ -922,7 +922,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
           description="Rename, move and arrange your sample sessions."
           back="classes"
         />
-        <div className="preview-grid">
+        <div className="workspace-grid">
           <Panel title="Session details">
             <Field label="Move to course">
               <select
@@ -1005,7 +1005,7 @@ export function WorkspaceViews({ screen }: { screen: string }) {
                 Delete empty unit
               </Button>
             </Actions>
-            <p className="preview-muted">
+            <p className="workspace-muted">
               Only empty courses and units can be deleted. Move their sessions first. My Courses is
               your permanent default.
             </p>

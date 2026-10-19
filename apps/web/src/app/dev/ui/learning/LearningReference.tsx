@@ -45,7 +45,7 @@ function LearningFixture({ progress }: { progress: boolean }) {
   return progress ? (
     <AutomaticLearningView sessionId={sessionId} initial={initial} />
   ) : (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <AutomaticLearningNotice sessionId={sessionId} />
       <Panel title="Session materials">
         <LinkButton href={`/sessions/${sessionId}/sources`}>Add material</LinkButton>
@@ -59,7 +59,7 @@ export function LearningReference({ progress }: { progress: boolean }) {
     <RecordingProvider userId={userId}>
       <AutomaticLearningProvider>
         <UploadProvider>
-          <div className="preview-root">
+          <div className="workspace-root">
             <AppShell
               current="classes"
               hrefs={{

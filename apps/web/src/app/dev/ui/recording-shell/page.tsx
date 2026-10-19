@@ -26,12 +26,12 @@ export default async function RecordingShellPage({
   const { state } = await searchParams;
   const capturing = state === "recording";
   return (
-    <div className="preview-root">
+    <div className="workspace-root">
       <RecordingShellFrame
         capturing={capturing}
         header={<PageHeader title="Record a session" subtitle="Present perfect vs past simple" />}
       >
-        <div className="preview-stack">
+        <div className="workspace-stack">
           {capturing ? (
             <Panel tone="hero" title="Your session is being recorded">
               <p role="timer" className={recording.timer} aria-label="Active recording time">
@@ -45,7 +45,7 @@ export default async function RecordingShellPage({
                 <Button secondary>Add board photo</Button>
               </Actions>
               <p>Recording continues in ten-minute parts, saved on this device.</p>
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 Recording and lock-screen controls depend on your browser. Keep Recalino open and
                 the screen on for reliable capture.
               </p>
@@ -58,7 +58,7 @@ export default async function RecordingShellPage({
             </Panel>
           )}
           <Panel title="Saved and recoverable recordings">
-            <p className="preview-muted">No recordings on this device yet.</p>
+            <p className="workspace-muted">No recordings on this device yet.</p>
           </Panel>
         </div>
       </RecordingShellFrame>

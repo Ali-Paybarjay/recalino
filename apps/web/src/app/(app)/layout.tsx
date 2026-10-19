@@ -12,7 +12,7 @@ import { UploadProvider } from "../../ui/workspace/UploadProvider";
 export default async function WorkspaceLayout({ children }: { children: ReactNode }) {
   // Each page owns its redirect path and setup/consent checks before reading private data.
   const learner = await getLearner();
-  if (!learner) return <div className="preview-root">{children}</div>;
+  if (!learner) return <div className="workspace-root">{children}</div>;
   return (
     <RecordingProvider
       key={learner.userId}
@@ -27,7 +27,7 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
               termsPending: learner.state.pending.terms,
             }}
           >
-            <div className="preview-root">
+            <div className="workspace-root">
               <NotificationCenter userId={learner.userId} />
               {children}
             </div>

@@ -318,7 +318,7 @@ test("recording elapsed time and photos survive pause, resume and stop confirmat
   await page.clock.install();
   await page.goto("/preview/microphone");
   await page.getByRole("button", { name: "Start recording demonstration", exact: true }).click();
-  const timer = page.locator(".preview-timer");
+  const timer = page.locator(".workspace-timer");
   const seconds = (text: string) => {
     const [minutes, remainder] = text.split(":").map(Number);
     return (minutes ?? 0) * 60 + (remainder ?? 0);
