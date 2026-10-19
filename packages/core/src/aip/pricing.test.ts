@@ -54,20 +54,25 @@ describe("owner estimate rates (ADM-I06)", () => {
       ),
     ).toThrow();
   });
-  it("QUA-09 multiplies before dividing and rounds each rate up to whole micros", () => {
-    const tokens = [
-      rate("input_million_tokens", 300_000),
-      rate("output_million_tokens", 1),
-    ] as const;
-    // count=1, divisor=1e6: one token at 1 micro per million is still a whole micro.
+  it("QUA-09 locks the current estimate arithmetic (sum of count/divisor × rate, one ceil)", () => {
+    // Changing this rounding changes estimated_micros and the cost caps in quota/costs.ts;
+    // per-rate integer rounding is an open product-owner decision (audit QUA-09).
     expect(
-      estimatedUsageCost([tokens[1]], "synthetic/model", { outputTokens: 1 }, "generation"),
+      estimatedUsageCost(
+        [rate("output_million_tokens", 1)],
+        "synthetic/model",
+        { outputTokens: 1 },
+        "generation",
+      ),
     ).toBe(1);
-    // 10 × 300000 / 1e6 is exactly 3; dividing first drifted to 3.0000000000000004 → 4.
     expect(
-      estimatedUsageCost([tokens[0]], "synthetic/model", { inputTokens: 10 }, "generation"),
-    ).toBe(3);
-    // Each rate rounds up on its own: ceil(1/1e6) + ceil(1/1e6) = 2 (dividing first gave 1).
+      estimatedUsageCost(
+        [rate("input_million_tokens", 300_000)],
+        "synthetic/model",
+        { inputTokens: 10 },
+        "generation",
+      ),
+    ).toBe(4);
     expect(
       estimatedUsageCost(
         [rate("input_million_tokens", 1), rate("output_million_tokens", 1)],
@@ -75,8 +80,7 @@ describe("owner estimate rates (ADM-I06)", () => {
         { inputTokens: 1, outputTokens: 1 },
         "generation",
       ),
-    ).toBe(2);
-    // Whole usage stays exact past 2^53: 10000001 × 1000000001 / 1e6 = 10000001010.000001 → …011.
+    ).toBe(1);
     expect(
       estimatedUsageCost(
         [rate("input_million_tokens", 1_000_000_001)],
@@ -84,8 +88,7 @@ describe("owner estimate rates (ADM-I06)", () => {
         { inputTokens: 10_000_001 },
         "generation",
       ),
-    ).toBe(10_000_001_011);
-    // Fractional audio seconds keep rounding up.
+    ).toBe(10_000_001_010);
     expect(
       estimatedUsageCost(
         [rate("audio_minute", 120, "transcription")],

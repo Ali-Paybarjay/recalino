@@ -110,10 +110,6 @@ export function failureRank(error: unknown): number {
   return 1;
 }
 
-/**
- * The acoustic check of a run's audio, started while the lesson is generated. The native engine
- * runs in a worker thread, so the check and the provider calls do not wait for each other.
- */
 export type PdfPagesPreparer = (
   input: Omit<Parameters<PdfPagePreparer>[0], "page"> & {
     pages: number[];
