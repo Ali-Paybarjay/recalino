@@ -15,7 +15,6 @@ import { teachingAdaptation } from "./learner-context";
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
 import { planLessonParts } from "./knowledge-parts";
-import { correctVoiceCandidates, processVoiceSource } from "./voice-processing";
 
 export { knowledgePrompt, validateGeneratedKnowledge } from "./steps/knowledge-checks";
 export {
@@ -47,11 +46,11 @@ import {
   liveRun,
   PROVIDER_CALL_SAFETY_MS,
   type ProcessingDependencies,
-  providerStep,
   YIELD_DELAY_SECONDS,
 } from "./steps/runtime";
 import { startRun } from "./steps/start";
 import { beginVoiceCheck } from "./steps/voice-check";
+import { correctSpokenMistakes } from "./steps/voice-correction";
 
 /** One provider chunk per invocation; continuation jobs keep long classes within Function limits. */
 export function processingJob(
@@ -63,7 +62,7 @@ export function processingJob(
       const ctx = { userId: payload.userId, requestId: job.job.id };
       try {
         const stage = await startRun({ job, ctx, payload, definition, dependencies });
-        const { provider, initial, settings, snapshot } = stage;
+        const { provider, settings, snapshot } = stage;
         const extracted = await extractSources(stage);
         if (extracted === YIELDED) return;
         // Each lesson stage makes at most one provider call, on any model of the run. A stage
@@ -111,53 +110,15 @@ export function processingJob(
             classified,
             settings.learnerContext,
           );
-          if (dependencies.diarizeVoice) {
-            // Optional correction must not share a job with a newly paid knowledge stage.
-            if (knowledgeDispatched) {
-              return "checkpoint";
-            }
-            // Nor with the acoustic check that ran in this job: the check is saved first.
-            if (voiceCheck && (await voiceCheck.wait())) return "checkpoint";
-            for (const source of extracted) {
-              const voiceProgress = await processVoiceSource({
-                db: job.db,
-                ctx,
-                sessionId: initial.session_id,
-                runId: payload.runId,
-                source,
-                explanationLanguage: settings.explanationLanguage,
-                diarize: dependencies.diarizeVoice,
-                now: job.now,
-                correct: (analysis) =>
-                  correctVoiceCandidates({
-                    db: job.db,
-                    ctx,
-                    analysis,
-                    explanationLanguage: settings.explanationLanguage,
-                    provider,
-                    now: job.now,
-                    referenceTexts: classified
-                      .filter((item) => item.kind !== "audio" && item.role !== "user_notes")
-                      .flatMap((item) => item.blocks.map((block) => block.text)),
-                    execute: (request) =>
-                      providerStep(
-                        job,
-                        ctx,
-                        payload.runId,
-                        request.step,
-                        request.model,
-                        provider,
-                        request.schema,
-                        request.effect,
-                        { onCommit: request.onCommit },
-                      ),
-                  }),
-              });
-              if (voiceProgress !== "unchanged") {
-                return "checkpoint";
-              }
-            }
-          }
+          if (
+            (await correctSpokenMistakes(stage, {
+              extracted,
+              classified,
+              knowledgeDispatched,
+              voiceCheck,
+            })) === "checkpoint"
+          )
+            return "checkpoint";
           await job.db.transaction().execute(async (tx) => {
             const run = await liveRun(tx, ctx, payload.runId);
             // The source's own lock prevents a late worker from publishing after an asset tombstone.
