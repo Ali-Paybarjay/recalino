@@ -113,9 +113,10 @@ export async function workspaceRequest<T>(
       message = "Exports are not configured yet.";
     if (fields?.provider?.includes("configuration_unavailable"))
       message = "AI is awaiting operator configuration. Your material remains saved.";
-    // UX-05: the learner never reads "provider". The progress card names the next step (Processing
-    // review); the proposed sentence waits for the owner in docs/design/UI_COPY_PENDING.md.
-    if (reasons.includes("provider_outcome_unresolved")) message = DEFAULT_FAILURE;
+    // UX-05, D89: the learner never reads "provider", and is told not to retry before the operator
+    // has checked the result (owner-approved sentence, docs/design/UI_COPY_PENDING.md).
+    if (reasons.includes("provider_outcome_unresolved"))
+      message = workspaceErrors.outcomeUnresolved;
     if (
       reasons.includes("changed_after_estimate") ||
       reasons.includes("changed_after_confirmation") ||

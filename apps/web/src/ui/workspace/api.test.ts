@@ -257,6 +257,10 @@ describe("userMessage", () => {
       fields: { automatic: ["provider_outcome_unresolved"] },
     });
     expect(userMessage(unresolved, fallback)).not.toMatch(/provider|queued/i);
+    // D89 (owner decision 2026-10-19): the approved sentence, not the generic "Try again".
+    expect(userMessage(unresolved, fallback)).toBe(
+      "A result is still being checked. Contact the pilot operator before trying again.",
+    );
   });
 
   it("keeps a sentence the app wrote for learners, and replaces runtime errors", () => {
