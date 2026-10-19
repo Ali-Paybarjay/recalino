@@ -10,12 +10,12 @@ import {
   saveBrowserPushSubscription,
 } from "@recalino/core/plt";
 import { z } from "zod";
-import type { Handler } from "./api";
+import { type Handler, learnerActor } from "./api";
 import { readWebPushConfiguration } from "./processing-notifications";
 
 export function notificationsHandler(): Handler {
   return async ({ db, ctx, request, input }) => {
-    const actor = { userId: ctx.userId as string, requestId: ctx.requestId };
+    const actor = learnerActor(ctx);
     if (request.method === "PATCH") {
       const { ids } = z.strictObject({ ids: z.array(z.uuid()).max(50) }).parse(input);
       await markNotificationsRead(db, actor, ids);
@@ -40,7 +40,7 @@ export function notificationsHandler(): Handler {
 }
 export function notificationPushHandler(): Handler {
   return async ({ db, ctx, request, input }) => {
-    const actor = { userId: ctx.userId as string, requestId: ctx.requestId };
+    const actor = learnerActor(ctx);
     if (request.method === "POST") {
       if (!readWebPushConfiguration()) return { status: 503, body: { available: false } };
       const subscription = browserPushSubscriptionSchema.strict().parse(input);

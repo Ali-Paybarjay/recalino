@@ -12,6 +12,7 @@ import {
   errors,
   hmacSha256Hex,
   isValidIdempotencyKey,
+  type LearnerContext,
   type Logger,
   type PltSettings,
   readPltSettings,
@@ -195,12 +196,7 @@ async function run(
   args: Omit<HandlerArgs, "db">,
   deps: RouteDeps,
 ): Promise<{ status: number; body: unknown; redirect?: string; replayed?: boolean }> {
-  if (meta.idempotency === "handler") {
-    const key = args.request.headers.get("idempotency-key");
-    if (key === null || !isValidIdempotencyKey(key)) {
-      throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
-    }
-  }
+  if (meta.idempotency === "handler") idempotencyKey(args.request);
   if (meta.idempotency !== "required") {
     const result = await handler({
       ...args,
@@ -213,10 +209,7 @@ async function run(
 
   const userId = args.ctx.userId;
   if (userId === null) throw errors.unauthenticated();
-  const key = args.request.headers.get("idempotency-key");
-  if (key === null || !isValidIdempotencyKey(key)) {
-    throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
-  }
+  const key = idempotencyKey(args.request);
   const requestHash = sha256Hex(
     `${args.request.method} ${meta.id}\n${canonicalJson(args.input ?? null)}`,
   );
@@ -277,6 +270,24 @@ async function recordSignal(
       error_name: error instanceof Error ? error.name : typeof error,
     });
   }
+}
+
+/** The signed-in learner a handler acts for (FR-PLT-002); every learner route uses this check. */
+export function learnerActor(ctx: RequestContext): LearnerContext {
+  if (!ctx.userId) throw errors.unauthenticated();
+  return { userId: ctx.userId, requestId: ctx.requestId };
+}
+
+/**
+ * The request's Idempotency-Key (FR-PLT-004). Every route reports the same problem: a missing
+ * header is `required`, a malformed one is `invalid` (audit QUA-04).
+ */
+export function idempotencyKey(request: Request): string {
+  const key = request.headers.get("idempotency-key");
+  if (key === null || !isValidIdempotencyKey(key)) {
+    throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
+  }
+  return key;
 }
 
 /** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; compared in constant time. */

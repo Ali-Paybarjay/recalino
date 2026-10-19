@@ -21,7 +21,6 @@ import {
   publishNotebook,
   publishNotebookSchema,
 } from "@recalino/core/note";
-import { errors, type LearnerContext } from "@recalino/core/plt";
 import { getAutomaticLearningSession } from "@recalino/core/proc";
 import {
   getReviewQueue,
@@ -34,24 +33,15 @@ import {
   updateReviewSettings,
 } from "@recalino/core/srs";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
-function key(request: Request): string {
-  const value = request.headers.get("idempotency-key");
-  if (!value) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
-  return value;
-}
 function valid(id: string) {
   z.uuid().parse(id);
 }
 export function notebookHandler(sessionId: string): Handler {
   return async ({ request, input, db, ctx }) => {
     valid(sessionId);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET") {
       const [notebook, latestKnowledge] = await Promise.all([
         getNotebook(db, learner, sessionId),
@@ -64,7 +54,7 @@ export function notebookHandler(sessionId: string): Handler {
       learner,
       sessionId,
       publishNotebookSchema.parse(input),
-      { key: key(request) },
+      { key: idempotencyKey(request) },
     );
     if (await getAutomaticLearningSession(db, learner, sessionId))
       await synchronizeAutomaticCards(db, learner, sessionId, {
@@ -76,25 +66,25 @@ export function notebookHandler(sessionId: string): Handler {
 export function noteVersionsHandler(sessionId: string): Handler {
   return async ({ db, ctx }) => {
     valid(sessionId);
-    return { body: await listNotebookRevisions(db, actor(ctx), sessionId) };
+    return { body: await listNotebookRevisions(db, learnerActor(ctx), sessionId) };
   };
 }
 export function noteRevisionHandler(id: string): Handler {
   return async ({ db, ctx }) => {
     valid(id);
-    return { body: await getNotebookRevision(db, actor(ctx), id) };
+    return { body: await getNotebookRevision(db, learnerActor(ctx), id) };
   };
 }
 export function classCardsHandler(sessionId: string): Handler {
   return async ({ request, input, db, ctx }) => {
     valid(sessionId);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET")
       return { body: { cards: await listCards(db, learner, { sessionId }) } };
     return {
       status: 201,
       body: await generateCards(db, learner, sessionId, generateCardsSchema.parse(input), {
-        key: key(request),
+        key: idempotencyKey(request),
       }),
     };
   };
@@ -102,10 +92,12 @@ export function classCardsHandler(sessionId: string): Handler {
 export function cardHandler(id: string): Handler {
   return async ({ request, input, db, ctx }) => {
     valid(id);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET") return { body: await getCard(db, learner, id) };
     return {
-      body: await editCard(db, learner, id, editCardSchema.parse(input), { key: key(request) }),
+      body: await editCard(db, learner, id, editCardSchema.parse(input), {
+        key: idempotencyKey(request),
+      }),
     };
   };
 }
@@ -113,8 +105,8 @@ export function cardActionsHandler(id: string): Handler {
   return async ({ request, input, db, ctx }) => {
     valid(id);
     return {
-      body: await changeCard(db, actor(ctx), id, cardActionSchema.parse(input), {
-        key: key(request),
+      body: await changeCard(db, learnerActor(ctx), id, cardActionSchema.parse(input), {
+        key: idempotencyKey(request),
       }),
     };
   };
@@ -122,7 +114,7 @@ export function cardActionsHandler(id: string): Handler {
 export function cardProposalsHandler(id: string): Handler {
   return async ({ db, ctx }) => {
     valid(id);
-    return { body: await listCardProposals(db, actor(ctx), id) };
+    return { body: await listCardProposals(db, learnerActor(ctx), id) };
   };
 }
 export function cardProposalHandler(id: string, proposalId: string): Handler {
@@ -137,8 +129,8 @@ export function cardProposalHandler(id: string, proposalId: string): Handler {
       })
       .parse(input);
     return {
-      body: await resolveCardProposal(db, actor(ctx), id, proposalId, parsed, {
-        key: key(request),
+      body: await resolveCardProposal(db, learnerActor(ctx), id, proposalId, parsed, {
+        key: idempotencyKey(request),
       }),
     };
   };
@@ -154,7 +146,9 @@ export function cardMediaHandler(id: string): Handler {
         listening: z.boolean().optional(),
       })
       .parse(input);
-    return { body: await setCardMedia(db, actor(ctx), id, parsed, { key: key(request) }) };
+    return {
+      body: await setCardMedia(db, learnerActor(ctx), id, parsed, { key: idempotencyKey(request) }),
+    };
   };
 }
 export function reviewQueueHandler(): Handler {
@@ -163,27 +157,27 @@ export function reviewQueueHandler(): Handler {
     const selection = reviewQueueQuerySchema.parse({
       sessionId: query.get("sessionId") ?? undefined,
     });
-    return { body: await getReviewQueue(db, actor(ctx), selection) };
+    return { body: await getReviewQueue(db, learnerActor(ctx), selection) };
   };
 }
 export function reviewEventHandler(): Handler {
   return async ({ input, db, ctx }) => ({
     status: 201,
-    body: await submitReview(db, actor(ctx), reviewInputSchema.parse(input)),
+    body: await submitReview(db, learnerActor(ctx), reviewInputSchema.parse(input)),
   });
 }
 export function reviewUndoHandler(id: string): Handler {
   return async ({ input, db, ctx }) => {
     valid(id);
     const parsed = z.strictObject({ expectedVersion: z.int().nonnegative() }).parse(input);
-    return { body: await undoReview(db, actor(ctx), id, parsed.expectedVersion) };
+    return { body: await undoReview(db, learnerActor(ctx), id, parsed.expectedVersion) };
   };
 }
 export function reviewSettingsHandler(): Handler {
   return async ({ request, input, db, ctx }) => ({
     body:
       request.method === "GET"
-        ? await getReviewSettings(db, actor(ctx))
-        : await updateReviewSettings(db, actor(ctx), reviewSettingsSchema.parse(input)),
+        ? await getReviewSettings(db, learnerActor(ctx))
+        : await updateReviewSettings(db, learnerActor(ctx), reviewSettingsSchema.parse(input)),
   });
 }

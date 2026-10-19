@@ -6,13 +6,7 @@ import {
   tombstoneAccountHtmlExports,
   tombstoneSessionHtmlExports,
 } from "@recalino/core/html";
-import {
-  canonicalJson,
-  errors,
-  isValidIdempotencyKey,
-  type LearnerContext,
-  runIdempotent,
-} from "@recalino/core/plt";
+import { canonicalJson, errors, runIdempotent } from "@recalino/core/plt";
 import { voiceAnalysisBlockedReason, voiceProcessingStatus } from "@recalino/core/proc";
 import {
   beginVoiceEnrollment,
@@ -32,23 +26,13 @@ import {
   voiceLineActionSchema,
 } from "@recalino/core/voc";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
 import { loadVoiceEngine, VOICE_MODEL_REVISION } from "./voice-engine";
 import { queueVoiceAnalysis } from "./voice-processing";
 import { prepareVoiceSample } from "./voice-sample";
 
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
-function key(request: Request) {
-  const key = request.headers.get("idempotency-key");
-  if (!key || !isValidIdempotencyKey(key))
-    throw errors.validationFailed({ "Idempotency-Key": ["required"] });
-  return key;
-}
 export async function voiceEngineAvailable() {
   try {
     await loadVoiceEngine();
@@ -59,7 +43,7 @@ export async function voiceEngineAvailable() {
 }
 export function voiceProfileHandler(): Handler {
   return async ({ request, input, db, ctx }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET")
       return {
         body: await getVoiceProfile(
@@ -69,7 +53,7 @@ export function voiceProfileHandler(): Handler {
           VOICE_MODEL_REVISION,
         ),
       };
-    const requestKey = key(request),
+    const requestKey = idempotencyKey(request),
       store = getObjectStore();
     if (!store) throw errors.validationFailed({ voice: ["storage_unavailable"] });
     if (request.method === "DELETE") {
@@ -147,7 +131,7 @@ export function voiceProfileHandler(): Handler {
 export function classVoiceHandler(sessionId: string): Handler {
   return async ({ request, input, db, ctx }) => {
     z.uuid().parse(sessionId);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET")
       return {
         body: {
@@ -156,7 +140,7 @@ export function classVoiceHandler(sessionId: string): Handler {
           processing: await voiceProcessingStatus(db, learner, sessionId),
         },
       };
-    const requestKey = key(request);
+    const requestKey = idempotencyKey(request);
     if (z.object({ action: z.literal("analyze") }).safeParse(input).success) {
       const run = await queueVoiceAnalysis(db, learner, sessionId, requestKey);
       // The check takes minutes; its correction and publish steps follow on this request.

@@ -1,6 +1,5 @@
 import "server-only";
 import { requestClassProcessingReview } from "@recalino/core/ops";
-import { errors, isValidIdempotencyKey, type LearnerContext } from "@recalino/core/plt";
 import {
   beginAutomaticLearningBatch,
   cancelAutomaticLearningBatch,
@@ -11,7 +10,7 @@ import {
   skipAutomaticLearningFile,
 } from "@recalino/core/proc";
 import { z } from "zod";
-import type { Handler } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import {
   automaticLearningSync,
   readAutomaticLearning,
@@ -58,14 +57,11 @@ export function automaticLearningHandler(
   };
   return async ({ db, ctx, request, input }) => {
     z.uuid().parse(sessionId);
-    if (!ctx.userId) throw errors.unauthenticated();
-    const learner: LearnerContext = { userId: ctx.userId, requestId: ctx.requestId };
+    const learner = learnerActor(ctx);
     if (request.method === "GET") return { body: await deps.read(db, learner, sessionId) };
     const fields = actions.parse(input);
     if (fields.action === "request_review") {
-      const requestId = request.headers.get("idempotency-key");
-      if (!requestId || !isValidIdempotencyKey(requestId))
-        throw errors.validationFailed({ "Idempotency-Key": [requestId ? "invalid" : "required"] });
+      const requestId = idempotencyKey(request);
       await requestClassProcessingReview(db, learner, {
         sessionId,
         runId: fields.runId,
@@ -123,9 +119,7 @@ export function automaticLearningHandler(
       );
       return { status: 202, body };
     }
-    const retryKey = fields.action === "retry" ? request.headers.get("idempotency-key") : null;
-    if (fields.action === "retry" && (!retryKey || !isValidIdempotencyKey(retryKey)))
-      throw errors.validationFailed({ "Idempotency-Key": [retryKey ? "invalid" : "required"] });
+    const retryKey = fields.action === "retry" ? idempotencyKey(request) : null;
     const body = await deps.sync(db, learner, sessionId, retryKey ? { retryKey } : {});
     deps.wake(
       ["proc.automatic_learning", "src.verify_upload", "src.verify_audio", "proc.process"],

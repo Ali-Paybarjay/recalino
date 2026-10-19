@@ -20,30 +20,21 @@ import {
 import { allowance } from "@recalino/core/quota";
 import { z } from "zod";
 import { getAiProvider } from "./ai";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
 import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
 function options() {
   const job = getProcessingDefinition();
   if (!job) throw errors.validationFailed({ processing: ["storage_unavailable"] });
   // A retry uses the same options, so it follows the same D49 release switch.
   return { provider: getAiProvider(), job, teachingMemory: TEACHING_MEMORY_IN_GENERATION };
 }
-function operationKey(request: Request) {
-  const key = request.headers.get("idempotency-key");
-  if (!key) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
-  return key;
-}
 export function classProcessingHandler(sessionId: string): Handler {
   return async ({ db, ctx, request, input }) => {
     z.uuid().parse(sessionId);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET") return { body: await listRuns(db, learner, sessionId) };
     await getSession(db, learner, sessionId);
     const expected = z
@@ -62,7 +53,7 @@ export function classProcessingHandler(sessionId: string): Handler {
     const run = await createProcessingRun(
       db,
       learner,
-      { sessionId, operationKey: operationKey(request), ...expected },
+      { sessionId, operationKey: idempotencyKey(request), ...expected },
       { ...options(), practiceCandidates: async () => practiceCandidates },
     );
     if (run.state === "queued")
@@ -72,7 +63,7 @@ export function classProcessingHandler(sessionId: string): Handler {
 }
 export function processingEstimateHandler(sessionId: string): Handler {
   return async ({ db, ctx }) => {
-    return { body: await readProcessingEstimate(db, actor(ctx), sessionId) };
+    return { body: await readProcessingEstimate(db, learnerActor(ctx), sessionId) };
   };
 }
 export async function readProcessingEstimate(
@@ -118,7 +109,7 @@ export async function readProcessingEstimate(
 export function processingRunHandler(id: string): Handler {
   return async ({ db, ctx, request, input }) => {
     z.uuid().parse(id);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (request.method === "GET") {
       const run = await getRun(db, learner, id);
       if (new URL(request.url).searchParams.get("includeSnapshot") === "1")
@@ -139,7 +130,7 @@ export function processingRunHandler(id: string): Handler {
     const deps = options();
     const run =
       fields.action === "retry"
-        ? await retryRun(db, learner, id, operationKey(request), deps)
+        ? await retryRun(db, learner, id, idempotencyKey(request), deps)
         : await activateProcessingRun(db, learner, id, deps.job);
     runJobsSoon(["proc.process"], PROCESSING_WAKE.budgetSeconds, PROCESSING_WAKE.functionSeconds);
     return { status: 202, body: run };

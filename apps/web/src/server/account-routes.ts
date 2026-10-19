@@ -6,14 +6,8 @@ import {
   profileChangeSchema,
   updateProfile,
 } from "@recalino/core/acc";
-import { errors, type LearnerContext } from "@recalino/core/plt";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
-
-function learner(ctx: RequestContext): LearnerContext {
-  if (ctx.userId === null) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
+import { type Handler, learnerActor } from "./api";
 
 /** What the setup and Settings screens need after a change; no internal fields. */
 export function profileView(state: AccountState) {
@@ -29,7 +23,7 @@ export function profileView(state: AccountState) {
 export function profileHandler(now: () => Date = () => new Date()): Handler {
   return async ({ input, ctx, db }) => {
     const change = profileChangeSchema.parse(input);
-    const state = await updateProfile(db, learner(ctx), change, { now: now() });
+    const state = await updateProfile(db, learnerActor(ctx), change, { now: now() });
     return { body: profileView(state) };
   };
 }
@@ -45,7 +39,7 @@ const consentsSchema = z.object({
 export function consentsHandler(now: () => Date = () => new Date()): Handler {
   return async ({ input, ctx, db }) => {
     const { acceptances } = consentsSchema.parse(input);
-    await acceptDocuments(db, learner(ctx), acceptances, { now: now() });
+    await acceptDocuments(db, learnerActor(ctx), acceptances, { now: now() });
     return { body: { accepted: acceptances.map((item) => item.document) } };
   };
 }

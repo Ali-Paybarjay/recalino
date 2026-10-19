@@ -14,15 +14,11 @@ import { getNotebook } from "@recalino/core/note";
 import { getSession } from "@recalino/core/org";
 import { errors, type LearnerContext, readPltSettings } from "@recalino/core/plt";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import { runJobsSoon } from "./jobs";
 import { getMediaDependencies } from "./media-jobs";
 import { getObjectStore } from "./storage";
 
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
 function store() {
   const value = getObjectStore();
   if (!value) throw errors.validationFailed({ storage: ["unavailable"] });
@@ -46,7 +42,7 @@ async function withPlayback(db: Database, learner: LearnerContext, media: MediaA
 }
 export function classMediaHandler(sessionId: string): Handler {
   return async ({ db, ctx, input, request }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     z.uuid().parse(sessionId);
     await getSession(db, learner, sessionId);
     if (request.method === "GET")
@@ -56,8 +52,7 @@ export function classMediaHandler(sessionId: string): Handler {
           ttsConfigured: getMediaDependencies()?.provider?.settings.dataContractApproved === true,
         },
       };
-    const operationKey = request.headers.get("idempotency-key");
-    if (!operationKey) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
+    const operationKey = idempotencyKey(request);
     const fields = z
       .discriminatedUnion("kind", [
         z.strictObject({ kind: z.literal("tts"), text: z.string(), exportAllowed: z.boolean() }),
@@ -131,7 +126,7 @@ export function classMediaHandler(sessionId: string): Handler {
 }
 export function mediaHandler(id: string): Handler {
   return async ({ db, ctx, request, input }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     z.uuid().parse(id);
     if (request.method === "GET") {
       const media = await getMediaAsset(db, learner, id);
@@ -154,7 +149,7 @@ export function mediaHandler(id: string): Handler {
 }
 export function mediaReadHandler(id: string): Handler {
   return async ({ db, ctx }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     z.uuid().parse(id);
     await getMediaAsset(db, learner, id);
     return { body: await mediaReadLink(db, store(), learner, id, readPltSettings().storage) };
