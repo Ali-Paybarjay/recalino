@@ -2,10 +2,12 @@ import { AdminRequestError } from "./api";
 import type {
   AdminEmail,
   AdminLocale,
+  AdminTask,
   AdminView,
   Dimension,
   HealthCondition,
   LocalizedText,
+  PilotProgress,
   PriceRate,
   SystemHealth,
 } from "./contracts";
@@ -103,6 +105,40 @@ export function systemHealthSize(size: string, limit: string, locale: AdminLocal
   return systemHealthCopy.databaseSizeDetail[locale]
     .replace("{size}", () => size)
     .replace("{limit}", () => limit);
+}
+/**
+ * PRD-03 (D96, D98): the pilot progress columns of the users list and the user details, and the
+ * value of a step the learner has not reached yet. Approved word for word by the owner on
+ * 2026-10-19 (docs/design/UI_COPY_PENDING.md, D98); approved-copy.test.ts holds the two together.
+ */
+export const pilotProgressCopy = {
+  column: {
+    firstSignInAt: { en: "First sign-in", fa: "نخستین ورود" },
+    setupCompletedAt: { en: "Setup finished", fa: "پایان راه‌اندازی" },
+    firstRecordingAt: { en: "First class audio", fa: "نخستین صوت کلاس" },
+    firstProcessedAt: { en: "First session processed", fa: "نخستین جلسهٔ پردازش‌شده" },
+    firstReviewAt: { en: "First review", fa: "نخستین مرور" },
+  } satisfies Record<keyof PilotProgress, LocalizedText>,
+  notYet: { en: "Not yet", fa: "هنوز نه" },
+} as const;
+/** The pilot steps in their order, for the columns and the cells. */
+export const pilotProgressSteps = Object.keys(pilotProgressCopy.column) as Array<
+  keyof PilotProgress
+>;
+/**
+ * D96, D98: the titles of the stopped-deletion (`privacy`) and health-alert (`health`) tasks,
+ * approved by the owner on 2026-10-19. The server sends the same titles (ADMIN_TASK_TITLE in
+ * @recalino/core/ops); admin-task-copy.test.ts keeps the two identical.
+ */
+export const adminTaskTitleCopy = {
+  privacy: { en: "Finish a stopped data deletion", fa: "تکمیل حذف داده‌ای که متوقف شده است" },
+  health: { en: "Review a system health alert", fa: "بررسی هشدار سلامت سامانه" },
+} as const;
+/** A task's title: the approved text for the kinds above, otherwise the server's title. */
+export function taskTitle(task: Pick<AdminTask, "kind" | "title">, locale: AdminLocale): string {
+  return Object.hasOwn(adminTaskTitleCopy, task.kind)
+    ? adminTaskTitleCopy[task.kind as keyof typeof adminTaskTitleCopy][locale]
+    : localized(task.title, locale);
 }
 const statuses: Record<string, LocalizedText> = {
   active: { en: "Active", fa: "فعال" },

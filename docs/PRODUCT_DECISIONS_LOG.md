@@ -843,17 +843,26 @@
 مبنا: تصمیم صریح مالک محصول در 2026-10-19 (دستهٔ ۱۳؛ تصمیم ۹، گزینهٔ A)؛ یافته‌های PRD-03 و پیگیری OPS-02.
 
 - **پیشرفت پایلوت:** view `ops.admin_user_progress` (migration `20261019120300_admin_pilot_progress`) برای هر حساب زنده فقط تاریخ نخستین بار هر گام را از جدول‌های موجود می‌خواند: ورود (`acc.user_account.created_at`)، پایان setup (`acc.learning_profile.completed_at`)، نخستین صوت کلاس (`src.asset`، نوع `audio`)، نخستین پردازش موفق کلاس (`proc.processing_run`، `ready` یا `partial_ready`) و نخستین مرور (`srs.review_event`). بی‌هیچ متن کلاس و بی analytics شخص ثالث. قرارداد: `AdminUser.progress` (`PilotProgress` در `packages/core/src/ops/admin-contracts.ts`) در نماهای `users` و `user`.
-- **ستون‌های رابط هنوز ساخته نشده‌اند:** برچسب مصوبی برای آن‌ها نیست؛ برچسب‌های پیشنهادی در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش دستهٔ ۱۳) ثبت شده‌اند.
+- **ستون‌های رابط هنوز ساخته نشده‌اند:** برچسب مصوبی برای آن‌ها نیست؛ برچسب‌های پیشنهادی در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش دستهٔ ۱۳) ثبت شده‌اند. **پیگیری 2026-10-19:** بخش رابط این تصمیم (ستون‌ها، عنوان دو وظیفه و مقصد دکمهٔ آن‌ها) با D98 ساخته شد (پایین).
 - **وظیفه‌ها:** `ops.admin_task` دو نوع تازه دارد:
   - `privacy`: هر `priv.deletion_request` در وضعیت `needs_operator`. مثل `ops.admin_privacy` فقط شناسهٔ درخواست را می‌دهد، نه حساب را.
   - `health`: هر هشدار باز job ساعتی سلامت (OPS-02)، یک وظیفه برای هر دوره. رخدادهای ممیزی `ops.health_alert` و `ops.health_recovered` دستهٔ ۳ بی‌تغییر می‌مانند.
-  - عنوان هر دو تا تأیید متن، همان عنوان عمومی «Review this task» است. توضیح وظیفهٔ `health` جملهٔ هشدار همان شاخص از متن‌های «System health» است که مالک محصول در 2026-10-19 عیناً تأیید کرد.
+  - عنوان هر دو تا تأیید متن، همان عنوان عمومی «Review this task» است (با D98 عنوان مصوب خودشان را گرفتند). توضیح وظیفهٔ `health` جملهٔ هشدار همان شاخص از متن‌های «System health» است که مالک محصول در 2026-10-19 عیناً تأیید کرد.
+
 ## D97 — کارت System health و گارد دیتابیس Preview (2026-10-19)
 
 مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای موج ۶ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md)، دستهٔ ۱۴ (`fix/audit-14`)؛ یافته‌های OPS-02 و OPS-03. D95 و D96 برای دستهٔ ۱۳ کنار گذاشته شده‌اند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
 
 - **کارت «System health» (OPS-02؛ ADM-01 و ADM-12):** مالک محصول هر ۱۶ متن پیشنهادی دستهٔ ۳ را، انگلیسی و فارسی، عیناً تأیید کرد. متن‌ها در `systemHealthCopy` در `apps/web/src/ui/admin/copy.ts` هستند و در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش «تأیید 2026-10-19 — System health») ثبت شده‌اند؛ `approved-copy.test.ts` آن‌ها را با هم می‌سنجد. کارت در نمای کلی پنل مالک، پیش از «Recent activity»، از داده‌های موجود `SystemHealth` (`packages/core/src/ops/health.ts`) و فقط با کامپوننت‌های موجود پنل ساخته شد. قرارداد `admin-read` و ساختار دیتابیس تغییر نکردند. هشدار رخداد audit است (`ops.health_alert` و `ops.health_recovered`)؛ وظیفهٔ ادمین `health` را D96 می‌سازد و ایمیل ساخته نمی‌شود.
 - **گارد دیتابیس Preview (OPS-03، پیگیری D82):** `connectionConfig` در `packages/core/src/db/connection.ts`، که هر pool و client اپ با آن ساخته می‌شود، وقتی `VERCEL_ENV` برابر `preview` است و `RECALINO_UI_PREVIEW` برابر `1` نیست، پیش از ساختن pool با خطای `ConfigurationError` و پیامی که نام دو متغیر و قاعده را می‌گوید (نه مقدار) متوقف می‌شود. Production، Preview در حالت fixture و اجرای محلی (بدون `VERCEL_ENV` یا با `development`) بی‌تغییرند. این گارد فقط دیتابیس را می‌بندد؛ کلیدهای Supabase Auth و توکن Blob را همچنان چک‌لیست D82 در [CLOUD_SETUP.md](runbooks/CLOUD_SETUP.md) از Preview برمی‌دارد.
+
+## D98 — ستون‌های پیشرفت پایلوت و عنوان وظیفه‌های حذف متوقف و هشدار سلامت در پنل مالک (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای دستهٔ ۱۵ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) (`fix/audit-15`)؛ یافته‌های PRD-03 و پیگیری OPS-02؛ بخش رابطِ D96. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
+
+- **متن:** مالک محصول هر هشت متن پیشنهادی دستهٔ ۱۳ را، انگلیسی و فارسی، عیناً تأیید کرد: پنج برچسب ستون «First sign-in»، «Setup finished»، «First class audio»، «First session processed» و «First review»، مقدار خالی «Not yet»، و عنوان وظیفه‌های «Finish a stopped data deletion» (`privacy`) و «Review a system health alert» (`health`). متن‌ها در `pilotProgressCopy` و `adminTaskTitleCopy` در `apps/web/src/ui/admin/copy.ts` هستند و در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش «تأیید 2026-10-19 — پیشرفت پایلوت و وظیفه‌های تازه») ثبت شده‌اند؛ `approved-copy.test.ts` آن‌ها را با هم می‌سنجد.
+- **ستون‌ها:** فهرست کاربران و جزئیات کاربر در پنل مالک پنج گام را با همان `Table` موجود و همان قالب تاریخ پنل نشان می‌دهند؛ گام رخ‌نداده «Not yet» است. داده همان `AdminUser.progress` موجود D96 است: فقط تاریخ، بدون متن کلاس یا ایمیل تازه. مسیر مجوز ادمین، قرارداد `admin-read` و ساختار دیتابیس تغییر نکردند؛ migration، وابستگی، رنگ، فونت یا token تازه‌ای اضافه نشد.
+- **وظیفه‌ها:** `readAdminSnapshot` عنوان مصوب دو نوع `privacy` و `health` را می‌فرستد (`ADMIN_TASK_TITLE` در `packages/core/src/ops/admin-read.ts`) و پنل همان متن را از `copy.ts` نشان می‌دهد؛ `admin-task-copy.test.ts` دو نسخه را یکسان نگه می‌دارد. دکمهٔ «Take action» وظیفهٔ `privacy` نمای «Privacy & storage» و وظیفهٔ `health` نمای کلی (کارت «System health») را باز می‌کند؛ مقصد وظیفه‌های دیگر تغییری نکرد.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 

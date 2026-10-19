@@ -616,6 +616,20 @@ export const HEALTH_ALERT_TEXT: Record<HealthCondition, { en: string; fa: string
   },
 };
 
+/**
+ * The title of each admin task kind. The `privacy` (PRD-03) and `health` (OPS-02) titles of D96 are
+ * the texts the owner approved word for word on 2026-10-19 (D98, docs/design/UI_COPY_PENDING.md);
+ * the admin console's adminTaskTitleCopy repeats them and a test keeps the two identical.
+ */
+export const ADMIN_TASK_TITLE: Record<string, { en: string; fa: string }> = {
+  pilot_welcome: { en: "Prepare a pilot welcome email", fa: "تهیهٔ ایمیل خوشامدگویی پایلوت" },
+  feedback: { en: "Reply to a learner's message", fa: "پاسخ به پیام زبان‌آموز" },
+  email: { en: "Review an email delivery problem", fa: "بررسی مشکل ارسال ایمیل" },
+  processing: { en: "Review a processing run", fa: "بررسی پردازش نیازمند رسیدگی" },
+  privacy: { en: "Finish a stopped data deletion", fa: "تکمیل حذف داده‌ای که متوقف شده است" },
+  health: { en: "Review a system health alert", fa: "بررسی هشدار سلامت سامانه" },
+};
+
 async function readTasks(db: Database, now: Date, userId?: string): Promise<AdminTask[]> {
   if (userId) z.uuid().parse(userId);
   const { rows } = await sql<{
@@ -631,18 +645,10 @@ async function readTasks(db: Database, now: Date, userId?: string): Promise<Admi
         or (c.preference_state='snoozed' and c.snoozed_until<=${now}))
       ${userId ? sql`and c.user_id=${userId}::uuid` : sql``}
       order by c.created_at asc,c.id asc limit ${PAGE_SIZE}`.execute(db);
-  // The new kinds `privacy` (PRD-03) and `health` (OPS-02) keep the general title until their own
-  // titles are approved (docs/design/UI_COPY_PENDING.md, batch 13).
-  const titles = {
-    pilot_welcome: { en: "Prepare a pilot welcome email", fa: "تهیهٔ ایمیل خوشامدگویی پایلوت" },
-    feedback: { en: "Reply to a learner's message", fa: "پاسخ به پیام زبان‌آموز" },
-    email: { en: "Review an email delivery problem", fa: "بررسی مشکل ارسال ایمیل" },
-    processing: { en: "Review a processing run", fa: "بررسی پردازش نیازمند رسیدگی" },
-  };
   return rows.map((row) => ({
     id: row.id,
     kind: row.kind,
-    title: titles[row.kind as keyof typeof titles] ?? {
+    title: (Object.hasOwn(ADMIN_TASK_TITLE, row.kind) && ADMIN_TASK_TITLE[row.kind]) || {
       en: "Review this task",
       fa: "بررسی این کار",
     },

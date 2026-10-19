@@ -2,7 +2,7 @@
 
 متن رابط باید از طرح مصوب بیاید (CLAUDE.md، «پیاده‌سازی رابط کاربری»؛ D34 و D35). متن‌های زیر برای حالت‌هایی نوشته شده‌اند که نه در `handoff/copy.md` هستند و نه در گزارش‌های بازطراحی 2026-10-04. هیچ‌کدام هنوز تأیید نشده‌اند. همه در [`apps/web/src/ui/pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) نگه داشته می‌شوند و آزمون `pending-copy.test.ts` بررسی می‌کند که هر متن عیناً در همین فهرست ثبت شده باشد.
 
-پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A، [D86](../PRODUCT_DECISIONS_LOG.md) و D87؛ و جملهٔ `provider_outcome_unresolved` و برچسب مجموعه‌های کارت، D89 و D88) هستند. ۱۶ متن کارت «System health» (پیشنهاد دستهٔ ۳) هم در 2026-10-19 تأیید شدند ([D97](../PRODUCT_DECISIONS_LOG.md)، بخش پایانی). پیشنهادهای دیگر دستهٔ ۵ تأیید نشده‌اند.
+پس از تأیید یا اصلاح هر مورد، متن نهایی به جای خودش در متن صفحه منتقل و ردیفش از این فهرست حذف می‌شود. تأییدهای تاریخ‌دار در بخش‌های زیر ثبت شده‌اند؛ آخرین‌ها «تأیید 2026-10-19» (ده متن دستهٔ ۵ و واژگان A، [D86](../PRODUCT_DECISIONS_LOG.md) و D87؛ و جملهٔ `provider_outcome_unresolved` و برچسب مجموعه‌های کارت، D89 و D88) هستند. ۱۶ متن کارت «System health» (پیشنهاد دستهٔ ۳) هم در 2026-10-19 تأیید شدند ([D97](../PRODUCT_DECISIONS_LOG.md)، بخش پایانی). هشت متن پیشرفت پایلوت و وظیفه‌های تازه (پیشنهاد دستهٔ ۱۳) هم در همان روز تأیید شدند ([D98](../PRODUCT_DECISIONS_LOG.md)). پیشنهادهای دیگر دستهٔ ۵ تأیید نشده‌اند.
 
 **تأیید 2026-10-10:** مالک محصول همهٔ ۴۳ متنی را که در این تاریخ در فهرست بودند تأیید کرد (پیگیری D54). ۳۴ متن عیناً منتقل شدند: متن‌های صدا به [`voice/voice-copy.ts`](../../apps/web/src/ui/voice/voice-copy.ts)، متن‌های بازبینی پردازش به `AutomaticLearningView.tsx` و متن‌های `learningMemory.*` به `learning-memory-copy.ts`. نُه متن صدا (`voice.reference.short`، `expired` و `missing`؛ `voice.match.no_sample`، `no_reference` و `policy_unavailable`؛ `voice.readiness.needs_sample`، `needs_class` و `unavailable`) با D54 نمی‌خواندند، چون ممکن بود در حالتی نمایش داده شوند که calibration خود حساب (۲۰ تأیید و ۲۰ رد) کلاس‌های بعد را خودکار بپذیرد. مالک محصول در همان روز متن اصلاح‌شدهٔ هر نُه متن را عیناً تأیید کرد و آن‌ها هم به `voice-copy.ts` رفتند. پیشنهاد PR #23 برای `voice.readiness.unavailable` بدون جملهٔ سوم پذیرفته شد، چون آن جمله با سیاست `autoAccept: false` درست نیست.
 
@@ -116,26 +116,24 @@
 - **UX-05، «Processing review»:** نام قابلیتی است که مالک محصول در 2026-10-10 تأیید کرده («View processing review»، «Request processing review»). بدون تأیید تازه عوض نشد.
 - **UX-05، «queued» در متن‌های تأییدشده:** «The lesson review is queued…» (`lesson-review-copy.ts`) و «…are queued for removal» (حذف جلسه، `ClassForm.tsx`) انگلیسی ساده‌اند و متن مصوب‌اند؛ تغییر نکردند.
 
-## ممیزی 2026-10-18، دستهٔ ۱۳ — پیشرفت پایلوت و وظیفه‌های تازه (`fix/audit-13`)
+## تأیید 2026-10-19 — پیشرفت پایلوت و وظیفه‌های تازه (دستهٔ ۱۵، `fix/audit-15`، D98)
 
-داده‌های PRD-03 و پیگیری OPS-02 ([D96](../PRODUCT_DECISIONS_LOG.md)) آماده‌اند، ولی برچسب مصوبی برایشان در طرح پنل، `ADMIN_COMMUNICATION_COPY_2026-10-05.json` یا متن موجود `apps/web/src/ui/admin/` نیست، پس **ستون‌ها هنوز در رابط نیستند**:
+دستهٔ ۱۳ (`fix/audit-13`) داده‌های PRD-03 و پیگیری OPS-02 ([D96](../PRODUCT_DECISIONS_LOG.md)) را ساخت، ولی برچسب مصوبی برای آن‌ها در طرح پنل، `ADMIN_COMMUNICATION_COPY_2026-10-05.json` یا متن موجود `apps/web/src/ui/admin/` نبود؛ پس ستون‌ها در رابط نبودند و دو وظیفهٔ تازه عنوان عمومی «Review this task» / «بررسی این کار» را داشتند. مالک محصول در 2026-10-19 هر هشت متن پیشنهادی آن دسته را، انگلیسی و فارسی، عیناً تأیید کرد. ثبت نسخه‌دار: [D98](../PRODUCT_DECISIONS_LOG.md). متن‌ها از این فهرست به `pilotProgressCopy` و `adminTaskTitleCopy` در [`admin/copy.ts`](../../apps/web/src/ui/admin/copy.ts) منتقل شدند و آزمون `approved-copy.test.ts` هر متن انگلیسی و فارسی را عیناً با همین بخش می‌سنجد.
 
-- `readAdminSnapshot` در نماهای `users` و `user` برای هر کاربر فیلد `progress` (نوع `PilotProgress` در `packages/core/src/ops/admin-contracts.ts`) را برمی‌گرداند: پنج تاریخ یا `null`.
-- وظیفه‌های تازهٔ `privacy` (حذف در وضعیت `needs_operator`) و `health` (هشدار باز سلامت) فعلاً عنوان عمومی موجود «Review this task» / «بررسی این کار» را دارند. توضیح وظیفهٔ `health` جملهٔ هشدار همان شاخص از متن‌های «System health» است که در 2026-10-19 تأیید شد.
-- دکمهٔ «Take action» این دو نوع فعلاً به فهرست کاربران می‌رود، چون مسیر دکمه در `CoreScreens.tsx` است و این دسته به کامپوننت‌های پنل دست نزد. پیشنهاد: `privacy` به نمای Privacy و `health` به نمای کلی (کارت System health).
+- **ستون‌ها:** فهرست کاربران (`Table` حساب‌ها، پس از «Welcome» و پیش از «Action») و جزئیات کاربر (یک `Table` یک‌ردیفه در کارت بالای صفحه) پنج ستون پیشرفت را نشان می‌دهند. داده همان فیلد `progress` نماهای `users` و `user` در `readAdminSnapshot` است (نوع `PilotProgress` در `packages/core/src/ops/admin-contracts.ts`): فقط تاریخ، با همان قالب تاریخ پنل (`dateLabel`)، بدون متن کلاس یا داده‌ای تازه. گامی که هنوز رخ نداده «Not yet» است. اگر برای حسابی پیشرفتی خوانده نشده باشد، فهرست «—» نشان می‌دهد (مثل بقیهٔ پنل) و جزئیات کاربر جدول را نشان نمی‌دهد. رنگ، اندازه یا کلاس CSS تازه‌ای ندارد.
+- **وظیفه‌ها:** عنوان وظیفهٔ `privacy` (حذف در وضعیت `needs_operator`) و `health` (هشدار باز سلامت) متن‌های زیر است. سرور همین عنوان‌ها را می‌فرستد (`ADMIN_TASK_TITLE` در `packages/core/src/ops/admin-read.ts`) و آزمون `admin-task-copy.test.ts` دو نسخه را یکسان نگه می‌دارد. توضیح وظیفهٔ `health` همچنان جملهٔ هشدار همان شاخص از متن‌های «System health» است.
+- **دکمهٔ «Take action»:** وظیفهٔ `privacy` نمای «Privacy & storage» و وظیفهٔ `health` نمای کلی (کارت «System health») را باز می‌کند؛ مقصد بقیهٔ وظیفه‌ها تغییری نکرد (`taskDestination` در [`admin/CoreScreens.tsx`](../../apps/web/src/ui/admin/CoreScreens.tsx)).
 
-پیشنهاد، به همان قالب دوزبانهٔ `t(en, fa)` پنل و فقط با کامپوننت‌های موجود (`Table` فهرست کاربران و جزئیات کاربر):
-
-| کلید پیشنهادی | English | فارسی |
+| جا (کلید در `admin/copy.ts`) | English | فارسی |
 |---|---|---|
-| ستون ورود | First sign-in | نخستین ورود |
-| ستون پایان setup | Setup finished | پایان راه‌اندازی |
-| ستون صوت کلاس | First class audio | نخستین صوت کلاس |
-| ستون پردازش | First session processed | نخستین جلسهٔ پردازش‌شده |
-| ستون مرور | First review | نخستین مرور |
-| مقدار خالی | Not yet | هنوز نه |
-| عنوان وظیفهٔ `privacy` | Finish a stopped data deletion | تکمیل حذف داده‌ای که متوقف شده است |
-| عنوان وظیفهٔ `health` | Review a system health alert | بررسی هشدار سلامت سامانه |
+| ستون ورود (`pilotProgressCopy.column.firstSignInAt`) | «First sign-in» | «نخستین ورود» |
+| ستون پایان setup (`pilotProgressCopy.column.setupCompletedAt`) | «Setup finished» | «پایان راه‌اندازی» |
+| ستون صوت کلاس (`pilotProgressCopy.column.firstRecordingAt`) | «First class audio» | «نخستین صوت کلاس» |
+| ستون پردازش (`pilotProgressCopy.column.firstProcessedAt`) | «First session processed» | «نخستین جلسهٔ پردازش‌شده» |
+| ستون مرور (`pilotProgressCopy.column.firstReviewAt`) | «First review» | «نخستین مرور» |
+| مقدار خالی (`pilotProgressCopy.notYet`) | «Not yet» | «هنوز نه» |
+| عنوان وظیفهٔ `privacy` (`adminTaskTitleCopy.privacy`) | «Finish a stopped data deletion» | «تکمیل حذف داده‌ای که متوقف شده است» |
+| عنوان وظیفهٔ `health` (`adminTaskTitleCopy.health`) | «Review a system health alert» | «بررسی هشدار سلامت سامانه» |
 
 ## تأیید 2026-10-19 — دستهٔ ۹ (تصمیم‌ها، `fix/audit-9`)
 
