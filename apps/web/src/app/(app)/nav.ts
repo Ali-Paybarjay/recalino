@@ -8,14 +8,16 @@ export const NAV_HREFS: Record<NavId, string> = {
 };
 
 /**
- * Pages of the (app) segment that draw no app shell: the recording and processing screens use the
- * focus shell, the profile edit page and the recordings list have none (UX-02), and the session
- * notes reader renders `SessionNotesReader` on its own (with its own `loading.tsx`). Only the
- * reader itself is listed: `/sessions/<id>/notes/versions` uses `LearnerShell` for "classes".
+ * Pages of the (app) segment that draw no app shell: only the recording screen uses the focus
+ * shell, the profile edit page and the recordings list have none (UX-02), and the session notes
+ * reader renders `SessionNotesReader` on its own (with its own `loading.tsx`). Only the reader
+ * itself is listed: `/sessions/<id>/notes/versions` uses `LearnerShell` for "classes". The
+ * processing screen is not listed: it re-exports the estimate page, which renders
+ * `SessionMaterialPage` inside `LearnerShell` for "classes".
  */
 const WITHOUT_SHELL = [
   /^\/recordings(?:\/|$)/,
-  /^\/sessions\/[^/]+\/(?:record|processing)(?:\/|$)/,
+  /^\/sessions\/[^/]+\/record(?:\/|$)/,
   /^\/sessions\/[^/]+\/notes\/?$/,
   /^\/me\/edit(?:\/|$)/,
 ];

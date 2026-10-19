@@ -14,6 +14,9 @@ describe("shell section of a signed-in path", () => {
     ["/sessions", "classes"],
     ["/sessions/new", "classes"],
     ["/sessions/organize", "classes"],
+    ["/sessions/0f0a/estimate", "classes"],
+    ["/sessions/0f0a/processing", "classes"],
+    ["/sessions/0f0a/sources", "classes"],
     ["/sessions/0f0a/notes/versions", "classes"],
     ["/courses", "classes"],
     ["/courses/0f0a/materials", "classes"],
@@ -26,7 +29,6 @@ describe("shell section of a signed-in path", () => {
   it.each([
     "/recordings",
     "/sessions/0f0a/record",
-    "/sessions/0f0a/processing",
     "/sessions/0f0a/notes",
     "/sessions/0f0a/notes/",
     "/me/edit/level-goal",

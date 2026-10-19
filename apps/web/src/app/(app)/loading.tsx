@@ -9,7 +9,7 @@ import { NAV_HREFS, shellSectionFor } from "./nav";
 /**
  * Shown while a signed-in page loads (UX-08). The layout above keeps its providers; this draws the
  * same navigation the page will draw, so the bottom navigation and the sidebar stay where they
- * are and only the content area waits. A page that draws no shell (recording, processing) gets
+ * are and only the content area waits. A page that draws no shell (the recording screen) gets
  * the plain loading screen it had before.
  */
 export default function Loading() {
