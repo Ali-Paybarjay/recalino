@@ -1,0 +1,595 @@
+import type { CompiledQuery } from "kysely";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { mockProvider, NOW, RUN_ID, SESSION_ID, USER_ID } from "../../../test/processing-run";
+import { statementLogDatabase } from "../../../test/statement-log";
+import { ProviderError, type ProviderResult } from "../../aip";
+import { AppError, errors, JobCancelled, type JobContext } from "../../plt";
+import { providerStep } from "./runtime";
+
+// QUA-01 characterization: providerStep's statements, transaction boundaries, lock and allowance
+// calls, attempt numbering and failure records, with the database and its collaborators mocked.
+const m = vi.hoisted(() => ({
+  log: [] as string[],
+  runState: "processing",
+  sessionMissing: false,
+  contentContract: false,
+  finishFailure: undefined as Error | undefined,
+}));
+vi.mock("../../acc", () => ({
+  lockAccount: vi.fn(async (_tx: unknown, userId: string) => m.log.push(`lockAccount ${userId}`)),
+  lockAccountForCleanup: vi.fn(async (_tx: unknown, userId: string) =>
+    m.log.push(`lockAccountForCleanup ${userId}`),
+  ),
+}));
+vi.mock("../runs", () => ({
+  ownedRun: vi.fn(async (_tx: unknown, _ctx: unknown, id: string, lock: boolean) => {
+    m.log.push(`ownedRun ${id} ${lock}`);
+    return { id, session_id: SESSION_ID, reservation_id: "reservation", state: m.runState };
+  }),
+}));
+vi.mock("../../org", () => ({
+  assertSessionOwner: vi.fn(async (_tx: unknown, _ctx: unknown, id: string) => {
+    m.log.push(`assertSessionOwner ${id}`);
+    if (m.sessionMissing) throw errors.notFound();
+  }),
+}));
+vi.mock("../../quota", () => ({
+  beginProviderStep: vi.fn(async (_tx: unknown, _ctx: unknown, input: unknown, now: Date) => {
+    m.log.push(`beginProviderStep ${JSON.stringify(input)} ${now.toISOString()}`);
+    return { id: "hold" };
+  }),
+  finishProviderStep: vi.fn(
+    async (_tx: unknown, _ctx: unknown, hold: string, input: unknown, now: Date) => {
+      m.log.push(`finishProviderStep ${hold} ${JSON.stringify(input)} ${now.toISOString()}`);
+      const failure = m.finishFailure;
+      m.finishFailure = undefined;
+      if (failure) throw failure;
+    },
+  ),
+}));
+vi.mock("../knowledge-contract", () => ({
+  usesContentKnowledgeContract: () => m.contentContract,
+}));
+vi.mock("../../aip", async (original) => ({
+  ...(await original<object>()),
+  maximumProviderCost: () => 9000,
+  readEstimateRates: vi.fn(async () => {
+    m.log.push("readEstimateRates");
+    return { version: "rates-1", rates: { synthetic: 1 } };
+  }),
+  estimateRatesSchema: { parse: (value: unknown) => value },
+  estimatedUsageCost: (_rates: unknown, model: string, usage: unknown, kind: string) => {
+    m.log.push(`estimatedUsageCost ${model} ${JSON.stringify(usage)} ${kind}`);
+    return 1234;
+  },
+}));
+
+const ctx = { userId: USER_ID, requestId: "runtime-test" };
+const ATTEMPT = "66666666-6666-4666-8666-666666666666";
+const provider = mockProvider();
+const schema = z.object({ ok: z.union([z.string(), z.boolean()]) });
+const accounting = {
+  provider: "synthetic",
+  model: "synthetic/llm",
+  requestId: "request-1",
+  usage: { inputTokens: 10 },
+  actualMicros: null,
+};
+
+interface Fixture {
+  /** Each checkpoint read in turn; absent reads find none. */
+  checkpoints?: unknown[];
+  previous?: Record<string, unknown>;
+  attempts?: Record<string, unknown>[];
+  current?: Record<string, unknown>;
+}
+/** Labels the statements providerStep writes; any other statement shows its whole SQL. */
+function label(query: CompiledQuery): string {
+  const text = query.sql;
+  if (text.startsWith('select "output" from "proc"."run_step"')) return "read checkpoint";
+  if (text.startsWith('select * from "proc"."provider_attempt"')) return "read last attempt";
+  if (text.startsWith('select "state", "error_code" from "proc"."provider_attempt"'))
+    return text.includes('"step" in') ? "read generation attempts" : "read step attempts";
+  if (text.startsWith('insert into "proc"."provider_attempt"')) return "insert attempt";
+  if (text.startsWith('select "state", "provider_request_id" from "proc"."provider_attempt"'))
+    return text.endsWith("for update") ? "lock attempt" : text;
+  if (text.startsWith('update "proc"."provider_attempt"')) return "update attempt";
+  if (text.startsWith('insert into "proc"."run_step"')) return "save step";
+  return text;
+}
+function setup(fixture: Fixture = {}) {
+  const { db, log, statements } = statementLogDatabase((query) => {
+    const name = label(query);
+    if (name === "read checkpoint") {
+      const output = fixture.checkpoints?.shift();
+      return output === undefined ? [] : [{ output }];
+    }
+    if (name === "read last attempt") return fixture.previous ? [fixture.previous] : [];
+    if (name === "read generation attempts" || name === "read step attempts")
+      return fixture.attempts ?? [];
+    if (name === "insert attempt")
+      return [
+        {
+          id: ATTEMPT,
+          operation_key: query.parameters[4],
+          hold_id: "hold",
+          estimate_rates: { synthetic: 1 },
+          estimate_price_version: "rates-1",
+        },
+      ];
+    if (name === "lock attempt")
+      return [fixture.current ?? { state: "started", provider_request_id: null }];
+    return [];
+  });
+  m.log = log;
+  const warnings: unknown[] = [];
+  const job = {
+    db,
+    now: () => NOW,
+    job: { id: "job", attempt: 2 },
+    log: (...args: unknown[]) => warnings.push(args),
+    step: vi.fn(),
+  } as unknown as JobContext;
+  const statement = (name: string) => statements.find((query) => label(query) === name);
+  return { job, log, statements, warnings, statement };
+}
+const labelled = (log: string[], statements: CompiledQuery[]) => {
+  let index = 0;
+  return log.map((entry) =>
+    statements[index]?.sql === entry ? label(statements[index++] as CompiledQuery) : entry,
+  );
+};
+const result = (output: unknown, actualMicros: number | null = 700): ProviderResult<unknown> => ({
+  output,
+  provider: "synthetic",
+  model: "synthetic/llm",
+  requestId: "request-1",
+  usage: { inputTokens: 10 },
+  actualMicros,
+});
+const holdInput = (step: string, attempt = 1) =>
+  `beginProviderStep ${JSON.stringify({
+    sessionId: SESSION_ID,
+    reservationId: "reservation",
+    operationKey: `${RUN_ID}:${step}:${attempt}`,
+    maximumMicros: 9000,
+    currency: "USD",
+  })} ${NOW.toISOString()}`;
+const dispatch = [
+  "read checkpoint",
+  "readEstimateRates",
+  "begin",
+  `lockAccount ${USER_ID}`,
+  `ownedRun ${RUN_ID} true`,
+  `assertSessionOwner ${SESSION_ID}`,
+  "read last attempt",
+];
+
+beforeEach(() => {
+  m.runState = "processing";
+  m.sessionMissing = false;
+  m.contentContract = false;
+  m.finishFailure = undefined;
+});
+
+describe("providerStep (characterization)", () => {
+  it("returns a saved checkpoint without any other read", async () => {
+    const { job, log } = setup({ checkpoints: [{ ok: "saved" }] });
+    const effect = vi.fn();
+    expect(
+      await providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, effect),
+    ).toEqual({ ok: "saved" });
+    expect(log).toEqual([
+      'select "output" from "proc"."run_step" where "run_id" = $1 and "step" = $2',
+    ]);
+    expect(effect).not.toHaveBeenCalled();
+  });
+
+  it("commits the attempt and hold, dispatches once, then settles and saves in one commit", async () => {
+    const { job, log, statements, statement } = setup();
+    const onCommit = vi.fn(async () => {
+      log.push("onCommit");
+    });
+    const effect = vi.fn(async (key: string) => {
+      log.push(`effect ${key}`);
+      return result({ ok: "fresh" });
+    });
+    const output = await providerStep(
+      job,
+      ctx,
+      RUN_ID,
+      "knowledge",
+      "synthetic/llm",
+      provider,
+      schema,
+      effect,
+      { onCommit },
+    );
+    expect(output).toEqual({ ok: "fresh" });
+    expect(labelled(log, statements)).toEqual([
+      ...dispatch,
+      holdInput("knowledge"),
+      "insert attempt",
+      "commit",
+      `effect ${RUN_ID}:knowledge:1`,
+      "begin",
+      `lockAccountForCleanup ${USER_ID}`,
+      `finishProviderStep hold ${JSON.stringify({
+        operationKey: `${RUN_ID}:knowledge:1`,
+        provider: "synthetic",
+        model: "synthetic/llm",
+        currency: "USD",
+        actualMicros: 700,
+        estimatedMicros: null,
+        priceVersion: "rates-1",
+        usage: { inputTokens: 10 },
+        runId: RUN_ID,
+        attemptId: ATTEMPT,
+      })} ${NOW.toISOString()}`,
+      "update attempt",
+      `ownedRun ${RUN_ID} true`,
+      `assertSessionOwner ${SESSION_ID}`,
+      "onCommit",
+      "save step",
+      "commit",
+    ]);
+    expect(statement("insert attempt")?.parameters).toEqual([
+      RUN_ID,
+      USER_ID,
+      "knowledge",
+      1,
+      `${RUN_ID}:knowledge:1`,
+      "hold",
+      "synthetic",
+      "synthetic/llm",
+      JSON.stringify({ synthetic: 1 }),
+      "rates-1",
+      NOW,
+    ]);
+    expect(statement("update attempt")?.parameters).toEqual([
+      "succeeded",
+      "request-1",
+      NOW,
+      ATTEMPT,
+    ]);
+    expect(statement("save step")?.parameters).toEqual([
+      RUN_ID,
+      "knowledge",
+      JSON.stringify({ ok: "fresh" }),
+      NOW,
+    ]);
+  });
+
+  it.each([
+    ["stt:chunk", "transcription"],
+    ["vision:photo", "vision"],
+    ["knowledge", "generation"],
+  ])("estimates a %s call without an actual cost as %s", async (step, kind) => {
+    const { job, log } = setup();
+    await providerStep(job, ctx, RUN_ID, step, "m", provider, schema, async () =>
+      result({ ok: true }, null),
+    );
+    expect(log).toContain(`estimatedUsageCost synthetic/llm {"inputTokens":10} ${kind}`);
+    expect(log.find((entry) => entry.startsWith("finishProviderStep"))).toContain(
+      '"actualMicros":null,"estimatedMicros":1234',
+    );
+  });
+
+  it("numbers the next attempt after a definite failure", async () => {
+    const { job, log, statement } = setup({ previous: { attempt: 2, state: "failed" } });
+    await providerStep(job, ctx, RUN_ID, "vision:p", "m", provider, schema, async (key) => {
+      log.push(`effect ${key}`);
+      return result({ ok: true });
+    });
+    expect(log).toContain(holdInput("vision:p", 3));
+    expect(statement("insert attempt")?.parameters[3]).toBe(3);
+  });
+
+  it("reuses a concurrent single response under the dispatch lock", async () => {
+    // The optimistic read misses; the read under the account lock finds the other response.
+    const { job, log, statements } = setup({ checkpoints: [undefined, { ok: "theirs" }] });
+    const effect = vi.fn();
+    const output = await providerStep(
+      job,
+      ctx,
+      RUN_ID,
+      "evaluation",
+      "m",
+      provider,
+      schema,
+      effect,
+      {
+        singleResponse: true,
+      },
+    );
+    expect(output).toEqual({ ok: "theirs" });
+    expect(effect).not.toHaveBeenCalled();
+    expect(labelled(log, statements)).toEqual([
+      "read checkpoint",
+      "readEstimateRates",
+      "begin",
+      `lockAccount ${USER_ID}`,
+      `ownedRun ${RUN_ID} true`,
+      `assertSessionOwner ${SESSION_ID}`,
+      "read checkpoint",
+      "commit",
+    ]);
+  });
+
+  it.each([
+    [{ previous: { attempt: 1, state: "started" } }, "knowledge", "provider_outcome_unresolved"],
+    [{ previous: { attempt: 1, state: "uncertain" } }, "knowledge", "provider_outcome_unresolved"],
+  ])("refuses to dispatch while an attempt is unresolved", async (fixture, step, code) => {
+    const { job, log, statements } = setup(fixture);
+    await expect(
+      providerStep(job, ctx, RUN_ID, step, "m", provider, schema, vi.fn()),
+    ).rejects.toMatchObject({ code, retryable: false, uncertain: true });
+    expect(labelled(log, statements).slice(-2)).toEqual(["read last attempt", "rollback"]);
+  });
+
+  it("refuses a second single response unless every earlier one was an HTTP refusal", async () => {
+    const recorded = setup({
+      previous: { attempt: 1, state: "failed" },
+      attempts: [{ state: "failed", error_code: "provider_http_503" }],
+    });
+    await providerStep(
+      recorded.job,
+      ctx,
+      RUN_ID,
+      "evaluation",
+      "m",
+      provider,
+      schema,
+      async () => result({ ok: true }),
+      { singleResponse: true },
+    );
+    expect(labelled(recorded.log, recorded.statements).slice(6, 10)).toEqual([
+      "read checkpoint",
+      "read last attempt",
+      "read step attempts",
+      holdInput("evaluation", 2),
+    ]);
+    const paid = setup({
+      previous: { attempt: 1, state: "failed" },
+      attempts: [{ state: "failed", error_code: "provider_schema_invalid" }],
+    });
+    await expect(
+      providerStep(paid.job, ctx, RUN_ID, "evaluation", "m", provider, schema, vi.fn(), {
+        singleResponse: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "provider_schema_invalid",
+      retryable: false,
+      uncertain: false,
+    });
+    const unnamed = setup({
+      previous: { attempt: 1, state: "succeeded" },
+      attempts: [{ state: "succeeded", error_code: null }],
+    });
+    await expect(
+      providerStep(unnamed.job, ctx, RUN_ID, "evaluation", "m", provider, schema, vi.fn(), {
+        singleResponse: true,
+      }),
+    ).rejects.toMatchObject({ code: "provider_response_already_recorded" });
+  });
+
+  it("allows a content-contract lesson two generation dispatches across its steps", async () => {
+    m.contentContract = true;
+    const refusals = [
+      { state: "failed", error_code: "provider_http_429" },
+      { state: "failed", error_code: "provider_request_too_large" },
+    ];
+    const one = setup({ attempts: [...refusals, { state: "succeeded", error_code: null }] });
+    await providerStep(one.job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () =>
+      result({ ok: true }),
+    );
+    expect(labelled(one.log, one.statements)).toContain("read generation attempts");
+    const two = setup({
+      attempts: [
+        { state: "succeeded", error_code: null },
+        { state: "failed", error_code: "provider_http_500" },
+      ],
+    });
+    await expect(
+      providerStep(two.job, ctx, RUN_ID, "knowledge:compact", "m", provider, schema, vi.fn()),
+    ).rejects.toMatchObject({ details: { fields: { output: ["knowledge_repair_exhausted"] } } });
+    m.contentContract = false;
+    const other = setup({ attempts: [{ state: "succeeded" }, { state: "succeeded" }] });
+    await providerStep(other.job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () =>
+      result({ ok: true }),
+    );
+    expect(labelled(other.log, other.statements)).not.toContain("read generation attempts");
+  });
+
+  it.each([
+    "knowledge:repair",
+    "knowledge:repair-language",
+    "knowledge:study-repair",
+    "knowledge:compact",
+  ])("gives the bounded correction %s one paid dispatch", async (step) => {
+    const { job } = setup({ previous: { attempt: 1, state: "failed" } });
+    await expect(
+      providerStep(job, ctx, RUN_ID, step, "m", provider, schema, vi.fn()),
+    ).rejects.toBeInstanceOf(AppError);
+  });
+
+  it("records a paid invalid content-contract lesson with its diagnostic only", async () => {
+    m.contentContract = true;
+    const { job, log, statements, warnings } = setup();
+    const failure = new ProviderError(
+      "provider_schema_invalid",
+      false,
+      false,
+      accounting,
+      "zod:invalid_type@title",
+    );
+    await expect(
+      providerStep(job, ctx, RUN_ID, "knowledge", "requested/model", provider, schema, async () => {
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+    const steps = labelled(log, statements);
+    expect(steps.slice(steps.indexOf("commit") + 1)).toEqual([
+      "begin",
+      `lockAccountForCleanup ${USER_ID}`,
+      "lock attempt",
+      `estimatedUsageCost requested/model {"inputTokens":10} generation`,
+      `finishProviderStep hold ${JSON.stringify({
+        operationKey: `${RUN_ID}:knowledge:1`,
+        provider: "synthetic",
+        model: "synthetic/llm",
+        currency: "USD",
+        actualMicros: null,
+        estimatedMicros: 1234,
+        priceVersion: "rates-1",
+        usage: { inputTokens: 10 },
+        runId: RUN_ID,
+        attemptId: ATTEMPT,
+      })} ${NOW.toISOString()}`,
+      "update attempt",
+      "save step",
+      "commit",
+    ]);
+    const saved = statements.filter((query) => label(query) === "save step");
+    expect(saved.map((query) => query.parameters.slice(0, 3))).toEqual([
+      [
+        RUN_ID,
+        "knowledge:schema-invalid",
+        JSON.stringify({
+          reason: "provider_schema_invalid",
+          attemptId: ATTEMPT,
+          detail: "zod:invalid_type@title",
+        }),
+      ],
+    ]);
+    expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
+      "failed",
+      "provider_schema_invalid",
+      "request-1",
+      NOW,
+      ATTEMPT,
+    ]);
+    expect(warnings).toEqual([
+      [
+        "warn",
+        "provider_step_failed",
+        {
+          module: "proc",
+          job_id: "job",
+          attempt: 2,
+          code: "provider_schema_invalid",
+          cause_code: undefined,
+          state: "failed",
+        },
+      ],
+    ]);
+  });
+
+  it("records a paid truncated lesson for the compact recovery", async () => {
+    const { job, statements } = setup();
+    await expect(
+      providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
+        throw new ProviderError("provider_output_truncated", false, false, {
+          ...accounting,
+          actualMicros: 50,
+        });
+      }),
+    ).rejects.toMatchObject({ code: "provider_output_truncated" });
+    expect(
+      statements
+        .filter((query) => label(query) === "save step")
+        .map((query) => query.parameters.slice(1, 3)),
+    ).toEqual([
+      [
+        "knowledge:truncated",
+        JSON.stringify({ reason: "provider_output_truncated", attemptId: ATTEMPT }),
+      ],
+    ]);
+  });
+
+  it("charges a parsed response that fails its schema as a definite failure", async () => {
+    const { job, log, statements } = setup();
+    await expect(
+      providerStep(job, ctx, RUN_ID, "vision:p", "m", provider, schema, async () =>
+        result({ wrong: true }),
+      ),
+    ).rejects.toMatchObject({ code: "provider_schema_invalid", uncertain: false });
+    expect(log.find((entry) => entry.startsWith("finishProviderStep"))).toContain(
+      '"actualMicros":700,"estimatedMicros":null',
+    );
+    expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
+  });
+
+  it("leaves an unknown outcome uncertain and unsettled", async () => {
+    const { job, log, statements, warnings } = setup();
+    await expect(
+      providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
+        throw new Error("socket closed");
+      }),
+    ).rejects.toMatchObject({ code: "provider_outcome_unknown", uncertain: true });
+    expect(log.some((entry) => entry.startsWith("finishProviderStep"))).toBe(false);
+    expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
+      "uncertain",
+      "provider_outcome_unknown",
+      null,
+      NOW,
+      ATTEMPT,
+    ]);
+    expect(warnings).toHaveLength(1);
+  });
+
+  it("settles a paid response whose commit failed as provider_output_commit_failed", async () => {
+    m.finishFailure = new Error("connection reset");
+    const { job, log } = setup();
+    const failure = providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () =>
+      result({ ok: true }),
+    );
+    await expect(failure).rejects.toMatchObject({
+      code: "provider_output_commit_failed",
+      uncertain: false,
+    });
+    const settled = log.filter((entry) => entry.startsWith("finishProviderStep"));
+    expect(settled).toHaveLength(2);
+    expect(settled[1]).toContain('"actualMicros":700');
+  });
+
+  it("does not rewrite an attempt another worker already settled", async () => {
+    const { job, statements } = setup({
+      current: { state: "succeeded", provider_request_id: "x" },
+    });
+    await expect(
+      providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
+        throw new ProviderError("provider_http_500", true, false, accounting);
+      }),
+    ).rejects.toMatchObject({ code: "provider_http_500" });
+    expect(statements.filter((query) => label(query) === "update attempt")).toEqual([]);
+  });
+
+  it.each([
+    ["a run that ended meanwhile", () => (m.runState = "cancelled")],
+    ["a deleted class", () => (m.sessionMissing = true)],
+  ])("keeps the accounting of %s and cancels the job", async (_name, change) => {
+    const { job, log, statements } = setup();
+    await expect(
+      providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
+        change();
+        return result({ ok: true });
+      }),
+    ).rejects.toBeInstanceOf(JobCancelled);
+    expect(log.filter((entry) => entry.startsWith("finishProviderStep"))).toHaveLength(1);
+    expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
+    expect(log.at(-1)).toBe("commit");
+  });
+
+  it("does not dispatch for a run that is no longer live", async () => {
+    m.runState = "failed";
+    const { job, log } = setup();
+    const effect = vi.fn();
+    await expect(
+      providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, effect),
+    ).rejects.toBeInstanceOf(JobCancelled);
+    expect(effect).not.toHaveBeenCalled();
+    expect(log.at(-1)).toBe("rollback");
+  });
+});
