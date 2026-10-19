@@ -47,6 +47,7 @@ export {
   type JobOptions,
   type JobState,
   jobState,
+  jobStates,
   latestJobStateForPayload,
   purgeFinishedJobs,
   type RunOptions,

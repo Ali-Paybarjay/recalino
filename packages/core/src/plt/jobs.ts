@@ -260,6 +260,21 @@ export async function jobState(db: Database, jobId: string): Promise<JobState | 
   return (row?.state as JobState | undefined) ?? null;
 }
 
+/** States of several jobs at once; a purged (finished) job is simply absent from the map. */
+export async function jobStates(
+  db: Database | Tx,
+  jobIds: readonly string[],
+): Promise<Map<string, JobState>> {
+  const ids = [...new Set(jobIds)];
+  if (!ids.length) return new Map();
+  const rows = await db
+    .selectFrom("plt.job")
+    .select(["id", "state"])
+    .where("id", "in", ids)
+    .execute();
+  return new Map(rows.map((row) => [row.id, row.state as JobState]));
+}
+
 /** Trusted orchestration avoids duplicate work through the platform API. */
 export async function latestJobStateForPayload(
   db: Database | Tx,

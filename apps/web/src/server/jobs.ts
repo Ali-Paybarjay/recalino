@@ -15,7 +15,11 @@ import {
   runDueJobs,
   storagePeriodicJobs,
 } from "@recalino/core/plt";
-import { processingPeriodicJobs } from "@recalino/core/proc";
+import {
+  processingPeriodicJobs,
+  type RunClosedHook,
+  recordProcessingNotification,
+} from "@recalino/core/proc";
 import { runEmailOutbox } from "@recalino/core/support";
 import { voicePeriodicJobs } from "@recalino/core/voc";
 import { after } from "next/server";
@@ -23,6 +27,7 @@ import { adminDirectory } from "./admin-directory";
 import { getAiProvider } from "./ai";
 import type { Handler } from "./api";
 import { automaticLearningJob, automaticLearningPeriodicJobs } from "./automatic-learning";
+import { finalizeAutomaticRun } from "./automatic-learning-publication";
 import { captureTranscriptionDefinition, stagedAudioJobDefinition } from "./capture-staging-jobs";
 import { getDatabase } from "./db";
 import { exportJobDefinitions, exportPeriodicJobs } from "./export-jobs";
@@ -97,6 +102,15 @@ export const PROCESSING_WAKE = {
   functionSeconds: RUNNER_MAX_SECONDS,
 };
 
+/**
+ * PRD-02: a run closed because its job ended gets the worker's completion hook (processing-jobs):
+ * automatic-learning progress first, then the learner's processing notification.
+ */
+const notifyClosedRun: RunClosedHook = async (db, ctx, runId, now) => {
+  await finalizeAutomaticRun(db, ctx, runId, now);
+  await recordProcessingNotification(db, ctx, runId, now);
+};
+
 /** Every periodic job, from every module (FR-PLT-005); storage checks only with a real store. */
 export function periodicJobs(settings: PltSettings): PeriodicJob[] {
   const store = getObjectStore();
@@ -108,7 +122,7 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
     ...accPeriodicJobs(),
     ...sourcePeriodicJobs(),
     ...exportPeriodicJobs(),
-    ...processingPeriodicJobs(),
+    ...processingPeriodicJobs({ afterRunClosed: notifyClosedRun }),
     ...automaticLearningPeriodicJobs(),
     ...processingNotificationPeriodicJobs(),
   ];
