@@ -1,4 +1,5 @@
 import { sql } from "kysely";
+import { z } from "zod";
 import type { Database, Tx } from "../db";
 import type { Logger } from "./log";
 
@@ -92,4 +93,45 @@ export async function recordAuditOnce(db: Database, entry: AuditInput): Promise<
     await recordAudit(tx, entry);
     return true;
   });
+}
+
+/**
+ * SEC-07 (audit 2026-10-18, D95): written in place of a deleted account's id. The audit row keeps
+ * what happened; a trigger lets the application change `actor_id` to this value and nothing else
+ * (migration 20261019120000_plt_event_retention).
+ */
+export const DELETED_ACCOUNT_ACTOR = "deleted_account";
+
+/** SEC-07 (D95): security events are kept for the configured days, then removed. */
+export async function purgeSecurityEvents(db: Database, before: Date): Promise<number> {
+  const result = await db
+    .deleteFrom("plt.security_event")
+    .where("occurred_at", "<", before)
+    .executeTakeFirst();
+  return Number(result.numDeletedRows);
+}
+
+const ANONYMISE_BATCH = 500;
+const accountIds = z.array(z.uuid());
+
+/**
+ * SEC-07 (D95): removes these deleted accounts' ids from the audit trail. Only account ids are
+ * accepted, so a system actor such as `ops.health_check` is never rewritten. Repeating it changes
+ * nothing; returns the number of rows changed.
+ */
+export async function anonymiseAuditActors(
+  db: Database,
+  userIds: readonly string[],
+): Promise<number> {
+  const ids = [...new Set(accountIds.parse(userIds))];
+  let changed = 0;
+  for (let index = 0; index < ids.length; index += ANONYMISE_BATCH) {
+    const result = await db
+      .updateTable("plt.audit_event")
+      .set({ actor_id: DELETED_ACCOUNT_ACTOR })
+      .where("actor_id", "in", ids.slice(index, index + ANONYMISE_BATCH))
+      .executeTakeFirst();
+    changed += Number(result.numUpdatedRows);
+  }
+  return changed;
 }

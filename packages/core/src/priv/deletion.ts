@@ -9,6 +9,7 @@ import {
 } from "../org";
 import {
   AppError,
+  anonymiseAuditActors,
   assertOwner,
   enqueueJob,
   errors,
@@ -411,6 +412,8 @@ export function privacyCleanupJob(
         if (request.kind === "account" && authentication) {
           await job.db.transaction().execute((tx) => purgeAccountProfile(tx, ctx));
           await job.step("delete_auth", async () => authentication.deleteIdentity(ctx.userId));
+          // SEC-07 (D95): the audit trail keeps what happened, not who the deleted account was.
+          await anonymiseAuditActors(job.db, [ctx.userId]);
         }
         await job.db
           .updateTable("priv.deletion_request")

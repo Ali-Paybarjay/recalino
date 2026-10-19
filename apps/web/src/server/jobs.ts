@@ -18,6 +18,7 @@ import {
   type SchemaGuard,
   storagePeriodicJobs,
 } from "@recalino/core/plt";
+import { privacyPeriodicJobs } from "@recalino/core/priv";
 import {
   processingPeriodicJobs,
   type RunClosedHook,
@@ -124,6 +125,7 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
     ...(store ? [databaseBackupMaintenanceJob(store)] : []),
     systemHealthJob(),
     ...accPeriodicJobs(),
+    ...privacyPeriodicJobs(),
     ...sourcePeriodicJobs(),
     ...exportPeriodicJobs(),
     ...processingPeriodicJobs({ afterRunClosed: notifyClosedRun }),

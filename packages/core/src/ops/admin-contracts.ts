@@ -36,6 +36,17 @@ export type AdminView =
   | "settings";
 export type Dimension = "audio" | "document" | "regeneration" | "tts" | "storage";
 export type QuotaAmounts = Record<Dimension, number>;
+/**
+ * PRD-03 (decision 9 option A, D96): when a learner first reached each pilot step, from
+ * ops.admin_user_progress. Dates only, never content; null until the step happens.
+ */
+export type PilotProgress = {
+  firstSignInAt: string | null;
+  setupCompletedAt: string | null;
+  firstRecordingAt: string | null;
+  firstProcessedAt: string | null;
+  firstReviewAt: string | null;
+};
 export type AdminUser = {
   id: string;
   name: string | null;
@@ -44,6 +55,8 @@ export type AdminUser = {
   pilot: boolean;
   quotaActive: boolean;
   welcomeState: string;
+  /** Read for the users list and one user; the console shows it once its labels are approved. */
+  progress?: PilotProgress;
 };
 export type AdminQuota = {
   entitlementId: string | null;

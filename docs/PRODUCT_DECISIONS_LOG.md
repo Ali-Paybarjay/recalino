@@ -826,6 +826,29 @@
 - نسخهٔ پذیرش: `CURRENT_VERSIONS.privacy = "0.3"` در `packages/core/src/acc/documents.ts` و جدول [consents.md](legal/consents.md). زبان‌آموزی که ۰٫۲ را پذیرفته، یک بار اعلان تغییر Terms را می‌بیند و دوباره می‌پذیرد (FR-ACC-007، D33 قاعدهٔ ۳). Terms و رضایت ضبط ۰٫۱ می‌مانند. `apps/web/src/legal/texts.generated.ts` با `pnpm legal:build` بازسازی شد؛ `acc.test.ts` نسخهٔ سرعنوان دو متن را هم با `CURRENT_VERSIONS` می‌سنجد.
 - متن همچنان Draft است و G11 باز می‌ماند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
 
+## D95 — نگهداری رخدادهای امنیتی و ناشناس‌سازی ممیزی پس از حذف حساب (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (موج ۶ اصلاح ممیزی 2026-10-18، دستهٔ ۱۳)؛ یافتهٔ SEC-07، PRD-DEL-01 و PRD-DEL-04. شمارهٔ آزاد بعدی پس از D94.
+
+- **`plt.security_event`:** ردیف‌های قدیمی‌تر از ۹۰ روز را job روزانهٔ `plt.purge_security_events` پاک می‌کند. مدت در `PltSettings.securityEventRetentionDays` است (پیش‌فرض ۹۰، قابل تغییر با `PLT_SETTINGS_JSON` بدون تغییر کد).
+- **`plt.audit_event`:** ردیف می‌ماند، ولی شناسهٔ حساب حذف‌شده در `actor_id` با نشانگر ثابت `deleted_account` جایگزین می‌شود:
+  - در جریان حذف حساب، همان job پاک‌سازی (`priv.cleanup`) پس از حذف هویت و پیش از «completed» این کار را می‌کند.
+  - برای حساب‌هایی که پیش‌تر حذف کامل شده‌اند، job روزانهٔ `priv.anonymise_deleted_actors` در زمان اجرا همین کار را می‌کند، نه migration. تکرار آن اثری ندارد.
+- **کمترین دسترسی (migration `20261019120000_plt_event_retention`):** فقط `delete` روی `plt.security_event` و `update (actor_id)` روی `plt.audit_event` به `recalino_app` داده شد. trigger `audit_event_history_immutable` هر تغییری جز گذاشتن `deleted_account` در `actor_id` را رد می‌کند؛ ستون‌های دیگر ممیزی و حذف ردیف همچنان ممنوع‌اند. migration هیچ ردیفی را تغییر نمی‌دهد.
+- **متن حقوقی:** یک جملهٔ نگهداری در ردیف «Security, audit and usage records» جدول بخش ۸ [privacy-notice.md](legal/privacy-notice.md) نشست. نسخه همان ۰٫۳ ماند، چون ۰٫۳ هنوز منتشر نشده است؛ مدت نگهداری usage records و دورهٔ شرکت‌های خدمات همچنان `⟨…⟩` است.
+- این تصمیم مجوز اجرای migration روی دیتابیس ابری یا استقرار production نیست؛ اعمال migration طبق قاعدهٔ موجود پس از ادغام در `main` است.
+
+## D96 — پیشرفت پایلوت و وظیفه‌های حذف متوقف و هشدار سلامت در پنل مالک (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (دستهٔ ۱۳؛ تصمیم ۹، گزینهٔ A)؛ یافته‌های PRD-03 و پیگیری OPS-02.
+
+- **پیشرفت پایلوت:** view `ops.admin_user_progress` (migration `20261019120300_admin_pilot_progress`) برای هر حساب زنده فقط تاریخ نخستین بار هر گام را از جدول‌های موجود می‌خواند: ورود (`acc.user_account.created_at`)، پایان setup (`acc.learning_profile.completed_at`)، نخستین صوت کلاس (`src.asset`، نوع `audio`)، نخستین پردازش موفق کلاس (`proc.processing_run`، `ready` یا `partial_ready`) و نخستین مرور (`srs.review_event`). بی‌هیچ متن کلاس و بی analytics شخص ثالث. قرارداد: `AdminUser.progress` (`PilotProgress` در `packages/core/src/ops/admin-contracts.ts`) در نماهای `users` و `user`.
+- **ستون‌های رابط هنوز ساخته نشده‌اند:** برچسب مصوبی برای آن‌ها نیست؛ برچسب‌های پیشنهادی در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش دستهٔ ۱۳) ثبت شده‌اند.
+- **وظیفه‌ها:** `ops.admin_task` دو نوع تازه دارد:
+  - `privacy`: هر `priv.deletion_request` در وضعیت `needs_operator`. مثل `ops.admin_privacy` فقط شناسهٔ درخواست را می‌دهد، نه حساب را.
+  - `health`: هر هشدار باز job ساعتی سلامت (OPS-02)، یک وظیفه برای هر دوره. رخدادهای ممیزی `ops.health_alert` و `ops.health_recovered` دستهٔ ۳ بی‌تغییر می‌مانند.
+  - عنوان هر دو تا تأیید متن، همان عنوان عمومی «Review this task» است. توضیح وظیفهٔ `health` جملهٔ هشدار همان شاخص از متن‌های «System health» است که مالک محصول در 2026-10-19 عیناً تأیید کرد.
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.

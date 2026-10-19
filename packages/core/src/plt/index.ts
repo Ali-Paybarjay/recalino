@@ -116,7 +116,10 @@ export {
 } from "./schema-version";
 export {
   type AuditInput,
+  anonymiseAuditActors,
+  DELETED_ACCOUNT_ACTOR,
   latestSubjectAudit,
+  purgeSecurityEvents,
   recordAudit,
   recordAuditOnce,
   recordSecurityEvent,

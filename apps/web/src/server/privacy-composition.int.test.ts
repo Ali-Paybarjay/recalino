@@ -16,9 +16,11 @@ import {
 import { recordItemFeedback } from "@recalino/core/pers";
 import {
   DEFAULT_PLT_SETTINGS,
+  DELETED_ACCOUNT_ACTOR,
   type JobContext,
   MemoryObjectStore,
   readOwnedObject,
+  recordAudit,
 } from "@recalino/core/plt";
 import {
   coordinateSourceDeletion,
@@ -345,6 +347,14 @@ it.each(["source", "session", "account"] as const)(
     expect(cached.every((row) => row.response_body === null && row.response_status === null)).toBe(
       true,
     );
+    // SEC-07 (D95): an audit row this learner made keeps what happened once the account is gone.
+    await recordAudit(db, {
+      actorKind: "learner",
+      actorId: fixtureData.ctx.userId,
+      action: "test.sec07",
+      subjectType: "privacy_request",
+      subjectId: requestId,
+    });
     // A direct invocation selects only this receipt. Advance beyond every issued-link grace window.
     const job: JobContext = {
       db,
@@ -370,6 +380,20 @@ it.each(["source", "session", "account"] as const)(
         .where("request_id", "=", requestId)
         .execute(),
     ).toHaveLength(dependencies.hooks.length);
+    // Only a completed account deletion removes the learner's id from the audit trail.
+    expect(
+      await db
+        .selectFrom("plt.audit_event")
+        .select(["actor_id", "action"])
+        .where("subject_id", "=", requestId)
+        .where("action", "=", "test.sec07")
+        .execute(),
+    ).toEqual([
+      {
+        actor_id: kind === "account" ? DELETED_ACCOUNT_ACTOR : fixtureData.ctx.userId,
+        action: "test.sec07",
+      },
+    ]);
     await expect(getVersion(db, fixtureData.ctx, fixtureData.knowledge.id)).rejects.toMatchObject({
       code: "not_found",
     });

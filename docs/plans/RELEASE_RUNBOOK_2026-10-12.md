@@ -99,6 +99,16 @@ supabase db push
 
 **نگهبان schema (OPS-05، ممیزی 2026-10-18):** از این پس build نسخهٔ تازه‌ترین فایل `supabase/migrations` را در `apps/web/src/server/schema-version.generated.ts` می‌نویسد (`pnpm schema:version`؛ آزمون واحد کهنگی آن را می‌گیرد). اگر دیتابیس از این نسخه عقب‌تر باشد، runner (`/api/jobs/run` و بیدارباش فوری) هیچ ایمیل، job دوره‌ای یا claim تازه‌ای انجام نمی‌دهد، هر بار لاگ `schema_behind` می‌نویسد، برای هر نسخه یک رخداد ممیزی `ops.schema_behind` (در «Recent activity» پنل مالک) و یک لاگ خطای `schema_behind_alert` می‌سازد، و `/api/health?deep=1` پاسخ 503 می‌دهد. حداکثر ۳۰ ثانیه پس از `db push`، runner خودکار ادامه می‌دهد. اگر نقش برنامه نتواند `supabase_migrations.schema_migrations` را بخواند، نگهبان یک بار هشدار `schema_version_unreadable` می‌نویسد و کار را متوقف نمی‌کند (fail open).
 
+**دسترسی نگهبان (OPS-05، دستهٔ ۱۳، 2026-10-19):** migration `20261019120100_schema_version_read_grant` به `recalino_app` فقط `usage` روی schema `supabase_migrations` و `select` روی ستون `version` جدول `schema_migrations` می‌دهد (نه متن statementها). تا پیش از اعمال آن، نگهبان در production نمی‌تواند نسخه را بخواند و fail open است؛ پس از آن واقعاً کار می‌کند. بررسی پس از اعمال (فقط‌خواندنی):
+
+```sql
+select has_column_privilege('recalino_app','supabase_migrations.schema_migrations','version','SELECT') as version_read,
+       has_table_privilege('recalino_app','supabase_migrations.schema_migrations','SELECT') as table_read;
+-- انتظار: version_read = true و table_read = false
+```
+
+پس از این grant، اگر کدی ادغام شود که migrationش هنوز اعمال نشده، runner تا اعمال آن (`pnpm db:apply --apply` یا `supabase db push`) هیچ job تازه‌ای claim نمی‌کند و `/api/health?deep=1` پاسخ 503 می‌دهد؛ این رفتار مورد انتظار است، نه خرابی.
+
 **قاعدهٔ ترتیب:** هر migration باید با کد در حال اجرا سازگار باشد (فقط افزایشی؛ ستون not-null تازه با default). ترتیب امن‌تر «اول migration سازگار با عقب، سپس ادغام کد» است؛ چون قاعدهٔ فعلی CLAUDE.md اجرای `db push` را فقط برای migrationهای ادغام‌شده در `main` بی‌پرسش می‌داند، تغییر این ترتیب تصمیم مالک محصول است. تا آن تصمیم، پنجرهٔ میان ادغام و `db push` را نگهبان بالا امن می‌کند.
 
 **ترتیب استقرار و migration:** کد تازه ستون‌های تازه را می‌خواند (`voc.analysis.speaker_links`، `src.audio_upload.staged_at`، `org.class_session.capture_open_until`). ادغام در `main` بلافاصله استقرار می‌سازد و ساخت حدود ۲ تا ۴ دقیقه طول می‌کشد؛ پس `db push` را **بلافاصله پس از ادغام** اجرا کن تا پیش از READY شدن استقرار تمام شود. کد قدیمی در حال اجرا با schema تازه سازگار است: هیچ ستونی حذف یا تغییر نوع نمی‌دهد و تنها ستون not-null تازه default دارد.
