@@ -3,7 +3,6 @@ import { allowance, DIMENSIONS } from "@recalino/core/quota";
 import { requireLearner } from "../../../../server/auth/learner";
 import { getDatabase } from "../../../../server/db";
 import { allowanceLabels as labels, allowanceUnits as units } from "../../../../ui/allowance-units";
-import { pendingCopy } from "../../../../ui/pending-copy";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, LinkButton, Panel } from "../../../../ui/workspace/primitives";
 import { LearnerShell } from "../../LearnerShell";
@@ -64,7 +63,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Reserved and used">
-        <p>{pendingCopy.allowanceHelp.reserved}</p>
+        <p>Only usable published output is charged.</p>
         <dl>
           {DIMENSIONS.map((d) => (
             <div key={d}>
@@ -77,7 +76,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Need more allowance?">
-        <p>{pendingCopy.allowanceHelp.need}</p>
+        <p>The pilot operator sets your allowance.</p>
         {contact ? (
           <a href={contact} className="btn btn-secondary rc-btn-lg">
             Contact the pilot operator

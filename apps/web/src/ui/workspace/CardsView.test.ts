@@ -109,15 +109,28 @@ describe("flashcard next actions", () => {
 });
 
 describe("rejecting a suggested card (UX-03)", () => {
-  it("offers Reject, and no Undo message exists until a card was rejected", () => {
+  const undoText = "Undo last card change";
+  const rejected: StudyCard = { ...candidate, status: "rejected", contentVersion: 2 };
+
+  it("offers Reject, and shows no Undo while no card was rejected", () => {
     const html = render({ notebook, initial: [candidate] });
     expect(html).toContain("Reject");
+    expect(html).not.toContain(undoText);
     expect(html).not.toContain("Card rejected");
-    expect(html).not.toContain(">Undo<");
   });
 
   it("keeps Reject out of the way of the confirming action", () => {
     const html = render({ notebook, initial: [candidate] });
     expect(html.indexOf("Confirm and add")).toBeLessThan(html.indexOf("Reject"));
+  });
+
+  it("offers Undo, with the app's existing text, on a rejected card only", () => {
+    const html = render({ notebook, initial: [rejected] });
+    expect(html).toContain(undoText);
+    expect(html).not.toContain("Card rejected");
+    expect(html).not.toContain("Confirm and add");
+    expect(render({ notebook, initial: [{ ...candidate, status: "active" }] })).not.toContain(
+      undoText,
+    );
   });
 });

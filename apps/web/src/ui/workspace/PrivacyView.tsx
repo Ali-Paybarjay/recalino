@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
 import { PushSafeSignOut } from "../notifications/PushSafeSignOut";
-import { pendingCopy } from "../pending-copy";
 import { useRecording } from "../recording/RecordingProvider";
 import { strings } from "../strings";
 import { type PendingDeletion, requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
@@ -139,9 +138,9 @@ export function PrivacyView({
   if (receipt)
     return (
       <Panel title="Account deletion requested">
-        {receipt.state === "needs_operator" ? (
-          <Status tone="error">{pendingCopy.accountDeletion.needsOperator}</Status>
-        ) : (
+        {/* "Server cleanup has been queued" would be untrue when cleanup waits for the operator;
+            the text for that case waits for the owner (UI_COPY_PENDING.md, UX-10). */}
+        {receipt.state === "needs_operator" ? null : (
           <Status>Your account and sessions are hidden. Server cleanup has been queued.</Status>
         )}
         <p>Request reference: {receipt.id}</p>
@@ -217,7 +216,6 @@ export function PrivacyView({
   return (
     <div className="preview-stack">
       <Panel title="Your data, your choices">
-        <p>{pendingCopy.yourData.downloadFirst}</p>
         <p>
           You can remove an individual session from its Session options page, or remove a source
           from its Sources page.

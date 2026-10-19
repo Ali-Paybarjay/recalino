@@ -147,6 +147,7 @@ export function SessionNextStep({
           batches,
           live.uploadProgress,
           account.setupComplete && !account.termsPending,
+          account.termsChangedOn,
         )
       : null;
   const pending = retry.action;

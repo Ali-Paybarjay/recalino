@@ -5,17 +5,23 @@ import { createContext, type ReactNode, useContext } from "react";
 export interface AccountGate {
   setupComplete: boolean;
   termsPending: boolean;
+  /** The date the Terms last changed, as the Terms notice shows it; null without a server page. */
+  termsChangedOn: string | null;
 }
 
 // Without a provider (design pages), a stop for `acceptance_required` is read as new Terms.
-const Gate = createContext<AccountGate>({ setupComplete: true, termsPending: true });
+const Gate = createContext<AccountGate>({
+  setupComplete: true,
+  termsPending: true,
+  termsChangedOn: null,
+});
 
 export function AccountGateProvider({
   value,
   children,
 }: {
   value: AccountGate;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return <Gate.Provider value={value}>{children}</Gate.Provider>;
 }

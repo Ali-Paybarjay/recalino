@@ -1,8 +1,8 @@
 /**
  * Delete-card confirmation, word for word from frame E3-delete ("Delete confirm · Undo snackbar",
  * docs/design/handoff-r1/Recalino Screens 6 - Cards Review.dc.html). "Delete this card" and
- * "Keep it" are texts the app already uses. The snackbar message for Reject is not in the frames;
- * it waits for the owner in pending-copy.ts.
+ * "Keep it" are texts the app already uses. A snackbar message for Reject is not in the frames;
+ * the proposal waits for the owner in docs/design/UI_COPY_PENDING.md and Reject has no snackbar.
  */
 export const cardDeleteCopy = {
   open: "Delete this card",

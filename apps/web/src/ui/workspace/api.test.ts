@@ -170,7 +170,8 @@ it.each(["changed_after_estimate", "changed_after_confirmation", "new_confirmati
     );
     expect(failure).toBeInstanceOf(WorkspaceRequestError);
     const message = (failure as Error).message;
-    expect(message).toContain("The selected sources have changed.");
+    // Only the sentence the app already had; the new wording waits for the owner (UI_COPY_PENDING.md).
+    expect(message).toBe("The selected sources have changed.");
     expect(message).not.toMatch(/estimate|confirm/i);
   },
 );

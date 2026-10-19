@@ -2,10 +2,6 @@
 import type { StudyCard } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
 import { useEffect, useRef, useState } from "react";
-import { Snackbar } from "../components/Snackbar";
-import { XCircle } from "../icons";
-import { pendingCopy } from "../pending-copy";
-import { useCaptureQuiet } from "../recording/RecordingProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
@@ -61,10 +57,8 @@ export function CardsView({
     groups.find((group) => group.cards.length);
   const visibleCards = grouped ? (activeGroup?.cards ?? []) : cards;
   useEffect(() => setCards(initial), [initial]);
-  // UX-03: Reject can be taken back for a few seconds. Nothing pops up while a class is being
-  // recorded (PRD-REC-02); the rejected card still shows its state and can be undone from its page.
-  const [undo, setUndo] = useState<StudyCard | null>(null);
-  const recordingQuietly = useCaptureQuiet();
+  // UX-03: a rejected card keeps an Undo button of its own, with the app's existing text. Nothing
+  // pops up, so it is also safe while a class is being recorded (PRD-REC-02).
   async function change(card: StudyCard, body: ReturnType<typeof cardActionBody>) {
     setBusy(true);
     setProblem("");
@@ -85,12 +79,9 @@ export function CardsView({
     }
   }
   async function accept(card: StudyCard, action: "activate" | "reject") {
-    setUndo(null);
-    const changed = await change(card, cardActionBody(card, action));
-    if (changed && action === "reject" && !recordingQuietly) setUndo(changed);
+    await change(card, cardActionBody(card, action));
   }
   async function undoReject(rejected: StudyCard) {
-    setUndo(null);
     await change(rejected, undoBody(rejected));
   }
   return (
@@ -162,20 +153,20 @@ export function CardsView({
                     </Button>
                   </>
                 )}
+                {card.status === "rejected" && (
+                  <Button
+                    secondary
+                    disabled={busy || card.contentVersion < 2}
+                    onClick={() => void undoReject(card)}
+                  >
+                    Undo last card change
+                  </Button>
+                )}
               </Actions>
             </article>
           ))
         )}
       </Panel>
-      {undo ? (
-        <Snackbar
-          key={`${undo.id}:${undo.contentVersion}`}
-          icon={XCircle}
-          message={pendingCopy.cardActions.rejected}
-          onUndo={() => void undoReject(undo)}
-          onDismiss={() => setUndo(null)}
-        />
-      ) : null}
     </div>
   );
 }

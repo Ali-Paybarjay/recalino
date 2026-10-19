@@ -19,6 +19,7 @@ import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
 import { recordingCopy } from "./recording-copy";
 import { formatPartDate } from "./recording-format";
+import { SavedPartStatus } from "./SavedPartStatus";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 
@@ -396,14 +397,7 @@ export function RecordingView({
                 </p>
               ) : (
                 <>
-                  <p>
-                    {row.awaitingFinalData
-                      ? "Recovering the final audio for this part… You can export the parts already saved."
-                      : row.status === "saved"
-                        ? "Saved on this device"
-                        : "Recording was interrupted. Check and export the saved parts."}
-                  </p>
-                  {row.syncError ? <Status tone="error">{row.syncError}</Status> : null}
+                  <SavedPartStatus row={row} phase={state.phase} />
                   <Actions>
                     <Button
                       secondary

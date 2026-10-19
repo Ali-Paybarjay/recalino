@@ -506,4 +506,27 @@ describe("learning progress", () => {
     expect(result.active).toBe(false);
     expect(result.steps.every((step) => step.state === "pending")).toBe(true);
   });
+
+  // UX-09: new Terms speak with the approved Settings sentence (frame G3), never an invented one.
+  describe("a stop for new Terms", () => {
+    const stopped = status({ state: "blocked", lastError: "acceptance_required" });
+
+    it("uses the approved Terms sentence with the date from the server", () => {
+      expect(learningProgress(stopped, [], null, false, "1 Oct").guidance).toBe(
+        "The Terms changed on 1 Oct. Please read and accept them to keep processing new sessions.",
+      );
+    });
+
+    it("has no sentence when the date is not known, and never points to setup", () => {
+      const result = learningProgress(stopped);
+      expect(result.guidance).toBe("");
+      expect(result.guidance).not.toContain("setup");
+    });
+
+    it("reads like any failed attempt once the Terms were accepted", () => {
+      const result = learningProgress(stopped, [], null, true, "1 Oct");
+      expect(result.guidance).not.toContain("Terms changed");
+      expect(result.guidance).toContain("Retry");
+    });
+  });
 });

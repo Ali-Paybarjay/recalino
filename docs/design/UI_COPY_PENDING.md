@@ -44,17 +44,17 @@
 
 ## ممیزی 2026-10-18، دستهٔ ۴ — مسیر زبان‌آموز (`fix/audit-4`)
 
-متن‌های زیر برای رفع یافته‌های UX-03، UX-09، UX-10، UX-12 و UX-14 لازم شدند و نه در `handoff/copy.md` هستند و نه در قاب‌های طرح. همه در [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) هستند و هنوز تأیید نشده‌اند. هر جا متن از قاب یا از متن موجود اپ آمده، در این فهرست نیست (مثلاً Sheet حذف کارت از قاب E3-delete، دکمهٔ «Read and accept» از `strings.settings`، و «Sign out» از `strings.settings.signOut`).
+متن‌های زیر برای رفع یافته‌های UX-03، UX-09، UX-10، UX-12 و UX-14 پیشنهاد شدند، ولی نه در `handoff/copy.md` هستند و نه در قاب‌های طرح و مالک محصول هنوز تأییدشان نکرده است. طبق CLAUDE.md متن رابط عیناً از طرح یا متن موجود می‌آید، پس **هیچ‌کدام در رابط نیستند** و [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) خالی می‌ماند. هر مورد می‌گوید رابط تا تأیید چه نشان می‌دهد. اگر مالک محصول متنی را عیناً در چت تأیید کند، آن متن به فایل نهایی صفحه می‌رود (نه به `pending-copy.ts`).
 
-| کلید | متن | حالت | منشأ | وضعیت |
-|---|---|---|---|---|
-| `cardActions.rejected` | Card rejected | Snackbar با دکمهٔ Undo پس از Reject روی کارت پیشنهادی (UX-03)؛ هنگام ضبط فعال نمایش داده نمی‌شود | الگوی قاب E3 («Card suspended») | در انتظار تأیید |
-| `termsAcceptance.guidance` | Read and accept the updated Terms to continue. | راهنمای پیشرفت وقتی پردازش به‌خاطر Terms تازه ایستاده است (UX-09)؛ جایگزین «Open Review account setup to continue.» | UX-09 | در انتظار تأیید |
-| `allowanceHelp.need` | The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it. | صفحهٔ Allowance، بخش «Need more allowance?» (UX-12)؛ جایگزین «Processing starts only after you confirm its estimate.» | UX-12 | در انتظار تأیید |
-| `allowanceHelp.reserved` | Reserved allowance is held while your material is processed. Only usable published output is charged. | صفحهٔ Allowance، بخش «Reserved and used» (UX-12)؛ جایگزین «…held for work you confirmed…» | UX-12 | در انتظار تأیید |
-| `workspaceErrors.sourcesChanged` | The selected sources have changed. Check your session material, then try again. | خطای تغییر منابع پس از برآورد (UX-12)؛ جایگزین «Review the processing estimate and confirm again.» | UX-12 | در انتظار تأیید |
-| `yourData.downloadFirst` | To keep a copy first, open a session, choose More session tools, then Download notes and cards. | بالای صفحهٔ Your data (UX-14) | UX-14 | در انتظار تأیید |
-| `accountDeletion.needsOperator` | Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below. | صفحهٔ /deletion وقتی رسید حذف در وضعیت `needs_operator` است (UX-10) | UX-10 | در انتظار تأیید |
+هر جا متن از قاب یا از متن موجود اپ آمده، در این فهرست نیست (مثلاً Sheet حذف کارت از قاب E3-delete، دکمهٔ «Read and accept» و جملهٔ «The Terms changed on {date}…» از `strings.settings`، و «Sign out» از `strings.settings.signOut`).
+
+- **UX-03، پیام Undo پس از Reject** (`cardActions.rejected`): «Card rejected». الگوی قاب E3 («Card suspended»)، Snackbar با دکمهٔ Undo؛ هنگام ضبط فعال نمایش داده نشود. تا تأیید: کارت ردشده دکمهٔ «Undo last card change» (متن موجود `CardEditor`) دارد.
+- **UX-09، راهنمای پیشرفت وقتی Terms تازه پردازش را نگه داشته** (`termsAcceptance.guidance`): «Read and accept the updated Terms to continue.» جایگزین «Open Review account setup to continue.». تا تأیید: جملهٔ مصوب `strings.settings.termsChanged` با تاریخی که سرور می‌دهد؛ اگر تاریخ معلوم نباشد جمله‌ای نمایش داده نمی‌شود و دکمهٔ «Read and accept» می‌ماند.
+- **UX-10، رسید حذف حساب در وضعیت `needs_operator`** (`accountDeletion.needsOperator`): «Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below.» تا تأیید: فقط «Request reference: …»، پیوند «Ask the pilot operator» (وقتی نشانی تنظیم شده) و «Sign out»؛ جملهٔ «Server cleanup has been queued.» در این حالت نمایش داده نمی‌شود، چون نادرست است.
+- **UX-12، صفحهٔ Allowance، بخش «Need more allowance?»** (`allowanceHelp.need`): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.» تا تأیید: فقط «The pilot operator sets your allowance.».
+- **UX-12، صفحهٔ Allowance، بخش «Reserved and used»** (`allowanceHelp.reserved`): «Reserved allowance is held while your material is processed. Only usable published output is charged.» تا تأیید: فقط «Only usable published output is charged.» (جملهٔ قدیمی دربارهٔ «work you confirmed» حذف شد، چون پردازش خودکار است).
+- **UX-12، خطای تغییر منابع پس از برآورد** (`workspaceErrors.sourcesChanged`): «The selected sources have changed. Check your session material, then try again.» تا تأیید: فقط «The selected sources have changed.» (بدون «Review the processing estimate and confirm again.»).
+- **UX-14، بالای صفحهٔ Your data** (`yourData.downloadFirst`): «To keep a copy first, open a session, choose More session tools, then Download notes and cards.» تا تأیید: متنی اضافه نمی‌شود؛ پیوند «Choose a session» به `/sessions` که از قبل بود می‌ماند.
 
 ### پیشنهادهای ثبت‌شده که هنوز در رابط نیستند (UX-01 و UX-13)
 

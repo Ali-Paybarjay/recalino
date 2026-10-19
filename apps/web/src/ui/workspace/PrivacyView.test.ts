@@ -1,7 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { pendingCopy } from "../pending-copy";
 import { PrivacyView } from "./PrivacyView";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
@@ -39,25 +38,30 @@ describe("account deletion recovery page", () => {
     expect(html).not.toContain("Return to Recalino");
   });
 
-  it("tells a stopped cleanup to contact the operator, with a link when one is configured", () => {
+  it("offers the operator link, not a claim that cleanup is queued, when cleanup is stopped", () => {
     const html = render({
       initialPending: pending,
       recoveryStage: "needs_operator",
       operatorMailto: "mailto:operator%40example.org",
     });
-    expect(html).toContain(pendingCopy.accountDeletion.needsOperator);
+    expect(html).toContain("Account deletion requested");
+    expect(html).toContain(`Request reference: ${requestId}`);
+    expect(html).not.toContain("Server cleanup has been queued");
+    expect(html).toContain("Ask the pilot operator");
     expect(html).toContain('href="mailto:operator%40example.org"');
     expect(html).not.toContain("Finish deletion");
     expect(html).toContain("Sign out");
-    expect(render({ initialPending: pending, recoveryStage: "needs_operator" })).not.toContain(
-      "mailto:",
-    );
+    const withoutLink = render({ initialPending: pending, recoveryStage: "needs_operator" });
+    expect(withoutLink).not.toContain("mailto:");
+    expect(withoutLink).not.toContain("Ask the pilot operator");
+    expect(withoutLink).toContain("Sign out");
   });
 
-  it("points to the download before the delete options on the normal data page (UX-14)", () => {
+  it("keeps the link to the session list on the normal data page, with no new text (UX-14)", () => {
     const html = render({});
-    expect(html).toContain(pendingCopy.yourData.downloadFirst);
     expect(html).toContain('href="/sessions"');
+    expect(html).toContain("Choose a session");
+    expect(html).not.toContain("To keep a copy first");
     expect(html).not.toContain("Sign out");
   });
 });

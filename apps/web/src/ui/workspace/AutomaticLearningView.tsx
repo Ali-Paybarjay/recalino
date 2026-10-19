@@ -26,10 +26,13 @@ export function subscribeConnection(changed: () => void) {
 export const connectionSnapshot = () => navigator.onLine;
 export const connectedServerSnapshot = () => true;
 
-/** No new Terms wait and setup is done, so a stop for `acceptance_required` is out of date. */
-function useTermsAccepted() {
+/**
+ * `accepted`: no new Terms wait and setup is done, so a stop for `acceptance_required` is out of
+ * date. `changedOn` is the date for the Terms sentence shown while they do wait.
+ */
+function useTermsGate() {
   const gate = useAccountGate();
-  return gate.setupComplete && !gate.termsPending;
+  return { accepted: gate.setupComplete && !gate.termsPending, changedOn: gate.termsChangedOn };
 }
 
 type Recovery = ReturnType<typeof automaticLearningRecovery>;
@@ -209,8 +212,14 @@ function LearningStatusCard({
   children: ReactNode;
 }) {
   const batches = useUploadBatches(sessionId);
-  const termsAccepted = useTermsAccepted();
-  const progress = learningProgress(status, batches, live.uploadProgress, termsAccepted);
+  const terms = useTermsGate();
+  const progress = learningProgress(
+    status,
+    batches,
+    live.uploadProgress,
+    terms.accepted,
+    terms.changedOn,
+  );
   const online = useSyncExternalStore(
     subscribeConnection,
     connectionSnapshot,
@@ -325,8 +334,8 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const batches = useUploadBatches(sessionId);
   const { status, problem } = live;
   const retry = useLearningRetry(sessionId, live);
-  const termsAccepted = useTermsAccepted();
-  const recovery = automaticLearningRecovery(status, termsAccepted);
+  const terms = useTermsGate();
+  const recovery = automaticLearningRecovery(status, terms.accepted);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const fallback: AutomaticLearningStatus = {
@@ -344,7 +353,8 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     status ?? fallback,
     batches,
     live.uploadProgress,
-    termsAccepted,
+    terms.accepted,
+    terms.changedOn,
   );
   if (
     !problem &&
@@ -417,8 +427,8 @@ export function AutomaticLearningView({
   const stoppedUpload = live.manualAudio?.find(
     (entry) => entry.phase === "attention" && uploadRetryCanHelp(entry),
   );
-  const termsAccepted = useTermsAccepted();
-  const recovery = automaticLearningRecovery(status, termsAccepted);
+  const terms = useTermsGate();
+  const recovery = automaticLearningRecovery(status, terms.accepted);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
   return (
