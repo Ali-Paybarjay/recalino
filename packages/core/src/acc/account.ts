@@ -48,7 +48,7 @@ export async function accountExists(db: Database, userId: string): Promise<boole
 }
 
 /** Serialize domain changes per learner inside the caller's transaction (ADR-0002). */
-export async function lockAccount(db: Database | Tx, userId: string): Promise<void> {
+export async function lockAccount(db: Tx, userId: string): Promise<void> {
   const row = await db
     .selectFrom("acc.user_account")
     .select("id")

@@ -117,11 +117,21 @@ export function estimatedUsageCost(
         : rate.unit === "tts_thousand_characters"
           ? 1_000
           : 1;
-    total += (count / divisor) * rate.rateMicros;
+    total += ceilMicros(count, rate.rateMicros, divisor);
     found = true;
   }
-  const rounded = Math.ceil(total);
-  if (!Number.isSafeInteger(rounded))
-    throw errors.validationFailed({ rates: ["estimate_overflow"] });
-  return found ? rounded : null;
+  if (!Number.isSafeInteger(total)) throw errors.validationFailed({ rates: ["estimate_overflow"] });
+  return found ? total : null;
+}
+
+/**
+ * ceil(count × rateMicros ÷ divisor) for one rate, multiplying before dividing so whole usage is
+ * priced in exact integer micros (no float drift such as 10 tokens × 300000 / 1e6 → 4).
+ * Fractional usage (for example audio seconds) keeps float arithmetic and is still rounded up.
+ */
+function ceilMicros(count: number, rateMicros: number, divisor: number): number {
+  if (!Number.isSafeInteger(count) || count < 0) return Math.ceil((count * rateMicros) / divisor);
+  const product = BigInt(count) * BigInt(rateMicros);
+  const by = BigInt(divisor);
+  return Number((product + by - 1n) / by);
 }

@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { Tx } from "../db";
+import { lockAccount } from "./account";
 import { CURRENT_VERSIONS, DOCUMENTS } from "./documents";
 import { FIRST_LANGUAGES, isFirstLanguage, languageTier } from "./languages";
 import { profileChangeSchema } from "./profile";
@@ -76,5 +78,11 @@ describe("profile changes", () => {
     expect(profileChangeSchema.safeParse({ field: "learning_language", value: "fr" }).success).toBe(
       false,
     );
+  });
+});
+
+describe("lockAccount (QUA-09)", () => {
+  it("accepts only a transaction, so FOR UPDATE can never run outside one", () => {
+    expectTypeOf(lockAccount).parameter(0).toEqualTypeOf<Tx>();
   });
 });
