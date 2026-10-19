@@ -1,7 +1,7 @@
 import { readSupabaseEnv } from "@recalino/core/config";
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { authFetch, SESSION_COOKIE_OPTIONS } from "./server/auth/supabase";
+import { authStep, SESSION_COOKIE_OPTIONS } from "./server/auth/supabase";
 import { previewResponse } from "./server/preview-mode";
 
 /**
@@ -29,13 +29,16 @@ export async function proxy(request: NextRequest) {
   // responses and private page/API responses out of shared caches even without a token refresh.
   const authHeaders = new Headers({ "Cache-Control": "private, no-store" });
   const env = readSupabaseEnv();
+  // PERF-03: the refresh and key download, retries included, end at the step deadline. Cookies
+  // written before it are kept; a late write is dropped, as the response has already left.
+  const step = authStep();
   const supabase = createServerClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
-    // PERF-03: a stalled token refresh or key download ends after five seconds.
-    global: { fetch: authFetch },
+    global: { fetch: step.fetch },
     cookieOptions: SESSION_COOKIE_OPTIONS,
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (items, headers) => {
+        if (step.signal.aborted) return;
         for (const { name, value } of items) request.cookies.set(name, value);
         // Supabase sends cache headers only with its first cookie write. A later write must
         // preserve those headers and any earlier cookie chunks when rebuilding the response.
@@ -49,7 +52,7 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  await supabase.auth.getClaims();
+  await step.run(supabase.auth.getClaims());
   authHeaders.forEach((value, name) => {
     response.headers.set(name, value);
   });

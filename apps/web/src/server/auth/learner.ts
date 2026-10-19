@@ -14,11 +14,17 @@ export interface Learner {
 }
 
 /**
+ * One Auth check per server render: a page without a session asks for the deletion receipt
+ * too, and must not wait on a second Auth step (PERF-03).
+ */
+const currentAuthUser = cache(() => supabaseAuth.currentUser());
+
+/**
  * The signed-in learner with a Recalino account, or null. An Auth user without an account (no
  * sign-in declarations, FR-ACC-001) is not a learner. Cached for one server render.
  */
 export const getLearner = cache(async (): Promise<Learner | null> => {
-  const user = await supabaseAuth.currentUser();
+  const user = await currentAuthUser();
   if (user === null) return null;
   const state = await getAccountState(getDatabase(), user.id);
   return state === null ? null : { userId: user.id, state };
@@ -51,7 +57,9 @@ export async function pendingAccountDeletion(
     stage: deletionStage(receipt.state, await deletionJournalSaved(db, receipt.id)),
   };
 }
-export const getPendingAccountDeletion = cache(() => pendingAccountDeletion());
+export const getPendingAccountDeletion = cache(() =>
+  pendingAccountDeletion({ ...supabaseAuth, currentUser: currentAuthUser }),
+);
 
 /**
  * FR-PLT-001 for pages: without a session, go to the sign-in page and come back afterwards.

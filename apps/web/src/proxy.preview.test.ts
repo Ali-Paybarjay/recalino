@@ -10,7 +10,10 @@ const stubs = vi.hoisted(() => ({
 }));
 vi.mock("@recalino/core/config", () => ({ readSupabaseEnv: stubs.readEnv }));
 vi.mock("@supabase/ssr", () => ({ createServerClient: stubs.createClient }));
-vi.mock("./server/auth/supabase", () => ({ SESSION_COOKIE_OPTIONS: {}, authFetch: fetch }));
+vi.mock("./server/auth/supabase", () => ({
+  SESSION_COOKIE_OPTIONS: {},
+  authStep: () => ({ signal: new AbortController().signal, fetch, run: (work: unknown) => work }),
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();

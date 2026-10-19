@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { supabaseAuth } from "./gateway";
 
-const { signInWithOAuth, signOut, getUser } = vi.hoisted(() => ({
+const { signInWithOAuth, signOut, getUser, timedOut, run } = vi.hoisted(() => ({
   signInWithOAuth: vi.fn(),
   signOut: vi.fn(),
   getUser: vi.fn(),
+  timedOut: Symbol("auth-timed-out"),
+  run: vi.fn((work: Promise<unknown>) => work),
 }));
 vi.mock("./supabase", () => ({
+  AUTH_TIMED_OUT: timedOut,
+  authStep: () => ({ signal: new AbortController().signal, fetch: vi.fn(), run }),
   createAuthClient: async () => ({ auth: { signInWithOAuth, signOut, getUser } }),
   createAuthAdmin: vi.fn(),
 }));
@@ -52,7 +56,7 @@ describe("Supabase sign-out gateway", () => {
 });
 
 // FR-PLT-001: the Auth server checks every session, so a signed-out token is refused. PERF-03:
-// an Auth error, including the five-second timeout, counts as no session, never as a user.
+// an Auth error, a fetch timeout or a passed step deadline counts as no session, never a user.
 describe("Supabase current user gateway", () => {
   it("returns the user the Auth server confirms", async () => {
     const id = crypto.randomUUID();
@@ -68,5 +72,11 @@ describe("Supabase current user gateway", () => {
       });
       await expect(supabaseAuth.currentUser()).resolves.toBeNull();
     }
+  });
+
+  it("refuses a session whose Auth step passes its deadline, even if Auth answers later", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: crypto.randomUUID() } }, error: null });
+    run.mockResolvedValueOnce(timedOut);
+    await expect(supabaseAuth.currentUser()).resolves.toBeNull();
   });
 });

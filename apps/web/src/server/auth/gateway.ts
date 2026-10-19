@@ -1,5 +1,5 @@
 import "server-only";
-import { createAuthAdmin, createAuthClient } from "./supabase";
+import { AUTH_TIMED_OUT, authStep, createAuthAdmin, createAuthClient } from "./supabase";
 
 export interface AuthUser {
   id: string;
@@ -16,7 +16,8 @@ export interface AuthGateway {
   exchangeCode(code: string): Promise<AuthUser | null>;
   /**
    * The signed-in user, checked with the Auth server on every call, so a session that signed
-   * out is refused at once (FR-PLT-001).
+   * out is refused at once (FR-PLT-001). An Auth server that does not finish within
+   * AUTH_STEP_TIMEOUT_MS, refresh retries included, counts as no session (PERF-03).
    */
   currentUser(): Promise<AuthUser | null>;
   /** Ends the session on the server and clears the cookies. Repeating it has no effect. */
@@ -48,8 +49,11 @@ export const supabaseAuth: AuthGateway = {
   },
 
   async currentUser() {
-    const auth = (await createAuthClient()).auth;
-    const { data, error } = await auth.getUser();
+    const step = authStep();
+    const auth = (await createAuthClient(step.fetch)).auth;
+    const result = await step.run(auth.getUser());
+    if (result === AUTH_TIMED_OUT) return null;
+    const { data, error } = result;
     return error || !data.user ? null : { id: data.user.id };
   },
 
