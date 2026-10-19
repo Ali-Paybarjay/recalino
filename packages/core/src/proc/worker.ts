@@ -11,11 +11,11 @@ import {
   publishKnowledgeVersion,
 } from "../lkm";
 import { getCourse, getSession } from "../org";
-import { AppError, errors, JobCancelled, type JobDefinition, readPltSettings } from "../plt";
+import { AppError, JobCancelled, type JobDefinition, readPltSettings } from "../plt";
 import { amountsSchema, emptyAmounts, settleAllowance } from "../quota";
 import { assertSourcesLive, sourceClassificationPrompt, updateAutomaticSourceRoles } from "../src";
 import { settleClassMaterial } from "./charged-material";
-import { processingQueue, type RunSource, sourceSnapshotSchema } from "./contracts";
+import { processingQueue } from "./contracts";
 import { generatedKnowledgeSchema, legacyKnowledgeWireSchema } from "./generated-knowledge";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
 import {
@@ -72,16 +72,14 @@ export {
   VOICE_ANALYSIS_TIME_MS,
 } from "./steps/runtime";
 
-import { extractAudioSource } from "./steps/audio-source";
-import { hasStoredOriginal, YIELDED } from "./steps/context";
-import { extractImageSources } from "./steps/image-sources";
+import { YIELDED } from "./steps/context";
+import { extractSources } from "./steps/extract-sources";
 import {
   knowledgePrompt,
   processingFailureCode,
   semanticRepairReason,
   validateGeneratedKnowledge,
 } from "./steps/knowledge-checks";
-import { extractPdfSource } from "./steps/pdf-source";
 import {
   cached,
   checkpointAndContinue,
@@ -92,7 +90,6 @@ import {
   providerStep,
   saveStep,
   VOICE_ANALYSIS_TIME_MS,
-  withinSelection,
   YIELD_DELAY_SECONDS,
 } from "./steps/runtime";
 import { startRun } from "./steps/start";
@@ -109,45 +106,8 @@ export function processingJob(
       try {
         const stage = await startRun({ job, ctx, payload, definition, dependencies });
         const { provider, initial, settings, snapshot } = stage;
-        const extracted: RunSource[] = [];
-        for (const source of snapshot.sources) {
-          const ready = await cached(
-            job.db,
-            payload.runId,
-            `source:${source.sourceId}`,
-            sourceSnapshotSchema.shape.sources.element,
-          );
-          if (ready) {
-            extracted.push(withinSelection(ready));
-            continue;
-          }
-          if (
-            source.contentVersionId &&
-            !(
-              source.kind === "pdf" &&
-              withinSelection(source).units.some((unit) => unit.reason === "ocr_required")
-            )
-          ) {
-            extracted.push(withinSelection(source));
-            continue;
-          }
-          if (!hasStoredOriginal(source))
-            throw errors.validationFailed({ source: ["original_unavailable"] });
-          if (source.kind === "audio") {
-            const audio = await extractAudioSource(stage, source);
-            if (audio === YIELDED) return;
-            extracted.push(audio);
-          } else if (source.kind === "pdf") {
-            const pdf = await extractPdfSource(stage, source);
-            if (pdf === YIELDED) return;
-            extracted.push(pdf);
-          } else if (source.kind === "image") {
-            await extractImageSources(stage, source);
-            return;
-          } else throw errors.validationFailed({ source: ["content_unavailable"] });
-        }
-        if (!extracted.some((source) => source.blocks.some((block) => block.text.trim())))
-          throw errors.validationFailed({ sources: ["no_extractable_content"] });
+        const extracted = await extractSources(stage);
+        if (extracted === YIELDED) return;
         // Each lesson stage makes at most one provider call, on any model of the run. A stage
         // whose call could not finish before the runner's deadline is left to a fresh runner.
         const lessonCallMs = longestProviderTimeoutMs(provider.settings) + PROVIDER_CALL_SAFETY_MS;
