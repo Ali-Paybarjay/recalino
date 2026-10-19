@@ -41,7 +41,7 @@ export function RecordingView({
   backLabel = "Back to session",
 }: {
   sessionId?: string;
-  /** Where the way back leads once capture is over (UX-02); the page has no navigation. */
+  /** Where the way back leads once capture is over (UX-02); the page has no navigation until then. */
   backHref?: string;
   backLabel?: string;
 }) {

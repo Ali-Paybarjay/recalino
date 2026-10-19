@@ -258,3 +258,24 @@
     gap: 32px;
   }
 }
+/* Focus mode (recording in progress, UX-02): the content column alone, with the values of
+   FocusShell.module.css. .shell.focus outweighs the plain .shell and .main rules above. */
+.shell.focus {
+  --rc-snackbar-offset: 0px;
+}
+.shell.focus .main {
+  padding: 20px 20px max(32px, env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .shell.focus {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shell.focus .main {
+    padding: 40px 32px;
+  }
+}
+@media (min-width: 1024px) {
+  .shell.focus .main {
+    padding: 46px clamp(32px, 4vw, 64px) 56px;
+  }
+}

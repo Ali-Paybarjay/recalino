@@ -109,7 +109,9 @@ test("measures real recorded audio, starts a new part after missing audio, and s
   }
   // The recording bar on other pages carries the short summary only (client navigation keeps it).
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.getByRole("link", { name: "Back to Today", exact: true }).click();
+  // After Stop the navigation is back (UX-02, owner decision 2026-10-19), next to "Back to Today".
+  await expect(page.getByRole("link", { name: "Back to Today", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Today", exact: true }).first().click();
   const bar = page.getByRole("complementary", { name: "Active recording" });
   await expect(bar.getByText(/^Part of this class was not recorded/)).toBeVisible();
   for (const [name, width, height] of [
