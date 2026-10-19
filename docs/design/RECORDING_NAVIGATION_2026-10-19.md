@@ -12,7 +12,7 @@
 
 مجموعهٔ فاز‌های «ضبط فعال» همان `captureIsQuiet` در `apps/web/src/ui/recording/capture-phase.ts` است. این تصمیم، حالت «focus mode بدون ناوبری، همیشه» را که دستهٔ 4 ساخته بود (`FocusShell`، HANDOFF §4 و قاب C2) در دو حالت پیش از شروع و پس از Stop برمی‌دارد. حین ضبط چیزی تغییر نکرده است: PRD-REC-02 (هیچ قطع، پنجره، صدا یا هشداری) و منطق controller دست‌نخورده‌اند، «Stop and save» پیش از توضیح‌ها آمده و در ۳۹۰×۶۶۴ بدون اسکرول دیده می‌شود، و «Back to session» / «Back to Today» پس از Stop همچنان هست.
 
-این تفاوت با HANDOFF §4 («Recording = full-screen focus mode, no nav») تصمیم صریح مالک محصول است. جای ثبت نسخه‌دار آن در `docs/PRODUCT_DECISIONS_LOG.md` (شمارهٔ D بعدی) با مالک محصول است.
+این تفاوت با HANDOFF §4 («Recording = full-screen focus mode, no nav») تصمیم صریح مالک محصول است و به‌صورت نسخه‌دار در [D90](../PRODUCT_DECISIONS_LOG.md) و بند ۱۲ [بازبینی تحویل](HANDOFF_R1_REVIEW.md) ثبت شد (دستهٔ ۹، 2026-10-19). تأیید نهایی نگه‌داشتن یا بازگرداندن در پایان همین اجرای اصلاح ممیزی گرفته می‌شود.
 
 ## پیاده‌سازی
 
