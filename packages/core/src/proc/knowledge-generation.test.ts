@@ -2612,3 +2612,66 @@ describe("FR-PROC-004 v5 wire checks: hidden grammar answers, headword answers a
     ).not.toContain("The requested explanation language is");
   });
 });
+
+// QUA-01: the request is checked in one fixed order (response bound, repair context, lesson
+// context, evidence, then confirmed handwriting), so splitting the builder keeps every refusal.
+describe("knowledge generation request checks", () => {
+  const refusal = (run: () => unknown) => {
+    try {
+      run();
+    } catch (error) {
+      if (error instanceof z.ZodError) return error.issues.map((issue) => issue.code);
+      return (error as { details?: unknown }).details;
+    }
+    return "accepted";
+  };
+  const notes = () => ({ ...source("image"), role: "user_notes" as const });
+  it("refuses the earliest invalid part of a request", () => {
+    const data = input([notes()]);
+    data.lessonContext = { date: "not a date" };
+    data.confirmedTeacherCorrectionKeys = ["r0"];
+    expect(
+      refusal(() =>
+        buildKnowledgeGenerationInput(data, 120000, { maxOutputTokens: 0, repairReason: "Bad" }),
+      ),
+    ).toEqual(["too_small"]);
+    expect(
+      refusal(() => buildKnowledgeGenerationInput(data, 120000, { repairReason: "Bad" })),
+    ).toEqual(["invalid_format"]);
+    expect(
+      refusal(() =>
+        buildKnowledgeGenerationInput(data, 120000, {
+          repairReason: "json_parse",
+          repairDetail: "free text",
+        }),
+      ),
+    ).toEqual(["invalid_format"]);
+    expect(refusal(() => buildKnowledgeGenerationInput(data, 120000))).toEqual(["invalid_format"]);
+    data.lessonContext = { date: "2026-10-08" };
+    expect(refusal(() => buildKnowledgeGenerationInput(data, 120000))).toEqual({
+      fields: { configuration: ["handwriting_evidence_invalid"] },
+    });
+    data.confirmedHandwritingKeys = ["r0"];
+    expect(refusal(() => buildKnowledgeGenerationInput(data, 120000))).toBe("accepted");
+    expect(refusal(() => buildKnowledgeGenerationInput(input([source()]), 120000, {}))).toBe(
+      "accepted",
+    );
+    const textNotes = input([source()]);
+    textNotes.confirmedHandwritingKeys = ["r0"];
+    expect(refusal(() => buildKnowledgeGenerationInput(textNotes, 120000))).toEqual({
+      fields: { configuration: ["handwriting_evidence_invalid"] },
+    });
+  });
+  it("offers learner mistakes and answers only with confirmed handwriting", () => {
+    const data = input([notes()]);
+    const plain = buildKnowledgeGenerationInput(data, 120000);
+    data.confirmedHandwritingKeys = ["r0"];
+    const confirmed = buildKnowledgeGenerationInput(data, 120000);
+    expect(JSON.stringify(z.toJSONSchema(plain.schema))).not.toContain("learnerAnswer");
+    expect(Object.keys(plain.schema.shape.classNotes.shape)).not.toContain("mistakes");
+    expect(JSON.stringify(z.toJSONSchema(confirmed.schema))).toContain("learnerAnswer");
+    expect(Object.keys(confirmed.schema.shape.classNotes.shape)).toContain("mistakes");
+    expect(confirmed.system).toContain("server-confirmed handwriting keys authorize");
+    expect(plain.system).toContain("There is no confirmed handwritten authorship");
+  });
+});
