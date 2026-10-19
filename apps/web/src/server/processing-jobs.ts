@@ -1,13 +1,26 @@
 import "server-only";
-import { processingJob, recordProcessingNotification } from "@recalino/core/proc";
+import {
+  type AudioPreparer,
+  type PdfPagesPreparer,
+  type ProcessingDependencies,
+  processingJob,
+  recordProcessingNotification,
+} from "@recalino/core/proc";
 import { markSourceAudioTranscribed } from "@recalino/core/src";
 import { getAiProvider } from "./ai";
-import { prepareAudio } from "./audio-preparer";
 import { finalizeAutomaticRun } from "./automatic-learning-publication";
-import { prepareProcessingImage } from "./image-preparer";
-import { preparePdfPages } from "./pdf-preparer";
 import { getObjectStore } from "./storage";
 import { diarizeSourceVoice } from "./voice-processing";
+
+// PERF-01: the preparers load on first use inside a processing job. The PDF renderer loads Canvas
+// when it is evaluated, and only the processing routes and the job runner ship Canvas.
+const prepareAudio: AudioPreparer = async (input) =>
+  (await import("./audio-preparer")).prepareAudio(input);
+const prepareProcessingImage: NonNullable<ProcessingDependencies["prepareImage"]> = async (input) =>
+  (await import("./image-preparer")).prepareProcessingImage(input);
+const preparePdfPages: PdfPagesPreparer = async (input) =>
+  (await import("./pdf-preparer")).preparePdfPages(input);
+
 export function getProcessingDefinition() {
   const store = getObjectStore();
   if (!store) return null;

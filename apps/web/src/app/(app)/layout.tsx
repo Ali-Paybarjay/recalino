@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "../../ui/preview/preview.css";
 import { getLearner } from "../../server/auth/learner";
-import { captureFlags } from "../../server/capture-staging-jobs";
+import { captureFlags } from "../../server/capture-flags";
 import { NotificationCenter } from "../../ui/notifications/NotificationCenter";
 import { RecordingProvider } from "../../ui/recording/RecordingProvider";
 import { AutomaticLearningProvider } from "../../ui/workspace/AutomaticLearningProvider";

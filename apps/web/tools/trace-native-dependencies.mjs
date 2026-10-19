@@ -62,7 +62,10 @@ export async function collectPdfNativeDependencies(appRoot) {
   }
   if (![...files].some((path) => path.endsWith(".node")))
     throw new Error("native_pdf_trace_platform_binary_missing");
-  return { projectRoot, pdfMetadata, files };
+  // PERF-01: next.config ships the PDF.js worker only with the functions that read or render PDFs.
+  // Loading PDF metadata alone (any route importing the source module) does not need Canvas.
+  const pdfWorker = await realpath(join(dirname(pdfMetadata), "legacy/build/pdf.worker.mjs"));
+  return { projectRoot, pdfMetadata, pdfWorker, files };
 }
 
 async function manifests(directory) {
@@ -82,8 +85,8 @@ export async function extendNativeDependencyTraces(serverDirectory, native) {
     if (manifest.version !== 1 || !Array.isArray(manifest.files))
       throw new Error("native_pdf_trace_manifest_invalid");
     const base = dirname(path);
-    // Only extend traces which already include the installed PDF package metadata.
-    if (!manifest.files.some((name) => resolve(base, name) === native.pdfMetadata)) continue;
+    // Only extend the PDF processing traces: those next.config gives the installed PDF.js worker.
+    if (!manifest.files.some((name) => resolve(base, name) === native.pdfWorker)) continue;
     const files = new Set(manifest.files);
     for (const dependency of native.files)
       files.add(relative(base, dependency).split(sep).join("/"));

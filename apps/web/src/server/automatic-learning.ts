@@ -27,6 +27,7 @@ import {
   listRuns,
   type ProcessingReview,
   type ProcessingRun,
+  processingQueue,
   processingSelectionFingerprint,
   type RunFinishingStage,
   type RunSnapshot,
@@ -58,7 +59,6 @@ import { uploadCopy } from "../ui/workspace/upload-copy";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
-import { getProcessingDefinition } from "./processing-jobs";
 import { getObjectStore } from "./storage";
 import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
@@ -87,12 +87,15 @@ export interface AllowanceShortage {
 type Progress = Pick<AutomaticLearningStatus, "state" | "lastError" | "run">;
 export interface AutomaticLearningDependencies {
   provider(): AiProvider | undefined;
-  processing(): JobDefinition<{ runId: string; userId: string }> | null;
+  /** The processing job to enqueue; null without object storage. */
+  processing(): Parameters<typeof createProcessingRun>[3]["job"] | null;
   now(): Date;
 }
 const defaults: AutomaticLearningDependencies = {
   provider: getAiProvider,
-  processing: getProcessingDefinition,
+  // PERF-01: only the enqueue contract. The job runner registers the definition with the native
+  // preparers (processing-jobs), so pages that read the status never load ffmpeg or the renderer.
+  processing: () => (getObjectStore() ? processingQueue : null),
   now: () => new Date(),
 };
 const activeStates = new Set(["awaiting_upload", "queued", "processing"]);

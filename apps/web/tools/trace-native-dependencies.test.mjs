@@ -74,13 +74,20 @@ test("native trace merge preserves existing files, leaves unrelated routes alone
   try {
     const renderer = join(destination, "renderer.js.nft.json");
     const unrelated = join(destination, "unrelated.js.nft.json");
+    const metadataOnly = join(destination, "page.js.nft.json");
     const existing = "./existing-runtime.js";
     await writeFile(
       renderer,
-      JSON.stringify({ version: 1, files: [existing, relative(destination, native.pdfMetadata)] }),
+      JSON.stringify({ version: 1, files: [existing, relative(destination, native.pdfWorker)] }),
     );
     const untouched = JSON.stringify({ version: 1, files: [existing] });
     await writeFile(unrelated, untouched);
+    // PERF-01: a page that only loads the PDF package metadata receives no Canvas.
+    const page = JSON.stringify({
+      version: 1,
+      files: [existing, relative(destination, native.pdfMetadata)],
+    });
+    await writeFile(metadataOnly, page);
     const result = await extendNativeDependencyTraces(destination, native);
     assert.equal(result.manifests, 1);
     assert.equal(result.dependencies, native.files.size);
@@ -90,6 +97,7 @@ test("native trace merge preserves existing files, leaves unrelated routes alone
     for (const dependency of native.files)
       assert.ok(manifest.files.includes(relative(destination, dependency).replaceAll("\\", "/")));
     assert.equal(await readFile(unrelated, "utf8"), untouched);
+    assert.equal(await readFile(metadataOnly, "utf8"), page);
     await extendNativeDependencyTraces(destination, native);
     assert.equal(await readFile(renderer, "utf8"), first);
   } finally {

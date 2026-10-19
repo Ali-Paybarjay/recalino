@@ -262,7 +262,9 @@ export async function createProcessingRun(
   raw: unknown,
   options: {
     provider?: AiProvider;
-    job: JobDefinition<{ runId: string; userId: string }>;
+    /** Only enqueued here; the job runner registers the definition that runs it (PERF-01). */
+    job: Omit<JobDefinition<{ runId: string; userId: string }>, "run"> &
+      Partial<Pick<JobDefinition<{ runId: string; userId: string }>, "run">>;
     now?: Date;
     /** Internal retry path only; ordinary regeneration always requests new knowledge. */
     reuseCompletedKnowledge?: boolean;

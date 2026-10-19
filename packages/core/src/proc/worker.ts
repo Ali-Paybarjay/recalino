@@ -63,8 +63,8 @@ import {
 } from "../src";
 import { settleClassMaterial } from "./charged-material";
 import {
+  processingQueue,
   type RunSource,
-  runJobPayload,
   runSettingsSchema,
   sourceSnapshotSchema,
 } from "./contracts";
@@ -865,9 +865,7 @@ export function processingJob(
   dependencies: ProcessingDependencies,
 ): JobDefinition<{ runId: string; userId: string }> {
   const definition: JobDefinition<{ runId: string; userId: string }> = {
-    kind: "proc.process",
-    version: 1,
-    payload: runJobPayload,
+    ...processingQueue,
     async run(payload, job) {
       const ctx = { userId: payload.userId, requestId: job.job.id };
       try {

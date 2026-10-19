@@ -20,9 +20,11 @@ test("the deployment adapter receives native links, libraries and models before 
   ]);
   const repoRoot = pdf.projectRoot;
   const output = (assets) => ({ runtime: "nodejs", assets, assetsHashes: {} });
-  const renderer = output({ metadata: pdf.pdfMetadata });
+  const renderer = output({ worker: pdf.pdfWorker });
   const probe = output({ worker: voice.workerPath, existing: voice.workerPath });
   const unrelated = output({});
+  // PERF-01: a page that only loads the PDF package metadata receives no Canvas.
+  const metadataOnly = output({ metadata: pdf.pdfMetadata });
   let packaged = false;
   const adapter = createNativeBuildAdapter(
     {
@@ -53,6 +55,7 @@ test("the deployment adapter receives native links, libraries and models before 
         assert.ok(Object.keys(probe.assets).some((key) => key.endsWith("/sherpa-onnx.node")));
         assert.equal(probe.assets.existing, voice.workerPath);
         assert.deepEqual(unrelated.assets, {});
+        assert.deepEqual(metadataOnly.assets, { metadata: pdf.pdfMetadata });
       },
     },
     { pdf: async () => pdf, voice: async () => voice },
@@ -64,7 +67,7 @@ test("the deployment adapter receives native links, libraries and models before 
     repoRoot,
     projectDir,
     config: {},
-    outputs: { appPages: [renderer, unrelated], appRoutes: [probe] },
+    outputs: { appPages: [renderer, unrelated, metadataOnly], appRoutes: [probe] },
   });
   assert.equal(packaged, true);
 });
@@ -103,7 +106,7 @@ test("an adapter rejects host assets and a build missing expected native outputs
       config: {},
       outputs: { appRoutes: [{ runtime: "nodejs", assets: { marker }, assetsHashes: {} }] },
     };
-    const pdf = { pdfMetadata: marker, files: new Set([join(directory, "../outside-host-file")]) };
+    const pdf = { pdfWorker: marker, files: new Set([join(directory, "../outside-host-file")]) };
     const voice = { workerPath: marker, files: new Set([marker]) };
     await assert.rejects(
       extendAdapterNativeAssets(ctx, pdf, voice),
@@ -124,7 +127,7 @@ test("the adapter asset snapshot runs both PDF-owned Canvas and the voice worker
     collectPdfNativeDependencies(projectDir),
     collectVoiceNativeDependencies(projectDir),
   ]);
-  const assets = { pdf: pdf.pdfMetadata, worker: voice.workerPath };
+  const assets = { pdf: pdf.pdfMetadata, pdfWorker: pdf.pdfWorker, worker: voice.workerPath };
   const ctx = {
     repoRoot: pdf.projectRoot,
     config: {},
