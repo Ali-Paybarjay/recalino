@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import styles from "./Admin.module.css";
 import type { AdminScreenProps } from "./AdminScreenProps";
 import { adminQuery } from "./api";
-import type { AdminTask, AdminUser } from "./contracts";
-import { errorMessage, localized } from "./copy";
-import { formatMoney, formatNumber } from "./model";
+import type { AdminLocale, AdminTask, AdminUser, SystemHealth } from "./contracts";
+import { errorMessage, localized, systemHealthCopy, systemHealthSize } from "./copy";
+import { formatMegabytes, formatMoney, formatNumber, formatWait } from "./model";
 import { ProcessingReviewDetails } from "./ProcessingReviewDetails";
 import { Badge, Button, Empty, Field, Notice, Panel, Table } from "./primitives";
 
@@ -420,6 +420,57 @@ function Processing(props: AdminScreenProps) {
     </>
   );
 }
+/**
+ * OPS-02 (ADM-01, ADM-12): the hourly health check's signals, read when the overview loads. Counts
+ * and times only (packages/core/src/ops/health.ts); the texts are the owner's approved copy (D97).
+ */
+export function SystemHealthCard({
+  health,
+  locale,
+}: {
+  health: SystemHealth;
+  locale: AdminLocale;
+}) {
+  const copy = systemHealthCopy;
+  // Measured against the server's check time, so the browser's clock does not change it.
+  const wait =
+    health.oldestQueuedAt === null
+      ? Number.NaN
+      : Date.parse(health.checkedAt) - Date.parse(health.oldestQueuedAt);
+  const rows: Array<[string, string]> = [
+    [
+      copy.databaseSize[locale],
+      systemHealthSize(
+        formatMegabytes(health.databaseBytes, locale),
+        formatMegabytes(health.databaseBytesLimit, locale),
+        locale,
+      ),
+    ],
+    [copy.failedJobs[locale], formatNumber(health.failedJobsLastHour, locale)],
+    [copy.queueWait[locale], Number.isFinite(wait) ? formatWait(wait, locale) : "—"],
+    [copy.lastRunner[locale], dateLabel(health.lastRunnerAt, locale)],
+    [copy.schema[locale], copy.schemaState[health.schema?.state ?? "unknown"][locale]],
+  ];
+  return (
+    <Panel title={copy.title[locale]}>
+      {health.alerts.length ? (
+        health.alerts.map((condition) => (
+          <Notice key={condition} warning>
+            {copy.alert[condition][locale]}
+          </Notice>
+        ))
+      ) : (
+        <p className={styles.muted}>{copy.noAlert[locale]}</p>
+      )}
+      {rows.map(([label, value]) => (
+        <div key={label} className={styles.task}>
+          <strong>{label}</strong>
+          <span>{value}</span>
+        </div>
+      ))}
+    </Panel>
+  );
+}
 export function CoreScreens(props: AdminScreenProps) {
   const { data, mode, t, locale, navigate } = props;
   if (mode === "users") return <Users {...props} />;
@@ -483,6 +534,7 @@ export function CoreScreens(props: AdminScreenProps) {
           </Button>
         </Panel>
       </div>
+      {data.health && <SystemHealthCard health={data.health} locale={locale} />}
       <Panel title={t("Recent activity", "فعالیت‌های اخیر")}>
         {data.audit?.length ? (
           <Table columns={[t("Action", "اقدام"), t("Reason", "دلیل"), t("Time", "زمان")]}>
