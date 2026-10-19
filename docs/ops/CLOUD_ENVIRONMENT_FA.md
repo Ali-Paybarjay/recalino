@@ -129,11 +129,15 @@ pnpm db:apply --apply    # اجرای همه، از قدیمی به جدید، �
 | فراخوانی | نتیجه |
 |---|---|
 | `execute_sql` با `select`، یا `insert`، `update` و `delete` با `where` محدودکننده | بی‌پرسش، مثل قبل |
-| `execute_sql` با `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا (`execute`، `dblink`، بدنهٔ `do`)، یا `delete`/`update` بدون `where` (یا `where true`) | پنجرهٔ تأیید (ask) |
-| هر دستور Bash که `--approve-data-loss` دارد | رد (deny): migration حذف داده را خود مالک محصول اجرا می‌کند |
-| `pnpm db:apply` و `pnpm db:apply --apply`، `supabase db push` | بی‌پرسش، مثل قبل |
+| `execute_sql` با `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا یا زمان‌بندی‌شده (`execute`، `dblink`، `cron.schedule`)، `delete`/`update` که `where` آن همهٔ ردیف‌ها را می‌گیرد (بی `where`، `where true`، `where 2=2`، `where id = id`، `… or true`)، upsert با `on conflict … do update` که ردیف‌هایش را از یک query می‌گیرد، یا تغییر `standard_conforming_strings` | پنجرهٔ تأیید (ask) |
+| همان قاعده‌ها داخل بدنه‌ها: بدنهٔ dollar-quote، همهٔ رشته‌های یک دستور `do`، و هر رشته‌ای که پس از فاصله، توضیح، `(` یا `;` با واژهٔ آغاز یک دستور Postgres شروع می‌شود (پس از اعمال escape در `E'…'` و `U&'…'`) | پنجرهٔ تأیید (ask) |
+| هر دستور Bash که `approve-data-loss` دارد، حتی با نقل‌قول یا backslash (مثل `--approve-data-'loss'`) | رد (deny): migration حذف داده را خود مالک محصول اجرا می‌کند. برای جست‌وجوی متن، `data-loss` را جست‌وجو کن |
+| فقط `pnpm db:apply` و `pnpm db:apply --apply`، تنها روی خط؛ و `supabase db push` | بی‌پرسش، مثل قبل |
+| هر دستور دیگری که `db:apply` یا `db-apply` دارد (آرگومان اضافه، `$…`، pipe، `;` یا `&&`) | پنجرهٔ تأیید (ask) |
 
 - در سشن ابری پنجرهٔ تأیید ممکن است نمایش داده نشود (D77)؛ آن‌وقت فراخوانی انجام نمی‌شود و سشن گزارش می‌دهد.
+- hook توضیح‌ها (`--` تا `\n` یا `\r`)، رشته‌ها، `E'…'`، `U&'…'` و dollar-quote (با برچسب غیر ASCII) را مثل Postgres می‌خواند و از مسیر symlink هم اجرا می‌شود.
+- **محدودیت‌ها (پارسر کامل نیست):** این‌ها دیده نمی‌شوند و قاعدهٔ «اجازهٔ صریح» CLAUDE.md برایشان پابرجاست: تابعی که هنگام `select` ردیف حذف می‌کند؛ SQL که در زمان اجرا از تکه‌ها ساخته می‌شود (مثل `'dr' || 'op table t'`؛ `cron.schedule` و `dblink` همیشه می‌پرسند)؛ `where` همیشه‌درستی که شکل دیگری دارد (`id > 0`، `id is not null`، `id in (select id from t)`)؛ و نام تابعی که در `"…"` آمده است. در جهت مقابل، رشتهٔ داده‌ای که با واژهٔ دستور شروع می‌شود (مثل `'Drop the ball'`) پرسش اضافه می‌آورد.
 - **تعارض باز:** CLAUDE.md و D77 می‌گویند Claude پس از «بله» صریح مالک، `--approve-data-loss` را اجرا می‌کند؛ hook این را رد می‌کند. تا تصمیم مالک محصول دربارهٔ هم‌خوان کردن CLAUDE.md، دستور حذف داده را مالک خودش اجرا می‌کند و سشن فقط نسخه و یافته‌های dry run را گزارش می‌دهد.
 - آزمون: `tools/claude-hooks/data-loss-guard.test.ts` (در `pnpm test:unit` و CI).
 
