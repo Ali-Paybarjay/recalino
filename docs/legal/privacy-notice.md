@@ -126,7 +126,7 @@ We do not send the password for a PDF, a private file link or a storage key to t
 | Account and learning profile | Until you delete your account |
 | Completed background-job records | Scheduled for cleanup after 30 days |
 | Security, audit and usage records | ⟨Before the pilot: set the retention periods for these separate records and confirm the service companies' periods⟩ |
-| Encrypted app database backups | 30-day retention policy. The three newest complete backups are kept even when they are older than 30 days, so that a backup we can restore always exists. A backup may contain data that you deleted after it was made |
+| Encrypted app database backups | 30-day retention policy. The three newest complete backups are kept even when they are older than 30 days. A backup may contain data that you deleted after it was made |
 
 When a deletion request is accepted, Recalino hides the affected data and queues server cleanup. If cleanup fails, it retries. ⟨Before the pilot: confirm the operational time limit and any records that must be retained.⟩ The app's backup cleanup removes backups after 30 days, except the three newest complete backups, which it keeps until newer complete backups replace them. A minimal encrypted deletion record is kept while a retained backup could otherwise restore the deleted data. The service companies' own backup and log retention still needs to be confirmed.
 
