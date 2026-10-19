@@ -76,7 +76,10 @@ export function mockProvider(settings = providerSettings()): AiProvider {
   };
 }
 
-/** A query builder stand-in that records each chained call; `execute*` resolves to `rows`. */
+/**
+ * A query builder stand-in that records each chained call; `execute` resolves to `rows` and
+ * `executeTakeFirst*` to its first row.
+ */
 export function recordingTx(calls: unknown[][], rows: unknown[] = []): Tx {
   const chain: unknown = new Proxy(
     {},
@@ -85,17 +88,23 @@ export function recordingTx(calls: unknown[][], rows: unknown[] = []): Tx {
         (_, name) =>
         (...args: unknown[]) => {
           calls.push([String(name), ...args]);
-          return String(name).startsWith("execute") ? Promise.resolve(rows) : chain;
+          if (name === "execute") return Promise.resolve(rows);
+          if (String(name).startsWith("executeTakeFirst")) return Promise.resolve(rows[0]);
+          return chain;
         },
     },
   );
   return chain as Tx;
 }
 
-export function syntheticJob(calls: unknown[][] = [], deadline?: Date): JobContext {
+export function syntheticJob(
+  calls: unknown[][] = [],
+  deadline?: Date,
+  rows: unknown[] = [],
+): JobContext {
   const db = {
     transaction: () => ({
-      execute: async <T>(work: (tx: Tx) => Promise<T>) => work(recordingTx(calls)),
+      execute: async <T>(work: (tx: Tx) => Promise<T>) => work(recordingTx(calls, rows)),
     }),
   } as unknown as Database;
   return {
