@@ -30,3 +30,11 @@ export type ProcessingStage<Input, Output> = (run: ProcessingRun, input: Input) 
 /** A stage saved its progress and queued a fresh runner; this job invocation ends. */
 export const YIELDED = "yielded" as const;
 export type Yielded = typeof YIELDED;
+
+/** A source whose original file is stored; only such a source can be extracted. */
+export type StoredSource = ProcessingRun["snapshot"]["sources"][number] & { objectId: string };
+export function hasStoredOriginal(
+  source: ProcessingRun["snapshot"]["sources"][number],
+): source is StoredSource {
+  return Boolean(source.objectId);
+}

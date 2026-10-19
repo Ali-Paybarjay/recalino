@@ -5,7 +5,6 @@ import {
   effectiveStructuredMaxOutputTokens,
   longestProviderTimeoutMs,
   ProviderError,
-  transcriptSchema,
 } from "../aip";
 import {
   GENERATED_IDENTITY_VERSION,
@@ -19,7 +18,6 @@ import {
   errors,
   JobCancelled,
   type JobDefinition,
-  ownedObjectMetadata,
   readOwnedObject,
   readPltSettings,
 } from "../plt";
@@ -29,7 +27,6 @@ import {
   extractPdfText,
   readInputContract,
   sourceClassificationPrompt,
-  type sourceContentSchema,
   updateAutomaticSourceRoles,
 } from "../src";
 import { settleClassMaterial } from "./charged-material";
@@ -69,7 +66,6 @@ import {
   analyzeVoiceSources,
   correctVoiceCandidates,
   processVoiceSource,
-  scopedVoiceSpeakerId,
   voiceAnalysisPending,
   voiceDiarizationOptions,
 } from "./voice-processing";
@@ -91,6 +87,8 @@ export {
   VOICE_ANALYSIS_TIME_MS,
 } from "./steps/runtime";
 
+import { extractAudioSource } from "./steps/audio-source";
+import { hasStoredOriginal, YIELDED } from "./steps/context";
 import {
   knowledgePrompt,
   processingFailureCode,
@@ -98,7 +96,6 @@ import {
   validateGeneratedKnowledge,
 } from "./steps/knowledge-checks";
 import {
-  audioChunkSchema,
   cached,
   checkpointAndContinue,
   completedSteps,
@@ -112,8 +109,6 @@ import {
   providerStep,
   saveStep,
   storeExtraction,
-  TRANSCRIPTION_CONCURRENCY,
-  transcribeChunks,
   VISION_CONCURRENCY,
   VOICE_ANALYSIS_TIME_MS,
   withinSelection,
@@ -132,13 +127,8 @@ export function processingJob(
     async run(payload, job) {
       const ctx = { userId: payload.userId, requestId: job.job.id };
       try {
-        const { provider, initial, settings, snapshot, vision } = await startRun({
-          job,
-          ctx,
-          payload,
-          definition,
-          dependencies,
-        });
+        const stage = await startRun({ job, ctx, payload, definition, dependencies });
+        const { provider, initial, settings, snapshot, vision } = stage;
         const extracted: RunSource[] = [];
         for (const source of snapshot.sources) {
           const ready = await cached(
@@ -161,149 +151,12 @@ export function processingJob(
             extracted.push(withinSelection(source));
             continue;
           }
-          if (!source.objectId) throw errors.validationFailed({ source: ["original_unavailable"] });
+          if (!hasStoredOriginal(source))
+            throw errors.validationFailed({ source: ["original_unavailable"] });
           if (source.kind === "audio") {
-            if (!dependencies.prepareAudio)
-              throw errors.validationFailed({ audio: ["preparer_unavailable"] });
-            let chunks = await cached(
-              job.db,
-              payload.runId,
-              `audio:${source.sourceId}`,
-              z.array(audioChunkSchema),
-            );
-            if (!chunks) {
-              chunks = z
-                .array(audioChunkSchema)
-                .min(1)
-                .parse(
-                  await dependencies.prepareAudio({
-                    db: job.db,
-                    store: dependencies.store,
-                    ctx,
-                    runId: payload.runId,
-                    source,
-                    now: job.now(),
-                  }),
-                );
-              if (
-                chunks.some(
-                  (chunk) =>
-                    chunk.sourceId !== source.sourceId ||
-                    chunk.offsetMs + chunk.durationMs > (source.durationMs ?? 0),
-                )
-              )
-                throw errors.validationFailed({ audio: ["manifest_invalid"] });
-              await job.db.transaction().execute(async (tx) => {
-                await liveRun(tx, ctx, payload.runId);
-                await saveStep(tx, payload.runId, `audio:${source.sourceId}`, chunks, job.now());
-              });
-            }
-            const transcribed = await completedSteps(
-              job.db,
-              payload.runId,
-              chunks.map((chunk) => `stt:${chunk.id}`),
-            );
-            for (const chunk of chunks) {
-              if (!transcribed.has(`stt:${chunk.id}`)) continue;
-              // Only a job that stopped between a saved transcript and its deletion leaves bytes.
-              const object = await ownedObjectMetadata(job.db, ctx, chunk.objectId).catch(
-                () => null,
-              );
-              if (object && object.state !== "deleted")
-                await deleteObject(job.db, dependencies.store, ctx, chunk.objectId, job.now());
-            }
-            const pending = chunks.filter((chunk) => !transcribed.has(`stt:${chunk.id}`));
-            if (pending.length) {
-              const launched = await transcribeChunks(job, {
-                ctx,
-                runId: payload.runId,
-                chunks: pending,
-                provider,
-                model: settings.provider.sttModel,
-                store: dependencies.store,
-                concurrency: dependencies.transcriptionConcurrency ?? TRANSCRIPTION_CONCURRENCY,
-              });
-              // No chunk fit before the runner's deadline: a fresh runner continues from the saved
-              // chunk plan.
-              await checkpointAndContinue(
-                job,
-                ctx,
-                payload.runId,
-                definition,
-                launched ? 0 : YIELD_DELAY_SECONDS,
-              );
-              return;
-            }
-            const units: z.infer<typeof sourceContentSchema>["units"] = [];
-            const blocks: z.infer<typeof sourceContentSchema>["blocks"] = [];
-            for (const chunk of chunks) {
-              const transcript = await cached(
-                job.db,
-                payload.runId,
-                `stt:${chunk.id}`,
-                transcriptSchema,
-              );
-              if (!transcript) throw errors.conflict();
-              if (!transcript.segments.length) {
-                units.push({
-                  id: chunk.id,
-                  kind: "document",
-                  start: 1,
-                  status: transcript.text.trim() ? "partial" : "failed",
-                  reason: transcript.text.trim() ? "timestamps_unavailable" : "no_speech",
-                });
-                if (transcript.text.trim())
-                  blocks.push({
-                    id: `${chunk.id}-text`,
-                    kind: "transcript",
-                    text: transcript.text,
-                    unitId: chunk.id,
-                  });
-              } else
-                for (const [index, segment] of transcript.segments.entries()) {
-                  const id = `${chunk.id}-${index}`;
-                  units.push({
-                    id,
-                    kind: "time",
-                    start: segment.startMs,
-                    end: segment.endMs,
-                    status: "extracted",
-                  });
-                  blocks.push({
-                    id: `${id}-text`,
-                    kind: "transcript",
-                    text: segment.text,
-                    unitId: id,
-                    speakerRole: "unknown",
-                    ...(segment.speakerId
-                      ? {
-                          speakerId: scopedVoiceSpeakerId(
-                            source.sourceId,
-                            chunk.id,
-                            segment.speakerId,
-                          ),
-                        }
-                      : {}),
-                  });
-                }
-            }
-            extracted.push(
-              withinSelection(
-                await storeExtraction(
-                  job,
-                  ctx,
-                  payload.runId,
-                  source,
-                  { units, blocks },
-                  {
-                    provider: provider.name,
-                    model: settings.provider.sttModel,
-                    promptVersion: settings.provider.promptVersion,
-                  },
-                ),
-              ),
-            );
-            await dependencies.onTranscribed?.(job.db, ctx, source.sourceId, job.now());
+            const audio = await extractAudioSource(stage, source);
+            if (audio === YIELDED) return;
+            extracted.push(audio);
           } else if (source.kind === "pdf") {
             let content = await cached(
               job.db,
