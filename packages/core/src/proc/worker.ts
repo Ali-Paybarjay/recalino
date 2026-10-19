@@ -40,20 +40,13 @@ import {
 
 export { generatedKnowledgeSchema } from "./generated-knowledge";
 
-import { readVoiceSettings } from "../voc";
 import { type LessonPart, mergeLessonParts, planLessonParts } from "./knowledge-parts";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { buildKnowledgeStudyRepairInput } from "./knowledge-study-repair";
 import { buildKnowledgeTranslationInput } from "./knowledge-translation";
 import { lessonBudget, lessonProductionLimit, measureLessonContent } from "./lesson-budget";
 import { ownedRun } from "./runs";
-import {
-  analyzeVoiceSources,
-  correctVoiceCandidates,
-  processVoiceSource,
-  voiceAnalysisPending,
-  voiceDiarizationOptions,
-} from "./voice-processing";
+import { correctVoiceCandidates, processVoiceSource } from "./voice-processing";
 
 export { knowledgePrompt, validateGeneratedKnowledge } from "./steps/knowledge-checks";
 export {
@@ -89,11 +82,10 @@ import {
   type ProcessingDependencies,
   providerStep,
   saveStep,
-  VOICE_ANALYSIS_TIME_MS,
   YIELD_DELAY_SECONDS,
 } from "./steps/runtime";
 import { startRun } from "./steps/start";
-import { startVoiceCheck } from "./steps/voice-check";
+import { beginVoiceCheck } from "./steps/voice-check";
 
 /** One provider chunk per invocation; continuation jobs keep long classes within Function limits. */
 export function processingJob(
@@ -115,44 +107,8 @@ export function processingJob(
           await checkpointAndContinue(job, ctx, payload.runId, definition, YIELD_DELAY_SECONDS);
           return;
         }
-        // A separate private projection; no identity or hidden correction enters knowledge input.
-        // Its acoustic check runs while the lesson is generated rather than before it; it is
-        // saved before the paid correction, which still keeps a job of its own.
-        let voiceCheck: ReturnType<typeof startVoiceCheck> | null = null;
-        const voiceSettings = readVoiceSettings();
-        const diarize = dependencies.diarizeVoice;
-        if (
-          diarize &&
-          (await voiceAnalysisPending(job.db, ctx, {
-            sessionId: initial.session_id,
-            runId: payload.runId,
-            sources: extracted,
-          }))
-        ) {
-          // A check this function could not finish is left to a fresh runner.
-          if (!hasTime(job, VOICE_ANALYSIS_TIME_MS)) {
-            await checkpointAndContinue(job, ctx, payload.runId, definition, YIELD_DELAY_SECONDS);
-            return;
-          }
-          // Recording parts are checked side by side; no paid correction runs here, so required
-          // lesson generation gets cost headroom before this optional paid analysis.
-          const options = voiceDiarizationOptions(voiceSettings, false);
-          voiceCheck = startVoiceCheck(() =>
-            analyzeVoiceSources({
-              db: job.db,
-              ctx,
-              sessionId: initial.session_id,
-              runId: payload.runId,
-              sources: extracted,
-              diarize,
-              ...(options ? { options } : {}),
-              explanationLanguage: settings.explanationLanguage,
-              concurrency: voiceSettings.diarizationConcurrency,
-              canStart: () => hasTime(job, VOICE_ANALYSIS_TIME_MS),
-              now: job.now,
-            }),
-          );
-        }
+        const voiceCheck = await beginVoiceCheck(stage, extracted);
+        if (voiceCheck === YIELDED) return;
         const lessonStage = async (): Promise<"checkpoint" | "published"> => {
           const missing = extracted
             .filter(
