@@ -177,33 +177,6 @@ export async function createSession(
   });
 }
 
-/** The browser starts capturing independently; this API never blocks the local recorder. */
-export async function createRecordingSession(
-  db: Database,
-  ctx: LearnerContext,
-  options: CreateOptions,
-): Promise<ClassSession> {
-  return createOnce(db, ctx, "org.create_recording_session", {}, options, async (tx, now) => {
-    const state = await requireReadyAccount(tx, ctx, true);
-    const target = await defaultCourse(tx, ctx, now);
-    return session(
-      await tx
-        .insertInto("org.class_session")
-        .values({
-          owner_id: ctx.userId,
-          course_id: target.id,
-          title: null,
-          unit_id: null,
-          class_date: studyDay(now, resolveTimeZone(state.timezone).timeZone, 0),
-          created_at: now,
-          updated_at: now,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow(),
-    );
-  });
-}
-
 export async function listSessions(
   db: Database | Tx,
   ctx: LearnerContext,
@@ -379,19 +352,4 @@ function deletionRequest(row: Selectable<DB["org.deletion_request"]>): DeletionR
     status: row.status as DeletionRequest["status"],
     requestedAt: iso(row.requested_at),
   };
-}
-
-export async function getDeletionRequest(
-  db: Database | Tx,
-  ctx: LearnerContext,
-  id: string,
-): Promise<DeletionRequest> {
-  const row = await db
-    .selectFrom("org.deletion_request")
-    .selectAll()
-    .where("id", "=", id)
-    .executeTakeFirst();
-  assertOwner(row ? { ownerId: row.owner_id } : undefined, ctx);
-  if (!row) throw errors.notFound();
-  return deletionRequest(row);
 }

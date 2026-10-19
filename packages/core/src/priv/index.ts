@@ -5,7 +5,6 @@ export {
   type DeletionJournalEntry,
   findPrivacyDeletionRequest,
   getPrivacyDeletionRequest,
-  getSourceDeletionRequest,
   type PrivacyDeletionRequest,
   type PrivacyDependencies,
   type PrivacyHook,

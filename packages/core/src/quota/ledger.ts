@@ -400,20 +400,6 @@ export async function reservationIsOpen(
   return row !== undefined;
 }
 
-export async function confirmedReservationAmounts(
-  db: Connection,
-  ctx: LearnerContext,
-  id: string,
-): Promise<Amounts | null> {
-  const row = await db
-    .selectFrom("quota.reservation")
-    .select("amounts")
-    .where("id", "=", id)
-    .where("user_id", "=", ctx.userId)
-    .where("closed_at", "is", null)
-    .executeTakeFirst();
-  return row ? amountsSchema.parse(row.amounts) : null;
-}
 export async function reservationForOperation(
   db: Connection,
   ctx: LearnerContext,

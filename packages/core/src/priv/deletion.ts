@@ -89,14 +89,6 @@ export async function persistDeletionJournal(
     requestedAt: request.requestedAt,
   });
 }
-/** Source retries may find their receipt after SRC has already become inaccessible. */
-export async function getSourceDeletionRequest(
-  db: Database,
-  ctx: LearnerContext,
-  sourceId: string,
-): Promise<PrivacyDeletionRequest | null> {
-  return findPrivacyDeletionRequest(db, ctx, "source", sourceId);
-}
 export async function findPrivacyDeletionRequest(
   db: Database,
   ctx: LearnerContext,

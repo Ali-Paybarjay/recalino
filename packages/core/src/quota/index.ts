@@ -31,7 +31,6 @@ export {
   adjustAllowance,
   allowance,
   closeEntitlement,
-  confirmedReservationAmounts,
   type GrantInput,
   grantEntitlement,
   readLatestEntitlementPeriod,
