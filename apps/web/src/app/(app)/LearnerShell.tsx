@@ -4,15 +4,9 @@ import type { Learner } from "../../server/auth/learner";
 import { legalValues } from "../../server/legal";
 import { LegalDocument } from "../../ui/components/LegalDocument";
 import { AppShell, type NavId } from "../../ui/shell/AppShell";
+import { NAV_HREFS } from "./nav";
 import { TermsNotice } from "./TermsNotice";
 import { textsChangedOn } from "./texts-changed-on";
-
-export const NAV_HREFS: Record<NavId, string> = {
-  today: "/today",
-  classes: "/sessions",
-  review: "/review",
-  me: "/me",
-};
 
 /**
  * The signed-in pages: the app shell, plus the calm notice about changed Terms on every page until

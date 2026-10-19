@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations, VIEWPORTS } from "./helpers";
+import { signInAsNewLearner } from "./learner";
 
 // App shell: bottom navigation on mobile, compact labelled sidebar from 768px, and full sidebar
 // from 1024px. Labels remain visible so tablet users can identify every destination.
@@ -54,3 +55,57 @@ test("the first Tab reaches the skip link, which moves focus to the content", as
   await page.keyboard.press("Enter");
   await expect(page.locator("main#content")).toBeFocused();
 });
+
+// UX-08: moving between the four sections keeps the navigation on screen; only the content waits.
+// Next prefetches a page's loading state only in a production build (`next start`, as CI runs
+// it), so that is where a held-back page can be told apart from a slow navigation.
+for (const [name, viewport] of [
+  ["desktop", VIEWPORTS.desktop],
+  ["mobile", VIEWPORTS.mobile],
+] as const) {
+  test(`${name}: the navigation stays while the next page loads`, async ({ page }) => {
+    test.skip(!process.env.CI, "the loading state is prefetched only by a production build");
+    await signInAsNewLearner(page, { setup: "complete" });
+    await page.setViewportSize(viewport);
+    // Hold back the page itself (not the prefetch of its loading state), like a slow network.
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const isPrefetch = (headers: Record<string, string>) =>
+      Boolean(headers["next-router-prefetch"]);
+    await page.route(
+      (url) => url.pathname === "/review",
+      async (route) => {
+        const headers = route.request().headers();
+        if (headers.rsc && !isPrefetch(headers)) await held;
+        await route.continue();
+      },
+    );
+    const prefetched = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/review" && isPrefetch(response.request().headers()),
+    );
+    await page.goto("/today");
+    await prefetched;
+    const nav = page.getByRole("navigation", { name: "Your learning space" });
+    await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+    await nav.getByRole("link", { name: /^Review/ }).click();
+    // The same navigation is still there and already marks Review; the content area is loading.
+    const loading = page.getByRole("status").filter({ hasText: "Loading your learning space" });
+    await expect(loading).toBeVisible();
+    await expect(nav.getByRole("link", { name: /^Review/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(nav.getByRole("link")).toHaveCount(4);
+    await expectNoAxeViolations(page);
+    release();
+    await expect(page).toHaveURL(/\/review$/);
+    await expect(loading).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /^Review/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+}
