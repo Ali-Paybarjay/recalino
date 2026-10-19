@@ -410,10 +410,13 @@ export function privacyCleanupJob(
           await cleanupAccountOrg(job.db, ctx, job.now());
         }
         if (request.kind === "account" && authentication) {
-          await job.db.transaction().execute((tx) => purgeAccountProfile(tx, ctx));
-          await job.step("delete_auth", async () => authentication.deleteIdentity(ctx.userId));
           // SEC-07 (D95): the audit trail keeps what happened, not who the deleted account was.
-          await anonymiseAuditActors(job.db, [ctx.userId]);
+          // The id leaves it with the profile, before the identity; sessions are already revoked.
+          await job.db.transaction().execute(async (tx) => {
+            await purgeAccountProfile(tx, ctx);
+            await anonymiseAuditActors(tx, [ctx.userId]);
+          });
+          await job.step("delete_auth", async () => authentication.deleteIdentity(ctx.userId));
         }
         await job.db
           .updateTable("priv.deletion_request")

@@ -832,7 +832,7 @@
 
 - **`plt.security_event`:** ردیف‌های قدیمی‌تر از ۹۰ روز را job روزانهٔ `plt.purge_security_events` پاک می‌کند. مدت در `PltSettings.securityEventRetentionDays` است (پیش‌فرض ۹۰، قابل تغییر با `PLT_SETTINGS_JSON` بدون تغییر کد).
 - **`plt.audit_event`:** ردیف می‌ماند، ولی شناسهٔ حساب حذف‌شده در `actor_id` با نشانگر ثابت `deleted_account` جایگزین می‌شود:
-  - در جریان حذف حساب، همان job پاک‌سازی (`priv.cleanup`) پس از حذف هویت و پیش از «completed» این کار را می‌کند.
+  - در جریان حذف حساب، همان job پاک‌سازی (`priv.cleanup`) این کار را در همان تراکنش پاک‌سازی پروفایل حساب و پیش از حذف هویت می‌کند؛ نشست‌ها پیش‌تر در گام `revoke_auth` باطل شده‌اند، پس میان این دو ردیف ممیزی تازه‌ای از آن حساب ثبت نمی‌شود. اگر job تکرار شود، هر دو دوباره و بی‌اثر اجرا می‌شوند.
   - برای حساب‌هایی که پیش‌تر حذف کامل شده‌اند، job روزانهٔ `priv.anonymise_deleted_actors` در زمان اجرا همین کار را می‌کند، نه migration. تکرار آن اثری ندارد.
 - **کمترین دسترسی (migration `20261019120000_plt_event_retention`):** فقط `delete` روی `plt.security_event` و `update (actor_id)` روی `plt.audit_event` به `recalino_app` داده شد. trigger `audit_event_history_immutable` هر تغییری جز گذاشتن `deleted_account` در `actor_id` را رد می‌کند؛ ستون‌های دیگر ممیزی و حذف ردیف همچنان ممنوع‌اند. migration هیچ ردیفی را تغییر نمی‌دهد.
 - **متن حقوقی:** یک جملهٔ نگهداری در ردیف «Security, audit and usage records» جدول بخش ۸ [privacy-notice.md](legal/privacy-notice.md) نشست. نسخه همان ۰٫۳ ماند، چون ۰٫۳ هنوز منتشر نشده است؛ مدت نگهداری usage records و دورهٔ شرکت‌های خدمات همچنان `⟨…⟩` است.

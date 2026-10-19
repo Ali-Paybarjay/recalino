@@ -50,7 +50,9 @@ import { studyFixture, syntheticKnowledge } from "../../../../packages/core/test
 import { privacyDependencies } from "./privacy";
 
 const store = new MemoryObjectStore();
-const deleteIdentity = vi.fn(async () => ({ error: null }));
+const deleteIdentity = vi.fn(
+  async (): Promise<{ error: { status: number } | null }> => ({ error: null }),
+);
 vi.mock("./storage", () => ({ getObjectStore: () => store }));
 vi.mock("./auth/supabase", () => ({ createAuthAdmin: () => ({ deleteUser: deleteIdentity }) }));
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 3 });
@@ -365,6 +367,29 @@ it.each(["source", "session", "account"] as const)(
         return "ran";
       },
     };
+    const auditActor = async () =>
+      (
+        await db
+          .selectFrom("plt.audit_event")
+          .select("actor_id")
+          .where("subject_id", "=", requestId)
+          .where("action", "=", "test.sec07")
+          .executeTakeFirstOrThrow()
+      ).actor_id;
+    if (kind === "account") {
+      // SEC-07 (D95): the id leaves the audit trail in the profile-purge transaction, before the
+      // identity is deleted, so a failed identity deletion cannot leave it behind.
+      deleteIdentity
+        .mockResolvedValueOnce({ error: null })
+        .mockResolvedValueOnce({ error: { status: 500 } });
+      await expect(
+        privacyCleanupJob(dependencies).run({ userId: fixtureData.ctx.userId, requestId }, job),
+      ).rejects.toThrow();
+      expect((await getPrivacyDeletionRequest(db, fixtureData.ctx, requestId)).state).toBe(
+        "needs_operator",
+      );
+      expect(await auditActor()).toBe(DELETED_ACCOUNT_ACTOR);
+    }
     await privacyCleanupJob(dependencies).run({ userId: fixtureData.ctx.userId, requestId }, job);
     expect((await getPrivacyDeletionRequest(db, fixtureData.ctx, requestId)).state).toBe(
       "completed",

@@ -15,6 +15,8 @@ const HOT_FOREIGN_KEYS = [
   { table: "card.revision", columns: ["card_id", "user_id"] },
   { table: "card.session_link", columns: ["session_id", "user_id"] },
   { table: "note.revision", columns: ["notebook_id", "user_id"] },
+  { table: "card.proposal", columns: ["note_revision_id"] },
+  { table: "org.class_session", columns: ["unit_id", "course_id", "owner_id"] },
 ];
 
 it.each(HOT_FOREIGN_KEYS)(
