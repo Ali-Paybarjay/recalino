@@ -1,7 +1,7 @@
 import { readSupabaseEnv } from "@recalino/core/config";
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_OPTIONS } from "./server/auth/supabase";
+import { authFetch, SESSION_COOKIE_OPTIONS } from "./server/auth/supabase";
 import { previewResponse } from "./server/preview-mode";
 
 /**
@@ -30,6 +30,8 @@ export async function proxy(request: NextRequest) {
   const authHeaders = new Headers({ "Cache-Control": "private, no-store" });
   const env = readSupabaseEnv();
   const supabase = createServerClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
+    // PERF-03: a stalled token refresh or key download ends after five seconds.
+    global: { fetch: authFetch },
     cookieOptions: SESSION_COOKIE_OPTIONS,
     cookies: {
       getAll: () => request.cookies.getAll(),

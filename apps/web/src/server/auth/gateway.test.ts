@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { supabaseAuth } from "./gateway";
 
-const { signInWithOAuth, signOut } = vi.hoisted(() => ({
+const { signInWithOAuth, signOut, getUser } = vi.hoisted(() => ({
   signInWithOAuth: vi.fn(),
   signOut: vi.fn(),
+  getUser: vi.fn(),
 }));
 vi.mock("./supabase", () => ({
-  createAuthClient: async () => ({ auth: { signInWithOAuth, signOut } }),
+  createAuthClient: async () => ({ auth: { signInWithOAuth, signOut, getUser } }),
   createAuthAdmin: vi.fn(),
 }));
 
@@ -47,5 +48,25 @@ describe("Supabase sign-out gateway", () => {
   it("rejects a returned provider error with a sanitized message", async () => {
     signOut.mockResolvedValue({ error: new Error("Synthetic sensitive provider detail") });
     await expect(supabaseAuth.signOut()).rejects.toThrow(/^Sign-out could not complete$/);
+  });
+});
+
+// FR-PLT-001: the Auth server checks every session, so a signed-out token is refused. PERF-03:
+// an Auth error, including the five-second timeout, counts as no session, never as a user.
+describe("Supabase current user gateway", () => {
+  it("returns the user the Auth server confirms", async () => {
+    const id = crypto.randomUUID();
+    getUser.mockResolvedValue({ data: { user: { id } }, error: null });
+    await expect(supabaseAuth.currentUser()).resolves.toEqual({ id });
+  });
+
+  it("refuses a session the Auth server rejects or does not answer in time", async () => {
+    for (const name of ["AuthApiError", "AuthRetryableFetchError"]) {
+      getUser.mockResolvedValue({
+        data: { user: null },
+        error: Object.assign(new Error(), { name }),
+      });
+      await expect(supabaseAuth.currentUser()).resolves.toBeNull();
+    }
   });
 });

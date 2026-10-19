@@ -2,7 +2,7 @@ import type { CookieMethodsServer } from "@supabase/ssr";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { proxy } from "./proxy";
-import { SESSION_COOKIE_OPTIONS } from "./server/auth/supabase";
+import { authFetch, SESSION_COOKIE_OPTIONS } from "./server/auth/supabase";
 
 const stubs = vi.hoisted(() => ({
   readEnv: vi.fn(),
@@ -35,6 +35,12 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Supabase session refresh (FR-PLT-001)", () => {
+  it("refreshes with the five-second Auth fetch, so a stalled Auth server cannot hold pages (PERF-03)", async () => {
+    await proxy(new NextRequest("http://localhost:3000/today"));
+    expect(stubs.createClient.mock.calls.at(-1)?.[2]).toMatchObject({
+      global: { fetch: authFetch },
+    });
+  });
   it("passes refreshed cookies to the page and browser with the Auth cache headers", async () => {
     const request = new NextRequest("http://localhost:3000/today", {
       headers: { cookie: "sb-test-auth-token=expired" },
