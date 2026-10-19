@@ -4,7 +4,7 @@
   align-items: center;
   gap: 10px;
   min-height: var(--rc-target);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
 }
 
 .label {

@@ -37,6 +37,10 @@ describe("design token rules", () => {
     expect(offenders(/font-size:\s*(?:\d|10|11)px/)).toEqual([]);
   });
 
+  it("UI-02 maps the parallel 13/15/18px scale to --rc-text-sm/md/read (D99)", () => {
+    expect(offenders(/font-size:\s*(?:13|15|18)px/)).toEqual([]);
+  });
+
   it("UI-04 takes shadows from the --shadow-* tokens, not a fixed black", () => {
     expect(offenders(/rgba?\(\s*0(?:\s+|\s*,\s*)0(?:\s+|\s*,\s*)0/)).toEqual([]);
   });

@@ -96,6 +96,6 @@
 .empty {
   margin: 0;
   padding: 12px;
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   color: var(--rc-text-muted);
 }

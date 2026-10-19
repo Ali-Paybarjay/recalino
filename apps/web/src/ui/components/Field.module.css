@@ -18,12 +18,12 @@
   gap: 6px;
   align-items: center;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-danger);
 }
 
 .hint {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }

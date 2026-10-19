@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { cardStatusSchema, cardTemplateSchema } from "@recalino/core/card";
 import { describe, expect, it } from "vitest";
 import { adminTaskTitleCopy, pilotProgressCopy, systemHealthCopy } from "./admin/copy";
 import { allowanceHelp } from "./allowance-copy";
 import { experienceCopy } from "./experience-copy";
 import { cardActionsCopy } from "./workspace/card-actions-copy";
+import { cardStatusLabel, cardTemplateLabel } from "./workspace/card-labels";
 import { workspaceErrors } from "./workspace/error-copy";
 import { learningProgressCopy } from "./workspace/learning-progress-copy";
 import { privacyCopy } from "./workspace/privacy-copy";
@@ -147,5 +149,26 @@ describe("the pilot progress and task texts approved on 2026-10-19", () => {
 
   it.each(texts)("%s is in the admin console and in the register, word for word", (key, en, fa) => {
     expect(section).toContain(`(\`${key}\`) | «${en}» | «${fa}» |`);
+  });
+});
+
+// D100 (owner decision 2026-10-19, audit batch 17, UX-05): the card state and card type labels of
+// card-labels.ts, approved as they are, each recorded word for word beside its stored value.
+describe("the card labels approved on 2026-10-19", () => {
+  const start = register.indexOf("## تأیید 2026-10-19 — برچسب‌های کارت");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+  const labels: Array<[string, string]> = [
+    ...cardStatusSchema.options.map((status) => [status, cardStatusLabel(status)]),
+    ...cardTemplateSchema.options.map((template) => [template, cardTemplateLabel(template)]),
+  ].flatMap(([stored, label]) => (label ? [[stored as string, label]] : []));
+
+  it("are the ten labels of the register section", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(labels).toHaveLength(10);
+    expect(section.match(/^\| .+ \| `\w+` \| «.+» \|$/gm)).toHaveLength(10);
+  });
+
+  it.each(labels)("%s reads %s in the interface and in the register", (stored, label) => {
+    expect(section).toContain(`| \`${stored}\` | «${label}» |`);
   });
 });
