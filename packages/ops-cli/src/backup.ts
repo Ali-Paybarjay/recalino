@@ -99,7 +99,8 @@ async function main() {
   );
   stage = "key_validation";
   const key = backupEncryptionKey(keyText),
-    store = new VercelBlobStore();
+    // PERF-05: one archive upload may take as long as the backup's own time limit.
+    store = new VercelBlobStore({ timeoutMs: settings.timeoutSeconds * 1000 });
   let db: Database | undefined;
   try {
     stage = "linked_credentials";

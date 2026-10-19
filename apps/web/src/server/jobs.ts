@@ -1,9 +1,10 @@
 import "server-only";
 import { accPeriodicJobs } from "@recalino/core/acc";
 import { longestProviderTimeoutMs } from "@recalino/core/aip";
-import { databaseBackupMaintenanceJob } from "@recalino/core/ops";
+import { databaseBackupMaintenanceJob, systemHealthJob } from "@recalino/core/ops";
 import {
   createLogger,
+  createSchemaGuard,
   ensurePeriodicJob,
   type JobDefinition,
   type Logger,
@@ -11,8 +12,10 @@ import {
   type PltSettings,
   pltPeriodicJobs,
   type RunOptions,
+  type RunSummary,
   readPltSettings,
   runDueJobs,
+  type SchemaGuard,
   storagePeriodicJobs,
 } from "@recalino/core/plt";
 import {
@@ -39,6 +42,7 @@ import {
   processingNotificationDefinitions,
   processingNotificationPeriodicJobs,
 } from "./processing-notifications";
+import { EXPECTED_SCHEMA_VERSION } from "./schema-version.generated";
 import { sourceJobDefinitions, sourcePeriodicJobs } from "./source-jobs";
 import { getObjectStore } from "./storage";
 import { getVoiceAnalysisDefinition } from "./voice-processing";
@@ -118,6 +122,7 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
     ...(store ? storagePeriodicJobs(store, settings) : []),
     ...(store ? voicePeriodicJobs(store) : []),
     ...(store ? [databaseBackupMaintenanceJob(store)] : []),
+    systemHealthJob(),
     ...accPeriodicJobs(),
     ...sourcePeriodicJobs(),
     ...exportPeriodicJobs(),
@@ -156,17 +161,25 @@ interface RunnerDeps {
   kinds?: readonly string[];
   /** The longest request deadline of the runtime provider settings, when configured. */
   providerTimeoutMs: () => number | undefined;
+  /** OPS-05: compares this build's newest migration with the database before any work. */
+  schema: SchemaGuard;
 }
+
+const runnerLog = createLogger();
 
 const defaultRunnerDeps: RunnerDeps = {
   settings: () => readPltSettings(),
-  log: createLogger(),
+  log: runnerLog,
   now: () => new Date(),
   providerTimeoutMs: () => {
     const provider = getAiProvider();
     return provider ? longestProviderTimeoutMs(provider.settings) : undefined;
   },
+  // One guard per function instance, so its short cache spans the cron run and immediate wakes.
+  schema: createSchemaGuard({ expected: EXPECTED_SCHEMA_VERSION, log: runnerLog }),
 };
+
+const IDLE_SUMMARY: RunSummary = { swept: 0, succeeded: 0, failed: 0, retried: 0, cancelled: 0 };
 
 /**
  * GET /api/jobs/run, called by Vercel Cron every minute: adds the periodic jobs that are due,
@@ -175,6 +188,10 @@ const defaultRunnerDeps: RunnerDeps = {
 export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
   const deps = { ...defaultRunnerDeps, ...overrides };
   return async ({ db }) => {
+    // OPS-05: code goes live before its migration is applied. On a database that is behind,
+    // the runner sends no mail, adds no periodic job and claims no job until the migration runs.
+    if (!(await deps.schema.allowsWork(db)))
+      return { body: { ...IDLE_SUMMARY, schemaBehind: true } };
     const settings = deps.settings();
     const started = deps.now();
     // Only approved snapshots are eligible. Missing configuration leaves queued mail visible.
@@ -212,9 +229,11 @@ export function runJobsSoon(
   target?: RunOptions["target"],
 ): void {
   after(async () => {
+    const db = getDatabase();
+    if (!(await defaultRunnerDeps.schema.allowsWork(db))) return;
     const settings = readPltSettings();
     const started = Date.now();
-    await runDueJobs(getDatabase(), jobDefinitions(settings), {
+    await runDueJobs(db, jobDefinitions(settings), {
       kinds,
       ...(target !== undefined ? { target } : {}),
       deadline: new Date(started + budgetSeconds * 1000),

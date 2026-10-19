@@ -97,6 +97,10 @@ supabase db push
 
 سپس بررسی: `select version from supabase_migrations.schema_migrations order by version desc limit 3;` باید `20261012230000` و `20261012220000` را نشان دهد.
 
+**نگهبان schema (OPS-05، ممیزی 2026-10-18):** از این پس build نسخهٔ تازه‌ترین فایل `supabase/migrations` را در `apps/web/src/server/schema-version.generated.ts` می‌نویسد (`pnpm schema:version`؛ آزمون واحد کهنگی آن را می‌گیرد). اگر دیتابیس از این نسخه عقب‌تر باشد، runner (`/api/jobs/run` و بیدارباش فوری) هیچ ایمیل، job دوره‌ای یا claim تازه‌ای انجام نمی‌دهد، هر بار لاگ `schema_behind` می‌نویسد، برای هر نسخه یک رخداد ممیزی `ops.schema_behind` (در «Recent activity» پنل مالک) و یک لاگ خطای `schema_behind_alert` می‌سازد، و `/api/health?deep=1` پاسخ 503 می‌دهد. حداکثر ۳۰ ثانیه پس از `db push`، runner خودکار ادامه می‌دهد. اگر نقش برنامه نتواند `supabase_migrations.schema_migrations` را بخواند، نگهبان یک بار هشدار `schema_version_unreadable` می‌نویسد و کار را متوقف نمی‌کند (fail open).
+
+**قاعدهٔ ترتیب:** هر migration باید با کد در حال اجرا سازگار باشد (فقط افزایشی؛ ستون not-null تازه با default). ترتیب امن‌تر «اول migration سازگار با عقب، سپس ادغام کد» است؛ چون قاعدهٔ فعلی CLAUDE.md اجرای `db push` را فقط برای migrationهای ادغام‌شده در `main` بی‌پرسش می‌داند، تغییر این ترتیب تصمیم مالک محصول است. تا آن تصمیم، پنجرهٔ میان ادغام و `db push` را نگهبان بالا امن می‌کند.
+
 **ترتیب استقرار و migration:** کد تازه ستون‌های تازه را می‌خواند (`voc.analysis.speaker_links`، `src.audio_upload.staged_at`، `org.class_session.capture_open_until`). ادغام در `main` بلافاصله استقرار می‌سازد و ساخت حدود ۲ تا ۴ دقیقه طول می‌کشد؛ پس `db push` را **بلافاصله پس از ادغام** اجرا کن تا پیش از READY شدن استقرار تمام شود. کد قدیمی در حال اجرا با schema تازه سازگار است: هیچ ستونی حذف یا تغییر نوع نمی‌دهد و تنها ستون not-null تازه default دارد.
 
 ## ۵. تأیید استقرار خودکار Vercel

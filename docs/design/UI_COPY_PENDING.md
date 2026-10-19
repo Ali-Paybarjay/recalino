@@ -61,3 +61,28 @@
 - **UX-01:** جملهٔ «Class capture, notes and reviews are coming next in the pilot.» از صفحهٔ ورود حذف شد. اگر مالک محصول جملهٔ جایگزین بخواهد، پیشنهاد: «Built for a small pilot group. Sign in with Google to start.» (فقط پیشنهاد؛ در رابط نیست.)
 - **UX-13، برآورد انتظار:** پیشنهاد برای زیر «Waiting to process» و «Creating notes and flashcards»: «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» نیاز به داده‌های واقعی زمان مرحله‌ها (NFR-07) دارد؛ بدون آن عبارت «within a few minutes» تعهد بی‌پشتوانه است.
 - **UX-13، دعوت به اعلان:** پیشنهاد: «Want a message when your notes are ready? Turn on notifications in Settings.» (نیازمند تأیید مالک و تصمیم دربارهٔ جای دکمه).
+
+## ممیزی 2026-10-18، دستهٔ ۳ — پایش و ایمنی انتشار (`fix/audit-3`)
+
+یافتهٔ OPS-02 کارت «System health» را در نمای کلی پنل مالک خواسته است (ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`). داده‌اش آماده است: `readAdminSnapshot` در نمای `overview` فیلد `health` (نوع `SystemHealth` در `packages/core/src/ops/admin-contracts.ts`) را برمی‌گرداند. ولی هیچ‌کدام از برچسب‌های زیر در طرح پنل، `ADMIN_COMMUNICATION_COPY_2026-10-05.json` یا متن موجود `apps/web/src/ui/admin/` نیست، پس **کارت هنوز در رابط نیست**. تا تأیید، هشدارها در «Recent activity» و «Activity history» پنل با شناسهٔ اقدام دیده می‌شوند: `ops.health_alert` و `ops.health_recovered` (موضوع: نام شاخص)، و `ops.schema_behind` (موضوع: نسخهٔ migration مورد انتظار).
+
+پیشنهاد، به همان قالب دوزبانهٔ `t(en, fa)` کارت‌های دیگر نمای کلی و فقط با کامپوننت‌های موجود (`Panel`، `Table`، `Empty`، `statusName`):
+
+| کلید پیشنهادی | English | فارسی |
+|---|---|---|
+| عنوان کارت | System health | سلامت سامانه |
+| ردیف حجم دیتابیس | Database size | حجم دیتابیس |
+| توضیح حجم | {size} of {limit} alert limit | {size} از آستانهٔ هشدار {limit} |
+| ردیف کارهای ناموفق | Jobs failed in the last hour | کارهای ناموفق در ساعت گذشته |
+| ردیف صف | Longest wait in the queue | طولانی‌ترین انتظار در صف |
+| ردیف runner | Last job runner run | آخرین اجرای اجراکنندهٔ کارها |
+| ردیف schema | Database schema | نسخهٔ schema دیتابیس |
+| وضعیت schema: `current` | Up to date | به‌روز |
+| وضعیت schema: `ahead` | Newer than the app | جلوتر از اپ |
+| وضعیت schema: `behind` | A migration is missing; jobs are paused | یک migration اعمال نشده است؛ اجرای کارها متوقف است |
+| وضعیت schema: `unknown` | Cannot be checked | قابل بررسی نیست |
+| بدون هشدار | No signal is over its threshold. | هیچ شاخصی از آستانه‌اش نگذشته است. |
+| هشدار `database_size` | The database is near its size limit. | دیتابیس به سقف حجم نزدیک است. |
+| هشدار `failed_jobs` | A job failed and will not retry. | کاری ناموفق شد و دوباره اجرا نمی‌شود. |
+| هشدار `queue_delay` | Jobs are waiting longer than expected. | کارها بیش از حد انتظار در صف مانده‌اند. |
+| هشدار `runner_stale` | The job runner has not run recently. | اجراکنندهٔ کارها اخیراً اجرا نشده است. |

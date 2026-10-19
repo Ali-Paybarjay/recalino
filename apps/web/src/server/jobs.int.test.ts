@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { createDatabase } from "@recalino/core/db";
-import { DEFAULT_PLT_SETTINGS } from "@recalino/core/plt";
+import { createSchemaGuard, DEFAULT_PLT_SETTINGS, type SchemaGuard } from "@recalino/core/plt";
 import { sql } from "kysely";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -88,7 +88,7 @@ afterAll(disposeDatabase);
 
 const SECRET = "cron-secret-for-tests-0123456789abcdef";
 
-function cronRun(now: Date) {
+function cronRun(now: Date, overrides: { schema?: SchemaGuard } = {}) {
   const route = defineRoute(
     ROUTES.jobsRun,
     runJobsHandler({
@@ -96,6 +96,7 @@ function cronRun(now: Date) {
       settings: () => DEFAULT_PLT_SETTINGS,
       log: () => {},
       kinds: periodicJobs(DEFAULT_PLT_SETTINGS).map((job) => job.definition.kind),
+      ...(overrides.schema ? { schema: overrides.schema } : {}),
     }),
     { ...routeDeps(db), cronSecret: () => SECRET },
   );
@@ -150,5 +151,46 @@ describe("GET /api/jobs/run", () => {
         .sort(),
     );
     expect(new Set(nextRows.map((row) => row.state))).toEqual(new Set(["succeeded"]));
+  });
+});
+
+describe("OPS-05 runner and the applied schema version", () => {
+  const EXPECTED = "20991231000000";
+  function guard(applied: string, lines: string[]) {
+    return createSchemaGuard({
+      expected: EXPECTED,
+      read: async () => applied,
+      log: (level, event, fields) => lines.push(`${level}:${event}:${fields?.schema_applied}`),
+    });
+  }
+
+  it("claims no job and logs schema_behind while the database is behind", async () => {
+    const at = new Date("2099-02-01T00:00:00Z");
+    const lines: string[] = [];
+    const behind = guard("20991230000000", lines);
+    const first = await cronRun(at, { schema: behind });
+    expect(await first.json()).toMatchObject({ succeeded: 0, schemaBehind: true });
+    await cronRun(new Date(at.getTime() + 1000), { schema: behind });
+    const rows = await db.selectFrom("plt.job").select("id").where("created_at", "=", at).execute();
+    expect(rows).toEqual([]);
+    expect(lines.filter((line) => line.startsWith("warn:schema_behind:"))).toHaveLength(2);
+    expect(lines.filter((line) => line.startsWith("error:schema_behind_alert:"))).toHaveLength(1);
+    const audit = await db
+      .selectFrom("plt.audit_event")
+      .select("subject_id")
+      .where("action", "=", "ops.schema_behind")
+      .execute();
+    expect(audit).toEqual([{ subject_id: EXPECTED }]);
+  });
+
+  it.each(["20991231000000", "21000101000000"])("works normally with %s applied", async (v) => {
+    const at = new Date(v === EXPECTED ? "2099-03-01T00:00:00Z" : "2099-04-01T00:00:00Z");
+    const lines: string[] = [];
+    const response = await cronRun(at, { schema: guard(v, lines) });
+    expect(await response.json()).toMatchObject({ failed: 0, retried: 0 });
+    expect(
+      (await db.selectFrom("plt.job").select("id").where("created_at", "=", at).execute()).length,
+    ).toBeGreaterThan(0);
+    expect(lines).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { sql } from "kysely";
 import type { Database, Tx } from "../db";
 import type { Logger } from "./log";
 
@@ -76,4 +77,19 @@ export async function latestSubjectAudit(
     .orderBy("id", "desc")
     .executeTakeFirst();
   return row ? { subjectId: row.subject_id, occurredAt: row.occurred_at.toISOString() } : null;
+}
+
+/**
+ * OPS-02/OPS-05: records `entry` unless the same actor already recorded this action for this
+ * subject, and says whether it did. A transaction lock on the key serialises concurrent callers,
+ * so an alert raised by two runners at once is still written once.
+ */
+export async function recordAuditOnce(db: Database, entry: AuditInput): Promise<boolean> {
+  return db.transaction().execute(async (tx) => {
+    const key = `${entry.actorId}:${entry.action}:${entry.subjectType}:${entry.subjectId}`;
+    await sql`select pg_advisory_xact_lock(hashtextextended(${key}, 1))`.execute(tx);
+    if (await latestSubjectAudit(tx, { ...entry, subjectIds: [entry.subjectId] })) return false;
+    await recordAudit(tx, entry);
+    return true;
+  });
 }

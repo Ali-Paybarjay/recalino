@@ -97,6 +97,15 @@ export const errors = {
   serviceUnavailable: (fields: FieldProblems) =>
     new AppError("service_unavailable", { details: { fields } }),
   /**
+   * PERF-05: the file store did not answer in time. A temporary service failure, so the job
+   * runner schedules a retry and an API client may try again; the reason reaches the log.
+   */
+  storageTimeout: () =>
+    new AppError("service_unavailable", {
+      reason: "storage_timeout",
+      details: { fields: { storage: ["storage_timeout"] } },
+    }),
+  /**
    * Server configuration the request needs is missing. The client cannot fix it, so it is an
    * internal error; the reason reaches only the server log (FR-PLT-003, FR-PLT-007).
    */

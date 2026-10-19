@@ -37,6 +37,11 @@ export const pltSettingsSchema = z.strictObject({
     readLinkSeconds: z.int().positive(),
     /** An object with no record is deleted only after this long, so uploads in flight survive. */
     orphanGraceSeconds: z.int().positive(),
+    /**
+     * PERF-05: how long one file store request may wait for an answer before it fails as the
+     * retryable storage_timeout. A composed upload waits this long for each part, not in total.
+     */
+    blobTimeoutMs: z.int().min(1000).max(800_000),
   }),
 });
 
@@ -76,6 +81,9 @@ export const DEFAULT_PLT_SETTINGS: PltSettings = {
     writeLinkSeconds: 300,
     readLinkSeconds: 300,
     orphanGraceSeconds: 86_400,
+    // PERF-05 (audit 2026-10-18): the provider requests of OpenRouter, web push and SMTP are
+    // bounded too; one hung Blob request no longer holds a job until the 800-second limit.
+    blobTimeoutMs: 60_000,
   },
 };
 

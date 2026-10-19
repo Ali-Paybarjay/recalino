@@ -18,6 +18,13 @@ const ALLOWED_FIELDS = new Set([
   "module",
   "error_name",
   "pg_code",
+  // OPS-02: where a server error was thrown (relative file:line:column of the first stack frame,
+  // never the message) and a provider's transport cause, e.g. "ECONNRESET" or "timeout".
+  "error_location",
+  "cause_code",
+  // OPS-05: migration versions (digits only) of the deployed code and of the database.
+  "schema_expected",
+  "schema_applied",
   // Identifier-like cause of a server error, e.g. a missing configuration name; never a value.
   "reason",
   // Class voice check attrition: integer counts and durations, never audio or text.
@@ -96,6 +103,51 @@ export function formatLogLine(
     // If sanitising fails, write a generic line rather than anything raw.
     return JSON.stringify({ time: now.toISOString(), level: "error", event: "log_record_failed" });
   }
+}
+
+// "    at fn (path:line:column)" or "    at path:line:column".
+const STACK_FRAME = /^\s*at (?:.*? \()?(.+?):(\d+):(\d+)\)?\s*$/;
+const LOCATION_UNSAFE = /[^A-Za-z0-9_.:/\-[\]]/g;
+
+/** A frame's file, relative and without machine-specific prefixes; null for runtime internals. */
+function frameFile(raw: string, root: string): string | null {
+  let file = raw.replace(/^file:\/\//, "").replace(/\\/g, "/");
+  if (/^(node:|native$|<anonymous>$)/.test(file)) return null;
+  file = file.replace(/^webpack-internal:\/\/\/(\([^)]*\)\/)?(\.\/)?/, "");
+  const modules = file.lastIndexOf("node_modules/");
+  if (modules >= 0) return file.slice(modules);
+  const base = root.replace(/\\/g, "/").replace(/\/$/, "");
+  if (base && file.startsWith(`${base}/`)) return file.slice(base.length + 1);
+  const built = file.indexOf("/.next/");
+  if (built >= 0) return file.slice(built + 1);
+  // Any other absolute path may name a machine or a person: keep only its last three parts.
+  return file.startsWith("/") ? file.split("/").slice(-3).join("/") : file;
+}
+
+/**
+ * OPS-02: where an error was thrown, as "file:line:column" of its first stack frame outside the
+ * runtime, relative to the app root. The lines that repeat the name and message are skipped, so
+ * the message, which may hold class text, never reaches a log (PRD-PRIV-06).
+ */
+export function errorLocation(error: unknown, root: string = process.cwd()): string | undefined {
+  if (!(error instanceof Error) || typeof error.stack !== "string") return undefined;
+  const header = String(error.message).split("\n").length;
+  for (const line of error.stack.split("\n").slice(header)) {
+    const frame = STACK_FRAME.exec(line);
+    if (!frame) continue;
+    const file = frameFile(frame[1] ?? "", root);
+    if (file === null) continue;
+    const location = `${file}:${frame[2]}:${frame[3]}`.replace(LOCATION_UNSAFE, "_");
+    return location.length > 128 ? location.slice(-128) : location;
+  }
+  return undefined;
+}
+
+/** A provider error's transport cause code (FR-AIP), when it carries an identifier-like one. */
+export function causeCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("causeCode" in error)) return undefined;
+  const value = (error as { causeCode: unknown }).causeCode;
+  return typeof value === "string" && /^[A-Za-z0-9_]{1,64}$/.test(value) ? value : undefined;
 }
 
 const stdoutSink: LogSink = (line) => {

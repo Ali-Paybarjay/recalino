@@ -171,6 +171,8 @@ export class ProviderError extends Error {
     readonly accounting?: Omit<ProviderResult<never>, "output">,
     /** Code-owned validation detail (schema paths and issue codes only), never response text. */
     readonly diagnostic?: string,
+    /** OPS-02: the transport cause of an uncertain outcome, e.g. "ECONNRESET" or "timeout". */
+    readonly causeCode?: string,
   ) {
     super(code);
     this.name = "ProviderError";

@@ -22,6 +22,7 @@ export {
   exportSettingsSchema,
 } from "./export";
 export { canonicalJson, hmacSha256Hex, sha256Hex } from "./hash";
+export { type PlatformHealth, pingDatabase, readPlatformHealth } from "./health";
 export {
   type IdempotentRequest,
   type IdempotentResult,
@@ -58,7 +59,9 @@ export {
   sweepJobs,
 } from "./jobs";
 export {
+  causeCode,
   createLogger,
+  errorLocation,
   formatLogLine,
   type Logger,
   type LogLevel,
@@ -102,9 +105,19 @@ export {
   rateLimitBuckets,
 } from "./rate-limit";
 export {
+  compareSchemaVersions,
+  createSchemaGuard,
+  readAppliedSchemaVersion,
+  type SchemaCheck,
+  type SchemaGuard,
+  type SchemaGuardOptions,
+  type SchemaState,
+} from "./schema-version";
+export {
   type AuditInput,
   latestSubjectAudit,
   recordAudit,
+  recordAuditOnce,
   recordSecurityEvent,
   type SecurityEventInput,
   type SecurityEventKind,
