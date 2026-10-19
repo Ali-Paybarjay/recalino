@@ -35,6 +35,8 @@ artifacts/verification/study-flow-*-results/
 artifacts/verification/verify-source-upload.mjs
 artifacts/verification/python/
 artifacts/verification/anki-profile/
+# Intermediate presentation build output (audit QUA-07); the files stay on disk.
+artifacts/recalino-presentation/.build/
 playwright-report/
 test-results/
 test-results*/

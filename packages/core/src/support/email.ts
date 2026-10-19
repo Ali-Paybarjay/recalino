@@ -391,17 +391,6 @@ export async function getEmailDraft(
 ): Promise<EmailDraft> {
   return draft(await draftRow(db, ctx, id));
 }
-export async function listEmailDrafts(
-  db: SupportDb,
-  ctx: AdminSupportContext,
-): Promise<EmailDraft[]> {
-  requireActor(ctx);
-  return (
-    await sql<DraftRow>`select * from support.email_draft where actor_id=${ctx.actorId} order by created_at desc limit 100`.execute(
-      db,
-    )
-  ).rows.map(draft);
-}
 export async function updateEmailDraft(
   db: SupportDb,
   ctx: AdminSupportContext,
@@ -572,6 +561,11 @@ export async function retryEmail(
     return outbound(saved);
   });
 }
+/**
+ * Trusted-operator API for FR-SUPPORT-004: settles an `unknown` outbox result after the owner has
+ * checked the provider's evidence (docs/runbooks/ADMIN_PANEL.md). Intentionally not exposed as an
+ * `/api/admin` action, so it has no in-repo caller; kept on purpose (audit QUA-06).
+ */
 export async function reconcileEmail(
   db: SupportDb,
   ctx: AdminSupportContext,

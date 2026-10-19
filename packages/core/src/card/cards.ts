@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Selectable } from "kysely";
+import { z } from "zod";
 import { lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
 import { type Claim, claimSchema } from "../lkm";
@@ -13,9 +14,11 @@ import {
   errors,
   isValidIdempotencyKey,
   type LearnerContext,
+  parseSnapshot,
   readPltSettings,
   runIdempotent,
   sha256Hex,
+  storedObject,
 } from "../plt";
 import {
   type CardActionInput,
@@ -56,6 +59,29 @@ export interface StudyCard extends Partial<StudyMetadata> {
   createdAt: string;
   updatedAt: string;
 }
+/**
+ * `card.revision.snapshot`: the card as saved at that content version (QUA-05). Undo restores
+ * these fields. Study metadata stays unchecked here because savedStudyMetadata validates it and
+ * drops what no longer fits, exactly as before; the claim was validated when the card was read.
+ */
+export const cardRevisionSnapshotSchema = z.looseObject({
+  action: z.string().optional(),
+  front: z.string(),
+  back: z.string(),
+  provenance: storedObject<Claim>(),
+  status: cardStatusSchema,
+  important: z.boolean(),
+  qualityConfirmed: z.boolean(),
+  frontMediaId: z.string().min(1).nullable(),
+  backMediaId: z.string().min(1).nullable(),
+  sessionIds: z.array(z.string()),
+  contentFormat: z.unknown().optional(),
+  studySet: z.unknown().optional(),
+  studyTags: z.unknown().optional(),
+  studyPosition: z.unknown().optional(),
+  pronunciationTarget: z.unknown().optional(),
+});
+const cardRevisionActionSchema = z.looseObject({ action: z.string().optional() });
 export interface CardProposal extends Partial<StudyMetadata> {
   id: string;
   cardId: string;
@@ -617,7 +643,7 @@ export async function changeCard(
         .where("card_id", "=", id)
         .where("content_version", "=", card.contentVersion)
         .executeTakeFirstOrThrow();
-      if ((current.snapshot as { action?: string }).action === "undo")
+      if (parseSnapshot(cardRevisionActionSchema, current.snapshot).action === "undo")
         throw errors.validationFailed({ action: ["nothing_to_undo"] });
       const previous = await tx
         .selectFrom("card.revision")
@@ -628,7 +654,7 @@ export async function changeCard(
         .limit(1)
         .executeTakeFirst();
       if (!previous) throw errors.validationFailed({ action: ["nothing_to_undo"] });
-      const prior = previous.snapshot as unknown as StudyCard;
+      const prior = parseSnapshot(cardRevisionSnapshotSchema, previous.snapshot);
       await requireUniqueContent(tx, ctx, prior.front, prior.back, id);
       await tx
         .updateTable("card.card")

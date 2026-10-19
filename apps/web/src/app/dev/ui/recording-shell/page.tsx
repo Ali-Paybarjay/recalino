@@ -4,7 +4,7 @@ import { recordingCopy } from "../../../../ui/recording/recording-copy";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { Actions, Button, Panel } from "../../../../ui/workspace/primitives";
 import { RecordingShellFrame } from "../../../(app)/RecordingShell";
-import "../../../../ui/preview/preview.css";
+import "../../../../ui/workspace/workspace.css";
 
 export const metadata: Metadata = {
   title: "Recording page shell",

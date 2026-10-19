@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import "../../ui/preview/preview.css";
+import "../../ui/workspace/workspace.css";
 import { getLearner } from "../../server/auth/learner";
 import { captureFlags } from "../../server/capture-flags";
 import { NotificationCenter } from "../../ui/notifications/NotificationCenter";

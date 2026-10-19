@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Actions, Button, Field, Panel, Status } from "../workspace/primitives";
 import styles from "./LearningViews.module.css";
 import { type PreviewState, type SampleCard, usePreview } from "./PreviewContext";
-import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { LinkButton, PageHeader } from "./preview-links";
 
 type Rating = PreviewState["reviewEvents"][number]["rating"];
 const TYPES: Record<SampleCard["type"], string> = {

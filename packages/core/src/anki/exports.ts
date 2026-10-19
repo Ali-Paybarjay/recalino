@@ -1,7 +1,7 @@
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
-import { getCard, liveCardIds } from "../card";
+import { cardTemplateSchema, getCard, liveCardIds } from "../card";
 import type { Database, DB, Tx } from "../db";
 import { getMediaAsset, readMediaBytes } from "../media";
 import { getSession } from "../org";
@@ -17,6 +17,7 @@ import {
   type ExportMediaBytes,
   type ExportSettings,
   errors,
+  exportMediaSchema,
   exportSettingsSchema,
   issueReadLink,
   isValidIdempotencyKey,
@@ -26,10 +27,17 @@ import {
   ownedObjectMetadata,
   type PeriodicJob,
   type PltSettings,
+  parseSnapshot,
   sha256Hex,
+  storedObject,
   writeOwnedObject,
 } from "../plt";
-import { type AnkiPackageInput, buildAnkiPackage, clozeOrdinals } from "./package";
+import {
+  type AnkiCardSnapshot,
+  type AnkiPackageInput,
+  buildAnkiPackage,
+  clozeOrdinals,
+} from "./package";
 
 export const ankiExportRequestSchema = z.strictObject({
   sessionId: z.uuid(),
@@ -48,9 +56,36 @@ export const ankiExportRequestSchema = z.strictObject({
   expectedVersions: z.record(z.uuid(), z.int().positive()).optional(),
 });
 export type AnkiExportRequest = z.input<typeof ankiExportRequestSchema>;
-interface AnkiSnapshot extends AnkiPackageInput {
-  media: ExportMedia[];
-}
+/** A card as copied into an Anki export snapshot (QUA-05); its claim was validated on write. */
+const ankiCardSnapshotSchema = z.object({
+  id: z.uuid(),
+  template: cardTemplateSchema,
+  direction: z.enum(["forward", "reverse"]),
+  front: z.string(),
+  back: z.string(),
+  provenance: storedObject<AnkiCardSnapshot["provenance"]>(),
+  contentVersion: z.number().int().positive(),
+  frontMediaId: z.string().min(1).nullable(),
+  backMediaId: z.string().min(1).nullable(),
+  contentFormat: z.literal("lesson_html").optional(),
+  studySet: z.enum(["production", "recognition"]).optional(),
+  studyTags: z.array(z.string()).optional(),
+}) satisfies z.ZodType<AnkiCardSnapshot>;
+/** `anki.export_artifact.snapshot`, version 1 (QUA-05). */
+export const ankiSnapshotSchema = z.looseObject({
+  sessionId: z.uuid(),
+  title: z.string(),
+  cards: z.array(ankiCardSnapshotSchema),
+  tags: z.array(z.string()),
+  createdAt: z.string().min(1),
+  media: z.array(exportMediaSchema),
+}) satisfies z.ZodType<AnkiPackageInput & { media: ExportMedia[] }>;
+type AnkiSnapshot = z.infer<typeof ankiSnapshotSchema>;
+/** Ownership and listing only need each copied card's id. */
+const ankiSnapshotCardIdsSchema = z.looseObject({
+  cards: z.array(z.looseObject({ id: z.uuid() })),
+});
+const ankiSnapshotMediaSchema = ankiSnapshotSchema.pick({ media: true });
 function view(row: Selectable<DB["anki.export_artifact"]>): ExportArtifact {
   return {
     id: row.id,
@@ -75,7 +110,7 @@ async function owned(db: Database | Tx, ctx: LearnerContext, id: string, now: Da
   assertOwner(row && !row.tombstoned_at ? { ownerId: row.user_id } : undefined, ctx);
   if (!row || row.expires_at <= now || !row.snapshot) throw errors.notFound();
   await getSession(db, ctx, row.session_id);
-  for (const card of (row.snapshot as unknown as AnkiSnapshot).cards)
+  for (const card of parseSnapshot(ankiSnapshotCardIdsSchema, row.snapshot).cards)
     await getCard(db, ctx, card.id);
   return row;
 }
@@ -227,7 +262,9 @@ export async function listAnkiExports(
   // PERF-04: the same checks as getAnkiExport for every listed export, in a constant number of
   // reads. The session was checked above; an export is listed only while all its cards are.
   const snapshots = rows.flatMap((row) =>
-    row.snapshot ? [{ row, cards: (row.snapshot as unknown as AnkiSnapshot).cards }] : [],
+    row.snapshot
+      ? [{ row, cards: parseSnapshot(ankiSnapshotCardIdsSchema, row.snapshot).cards }]
+      : [],
   );
   const live = await liveCardIds(
     db,
@@ -250,7 +287,7 @@ export async function ankiExportReadLink(
     await lockAccount(tx, ctx.userId);
     const row = await owned(tx, ctx, id, now);
     if (row.state !== "ready" || !row.object_id) throw errors.notFound();
-    for (const expected of (row.snapshot as unknown as AnkiSnapshot).media) {
+    for (const expected of parseSnapshot(ankiSnapshotMediaSchema, row.snapshot).media) {
       const live = await describe(tx, ctx, expected.id);
       if (live.objectId !== expected.objectId) throw errors.notFound();
     }
@@ -276,7 +313,7 @@ export function ankiExportJob(
       const actor = { userId: input.userId, requestId: job.job.id };
       const row = await owned(job.db, actor, input.artifactId, job.now());
       if (row.state === "ready") return;
-      const snapshot = row.snapshot as unknown as AnkiSnapshot;
+      const snapshot = parseSnapshot(ankiSnapshotSchema, row.snapshot);
       const settings = exportSettingsSchema.parse(row.settings);
       const media: ExportMediaBytes[] = [];
       for (const item of snapshot.media) {

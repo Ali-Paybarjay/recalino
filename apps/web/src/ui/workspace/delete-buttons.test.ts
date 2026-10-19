@@ -2,10 +2,10 @@ import type { ClassSession, Course, Unit } from "@recalino/core/org";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { Button } from "../preview/primitives";
 import { ClassForm } from "./ClassForm";
 import { CourseManager } from "./CourseManager";
 import { PrivacyView } from "./PrivacyView";
+import { Button } from "./primitives";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock("../recording/RecordingProvider", () => ({

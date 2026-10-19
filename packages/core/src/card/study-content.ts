@@ -30,7 +30,8 @@ export function readStudyMetadata(value: unknown): Partial<StudyMetadata> {
   return result.success ? result.data : {};
 }
 
-export function savedStudyMetadata(value: Partial<StudyMetadata>): string | null {
+/** Accepts unchecked values too (an old card revision): anything that no longer fits is dropped. */
+export function savedStudyMetadata(value: { [K in keyof StudyMetadata]?: unknown }): string | null {
   const result = metadataSchema.safeParse({
     contentFormat: value.contentFormat,
     studySet: value.studySet,

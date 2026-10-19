@@ -3,7 +3,7 @@ import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { voiceSettingsReturnHref } from "../../../../ui/voice/navigation";
 import { VoiceConfirmation } from "../../../../ui/voice/VoiceConfirmation";
 import { VoiceProfileForm } from "../../../../ui/voice/VoiceProfile";
-import "../../../../ui/preview/preview.css";
+import "../../../../ui/workspace/workspace.css";
 
 /** Test APIs are intercepted in Playwright. This guarded page never creates a real class. */
 export default async function VoiceReferencePage({

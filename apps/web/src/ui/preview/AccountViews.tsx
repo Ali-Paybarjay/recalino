@@ -13,9 +13,10 @@ import { ConfirmDialog } from "../components/Sheet";
 import { courseCopy } from "../course-copy";
 import { retryAllowanceCopy } from "../retry-allowance-copy";
 import { strings } from "../strings";
+import { Actions, Button, Panel, Status } from "../workspace/primitives";
 import styles from "./AccountViews.module.css";
 import { type PreviewState, usePreview } from "./PreviewContext";
-import { Actions, Button, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { LinkButton, PageHeader } from "./preview-links";
 
 const copy = {
   profile: "Your learning settings",

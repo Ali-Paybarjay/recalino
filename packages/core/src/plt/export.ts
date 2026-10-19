@@ -21,15 +21,17 @@ export interface ExportArtifact {
   expiresAt: string;
   lastError: string | null;
 }
-export interface ExportMedia {
-  id: string;
-  sessionId: string;
-  objectId: string;
-  sourceId: string | null;
-  kind: "image" | "tts";
-  mimeType: string;
-  byteLength: number;
-}
+/** One media item copied into an export snapshot; read back with this schema (QUA-05). */
+export const exportMediaSchema = z.object({
+  id: z.string().min(1),
+  sessionId: z.string().min(1),
+  objectId: z.string().min(1),
+  sourceId: z.string().min(1).nullable(),
+  kind: z.enum(["image", "tts"]),
+  mimeType: z.string().min(1),
+  byteLength: z.number().int().nonnegative(),
+});
+export type ExportMedia = z.infer<typeof exportMediaSchema>;
 export interface ExportMediaBytes {
   media: ExportMedia;
   bytes: Uint8Array;

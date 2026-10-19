@@ -2,7 +2,7 @@ import "server-only";
 import type { Database } from "@recalino/core/db";
 import { AppError, createLogger, type LearnerContext } from "@recalino/core/plt";
 import { getAutomaticLearningSession, getRun } from "@recalino/core/proc";
-import { uploadSessionIds, verifiedUploadSessionIds } from "@recalino/core/src";
+import { uploadSessionIds } from "@recalino/core/src";
 import { scheduleAutomaticLearning } from "./automatic-learning";
 
 function logFailure(ctx: LearnerContext): void {
@@ -24,20 +24,6 @@ export async function notifyAutomaticLearning(
     // Old queued uploads do not silently opt an existing class into paid automatic processing.
     if (!changed && !(await getAutomaticLearningSession(db, ctx, sessionId))) return;
     await scheduleAutomaticLearning(db, ctx, sessionId, { changed });
-  } catch {
-    logFailure(ctx);
-  }
-}
-
-/** Optional wake-up queries cannot change a committed verification into a failed upload. */
-export async function notifyAutomaticLearningForVerifiedUpload(
-  db: Database,
-  ctx: LearnerContext,
-  uploadId: string,
-): Promise<void> {
-  try {
-    const sessionIds = await verifiedUploadSessionIds(db, ctx, uploadId);
-    for (const sessionId of sessionIds) await notifyAutomaticLearning(db, ctx, sessionId, false);
   } catch {
     logFailure(ctx);
   }

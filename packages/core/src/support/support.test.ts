@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { EmailDraftInput, OutboundEmail } from "./contracts";
-import { renderEmailRecipients } from "./email";
+import { reconcileEmail, renderEmailRecipients } from "./email";
 import { getEmailLogo } from "./email-logo";
 import { routineReply } from "./feedback";
 import { renderEmailPresentation } from "./presentation";
@@ -393,5 +393,32 @@ describe("AC-ADM-011 email provider outcomes", () => {
         ).send(message, "key")
       ).state,
     ).toBe("failed");
+  });
+});
+
+describe("reconcileEmail trusted-operator API (FR-SUPPORT-004, QUA-06)", () => {
+  // Every rejection below happens before the outbox is read or changed.
+  const untouched = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error("database must not be touched");
+      },
+    },
+  ) as Parameters<typeof reconcileEmail>[0];
+  const valid = { id: randomUUID(), state: "failed" as const, reason: "Provider log shows reject" };
+  it("requires an operator, a verified provider reference for sent, and a real reason", async () => {
+    await expect(reconcileEmail(untouched, { actorId: "" }, valid)).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
+    await expect(
+      reconcileEmail(untouched, { actorId: randomUUID() }, { ...valid, state: "sent" }),
+    ).rejects.toMatchObject({
+      code: "validation_failed",
+      details: { fields: { providerId: ["verified_provider_reference_required"] } },
+    });
+    await expect(
+      reconcileEmail(untouched, { actorId: randomUUID() }, { ...valid, reason: "short" }),
+    ).rejects.toThrow();
   });
 });
