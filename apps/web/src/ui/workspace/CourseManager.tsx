@@ -318,7 +318,7 @@ export function CourseManager({
           in a deleted course are removed with it.
         </p>
         <Actions>
-          <Button disabled={busy} onClick={() => void remove()}>
+          <Button danger disabled={busy} onClick={() => void remove()}>
             {busy ? "Deleting…" : `Delete ${confirm?.kind ?? "group"}`}
           </Button>
           <Button secondary disabled={busy} onClick={() => setConfirm(null)}>

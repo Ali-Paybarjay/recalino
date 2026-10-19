@@ -3,9 +3,11 @@ import type { CardActionInput, CardProposal, StudyCard } from "@recalino/core/ca
 import { cardHtmlToText } from "@recalino/core/card-html";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { Sheet } from "../components/Sheet";
 import { requestKey, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
 import { CardMedia } from "./CardMedia";
+import { cardDeleteCopy } from "./card-actions-copy";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export function CardEditor({
@@ -27,6 +29,7 @@ export function CardEditor({
       initial.contentFormat === "lesson_html" ? cardHtmlToText(initial.back) : initial.back,
     ),
     [newGoal, setNewGoal] = useState(false),
+    [confirmDelete, setConfirmDelete] = useState(false),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
     [notice, setNotice] = useState("");
@@ -183,18 +186,49 @@ export function CardEditor({
             Undo last card change
           </Button>
         </Actions>
-        <details>
-          <summary
-            style={{ minHeight: 44, display: "flex", alignItems: "center", cursor: "pointer" }}
-          >
-            Delete this card
-          </summary>
-          <p>This removes this card from every linked session and from review.</p>
-          <Button secondary disabled={busy} onClick={() => action("delete")}>
-            Delete card
+        {/* UX-03: deleting asks first, like deleting a session (frame E3-delete). */}
+        <Actions>
+          <Button secondary disabled={busy} onClick={() => setConfirmDelete(true)}>
+            {cardDeleteCopy.open}
           </Button>
-        </details>
+        </Actions>
       </Panel>
+      <Sheet
+        open={confirmDelete}
+        onClose={() => {
+          if (!busy) setConfirmDelete(false);
+        }}
+        title={cardDeleteCopy.title}
+      >
+        <p>{cardDeleteCopy.linked}</p>
+        <ul>
+          {cardDeleteCopy.consequences.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+        {card.status === "active" ? <p>{cardDeleteCopy.suspendHint}</p> : null}
+        <Actions>
+          <Button secondary disabled={busy} onClick={() => setConfirmDelete(false)}>
+            {cardDeleteCopy.keep}
+          </Button>
+          {card.status === "active" ? (
+            <Button
+              secondary
+              disabled={busy}
+              onClick={() => void action("suspend").finally(() => setConfirmDelete(false))}
+            >
+              {cardDeleteCopy.suspendInstead}
+            </Button>
+          ) : null}
+          <Button
+            danger
+            disabled={busy}
+            onClick={() => void action("delete").finally(() => setConfirmDelete(false))}
+          >
+            {cardDeleteCopy.confirm}
+          </Button>
+        </Actions>
+      </Sheet>
       {!!proposals.length && (
         <Panel title="Suggested updates from newer notes">
           {proposals.map((proposal) => (

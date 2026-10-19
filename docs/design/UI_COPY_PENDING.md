@@ -41,3 +41,23 @@
 در همان روز، متن بخش «Topics covered» جلسهٔ خالی که هنوز به دکمه‌های «below» اشاره می‌کرد، با متن تأییدشدهٔ مالک محصول جایگزین شد: «Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically.» (`app/(app)/sessions/[id]/page.tsx`). این متن به جای دکمه‌ها اشاره نمی‌کند، چون اقدام‌ها در کارت بالای صفحه‌اند (D71).
 
 پس از این تأیید فهرست خالی است.
+
+## ممیزی 2026-10-18، دستهٔ ۴ — مسیر زبان‌آموز (`fix/audit-4`)
+
+متن‌های زیر برای رفع یافته‌های UX-03، UX-09، UX-10، UX-12 و UX-14 پیشنهاد شدند، ولی نه در `handoff/copy.md` هستند و نه در قاب‌های طرح و مالک محصول هنوز تأییدشان نکرده است. طبق CLAUDE.md متن رابط عیناً از طرح یا متن موجود می‌آید، پس **هیچ‌کدام در رابط نیستند** و [`pending-copy.ts`](../../apps/web/src/ui/pending-copy.ts) خالی می‌ماند. هر مورد می‌گوید رابط تا تأیید چه نشان می‌دهد. اگر مالک محصول متنی را عیناً در چت تأیید کند، آن متن به فایل نهایی صفحه می‌رود (نه به `pending-copy.ts`).
+
+هر جا متن از قاب یا از متن موجود اپ آمده، در این فهرست نیست (مثلاً Sheet حذف کارت از قاب E3-delete، دکمهٔ «Read and accept» و جملهٔ «The Terms changed on {date}…» از `strings.settings`، و «Sign out» از `strings.settings.signOut`).
+
+- **UX-03، پیام Undo پس از Reject** (`cardActions.rejected`): «Card rejected». الگوی قاب E3 («Card suspended»)، Snackbar با دکمهٔ Undo؛ هنگام ضبط فعال نمایش داده نشود. تا تأیید: کارت ردشده دکمهٔ «Undo last card change» (متن موجود `CardEditor`) دارد.
+- **UX-09، راهنمای پیشرفت وقتی Terms تازه پردازش را نگه داشته** (`termsAcceptance.guidance`): «Read and accept the updated Terms to continue.» جایگزین «Open Review account setup to continue.». تا تأیید: جملهٔ مصوب `strings.settings.termsChanged` با تاریخی که سرور می‌دهد؛ اگر تاریخ معلوم نباشد جمله‌ای نمایش داده نمی‌شود و دکمهٔ «Read and accept» می‌ماند.
+- **UX-10، رسید حذف حساب در وضعیت `needs_operator`** (`accountDeletion.needsOperator`): «Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below.» تا تأیید: فقط «Request reference: …»، پیوند «Ask the pilot operator» (وقتی نشانی تنظیم شده) و «Sign out»؛ جملهٔ «Server cleanup has been queued.» در این حالت نمایش داده نمی‌شود، چون نادرست است.
+- **UX-12، صفحهٔ Allowance، بخش «Need more allowance?»** (`allowanceHelp.need`): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.» تا تأیید: فقط «The pilot operator sets your allowance.».
+- **UX-12، صفحهٔ Allowance، بخش «Reserved and used»** (`allowanceHelp.reserved`): «Reserved allowance is held while your material is processed. Only usable published output is charged.» تا تأیید: فقط «Only usable published output is charged.» (جملهٔ قدیمی دربارهٔ «work you confirmed» حذف شد، چون پردازش خودکار است).
+- **UX-12، خطای تغییر منابع پس از برآورد** (`workspaceErrors.sourcesChanged`): «The selected sources have changed. Check your session material, then try again.» تا تأیید: فقط «The selected sources have changed.» (بدون «Review the processing estimate and confirm again.»).
+- **UX-14، بالای صفحهٔ Your data** (`yourData.downloadFirst`): «To keep a copy first, open a session, choose More session tools, then Download notes and cards.» تا تأیید: متنی اضافه نمی‌شود؛ پیوند «Choose a session» به `/sessions` که از قبل بود می‌ماند.
+
+### پیشنهادهای ثبت‌شده که هنوز در رابط نیستند (UX-01 و UX-13)
+
+- **UX-01:** جملهٔ «Class capture, notes and reviews are coming next in the pilot.» از صفحهٔ ورود حذف شد. اگر مالک محصول جملهٔ جایگزین بخواهد، پیشنهاد: «Built for a small pilot group. Sign in with Google to start.» (فقط پیشنهاد؛ در رابط نیست.)
+- **UX-13، برآورد انتظار:** پیشنهاد برای زیر «Waiting to process» و «Creating notes and flashcards»: «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» نیاز به داده‌های واقعی زمان مرحله‌ها (NFR-07) دارد؛ بدون آن عبارت «within a few minutes» تعهد بی‌پشتوانه است.
+- **UX-13، دعوت به اعلان:** پیشنهاد: «Want a message when your notes are ready? Turn on notifications in Settings.» (نیازمند تأیید مالک و تصمیم دربارهٔ جای دکمه).

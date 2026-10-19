@@ -33,7 +33,6 @@ export function StudyOverview() {
               <Icon icon={CaretRight} size={16} />
             </a>
           </div>
-          <p className={styles.pilotNote}>{copy.pilotNote}</p>
         </div>
         <div className={styles.paperStack} aria-hidden="true">
           <div className={styles.paper}>
@@ -110,24 +109,6 @@ export function LearningLoop() {
           </li>
         ))}
       </ol>
-    </section>
-  );
-}
-
-export function StudyEmptyState({ kind }: { kind: "classes" | "review" }) {
-  const content = copy[kind];
-  return (
-    <section className={styles.empty} aria-labelledby="empty-heading">
-      <span className={styles.emptyIcon}>
-        <Icon icon={kind === "classes" ? FolderSimple : Cards} size={40} />
-      </span>
-      <h2 id="empty-heading">{content.title}</h2>
-      <p className={styles.emptyText}>{content.text}</p>
-      <p className={styles.emptyNote}>{content.note}</p>
-      <Link href="/today#example-note" className={buttonClassName("primary", "lg")}>
-        {copy.backToday}
-        <Icon icon={CaretRight} />
-      </Link>
     </section>
   );
 }

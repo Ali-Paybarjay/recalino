@@ -7,8 +7,6 @@ export const studyCopy = {
   welcome: "Make room for your English.",
   intro: "A home for what you learn in class, and what you want to remember.",
   pilot: "Pilot preview",
-  pilotNote:
-    "Your learning profile is ready. Adding sessions, creating notes and reviewing cards are coming next.",
   profileAction: "Check your learning profile",
   exampleAction: "See an example",
   loopTitle: "From class to confidence",
@@ -38,17 +36,4 @@ export const studyCopy = {
   profileTitle: "Built around you",
   profileHelp: "Your first language, English level and learning goal help shape your explanations.",
   profileLink: "View learning preferences",
-  classes: {
-    subtitle: "A home for your English classes.",
-    title: "Your learning starts with a class.",
-    text: "Keep each lesson’s materials, notes and cards together, so you can return to what matters.",
-    note: "Adding sessions is coming next in the pilot. You can explore an example today.",
-  },
-  review: {
-    subtitle: "A little practice, at your own pace.",
-    title: "Make your learning stay with you.",
-    text: "Cards from your sessions will appear here for short daily reviews. You choose which suggested cards to keep.",
-    note: "Card reviews are coming next in the pilot. Explore an example while you wait.",
-  },
-  backToday: "Explore Today",
 } as const;

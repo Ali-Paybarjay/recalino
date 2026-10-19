@@ -118,8 +118,7 @@ export async function workspaceRequest<T>(
       reasons.includes("changed_after_confirmation") ||
       reasons.includes("new_confirmation_required")
     )
-      message =
-        "The selected sources have changed. Review the processing estimate and confirm again.";
+      message = "The selected sources have changed.";
     if (reasons.includes("source_limit") || reasons.includes("input_too_large"))
       message = "Select fewer sources or smaller ranges before processing.";
     if (reasons.includes("part_integrity_mismatch"))

@@ -2,6 +2,7 @@ import { type ButtonHTMLAttributes, createElement, type MouseEvent } from "react
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticLearningNotice, AutomaticLearningView } from "./AutomaticLearningView";
+import { type AccountGate, AccountGateProvider } from "./account-gate";
 import type { AutomaticLearningStatus } from "./automatic-learning";
 import type { UploadBatch } from "./upload-store";
 
@@ -62,11 +63,13 @@ const pendingReview = {
   errorCode: "processing_budget_session",
   canRequest: true,
 };
-function render(view: "notice" | "progress" = "notice") {
-  return renderToStaticMarkup(
+function render(view: "notice" | "progress" = "notice", gate?: AccountGate) {
+  const page =
     view === "notice"
       ? createElement(AutomaticLearningNotice, { sessionId })
-      : createElement(AutomaticLearningView, { sessionId, initial: blocked }),
+      : createElement(AutomaticLearningView, { sessionId, initial: blocked });
+  return renderToStaticMarkup(
+    gate ? createElement(AccountGateProvider, { value: gate }, page) : page,
   );
 }
 function retry() {
@@ -190,6 +193,46 @@ describe("retry from the class notice", () => {
     mocks.status = { ...blocked, lastError };
     render();
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
+  });
+
+  // UX-09: /setup sends a learner with finished setup back to Today, so new Terms use their sheet.
+  it.each(["notice", "progress"] as const)(
+    "%s sends a stop for new Terms to the Terms sheet, not to setup",
+    (view) => {
+      mocks.status = { ...blocked, lastError: "acceptance_required" };
+      const html = render(view, {
+        setupComplete: true,
+        termsPending: true,
+        termsChangedOn: "1 Oct",
+      });
+      expect(html).toContain("Read and accept");
+      // The approved Settings sentence (frame G3), with the date the server gives.
+      expect(html).toContain(
+        "The Terms changed on 1 Oct. Please read and accept them to keep processing new sessions.",
+      );
+      expect(html).not.toContain("Read and accept the updated Terms to continue.");
+      expect(html).not.toContain("Review account setup");
+      expect(html).not.toContain('href="/setup"');
+      const dispatchEvent = vi.fn(() => true);
+      vi.stubGlobal("window", { dispatchEvent });
+      try {
+        mocks.buttons.get("Read and accept")?.();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+      expect(dispatchEvent).toHaveBeenCalledTimes(1);
+      const [event] = dispatchEvent.mock.calls[0] as unknown as [Event];
+      expect(event.type).toBe("recalino:open-terms-notice");
+    },
+  );
+
+  it("shows no made-up sentence for new Terms when the date is not known", () => {
+    mocks.status = { ...blocked, lastError: "acceptance_required" };
+    const html = render("progress");
+    expect(html).toContain("Read and accept");
+    expect(html).not.toContain("Terms changed on");
+    expect(html).not.toContain("Read and accept the updated Terms");
+    expect(html).not.toContain("Review account setup");
   });
 
   it("replaces the failure notice with a ready state and next actions", () => {

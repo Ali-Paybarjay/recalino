@@ -286,7 +286,7 @@ export function ClassForm({
           deletion does not remove them.
         </p>
         <Actions>
-          <Button disabled={busy} onClick={() => void remove()}>
+          <Button danger disabled={busy} onClick={() => void remove()}>
             {busy ? "Deleting…" : "Delete session"}
           </Button>
           <Button secondary disabled={busy} onClick={() => setConfirm(false)}>

@@ -63,10 +63,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Reserved and used">
-        <p>
-          Reserved allowance is held for work you confirmed. Only usable published output is
-          charged.
-        </p>
+        <p>Only usable published output is charged.</p>
         <dl>
           {DIMENSIONS.map((d) => (
             <div key={d}>
@@ -79,10 +76,7 @@ export default async function AllowancePage() {
         </dl>
       </Panel>
       <Panel title="Need more allowance?">
-        <p>
-          The pilot operator sets your allowance. Processing starts only after you confirm its
-          estimate.
-        </p>
+        <p>The pilot operator sets your allowance.</p>
         {contact ? (
           <a href={contact} className="btn btn-secondary rc-btn-lg">
             Contact the pilot operator

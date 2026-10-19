@@ -39,3 +39,15 @@ test("Today gives a new learner one first step, and keeps one primary action aft
   await expect(main.getByRole("heading", { name: "Ready for a little practice?" })).toHaveCount(0);
   await expectNoAxeViolations(page);
 });
+
+// UX-12: Review shows how many cards are due, on Today where the queue is already read.
+test("Today shows the number of due cards on the Review link", async ({ page }) => {
+  test.setTimeout(90_000);
+  const response = await page.request.post("/dev/auth/session", {
+    data: { setup: "complete", studyFixture: true, automaticStudyFixture: true },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+  await page.goto("/today");
+  await expect(page.getByRole("link", { name: /^Review\b.*\b\d+ due$/ }).first()).toBeVisible();
+  await expectNoAxeViolations(page);
+});

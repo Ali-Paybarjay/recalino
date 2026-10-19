@@ -44,8 +44,21 @@ test("account deletion requires explicit acknowledgement and hides the account",
     .check();
   await dialog.getByRole("button", { name: "Delete account", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Account deletion requested" })).toBeVisible();
+  // UX-10: leaving by "/" only led back to this page, so the way out is Sign out.
+  await expect(page.getByRole("link", { name: "Return to Recalino" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
   const response = await page.request.get("/api/classes");
   expect(response.status()).toBe(401);
+});
+
+// UX-14: the data page links to the session list. The sentence that says where the download is
+// waits for the owner (docs/design/UI_COPY_PENDING.md), so only the link is checked.
+test("Your data links to the session list", async ({ page }) => {
+  await signInAsNewLearner(page, { setup: "complete" });
+  await page.goto("/me/data");
+  await page.getByRole("link", { name: "Choose a session", exact: true }).click();
+  await expect(page).toHaveURL(/\/sessions$/);
+  await expectNoAxeViolations(page);
 });
 test("account deletion waits for capture to stop and removes only its device copies", async ({
   page,
@@ -55,6 +68,8 @@ test("account deletion waits for capture to stop and removes only its device cop
   await page.goto("/today");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  // The recording page has no navigation (UX-02): go back to Today, where the recording continues.
+  await page.goBack();
   await page.getByRole("link", { name: "Me", exact: true }).first().click();
   await page.getByRole("link", { name: /Your data/ }).click();
   await expect(page.getByRole("button", { name: "Review account deletion" })).toBeDisabled();
@@ -155,6 +170,7 @@ for (const outcome of ["pending", "unknown"] as const) {
     await page.goto("/today");
     await page.getByRole("button", { name: "Record a session", exact: true }).click();
     await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+    await page.goBack();
     await page.getByRole("link", { name: "Me", exact: true }).first().click();
     await page.getByRole("link", { name: /Your data/ }).click();
     await page.getByRole("button", { name: "Stop and save before deletion", exact: true }).click();

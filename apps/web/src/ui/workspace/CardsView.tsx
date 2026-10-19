@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
 import { requestKey, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { cardActionBody, undoBody } from "./card-actions";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 
@@ -56,8 +57,9 @@ export function CardsView({
     groups.find((group) => group.cards.length);
   const visibleCards = grouped ? (activeGroup?.cards ?? []) : cards;
   useEffect(() => setCards(initial), [initial]);
-  async function accept(card: StudyCard, action: "activate" | "reject") {
-    const body = { expectedVersion: card.contentVersion, action, confirmQuality: true };
+  // UX-03: a rejected card keeps an Undo button of its own, with the app's existing text. Nothing
+  // pops up, so it is also safe while a class is being recorded (PRD-REC-02).
+  async function change(card: StudyCard, body: ReturnType<typeof cardActionBody>) {
     setBusy(true);
     setProblem("");
     try {
@@ -69,11 +71,18 @@ export function CardsView({
       );
       setCards((items) => items.map((item) => (item.id === changed.id ? changed : item)));
       key.current = null;
+      return changed;
     } catch (failure) {
       setProblem(failure instanceof Error ? failure.message : "Card could not be changed.");
     } finally {
       setBusy(false);
     }
+  }
+  async function accept(card: StudyCard, action: "activate" | "reject") {
+    await change(card, cardActionBody(card, action));
+  }
+  async function undoReject(rejected: StudyCard) {
+    await change(rejected, undoBody(rejected));
   }
   return (
     <div className="preview-stack">
@@ -143,6 +152,15 @@ export function CardsView({
                       Reject
                     </Button>
                   </>
+                )}
+                {card.status === "rejected" && (
+                  <Button
+                    secondary
+                    disabled={busy || card.contentVersion < 2}
+                    onClick={() => void undoReject(card)}
+                  >
+                    Undo last card change
+                  </Button>
                 )}
               </Actions>
             </article>

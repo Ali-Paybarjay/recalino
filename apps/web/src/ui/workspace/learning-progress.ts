@@ -1,4 +1,5 @@
 import { retryAllowanceCopy } from "../retry-allowance-copy";
+import { fill, strings } from "../strings";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import type { UploadBatch, UploadEntry } from "./upload-store";
@@ -108,8 +109,12 @@ function blockedStage(status: AutomaticLearningStatus, batch: UploadBatch | unde
   return "process";
 }
 
-function recoveryGuidance(status: AutomaticLearningStatus) {
-  const recovery = automaticLearningRecovery(status);
+function recoveryGuidance(
+  status: AutomaticLearningStatus,
+  termsAccepted: boolean,
+  termsChangedOn: string | null,
+) {
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   if (recovery.kind === "allowance") {
     if (recovery.allowance === "covered")
       return "Your allowance now covers this session. Choose Retry processing to continue with your saved material.";
@@ -127,7 +132,10 @@ function recoveryGuidance(status: AutomaticLearningStatus) {
     return status.lastError === "upload_batch_cancelled"
       ? "Add a new group of files to continue."
       : "Open Review material and resolve the message for the affected file to continue.";
-  if (recovery.kind === "setup") return "Open Review account setup to continue.";
+  // New Terms: the approved Settings sentence names the date; without a date there is no sentence
+  // and the "Read and accept" button next to it carries the message.
+  if (recovery.kind === "setup")
+    return termsChangedOn ? fill(strings.settings.termsChanged, { date: termsChangedOn }) : "";
   return `Retry this attempt to continue. ${retryAllowanceCopy(status)}`;
 }
 
@@ -136,6 +144,10 @@ export function learningProgress(
   status: AutomaticLearningStatus,
   batches: readonly UploadBatch[] = [],
   uploadProgress?: AutomaticUploadProgress | null,
+  /** The learner has no new Terms waiting, so a stop for them is out of date (UX-09). */
+  termsAccepted = false,
+  /** The date the Terms changed, for the sentence that goes with "Read and accept". */
+  termsChangedOn: string | null = null,
 ): LearningProgress {
   const batch = currentBatch(status, batches);
   const entries = batch?.entries.filter((entry) => entry.phase !== "skipped") ?? [];
@@ -200,7 +212,7 @@ export function learningProgress(
     guidance = "Open Review material and retry the affected file to continue.";
   } else if (blocked) {
     heading = "Your session needs attention";
-    guidance = recoveryGuidance(status);
+    guidance = recoveryGuidance(status, termsAccepted, termsChangedOn);
   } else if (idle) {
     heading = "Add your session material";
     guidance = "Add documents, audio or photos to start creating notes and flashcards.";

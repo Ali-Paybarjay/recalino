@@ -329,10 +329,52 @@ describe("sessionNextStep", () => {
 
   it.each([
     ["upload_needs_attention", "review_material"],
-    ["acceptance_required", "account_setup"],
+    ["acceptance_required", "accept_terms"],
     ["provider_output_truncated", "retry_processing"],
   ])("leads a %s stop to %s", (code, action) => {
     expect(next({ status: status({ state: "blocked", lastError: code }) }).primary.id).toBe(action);
+  });
+
+  // UX-09: Terms that changed stop processing; the way on is the Terms sheet, not /setup (which
+  // sends a learner with finished setup straight back to Today).
+  describe("acceptance_required", () => {
+    const blocked = status({ state: "blocked", lastError: "acceptance_required" });
+
+    it("opens the Terms notice when new Terms wait for the learner", () => {
+      const step = next({
+        status: blocked,
+        account: { setupComplete: true, termsPending: true },
+      });
+      expect(step.primary).toEqual({ id: "accept_terms", label: "Read and accept" });
+      expect(step.primary.href).toBeUndefined();
+      expect(JSON.stringify(step)).not.toContain("/setup");
+    });
+
+    it("assumes the Terms when nothing is known about the account", () => {
+      expect(next({ status: blocked }).primary.id).toBe("accept_terms");
+    });
+
+    it("goes to /setup only while setup is unfinished", () => {
+      const step = next({
+        status: blocked,
+        account: { setupComplete: false, termsPending: false },
+      });
+      expect(step.primary).toEqual({
+        id: "account_setup",
+        label: "Review account setup",
+        href: "/setup",
+      });
+    });
+
+    it("offers a retry once the Terms were accepted after the stop", () => {
+      const step = next({
+        status: blocked,
+        account: { setupComplete: true, termsPending: false },
+      });
+      expect(step.primary.id).toBe("retry_processing");
+      expect(ids(step)).not.toContain("accept_terms");
+      expect(ids(step)).not.toContain("account_setup");
+    });
   });
 
   it("never lists the primary action again among the secondary ones", () => {

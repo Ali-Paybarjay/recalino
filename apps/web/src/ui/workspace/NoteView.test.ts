@@ -146,12 +146,14 @@ describe("generated previews and automatic preparation", () => {
       "Preview answer",
       "Preview homework",
       "Preview uncertainty",
-      "AI expansion",
+      "AI explanation",
       "Some source details need checking.",
       "Read-only preview",
       "New uploads automatically save your notes and flashcards.",
     ])
       expect(html).toContain(text);
+    // UX-12: the origin label is the one in the Terms and strings.ts, never "AI expansion".
+    expect(html).not.toContain("AI expansion");
     expect(html).not.toContain("Edit this note");
     expect(html).not.toContain("Edit question");
     expect(html).not.toContain("Edit answer");

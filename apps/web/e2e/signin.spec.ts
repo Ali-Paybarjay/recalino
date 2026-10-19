@@ -74,6 +74,24 @@ test("Continue stores the declarations and requests Google account selection thr
   expect(cookies.find((cookie) => cookie.startsWith("rc_next="))).toMatch(/^rc_next=%2Fme;/);
 });
 
+// UX-01: the capture, notes and review features exist, so the page must not promise them later.
+test("the welcome page does not say its main features are still coming", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("main")).not.toContainText(/coming next/i);
+});
+
+// PRD-04: the pilot is private, so the start page is not offered to search engines.
+test("search engines are told not to index the pilot", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
+  const robots = await request.get("/robots.txt");
+  expect(robots.ok()).toBe(true);
+  const body = await robots.text();
+  expect(body).toMatch(/User-Agent: \*/i);
+  expect(body).toMatch(/Disallow: \/\s*$/m);
+  expect(body).not.toMatch(/^Allow:/im);
+});
+
 test("a failed sign-in shows one general message", async ({ page }) => {
   await page.goto("/?error=signin");
   // Inside <main>: Next.js adds its own empty route announcer with the alert role.

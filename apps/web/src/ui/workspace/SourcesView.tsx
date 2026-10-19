@@ -443,6 +443,30 @@ export function SourcesView({
           ← Back to session
         </Link>
       )}
+      {/* UX-13: the one tick that unlocks adding files comes before the buttons it unlocks. */}
+      {!accepted ? (
+        <Panel title="Before adding sources">
+          <p>
+            Choosing Upload &amp; Process creates and saves your session notes and flashcards. Audio
+            remains on this device, with a temporary copy uploaded for transcription. Other files
+            are stored privately.
+          </p>
+          <p>Follow your institution’s rules for recording and using class materials.</p>
+          <label className="preview-check">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(event) => setConfirmed(event.target.checked)}
+            />
+            I have the right to use these materials for private study.
+          </label>
+          <Actions>
+            <Button disabled={!confirmed || busy} onClick={() => action(notice)}>
+              Accept and continue
+            </Button>
+          </Actions>
+        </Panel>
+      ) : null}
       <Actions>
         <LinkButton href={`/sessions/${sessionId}/record`}>Record a session</LinkButton>
         <Button
@@ -485,29 +509,6 @@ export function SourcesView({
             );
         }}
       />
-      {!accepted ? (
-        <Panel title="Before adding sources">
-          <p>
-            Choosing Upload &amp; Process creates and saves your session notes and flashcards. Audio
-            remains on this device, with a temporary copy uploaded for transcription. Other files
-            are stored privately.
-          </p>
-          <p>Follow your institution’s rules for recording and using class materials.</p>
-          <label className="preview-check">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />
-            I have the right to use these materials for private study.
-          </label>
-          <Actions>
-            <Button disabled={!confirmed || busy} onClick={() => action(notice)}>
-              Accept and continue
-            </Button>
-          </Actions>
-        </Panel>
-      ) : null}
       {!storageConfigured ? (
         <Status>
           Private file storage is being configured. Audio can still be saved on this device.

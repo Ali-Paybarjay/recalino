@@ -48,7 +48,7 @@ export default async function TodayPage() {
   // D32: Record a session is the only primary action on Today; everything else stays secondary.
   if (!sessions.items.length)
     return (
-      <LearnerShell learner={learner} current="today" header={header}>
+      <LearnerShell learner={learner} current="today" header={header} reviewDue={review.dueCount}>
         {/* B1-empty, in D50 wording: one first step and its quiet alternative, then the routine. */}
         <div className="preview-stack">
           <Panel tone="hero" title="Your first session starts here.">
@@ -94,7 +94,7 @@ export default async function TodayPage() {
     </Panel>
   );
   return (
-    <LearnerShell learner={learner} current="today" header={header}>
+    <LearnerShell learner={learner} current="today" header={header} reviewDue={review.dueCount}>
       <div className="preview-stack">
         {/* B1-empty note: no review card until cards exist, so no "0 due" placeholder. */}
         {review.hasCards ? (

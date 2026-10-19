@@ -39,6 +39,7 @@ export {
   recordBackupRestoreDrill,
   retainedReadyBackupIds,
 } from "./backups";
+export { deletionJournalSaved } from "./deletion-journal-state";
 export {
   appendEncryptedDeletionJournal,
   type DeletionJournal,

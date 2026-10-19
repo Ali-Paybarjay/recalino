@@ -71,7 +71,14 @@ function lessMaterialHelps(status: AutomaticLearningStatus | null) {
   );
 }
 
-export function automaticLearningRecovery(status: AutomaticLearningStatus | null): {
+/**
+ * `termsAccepted`: the learner has no new Terms waiting. A stop for `acceptance_required` is then
+ * out of date, so it reads like any other failed attempt and Retry can continue it (UX-09).
+ */
+export function automaticLearningRecovery(
+  status: AutomaticLearningStatus | null,
+  termsAccepted = false,
+): {
   kind: "allowance" | "service" | "material" | "setup" | null;
   allowance: AllowanceBlock | null;
   /** For a shortage, whether "select less material" can help. */
@@ -108,7 +115,7 @@ export function automaticLearningRecovery(status: AutomaticLearningStatus | null
     return { kind: "service", allowance: null, lessMaterial: false, retryLabel: null };
   if (materialProblems.has(code))
     return { kind: "material", allowance: null, lessMaterial: false, retryLabel: null };
-  if (code === "acceptance_required")
+  if (code === "acceptance_required" && !termsAccepted)
     return { kind: "setup", allowance: null, lessMaterial: false, retryLabel: null };
   if (code === "upload_batch_cancelled")
     return { kind: "material", allowance: null, lessMaterial: false, retryLabel: null };

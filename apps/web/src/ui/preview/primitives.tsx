@@ -1,12 +1,7 @@
 "use client";
 import Link from "next/link";
-import {
-  type ButtonHTMLAttributes,
-  cloneElement,
-  isValidElement,
-  type ReactNode,
-  useId,
-} from "react";
+import { type ComponentProps, cloneElement, isValidElement, type ReactNode, useId } from "react";
+import { buttonClassName } from "../components/Button";
 export function previewHref(to: string) {
   return to.startsWith("/") ? to : `/preview/${to}`;
 }
@@ -80,17 +75,14 @@ export function LinkButton({
 }
 export function Button({
   secondary = false,
+  danger = false,
   className = "",
   type = "button",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { secondary?: boolean }) {
-  return (
-    <button
-      type={type}
-      className={`btn ${secondary ? "btn-secondary" : "btn-primary"} rc-btn-lg ${className}`}
-      {...props}
-    />
-  );
+}: ComponentProps<"button"> & { secondary?: boolean; danger?: boolean }) {
+  // UI-05: a button that confirms a deletion never looks like a primary action (components.md).
+  const variant = danger ? "danger" : secondary ? "secondary" : "primary";
+  return <button type={type} className={buttonClassName(variant, "lg", className)} {...props} />;
 }
 export function Field({
   label,
