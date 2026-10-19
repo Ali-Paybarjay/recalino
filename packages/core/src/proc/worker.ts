@@ -5,7 +5,6 @@ import {
   effectiveStructuredMaxOutputTokens,
   longestProviderTimeoutMs,
   ProviderError,
-  requireProvider,
   transcriptSchema,
 } from "../aip";
 import {
@@ -16,7 +15,6 @@ import {
 import { getCourse, getSession } from "../org";
 import {
   AppError,
-  canonicalJson,
   deleteObject,
   errors,
   JobCancelled,
@@ -35,12 +33,7 @@ import {
   updateAutomaticSourceRoles,
 } from "../src";
 import { settleClassMaterial } from "./charged-material";
-import {
-  processingQueue,
-  type RunSource,
-  runSettingsSchema,
-  sourceSnapshotSchema,
-} from "./contracts";
+import { processingQueue, type RunSource, sourceSnapshotSchema } from "./contracts";
 import { generatedKnowledgeSchema, legacyKnowledgeWireSchema } from "./generated-knowledge";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
 import {
@@ -126,16 +119,8 @@ import {
   withinSelection,
   YIELD_DELAY_SECONDS,
 } from "./steps/runtime";
-import {
-  boundedVisionCalls,
-  extractionSchema,
-  learnerMarksInstruction,
-  markedExtractionSchema,
-  structuredBoardInstruction,
-  structuredExtractionSchema,
-  type VisionOutput,
-  visionBlocks,
-} from "./steps/vision";
+import { startRun } from "./steps/start";
+import { boundedVisionCalls, type VisionOutput, visionBlocks } from "./steps/vision";
 import { startVoiceCheck } from "./steps/voice-check";
 
 /** One provider chunk per invocation; continuation jobs keep long classes within Function limits. */
@@ -147,33 +132,13 @@ export function processingJob(
     async run(payload, job) {
       const ctx = { userId: payload.userId, requestId: job.job.id };
       try {
-        const provider = requireProvider(dependencies.provider);
-        const initial = await job.db.transaction().execute(async (tx) => {
-          const run = await liveRun(tx, ctx, payload.runId);
-          await tx
-            .updateTable("proc.processing_run")
-            .set({ state: "processing", updated_at: job.now() })
-            .where("id", "=", run.id)
-            .execute();
-          return run;
+        const { provider, initial, settings, snapshot, vision } = await startRun({
+          job,
+          ctx,
+          payload,
+          definition,
+          dependencies,
         });
-        const settings = runSettingsSchema.parse(initial.settings);
-        if (canonicalJson(settings.provider) !== canonicalJson(provider.settings))
-          throw errors.validationFailed({ provider: ["settings_changed"] });
-        const snapshot = sourceSnapshotSchema.parse(initial.input_snapshot);
-        // lesson-quality-1 reads photos and scanned pages as typed blocks; older snapshots keep
-        // the plain OCR contract and their saved vision checkpoints unchanged. D78 adds marks.
-        const vision = settings.provider.lessonQuality?.structuredBoard
-          ? settings.provider.lessonQuality.learnerMarks
-            ? {
-                schema: markedExtractionSchema as z.ZodType<VisionOutput>,
-                instruction: structuredBoardInstruction + learnerMarksInstruction,
-              }
-            : {
-                schema: structuredExtractionSchema as z.ZodType<VisionOutput>,
-                instruction: structuredBoardInstruction,
-              }
-          : { schema: extractionSchema as z.ZodType<VisionOutput>, instruction: "" };
         const extracted: RunSource[] = [];
         for (const source of snapshot.sources) {
           const ready = await cached(

@@ -11,6 +11,7 @@ import {
   sourceClassificationSchema,
 } from "../../src";
 
+import type { runSettingsSchema } from "../contracts";
 import { callFits, failureRank } from "./runtime";
 
 export const extractionSchema = z.strictObject({
@@ -135,4 +136,28 @@ export async function boundedVisionCalls<T>(
   await Promise.all(Array.from({ length: lanes }, lane));
   if (failure) throw (failure as { error: unknown }).error;
   return launched;
+}
+
+export interface VisionContract {
+  schema: z.ZodType<VisionOutput>;
+  instruction: string;
+}
+/**
+ * lesson-quality-1 reads photos and scanned pages as typed blocks; older snapshots keep the plain
+ * OCR contract and their saved vision checkpoints unchanged. D78 adds marks.
+ */
+export function visionContract(
+  lessonQuality: z.infer<typeof runSettingsSchema>["provider"]["lessonQuality"],
+): VisionContract {
+  return lessonQuality?.structuredBoard
+    ? lessonQuality.learnerMarks
+      ? {
+          schema: markedExtractionSchema as z.ZodType<VisionOutput>,
+          instruction: structuredBoardInstruction + learnerMarksInstruction,
+        }
+      : {
+          schema: structuredExtractionSchema as z.ZodType<VisionOutput>,
+          instruction: structuredBoardInstruction,
+        }
+    : { schema: extractionSchema as z.ZodType<VisionOutput>, instruction: "" };
 }
