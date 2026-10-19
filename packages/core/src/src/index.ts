@@ -40,6 +40,7 @@ export { unlockPdf } from "./pdf-unlock";
 export { cleanupAccountSources, cleanupDeletedSource, cleanupSessionSources } from "./privacy";
 export {
   batchSourceStates,
+  liveSourceIds,
   ownedSourceAvailability,
   receivedSourceUploadIds,
   uploadSessionIds,

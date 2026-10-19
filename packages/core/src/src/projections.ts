@@ -36,6 +36,27 @@ export async function batchSourceStates(
     .execute();
 }
 
+/**
+ * PERF-02: the learner's live (not tombstoned) sources among these identifiers, in one read.
+ * Foreign and deleted identifiers are omitted, as getSource would refuse them.
+ */
+export async function liveSourceIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sourceIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(sourceIds.map((id) => z.uuid().parse(id)))];
+  if (!ids.length) return new Set();
+  const rows = await db
+    .selectFrom("src.asset")
+    .select("id")
+    .where("id", "in", ids)
+    .where("user_id", "=", ctx.userId)
+    .where("tombstoned_at", "is", null)
+    .execute();
+  return new Set(rows.map((row) => row.id));
+}
+
 /** Source diagnostics expose availability, never storage keys or other learners' rows. */
 export async function ownedSourceAvailability(
   db: Database | Tx,
