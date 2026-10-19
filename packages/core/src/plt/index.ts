@@ -19,6 +19,7 @@ export {
   type ExportMediaBytes,
   type ExportSettings,
   escapeExportHtml,
+  exportMediaSchema,
   exportSettingsSchema,
 } from "./export";
 export { canonicalJson, hmacSha256Hex, sha256Hex } from "./hash";
@@ -130,6 +131,7 @@ export {
   type RateLimitRule,
   readPltSettings,
 } from "./settings";
+export { parseSnapshot, storedObject } from "./snapshot";
 export {
   type ConfirmResult,
   composeOwnedObjects,

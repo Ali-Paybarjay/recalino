@@ -26,6 +26,7 @@ import {
   canonicalJson,
   errors,
   type LearnerContext,
+  parseSnapshot,
   readPltSettings,
   resolveTimeZone,
   sha256Hex,
@@ -81,6 +82,17 @@ const storedCardSchema = z.object({
   lapses: z.number(),
   state: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   last_review: z.iso.datetime().optional(),
+});
+/**
+ * `srs.review_event.before_state` / `after_state`: a CardSchedule saved as JSON (QUA-05). Replay
+ * reads its version and due time, undo its FSRS state (decoded by storedCardSchema) and
+ * introduction time, which stays optional as undo already treated a missing one as null.
+ */
+export const storedScheduleSchema = z.looseObject({
+  version: z.number().int().nonnegative(),
+  dueAt: z.iso.datetime(),
+  state: z.unknown(),
+  introducedAt: z.iso.datetime().nullable().optional(),
 });
 function decodeState(value: unknown): FsrsCard {
   return TypeConvert.card(storedCardSchema.parse(value) as CardInput);
@@ -345,7 +357,7 @@ export async function submitReview(
       assertOwner({ ownerId: replay.user_id }, ctx);
       await getCard(tx, ctx, replay.card_id);
       if (replay.request_hash !== hash) throw errors.idempotencyMismatch();
-      const after = replay.after_state as unknown as CardSchedule;
+      const after = parseSnapshot(storedScheduleSchema, replay.after_state);
       return {
         eventId: replay.id,
         cardId: replay.card_id,
@@ -497,7 +509,7 @@ export async function undoReview(
       row.version !== event.expected_version + 1
     )
       throw errors.conflict();
-    const before = event.before_state as unknown as CardSchedule;
+    const before = parseSnapshot(storedScheduleSchema, event.before_state);
     const restored = decodeState(before.state);
     const version = row.version + 1;
     await tx
