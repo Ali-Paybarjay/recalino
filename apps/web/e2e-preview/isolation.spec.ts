@@ -34,7 +34,7 @@ test("real Auth, jobs, profile, consent and dev handlers refuse requests", async
     ["POST", "/api/consents"],
     ["GET", "/api/jobs/run"],
     ["POST", "/dev/auth/session"],
-    ["GET", "/dev/spike/health"],
+    ["GET", "/dev/ui"],
     ["POST", "/preview/profile"],
     ["POST", "/me"],
   ]) {

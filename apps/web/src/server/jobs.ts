@@ -40,7 +40,6 @@ import {
   processingNotificationPeriodicJobs,
 } from "./processing-notifications";
 import { sourceJobDefinitions, sourcePeriodicJobs } from "./source-jobs";
-import { spikeJobDefinitions } from "./spike-jobs";
 import { getObjectStore } from "./storage";
 import { getVoiceAnalysisDefinition } from "./voice-processing";
 
@@ -146,7 +145,6 @@ export function jobDefinitions(settings: PltSettings): JobDefinition<any>[] {
     ...(media ? [media] : []),
     getPrivacyJobDefinition(),
     ...exportJobDefinitions(),
-    ...spikeJobDefinitions(),
   ];
 }
 

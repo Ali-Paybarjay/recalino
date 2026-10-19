@@ -178,6 +178,31 @@ describe("Auth response caching (FR-PLT-001)", () => {
   });
 });
 
+describe("redirect targets (FR-PLT-001, SEC-01)", () => {
+  const redirectFrom = (target: string) =>
+    call(publicRoute, async () => ({ redirect: target }), testDeps([]));
+
+  it.each(["//evil.example/x", "/\\evil.example", "/..//evil.example"])(
+    "keeps the relative target %s on the request's origin",
+    async (target) => {
+      const response = await redirectFrom(target);
+      expect(response.status).toBe(303);
+      expect(new URL(response.headers.get("location") ?? "").origin).toBe("http://localhost");
+    },
+  );
+
+  it("keeps a same-origin path and an absolute provider URL as given", async () => {
+    expect((await redirectFrom("/me?x=1#a")).headers.get("location")).toBe(
+      "http://localhost/me?x=1#a",
+    );
+    expect(
+      (await redirectFrom("https://auth.example/authorize?provider=google")).headers.get(
+        "location",
+      ),
+    ).toBe("https://auth.example/authorize?provider=google");
+  });
+});
+
 describe("system routes (FR-PLT-005)", () => {
   const systemRoute: RouteMeta = { id: "probe", path: "/api/probe", access: "system" };
   const SECRET = "cron-secret-for-tests-0123456789abcdef";

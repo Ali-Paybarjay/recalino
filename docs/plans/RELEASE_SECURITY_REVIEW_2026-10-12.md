@@ -14,6 +14,8 @@
 
 ### S1 — متوسط: دروازهٔ «فقط قطعهٔ ضبط داخل اپ» به کلید کلاینت وابسته است
 
+> **وضعیت: بسته (ثبت 2026-10-19، ممیزی 2026-10-18، SEC-10).** در `c3eee07` (2026-10-13) رفع شد. `beginStagedAudioUpload` در `packages/core/src/src/staged-audio.ts:60-63` حالا علاوه بر پیشوند کلید، lease باز ضبط جلسهٔ وصل‌شده را با `captureInProgress` لازم می‌داند و بدون آن `capture_required` برمی‌گرداند. آزمون: `packages/core/src/proc/staged-capture-audio.int.test.ts`. نکتهٔ «سقف هزینه و سهمیه پیش از وصل کردن D61» بخشی از این بستن نیست و جداگانه بررسی می‌شود.
+
 - **شاخه و فایل:** `feat/recording-capture`، `packages/core/src/src/staged-audio.ts:44-50` (و مسیر `apps/web/src/server/capture-staging.ts:66-71`).
 - **شرح:** `beginStagedAudioUpload` قطعهٔ ضبط را با `source.operation_key?.startsWith("recorded-source:")` تشخیص می‌دهد. `operation_key` همان کلید idempotency است که کلاینت هنگام ثبت منبع می‌فرستد (`apps/web/src/ui/recording/source-sync.ts:151`؛ ذخیره در `packages/core/src/src/service.ts:274`). هر کاربر واردشده می‌تواند فایل صوتی دلخواهی را با این پیشوند ثبت کند و به یک کلاس وصل کند. سپس بی‌هیچ رزرو تأییدشده‌ای نسخهٔ سرور بسازد و decode/verify را اجرا کند. این دروازهٔ `confirmed_processing_required` را که برای هر آپلود دیگر هست دور می‌زند.
 - **اثر امروز:** ذخیرهٔ موقت و CPU تأیید بدون سهمیه. سقف آن اندازهٔ قرارداد منبع است و پس از `uploadTtlSeconds` حذف می‌شود. کسر سهمیه سالم می‌ماند، چون Run بعدی طبق D59 رزرو می‌کند.
@@ -35,7 +37,7 @@
 ### S4 — اطلاع: D60 با ادغام روشن می‌شود و D61 هنوز کامل نیست
 
 - `feat/recording-capture`، `apps/web/src/server/capture-staging-jobs.ts:14-18`: `RECALINO_CAPTURE_EARLY_UPLOAD` و `RECALINO_CAPTURE_EARLY_TRANSCRIPTION` پیش‌فرض روشن‌اند و در production تعریف نشده‌اند. پس D60 با همان استقرار فعال می‌شود، نه در گام «روشن کردن» D66.
-- `setStagedVerifiedHook` در هیچ‌جا فراخوانی نمی‌شود، پس D61 عملاً کاری نمی‌کند. سمت کلاینت در `c512a24` اضافه شد، بی‌تغییر سمت سرور؛ S1 تا این commit باز است. پیش از انتشار، دوباره بازبینی شود.
+- `setStagedVerifiedHook` در هیچ‌جا فراخوانی نمی‌شود، پس D61 عملاً کاری نمی‌کند. سمت کلاینت در `c512a24` اضافه شد، بی‌تغییر سمت سرور؛ S1 تا این commit باز بود و در `c3eee07` بسته شد (بالا). پیش از انتشار، دوباره بازبینی شود.
 
 ## ۲. موارد بررسی‌شده بدون یافته
 

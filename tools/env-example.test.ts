@@ -17,7 +17,7 @@ function skipped(path: string): boolean {
     /\.test\.[cm]?[jt]sx?$/.test(path) ||
     path.endsWith(".d.ts") ||
     parts.some((part) =>
-      ["node_modules", ".next", "test", "tests", "fixture", "fixtures", "spikes"].includes(part),
+      ["node_modules", ".next", "test", "tests", "fixture", "fixtures"].includes(part),
     )
   );
 }
@@ -76,17 +76,11 @@ const exceptions: Record<string, string> = {
   DB_TYPES_URL: "tools/db-types.mjs: optional override of the local database used for db:types",
   // Local test switch: only honoured outside Vercel (apps/web/src/server/local-test-policy.ts).
   RECALINO_TEST_JOURNAL: "local end-to-end test switch; never set in a deployed environment",
-  // SPIKE-05 only. The route and its tokens are removed with the spike (audit batch 2), so they
-  // are deliberately not listed. SPIKE_* names are also covered by the prefix list below.
-  RECALINO_SPIKE: "SPIKE-05 route switch, removed with the spike",
-  VOICE_RELEASE_CHECK_TOKEN:
-    "short-lived SPIKE-05 voice-runtime credential, removed with the spike",
-  VOICE_RELEASE_CHECK_EXPIRES_AT: "expiry of VOICE_RELEASE_CHECK_TOKEN, removed with the spike",
   // Added to the code by the legal-text batch, which also decides whether to list it.
   RECALINO_ALLOW_DRAFT_LEGAL: "development switch for the draft legal texts (audit batch 1/3)",
 };
-/** Host-provided families: every Vercel system variable, and the SPIKE-05 measurement URLs. */
-const exceptionPrefixes = ["VERCEL", "SPIKE_"];
+/** Host-provided family: every Vercel system variable. */
+const exceptionPrefixes = ["VERCEL"];
 
 const isException = (name: string) =>
   name in exceptions || exceptionPrefixes.some((prefix) => name.startsWith(prefix));

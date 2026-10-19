@@ -1,7 +1,14 @@
 import "server-only";
 import { getLearningSession } from "@recalino/core/note";
 import { getCourse, listCourses, listUnits } from "@recalino/core/org";
-import { AppError, errors, type LearnerContext } from "@recalino/core/plt";
+import {
+  AppError,
+  createLogger,
+  errors,
+  type LearnerContext,
+  type Logger,
+  recordSecurityEvent,
+} from "@recalino/core/plt";
 import { notFound } from "next/navigation";
 import type { Learner } from "./auth/learner";
 import { getDatabase } from "./db";
@@ -26,10 +33,32 @@ export async function workspaceGroups(learner: Learner) {
   const units = (await Promise.all(courses.map((item) => listUnits(db, actor, item.id)))).flat();
   return { courses, units };
 }
-async function found<T>(read: () => Promise<T>): Promise<T> {
+const pageLog = createLogger();
+/**
+ * SEC-09: a page read whose resource is missing or belongs to another learner answers 404, like
+ * the API. A failure that carries a security signal (another learner's resource) is also recorded
+ * with the page route, as the API routes do; a failed recording never changes the 404.
+ */
+export async function pageRead<T>(
+  learner: Learner,
+  route: string,
+  read: () => Promise<T>,
+  log: Logger = pageLog,
+): Promise<T> {
   try {
     return await read();
   } catch (failure) {
+    if (failure instanceof AppError && failure.securitySignal) {
+      const event = { kind: failure.securitySignal, userId: learner.userId, route };
+      try {
+        await recordSecurityEvent(getDatabase(), { ...event, requestId: "page-render" }, log);
+      } catch (error) {
+        log("error", "security_event_failed", {
+          route,
+          error_name: error instanceof Error ? error.name : typeof error,
+        });
+      }
+    }
     if (failure instanceof AppError && failure.code === "not_found") notFound();
     throw failure;
   }
@@ -39,13 +68,13 @@ function validId(id: string) {
     throw errors.notFound();
 }
 export function workspaceSession(learner: Learner, id: string) {
-  return found(async () => {
+  return pageRead(learner, "/sessions/[id]", async () => {
     validId(id);
     return getLearningSession(getDatabase(), workspaceActor(learner), id);
   });
 }
 export function workspaceCourse(learner: Learner, id: string) {
-  return found(async () => {
+  return pageRead(learner, "/courses/[id]", async () => {
     validId(id);
     return getCourse(getDatabase(), workspaceActor(learner), id);
   });
