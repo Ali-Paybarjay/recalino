@@ -134,3 +134,61 @@ describe("PRD-SEC-04 database TLS (FR-PLT-009 configuration errors)", () => {
     expect(new pg.Client(connectionConfig(LOCAL)).ssl).toBe(false);
   });
 });
+
+// OPS-03 (audit 2026-10-18, D82, Q-SPEC-1): a Vercel preview never opens the pilot database. A
+// preview is built in fixture mode only (RECALINO_UI_PREVIEW=1); without it, any database
+// connection stops with an operator error before a pool exists. Production and local runs are
+// unaffected.
+describe("OPS-03 no pilot database in a Vercel preview (Q-SPEC-1, D82)", () => {
+  const REFUSED =
+    "Database access is not allowed in a Vercel preview deployment: pilot secrets belong to Production only, and a preview runs in fixture mode (RECALINO_UI_PREVIEW=1)";
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["no fixture flag", {}],
+    ["an empty flag", { RECALINO_UI_PREVIEW: "" }],
+    ["another flag value", { RECALINO_UI_PREVIEW: "true" }],
+  ])("refuses the pilot database in a preview with %s", (_, flag) => {
+    for (const url of [CLOUD, LOCAL]) {
+      let caught: unknown;
+      try {
+        connectionConfig(url, { VERCEL_ENV: "preview", ...flag });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).name).toBe("ConfigurationError");
+      expect((caught as Error).message).toBe(REFUSED);
+      expect((caught as Error).message).not.toContain("do-not-log-me");
+    }
+  });
+
+  it("createDatabase refuses it before a pool exists", () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("RECALINO_UI_PREVIEW", undefined);
+    const created = vi.spyOn(pg, "Pool");
+    expect(() => createDatabase(CLOUD)).toThrow(REFUSED);
+    expect(created).not.toHaveBeenCalled();
+    created.mockRestore();
+  });
+
+  it("leaves a fixture-mode preview, production and local development unchanged", () => {
+    const fixture = { VERCEL_ENV: "preview", RECALINO_UI_PREVIEW: "1" };
+    expect(connectionConfig(CLOUD, fixture).ssl).toEqual(VERIFIED);
+    // A local database stays refused on Vercel, as before.
+    expect(errorOf(() => connectionConfig(LOCAL, fixture))).toMatch(/without TLS is not allowed/);
+    for (const env of [
+      { VERCEL_ENV: "production" },
+      { VERCEL_ENV: "production", RECALINO_UI_PREVIEW: "1" },
+      {},
+      { VERCEL_ENV: "development" },
+    ]) {
+      expect(connectionConfig(CLOUD, env).ssl).toEqual(VERIFIED);
+    }
+    expect(connectionConfig(LOCAL, {}).ssl).toBe(false);
+    expect(connectionConfig(LOCAL, { VERCEL_ENV: "development" }).ssl).toBe(false);
+  });
+});

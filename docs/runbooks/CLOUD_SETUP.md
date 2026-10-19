@@ -113,6 +113,8 @@ pnpm db:url-check
 
 **build بدون اسرار:** `pnpm build` در 2026-10-19 بدون هیچ متغیر محیطی موفق بود؛ build سری نمی‌خواند و گارد متن حقوقی فقط Production را متوقف می‌کند. روی Vercel فقط مدل‌های صدا هم دانلود می‌شوند (بدون سری). پس Preview بدون اسرار build می‌شود؛ بدون `RECALINO_UI_PREVIEW=1` فقط صفحه‌هایش هنگام اجرا با خطای پیکربندی جواب می‌دهند.
 
+**گارد کد (D97، 2026-10-19):** اگر Preview بدون `RECALINO_UI_PREVIEW=1` اجرا شود، حتی وقتی هنوز `DATABASE_URL` پایلوت را دارد، اپ دیتابیس را باز نمی‌کند: `connectionConfig` در `packages/core/src/db/connection.ts` پیش از ساختن pool با `ConfigurationError` متوقف می‌شود و پیامش فقط نام `RECALINO_UI_PREVIEW` و قاعده را می‌گوید، نه مقدار. در لاگ Vercel همان `request_failed` با `error_name: ConfigurationError` دیده می‌شود. Production و اجرای محلی بی‌تغییرند. این گارد جای چک‌لیست زیر را نمی‌گیرد: کلیدهای Supabase Auth، توکن Blob و بقیهٔ اسرار را فقط برداشتن آن‌ها از Preview می‌بندد.
+
 گام‌ها را به همین ترتیب و در یک نشست انجام دهید. هیچ مقداری را در چت یا مخزن ننویسید.
 
 - [ ] **۱. فهرست فعلی (فقط نام‌ها):** Vercel ← پروژهٔ `recalino` ← **Settings ← Environment Variables**، فیلتر یک بار Preview و یک بار Development. یا در ترمینال: `vercel env ls preview` و `vercel env ls development`. نام‌ها را برای گام ۳ یادداشت کنید.
