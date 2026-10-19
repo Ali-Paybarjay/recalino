@@ -597,7 +597,7 @@ async function readThreads(db: Database, directory: AdminDirectory): Promise<Fee
  * OPS-02 (D96): the alert sentence of each health condition, the System health texts the owner
  * approved verbatim on 2026-10-19 (docs/design/UI_COPY_PENDING.md, batch 3 section).
  */
-const HEALTH_ALERT_TEXT: Record<HealthCondition, { en: string; fa: string }> = {
+export const HEALTH_ALERT_TEXT: Record<HealthCondition, { en: string; fa: string }> = {
   database_size: {
     en: "The database is near its size limit.",
     fa: "دیتابیس به سقف حجم نزدیک است.",
