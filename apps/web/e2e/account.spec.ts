@@ -109,6 +109,7 @@ test("Settings opens the Terms and the Privacy Notice", async ({ page }) => {
   const sheet = page.getByRole("dialog", { name: "Terms and Privacy Notice", exact: true });
   await expect(sheet.getByText("These terms are an agreement between you")).toBeVisible();
   await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
   await sheet.getByRole("button", { name: "Privacy Notice", exact: true }).click();
   await expect(sheet.getByRole("button", { name: "Privacy Notice", exact: true })).toHaveAttribute(
     "aria-pressed",

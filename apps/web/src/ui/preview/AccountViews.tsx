@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { LEGAL_TEXTS } from "../../legal/texts.generated";
 import { accountCopy } from "../account-copy";
 import { Checkbox } from "../components/Checkbox";
@@ -710,6 +710,7 @@ function LegalView() {
   const [saved, setSaved] = useState(false);
   const { announce } = usePreview();
   const legal = LEGAL_TEXTS[document];
+  const titleId = useId();
   return (
     <>
       <PageHeader title={accountCopy.legal.title} description={copy.legalHelp} back="profile" />
@@ -737,10 +738,15 @@ function LegalView() {
         </header>
         <section
           className={styles.readerBody}
-          aria-label={document === "terms" ? strings.signIn.terms : strings.signIn.privacy}
+          aria-labelledby={titleId}
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a named scroll region needs a tab stop for keyboard reading.
           tabIndex={0}
         >
+          {/* A11Y-04: the document's own headings start at level 3 (they sit in a sheet in the app),
+              so the page needs its level 2 here; it names the region and is not drawn. */}
+          <h2 id={titleId} className="rc-visually-hidden">
+            {document === "terms" ? strings.signIn.terms : strings.signIn.privacy}
+          </h2>
           <p className={styles.sampleNotice}>{copy.legalSample}</p>
           <LegalDocument
             id={document}

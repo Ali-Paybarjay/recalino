@@ -50,4 +50,5 @@ test("Today shows the number of due cards on the Review link", async ({ page }) 
   await page.goto("/today");
   await expect(page.getByRole("link", { name: /^Review\b.*\b\d+ due$/ }).first()).toBeVisible();
   await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
 });

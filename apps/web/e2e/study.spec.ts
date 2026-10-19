@@ -49,6 +49,7 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
   expect(preview.status()).toBe(200);
   expect((await preview.json()).notebook.current.number).toBe(1);
   await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
 
   await expect(page.getByRole("button", { name: "Save notes", exact: true })).toHaveCount(0);
   await expect(page.getByText(/^Note version 1 ·/)).toBeVisible();
@@ -196,6 +197,7 @@ test("review keeps keyboard focus on the answer and then on what comes next", as
   await expect(page.getByText("You’re ready for a break")).toBeVisible();
   await expect.poll(inMain).toBe(true);
   await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
 });
 
 // UX-03: deleting a card asks first, and "Keep it" leaves the card as it was.
