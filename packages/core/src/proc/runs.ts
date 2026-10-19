@@ -255,42 +255,207 @@ export function assertKnownSourceInputBound(
     throw error;
   }
 }
+/** The internal options of createProcessingRun (audit QUA-01: named for its helpers). */
+interface CreateProcessingRunOptions {
+  provider?: AiProvider;
+  /** Only enqueued here; the job runner registers the definition that runs it (PERF-01). */
+  job: Omit<JobDefinition<{ runId: string; userId: string }>, "run"> &
+    Partial<Pick<JobDefinition<{ runId: string; userId: string }>, "run">>;
+  now?: Date;
+  /** Internal retry path only; ordinary regeneration always requests new knowledge. */
+  reuseCompletedKnowledge?: boolean;
+  /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
+  expectedLatestClassRunId?: string;
+  /**
+   * D49: bounded memory points from PERS (dependency inversion). The app layer reads them in
+   * its own transaction before this one, so a memory failure degrades to no points instead of
+   * blocking the run; this callback only hands that frozen value over.
+   */
+  practiceCandidates?: (
+    tx: Tx,
+    input: { sessionId: string; now: Date },
+  ) => Promise<readonly PracticeCandidate[]>;
+  /**
+   * D49: a recovery run reuses the memory points snapshotted by the run it recovers;
+   * `reuseCompletedKnowledge` alone recovers the class's newest run.
+   */
+  inheritPracticeCandidatesFrom?: string;
+  /**
+   * D49: send the explicit simpler-explanation choice and memory points to generation.
+   * Off unless the caller opts in: the owner released D49 without it (2026-10-09) until a
+   * broader evaluation shows stable output. Off, the snapshot is version 1 as before D49.
+   */
+  teachingMemory?: boolean;
+}
+
+/**
+ * QUA-01: an operator retry is pinned to the class's newest run, and takes the class's automatic
+ * intent under lock unless an upload batch is open or the intent names another run.
+ */
+async function operatorRetryIntent(
+  tx: Tx,
+  ctx: LearnerContext,
+  session: { id: string },
+  options: Pick<CreateProcessingRunOptions, "expectedLatestClassRunId">,
+) {
+  if (options.expectedLatestClassRunId !== undefined) {
+    const expected = z.uuid().parse(options.expectedLatestClassRunId);
+    const newest = await tx
+      .selectFrom("proc.processing_run")
+      .select("id")
+      .where("user_id", "=", ctx.userId)
+      .where("session_id", "=", session.id)
+      .where("kind", "=", "class")
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .executeTakeFirst();
+    if (newest?.id !== expected) throw errors.conflict();
+  }
+  const operatorIntent = options.expectedLatestClassRunId
+    ? await tx
+        .selectFrom("proc.automatic_session")
+        .select(["run_id", "request_version", "batch_id"])
+        .where("user_id", "=", ctx.userId)
+        .where("session_id", "=", session.id)
+        .forUpdate()
+        .executeTakeFirst()
+    : undefined;
+  if (
+    operatorIntent &&
+    (operatorIntent.batch_id ||
+      (operatorIntent.run_id !== null &&
+        operatorIntent.run_id !== options.expectedLatestClassRunId))
+  )
+    throw errors.conflict();
+  return operatorIntent;
+}
+
+/** QUA-01: an automatic request still matches its intent, with no upload batch open. */
+async function assertAutomaticRequestCurrent(
+  tx: Tx,
+  ctx: LearnerContext,
+  session: { id: string },
+  input: z.infer<typeof createRunSchema>,
+) {
+  if (input.automaticRequestVersion !== undefined) {
+    const intent = await tx
+      .selectFrom("proc.automatic_session")
+      .select(["request_version", "batch_id"])
+      .where("session_id", "=", session.id)
+      .where("user_id", "=", ctx.userId)
+      .executeTakeFirst();
+    if (!intent || intent.batch_id || intent.request_version !== input.automaticRequestVersion)
+      throw errors.validationFailed({ sources: ["changed_after_estimate"] });
+  }
+}
+
+/** QUA-01: no other run of the class is live and none of its paid attempts is unresolved. */
+async function assertNoOpenClassWork(tx: Tx, ctx: LearnerContext, session: { id: string }) {
+  const active = await tx
+    .selectFrom("proc.processing_run")
+    .select("id")
+    .where("session_id", "=", session.id)
+    .where("state", "in", ["awaiting_upload", "queued", "processing"])
+    .executeTakeFirst();
+  if (active) throw errors.conflict();
+  const unresolved = await tx
+    .selectFrom("proc.provider_attempt")
+    .innerJoin("proc.processing_run", "proc.processing_run.id", "proc.provider_attempt.run_id")
+    .select("proc.provider_attempt.id")
+    .where("proc.provider_attempt.user_id", "=", ctx.userId)
+    .where("proc.processing_run.session_id", "=", session.id)
+    .where("proc.processing_run.kind", "=", "class")
+    .where("proc.provider_attempt.state", "in", ["started", "uncertain"])
+    .executeTakeFirst();
+  if (unresolved) throw errors.validationFailed({ retry: ["provider_outcome_unresolved"] });
+}
+
+/** QUA-01: the class's selection now, within the input bound and as estimated when pinned. */
+async function currentRunSnapshot(
+  tx: Tx,
+  ctx: LearnerContext,
+  session: { id: string },
+  input: z.infer<typeof createRunSchema>,
+  provider: AiProvider,
+) {
+  const snapshot = sourceSnapshotSchema.parse(
+    await selectProcessingSourceSnapshot(tx, ctx, session.id),
+  );
+  assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
+  if (
+    (input.expectedFingerprint !== undefined &&
+      input.expectedFingerprint !== snapshot.fingerprint) ||
+    (input.expectedSourcesVersion !== undefined &&
+      input.expectedSourcesVersion !== snapshot.sourcesVersion)
+  )
+    throw errors.validationFailed({ sources: ["changed_after_estimate"] });
+  return snapshot;
+}
+
+/** QUA-01: the run's settings, with the learner's explicit choices and live memory points. */
+async function frozenRunSettings(
+  tx: Tx,
+  ctx: LearnerContext,
+  input: {
+    session: { id: string };
+    account: NonNullable<Awaited<ReturnType<typeof getAccountState>>>;
+    provider: AiProvider;
+    options: CreateProcessingRunOptions;
+    now: Date;
+  },
+) {
+  const { session, account, provider, options, now } = input;
+  const preferences = await listTeachingPreferences(tx, ctx);
+  const explicit = (key: (typeof preferences)[number]["key"]) =>
+    preferences.some(
+      (preference) =>
+        preference.key === key && preference.origin === "explicit" && preference.value === true,
+    );
+  // D49: memory is frozen with the run. A recovery run keeps its original points, so later
+  // reviews neither redefine the request nor void reuse of an already paid response.
+  const teachingMemory = options.teachingMemory === true;
+  const supplied = !teachingMemory
+    ? []
+    : options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
+      ? await inheritedPracticeCandidates(
+          tx,
+          ctx,
+          session.id,
+          options.inheritPracticeCandidatesFrom,
+        )
+      : options.practiceCandidates
+        ? await options.practiceCandidates(tx, { sessionId: session.id, now })
+        : [];
+  // Under the account lock that class deletion also takes: a point from a class deleted after
+  // the memory read is dropped here, and one deleted later is removed by its privacy hook.
+  const live = new Set(
+    await filterLiveSessionIds(
+      tx,
+      ctx,
+      supplied.map((candidate) => candidate.sourceSessionId),
+    ),
+  );
+  const practiceCandidates = supplied.filter((candidate) => live.has(candidate.sourceSessionId));
+  const settings = runSettingsSchema.parse({
+    provider: provider.settings,
+    explanationLanguage:
+      account.profile.explanationLanguage === "english" ? "en" : account.profile.firstLanguage,
+    profileVersion: account.profile.version,
+    learnerContext: snapshotLearnerTeachingContext(account.profile, {
+      simplerExplanations: teachingMemory && explicit("simpler_explanations"),
+      practiceCandidates,
+    }),
+    teachingPreferences: { shorterExamples: explicit("shorter_examples") },
+  });
+  return settings;
+}
+
 /** AC-13: reservation, immutable inputs, run and job share a single commit. */
 export async function createProcessingRun(
   db: Database,
   ctx: LearnerContext,
   raw: unknown,
-  options: {
-    provider?: AiProvider;
-    /** Only enqueued here; the job runner registers the definition that runs it (PERF-01). */
-    job: Omit<JobDefinition<{ runId: string; userId: string }>, "run"> &
-      Partial<Pick<JobDefinition<{ runId: string; userId: string }>, "run">>;
-    now?: Date;
-    /** Internal retry path only; ordinary regeneration always requests new knowledge. */
-    reuseCompletedKnowledge?: boolean;
-    /** Internal operator retry pin. A lost acknowledgement still replays before this fence. */
-    expectedLatestClassRunId?: string;
-    /**
-     * D49: bounded memory points from PERS (dependency inversion). The app layer reads them in
-     * its own transaction before this one, so a memory failure degrades to no points instead of
-     * blocking the run; this callback only hands that frozen value over.
-     */
-    practiceCandidates?: (
-      tx: Tx,
-      input: { sessionId: string; now: Date },
-    ) => Promise<readonly PracticeCandidate[]>;
-    /**
-     * D49: a recovery run reuses the memory points snapshotted by the run it recovers;
-     * `reuseCompletedKnowledge` alone recovers the class's newest run.
-     */
-    inheritPracticeCandidatesFrom?: string;
-    /**
-     * D49: send the explicit simpler-explanation choice and memory points to generation.
-     * Off unless the caller opts in: the owner released D49 without it (2026-10-09) until a
-     * broader evaluation shows stable output. Off, the snapshot is version 1 as before D49.
-     */
-    teachingMemory?: boolean;
-  },
+  options: CreateProcessingRunOptions,
 ): Promise<ProcessingRun> {
   const input = createRunSchema.parse(raw);
   const provider = requireProvider(options.provider);
@@ -309,76 +474,13 @@ export async function createProcessingRun(
       if (previous.request_hash !== hash) throw errors.idempotencyMismatch();
       return runView(previous);
     }
-    if (options.expectedLatestClassRunId !== undefined) {
-      const expected = z.uuid().parse(options.expectedLatestClassRunId);
-      const newest = await tx
-        .selectFrom("proc.processing_run")
-        .select("id")
-        .where("user_id", "=", ctx.userId)
-        .where("session_id", "=", session.id)
-        .where("kind", "=", "class")
-        .orderBy("created_at", "desc")
-        .orderBy("id", "desc")
-        .executeTakeFirst();
-      if (newest?.id !== expected) throw errors.conflict();
-    }
-    const operatorIntent = options.expectedLatestClassRunId
-      ? await tx
-          .selectFrom("proc.automatic_session")
-          .select(["run_id", "request_version", "batch_id"])
-          .where("user_id", "=", ctx.userId)
-          .where("session_id", "=", session.id)
-          .forUpdate()
-          .executeTakeFirst()
-      : undefined;
-    if (
-      operatorIntent &&
-      (operatorIntent.batch_id ||
-        (operatorIntent.run_id !== null &&
-          operatorIntent.run_id !== options.expectedLatestClassRunId))
-    )
-      throw errors.conflict();
-    if (input.automaticRequestVersion !== undefined) {
-      const intent = await tx
-        .selectFrom("proc.automatic_session")
-        .select(["request_version", "batch_id"])
-        .where("session_id", "=", session.id)
-        .where("user_id", "=", ctx.userId)
-        .executeTakeFirst();
-      if (!intent || intent.batch_id || intent.request_version !== input.automaticRequestVersion)
-        throw errors.validationFailed({ sources: ["changed_after_estimate"] });
-    }
+    const operatorIntent = await operatorRetryIntent(tx, ctx, session, options);
+    await assertAutomaticRequestCurrent(tx, ctx, session, input);
     const account = await getAccountState(tx, ctx.userId);
     if (!account?.setupComplete || account.pending.terms)
       throw errors.validationFailed({ profile: ["acceptance_required"] });
-    const active = await tx
-      .selectFrom("proc.processing_run")
-      .select("id")
-      .where("session_id", "=", session.id)
-      .where("state", "in", ["awaiting_upload", "queued", "processing"])
-      .executeTakeFirst();
-    if (active) throw errors.conflict();
-    const unresolved = await tx
-      .selectFrom("proc.provider_attempt")
-      .innerJoin("proc.processing_run", "proc.processing_run.id", "proc.provider_attempt.run_id")
-      .select("proc.provider_attempt.id")
-      .where("proc.provider_attempt.user_id", "=", ctx.userId)
-      .where("proc.processing_run.session_id", "=", session.id)
-      .where("proc.processing_run.kind", "=", "class")
-      .where("proc.provider_attempt.state", "in", ["started", "uncertain"])
-      .executeTakeFirst();
-    if (unresolved) throw errors.validationFailed({ retry: ["provider_outcome_unresolved"] });
-    const snapshot = sourceSnapshotSchema.parse(
-      await selectProcessingSourceSnapshot(tx, ctx, session.id),
-    );
-    assertKnownSourceInputBound(snapshot, provider.settings.maxInputCharacters);
-    if (
-      (input.expectedFingerprint !== undefined &&
-        input.expectedFingerprint !== snapshot.fingerprint) ||
-      (input.expectedSourcesVersion !== undefined &&
-        input.expectedSourcesVersion !== snapshot.sourcesVersion)
-    )
-      throw errors.validationFailed({ sources: ["changed_after_estimate"] });
+    await assertNoOpenClassWork(tx, ctx, session);
+    const snapshot = await currentRunSnapshot(tx, ctx, session, input, provider);
     const id = randomUUID();
     // D59: under the account lock, reserve only material this class has not already paid for.
     const requested = await chargeableRunAmounts(tx, ctx, {
@@ -403,48 +505,7 @@ export async function createProcessingRun(
       ),
       now,
     );
-    const preferences = await listTeachingPreferences(tx, ctx);
-    const explicit = (key: (typeof preferences)[number]["key"]) =>
-      preferences.some(
-        (preference) =>
-          preference.key === key && preference.origin === "explicit" && preference.value === true,
-      );
-    // D49: memory is frozen with the run. A recovery run keeps its original points, so later
-    // reviews neither redefine the request nor void reuse of an already paid response.
-    const teachingMemory = options.teachingMemory === true;
-    const supplied = !teachingMemory
-      ? []
-      : options.reuseCompletedKnowledge || options.inheritPracticeCandidatesFrom !== undefined
-        ? await inheritedPracticeCandidates(
-            tx,
-            ctx,
-            session.id,
-            options.inheritPracticeCandidatesFrom,
-          )
-        : options.practiceCandidates
-          ? await options.practiceCandidates(tx, { sessionId: session.id, now })
-          : [];
-    // Under the account lock that class deletion also takes: a point from a class deleted after
-    // the memory read is dropped here, and one deleted later is removed by its privacy hook.
-    const live = new Set(
-      await filterLiveSessionIds(
-        tx,
-        ctx,
-        supplied.map((candidate) => candidate.sourceSessionId),
-      ),
-    );
-    const practiceCandidates = supplied.filter((candidate) => live.has(candidate.sourceSessionId));
-    const settings = runSettingsSchema.parse({
-      provider: provider.settings,
-      explanationLanguage:
-        account.profile.explanationLanguage === "english" ? "en" : account.profile.firstLanguage,
-      profileVersion: account.profile.version,
-      learnerContext: snapshotLearnerTeachingContext(account.profile, {
-        simplerExplanations: teachingMemory && explicit("simpler_explanations"),
-        practiceCandidates,
-      }),
-      teachingPreferences: { shorterExamples: explicit("shorter_examples") },
-    });
+    const settings = await frozenRunSettings(tx, ctx, { session, account, provider, options, now });
     const jobId = awaiting
       ? null
       : await enqueueJob(tx, options.job, {
