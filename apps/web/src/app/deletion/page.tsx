@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getPendingAccountDeletion } from "../../server/auth/learner";
 import { RecordingProvider } from "../../ui/recording/RecordingProvider";
 import { PrivacyView } from "../../ui/workspace/PrivacyView";
-import "../../ui/preview/preview.css";
+import "../../ui/workspace/workspace.css";
+import styles from "./deletion.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -20,10 +21,7 @@ export default async function DeletionRecoveryPage() {
       ? `mailto:${encodeURIComponent(email)}`
       : null;
   return (
-    <main
-      className="preview-root"
-      style={{ maxWidth: 760, margin: "0 auto", padding: "32px 20px" }}
-    >
+    <main className={`preview-root ${styles.page}`}>
       <h1>Account deletion</h1>
       <RecordingProvider userId={pending.userId}>
         <PrivacyView

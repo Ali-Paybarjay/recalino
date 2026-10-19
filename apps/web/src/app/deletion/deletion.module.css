@@ -1,0 +1,6 @@
+/* Was an inline style on the page (QUA-08); the same values. */
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}

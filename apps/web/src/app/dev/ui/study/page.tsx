@@ -15,7 +15,7 @@ import { NoteView } from "../../../../ui/workspace/NoteView";
 import { Panel } from "../../../../ui/workspace/primitives";
 import { ReviewView } from "../../../../ui/workspace/ReviewView";
 import { SessionNotesReader } from "../../../../ui/workspace/SessionNotesReader";
-import "../../../../ui/preview/preview.css";
+import "../../../../ui/workspace/workspace.css";
 
 /** Uses the real reading and review components with a synthetic, local-only lesson. */
 export default async function StudyReferencePage({

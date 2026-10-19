@@ -3,9 +3,9 @@ import { cardHtmlToText } from "@recalino/core/card-html";
 import type { ExportArtifact, ExportSettings } from "@recalino/core/plt";
 import { buildStudyAnkiText, studyExportFilename } from "@recalino/core/study-export";
 import { useEffect, useRef, useState } from "react";
-import styles from "../preview/LearningViews.module.css";
 import { requestKey, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import styles from "./ExportView.module.css";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 export interface ExportRevision {
   id: string;

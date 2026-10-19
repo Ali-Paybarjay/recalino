@@ -6,8 +6,9 @@ import { Sheet } from "../components/Sheet";
 import { UploadProgress } from "../components/UploadProgress";
 import { retryAllowanceCopy } from "../retry-allowance-copy";
 import { appendSelectedFiles, type SelectedFile } from "../workspace/file-selection";
+import { Actions, Button, Field, Panel, Status } from "../workspace/primitives";
 import { createSampleState, type SampleSource, usePreview } from "./PreviewContext";
-import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { LinkButton, PageHeader } from "./preview-links";
 import { PREPARED_SAMPLE_MATERIAL, sampleClassSummary } from "./sample-material";
 import {
   confirmedSources,

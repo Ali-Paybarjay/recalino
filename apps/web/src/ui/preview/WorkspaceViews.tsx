@@ -9,9 +9,10 @@ import { courseCopy } from "../course-copy";
 import { Cards, ChalkboardSimple, FileText, Microphone } from "../icons";
 import directoryStyles from "../workspace/ClassDirectory.module.css";
 import classStyles from "../workspace/ClassRows.module.css";
+import { Actions, Button, Field, Panel, Status } from "../workspace/primitives";
 import learningStyles from "./LearningViews.module.css";
 import { usePreview } from "./PreviewContext";
-import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { LinkButton, PageHeader } from "./preview-links";
 import { sampleClassSummary, sampleCustomTitle } from "./sample-material";
 
 const CREATE_NEW_COURSE = "";

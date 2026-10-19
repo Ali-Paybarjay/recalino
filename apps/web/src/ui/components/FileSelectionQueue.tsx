@@ -1,7 +1,7 @@
 "use client";
 
-import { Actions, Button, Panel, Status } from "../preview/primitives";
 import type { SelectedFile } from "../workspace/file-selection";
+import { Actions, Button, Panel, Status } from "../workspace/primitives";
 import styles from "./FileSelectionQueue.module.css";
 
 export function FileSelectionQueue({

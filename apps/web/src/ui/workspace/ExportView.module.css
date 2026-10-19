@@ -1,0 +1,69 @@
+/* The export screen's layout (QUA-08): the same rules it used from the /preview fixture module. */
+.layout {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.choices {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices legend {
+  margin-bottom: 12px;
+  font-weight: 650;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.check:has(input:checked) {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-primary-tint);
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  accent-color: var(--color-accent);
+}
+
+.muted {
+  color: var(--rc-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tabs button[aria-pressed="true"] {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-primary-tint);
+  color: var(--rc-primary-text);
+}
+
+.layout audio {
+  width: 100%;
+}

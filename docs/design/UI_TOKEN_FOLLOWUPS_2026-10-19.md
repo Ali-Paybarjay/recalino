@@ -127,3 +127,18 @@
 - `shellSectionFor` (`apps/web/src/app/(app)/nav.ts`) فقط مسیری را به بخش ناوبری نگاشت می‌کند که صفحه‌اش `LearnerShell` می‌کشد. خواندنگر جزوهٔ جلسه (`/sessions/<id>/notes`) `SessionNotesReader` را بدون پوسته می‌کشد و `loading.tsx` خودش را دارد، پس `null` برمی‌گرداند؛ `/sessions/<id>/notes/versions` همچنان `classes` است.
 - `/me/voice` بسته به `returnHref` گاهی `current="classes"` می‌کشد، ولی حالت بارگذاری `me` را نشان می‌دهد. اثرش فقط چند ده میلی‌ثانیه نشانگر نادرست ناوبری است و برای رفعش باید پوستهٔ صفحه به layout برود (تصمیم باز مالک محصول در گزارش UX-08).
 - نشان «Review due» هنگام بارگذاری نیست.
+
+## QUA-08: جداکردن کد production از «preview» (دستهٔ ۱۰)
+
+انجام‌شده، بدون تغییر هیچ قاعدهٔ CSS:
+
+- `ui/preview/preview.css` با `git mv` به `ui/workspace/workspace.css` رفت. ارجاع‌های بالای این یادداشت به `preview.css` همین فایل‌اند.
+- primitiveهای مشترک (`Panel`، `Actions`، `Button`، `Field`، `Status` و `LinkButton` با `href`) در `ui/workspace/primitives.tsx` هستند و `/preview` آن‌ها را از همان‌جا می‌خواند. ناوبری مخصوص fixture (`previewHref`، `PageHeader` و `LinkButton` با `to`) در `ui/preview/preview-links.tsx` ماند.
+- `ExportView` قاعده‌های `.layout`، `.choices`، `.check`، `.muted` و `.tabs` را از `ui/workspace/ExportView.module.css` می‌گیرد؛ این قاعده‌ها رونوشت عین همان قاعده‌های `preview/LearningViews.module.css` هستند.
+- inline style صفحهٔ `/deletion` به `app/deletion/deletion.module.css` با همان مقدارها رفت.
+
+باقی‌مانده برای دستهٔ بعد (پس از ادغام دستهٔ ۵ که هم‌زمان همین فایل‌ها را ویرایش می‌کند):
+
+- تغییر نام کلاس‌های `preview-*` به نام خنثی (مثلاً `ws-*`) در `workspace.css` و همهٔ مصرف‌کننده‌ها: ۲۴ فایل در `ui/workspace`، `ui/components/FileSelectionQueue.tsx`، `app/(app)`، `app/deletion`، `app/setup/voice`، `app/dev/ui` و فایل‌های `ui/preview`. پرکاربردترین‌ها `preview-muted`، `preview-stack`، `preview-root`، `preview-list-item`، `preview-list`، `preview-index-link`، `preview-back` و `preview-actions` هستند. نام کلاس در این دسته عمداً عوض نشد.
+- inline styleهای باقی‌مانده در `ui/workspace/ReviewView.tsx` (`whiteSpace: "pre-wrap"` و `maxWidth: "100%", height: "auto"`) و `ui/workspace/CardMedia.tsx` (`maxWidth: "100%", height: "auto"` و `minHeight: 44, display: "flex", alignItems: "center", cursor: "pointer"`) به CSS Module بروند.
+- رونوشت قاعده‌ها در `ExportView.module.css` و `preview/LearningViews.module.css` یکی شود: fixtureهای `/preview` می‌توانند همان module فضای کار را import کنند.
