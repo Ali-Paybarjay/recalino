@@ -57,7 +57,7 @@ describe("messages while recording", () => {
       const html = render();
       expect(html).not.toContain('role="alert"');
       expect(html).not.toContain(failedSync.error);
-      expect(html).not.toContain("Retry adding session sources");
+      expect(html).not.toContain("Retry adding session material");
       expect(html).not.toContain("Adding recorded parts to your session");
     },
   );
@@ -68,7 +68,7 @@ describe("messages while recording", () => {
     mocks.sync = failedSync;
     const html = render();
     expect(html).toContain("The microphone stopped. Tap Resume to try again.");
-    expect(html).not.toContain("Retry adding session sources");
+    expect(html).not.toContain("Retry adding session material");
   });
 
   it("shows the upload failure and its Retry as soon as Stop was pressed", () => {
@@ -78,7 +78,7 @@ describe("messages while recording", () => {
       const html = render();
       expect(html).toContain(failedSync.error);
       expect(html).toContain('role="alert"');
-      expect(html).toContain("Retry adding session sources");
+      expect(html).toContain("Retry adding session material");
     }
   });
 });

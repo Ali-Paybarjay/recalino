@@ -92,10 +92,10 @@ export async function registerRecordingRow(
   const request = async <T>(path: string, body: unknown, key: string) => {
     check();
     if (!deps.online())
-      throw new TypeError("An internet connection is needed to add session sources.");
+      throw new TypeError("An internet connection is needed to add session material.");
     const result = await retryUploadRequest(
       (signal) => deps.request<T>(path, "POST", body, key, { signal }),
-      "Adding session sources was interrupted. The recording remains saved on this device.",
+      "Adding session material was interrupted. The recording remains saved on this device.",
       { attempts: 1, signal: deps.signal, timeoutMs: 30000 },
     );
     check();
@@ -370,6 +370,8 @@ export class RecordingSourceSync {
     } catch (error) {
       if (this.cancelled(generation)) return;
       if (error instanceof RecordingNotReady) {
+        // The one message shown as-is (UX-04): RecordingNotReady is thrown only inside this file, with
+        // sentences written for learners, so it never carries a raw exception text.
         this.update({ phase: "waiting", error: error.message });
         return;
       }
@@ -392,8 +394,8 @@ export class RecordingSourceSync {
       this.update({
         phase: this.blockedFailure ? "failed" : "waiting",
         error: this.permanentFailure
-          ? `${message} Audio is still saved on this device. Resolve this issue and retry adding session sources.`
-          : "Session source registration was interrupted. Audio is saved on this device; it will retry when connected.",
+          ? `${message} Audio is still saved on this device. Resolve this issue and retry adding session material.`
+          : "Adding session material was interrupted. Audio is saved on this device; it will retry when connected.",
       });
       if (!this.blockedFailure && this.deps.online()) {
         this.retryTimer = setTimeout(
@@ -407,7 +409,7 @@ export class RecordingSourceSync {
     }
   }
   private failureMessage() {
-    return `${this.failedRows.values().next().value?.message ?? "Some recorded parts could not be added."} Audio is saved on this device. Resolve this issue and retry adding session sources.`;
+    return `${this.failedRows.values().next().value?.message ?? "Some recorded parts could not be added."} Audio is saved on this device. Resolve this issue and retry adding session material.`;
   }
   dispose() {
     this.started = false;

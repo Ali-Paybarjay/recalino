@@ -347,7 +347,7 @@ export function VoiceConfirmation({
                 Select a session recording in Session material and process it before checking
                 session voices.
                 <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                  Open session sources
+                  Open session material
                 </LinkButton>
               </Status>
             ) : view.analysisBlockedReason === "original_audio_required" ? (
@@ -356,7 +356,7 @@ export function VoiceConfirmation({
                 needs the original session recording, even if you have saved a personal voice
                 sample.
                 <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                  Open session sources
+                  Open session material
                 </LinkButton>
               </Status>
             ) : view.analysisBlockedReason === "explanation_language_missing" ? (
@@ -582,12 +582,12 @@ function Analysis({
   return (
     <section className={styles.candidate} aria-label={`Source ${index + 1} voice confirmation`}>
       <div className={styles.heading}>
-        <h3 dir="auto">{analysis.source?.name ?? `Session source ${index + 1}`}</h3>
+        <h3 dir="auto">{analysis.source?.name ?? `Session material ${index + 1}`}</h3>
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
       {analysis.source ? (
         <p className="preview-muted">
-          Session source {index + 1}
+          Session material {index + 1}
           {analysis.source.durationMs ? ` · ${duration(analysis.source.durationMs)}` : ""}
         </p>
       ) : null}

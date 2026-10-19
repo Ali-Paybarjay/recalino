@@ -366,7 +366,7 @@ export function RecordingView({
               : syncState.error}
           </p>
           {syncState.phase === "failed" ? (
-            <Button onClick={() => sourceSync.retry()}>Retry adding session sources</Button>
+            <Button onClick={() => sourceSync.retry()}>Retry adding session material</Button>
           ) : null}
         </Panel>
       ) : null}
@@ -431,11 +431,11 @@ export function RecordingView({
                         }
                         onClick={() => void operation(row.id, () => attach(row))}
                       >
-                        Add to session sources
+                        Add to session material
                       </Button>
                     ) : null}
                     {row.sessionId ? (
-                      <Link href={`/sessions/${row.sessionId}/sources`}>Open session sources</Link>
+                      <Link href={`/sessions/${row.sessionId}/sources`}>Open session material</Link>
                     ) : null}
                   </Actions>
                   {player?.id === row.id ? (
@@ -599,7 +599,7 @@ function PhotoGallery({
               </Button>
             </>
           ) : (
-            <p>Added to session sources</p>
+            <p>Added to session material</p>
           )}
           {canRemove(photo) ? (
             <Button secondary disabled={disabled} onClick={() => setRemoving(photo)}>

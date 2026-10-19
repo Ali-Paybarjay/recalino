@@ -158,7 +158,7 @@ function RecordingIndicator() {
       ) : null}
       {syncState.phase === "failed" ? (
         <Button secondary onClick={() => sourceSync.retry()}>
-          Retry adding session sources
+          Retry adding session material
         </Button>
       ) : null}
       {["recording", "recovering"].includes(state.phase) ? (

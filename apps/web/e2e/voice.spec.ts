@@ -474,9 +474,9 @@ test("class voices explain missing transcripts before a check can be submitted",
     page.getByRole("button", { name: "Check session voices", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByText(/Select a session recording in Sources and process it/),
+    page.getByText(/Select a session recording in Session material and process it/),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open session sources" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open session material" })).toHaveAttribute(
     "href",
     "/sessions/10000000-0000-4000-8000-000000000001/sources",
   );
@@ -664,7 +664,7 @@ test("a saved personal sample does not hide the missing class recording or permi
       /Checking session voices needs the original session recording, even if you have saved a personal voice sample/,
     ),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open session sources" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Open session material" })).toHaveAttribute(
     "href",
     "/sessions/10000000-0000-4000-8000-000000000001/sources",
   );
@@ -1023,7 +1023,7 @@ test("VOICE-AC-08: a missing original is re-attached on this device, plays at on
   await page.goto("/dev/ui/voice?view=class");
   const region = page.getByRole("region", { name: "Source 1 voice confirmation" });
   await expect(region.getByRole("heading", { name: "Tuesday class.wav" })).toBeVisible();
-  await expect(region.getByText("Session source 1 · 0:40")).toBeVisible();
+  await expect(region.getByText("Session material 1 · 0:40")).toBeVisible();
   await expect(region.getByText("The original audio isn't on this device.")).toBeVisible();
   await expect(region.getByText(/Listen to the excerpts/)).toHaveCount(0);
   await expect(region.getByRole("button", { name: /^Play/ })).toHaveCount(0);

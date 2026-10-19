@@ -94,7 +94,7 @@ for (const [name, viewport] of [
     await page.waitForTimeout(4000);
     // Only a real capture failure may speak; Next.js's own route announcer is outside <main>.
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-    await expect(page.getByText("Retry adding session sources")).toHaveCount(0);
+    await expect(page.getByText("Retry adding session material")).toHaveCount(0);
     await expect(navigation).toHaveCount(0);
     await expect(stop).toBeInViewport();
 
