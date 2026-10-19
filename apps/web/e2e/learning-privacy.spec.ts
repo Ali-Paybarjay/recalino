@@ -68,7 +68,8 @@ test("account deletion waits for capture to stop and removes only its device cop
   await page.goto("/today");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
-  // The recording page has no navigation (UX-02): go back to Today, where the recording continues.
+  // The recording page has no navigation while capturing (UX-02): go back to Today, where the
+  // recording continues.
   await page.goBack();
   await page.getByRole("link", { name: "Me", exact: true }).first().click();
   await page.getByRole("link", { name: /Your data/ }).click();

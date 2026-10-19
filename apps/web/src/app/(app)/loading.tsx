@@ -1,22 +1,28 @@
 "use client";
 import { usePathname } from "next/navigation";
+import { useCaptureQuiet } from "../../ui/recording/RecordingProvider";
+import { RECORDING_FOCUS_MODE, recordingFocusActive } from "../../ui/recording/recording-focus";
 import { recoveryCopy } from "../../ui/recovery-copy";
 import { AppShell } from "../../ui/shell/AppShell";
 import RootLoading from "../loading";
 import styles from "../recovery.module.css";
-import { NAV_HREFS, shellSectionFor } from "./nav";
+import { isRecordingPage, NAV_HREFS, shellSectionFor } from "./nav";
 
 /**
  * Shown while a signed-in page loads (UX-08). The layout above keeps its providers; this draws the
  * same navigation the page will draw, so the bottom navigation and the sidebar stay where they
- * are and only the content area waits. A page that draws no shell (the recording screen) gets
- * the plain loading screen it had before.
+ * are and only the content area waits. A page that draws no shell gets the plain loading screen
+ * it had before. The recording pages load without navigation while capture is in progress, as
+ * the page itself will draw them (UX-02): a capture that has just started does not flash it.
  */
 export default function Loading() {
-  const section = shellSectionFor(usePathname());
+  const pathname = usePathname();
+  const capturing = useCaptureQuiet();
+  const section = shellSectionFor(pathname);
   if (!section) return <RootLoading />;
+  const focus = isRecordingPage(pathname) && recordingFocusActive(RECORDING_FOCUS_MODE, capturing);
   return (
-    <AppShell current={section} hrefs={NAV_HREFS} newClassHref="/sessions/new">
+    <AppShell current={section} hrefs={NAV_HREFS} newClassHref="/sessions/new" focus={focus}>
       <p role="status" className={styles.description}>
         {recoveryCopy.loading}
       </p>

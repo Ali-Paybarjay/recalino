@@ -8,19 +8,22 @@ export const NAV_HREFS: Record<NavId, string> = {
 };
 
 /**
- * Pages of the (app) segment that draw no app shell: only the recording screen uses the focus
- * shell, the profile edit page and the recordings list have none (UX-02), and the session notes
- * reader renders `SessionNotesReader` on its own (with its own `loading.tsx`). Only the reader
- * itself is listed: `/sessions/<id>/notes/versions` uses `LearnerShell` for "classes". The
- * processing screen is not listed: it re-exports the estimate page, which renders
- * `SessionMaterialPage` inside `LearnerShell` for "classes".
+ * Pages of the (app) segment that draw no app shell: the profile edit page has none, and the
+ * session notes reader renders `SessionNotesReader` on its own (with its own `loading.tsx`). Only
+ * the reader itself is listed: `/sessions/<id>/notes/versions` uses `LearnerShell` for "classes".
+ * The processing screen is not listed: it re-exports the estimate page, which renders
+ * `SessionMaterialPage` inside `LearnerShell` for "classes". The recording pages are not listed:
+ * they draw the shell with its navigation before Start and after Stop and hide it only while
+ * capture is in progress (UX-02, `RecordingShell`).
  */
-const WITHOUT_SHELL = [
-  /^\/recordings(?:\/|$)/,
-  /^\/sessions\/[^/]+\/record(?:\/|$)/,
-  /^\/sessions\/[^/]+\/notes\/?$/,
-  /^\/me\/edit(?:\/|$)/,
-];
+const WITHOUT_SHELL = [/^\/sessions\/[^/]+\/notes\/?$/, /^\/me\/edit(?:\/|$)/];
+
+/** The recording pages: `/recordings` and `/sessions/<id>/record` (UX-02). */
+const RECORDING_PAGE = /^\/(?:recordings|sessions\/[^/]+\/record)(?:\/|$)/;
+
+export function isRecordingPage(pathname: string): boolean {
+  return RECORDING_PAGE.test(pathname);
+}
 
 /**
  * The navigation item a signed-in path belongs to, as its page passes to `LearnerShell`, or null
@@ -38,6 +41,7 @@ export function shellSectionFor(pathname: string): NavId | null {
     case "me":
     case "help":
       return "me";
+    case "recordings":
     case "sessions":
     case "courses":
     case "cards":

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV_HREFS, shellSectionFor } from "./nav";
+import { isRecordingPage, NAV_HREFS, shellSectionFor } from "./nav";
 
 // UX-08: while a page loads, the shell shows the navigation item the page itself marks.
 describe("shell section of a signed-in path", () => {
@@ -22,13 +22,14 @@ describe("shell section of a signed-in path", () => {
     ["/courses/0f0a/materials", "classes"],
     ["/cards/0f0a", "classes"],
     ["/notes/0f0a", "classes"],
+    // UX-02: the recording pages draw the navigation before Start and after Stop.
+    ["/recordings", "classes"],
+    ["/sessions/0f0a/record", "classes"],
   ] as const)("%s belongs to %s", (path, section) => {
     expect(shellSectionFor(path)).toBe(section);
   });
 
   it.each([
-    "/recordings",
-    "/sessions/0f0a/record",
     "/sessions/0f0a/notes",
     "/sessions/0f0a/notes/",
     "/me/edit/level-goal",
@@ -36,6 +37,17 @@ describe("shell section of a signed-in path", () => {
     "/",
   ])("%s draws no shell", (path) => {
     expect(shellSectionFor(path)).toBeNull();
+  });
+
+  it.each([
+    ["/recordings", true],
+    ["/sessions/0f0a/record", true],
+    ["/sessions/0f0a", false],
+    ["/sessions/0f0a/recording-notes", false],
+    ["/sessions/0f0a/notes", false],
+    ["/today", false],
+  ] as const)("%s is a recording page: %s", (path, expected) => {
+    expect(isRecordingPage(path)).toBe(expected);
   });
 
   it("links every section to the page the shell links to", () => {
