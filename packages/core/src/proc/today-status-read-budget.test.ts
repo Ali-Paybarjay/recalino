@@ -141,34 +141,62 @@ describe("Today status read budget (PERF-04)", () => {
     expect(none.statements).toHaveLength(0);
   });
 
-  it("finds the finishing stage of processing runs in at most three queries", async () => {
+  it("finds the finishing stage of processing runs in at most two queries", async () => {
     const [audio, text, waiting, other] = Array.from({ length: 4 }, () => randomUUID());
     const { db, statements } = statementLogDatabase((query) => {
+      // The database answers with the owned processing runs whose lesson step is written.
       if (from(query, "proc.processing_run"))
         return [
-          { id: audio, state: "processing", input_snapshot: { sources: [{ kind: "audio" }] } },
-          { id: text, state: "processing", input_snapshot: { sources: [{ kind: "text" }] } },
-          { id: waiting, state: "processing", input_snapshot: { sources: [] } },
-          { id: other, state: "ready", input_snapshot: {} },
+          { id: audio, input_snapshot: { sources: [{ kind: "audio" }] } },
+          { id: text, input_snapshot: { sources: [{ kind: "text" }] } },
         ];
-      if (from(query, "proc.run_step")) return [{ run_id: audio }, { run_id: text }];
       if (from(query, "voc.profile"))
         return [{ user_id: ctx.userId, version: 1, enabled: false, model_version: null }];
       return [];
     });
     const stages = await runFinishingStages(db, ctx, [audio, text, waiting, other] as string[]);
-    expect(statements).toHaveLength(3);
-    expect(statements[0]?.sql).toContain('"user_id" = $');
-    expect(statements[1]?.parameters).toContain("knowledge");
-    expect(statements[2]?.sql).toContain('from "voc"."profile"');
+    expect(statements).toHaveLength(2);
+    // One read of the runs and their lesson step, as runFinishingStage's two reads decide it.
+    const [runs, voice] = statements;
+    expect(runs?.sql).toContain('"user_id" = $');
+    expect(runs?.sql).toContain('"state" = $');
+    expect(runs?.sql).toContain("exists (select");
+    expect(runs?.sql).toContain('from "proc"."run_step"');
+    expect(runs?.parameters).toEqual(
+      expect.arrayContaining([audio, text, waiting, other, ctx.userId, "processing", "knowledge"]),
+    );
+    expect(voice?.sql).toContain('from "voc"."profile"');
     expect(stages.get(audio as string)).toBe("publishing");
     expect(stages.get(text as string)).toBe("publishing");
     expect(stages.get(waiting as string)).toBeNull();
     expect(stages.get(other as string)).toBeNull();
-    const idle = statementLogDatabase((query) =>
-      from(query, "proc.processing_run") ? [{ id: other, state: "ready", input_snapshot: {} }] : [],
+    // With no lesson written, the voice enrollment is not read.
+    const idle = statementLogDatabase();
+    expect((await runFinishingStages(idle.db, ctx, [other as string])).get(other as string)).toBe(
+      null,
     );
-    await runFinishingStages(idle.db, ctx, [other as string]);
     expect(idle.statements).toHaveLength(1);
+    const none = statementLogDatabase();
+    await runFinishingStages(none.db, ctx, []);
+    expect(none.statements).toHaveLength(0);
+  });
+
+  it("checks voices for an audio lesson only while voice enrollment is on", async () => {
+    const [audio, text] = Array.from({ length: 2 }, () => randomUUID());
+    const { db } = statementLogDatabase((query) => {
+      if (from(query, "proc.processing_run"))
+        return [
+          { id: audio, input_snapshot: { sources: [{ kind: "audio" }] } },
+          { id: text, input_snapshot: { sources: [{ kind: "text" }] } },
+        ];
+      if (from(query, "voc.profile"))
+        return [
+          { user_id: ctx.userId, version: 1, enabled: true, model_version: "m", embeddings: [] },
+        ];
+      return [];
+    });
+    const stages = await runFinishingStages(db, ctx, [audio, text] as string[]);
+    expect(stages.get(audio as string)).toBe("checking_voices");
+    expect(stages.get(text as string)).toBe("publishing");
   });
 });

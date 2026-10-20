@@ -222,8 +222,8 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
     expected,
   );
   // Executed statements: sessions, intents, notes (three reads), runs, review requests and the
-  // finishing stage (three reads), however many classes there are.
-  expect(counted.queries()).toBeLessThanOrEqual(10);
+  // finishing stage (its written runs, then the voice enrollment), however many classes there are.
+  expect(counted.queries()).toBeLessThanOrEqual(9);
   // Neither read writes. The class's own read locks its class row for one statement at a time
   // (assertSessionOwner, outside any transaction); the bulk read takes no row lock at all.
   expect([...single.kinds()].every((kind) => ["select", "select ForUpdate"].includes(kind))).toBe(
