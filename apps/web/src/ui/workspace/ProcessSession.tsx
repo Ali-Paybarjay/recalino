@@ -8,7 +8,7 @@ import { Icon } from "../components/Icon";
 import { Sheet } from "../components/Sheet";
 import { FilePdf, FileText, Image as ImageIcon, ShieldCheck, Waveform } from "../icons";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
-import { requestKey, userMessage, workspaceRequest } from "./api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import type { ProcessingEstimate } from "./ProcessingView";
 import styles from "./ProcessSession.module.css";
@@ -238,6 +238,9 @@ export function ProcessSession({
       setOpen(false);
       onProcessed?.(status);
     } catch (failure) {
+      // A refusal is an answer, so the next press is a new request; a lost connection keeps the
+      // key, so the same press sent again has no second effect.
+      if (failure instanceof WorkspaceRequestError) key.current = null;
       // The refusal is read after the sheet, where the next step is (D105: a recording still
       // open, an upload group still open, or material that changed after the summary).
       setOpen(false);
