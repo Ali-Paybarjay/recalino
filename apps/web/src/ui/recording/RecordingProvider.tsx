@@ -9,6 +9,9 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { IconButton } from "../components/Button";
+import { X } from "../icons";
+import { strings } from "../strings";
 import { userMessage, workspaceRequest } from "../workspace/api";
 import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
@@ -16,7 +19,7 @@ import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
 import { captureIsActive, captureIsQuiet } from "./capture-phase";
 import { CaptureUploader } from "./capture-uploader";
-import { RecordingController } from "./controller";
+import { type CaptureState, RecordingController } from "./controller";
 import { MissingAudioNotice } from "./MissingAudioNotice";
 import styles from "./Recording.module.css";
 import { RecordingSourceSync } from "./source-sync";
@@ -105,10 +108,21 @@ export function RecordingProvider({
     </RecordingContext.Provider>
   );
 }
+/**
+ * After Stop the bar only reports what happened, so the learner may close it; it comes back with
+ * the next recording or a new outcome. During capture it holds the controls and stays.
+ */
+export function indicatorDismissKey(state: Pick<CaptureState, "phase" | "recording">) {
+  return ["saved", "failed"].includes(state.phase)
+    ? `${state.recording?.id ?? "none"}:${state.phase}`
+    : null;
+}
 function RecordingIndicator() {
   const { controller, state, store, userId, sourceSync, syncState } = useRecording();
   const path = usePathname();
   const [online, setOnline] = useState(true);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const dismissKey = indicatorDismissKey(state);
   useEffect(() => {
     const changed = () => setOnline(navigator.onLine);
     changed();
@@ -122,7 +136,8 @@ function RecordingIndicator() {
   if (
     path === "/recordings" ||
     path.endsWith("/record") ||
-    !["recording", "recovering", "paused", "saving", "saved", "failed"].includes(state.phase)
+    !["recording", "recovering", "paused", "saving", "saved", "failed"].includes(state.phase) ||
+    (dismissKey !== null && dismissKey === dismissed)
   )
     return null;
   async function exportAudio() {
@@ -137,7 +152,10 @@ function RecordingIndicator() {
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
   return (
-    <aside className={styles.bar} aria-label="Active recording">
+    <aside
+      className={dismissKey ? `${styles.bar} ${styles.dismissible}` : styles.bar}
+      aria-label="Active recording"
+    >
       <p role={state.error ? "alert" : "status"}>
         {state.error
           ? state.error
@@ -187,6 +205,14 @@ function RecordingIndicator() {
         <Button secondary onClick={() => void exportAudio()}>
           {(state.recording?.segment ?? 1) > 1 ? "Export latest audio part" : "Export audio"}
         </Button>
+      ) : null}
+      {dismissKey ? (
+        <IconButton
+          icon={X}
+          label={strings.common.close}
+          className={styles.barClose}
+          onClick={() => setDismissed(dismissKey)}
+        />
       ) : null}
     </aside>
   );

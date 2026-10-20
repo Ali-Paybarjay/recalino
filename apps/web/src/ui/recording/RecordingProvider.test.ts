@@ -1,7 +1,12 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { recordingHref, useCaptureQuiet, useWaitingRecordings } from "./RecordingProvider";
+import {
+  indicatorDismissKey,
+  recordingHref,
+  useCaptureQuiet,
+  useWaitingRecordings,
+} from "./RecordingProvider";
 import type { Recording } from "./store";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/today", useRouter: () => ({}) }));
@@ -39,5 +44,21 @@ describe("recordingHref", () => {
     expect(recordingHref({ sessionId } as Recording)).toBe(`/sessions/${sessionId}/record`);
     expect(recordingHref({ sessionId: null } as Recording)).toBe("/recordings");
     expect(recordingHref(null)).toBe("/recordings");
+  });
+});
+
+// Owner request 2026-10-20: the bar that reports a finished recording can be closed; during
+// capture it holds Pause, Resume and Stop and stays.
+describe("indicatorDismissKey", () => {
+  const recording = { id: "30000000-0000-4000-8000-000000000001" } as Recording;
+  it("lets the learner close the bar after Stop or a failure, for that outcome only", () => {
+    expect(indicatorDismissKey({ phase: "saved", recording })).toBe(`${recording.id}:saved`);
+    expect(indicatorDismissKey({ phase: "failed", recording })).toBe(`${recording.id}:failed`);
+    expect(indicatorDismissKey({ phase: "saved", recording: null })).toBe("none:saved");
+  });
+
+  it("never offers closing while a recording runs or saves", () => {
+    for (const phase of ["starting", "recording", "recovering", "paused", "saving"] as const)
+      expect(indicatorDismissKey({ phase, recording })).toBeNull();
   });
 });
