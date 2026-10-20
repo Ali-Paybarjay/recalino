@@ -46,7 +46,12 @@ describe("which parts the recording page lists", () => {
   const yesterday = part({ sessionId: other, createdAt: "2026-10-19T09:00:00.000Z" });
   const earlier = part({ sessionId: session });
   const first = part({ sessionId: null });
-  const second = part({ sessionId: null, captureId: first.id, segment: 2 });
+  const second = part({
+    sessionId: null,
+    captureId: first.id,
+    creationKey: first.creationKey,
+    segment: 2,
+  });
 
   it("lists a Today recording without a session yet by its capture, never other days", () => {
     const scope = partScope([second, yesterday, first], first);
@@ -59,6 +64,24 @@ describe("which parts the recording page lists", () => {
     const scope = partScope([...attached.reverse(), yesterday, earlier], attached[0] ?? null);
     expect(scope.sessionId).toBe(session);
     expect(scope.rows.map((row) => row.id)).toEqual([earlier.id, first.id, second.id]);
+  });
+
+  it("keeps the earlier recordings of a Continue recording whose session is not known yet", () => {
+    // Continue recording follows with the same class key, so both join the same session.
+    const continued = part({ sessionId: null, creationKey: first.creationKey });
+    const unrelated = part({ sessionId: null });
+    const scope = partScope([continued, unrelated, yesterday, second, first], continued);
+    expect(scope.rows.map((row) => row.id)).toEqual([first.id, second.id, continued.id]);
+    // The new recording joined the session first; the earlier one is attached by the sync later.
+    const attached = { ...continued, sessionId: session };
+    expect(
+      partScope([attached, unrelated, second, first, earlier], attached).rows.map((row) => row.id),
+    ).toEqual([earlier.id, first.id, second.id, attached.id]);
+    // A row with the same key in another session is not this recording's.
+    const elsewhere = { ...first, sessionId: other };
+    expect(partScope([elsewhere, attached], attached).rows.map((row) => row.id)).toEqual([
+      attached.id,
+    ]);
   });
 
   it("keeps a session page to its own session, even with another session's recording", () => {

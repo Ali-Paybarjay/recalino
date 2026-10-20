@@ -4,7 +4,8 @@ import type { LocalPhoto, Recording } from "./store";
 /**
  * Which recorded parts the recording page lists (D107). With a current recording (during capture
  * and after Stop): only that recording and the earlier recordings of its session; a capture
- * started on Today has no session until /api/classes answers, so its own capture comes first. On a
+ * started on Today has no session until /api/classes answers, so its own capture and the
+ * recordings it continues (the same class key) come first. On a
  * session's recording page: only that session. Without either (/recordings): every recording on
  * this device, as the place to recover and export them (D29).
  */
@@ -37,12 +38,19 @@ export function partScope(
   if (current && (sessionId === undefined || current.sessionId === sessionId)) {
     const capture = captureOf(current);
     const session = current.sessionId;
+    const key = current.creationKey;
     return {
       kind: "recording",
       sessionId: session,
       rows: rows
         .filter(
-          (row) => captureOf(row) === capture || (session !== null && row.sessionId === session),
+          (row) =>
+            captureOf(row) === capture ||
+            (session !== null && row.sessionId === session) ||
+            // A Continue recording keeps the class key, so its earlier recordings join the same
+            // session; until it is known (or the sync attaches them), the key ties them together.
+            (row.creationKey === key &&
+              (session === null || row.sessionId === null || row.sessionId === session)),
         )
         .sort(partOrder),
     };
