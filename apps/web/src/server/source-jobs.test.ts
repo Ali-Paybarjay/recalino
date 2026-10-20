@@ -4,7 +4,12 @@ import { sourceAudioVerificationJob } from "@recalino/core/src";
 import { afterAll, beforeEach, expect, it, vi } from "vitest";
 import { sourceAudioJobDefinition } from "./source-jobs";
 
-const mocks = vi.hoisted(() => ({ activate: vi.fn(), fail: vi.fn(), factory: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  activate: vi.fn(),
+  fail: vi.fn(),
+  factory: vi.fn(),
+  notify: vi.fn(),
+}));
 vi.mock("@recalino/core/proc", async (original) => ({
   ...(await original<object>()),
   activateProcessingRun: mocks.activate,
@@ -13,6 +18,10 @@ vi.mock("@recalino/core/proc", async (original) => ({
 vi.mock("@recalino/core/src", async (original) => ({
   ...(await original<object>()),
   sourceAudioVerificationJob: mocks.factory,
+}));
+vi.mock("./automatic-learning-notifications", () => ({
+  notifyAutomaticLearningForRun: mocks.notify,
+  notifyAutomaticLearningForUpload: vi.fn(),
 }));
 vi.mock("./processing-jobs", () => ({
   getProcessingDefinition: () => ({ kind: "proc.synthetic" }),
@@ -55,6 +64,14 @@ it.each(["audio", "quota"])(
     expect(mocks.fail).toHaveBeenCalledExactlyOnceWith(db, ctx, runId, "new_confirmation_required");
   },
 );
+it("closes a run whose material changed after confirmation instead of leaving it waiting", async () => {
+  mocks.activate.mockRejectedValue(
+    errors.validationFailed({ sources: ["changed_after_confirmation"] }),
+  );
+  await expect(callbacks().verified(db, ctx, runId)).resolves.toBeUndefined();
+  expect(mocks.fail).toHaveBeenCalledExactlyOnceWith(db, ctx, runId, "new_confirmation_required");
+  expect(mocks.notify).toHaveBeenCalledExactlyOnceWith(db, ctx, runId);
+});
 it("preserves unexpected activation failures and explicitly rejects invalid audio", async () => {
   const failure = errors.validationFailed({ audio: ["unexpected_integrity_failure"] });
   const callback = callbacks();

@@ -220,6 +220,19 @@ describe("readAutomaticLearningStatuses (PERF-04)", () => {
     expect(await readAutomaticLearningStatuses(db, ctx, ids, noProvider)).toEqual(expected);
   });
 
+  it("D109: a waiting run closed because material changed reads as waiting for the next press", async () => {
+    const closed = { ...run(10, "needs_input"), lastError: "new_confirmation_required" };
+    m.classes.set(id(10), {
+      live: true,
+      intent: { ...intent(10, "waiting_upload", closed.id), requestVersion: 3 },
+      runs: [closed],
+    });
+    expect(await readAutomaticLearning(db, ctx, id(10), noProvider)).toMatchObject({
+      state: "waiting_sources",
+      processRequest: "new_material",
+      snapshot: null,
+    });
+  });
   it("makes each bulk read once, whatever the number of classes", async () => {
     await readAutomaticLearningStatuses(db, ctx, ids, noProvider);
     const counts = (names: string[]) =>

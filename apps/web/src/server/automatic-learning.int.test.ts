@@ -452,6 +452,40 @@ it("D105: new material added during a run waits for the learner's next press, wi
   expect(f.provider.calls).toBe(2);
 });
 
+// D109 (owner report 2026-10-20): a run confirmed before more material arrived can never start;
+// it waited for its upload forever and every reload sent the same original again.
+it("D109: a run still waiting for an original when material is added is closed uncharged; the next press confirms all material", async () => {
+  const f = await fixture();
+  await f.addText("First material");
+  const first = await f.process();
+  // As if the confirmed run were still waiting for a recorded original from this device.
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "awaiting_upload" })
+    .where("id", "=", first.run?.id ?? "")
+    .execute();
+  await f.addText("Late material");
+  await requestAutomaticLearning(db, f.ctx, f.session.id);
+  const next = await f.process();
+  expect(next.state).toBe("processing");
+  expect(next.run?.id).not.toBe(first.run?.id);
+  expect(
+    (await listRuns(db, f.ctx, f.session.id)).find((run) => run.id === first.run?.id),
+  ).toMatchObject({
+    state: "needs_input",
+    lastError: "new_confirmation_required",
+  });
+  const hold = await db
+    .selectFrom("quota.reservation")
+    .select("closed_at")
+    .where("id", "=", first.run?.reservationId ?? "")
+    .executeTakeFirstOrThrow();
+  expect(hold.closed_at).not.toBeNull();
+  await f.work();
+  expect((await getNotebook(db, f.ctx, f.session.id))?.current.model.learningItems).toHaveLength(2);
+  expect(f.provider.calls).toBe(1);
+});
+
 it("read-only visits do not enable old classes and insufficient allowance never calls the provider", async () => {
   const f = await fixture(false);
   expect((await readAutomaticLearning(db, f.ctx, f.session.id)).state).toBe("idle");

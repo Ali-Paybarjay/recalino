@@ -20,6 +20,7 @@ import {
   captureTranscriptionActive,
   chargeableRunAmounts,
   createProcessingRun,
+  failAwaitingUploadRun,
   findProcessingRunByOperationKey,
   getAutomaticLearningSession,
   getProcessingRunSnapshot,
@@ -327,7 +328,15 @@ async function view(
   const intent = await reads.intent(sessionId);
   const notesReady = await reads.notesReady(sessionId);
   const run = progress ? progress.run : intent?.runId ? await reads.run(intent.runId) : null;
-  const state = progress?.state ?? intent?.state ?? "idle";
+  const stored = progress?.state ?? intent?.state ?? "idle";
+  // D109: a waiting run closed because its material changed waits for no upload; the class
+  // waits for the learner's next press instead.
+  const state =
+    stored === "waiting_upload" &&
+    run?.state === "needs_input" &&
+    run.lastError === "new_confirmation_required"
+      ? "waiting_sources"
+      : stored;
   const storedCode = progress ? progress.lastError : (intent?.lastError ?? null);
   // Older workers discarded the cost guard's reason. Do not guess that a failed run
   // exhausted learner units, and never rewrite its historical record during a GET.
@@ -486,7 +495,23 @@ export async function automaticLearningSync(
   }
   const selection = processingSelectionFingerprint(snapshot);
   const runs = await listRuns(db, ctx, sessionId);
-  const active = runs.find((run) => activeStates.has(run.state));
+  let active = runs.find((run) => activeStates.has(run.state));
+  // Material added after a run was confirmed (D105) leaves that run waiting for a selection that
+  // no longer exists: it can never start. Release its hold, uncharged, and confirm what is there now.
+  if (
+    active?.state === "awaiting_upload" &&
+    active.selectionFingerprint &&
+    active.selectionFingerprint !== selection
+  ) {
+    const closed = await failAwaitingUploadRun(
+      db,
+      ctx,
+      active.id,
+      "new_confirmation_required",
+      deps.now(),
+    );
+    active = activeStates.has(closed.state) ? closed : undefined;
+  }
   if (active)
     return progress(
       active.state === "awaiting_upload" ? "waiting_upload" : "processing",
