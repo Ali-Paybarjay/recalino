@@ -253,7 +253,9 @@ function classReads(db: Database, ctx: LearnerContext): StatusReads {
 /**
  * PERF-04: the status reads of many classes in a number of queries that does not grow with them,
  * each answering as that class's own read would. `live` holds the classes getSession accepts.
- * Neither path writes. A class's own read locks its class row for one statement at a time
+ * That is at most eight statements, a class finishing its lesson included. A run awaiting its
+ * upload (its snapshot), a class blocked on its allowance and a legacy rejected-upload class
+ * still add that class's own reads. Neither path writes. A class's own read locks its class row for one statement at a time
  * (getAutomaticLearningSession, outside any transaction); these reads take no row lock.
  */
 async function bulkStatusReads(

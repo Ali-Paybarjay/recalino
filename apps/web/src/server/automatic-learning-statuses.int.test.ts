@@ -221,9 +221,10 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
   expect(await readAutomaticLearningStatuses(counted.db, ctx, ids, () => provider)).toEqual(
     expected,
   );
-  // Executed statements: sessions, intents, notes (three reads), runs, review requests and the
-  // finishing stage (its written runs, then the voice enrollment), however many classes there are.
-  expect(counted.queries()).toBeLessThanOrEqual(9);
+  // Executed statements: sessions, intents, notes (notebooks, then their versions), runs, review
+  // requests and the finishing stage (its written runs, then the voice enrollment), however many
+  // classes there are.
+  expect(counted.queries()).toBeLessThanOrEqual(8);
   // Neither read writes. The class's own read locks its class row for one statement at a time
   // (assertSessionOwner, outside any transaction); the bulk read takes no row lock at all.
   expect([...single.kinds()].every((kind) => ["select", "select ForUpdate"].includes(kind))).toBe(
@@ -232,7 +233,7 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
   expect([...counted.kinds()]).toEqual(["select"]);
 });
 
-it("PERF-04 reads ten classes' statuses in at most eight queries, as many as for three", async () => {
+it("PERF-04 reads ten classes' statuses, one finishing its lesson, in at most eight queries", async () => {
   const base = await learner();
   const { ctx } = base;
   const classes = [base.session.id];
@@ -241,8 +242,18 @@ it("PERF-04 reads ten classes' statuses in at most eight queries, as many as for
     if (index % 2) await requestAutomaticLearning(db, ctx, session.id, { changed: false });
     classes.push(session.id);
   }
-  const ready = await classWithText(ctx, "Synthetic queued lesson");
-  classes[9] = ready.session.id;
+  // The worst common case: a class whose lesson is written while its run is still processing.
+  const finishing = await classWithText(ctx, "Synthetic lesson being finished");
+  await db
+    .updateTable("proc.processing_run")
+    .set({ state: "processing" })
+    .where("id", "=", finishing.run.id)
+    .execute();
+  await db
+    .insertInto("proc.run_step")
+    .values({ run_id: finishing.run.id, step: "knowledge", output: "{}", completed_at: new Date() })
+    .execute();
+  classes[9] = finishing.session.id;
   const counts: number[] = [];
   for (const ids of [classes.slice(0, 3).concat(classes[9] as string), classes]) {
     const counted = countingDatabase(db);
@@ -252,6 +263,8 @@ it("PERF-04 reads ten classes' statuses in at most eight queries, as many as for
         ids.map((id) => readAutomaticLearning(db, ctx, id, () => provider).catch(() => null)),
       ),
     );
+    expect(statuses[ids.indexOf(finishing.session.id)]?.stage).toBeTruthy();
+    expect(statuses[0]?.notesReady).toBe(true);
     counts.push(counted.queries());
   }
   expect(counts[0]).toBeLessThanOrEqual(8);

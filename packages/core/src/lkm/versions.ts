@@ -74,6 +74,29 @@ export async function liveKnowledgeVersionIds(
   return new Set(rows.filter((row) => live.has(row.session_id)).map((row) => row.id));
 }
 
+/**
+ * PERF-04: the class of each of these versions that is owned and not tombstoned, in one read,
+ * keyed by version. It does not read whether that class is live: only a caller that has just
+ * found the classes it compares against live may use it in place of
+ * listAvailableKnowledgeReferences.
+ */
+export async function ownedKnowledgeVersionSessions(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Map();
+  const rows = await db
+    .selectFrom("lkm.knowledge_version")
+    .select(["id", "session_id"])
+    .where("user_id", "=", ctx.userId)
+    .where("id", "in", unique)
+    .where("tombstoned_at", "is", null)
+    .execute();
+  return new Map(rows.map((row) => [row.id, row.session_id]));
+}
+
 /** Latest validated model per live owned session, for learning overviews before publication. */
 export async function listLatestAvailableKnowledgeVersions(
   db: Database | Tx,

@@ -9,6 +9,7 @@ import {
   listAvailableKnowledgeReferences,
   listVersions,
   liveKnowledgeVersionIds,
+  ownedKnowledgeVersionSessions,
 } from "../lkm";
 import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
@@ -114,8 +115,9 @@ export async function listPublishedNotebooks(
   return published;
 }
 /**
- * PERF-04: hasPublishedNotebook for many classes the caller found live, in a constant number of
- * reads: the classes whose current revision is a live publication of that class.
+ * PERF-04: hasPublishedNotebook for many classes the caller has just found live (getSessionsByIds),
+ * in at most two reads: the classes whose current revision is an owned, not tombstoned version
+ * of that same class. Their liveness is not read again.
  */
 export async function publishedNotebookSessionIds(
   db: Database | Tx,
@@ -124,26 +126,23 @@ export async function publishedNotebookSessionIds(
 ): Promise<Set<string>> {
   const ids = [...new Set(sessionIds)];
   if (!ids.length) return new Set();
-  const [rows, available] = await Promise.all([
-    db
-      .selectFrom("note.notebook as notebook")
-      .innerJoin("note.revision as revision", "revision.id", "notebook.current_revision_id")
-      .select(["notebook.session_id", "revision.knowledge_version_id"])
-      .where("notebook.session_id", "in", ids)
-      .where("notebook.user_id", "=", ctx.userId)
-      .where("revision.user_id", "=", ctx.userId)
-      .whereRef("revision.notebook_id", "=", "notebook.id")
-      .execute(),
-    listAvailableKnowledgeReferences(db, ctx, ids),
-  ]);
+  const rows = await db
+    .selectFrom("note.notebook as notebook")
+    .innerJoin("note.revision as revision", "revision.id", "notebook.current_revision_id")
+    .select(["notebook.session_id", "revision.knowledge_version_id"])
+    .where("notebook.session_id", "in", ids)
+    .where("notebook.user_id", "=", ctx.userId)
+    .where("revision.user_id", "=", ctx.userId)
+    .whereRef("revision.notebook_id", "=", "notebook.id")
+    .execute();
+  const versions = await ownedKnowledgeVersionSessions(
+    db,
+    ctx,
+    rows.map((row) => row.knowledge_version_id),
+  );
   return new Set(
     rows
-      .filter((row) =>
-        available.some(
-          (reference) =>
-            reference.id === row.knowledge_version_id && reference.sessionId === row.session_id,
-        ),
-      )
+      .filter((row) => versions.get(row.knowledge_version_id) === row.session_id)
       .map((row) => row.session_id),
   );
 }
