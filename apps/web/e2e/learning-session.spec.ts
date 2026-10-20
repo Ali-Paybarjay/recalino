@@ -162,11 +162,15 @@ test("each course lists generated topics and dated sessions in the appropriate r
   await page.locator("summary").filter({ hasText: "More session tools" }).click();
   await page.getByRole("link", { name: "Course materials", exact: true }).click();
   await expect(page).toHaveURL(`/courses/${fixture.courseId}/materials`);
-  expect(
-    await page
-      .locator("section[id^='class-']")
-      .evaluateAll((sections) => sections.map((section) => section.id)),
-  ).toEqual([`class-${early.id}`, `class-${fixture.sessionId}`, `class-${late.id}`]);
+  // UX-08: the address changes while the loading state still holds the content area, so the
+  // order is read once the page has drawn its sessions.
+  await expect
+    .poll(() =>
+      page
+        .locator("section[id^='class-']")
+        .evaluateAll((sections) => sections.map((section) => section.id)),
+    )
+    .toEqual([`class-${early.id}`, `class-${fixture.sessionId}`, `class-${late.id}`]);
   await expect(page.locator(`#title-${fixture.sessionId}`)).toHaveText(PUBLISHED_TITLE);
   await expect(page.locator(`#class-${fixture.sessionId}`)).toContainText(TOPIC);
   await expect(page.locator(`#class-${otherClass.id}`)).toHaveCount(0);

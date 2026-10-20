@@ -72,9 +72,13 @@ test("account deletion waits for capture to stop and removes only its device cop
   const { userId } = await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/today");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
+  // The recording bar on Today shows Pause as soon as capture starts, before the recording page
+  // opens; going back before that would leave the app.
+  await expect(page).toHaveURL(/\/recordings$/);
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
   // The recording page has no navigation (UX-02): go back to Today, where the recording continues.
   await page.goBack();
+  await expect(page).toHaveURL(/\/today$/);
   await page.getByRole("link", { name: "Me", exact: true }).first().click();
   await page.getByRole("link", { name: /Your data/ }).click();
   await expect(page.getByRole("button", { name: "Review account deletion" })).toBeDisabled();
@@ -174,8 +178,11 @@ for (const outcome of ["pending", "unknown"] as const) {
     const { userId } = await signInAsNewLearner(page, { setup: "complete" });
     await page.goto("/today");
     await page.getByRole("button", { name: "Record a session", exact: true }).click();
+    // As above: wait for the recording page before going back to Today.
+    await expect(page).toHaveURL(/\/recordings$/);
     await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
     await page.goBack();
+    await expect(page).toHaveURL(/\/today$/);
     await page.getByRole("link", { name: "Me", exact: true }).first().click();
     await page.getByRole("link", { name: /Your data/ }).click();
     await page.getByRole("button", { name: "Stop and save before deletion", exact: true }).click();
