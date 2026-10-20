@@ -100,6 +100,15 @@ export class CaptureUploader {
     this.abort?.abort();
     this.stopLease();
   }
+  /**
+   * On unmount (D104): keeps watching until the capture's Stop has settled and the lease is
+   * closed, then disposes. Disposing first would leave the lease to lapse on its own.
+   */
+  async disposeAfter(stopped: Promise<unknown>): Promise<void> {
+    await stopped.catch(() => {});
+    while (this.running && !this.disposed) await this.running;
+    this.dispose();
+  }
   /** Settles staging after Stop, then lets automatic learning start (closes the lease). */
   idle(): Promise<void> {
     return this.running ?? Promise.resolve();

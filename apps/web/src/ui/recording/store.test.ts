@@ -165,3 +165,52 @@ it.each([
     expect(await store.get(row.userId, row.id)).toEqual(row);
   },
 );
+
+it("D104 seals a part whose page is gone, keeping its audio, and removes only an empty one", async () => {
+  const store = new IndexedRecordingStore();
+  const userId = randomUUID();
+  const recording = { ...manifest(userId), status: "recording" as const };
+  const paused = { ...manifest(userId), status: "paused" as const };
+  const waiting = { ...manifest(userId), status: "interrupted" as const, awaitingFinalData: true };
+  const empty = { ...manifest(userId), status: "recording" as const };
+  const photographed = { ...manifest(userId), status: "paused" as const };
+  const sealed = manifest(userId);
+  for (const row of [recording, paused, waiting, empty, photographed, sealed]) await store.put(row);
+  for (const row of [recording, paused, waiting, sealed])
+    await store.append(row, new Blob(["Synthetic audio"]));
+  await store.savePhoto({
+    id: randomUUID(),
+    userId,
+    recordingId: photographed.id,
+    offsetMs: 0,
+    captureState: "paused",
+    blob: new Blob(["synthetic"], { type: "image/png" }),
+    createdAt: new Date().toISOString(),
+    sourceAssetId: null,
+  });
+  const unchanged = await store.get(userId, sealed.id);
+
+  for (const row of [recording, paused]) {
+    const next = await store.seal(userId, row.id);
+    expect(next).toMatchObject({ status: "interrupted", awaitingFinalData: false, chunks: 1 });
+    expect(await (await store.blob(userId, row.id)).text()).toBe("Synthetic audio");
+  }
+  expect(await store.seal(userId, waiting.id)).toMatchObject({
+    status: "interrupted",
+    awaitingFinalData: false,
+  });
+  // A part that never saved audio is removed, unless a board photo belongs to it.
+  expect(await store.seal(userId, empty.id)).toBeNull();
+  expect(await store.get(userId, empty.id)).toBeNull();
+  expect(await store.seal(userId, photographed.id)).toMatchObject({
+    status: "interrupted",
+    bytes: 0,
+  });
+  expect(await store.photos(userId, photographed.id)).toHaveLength(1);
+  // A sealed part and a missing one stay as they are.
+  expect(await store.seal(userId, sealed.id)).toEqual(unchanged);
+  expect(await store.get(userId, sealed.id)).toEqual(unchanged);
+  expect(await store.seal(userId, randomUUID())).toBeNull();
+  await store.removeAccount(userId);
+  await expect(store.seal(userId, recording.id)).rejects.toThrow();
+});

@@ -905,6 +905,37 @@
 - **برچسب تصویر کارت (UX-05، تکمیل D101):** «Class image N» در `mediaAssetLabel` (`apps/web/src/ui/workspace/card-labels.ts`)، مثل «Class image 2 · Ready»، همان‌طور که در رابط بود تأیید شد.
 - **برگهٔ تأیید حذف حساب (UX-05):** جملهٔ برگه در `apps/web/src/ui/workspace/PrivacyView.tsx` «All your sessions and account data will disappear immediately. This cannot be undone.» است. فقط بند «and server cleanup will begin» حذف شد و واژهٔ تازه‌ای اضافه نشد.
 
+## D103 — عکس هنگام ضبط از دوربین یا گالری، چند عکس با هم (2026-10-20)
+
+مبنا: درخواست صریح مالک محصول در 2026-10-20 پس از آزمون production: «کلید عکس گرفتن هنگام رکورد باید بتواند حتی عکس از گالری هم اضافه کند نه فقط از دوربین» و «انتخاب چندتایی از گالری هم اضافه کن».
+
+- ورودی عکس صفحهٔ ضبط (`apps/web/src/ui/recording/RecordingView.tsx`) دیگر ویژگی `capture="environment"` ندارد؛ پس گوشی هم دوربین و هم گالری را پیشنهاد می‌کند. ویژگی `multiple` اضافه شد و همهٔ عکس‌های انتخاب‌شده با هم ذخیره می‌شوند.
+- همهٔ عکس‌های یک انتخاب به همان لحظهٔ پارت (همان `offsetMs` و `captureState`) وصل می‌شوند که دکمه در آن زده شد؛ عکس دوباره (retake) همچنان عکس قبلی را جایگزین نمی‌کند (PRD-CORE-05).
+- متن، رنگ، token، migration یا وابستگی تازه‌ای اضافه نشد. PRD-REC-02 دست نخورد: انتخاب عکس پیام یا وقفه‌ای حین ضبط نمی‌سازد. آزمون: `apps/web/src/ui/recording/RecordingView.test.ts` («the photo picker»).
+
+## D104 — Pause پایدار و بازگشت ضبط ناتمام پس از reload (2026-10-20)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-20 پس از گزارش production («با Pause ضبط و جلسه تمام شد و دیگر نتوانستم ادامه دهم») و تشخیص علت در کد. Pause تنها فاز فعالی بود که قفل روشن ماندن صفحه (screen wake lock) را رها می‌کرد. قطع میکروفون حین Pause پیام نادرست «Reconnecting automatically…» می‌داد. ضبط فقط در حافظهٔ صفحه زنده بود؛ پس پس از reload یا discard صفحه نه Resume ممکن بود نه Stop، و پارت‌های بی‌`completedAt` یادگیری خودکار آن جلسه را برای همیشه نگه می‌داشتند. تصمیم مالک: Pause هیچ‌چیز را تمام نمی‌کند؛ قفل صفحه حین Pause نگه داشته می‌شود؛ ضبط ناتمام پس از reload یا discard به حالت **paused** برمی‌گردد و هرگز خودکار ادامه نمی‌یابد؛ بدون سقف زمانی تا Stop، حتی اگر صفحه حین ضبط (نه Pause) از دست رفته باشد؛ Resume همان ضبط و همان جلسه را ادامه می‌دهد.
+
+- **قفل صفحه حین Pause:** در `apps/web/src/ui/recording/capture-lifecycle.ts` فازهای recording، recovering و paused قفل را می‌خواهند (رفتار 0ebfe28 برگشت). آزمون: `capture-lifecycle.test.ts`.
+- **پیام صادق قطع حین Pause:** در `apps/web/src/ui/recording/controller.ts` اگر میکروفون (mute/ended) یا recorder (stop/error) حین Pause قطع شود، همان متن موجود «The microphone was interrupted while paused. Resume to reconnect.» نمایش داده می‌شود. stop خودِ recorder که پارت را مهر می‌کند دیگر آن را با «restarting automatically» عوض نمی‌کند. Pause در حال recovering هم (وقتی recorder زنده‌ای برای Pause نیست، یعنی capture نیست یا interrupted است) همین متن را جای «Reconnecting…» یا «Retrying the microphone…» می‌گذارد، چون تا Resume هیچ‌چیز دوباره وصل نمی‌شود؛ Pause عادی recorder سالم پیامی نمی‌گذارد. پارت مثل قبل با صدایش مهر و ثبت می‌شود (D60). رخدادهای `pause`، `resume` (با `reconnect`) و `restored` (با `parts`، `state` و `awayMs`) به `CaptureHealthEvent` و schema در `capture-diagnostics.ts` اضافه شدند. pause و restored فوراً فرستاده می‌شوند. سه فیلد `reconnect`، `parts` و `away_ms` به `ALLOWED_FIELDS` در `packages/core/src/plt/log.ts` اضافه شدند تا خط `capture_health` سرور آن‌ها را بنویسد و `dropped_fields` نگیرد. فقط boolean و عدد صحیح‌اند؛ هیچ متن، صدا یا شناسه‌ای در آن‌ها نیست (PRD-PRIV-06).
+- **بازگشت پس از reload:** `RecordingController.restore()` یک بار هنگام شروع `RecordingProvider` اجرا می‌شود.
+  - تازه‌ترین ضبط ناتمام این حساب (`autoRegister` و بدون `completedAt`، گروه‌شده با `captureId`) انتخاب می‌شود.
+  - پارت باز (recording یا paused، یا منتظر دادهٔ پایانی) با گام تازهٔ `IndexedRecordingStore.seal()` در یک transaction به interrupted تبدیل می‌شود و chunkهایش می‌مانند. پارتی که نه صدا دارد نه عکس تخته حذف می‌شود، مثل پارت خالی امروز. اگر Stop روی بخشی از پارت‌ها ثبت شده بود (صفحه وسط ذخیرهٔ پایانی رفته)، بقیه همان `completedAt` را می‌گیرند و چیزی باز نمی‌شود.
+  - ضبط با phase paused و همان پیام قطع حین Pause برمی‌گردد. Resume (recover → `openCapture`) پارت بعدی را با همان `captureId`، `sessionId` و `creationKey` می‌سازد. Stop روی همهٔ پارت‌ها `completedAt` می‌گذارد، پس source-sync و یادگیری خودکار باز می‌شوند. uploader (که paused را فعال می‌داند) lease را دوباره باز و تمدید می‌کند و پارت‌های مهرشده را stage می‌کند.
+  - ضبط بی‌جلسه (از Today) کلاسش را هنگام بازگشت با همان `creationKey` می‌سازد، مثل `RecordLauncher` (idempotent).
+  - فقط یک tab بازمی‌گرداند: هر tab تا وقتی ضبطی دارد (از start یا restore تا پایان Stop) قفل Web Locks `recalino-capture:<userId>` را نگه می‌دارد. restore فقط با `ifAvailable` آن را می‌گیرد؛ پس ضبطی که در tab دیگری زنده است هرگز مهر نمی‌شود. مرورگر بدون Web Locks بدون این قفل ادامه می‌دهد.
+- **راه بازگشت:** «Open recording» در نوار `RecordingIndicator` برای ضبطِ دارای جلسه به `/sessions/<id>/record` می‌رود (`recordingHref` در `RecordingProvider.tsx`) و برای ضبط بی‌جلسه مثل قبل به `/recordings`. صفحهٔ ضبط جلسه و `/recordings` حالت paused را با Resume و «Stop and save» نشان می‌دهند. `publish` حالا تغییر آخرین پارت را وقتی پارت بازی نیست (paused یا recovering) هم به state می‌برد، و `attachSession` مدت ذخیره‌شدهٔ پارت مهرشده را نگه می‌دارد.
+- **بستن lease هنگام unmount:** در cleanup `RecordingProvider` اول controller متوقف می‌شود. `CaptureUploader.disposeAfter()` صبر می‌کند تا پایان Stop دیده و lease بسته شود، بعد dispose می‌کند؛ دیگر lease به‌جای بسته‌شدن ۱۵ دقیقه بعد خودش منقضی نمی‌شود.
+
+تغییر نکرد: متن رابط تازه‌ای اضافه نشد (فقط متن‌های موجود). migration، route یا schema تازهٔ سرور، وابستگی، token یا رنگ تازه‌ای هم نیامد؛ تنها تغییر سمت سرور همان سه فیلد allow-list لاگ است. D60 و D61 مثل قبل‌اند. PRD-REC-02 دست نخورد: حین ضبط فقط خرابی واقعی ضبط پیام دارد (PRD-REC-03). محدودیت PRD بخش ۹٫۳ برقرار است: صدای زمانی که صفحه از دست رفته بود ضبط نشده است و به‌عنوان gap هم ثبت نمی‌شود. متن «Still paused» در copy.md هنوز ساخته نشده است. پایان خودکار ضبط بدون Stop (گزینهٔ ۴ تشخیص) ساخته نشد. «Process this session» (D105)، فهرست مواد جلسه (D106) و فهرست پارت‌های صفحهٔ ضبط (D107) جدا هستند.
+
+آزمون‌ها:
+- `apps/web/src/ui/recording/controller.test.ts`: «an interruption during a pause (D104)» و «restoring an unfinished capture after the page is lost (D104)». این‌ها Pause در حال recovering (پیش و پس از یک تلاش ناموفق، بی‌درخواست میکروفون تا Resume و ادامهٔ همان ضبط با پارت بعدی)، ضبط بی‌جلسه، ضبط جلسه‌دار گم‌شده حین ضبط، حذف پارت خالی، Stop پس از بازگشت تا `automaticRecordingClasses`، نادیده‌گرفتن ضبط تمام‌شده و حساب دیگر، و دو tab با Web Locks را می‌سنجند.
+- `apps/web/src/server/recording-routes.test.ts`: خط `capture_health` برای pause، resume با `reconnect` و restored با `parts` و `away_ms` بدون `dropped_fields`.
+- `store.test.ts` (seal)، `capture-uploader.test.ts` (lease ضبط بازگشته و `disposeAfter`)، `capture-diagnostics.test.ts`، `capture-lifecycle.test.ts` و `RecordingProvider.test.ts` (`recordingHref`).
+- e2e `apps/web/e2e/recording-capture.spec.ts`: بستن tab حین Pause، بازگشت paused، Resume و Stop. در این محیط اجرا نشد و در CI اجرا می‌شود.
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.

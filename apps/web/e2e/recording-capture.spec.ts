@@ -10,30 +10,35 @@ test.use({
     args: ["--use-fake-ui-for-media-stream", "--autoplay-policy=no-user-gesture-required"],
   },
 });
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-    const contexts: AudioContext[] = [];
-    navigator.mediaDevices.getUserMedia = async (constraints) => {
-      if (!constraints?.audio) return original(constraints);
-      const context = new AudioContext();
-      const tone = context.createOscillator();
-      const output = context.createMediaStreamDestination();
-      tone.connect(output);
-      tone.start();
-      await context.resume();
-      contexts.push(context);
-      return output.stream;
-    };
-    Object.assign(window, {
-      __silenceMicrophone: () => Promise.all(contexts.map((context) => context.suspend())),
-      __restoreMicrophone: () => Promise.all(contexts.map((context) => context.resume())),
-    });
+/** Replaces the microphone with a tone in every page it is added to. */
+function fakeMicrophone() {
+  const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  const contexts: AudioContext[] = [];
+  navigator.mediaDevices.getUserMedia = async (constraints) => {
+    if (!constraints?.audio) return original(constraints);
+    const context = new AudioContext();
+    const tone = context.createOscillator();
+    const output = context.createMediaStreamDestination();
+    tone.connect(output);
+    tone.start();
+    await context.resume();
+    contexts.push(context);
+    return output.stream;
+  };
+  Object.assign(window, {
+    __silenceMicrophone: () => Promise.all(contexts.map((context) => context.suspend())),
+    __restoreMicrophone: () => Promise.all(contexts.map((context) => context.resume())),
   });
+}
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(fakeMicrophone);
 });
 
 type SavedPart = {
   segment?: number;
+  captureId?: string;
+  status?: string;
+  bytes?: number;
   activeMs: number;
   measuredBy?: string;
   gaps?: { missingMs: number; offsetMs: number }[];
@@ -123,4 +128,48 @@ test("measures real recorded audio, starts a new part after missing audio, and s
       path: `../../artifacts/verification/feat-recording-capture/recording-bar-after-stop-${name}.png`,
     });
   }
+});
+
+test("a capture whose page is lost while paused comes back paused; Resume continues it (D104)", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(120000);
+  const response = await page.request.post("/dev/auth/session", { data: { setup: "complete" } });
+  expect(response.status(), await response.text()).toBe(200);
+  await page.goto("/recordings");
+  await page.getByRole("button", { name: "Record a session", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  await page.waitForTimeout(3000);
+  await page.getByRole("button", { name: "Pause recording", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Resume recording", exact: true })).toBeVisible();
+  await expect
+    .poll(async () => (await savedParts(page))[0]?.bytes ?? 0, { timeout: 10000 })
+    .toBeGreaterThan(0);
+  // The tab is discarded while paused: no Stop, no beforeunload, nothing more runs in it.
+  await page.close({ runBeforeUnload: false });
+
+  const next = await context.newPage();
+  await next.addInitScript(fakeMicrophone);
+  await next.goto("/recordings");
+  await expect(next.getByRole("button", { name: "Resume recording", exact: true })).toBeVisible();
+  await expect(
+    next.getByText("The microphone was interrupted while paused. Resume to reconnect.").first(),
+  ).toBeVisible();
+  // Never resumed by itself.
+  await expect(next.getByRole("button", { name: "Pause recording", exact: true })).toHaveCount(0);
+  const lost = await savedParts(next);
+  expect(lost).toHaveLength(1);
+  expect(lost[0]?.status).toBe("interrupted");
+  expect(lost[0]?.completedAt).toBeUndefined();
+
+  await next.getByRole("button", { name: "Resume recording", exact: true }).click();
+  await expect(next.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  await next.waitForTimeout(3000);
+  await next.getByRole("button", { name: "Stop and save", exact: true }).click();
+  await expect(next.getByRole("button", { name: "Record a session", exact: true })).toBeVisible();
+  const parts = (await savedParts(next)).sort((a, b) => (a.segment ?? 1) - (b.segment ?? 1));
+  expect(parts.map((part) => part.segment)).toEqual([1, 2]);
+  expect(new Set(parts.map((part) => part.captureId)).size).toBe(1);
+  for (const part of parts) expect(part.completedAt).toBeDefined();
 });

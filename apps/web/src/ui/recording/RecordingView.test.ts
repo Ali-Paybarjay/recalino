@@ -108,3 +108,14 @@ describe("the recording page without navigation (UX-02)", () => {
     expect(render()).not.toContain("Back to session");
   });
 });
+
+// D103 (owner decision 2026-10-20): the photo button offers the camera and the gallery, and
+// several photos can be chosen at once.
+describe("the photo picker", () => {
+  it("does not force the camera and accepts several photos", () => {
+    const input = render().match(/<input[^>]*type="file"[^>]*>/)?.[0] ?? "";
+    expect(input).toContain('accept="image/jpeg,image/png,image/webp"');
+    expect(input).toContain("multiple");
+    expect(input).not.toContain("capture");
+  });
+});
