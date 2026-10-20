@@ -2,7 +2,7 @@ import { listLearningSessions } from "@recalino/core/note";
 import { listAutomaticLearningSessions } from "@recalino/core/proc";
 import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
-import { readAutomaticLearning } from "../../../server/automatic-learning";
+import { readAutomaticLearningStatuses } from "../../../server/automatic-learning";
 import { getDatabase } from "../../../server/db";
 import { workspaceActor, workspaceGroups } from "../../../server/workspace";
 import { Icon } from "../../../ui/components/Icon";
@@ -82,8 +82,11 @@ export default async function TodayPage() {
     sessions.items,
     older.map((item) => intents.get(item.id)?.state),
   );
-  const statuses = await Promise.all(
-    nextSteps.map((item) => readAutomaticLearning(db, actor, item.id).catch(() => null)),
+  // PERF-04: their statuses in bulk, each as the session page reads it; an unreadable one is null.
+  const statuses = await readAutomaticLearningStatuses(
+    db,
+    actor,
+    nextSteps.map((item) => item.id),
   );
   const record = (
     <Panel tone="hero" title="Your English, one class at a time.">

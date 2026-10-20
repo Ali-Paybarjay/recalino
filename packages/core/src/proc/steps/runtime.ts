@@ -1,6 +1,7 @@
 // Run-step primitives shared by the processing job and its stages (audit QUA-01): checkpoints,
 // the paid provider step, timing and the continuation job. Moved verbatim from worker.ts.
 
+import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../../acc";
 import {
@@ -14,7 +15,7 @@ import {
   readEstimateRates,
   transcriptSchema,
 } from "../../aip";
-import type { Database, Tx } from "../../db";
+import type { Database, DB, Tx } from "../../db";
 import { assertSessionOwner } from "../../org";
 import {
   AppError,
@@ -198,99 +199,141 @@ export async function completedSteps(
   return new Set(rows.map((row) => row.step));
 }
 
-/** The attempt and maximum cost hold are committed before dispatch; an unknown result is not repeated. */
-export async function providerStep<T>(
-  job: JobContext,
-  ctx: LearnerContext,
-  runId: string,
-  step: string,
+/** QUA-01: one paid provider call of a run step, as providerStep's helpers share it. */
+interface ProviderCall<T> {
+  job: JobContext;
+  ctx: LearnerContext;
+  runId: string;
+  step: string;
+  model: string;
+  provider: AiProvider;
+  schema: z.ZodType<T>;
+  maximumMicros: number;
+}
+type ProviderAttempt = Selectable<DB["proc.provider_attempt"]>;
+/** Which estimate rates price a step's usage when the provider reports no cost. */
+function usageKind(step: string) {
+  return step.startsWith("stt:")
+    ? "transcription"
+    : step.startsWith("vision:")
+      ? "vision"
+      : "generation";
+}
+/** The estimated cost of usage without an actual one, at the rates the attempt started with. */
+function estimatedAttemptCost(
+  attempt: ProviderAttempt,
   model: string,
-  provider: AiProvider,
-  schema: z.ZodType<T>,
-  effect: (operationKey: string) => Promise<ProviderResult<T>>,
-  options: {
-    onCommit?: (tx: Tx, output: T) => Promise<void>;
-    /** Evaluations accept one response; a paid invalid result must not trigger another call. */
-    singleResponse?: boolean;
-  } = {},
-): Promise<T> {
-  const prior = await cached(job.db, runId, step, schema);
-  if (prior !== null) return prior;
-  const maximumMicros = maximumProviderCost(provider.settings, model);
-  const estimateSchedule = await readEstimateRates(job.db);
-  const attemptOrCheckpoint = await job.db.transaction().execute(async (tx) => {
+  usage: ProviderResult<unknown>["usage"],
+  step: string,
+  maximumMicros: number,
+) {
+  return (
+    (attempt.estimate_rates
+      ? estimatedUsageCost(
+          estimateRatesSchema.parse(attempt.estimate_rates),
+          model,
+          usage,
+          usageKind(step),
+        )
+      : null) ?? maximumMicros
+  );
+}
+/**
+ * QUA-01: the guards that share the account lock and the transaction that inserts the next
+ * attempt; returns the step's latest attempt.
+ */
+async function assertAttemptAllowed<T>(
+  tx: Tx,
+  call: ProviderCall<T>,
+  singleResponse: boolean | undefined,
+) {
+  const { runId, step, model, provider } = call;
+  const previous = await tx
+    .selectFrom("proc.provider_attempt")
+    .selectAll()
+    .where("run_id", "=", runId)
+    .where("step", "=", step)
+    .orderBy("attempt", "desc")
+    .executeTakeFirst();
+  if (previous && ["started", "uncertain"].includes(previous.state))
+    throw new ProviderError("provider_outcome_unresolved", false, true);
+  if (singleResponse && previous) {
+    const attempts = await tx
+      .selectFrom("proc.provider_attempt")
+      .select(["state", "error_code"])
+      .where("run_id", "=", runId)
+      .where("step", "=", step)
+      .execute();
+    // This guard shares the account lock and transaction that inserts the next attempt.
+    // A reclaimed worker cannot pass a preflight then rebill after another worker records
+    // its paid invalid response. Definite HTTP refusals alone can be attempted again.
+    const response = attempts.find(
+      (entry) =>
+        entry.state !== "failed" || !/^provider_http_[45]\d\d$/.test(entry.error_code ?? ""),
+    );
+    if (response)
+      throw new ProviderError(
+        response.error_code ?? "provider_response_already_recorded",
+        false,
+        false,
+      );
+  }
+  // Content-contract lessons have at most two generation dispatches per run, whichever steps
+  // used them. This also covers a retried job after a paid response whose commit failed.
+  if (
+    usesContentKnowledgeContract(provider.settings, model) &&
+    knowledgeGenerationSteps.includes(step)
+  ) {
+    const attempts = await tx
+      .selectFrom("proc.provider_attempt")
+      .select(["state", "error_code"])
+      .where("run_id", "=", runId)
+      .where("step", "in", knowledgeGenerationSteps)
+      .execute();
+    // A known HTTP 4xx or local request refusal never generated a lesson; all else counts.
+    const generations = attempts.filter(
+      (entry) =>
+        entry.state !== "failed" ||
+        !(
+          /^provider_http_4\d\d$/.test(entry.error_code ?? "") ||
+          undispatchedProviderErrors.has(entry.error_code ?? "")
+        ),
+    );
+    if (generations.length >= 2)
+      throw errors.validationFailed({ output: ["knowledge_repair_exhausted"] });
+  }
+  // Each bounded correction has one paid dispatch, including known failed responses.
+  if (
+    [
+      "knowledge:repair",
+      "knowledge:repair-language",
+      "knowledge:study-repair",
+      "knowledge:compact",
+    ].includes(step) &&
+    previous
+  )
+    throw errors.validationFailed({ output: ["knowledge_repair_exhausted"] });
+  return previous;
+}
+/**
+ * QUA-01: the dispatch transaction. A concurrent single response is reused; otherwise the next
+ * attempt and its maximum cost hold are committed before any dispatch.
+ */
+async function beginProviderAttempt<T>(
+  call: ProviderCall<T>,
+  estimateSchedule: Awaited<ReturnType<typeof readEstimateRates>>,
+  singleResponse: boolean | undefined,
+): Promise<{ cachedOutput: T } | ProviderAttempt> {
+  const { job, ctx, runId, step, model, provider, schema, maximumMicros } = call;
+  return job.db.transaction().execute(async (tx) => {
     const run = await liveRun(tx, ctx, runId);
-    if (options.singleResponse) {
+    if (singleResponse) {
       // A concurrent worker may have committed its valid response after our optimistic read.
       // Reuse it under the dispatch lock, before deciding whether another response is allowed.
       const checkpoint = await cached(tx, runId, step, schema);
       if (checkpoint !== null) return { cachedOutput: checkpoint };
     }
-    const previous = await tx
-      .selectFrom("proc.provider_attempt")
-      .selectAll()
-      .where("run_id", "=", runId)
-      .where("step", "=", step)
-      .orderBy("attempt", "desc")
-      .executeTakeFirst();
-    if (previous && ["started", "uncertain"].includes(previous.state))
-      throw new ProviderError("provider_outcome_unresolved", false, true);
-    if (options.singleResponse && previous) {
-      const attempts = await tx
-        .selectFrom("proc.provider_attempt")
-        .select(["state", "error_code"])
-        .where("run_id", "=", runId)
-        .where("step", "=", step)
-        .execute();
-      // This guard shares the account lock and transaction that inserts the next attempt.
-      // A reclaimed worker cannot pass a preflight then rebill after another worker records
-      // its paid invalid response. Definite HTTP refusals alone can be attempted again.
-      const response = attempts.find(
-        (entry) =>
-          entry.state !== "failed" || !/^provider_http_[45]\d\d$/.test(entry.error_code ?? ""),
-      );
-      if (response)
-        throw new ProviderError(
-          response.error_code ?? "provider_response_already_recorded",
-          false,
-          false,
-        );
-    }
-    // Content-contract lessons have at most two generation dispatches per run, whichever steps
-    // used them. This also covers a retried job after a paid response whose commit failed.
-    if (
-      usesContentKnowledgeContract(provider.settings, model) &&
-      knowledgeGenerationSteps.includes(step)
-    ) {
-      const attempts = await tx
-        .selectFrom("proc.provider_attempt")
-        .select(["state", "error_code"])
-        .where("run_id", "=", runId)
-        .where("step", "in", knowledgeGenerationSteps)
-        .execute();
-      // A known HTTP 4xx or local request refusal never generated a lesson; all else counts.
-      const generations = attempts.filter(
-        (entry) =>
-          entry.state !== "failed" ||
-          !(
-            /^provider_http_4\d\d$/.test(entry.error_code ?? "") ||
-            undispatchedProviderErrors.has(entry.error_code ?? "")
-          ),
-      );
-      if (generations.length >= 2)
-        throw errors.validationFailed({ output: ["knowledge_repair_exhausted"] });
-    }
-    // Each bounded correction has one paid dispatch, including known failed responses.
-    if (
-      [
-        "knowledge:repair",
-        "knowledge:repair-language",
-        "knowledge:study-repair",
-        "knowledge:compact",
-      ].includes(step) &&
-      previous
-    )
-      throw errors.validationFailed({ output: ["knowledge_repair_exhausted"] });
+    const previous = await assertAttemptAllowed(tx, call, singleResponse);
     const number = (previous?.attempt ?? 0) + 1;
     const operationKey = `${runId}:${step}:${number}`;
     const hold = await beginProviderStep(
@@ -323,6 +366,195 @@ export async function providerStep<T>(
       .returningAll()
       .executeTakeFirstOrThrow();
   });
+}
+/**
+ * QUA-01: settles a valid response and saves its checkpoint in one commit. The accounting
+ * persists even when the run ended or its class was deleted during dispatch; the job then ends.
+ */
+async function commitProviderOutput<T>(
+  call: ProviderCall<T>,
+  attempt: ProviderAttempt,
+  result: ProviderResult<T>,
+  output: T,
+  onCommit: ((tx: Tx, output: T) => Promise<void>) | undefined,
+): Promise<T> {
+  const { job, ctx, runId, step, provider, maximumMicros } = call;
+  return job.db
+    .transaction()
+    .execute(async (tx) => {
+      // Provider accounting persists even when cancellation/deletion happened during dispatch.
+      await lockAccountForCleanup(tx, ctx.userId);
+      await finishProviderStep(
+        tx,
+        ctx,
+        attempt.hold_id,
+        {
+          operationKey: attempt.operation_key,
+          provider: result.provider,
+          model: result.model,
+          currency: provider.settings.currency,
+          actualMicros: result.actualMicros,
+          estimatedMicros:
+            result.actualMicros === null
+              ? estimatedAttemptCost(attempt, result.model, result.usage, step, maximumMicros)
+              : null,
+          priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
+          usage: result.usage,
+          runId,
+          attemptId: attempt.id,
+        },
+        job.now(),
+      );
+      await tx
+        .updateTable("proc.provider_attempt")
+        .set({
+          state: "succeeded",
+          provider_request_id: result.requestId,
+          finished_at: job.now(),
+        })
+        .where("id", "=", attempt.id)
+        .execute();
+      const run = await ownedRun(tx, ctx, runId, true);
+      if (!["queued", "processing"].includes(run.state)) return null;
+      try {
+        await assertSessionOwner(tx, ctx, run.session_id);
+      } catch (error) {
+        if (error instanceof AppError && error.code === "not_found") return null;
+        throw error;
+      }
+      await onCommit?.(tx, output);
+      await saveStep(tx, runId, step, output, job.now());
+      return output;
+    })
+    .then((output) => {
+      if (output === null) throw new JobCancelled();
+      return output;
+    });
+}
+/**
+ * QUA-01: records a failed or unknown outcome once. A definite failure is settled at its
+ * reported or estimated cost; a known invalid or truncated lesson keeps a checkpoint for its
+ * single recovery.
+ */
+async function recordProviderFailure<T>(
+  call: ProviderCall<T>,
+  attempt: ProviderAttempt,
+  providerError: ProviderError,
+) {
+  const { job, ctx, runId, step, model, provider, maximumMicros } = call;
+  await job.db.transaction().execute(async (tx) => {
+    await lockAccountForCleanup(tx, ctx.userId);
+    const current = await tx
+      .selectFrom("proc.provider_attempt")
+      .select(["state", "provider_request_id"])
+      .where("id", "=", attempt.id)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
+    if (current.state === "succeeded") return;
+    if (!providerError.uncertain)
+      await finishProviderStep(
+        tx,
+        ctx,
+        attempt.hold_id,
+        {
+          operationKey: attempt.operation_key,
+          provider: providerError.accounting?.provider ?? provider.name,
+          model: providerError.accounting?.model ?? model,
+          currency: provider.settings.currency,
+          actualMicros:
+            providerError.accounting?.actualMicros ?? (providerError.accounting ? null : 0),
+          estimatedMicros:
+            providerError.accounting?.actualMicros === null
+              ? estimatedAttemptCost(
+                  attempt,
+                  model,
+                  providerError.accounting.usage,
+                  step,
+                  maximumMicros,
+                )
+              : null,
+          priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
+          usage: providerError.accounting?.usage ?? {},
+          runId,
+          attemptId: attempt.id,
+        },
+        job.now(),
+      );
+    await tx
+      .updateTable("proc.provider_attempt")
+      .set({
+        state: providerError.uncertain ? "uncertain" : "failed",
+        error_code: providerError.code,
+        provider_request_id: providerError.accounting?.requestId ?? current.provider_request_id,
+        finished_at: job.now(),
+      })
+      .where("id", "=", attempt.id)
+      .execute();
+    if (
+      step === "knowledge" &&
+      providerError.code === "provider_output_truncated" &&
+      !providerError.uncertain &&
+      providerError.accounting
+    ) {
+      await saveStep(
+        tx,
+        runId,
+        "knowledge:truncated",
+        knowledgeTruncationSchema.parse({
+          reason: "provider_output_truncated",
+          attemptId: attempt.id,
+        }),
+        job.now(),
+      );
+    }
+    if (
+      step === "knowledge" &&
+      usesContentKnowledgeContract(provider.settings, model) &&
+      providerError.code === "provider_schema_invalid" &&
+      !providerError.uncertain &&
+      providerError.accounting
+    ) {
+      const detail = knowledgeRepairDetailSchema.safeParse(providerError.diagnostic);
+      await saveStep(
+        tx,
+        runId,
+        "knowledge:schema-invalid",
+        knowledgeSchemaFailureSchema.parse({
+          reason: "provider_schema_invalid",
+          attemptId: attempt.id,
+          ...(detail.success ? { detail: detail.data } : {}),
+        }),
+        job.now(),
+      );
+    }
+  });
+}
+/** The attempt and maximum cost hold are committed before dispatch; an unknown result is not repeated. */
+export async function providerStep<T>(
+  job: JobContext,
+  ctx: LearnerContext,
+  runId: string,
+  step: string,
+  model: string,
+  provider: AiProvider,
+  schema: z.ZodType<T>,
+  effect: (operationKey: string) => Promise<ProviderResult<T>>,
+  options: {
+    onCommit?: (tx: Tx, output: T) => Promise<void>;
+    /** Evaluations accept one response; a paid invalid result must not trigger another call. */
+    singleResponse?: boolean;
+  } = {},
+): Promise<T> {
+  const prior = await cached(job.db, runId, step, schema);
+  if (prior !== null) return prior;
+  const maximumMicros = maximumProviderCost(provider.settings, model);
+  const estimateSchedule = await readEstimateRates(job.db);
+  const call = { job, ctx, runId, step, model, provider, schema, maximumMicros };
+  const attemptOrCheckpoint = await beginProviderAttempt(
+    call,
+    estimateSchedule,
+    options.singleResponse,
+  );
   if ("cachedOutput" in attemptOrCheckpoint) return attemptOrCheckpoint.cachedOutput;
   const attempt = attemptOrCheckpoint;
   let completedAccounting: Omit<ProviderResult<T>, "output"> | undefined;
@@ -335,69 +567,7 @@ export async function providerStep<T>(
       const { output: _output, ...accounting } = result;
       throw new ProviderError("provider_schema_invalid", false, false, accounting);
     }
-    return await job.db
-      .transaction()
-      .execute(async (tx) => {
-        // Provider accounting persists even when cancellation/deletion happened during dispatch.
-        await lockAccountForCleanup(tx, ctx.userId);
-        await finishProviderStep(
-          tx,
-          ctx,
-          attempt.hold_id,
-          {
-            operationKey: attempt.operation_key,
-            provider: result.provider,
-            model: result.model,
-            currency: provider.settings.currency,
-            actualMicros: result.actualMicros,
-            estimatedMicros:
-              result.actualMicros === null
-                ? ((attempt.estimate_rates
-                    ? estimatedUsageCost(
-                        estimateRatesSchema.parse(attempt.estimate_rates),
-                        result.model,
-                        result.usage,
-                        step.startsWith("stt:")
-                          ? "transcription"
-                          : step.startsWith("vision:")
-                            ? "vision"
-                            : "generation",
-                      )
-                    : null) ?? maximumMicros)
-                : null,
-            priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
-            usage: result.usage,
-            runId,
-            attemptId: attempt.id,
-          },
-          job.now(),
-        );
-        await tx
-          .updateTable("proc.provider_attempt")
-          .set({
-            state: "succeeded",
-            provider_request_id: result.requestId,
-            finished_at: job.now(),
-          })
-          .where("id", "=", attempt.id)
-          .execute();
-        const run = await ownedRun(tx, ctx, runId, true);
-        if (!["queued", "processing"].includes(run.state)) return null;
-        try {
-          await assertSessionOwner(tx, ctx, run.session_id);
-        } catch (error) {
-          if (error instanceof AppError && error.code === "not_found") return null;
-          throw error;
-        }
-        const output = parsed.data;
-        await options.onCommit?.(tx, output);
-        await saveStep(tx, runId, step, output, job.now());
-        return output;
-      })
-      .then((output) => {
-        if (output === null) throw new JobCancelled();
-        return output;
-      });
+    return await commitProviderOutput(call, attempt, result, parsed.data, options.onCommit);
   } catch (error) {
     if (error instanceof JobCancelled) throw error;
     const providerError =
@@ -406,97 +576,7 @@ export async function providerStep<T>(
         : completedAccounting
           ? new ProviderError("provider_output_commit_failed", false, false, completedAccounting)
           : new ProviderError("provider_outcome_unknown", false, true);
-    await job.db.transaction().execute(async (tx) => {
-      await lockAccountForCleanup(tx, ctx.userId);
-      const current = await tx
-        .selectFrom("proc.provider_attempt")
-        .select(["state", "provider_request_id"])
-        .where("id", "=", attempt.id)
-        .forUpdate()
-        .executeTakeFirstOrThrow();
-      if (current.state === "succeeded") return;
-      if (!providerError.uncertain)
-        await finishProviderStep(
-          tx,
-          ctx,
-          attempt.hold_id,
-          {
-            operationKey: attempt.operation_key,
-            provider: providerError.accounting?.provider ?? provider.name,
-            model: providerError.accounting?.model ?? model,
-            currency: provider.settings.currency,
-            actualMicros:
-              providerError.accounting?.actualMicros ?? (providerError.accounting ? null : 0),
-            estimatedMicros:
-              providerError.accounting?.actualMicros === null
-                ? ((attempt.estimate_rates
-                    ? estimatedUsageCost(
-                        estimateRatesSchema.parse(attempt.estimate_rates),
-                        model,
-                        providerError.accounting.usage,
-                        step.startsWith("stt:")
-                          ? "transcription"
-                          : step.startsWith("vision:")
-                            ? "vision"
-                            : "generation",
-                      )
-                    : null) ?? maximumMicros)
-                : null,
-            priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
-            usage: providerError.accounting?.usage ?? {},
-            runId,
-            attemptId: attempt.id,
-          },
-          job.now(),
-        );
-      await tx
-        .updateTable("proc.provider_attempt")
-        .set({
-          state: providerError.uncertain ? "uncertain" : "failed",
-          error_code: providerError.code,
-          provider_request_id: providerError.accounting?.requestId ?? current.provider_request_id,
-          finished_at: job.now(),
-        })
-        .where("id", "=", attempt.id)
-        .execute();
-      if (
-        step === "knowledge" &&
-        providerError.code === "provider_output_truncated" &&
-        !providerError.uncertain &&
-        providerError.accounting
-      ) {
-        await saveStep(
-          tx,
-          runId,
-          "knowledge:truncated",
-          knowledgeTruncationSchema.parse({
-            reason: "provider_output_truncated",
-            attemptId: attempt.id,
-          }),
-          job.now(),
-        );
-      }
-      if (
-        step === "knowledge" &&
-        usesContentKnowledgeContract(provider.settings, model) &&
-        providerError.code === "provider_schema_invalid" &&
-        !providerError.uncertain &&
-        providerError.accounting
-      ) {
-        const detail = knowledgeRepairDetailSchema.safeParse(providerError.diagnostic);
-        await saveStep(
-          tx,
-          runId,
-          "knowledge:schema-invalid",
-          knowledgeSchemaFailureSchema.parse({
-            reason: "provider_schema_invalid",
-            attemptId: attempt.id,
-            ...(detail.success ? { detail: detail.data } : {}),
-          }),
-          job.now(),
-        );
-      }
-    });
+    await recordProviderFailure(call, attempt, providerError);
     // OPS-02: the provider's code and transport cause only, never its output (PRD-PRIV-06).
     job.log?.("warn", "provider_step_failed", {
       module: "proc",

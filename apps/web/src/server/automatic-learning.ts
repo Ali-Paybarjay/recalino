@@ -2,8 +2,8 @@ import "server-only";
 import type { AiProvider } from "@recalino/core/aip";
 import type { Database } from "@recalino/core/db";
 import { listAvailableKnowledgeReferences } from "@recalino/core/lkm";
-import { hasPublishedNotebook } from "@recalino/core/note";
-import { captureInProgress, getSession } from "@recalino/core/org";
+import { hasPublishedNotebook, publishedNotebookSessionIds } from "@recalino/core/note";
+import { captureInProgress, getSession, getSessionsByIds } from "@recalino/core/org";
 import {
   AppError,
   emptyPayload,
@@ -16,6 +16,7 @@ import {
   sha256Hex,
 } from "@recalino/core/plt";
 import {
+  type AutomaticLearningSession,
   captureTranscriptionActive,
   chargeableRunAmounts,
   createProcessingRun,
@@ -23,6 +24,8 @@ import {
   getAutomaticLearningSession,
   getProcessingRunSnapshot,
   getRun,
+  listAutomaticLearningSessions,
+  listClassRunsBySession,
   listPendingAutomaticLearning,
   listRuns,
   type ProcessingReview,
@@ -32,9 +35,11 @@ import {
   type RunFinishingStage,
   type RunSnapshot,
   readClassProcessingReview,
+  readClassProcessingReviews,
   reconcileAutomaticLearningBatch,
   requestAutomaticLearning,
   runFinishingStage,
+  runFinishingStages,
   selectProcessingSourceSnapshot,
   sourceSnapshotSchema,
   updateAutomaticLearningProgress,
@@ -226,16 +231,85 @@ async function readAllowanceShortage(
     return null;
   }
 }
+/** PERF-04: the reads a status needs. One class makes them when needed; Today makes them in bulk. */
+interface StatusReads {
+  intent(sessionId: string): Promise<AutomaticLearningSession | null>;
+  notesReady(sessionId: string): Promise<boolean>;
+  run(runId: string): Promise<ProcessingRun>;
+  finishingStage(runId: string): Promise<RunFinishingStage | null>;
+  snapshot(runId: string): Promise<RunSnapshot>;
+  processingReview(sessionId: string): Promise<ProcessingReview | null>;
+}
+function classReads(db: Database, ctx: LearnerContext): StatusReads {
+  return {
+    intent: (sessionId) => getAutomaticLearningSession(db, ctx, sessionId),
+    notesReady: (sessionId) => hasPublishedNotebook(db, ctx, sessionId),
+    run: (runId) => getRun(db, ctx, runId),
+    finishingStage: (runId) => runFinishingStage(db, ctx, runId),
+    snapshot: (runId) => getProcessingRunSnapshot(db, ctx, runId),
+    processingReview: (sessionId) => readClassProcessingReview(db, ctx, sessionId),
+  };
+}
+/**
+ * PERF-04: the status reads of many classes in a number of queries that does not grow with them,
+ * each answering as that class's own read would. `live` holds the classes getSession accepts.
+ * That is at most eight statements, a class finishing its lesson included. A run awaiting its
+ * upload (its snapshot), a class blocked on its allowance and a legacy rejected-upload class
+ * still add that class's own reads. Neither path writes. A class's own read locks its class row for one statement at a time
+ * (getAutomaticLearningSession, outside any transaction); these reads take no row lock.
+ */
+async function bulkStatusReads(
+  db: Database,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<{ live: Set<string>; reads: StatusReads }> {
+  const [sessions, intents] = await Promise.all([
+    getSessionsByIds(db, ctx, sessionIds),
+    listAutomaticLearningSessions(db, ctx, sessionIds),
+  ]);
+  const live = new Set(sessions.map((session) => session.id));
+  const ids = sessionIds.filter((id) => live.has(id));
+  const [published, runs] = await Promise.all([
+    publishedNotebookSessionIds(db, ctx, ids),
+    listClassRunsBySession(db, ctx, ids),
+  ]);
+  const byId = new Map([...runs.values()].flat().map((run) => [run.id, run]));
+  // Only a class whose intent and run are both processing shows how far its run is.
+  const processing = [...intents.values()].flatMap((intent) => {
+    const run = intent.runId ? byId.get(intent.runId) : undefined;
+    return intent.state === "processing" && run?.state === "processing" ? [run.id] : [];
+  });
+  const [reviews, stages] = await Promise.all([
+    readClassProcessingReviews(db, ctx, { runs, intents }),
+    runFinishingStages(db, ctx, processing),
+  ]);
+  const single = classReads(db, ctx);
+  return {
+    live,
+    reads: {
+      intent: async (sessionId) => intents.get(sessionId) ?? null,
+      notesReady: async (sessionId) => published.has(sessionId),
+      // An intent names one of its class's newest runs; any other run is read as getRun reads it.
+      run: async (runId) => byId.get(runId) ?? single.run(runId),
+      finishingStage: async (runId) =>
+        stages.has(runId) ? (stages.get(runId) ?? null) : single.finishingStage(runId),
+      // Only a run awaiting its upload has a snapshot read, as before.
+      snapshot: (runId) => single.snapshot(runId),
+      processingReview: async (sessionId) => reviews.get(sessionId) ?? null,
+    },
+  };
+}
 async function view(
   db: Database,
   ctx: LearnerContext,
   sessionId: string,
   progress?: Progress,
   provider: () => AiProvider | undefined = defaults.provider,
+  reads: StatusReads = classReads(db, ctx),
 ): Promise<AutomaticLearningStatus> {
-  const intent = await getAutomaticLearningSession(db, ctx, sessionId);
-  const notesReady = await hasPublishedNotebook(db, ctx, sessionId);
-  const run = progress ? progress.run : intent?.runId ? await getRun(db, ctx, intent.runId) : null;
+  const intent = await reads.intent(sessionId);
+  const notesReady = await reads.notesReady(sessionId);
+  const run = progress ? progress.run : intent?.runId ? await reads.run(intent.runId) : null;
   const state = progress?.state ?? intent?.state ?? "idle";
   const storedCode = progress ? progress.lastError : (intent?.lastError ?? null);
   // Older workers discarded the cost guard's reason. Do not guess that a failed run
@@ -259,21 +333,20 @@ async function view(
       : null;
   const stage =
     state === "processing" && run?.state === "processing"
-      ? await runFinishingStage(db, ctx, run.id)
+      ? await reads.finishingStage(run.id)
       : null;
   return {
     state,
     revision: intent?.requestVersion ?? 0,
     batchId: intent?.batchId ?? null,
     run,
-    snapshot:
-      run?.state === "awaiting_upload" ? await getProcessingRunSnapshot(db, ctx, run.id) : null,
+    snapshot: run?.state === "awaiting_upload" ? await reads.snapshot(run.id) : null,
     lastError: code,
     message: automaticLearningMessage(state, code, shortage),
     allowance: shortage,
     notesReady,
     cardsReady: intent?.state === "ready" && notesReady,
-    processingReview: await readClassProcessingReview(db, ctx, sessionId),
+    processingReview: await reads.processingReview(sessionId),
     // Present only while it applies, so earlier status shapes stay unchanged.
     ...(stage ? { stage } : {}),
   };
@@ -287,6 +360,34 @@ export async function readAutomaticLearning(
 ) {
   await getSession(db, ctx, sessionId);
   return view(db, ctx, sessionId, undefined, provider);
+}
+
+/**
+ * PERF-04: Today's statuses of several classes, in their order. Each equals readAutomaticLearning
+ * for that class, or null where that read fails, as Today shows it; the queries do not grow with
+ * the classes. If a bulk read itself fails, each class is read on its own, as before.
+ */
+export async function readAutomaticLearningStatuses(
+  db: Database,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+  provider: () => AiProvider | undefined = defaults.provider,
+): Promise<(AutomaticLearningStatus | null)[]> {
+  let bulk: Awaited<ReturnType<typeof bulkStatusReads>>;
+  try {
+    bulk = await bulkStatusReads(db, ctx, sessionIds);
+  } catch {
+    return Promise.all(
+      sessionIds.map((id) => readAutomaticLearning(db, ctx, id, provider).catch(() => null)),
+    );
+  }
+  return Promise.all(
+    sessionIds.map((id) =>
+      bulk.live.has(id)
+        ? view(db, ctx, id, undefined, provider, bulk.reads).catch(() => null)
+        : null,
+    ),
+  );
 }
 
 /** Serializes class updates around the existing atomic reservation/run contract. */

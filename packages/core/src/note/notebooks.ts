@@ -9,6 +9,7 @@ import {
   listAvailableKnowledgeReferences,
   listVersions,
   liveKnowledgeVersionIds,
+  ownedKnowledgeVersionSessions,
 } from "../lkm";
 import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
@@ -112,6 +113,38 @@ export async function listPublishedNotebooks(
     });
   }
   return published;
+}
+/**
+ * PERF-04: hasPublishedNotebook for many classes the caller has just found live (getSessionsByIds),
+ * in at most two reads: the classes whose current revision is an owned, not tombstoned version
+ * of that same class. Their liveness is not read again.
+ */
+export async function publishedNotebookSessionIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(sessionIds)];
+  if (!ids.length) return new Set();
+  const rows = await db
+    .selectFrom("note.notebook as notebook")
+    .innerJoin("note.revision as revision", "revision.id", "notebook.current_revision_id")
+    .select(["notebook.session_id", "revision.knowledge_version_id"])
+    .where("notebook.session_id", "in", ids)
+    .where("notebook.user_id", "=", ctx.userId)
+    .where("revision.user_id", "=", ctx.userId)
+    .whereRef("revision.notebook_id", "=", "notebook.id")
+    .execute();
+  const versions = await ownedKnowledgeVersionSessions(
+    db,
+    ctx,
+    rows.map((row) => row.knowledge_version_id),
+  );
+  return new Set(
+    rows
+      .filter((row) => versions.get(row.knowledge_version_id) === row.session_id)
+      .map((row) => row.session_id),
+  );
 }
 /** PRD-CORE-05: a readiness check needs live publication references, not the lesson model. */
 export async function hasPublishedNotebook(

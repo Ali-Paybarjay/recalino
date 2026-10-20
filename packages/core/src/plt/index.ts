@@ -119,6 +119,7 @@ export {
   anonymiseAuditActors,
   DELETED_ACCOUNT_ACTOR,
   latestSubjectAudit,
+  latestSubjectAudits,
   purgeSecurityEvents,
   recordAudit,
   recordAuditOnce,

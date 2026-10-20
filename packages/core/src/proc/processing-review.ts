@@ -1,8 +1,8 @@
 import type { Database, Tx } from "../db";
 import { getSession } from "../org";
-import { errors, type LearnerContext, latestSubjectAudit } from "../plt";
-import { getAutomaticLearningSession } from "./automatic-state";
-import { listRuns } from "./runs";
+import { errors, type LearnerContext, latestSubjectAudit, latestSubjectAudits } from "../plt";
+import { type AutomaticLearningSession, getAutomaticLearningSession } from "./automatic-state";
+import { listRuns, type ProcessingRun } from "./runs";
 
 /** Only owned class runs are used; voice and other auxiliary work never completes a review. */
 export interface ProcessingReview {
@@ -29,12 +29,63 @@ export async function readClassProcessingReview(
   const latest = runs[0];
   if (!latest) return null;
   const request = await latestSubjectAudit(db, {
+    ...reviewRequests(ctx),
+    subjectIds: runs.map((run) => run.id),
+  });
+  return classProcessingReview(latest, intent, request);
+}
+
+/** The learner's review requests, an audit of their class runs. */
+function reviewRequests(ctx: LearnerContext) {
+  return {
     actorKind: "learner",
     actorId: ctx.userId,
     action: "processing.review_requested",
     subjectType: "processing_run",
-    subjectIds: runs.map((run) => run.id),
-  });
+  } as const;
+}
+
+/**
+ * PERF-04: readClassProcessingReview for many classes the caller found live, from their newest
+ * class runs (listClassRunsBySession) and intents, with one read of the review requests.
+ */
+export async function readClassProcessingReviews(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  input: {
+    runs: ReadonlyMap<string, readonly ProcessingRun[]>;
+    intents: ReadonlyMap<string, AutomaticLearningSession>;
+  },
+): Promise<Map<string, ProcessingReview | null>> {
+  const groups = new Map(
+    [...input.runs].flatMap(([sessionId, runs]) =>
+      runs.length ? [[sessionId, runs.map((run) => run.id)] as const] : [],
+    ),
+  );
+  const requests = await latestSubjectAudits(db, { ...reviewRequests(ctx), groups });
+  return new Map(
+    [...input.runs].map(([sessionId, runs]) => {
+      const latest = runs[0];
+      return [
+        sessionId,
+        latest
+          ? classProcessingReview(
+              latest,
+              input.intents.get(sessionId) ?? null,
+              requests.get(sessionId) ?? null,
+            )
+          : null,
+      ];
+    }),
+  );
+}
+
+/** Pure: a class's review from its newest class run, its intent and the latest request. */
+function classProcessingReview(
+  latest: ProcessingRun,
+  intent: AutomaticLearningSession | null,
+  request: { subjectId: string; occurredAt: string } | null,
+): ProcessingReview | null {
   const failed = ["failed", "needs_input", "partial_ready"].includes(latest.state);
   if (!request && !failed && intent?.state !== "blocked") return null;
   const continuing = ["queued", "processing", "awaiting_upload"].includes(latest.state);

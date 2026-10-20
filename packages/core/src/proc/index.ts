@@ -87,6 +87,7 @@ export {
   type ProcessingReview,
   processingReviewTarget,
   readClassProcessingReview,
+  readClassProcessingReviews,
 } from "./processing-review";
 export {
   prepareSourceExtractionRetry,
@@ -95,7 +96,12 @@ export {
   type SourceExtractionRetryResult,
   sourceExtractionRetrySchema,
 } from "./recovery";
-export { finishingStage, type RunFinishingStage, runFinishingStage } from "./run-stage";
+export {
+  finishingStage,
+  type RunFinishingStage,
+  runFinishingStage,
+  runFinishingStages,
+} from "./run-stage";
 export {
   type AwaitingUploadFailure,
   activateProcessingRun,
@@ -111,6 +117,7 @@ export {
   findProcessingRunByOperationKey,
   getProcessingRunSnapshot,
   getRun,
+  listClassRunsBySession,
   listRuns,
   markSourceProcessingForCleanup,
   type ProcessingRun,

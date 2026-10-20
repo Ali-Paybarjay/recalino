@@ -81,6 +81,40 @@ export async function latestSubjectAudit(
 }
 
 /**
+ * PERF-04: latestSubjectAudit for several groups of subjects in one read, keyed by group. A group
+ * gets the newest row among its own subjects, as latestSubjectAudit would return for them alone.
+ * Domain callers must authorize every subject before using this API.
+ */
+export async function latestSubjectAudits(
+  db: Database | Tx,
+  input: Pick<AuditInput, "actorKind" | "actorId" | "action" | "subjectType"> & {
+    groups: ReadonlyMap<string, readonly string[]>;
+  },
+): Promise<Map<string, { subjectId: string; occurredAt: string }>> {
+  const latest = new Map<string, { subjectId: string; occurredAt: string }>();
+  const subjects = [...new Set([...input.groups.values()].flat())];
+  if (!subjects.length) return latest;
+  const rows = await db
+    .selectFrom("plt.audit_event")
+    .select(["subject_id", "occurred_at"])
+    .where("actor_kind", "=", input.actorKind)
+    .where("actor_id", "=", input.actorId)
+    .where("action", "=", input.action)
+    .where("subject_type", "=", input.subjectType)
+    .where("subject_id", "in", subjects)
+    .orderBy("occurred_at", "desc")
+    .orderBy("id", "desc")
+    .execute();
+  for (const [group, ids] of input.groups) {
+    const members = new Set(ids);
+    const row = rows.find((entry) => members.has(entry.subject_id));
+    if (row)
+      latest.set(group, { subjectId: row.subject_id, occurredAt: row.occurred_at.toISOString() });
+  }
+  return latest;
+}
+
+/**
  * OPS-02/OPS-05: records `entry` unless the same actor already recorded this action for this
  * subject, and says whether it did. A transaction lock on the key serialises concurrent callers,
  * so an alert raised by two runners at once is still written once.

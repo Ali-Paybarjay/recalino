@@ -1,6 +1,7 @@
 export { type AutomaticCardSyncResult, synchronizeAutomaticCards } from "./automatic";
 export {
   type CardProposal,
+  type CardReads,
   changeCard,
   editCard,
   generateCards,
@@ -10,6 +11,7 @@ export {
   isCardReviewableWith,
   listCardProposals,
   listCards,
+  readCards,
   resolveCardProposal,
   reviewableCardIds,
   type StudyCard,

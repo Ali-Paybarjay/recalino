@@ -77,6 +77,7 @@ export {
   listVersions,
   liveKnowledgeVersionIds,
   liveKnowledgeVersionIdsForCleanup,
+  ownedKnowledgeVersionSessions,
   publishKnowledgeVersion,
   redactVersionGenerations,
   tombstoneAccountKnowledge,

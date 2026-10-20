@@ -214,6 +214,81 @@ export async function getCard(
   if (!sessionIds.length) throw errors.notFound();
   return (await withPronunciationTargets(db, ctx, [view(row, sessionIds)]))[0] as StudyCard;
 }
+/** Cards read together by readCards; each is taken in turn, as getCard would return it. */
+export interface CardReads {
+  /** The card getCard would return for `id`, or the error it would throw for it. */
+  take(id: string): StudyCard;
+}
+/**
+ * PERF-04: getCard for many identifiers in a constant number of reads instead of three or more
+ * per card. A card's own failure (missing, foreign, deleted, or on no live session) is thrown
+ * only when that card is taken. It takes no card lock: resolving an older lesson card's
+ * pronunciation locks its class (assertSessionOwner), and one locked getCard after another takes
+ * that class lock right after the first such card, before the next card's lock.
+ */
+export async function readCards(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<CardReads> {
+  const unique = [...new Set(ids)];
+  const outcomes = new Map<string, { card: StudyCard } | { failure: unknown }>();
+  if (unique.length) {
+    const query = db
+      .selectFrom("card.card")
+      .selectAll()
+      .where("id", "in", unique)
+      .where("deleted_at", "is", null);
+    const rows = new Map((await query.execute()).map((row) => [row.id, row]));
+    const owned = [...rows.values()].filter((row) => row.user_id === ctx.userId);
+    const links = owned.length
+      ? await db
+          .selectFrom("card.session_link")
+          .select(["card.session_link.card_id", "card.session_link.session_id"])
+          .where(
+            "card.session_link.card_id",
+            "in",
+            owned.map((row) => row.id),
+          )
+          .where("card.session_link.user_id", "=", ctx.userId)
+          .execute()
+      : [];
+    const live = await filterLiveSessionIds(
+      db,
+      ctx,
+      links.map((link) => link.session_id),
+    );
+    const linked = new Map<string, Set<string>>();
+    for (const link of links)
+      linked.set(link.card_id, (linked.get(link.card_id) ?? new Set()).add(link.session_id));
+    const cards: StudyCard[] = [];
+    for (const id of unique) {
+      try {
+        const row = rows.get(id);
+        assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
+        if (!row) throw errors.notFound();
+        // A card's classes in the order filterLiveSessionIds returns them, as getCard reads them.
+        const sessionIds = live.filter((sessionId) => linked.get(id)?.has(sessionId));
+        if (!sessionIds.length) throw errors.notFound();
+        const card = view(row, sessionIds);
+        cards.push(card);
+        outcomes.set(id, { card });
+      } catch (failure) {
+        outcomes.set(id, { failure });
+      }
+    }
+    // One resolution for every readable card; it reads each class's notebook once.
+    await withPronunciationTargets(db, ctx, cards);
+  }
+  return {
+    take(id) {
+      const outcome = outcomes.get(id);
+      if (!outcome) throw errors.notFound();
+      if ("failure" in outcome) throw outcome.failure;
+      return outcome.card;
+    },
+  };
+}
 export async function getActiveCard(
   db: Database | Tx,
   ctx: LearnerContext,
