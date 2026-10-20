@@ -57,8 +57,18 @@ const lesson = (compactGeneration = false) =>
     compactGeneration,
     qualityOptions: {},
     knowledgeInput: { input: "", sourceRefPrompt: "" },
+    productionLimit: 18,
   }) as unknown as LessonInput;
-const valid = { classified: [], model: { title: "Lesson" } };
+const valid = { classified: [], model: { title: "Lesson", learningItems: [] } };
+const production = (count: number) => ({
+  classified: [],
+  model: {
+    title: `${count} cards`,
+    learningItems: Array.from({ length: count }, () => ({ study: { set: "production" } })),
+  },
+});
+/** D110: every lesson validation drops invalid cards within the allowance (mocked here). */
+const checks = { productionLimit: 18, salvage: true, assemblyOmitted: null };
 const problem = (code: string) => errors.validationFailed({ output: [code] });
 const steps = () => m.providerStep.mock.calls.map((call) => call[3]);
 
@@ -209,7 +219,7 @@ describe("generateLessonKnowledge requests", () => {
       ],
     ]);
     expect(m.canonical.mock.calls).toEqual([
-      [run.provider, "synthetic/llm", "knowledge:operation", built],
+      [run.provider, "synthetic/llm", "knowledge:operation", built, undefined, {}],
     ]);
     expect(steps()).toEqual(["knowledge"]);
     expect(saved()).toEqual([inputContext]);
@@ -331,7 +341,16 @@ describe("generateLessonKnowledge requests", () => {
         { maxOutputTokens: 6144, sourceCoverage: true, repairReason: "source_reference_invalid" },
       ],
     ]);
-    expect(m.validate.mock.calls.at(-1)?.[0]).toEqual({ title: "Saved repair" });
+    expect(m.validate.mock.calls.map((call) => call[0])).toContainEqual({
+      title: "Saved repair",
+    });
+    expect(m.validate).toHaveBeenCalledWith(
+      { title: "Saved repair" },
+      expect.anything(),
+      [],
+      "fa",
+      checks,
+    );
     expect(m.providerStep).not.toHaveBeenCalled();
     expect(dispatch.knowledgeDispatched).toBe(false);
   });
@@ -353,7 +372,168 @@ describe("generateLessonKnowledge requests", () => {
         "knowledge:repair:operation",
         built,
         "class_knowledge_content_repair",
+        {},
       ],
     ]);
+  });
+});
+
+// D110: drop first, a repair only beyond the allowance, and the bounded original as fallback.
+const omissionMarker = {
+  version: 1,
+  omitted: { study_gap_partial: 1 },
+  omittedProduction: 1,
+  first: "study_gap_partial",
+};
+describe("generateLessonKnowledge study output guard (D110)", () => {
+  it("recovers a lesson with assembly omissions it cannot accept as the schema failure it was", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.checkpoints.set("knowledge:assembly-omitted", omissionMarker);
+    m.validate.mockImplementation((value: { title: string }) => {
+      if (value.title === "Saved") throw problem("study_sentence_mismatch");
+      return valid;
+    });
+    m.providerStep.mockResolvedValue({ title: "Repaired" });
+    const dispatch = { knowledgeDispatched: false };
+    expect(await generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch })).toBe(
+      valid,
+    );
+    // Not the answer-span repair its first remaining code would pick: today's regeneration.
+    expect(steps()).toEqual(["knowledge:repair"]);
+    expect(m.build).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.any(Number),
+      expect.objectContaining({
+        repairReason: "provider_schema_invalid",
+        repairDetail: "assembly:study_gap_partial",
+      }),
+    );
+  });
+  it("ends a recovered lesson whose omissions it cannot accept as provider_schema_invalid", async () => {
+    m.checkpoints.set("knowledge", { title: "Recovered" });
+    m.checkpoints.set("knowledge:schema-invalid", { reason: "provider_schema_invalid" });
+    m.checkpoints.set("knowledge:assembly-omitted", omissionMarker);
+    m.validate.mockImplementation(() => {
+      throw problem("study_target_unsupported");
+    });
+    await expect(
+      generateLessonKnowledge(stageRun(), {
+        lesson: lesson(true),
+        dispatch: { knowledgeDispatched: false },
+      }),
+    ).rejects.toMatchObject({ code: "provider_schema_invalid" });
+    expect(m.providerStep).not.toHaveBeenCalled();
+  });
+  it("publishes a saved lesson whose invalid cards fit the allowance without a paid repair", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.checkpoints.set("knowledge:assembly-omitted", omissionMarker);
+    const dispatch = { knowledgeDispatched: true };
+    expect(await generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch })).toBe(
+      valid,
+    );
+    expect(m.validate.mock.calls).toEqual([
+      [
+        { title: "Saved" },
+        expect.anything(),
+        [],
+        "fa",
+        {
+          ...checks,
+          assemblyOmitted: {
+            omitted: { study_gap_partial: 1 },
+            omittedProduction: 1,
+            first: "study_gap_partial",
+          },
+        },
+      ],
+    ]);
+    expect(m.providerStep).not.toHaveBeenCalled();
+    expect(dispatch.knowledgeDispatched).toBe(false);
+  });
+  it("salvages after the schema recovery instead of failing, and fails as before beyond it", async () => {
+    m.checkpoints.set("knowledge", { title: "Recovered" });
+    m.checkpoints.set("knowledge:schema-invalid", { reason: "provider_schema_invalid" });
+    const dispatch = { knowledgeDispatched: false };
+    expect(await generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch })).toBe(
+      valid,
+    );
+    m.validate.mockImplementation(() => {
+      throw problem("study_gap_missing");
+    });
+    await expect(
+      generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch }),
+    ).rejects.toMatchObject({ details: { fields: { output: ["study_gap_missing"] } } });
+    expect(m.providerStep).not.toHaveBeenCalled();
+  });
+  it("keeps a saved repair's route whatever the guard now finds first", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.checkpoints.set("knowledge:repair", { title: "Saved repair" });
+    // Routing by this code alone would now buy an answer-span repair: a refused dispatch.
+    m.validate.mockImplementation((value: { title: string }) => {
+      if (value.title === "Saved") throw problem("study_sentence_mismatch");
+      return valid;
+    });
+    const dispatch = { knowledgeDispatched: false };
+    expect(await generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch })).toBe(
+      valid,
+    );
+    expect(m.studyRepair).not.toHaveBeenCalled();
+    expect(m.providerStep).not.toHaveBeenCalled();
+  });
+  it("falls back to the bounded original when the saved answer-span repair cannot be applied", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.checkpoints.set("knowledge:study-repair", { items: [] });
+    m.studyRepair.mockImplementation(() => {
+      throw problem("study_repair_answer_invalid");
+    });
+    const original = production(17);
+    m.validate.mockReturnValue(original);
+    expect(
+      await generateLessonKnowledge(stageRun(), {
+        lesson: lesson(true),
+        dispatch: { knowledgeDispatched: false },
+      }),
+    ).toBe(original);
+    // Without a usable original the repair's own failure stands, exactly as before.
+    m.validate.mockImplementation(() => {
+      throw problem("study_target_unsupported");
+    });
+    await expect(
+      generateLessonKnowledge(stageRun(), {
+        lesson: lesson(true),
+        dispatch: { knowledgeDispatched: false },
+      }),
+    ).rejects.toMatchObject({ details: { fields: { output: ["study_repair_answer_invalid"] } } });
+    expect(m.providerStep).not.toHaveBeenCalled();
+  });
+  it("prefers the candidate with more production cards, ties to the repair", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.checkpoints.set("knowledge:repair", { title: "Saved repair" });
+    const original = production(17);
+    const repaired = production(16);
+    m.validate.mockImplementation((value: { title: string }) =>
+      value.title === "Saved" ? original : repaired,
+    );
+    const input = () => ({ lesson: lesson(true), dispatch: { knowledgeDispatched: false } });
+    expect(await generateLessonKnowledge(stageRun(), input())).toBe(original);
+    const tie = production(17);
+    m.validate.mockImplementation((value: { title: string }) =>
+      value.title === "Saved" ? original : tie,
+    );
+    expect(await generateLessonKnowledge(stageRun(), input())).toBe(tie);
+  });
+  it("buys the one repair beyond the allowance, and its failure stands without an original", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.validate.mockImplementation(() => {
+      throw problem("study_target_unsupported");
+    });
+    m.providerStep.mockRejectedValue(new ProviderError("provider_schema_invalid", false, false));
+    await expect(
+      generateLessonKnowledge(stageRun(), {
+        lesson: lesson(true),
+        dispatch: { knowledgeDispatched: false },
+      }),
+    ).rejects.toMatchObject({ code: "provider_schema_invalid" });
+    expect(steps()).toEqual(["knowledge:repair"]);
   });
 });

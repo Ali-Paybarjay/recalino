@@ -41,6 +41,8 @@ describe("prepareLesson", () => {
     expect(lesson.compactGeneration).toBe(false);
     expect(lesson.qualityOptions).toEqual({});
     expect(lesson.knowledgeInput.input).toContain("Synthetic class text.");
+    // D62: without the lesson-quality budget no marked span raises the limit.
+    expect(lesson.productionLimit).toBe(18);
   });
   it("keeps the default course unnamed and derives lesson-quality limits", async () => {
     m.getCourse.mockResolvedValue({ id: COURSE, name: "My courses", isDefault: true });
@@ -67,5 +69,6 @@ describe("prepareLesson", () => {
     expect(lesson.lessonContext).toEqual({ date: "2026-10-18" });
     expect(lesson.qualityOptions).toMatchObject({ maxOutputTokens: 6144, sourceCoverage: true });
     expect(lesson.quality).toBe(provider.settings.lessonQuality);
+    expect(lesson.productionLimit).toBe(18);
   });
 });

@@ -47,6 +47,7 @@ const lesson = {
   missing: [],
   lessonContext: { date: "2026-10-18" },
   teaching: undefined,
+  productionLimit: 18,
 } as unknown as LessonInput;
 const studyMismatch = () => errors.validationFailed({ output: ["study_sentence_mismatch"] });
 const valid = { classified: [], model: { title: "Repaired" } };
@@ -94,11 +95,13 @@ describe("repairLegacyKnowledge", () => {
     const dispatch = { knowledgeDispatched: false };
     expect(await repairLegacyKnowledge(stageRun(), { lesson, dispatch })).toBe(valid);
     expect(m.providerStep.mock.calls.map((call) => call[3])).toEqual(["knowledge:study-repair"]);
+    // D110: the repaired lesson drops invalid cards within the allowance, as a first one does.
     expect(m.validate).toHaveBeenLastCalledWith(
       { title: "Answers fixed" },
       lesson.extracted,
       [],
       "fa",
+      { productionLimit: 18, salvage: true },
     );
     expect(dispatch.knowledgeDispatched).toBe(true);
   });

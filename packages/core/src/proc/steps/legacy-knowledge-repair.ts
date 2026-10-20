@@ -132,11 +132,13 @@ export const repairLegacyKnowledge: ProcessingStage<
   let accepted: ReturnType<typeof validateGeneratedKnowledge> | null = null;
   if (repaired)
     try {
+      // D110: invalid cards within the allowance are dropped before any answer-span repair.
       accepted = validateGeneratedKnowledge(
         repaired,
         extracted,
         missing,
         settings.explanationLanguage,
+        { productionLimit: lesson.productionLimit, salvage: true },
       );
     } catch (error) {
       if (!studyMismatch(error)) throw error;
@@ -186,6 +188,7 @@ export const repairLegacyKnowledge: ProcessingStage<
       extracted,
       missing,
       settings.explanationLanguage,
+      { productionLimit: lesson.productionLimit, salvage: true },
     );
   }
 };

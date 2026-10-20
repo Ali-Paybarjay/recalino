@@ -22,13 +22,18 @@ import {
   type TaskGroup,
   validateKnowledgeModel,
 } from "../lkm";
-import { errors } from "../plt";
+import { AppError, errors } from "../plt";
 import {
   buildKnowledgeEvidenceInput,
   type KnowledgeEvidenceInput,
   sourceKey,
 } from "./knowledge-evidence";
-import type { LessonBudget } from "./lesson-budget";
+import {
+  invalidCardAllowance,
+  LESSON_MARKED_PRODUCTION_MAXIMUM,
+  LESSON_RECOGNITION_MAXIMUM,
+  type LessonBudget,
+} from "./lesson-budget";
 import { personalisedTeachingPrompt } from "./study-prompt";
 
 export const knowledgeGenerationFormat = "knowledge_generation_keys_v5";
@@ -38,6 +43,16 @@ export interface KnowledgeGenerationInput extends KnowledgeEvidenceInput {
   /** Trusted server authorization only; source role, names and quotes never establish authorship. */
   confirmedHandwritingKeys?: readonly string[];
   confirmedTeacherCorrectionKeys?: readonly string[];
+}
+
+/** D110: filled by a tolerant assembly with what it omitted (codes and counts only). */
+export interface AssemblyTolerance {
+  omissions?: {
+    omitted: Record<string, number>;
+    omittedProduction: number;
+    /** The first omitted item's code: without the tolerance, the response's assembly error. */
+    first: string;
+  };
 }
 
 export interface KnowledgeGenerationOptions {
@@ -178,7 +193,12 @@ const gapStopWords = new Set(
     " ",
   ),
 );
-const gapWords = (value: string) => value.toLocaleLowerCase("en").match(/[\p{L}\p{N}'’-]+/gu) ?? [];
+/** Lower-case words of a sentence or target; joined words (conceal-ment) stay one word. */
+export const gapWords = (value: string) =>
+  value.toLocaleLowerCase("en").match(/[\p{L}\p{N}'’-]+/gu) ?? [];
+/** A target's content words: three or more letters and not a function word. */
+export const gapContentWords = (value: string) =>
+  gapWords(value).filter((word) => word.length >= 3 && !gapStopWords.has(word));
 const grammarTerms = studyGrammarTerms.map((term) => term.split(" "));
 // Dictionary placeholders and contractible auxiliaries are never required to be hidden.
 const labelExempt = new Set(["oneself", "one's", "someone's", "somebody's", "would", "shall"]);
@@ -250,7 +270,7 @@ export function lexicalGapProblem(
   const words = gapWords(target.text);
   const first = words[0];
   const last = words.at(-1);
-  const content = words.filter((word) => word.length >= 3 && !gapStopWords.has(word));
+  const content = gapContentWords(target.text);
   for (let index = 0; index < pieces.length - 1; index++) {
     const neighbours: [string | undefined, string | undefined][] = [
       [gapWords(pieces[index] ?? "").at(-1), first],
@@ -1096,7 +1116,11 @@ function lessonWire(
       .max(40),
     ...coverageWire,
     title: knowledgeModelSchema.shape.title,
-    learningItems: z.array(itemSchema).min(1).max(24),
+    // D78: a marked lesson may ask for 25 production and 6 recognition items.
+    learningItems: z
+      .array(itemSchema)
+      .min(1)
+      .max(LESSON_MARKED_PRODUCTION_MAXIMUM + LESSON_RECOGNITION_MAXIMUM),
     summary: z.array(claim).max(100).optional(),
     topics: z
       .array(
@@ -1515,14 +1539,20 @@ function boardLine(assembly: KnowledgeAssembly, entry: { text: string; evidenceK
 function writtenMistake(
   assembly: KnowledgeAssembly,
   entry: z.infer<GenerationWire["mistake"]>,
-  learningItems: readonly ReturnType<typeof expandLearningItem>[],
+  learningItems: readonly (ReturnType<typeof expandLearningItem> | undefined)[],
 ) {
   const { prepared, teacherCorrections } = assembly;
   if (!ownsFragment(assembly, entry.said, entry.evidenceKeys))
     throw errors.validationFailed({ output: ["learner_authorship_unconfirmed"] });
   const { evidenceKeys, learningItemIndex, where, ...content } = entry;
-  const item = learningItemIndex === undefined ? undefined : learningItems[learningItemIndex];
-  if (learningItemIndex !== undefined && item?.study.set !== "production")
+  // D110: the wire index of an omitted item still names its position; the mistake stays, unlinked.
+  const omitted =
+    learningItemIndex !== undefined &&
+    learningItemIndex < learningItems.length &&
+    learningItems[learningItemIndex] === undefined;
+  const item =
+    learningItemIndex === undefined || omitted ? undefined : learningItems[learningItemIndex];
+  if (learningItemIndex !== undefined && !omitted && item?.study.set !== "production")
     throw errors.validationFailed({ output: ["study_mistake_item_missing"] });
   const teacherCorrected = evidenceKeys.some(
     (evidenceKey) =>
@@ -1538,36 +1568,94 @@ function writtenMistake(
   };
 }
 
-/** QUA-01: a parsed response as a canonical knowledge model, in the contract's check order. */
-function assembleGeneratedKnowledge(assembly: KnowledgeAssembly, raw: unknown) {
-  const { data, context, prepared, schema } = assembly;
-  const wire = schema.parse(raw);
-  const notes = wire.classNotes;
-  // Omitted optional groups and lists are absent content, never an error or invented value.
-  const orientation = notes.orientation ?? {};
-  const activities = notes.activities ?? {};
-  const summary = wire.summary ?? [];
-  const topics = wire.topics ?? [];
-  const homework = wire.homework ?? [];
-  const uncertainties = wire.uncertainties ?? [];
-  // Every planned concept must be stated by a claim citing at least one of its keys.
+/** A code-owned reason one wire item cannot be expanded; anything else is not an item fault. */
+function itemFailureCode(error: unknown): string | undefined {
+  if (error instanceof z.ZodError) return "study_content_invalid";
+  if (!(error instanceof AppError) || error.code !== "validation_failed") return undefined;
+  const output = (error.details?.fields as { output?: unknown } | undefined)?.output;
+  const code = Array.isArray(output) && output.length === 1 ? output[0] : undefined;
+  return typeof code === "string" && /^[a-z][a-z0-9_]{0,79}$/u.test(code) ? code : undefined;
+}
+
+/**
+ * D110: with a tolerance, a wire item that cannot be expanded is omitted, within the response's
+ * allowance and keeping at least one production card. Positions are kept, so a mistake's wire
+ * learningItemIndex still names the same item. Beyond the allowance the first item's own error
+ * is thrown, exactly as without a tolerance.
+ */
+function expandLearningItems(
+  assembly: KnowledgeAssembly,
+  items: z.infer<LearningItemWire["itemSchema"]>[],
+  tolerance: AssemblyTolerance | undefined,
+) {
+  if (!tolerance)
+    return { items: items.map((item, index) => expandLearningItem(assembly, item, index)) };
+  const omitted: Record<string, number> = {};
+  let omittedCount = 0;
+  let omittedProduction = 0;
+  let firstError: unknown;
+  let first: string | undefined;
+  const expanded = items.map((item, index) => {
+    try {
+      return expandLearningItem(assembly, item, index);
+    } catch (error) {
+      const code = itemFailureCode(error);
+      if (!code) throw firstError ?? error;
+      firstError ??= error;
+      first ??= code;
+      omitted[code] = (omitted[code] ?? 0) + 1;
+      omittedCount += 1;
+      if (item.type !== "recognition") omittedProduction += 1;
+      return undefined;
+    }
+  });
+  const production = items.filter((item) => item.type !== "recognition").length;
+  if (
+    omittedCount &&
+    (omittedCount > invalidCardAllowance(production) || omittedProduction >= production)
+  )
+    throw firstError;
+  if (omittedCount && first) tolerance.omissions = { omitted, omittedProduction, first };
+  return { items: expanded, firstError };
+}
+
+/** Every planned card concept must be stated by a claim citing at least one of its keys. */
+function planUncovered(wire: ParsedWire, items: readonly ParsedWire["learningItems"][number][]) {
   const cited = new Set(
     [
-      ...wire.learningItems.map((item) => item.claim),
-      ...summary,
-      ...topics.flatMap((topic) => topic.claims),
-      ...homework,
-      ...uncertainties,
+      ...items.map((item) => item.claim),
+      ...(wire.summary ?? []),
+      ...(wire.topics ?? []).flatMap((topic) => topic.claims),
+      ...(wire.homework ?? []),
+      ...(wire.uncertainties ?? []),
     ].flatMap((entry) => entry.evidenceKeys),
   );
-  if (
-    wire.lessonPlan.some(
+  return {
+    cited,
+    uncovered: wire.lessonPlan.some(
       (entry) =>
         entry.teachAs === "card" &&
         !entry.evidenceKeys.some((evidenceKey) => cited.has(evidenceKey)),
-    )
-  )
-    throw errors.validationFailed({ output: ["study_plan_uncovered"] });
+    ),
+  };
+}
+
+type ParsedWire = ReturnType<GenerationWire["schema"]["parse"]>;
+
+/** QUA-01: a parsed response as a canonical knowledge model, in the contract's check order. */
+function assembleGeneratedKnowledge(
+  assembly: KnowledgeAssembly,
+  raw: unknown,
+  tolerance?: AssemblyTolerance,
+) {
+  if (tolerance) delete tolerance.omissions;
+  const wire = assembly.schema.parse(raw);
+  const notes = wire.classNotes;
+  const activities = notes.activities ?? {};
+  // Every planned concept must be stated by a claim citing at least one of its keys.
+  const { cited, uncovered } = planUncovered(wire, wire.learningItems);
+  if (uncovered) throw errors.validationFailed({ output: ["study_plan_uncovered"] });
+  // Coverage counts the citations of every wire item, also one omitted below (a D110 limitation).
   const sourceCoverage = assembly.coverage
     ? accountSources(assembly, wire as { unusedSources?: { source: string; reason: string }[] }, [
         ...cited,
@@ -1578,9 +1666,42 @@ function assembleGeneratedKnowledge(assembly: KnowledgeAssembly, raw: unknown) {
         ).flatMap((entry) => entry.evidenceKeys),
       ])
     : undefined;
-  const learningItems = wire.learningItems.map((item, index) =>
-    expandLearningItem(assembly, item, index),
-  );
+  const expanded = expandLearningItems(assembly, wire.learningItems, tolerance);
+  try {
+    // D110: the kept items alone must still state every planned card concept.
+    if (
+      expanded.firstError &&
+      planUncovered(
+        wire,
+        wire.learningItems.filter((_item, index) => expanded.items[index] !== undefined),
+      ).uncovered
+    )
+      throw expanded.firstError;
+    return assembledModel(assembly, wire, expanded.items, sourceCoverage);
+  } catch (error) {
+    if (tolerance) delete tolerance.omissions;
+    // Without the omission, the first invalid item was this response's error.
+    throw expanded.firstError ?? error;
+  }
+}
+
+/** QUA-01: the rest of the lesson around its expanded items; an omitted item is undefined. */
+function assembledModel(
+  assembly: KnowledgeAssembly,
+  wire: ParsedWire,
+  expandedItems: readonly (ReturnType<typeof expandLearningItem> | undefined)[],
+  sourceCoverage: SourceCoverage[] | undefined,
+) {
+  const { data, context, prepared } = assembly;
+  const notes = wire.classNotes;
+  // Omitted optional groups and lists are absent content, never an error or invented value.
+  const orientation = notes.orientation ?? {};
+  const activities = notes.activities ?? {};
+  const summary = wire.summary ?? [];
+  const topics = wire.topics ?? [];
+  const homework = wire.homework ?? [];
+  const uncertainties = wire.uncertainties ?? [];
+  const learningItems = expandedItems.filter((item) => item !== undefined);
   const board = (activities.board ?? []).map((entry) => boardLine(assembly, entry));
   const tasks = expandTaskGroups(assembly, activities.tasks ?? []);
   const culture = expandTaskGroups(assembly, activities.culture ?? []);
@@ -1588,7 +1709,7 @@ function assembleGeneratedKnowledge(assembly: KnowledgeAssembly, raw: unknown) {
     mistakes?: { noteFa?: string; items: z.infer<GenerationWire["mistake"]>[] };
   };
   const writtenMistakes = (mistakes?.items ?? []).map((entry) =>
-    writtenMistake(assembly, entry, learningItems),
+    writtenMistake(assembly, entry, expandedItems),
   );
   const model: KnowledgeModel = {
     schemaVersion: "1",
@@ -1693,8 +1814,9 @@ export function buildKnowledgeGenerationInput(
     labels,
     schema,
   };
-  function assemble(raw: unknown) {
-    return assembleGeneratedKnowledge(assembly, raw);
+  /** Strict unless a D110 tolerance is given; the tolerance then reports what was omitted. */
+  function assemble(raw: unknown, tolerance?: AssemblyTolerance) {
+    return assembleGeneratedKnowledge(assembly, raw, tolerance);
   }
   function decode(raw: unknown) {
     const { sourceClassifications, ...assembled } = assemble(raw);

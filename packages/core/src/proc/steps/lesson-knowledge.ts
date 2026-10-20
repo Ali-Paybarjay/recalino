@@ -1,5 +1,6 @@
-import type { z } from "zod";
+import { z } from "zod";
 import { ProviderError } from "../../aip";
+import { AppError } from "../../plt";
 import { sourceClassificationPrompt } from "../../src";
 import { generatedKnowledgeSchema, legacyKnowledgeWireSchema } from "../generated-knowledge";
 import {
@@ -7,7 +8,7 @@ import {
   compactKnowledgeInstruction,
   knowledgeTruncationSchema,
 } from "../knowledge-compact";
-import { buildKnowledgeGenerationInput } from "../knowledge-generation";
+import { type AssemblyTolerance, buildKnowledgeGenerationInput } from "../knowledge-generation";
 import {
   generateCanonicalKnowledge,
   knowledgeSchemaFailureSchema,
@@ -15,6 +16,7 @@ import {
 import { knowledgeInputContextSchema } from "../knowledge-input-context";
 import { buildKnowledgeStudyRepairInput } from "../knowledge-study-repair";
 import { declaredTeachingContext } from "../learner-context";
+import type { AssemblyOmissions } from "../study-output-guard";
 import type { ProcessingRun, ProcessingStage } from "./context";
 import {
   knowledgePrompt,
@@ -28,6 +30,12 @@ import {
 } from "./legacy-knowledge-repair";
 import type { LessonInput } from "./lesson-input";
 import { cached, providerStep, saveStep } from "./runtime";
+import {
+  assemblyOmissions,
+  assemblyRecovery,
+  preferRepaired,
+  saveAssemblyOmissions,
+} from "./study-output";
 
 type GeneratedKnowledge = z.output<typeof generatedKnowledgeSchema>;
 type LessonKnowledgeInput = { lesson: LessonInput; dispatch: KnowledgeDispatch };
@@ -86,6 +94,8 @@ async function buyLessonKnowledge(
   const schemaFailure = compactGeneration
     ? await cached(job.db, payload.runId, "knowledge:schema-invalid", knowledgeSchemaFailureSchema)
     : null;
+  // D110: items the assembly cannot expand are omitted within the response's allowance.
+  const tolerance: AssemblyTolerance = {};
   // Deterministic request validation runs before reserving a paid attempt.
   const generation = compactGeneration
     ? buildKnowledgeGenerationInput(generationData, settings.provider.maxInputCharacters, {
@@ -119,6 +129,8 @@ async function buyLessonKnowledge(
               settings.provider.llmModel,
               operationKey,
               generation,
+              undefined,
+              tolerance,
             )
           : legacyKnowledgeRequest(run, lesson, compact, operationKey),
       {
@@ -133,6 +145,8 @@ async function buyLessonKnowledge(
           if (compact || schemaFailure) {
             await saveStep(tx, payload.runId, "knowledge", output, job.now());
           }
+          // Whichever step bought it, the lesson is validated as the "knowledge" checkpoint.
+          await saveAssemblyOmissions(tx, payload.runId, "knowledge", tolerance, job.now());
         },
       },
     );
@@ -160,6 +174,23 @@ async function buyLessonKnowledge(
   }
 }
 
+/** D110: the saved lesson's own bounded check, used first and as the repair's fallback. */
+function originalCheck(
+  run: ProcessingRun,
+  lesson: LessonInput,
+  generated: GeneratedKnowledge,
+  assemblyOmitted: AssemblyOmissions | null,
+) {
+  return () =>
+    validateGeneratedKnowledge(
+      generated,
+      lesson.extracted,
+      lesson.missing,
+      run.settings.explanationLanguage,
+      { productionLimit: lesson.productionLimit, salvage: true, assemblyOmitted },
+    );
+}
+
 /** QUA-01: one bounded repair of a saved lesson's answer spans; only gap fields change. */
 async function repairStudySentences(
   run: ProcessingRun,
@@ -168,6 +199,8 @@ async function repairStudySentences(
 ) {
   const { job, ctx, payload, provider, settings } = run;
   const { extracted, missing, teaching } = lesson;
+  // The answer-span targets come from the saved response as it was paid for, unchanged by the
+  // D110 guard, so a saved repair keeps parsing across deploys.
   const studyRepair = buildKnowledgeStudyRepairInput(
     generated,
     settings.provider.maxInputCharacters,
@@ -207,6 +240,11 @@ async function repairStudySentences(
     extracted,
     missing,
     settings.explanationLanguage,
+    {
+      productionLimit: lesson.productionLimit,
+      salvage: true,
+      assemblyOmitted: await assemblyOmissions(job.db, payload.runId, "knowledge"),
+    },
   );
 }
 
@@ -214,7 +252,7 @@ async function repairStudySentences(
 async function regenerateLessonKnowledge(
   run: ProcessingRun,
   { lesson, dispatch }: LessonKnowledgeInput,
-  error: unknown,
+  failure: Pick<RepairFailure, "error" | "recovery">,
 ) {
   const { job, ctx, payload, provider, settings } = run;
   const { extracted, missing, generationData, qualityOptions } = lesson;
@@ -224,7 +262,8 @@ async function regenerateLessonKnowledge(
     {
       maxOutputTokens: settings.provider.maxOutputTokens,
       ...qualityOptions,
-      repairReason: semanticRepairReason(error) ?? undefined,
+      // D110: a response whose assembly omissions the guard cannot accept is recovered as before.
+      ...(failure.recovery ?? { repairReason: semanticRepairReason(failure.error) ?? undefined }),
     },
   );
   const priorRepair = await cached(
@@ -233,6 +272,7 @@ async function regenerateLessonKnowledge(
     "knowledge:repair",
     generatedKnowledgeSchema,
   );
+  const tolerance: AssemblyTolerance = {};
   const repaired =
     priorRepair ??
     (await providerStep(
@@ -250,49 +290,124 @@ async function regenerateLessonKnowledge(
           operationKey,
           repair,
           "class_knowledge_content_repair",
+          tolerance,
         ),
+      {
+        onCommit: (tx) =>
+          saveAssemblyOmissions(tx, payload.runId, "knowledge:repair", tolerance, job.now()),
+      },
     ));
   if (!priorRepair) dispatch.knowledgeDispatched = true;
   // A complete second response is final: no recursive regeneration or translation.
-  return validateGeneratedKnowledge(repaired, extracted, missing, settings.explanationLanguage);
+  return validateGeneratedKnowledge(repaired, extracted, missing, settings.explanationLanguage, {
+    productionLimit: lesson.productionLimit,
+    salvage: true,
+    assemblyOmitted: await assemblyOmissions(job.db, payload.runId, "knowledge:repair"),
+  });
+}
+
+type RepairRoute = "study" | "regenerate" | "legacy";
+/** The saved lesson's failure, and the schema recovery its assembly omissions call for (D110). */
+interface RepairFailure {
+  error: unknown;
+  generated: GeneratedKnowledge;
+  recovery?: ReturnType<typeof assemblyRecovery>;
+}
+
+/**
+ * D110: a lesson whose assembly omitted items and that the guard cannot accept failed its
+ * assembly before the tolerance, so it takes the recovery and failure it took then.
+ */
+function omissionRecovery(error: unknown, omissions: AssemblyOmissions | null) {
+  return omissions && error instanceof AppError && error.code === "validation_failed"
+    ? assemblyRecovery(omissions)
+    : undefined;
+}
+
+/** Whether a known truncated or invalid first response already used both content attempts. */
+async function bothAttemptsUsed(run: ProcessingRun, lesson: LessonInput) {
+  const { job, payload } = run;
+  return (
+    lesson.compactGeneration &&
+    Boolean(
+      (await cached(job.db, payload.runId, "knowledge:truncated", knowledgeTruncationSchema)) ||
+        (await cached(
+          job.db,
+          payload.runId,
+          "knowledge:schema-invalid",
+          knowledgeSchemaFailureSchema,
+        )),
+    )
+  );
+}
+
+/**
+ * D110: a repair this run already paid for keeps its route, whatever the guard now finds first,
+ * so a deploy never turns a saved repair into a refused second dispatch.
+ */
+async function savedRepairRoute(
+  run: ProcessingRun,
+  lesson: LessonInput,
+): Promise<RepairRoute | null> {
+  const { job, payload } = run;
+  const saved = async (step: string) =>
+    (await cached(job.db, payload.runId, step, z.unknown())) !== null;
+  // The legacy chain may end with its own answer-span repair of the corrected lesson.
+  if (!lesson.compactGeneration && (await saved("knowledge:repair"))) return "legacy";
+  if (await bothAttemptsUsed(run, lesson)) return null;
+  if (await saved("knowledge:study-repair")) return "study";
+  if (await saved("knowledge:repair")) return "regenerate";
+  return null;
+}
+
+/** The one bounded repair on its route; its result is final (D110: or the bounded original). */
+function runRepair(
+  run: ProcessingRun,
+  input: LessonKnowledgeInput,
+  route: RepairRoute,
+  failure: RepairFailure,
+  original: () => ValidatedKnowledge,
+) {
+  return preferRepaired(original, async () =>
+    route === "study"
+      ? repairStudySentences(run, input, failure.generated)
+      : route === "regenerate"
+        ? regenerateLessonKnowledge(run, input, failure)
+        : repairLegacyKnowledge(run, input),
+  );
 }
 
 /** QUA-01: the one bounded repair of a complete, saved lesson after a known semantic failure. */
 async function repairLessonKnowledge(
   run: ProcessingRun,
   input: LessonKnowledgeInput,
-  failure: { error: unknown; generated: GeneratedKnowledge; priorKnowledge: unknown },
+  failure: RepairFailure & { priorKnowledge: unknown },
+  original: () => ValidatedKnowledge,
 ): Promise<"checkpoint" | ValidatedKnowledge> {
-  const { job, payload } = run;
   const { compactGeneration } = input.lesson;
-  const { error, generated, priorKnowledge } = failure;
+  const { error, priorKnowledge, recovery } = failure;
   // Only a complete, saved response with a known semantic failure permits repair.
   // Provider uncertainty, changed settings and account/source failures never enter here.
-  if (!semanticRepairReason(error)) throw error;
+  if (!recovery && !semanticRepairReason(error)) throw error;
   // A known invalid response or truncation and its recovery consume both
   // content-contract attempts. Never buy a third generation after semantic validation.
-  if (
-    compactGeneration &&
-    ((await cached(job.db, payload.runId, "knowledge:truncated", knowledgeTruncationSchema)) ||
-      (await cached(
-        job.db,
-        payload.runId,
-        "knowledge:schema-invalid",
-        knowledgeSchemaFailureSchema,
-      )))
-  )
-    throw error;
+  if (await bothAttemptsUsed(run, input.lesson))
+    // D110: a recovery whose assembly fails ends the run as provider_schema_invalid, as before.
+    throw recovery
+      ? new ProviderError("provider_schema_invalid", false, false, undefined, recovery.repairDetail)
+      : error;
   // Persist each paid result before the next provider call gets its own job budget.
   if (!priorKnowledge) {
     return "checkpoint";
   }
-  if (semanticRepairReason(error) === "study_sentence_mismatch") {
-    return repairStudySentences(run, input, generated);
-  } else if (compactGeneration) {
-    return regenerateLessonKnowledge(run, input, error);
-  } else {
-    return repairLegacyKnowledge(run, input);
-  }
+  const route: RepairRoute = recovery
+    ? "regenerate"
+    : semanticRepairReason(error) === "study_sentence_mismatch"
+      ? "study"
+      : compactGeneration
+        ? "regenerate"
+        : "legacy";
+  return runRepair(run, input, route, failure, original);
 }
 
 /**
@@ -304,8 +419,7 @@ export const generateLessonKnowledge: ProcessingStage<
   LessonKnowledgeInput,
   "checkpoint" | ValidatedKnowledge
 > = async (run, { lesson, dispatch }) => {
-  const { job, payload, settings } = run;
-  const { extracted, missing } = lesson;
+  const { job, payload } = run;
   const priorKnowledge = await cached(job.db, payload.runId, "knowledge", generatedKnowledgeSchema);
   dispatch.knowledgeDispatched = !priorKnowledge;
   let generated = priorKnowledge;
@@ -314,13 +428,38 @@ export const generateLessonKnowledge: ProcessingStage<
     if (bought === "checkpoint") return "checkpoint";
     generated = bought;
   }
+  const input = { lesson, dispatch };
+  const omissions = await assemblyOmissions(job.db, payload.runId, "knowledge");
+  const original = originalCheck(run, lesson, generated, omissions);
+  // D110: a repair already paid for this run is used, compared with the bounded original.
+  const route = priorKnowledge ? await savedRepairRoute(run, lesson) : null;
+  if (route) {
+    let error: unknown = null;
+    try {
+      original();
+    } catch (failure) {
+      // Kept for the route's request; a saved repair is used as it was paid for.
+      error = failure;
+    }
+    const recovery = omissionRecovery(error, omissions);
+    return runRepair(
+      run,
+      input,
+      route,
+      { error, generated, ...(recovery ? { recovery } : {}) },
+      original,
+    );
+  }
   try {
-    return validateGeneratedKnowledge(generated, extracted, missing, settings.explanationLanguage);
+    // D110 drop first: invalid cards within the allowance are dropped without a paid repair.
+    return original();
   } catch (error) {
+    const recovery = omissionRecovery(error, omissions);
     return await repairLessonKnowledge(
       run,
-      { lesson, dispatch },
-      { error, generated, priorKnowledge },
+      input,
+      { error, generated, priorKnowledge, ...(recovery ? { recovery } : {}) },
+      original,
     );
   }
 };

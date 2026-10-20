@@ -14,7 +14,13 @@ import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/know
 import { generateCanonicalKnowledge } from "../../packages/core/src/proc/knowledge-generation-step";
 import { mergeLessonParts, planLessonParts } from "../../packages/core/src/proc/knowledge-parts";
 import { modelTeachingContext } from "../../packages/core/src/proc/learner-context";
-import { lessonBudget, measureLessonContent } from "../../packages/core/src/proc/lesson-budget";
+import {
+  LESSON_PRODUCTION_MAXIMUM,
+  lessonBudget,
+  lessonProductionLimit,
+  measureLessonContent,
+} from "../../packages/core/src/proc/lesson-budget";
+import { sanitizeGeneratedStudyGaps } from "../../packages/core/src/proc/study-output-guard";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import {
   BudgetGuard,
@@ -144,12 +150,17 @@ for (const index of selected) {
       outputTokens: result.usage.outputTokens ?? null,
       latencyMs: Date.now() - started,
     });
+    // D110: the gaps the guard would rebuild, counted apart from the strict result below.
+    const would = sanitizeGeneratedStudyGaps(result.output);
+    entry.guardGapsRebuilt = { spacing: would.spacing, derivedBlank: would.derivedBlank };
     try {
+      // D110: strict, as the model wrote it: no gap is rebuilt and no card is dropped.
       validateGeneratedKnowledge(
         result.output,
         part.sources,
         [...part.missingSourceIds],
         long.data.explanationLanguage,
+        { productionLimit: lessonProductionLimit(budget.content.markedSpans) },
       );
       entry.outcome = "valid";
       accepted.set(index, result.output);
@@ -187,6 +198,7 @@ if (parts.every((part) => accepted.has(part.index))) {
       long.data.sources,
       [...long.data.missingSourceIds],
       long.data.explanationLanguage,
+      { productionLimit: LESSON_PRODUCTION_MAXIMUM },
     );
     const { model: lesson } = finalizeGeneratedStudyPractice(
       normalizeGeneratedStudyModel(validated.model, true, long.data.lessonContext),

@@ -9,6 +9,7 @@ import { prepareLesson } from "./lesson-input";
 import { generateLessonKnowledge } from "./lesson-knowledge";
 import { generateLessonParts } from "./lesson-parts";
 import { publishLesson } from "./publish";
+import { logStudyOutput } from "./study-output";
 import type { VoiceCheck } from "./voice-check";
 import { correctSpokenMistakes } from "./voice-correction";
 
@@ -33,14 +34,18 @@ export const teachLesson: ProcessingStage<
       ? planLessonParts(extracted, quality.classPartMinutes, missing)
       : null;
   if (partPlan) {
-    const merged = await generateLessonParts(run, { lesson: prepared, plan: partPlan });
-    if (merged === "checkpoint") return "checkpoint";
-    validated = validateGeneratedKnowledge(
-      merged,
+    const parts = await generateLessonParts(run, { lesson: prepared, plan: partPlan });
+    if (parts === "checkpoint") return "checkpoint";
+    // The merged lesson is checked strictly, as before: D110 bounded each part's drops within
+    // one lesson-wide allowance and floor, so a merge-level problem fails the run as it did.
+    const merged = validateGeneratedKnowledge(
+      parts.knowledge,
       extracted,
       missing,
       settings.explanationLanguage,
+      { productionLimit: prepared.productionLimit },
     );
+    validated = { ...merged, audit: parts.audit };
   } else {
     const dispatch = { knowledgeDispatched };
     const knowledge = await generateLessonKnowledge(run, { lesson: prepared, dispatch });
@@ -48,7 +53,7 @@ export const teachLesson: ProcessingStage<
     if (knowledge === "checkpoint") return "checkpoint";
     validated = knowledge;
   }
-  const { classified } = validated;
+  const { classified, audit: studyOutput } = validated;
   const { model, audit: practiceAudit } = finalizeGeneratedStudyPractice(
     normalizeGeneratedStudyModel(
       validated.model,
@@ -67,5 +72,6 @@ export const teachLesson: ProcessingStage<
     })) === "checkpoint"
   )
     return "checkpoint";
-  return publishLesson(run, { lesson: prepared, classified, model, practiceAudit });
+  logStudyOutput(run.job, studyOutput);
+  return publishLesson(run, { lesson: prepared, classified, model, practiceAudit, studyOutput });
 };

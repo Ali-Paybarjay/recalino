@@ -40,6 +40,7 @@ import {
   selectPracticeFocus,
   snapshotLearnerTeachingContext,
 } from "../../packages/core/src/proc/learner-context";
+import { LESSON_PRODUCTION_MAXIMUM } from "../../packages/core/src/proc/lesson-budget";
 import { knowledgePrompt } from "../../packages/core/src/proc/worker";
 import { automaticSourceRole, sourceClassificationPrompt } from "../../packages/core/src/src";
 
@@ -267,6 +268,7 @@ function validate(generated: ReturnType<typeof generatedKnowledgeSchema.parse>):
       sourceClassifications[0]?.classification ?? { role: "class_material", confidence: "high" },
     ),
   };
+  // D62: strict at this unmarked lesson's own limit of 18, as the worker checks it (D110).
   return validateKnowledgeModel(
     {
       ...assignGeneratedKnowledgeIds(normalizeGeneratedStudyModel(knowledge, false)),
@@ -274,6 +276,7 @@ function validate(generated: ReturnType<typeof generatedKnowledgeSchema.parse>):
     },
     [classified],
     "fa",
+    LESSON_PRODUCTION_MAXIMUM,
   );
 }
 const results: {

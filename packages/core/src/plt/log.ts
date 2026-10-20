@@ -66,6 +66,15 @@ const ALLOWED_FIELDS = new Set([
   "exposure",
   "glare",
   "edge_density",
+  // D110: the study output guard's version and integer counts only, never class text or IDs.
+  "guard_version",
+  "production_limit",
+  "gaps_spacing",
+  "gaps_derived_blank",
+  "dropped",
+  "trimmed_over_limit",
+  "unlinked_mistakes",
+  "assembly_omitted",
 ]);
 
 const IDENTIFIER = /^[A-Za-z0-9_.:/\-[\]]{1,128}$/;

@@ -178,7 +178,7 @@ describe("shared structured lesson model", () => {
     );
   });
 
-  it("rejects incomplete production tasks and more than eighteen core items", () => {
+  it("rejects incomplete production tasks and more core items than the D78 class ceiling", () => {
     const missingGap = fixture();
     const first = missingGap.learningItems[0];
     if (first?.study?.set === "production") first.study.gapSentence = "No blank here";
@@ -190,12 +190,18 @@ describe("shared structured lesson model", () => {
     const excessive = fixture();
     const template = excessive.learningItems[0];
     if (!template) throw new Error("Missing fixture");
-    excessive.learningItems = Array.from({ length: 19 }, (_, index) => ({
-      ...template,
-      id: `i${index}`,
-      claim: { ...template.claim, id: `c${index}` },
-    }));
+    const cards = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        ...template,
+        id: `i${index}`,
+        claim: { ...template.claim, id: `c${index}` },
+      }));
     delete excessive.classNotes?.mistakes;
+    // D78/D110: 25 is the class ceiling; each lesson's own limit (18 unmarked) is enforced
+    // where it is generated.
+    excessive.learningItems = cards(25);
+    expect(validateKnowledgeModel(excessive, [], "fa").learningItems).toHaveLength(25);
+    excessive.learningItems = cards(26);
     expect(() => validateKnowledgeModel(excessive, [], "fa")).toThrow();
   });
 

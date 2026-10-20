@@ -298,3 +298,21 @@ it("AC-D46-04 stores the words a grammar IPA transcribes and keeps older grammar
   item.study.ipaText = "look forward to";
   rejected(lexical);
 });
+
+it("D78 keeps up to 25 production cards in one class and rejects the 26th", () => {
+  const cards = (count: number): KnowledgeModel => {
+    const value = lexicalFrameModel();
+    const [card] = value.learningItems;
+    if (!card) throw new Error("Missing fixture card");
+    value.learningItems = Array.from({ length: count }, (_, index) => ({
+      ...card,
+      id: `card-${index}`,
+      claim: { ...card.claim, id: `card-claim-${index}` },
+    }));
+    return value;
+  };
+  expect(validateKnowledgeModel(cards(25), [], "en").learningItems).toHaveLength(25);
+  expect(() => validateKnowledgeModel(cards(26), [], "en")).toThrow(
+    expect.objectContaining({ details: { fields: { output: ["study_core_limit"] } } }),
+  );
+});

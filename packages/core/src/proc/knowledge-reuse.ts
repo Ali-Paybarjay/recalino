@@ -7,6 +7,7 @@ import { providerAccountingProvenanceQueries } from "../quota";
 import { type RunSnapshot, runSettingsSchema, sourceSnapshotSchema } from "./contracts";
 import { generatedKnowledgeSchema } from "./generated-knowledge";
 import { usesContentKnowledgeContract } from "./knowledge-contract";
+import { assemblyOmissionsSchema, assemblyOmissionsStep } from "./knowledge-generation-step";
 import { knowledgeInputContextSchema } from "./knowledge-input-context";
 import { buildKnowledgeRepairInput } from "./knowledge-repair";
 import { modelTeachingContext, selectPracticeFocus } from "./learner-context";
@@ -165,6 +166,23 @@ export async function reuseCompletedKnowledge(
           run_id: input.runId,
           step: "knowledge:input-context",
           output: JSON.stringify(currentContext),
+          completed_at: input.now,
+        })
+        .execute();
+    // D110: what the assembly omitted from that response still counts toward its allowance.
+    const omissions = await tx
+      .selectFrom("proc.run_step")
+      .select("output")
+      .where("run_id", "=", candidate.run_id)
+      .where("step", "=", assemblyOmissionsStep("knowledge"))
+      .executeTakeFirst();
+    if (omissions && assemblyOmissionsSchema.safeParse(omissions.output).success)
+      await tx
+        .insertInto("proc.run_step")
+        .values({
+          run_id: input.runId,
+          step: assemblyOmissionsStep("knowledge"),
+          output: JSON.stringify(omissions.output),
           completed_at: input.now,
         })
         .execute();

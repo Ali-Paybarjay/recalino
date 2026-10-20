@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { ProviderError } from "../aip";
-import type { KnowledgeModel } from "../lkm";
+import { type KnowledgeModel, STUDY_PRODUCTION_CEILING } from "../lkm";
 import { errors } from "../plt";
 import { lexicalGapProblem } from "./knowledge-generation";
 import type { ModelTeachingContext } from "./learner-context";
 
 const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-function sentenceMismatch(gap: string | undefined, full: string): boolean {
+/** A well-formed gap whose surrounding words do not match its sentence (also D110's guard). */
+export function sentenceMismatch(gap: string | undefined, full: string): boolean {
   // Other study failures keep their existing recovery path. This repair only replaces
   // a well-formed gap whose surrounding words do not match the immutable sentence.
   if (!gap?.includes("______") || /[A-Za-z_]______|______[A-Za-z_]/u.test(gap)) return false;
@@ -19,7 +20,8 @@ function sentenceMismatch(gap: string | undefined, full: string): boolean {
   );
 }
 
-function wordBoundary(text: string, offset: number): boolean {
+/** Not inside a word, a joined word (conceal-ment) or a surrogate pair. */
+export function wordBoundary(text: string, offset: number): boolean {
   if (
     offset > 0 &&
     /[\uD800-\uDBFF]/u.test(text[offset - 1] ?? "") &&
@@ -57,7 +59,7 @@ export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
   });
   if (
     !targets.length ||
-    targets.length > 18 ||
+    targets.length > STUDY_PRODUCTION_CEILING ||
     new Set(model.learningItems.map((item) => item.id)).size !== model.learningItems.length ||
     targets.some((item) => item.fullSentence.includes("______"))
   )
@@ -72,7 +74,7 @@ export function buildKnowledgeStudyRepairInput<T extends KnowledgeModel>(
         }),
       )
       .min(1)
-      .max(18),
+      .max(STUDY_PRODUCTION_CEILING),
   });
   const input = JSON.stringify({
     format: "study_answer_parts_v1",

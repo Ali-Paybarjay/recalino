@@ -29,6 +29,8 @@ import { usesContentKnowledgeContract } from "../../packages/core/src/proc/knowl
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
 import { generateCanonicalKnowledge } from "../../packages/core/src/proc/knowledge-generation-step";
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
+import { LESSON_PRODUCTION_MAXIMUM } from "../../packages/core/src/proc/lesson-budget";
+import { sanitizeGeneratedStudyGaps } from "../../packages/core/src/proc/study-output-guard";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import { migrationHoldoutSets } from "./haiku55-holdout-registry";
 import {
@@ -625,6 +627,9 @@ for (const task of schedule) {
     visibleJsonParseFailures = 0,
     unexpectedTransport = false,
     initialFailure: string | undefined,
+    // D110: gaps the guard would rebuild in the first validated response, pass or fail; the
+    // eval itself stays strict, so they never count as the model's own first-pass success.
+    guardGapsRebuiltFirst: { spacing: number; derivedBlank: number } | undefined,
     localControlInterruption: string | undefined;
   const ensureControlContinues = async () => {
     if (!state.stopped && !(await stopRequested())) return;
@@ -896,13 +901,20 @@ for (const task of schedule) {
       );
     }
     await save(resolve(dossier, "canonical-generated.json"), generated);
+    const wouldRebuild = sanitizeGeneratedStudyGaps(generated);
+    guardGapsRebuiltFirst = {
+      spacing: wouldRebuild.spacing,
+      derivedBlank: wouldRebuild.derivedBlank,
+    };
     let validated: ReturnType<typeof validateGeneratedKnowledge>;
     try {
+      // D110: strict, as the model wrote it (no guard; no budget here, so the D62 limit of 18).
       validated = validateGeneratedKnowledge(
         generated,
         data.sources,
         data.missingSourceIds,
         data.explanationLanguage,
+        { productionLimit: LESSON_PRODUCTION_MAXIMUM },
       );
     } catch (error) {
       const validationFailure = failure(error);
@@ -941,6 +953,7 @@ for (const task of schedule) {
         data.sources,
         data.missingSourceIds,
         data.explanationLanguage,
+        { productionLimit: LESSON_PRODUCTION_MAXIMUM },
       );
     }
     const projected = finalizeGeneratedStudyPractice(
@@ -993,6 +1006,7 @@ for (const task of schedule) {
     diagnosticOnly,
     ...result,
     ...(initialFailure ? { initialFailure } : {}),
+    ...(guardGapsRebuiltFirst ? { guardGapsRebuiltFirst } : {}),
     generations: receipts.filter((receipt) => receipt.status === 200).length,
     providerAttempts: calls,
     httpRequests: state.requests.filter((request) => request.caseId === task.caseId).length,

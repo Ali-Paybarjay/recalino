@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Claim, LearningItem } from "../lkm";
 import type { RunSource } from "./contracts";
 import { mergeLessonParts, planLessonParts } from "./knowledge-parts";
+import { validateGeneratedKnowledge } from "./steps/knowledge-checks";
 
 function audio(minutes: number): RunSource {
   return {
@@ -146,5 +147,34 @@ describe("D63 lesson parts merge", () => {
     const first = Array.from({ length: 15 }, (_, index) => item(`first ${index}`));
     const second = Array.from({ length: 15 }, (_, index) => item(`second ${index}`));
     expect(mergeLessonParts([part(first), part(second)], 21).learningItems).toHaveLength(21);
+  });
+
+  it("D78 a merged lesson of 21 cards validates at its raised limit, not at 18", () => {
+    const card = (en: string): LearningItem => ({
+      ...item(en),
+      study: {
+        set: "production",
+        kind: "collocation",
+        en,
+        topic: "synthetic",
+        ipa: "/sɪnˈθetɪk/",
+        faMeaning: "A synthetic meaning.",
+        fullSentence: `We say ${en} today.`,
+        gapSentence: "We say ______ today.",
+        collocations: [],
+        noteFa: "A synthetic note.",
+        imageFa: "A synthetic picture.",
+        sourceFa: "Synthetic example.",
+      },
+    });
+    const first = Array.from({ length: 15 }, (_, index) => card(`first ${index}`));
+    const second = Array.from({ length: 15 }, (_, index) => card(`second ${index}`));
+    const merged = mergeLessonParts([part(first), part(second)], 21);
+    const lesson = (productionLimit: number) =>
+      validateGeneratedKnowledge(merged, [], [], "en", { productionLimit });
+    expect(lesson(21).model.learningItems).toHaveLength(21);
+    expect(() => lesson(18)).toThrow(
+      expect.objectContaining({ details: { fields: { output: ["study_core_limit"] } } }),
+    );
   });
 });

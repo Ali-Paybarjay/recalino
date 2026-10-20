@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runSource, stageRun } from "../../../test/processing-run";
+import { errors } from "../../plt";
+import { emptyStudyOutputAudit } from "../study-output-guard";
 import type { KnowledgeDispatch } from "./legacy-knowledge-repair";
 import { teachLesson } from "./lesson";
 
@@ -34,7 +36,12 @@ vi.mock("../../lkm", async (original) => ({
 
 // QUA-01: the order of one lesson stage, with every sub-stage mocked.
 const extracted = [runSource()];
-const validated = { classified: extracted, model: { title: "Lesson" } };
+const audit = emptyStudyOutputAudit(18);
+const validated = {
+  classified: extracted,
+  model: { title: "Lesson", learningItems: [{ study: { set: "production" } }] },
+  audit,
+};
 function prepared(compactGeneration: boolean, classPartMinutes?: number) {
   return {
     extracted,
@@ -42,6 +49,7 @@ function prepared(compactGeneration: boolean, classPartMinutes?: number) {
     lessonContext: { date: "2026-10-18" },
     compactGeneration,
     quality: classPartMinutes ? { classPartMinutes } : undefined,
+    productionLimit: 18,
   };
 }
 
@@ -74,17 +82,41 @@ describe("teachLesson", () => {
       classified: extracted,
       model: { title: "Final" },
       practiceAudit: { applied: false },
+      studyOutput: audit,
     });
   });
   it("teaches a long class part by part and validates the merged lesson", async () => {
     m.prepare.mockResolvedValue(prepared(true, 45));
     m.plan.mockReturnValue([{ index: 0 }]);
-    m.parts.mockResolvedValue({ title: "Merged" });
+    const partsAudit = { ...emptyStudyOutputAudit(18), droppedItems: { study_gap_missing: 1 } };
+    m.parts.mockResolvedValue({ knowledge: { title: "Merged" }, audit: partsAudit });
     expect(await teachLesson(stageRun(), { extracted, voiceCheck: null })).toBe("published");
     expect(m.plan).toHaveBeenCalledWith(extracted, 45, []);
     expect(m.knowledge).not.toHaveBeenCalled();
-    expect(m.validate).toHaveBeenCalledWith({ title: "Merged" }, extracted, [], "fa");
+    // The merged lesson is checked strictly: the parts already held the lesson's one bound.
+    expect(m.validate).toHaveBeenCalledWith({ title: "Merged" }, extracted, [], "fa", {
+      productionLimit: 18,
+    });
     expect(m.correct.mock.calls[0]?.[1].knowledgeDispatched).toBe(false);
+    // D110: the parts' drops are recorded with the merged lesson's own counts.
+    expect(m.publish.mock.calls[0]?.[1].studyOutput.droppedItems).toEqual({
+      study_gap_missing: 1,
+    });
+  });
+  it("fails a merged lesson whose strict check fails, exactly as before", async () => {
+    m.prepare.mockResolvedValue(prepared(true, 45));
+    m.plan.mockReturnValue([{ index: 0 }]);
+    m.parts.mockResolvedValue({
+      knowledge: { title: "Merged" },
+      audit: { ...emptyStudyOutputAudit(18), droppedItems: { study_target_unsupported: 2 } },
+    });
+    m.validate.mockImplementation(() => {
+      throw errors.validationFailed({ output: ["study_mistake_item_missing"] });
+    });
+    await expect(teachLesson(stageRun(), { extracted, voiceCheck: null })).rejects.toMatchObject({
+      details: { fields: { output: ["study_mistake_item_missing"] } },
+    });
+    expect(m.publish).not.toHaveBeenCalled();
   });
   it("stops at each sub-stage's checkpoint", async () => {
     m.knowledge.mockResolvedValue("checkpoint");

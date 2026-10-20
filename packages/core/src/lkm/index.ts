@@ -18,6 +18,7 @@ export {
   modelClaims,
   type SourceCoverage,
   type SourceRef,
+  STUDY_PRODUCTION_CEILING,
   sourceCoverageSchema,
   sourceNotUsedReasons,
   sourceRefSchema,
