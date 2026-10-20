@@ -1,5 +1,6 @@
 import { type CaptureGap, CaptureMeter, GAP_MIN_MS, type GapCause } from "./capture-meter";
 import type { MediaTimeline } from "./media-timeline";
+import { devicePartNumbers, type PartNumbers } from "./part-numbers";
 import type { PhotoQuality, PhotoVerdict } from "./photo-quality";
 import type { Recording, RecordingStore } from "./store";
 
@@ -40,6 +41,8 @@ export interface CaptureDependencies {
   readChunk?: (blob: Blob) => Promise<Uint8Array>;
   /** Web Locks; absent where the browser has none, and then every tab proceeds (D104). */
   locks?: CaptureLocks;
+  /** D107: part numbers a removed part keeps; defaults to this device's site storage. */
+  partNumbers?: PartNumbers;
 }
 /** The part of Web Locks used here: one tab at a time holds a capture of this account. */
 export type CaptureLocks = {
@@ -210,6 +213,17 @@ export class RecordingController {
     };
   };
   snapshot = () => this.state;
+  private get numbers() {
+    return this.deps.partNumbers ?? devicePartNumbers;
+  }
+  /** D107: a saved part's number is given; removing the part later does not give it again. */
+  private numberGiven(recording: Recording) {
+    this.numbers.raise(
+      this.userId,
+      [recording.creationKey, recording.sessionId],
+      recording.segment ?? 1,
+    );
+  }
   /** Capture health facts for diagnostics; never audio, text or identifiers. */
   onHealth = (listener: (event: CaptureHealthEvent) => void) => {
     this.healthListeners.add(listener);
@@ -400,6 +414,7 @@ export class RecordingController {
         await this.store.remove(this.userId, recording.id);
         return;
       }
+      this.numberGiven(recording);
       capture = {
         recording,
         recorder,
@@ -911,6 +926,7 @@ export class RecordingController {
         .then(async () => {
           await this.store.put(recording);
           capture.manifestCommitted = true;
+          this.numberGiven(recording);
         })
         .catch(() => {
           this.interrupt(
@@ -995,8 +1011,9 @@ export class RecordingController {
   /**
    * D107: the highest part number of the session's recordings on this device, and of the
    * recording a "Continue recording" follows, with that recording's class key. Numbers then run
-   * on across Starts, as the server's material names do ("Session recording … · Part N"). A
-   * device that cannot read its list starts at Part 1, as before.
+   * on across Starts, as the server's material names do ("Session recording … · Part N"), and a
+   * part removed from this device keeps its number (part-numbers.ts). A device that can read
+   * neither starts at Part 1, as before.
    */
   private async earlierParts(sessionId: string | null, continued: Recording | null) {
     if (!sessionId && !continued) return null;
@@ -1010,7 +1027,10 @@ export class RecordingController {
           (key !== undefined && row.creationKey === key) ||
           (capture !== null && (row.captureId ?? row.id) === capture),
       )
-      .reduce((highest, row) => Math.max(highest, row.segment ?? 1), 0);
+      .reduce(
+        (highest, row) => Math.max(highest, row.segment ?? 1),
+        this.numbers.highest(this.userId, [sessionId, key]),
+      );
     return { segment, creationKey: key };
   }
   /** The part a pause or Resume applies to, for diagnostics. */
@@ -1180,6 +1200,15 @@ export class RecordingController {
             this.publish(capture);
           }
         }
+        // D107: the session goes on after every number its class key has given, removed or not.
+        const given = rows.reduce(
+          (highest, row) => Math.max(highest, row.segment ?? 1),
+          this.numbers.highest(
+            this.userId,
+            rows.map((row) => row.creationKey),
+          ),
+        );
+        if (given) this.numbers.raise(this.userId, [sessionId], given);
       });
     this.queue = attached.catch(() => {});
     await attached;
