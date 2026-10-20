@@ -188,6 +188,18 @@
 | نوع فایل (`sourceKindLabel`)، هر نوع دیگر | — | «File» |
 | رسانهٔ کارت (`mediaAssetLabel`)، صدای ساخته‌شده N | `ready` | «Computer voice N · Ready» |
 
+## تأیید 2026-10-20 — برچسب تصویر کارت و برگهٔ حذف حساب (D102)
+
+مالک محصول در 2026-10-20 دو متن باقی‌مانده را تأیید کرد. ثبت نسخه‌دار: [D102](../PRODUCT_DECISIONS_LOG.md). `approved-copy.test.ts` هر دو را عیناً با جدول زیر می‌سنجد.
+
+| جا | مقدار ذخیره‌شده | متن |
+|---|---|---|
+| رسانهٔ کارت (`mediaAssetLabel`)، تصویر کلاس N | `ready` | «Class image N · Ready» |
+| برگهٔ تأیید حذف حساب (`PrivacyView.tsx`) | — | «All your sessions and account data will disappear immediately. This cannot be undone.» |
+
+- بخش وضعیت برچسب تصویر کلاس همان `mediaStateLabel` است که برای صدای ساخته‌شده تأیید شد (D101).
+- جملهٔ برگهٔ حذف فقط بند «and server cleanup will begin» را از جملهٔ پیشین کنار گذاشت (UX-05: «server cleanup» به زبان‌آموز نشان داده نمی‌شود). واژهٔ تازه‌ای اضافه نشد. بخش «Delete your account» همچنان حذف داده‌های سرور را توضیح می‌دهد.
+
 ## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 
 مالک محصول در 2026-10-19 هر ۱۶ متن کارت «System health» را که دستهٔ ۳ (`fix/audit-3`، یافتهٔ OPS-02؛ ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`) پیشنهاد کرده بود، عیناً تأیید کرد. ثبت نسخه‌دار: [D97](../PRODUCT_DECISIONS_LOG.md). متن‌ها از این فهرست به `systemHealthCopy` در [`admin/copy.ts`](../../apps/web/src/ui/admin/copy.ts) منتقل شدند و آزمون `approved-copy.test.ts` هر متن انگلیسی و فارسی را عیناً با همین بخش می‌سنجد.

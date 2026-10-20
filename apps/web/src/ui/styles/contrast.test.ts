@@ -80,51 +80,67 @@ describe("form control borders (A11Y-01)", () => {
   });
 });
 
-// D101 (owner decision 2026-10-20, A11Y-01 follow-up): the base layer's hover border is 45% of the
-// text colour over the field (vendor/nocturne-base.css), which in the light theme is lighter than the
-// 3:1 border token, so pointing at a field faded its edge (2.62:1 on white). app.css mixes the same
-// share of the text colour into the border token instead, in the light theme only.
-describe("a hovered text field's border (A11Y-01, D101)", () => {
+// D101 (owner decision 2026-10-20, A11Y-01 follow-up) and D102: the base layer's hover border is 45%
+// of the text colour over the field (vendor/nocturne-base.css). In the light theme that is lighter
+// than the 3:1 border token (2.62:1 on white), and in the dark theme it falls to 2.91:1 on the primary
+// tint, so pointing at a field faded its edge. app.css mixes the same share of the text colour into
+// the border token instead, in both themes.
+describe("a hovered text field's border (A11Y-01, D101, D102)", () => {
   const vendor = readFileSync(resolve(import.meta.dirname, "vendor/nocturne-base.css"), "utf8");
-  const light = themeTokens("light");
-  const token = (name: string) => light[name] as string;
   const HOVER =
-    /:where\(:root\[data-theme="light"\]\) \.input:hover:where\(:not\(:focus-visible\)\)\s*{\s*border-color:\s*color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, var\((--[\w-]+)\)\);\s*}/;
+    /:where\(:root\[data-theme\]\) \.input:hover:where\(:not\(:focus-visible\)\)\s*{\s*border-color:\s*color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, var\((--[\w-]+)\)\);\s*}/;
 
-  /** The colour a hovered field's border shows in the light theme. */
-  function hoverBorder(): Rgb {
-    const own = css.match(HOVER);
-    if (own) return mix(token(own[1] as string), Number(own[2]) / 100, token(own[3] as string));
-    // Without a rule in app.css the base layer's hover applies, laid over the field's surface.
+  /** The base layer's hover colour, laid over the field's own fill. */
+  function baseHover(tokens: Record<string, string>): Rgb {
     const base = vendor.match(
       /\.input:hover\s*{\s*border-color:\s*color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, transparent\);/,
     );
     expect(base, "the base layer's hover rule").not.toBeNull();
     const [, text, share] = base as RegExpMatchArray;
-    return mix(token(text as string), Number(share) / 100, token("--color-surface"));
+    return mix(
+      tokens[text as string] as string,
+      Number(share) / 100,
+      tokens["--color-surface"] as string,
+    );
   }
 
-  it("records why: the base layer's hover is lighter than the border token in the light theme", () => {
-    const base = mix(token("--color-text"), 0.45, token("--color-surface"));
-    expect(contrast(base, token("--color-surface"))).toBeCloseTo(2.62, 2);
-    expect(luminance(base)).toBeGreaterThan(luminance(token("--rc-border-strong")));
+  /** The colour a hovered field's border shows in one theme. */
+  function hoverBorder(tokens: Record<string, string>): Rgb {
+    const own = css.match(HOVER);
+    if (!own) return baseHover(tokens);
+    const [, text, share, border] = own as RegExpMatchArray;
+    return mix(
+      tokens[text as string] as string,
+      Number(share) / 100,
+      tokens[border as string] as string,
+    );
+  }
+
+  it("records why: the base layer's hover fades the edge in both themes", () => {
+    const light = themeTokens("light");
+    const dark = themeTokens("dark");
+    expect(contrast(baseHover(light), light["--color-surface"] as string)).toBeCloseTo(2.62, 2);
+    expect(contrast(baseHover(dark), dark["--rc-primary-tint"] as string)).toBeCloseTo(2.91, 2);
   });
 
-  it("is at least as dark as the normal border, and 3:1 on every light surface", () => {
-    const hover = hoverBorder();
-    expect(luminance(hover)).toBeLessThanOrEqual(luminance(token("--rc-border-strong")));
-    for (const surface of SURFACES) {
-      const fill = token(surface);
-      expect(contrast(hover, fill), `hover border on ${surface} ${fill}`).toBeGreaterThanOrEqual(
-        contrast(token("--rc-border-strong"), fill),
-      );
-      expect(contrast(hover, fill)).toBeGreaterThanOrEqual(3);
-    }
-  });
+  it.each(["light", "dark"] as const)(
+    "never moves the edge closer to a %s surface, and keeps 3:1",
+    (theme) => {
+      const tokens = themeTokens(theme);
+      const hover = hoverBorder(tokens);
+      const border = tokens["--rc-border-strong"] as string;
+      for (const surface of SURFACES) {
+        const fill = tokens[surface] as string;
+        expect(contrast(hover, fill), `hover border on ${surface} ${fill}`).toBeGreaterThanOrEqual(
+          contrast(border, fill),
+        );
+        expect(contrast(hover, fill)).toBeGreaterThanOrEqual(3);
+      }
+    },
+  );
 
-  it("mixes 45% of the text colour into the border token, in the light theme only", () => {
+  it("mixes 45% of the text colour into the border token, in both themes", () => {
     expect(css.match(HOVER)?.slice(1, 4)).toEqual(["--color-text", "45", "--rc-border-strong"]);
-    expect(css).not.toMatch(/data-theme="dark"[^{]*\.input:hover/);
   });
 
   it("keeps the base layer's specificity, so focus and an invalid field still win", () => {

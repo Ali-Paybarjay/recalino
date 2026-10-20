@@ -224,3 +224,25 @@ describe("the UX-05 texts approved on 2026-10-20", () => {
     expect(section).toContain("| `ready` | «Computer voice N · Ready» |");
   });
 });
+
+// D102 (owner decision 2026-10-20): the class image label of a card's media and the account deletion
+// sheet's sentence without "server cleanup" (UX-05).
+describe("the card image label and deletion sheet approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — برچسب تصویر کارت");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+
+  it("records the class image label of a card's media", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(mediaAssetLabel({ synthetic: false, state: "ready" }, 1)).toBe("Class image 2 · Ready");
+    expect(section).toContain("| `ready` | «Class image N · Ready» |");
+  });
+
+  it("records the deletion sheet's sentence word for word", () => {
+    const view = readFileSync(resolve(import.meta.dirname, "workspace/PrivacyView.tsx"), "utf8");
+    const sentence =
+      "All your sessions and account data will disappear immediately. This cannot be undone.";
+    expect(view.replace(/\s+/g, " ")).toContain(sentence);
+    expect(view).not.toMatch(/server cleanup/i);
+    expect(section).toContain(`«${sentence}»`);
+  });
+});

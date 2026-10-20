@@ -284,10 +284,7 @@ export function PrivacyView({
           if (!busy) setConfirm(false);
         }}
       >
-        <p>
-          All your sessions and account data will disappear immediately, and server cleanup will
-          begin. This cannot be undone.
-        </p>
+        <p>All your sessions and account data will disappear immediately. This cannot be undone.</p>
         <Field label="I understand that account deletion cannot be undone">
           <input
             type="checkbox"
