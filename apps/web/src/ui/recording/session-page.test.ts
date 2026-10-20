@@ -1,47 +1,42 @@
-import { describe, expect, it } from "vitest";
-import type { CaptureState } from "./controller";
-import { sessionPageStep } from "./session-page";
+import { describe, expect, it, vi } from "vitest";
+import { followSessionAddress, sessionAddress, sessionPageBack } from "./session-page";
 
 const session = "20000000-0000-4000-8000-000000000001";
 const href = `/sessions/${session}/record`;
-const step = (
-  phase: CaptureState["phase"],
-  done: "address" | "page" | null = null,
-  patch: Partial<Parameters<typeof sessionPageStep>[0]> = {},
-) =>
-  sessionPageStep({
-    pageSessionId: undefined,
-    recordingSessionId: session,
-    phase,
-    choosingPhoto: false,
-    done,
-    ...patch,
+const today = { pageSessionId: undefined, recordingSessionId: session };
+function page(pathname = "/recordings") {
+  const replaceState = vi.fn((_data: unknown, _unused: string, url?: string | URL | null) => {
+    if (url) location.pathname = String(url);
   });
+  const location = { pathname };
+  // A history entry and its address only: no router, so nothing here can load a page.
+  return { location, history: { replaceState }, replaceState };
+}
 
-// D107 A.4 and PRD-REC-02/03: the session attaches during capture without a server navigation.
-describe("Today's recording page becomes the session's recording page", () => {
-  it("changes only the address while capture is active, once", () => {
-    for (const phase of ["starting", "recording", "recovering", "paused", "saving"] as const) {
-      expect(step(phase)).toEqual({ step: "address", href });
-      expect(step(phase, "address")).toBeNull();
-      // A board photo being chosen keeps its page: the address alone does not replace it.
-      expect(step(phase, null, { choosingPhoto: true })).toEqual({ step: "address", href });
-    }
-  });
-
-  it("loads the session's page only after Stop, and not while a photo is being chosen", () => {
-    for (const phase of ["saved", "failed", "idle"] as const) {
-      expect(step(phase, "address")).toEqual({ step: "page", href });
-      expect(step(phase)).toEqual({ step: "page", href });
-      expect(step(phase, "address", { choosingPhoto: true })).toBeNull();
-      expect(step(phase, "page")).toBeNull();
-    }
+// D107 A.4, PRD-REC-02/03: the session attaches without a server navigation, during capture and
+// after Stop alike, online or not.
+describe("Today's recording page takes the session's address", () => {
+  it("replaces the address once, and nothing else", () => {
+    const target = page();
+    followSessionAddress(today, target);
+    expect(target.replaceState).toHaveBeenCalledExactlyOnceWith(null, "", href);
+    expect(target.location.pathname).toBe(href);
+    // Every later render (a part rotates, Stop, a photo picker opened or cancelled) is a no-op.
+    followSessionAddress(today, target);
+    expect(target.replaceState).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing on a session's page or before the session is known", () => {
-    expect(step("recording", null, { pageSessionId: session })).toBeNull();
-    expect(step("saved", null, { pageSessionId: session })).toBeNull();
-    expect(step("recording", null, { recordingSessionId: null })).toBeNull();
-    expect(step("saved", null, { recordingSessionId: null })).toBeNull();
+    const target = page();
+    followSessionAddress({ pageSessionId: session, recordingSessionId: session }, target);
+    followSessionAddress({ pageSessionId: undefined, recordingSessionId: null }, target);
+    expect(target.replaceState).not.toHaveBeenCalled();
+    expect(sessionAddress({ pageSessionId: session, recordingSessionId: session })).toBeNull();
+  });
+
+  it("leads back to the session once the page has its address, else where the page says", () => {
+    expect(sessionPageBack(today)).toBe(`/sessions/${session}`);
+    expect(sessionPageBack({ pageSessionId: undefined, recordingSessionId: null })).toBeNull();
+    expect(sessionPageBack({ pageSessionId: session, recordingSessionId: session })).toBeNull();
   });
 });

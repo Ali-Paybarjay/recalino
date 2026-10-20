@@ -23,7 +23,7 @@ import styles from "./Recording.module.css";
 import { ensureRecordingClass, RecordLauncher, useRecording } from "./RecordingProvider";
 import { recordingCopy } from "./recording-copy";
 import { formatPartDate } from "./recording-format";
-import { type SessionPageStep, sessionPageStep } from "./session-page";
+import { followSessionAddress, sessionPageBack } from "./session-page";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 import { partScope, partsSync, recordingGroups, sessionMaterialSent } from "./visible-parts";
@@ -293,24 +293,31 @@ export function RecordingView({
     learning.status?.processRequest === "requested" &&
     learning.status.revision === learning.status.requestedRevision;
   // D107: a recording started on Today gets its session when /api/classes answers, and the page
-  // becomes that session's recording page: during capture only its address (no server request,
-  // no loading screen, nothing announced; PRD-REC-02), the session's page itself after Stop.
+  // becomes that session's recording page by its address alone, during capture and after Stop
+  // (no server request, no loading screen, nothing announced; PRD-REC-02). Stop keeps this page,
+  // offline too, and its way back leads to the session.
   const recordingSession = current?.sessionId ?? null;
-  const sessionPage = useRef<SessionPageStep["step"] | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: photos reload once a chosen photo is saved, which ends the wait for the picker.
+  const sessionBack = sessionPageBack({
+    pageSessionId: sessionId,
+    recordingSessionId: recordingSession,
+  });
+  const back = sessionBack ?? backHref;
   useEffect(() => {
-    const next = sessionPageStep({
-      pageSessionId: sessionId,
-      recordingSessionId: recordingSession,
-      phase: state.phase,
-      choosingPhoto: !!captureAnchor.current,
-      done: sessionPage.current,
-    });
-    if (!next) return;
-    sessionPage.current = next.step;
-    if (next.step === "address") window.history.replaceState(null, "", next.href);
-    else router.replace(next.href);
-  }, [sessionId, recordingSession, state.phase, router, photos]);
+    followSessionAddress(
+      { pageSessionId: sessionId, recordingSessionId: recordingSession },
+      window,
+    );
+  }, [sessionId, recordingSession]);
+  // The picker closed without a photo: nothing waits for it any more.
+  useEffect(() => {
+    const input = photoInput.current;
+    if (!input) return;
+    const cancelled = () => {
+      captureAnchor.current = null;
+    };
+    input.addEventListener("cancel", cancelled);
+    return () => input.removeEventListener("cancel", cancelled);
+  }, []);
   async function continueRecording() {
     setError(null);
     try {
@@ -360,10 +367,10 @@ export function RecordingView({
   );
   return (
     <div className="workspace-stack">
-      {backHref && !active ? (
+      {back && !active ? (
         <Actions>
-          <LinkButton secondary href={backHref}>
-            {backLabel}
+          <LinkButton secondary href={back}>
+            {sessionBack ? "Back to session" : backLabel}
           </LinkButton>
         </Actions>
       ) : null}
@@ -486,6 +493,7 @@ export function RecordingView({
             const files = Array.from(event.target.files ?? []);
             event.target.value = "";
             if (files.length) void operation("photo", () => savePhotos(files));
+            else captureAnchor.current = null;
           }}
         />
         {state.phase === "saved" && scope.kind === "recording" ? (

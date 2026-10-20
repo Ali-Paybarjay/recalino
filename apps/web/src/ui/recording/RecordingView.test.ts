@@ -84,7 +84,9 @@ function part(segment: number, patch: Partial<Recording> = {}): Recording {
     ...patch,
   };
 }
-const render = (props: { backHref?: string; sessionId?: string | null } = {}) => {
+const render = (
+  props: { backHref?: string; backLabel?: string; sessionId?: string | null } = {},
+) => {
   const { sessionId = "session-1", ...rest } = props;
   return renderToStaticMarkup(
     createElement(RecordingView, { ...(sessionId ? { sessionId } : {}), ...rest }),
@@ -177,6 +179,28 @@ describe("the recording page without navigation (UX-02)", () => {
 
   it("adds no back link when the page has navigation of its own", () => {
     expect(render()).not.toContain("Back to session");
+  });
+
+  // D107: a Today recording's page takes the session's address and stays as it is after Stop (no
+  // server navigation, which offline would end on the browser's error page); a board photo
+  // picker opened and cancelled has no say in it.
+  it("leads a Today recording back to its session after Stop, on the same page", () => {
+    const today = { sessionId: null, backHref: "/today", backLabel: "Back to Today" };
+    mocks.phase = "saved";
+    mocks.recording = part(1, { sessionId: null });
+    mocks.scope = { kind: "recording", sessionId: null, rows: [mocks.recording] };
+    let html = render(today);
+    expect(html).toContain('href="/today"');
+    expect(html).not.toContain("Back to session");
+
+    mocks.recording = part(1);
+    mocks.scope = { kind: "recording", sessionId: session, rows: [mocks.recording] };
+    html = render(today);
+    expect(html).toContain(`href="/sessions/${session}"`);
+    expect(html).toContain("Back to session");
+    expect(html).not.toContain("Back to Today");
+    expect(html).toContain(">Continue recording<");
+    expect(html).toContain("Saved on this device");
   });
 });
 

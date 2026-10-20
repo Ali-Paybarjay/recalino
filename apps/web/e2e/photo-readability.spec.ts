@@ -152,7 +152,7 @@ test("judges board photos on the device, keeps every photo and zooms without int
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Stop and save", exact: true }).click();
-  // After Stop the session's own recording page loads (D107).
+  // After Stop the same page stays and leads back to its session (D107).
   await expect(page.getByRole("link", { name: "Back to session", exact: true })).toBeVisible();
   // The panel title and the part's line both say so (D107).
   await expect(page.getByText("Saved on this device", { exact: true }).first()).toBeVisible();
