@@ -1275,6 +1275,54 @@ describe("an interruption during a pause (D104)", () => {
     },
   );
 
+  it.each(["before", "after"] as const)(
+    "says a Pause during recovery %s a failed retry waits for Resume, and Resume continues the capture",
+    async (retry) => {
+      const test = capture();
+      const sessionId = randomUUID();
+      await test.controller.start(sessionId);
+      test.advance(3000);
+      test.recorder.emit("first-");
+      const first = test.controller.state.recording;
+      if (retry === "after") test.failNextAcquire();
+      test.track.mute();
+      expect(test.controller.state.phase).toBe("recovering");
+      if (retry === "after") {
+        await vi.waitFor(() => expect(test.acquireCalls).toBe(2));
+        await vi.waitFor(() =>
+          expect(test.controller.state.error).toMatch(/^Recording is interrupted\. Retrying/),
+        );
+      }
+      const calls = test.acquireCalls;
+      // Nothing reconnects while paused, so the recovering text never stays on the paused screen.
+      test.controller.pause();
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      await vi.waitFor(async () =>
+        expect(await test.store.get(test.controller.userId, first?.id ?? "")).toMatchObject({
+          status: "interrupted",
+          chunks: 2,
+        }),
+      );
+      test.advance(120000);
+      test.controller.checkHealth();
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      expect(test.acquireCalls).toBe(calls);
+      expect(test.recorders).toHaveLength(1);
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      test.controller.resume();
+      await waitForRecording(test);
+      expect(test.controller.state.error).toBeNull();
+      expect(test.controller.state.recording).toMatchObject({
+        segment: 2,
+        captureId: first?.captureId,
+        sessionId,
+        creationKey: first?.creationKey,
+      });
+      await test.controller.stop();
+      expect(test.controller.state.phase).toBe("saved");
+    },
+  );
+
   it("reports a pause and a Resume of the same part without a new microphone", async () => {
     const test = capture();
     await test.controller.start();

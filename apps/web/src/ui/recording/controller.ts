@@ -942,7 +942,13 @@ export class RecordingController {
         this.interrupt(capture, PAUSED_INTERRUPTION);
       }
     }
-    this.update({ phase: "paused", recording: capture?.recording ?? this.state.recording });
+    // A Pause during recovery has no live recorder to pause: nothing reconnects until Resume, so
+    // the recovering text gives way to the honest paused one (D104).
+    this.update({
+      phase: "paused",
+      recording: capture?.recording ?? this.state.recording,
+      ...(!capture || capture.interrupted ? { error: PAUSED_INTERRUPTION } : {}),
+    });
   }
   resume() {
     if (this.intent !== "paused") return;
