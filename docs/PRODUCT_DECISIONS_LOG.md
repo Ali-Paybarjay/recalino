@@ -905,6 +905,14 @@
 - **برچسب تصویر کارت (UX-05، تکمیل D101):** «Class image N» در `mediaAssetLabel` (`apps/web/src/ui/workspace/card-labels.ts`)، مثل «Class image 2 · Ready»، همان‌طور که در رابط بود تأیید شد.
 - **برگهٔ تأیید حذف حساب (UX-05):** جملهٔ برگه در `apps/web/src/ui/workspace/PrivacyView.tsx` «All your sessions and account data will disappear immediately. This cannot be undone.» است. فقط بند «and server cleanup will begin» حذف شد و واژهٔ تازه‌ای اضافه نشد.
 
+## D103 — عکس هنگام ضبط از دوربین یا گالری، چند عکس با هم (2026-10-20)
+
+مبنا: درخواست صریح مالک محصول در 2026-10-20 پس از آزمون production: «کلید عکس گرفتن هنگام رکورد باید بتواند حتی عکس از گالری هم اضافه کند نه فقط از دوربین» و «انتخاب چندتایی از گالری هم اضافه کن».
+
+- ورودی عکس صفحهٔ ضبط (`apps/web/src/ui/recording/RecordingView.tsx`) دیگر ویژگی `capture="environment"` ندارد؛ پس گوشی هم دوربین و هم گالری را پیشنهاد می‌کند. ویژگی `multiple` اضافه شد و همهٔ عکس‌های انتخاب‌شده با هم ذخیره می‌شوند.
+- همهٔ عکس‌های یک انتخاب به همان لحظهٔ پارت (همان `offsetMs` و `captureState`) وصل می‌شوند که دکمه در آن زده شد؛ عکس دوباره (retake) همچنان عکس قبلی را جایگزین نمی‌کند (PRD-CORE-05).
+- متن، رنگ، token، migration یا وابستگی تازه‌ای اضافه نشد. PRD-REC-02 دست نخورد: انتخاب عکس پیام یا وقفه‌ای حین ضبط نمی‌سازد. آزمون: `apps/web/src/ui/recording/RecordingView.test.ts` («the photo picker»).
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.

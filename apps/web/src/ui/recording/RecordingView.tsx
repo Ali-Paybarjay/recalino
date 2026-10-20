@@ -163,7 +163,10 @@ export function RecordingView({
       ["starting", "recording", "recovering", "paused", "saving"].includes(controller.state.phase)
     );
   }
-  /** Opens the camera for a new photo; a retake never replaces the earlier one (PRD-CORE-05). */
+  /**
+   * Opens the camera or the gallery for new photos; a retake never replaces the earlier one
+   * (PRD-CORE-05). No `capture` attribute, so the phone offers both (D103).
+   */
   function takePhoto(anchor: NonNullable<typeof captureAnchor.current>) {
     captureAnchor.current = anchor;
     photoInput.current?.click();
@@ -202,10 +205,17 @@ export function RecordingView({
         forgetDiagnostics: controller.forgetPhotoQuality,
       });
     });
-  async function savePhoto(file: File) {
+  /** Photos chosen together, from the camera or the gallery, all join the same moment. */
+  async function savePhotos(files: File[]) {
     const anchor = captureAnchor.current;
     captureAnchor.current = null;
     if (!anchor) return;
+    for (const file of files) await savePhoto(file, anchor);
+    // A retake for a finished part joins its session's photos like any other saved photo.
+    const row = rows.find((candidate) => candidate.id === anchor.recordingId);
+    if (row?.sessionId && !capturing(anchor.recordingId)) notifyAutomaticLearning(row.sessionId);
+  }
+  async function savePhoto(file: File, anchor: NonNullable<typeof captureAnchor.current>) {
     const photo: LocalPhoto = {
       id: crypto.randomUUID(),
       userId,
@@ -219,10 +229,6 @@ export function RecordingView({
     void photoQuality(photo.id, file).then((quality) => {
       if (quality) controller.reportPhotoQuality(photo.id, quality);
     });
-    // A retake for a finished part joins its session's photos like any other saved photo.
-    const row = rows.find((candidate) => candidate.id === photo.recordingId);
-    if (row?.sessionId && !capturing(photo.recordingId)) notifyAutomaticLearning(row.sessionId);
-    await reload();
   }
   async function attachPhoto(photo: LocalPhoto) {
     const row = await store.get(userId, photo.recordingId);
@@ -347,11 +353,11 @@ export function RecordingView({
           ref={photoInput}
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          capture="environment"
+          multiple
           onChange={(event) => {
-            const file = event.target.files?.[0];
+            const files = Array.from(event.target.files ?? []);
             event.target.value = "";
-            if (file) void operation("photo", () => savePhoto(file));
+            if (files.length) void operation("photo", () => savePhotos(files));
           }}
         />
         {state.phase === "saved" ? <MissingAudioNotice missing={state.missing} /> : null}
