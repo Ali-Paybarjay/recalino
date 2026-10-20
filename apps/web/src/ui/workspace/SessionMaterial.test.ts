@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SourceItem } from "./SessionMaterialItems";
 import { SourcesView } from "./SourcesView";
-import { sessionMaterialCopy } from "./session-material-copy";
+import { addMaterialLabel, sessionMaterialCopy } from "./session-material-copy";
 import type { SourceRow } from "./source-types";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
@@ -145,6 +145,28 @@ describe("a session material line", () => {
     expect(html).toContain("Class audio · 1.2 MB");
   });
 
+  it("ties the controls under the line to the file name too", () => {
+    const tied = (html: string, pattern: RegExp) => {
+      const name = attribute(html, /<strong[^>]*id="[^"]*"[^>]*>/, "id");
+      expect(name).toBeTruthy();
+      expect(attribute(html, pattern, "aria-describedby")?.split(" ")).toContain(name);
+    };
+    const pdf = item(source("pdf-1", "worksheet.pdf"));
+    tied(pdf, /<summary[^>]*>/);
+    tied(pdf, /<button[^>]*type="submit"[^>]*>/);
+    expect(pdf).toMatch(/<button[^>]*aria-describedby="[^"]*"[^>]*>Save selection/);
+    tied(item(photo), /<button[^>]*>Confirm this photo time/);
+    const locked = item(
+      source("locked-1", "worksheet.pdf", {
+        verifiedAt: null,
+        uploadState: "rejected",
+        rejectionReason: "needs_password",
+      }),
+    );
+    tied(locked, /<input[^>]*type="password"[^>]*>/);
+    tied(locked, /<button[^>]*>Unlock PDF/);
+  });
+
   it("keeps the delete options in a sheet, disabled until the tick", () => {
     const html = item(source("pdf-1", "worksheet.pdf"));
     expect(html).not.toContain("<summary>Delete options</summary>");
@@ -157,10 +179,9 @@ describe("a session material line", () => {
   });
 
   it("puts the range to use in a disclosure, only for audio and PDF", () => {
-    expect(item(source("pdf-1", "worksheet.pdf"))).toContain(
-      "<summary>Use for processing</summary>",
-    );
-    expect(item(part(1))).toContain("<summary>Use for processing</summary>");
+    const disclosure = /<summary[^>]*>Use for processing<\/summary>/;
+    expect(item(source("pdf-1", "worksheet.pdf"))).toMatch(disclosure);
+    expect(item(part(1))).toMatch(disclosure);
     expect(item(photo)).not.toContain("Use for processing");
   });
 
@@ -204,5 +225,15 @@ describe("the session material list", () => {
     expect(html).toContain("Bring together your recording, handouts, photos and notes.");
     expect(html).toContain("Add Files</button>");
     expect(html).not.toContain(sessionMaterialCopy.addMore);
+  });
+
+  it("offers Add more material whenever the list shows a line, saved or on its way", () => {
+    expect(addMaterialLabel({ saved: 0, pending: 0, selected: 0 })).toBe("Add Files");
+    for (const counts of [
+      { saved: 1, pending: 0, selected: 0 },
+      { saved: 0, pending: 1, selected: 0 },
+      { saved: 0, pending: 0, selected: 1 },
+    ])
+      expect(addMaterialLabel(counts)).toBe(sessionMaterialCopy.addMore);
   });
 });

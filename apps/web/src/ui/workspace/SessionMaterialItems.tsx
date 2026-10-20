@@ -294,6 +294,7 @@ export function SourceItem({
               <Actions>
                 <SmallButton
                   disabled={busy}
+                  aria-describedby={nameId}
                   onClick={() => void change({ timeStatus: "user_confirmed" })}
                 >
                   Confirm this photo time
@@ -309,6 +310,7 @@ export function SourceItem({
               >
                 <input
                   type="password"
+                  aria-describedby={nameId}
                   value={password}
                   autoComplete="off"
                   onChange={(event) => setPassword(event.target.value)}
@@ -317,6 +319,7 @@ export function SourceItem({
               <Actions>
                 <SmallButton
                   disabled={busy || !password}
+                  aria-describedby={nameId}
                   onClick={() => {
                     const value = password;
                     setPassword("");
@@ -331,7 +334,7 @@ export function SourceItem({
           {rangeForm ? (
             // Kept mounted while closed, so an unsaved selection still holds back processing.
             <details className={styles.disclosure}>
-              <summary>Use for processing</summary>
+              <summary aria-describedby={nameId}>Use for processing</summary>
               <form
                 className="workspace-stack"
                 onSubmit={(event) => {
@@ -405,7 +408,7 @@ export function SourceItem({
                   ) : null}
                 </fieldset>
                 <Actions>
-                  <SmallButton disabled={busy || !dirty} type="submit">
+                  <SmallButton disabled={busy || !dirty} type="submit" aria-describedby={nameId}>
                     Save selection
                   </SmallButton>
                 </Actions>

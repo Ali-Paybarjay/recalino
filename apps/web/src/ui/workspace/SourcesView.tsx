@@ -25,7 +25,7 @@ import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import styles from "./SessionMaterial.module.css";
 import { FileUploadItem, SourceItem } from "./SessionMaterialItems";
-import { sessionMaterialCopy } from "./session-material-copy";
+import { addMaterialLabel } from "./session-material-copy";
 import { showsThumbnail, useSourceThumbnails } from "./source-thumbnails";
 import type { SourceRow } from "./source-types";
 import { useUploads } from "./UploadProvider";
@@ -790,9 +790,11 @@ export function SourcesView({
             disabled={!interactive || busy || !accepted}
             onClick={() => fileInput.current?.click()}
           >
-            {visibleSources.length || selectedFiles.length
-              ? sessionMaterialCopy.addMore
-              : "Add Files"}
+            {addMaterialLabel({
+              saved: visibleSources.length,
+              pending: pendingFiles.length,
+              selected: selectedFiles.length,
+            })}
           </SmallButton>
           <SmallButton
             variant="ghost"
