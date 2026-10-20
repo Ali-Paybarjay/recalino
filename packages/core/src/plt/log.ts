@@ -54,6 +54,11 @@ const ALLOWED_FIELDS = new Set([
   "wall_ms",
   "gaps",
   "result",
+  // D104: a resume that reconnects the microphone, and a capture restored paused after a reload
+  // (its part count and how long the page was gone); a boolean and integers only.
+  "reconnect",
+  "parts",
+  "away_ms",
   // On-device board photo readability (D72): the local photo id and integer scores 0–1000 only.
   "photo_id",
   "verdict",

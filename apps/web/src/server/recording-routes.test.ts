@@ -53,11 +53,18 @@ describe("capture diagnostics route (PRD-REC-05, PRD-PRIV-06)", () => {
               gaps: 1,
             },
           },
+          // D104: a pause, a reconnecting resume and a restore after reload keep every field.
+          { ageMs: 0, event: { type: "pause", part: 1 } },
+          { ageMs: 0, event: { type: "resume", part: 1, reconnect: true } },
+          {
+            ageMs: 0,
+            event: { type: "restored", parts: 2, state: "paused", awayMs: 120000 },
+          },
         ],
       },
       lines,
     );
-    expect(result).toEqual({ status: 202, body: { accepted: 3 } });
+    expect(result).toEqual({ status: 202, body: { accepted: 6 } });
     const records = lines.map((line) => JSON.parse(line));
     for (const record of records) {
       expect(record.event).toBe("capture_health");
@@ -75,6 +82,14 @@ describe("capture diagnostics route (PRD-REC-05, PRD-PRIV-06)", () => {
       cause: "hidden",
     });
     expect(records[2]).toMatchObject({ media_ms: 66000, wall_ms: 1752000, measured: true });
+    expect(records[3]).toMatchObject({ capture_event: "pause", part: 1 });
+    expect(records[4]).toMatchObject({ capture_event: "resume", part: 1, reconnect: true });
+    expect(records[5]).toMatchObject({
+      capture_event: "restored",
+      parts: 2,
+      state: "paused",
+      away_ms: 120000,
+    });
   });
 
   it("refuses hostile payloads: oversized, too many events, text, identifiers, scripts", async () => {
