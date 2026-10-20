@@ -90,6 +90,7 @@ function harness(rows: Recording[], server: Map<string, AutomaticLearningStatus>
   const uploads: { runId: string; at: number }[] = [];
   const listeners = new Set<() => void>();
   let phase = "idle";
+  let captureSession: string | null = null;
   let path = "/today";
   let uploadFailure: unknown = null;
   const request = vi.fn(
@@ -110,7 +111,11 @@ function harness(rows: Recording[], server: Map<string, AutomaticLearningStatus>
       savePhoto: async () => {},
     },
     controller: {
-      snapshot: () => ({ phase, accountDeletionBlocked: false }),
+      snapshot: () => ({
+        phase,
+        accountDeletionBlocked: false,
+        recording: { sessionId: captureSession },
+      }),
       subscribe: (listener) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
@@ -146,8 +151,9 @@ function harness(rows: Recording[], server: Map<string, AutomaticLearningStatus>
     refreshes,
     uploads,
     request,
-    setPhase: (next: string) => {
+    setPhase: (next: string, sessionId: string | null = null) => {
       phase = next;
+      captureSession = sessionId;
       for (const listener of listeners) listener();
     },
     setPath: (next: string) => {
@@ -311,6 +317,29 @@ describe("learning loop timing (audit item 6)", () => {
     expect(x.uploads).toHaveLength(1);
     expect((x.uploads[0]?.at ?? 0) - createdAt).toBeLessThanOrEqual(LEARNING_POLL.startMs);
     x.loop.stop();
+  });
+
+  it("lets other classes upload while a capture is paused, never while it records (D109)", async () => {
+    const server = new Map<string, AutomaticLearningStatus>();
+    const own = recording(randomUUID());
+    const other = recording(randomUUID());
+    const ownId = own.sessionId ?? "";
+    const otherId = other.sessionId ?? "";
+    server.set(ownId, awaiting(ownId, own.sourceAssetId ?? ""));
+    server.set(otherId, awaiting(otherId, other.sourceAssetId ?? ""));
+    const x = harness([own, other], server);
+    x.setPhase("paused", ownId);
+    await vi.advanceTimersByTimeAsync(minutes(5));
+    expect(x.uploads.map((upload) => upload.runId)).toEqual([server.get(otherId)?.run?.id]);
+    x.loop.stop();
+    const later = recording(randomUUID());
+    const laterId = later.sessionId ?? "";
+    server.set(laterId, awaiting(laterId, later.sourceAssetId ?? ""));
+    const y = harness([later], server);
+    y.setPhase("recording", ownId);
+    await vi.advanceTimersByTimeAsync(minutes(5));
+    expect(y.uploads).toHaveLength(0);
+    y.loop.stop();
   });
 
   it("retries a transport failure on the next visit but never a refusal the server repeats", async () => {

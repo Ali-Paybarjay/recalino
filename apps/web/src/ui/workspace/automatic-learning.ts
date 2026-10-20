@@ -67,6 +67,32 @@ function batchStorageKey(userId: string, sessionId: string) {
   return `recalino:learning-batch:${userId}:${sessionId}`;
 }
 
+/** The started upload of a confirmed run's original; the server stays the record of its parts. */
+function audioUploadKey(userId: string, runId: string, sourceId: string) {
+  return `recalino:audio-upload:${userId}:${runId}:${sourceId}`;
+}
+function readStored(key: string): string | null {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeStored(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* Without it a reload checks the original again; the server still resumes its parts. */
+  }
+}
+function removeStored(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* A stale entry is read once and dropped. */
+  }
+}
+
 export function pendingLearningBatch(userId: string, sessionId: string): string | null {
   try {
     return typeof localStorage === "undefined"
@@ -623,6 +649,49 @@ export async function uploadAutomaticAudio(
         `${name} is not on this device. Open the device that saved it to resume the upload.`,
       );
     }
+    // A reload keeps what the server already holds: the remembered upload is read before the
+    // original is checked again, so the transfer never appears to restart from zero.
+    const marker = audioUploadKey(options.userId, run.id, source.sourceId);
+    const remembered = readStored(marker);
+    if (remembered) {
+      check();
+      const known = await api<{
+        state?: string;
+        parts: { index: number; verifiedAt: string | null }[];
+      }>(
+        `/api/sources/${source.sourceId}/audio?uploadId=${remembered}`,
+        "GET",
+        undefined,
+        undefined,
+        {
+          signal: options.signal,
+        },
+      ).catch((failure: unknown) => {
+        if (failure instanceof DOMException && failure.name === "AbortError") throw failure;
+        return null;
+      });
+      check();
+      if (known?.state === "verifying" || known?.state === "verified") {
+        file.sentBytes = file.totalBytes;
+        file.phase = known.state === "verified" ? "complete" : "verifying";
+        reportTransfer();
+        if (known.state === "verified") removeStored(marker);
+        return;
+      }
+      if (known)
+        file.sentBytes = known.parts.reduce(
+          (sum, part) =>
+            part.verifiedAt
+              ? sum +
+                Math.max(
+                  0,
+                  Math.min(contract.partBytes, file.totalBytes - part.index * contract.partBytes),
+                )
+              : sum,
+          0,
+        );
+      else removeStored(marker);
+    }
     file.phase = "checking";
     reportTransfer();
     options.onProgress?.(
@@ -641,6 +710,7 @@ export async function uploadAutomaticAudio(
       { action: "start", runId: run.id, reservationId: run.reservationId, parts },
       `audio-start:${run.id}:${source.sourceId}`,
     );
+    writeStored(marker, started.uploadId);
     const manifest = await request<{
       state?: string;
       parts: { index: number; verifiedAt: string | null }[];
@@ -649,6 +719,7 @@ export async function uploadAutomaticAudio(
       file.sentBytes = blob.size;
       file.phase = manifest.state === "verified" ? "complete" : "verifying";
       reportTransfer();
+      if (manifest.state === "verified") removeStored(marker);
       return;
     }
     const sentParts = new Map(

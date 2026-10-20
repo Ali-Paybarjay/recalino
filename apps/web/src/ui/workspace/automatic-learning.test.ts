@@ -791,6 +791,76 @@ describe("automatic temporary audio upload", () => {
     // Published snapshots must remain unchanged as later parts finish.
     expect(progress[0]?.files[0]?.sentBytes).toBe(0);
   });
+  it("after a reload, a remembered upload the server verified is not checked or sent again", async () => {
+    localStorage.setItem(`recalino:audio-upload:${userId}:${run.id}:${sourceId}`, "upload");
+    const progress: AutomaticUploadProgress[] = [];
+    const local = { list: store.list, blob: vi.fn(async () => blob) };
+    const request = vi.fn(async (path: string, method: string) =>
+      method === "GET" && path.endsWith("uploadId=upload") ? { state: "verified", parts: [] } : {},
+    );
+    await uploadAutomaticAudio(run, snapshot, contract, {
+      userId,
+      store: local,
+      request: request as typeof workspaceRequest,
+      onTransferProgress: (value) => progress.push(value),
+    });
+    expect(local.blob).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledOnce();
+    expect(progress.at(-1)).toMatchObject({ sentBytes: 4, files: [{ phase: "complete" }] });
+    expect(
+      localStorage.getItem(`recalino:audio-upload:${userId}:${run.id}:${sourceId}`),
+    ).toBeNull();
+  });
+  it("after a reload, shows the parts the server holds before checking the original again", async () => {
+    const key = `recalino:audio-upload:${userId}:${run.id}:${sourceId}`;
+    localStorage.setItem(key, "upload");
+    const progress: AutomaticUploadProgress[] = [];
+    let reads = 0;
+    const request = vi.fn(async (_path: string, method: string, body?: { action: string }) =>
+      body?.action === "start"
+        ? { uploadId: "upload" }
+        : method === "GET"
+          ? {
+              // The reload reads the partial upload; the manifest after start finds it complete.
+              state: reads++ ? "verifying" : "pending",
+              parts: [{ index: 0, verifiedAt: "now" }],
+            }
+          : {},
+    );
+    let shown: unknown;
+    const local = {
+      list: store.list,
+      blob: vi.fn(async () => {
+        shown = progress.at(-1)?.files[0];
+        return blob;
+      }),
+    };
+    await uploadAutomaticAudio(run, snapshot, contract, {
+      userId,
+      store: local,
+      request: request as typeof workspaceRequest,
+      onTransferProgress: (value) => progress.push(value),
+    });
+    expect(shown).toMatchObject({ sentBytes: 2, phase: "checking" });
+    expect(progress.at(-1)).toMatchObject({ sentBytes: 4, files: [{ phase: "verifying" }] });
+    expect(localStorage.getItem(key)).toBe("upload");
+  });
+  it("drops a remembered upload the server no longer knows and checks the original", async () => {
+    const key = `recalino:audio-upload:${userId}:${run.id}:${sourceId}`;
+    localStorage.setItem(key, "gone");
+    const request = vi.fn(async (path: string, method: string, body?: { action: string }) => {
+      if (path.endsWith("uploadId=gone")) throw new Error("not_found");
+      if (body?.action === "start") return { uploadId: "fresh" };
+      return method === "GET" ? { state: "verified", parts: [] } : {};
+    });
+    await uploadAutomaticAudio(run, snapshot, contract, {
+      userId,
+      store,
+      request: request as typeof workspaceRequest,
+    });
+    expect(request.mock.calls.some((call) => call[2]?.action === "start")).toBe(true);
+    expect(localStorage.getItem(key)).toBeNull();
+  });
   it("combines live XHR bytes with unknown event totals across concurrent parts before either finishes", async () => {
     const progress: AutomaticUploadProgress[] = [];
     const transfers = new Map<number, AudioXMLHttpRequest>();

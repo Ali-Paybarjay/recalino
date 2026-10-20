@@ -67,6 +67,18 @@ export function sourceAudioJobDefinition() {
               await failAwaitingUploadRun(db, ctx, runId, "new_confirmation_required");
               return;
             }
+            // Material changed after confirmation: the run can never start, and retrying the job
+            // would leave it waiting. Close it uncharged; the class confirms its current material.
+            if (
+              failure instanceof AppError &&
+              failure.code === "validation_failed" &&
+              Array.isArray(problems.sources) &&
+              problems.sources.includes("changed_after_confirmation")
+            ) {
+              await failAwaitingUploadRun(db, ctx, runId, "new_confirmation_required");
+              await notifyAutomaticLearningForRun(db, ctx, runId);
+              return;
+            }
             throw failure;
           }
         },

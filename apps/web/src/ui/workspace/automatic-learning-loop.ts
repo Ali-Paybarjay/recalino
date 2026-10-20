@@ -22,6 +22,16 @@ import { isRetryableUploadFailure } from "./upload";
 
 /** Capture phases during which no upload starts and the class reads only kick (PRD-REC-02). */
 const CAPTURE_PHASES = ["starting", "recording", "recovering", "paused", "saving"];
+type CaptureSnapshot = {
+  phase: string;
+  accountDeletionBlocked: boolean;
+  recording?: { sessionId: string | null } | null;
+};
+/** A paused capture holds back only its own class; other classes keep uploading (D109). */
+function captureHolds(state: CaptureSnapshot, sessionId: string): boolean {
+  if (!CAPTURE_PHASES.includes(state.phase)) return false;
+  return state.phase !== "paused" || state.recording?.sessionId === sessionId;
+}
 const CLASS_PATH = /^\/sessions\/([0-9a-f-]{36})(?:\/|$)/i;
 
 export interface LearningLoopDeps {
@@ -29,7 +39,7 @@ export interface LearningLoopDeps {
   store: Pick<RecordingStore, "list" | "blob"> &
     Parameters<typeof prepareAutomaticRecordingPhotos>[3]["store"];
   controller: {
-    snapshot(): { phase: string; accountDeletionBlocked: boolean };
+    snapshot(): CaptureSnapshot;
     subscribe(listener: () => void): () => void;
   };
   manualManager: Pick<ManualAudioManager, "snapshot" | "enqueue">;
@@ -70,6 +80,7 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
   const { userId, store, controller, manualManager, states } = deps;
   const abort = new AbortController();
   let activity: AbortController | null = null;
+  let activitySession: string | null = null;
   let running = false;
   let contract: InputContract | null = null;
   const synchronized = new Map<string, string>();
@@ -145,6 +156,7 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
           allowed();
           const operation = new AbortController();
           activity = operation;
+          activitySession = sessionId;
           const cancel = () => operation.abort(abort.signal.reason);
           abort.signal.addEventListener("abort", cancel, { once: true });
           const check = () => {
@@ -166,7 +178,7 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
             } catch {
               /* Server synchronization is also idempotent. */
             }
-            const capturing = CAPTURE_PHASES.includes(controller.snapshot().phase);
+            const capturing = captureHolds(controller.snapshot(), sessionId);
             // Legacy manual confirmations have no automatic_session. Discover their existing
             // awaiting run from saved originals without creating a new intent or paid run.
             if (
@@ -380,7 +392,10 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
     const phase = `${state.phase}:${state.accountDeletionBlocked}`;
     const changed = phase !== capture;
     capture = phase;
-    if (state.accountDeletionBlocked || CAPTURE_PHASES.includes(state.phase))
+    if (
+      state.accountDeletionBlocked ||
+      (activitySession !== null && captureHolds(state, activitySession))
+    )
       activity?.abort(
         new DOMException(
           "Automatic upload is paused while capture or account deletion is in progress.",
