@@ -76,7 +76,9 @@ const ledger = async (reservationId: string) =>
       .selectFrom("quota.ledger")
       .select(["kind", "amount"])
       .where("reservation_id", "=", reservationId)
-      .orderBy("id")
+      // ids are random; order by time, and put a reserve before a release written in the same instant.
+      .orderBy("created_at")
+      .orderBy("kind", "desc")
       .execute()
   ).map((row) => ({ kind: row.kind, amount: Number(row.amount) }));
 
