@@ -1,4 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { listCards } from "@recalino/core/card";
+import { createDatabase } from "@recalino/core/db";
+import { submitReview } from "@recalino/core/srs";
+import { LOCAL_APP_DATABASE_URL } from "../../../packages/core/test/local-db";
 import { expectNoAxeViolations } from "./helpers";
 import { signInAsNewLearner } from "./learner";
 
@@ -40,6 +45,35 @@ test("Today gives a new learner one first step, and keeps one primary action aft
   await expectNoAxeViolations(page);
 });
 
+/**
+ * The fixture's flashcards are all new, and new cards are not "due" (only introduced cards whose
+ * review time has come are). One synthetic Forgot answer a day ago, on local Postgres only, makes
+ * one card due again now (FSRS short-term step of 1 minute).
+ */
+async function answerOneCardYesterday(userId: string, sessionId: string) {
+  const db = createDatabase(LOCAL_APP_DATABASE_URL, { maxConnections: 1 });
+  try {
+    const ctx = { userId, requestId: randomUUID() };
+    const [card] = await listCards(db, ctx, { sessionId, status: "active" });
+    if (!card) throw new Error("Missing synthetic active card");
+    await submitReview(
+      db,
+      ctx,
+      {
+        eventId: randomUUID(),
+        cardId: card.id,
+        expectedVersion: 0,
+        expectedContentVersion: card.contentVersion,
+        mode: "simple",
+        choice: "forgot",
+      },
+      new Date(Date.now() - 86_400_000),
+    );
+  } finally {
+    await db.destroy();
+  }
+}
+
 // UX-12: Review shows how many cards are due, on Today where the queue is already read.
 test("Today shows the number of due cards on the Review link", async ({ page }) => {
   test.setTimeout(90_000);
@@ -47,8 +81,10 @@ test("Today shows the number of due cards on the Review link", async ({ page }) 
     data: { setup: "complete", studyFixture: true, automaticStudyFixture: true },
   });
   expect(response.status(), await response.text()).toBe(200);
+  const { userId, sessionId } = (await response.json()) as { userId: string; sessionId: string };
+  await answerOneCardYesterday(userId, sessionId);
   await page.goto("/today");
-  await expect(page.getByRole("link", { name: /^Review\b.*\b\d+ due$/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Review\b.*\b1 due$/ }).first()).toBeVisible();
   await expectNoAxeViolations(page);
   await expectNoAxeViolations(page, { colorScheme: "dark" });
 });
