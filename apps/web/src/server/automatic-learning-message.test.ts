@@ -1,6 +1,20 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { uploadCopy } from "../ui/workspace/upload-copy";
 import { automaticLearningMessage } from "./automatic-learning";
+
+const PAUSED_WHILE_CHECKED =
+  "Processing is paused while a result is checked. Your earlier notes and cards are available. Contact the pilot operator before retrying.";
+// The section of the register where the owner's approval of 2026-10-20 (D101) is recorded.
+const register = (() => {
+  const text = readFileSync(
+    resolve(import.meta.dirname, "../../../../docs/design/UI_COPY_PENDING.md"),
+    "utf8",
+  );
+  const start = text.indexOf("## تأیید 2026-10-20");
+  return start < 0 ? "" : text.slice(start, text.indexOf("\n## ", start + 1));
+})();
 
 describe("automatic creation recovery guidance", () => {
   it.each([
@@ -96,9 +110,30 @@ describe("automatic creation recovery guidance", () => {
     },
   );
 
-  it("does not promise automatic retry for an uncertain paid outcome", () => {
-    expect(automaticLearningMessage("blocked", "provider_outcome_unknown")).toContain(
-      "Contact the operator before retrying",
-    );
+  // UX-05: the sentence the owner approved word for word on 2026-10-20 (D101), without the
+  // internal word "provider"; recorded in docs/design/UI_COPY_PENDING.md.
+  it.each([
+    "provider_outcome_unresolved",
+    "provider_outcome_unknown",
+    "provider_timestamps_invalid",
+  ])("does not promise automatic retry for an uncertain paid outcome (%s)", (code) => {
+    const message = automaticLearningMessage("blocked", code);
+    expect(message).toBe(PAUSED_WHILE_CHECKED);
+    expect(message).toContain("Contact the pilot operator before retrying");
+    expect(register).toContain(`«${message}»`);
+  });
+
+  it("names no internal word in a message the learner reads", () => {
+    const codes = [
+      null,
+      "provider_outcome_unresolved",
+      "provider_outcome_unknown",
+      "provider_timestamps_invalid",
+      "provider_http_400",
+      "provider_request_schema_too_complex",
+      "provider_schema_unsupported",
+    ];
+    for (const code of codes)
+      expect(automaticLearningMessage("blocked", code), String(code)).not.toMatch(/provider/i);
   });
 });

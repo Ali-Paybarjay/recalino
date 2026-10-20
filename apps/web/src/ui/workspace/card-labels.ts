@@ -7,8 +7,9 @@ import { learningMemoryCopy } from "./learning-memory-copy";
  * already shows: the card-type names of the frames and /preview ("Vocabulary", "Cloze", "Grammar
  * point", "Error correction", "Listening", "Question and answer"), "Suggested" (frame E3 list)
  * and the state words of the card actions ("Suspended", "Known", "Rejected"). The owner approved
- * these labels as they are on 2026-10-19 (D100); approved-copy.test.ts keeps them equal to the
- * register in docs/design/UI_COPY_PENDING.md.
+ * these labels as they are on 2026-10-19 (D100) and the active card's "In your review queue" on
+ * 2026-10-20 (D101); approved-copy.test.ts keeps them equal to the register in
+ * docs/design/UI_COPY_PENDING.md.
  */
 const TEMPLATE_LABELS: Record<string, string> = {
   basic: "Question and answer",
@@ -19,9 +20,10 @@ const TEMPLATE_LABELS: Record<string, string> = {
   listening: "Listening",
 };
 
-/** A card that is simply in the learner's review has no state word. */
+/** A deleted card has no state word. */
 const STATUS_LABELS: Record<string, string> = {
   candidate: "Suggested",
+  active: "In your review queue",
   suspended: "Suspended",
   known: "Known",
   rejected: "Rejected",

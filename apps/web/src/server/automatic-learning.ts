@@ -163,7 +163,7 @@ export function automaticLearningMessage(
       "provider_timestamps_invalid",
     ].includes(code ?? "")
   )
-    return "Processing is paused while a provider result is checked. Your earlier notes and cards are available. Contact the operator before retrying.";
+    return "Processing is paused while a result is checked. Your earlier notes and cards are available. Contact the pilot operator before retrying.";
   if (["configuration_unavailable", "storage_unavailable", "settings_changed"].includes(code ?? ""))
     return "Your material is saved. Automatic creation is waiting for the service to become available.";
   if (

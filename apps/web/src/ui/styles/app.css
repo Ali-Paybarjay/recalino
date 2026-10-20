@@ -119,9 +119,16 @@ body {
 }
 
 /* A11Y-01, D99: a text field's border is a control boundary, so it takes the 3:1 border token
-   instead of the divider (1.31:1 on white). Hover and focus keep the base layer's colours. */
+   instead of the divider (1.31:1 on white). Focus keeps the base layer's colour. */
 .input {
   border-color: var(--rc-border-strong);
+}
+
+/* A11Y-01, D101: in the light theme the base layer's hover (45% text over the field) is lighter
+   than the token above (2.62:1 on white), so hover mixes the same 45% into the token and only
+   darkens. :where() keeps the base layer's specificity: focus and an invalid field still win. */
+:where(:root[data-theme="light"]) .input:hover:where(:not(:focus-visible)) {
+  border-color: color-mix(in srgb, var(--color-text) 45%, var(--rc-border-strong));
 }
 
 /* Text fields: the focus ring sits on the border (Design System, text field "Focus"). */

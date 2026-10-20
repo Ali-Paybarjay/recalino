@@ -1,15 +1,17 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cardStatusSchema, cardTemplateSchema } from "@recalino/core/card";
+import { SOURCE_KINDS } from "@recalino/core/src";
 import { describe, expect, it } from "vitest";
 import { adminTaskTitleCopy, pilotProgressCopy, systemHealthCopy } from "./admin/copy";
 import { allowanceHelp } from "./allowance-copy";
 import { experienceCopy } from "./experience-copy";
 import { cardActionsCopy } from "./workspace/card-actions-copy";
-import { cardStatusLabel, cardTemplateLabel } from "./workspace/card-labels";
+import { cardStatusLabel, cardTemplateLabel, mediaAssetLabel } from "./workspace/card-labels";
 import { workspaceErrors } from "./workspace/error-copy";
 import { learningProgressCopy } from "./workspace/learning-progress-copy";
 import { privacyCopy } from "./workspace/privacy-copy";
+import { sourceKindLabel } from "./workspace/source-labels";
 
 const register = readFileSync(
   resolve(import.meta.dirname, "../../../../docs/design/UI_COPY_PENDING.md"),
@@ -157,8 +159,11 @@ describe("the pilot progress and task texts approved on 2026-10-19", () => {
 describe("the card labels approved on 2026-10-19", () => {
   const start = register.indexOf("## تأیید 2026-10-19 — برچسب‌های کارت");
   const section = register.slice(start, register.indexOf("\n## ", start + 1));
+  // The active card's label was approved later, on 2026-10-20 (D101, checked below).
   const labels: Array<[string, string]> = [
-    ...cardStatusSchema.options.map((status) => [status, cardStatusLabel(status)]),
+    ...cardStatusSchema.options
+      .filter((status) => status !== "active")
+      .map((status) => [status, cardStatusLabel(status)]),
     ...cardTemplateSchema.options.map((template) => [template, cardTemplateLabel(template)]),
   ].flatMap(([stored, label]) => (label ? [[stored as string, label]] : []));
 
@@ -170,5 +175,52 @@ describe("the card labels approved on 2026-10-19", () => {
 
   it.each(labels)("%s reads %s in the interface and in the register", (stored, label) => {
     expect(section).toContain(`| \`${stored}\` | «${label}» |`);
+  });
+});
+
+// D101 (owner decision 2026-10-20, audit batch 19, UX-05): the rest of batch 5's proposals, each
+// recorded word for word beside its stored value. The server's paused-processing sentence in the
+// same section is checked by apps/web/src/server/automatic-learning-message.test.ts.
+describe("the UX-05 texts approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — متن‌های باقی‌ماندهٔ UX-05");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+  const texts: Array<[string, string]> = [
+    ["privacyCopy.accountHidden", privacyCopy.accountHidden],
+    ["cardStatusLabel", cardStatusLabel("active") as string],
+    ...SOURCE_KINDS.map((kind): [string, string] => ["sourceKindLabel", sourceKindLabel(kind)]),
+    ["sourceKindLabel", sourceKindLabel("something_new")],
+  ];
+
+  it("are the ten texts of the register section", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(section.match(/^\| .+ \| .+ \| «.+» \|$/gm)).toHaveLength(10);
+    expect(SOURCE_KINDS).toHaveLength(5);
+  });
+
+  it("keeps the deletion receipt and the active card's label word for word", () => {
+    expect(privacyCopy.accountHidden).toBe(
+      "Your account and sessions are hidden. The rest of your data is being removed.",
+    );
+    expect(cardStatusLabel("active")).toBe("In your review queue");
+    expect(section).toContain("| `active` | «In your review queue» |");
+    expect(cardStatusLabel("deleted")).toBeNull();
+  });
+
+  it.each(texts)("%s «%s» is in the interface and in the register", (key, text) => {
+    expect(section).toContain(`(\`${key}\`)`);
+    expect(section).toContain(`«${text}»`);
+  });
+
+  it("records the file types by their stored kind", () => {
+    for (const kind of SOURCE_KINDS)
+      expect(section).toContain(`| \`${kind}\` | «${sourceKindLabel(kind)}» |`);
+    expect(section).toContain(`| — | «${sourceKindLabel("something_new")}» |`);
+  });
+
+  it("records the computer voice label of a card's media", () => {
+    expect(mediaAssetLabel({ synthetic: true, state: "ready" }, 0)).toBe(
+      "Computer voice 1 · Ready",
+    );
+    expect(section).toContain("| `ready` | «Computer voice N · Ready» |");
   });
 });

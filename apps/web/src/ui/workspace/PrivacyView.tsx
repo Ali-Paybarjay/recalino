@@ -144,12 +144,12 @@ export function PrivacyView({
     return (
       <Panel title="Account deletion requested">
         {/* UX-10: while cleanup waits for the pilot operator the receipt says so (approved
-            2026-10-19). UX-05: the other state no longer speaks of a "queue"; the sentence that
-            would replace it waits for the owner in UI_COPY_PENDING.md. */}
+            2026-10-19). UX-05: the other state no longer speaks of a "queue" (approved
+            2026-10-20, D101). */}
         {receipt.state === "needs_operator" ? (
           <Status tone="error">{privacyCopy.needsOperator}</Status>
         ) : (
-          <Status>Your account and sessions are hidden.</Status>
+          <Status>{privacyCopy.accountHidden}</Status>
         )}
         <p>Request reference: {receipt.id}</p>
         {deviceCleanup === "complete" ? (

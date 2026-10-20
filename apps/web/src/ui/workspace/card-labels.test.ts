@@ -20,11 +20,12 @@ describe("labels for what the learner sees", () => {
     }
   });
 
-  it("gives a state word to every state except the normal one", () => {
+  it("gives a state word to every state except a deleted card", () => {
     const labels = cardStatusSchema.options.map((status) => [status, cardStatusLabel(status)]);
     expect(Object.fromEntries(labels)).toEqual({
       candidate: "Suggested",
-      active: null,
+      // Approved by the owner on 2026-10-20 (D101).
+      active: "In your review queue",
       suspended: "Suspended",
       known: "Known",
       rejected: "Rejected",
@@ -36,7 +37,10 @@ describe("labels for what the learner sees", () => {
     expect(cardSummary({ status: "candidate", template: "basic", important: true })).toBe(
       "Suggested · Question and answer · Important",
     );
-    expect(cardSummary({ status: "active", template: "unknown_new_type" })).toBe("");
+    expect(cardSummary({ status: "active", template: "unknown_new_type" })).toBe(
+      "In your review queue",
+    );
+    expect(cardSummary({ status: "deleted", template: "unknown_new_type" })).toBe("");
   });
 
   it("names the study sets with the approved words of Your learning", () => {
