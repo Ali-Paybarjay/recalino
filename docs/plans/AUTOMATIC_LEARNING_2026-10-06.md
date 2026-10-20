@@ -2,6 +2,10 @@
 
 ## User-authorized outcome
 
+> Amended by D105 (owner decision 2026-10-20, `docs/PRODUCT_DECISIONS_LOG.md`): lesson work
+> starts only when the learner presses "Process this session"; material added later waits for
+> the next press. Publication and card generation stay automatic after that press.
+
 Uploading documents, audio and photos creates and saves the class notebook and
 flashcards automatically. Adding further material updates the same class. Normal
 use requires no processing, notebook publication or card-generation button.

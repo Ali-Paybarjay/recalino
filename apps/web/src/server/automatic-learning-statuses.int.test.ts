@@ -7,6 +7,7 @@ import {
   listRuns,
   processingQueue,
   requestAutomaticLearning,
+  requestAutomaticProcessing,
   updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
 import { amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
@@ -159,6 +160,8 @@ async function classWithText(ctx: LearnerContext, text: string) {
       blocks: [{ id: "text", kind: "paragraph", unitId: "doc", text }],
     }),
   );
+  // D105: the learner pressed Process this session.
+  await requestAutomaticProcessing(db, ctx, session.id);
   const started = await automaticLearningSync(db, ctx, session.id, {
     dependencies: { provider: () => provider, processing: () => processingQueue },
   });
@@ -217,6 +220,10 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
   expect(expected[0]?.notesReady).toBe(true);
   expect(expected[1]?.stage).toBeTruthy();
   expect(expected[2]?.processingReview?.canRequest).toBe(true);
+  // D105: the class with material and no press waits for the learner; idle has no intent at all.
+  expect(expected[3]).toMatchObject({ processRequest: "not_requested", requestedRevision: null });
+  expect(expected[4]).toMatchObject({ state: "idle", processRequest: "not_requested" });
+  expect(expected[1]).toMatchObject({ processRequest: "requested" });
   const counted = countingDatabase(db);
   expect(await readAutomaticLearningStatuses(counted.db, ctx, ids, () => provider)).toEqual(
     expected,

@@ -1,11 +1,22 @@
 import "server-only";
-import { enqueueJob, errors, readPltSettings } from "@recalino/core/plt";
+import {
+  AppError,
+  enqueueJob,
+  errors,
+  type LearnerContext,
+  readPltSettings,
+} from "@recalino/core/plt";
 import {
   coordinateSourceDeletion,
   findPrivacyDeletionRequest,
   persistDeletionJournal,
 } from "@recalino/core/priv";
-import { getRun, registerAutomaticLearningFile, validateAudioUploadRun } from "@recalino/core/proc";
+import {
+  getRun,
+  registerAutomaticLearningFile,
+  requestAutomaticLearning,
+  validateAudioUploadRun,
+} from "@recalino/core/proc";
 import {
   acceptSourceNotice,
   attachSource,
@@ -45,6 +56,22 @@ function store() {
   const value = getObjectStore();
   if (!value) throw errors.serviceUnavailable({ storage: ["unavailable"] });
   return value;
+}
+/**
+ * D105: removed material changes the lesson's sources too. Committed with the removal, it opens a
+ * processed session again, so the notes change only after the learner's next Process this session.
+ */
+async function materialRemoved(
+  tx: Parameters<typeof requestAutomaticLearning>[0],
+  learner: LearnerContext,
+  sessionId: string,
+) {
+  try {
+    await requestAutomaticLearning(tx, learner, sessionId, { changed: true });
+  } catch (failure) {
+    // A deleted class keeps its links; it has no lesson to reopen.
+    if (!(failure instanceof AppError && failure.code === "not_found")) throw failure;
+  }
 }
 export function sourceContractHandler(): Handler {
   return async ({ db, ctx }) => {
@@ -112,6 +139,7 @@ export function sourceHandler(id: string): Handler {
     const body = await deleteSource(db, learner, id, fields.mode, new Date(), {
       onDelete: async (tx, sourceId, _, sessionIds) => {
         await coordinateSourceDeletion(tx, learner, sourceId, sessionIds, dependencies);
+        for (const sessionId of new Set(sessionIds)) await materialRemoved(tx, learner, sessionId);
       },
     });
     if (fields.mode === "all") {
@@ -173,7 +201,10 @@ export function classSourceHandler(id: string, sourceId: string): Handler {
     z.uuid().parse(id);
     z.uuid().parse(sourceId);
     if (request.method === "DELETE") {
-      await detachSource(db, learnerActor(ctx), id, sourceId);
+      const learner = learnerActor(ctx);
+      await db.transaction().execute(async (tx) => {
+        if (await detachSource(tx, learner, id, sourceId)) await materialRemoved(tx, learner, id);
+      });
       return { body: { removed: true } };
     }
     const learner = learnerActor(ctx);

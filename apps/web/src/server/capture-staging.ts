@@ -11,7 +11,6 @@ import {
 } from "@recalino/core/src";
 import { z } from "zod";
 import { type Handler, learnerActor } from "./api";
-import { notifyAutomaticLearning } from "./automatic-learning-notifications";
 import { captureFlags, stagedAudioJobDefinition } from "./capture-staging-jobs";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
@@ -109,7 +108,8 @@ export function stagedAudioHandler(assetId: string): Handler {
 const captureRequestSchema = z.strictObject({ action: z.enum(["open", "close"]) });
 /**
  * The capture lease of one class (D60): while it is open, automatic learning waits so no lesson
- * is built from part of a class. The response tells the app which approved behaviours are on.
+ * is built from part of a class, and Process this session is refused (D105). The response tells
+ * the app which approved behaviours are on.
  */
 export function classCaptureHandler(sessionId: string): Handler {
   return async ({ db, ctx, input }) => {
@@ -119,10 +119,10 @@ export function classCaptureHandler(sessionId: string): Handler {
     const flags = captureFlags();
     if (action === "close") {
       await releaseCaptureLease(db, learner, id);
-      // Stop: a class waiting on the lease is processed now, not at the next reconcile.
-      await notifyAutomaticLearning(db, learner, id, false);
+      // D105: Stop ends one recording, never the session, and starts no lesson work. Its sealed
+      // parts are still transcribed early (D61), which reserves no allowance.
       runJobsSoon(
-        ["proc.automatic_learning", "proc.capture_transcription", "proc.process"],
+        ["proc.capture_transcription"],
         PROCESSING_WAKE.budgetSeconds,
         PROCESSING_WAKE.functionSeconds,
       );

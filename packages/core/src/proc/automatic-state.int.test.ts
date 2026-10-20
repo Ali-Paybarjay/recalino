@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { sql } from "kysely";
 import { afterAll, expect, it } from "vitest";
 import { createAuthUser } from "../../test/auth-users";
 import { LOCAL_APP_DATABASE_URL } from "../../test/local-db";
@@ -10,7 +13,7 @@ import {
   updateProfile,
 } from "../acc";
 import { createDatabase, type Database } from "../db";
-import { createSession } from "../org";
+import { createSession, releaseCaptureLease, renewCaptureLease } from "../org";
 import {
   beginAutomaticLearningBatch,
   cancelAutomaticLearningBatch,
@@ -20,6 +23,7 @@ import {
   reconcileAutomaticLearningBatch,
   registerAutomaticLearningFile,
   requestAutomaticLearning,
+  requestAutomaticProcessing,
   skipAutomaticLearningFile,
   updateAutomaticLearningProgress,
 } from "./automatic-state";
@@ -463,12 +467,9 @@ it("rejects another owner's class before reading or changing intent", async () =
 it("reconciles pending intent only while its class and owner are live", async () => {
   const x = await studyFixture(db);
   const y = await studyFixture(db);
-  await requestAutomaticLearning(db, x.ctx, x.session.id, {
-    now: new Date("2020-01-01T00:00:00Z"),
-  });
-  await requestAutomaticLearning(db, y.ctx, y.session.id, {
-    now: new Date("2020-01-02T00:00:00Z"),
-  });
+  // D105: only material the learner asked to process is pending.
+  await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date("2020-01-01T00:00:00Z"));
+  await requestAutomaticProcessing(db, y.ctx, y.session.id, new Date("2020-01-02T00:00:00Z"));
   expect((await listPendingAutomaticLearning(db, 250)).map((row) => row.sessionId)).toContain(
     x.session.id,
   );
@@ -492,9 +493,12 @@ it("reconciles pending intent only while its class and owner are live", async ()
 
 it("reconciles temporary service blocks without automatically retrying quota or uncertain provider outcomes", async () => {
   const x = await studyFixture(db);
-  const row = await requestAutomaticLearning(db, x.ctx, x.session.id, {
-    now: new Date("2019-01-01T00:00:00Z"),
-  });
+  const row = await requestAutomaticProcessing(
+    db,
+    x.ctx,
+    x.session.id,
+    new Date("2019-01-01T00:00:00Z"),
+  );
   for (const code of [
     "configuration_unavailable",
     "storage_unavailable",
@@ -529,7 +533,7 @@ it("filters deleted classes and accounts before applying the reconciliation limi
     [deletedOwner, "2001-01-02T00:00:00Z"],
     [live, "2001-01-03T00:00:00Z"],
   ] as const)
-    await requestAutomaticLearning(db, fixture.ctx, fixture.session.id, { now: new Date(date) });
+    await requestAutomaticProcessing(db, fixture.ctx, fixture.session.id, new Date(date));
   await db
     .updateTable("org.class_session")
     .set({ deleted_at: new Date(), deletion_request_id: randomUUID() })
@@ -592,5 +596,147 @@ it("rejects a late progress write for an older run even when explicit retry kept
     requestVersion: intent.requestVersion,
     state: "processing",
     runId: newer.id,
+  });
+});
+
+// D105 (owner decision 2026-10-20): a session is processed only after "Process this session".
+it("D105: records the learner's request once, under the account lock, for the current material", async () => {
+  const x = await studyFixture(db);
+  const pending = async () =>
+    (await listPendingAutomaticLearning(db, 250)).some((row) => row.sessionId === x.session.id);
+  // Material arrives (a part, a file): the intent exists, but nothing is pending for lesson work.
+  const opened = await requestAutomaticLearning(db, x.ctx, x.session.id);
+  expect(opened).toMatchObject({ requestVersion: 1, requestedVersion: null, requestedAt: null });
+  expect(await pending()).toBe(false);
+  // An old time sorts this class before other fixtures' pending rows within the read limit.
+  const now = new Date("2021-01-01T00:00:00Z");
+  const [first, double] = await Promise.all([
+    requestAutomaticProcessing(db, x.ctx, x.session.id, now),
+    requestAutomaticProcessing(db, x.ctx, x.session.id, now),
+  ]);
+  expect(first).toEqual(double);
+  expect(first).toMatchObject({
+    requestVersion: 1,
+    requestedVersion: 1,
+    requestedAt: now.toISOString(),
+    state: "waiting_sources",
+    lastError: null,
+  });
+  expect(await pending()).toBe(true);
+  // Pressing again later has no second effect.
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date())).toEqual(first);
+  // New material reopens the session: it waits for the next press and is no longer pending.
+  const reopened = await requestAutomaticLearning(db, x.ctx, x.session.id);
+  expect(reopened).toMatchObject({ requestVersion: 2, requestedVersion: 1 });
+  expect(await pending()).toBe(false);
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, now)).toMatchObject({
+    requestVersion: 2,
+    requestedVersion: 2,
+  });
+  expect(await pending()).toBe(true);
+});
+
+it("D105: a first press creates the intent of a class that has none", async () => {
+  const x = await studyFixture(db);
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toBeNull();
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id)).toMatchObject({
+    sessionId: x.session.id,
+    requestVersion: 1,
+    requestedVersion: 1,
+    batchId: null,
+  });
+});
+
+it("D105: refuses while a recording or an upload group of the class is open, changing nothing", async () => {
+  const x = await studyFixture(db);
+  await renewCaptureLease(db, x.ctx, x.session.id);
+  await expect(requestAutomaticProcessing(db, x.ctx, x.session.id)).rejects.toMatchObject({
+    code: "conflict",
+    details: { fields: { session: ["capture_in_progress"] } },
+  });
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toBeNull();
+  await releaseCaptureLease(db, x.ctx, x.session.id);
+  const batch = await beginAutomaticLearningBatch(db, x.ctx, x.session.id, randomUUID());
+  await expect(requestAutomaticProcessing(db, x.ctx, x.session.id)).rejects.toMatchObject({
+    code: "conflict",
+    details: { fields: { batch: ["batch_open"] } },
+  });
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toEqual(batch);
+  // An upload group alone stays visible to recovery without a request.
+  const manifest = await studyFixture(db);
+  await beginAutomaticLearningBatch(
+    db,
+    manifest.ctx,
+    manifest.session.id,
+    randomUUID(),
+    new Date("2021-01-01T00:00:00Z"),
+    [randomUUID()],
+  );
+  expect(
+    (await listPendingAutomaticLearning(db, 250)).some(
+      (row) => row.sessionId === manifest.session.id,
+    ),
+  ).toBe(true);
+});
+
+it("D105: refuses another owner's class before reading or changing its intent", async () => {
+  const x = await studyFixture(db);
+  const other = await studyFixture(db);
+  await expect(requestAutomaticProcessing(db, other.ctx, x.session.id)).rejects.toMatchObject({
+    code: "not_found",
+  });
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toBeNull();
+});
+
+it("D105: the schema keeps a request paired with its time and never ahead of the material", async () => {
+  const x = await studyFixture(db);
+  await requestAutomaticLearning(db, x.ctx, x.session.id);
+  const write = (values: { requested_version: number | null; requested_at: Date | null }) =>
+    db
+      .updateTable("proc.automatic_session")
+      .set(values)
+      .where("session_id", "=", x.session.id)
+      .execute();
+  for (const values of [
+    { requested_version: 1, requested_at: null },
+    { requested_version: null, requested_at: new Date() },
+    { requested_version: 2, requested_at: new Date() },
+    { requested_version: 0, requested_at: new Date() },
+  ])
+    await expect(write(values)).rejects.toThrow(/check constraint/);
+});
+
+it("D105: the migration backfills every existing intent as already requested", async () => {
+  const x = await studyFixture(db);
+  const updatedAt = new Date("2026-10-19T08:00:00Z");
+  await requestAutomaticLearning(db, x.ctx, x.session.id);
+  await requestAutomaticLearning(db, x.ctx, x.session.id, { now: updatedAt });
+  const migration = readFileSync(
+    resolve(
+      import.meta.dirname,
+      "../../../../supabase/migrations/20261020120000_proc_automatic_session_learner_request.sql",
+    ),
+    "utf8",
+  );
+  const backfill = /^update proc\.automatic_session[^;]*;/m.exec(migration)?.[0];
+  if (!backfill) throw new Error("The migration has no backfill statement");
+  const rollback = new Error("roll back the synthetic backfill");
+  // The statement runs as the migration ran it, then rolls back: other rows stay as they are.
+  await expect(
+    db.transaction().execute(async (tx) => {
+      await sql.raw(backfill).execute(tx);
+      expect(
+        await tx
+          .selectFrom("proc.automatic_session")
+          .select(["request_version", "requested_version", "requested_at"])
+          .where("session_id", "=", x.session.id)
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ request_version: 2, requested_version: 2, requested_at: updatedAt });
+      throw rollback;
+    }),
+  ).rejects.toBe(rollback);
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toMatchObject({
+    requestVersion: 2,
+    requestedVersion: null,
   });
 });

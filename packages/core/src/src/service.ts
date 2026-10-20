@@ -362,7 +362,7 @@ export async function attachSource(
 }
 
 export function createRecordedSource(
-  db: Database,
+  db: Connection,
   ctx: LearnerContext,
   raw: unknown,
   now = new Date(),
@@ -1217,14 +1217,16 @@ export async function detachSource(
       .where("asset_id", "=", assetId)
       .executeTakeFirst();
     if (!row) throw errors.notFound();
-    if (!row.active) return;
+    if (!row.active) return false;
     await tx
       .updateTable("src.session_source")
       .set({ active: false, changed_at: now })
       .where("id", "=", row.id)
       .execute();
     await snapshot(tx, ctx, sessionId, now);
+    return true;
   };
+  // True when this call detached the source; false when it was already detached.
   return db.isTransaction ? detach(db as Tx) : db.transaction().execute(detach);
 }
 export async function sourceReadLink(

@@ -200,6 +200,17 @@
 - بخش وضعیت برچسب تصویر کلاس همان `mediaStateLabel` است که برای صدای ساخته‌شده تأیید شد (D101).
 - جملهٔ برگهٔ حذف فقط بند «and server cleanup will begin» را از جملهٔ پیشین کنار گذاشت (UX-05: «server cleanup» به زبان‌آموز نشان داده نمی‌شود). واژهٔ تازه‌ای اضافه نشد. بخش «Delete your account» همچنان حذف داده‌های سرور را توضیح می‌دهد.
 
+## تأیید 2026-10-20 — پردازش صریح جلسه (D105)
+
+مالک محصول در 2026-10-20 متن‌های «Process this session» را عیناً تأیید کرد. ثبت نسخه‌دار: [D105](../PRODUCT_DECISIONS_LOG.md). این بخش فقط متنی را ثبت می‌کند که در رابط به کار رفته است. متن‌های دیگر آن تأیید («Process this session»، «Process this session?»، «Continue recording» و مانند آن‌ها) همراه رابطی ثبت می‌شوند که نشانشان می‌دهد، در همین PR. `approved-copy.test.ts` و `workspace/api.test.ts` متن زیر را عیناً می‌سنجند.
+
+- **رد درخواست پردازش هنگام ضبط:** سرور `POST /api/classes/[id]/learning` با `{ action: "process" }` را تا وقتی lease ضبط این جلسه روی هر دستگاهی باز است، با `conflict` و دلیل `capture_in_progress` رد می‌کند (Process هیچ ضبطی را متوقف نمی‌کند). `workspaceRequest` در [`workspace/api.ts`](../../apps/web/src/ui/workspace/api.ts) این دلیل را به `workspaceErrors.captureInProgress` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts) برمی‌گرداند.
+- رد هنگام گروه آپلود باز (`batch_open`) متن تازه ندارد و همان پیام پیش‌فرض `conflict` است.
+
+| جا | مقدار ذخیره‌شده | متن |
+|---|---|---|
+| خطای درخواست (`workspaceErrors.captureInProgress`) | `capture_in_progress` | «Stop the recording before you process this session.» |
+
 ## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 
 مالک محصول در 2026-10-19 هر ۱۶ متن کارت «System health» را که دستهٔ ۳ (`fix/audit-3`، یافتهٔ OPS-02؛ ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`) پیشنهاد کرده بود، عیناً تأیید کرد. ثبت نسخه‌دار: [D97](../PRODUCT_DECISIONS_LOG.md). متن‌ها از این فهرست به `systemHealthCopy` در [`admin/copy.ts`](../../apps/web/src/ui/admin/copy.ts) منتقل شدند و آزمون `approved-copy.test.ts` هر متن انگلیسی و فارسی را عیناً با همین بخش می‌سنجد.

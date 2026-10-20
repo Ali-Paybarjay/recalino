@@ -26,6 +26,13 @@ export interface AutomaticUploadProgress {
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
   revision: number;
+  /**
+   * D105: "not_requested" until the learner presses Process this session; "new_material" when
+   * material changed after the last press, so the session waits again; "requested" otherwise.
+   */
+  processRequest?: "not_requested" | "new_material" | "requested";
+  /** D105: the revision the learner last asked to process; null before the first press. */
+  requestedRevision?: number | null;
   batchId: string | null;
   run: ProcessingRun | null;
   snapshot: RunSnapshot | null;

@@ -67,9 +67,18 @@ import { automaticLearningQueue } from "./automatic-learning-queue";
 import { getObjectStore } from "./storage";
 import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
+/**
+ * D105: "not_requested" until the learner presses Process this session; "new_material" when
+ * material changed after the last press, so the session is open again; "requested" otherwise.
+ */
+export type AutomaticProcessRequest = "not_requested" | "new_material" | "requested";
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
   revision: number;
+  /** D105: whether the session waits for the learner's "Process this session". */
+  processRequest: AutomaticProcessRequest;
+  /** D105: the revision the learner last asked to process; null before the first press. */
+  requestedRevision: number | null;
   batchId: string | null;
   run: ProcessingRun | null;
   snapshot: RunSnapshot | null;
@@ -299,6 +308,14 @@ async function bulkStatusReads(
     },
   };
 }
+function processRequest(intent: AutomaticLearningSession | null): AutomaticProcessRequest {
+  if (!intent?.requestedVersion) return "not_requested";
+  return intent.requestedVersion === intent.requestVersion ? "requested" : "new_material";
+}
+/** D105: lesson work follows only the material the learner asked to process. */
+function requested(intent: AutomaticLearningSession): boolean {
+  return intent.requestedVersion === intent.requestVersion;
+}
 async function view(
   db: Database,
   ctx: LearnerContext,
@@ -338,6 +355,8 @@ async function view(
   return {
     state,
     revision: intent?.requestVersion ?? 0,
+    processRequest: processRequest(intent),
+    requestedRevision: intent?.requestedVersion ?? null,
     batchId: intent?.batchId ?? null,
     run,
     snapshot: run?.state === "awaiting_upload" ? await reads.snapshot(run.id) : null,
@@ -426,6 +445,9 @@ export async function automaticLearningSync(
     return view(db, ctx, sessionId, { state, lastError, run }, deps.provider);
   };
   if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
+  // D105: nothing starts until the learner presses Process this session, and new material after
+  // that press waits for the next one. Read only: the earlier run and notes stay as they are.
+  if (!requested(intent)) return view(db, ctx, sessionId, undefined, deps.provider);
   // D60: parts registered during an open capture wait for Stop; no lesson from part of a class.
   // D61: a part still being transcribed in the background is reused, not transcribed twice.
   if (
@@ -574,6 +596,7 @@ export function automaticLearningJob(
         if (
           !intent ||
           intent.requestVersion !== payload.requestVersion ||
+          !requested(intent) ||
           intent.batchId ||
           (intent.state === "blocked" &&
             !["configuration_unavailable", "storage_unavailable", "settings_changed"].includes(
@@ -645,7 +668,8 @@ export async function scheduleAutomaticLearning(
     }
     intent = (await reconcileAutomaticLearningBatch(db, ctx, sessionId, now)) ?? intent;
   }
-  if (intent.batchId) return;
+  // D105: only material the learner asked to process is queued for lesson work.
+  if (intent.batchId || !requested(intent)) return;
   await db.transaction().execute((tx) =>
     enqueueJob(tx, automaticLearningJob(), {
       payload: { sessionId, userId: ctx.userId, requestVersion: intent.requestVersion },

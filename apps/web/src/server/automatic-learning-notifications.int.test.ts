@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { createDatabase } from "@recalino/core/db";
-import { beginAutomaticLearningBatch, getAutomaticLearningSession } from "@recalino/core/proc";
+import {
+  beginAutomaticLearningBatch,
+  getAutomaticLearningSession,
+  requestAutomaticProcessing,
+} from "@recalino/core/proc";
 import { afterAll, expect, it } from "vitest";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
@@ -25,17 +29,22 @@ it("does not turn an old verification notification into automatic paid-processin
 
 it("persists one learner mutation, keeps verification pokes stable and respects an open batch", async () => {
   const x = await studyFixture(db);
+  const learningJobs = () =>
+    db
+      .selectFrom("plt.job")
+      .selectAll()
+      .where("kind", "=", "proc.automatic_learning")
+      .where("payload", "@>", JSON.stringify({ userId: x.ctx.userId }))
+      .execute();
   await notifyAutomaticLearning(db, x.ctx, x.session.id);
-  const started = await getAutomaticLearningSession(db, x.ctx, x.session.id);
-  expect(started?.requestVersion).toBe(1);
+  const opened = await getAutomaticLearningSession(db, x.ctx, x.session.id);
+  expect(opened).toMatchObject({ requestVersion: 1, requestedVersion: null });
+  // D105: material alone queues no lesson work; the learner's Process this session does.
+  expect(await learningJobs()).toEqual([]);
+  const started = await requestAutomaticProcessing(db, x.ctx, x.session.id);
   await notifyAutomaticLearning(db, x.ctx, x.session.id, false);
   expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toEqual(started);
-  const queued = await db
-    .selectFrom("plt.job")
-    .selectAll()
-    .where("kind", "=", "proc.automatic_learning")
-    .where("payload", "@>", JSON.stringify({ userId: x.ctx.userId }))
-    .execute();
+  const queued = await learningJobs();
   expect(queued).toHaveLength(1);
   const batch = await beginAutomaticLearningBatch(db, x.ctx, x.session.id, randomUUID());
   await notifyAutomaticLearning(db, x.ctx, x.session.id);
@@ -46,12 +55,5 @@ it("persists one learner mutation, keeps verification pokes stable and respects 
   });
   await notifyAutomaticLearning(db, x.ctx, x.session.id, false);
   expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toEqual(changed);
-  expect(
-    await db
-      .selectFrom("plt.job")
-      .selectAll()
-      .where("kind", "=", "proc.automatic_learning")
-      .where("payload", "@>", JSON.stringify({ userId: x.ctx.userId }))
-      .execute(),
-  ).toEqual(queued);
+  expect(await learningJobs()).toEqual(queued);
 });

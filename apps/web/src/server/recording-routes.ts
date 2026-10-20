@@ -1,15 +1,30 @@
 import "server-only";
 import { createLogger, errors, type Logger } from "@recalino/core/plt";
+import { requestAutomaticLearning } from "@recalino/core/proc";
 import { createRecordedSource } from "@recalino/core/src";
+import { z } from "zod";
 import { captureDiagnosticsSchema } from "../ui/recording/capture-diagnostics";
 import { type Handler, idempotencyKey, learnerActor } from "./api";
 export function recordingSourceHandler(): Handler {
   return async ({ db, ctx, input, request }) => {
     const learner = learnerActor(ctx);
     const operationKey = idempotencyKey(request);
-    const result = await createRecordedSource(db, learner, {
-      ...(input as Record<string, unknown>),
-      operationKey,
+    const result = await db.transaction().execute(async (tx) => {
+      const created = await createRecordedSource(tx, learner, {
+        ...(input as Record<string, unknown>),
+        operationKey,
+      });
+      // D105: a new recorded part is new material. Committed with the part, it raises the
+      // session's request version, so a processed session waits for the next Process this
+      // session instead of regenerating. A replayed registration changes nothing.
+      if (!created.replayed)
+        await requestAutomaticLearning(
+          tx,
+          learner,
+          z.uuid().parse((input as { sessionId?: unknown }).sessionId),
+          { changed: true },
+        );
+      return created;
     });
     return { status: 201, body: result };
   };

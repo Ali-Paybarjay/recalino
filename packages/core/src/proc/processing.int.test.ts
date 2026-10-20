@@ -45,6 +45,7 @@ import {
   beginAutomaticLearningBatch,
   getAutomaticLearningSession,
   requestAutomaticLearning,
+  requestAutomaticProcessing,
   updateAutomaticLearningProgress,
 } from "./automatic-state";
 import { awaitingUploadRuns, expireAwaitingUploads } from "./maintenance";
@@ -317,7 +318,8 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     const failed = await f.start();
     await f.work();
     expect((await getRun(db, f.ctx, failed.id)).state).toBe("failed");
-    const intent = await requestAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+    // D105: the failed run was the learner's request (Process this session).
+    const intent = await requestAutomaticProcessing(db, f.ctx, f.session.id);
     await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
       state: "blocked",
       runId: failed.id,
@@ -386,14 +388,14 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(2);
   });
 
-  it.each(["batch", "different_run"] as const)(
+  it.each(["batch", "different_run", "new_material"] as const)(
     "operator retry preserves a newer automatic %s instead of attaching it to old work",
     async (changed) => {
       const f = await fixture();
       f.provider.failure = new ProviderError("provider_http_400", false, false);
       const failed = await f.start();
       await f.work();
-      const intent = await requestAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+      const intent = await requestAutomaticProcessing(db, f.ctx, f.session.id);
       await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
         state: "blocked",
         runId: failed.id,
@@ -401,6 +403,8 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       });
       if (changed === "batch")
         await beginAutomaticLearningBatch(db, f.ctx, f.session.id, randomUUID());
+      // D105: material after the learner's press waits for the next press, also for an operator.
+      else if (changed === "new_material") await requestAutomaticLearning(db, f.ctx, f.session.id);
       else {
         const row = await db
           .selectFrom("proc.processing_run")

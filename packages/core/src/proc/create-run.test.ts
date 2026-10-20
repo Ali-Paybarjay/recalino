@@ -155,7 +155,11 @@ function label(query: CompiledQuery) {
     )
   )
     return text.endsWith("for update") ? "lock automatic intent" : text;
-  if (text.startsWith('select "request_version", "batch_id" from "proc"."automatic_session"'))
+  if (
+    text.startsWith(
+      'select "request_version", "requested_version", "batch_id" from "proc"."automatic_session"',
+    )
+  )
     return "read automatic intent";
   if (text.startsWith('select "id" from "proc"."processing_run" where "session_id"'))
     return "read active run";
@@ -219,6 +223,8 @@ const checks = [
   `assertSessionOwner ${SESSION_ID}`,
   "read operation run",
 ];
+// D105: every class run reads the session's intent under the account lock.
+const intentRead = "read automatic intent";
 const charge = (sources = 1) => [
   "activeEntitlementId",
   "getLatestVersion",
@@ -252,6 +258,7 @@ describe("createProcessingRun (characterization)", () => {
     expect(run).toMatchObject({ id: ID, sessionId: SESSION_ID, state: "queued" });
     expect(labelled()).toEqual([
       ...checks,
+      intentRead,
       "getAccountState",
       "read active run",
       "read unresolved attempt",
@@ -304,7 +311,7 @@ describe("createProcessingRun (characterization)", () => {
     await expect(create(db)).rejects.toMatchObject({
       details: { fields: { profile: [code] } },
     });
-    expect(labelled()).toEqual([...checks, "getAccountState", "rollback"]);
+    expect(labelled()).toEqual([...checks, intentRead, "getAccountState", "rollback"]);
   });
 
   it("refuses while another run or an unresolved paid attempt exists", async () => {
@@ -333,18 +340,46 @@ describe("createProcessingRun (characterization)", () => {
   );
 
   it("checks an automatic request against its intent before the account", async () => {
-    const current = setup({ intent: { request_version: 5, batch_id: null } });
+    const current = setup({
+      intent: { request_version: 5, requested_version: 5, batch_id: null },
+    });
     await create(current.db, { automaticRequestVersion: 5 });
     expect(current.labelled().slice(4, 6)).toEqual(["read automatic intent", "getAccountState"]);
     for (const intent of [
       undefined,
-      { request_version: 4, batch_id: null },
-      { request_version: 5, batch_id: "batch" },
+      { request_version: 4, requested_version: 4, batch_id: null },
+      { request_version: 5, requested_version: 5, batch_id: "batch" },
+      // D105: never requested, or material changed after the learner's last press.
+      { request_version: 5, requested_version: null, batch_id: null },
+      { request_version: 5, requested_version: 4, batch_id: null },
     ]) {
       const changed = setup({ intent });
       await expect(create(changed.db, { automaticRequestVersion: 5 })).rejects.toMatchObject({
         details: { fields: { sources: ["changed_after_estimate"] } },
       });
+      expect(changed.labelled().slice(4)).toEqual(["read automatic intent", "rollback"]);
+    }
+  });
+
+  it("D105: refuses any other class run while the learner's request is not current", async () => {
+    for (const intent of [
+      { request_version: 3, requested_version: null, batch_id: null },
+      { request_version: 3, requested_version: 2, batch_id: null },
+    ]) {
+      const waiting = setup({ intent });
+      await expect(create(waiting.db)).rejects.toMatchObject({
+        code: "conflict",
+        details: { fields: { session: ["process_required"] } },
+      });
+      expect(waiting.labelled().slice(4)).toEqual(["read automatic intent", "rollback"]);
+    }
+    // A requested intent, or a class without one (the manual flow before D105), still runs.
+    for (const intent of [
+      { request_version: 3, requested_version: 3, batch_id: null },
+      undefined,
+    ]) {
+      const ready = setup({ intent });
+      expect(await create(ready.db)).toMatchObject({ state: "queued" });
     }
   });
 
@@ -418,6 +453,7 @@ describe("createProcessingRun (characterization)", () => {
       ...checks,
       "read newest class run",
       "lock automatic intent",
+      intentRead,
       "getAccountState",
       "read active run",
       "read unresolved attempt",

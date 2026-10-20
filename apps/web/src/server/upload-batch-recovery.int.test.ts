@@ -99,7 +99,9 @@ it("recovers fully received bytes after a lost final upload request, verifies th
   expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toMatchObject({
     batchId: null,
     lastBatchId: batchId,
+    requestedVersion: null,
   });
+  // D105: a sealed upload group waits for the learner's Process this session; no lesson job.
   expect(
     await db
       .selectFrom("plt.job")
@@ -107,7 +109,7 @@ it("recovers fully received bytes after a lost final upload request, verifies th
       .where("kind", "=", "proc.automatic_learning")
       .where("payload", "@>", JSON.stringify({ sessionId: x.session.id }))
       .execute(),
-  ).toHaveLength(1);
+  ).toEqual([]);
 });
 
 it("atomically binds source creation to a declared file and rolls back a late creation after cancellation", async () => {

@@ -76,7 +76,9 @@ export async function finalizeAutomaticRun(
     },
     now,
   );
-  if (!sameSelection)
+  // D105: material that changed during the run waits for the learner's next press; only a change
+  // that left the request current (no new request version) is followed up here.
+  if (!sameSelection && intent.requestedVersion === intent.requestVersion)
     await db.transaction().execute((tx) =>
       enqueueJob(tx, automaticLearningQueue, {
         payload: {
