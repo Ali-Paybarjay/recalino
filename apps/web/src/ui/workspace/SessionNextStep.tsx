@@ -1,8 +1,7 @@
 "use client";
 import type { ClassVoiceView } from "@recalino/core/voice-contracts";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
-import { RecordLauncher, useRecording } from "../recording/RecordingProvider";
-import type { Recording } from "../recording/store";
+import { RecordLauncher, useWaitingRecordings } from "../recording/RecordingProvider";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import {
   connectedServerSnapshot,
@@ -22,50 +21,6 @@ import { sessionNavigationCopy } from "./session-navigation-copy";
 import { type SessionAction, sessionNextStep } from "./session-state";
 import { openTermsNotice } from "./terms-notice-event";
 import { useUploadBatches } from "./UploadProvider";
-
-const capturing = ["starting", "recording", "recovering", "paused", "saving"];
-
-/**
- * Finished captures of this session on this device that have not reached the server yet, with
- * their board photos (D107: Process this session waits for every part and photo).
- */
-function useWaitingRecordings(sessionId: string, refresh: string) {
-  const { userId, store, state, syncState } = useRecording();
-  const [rows, setRows] = useState<Recording[]>([]);
-  const [photos, setPhotos] = useState(0);
-  const phase = state.phase;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: phase, the sync and the status are the refresh tokens; a stopped capture, an added part and an uploaded photo change the saved rows.
-  useEffect(() => {
-    let active = true;
-    void store
-      .list(userId)
-      .then(async (all) => {
-        const mine = all.filter((row) => row.sessionId === sessionId);
-        const local = (await Promise.all(mine.map((row) => store.photos(userId, row.id)))).flat();
-        if (!active) return;
-        setRows(mine);
-        setPhotos(local.filter((photo) => !photo.sourceAssetId).length);
-      })
-      .catch(() => {
-        /* Device storage problems are reported by the upload tray. */
-      });
-    return () => {
-      active = false;
-    };
-  }, [store, userId, sessionId, phase, syncState, refresh]);
-  const finished = rows.filter((row) => row.completedAt && row.bytes > 0);
-  const capturingHere = capturing.includes(state.phase) && state.recording?.sessionId === sessionId;
-  const captureId = state.recording?.captureId;
-  return {
-    capturing: capturingHere,
-    waiting: finished.filter((row) => !row.sourceAssetId).length + photos,
-    // D60: a sealed part of the running capture already registered on the server.
-    background:
-      capturingHere &&
-      !!captureId &&
-      finished.some((row) => row.captureId === captureId && row.sourceAssetId),
-  };
-}
 
 /** Whether this session's voice check waits for the learner's optional confirmation (D55). */
 export function voiceConfirmationPending(view: ClassVoiceView | null) {

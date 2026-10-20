@@ -15,10 +15,13 @@ const mocks = vi.hoisted(() => ({
   accept: vi.fn(),
   buttons: new Map<string, () => unknown>(),
   capturing: null as string | null,
+  // This session's finished parts and board photos still on this device (D107).
+  onDevice: 0,
 }));
 vi.mock("../recording/RecordingProvider", async (original) => ({
   ...(await original<object>()),
   useCapturingSession: (id: string) => mocks.capturing === id,
+  useWaitingRecordings: () => ({ capturing: false, waiting: mocks.onDevice, background: false }),
 }));
 vi.mock("./UploadProvider", () => ({ useUploadBatches: () => mocks.batches }));
 vi.mock("./AutomaticLearningProvider", () => ({
@@ -91,6 +94,7 @@ beforeEach(() => {
   mocks.accept.mockReset();
   mocks.buttons.clear();
   mocks.capturing = null;
+  mocks.onDevice = 0;
 });
 
 describe("retry from the class notice", () => {
@@ -554,6 +558,58 @@ describe("Process this session while this device records the session", () => {
       expect(html).toContain("New sources since your notes were made");
       expect(html).toContain("Process this session");
       expect(html).not.toContain("Recording in progress");
+    },
+  );
+
+  // A press before they arrive would process the session without them, and they would reopen it
+  // for another New versions unit: the session page's next step waits for them too.
+  it.each(["notice", "progress"] as const)(
+    "the %s waits for this session's parts and photos still on this device",
+    (view) => {
+      mocks.onDevice = 2;
+      for (const status of [waiting, reopened]) {
+        mocks.status = status;
+        const html = render(view);
+        expect(html).toContain("Saved on this device");
+        expect(html).toContain("Your recording uploads automatically while this app is open.");
+        for (const text of [
+          "Ready to process",
+          "New sources since your notes were made",
+          "Process this session",
+        ])
+          expect(html).not.toContain(text);
+      }
+      mocks.onDevice = 0;
+      expect(render(view)).toContain("Process this session");
+    },
+  );
+
+  it.each(["notice", "progress"] as const)(
+    "the %s does not offer it beside an upload that needs attention",
+    (view) => {
+      mocks.status = waiting;
+      mocks.batches = [
+        {
+          id: "failed-batch",
+          userId: "user",
+          sessionId,
+          createdAt: 1,
+          phase: "attention",
+          entries: [
+            {
+              id: "photo-file",
+              displayName: "board.jpg",
+              phase: "failed",
+              sentBytes: 0,
+              sizeBytes: 100,
+            },
+          ],
+          receipt: { revision: waiting.revision },
+        } as UploadBatch,
+      ];
+      const html = render(view);
+      expect(html).toContain("Your upload needs attention");
+      expect(html).not.toContain("Process this session");
     },
   );
 });
