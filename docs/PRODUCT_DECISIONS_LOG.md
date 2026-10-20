@@ -1010,12 +1010,12 @@
 طرح: گزینهٔ A بررسی 2026-10-20 (همان مبنای D105). متن‌های تازه و پنج اصلاح در بخش «تأیید 2026-10-20 — صفحهٔ ضبط و Process this session (D107)» [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) ثبت شده‌اند. migration، route، API، وابستگی، رنگ، فونت، سایه، انیمیشن یا token تازه‌ای اضافه نشد و vendor تغییر نکرد.
 
 - **دامنهٔ فهرست (`apps/web/src/ui/recording/visible-parts.ts`):**
-  - با ضبط جاری (حین ضبط و پس از Stop)، اول پارت‌های همان ضبط با `captureId` و بعد ضبط‌های قبلی همان جلسه با `sessionId` نشان داده می‌شوند. ضبط Today تا پاسخ `/api/classes` جلسه ندارد، پس `captureId` مقدم است.
+  - با ضبط جاری (حین ضبط و پس از Stop)، اول پارت‌های همان ضبط با `captureId` و بعد ضبط‌های قبلی همان جلسه با `sessionId` نشان داده می‌شوند. ضبط Today تا پاسخ `/api/classes` جلسه ندارد، پس `captureId` مقدم است. ضبط‌هایی که «Continue recording» دنبالشان آمده، با `creationKey` مشترک هم نگه داشته می‌شوند تا جلسه معلوم شود یا sync آن‌ها را به جلسه وصل کند. ردیفی با همین کلید در جلسهٔ دیگر نشان داده نمی‌شود.
   - `/sessions/[id]/record` فقط همان جلسه را نشان می‌دهد، حتی اگر ضبط جاری مال جلسهٔ دیگری باشد.
   - `/recordings` بدون ضبط جاری فهرست بازیابی دستگاه را نگه می‌دارد (D29)، با همان خط‌های فشرده و گروه‌بندی‌شده برای هر ضبط زیر تاریخ آن (`formatPartDate`).
   - فیلتر هنگام render است. `reload()`، پذیرش اعلان مواد، آپلود عکس و retake همچنان همهٔ ردیف‌ها را می‌بینند. ترتیب صعودی است و Part 1 بالاست.
   - شمار «{n} parts added · {m} remaining» و فهرست عکس‌های اعلان مواد فقط ردیف‌های نشان‌داده را می‌شمارند.
-- **شماره‌گذاری (`controller.ts`، `earlierParts`):** پارت اول هر Start بعد از بالاترین شمارهٔ پارت‌های همان جلسه روی این دستگاه می‌آید. «Continue recording» برای ضبطی که جلسه‌اش هنوز معلوم نیست، `creationKey` همان ضبط را نگه می‌دارد تا هر دو به یک جلسه برسند. نام سرور «Session recording <date> · Part N» (`source-sync.ts`) همین شماره را می‌گیرد. چرخش ده‌دقیقه‌ای D60/D61، ترتیب ثبت (`earlierPendingPart`)، uploader و بازگشت D104 تغییری نکردند؛ Resume همان ضبط را با پارت بعدی ادامه می‌دهد.
+- **شماره‌گذاری (`controller.ts`، `earlierParts`):** پارت اول هر Start بعد از بالاترین شمارهٔ پارت‌های همان جلسه روی این دستگاه می‌آید. «Remove from this device» شماره را پس نمی‌دهد. بالاترین شمارهٔ داده‌شده برای هر جلسه و هر `creationKey` در site storage همین دستگاه نگه داشته می‌شود (`part-numbers.ts`، کلید `recalino:learning-parts:<userId>:…`، فقط عدد). این عدد فقط بالا می‌رود، `attachSession` آن را از کلید به جلسه می‌برد و حذف حساب آن را با بقیهٔ داده‌های یادگیری دستگاه پاک می‌کند (`PrivacyView`). بدون site storage، شماره مثل قبل از پارت‌های موجود دستگاه می‌آید. «Continue recording» برای ضبطی که جلسه‌اش هنوز معلوم نیست، `creationKey` همان ضبط را نگه می‌دارد تا هر دو به یک جلسه برسند. نام سرور «Session recording <date> · Part N» (`source-sync.ts`) همین شماره را می‌گیرد. چرخش ده‌دقیقه‌ای D60/D61، ترتیب ثبت (`earlierPendingPart`)، uploader و بازگشت D104 تغییری نکردند؛ Resume همان ضبط را با پارت بعدی ادامه می‌دهد.
 - **خط فشرده (`RecordedParts.tsx`، `Recording.module.css`):** فهرست `<ol>` زیر عنوان «Recorded parts» است. هر خط این اجزا را دارد:
   - کاشی ۴۰ پیکسلی با آیکون `Waveform`.
   - خط اول «Part {n} · {duration}»؛ پس از Stop برچسب موجود دقیقه‌های ضبط‌نشده هم کنارش می‌آید.
@@ -1031,7 +1031,10 @@
   - «Continue recording» (secondary) که ضبط تازه‌ای در همان جلسه شروع می‌کند.
   - و «Back to session».
   پس از تأیید، صفحه به صفحهٔ جلسه می‌رود.
-- **Today:** وقتی جلسهٔ ضبطی که از Today شروع شده معلوم شود، `/recordings` با `router.replace` به `/sessions/<id>/record` تبدیل می‌شود. این ناوبری سمت کاربر است: ضبط در provider ادامه می‌یابد و عنوان سند عوض نمی‌شود، پس announcer مسیر چیزی اعلام نمی‌کند. این کار هنگام انتخاب عکس انجام نمی‌شود. «Open recording» نوار ضبط از D104 به صفحهٔ ضبط جلسه می‌رود.
+- **Today (`session-page.ts`):** وقتی جلسهٔ ضبطی که از Today شروع شده معلوم شود، `/recordings` صفحهٔ ضبط همان جلسه می‌شود.
+  - حین ضبط (starting تا saving) فقط نشانی با `window.history.replaceState` به `/sessions/<id>/record` عوض می‌شود. Next.js این را بدون درخواست سرور هماهنگ می‌کند، پس صفحهٔ loading یا اعلامی پیش نمی‌آید (PRD-REC-02 و PRD-REC-03).
+  - خود صفحهٔ جلسه پس از Stop با `router.replace` بار می‌شود، نه هنگام انتخاب عکس.
+  - «Open recording» نوار ضبط از D104 به صفحهٔ ضبط جلسه می‌رود.
 - **«Process this session» (`apps/web/src/ui/workspace/ProcessSession.tsx`):**
   - Sheet موجود با عنوان «Process this session?» باز می‌شود (قاب C5 با واژگان D50).
   - ردیف‌های C5 از برآورد موجود (`GET /api/classes/[id]/estimate`) ساخته می‌شوند: «Class audio» با طول و «· n parts»، «PDF» با صفحه‌ها، «Board photos» و بقیهٔ نوع‌ها با `sourceKindLabel`.
@@ -1045,17 +1048,18 @@
   - جلسهٔ دوباره‌بازشده (یا دارای جزوه) «New sources since your notes were made» با «A new version of existing notes also uses 1 New versions unit.» نشان می‌دهد.
   - این کارت در صفحهٔ جلسه و Today می‌آید و در Today طبق D32 secondary است. کارت صفحهٔ Session material و اعلان صفحه‌های جزوه و کارت همین دکمه را دارند و نوار پیشرفت نشان نمی‌دهند، چون چیزی در جریان نیست.
   - کارت گام بعد عکس‌های این جلسه را که هنوز روی دستگاه‌اند هم «waiting» می‌شمارد. وضعیتی بدون این فیلدها (سرور قدیمی یا fixture) هرگز منتظر فشار نمی‌ماند.
+  - تا وقتی این دستگاه همین جلسه را ضبط می‌کند، ضبط مقدم است: کارت گام بعد، کارت صفحهٔ Session material و اعلان جزوه و کارت «Recording in progress» نشان می‌دهند و دکمهٔ Process، «Ready to process» و «New sources…» ندارند (`useCapturingSession`)، چون سرور این فشار را رد می‌کند.
 - **متن:** هشت متن تازه و اصلاح پنج جمله‌ای که پردازش را درست پس از Stop یا خودکار وعده می‌دادند (مقدمه و اعلان مواد صفحهٔ ضبط، `waitEstimate`، `allowanceHelp.need` و «Topics covered» جلسهٔ خالی). آیکون‌های `DownloadSimple` و `ShieldCheck` از قاب‌ها به `icons.ts` اضافه شدند.
 - **تفاوت با طرح:** بند ۱۴ [HANDOFF_R1_REVIEW.md](design/HANDOFF_R1_REVIEW.md).
 - **محدودیت‌ها و پیامدها:**
-  - شماره‌گذاری برای هر دستگاه جداست؛ دو دستگاه ممکن است هر دو «Part 1» داشته باشند. ترتیب صفحهٔ Session material ترتیب سرور است (D106).
+  - شماره‌گذاری برای هر دستگاه جداست؛ دو دستگاه ممکن است هر دو «Part 1» داشته باشند. پاک کردن site data مرورگر شمارهٔ پارت‌های حذف‌شده را هم پاک می‌کند. ترتیب صفحهٔ Session material ترتیب سرور است (D106).
   - ضبط‌های پیش از این تغییر ممکن است در یک جلسه دو «Part 1» داشته باشند.
   - عکسی که منتظر اعلان مواد است، Process را در صفحهٔ ضبط غیرفعال و کارت گام بعد را روی «Saved on this device» نگه می‌دارد تا اعلان پذیرفته شود.
   - پیام‌های سرور برای `batch_open`، `idle` و `select_at_least_one` («…will then update automatically.» و «…will be created automatically.») و برچسب «Upload & Process» صفحهٔ مواد هنوز از پردازش خودکار می‌گویند. متن تازه برایشان تأیید نشده و تغییر نکردند.
 - **آزمون‌ها:**
-  - unit: `visible-parts.test.ts`، `RecordedParts.test.ts`، `RecordingView.test.ts` (دامنه، شماره، کنترل‌ها فقط پس از Stop، Process و Continue)، `controller.test.ts` («part numbers across the recordings of one session (D107)»)، `source-sync.test.ts`، `ProcessSession.test.ts`، `session-state.test.ts`، `learning-progress.test.ts` و `approved-copy.test.ts`.
+  - unit: `visible-parts.test.ts`، `RecordedParts.test.ts`، `RecordingView.test.ts` (دامنه، شماره، کنترل‌ها فقط پس از Stop، Process و Continue)، `controller.test.ts` («part numbers across the recordings of one session (D107)»، از جمله حذف Part 2 و سپس Continue که Part 3 می‌شود)، `part-numbers.test.ts`، `session-page.test.ts`، `AutomaticLearningView.test.ts` (ضبط مقدم بر Process)، `source-sync.test.ts`، `ProcessSession.test.ts`، `session-state.test.ts`، `learning-progress.test.ts` و `approved-copy.test.ts`.
   - صفحه‌های `/dev/ui/recording-shell` (`?state=recording` و `?state=saved`) و `/dev/ui/session` (`ready-to-process` و `reopened`) حالت‌های تازه را نشان می‌دهند.
-  - e2e (فقط در CI): `recording.spec.ts`، `recording-capture.spec.ts`، `recording-decode.spec.ts`، `photo-readability.spec.ts`، `photo-readability-screens.spec.ts`، `learning-privacy.spec.ts`، `shell.spec.ts` و آزمون تازهٔ برگهٔ Process در `session-navigation.spec.ts` در ۳۹۰ و ۱۴۴۰ پیکسل.
+  - e2e (فقط در CI): `recording.spec.ts`، `recording-capture.spec.ts` (هیچ درخواست RSC صفحهٔ جلسه حین ضبط و بار شدن آن پس از Stop)، `recording-decode.spec.ts`، `photo-readability.spec.ts`، `photo-readability-screens.spec.ts`، `learning-privacy.spec.ts`، `shell.spec.ts` و آزمون تازهٔ برگهٔ Process در `session-navigation.spec.ts` در ۳۹۰ و ۱۴۴۰ پیکسل.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
