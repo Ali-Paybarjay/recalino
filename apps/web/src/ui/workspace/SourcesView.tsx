@@ -3,8 +3,10 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button as SmallButton } from "../components/Button";
 import { FileSelectionQueue } from "../components/FileSelectionQueue";
 import { UploadProgress } from "../components/UploadProgress";
+import { Plus } from "../icons";
 import { IndexedRecordingStore } from "../recording/store";
 import { AllowanceActions, AllowanceRequest } from "./AllowanceActions";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
@@ -18,9 +20,13 @@ import {
 import { declaredUploadIssues } from "./declared-upload-issues";
 import { type FileProcessingReceipt, fileProcessingFeedback } from "./file-processing";
 import { appendSelectedFiles, type SelectedFile, selectedFileProblem } from "./file-selection";
+import { sessionMaterialRows } from "./material-order";
 import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
-import { sourceKindLabel } from "./source-labels";
+import styles from "./SessionMaterial.module.css";
+import { FileUploadItem, SourceItem } from "./SessionMaterialItems";
+import { addMaterialLabel } from "./session-material-copy";
+import { showsThumbnail, useSourceThumbnails } from "./source-thumbnails";
 import type { SourceRow } from "./source-types";
 import { useUploads } from "./UploadProvider";
 import type { UploadEntry } from "./upload-store";
@@ -186,7 +192,7 @@ export function SourcesView({
       !!source && !source.verifiedAt && !source.rejectionReason && source.uploadState !== "rejected"
     );
   });
-  const recentSources = new Map(fileUploads.map((file, index) => [file.source?.assetId, index]));
+  // Listed in class order (material-order.ts, D106); uploads on their way follow the saved rows.
   const listedSources = visibleSources
     .filter((source) => !pendingFiles.some((file) => file.source?.assetId === source.assetId))
     .filter(
@@ -197,8 +203,8 @@ export function SourcesView({
             file.source?.assetId === source.assetId &&
             selectedFiles.some((selected) => selected.id === file.id),
         ),
-    )
-    .sort((a, b) => (recentSources.get(b.assetId) ?? -1) - (recentSources.get(a.assetId) ?? -1));
+    );
+  const thumbnails = useSourceThumbnails(userId, listedSources);
   const [unsavedSelections, setUnsavedSelections] = useState(() => new Set<string>());
   const selectionDirty = useCallback((assetId: string, dirty: boolean) => {
     setUnsavedSelections((previous) => {
@@ -265,8 +271,9 @@ export function SourcesView({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [selectedFiles.length]);
+  /** Runs one change at a time; resolves to whether it was saved. */
   async function action(effect: () => Promise<void>) {
-    if (lock.current) return;
+    if (lock.current) return false;
     lock.current = true;
     setBusy(true);
     setProblem("");
@@ -274,8 +281,10 @@ export function SourcesView({
     try {
       await effect();
       router.refresh();
+      return true;
     } catch (error) {
       setProblem(userMessage(error, "The change could not be saved."));
+      return false;
     } finally {
       lock.current = false;
       setBusy(false);
@@ -470,25 +479,6 @@ export function SourcesView({
       ) : null}
       <Actions>
         <LinkButton href={`/sessions/${sessionId}/record`}>Record a session</LinkButton>
-        <Button
-          secondary
-          disabled={!interactive || busy || !accepted}
-          onClick={() => fileInput.current?.click()}
-        >
-          {visibleSources.length || selectedFiles.length ? "Add More Files" : "Add Files"}
-        </Button>
-        <Button
-          secondary
-          disabled={!interactive || busy || !accepted}
-          onClick={() =>
-            action(async () => {
-              setPrevious(await workspaceRequest<OwnSource[]>("/api/sources", "GET"));
-              setMessage("Choose existing material below.");
-            })
-          }
-        >
-          Use existing material
-        </Button>
       </Actions>
       <input
         ref={fileInput}
@@ -581,49 +571,6 @@ export function SourcesView({
           )}
         </Panel>
       )}
-      {accepted && (
-        <FileSelectionQueue
-          files={selectedFiles}
-          busy={busy}
-          disabled={!!batch?.active || unsavedSelections.size > 0}
-          label={
-            selectedFiles.some((file) => file.problem && !file.invalid)
-              ? "Retry Upload & Process"
-              : "Upload & Process"
-          }
-          remove={removeSelectedFile}
-          submit={() => void action(() => addFiles(selectedFiles))}
-        />
-      )}
-      {previous.length ? (
-        <Panel title="Your existing material">
-          <Field label="Material">
-            <select value={reuse} onChange={(event) => setReuse(event.target.value)}>
-              <option value="">Choose material</option>
-              {previous.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.display_name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Button
-            disabled={busy || !reuse}
-            onClick={() =>
-              action(async () => {
-                await inAutomaticLearningBatch(userId, sessionId, () =>
-                  workspaceRequest(`/api/classes/${sessionId}/sources`, "POST", { assetId: reuse }),
-                );
-                setPrevious([]);
-                setReuse("");
-                setMessage("Material added without uploading it again.");
-              })
-            }
-          >
-            Add to this session
-          </Button>
-        </Panel>
-      ) : null}
       {problem ? (
         <Status tone="error">{problem}</Status>
       ) : message && !receipt ? (
@@ -698,135 +645,214 @@ export function SourcesView({
           </div>
         ) : (
           <ul className="workspace-list" ref={uploadList}>
-            {pendingFiles
-              .slice()
-              .reverse()
-              .map((file) => (
-                <FileUploadItem
-                  key={file.id}
-                  file={file}
-                  busy={busy}
-                  retry={
-                    managedBatch
-                      ? () => void action(() => uploads.manager.retry(managedBatch.id, file.id))
-                      : undefined
-                  }
-                  remove={() => {
-                    if (
-                      managedBatch?.entries.some(
-                        (entry) => entry.id === file.id && entry.phase === "failed",
-                      )
-                    ) {
+            {sessionMaterialRows(listedSources, pendingFiles).map((row) => {
+              if (row.type === "pending") {
+                const file = row.file;
+                return (
+                  <FileUploadItem
+                    key={row.key}
+                    file={file}
+                    busy={busy}
+                    retry={
+                      managedBatch
+                        ? () => void action(() => uploads.manager.retry(managedBatch.id, file.id))
+                        : undefined
+                    }
+                    remove={() => {
+                      if (
+                        managedBatch?.entries.some(
+                          (entry) => entry.id === file.id && entry.phase === "failed",
+                        )
+                      ) {
+                        void action(async () => {
+                          await uploads.manager.skip(managedBatch.id, file.id);
+                        });
+                        return;
+                      }
+                      if (selectedFiles.some((entry) => entry.id === file.id)) {
+                        removeSelectedFile(file.id);
+                        return;
+                      }
+                      if (!file.source) {
+                        setFileUploads((previous) =>
+                          previous.filter((entry) => entry.id !== file.id),
+                        );
+                        return;
+                      }
                       void action(async () => {
-                        await uploads.manager.skip(managedBatch.id, file.id);
+                        await workspaceRequest(
+                          `/api/classes/${sessionId}/sources/${file.source?.assetId}`,
+                          "DELETE",
+                        );
+                        if (file.source) forgetSource(file.source.assetId);
+                        setFileUploads((previous) =>
+                          previous.filter((entry) => entry.id !== file.id),
+                        );
                       });
-                      return;
-                    }
-                    if (selectedFiles.some((entry) => entry.id === file.id)) {
-                      removeSelectedFile(file.id);
-                      return;
-                    }
-                    if (!file.source) {
+                    }}
+                  />
+                );
+              }
+              const source = row.source;
+              return (
+                <SourceItem
+                  key={row.key}
+                  source={source}
+                  busy={busy}
+                  removeLabel={declaredEntry(source.assetId) ? "Skip this file" : undefined}
+                  deletionBlocked={!!declaredEntry(source.assetId)}
+                  selectionDirty={selectionDirty}
+                  localAvailable={localAudio === null ? null : localAudio.has(source.assetId)}
+                  problem={problem}
+                  picture={thumbnails.picture(source.assetId)}
+                  pictureTile={showsThumbnail(source) ? thumbnails.tile(source.assetId) : undefined}
+                  pictureFailed={(url) => thumbnails.failed(source.assetId, url)}
+                  unlock={(password) =>
+                    action(async () => {
+                      await workspaceRequest(`/api/sources/${source.assetId}/unlock`, "POST", {
+                        password,
+                      });
+                      setUnlockSentAt(Date.now());
+                      setMessage("Trying the password. It is not stored.");
+                    })
+                  }
+                  deleteSource={(mode) =>
+                    action(async () => {
+                      await workspaceRequest(`/api/sources/${source.assetId}`, "DELETE", { mode });
+                      thumbnails.forget(source.assetId);
+                      if (mode === "all") forgetSource(source.assetId);
+                      if (mode === "all") {
+                        const url = localOriginalUrls.current.get(source.assetId);
+                        if (url) URL.revokeObjectURL(url);
+                        localOriginalUrls.current.delete(source.assetId);
+                      }
                       setFileUploads((previous) =>
-                        previous.filter((entry) => entry.id !== file.id),
+                        previous.filter((file) => file.source?.assetId !== source.assetId),
                       );
-                      return;
-                    }
-                    void action(async () => {
+                      if (mode === "all" && ["audio", "image"].includes(source.kind)) {
+                        const local = new IndexedRecordingStore();
+                        const recordings = await local.list(userId);
+                        for (const recording of recordings) {
+                          if (
+                            source.kind === "audio" &&
+                            (recording.sourceAssetId === source.assetId ||
+                              recording.id === source.assetId)
+                          )
+                            await local.remove(userId, recording.id);
+                          if (source.kind === "image")
+                            for (const photo of await local.photos(userId, recording.id))
+                              if (photo.sourceAssetId === source.assetId)
+                                await local.removePhoto(userId, recording.id, photo.id);
+                        }
+                      }
+                      setMessage(
+                        mode === "original"
+                          ? "Original file deleted. The saved extraction is retained."
+                          : "Material deleted from all sessions.",
+                      );
+                    })
+                  }
+                  change={(patch) => action(() => change(source, patch))}
+                  remove={() =>
+                    action(async () => {
+                      const entry = declaredEntry(source.assetId);
+                      if (entry && declaredBatch) {
+                        if (await uploads.manager.skip(declaredBatch.id, entry.id)) {
+                          thumbnails.forget(source.assetId);
+                          forgetSource(source.assetId);
+                          setMessage("File skipped from this upload group.");
+                        }
+                        await learning.refresh();
+                        return;
+                      }
                       await workspaceRequest(
-                        `/api/classes/${sessionId}/sources/${file.source?.assetId}`,
+                        `/api/classes/${sessionId}/sources/${source.assetId}`,
                         "DELETE",
                       );
-                      if (file.source) forgetSource(file.source.assetId);
+                      thumbnails.forget(source.assetId);
+                      forgetSource(source.assetId);
                       setFileUploads((previous) =>
-                        previous.filter((entry) => entry.id !== file.id),
+                        previous.filter((file) => file.source?.assetId !== source.assetId),
                       );
-                    });
-                  }}
+                      setMessage("Material removed from this session.");
+                    })
+                  }
+                  read={() => openOriginal(source)}
                 />
-              ))}
-            {listedSources.map((source) => (
-              <SourceItem
-                key={source.assetId}
-                source={source}
-                busy={busy}
-                removeLabel={declaredEntry(source.assetId) ? "Skip this file" : undefined}
-                deletionBlocked={!!declaredEntry(source.assetId)}
-                selectionDirty={selectionDirty}
-                localAvailable={localAudio === null ? null : localAudio.has(source.assetId)}
-                unlock={(password) =>
-                  action(async () => {
-                    await workspaceRequest(`/api/sources/${source.assetId}/unlock`, "POST", {
-                      password,
-                    });
-                    setUnlockSentAt(Date.now());
-                    setMessage("Trying the password. It is not stored.");
-                  })
-                }
-                deleteSource={(mode) =>
-                  action(async () => {
-                    await workspaceRequest(`/api/sources/${source.assetId}`, "DELETE", { mode });
-                    if (mode === "all") forgetSource(source.assetId);
-                    if (mode === "all") {
-                      const url = localOriginalUrls.current.get(source.assetId);
-                      if (url) URL.revokeObjectURL(url);
-                      localOriginalUrls.current.delete(source.assetId);
-                    }
-                    setFileUploads((previous) =>
-                      previous.filter((file) => file.source?.assetId !== source.assetId),
-                    );
-                    if (mode === "all" && ["audio", "image"].includes(source.kind)) {
-                      const local = new IndexedRecordingStore();
-                      const recordings = await local.list(userId);
-                      for (const recording of recordings) {
-                        if (
-                          source.kind === "audio" &&
-                          (recording.sourceAssetId === source.assetId ||
-                            recording.id === source.assetId)
-                        )
-                          await local.remove(userId, recording.id);
-                        if (source.kind === "image")
-                          for (const photo of await local.photos(userId, recording.id))
-                            if (photo.sourceAssetId === source.assetId)
-                              await local.removePhoto(userId, recording.id, photo.id);
-                      }
-                    }
-                    setMessage(
-                      mode === "original"
-                        ? "Original file deleted. The saved extraction is retained."
-                        : "Material deleted from all sessions.",
-                    );
-                  })
-                }
-                change={(patch) => action(() => change(source, patch))}
-                remove={() =>
-                  action(async () => {
-                    const entry = declaredEntry(source.assetId);
-                    if (entry && declaredBatch) {
-                      if (await uploads.manager.skip(declaredBatch.id, entry.id)) {
-                        forgetSource(source.assetId);
-                        setMessage("File skipped from this upload group.");
-                      }
-                      await learning.refresh();
-                      return;
-                    }
-                    await workspaceRequest(
-                      `/api/classes/${sessionId}/sources/${source.assetId}`,
-                      "DELETE",
-                    );
-                    forgetSource(source.assetId);
-                    setFileUploads((previous) =>
-                      previous.filter((file) => file.source?.assetId !== source.assetId),
-                    );
-                    setMessage("Material removed from this session.");
-                  })
-                }
-                read={() => openOriginal(source)}
-              />
-            ))}
+              );
+            })}
           </ul>
         )}
+        <div className={styles.add}>
+          <SmallButton
+            block
+            icon={Plus}
+            disabled={!interactive || busy || !accepted}
+            onClick={() => fileInput.current?.click()}
+          >
+            {addMaterialLabel({
+              saved: visibleSources.length,
+              pending: pendingFiles.length,
+              selected: selectedFiles.length,
+            })}
+          </SmallButton>
+          <SmallButton
+            variant="ghost"
+            disabled={!interactive || busy || !accepted}
+            onClick={() =>
+              action(async () => {
+                setPrevious(await workspaceRequest<OwnSource[]>("/api/sources", "GET"));
+                setMessage("Choose existing material below.");
+              })
+            }
+          >
+            Use existing material
+          </SmallButton>
+        </div>
       </Panel>
+      {accepted && (
+        <FileSelectionQueue
+          files={selectedFiles}
+          busy={busy}
+          disabled={!!batch?.active || unsavedSelections.size > 0}
+          label={
+            selectedFiles.some((file) => file.problem && !file.invalid)
+              ? "Retry Upload & Process"
+              : "Upload & Process"
+          }
+          remove={removeSelectedFile}
+          submit={() => void action(() => addFiles(selectedFiles))}
+        />
+      )}
+      {previous.length ? (
+        <Panel title="Your existing material">
+          <Field label="Material">
+            <select value={reuse} onChange={(event) => setReuse(event.target.value)}>
+              <option value="">Choose material</option>
+              {previous.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.display_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Button
+            disabled={busy || !reuse}
+            onClick={() =>
+              action(async () => {
+                await inAutomaticLearningBatch(userId, sessionId, () =>
+                  workspaceRequest(`/api/classes/${sessionId}/sources`, "POST", { assetId: reuse }),
+                );
+                setPrevious([]);
+                setReuse("");
+                setMessage("Material added without uploading it again.");
+              })
+            }
+          >
+            Add to this session
+          </Button>
+        </Panel>
+      ) : null}
       {!withStatus && !receipt && learning.status && learning.status.state !== "idle" && (
         <Status tone={learning.status.state === "blocked" ? "error" : "neutral"}>
           {learning.status.message}
@@ -877,351 +903,5 @@ export function SourcesView({
         available while added material is processed.
       </p>
     </div>
-  );
-}
-function FileUploadItem({
-  file,
-  busy,
-  remove,
-  retry,
-}: {
-  file: FileUpload;
-  busy: boolean;
-  remove: () => void;
-  retry?: () => void;
-}) {
-  const active = ["queued", "checking", "uploading", "saving"].includes(file.phase);
-  const status =
-    file.phase === "queued"
-      ? "Saved — waiting to upload"
-      : file.phase === "checking"
-        ? "Checking file…"
-        : file.phase === "saving"
-          ? "Saving on this device…"
-          : file.phase === "verifying"
-            ? "Uploaded — checking file"
-            : file.phase === "failed"
-              ? "File needs attention"
-              : file.sentBytes >= file.sizeBytes
-                ? "Finishing upload…"
-                : "Uploading…";
-  const measured = ["uploading", "verifying"].includes(file.phase);
-  return (
-    <li aria-busy={active || undefined} className="workspace-upload-file">
-      <div className="workspace-row">
-        <strong dir="auto">{file.displayName}</strong>
-        <span className="workspace-muted">{(file.sizeBytes / 1_000_000).toFixed(1)} MB</span>
-      </div>
-      <UploadProgress
-        label={`Upload progress for ${file.displayName}`}
-        status={status}
-        value={
-          measured || file.phase === "failed"
-            ? file.sizeBytes > 0
-              ? (file.sentBytes / file.sizeBytes) * 100
-              : 0
-            : undefined
-        }
-        detail={
-          measured
-            ? `${(file.sentBytes / 1_000_000).toFixed(2)} of ${(file.sizeBytes / 1_000_000).toFixed(2)} MB`
-            : undefined
-        }
-        startedAt={file.startedAt}
-        finishedAt={file.finishedAt}
-        active={active}
-      />
-      {file.problem ? (
-        <>
-          <Status tone="error">{file.problem}</Status>
-          <Actions>
-            {retry && (
-              <Button disabled={busy} onClick={retry}>
-                Retry saved file
-              </Button>
-            )}
-            <Button secondary disabled={busy} onClick={remove}>
-              {retry ? "Skip this file" : file.source ? "Remove from session" : "Dismiss"}
-            </Button>
-          </Actions>
-        </>
-      ) : null}
-    </li>
-  );
-}
-function SourceItem({
-  source,
-  busy,
-  change,
-  remove,
-  read,
-  unlock,
-  localAvailable,
-  deleteSource,
-  selectionDirty,
-  removeLabel,
-  deletionBlocked,
-}: {
-  source: SourceRow;
-  busy: boolean;
-  change: (patch: Partial<SourceRow>) => Promise<void>;
-  remove: () => Promise<void>;
-  read: () => Promise<void>;
-  unlock: (password: string) => Promise<void>;
-  localAvailable: boolean | null;
-  deleteSource: (mode: "original" | "all") => Promise<void>;
-  selectionDirty: (assetId: string, dirty: boolean) => void;
-  removeLabel?: string;
-  deletionBlocked?: boolean;
-}) {
-  const [password, setPassword] = useState("");
-  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
-  const needsPassword = ["needs_password", "wrong_password"].includes(source.rejectionReason ?? "");
-  const isAudio = source.kind === "audio";
-  const supportsRange = isAudio || source.kind === "pdf";
-  const factor = isAudio ? 1000 : 1;
-  const maximum = (isAudio ? (source.durationMs ?? 0) : (source.pageCount ?? 0)) / factor;
-  const savedStart = (source.ranges[0]?.start ?? (isAudio ? 0 : 1)) / factor;
-  const savedEnd = (source.ranges[0]?.end ?? maximum * factor) / factor;
-  const savedPartial = source.ranges.length > 0;
-  const [partial, setPartial] = useState(savedPartial);
-  const [start, setStart] = useState(String(savedStart));
-  const [end, setEnd] = useState(String(savedEnd));
-  useEffect(() => {
-    setPartial(savedPartial);
-    setStart(String(savedStart));
-    setEnd(String(savedEnd));
-  }, [savedPartial, savedStart, savedEnd]);
-  const dirty =
-    supportsRange &&
-    (partial !== savedPartial ||
-      (partial &&
-        (!start.trim() ||
-          !end.trim() ||
-          Number(start) !== savedStart ||
-          Number(end) !== savedEnd)));
-  useEffect(() => {
-    selectionDirty(source.assetId, dirty);
-  }, [selectionDirty, source.assetId, dirty]);
-  useEffect(() => () => selectionDirty(source.assetId, false), [selectionDirty, source.assetId]);
-  const status = isAudio
-    ? localAvailable === null
-      ? "Checking this device…"
-      : localAvailable
-        ? "Original audio is saved on this device"
-        : "Original audio is not on this device"
-    : source.originalDeletedAt
-      ? "Original file is no longer kept"
-      : needsPassword
-        ? source.rejectionReason === "wrong_password"
-          ? "Incorrect password — try again or upload an unlocked copy"
-          : "Needs a password — enter it or upload an unlocked copy"
-        : source.uploadState === "rejected"
-          ? "Not accepted — add a supported file"
-          : source.verifiedAt
-            ? "Received"
-            : source.uploadState === "verifying"
-              ? "Verifying file"
-              : "Upload pending — choose the same file to resume";
-  const ready = source.kind === "audio" || (!!source.verifiedAt && !needsPassword);
-  return (
-    <li>
-      <div className="workspace-row">
-        <label className="workspace-check">
-          <input
-            type="checkbox"
-            checked={source.selected}
-            disabled={busy || !ready}
-            onChange={(event) => void change({ selected: event.target.checked })}
-          />
-          <strong dir="auto">{source.displayName}</strong>
-        </label>
-        <span className="workspace-muted">
-          {source.kind === "audio"
-            ? "Class audio"
-            : source.role === "board_photo"
-              ? "Board photo"
-              : source.role === "user_notes"
-                ? "Notes"
-                : sourceKindLabel(source.kind)}{" "}
-          · {(source.sizeBytes / 1_000_000).toFixed(1)} MB
-        </span>
-      </div>
-      <p className="workspace-muted">{status}</p>
-      {source.anchorSourceId && source.captureOffsetMs !== null && (
-        <div className="workspace-stack">
-          <p className="workspace-muted">
-            Taken around {(source.captureOffsetMs / 1000).toFixed(1)} seconds into the recording
-            {source.captureState === "paused" ? " while recording was paused" : ""} ·{" "}
-            {source.timeStatus === "user_confirmed" ? "Time confirmed by you" : "Estimated time"}
-          </p>
-          {source.timeStatus !== "user_confirmed" && (
-            <Button
-              secondary
-              disabled={busy}
-              onClick={() => void change({ timeStatus: "user_confirmed" })}
-            >
-              Confirm this photo time
-            </Button>
-          )}
-        </div>
-      )}
-      {needsPassword ? (
-        <>
-          <Field label="PDF password" hint="Used for this unlock attempt only. It is never stored.">
-            <input
-              type="password"
-              value={password}
-              autoComplete="off"
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </Field>
-          <Actions>
-            <Button
-              secondary
-              disabled={busy || !password}
-              onClick={() => {
-                const value = password;
-                setPassword("");
-                void unlock(value);
-              }}
-            >
-              Unlock PDF
-            </Button>
-          </Actions>
-        </>
-      ) : null}
-      {ready && supportsRange ? (
-        <form
-          className="workspace-stack"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void change({
-              ranges: partial
-                ? [
-                    {
-                      start: Math.round(Number(start) * factor),
-                      end: Math.round(Number(end) * factor),
-                    },
-                  ]
-                : [],
-            });
-          }}
-        >
-          <fieldset disabled={busy} className="workspace-source-selection workspace-stack">
-            <legend>Use for processing</legend>
-            <div className="workspace-row">
-              <label className="workspace-check">
-                <input
-                  type="radio"
-                  name={`extent-${source.assetId}`}
-                  checked={!partial}
-                  onChange={() => setPartial(false)}
-                />
-                Whole file
-              </label>
-              <label className="workspace-check">
-                <input
-                  type="radio"
-                  name={`extent-${source.assetId}`}
-                  checked={partial}
-                  onChange={() => setPartial(true)}
-                />
-                Part of file
-              </label>
-            </div>
-            {partial ? (
-              <div className="workspace-grid">
-                <Field label={isAudio ? "Start (seconds)" : "Start page"}>
-                  <input
-                    type="number"
-                    min={isAudio ? 0 : 1}
-                    max={maximum}
-                    step={isAudio ? 0.001 : 1}
-                    required
-                    value={start}
-                    onChange={(event) => setStart(event.target.value)}
-                  />
-                </Field>
-                <Field
-                  label={isAudio ? "End (seconds)" : "End page"}
-                  hint={
-                    isAudio
-                      ? "Only this time range will be processed."
-                      : "Includes the start and end pages."
-                  }
-                >
-                  <input
-                    type="number"
-                    min={isAudio ? Number(start) + 0.001 : Math.max(1, Number(start))}
-                    max={maximum}
-                    step={isAudio ? 0.001 : 1}
-                    required
-                    value={end}
-                    onChange={(event) => setEnd(event.target.value)}
-                  />
-                </Field>
-              </div>
-            ) : null}
-          </fieldset>
-          <Actions>
-            <Button secondary disabled={busy || !dirty} type="submit">
-              Save selection
-            </Button>
-          </Actions>
-          <p className="workspace-muted">
-            This saves what to use for your next processing run. The original file stays intact.
-          </p>
-        </form>
-      ) : null}
-      <Actions>
-        {(isAudio ? localAvailable === true : source.verifiedAt && !source.originalDeletedAt) ? (
-          <Button secondary disabled={busy} onClick={() => void read()}>
-            Open original
-          </Button>
-        ) : null}
-        <Button secondary disabled={busy} onClick={() => void remove()}>
-          {removeLabel ?? "Remove from session"}
-        </Button>
-      </Actions>
-      <details>
-        <summary>Delete options</summary>
-        {deletionBlocked && (
-          <p className="workspace-muted">
-            Skip this file or cancel its upload group before deleting this material.
-          </p>
-        )}
-        <p className="workspace-muted">
-          Deleting the original file keeps its saved extraction. Deleting from all sessions removes
-          this material from every session.
-        </p>
-        <label className="workspace-check">
-          <input
-            type="checkbox"
-            checked={deleteConfirmed}
-            onChange={(event) => setDeleteConfirmed(event.target.checked)}
-          />
-          I understand that deletion cannot be undone.
-        </label>
-        <Actions>
-          {source.kind !== "audio" && source.contentVersionId && !source.originalDeletedAt ? (
-            <Button
-              secondary
-              disabled={busy || !deleteConfirmed || deletionBlocked}
-              onClick={() => void deleteSource("original")}
-            >
-              Delete original file
-            </Button>
-          ) : null}
-          <Button
-            secondary
-            disabled={busy || !deleteConfirmed || deletionBlocked}
-            onClick={() => void deleteSource("all")}
-          >
-            Delete from all sessions
-          </Button>
-        </Actions>
-      </details>
-    </li>
   );
 }

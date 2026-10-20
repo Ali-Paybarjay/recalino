@@ -11,6 +11,7 @@ import { cardStatusLabel, cardTemplateLabel, mediaAssetLabel } from "./workspace
 import { workspaceErrors } from "./workspace/error-copy";
 import { learningProgressCopy } from "./workspace/learning-progress-copy";
 import { privacyCopy } from "./workspace/privacy-copy";
+import { sessionMaterialCopy } from "./workspace/session-material-copy";
 import { sourceKindLabel } from "./workspace/source-labels";
 
 const register = readFileSync(
@@ -259,5 +260,19 @@ describe("the Process this session refusal approved on 2026-10-20", () => {
     expect(workspaceErrors.captureInProgress).toBe(sentence);
     expect(section).toContain("`capture_in_progress`");
     expect(section).toContain(`«${sentence}»`);
+  });
+});
+
+// D106 (owner decision 2026-10-20): the add control at the end of the session material list.
+describe("the session material text approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — فهرست Session material (D106)");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+
+  it("records Add more material word for word", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(sessionMaterialCopy.addMore).toBe("Add more material");
+    expect(section).toContain(
+      `| دکمهٔ پایان فهرست Session material (\`sessionMaterialCopy.addMore\`) | فهرست خالی نیست | «${sessionMaterialCopy.addMore}» |`,
+    );
   });
 });

@@ -47,6 +47,7 @@ export { TrashIcon as Trash } from "@phosphor-icons/react/dist/ssr/Trash";
 export { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle";
 export { WarningIcon as Warning } from "@phosphor-icons/react/dist/ssr/Warning";
 export { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/dist/ssr/WarningCircle";
+export { WaveformIcon as Waveform } from "@phosphor-icons/react/dist/ssr/Waveform";
 export { WifiSlashIcon as WifiSlash } from "@phosphor-icons/react/dist/ssr/WifiSlash";
 export { XIcon as X } from "@phosphor-icons/react/dist/ssr/X";
 export { XCircleIcon as XCircle } from "@phosphor-icons/react/dist/ssr/XCircle";

@@ -1,0 +1,137 @@
+/* One compact line per item of the session material list (D106). Values from the source rows of
+   frame C1 (Recalino Screens 2 - Capture.dc.html): a 40px tile with an 8px radius, a text column
+   and the controls at the end, 12px apart. The frame's 15px and 13px are --rc-text-md and
+   --rc-text-sm. The item keeps the border and padding of .workspace-list. */
+.row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+/* A 44px hit area around the 40px tile (accessibility.md: targets ≥ 44 × 44). */
+.open {
+  display: grid;
+  place-items: center;
+  width: var(--rc-target);
+  height: var(--rc-target);
+  margin: calc((40px - var(--rc-target)) / 2);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.open:disabled {
+  cursor: default;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--rc-surface-2);
+  color: var(--color-text);
+}
+
+.audio {
+  background: var(--rc-prov-class-tint);
+  color: var(--rc-prov-class);
+}
+
+.tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+/* The tick and the name keep the 44px target of .workspace-check, without its extra padding. */
+.text :global(.workspace-check) {
+  align-items: center;
+  padding: 0;
+}
+
+.text :global(.workspace-check input) {
+  margin-top: 0;
+}
+
+/* The name wraps instead of ending in an ellipsis, so "· Part N" always shows. */
+.name {
+  font-size: var(--rc-text-md);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
+
+.ctas {
+  display: flex;
+  gap: 8px;
+}
+
+/* What a line needs only sometimes: the photo time, the PDF password, the range to use. */
+.more {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.more p {
+  margin: 0;
+}
+
+.more :global(.workspace-actions) {
+  margin-top: 0;
+}
+
+.disclosure summary {
+  display: list-item;
+  min-height: var(--rc-target);
+  padding: 12px 4px;
+  color: var(--rc-primary-text);
+  font-size: var(--rc-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.disclosure summary:focus-visible {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* The add control at the end of the list (frame C1: a full-width secondary button with a plus). */
+.add {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.add :global(.rc-btn-block) {
+  justify-content: flex-start;
+}
+
+.add :global(.rc-btn-block) svg {
+  color: var(--color-accent);
+}
+
+@media (max-width: 600px) {
+  .ctas {
+    flex-direction: column;
+  }
+}
