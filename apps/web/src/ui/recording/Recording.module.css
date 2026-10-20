@@ -100,7 +100,8 @@
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.partText p {
+/* The status line; an upload failure after Stop keeps the look of a status message. */
+.partText p:not(:global(.workspace-status)) {
   margin: 0;
   font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
