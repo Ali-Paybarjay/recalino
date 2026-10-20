@@ -144,7 +144,7 @@ describe("rejecting a suggested card (UX-03)", () => {
 describe("what a card says about itself (UX-05)", () => {
   it.each([
     ["candidate", "Suggested · Question and answer"],
-    ["active", "Question and answer"],
+    ["active", "In your review queue · Question and answer"],
     ["suspended", "Suspended · Question and answer"],
     ["known", "Known · Question and answer"],
     ["rejected", "Rejected · Question and answer"],
@@ -167,7 +167,7 @@ describe("what a card says about itself (UX-05)", () => {
       notebook,
       initial: [{ ...candidate, status: "active", template: "correction", important: true }],
     });
-    expect(html).toContain(">Error correction · Important<");
+    expect(html).toContain(">In your review queue · Error correction · Important<");
   });
 
   it("names the study sets with the approved words of Your learning", () => {

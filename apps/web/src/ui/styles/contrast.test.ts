@@ -23,16 +23,28 @@ function channel(value: number): number {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-/** Relative luminance of a #rrggbb colour (WCAG 2.2). */
-function luminance(hex: string): number {
+type Rgb = [number, number, number];
+
+function rgb(hex: string): Rgb {
   expect(hex, "a six-digit hex colour").toMatch(/^#[0-9a-f]{6}$/i);
-  const [r, g, b] = [1, 3, 5].map((at) => channel(Number.parseInt(hex.slice(at, at + 2), 16)));
+  return [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16)) as Rgb;
+}
+
+/** Relative luminance of a #rrggbb colour or an sRGB triple (WCAG 2.2). */
+function luminance(colour: string | Rgb): number {
+  const [r, g, b] = (typeof colour === "string" ? rgb(colour) : colour).map(channel);
   return 0.2126 * (r as number) + 0.7152 * (g as number) + 0.0722 * (b as number);
 }
 
-function contrast(a: string, b: string): number {
+function contrast(a: string | Rgb, b: string | Rgb): number {
   const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return ((light as number) + 0.05) / ((dark as number) + 0.05);
+}
+
+/** `color-mix(in srgb, a weight%, b)`: the browser mixes the encoded sRGB channels. */
+function mix(a: string, weight: number, b: string): Rgb {
+  const [from, to] = [rgb(a), rgb(b)];
+  return from.map((value, at) => value * weight + (to[at] as number) * (1 - weight)) as Rgb;
 }
 
 // The page, a card or field, the switch track and selected rows: every fill the token borders.
@@ -65,5 +77,60 @@ describe("form control borders (A11Y-01)", () => {
 
   it("draws a text field's border with the token, not the 1.31:1 divider", () => {
     expect(css).toMatch(/\n\.input\s*{\s*border-color:\s*var\(--rc-border-strong\);\s*}/);
+  });
+});
+
+// D101 (owner decision 2026-10-20, A11Y-01 follow-up): the base layer's hover border is 45% of the
+// text colour over the field (vendor/nocturne-base.css), which in the light theme is lighter than the
+// 3:1 border token, so pointing at a field faded its edge (2.62:1 on white). app.css mixes the same
+// share of the text colour into the border token instead, in the light theme only.
+describe("a hovered text field's border (A11Y-01, D101)", () => {
+  const vendor = readFileSync(resolve(import.meta.dirname, "vendor/nocturne-base.css"), "utf8");
+  const light = themeTokens("light");
+  const token = (name: string) => light[name] as string;
+  const HOVER =
+    /:where\(:root\[data-theme="light"\]\) \.input:hover:where\(:not\(:focus-visible\)\)\s*{\s*border-color:\s*color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, var\((--[\w-]+)\)\);\s*}/;
+
+  /** The colour a hovered field's border shows in the light theme. */
+  function hoverBorder(): Rgb {
+    const own = css.match(HOVER);
+    if (own) return mix(token(own[1] as string), Number(own[2]) / 100, token(own[3] as string));
+    // Without a rule in app.css the base layer's hover applies, laid over the field's surface.
+    const base = vendor.match(
+      /\.input:hover\s*{\s*border-color:\s*color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, transparent\);/,
+    );
+    expect(base, "the base layer's hover rule").not.toBeNull();
+    const [, text, share] = base as RegExpMatchArray;
+    return mix(token(text as string), Number(share) / 100, token("--color-surface"));
+  }
+
+  it("records why: the base layer's hover is lighter than the border token in the light theme", () => {
+    const base = mix(token("--color-text"), 0.45, token("--color-surface"));
+    expect(contrast(base, token("--color-surface"))).toBeCloseTo(2.62, 2);
+    expect(luminance(base)).toBeGreaterThan(luminance(token("--rc-border-strong")));
+  });
+
+  it("is at least as dark as the normal border, and 3:1 on every light surface", () => {
+    const hover = hoverBorder();
+    expect(luminance(hover)).toBeLessThanOrEqual(luminance(token("--rc-border-strong")));
+    for (const surface of SURFACES) {
+      const fill = token(surface);
+      expect(contrast(hover, fill), `hover border on ${surface} ${fill}`).toBeGreaterThanOrEqual(
+        contrast(token("--rc-border-strong"), fill),
+      );
+      expect(contrast(hover, fill)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("mixes 45% of the text colour into the border token, in the light theme only", () => {
+    expect(css.match(HOVER)?.slice(1, 4)).toEqual(["--color-text", "45", "--rc-border-strong"]);
+    expect(css).not.toMatch(/data-theme="dark"[^{]*\.input:hover/);
+  });
+
+  it("keeps the base layer's specificity, so focus and an invalid field still win", () => {
+    const hover = css.search(HOVER);
+    const invalid = css.indexOf('.input[aria-invalid="true"]');
+    expect(hover).toBeGreaterThan(-1);
+    expect(hover).toBeLessThan(invalid);
   });
 });

@@ -37,8 +37,12 @@ describe("account deletion recovery page", () => {
     expect(html).toContain("Sign out");
     // "Return to Recalino" only led back to this page until cleanup ended the session.
     expect(html).not.toContain("Return to Recalino");
-    // UX-05: no "queue" or "server cleanup" for the learner, and no text the owner has not seen.
-    expect(html).toContain("Your account and sessions are hidden.");
+    // UX-05: no "queue" or "server cleanup" for the learner; the receipt the owner approved word
+    // for word on 2026-10-20 (D101).
+    expect(html).toContain(privacyCopy.accountHidden);
+    expect(privacyCopy.accountHidden).toBe(
+      "Your account and sessions are hidden. The rest of your data is being removed.",
+    );
     expect(html).not.toMatch(/queued|server cleanup/i);
     expect(html).not.toContain(privacyCopy.needsOperator);
   });
