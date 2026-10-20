@@ -15,6 +15,10 @@ const mocks = vi.hoisted(() => ({
   // The list loads from IndexedDB in an effect, which a server render never runs; the scope
   // stands in for the rows the page would list.
   scope: null as PartScope | null,
+  learning: null as null | { processRequest: string; revision: number; requestedRevision: number },
+}));
+vi.mock("../workspace/AutomaticLearningProvider", () => ({
+  useAutomaticLearning: () => ({ status: mocks.learning, acceptStatus: vi.fn() }),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
@@ -92,6 +96,7 @@ beforeEach(() => {
   mocks.recording = null;
   mocks.sync = { phase: "idle", count: 0, pending: 0, error: "" };
   mocks.scope = null;
+  mocks.learning = null;
 });
 
 // UX-11 and PRD-REC-02: until Stop, nothing but a real capture failure may speak.
@@ -225,6 +230,19 @@ describe("the recorded parts", () => {
     };
     const process = render().match(/<button[^>]*>Process this session<\/button>/)?.[0] ?? "";
     expect(process).not.toContain("disabled");
+  });
+
+  it("does not offer Process this session again for material already asked for (D105)", () => {
+    mocks.phase = "saved";
+    mocks.recording = part(1, { sourceAssetId: "a" });
+    mocks.scope = { kind: "recording", sessionId: session, rows: [mocks.recording] };
+    mocks.learning = { processRequest: "requested", revision: 3, requestedRevision: 3 };
+    let html = render();
+    expect(html).not.toContain(">Process this session<");
+    expect(html).toContain(">Continue recording<");
+    mocks.learning = { processRequest: "new_material", revision: 4, requestedRevision: 3 };
+    html = render();
+    expect(html).toContain(">Process this session<");
   });
 
   it("gives every finished part small controls named by its line", () => {

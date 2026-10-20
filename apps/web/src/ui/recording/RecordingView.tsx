@@ -3,6 +3,7 @@ import type { InputContract } from "@recalino/core/src";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog, Sheet } from "../components/Sheet";
+import { useAutomaticLearning } from "../workspace/AutomaticLearningProvider";
 import { userMessage, workspaceRequest } from "../workspace/api";
 import {
   notifyAutomaticLearning,
@@ -47,6 +48,9 @@ export function RecordingView({
 }) {
   const { controller, state, store, userId, sourceSync, syncState } = useRecording();
   const router = useRouter();
+  // D107: after Stop the learning loop uploads the session's board photos; its status update
+  // reads them again, so Process this session is offered once they are on the server.
+  const learning = useAutomaticLearning(state.recording?.sessionId ?? sessionId ?? "");
   const [rows, setRows] = useState<Recording[]>([]);
   const [time, setTime] = useState({ elapsed: 0, segmentElapsed: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -82,10 +86,10 @@ export function RecordingView({
       setError("Local recordings could not be opened. Keep this device's site data and try again.");
     }
   }, [store, userId]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: capture updates also refresh older parts after late final audio is committed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: capture updates also refresh older parts after late final audio is committed; the session status after an uploaded photo.
   useEffect(() => {
     void reload();
-  }, [reload, state, syncState]);
+  }, [reload, state, syncState, learning.status]);
   useEffect(() => {
     const timer = setInterval(
       () => setTime({ elapsed: controller.elapsed(), segmentElapsed: controller.segmentElapsed() }),
@@ -282,6 +286,11 @@ export function RecordingView({
     !active && (scope.kind === "recording" || (scope.kind === "session" && shown.length > 0));
   const processId = scope.sessionId;
   const sent = sessionMaterialSent(shown, photos, processId);
+  // Already asked for with nothing new since (D105): pressing again would change nothing.
+  const processed =
+    sent &&
+    learning.status?.processRequest === "requested" &&
+    learning.status.revision === learning.status.requestedRevision;
   // D107: a recording started on Today gets its session when /api/classes answers. The page then
   // becomes that session's recording page; a replace is client navigation, so the capture in the
   // provider goes on and nothing is announced (PRD-REC-02). Not while a photo is being chosen.
@@ -432,7 +441,7 @@ export function RecordingView({
           <>
             <p>{recordingCopy.staysOpen}</p>
             <Actions>
-              {processId ? (
+              {processed ? null : processId ? (
                 <ProcessSession
                   sessionId={processId}
                   // Every part and photo of this session on this device first (D107).
