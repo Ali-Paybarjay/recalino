@@ -7,10 +7,13 @@ import { createDatabase, type Database } from "../db";
 import { MemoryObjectStore } from "../plt";
 import { ankiExportJob, getAnkiExport, requestAnkiExport } from "./exports";
 
-// PERF-04: requesting, checking and building an Anki export reads its cards in a number of
-// queries that does not grow with them, and copies exactly what one getCard per card read.
+// PERF-04: checking and building an Anki export reads its cards in a number of queries that does
+// not grow with them; the request still locks its cards one getCard after another and copies
+// exactly what one getCard per card reads.
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 1 });
-afterAll(() => db.destroy());
+// A second connection, to see which rows an open export request holds locked.
+const probe = createDatabase(testDatabaseUrl(), { maxConnections: 1 });
+afterAll(() => Promise.all([db.destroy(), probe.destroy()]));
 const settings = { version: "test-1", maxBytes: 5_000_000, maxItems: 1000, retentionSeconds: 3600 };
 
 function countingDatabase(database: Database) {
@@ -27,9 +30,9 @@ function countingDatabase(database: Database) {
   return { db: counted, queries: () => count };
 }
 
-it("PERF-04 requests, checks and builds an Anki export in queries that do not grow with its cards", async () => {
+it("PERF-04 checks and builds an Anki export in queries that do not grow with its cards", async () => {
   const counts: number[][] = [];
-  for (const size of [3, 12]) {
+  for (const size of [5, 50]) {
     const x = await studyFixture(db, { count: size });
     const ids = x.cards.map((card) => card.id);
     const input = {
@@ -56,7 +59,9 @@ it("PERF-04 requests, checks and builds an Anki export in queries that do not gr
       },
     );
     expect((await getAnkiExport(db, x.ctx, artifact.id)).state).toBe("ready");
-    counts.push([request.queries(), read.queries(), build.queries()]);
+    // One locked getCard per card: the request's reads still grow with its cards.
+    expect(request.queries()).toBeGreaterThan(size * 3);
+    counts.push([read.queries(), build.queries()]);
     // The copied cards are what one getCard per card returns, in the learner's order.
     const row = await db
       .selectFrom("anki.export_artifact")
@@ -117,4 +122,33 @@ it("PERF-04 reports the first selected card's problem first, as one read per car
       { key: randomUUID(), settings },
     ),
   ).rejects.toMatchObject({ code: "not_found", securitySignal: "ownership_denied" });
+});
+
+it("PERF-04 keeps every selected card locked until the export request ends", async () => {
+  const x = await studyFixture(db, { count: 3 });
+  const [first, second, other] = x.cards;
+  if (!first || !second || !other) throw new Error("fixture");
+  // Asks for a card's row lock without waiting; 55P03 means another transaction holds it.
+  const lockNow = (id: string) =>
+    probe.selectFrom("card.card").select("id").where("id", "=", id).forUpdate().noWait().execute();
+  let checked = false;
+  await requestAnkiExport(
+    db,
+    x.ctx,
+    { sessionId: x.session.id, cardIds: [second.id, first.id], tags: [], includeMedia: false },
+    {
+      key: randomUUID(),
+      settings,
+      onCreated: async () => {
+        for (const id of [second.id, first.id])
+          await expect(lockNow(id)).rejects.toMatchObject({ code: "55P03" });
+        // A card the learner did not select is not locked.
+        expect(await lockNow(other.id)).toHaveLength(1);
+        checked = true;
+      },
+    },
+  );
+  expect(checked).toBe(true);
+  // The locks end with the request's transaction.
+  for (const id of [first.id, second.id]) expect(await lockNow(id)).toHaveLength(1);
 });

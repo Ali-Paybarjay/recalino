@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { queryBudgetDatabase } from "../../test/query-budget";
 import { getAnkiExport, requestAnkiExport } from "./exports";
 
-// PERF-04: an Anki export reads and locks its cards in a constant number of statements, in the
-// order the learner chose them, and checks each card in that order as before.
+// PERF-04: an Anki export request still locks its cards one getCard after another, in the order
+// the learner chose them; checking an export reads its cards in a constant number of statements.
 const ctx = { userId: randomUUID(), requestId: "export-request-read-budget" };
 const sessionId = randomUUID();
 const now = new Date("2026-10-19T12:00:00Z");
@@ -86,65 +86,66 @@ const request = (cardIds: string[], expectedVersions?: Record<string, number>) =
 });
 
 describe("Anki export request read budget (PERF-04)", () => {
-  it.each([5, 50])("reads and locks %i cards in a fixed number of statements", async (count) => {
-    const ids = Array.from({ length: count }, () => randomUUID());
-    const rows = ids.map((id) => cardRow(id));
-    const { db, queries } = queryBudgetDatabase([
-      [{ id: ctx.userId }],
-      [],
-      [sessionRow()],
-      // The database may return the rows in any order; the export keeps the learner's order.
-      [...rows].reverse(),
-      ids.map((id) => ({ card_id: id, session_id: sessionId })),
-      [{ id: sessionId }],
-      [exportRow({})],
-    ]);
-    await requestAnkiExport(db, ctx, request(ids), { key: randomUUID(), settings, now });
-    expect(queries).toHaveLength(7);
-    const cards = queries[3];
-    expect(cards?.sql).toContain('from "card"."card"');
-    expect(cards?.sql).toContain("order by array_position($");
-    expect(cards?.sql.endsWith("for update")).toBe(true);
-    expect(cards?.parameters).toContainEqual(ids);
-    const insert = queries[6];
-    expect(insert?.sql).toContain('insert into "anki"."export_artifact"');
-    const snapshot = JSON.parse(insert?.parameters[5] as string);
-    expect(snapshot.cards.map((card: { id: string }) => card.id)).toEqual(ids);
-    expect(snapshot.cards[0]).toEqual({
-      id: ids[0],
-      template: "basic",
-      direction: "forward",
-      front: `front ${ids[0]}`,
-      back: "back",
-      provenance: cardRow(ids[0] as string).provenance,
-      contentVersion: 1,
-      frontMediaId: null,
-      backMediaId: null,
-    });
-  });
+  // The rows one locked getCard reads: the card, its class links and the live classes.
+  const cardReads = (id: string) => [
+    [cardRow(id)],
+    [{ session_id: sessionId }],
+    [{ id: sessionId }],
+  ];
 
-  it("checks the cards in the learner's order, as one read per card did", async () => {
-    const [first, second] = [randomUUID(), randomUUID()];
-    const rows = (included: string[]) =>
-      queryBudgetDatabase([
+  it.each([5, 50])(
+    "locks each of %i cards by its own statement, in the learner's order",
+    async (count) => {
+      const ids = Array.from({ length: count }, () => randomUUID());
+      const { db, queries } = queryBudgetDatabase([
         [{ id: ctx.userId }],
         [],
         [sessionRow()],
-        included.map((id) => cardRow(id)),
-        included.map((id) => ({ card_id: id, session_id: sessionId })),
-        [{ id: sessionId }],
-      ]).db;
-    // The first card's changed version is reported before the second card's deletion.
+        ...ids.flatMap(cardReads),
+        [exportRow({})],
+      ]);
+      await requestAnkiExport(db, ctx, request(ids), { key: randomUUID(), settings, now });
+      // The account first, then one card after another: an older lesson card's class lock, taken
+      // while resolving its pronunciation, stays between that card's lock and the next card's.
+      const locks = queries.filter((query) => query.sql.endsWith("for update"));
+      expect(locks.map((query) => query.parameters[0])).toEqual([ctx.userId, ...ids]);
+      expect(locks.slice(1).every((query) => query.sql.includes('from "card"."card"'))).toBe(true);
+      expect(queries).toHaveLength(4 + 3 * count);
+      const insert = queries.at(-1);
+      expect(insert?.sql).toContain('insert into "anki"."export_artifact"');
+      const snapshot = JSON.parse(insert?.parameters[5] as string);
+      expect(snapshot.cards.map((card: { id: string }) => card.id)).toEqual(ids);
+      expect(snapshot.cards[0]).toEqual({
+        id: ids[0],
+        template: "basic",
+        direction: "forward",
+        front: `front ${ids[0]}`,
+        back: "back",
+        provenance: cardRow(ids[0] as string).provenance,
+        contentVersion: 1,
+        frontMediaId: null,
+        backMediaId: null,
+      });
+    },
+  );
+
+  it("checks the cards in the learner's order and stops at the first problem", async () => {
+    const [first, second] = [randomUUID(), randomUUID()];
+    const head = () => [[{ id: ctx.userId }], [], [sessionRow()]];
+    // The first card's changed version is reported before the second card is read.
+    const changed = queryBudgetDatabase([...head(), ...cardReads(first), ...cardReads(second)]);
     await expect(
-      requestAnkiExport(rows([first]), ctx, request([first, second], { [first]: 2 }), {
+      requestAnkiExport(changed.db, ctx, request([first, second], { [first]: 2 }), {
         key: randomUUID(),
         settings,
         now,
       }),
     ).rejects.toMatchObject({ code: "conflict" });
+    expect(changed.queries.filter((query) => query.sql.endsWith("for update"))).toHaveLength(2);
     // A deleted first card is reported before the second card's changed version.
+    const deleted = queryBudgetDatabase([...head(), [], ...cardReads(second)]);
     await expect(
-      requestAnkiExport(rows([second]), ctx, request([first, second], { [second]: 2 }), {
+      requestAnkiExport(deleted.db, ctx, request([first, second], { [second]: 2 }), {
         key: randomUUID(),
         settings,
         now,
@@ -152,11 +153,8 @@ describe("Anki export request read budget (PERF-04)", () => {
     ).rejects.toMatchObject({ code: "not_found" });
     // A card of another learner is refused as getCard refuses it.
     const foreign = queryBudgetDatabase([
-      [{ id: ctx.userId }],
-      [],
-      [sessionRow()],
+      ...head(),
       [{ ...cardRow(first), user_id: randomUUID() }],
-      [],
     ]).db;
     await expect(
       requestAnkiExport(foreign, ctx, request([first]), { key: randomUUID(), settings, now }),

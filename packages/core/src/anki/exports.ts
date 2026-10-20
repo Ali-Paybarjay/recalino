@@ -1,7 +1,7 @@
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
-import { cardTemplateSchema, liveCardIds, readCards } from "../card";
+import { cardTemplateSchema, getCard, liveCardIds, readCards } from "../card";
 import type { Database, DB, Tx } from "../db";
 import { getMediaAsset, readMediaBytes } from "../media";
 import { getSession } from "../org";
@@ -176,11 +176,11 @@ export async function requestAnkiExport(
     const session = await getSession(tx, ctx, input.sessionId);
     const cards: AnkiSnapshot["cards"] = [];
     const mediaMap = new Map<string, ExportMedia>();
-    // PERF-04: the selected cards are read and locked by one statement in the learner's order,
-    // then checked one after another in that order, as one locked getCard per card did.
-    const selected = await readCards(tx, ctx, input.cardIds, true);
+    // Each selected card is locked by its own getCard, in the learner's order: resolving an older
+    // lesson card's pronunciation locks its class right after that card and before the next one,
+    // a lock order one bulk FOR UPDATE would change (PERF-04 keeps it).
     for (const id of input.cardIds) {
-      const card = selected.take(id);
+      const card = await getCard(tx, ctx, id, true);
       if (input.expectedVersions && input.expectedVersions[id] !== card.contentVersion)
         throw errors.conflict();
       if (!card.sessionIds.includes(session.id) || ["rejected", "deleted"].includes(card.status))

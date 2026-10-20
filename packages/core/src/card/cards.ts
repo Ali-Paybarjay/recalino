@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type Selectable, sql } from "kysely";
+import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
@@ -221,28 +221,24 @@ export interface CardReads {
 }
 /**
  * PERF-04: getCard for many identifiers in a constant number of reads instead of three or more
- * per card. With `lock`, every row is locked by one statement in the given order, the order in
- * which one getCard call after another would lock them. A card's own failure (missing, foreign,
- * deleted, or on no live session) is thrown only when that card is taken.
+ * per card. A card's own failure (missing, foreign, deleted, or on no live session) is thrown
+ * only when that card is taken. It takes no card lock: resolving an older lesson card's
+ * pronunciation locks its class (assertSessionOwner), and one locked getCard after another takes
+ * that class lock right after the first such card, before the next card's lock.
  */
 export async function readCards(
   db: Database | Tx,
   ctx: LearnerContext,
   ids: readonly string[],
-  lock = false,
 ): Promise<CardReads> {
   const unique = [...new Set(ids)];
   const outcomes = new Map<string, { card: StudyCard } | { failure: unknown }>();
   if (unique.length) {
-    let query = db
+    const query = db
       .selectFrom("card.card")
       .selectAll()
       .where("id", "in", unique)
       .where("deleted_at", "is", null);
-    if (lock)
-      query = query
-        .orderBy(sql`array_position(${sql.val(unique)}::uuid[], ${sql.ref("id")})`)
-        .forUpdate();
     const rows = new Map((await query.execute()).map((row) => [row.id, row]));
     const owned = [...rows.values()].filter((row) => row.user_id === ctx.userId);
     const links = owned.length
@@ -257,24 +253,22 @@ export async function readCards(
           .where("card.session_link.user_id", "=", ctx.userId)
           .execute()
       : [];
-    const live = new Set(
-      await filterLiveSessionIds(
-        db,
-        ctx,
-        links.map((link) => link.session_id),
-      ),
+    const live = await filterLiveSessionIds(
+      db,
+      ctx,
+      links.map((link) => link.session_id),
     );
-    const sessions = new Map<string, string[]>();
+    const linked = new Map<string, Set<string>>();
     for (const link of links)
-      if (live.has(link.session_id))
-        sessions.set(link.card_id, [...(sessions.get(link.card_id) ?? []), link.session_id]);
+      linked.set(link.card_id, (linked.get(link.card_id) ?? new Set()).add(link.session_id));
     const cards: StudyCard[] = [];
     for (const id of unique) {
       try {
         const row = rows.get(id);
         assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
         if (!row) throw errors.notFound();
-        const sessionIds = sessions.get(id) ?? [];
+        // A card's classes in the order filterLiveSessionIds returns them, as getCard reads them.
+        const sessionIds = live.filter((sessionId) => linked.get(id)?.has(sessionId));
         if (!sessionIds.length) throw errors.notFound();
         const card = view(row, sessionIds);
         cards.push(card);
