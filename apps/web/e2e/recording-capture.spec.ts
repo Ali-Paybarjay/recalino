@@ -69,10 +69,21 @@ test("measures real recorded audio, starts a new part after missing audio, and s
   const response = await page.request.post("/dev/auth/session", { data: { setup: "complete" } });
   expect(response.status(), await response.text()).toBe(200);
   await page.goto("/recordings");
+  // D107, PRD-REC-02/03: during capture the session attaches without a server navigation (no
+  // page request, no loading screen); the session's page itself loads after Stop.
+  const pageRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      (request.headers().rsc || url.searchParams.has("_rsc")) &&
+      /^\/sessions\/[0-9a-f-]+\/record/.test(url.pathname)
+    )
+      pageRequests.push(request.url());
+  });
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
-  // D107: once its session exists, the page becomes the session's recording page (client
-  // navigation; the capture goes on).
+  // D107: once its session exists, the address becomes the session's recording page; the capture
+  // goes on.
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await page.waitForTimeout(3000);
   await page.evaluate(() =>
@@ -87,7 +98,11 @@ test("measures real recorded audio, starts a new part after missing audio, and s
   // The next timeslice reveals the gap; a new part starts so its timestamps restart.
   await expect.poll(async () => (await savedParts(page)).length, { timeout: 15000 }).toBe(2);
   await page.waitForTimeout(2000);
+  expect(pageRequests).toEqual([]);
   await page.getByRole("button", { name: "Stop and save", exact: true }).click();
+  // After Stop the session's own recording page loads, with its way back (UX-02).
+  await expect(page.getByRole("link", { name: "Back to session", exact: true })).toBeVisible();
+  expect(pageRequests.length).toBeGreaterThan(0);
   // D107: Stop ends this recording, not the session.
   await expect(page.getByRole("button", { name: "Continue recording", exact: true })).toBeVisible();
 

@@ -74,8 +74,9 @@ test("capture survives app navigation and offline time, saves final parts and re
       timeout: 10000,
     })
     .not.toBe("0:00");
-  // D107: once its session exists, Today's recording page becomes the session's (a replace, so
-  // Back below still returns to Today), with this recording's parts only, from Part 1.
+  // D107: once its session exists, Today's recording page takes the session's address (a
+  // history replace without a server request, so Back below still returns to Today), with this
+  // recording's parts only, from Part 1.
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await expect(page.getByText(/^Part 1 · \d+:\d\d$/)).toBeVisible();
   await expect(page.getByText("Recording in progress", { exact: true })).toBeVisible();

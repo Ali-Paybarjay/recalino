@@ -125,8 +125,8 @@ test("declared part durations match the server's decode within 2% after hidden, 
   await page.goto("/recordings");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
-  // D107: once its session exists, the page becomes the session's recording page (client
-  // navigation; the capture goes on).
+  // D107: once its session exists, the address becomes the session's recording page (no server
+  // navigation during capture; the capture goes on).
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await page.waitForTimeout(4000);
 

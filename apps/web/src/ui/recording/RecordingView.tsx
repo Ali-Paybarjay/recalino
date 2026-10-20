@@ -23,6 +23,7 @@ import styles from "./Recording.module.css";
 import { ensureRecordingClass, RecordLauncher, useRecording } from "./RecordingProvider";
 import { recordingCopy } from "./recording-copy";
 import { formatPartDate } from "./recording-format";
+import { type SessionPageStep, sessionPageStep } from "./session-page";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 import { partScope, partsSync, recordingGroups, sessionMaterialSent } from "./visible-parts";
@@ -291,17 +292,25 @@ export function RecordingView({
     sent &&
     learning.status?.processRequest === "requested" &&
     learning.status.revision === learning.status.requestedRevision;
-  // D107: a recording started on Today gets its session when /api/classes answers. The page then
-  // becomes that session's recording page; a replace is client navigation, so the capture in the
-  // provider goes on and nothing is announced (PRD-REC-02). Not while a photo is being chosen.
+  // D107: a recording started on Today gets its session when /api/classes answers, and the page
+  // becomes that session's recording page: during capture only its address (no server request,
+  // no loading screen, nothing announced; PRD-REC-02), the session's page itself after Stop.
   const recordingSession = current?.sessionId ?? null;
-  const replaced = useRef(false);
+  const sessionPage = useRef<SessionPageStep["step"] | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: photos reload once a chosen photo is saved, which ends the wait for the picker.
   useEffect(() => {
-    if (sessionId || !recordingSession || replaced.current || captureAnchor.current) return;
-    replaced.current = true;
-    router.replace(`/sessions/${recordingSession}/record`);
-  }, [sessionId, recordingSession, router, photos]);
+    const next = sessionPageStep({
+      pageSessionId: sessionId,
+      recordingSessionId: recordingSession,
+      phase: state.phase,
+      choosingPhoto: !!captureAnchor.current,
+      done: sessionPage.current,
+    });
+    if (!next) return;
+    sessionPage.current = next.step;
+    if (next.step === "address") window.history.replaceState(null, "", next.href);
+    else router.replace(next.href);
+  }, [sessionId, recordingSession, state.phase, router, photos]);
   async function continueRecording() {
     setError(null);
     try {
