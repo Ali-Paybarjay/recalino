@@ -16,14 +16,18 @@ const probe = createDatabase(testDatabaseUrl(), { maxConnections: 1 });
 afterAll(() => Promise.all([db.destroy(), probe.destroy()]));
 const settings = { version: "test-1", maxBytes: 5_000_000, maxItems: 1000, retentionSeconds: 3600 };
 
+/**
+ * Counts executed statements: Kysely calls transformResult once per executed query, while it
+ * also calls transformQuery for each subquery built from this database.
+ */
 function countingDatabase(database: Database) {
   let count = 0;
   const counted = database.withPlugin({
     transformQuery(args) {
-      count++;
       return args.node;
     },
     async transformResult(args) {
+      count++;
       return args.result;
     },
   });

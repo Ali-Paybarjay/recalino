@@ -67,18 +67,25 @@ function statementKind(node: Statement): string {
   return ["select", ...locks].join(" ");
 }
 
+/**
+ * Counts executed statements: Kysely calls transformResult once per executed query, while it
+ * also calls transformQuery for each subquery built from this database. The kinds come from
+ * every node, subqueries included, so a lock or a write anywhere is seen.
+ */
 function countingDatabase(database: Database) {
   const statements: string[] = [];
+  let executed = 0;
   const counted = database.withPlugin({
     transformQuery(args) {
       statements.push(statementKind(args.node));
       return args.node;
     },
     async transformResult(args) {
+      executed++;
       return args.result;
     },
   });
-  return { db: counted, queries: () => statements.length, kinds: () => new Set(statements) };
+  return { db: counted, queries: () => executed, kinds: () => new Set(statements) };
 }
 
 async function learner() {
@@ -214,8 +221,8 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
   expect(await readAutomaticLearningStatuses(counted.db, ctx, ids, () => provider)).toEqual(
     expected,
   );
-  // Sessions, intents, notes (three reads), runs, review requests and the finishing stage
-  // (three reads), however many classes there are.
+  // Executed statements: sessions, intents, notes (three reads), runs, review requests and the
+  // finishing stage (three reads), however many classes there are.
   expect(counted.queries()).toBeLessThanOrEqual(10);
   // Neither read writes. The class's own read locks its class row for one statement at a time
   // (assertSessionOwner, outside any transaction); the bulk read takes no row lock at all.
