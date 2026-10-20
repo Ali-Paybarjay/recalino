@@ -945,7 +945,7 @@
 - اگر پس از پردازش ضبط یا فایلی اضافه شود، جلسه دوباره باز می‌شود و منتظر فشار بعدی می‌ماند. تا آن فشار نه نسخهٔ تازهٔ خودکاری ساخته می‌شود و نه واحد New versions کم می‌شود.
 - پیش‌فرض‌های پذیرفتهٔ مالک: رونویسی زودهنگام قطعه‌های مهرشده پیش از Process (D61) می‌ماند و سهمیه‌ای رزرو نمی‌کند. برگهٔ خلاصه و سهمیه در هر Process نشان داده می‌شود. Process تا وقتی lease ضبط باز است رد می‌شود. ردیف‌های موجود `proc.automatic_session` درخواست‌شده فرض می‌شوند تا جلسه‌های production کار کنند.
 
-این تصمیم در جای تعارض این‌ها را اصلاح می‌کند: D60 («Stop پردازش را شروع می‌کند»)، نتیجهٔ «بدون دکمهٔ پردازش» در [AUTOMATIC_LEARNING_2026-10-06](plans/AUTOMATIC_LEARNING_2026-10-06.md) و مقدمهٔ صفحهٔ ضبط در D70. با PRD بخش ۷، گام ۴ هم‌راستاست: پس از Stop وضعیت سهمیه و گزینهٔ پردازش، و هیچ AI پیش از شروع مجاز. طرح: گزینهٔ A بررسی 2026-10-20. این بخش قاعدهٔ سرور را ثبت می‌کند. رابط (دکمه، برگهٔ تأیید، صفحهٔ ضبط و کارت گام بعد) در همین PR با موج بعدی می‌آید.
+این تصمیم در جای تعارض این‌ها را اصلاح می‌کند: D60 («Stop پردازش را شروع می‌کند»)، نتیجهٔ «بدون دکمهٔ پردازش» در [AUTOMATIC_LEARNING_2026-10-06](plans/AUTOMATIC_LEARNING_2026-10-06.md) و مقدمهٔ صفحهٔ ضبط در D70. با PRD بخش ۷، گام ۴ هم‌راستاست: پس از Stop وضعیت سهمیه و گزینهٔ پردازش، و هیچ AI پیش از شروع مجاز. طرح: گزینهٔ A بررسی 2026-10-20. این بخش قاعدهٔ سرور را ثبت می‌کند. رابط (دکمه، برگهٔ تأیید، صفحهٔ ضبط و کارت گام بعد) در همین PR با موج بعدی می‌آید. **یادداشت:** این رابط با D107 (پایین‌تر) تحویل شد؛ رابط از همان اقدام `process` با `revision` و همان دلیل‌های رد استفاده می‌کند.
 
 - **Migration (افزایشی، بدون حذف داده):** `supabase/migrations/20261020120000_proc_automatic_session_learner_request.sql` این تغییرها را روی `proc.automatic_session` می‌دهد:
   - ستون‌های `requested_version` (integer، `> 0`) و `requested_at`، با قید جفت (هر دو null یا هر دو پر) و قید `requested_version <= request_version`.
@@ -998,6 +998,64 @@
 - **«Add more material»:** در انتهای فهرست غیرخالی، یک دکمهٔ secondary تمام‌عرض با Plus (مثل قاب C1) که همان file picker را باز می‌کند، و «Use existing material» کنارش به شکل ghost. فهرست خالی متن‌های پیشین خود را دارد و دکمه‌اش «Add Files» است. برچسب با شرط نمایش فهرست هم‌سو است (`addMaterialLabel` در `session-material-copy.ts`): فهرستی که فقط آپلود در راه دارد هم «Add more material» نشان می‌دهد. «Record a session» سر جای خود ماند. «Add More Files» حذف شد. صف «Files to upload» و پنل «Your existing material» درست زیر این دکمه‌ها می‌آیند.
 - **تغییر نکرد:** سرور، routeها، migration، API و منطق آپلود، unlink، حذف و idempotency؛ صفحهٔ synthetic `/preview` (`preview/SourceViews.tsx`).
 - **آزمون‌ها:** `apps/web/src/ui/workspace/material-order.test.ts`، `source-thumbnails.test.ts`، `SessionMaterial.test.ts` (render خط و فهرست) و `apps/web/src/ui/approved-copy.test.ts`. e2e (فقط در CI): آزمون تازهٔ «D106 session material list» در `apps/web/e2e/source-original.spec.ts` در ۳۹۰ و ۱۴۴۰ پیکسل، و locator تازهٔ «Delete options» در همان فایل و `upload-recovery.spec.ts`.
+
+## D107 — فهرست پارت‌های صفحهٔ ضبط و رابط «Process this session» (2026-10-20)
+
+مبنا: تصمیم‌های صریح مالک محصول در 2026-10-20:
+
+- جلسه فقط وقتی پردازش می‌شود که زبان‌آموز «Process this session» را بزند. Stop فقط یک ضبط را تمام می‌کند و Pause هیچ‌چیز را. جلسهٔ فقط-آپلود هم منتظر همین فشار می‌ماند و مادهٔ تازه پس از پردازش جلسه را دوباره باز می‌کند (همان قاعدهٔ سرور D105).
+- پیش از هر Process برگهٔ خلاصه و سهمیه نشان داده می‌شود. Process تا وقتی ضبطی باز است رد می‌شود.
+- صفحهٔ ضبط فقط فایل‌های همین جلسه را نشان می‌دهد: برای هر پارت یک خط فشرده و شماره‌دار («Part 1»، «Part 2» و …) با CTAهای کوچک، نه جعبه‌های بزرگ. صفحه باید بسیار روشن و ساده باشد.
+
+طرح: گزینهٔ A بررسی 2026-10-20 (همان مبنای D105). متن‌های تازه و پنج اصلاح در بخش «تأیید 2026-10-20 — صفحهٔ ضبط و Process this session (D107)» [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) ثبت شده‌اند. migration، route، API، وابستگی، رنگ، فونت، سایه، انیمیشن یا token تازه‌ای اضافه نشد و vendor تغییر نکرد.
+
+- **دامنهٔ فهرست (`apps/web/src/ui/recording/visible-parts.ts`):**
+  - با ضبط جاری (حین ضبط و پس از Stop)، اول پارت‌های همان ضبط با `captureId` و بعد ضبط‌های قبلی همان جلسه با `sessionId` نشان داده می‌شوند. ضبط Today تا پاسخ `/api/classes` جلسه ندارد، پس `captureId` مقدم است.
+  - `/sessions/[id]/record` فقط همان جلسه را نشان می‌دهد، حتی اگر ضبط جاری مال جلسهٔ دیگری باشد.
+  - `/recordings` بدون ضبط جاری فهرست بازیابی دستگاه را نگه می‌دارد (D29)، با همان خط‌های فشرده و گروه‌بندی‌شده برای هر ضبط زیر تاریخ آن (`formatPartDate`).
+  - فیلتر هنگام render است. `reload()`، پذیرش اعلان مواد، آپلود عکس و retake همچنان همهٔ ردیف‌ها را می‌بینند. ترتیب صعودی است و Part 1 بالاست.
+  - شمار «{n} parts added · {m} remaining» و فهرست عکس‌های اعلان مواد فقط ردیف‌های نشان‌داده را می‌شمارند.
+- **شماره‌گذاری (`controller.ts`، `earlierParts`):** پارت اول هر Start بعد از بالاترین شمارهٔ پارت‌های همان جلسه روی این دستگاه می‌آید. «Continue recording» برای ضبطی که جلسه‌اش هنوز معلوم نیست، `creationKey` همان ضبط را نگه می‌دارد تا هر دو به یک جلسه برسند. نام سرور «Session recording <date> · Part N» (`source-sync.ts`) همین شماره را می‌گیرد. چرخش ده‌دقیقه‌ای D60/D61، ترتیب ثبت (`earlierPendingPart`)، uploader و بازگشت D104 تغییری نکردند؛ Resume همان ضبط را با پارت بعدی ادامه می‌دهد.
+- **خط فشرده (`RecordedParts.tsx`، `Recording.module.css`):** فهرست `<ol>` زیر عنوان «Recorded parts» است. هر خط این اجزا را دارد:
+  - کاشی ۴۰ پیکسلی با آیکون `Waveform`.
+  - خط اول «Part {n} · {duration}»؛ پس از Stop برچسب موجود دقیقه‌های ضبط‌نشده هم کنارش می‌آید.
+  - خط دوم وضعیت موجود (`SavedPartStatus`، یا «Recording in progress» برای پارت زنده).
+  - پس از Stop سه IconButton ۴۴ پیکسلی: «Listen»، «Export audio» (آیکون `DownloadSimple` قاب‌های C2 و C3) و «Remove from this device». هر سه با `aria-describedby` به عنوان خط وصل‌اند.
+  - حذف به‌جای بلوک details یک `ConfirmDialog` با متن‌های موجود است: عنوان «Remove from this device»، «Confirm local removal» و «Keep». تیک برگشت‌ناپذیری فقط برای صدایی است که به سرور نرسیده.
+  - حین ضبط خط‌ها کنترل و live region ندارند، چون پخش ضبط می‌شود (PRD-REC-02).
+  - در عرض ۶۰۰ پیکسل و کمتر، کنترل‌ها زیر متن می‌آیند تا عنوان پهنایش را نگه دارد.
+  - یک گالری عکس برای کل ضبط جای گالری هر پارت را گرفت. حین ضبط، شمار عکس‌ها مال کل ضبط است و با چرخش پارت عکس‌ها جابه‌جا نمی‌شوند.
+- **پس از Stop:** عنوان پنل پس از ذخیرهٔ معتبر «Saved on this device» است (PRD-REC-07). زیر آن این‌ها می‌آیند:
+  - جملهٔ «This session stays open. Record more, or process it when the class is over.».
+  - «Process this session» (primary). تا وقتی هر پارت و عکس این جلسه روی این دستگاه به سرور نرسیده (`sessionMaterialSent`)، با همان وضعیت sync غیرفعال می‌ماند.
+  - «Continue recording» (secondary) که ضبط تازه‌ای در همان جلسه شروع می‌کند.
+  - و «Back to session».
+  پس از تأیید، صفحه به صفحهٔ جلسه می‌رود.
+- **Today:** وقتی جلسهٔ ضبطی که از Today شروع شده معلوم شود، `/recordings` با `router.replace` به `/sessions/<id>/record` تبدیل می‌شود. این ناوبری سمت کاربر است: ضبط در provider ادامه می‌یابد و عنوان سند عوض نمی‌شود، پس announcer مسیر چیزی اعلام نمی‌کند. این کار هنگام انتخاب عکس انجام نمی‌شود. «Open recording» نوار ضبط از D104 به صفحهٔ ضبط جلسه می‌رود.
+- **«Process this session» (`apps/web/src/ui/workspace/ProcessSession.tsx`):**
+  - Sheet موجود با عنوان «Process this session?» باز می‌شود (قاب C5 با واژگان D50).
+  - ردیف‌های C5 از برآورد موجود (`GET /api/classes/[id]/estimate`) ساخته می‌شوند: «Class audio» با طول و «· n parts»، «PDF» با صفحه‌ها، «Board photos» و بقیهٔ نوع‌ها با `sourceKindLabel`.
+  - مصرف هر سهمیه با `allowanceCopy.shortageItem` کنار مقدار باقی‌مانده نشان داده می‌شود. برای نسخهٔ تازه جملهٔ واحد New versions هم می‌آید. سپس «Nothing is processed or charged until you confirm.» و «Confirm and process» / «Not now».
+  - وقتی سهمیه کافی نیست یا سرویس پیکربندی نشده، تأیید غیرفعال است و متن‌های موجود «More allowance is needed. Recording and review remain available.» یا «AI is awaiting operator configuration. Your material remains saved.» نشان داده می‌شوند.
+  - `revision` پیش از برآورد خوانده می‌شود. پس ماده‌ای که بین این دو برسد با `changed_after_estimate` رد می‌شود و هرگز نادیده پردازش نمی‌شود.
+  - درخواست `{ action: "process", revision }` با کلید idempotency فرستاده می‌شود. ردّ سرور کلید را تازه می‌کند و قطع اتصال همان کلید را نگه می‌دارد.
+  - ردها پس از بسته شدن برگه نشان داده می‌شوند: `capture_in_progress` با «Stop the recording before you process this session.»، `changed_after_estimate` با `workspaceErrors.sourcesChanged` و `batch_open` با پیام پیش‌فرض `conflict`.
+- **جاهایی که زبان‌آموز برمی‌گردد:**
+  - در `session-state.ts` اقدام تازهٔ `process_session` و `awaitingProcess` آمده‌اند (`learning-progress.ts`). جلسه‌ای با `processRequest` برابر `not_requested` یا `new_material` و حالت `waiting_sources`، بدون گروه آپلود باز و با ماده‌ای انتخاب‌شده، «Ready to process» با «Your notes and flashcards are made when you process this session.» نشان می‌دهد.
+  - جلسهٔ دوباره‌بازشده (یا دارای جزوه) «New sources since your notes were made» با «A new version of existing notes also uses 1 New versions unit.» نشان می‌دهد.
+  - این کارت در صفحهٔ جلسه و Today می‌آید و در Today طبق D32 secondary است. کارت صفحهٔ Session material و اعلان صفحه‌های جزوه و کارت همین دکمه را دارند و نوار پیشرفت نشان نمی‌دهند، چون چیزی در جریان نیست.
+  - کارت گام بعد عکس‌های این جلسه را که هنوز روی دستگاه‌اند هم «waiting» می‌شمارد. وضعیتی بدون این فیلدها (سرور قدیمی یا fixture) هرگز منتظر فشار نمی‌ماند.
+- **متن:** هشت متن تازه و اصلاح پنج جمله‌ای که پردازش را درست پس از Stop یا خودکار وعده می‌دادند (مقدمه و اعلان مواد صفحهٔ ضبط، `waitEstimate`، `allowanceHelp.need` و «Topics covered» جلسهٔ خالی). آیکون‌های `DownloadSimple` و `ShieldCheck` از قاب‌ها به `icons.ts` اضافه شدند.
+- **تفاوت با طرح:** بند ۱۴ [HANDOFF_R1_REVIEW.md](design/HANDOFF_R1_REVIEW.md).
+- **محدودیت‌ها و پیامدها:**
+  - شماره‌گذاری برای هر دستگاه جداست؛ دو دستگاه ممکن است هر دو «Part 1» داشته باشند. ترتیب صفحهٔ Session material ترتیب سرور است (D106).
+  - ضبط‌های پیش از این تغییر ممکن است در یک جلسه دو «Part 1» داشته باشند.
+  - عکسی که منتظر اعلان مواد است، Process را در صفحهٔ ضبط غیرفعال و کارت گام بعد را روی «Saved on this device» نگه می‌دارد تا اعلان پذیرفته شود.
+  - پیام‌های سرور برای `batch_open`، `idle` و `select_at_least_one` («…will then update automatically.» و «…will be created automatically.») و برچسب «Upload & Process» صفحهٔ مواد هنوز از پردازش خودکار می‌گویند. متن تازه برایشان تأیید نشده و تغییر نکردند.
+- **آزمون‌ها:**
+  - unit: `visible-parts.test.ts`، `RecordedParts.test.ts`، `RecordingView.test.ts` (دامنه، شماره، کنترل‌ها فقط پس از Stop، Process و Continue)، `controller.test.ts` («part numbers across the recordings of one session (D107)»)، `source-sync.test.ts`، `ProcessSession.test.ts`، `session-state.test.ts`، `learning-progress.test.ts` و `approved-copy.test.ts`.
+  - صفحه‌های `/dev/ui/recording-shell` (`?state=recording` و `?state=saved`) و `/dev/ui/session` (`ready-to-process` و `reopened`) حالت‌های تازه را نشان می‌دهند.
+  - e2e (فقط در CI): `recording.spec.ts`، `recording-capture.spec.ts`، `recording-decode.spec.ts`، `photo-readability.spec.ts`، `photo-readability-screens.spec.ts`، `learning-privacy.spec.ts`، `shell.spec.ts` و آزمون تازهٔ برگهٔ Process در `session-navigation.spec.ts` در ۳۹۰ و ۱۴۴۰ پیکسل.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
