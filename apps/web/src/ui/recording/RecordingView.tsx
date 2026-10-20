@@ -26,7 +26,13 @@ import { formatPartDate } from "./recording-format";
 import { followSessionAddress, sessionPageBack } from "./session-page";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
-import { partScope, partsSync, recordingGroups, sessionMaterialSent } from "./visible-parts";
+import {
+  partScope,
+  partsSync,
+  photosOf,
+  recordingGroups,
+  sessionMaterialSent,
+} from "./visible-parts";
 
 const duration = partDuration;
 function download(blob: Blob, name: string) {
@@ -322,8 +328,13 @@ export function RecordingView({
     input.addEventListener("cancel", cancelled);
     return () => input.removeEventListener("cancel", cancelled);
   }, []);
+  // A part playing when capture starts would be recorded (PRD-REC-02): close the player.
+  useEffect(() => {
+    if (active) setPlayer(null);
+  }, [active]);
   async function continueRecording() {
     setError(null);
+    setPlayer(null);
     try {
       // The same session, and after its earlier parts' numbers (D107).
       await controller.start(processId, scope.kind === "recording" ? current : null);
@@ -520,23 +531,28 @@ export function RecordingView({
           {!shown.length ? (
             <p className="workspace-muted">No recordings on this device yet.</p>
           ) : (
-            recordingGroups(shown).map((group) => (
-              <section key={group.id} className={styles.group}>
-                <h3>{formatPartDate(group.parts[0]?.createdAt ?? "")}</h3>
-                {parts(group.parts)}
-              </section>
-            ))
+            recordingGroups(shown).map((group) => {
+              const groupPhotos = photosOf(group.parts, shownPhotos);
+              return (
+                <section key={group.id} className={styles.group}>
+                  <h3>{formatPartDate(group.parts[0]?.createdAt ?? "")}</h3>
+                  {parts(group.parts)}
+                  {groupPhotos.length ? (
+                    <PhotoGallery
+                      photos={groupPhotos}
+                      onAttach={(photo) => void operation(photo.id, () => attachPhoto(photo))}
+                      onRetake={retake}
+                      canRemove={canRemove}
+                      onRemove={removePhoto}
+                      retakeDisabled={!sourceNotice?.noticeAccepted}
+                      disabled={busy !== null}
+                      automatic={automaticPhoto}
+                    />
+                  ) : null}
+                </section>
+              );
+            })
           )}
-          <PhotoGallery
-            photos={shownPhotos}
-            onAttach={(photo) => void operation(photo.id, () => attachPhoto(photo))}
-            onRetake={retake}
-            canRemove={canRemove}
-            onRemove={removePhoto}
-            retakeDisabled={!sourceNotice?.noticeAccepted}
-            disabled={busy !== null}
-            automatic={automaticPhoto}
-          />
         </Panel>
       ) : shown.length ? (
         <Panel title={recordingCopy.recordedParts}>

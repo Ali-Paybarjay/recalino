@@ -55,6 +55,29 @@ describe("a recorded part's line", () => {
     expect(live).toContain("Part 1 · 0:01");
     expect(live).not.toContain("not recorded");
     expect(live).toContain("Recording in progress");
+    // An earlier, sealed part of the same capture waits for Stop too (PRD-REC-02).
+    const second = "30000000-0000-4000-8000-000000000002";
+    const during = renderToStaticMarkup(
+      createElement(RecordedParts, {
+        rows: [row({ gaps }), row({ id: second, segment: 2, status: "recording" })],
+        phase: "recording",
+        live: { id: second, ms: 1000, recovering: false },
+      }),
+    );
+    expect(during).toContain("Part 1 · 9:59");
+    expect(during).not.toContain("not recorded");
+  });
+
+  it("plays a part only after Stop, so its sound is never recorded", () => {
+    const player = { id: row().id, url: "blob:part-1" };
+    const after = renderToStaticMarkup(
+      createElement(RecordedParts, { rows: [row()], phase: "saved", actions, player }),
+    );
+    expect(after).toContain("<audio");
+    const during = renderToStaticMarkup(
+      createElement(RecordedParts, { rows: [row()], phase: "recording", player }),
+    );
+    expect(during).not.toContain("<audio");
   });
 
   it("asks before removing a part, with the acknowledgement only for audio not sent", () => {

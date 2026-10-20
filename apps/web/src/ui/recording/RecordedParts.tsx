@@ -5,6 +5,7 @@ import { Icon } from "../components/Icon";
 import { ConfirmDialog } from "../components/Sheet";
 import { DownloadSimple, Play, Trash, Waveform } from "../icons";
 import { Button, Panel } from "../workspace/primitives";
+import { captureIsQuiet } from "./capture-phase";
 import type { CaptureState } from "./controller";
 import { partMissingLabel } from "./MissingAudioNotice";
 import styles from "./Recording.module.css";
@@ -100,7 +101,8 @@ function PartLine({
         <div className={styles.partText}>
           <strong id={titleId} className={styles.partTitle}>
             {partTitle(row, live ? live.ms : row.activeMs)}
-            {missing && !live ? ` · ${partMissingLabel(missing)}` : null}
+            {/* Minutes not recorded are told after Stop only (PRD-REC-02). */}
+            {missing && !live && !captureIsQuiet(phase) ? ` · ${partMissingLabel(missing)}` : null}
           </strong>
           {live ? (
             <p>
@@ -138,7 +140,8 @@ function PartLine({
           </div>
         ) : null}
       </div>
-      {playing ? (
+      {/* No player during capture: its sound would be recorded (PRD-REC-02). */}
+      {playing && actions ? (
         <audio controls src={playing} className={styles.player} aria-describedby={titleId}>
           <track kind="captions" />
         </audio>

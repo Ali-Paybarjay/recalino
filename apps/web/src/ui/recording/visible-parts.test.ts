@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { LocalPhoto, Recording } from "./store";
-import { partScope, partsSync, recordingGroups, sessionMaterialSent } from "./visible-parts";
+import {
+  partScope,
+  partsSync,
+  photosOf,
+  recordingGroups,
+  sessionMaterialSent,
+} from "./visible-parts";
 
 const userId = "10000000-0000-4000-8000-000000000002";
 let next = 0;
@@ -138,5 +144,22 @@ describe("the sync line and Process this session for the listed parts", () => {
       true,
     );
     expect(sessionMaterialSent([sent], [], null)).toBe(false);
+  });
+});
+
+// D107: on the device list each recording keeps its own photos, not one gallery for every day.
+describe("photosOf", () => {
+  it("gives each recording only the photos taken during its parts", () => {
+    const photos = [
+      { id: "p1", recordingId: "a1" },
+      { id: "p2", recordingId: "b1" },
+      { id: "p3", recordingId: "a2" },
+    ];
+    expect(photosOf([{ id: "a1" }, { id: "a2" }], photos).map((photo) => photo.id)).toEqual([
+      "p1",
+      "p3",
+    ]);
+    expect(photosOf([{ id: "b1" }], photos).map((photo) => photo.id)).toEqual(["p2"]);
+    expect(photosOf([{ id: "c1" }], photos)).toEqual([]);
   });
 });

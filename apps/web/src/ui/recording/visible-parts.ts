@@ -77,6 +77,15 @@ export function recordingGroups(rows: readonly Recording[]) {
     .sort((left, right) => partOrder(right.parts[0] as Recording, left.parts[0] as Recording));
 }
 
+/** The photos taken during one recording's parts: one gallery per recording (D107). */
+export function photosOf<T extends { recordingId: string }>(
+  parts: readonly Pick<Recording, "id">[],
+  photos: readonly T[],
+): T[] {
+  const ids = new Set(parts.map((part) => part.id));
+  return photos.filter((photo) => ids.has(photo.recordingId));
+}
+
 /** Finished in-app parts that the sync adds to their session (source-sync.ts `automatic`). */
 function addable(row: Recording) {
   return (
