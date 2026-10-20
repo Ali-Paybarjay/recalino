@@ -38,7 +38,17 @@ export interface CaptureDependencies {
   /** Reads a recorder run's container timestamps; defaults to WebM and fragmented MP4. */
   timeline?: () => MediaTimeline;
   readChunk?: (blob: Blob) => Promise<Uint8Array>;
+  /** Web Locks; absent where the browser has none, and then every tab proceeds (D104). */
+  locks?: CaptureLocks;
 }
+/** The part of Web Locks used here: one tab at a time holds a capture of this account. */
+export type CaptureLocks = {
+  request(
+    name: string,
+    options: { ifAvailable?: boolean },
+    callback: (lock: unknown) => Promise<void> | undefined,
+  ): Promise<unknown>;
+};
 /** Capture health facts without audio, text or identifiers (PRD-PRIV-06). */
 export type CaptureHealthEvent =
   | { type: "started"; mime: string; part: number }
@@ -48,6 +58,16 @@ export type CaptureHealthEvent =
   | { type: "track"; state: "muted" | "unmuted" | "ended" }
   | { type: "gap"; part: number; offsetMs: number; missingMs: number; cause: GapCause }
   | { type: "interrupted"; part: number }
+  | { type: "pause"; part: number }
+  /** `reconnect`: the microphone had to be opened again (a new part follows). */
+  | { type: "resume"; part: number; reconnect: boolean }
+  /** D104: an unfinished capture came back paused after the page was lost while in `state`. */
+  | {
+      type: "restored";
+      parts: number;
+      state: "recording" | "paused" | "sealed";
+      awayMs: number;
+    }
   | { type: "staged"; part: number; result: "staged" | "skipped" | "failed"; durationMs: number }
   | {
       type: "photo_quality";
@@ -95,6 +115,8 @@ export function supportedMime(): string | undefined {
     MediaRecorder.isTypeSupported(type),
   );
 }
+/** The existing paused copy: while paused, a lost microphone waits for Resume (D104). */
+const PAUSED_INTERRUPTION = "The microphone was interrupted while paused. Resume to reconnect.";
 const defaults: CaptureDependencies = {
   getStream: () => navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
   makeRecorder: (stream) => {
@@ -105,6 +127,7 @@ const defaults: CaptureDependencies = {
     );
   },
   clock: deviceClock,
+  locks: typeof navigator === "undefined" ? undefined : navigator.locks,
 };
 type Chunk = {
   blob: Blob;
@@ -136,6 +159,12 @@ type Capture = {
   lateSaveTimer: ReturnType<typeof setTimeout> | null;
   lateSaving: boolean;
 };
+/** A part saved by a page that is gone has no recorder or microphone left (D104). */
+const RELEASED = {
+  recorder: { state: "inactive" } as unknown as MediaRecorder,
+  stream: { getTracks: () => [], getAudioTracks: () => [] } as unknown as MediaStream,
+};
+const UNSEALED = new Set<Recording["status"]>(["recording", "paused"]);
 
 /** Each recorder run has its own container; never concatenate separate runs. */
 export class RecordingController {
@@ -165,6 +194,10 @@ export class RecordingController {
   /** When capture broke while the learner meant to record, until the next part starts. */
   private brokenAt: { at: number; cause: GapCause } | null = null;
   private hidden = false;
+  private restoring: Promise<boolean> | null = null;
+  /** Releases this tab's capture lock (D104); null while it is not held. */
+  private lockRelease: (() => void) | null = null;
+  private lockWanted = false;
   constructor(
     readonly userId: string,
     readonly store: RecordingStore,
@@ -237,7 +270,8 @@ export class RecordingController {
   private publish(capture: Capture) {
     if (
       this.capture === capture ||
-      (this.intent === "stopped" && this.state.recording?.id === capture.recording.id)
+      ((this.intent === "stopped" || this.capture === null) &&
+        this.state.recording?.id === capture.recording.id)
     )
       this.update({ recording: capture.recording });
   }
@@ -264,7 +298,13 @@ export class RecordingController {
   private isPaused() {
     return this.intent === "paused";
   }
+  /** While paused, a lost microphone or recorder waits for Resume; nothing restarts (D104). */
+  private lostMessage(message: string) {
+    return this.isPaused() ? PAUSED_INTERRUPTION : message;
+  }
   async start(sessionId: string | null = null) {
+    // A tap while an earlier capture is being restored waits for it (D104).
+    if (this.restoring) await this.restoring;
     if (this.state.accountDeletionBlocked)
       throw new Error("Account deletion is in progress. Recording cannot start.");
     if (["starting", "recording", "recovering", "paused", "saving"].includes(this.state.phase))
@@ -280,6 +320,7 @@ export class RecordingController {
     this.retries = 0;
     this.recovery = null;
     this.update({ recording: null, phase: "starting", error: null, missing: null });
+    void this.claimLock(false);
     try {
       await this.openCapture(session, null, sessionId);
       if (!this.cancelled(session)) this.healthTimer = setInterval(() => this.checkHealth(), 1000);
@@ -288,6 +329,7 @@ export class RecordingController {
       if (!this.cancelled(session)) {
         this.intent = "stopped";
         this.stopMonitoring();
+        this.releaseLock();
         if (this.capture) await this.finishCapture(this.capture, true);
         this.update({
           phase: "failed",
@@ -508,13 +550,17 @@ export class RecordingController {
       if (session !== this.session || capture.sealed) return;
       this.interrupt(
         capture,
-        "Recording was interrupted. Saving this part and restarting automatically…",
+        this.lostMessage(
+          "Recording was interrupted. Saving this part and restarting automatically…",
+        ),
       );
     };
     recorder.onerror = () =>
       this.interrupt(
         capture,
-        "Recording was interrupted. Saving this part and restarting automatically…",
+        this.lostMessage(
+          "Recording was interrupted. Saving this part and restarting automatically…",
+        ),
       );
     recorder.onpause = () => {
       if (this.intent === "recording")
@@ -526,7 +572,9 @@ export class RecordingController {
         if (this.capture === capture) this.report({ type: "track", state: "ended" });
         this.interrupt(
           capture,
-          "The microphone stopped. Reconnecting automatically; saved audio is safe on this device.",
+          this.lostMessage(
+            "The microphone stopped. Reconnecting automatically; saved audio is safe on this device.",
+          ),
           "ended",
         );
       };
@@ -535,7 +583,9 @@ export class RecordingController {
         if (this.capture === capture) this.report({ type: "track", state: "muted" });
         this.interrupt(
           capture,
-          "The microphone was interrupted. Reconnecting automatically; saved audio is safe on this device.",
+          this.lostMessage(
+            "The microphone was interrupted. Reconnecting automatically; saved audio is safe on this device.",
+          ),
           "muted",
         );
       };
@@ -629,6 +679,9 @@ export class RecordingController {
   }
   private interrupt(capture: Capture, message: string, cause: GapCause = "interrupted") {
     if (this.capture !== capture || capture.sealed || this.intent === "stopped") return;
+    // While paused, the first interruption already seals this part and says so; the recorder's
+    // own stop that follows is not a second failure and never replaces that message (D104).
+    if (this.isPaused() && capture.interrupted) return;
     this.freeze(capture);
     capture.interrupted = true;
     if (this.intent === "recording")
@@ -878,6 +931,7 @@ export class RecordingController {
     this.brokenAt = null;
     this.clearRetry();
     const capture = this.capture;
+    this.report({ type: "pause", part: this.lastPart() });
     if (capture && !capture.interrupted && capture.recorder.state === "recording") {
       this.freeze(capture);
       capture.recording = { ...capture.recording, status: "paused" };
@@ -885,18 +939,22 @@ export class RecordingController {
         capture.recorder.requestData();
         capture.recorder.pause();
       } catch {
-        this.interrupt(
-          capture,
-          "The microphone was interrupted while paused. Resume to reconnect.",
-        );
+        this.interrupt(capture, PAUSED_INTERRUPTION);
       }
     }
-    this.update({ phase: "paused", recording: capture?.recording ?? this.state.recording });
+    // A Pause during recovery has no live recorder to pause: nothing reconnects until Resume, so
+    // the recovering text gives way to the honest paused one (D104).
+    this.update({
+      phase: "paused",
+      recording: capture?.recording ?? this.state.recording,
+      ...(!capture || capture.interrupted ? { error: PAUSED_INTERRUPTION } : {}),
+    });
   }
   resume() {
     if (this.intent !== "paused") return;
     this.intent = "recording";
     const capture = this.capture;
+    const part = this.lastPart();
     if (capture && !capture.interrupted && capture.recorder.state === "paused") {
       try {
         capture.recorder.resume();
@@ -905,15 +963,155 @@ export class RecordingController {
         capture.lastMediaAt = this.deps.clock();
         capture.probeAt = null;
         capture.recording = { ...capture.recording, status: "recording" };
+        this.report({ type: "resume", part, reconnect: false });
         this.update({ phase: "recording", recording: capture.recording, error: null });
         return;
       } catch {
         /* Reacquire below. */
       }
     }
+    // A sealed or restored part stays as it is; the same capture continues as its next part.
+    this.report({ type: "resume", part, reconnect: true });
     this.update({ phase: "recovering", error: "Reconnecting the microphone automatically…" });
     if (capture) this.interrupt(capture, "Reconnecting the microphone automatically…");
     this.scheduleRecovery(0);
+  }
+  /** The part a pause or Resume applies to, for diagnostics. */
+  private lastPart() {
+    return (this.capture ?? this.captures.at(-1))?.recording.segment ?? 1;
+  }
+  /**
+   * D104: after a reload or a discarded page, the newest unfinished capture of this account comes
+   * back paused, never recording, and with no time limit. A part the lost page left open is
+   * sealed as interrupted with the audio it saved. Resume continues the same capture and session
+   * as its next part; Stop completes every part. Only the tab holding the capture lock restores.
+   */
+  restore(): Promise<boolean> {
+    if (this.state.phase === "idle") this.disposed = false;
+    this.restoring ??= this.reopen()
+      .catch(() => false)
+      .finally(() => {
+        this.restoring = null;
+      });
+    return this.restoring;
+  }
+  private async reopen(): Promise<boolean> {
+    // A capture of this tab, or one still saving, keeps its own lock.
+    if (this.state.phase !== "idle" || this.state.accountDeletionBlocked) return false;
+    let restored = false;
+    try {
+      if (!(await this.claimLock(true))) return false;
+      const rows = await this.store.list(this.userId);
+      const newest = rows
+        .filter((row) => row.autoRegister && !row.completedAt)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      if (!newest) return false;
+      const captureId = newest.captureId ?? newest.id;
+      const siblings = rows
+        .filter((row) => (row.captureId ?? row.id) === captureId)
+        .sort((a, b) => (a.segment ?? 1) - (b.segment ?? 1));
+      const open = siblings.filter((row) => UNSEALED.has(row.status)).at(-1);
+      const lastSaved = siblings.reduce((at, row) => Math.max(at, Date.parse(row.updatedAt)), 0);
+      const parts: Recording[] = [];
+      for (const row of siblings) {
+        const sealed = await this.store.seal(this.userId, row.id);
+        if (sealed) parts.push(sealed);
+      }
+      if (!parts.length || this.disposed || this.accountDeleted || this.state.phase !== "idle")
+        return false;
+      // Stop was already recorded on part of it: the page went during the final save.
+      const completedAt = parts.find((part) => part.completedAt)?.completedAt;
+      if (completedAt) {
+        for (const part of parts)
+          if (!part.completedAt) await this.store.put({ ...part, completedAt });
+        return false;
+      }
+      const sessionId = parts.find((part) => part.sessionId)?.sessionId ?? null;
+      for (const [index, part] of parts.entries())
+        if (sessionId && !part.sessionId)
+          parts[index] =
+            (await this.store.updateRegistration(this.userId, part.id, { sessionId })) ?? part;
+      const last = parts.at(-1);
+      if (!last || this.disposed || this.accountDeleted || this.state.phase !== "idle")
+        return false;
+      this.session++;
+      this.intent = "paused";
+      this.lastBeat = null;
+      this.brokenAt = null;
+      this.retries = 0;
+      this.recovery = null;
+      this.stopPromise = null;
+      this.capture = null;
+      this.captures = parts.map((part) => this.restoredPart(part));
+      if (sessionId) this.attachedSessions.set(captureId, sessionId);
+      this.healthTimer ??= setInterval(() => this.checkHealth(), 1000);
+      this.report({
+        type: "restored",
+        parts: parts.length,
+        state: open?.status === "recording" ? "recording" : open ? "paused" : "sealed",
+        awayMs: Math.round(Math.min(24 * 60 * 60 * 1000, Math.max(0, Date.now() - lastSaved))),
+      });
+      this.update({ recording: last, phase: "paused", error: PAUSED_INTERRUPTION, missing: null });
+      restored = true;
+      return true;
+    } finally {
+      if (!restored) this.releaseLock();
+    }
+  }
+  private restoredPart(recording: Recording): Capture {
+    const now = this.deps.clock();
+    return {
+      recording,
+      ...RELEASED,
+      ownsStream: false,
+      manifestCommitted: true,
+      meter: this.newMeter(),
+      measuring: Promise.resolve(),
+      activeMs: recording.activeMs,
+      lastDataAt: now,
+      lastMediaAt: now,
+      probeAt: null,
+      stopSeen: true,
+      acceptLateData: false,
+      signalStop: null,
+      interrupted: recording.status === "interrupted",
+      sealed: true,
+      pending: [],
+      finalizing: null,
+      lateSaveTimer: null,
+      lateSaving: false,
+    };
+  }
+  /**
+   * D104: a tab holds this account's capture lock while it has a capture, so no other tab
+   * restores (and seals) a capture that is still live there. `ifAvailable` gives up at once.
+   */
+  private claimLock(ifAvailable: boolean): Promise<boolean> {
+    this.lockWanted = true;
+    const locks = this.deps.locks;
+    if (!locks || this.lockRelease) return Promise.resolve(true);
+    return new Promise<boolean>((granted) => {
+      Promise.resolve()
+        .then(() =>
+          locks.request(`recalino-capture:${this.userId}`, { ifAvailable }, (lock) => {
+            // Another tab holds it, the capture already ended, or an earlier request holds it.
+            if (!lock || !this.lockWanted || this.lockRelease) {
+              granted(this.lockRelease !== null);
+              return undefined;
+            }
+            return new Promise<void>((release) => {
+              this.lockRelease = release;
+              granted(true);
+            });
+          }),
+        )
+        .catch(() => granted(false));
+    });
+  }
+  private releaseLock() {
+    this.lockWanted = false;
+    this.lockRelease?.();
+    this.lockRelease = null;
   }
   async attachSession(
     sessionId: string,
@@ -935,7 +1133,8 @@ export class RecordingController {
             ...(capture?.recording ?? row),
             sessionId,
             sourceAssetId: row.sourceAssetId ?? capture?.recording.sourceAssetId ?? null,
-            activeMs: capture ? this.captureElapsed(capture) : row.activeMs,
+            // A sealed part keeps its saved duration; a restored one has no meter of its own.
+            activeMs: capture && !capture.sealed ? this.captureElapsed(capture) : row.activeMs,
             updatedAt: new Date().toISOString(),
           };
           await this.store.put(manifest);
@@ -1016,6 +1215,7 @@ export class RecordingController {
             : null,
         });
       }
+      this.releaseLock();
     });
     return this.stopPromise;
   }
@@ -1112,6 +1312,7 @@ export class RecordingController {
     this.intent = "stopped";
     this.session++;
     this.stopMonitoring();
+    this.releaseLock();
     this.captures = [];
     this.capture = null;
     this.attachedSessions.clear();

@@ -223,4 +223,55 @@ describe("capture uploader (D60, PRD-REC-02)", () => {
     expect(order.lastIndexOf("complete")).toBeLessThan(order.indexOf("close"));
     expect(test.report.mock.calls.map(([segment]) => segment)).toEqual([1, 2]);
   });
+
+  it("reopens the lease of a capture restored paused after a reload and stages its sealed parts (D104)", async () => {
+    const test = harness();
+    const first = part(1, { sourceAssetId: null });
+    const lost = part(2, { status: "interrupted" });
+    for (const row of [first, lost]) test.rows.set(row.id, row);
+    test.uploader.start();
+    test.publish({ phase: "paused", recording: lost });
+    await vi.waitFor(() => expect(test.report).toHaveBeenCalledTimes(2), { timeout: 20000 });
+    await test.uploader.idle();
+    expect(test.calls[0]).toMatchObject({
+      path: `/api/classes/${sessionId}/capture`,
+      body: { action: "open" },
+    });
+    expect(test.report.mock.calls.map(([segment, result]) => [segment, result])).toEqual([
+      [1, "staged"],
+      [2, "staged"],
+    ]);
+    // Still paused: the lease stays open until Stop.
+    expect(test.calls.some((call) => (call.body as { action?: string })?.action === "close")).toBe(
+      false,
+    );
+  });
+
+  it("closes the lease when the provider goes during capture, instead of leaving it to lapse (D104)", async () => {
+    const test = harness();
+    const current = part(1, { status: "recording", bytes: 0 });
+    test.rows.set(current.id, current);
+    test.uploader.start();
+    test.publish({ phase: "recording", recording: current });
+    await test.uploader.idle();
+    // The controller's Stop settles after the provider's cleanup asked for it.
+    let stopped!: () => void;
+    const stopping = new Promise<void>((resolve) => {
+      stopped = resolve;
+    });
+    const disposed = test.uploader.disposeAfter(stopping);
+    const last = { ...current, status: "interrupted" as const, bytes: 5 };
+    test.rows.set(current.id, { ...last, completedAt: new Date().toISOString() });
+    test.publish({ phase: "saved", recording: last });
+    stopped();
+    await disposed;
+    expect(test.calls.some((call) => (call.body as { action?: string })?.action === "close")).toBe(
+      true,
+    );
+    // Disposed afterwards: a later capture state is no longer watched.
+    const calls = test.calls.length;
+    test.publish({ phase: "recording", recording: part(1, { captureId: randomUUID() }) });
+    await test.uploader.idle();
+    expect(test.calls).toHaveLength(calls);
+  });
 });

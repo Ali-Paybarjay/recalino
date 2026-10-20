@@ -60,6 +60,11 @@ export interface RecordingStore {
   list(userId: string): Promise<Recording[]>;
   blob(userId: string, id: string): Promise<Blob>;
   remove(userId: string, id: string): Promise<void>;
+  /**
+   * D104: closes a part whose page is gone, so it can never receive more audio. Returns the
+   * part as it now stands, or null when it is missing or was removed as an empty part.
+   */
+  seal(userId: string, id: string): Promise<Recording | null>;
   updateRegistration(
     userId: string,
     id: string,
@@ -351,6 +356,56 @@ export class IndexedRecordingStore implements RecordingStore {
     });
     await done;
     if (!next) throw new Error("Local save failed");
+    return next;
+  }
+  /**
+   * A part left recording or paused, or still waiting for final audio, by a page that is gone
+   * becomes an interrupted part with every chunk it saved. One that saved neither audio nor a
+   * board photo is removed, as an empty part is when capture cannot open it. One transaction.
+   */
+  async seal(userId: string, id: string): Promise<Recording | null> {
+    const db = await this.open();
+    const tx = db.transaction(["recordings", "chunks", "photos", "deletedAccounts"], "readwrite", {
+      durability: "strict",
+    });
+    const done = committed(tx);
+    let next: Recording | null = null;
+    unlessAccountDeleted(tx, userId, () => {
+      const request = tx.objectStore("recordings").get([userId, id]);
+      request.onsuccess = () => {
+        if (request.result === undefined) return;
+        try {
+          const previous = recordingSchema.parse(request.result);
+          const open = previous.status === "recording" || previous.status === "paused";
+          if (!open && !previous.awaitingFinalData) {
+            next = previous;
+            return;
+          }
+          const photos = tx
+            .objectStore("photos")
+            .count(IDBKeyRange.bound([userId, id, ""], [userId, id, "\uffff"]));
+          photos.onsuccess = () => {
+            if (!previous.bytes && !photos.result) {
+              tx.objectStore("chunks").delete(
+                IDBKeyRange.bound([userId, id, 0], [userId, id, Number.MAX_SAFE_INTEGER]),
+              );
+              tx.objectStore("recordings").delete([userId, id]);
+              return;
+            }
+            next = recordingSchema.parse({
+              ...previous,
+              status: open ? "interrupted" : previous.status,
+              awaitingFinalData: false,
+              updatedAt: new Date().toISOString(),
+            });
+            tx.objectStore("recordings").put(next);
+          };
+        } catch {
+          tx.abort();
+        }
+      };
+    });
+    await done;
     return next;
   }
   async remove(userId: string, id: string) {

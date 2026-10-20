@@ -92,7 +92,12 @@ describe("capture across browser lifecycle changes", () => {
     expect(request).toHaveBeenCalledTimes(2);
     test.setPhase("recovering");
     expect(request).toHaveBeenCalledTimes(2);
+    // D104: a pause keeps the screen awake; only the end of capture lets it sleep.
     test.setPhase("paused");
+    await flush();
+    expect(locks[1]?.released).toBe(false);
+    expect(request).toHaveBeenCalledTimes(2);
+    test.setPhase("saved");
     await flush();
     expect(locks[1]?.released).toBe(true);
     test.dispose();
@@ -122,7 +127,7 @@ describe("capture across browser lifecycle changes", () => {
     }
   });
 
-  it("retries a stale pending screen lock after pause and resume without retaining it", async () => {
+  it("retries a stale pending screen lock after the page is hidden and shown without retaining it", async () => {
     const stale = new ScreenLock();
     const current = new ScreenLock();
     let resolve: ((lock: ScreenLock) => void) | undefined;
@@ -137,8 +142,10 @@ describe("capture across browser lifecycle changes", () => {
       .mockResolvedValue(current);
     const test = lifecycle(request);
     await flush();
-    test.setPhase("paused");
-    test.setPhase("recording");
+    test.page.visibilityState = "hidden";
+    test.page.dispatchEvent(new Event("visibilitychange"));
+    test.page.visibilityState = "visible";
+    test.page.dispatchEvent(new Event("visibilitychange"));
     resolve?.(stale);
     await flush();
     expect(stale.released).toBe(true);
@@ -147,6 +154,30 @@ describe("capture across browser lifecycle changes", () => {
     test.dispose();
     await flush();
     expect(current.released).toBe(true);
+  });
+
+  it("keeps the screen awake through a long pause and reacquires a lock the browser dropped (D104)", async () => {
+    const locks: ScreenLock[] = [];
+    const request = vi.fn(async () => {
+      const lock = new ScreenLock();
+      locks.push(lock);
+      return lock;
+    });
+    const test = lifecycle(request);
+    await flush();
+    test.setPhase("paused");
+    await flush();
+    expect(locks[0]?.released).toBe(false);
+    // The browser can drop the lock on its own; a return to the paused page takes it again.
+    await locks[0]?.release();
+    test.window.dispatchEvent(new Event("focus"));
+    await flush();
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(locks[1]?.released).toBe(false);
+    test.setPhase("saving");
+    await flush();
+    expect(locks[1]?.released).toBe(true);
+    test.dispose();
   });
 
   it("tolerates an unavailable or denied wake lock and still checks capture health", async () => {

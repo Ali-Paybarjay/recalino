@@ -81,13 +81,21 @@ export function RecordingProvider({
         ? () => navigator.wakeLock.request("screen")
         : undefined,
     });
+    // D104: an unfinished capture of a page that is gone comes back paused, never recording.
+    void value.controller.restore().then((restored) => {
+      const recording = value.controller.state.recording;
+      // Its class is created now if the lost page had no connection for it (as RecordLauncher).
+      if (restored && recording && !recording.sessionId && navigator.onLine)
+        void ensureRecordingClass(recording, value.controller).catch(() => {});
+    });
     return () => {
       unwatch();
-      uploader?.dispose();
       unwatchDiagnostics();
       unwatchMediaSession();
       value.sourceSync.dispose();
+      // Stop first: the uploader still sees the capture end and closes its lease (D104).
       value.controller.dispose();
+      void uploader?.disposeAfter(value.controller.stop());
     };
   }, [value, captureEarlyUpload]);
   return (
@@ -145,7 +153,7 @@ function RecordingIndicator() {
       </p>
       {state.phase === "saved" ? <MissingAudioNotice compact missing={state.missing} /> : null}
       {online ? (
-        <Link href="/recordings">Open recording</Link>
+        <Link href={recordingHref(state.recording)}>Open recording</Link>
       ) : (
         <span>Offline · controls are available here</span>
       )}
@@ -182,6 +190,10 @@ function RecordingIndicator() {
       ) : null}
     </aside>
   );
+}
+/** The way back to a capture (D104): its session's recording page, else this device's list. */
+export function recordingHref(recording: Recording | null) {
+  return recording?.sessionId ? `/sessions/${recording.sessionId}/record` : "/recordings";
 }
 export function useRecording() {
   const value = useContext(RecordingContext);

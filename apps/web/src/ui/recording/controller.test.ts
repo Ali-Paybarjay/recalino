@@ -1,8 +1,10 @@
 import "fake-indexeddb/auto";
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RecordingController } from "./controller";
-import { IndexedRecordingStore, type RecordingStore } from "./store";
+import { automaticRecordingClasses } from "../workspace/automatic-learning";
+import { type CaptureHealthEvent, type CaptureLocks, RecordingController } from "./controller";
+import { pendingClassRecordings } from "./processing-readiness";
+import { IndexedRecordingStore, type Recording, type RecordingStore } from "./store";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -95,7 +97,7 @@ afterEach(() => {
 
 function capture(
   store: RecordingStore = new IndexedRecordingStore(),
-  options: { segmentMs?: number } = {},
+  options: { segmentMs?: number; userId?: string; locks?: CaptureLocks } = {},
 ) {
   let time = 0;
   let acquireCalls = 0;
@@ -103,8 +105,10 @@ function capture(
   const recorders: FakeRecorder[] = [];
   const recorderStreams: MediaStream[] = [];
   const acquisitionQueue: ((stream: FakeStream) => Promise<MediaStream>)[] = [];
-  const controller = new RecordingController(randomUUID(), store, {
-    ...options,
+  const events: CaptureHealthEvent[] = [];
+  const { userId = randomUUID(), ...dependencies } = options;
+  const controller = new RecordingController(userId, store, {
+    ...dependencies,
     clock: () => time,
     getStream: async () => {
       acquireCalls += 1;
@@ -120,9 +124,11 @@ function capture(
     },
   });
   controllers.push(controller);
+  controller.onHealth((event) => events.push(event));
   return {
     controller,
     store,
+    events,
     streams,
     recorders,
     recorderStreams,
@@ -166,6 +172,7 @@ function overrideStore(local: RecordingStore, overrides: Partial<RecordingStore>
     list: local.list.bind(local),
     blob: local.blob.bind(local),
     remove: local.remove.bind(local),
+    seal: local.seal.bind(local),
     updateRegistration: local.updateRegistration.bind(local),
     ...overrides,
   };
@@ -237,6 +244,7 @@ describe("durable device capture", () => {
       list: local.list.bind(local),
       blob: local.blob.bind(local),
       remove: local.remove.bind(local),
+      seal: local.seal.bind(local),
       updateRegistration: local.updateRegistration.bind(local),
     };
     const test = capture(store);
@@ -467,6 +475,7 @@ describe("durable device capture", () => {
       list: local.list.bind(local),
       blob: local.blob.bind(local),
       remove: local.remove.bind(local),
+      seal: local.seal.bind(local),
       updateRegistration: local.updateRegistration.bind(local),
     };
     const test = capture(store);
@@ -837,6 +846,7 @@ describe("durable device capture", () => {
       list: local.list.bind(local),
       blob: local.blob.bind(local),
       remove: local.remove.bind(local),
+      seal: local.seal.bind(local),
       updateRegistration: local.updateRegistration.bind(local),
     };
     const test = capture(store);
@@ -1192,5 +1202,405 @@ describe("periodic recording segments", () => {
     });
     expect(test.recorders).toHaveLength(2);
     expect(test.acquireCalls).toBe(1);
+  });
+});
+
+const PAUSED_INTERRUPTION = "The microphone was interrupted while paused. Resume to reconnect.";
+
+describe("an interruption during a pause (D104)", () => {
+  it.each(["mute", "end"] as const)(
+    "keeps a track %s during a pause paused, seals the part and waits for Resume",
+    async (event) => {
+      const test = capture();
+      const sessionId = randomUUID();
+      await test.controller.start(sessionId);
+      test.advance(3000);
+      test.recorder.emit("first-");
+      const first = test.controller.state.recording;
+      test.controller.pause();
+      const track = test.track;
+      track[event]();
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      // The part is sealed with its audio (D60); the stop that seals it never says "restarting".
+      await vi.waitFor(async () =>
+        expect(await test.store.get(test.controller.userId, first?.id ?? "")).toMatchObject({
+          status: "interrupted",
+          chunks: 2,
+        }),
+      );
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      expect(track.stopped).toBe(true);
+      test.advance(120000);
+      test.controller.checkHealth();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(test.acquireCalls).toBe(1);
+      expect(test.recorders).toHaveLength(1);
+      test.controller.resume();
+      await waitForRecording(test);
+      expect(test.controller.state.error).toBeNull();
+      expect(test.controller.state.recording).toMatchObject({
+        segment: 2,
+        captureId: first?.captureId,
+        sessionId,
+        creationKey: first?.creationKey,
+      });
+      await test.controller.stop();
+      expect(test.controller.state.phase).toBe("saved");
+      expect(test.events.filter((item) => item.type === "pause" || item.type === "resume")).toEqual(
+        [
+          { type: "pause", part: 1 },
+          { type: "resume", part: 1, reconnect: true },
+        ],
+      );
+    },
+  );
+
+  it.each(["stop", "error"] as const)(
+    "says a recorder %s during a pause waits for Resume, not that it restarts",
+    async (event) => {
+      const test = capture();
+      await test.controller.start();
+      test.recorder.emit("first-");
+      test.controller.pause();
+      if (event === "stop") test.recorder.interrupt("tail-");
+      else test.recorder.onerror?.();
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      const id = test.controller.state.recording?.id ?? "";
+      await vi.waitFor(async () =>
+        expect((await test.store.get(test.controller.userId, id))?.status).toBe("interrupted"),
+      );
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      expect(test.acquireCalls).toBe(1);
+      await test.controller.stop();
+    },
+  );
+
+  it.each(["before", "after"] as const)(
+    "says a Pause during recovery %s a failed retry waits for Resume, and Resume continues the capture",
+    async (retry) => {
+      const test = capture();
+      const sessionId = randomUUID();
+      await test.controller.start(sessionId);
+      test.advance(3000);
+      test.recorder.emit("first-");
+      const first = test.controller.state.recording;
+      if (retry === "after") test.failNextAcquire();
+      test.track.mute();
+      expect(test.controller.state.phase).toBe("recovering");
+      if (retry === "after") {
+        await vi.waitFor(() => expect(test.acquireCalls).toBe(2));
+        await vi.waitFor(() =>
+          expect(test.controller.state.error).toMatch(/^Recording is interrupted\. Retrying/),
+        );
+      }
+      const calls = test.acquireCalls;
+      // Nothing reconnects while paused, so the recovering text never stays on the paused screen.
+      test.controller.pause();
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      await vi.waitFor(async () =>
+        expect(await test.store.get(test.controller.userId, first?.id ?? "")).toMatchObject({
+          status: "interrupted",
+          chunks: 2,
+        }),
+      );
+      test.advance(120000);
+      test.controller.checkHealth();
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      expect(test.acquireCalls).toBe(calls);
+      expect(test.recorders).toHaveLength(1);
+      expect(test.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+      test.controller.resume();
+      await waitForRecording(test);
+      expect(test.controller.state.error).toBeNull();
+      expect(test.controller.state.recording).toMatchObject({
+        segment: 2,
+        captureId: first?.captureId,
+        sessionId,
+        creationKey: first?.creationKey,
+      });
+      await test.controller.stop();
+      expect(test.controller.state.phase).toBe("saved");
+    },
+  );
+
+  it("reports a pause and a Resume of the same part without a new microphone", async () => {
+    const test = capture();
+    await test.controller.start();
+    test.controller.pause();
+    test.controller.resume();
+    expect(test.controller.state.phase).toBe("recording");
+    await test.controller.stop();
+    expect(test.events.filter((item) => item.type === "pause" || item.type === "resume")).toEqual([
+      { type: "pause", part: 1 },
+      { type: "resume", part: 1, reconnect: false },
+    ]);
+  });
+});
+
+/** The page that recorded is gone (reload or discard): only what it saved on the device stays. */
+function losePage(test: ReturnType<typeof capture>) {
+  controllers.splice(controllers.indexOf(test.controller), 1);
+  // Its timers and its capture lock end and it writes nothing more, as on removal of its account.
+  test.controller.completeAccountDeletion();
+}
+async function lockReleased(userId: string) {
+  await vi.waitFor(async () => {
+    const { held = [] } = await navigator.locks.query();
+    expect(held.some((lock) => lock.name?.endsWith(userId))).toBe(false);
+  });
+}
+
+describe("restoring an unfinished capture after the page is lost (D104)", () => {
+  it("brings back a capture without a session lost while paused, and never resumes it by itself", async () => {
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const lost = capture(store, { userId });
+    await lost.controller.start();
+    lost.advance(3000);
+    lost.recorder.emit("first-");
+    lost.controller.pause();
+    lost.recorder.emit("tail-");
+    const id = lost.controller.state.recording?.id ?? "";
+    await vi.waitFor(async () =>
+      expect(await store.get(userId, id)).toMatchObject({ chunks: 2, status: "paused" }),
+    );
+    losePage(lost);
+
+    const page = capture(store, { userId });
+    expect(await page.controller.restore()).toBe(true);
+    expect(page.controller.state).toMatchObject({ phase: "paused", error: PAUSED_INTERRUPTION });
+    expect(page.controller.state.recording).toMatchObject({
+      id,
+      sessionId: null,
+      segment: 1,
+      status: "interrupted",
+    });
+    const saved = await store.get(userId, id);
+    expect(saved).toMatchObject({ status: "interrupted", chunks: 2, awaitingFinalData: false });
+    expect(saved?.completedAt).toBeUndefined();
+    expect(await (await store.blob(userId, id)).text()).toBe("first-tail-");
+    expect(page.controller.elapsed()).toBe(saved?.activeMs);
+    expect(page.events).toContainEqual({
+      type: "restored",
+      parts: 1,
+      state: "paused",
+      awayMs: expect.any(Number),
+    });
+    // No time limit and no automatic Resume: an hour later it is still paused, microphone closed.
+    page.advance(60 * 60 * 1000);
+    page.controller.checkHealth();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(page.controller.state.phase).toBe("paused");
+    expect(page.acquireCalls).toBe(0);
+    expect(await page.controller.restore()).toBe(false);
+    await expect(page.controller.start()).rejects.toThrow("already active");
+
+    page.controller.resume();
+    await waitForRecording(page, 1000, 1);
+    expect(page.controller.state.recording).toMatchObject({
+      segment: 2,
+      captureId: id,
+      sessionId: null,
+      creationKey: saved?.creationKey,
+    });
+    page.recorder.emit("second-");
+    await page.controller.stop();
+    expect(page.controller.state).toMatchObject({ phase: "saved", error: null });
+    const rows = await store.list(userId);
+    expect(rows.map((row) => row.segment).sort()).toEqual([1, 2]);
+    for (const row of rows) expect(row.completedAt).toBeDefined();
+  });
+
+  it("brings back a session's capture lost while recording; Resume continues it as the next part", async () => {
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const sessionId = randomUUID();
+    const lost = capture(store, { userId, segmentMs: 1000 });
+    await lost.controller.start(sessionId);
+    lost.advance(1500);
+    lost.recorder.emit("first-");
+    await vi.waitFor(() => expect(lost.recorders).toHaveLength(2));
+    lost.advance(500);
+    lost.recorder.emit("second-");
+    const second = lost.controller.state.recording;
+    await vi.waitFor(async () => {
+      const rows = await store.list(userId);
+      expect(rows.map((row) => [row.segment, row.status, row.chunks]).sort()).toEqual([
+        [1, "saved", 2],
+        [2, "recording", 1],
+      ]);
+    });
+    losePage(lost);
+
+    const page = capture(store, { userId });
+    expect(await page.controller.restore()).toBe(true);
+    expect(page.controller.state.phase).toBe("paused");
+    expect(page.controller.state.recording).toMatchObject({ id: second?.id, sessionId });
+    expect(page.events).toContainEqual(
+      expect.objectContaining({ type: "restored", parts: 2, state: "recording" }),
+    );
+    page.controller.resume();
+    await waitForRecording(page, 1000, 1);
+    expect(page.controller.state.recording).toMatchObject({
+      segment: 3,
+      captureId: second?.captureId,
+      sessionId,
+      creationKey: second?.creationKey,
+    });
+    page.recorder.emit("third-");
+    await page.controller.stop();
+    expect(page.controller.state.phase).toBe("saved");
+    const rows = (await store.list(userId)).sort((a, b) => (a.segment ?? 1) - (b.segment ?? 1));
+    expect(rows.map((row) => [row.segment, row.status, row.sessionId])).toEqual([
+      [1, "saved", sessionId],
+      [2, "interrupted", sessionId],
+      [3, "saved", sessionId],
+    ]);
+    expect(new Set(rows.map((row) => row.captureId))).toEqual(new Set([second?.captureId]));
+    for (const row of rows) expect(row.completedAt).toBeDefined();
+    expect(await (await store.blob(userId, second?.id ?? "")).text()).toBe("second-");
+  });
+
+  it("removes an empty part the lost page opened and numbers the next part after the last saved one", async () => {
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const lost = capture(store, { userId, segmentMs: 1000 });
+    await lost.controller.start(randomUUID());
+    lost.advance(1500);
+    lost.recorder.emit("first-");
+    await vi.waitFor(async () => {
+      const rows = await store.list(userId);
+      expect(rows.map((row) => [row.segment, row.status, row.bytes]).sort()).toEqual([
+        [1, "saved", 11],
+        [2, "recording", 0],
+      ]);
+    });
+    const empty = lost.controller.state.recording?.id ?? "";
+    losePage(lost);
+
+    const page = capture(store, { userId });
+    expect(await page.controller.restore()).toBe(true);
+    expect(await store.get(userId, empty)).toBeNull();
+    expect(page.controller.state.recording?.segment).toBe(1);
+    page.controller.resume();
+    await waitForRecording(page, 1000, 1);
+    expect(page.controller.state.recording?.segment).toBe(2);
+    await page.controller.stop();
+  });
+
+  it("Stop right after a restore completes every part and lets the session's learning start", async () => {
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const sessionId = randomUUID();
+    const lost = capture(store, { userId, segmentMs: 1000 });
+    await lost.controller.start(sessionId);
+    lost.advance(1500);
+    lost.recorder.emit("first-");
+    await vi.waitFor(() => expect(lost.recorders).toHaveLength(2));
+    lost.recorder.emit("second-");
+    lost.controller.pause();
+    await vi.waitFor(async () =>
+      expect((await store.list(userId)).filter((row) => row.bytes > 0)).toHaveLength(2),
+    );
+    losePage(lost);
+    // Before the fix the orphan held the session forever: no part had completedAt.
+    expect(pendingClassRecordings(await store.list(userId), sessionId)).toHaveLength(2);
+
+    const page = capture(store, { userId });
+    expect(await page.controller.restore()).toBe(true);
+    await page.controller.stop();
+    expect(page.controller.state).toMatchObject({
+      phase: "saved",
+      error:
+        "Recording ended during an interruption. The recoverable parts are saved on this device.",
+    });
+    expect(page.acquireCalls).toBe(0);
+    for (const row of await store.list(userId)) {
+      expect(row.completedAt).toBeDefined();
+      expect(row.awaitingFinalData).toBeFalsy();
+      await store.updateRegistration(userId, row.id, { sourceAssetId: randomUUID() });
+    }
+    const rows = await store.list(userId);
+    expect(pendingClassRecordings(rows, sessionId)).toEqual([]);
+    expect(automaticRecordingClasses(rows).map((item) => item.sessionId)).toEqual([sessionId]);
+  });
+
+  it("finishes a Stop the lost page had begun instead of reopening the capture", async () => {
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const lost = capture(store, { userId, segmentMs: 1000 });
+    await lost.controller.start(randomUUID());
+    lost.advance(1500);
+    lost.recorder.emit("first-");
+    await vi.waitFor(() => expect(lost.recorders).toHaveLength(2));
+    lost.recorder.emit("second-");
+    await vi.waitFor(async () =>
+      expect((await store.list(userId)).filter((row) => row.bytes > 0)).toHaveLength(2),
+    );
+    losePage(lost);
+    // Stop had written completedAt on the first part only when the page went.
+    const [first, second] = (await store.list(userId)).sort(
+      (a, b) => (a.segment ?? 1) - (b.segment ?? 1),
+    );
+    const completedAt = new Date().toISOString();
+    await store.put({ ...(first as Recording), completedAt });
+    const page = capture(store, { userId });
+    expect(await page.controller.restore()).toBe(false);
+    expect(page.controller.state.phase).toBe("idle");
+    expect(await store.get(userId, second?.id ?? "")).toMatchObject({
+      status: "interrupted",
+      completedAt,
+    });
+  });
+
+  it("ignores finished captures and another account's unfinished one", async () => {
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const finished = capture(store, { userId });
+    await finished.controller.start(randomUUID());
+    finished.recorder.emit("done-");
+    await finished.controller.stop();
+    const other = capture(store);
+    await other.controller.start();
+    other.recorder.emit("other-");
+    await vi.waitFor(async () =>
+      expect((await store.list(other.controller.userId))[0]?.bytes).toBeGreaterThan(0),
+    );
+    losePage(other);
+    const page = capture(store, { userId });
+    expect(await page.controller.restore()).toBe(false);
+    expect(page.controller.state.phase).toBe("idle");
+    expect((await store.list(other.controller.userId))[0]?.status).toBe("recording");
+  });
+
+  it("restores in one tab only, and never a capture still live in another tab", async () => {
+    const locks: CaptureLocks = navigator.locks;
+    const store = new IndexedRecordingStore();
+    const userId = randomUUID();
+    const live = capture(store, { userId, locks });
+    await live.controller.start(randomUUID());
+    live.recorder.emit("live-");
+    const id = live.controller.state.recording?.id ?? "";
+    await vi.waitFor(async () => expect((await store.get(userId, id))?.chunks).toBe(1));
+    const opened = capture(store, { userId, locks });
+    expect(await opened.controller.restore()).toBe(false);
+    expect(opened.controller.state.phase).toBe("idle");
+    expect((await store.get(userId, id))?.status).toBe("recording");
+
+    losePage(live);
+    await lockReleased(userId);
+    const first = capture(store, { userId, locks });
+    const second = capture(store, { userId, locks });
+    const restored = await Promise.all([first.controller.restore(), second.controller.restore()]);
+    expect([...restored].sort()).toEqual([false, true]);
+    const [owner, idle] = restored[0] ? [first, second] : [second, first];
+    expect(owner.controller.state.phase).toBe("paused");
+    expect(idle.controller.state.phase).toBe("idle");
+    // The tab that restored keeps the capture until Stop; later tabs then find nothing to restore.
+    expect(await opened.controller.restore()).toBe(false);
+    await owner.controller.stop();
+    await lockReleased(userId);
+    expect(await idle.controller.restore()).toBe(false);
+    expect(idle.controller.state.phase).toBe("idle");
   });
 });

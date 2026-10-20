@@ -26,10 +26,11 @@ export function watchCaptureLifecycle(controller: LifecycleController, env: Capt
   let epoch = 0;
   let phase = controller.snapshot().phase;
   let reportedUnavailable = false;
+  // D104: also while paused, so a long pause does not let the screen sleep and the page be lost.
   const wantsWakeLock = () =>
     !disposed &&
     env.page.visibilityState === "visible" &&
-    ["recording", "recovering"].includes(controller.snapshot().phase);
+    ["recording", "recovering", "paused"].includes(controller.snapshot().phase);
   const observe: NonNullable<LifecycleController["observe"]> = (event) =>
     controller.observe?.(event);
   const released = () => {

@@ -87,6 +87,27 @@ describe("capture diagnostics client (PRD-PRIV-06)", () => {
     expect(send).toHaveBeenCalledTimes(3);
   });
 
+  it("sends a pause and a restore at once, so a page lost soon after has sent them (D104)", () => {
+    vi.useFakeTimers();
+    const events = source();
+    const send = vi.fn(async () => {});
+    watchCaptureDiagnostics(events, { send, userAgent: "", now: () => 0 });
+    events.emit({ type: "pause", part: 3 });
+    expect(send).toHaveBeenCalledTimes(1);
+    events.emit({ type: "resume", part: 3, reconnect: true });
+    expect(send).toHaveBeenCalledTimes(1);
+    events.emit({ type: "restored", parts: 3, state: "paused", awayMs: 120000 });
+    expect(send).toHaveBeenCalledTimes(2);
+    const sent = send.mock.calls.flatMap((call) =>
+      captureDiagnosticsSchema.parse((call as unknown[])[0]).events.map((item) => item.event),
+    );
+    expect(sent).toEqual([
+      { type: "pause", part: 3 },
+      { type: "resume", part: 3, reconnect: true },
+      { type: "restored", parts: 3, state: "paused", awayMs: 120000 },
+    ]);
+  });
+
   it("sends a board photo verdict as integer scores and the local photo id only (D72)", () => {
     vi.useFakeTimers();
     const events = source();
