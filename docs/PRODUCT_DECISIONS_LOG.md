@@ -936,6 +936,55 @@
 - `store.test.ts` (seal)، `capture-uploader.test.ts` (lease ضبط بازگشته و `disposeAfter`)، `capture-diagnostics.test.ts`، `capture-lifecycle.test.ts` و `RecordingProvider.test.ts` (`recordingHref`).
 - e2e `apps/web/e2e/recording-capture.spec.ts`: بستن tab حین Pause، بازگشت paused، Resume و Stop. در این محیط اجرا نشد و در CI اجرا می‌شود.
 
+## D105 — پایان کار با جلسه فقط با «Process this session» (2026-10-20)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-20، پس از گزارش production (چند run برای یک جلسه، و «توقف طولانی جلسه را تمام می‌کند»):
+
+- کار زبان‌آموز با یک جلسه فقط وقتی تمام می‌شود که «Process this session» را بزند. Stop فقط یک ضبط را تمام می‌کند، هرگز جلسه را. Pause هیچ‌چیز را تمام نمی‌کند.
+- جلسهٔ فقط-آپلود (بدون ضبط در اپ) هم منتظر همین دکمه می‌ماند.
+- اگر پس از پردازش ضبط یا فایلی اضافه شود، جلسه دوباره باز می‌شود و منتظر فشار بعدی می‌ماند. تا آن فشار نه نسخهٔ تازهٔ خودکاری ساخته می‌شود و نه واحد New versions کم می‌شود.
+- پیش‌فرض‌های پذیرفتهٔ مالک: رونویسی زودهنگام قطعه‌های مهرشده پیش از Process (D61) می‌ماند و سهمیه‌ای رزرو نمی‌کند. برگهٔ خلاصه و سهمیه در هر Process نشان داده می‌شود. Process تا وقتی lease ضبط باز است رد می‌شود. ردیف‌های موجود `proc.automatic_session` درخواست‌شده فرض می‌شوند تا جلسه‌های production کار کنند.
+
+این تصمیم در جای تعارض این‌ها را اصلاح می‌کند: D60 («Stop پردازش را شروع می‌کند»)، نتیجهٔ «بدون دکمهٔ پردازش» در [AUTOMATIC_LEARNING_2026-10-06](plans/AUTOMATIC_LEARNING_2026-10-06.md) و مقدمهٔ صفحهٔ ضبط در D70. با PRD بخش ۷، گام ۴ هم‌راستاست: پس از Stop وضعیت سهمیه و گزینهٔ پردازش، و هیچ AI پیش از شروع مجاز. طرح: گزینهٔ A بررسی 2026-10-20. این بخش قاعدهٔ سرور را ثبت می‌کند. رابط (دکمه، برگهٔ تأیید، صفحهٔ ضبط و کارت گام بعد) در همین PR با موج بعدی می‌آید.
+
+- **Migration (افزایشی، بدون حذف داده):** `supabase/migrations/20261020120000_proc_automatic_session_learner_request.sql` این تغییرها را روی `proc.automatic_session` می‌دهد:
+  - ستون‌های `requested_version` (integer، `> 0`) و `requested_at`، با قید جفت (هر دو null یا هر دو پر) و قید `requested_version <= request_version`.
+  - backfill: هر ردیف موجود `requested_version = request_version` و `requested_at = updated_at` می‌گیرد. شرط `where requested_version is null` دارد، پس `pnpm db:apply` آن را از دست رفتن داده نمی‌شمارد.
+  - `automatic_session_pending_idx` با شرط تازه ساخته شد. کار درس فقط وقتی معلق است که `requested_version = request_version`. گروه آپلود باز با manifest بدون درخواست هم فهرست می‌شود تا بازیابی verification آن ادامه یابد.
+  - `packages/core/src/db/types.ts` دستی و به همان شکلی که `pnpm db:types` می‌سازد به‌روز شد.
+- **معنای نسخه‌ها:** `request_version` مثل قبل با هر تغییر ماده بالا می‌رود. `requested_version` نسخه‌ای است که زبان‌آموز پردازشش را خواسته است. اگر کمتر از `request_version` باشد، جلسه دوباره باز است و منتظر زبان‌آموز می‌ماند.
+- **Core:** `requestAutomaticProcessing(db, ctx, sessionId, now, expectedRevision)` در `packages/core/src/proc/automatic-state.ts` کار «Process this session» را می‌کند:
+  - زیر `lockAccount` و پس از بررسی مالکیت، intent را می‌سازد یا به‌روز می‌کند و `requested_version = request_version` و `requested_at = now` می‌گذارد. دوباره زدن اثر دوم ندارد.
+  - هنگام گروه آپلود باز با `conflict` و دلیل `batch_open` رد می‌شود. هنگام lease ضبط باز روی هر دستگاهی با `conflict` و دلیل `capture_in_progress` رد می‌شود؛ Process هیچ ضبطی را متوقف نمی‌کند.
+  - `expectedRevision` نسخه‌ای است که زبان‌آموز در خلاصه دید. اگر با `request_version` جاری (یا ۰ برای جلسهٔ بدون intent) یکی نباشد، بدون هیچ نوشتنی با `validation_failed` و دلیل `changed_after_estimate` رد می‌شود. فشار روی نسخه‌ای که از قبل درخواست شده no-op است؛ replay فشاری که intent را ساخت هنوز ۰ را نام می‌برد و آن هم no-op است.
+  - `errors.conflict` در `packages/core/src/plt/errors.ts` حالا می‌تواند دلیل فیلدی بگیرد. نمای intent فیلدهای `requestedVersion` و `requestedAt` دارد.
+- **دروازه در همهٔ مسیرهای ساخت run درس:** این مسیرها فقط وقتی run می‌سازند که `requested_version = request_version`:
+  - `automaticLearningSync`، کار `proc.automatic_learning` و `scheduleAutomaticLearning` در `apps/web/src/server/automatic-learning.ts`. وقتی دروازه بسته است، sync فقط می‌خواند و run و جزوهٔ قبلی دست نمی‌خورند.
+  - reconcile شصت‌ثانیه‌ای (`listPendingAutomaticLearning`، همان شرط index).
+  - follow-up پس از انتشار در `finalizeAutomaticRun` (`automatic-learning-publication.ts`). اگر ماده حین run عوض شود، run جاری منتشر می‌شود و جلسه منتظر فشار بعدی می‌ماند.
+  - Retry در `/learning`، که فقط برای نسخهٔ درخواست‌شده معتبر است.
+  - `assertAutomaticRequestCurrent` در `createProcessingRun` (`packages/core/src/proc/runs.ts`)، زیر قفل حساب. run خودکار باید با نسخهٔ درخواست‌شده یکی باشد. هر run کلاس دیگر برای جلسه‌ای که intent دارد (retry از `/api/runs/[id]` و retry اپراتور هم) بدون درخواست جاری با `conflict` و دلیل `process_required` رد می‌شود. جلسهٔ قدیمی بدون intent (جریان دستی پیش از D105) تغییر نکرد.
+- **Stop و رخدادهای دیگر دیگر خودشان run نمی‌سازند:** `close` در `apps/web/src/server/capture-staging.ts` lease را آزاد می‌کند و فقط `proc.capture_transcription` (D61) را بیدار می‌کند. lapse شدن lease، پایان رونویسی D61، آپلود، تغییر منبع و تکمیل گروه آپلود فقط intent را به‌روز می‌کنند.
+- **ماده‌ای که جلسه را دوباره باز می‌کند:**
+  - ثبت قطعهٔ ضبط تازه در `POST /api/recordings` (`apps/web/src/server/recording-routes.ts`) در همان transaction ثبت، `request_version` را بالا می‌برد. replay با همان کلید اثری ندارد.
+  - جدا کردن منبع (`DELETE /api/classes/[id]/sources/[sourceId]`) و حذف کامل منبع (`DELETE /api/sources/[id]` با `mode: "all"`) در `apps/web/src/server/source-routes.ts` هم در همان transaction نسخه را بالا می‌برند تا جزوه بدون فشار تازه بازسازی نشود. `detachSource` حالا برمی‌گرداند که منبع را جدا کرد یا از قبل جدا بود.
+  - افزودن فایل بیرون از گروه آپلود اعلام‌شده (`POST /api/sources` و `POST /api/classes/[id]/sources` بدون `batchId`) و تغییر انتخاب (`PATCH /api/classes/[id]/sources/[sourceId]`) هم در همان transaction تغییر، نسخه را بالا می‌برند. replay ساخت فایل با همان کلید اثری ندارد. `updateSourceSelection` حالا مثل `createSource` در transaction فراخوان اجرا می‌شود. `notifyAutomaticLearning` پس از commit فقط کارها را بیدار می‌کند (`changed: false`)، پس شکست آن جلسهٔ پردازش‌شده را با مادهٔ تازه در حالت درخواست‌شده نگه نمی‌دارد.
+- **API:** اقدام `process` در `POST /api/classes/[id]/learning` (`apps/web/src/server/automatic-learning-routes.ts`) بدنهٔ `{ action: "process", revision }` می‌گیرد. `revision` همان `status.revision` است که برگهٔ خلاصه و سهمیه نشان داد (برای جلسهٔ بدون intent صفر). اقدام با بررسی مالکیت، کلید idempotency و همان rate limit اقدام‌های هم‌خانواده درخواست را ثبت می‌کند، sync می‌کند، کارها را بیدار می‌کند و وضعیت تازه را با 202 برمی‌گرداند. اگر پس از دیدن خلاصه ماده‌ای (مثلاً قطعه‌ای از دستگاه دیگر) ثبت شده باشد، یا همان درخواست با همان کلید پس از مادهٔ تازه دوباره برسد، پاسخ 400 با دلیل `changed_after_estimate` است و `requested_version` و `requested_at` تغییر نمی‌کنند؛ پس چیزی جز ماده‌ای که زبان‌آموز تأیید کرد پردازش و هزینه نمی‌شود. این دلیل در رابط همان متن موجود `workspaceErrors.sourcesChanged` را نشان می‌دهد. `POST /api/classes/[id]/processing` (تأیید دستی قدیمی) پس از بررسی مالکیت با `conflict` و دلیل `process_session_required` رد می‌شود و run نمی‌سازد؛ `GET` آن ماند. فهرست routeها در `routes.ts` تغییر نکرد.
+- **وضعیت برای رابط:** `AutomaticLearningStatus` دو فیلد تازه دارد و هیچ فیلدی تغییر نام نداد:
+  - `processRequest`: `not_requested` (هرگز زده نشده)، `new_material` (پس از آخرین فشار ماده تغییر کرده و جلسه دوباره باز است) یا `requested`.
+  - `requestedRevision`: نسخه‌ای که آخرین بار خواسته شد، یا null.
+  - رابط بعدی با این‌ها «Process this session» و «New sources since your notes were made» را نشان می‌دهد. `message` فعلاً همان پیام وضعیت قبلی است.
+- **متن رابط:** فقط ردّ «Stop the recording before you process this session.» (`workspaceErrors.captureInProgress` در `apps/web/src/ui/workspace/error-copy.ts`)، که `workspaceRequest` برای دلیل `capture_in_progress` نشان می‌دهد. ثبت در بخش «تأیید 2026-10-20 — پردازش صریح جلسه (D105)» [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md). رد `batch_open` همان پیام پیش‌فرض `conflict` است.
+- **آنچه تغییر نکرد:** قاعدهٔ D60 که درس از بخشی از کلاس ساخته نمی‌شود (lease باز همچنان sync را نگه می‌دارد)؛ رونویسی زودهنگام D61 بدون رزرو سهمیه؛ محاسبهٔ سهمیه و D59؛ کلید idempotency run (`automatic-learning:<selection>:<version>`). وابستگی، سرویس، رنگ، token یا فونت تازه‌ای اضافه نشد.
+- **پیامدهای شناخته‌شده:**
+  - Process دیرهنگام پس از انقضای نسخهٔ سرور صدا (D29: ۲۴ ساعت پس از رونویسی، یا ۷ روز بدون استفاده) بررسی صدا را از دست می‌دهد (`original_audio_unavailable`)؛ transcript می‌ماند و درس ساخته می‌شود.
+  - ردیف‌هایی که هنگام استقرار در میانهٔ ضبط بودند و همهٔ قطعه‌هایشان پیش از استقرار ثبت شده بود، با backfill درخواست‌شده‌اند و پس از Stop یا lapse شدن lease بدون فشار پردازش می‌شوند (پیامد پیش‌فرض backfill مالک).
+  - ردیف backfill‌شده‌ای که با `upload_batch_cancelled` مسدود است، با فشار روی همان نسخه باز نمی‌شود (فشار no-op است). مادهٔ تازه نسخه را بالا می‌برد و فشار بعدی آن را پردازش می‌کند.
+- **آزمون‌ها:**
+  - unit: `packages/core/src/proc/create-run.test.ts` (دروازه زیر قفل حساب)، `apps/web/src/server/automatic-learning.test.ts` (sync بدون درخواست هیچ run یا retry نمی‌سازد)، `apps/web/src/ui/workspace/api.test.ts` و `apps/web/src/ui/approved-copy.test.ts` (متن رد).
+  - unit: `apps/web/src/server/process-session-route.test.ts` (اقدام `process` نسخهٔ دیده‌شده را به core می‌دهد و بدون `revision` معتبر یا کلید رد می‌شود).
+  - integration، که فقط در CI اجرا می‌شوند: `packages/core/src/proc/automatic-state.int.test.ts` (درخواست، idempotency، رد نسخهٔ کهنه بدون تغییر، رد هنگام ضبط و گروه آپلود، مالکیت، قیدها و backfill)، `apps/web/src/server/automatic-learning.int.test.ts` (Stop، lapse، reconcile و Retry بدون run؛ یک فشار یک run؛ جلسهٔ فقط-آپلود؛ بازشدن پس از مادهٔ تازه بدون follow-up)، `automatic-learning-reopen.int.test.ts` (ثبت قطعه، افزودن و attach فایل، تغییر انتخاب، جدا کردن و حذف کامل منبع جلسهٔ پردازش‌شده را `new_material` می‌کنند)، `capture-lease.int.test.ts`، `cross-account/classLearning.int.test.ts` (اقدام `process`، و ارسال دوبارهٔ همان فشار با همان کلید پس از قطعهٔ تازه که 400 می‌گیرد)، `cross-account/classProcessing.int.test.ts` و `cross-account/classCapture.int.test.ts`، به‌علاوهٔ به‌روزرسانی آزمون‌های موجود.
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.

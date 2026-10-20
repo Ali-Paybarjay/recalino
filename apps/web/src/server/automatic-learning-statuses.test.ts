@@ -126,6 +126,8 @@ const intent = (
   sessionId: id(n),
   userId: ctx.userId,
   requestVersion: 2,
+  requestedVersion: 2,
+  requestedAt: "2026-10-19T10:00:00.000Z",
   batchId: null,
   lastBatchId: null,
   batchStartedAt: null,

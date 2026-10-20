@@ -11,6 +11,7 @@ import {
 import { allowance } from "@recalino/core/quota";
 import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
+import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { workspaceRequest } from "../ui/workspace/api";
 import {
@@ -196,7 +197,9 @@ it("shape (a): a run the old sweep closed as audio_upload_rejected, with no uplo
   // The production shape of 572dda3f / f36401c8 on 2026-10-12: needs_input + rejected, the
   // automatic class blocked with the same code, nothing in src.audio_upload.
   await failAwaitingUploadRun(db, learner.ctx, stuck.id, "audio_upload_rejected");
-  const intent = await requestAutomaticLearning(db, learner.ctx, classB.id, { changed: true });
+  await requestAutomaticLearning(db, learner.ctx, classB.id, { changed: true });
+  // D105: the stuck run was the learner's request (Process this session).
+  const intent = await processAutomaticFixtureSession(db, learner.ctx, classB.id);
   await updateAutomaticLearningProgress(db, learner.ctx, classB.id, intent.requestVersion, {
     state: "blocked",
     lastError: "audio_upload_rejected",
@@ -268,7 +271,9 @@ it("shape (b): a run whose upload lapsed (not started, then incomplete) is retri
       state: "needs_input",
       lastError: code,
     });
-    // The reconciler records the stop on the class, as it does after every expiry.
+    // The reconciler records the stop on the class, as it does after every expiry. D105: the
+    // lapsed run was the learner's request (Process this session).
+    await processAutomaticFixtureSession(db, learner.ctx, klass.id);
     const synced = await automaticLearningSync(db, learner.ctx, klass.id, {
       dependencies: { provider: () => options.provider, processing: () => options.job },
     });

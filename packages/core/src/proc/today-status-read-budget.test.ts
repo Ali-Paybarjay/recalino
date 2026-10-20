@@ -48,6 +48,8 @@ const intent = (
     sessionId,
     userId: ctx.userId,
     requestVersion: 1,
+    requestedVersion: 1,
+    requestedAt: at(0).toISOString(),
     batchId: null,
     lastBatchId: null,
     batchStartedAt: null,

@@ -263,6 +263,21 @@ describe("userMessage", () => {
     );
   });
 
+  it("D105: tells the learner to stop the recording before processing the session", async () => {
+    const failure = await serverRefusal("conflict", {
+      fields: { session: ["capture_in_progress"] },
+    });
+    // The sentence the owner approved word for word on 2026-10-20 (UI_COPY_PENDING.md).
+    expect(userMessage(failure, fallback)).toBe(workspaceErrors.captureInProgress);
+    expect(workspaceErrors.captureInProgress).toBe(
+      "Stop the recording before you process this session.",
+    );
+    // Without the reason, a conflict keeps its own plain sentence.
+    expect(userMessage(await serverRefusal("conflict"), fallback)).toBe(
+      new AppError("conflict").message,
+    );
+  });
+
   it("keeps a sentence the app wrote for learners, and replaces runtime errors", () => {
     expect(userMessage(new Error("This audio file exceeds the duration limit."), fallback)).toBe(
       "This audio file exceeds the duration limit.",

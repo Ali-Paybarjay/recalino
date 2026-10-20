@@ -362,7 +362,7 @@ export async function attachSource(
 }
 
 export function createRecordedSource(
-  db: Database,
+  db: Connection,
   ctx: LearnerContext,
   raw: unknown,
   now = new Date(),
@@ -1058,7 +1058,7 @@ export async function updateAutomaticSourceRoles(
 }
 
 export async function updateSourceSelection(
-  db: Database,
+  db: Connection,
   ctx: LearnerContext,
   sessionId: string,
   assetId: string,
@@ -1066,7 +1066,7 @@ export async function updateSourceSelection(
   now = new Date(),
 ) {
   const input = sourceSelectionSchema.parse(raw);
-  return db.transaction().execute(async (tx) => {
+  const update = async (tx: Tx) => {
     await lockOwner(tx, ctx);
     await assertSessionOwner(tx, ctx, sessionId);
     const source = await assetRow(tx, ctx, assetId);
@@ -1135,7 +1135,9 @@ export async function updateSourceSelection(
       await snapshot(tx, ctx, sessionId, now);
     }
     return { updated: true };
-  });
+  };
+  // A caller's transaction commits the selection with its own writes (D105: the new material).
+  return db.isTransaction ? update(db as Tx) : db.transaction().execute(update);
 }
 
 /** Reset one selected extraction after processing has verified its immutable failed-version pin. */
@@ -1217,14 +1219,16 @@ export async function detachSource(
       .where("asset_id", "=", assetId)
       .executeTakeFirst();
     if (!row) throw errors.notFound();
-    if (!row.active) return;
+    if (!row.active) return false;
     await tx
       .updateTable("src.session_source")
       .set({ active: false, changed_at: now })
       .where("id", "=", row.id)
       .execute();
     await snapshot(tx, ctx, sessionId, now);
+    return true;
   };
+  // True when this call detached the source; false when it was already detached.
   return db.isTransaction ? detach(db as Tx) : db.transaction().execute(detach);
 }
 export async function sourceReadLink(

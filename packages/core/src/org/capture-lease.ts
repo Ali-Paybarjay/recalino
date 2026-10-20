@@ -4,8 +4,10 @@ import { assertSessionOwner } from "./sessions";
 
 /**
  * D60 (owner decision 2026-10-12): while a learner records into a class, its sealed parts can be
- * registered and uploaded; automatic learning waits for Stop so no lesson is built from part of
- * a class. A lease, not a flag: a closed or frozen page stops renewing it.
+ * registered and uploaded; automatic learning waits so no lesson is built from part of a class.
+ * A lease, not a flag: a closed or frozen page stops renewing it. D105 (2026-10-20): neither Stop
+ * nor a lapsed lease starts lesson work; that waits for the learner's Process this session, which
+ * is refused while the lease is open.
  *
  * A capture renews its lease every few minutes.
  */
@@ -30,7 +32,7 @@ export async function renewCaptureLease(
     return { openUntil };
   });
 }
-/** Stop ends the lease at once, so processing starts without waiting for it to lapse. */
+/** Stop ends the lease at once; Process this session need not wait for it to lapse. */
 export async function releaseCaptureLease(
   db: Database,
   ctx: LearnerContext,

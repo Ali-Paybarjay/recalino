@@ -366,23 +366,33 @@ async function operatorRetryIntent(
   return operatorIntent;
 }
 
-/** QUA-01: an automatic request still matches its intent, with no upload batch open. */
+/**
+ * QUA-01: an automatic request still matches its intent, with no upload batch open. D105: under
+ * the account lock, every class run of a session with an intent needs the learner's request for
+ * its current material ("Process this session"); a retry or an operator retry too.
+ */
 async function assertAutomaticRequestCurrent(
   tx: Tx,
   ctx: LearnerContext,
   session: { id: string },
   input: z.infer<typeof createRunSchema>,
 ) {
+  const intent = await tx
+    .selectFrom("proc.automatic_session")
+    .select(["request_version", "requested_version", "batch_id"])
+    .where("session_id", "=", session.id)
+    .where("user_id", "=", ctx.userId)
+    .executeTakeFirst();
   if (input.automaticRequestVersion !== undefined) {
-    const intent = await tx
-      .selectFrom("proc.automatic_session")
-      .select(["request_version", "batch_id"])
-      .where("session_id", "=", session.id)
-      .where("user_id", "=", ctx.userId)
-      .executeTakeFirst();
-    if (!intent || intent.batch_id || intent.request_version !== input.automaticRequestVersion)
+    if (
+      !intent ||
+      intent.batch_id ||
+      intent.request_version !== input.automaticRequestVersion ||
+      intent.requested_version !== intent.request_version
+    )
       throw errors.validationFailed({ sources: ["changed_after_estimate"] });
-  }
+  } else if (intent && intent.requested_version !== intent.request_version)
+    throw errors.conflict({ session: ["process_required"] });
 }
 
 /** QUA-01: no other run of the class is live and none of its paid attempts is unresolved. */

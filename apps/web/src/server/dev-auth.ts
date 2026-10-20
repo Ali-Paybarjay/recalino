@@ -12,7 +12,11 @@ import { publishKnowledgeVersion } from "@recalino/core/lkm";
 import { automaticPublishNotebook } from "@recalino/core/note";
 import { createSession } from "@recalino/core/org";
 import { errors } from "@recalino/core/plt";
-import { requestAutomaticLearning, updateAutomaticLearningProgress } from "@recalino/core/proc";
+import {
+  getAutomaticLearningSession,
+  requestAutomaticProcessing,
+  updateAutomaticLearningProgress,
+} from "@recalino/core/proc";
 import { z } from "zod";
 import type { Handler } from "./api";
 import { createAuthAdmin, createAuthClient } from "./auth/supabase";
@@ -157,10 +161,15 @@ export function devSessionHandler(): Handler {
           key: `synthetic-automatic-cards:${notebook.current.id}`,
           now,
         });
-        const automatic = await requestAutomaticLearning(db, ctx, session.id, {
-          changed: false,
+        // D105: a processed class is one its learner asked to process, at the revision it has.
+        const intent = await getAutomaticLearningSession(db, ctx, session.id);
+        const automatic = await requestAutomaticProcessing(
+          db,
+          ctx,
+          session.id,
           now,
-        });
+          intent?.requestVersion ?? 0,
+        );
         await updateAutomaticLearningProgress(
           db,
           ctx,

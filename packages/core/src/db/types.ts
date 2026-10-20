@@ -647,6 +647,8 @@ export interface ProcAutomaticSession {
   last_batch_id: string | null;
   last_error: string | null;
   request_version: Generated<number>;
+  requested_at: Timestamp | null;
+  requested_version: number | null;
   run_id: string | null;
   session_id: string;
   state: Generated<string>;

@@ -8,7 +8,6 @@ import {
   assertKnownSourceInputBound,
   cancelRun,
   chargeableRunAmounts,
-  createProcessingRun,
   getProcessingRunSnapshot,
   getRun,
   listRuns,
@@ -23,7 +22,7 @@ import { getAiProvider } from "./ai";
 import { type Handler, idempotencyKey, learnerActor } from "./api";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
-import { practiceCandidatesBeforeRun, TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
+import { TEACHING_MEMORY_IN_GENERATION } from "./teaching-memory";
 
 function options() {
   const job = getProcessingDefinition();
@@ -31,34 +30,18 @@ function options() {
   // A retry uses the same options, so it follows the same D49 release switch.
   return { provider: getAiProvider(), job, teachingMemory: TEACHING_MEMORY_IN_GENERATION };
 }
+/**
+ * GET lists the class's runs. D105 (owner decision 2026-10-20): the old manual confirmation can no
+ * longer start a run around the learner's request; lesson work starts only with
+ * POST /api/classes/[id]/learning {action:"process"}, so this POST is refused for the owner.
+ */
 export function classProcessingHandler(sessionId: string): Handler {
-  return async ({ db, ctx, request, input }) => {
+  return async ({ db, ctx, request }) => {
     z.uuid().parse(sessionId);
     const learner = learnerActor(ctx);
     if (request.method === "GET") return { body: await listRuns(db, learner, sessionId) };
     await getSession(db, learner, sessionId);
-    const expected = z
-      .strictObject({
-        expectedFingerprint: z.string().min(1),
-        expectedSourcesVersion: z.number().int().nonnegative(),
-      })
-      .parse(input);
-    // D49: bounded practice points, read before the run transaction and frozen with the run.
-    const practiceCandidates = await practiceCandidatesBeforeRun(
-      db,
-      learner,
-      sessionId,
-      new Date(),
-    );
-    const run = await createProcessingRun(
-      db,
-      learner,
-      { sessionId, operationKey: idempotencyKey(request), ...expected },
-      { ...options(), practiceCandidates: async () => practiceCandidates },
-    );
-    if (run.state === "queued")
-      runJobsSoon(["proc.process"], PROCESSING_WAKE.budgetSeconds, PROCESSING_WAKE.functionSeconds);
-    return { status: 202, body: run };
+    throw errors.conflict({ processing: ["process_session_required"] });
   };
 }
 export function processingEstimateHandler(sessionId: string): Handler {

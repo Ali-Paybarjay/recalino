@@ -246,3 +246,18 @@ describe("the card image label and deletion sheet approved on 2026-10-20", () =>
     expect(section).toContain(`«${sentence}»`);
   });
 });
+
+// D105 (owner decision 2026-10-20): the refusal of Process this session while a recording of the
+// session is open. The other texts approved that day come with the interface that shows them.
+describe("the Process this session refusal approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — پردازش صریح جلسه");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+
+  it("records the refusal word for word", () => {
+    expect(start).toBeGreaterThan(-1);
+    const sentence = "Stop the recording before you process this session.";
+    expect(workspaceErrors.captureInProgress).toBe(sentence);
+    expect(section).toContain("`capture_in_progress`");
+    expect(section).toContain(`«${sentence}»`);
+  });
+});
