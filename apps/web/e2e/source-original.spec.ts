@@ -13,6 +13,7 @@ import {
   verifyUpload,
 } from "@recalino/core/src";
 import { LOCAL_APP_DATABASE_URL } from "../../../packages/core/test/local-db";
+import { expectNoAxeViolations, VIEWPORTS } from "./helpers";
 import { signInAsNewLearner } from "./learner";
 
 function deferred() {
@@ -384,7 +385,8 @@ test.describe("FR-SRC-012 original-file access", () => {
     expect(
       await page.evaluate((url) => fetch(url).then((response) => response.ok), originalUrl),
     ).toBe(true);
-    await page.locator("summary").filter({ hasText: "Delete options" }).click();
+    // D106: the line's Delete options control opens a sheet with the same choices.
+    await page.getByRole("button", { name: "Delete options", exact: true }).click();
     await page.getByLabel("I understand that deletion cannot be undone.", { exact: true }).check();
     await page.getByRole("button", { name: "Delete from all sessions", exact: true }).click();
     await deletionStarted.promise;
@@ -405,4 +407,54 @@ test.describe("FR-SRC-012 original-file access", () => {
       ),
     ).toBe(false);
   });
+});
+
+// D106: one compact line per file, with small controls, and Add more material at the end.
+test.describe("D106 session material list", () => {
+  test.describe.configure({ timeout: 120000 });
+
+  for (const viewport of [VIEWPORTS.mobile, VIEWPORTS.desktop]) {
+    test(`shows a compact line and ends with Add more material (${viewport.width}px)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      const seeded = await fixture(page);
+      let reads = 0;
+      await page.route(`**/api/sources/${seeded.sourceId}/read`, async (route) => {
+        reads++;
+        await route.abort();
+      });
+      await page.goto(`/sessions/${seeded.sessionId}/sources`);
+      const material = page.locator("#session-material");
+      const line = material
+        .getByRole("listitem")
+        .filter({ has: page.getByText("synthetic-original.txt", { exact: true }) });
+      await expect(line.getByRole("button", { name: "Open original", exact: true })).toBeEnabled();
+      await expect(
+        line.getByRole("button", { name: "Remove from session", exact: true }),
+      ).toBeVisible();
+      // A text file keeps its icon: no picture and no read link is requested for it.
+      await expect(line.locator("img")).toHaveCount(0);
+      const add = material.getByRole("button", { name: "Add more material", exact: true });
+      await expect(add).toBeEnabled();
+      await expect(material.getByRole("button", { name: "Use existing material" })).toBeEnabled();
+      const chooser = page.waitForEvent("filechooser");
+      await add.click();
+      await chooser;
+      await expect(
+        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).resolves.toBe(true);
+      await expectNoAxeViolations(page);
+
+      await line.getByRole("button", { name: "Delete options", exact: true }).click();
+      const removeAll = line.getByRole("button", { name: "Delete from all sessions", exact: true });
+      await expect(removeAll).toBeDisabled();
+      await line.getByLabel("I understand that deletion cannot be undone.").check();
+      await expect(removeAll).toBeEnabled();
+      await line.getByRole("button", { name: "Close", exact: true }).click();
+      await expect(line.getByRole("heading", { name: "Delete options" })).toHaveCount(0);
+      await expect(line.getByRole("button", { name: "Delete options", exact: true })).toBeFocused();
+      expect(reads).toBe(0);
+    });
+  }
 });

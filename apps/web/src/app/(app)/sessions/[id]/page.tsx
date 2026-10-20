@@ -115,7 +115,8 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
           ) : (
             <p>
               {session.titleSource === "date"
-                ? "Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically."
+                ? // Corrected on 2026-10-20 (D107): nothing is made until the session is processed.
+                  "Record this session or add material to get started. Your lesson title, notes and flashcards will appear after you process this session."
                 : "Open session notes to explore this lesson. Topics will appear here when included in the learning material."}
             </p>
           )}

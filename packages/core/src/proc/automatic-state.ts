@@ -2,7 +2,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import { liveAccountIdsQuery, lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
-import { assertSessionOwner, liveSessionIdsQuery } from "../org";
+import { assertSessionOwner, captureInProgress, liveSessionIdsQuery } from "../org";
 import { errors, type LearnerContext } from "../plt";
 import { batchSourceStates, detachSource, readInputContract } from "../src";
 
@@ -30,6 +30,12 @@ export interface AutomaticLearningSession {
   sessionId: string;
   userId: string;
   requestVersion: number;
+  /**
+   * D105: the request version the learner asked to process ("Process this session"); null until
+   * the first press. Below requestVersion, material changed since, so the session waits again.
+   */
+  requestedVersion: number | null;
+  requestedAt: string | null;
   batchId: string | null;
   lastBatchId: string | null;
   batchStartedAt: string | null;
@@ -46,6 +52,8 @@ function view(row: Row): AutomaticLearningSession {
     sessionId: row.session_id,
     userId: row.user_id,
     requestVersion: row.request_version,
+    requestedVersion: row.requested_version,
+    requestedAt: row.requested_at?.toISOString() ?? null,
     batchId: row.batch_id,
     lastBatchId: row.last_batch_id,
     batchStartedAt: row.batch_started_at?.toISOString() ?? null,
@@ -123,6 +131,66 @@ export async function requestAutomaticLearning(
       : await tx
           .insertInto("proc.automatic_session")
           .values({ session_id: sessionId, user_id: ctx.userId, enabled_at: now, updated_at: now })
+          .returningAll()
+          .executeTakeFirstOrThrow();
+    return view(row);
+  });
+}
+/**
+ * D105 (owner decision 2026-10-20): the learner's "Process this session". The material of the
+ * revision the learner confirmed becomes the request; a later material change raises
+ * requestVersion above it, so the session waits for another press. Pressing again changes
+ * nothing. Refused while an upload group is open or while any device records into the session
+ * (Process never stops a recording), and when the material changed after the learner saw it.
+ */
+export async function requestAutomaticProcessing(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  now: Date,
+  expectedRevision: number,
+): Promise<AutomaticLearningSession> {
+  return transaction(db, async (tx) => {
+    await lockAccount(tx, ctx.userId);
+    const previous = await owned(tx, ctx, sessionId, true);
+    if (previous?.batch_id) throw errors.conflict({ batch: ["batch_open"] });
+    if (await captureInProgress(tx, ctx, sessionId, now))
+      throw errors.conflict({ session: ["capture_in_progress"] });
+    if (
+      previous &&
+      previous.requested_version === previous.request_version &&
+      // A replay of the press that created the intent still names revision 0.
+      (expectedRevision === previous.request_version ||
+        (expectedRevision === 0 && previous.request_version === 1))
+    )
+      return view(previous);
+    // A replay after new material, or a second device's addition, is never processed unseen.
+    if ((previous?.request_version ?? 0) !== expectedRevision)
+      throw errors.validationFailed({ sources: ["changed_after_estimate"] });
+    const row = previous
+      ? await tx
+          .updateTable("proc.automatic_session")
+          .set({
+            requested_version: previous.request_version,
+            requested_at: now,
+            state: "waiting_sources",
+            last_error: null,
+            updated_at: now,
+          })
+          .where("session_id", "=", sessionId)
+          .where("user_id", "=", ctx.userId)
+          .returningAll()
+          .executeTakeFirstOrThrow()
+      : await tx
+          .insertInto("proc.automatic_session")
+          .values({
+            session_id: sessionId,
+            user_id: ctx.userId,
+            requested_version: 1,
+            requested_at: now,
+            enabled_at: now,
+            updated_at: now,
+          })
           .returningAll()
           .executeTakeFirstOrThrow();
     return view(row);
@@ -520,7 +588,11 @@ export async function updateAutomaticLearningProgress(
   });
 }
 
-/** Internal reconciliation sees only explicitly enabled, live classes with no open batch. */
+/**
+ * Internal reconciliation sees only live classes whose current material the learner asked to
+ * process (D105), plus open declared upload groups, whose verification recovery needs no request.
+ * The predicate matches automatic_session_pending_idx.
+ */
 export async function listPendingAutomaticLearning(
   db: Database | Tx,
   limit = 50,
@@ -531,14 +603,23 @@ export async function listPendingAutomaticLearning(
     .selectAll("automatic")
     .where((eb) =>
       eb.or([
-        eb("automatic.state", "in", ["waiting_sources", "waiting_upload", "processing"]),
         eb.and([
-          eb("automatic.state", "=", "blocked"),
-          eb("automatic.last_error", "in", [
-            "configuration_unavailable",
-            "storage_unavailable",
-            "settings_changed",
+          eb("automatic.requested_version", "=", eb.ref("automatic.request_version")),
+          eb.or([
+            eb("automatic.state", "in", ["waiting_sources", "waiting_upload", "processing"]),
+            eb.and([
+              eb("automatic.state", "=", "blocked"),
+              eb("automatic.last_error", "in", [
+                "configuration_unavailable",
+                "storage_unavailable",
+                "settings_changed",
+              ]),
+            ]),
           ]),
+        ]),
+        eb.and([
+          eb("automatic.batch_id", "is not", null),
+          eb("automatic.batch_manifest", "is not", null),
         ]),
       ]),
     )

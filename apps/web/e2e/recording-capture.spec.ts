@@ -69,8 +69,23 @@ test("measures real recorded audio, starts a new part after missing audio, and s
   const response = await page.request.post("/dev/auth/session", { data: { setup: "complete" } });
   expect(response.status(), await response.text()).toBe(200);
   await page.goto("/recordings");
+  // D107, PRD-REC-02/03: the session attaches by the address alone, during capture and after
+  // Stop: no request for the session's recording page (client or full navigation), no loading
+  // screen, and nothing a lost connection could turn into the browser's error page.
+  const pageRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      (request.headers().rsc || url.searchParams.has("_rsc") || request.isNavigationRequest()) &&
+      /^\/sessions\/[0-9a-f-]+\/record/.test(url.pathname)
+    )
+      pageRequests.push(request.url());
+  });
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  // D107: once its session exists, the address becomes the session's recording page; the capture
+  // goes on.
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await page.waitForTimeout(3000);
   await page.evaluate(() =>
     (window as unknown as { __silenceMicrophone(): Promise<void> }).__silenceMicrophone(),
@@ -84,12 +99,25 @@ test("measures real recorded audio, starts a new part after missing audio, and s
   // The next timeslice reveals the gap; a new part starts so its timestamps restart.
   await expect.poll(async () => (await savedParts(page)).length, { timeout: 15000 }).toBe(2);
   await page.waitForTimeout(2000);
+  expect(pageRequests).toEqual([]);
   await page.getByRole("button", { name: "Stop and save", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Record a session", exact: true })).toBeVisible();
+  // After Stop the same page stays, with its way back to the session (UX-02, D107).
+  const sessionPath = new URL(page.url()).pathname.replace(/\/record$/, "");
+  await expect(page.getByRole("link", { name: "Back to session", exact: true })).toHaveAttribute(
+    "href",
+    sessionPath,
+  );
+  // D107: Stop ends this recording, not the session.
+  await expect(page.getByRole("button", { name: "Continue recording", exact: true })).toBeVisible();
+  expect(pageRequests).toEqual([]);
 
   const parts = (await savedParts(page)).sort((a, b) => (a.segment ?? 1) - (b.segment ?? 1));
   expect(parts.map((part) => part.segment)).toEqual([1, 2]);
   for (const part of parts) expect(part.measuredBy).toBe("media");
+  // One numbered line per part, Part 1 on top; the missing minutes are on the line they belong to.
+  const lines = page.getByText(/^Part [12] · \d+:\d\d/);
+  await expect(lines).toHaveCount(2);
+  await expect(lines.first()).toHaveText(/^Part 1 · /);
   const gaps = parts.flatMap((part) => part.gaps ?? []);
   expect(gaps).toHaveLength(1);
   expect(gaps[0]?.missingMs).toBeGreaterThan(4000);
@@ -114,9 +142,10 @@ test("measures real recorded audio, starts a new part after missing audio, and s
   }
   // The recording bar on other pages carries the short summary only (client navigation keeps it).
   await page.setViewportSize({ width: 1440, height: 900 });
-  // The recording page has no navigation (UX-02, D90 as amended): "Back to Today" is the way back.
+  // The recording page has no navigation (UX-02, D90 as amended): "Back to session" is the way
+  // back, since the page took the session's recording address (D107).
   await expect(page.getByRole("navigation")).toHaveCount(0);
-  await page.getByRole("link", { name: "Back to Today", exact: true }).click();
+  await page.getByRole("link", { name: "Back to session", exact: true }).click();
   const bar = page.getByRole("complementary", { name: "Active recording" });
   await expect(bar.getByText(/^Part of this class was not recorded/)).toBeVisible();
   for (const [name, width, height] of [
@@ -153,6 +182,8 @@ test("a capture whose page is lost while paused comes back paused; Resume contin
   await next.addInitScript(fakeMicrophone);
   await next.goto("/recordings");
   await expect(next.getByRole("button", { name: "Resume recording", exact: true })).toBeVisible();
+  // D107: the restored recording's session is known, so its recording page takes over.
+  await expect(next).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await expect(
     next.getByText("The microphone was interrupted while paused. Resume to reconnect.").first(),
   ).toBeVisible();
@@ -167,7 +198,7 @@ test("a capture whose page is lost while paused comes back paused; Resume contin
   await expect(next.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
   await next.waitForTimeout(3000);
   await next.getByRole("button", { name: "Stop and save", exact: true }).click();
-  await expect(next.getByRole("button", { name: "Record a session", exact: true })).toBeVisible();
+  await expect(next.getByRole("button", { name: "Continue recording", exact: true })).toBeVisible();
   const parts = (await savedParts(next)).sort((a, b) => (a.segment ?? 1) - (b.segment ?? 1));
   expect(parts.map((part) => part.segment)).toEqual([1, 2]);
   expect(new Set(parts.map((part) => part.captureId)).size).toBe(1);

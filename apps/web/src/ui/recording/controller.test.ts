@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { randomUUID } from "node:crypto";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { automaticRecordingClasses } from "../workspace/automatic-learning";
 import { type CaptureHealthEvent, type CaptureLocks, RecordingController } from "./controller";
 import { pendingClassRecordings } from "./processing-readiness";
@@ -1602,5 +1602,146 @@ describe("restoring an unfinished capture after the page is lost (D104)", () => 
     await lockReleased(userId);
     expect(await idle.controller.restore()).toBe(false);
     expect(idle.controller.state.phase).toBe("idle");
+  });
+});
+
+// D107 (owner decision 2026-10-20): Stop ends one recording, never the session. "Continue
+// recording" starts a new recording in the same session, and its parts carry on the numbers.
+describe("part numbers across the recordings of one session (D107)", () => {
+  it("continues the numbers of the session's earlier recordings on this device", async () => {
+    const test = capture(undefined, { segmentMs: 1000 });
+    const sessionId = randomUUID();
+    await test.controller.start(sessionId);
+    test.recorder.emit("first-");
+    test.advance(1000);
+    test.controller.checkHealth();
+    await waitForRecording(test);
+    await test.controller.stop();
+    const first = test.controller.state.recording;
+    expect(first?.segment).toBe(2);
+
+    await test.controller.start(sessionId);
+    const next = test.controller.state.recording;
+    expect(next?.segment).toBe(3);
+    // A new recording keeps its own capture, so Stop and the uploader treat it on its own.
+    expect(next?.captureId).not.toBe(first?.captureId);
+    await test.controller.stop();
+    const parts = (await test.store.list(test.controller.userId)).filter(
+      (row) => row.sessionId === sessionId,
+    );
+    expect(parts.map((row) => row.segment).sort()).toEqual([1, 2, 3]);
+  });
+
+  it("starts at Part 1 in another session or without a session", async () => {
+    const test = capture();
+    await test.controller.start(randomUUID());
+    await test.controller.stop();
+    await test.controller.start(randomUUID());
+    expect(test.controller.state.recording?.segment).toBe(1);
+    await test.controller.stop();
+    await test.controller.start();
+    expect(test.controller.state.recording?.segment).toBe(1);
+    await test.controller.stop();
+  });
+
+  describe("after Remove from this device", () => {
+    // The part numbers live beside the recordings in site storage; the test's own copy.
+    beforeEach(() => {
+      const items = new Map<string, string>();
+      vi.stubGlobal("localStorage", {
+        getItem: (key: string) => items.get(key) ?? null,
+        setItem: (key: string, value: string) => void items.set(key, value),
+        removeItem: (key: string) => void items.delete(key),
+      });
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("never gives a removed part's number again: remove Part 2, then Continue is Part 3", async () => {
+      const test = capture(undefined, { segmentMs: 1000 });
+      const sessionId = randomUUID();
+      await test.controller.start(sessionId);
+      test.recorder.emit("first-");
+      test.advance(1000);
+      test.controller.checkHealth();
+      await waitForRecording(test);
+      await test.controller.stop();
+      const second = test.controller.state.recording;
+      expect(second?.segment).toBe(2);
+      // The page's Remove from this device deletes the part's audio and manifest.
+      await test.store.remove(test.controller.userId, second?.id ?? "");
+
+      await test.controller.start(sessionId, second);
+      expect(test.controller.state.recording?.segment).toBe(3);
+      await test.controller.stop();
+      const third = test.controller.state.recording;
+      // Every part of the session removed: a later recording still goes on after them.
+      for (const row of await test.store.list(test.controller.userId))
+        await test.store.remove(test.controller.userId, row.id);
+      await test.controller.start(sessionId);
+      expect(test.controller.state.recording?.segment).toBe(4);
+      expect(test.controller.state.recording?.captureId).not.toBe(third?.captureId);
+      await test.controller.stop();
+    });
+
+    it("keeps the numbers of a recording whose session became known after its parts", async () => {
+      const test = capture();
+      await test.controller.start();
+      await test.controller.stop();
+      const earlier = test.controller.state.recording;
+      if (!earlier) throw new Error("Recording did not start");
+      await test.controller.start(null, earlier);
+      await test.controller.stop();
+      const next = test.controller.state.recording;
+      expect(next?.segment).toBe(2);
+      // Removed before the session is known, then the session is created for the class key.
+      await test.store.remove(test.controller.userId, next?.id ?? "");
+      const sessionId = randomUUID();
+      await test.controller.attachSession(sessionId, earlier.captureId ?? earlier.id);
+      await test.controller.start(sessionId);
+      expect(test.controller.state.recording?.segment).toBe(3);
+      await test.controller.stop();
+    });
+
+    it("numbers as before when site storage is unavailable", async () => {
+      vi.stubGlobal("localStorage", {
+        getItem: () => {
+          throw new Error("SecurityError");
+        },
+        setItem: () => {
+          throw new Error("SecurityError");
+        },
+      });
+      const test = capture();
+      const sessionId = randomUUID();
+      await test.controller.start(sessionId);
+      await test.controller.stop();
+      await test.controller.start(sessionId);
+      expect(test.controller.state.recording?.segment).toBe(2);
+      await test.controller.stop();
+    });
+  });
+
+  it("continues a recording whose session is not known yet with the same class key", async () => {
+    const test = capture();
+    await test.controller.start();
+    await test.controller.stop();
+    const earlier = test.controller.state.recording;
+    if (!earlier) throw new Error("Recording did not start");
+
+    await test.controller.start(null, earlier);
+    const next = test.controller.state.recording;
+    expect(next?.segment).toBe(2);
+    // The same key creates (or finds) the same session for both recordings.
+    expect(next?.creationKey).toBe(earlier.creationKey);
+    expect(next?.sessionId).toBeNull();
+    await test.controller.stop();
+
+    // Once the session is known, a later recording of it continues after both.
+    const sessionId = randomUUID();
+    await test.controller.attachSession(sessionId, earlier.captureId ?? earlier.id);
+    await test.controller.attachSession(sessionId, next?.captureId ?? next?.id);
+    await test.controller.start(sessionId);
+    expect(test.controller.state.recording?.segment).toBe(3);
+    await test.controller.stop();
   });
 });

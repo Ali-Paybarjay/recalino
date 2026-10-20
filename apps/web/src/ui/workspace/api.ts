@@ -123,6 +123,8 @@ export async function workspaceRequest<T>(
       reasons.includes("new_confirmation_required")
     )
       message = workspaceErrors.sourcesChanged;
+    // D105: the server refuses Process this session while a recording of the session is open.
+    if (reasons.includes("capture_in_progress")) message = workspaceErrors.captureInProgress;
     if (reasons.includes("source_limit") || reasons.includes("input_too_large"))
       message = "Select less material or smaller ranges before processing.";
     if (reasons.includes("part_integrity_mismatch"))

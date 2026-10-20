@@ -1,0 +1,55 @@
+/* The "Process this session?" sheet (D107), with the values of frame C5 (Recalino Screens 2 -
+   Capture.dc.html): material rows at least 52px high with a divider between them, the allowance
+   lines in a surface box (18px padding, 12px radius, --shadow-sm), and the promise beside a
+   shield icon. Sizes are the tokens: the frame's 16px is --rc-text-md, 14px --rc-text-sm. */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rows li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  font-size: var(--rc-text-md);
+  border-bottom: 1px solid var(--color-divider);
+}
+.rows li:last-child {
+  border-bottom: 0;
+}
+.rows li > span:first-of-type {
+  flex: 1;
+}
+.audio svg {
+  color: var(--rc-prov-class);
+}
+.value {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+.allowance {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.promise {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 0;
+  font-size: var(--rc-text-md);
+  font-weight: 500;
+}
+.promise svg {
+  flex: none;
+  color: var(--color-accent);
+}

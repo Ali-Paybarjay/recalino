@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { type ReactNode, useRef, useState, useSyncExternalStore } from "react";
+import { useCapturingSession, useWaitingRecordings } from "../recording/RecordingProvider";
 import { settingsStrings as strings } from "../strings-settings";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
@@ -11,7 +12,9 @@ import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
 import { NotificationInvite } from "./NotificationInvite";
+import { ProcessSession } from "./ProcessSession";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
+import { sessionNavigationCopy } from "./session-navigation-copy";
 import { uploadRetryCanHelp } from "./session-state";
 import { openTermsNotice } from "./terms-notice-event";
 import { useUploadBatches } from "./UploadProvider";
@@ -195,6 +198,8 @@ function LearningStatusCard({
   retry,
   compact = false,
   id,
+  recordingHere = false,
+  savedHere = false,
   children,
 }: {
   sessionId: string;
@@ -203,6 +208,16 @@ function LearningStatusCard({
   retry: ReturnType<typeof useLearningRetry>;
   compact?: boolean;
   id?: string;
+  /**
+   * D107: this device records the session, so it does not wait for Process this session yet:
+   * capture comes first (as on the session page's next step), and the press waits for Stop.
+   */
+  recordingHere?: boolean;
+  /**
+   * D107: this session's finished parts or board photos are still on this device, so Process this
+   * session waits for them, as on the session page's next step ("Saved on this device").
+   */
+  savedHere?: boolean;
   children: ReactNode;
 }) {
   const batches = useUploadBatches(sessionId);
@@ -219,6 +234,8 @@ function LearningStatusCard({
   const attention =
     !!problem || disconnected || status.state === "blocked" || progress.needsMaterialReview;
   const pending = retry.action;
+  const captureFirst = recordingHere && !!progress.awaitingProcess;
+  const deviceFirst = !recordingHere && savedHere && !!progress.awaitingProcess;
   const heading =
     pending === "retry"
       ? "Retrying your session…"
@@ -232,7 +249,11 @@ function LearningStatusCard({
               : "Reconnect to see progress"
             : problem
               ? "Progress needs your attention"
-              : progress.heading;
+              : captureFirst
+                ? "Recording in progress"
+                : deviceFirst
+                  ? sessionNavigationCopy.savedOnDevice.heading
+                  : progress.heading;
   const guidance =
     pending === "retry"
       ? "Please wait while we restart using your saved material."
@@ -250,7 +271,13 @@ function LearningStatusCard({
                 ? status.processingReview?.requestedAt
                   ? "Your review request is recorded. Open View processing review to follow its status."
                   : "Open View processing review for the next step."
-                : progress.guidance;
+                : captureFirst
+                  ? ""
+                  : deviceFirst
+                    ? online
+                      ? sessionNavigationCopy.savedOnDevice.online
+                      : sessionNavigationCopy.savedOnDevice.offline
+                    : progress.guidance;
   return (
     <section
       ref={retry.focusRef}
@@ -273,7 +300,7 @@ function LearningStatusCard({
                 : "Your session progress"}
         </p>
         <h2>{heading}</h2>
-        <p className={styles.guidance}>{guidance}</p>
+        {guidance ? <p className={styles.guidance}>{guidance}</p> : null}
       </div>
       {pending ? (
         <div className={styles.pending}>
@@ -286,13 +313,17 @@ function LearningStatusCard({
             <Status tone="success">{retry.feedback}</Status>
           ) : null}
           {status.state === "blocked" ? <p className={styles.detail}>{status.message}</p> : null}
-          <LearningProgress
-            progress={progress}
-            compact={compact}
-            paused={!!problem || disconnected}
-            pausedLabel={disconnected ? "Waiting to reconnect" : "Check status"}
-          />
+          {/* Nothing runs while the session waits for Process this session (D107). */}
+          {progress.awaitingProcess ? null : (
+            <LearningProgress
+              progress={progress}
+              compact={compact}
+              paused={!!problem || disconnected}
+              pausedLabel={disconnected ? "Waiting to reconnect" : "Check status"}
+            />
+          )}
           {!progress.preparing &&
+          !progress.awaitingProcess &&
           status.state !== "blocked" &&
           status.state !== "ready" &&
           status.state !== "idle" ? (
@@ -327,6 +358,8 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const recovery = automaticLearningRecovery(status, termsAccepted);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
+  const [processProblem, setProcessProblem] = useState("");
+  const recordingHere = useCapturingSession(sessionId);
   const fallback: AutomaticLearningStatus = {
     state: "idle",
     revision: 0,
@@ -344,6 +377,12 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     live.uploadProgress,
     termsAccepted,
   );
+  const device = useWaitingRecordings(
+    sessionId,
+    `${status?.revision}:${status?.state}:${status?.processRequest}`,
+  );
+  // D107: not while this device records the session or still holds its parts or photos.
+  const offerProcess = !!progress.awaitingProcess && !recordingHere && !device.waiting;
   if (
     !problem &&
     (!status || status.state === "idle") &&
@@ -358,8 +397,18 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
       live={live}
       retry={retry}
       compact
+      recordingHere={recordingHere}
+      savedHere={device.waiting > 0}
     >
+      {processProblem ? <Status tone="error">{processProblem}</Status> : null}
       <Actions>
+        {offerProcess ? (
+          <ProcessSession
+            sessionId={sessionId}
+            disabled={retry.busy}
+            onProblem={setProcessProblem}
+          />
+        ) : null}
         {canRetry ? (
           <Button
             secondary={recovery.kind === "allowance" && recovery.allowance !== "covered"}
@@ -388,7 +437,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
           </Button>
         ) : null}
         <LinkButton
-          secondary={canRetry || !!recovery.kind || status?.state === "ready"}
+          secondary={canRetry || !!recovery.kind || status?.state === "ready" || offerProcess}
           href={`/sessions/${sessionId}/sources#session-progress`}
         >
           View progress
@@ -419,6 +468,18 @@ export function AutomaticLearningView({
   const recovery = automaticLearningRecovery(status, termsAccepted);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
+  const [processProblem, setProcessProblem] = useState("");
+  // D107: the material page offers the same Process this session as the session page: by the
+  // card's own measure (an upload that needs attention or is still running comes first), once
+  // this device is neither recording the session nor holding its parts or photos.
+  const recordingHere = useCapturingSession(sessionId);
+  const batches = useUploadBatches(sessionId);
+  const progress = learningProgress(status, batches, live.uploadProgress, termsAccepted);
+  const device = useWaitingRecordings(
+    sessionId,
+    `${status.revision}:${status.state}:${status.processRequest}`,
+  );
+  const offerProcess = !!progress.awaitingProcess && !recordingHere && !device.waiting;
   return (
     <div className="workspace-stack">
       <Link className="workspace-back" href={`/sessions/${sessionId}`}>
@@ -430,9 +491,19 @@ export function AutomaticLearningView({
         live={live}
         retry={retry}
         id="session-progress"
+        recordingHere={recordingHere}
+        savedHere={device.waiting > 0}
       >
         {uploadProblem ? <Status tone="error">{uploadProblem}</Status> : null}
+        {processProblem ? <Status tone="error">{processProblem}</Status> : null}
         <Actions>
+          {offerProcess ? (
+            <ProcessSession
+              sessionId={sessionId}
+              disabled={retry.busy}
+              onProblem={setProcessProblem}
+            />
+          ) : null}
           {stoppedUpload ? (
             <Button
               disabled={retry.busy}
@@ -462,7 +533,7 @@ export function AutomaticLearningView({
           ) : null}
           {status.notesReady ? (
             <LinkButton
-              secondary={status.state === "blocked"}
+              secondary={status.state === "blocked" || offerProcess}
               href={`/sessions/${sessionId}/notes`}
             >
               Session notes

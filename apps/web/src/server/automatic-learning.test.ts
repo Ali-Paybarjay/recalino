@@ -77,7 +77,13 @@ const dependencies: Partial<AutomaticLearningDependencies> = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
-  const intent = { requestVersion: 4, batchId: null, state: "waiting_sources" };
+  // D105: the learner pressed Process this session for the current material.
+  const intent = {
+    requestVersion: 4,
+    requestedVersion: 4,
+    batchId: null,
+    state: "waiting_sources",
+  };
   mocks.intent.mockResolvedValue(intent);
   mocks.readIntent.mockResolvedValue(intent);
   mocks.progress.mockResolvedValue(intent);
@@ -141,5 +147,45 @@ it("allows an already verified, intentionally deselected source to stay excluded
     dependencies,
   });
   expect(status.state).toBe("processing");
+  expect(mocks.createRun).toHaveBeenCalledOnce();
+});
+
+it.each([
+  ["never requested", null, "not_requested"],
+  ["requested before new material", 3, "new_material"],
+] as const)(
+  "D105: starts no run for a class whose current material is %s",
+  async (_name, requestedVersion, processRequest) => {
+    const intent = { requestVersion: 4, requestedVersion, batchId: null, state: "waiting_sources" };
+    mocks.intent.mockResolvedValue(intent);
+    mocks.readIntent.mockResolvedValue(intent);
+    mocks.materials.mockResolvedValue([
+      { assetId: sourceId, selected: true, verifiedAt: "2026-10-07", uploadState: "verified" },
+    ]);
+    const status = await automaticLearningSync(db, learner, sessionId, { dependencies });
+    expect(status).toMatchObject({
+      state: "waiting_sources",
+      processRequest,
+      requestedRevision: requestedVersion,
+      revision: 4,
+    });
+    // Read only: no progress write, no snapshot, no run and no retry run either.
+    const retried = await automaticLearningSync(db, learner, sessionId, {
+      retryKey: "synthetic-retry",
+      dependencies,
+    });
+    expect(retried.processRequest).toBe(processRequest);
+    expect(mocks.progress).not.toHaveBeenCalled();
+    expect(mocks.snapshot).not.toHaveBeenCalled();
+    expect(mocks.createRun).not.toHaveBeenCalled();
+  },
+);
+
+it("D105: reports a requested class as requested", async () => {
+  mocks.materials.mockResolvedValue([
+    { assetId: sourceId, selected: true, verifiedAt: "2026-10-07", uploadState: "verified" },
+  ]);
+  const status = await automaticLearningSync(db, learner, sessionId, { dependencies });
+  expect(status).toMatchObject({ processRequest: "requested", requestedRevision: 4 });
   expect(mocks.createRun).toHaveBeenCalledOnce();
 });

@@ -13,6 +13,7 @@ export {
   reconcileAutomaticLearningBatch,
   registerAutomaticLearningFile,
   requestAutomaticLearning,
+  requestAutomaticProcessing,
   skipAutomaticLearningFile,
   updateAutomaticLearningProgress,
 } from "./automatic-state";

@@ -1,5 +1,6 @@
 import { type CaptureGap, CaptureMeter, GAP_MIN_MS, type GapCause } from "./capture-meter";
 import type { MediaTimeline } from "./media-timeline";
+import { devicePartNumbers, type PartNumbers } from "./part-numbers";
 import type { PhotoQuality, PhotoVerdict } from "./photo-quality";
 import type { Recording, RecordingStore } from "./store";
 
@@ -40,6 +41,8 @@ export interface CaptureDependencies {
   readChunk?: (blob: Blob) => Promise<Uint8Array>;
   /** Web Locks; absent where the browser has none, and then every tab proceeds (D104). */
   locks?: CaptureLocks;
+  /** D107: part numbers a removed part keeps; defaults to this device's site storage. */
+  partNumbers?: PartNumbers;
 }
 /** The part of Web Locks used here: one tab at a time holds a capture of this account. */
 export type CaptureLocks = {
@@ -210,6 +213,17 @@ export class RecordingController {
     };
   };
   snapshot = () => this.state;
+  private get numbers() {
+    return this.deps.partNumbers ?? devicePartNumbers;
+  }
+  /** D107: a saved part's number is given; removing the part later does not give it again. */
+  private numberGiven(recording: Recording) {
+    this.numbers.raise(
+      this.userId,
+      [recording.creationKey, recording.sessionId],
+      recording.segment ?? 1,
+    );
+  }
   /** Capture health facts for diagnostics; never audio, text or identifiers. */
   onHealth = (listener: (event: CaptureHealthEvent) => void) => {
     this.healthListeners.add(listener);
@@ -302,7 +316,12 @@ export class RecordingController {
   private lostMessage(message: string) {
     return this.isPaused() ? PAUSED_INTERRUPTION : message;
   }
-  async start(sessionId: string | null = null) {
+  /**
+   * Starts a new recording. Its parts continue the numbers of the session's earlier recordings on
+   * this device (D107); `continued` is the recording a "Continue recording" follows, so one whose
+   * session is not known yet keeps its numbers and the key that creates the same session.
+   */
+  async start(sessionId: string | null = null, continued: Recording | null = null) {
     // A tap while an earlier capture is being restored waits for it (D104).
     if (this.restoring) await this.restoring;
     if (this.state.accountDeletionBlocked)
@@ -322,7 +341,7 @@ export class RecordingController {
     this.update({ recording: null, phase: "starting", error: null, missing: null });
     void this.claimLock(false);
     try {
-      await this.openCapture(session, null, sessionId);
+      await this.openCapture(session, null, sessionId, continued);
       if (!this.cancelled(session)) this.healthTimer = setInterval(() => this.checkHealth(), 1000);
       return this.state.recording?.id;
     } catch {
@@ -341,7 +360,12 @@ export class RecordingController {
       return undefined;
     }
   }
-  private async openCapture(session: number, previous: Recording | null, sessionId: string | null) {
+  private async openCapture(
+    session: number,
+    previous: Recording | null,
+    sessionId: string | null,
+    continued: Recording | null = null,
+  ) {
     const stream = await this.deps.getStream();
     if (this.cancelled(session) || this.isPaused()) {
       this.releaseStream(stream);
@@ -352,6 +376,12 @@ export class RecordingController {
       // Class creation can finish while microphone permission is pending.
       previous = this.captures.at(-1)?.recording ?? previous;
       sessionId = previous?.sessionId ?? sessionId;
+      // Read after the microphone request, so the tap that starts capture asks for it at once.
+      const earlier = previous ? null : await this.earlierParts(sessionId, continued);
+      if (this.cancelled(session) || this.isPaused()) {
+        this.releaseStream(stream);
+        return;
+      }
       const recorder = this.deps.makeRecorder(stream);
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -360,8 +390,8 @@ export class RecordingController {
         userId: this.userId,
         sessionId,
         captureId: previous?.captureId ?? previous?.id ?? id,
-        segment: (previous?.segment ?? 0) + 1,
-        creationKey: previous?.creationKey ?? crypto.randomUUID(),
+        segment: (previous?.segment ?? earlier?.segment ?? 0) + 1,
+        creationKey: previous?.creationKey ?? earlier?.creationKey ?? crypto.randomUUID(),
         sourceAssetId: null,
         autoRegister: true,
         autoGenerate: true,
@@ -384,6 +414,7 @@ export class RecordingController {
         await this.store.remove(this.userId, recording.id);
         return;
       }
+      this.numberGiven(recording);
       capture = {
         recording,
         recorder,
@@ -895,6 +926,7 @@ export class RecordingController {
         .then(async () => {
           await this.store.put(recording);
           capture.manifestCommitted = true;
+          this.numberGiven(recording);
         })
         .catch(() => {
           this.interrupt(
@@ -975,6 +1007,31 @@ export class RecordingController {
     this.update({ phase: "recovering", error: "Reconnecting the microphone automatically…" });
     if (capture) this.interrupt(capture, "Reconnecting the microphone automatically…");
     this.scheduleRecovery(0);
+  }
+  /**
+   * D107: the highest part number of the session's recordings on this device, and of the
+   * recording a "Continue recording" follows, with that recording's class key. Numbers then run
+   * on across Starts, as the server's material names do ("Session recording … · Part N"), and a
+   * part removed from this device keeps its number (part-numbers.ts). A device that can read
+   * neither starts at Part 1, as before.
+   */
+  private async earlierParts(sessionId: string | null, continued: Recording | null) {
+    if (!sessionId && !continued) return null;
+    const key = continued?.creationKey;
+    const capture = continued ? (continued.captureId ?? continued.id) : null;
+    const rows = await this.store.list(this.userId).catch(() => []);
+    const segment = rows
+      .filter(
+        (row) =>
+          (sessionId !== null && row.sessionId === sessionId) ||
+          (key !== undefined && row.creationKey === key) ||
+          (capture !== null && (row.captureId ?? row.id) === capture),
+      )
+      .reduce(
+        (highest, row) => Math.max(highest, row.segment ?? 1),
+        this.numbers.highest(this.userId, [sessionId, key]),
+      );
+    return { segment, creationKey: key };
   }
   /** The part a pause or Resume applies to, for diagnostics. */
   private lastPart() {
@@ -1143,6 +1200,15 @@ export class RecordingController {
             this.publish(capture);
           }
         }
+        // D107: the session goes on after every number its class key has given, removed or not.
+        const given = rows.reduce(
+          (highest, row) => Math.max(highest, row.segment ?? 1),
+          this.numbers.highest(
+            this.userId,
+            rows.map((row) => row.creationKey),
+          ),
+        );
+        if (given) this.numbers.raise(this.userId, [sessionId], given);
       });
     this.queue = attached.catch(() => {});
     await attached;

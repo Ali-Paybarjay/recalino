@@ -67,3 +67,72 @@
   max-width: none;
   max-height: none;
 }
+/* D107: one compact line per recorded part, built like a line of the session material list
+   (D106, frame C1): a 40px tile with an 8px radius, a text column and small controls at the end,
+   12px apart. The frame's 15px and 13px are --rc-text-md and --rc-text-sm. Each line keeps the
+   border and padding of .workspace-list. */
+.parts {
+  margin-block: 0;
+}
+.part {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+.partTile {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--rc-prov-class-tint);
+  color: var(--rc-prov-class);
+}
+.partText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.partTitle {
+  font-size: var(--rc-text-md);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+/* The status line; an upload failure after Stop keeps the look of a status message. */
+.partText p:not(:global(.workspace-status)) {
+  margin: 0;
+  font-size: var(--rc-text-sm);
+  color: var(--rc-text-muted);
+}
+.partActions {
+  display: flex;
+  gap: 8px;
+}
+.player {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+}
+/* On a phone the three 44px controls sit under the text, so the title keeps its width. */
+@media (max-width: 600px) {
+  .part {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+  .partActions {
+    grid-column: 2;
+  }
+}
+/* The device list on /recordings without a recording: one group per recording, under its date. */
+.group {
+  display: grid;
+  gap: 12px;
+}
+.group + .group {
+  margin-top: 20px;
+}
+.group h3 {
+  margin: 0;
+  font-size: var(--rc-text-md);
+}

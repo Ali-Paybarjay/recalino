@@ -82,7 +82,9 @@ export const errors = {
   ownershipDenied: () => new AppError("not_found", { securitySignal: "ownership_denied" }),
   validationFailed: (fields: FieldProblems) =>
     new AppError("validation_failed", { details: { fields } }),
-  conflict: () => new AppError("conflict"),
+  /** With fields, the stable reason a client can name, e.g. { session: ["capture_in_progress"] }. */
+  conflict: (fields?: FieldProblems) =>
+    new AppError("conflict", fields ? { details: { fields } } : {}),
   idempotencyMismatch: () => new AppError("idempotency_mismatch"),
   rateLimited: (retryAfterSeconds: number) =>
     new AppError("rate_limited", { headers: { "Retry-After": String(retryAfterSeconds) } }),

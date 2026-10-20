@@ -547,3 +547,35 @@ describe("learning progress", () => {
     });
   });
 });
+
+// D107 (owner decision 2026-10-20): the material page's card while the session waits for the
+// learner's Process this session; nothing moves on it, as nothing runs.
+describe("a session waiting for Process this session", () => {
+  const waiting = (patch: Partial<AutomaticLearningStatus> = {}) =>
+    status({ batchId: null, lastError: null, processRequest: "not_requested", ...patch });
+
+  it("names the wait and the press instead of a processing stage", () => {
+    const progress = learningProgress(waiting());
+    expect(progress).toMatchObject({
+      awaitingProcess: "first",
+      heading: "Ready to process",
+      guidance: "Your notes and flashcards are made when you process this session.",
+      active: false,
+      showsWait: false,
+    });
+    expect(learningProgress(waiting({ processRequest: "new_material" }))).toMatchObject({
+      awaitingProcess: "reopened",
+      heading: "New sources since your notes were made",
+      guidance: "A new version of existing notes also uses 1 New versions unit.",
+    });
+  });
+
+  it("keeps the upload progress while files of the session are still on their way", () => {
+    expect(learningProgress(waiting({ batchId: "current-batch" })).awaitingProcess).toBeNull();
+    expect(
+      learningProgress(waiting(), [batch({ entries: [entry({ phase: "uploading" })] })])
+        .awaitingProcess,
+    ).toBeNull();
+    expect(learningProgress(waiting({ processRequest: "requested" })).awaitingProcess).toBeNull();
+  });
+});

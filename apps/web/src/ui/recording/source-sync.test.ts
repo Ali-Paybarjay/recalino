@@ -175,6 +175,29 @@ describe("finalized recording source registration", () => {
     expect(test.rows.get(first.id)?.sessionId).toBe(test.rows.get(second.id)?.sessionId);
   });
 
+  // D107: "Continue recording" starts a new recording (its own capture) that numbers its parts
+  // after the session's earlier ones and shares their class key while the session is unknown.
+  it("names a continued recording's parts after the earlier ones, in one session", async () => {
+    const first = recording({ status: "interrupted" });
+    const continued = recording({
+      creationKey: first.creationKey,
+      segment: 2,
+      createdAt: "2026-10-06T11:30:00.000Z",
+    });
+    const test = fixture([continued, first]);
+    start(test);
+    await vi.waitFor(() => expect(test.sync.snapshot().count).toBe(2));
+    expect(test.classKeys.size).toBe(1);
+    const names = test.request.mock.calls
+      .filter(([path]) => path === "/api/recordings")
+      .map(([, , body]) => (body as { displayName: string }).displayName);
+    expect(names).toEqual([
+      "Session recording 2026-10-06 · Part 1",
+      "Session recording 2026-10-06 · Part 2",
+    ]);
+    expect(test.rows.get(first.id)?.sessionId).toBe(test.rows.get(continued.id)?.sessionId);
+  });
+
   it("does not register active, pre-Stop, legacy/manual, zero-byte, or late-tail recordings", async () => {
     const delayed = recording({ awaitingFinalData: true });
     const test = fixture([

@@ -10,7 +10,7 @@ import type {
 import { listCards } from "@recalino/core/card";
 import { createDatabase } from "@recalino/core/db";
 import { getNotebook, publishNotebook } from "@recalino/core/note";
-import { createSession } from "@recalino/core/org";
+import { createSession, releaseCaptureLease, renewCaptureLease } from "@recalino/core/org";
 import { type JobContext, MemoryObjectStore, sha256Hex } from "@recalino/core/plt";
 import {
   beginAutomaticLearningBatch,
@@ -19,6 +19,7 @@ import {
   createProcessingRun,
   getAutomaticLearningSession,
   getProcessingRunSnapshot,
+  listPendingAutomaticLearning,
   listRuns,
   processingJob,
   registerAutomaticLearningFile,
@@ -34,12 +35,14 @@ import {
 } from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
 import { afterAll, expect, it } from "vitest";
+import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
 import {
   automaticLearningJob,
   automaticLearningSync,
   readAutomaticLearning,
+  scheduleAutomaticLearning,
 } from "./automatic-learning";
 import { finalizeAutomaticRun } from "./automatic-learning-publication";
 
@@ -232,6 +235,11 @@ async function fixture(grant = true) {
     automaticLearningSync(db, base.ctx, session.id, {
       dependencies: { provider: () => provider, processing: () => job },
     });
+  // D105: the learner presses Process this session; the route then syncs, as here.
+  const process = async () => {
+    await processAutomaticFixtureSession(db, base.ctx, session.id);
+    return sync();
+  };
   // Other integration fixtures leave durable jobs queued. Drive only this owned class through
   // the real processing/finalization definition instead of draining another learner's jobs.
   const work = async () => {
@@ -257,6 +265,7 @@ async function fixture(grant = true) {
     job,
     addText,
     sync,
+    process,
     work,
     setWorkerProvider: (available: boolean) => {
       workerProvider = available ? provider : undefined;
@@ -273,7 +282,10 @@ it("finishes one closed upload batch once, saving notes and active cards without
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
   await f.addText("Second handout");
   await completeAutomaticLearningBatch(db, f.ctx, f.session.id, batch);
-  const [one, two] = await Promise.all([f.sync(), f.sync()]);
+  // D105: an upload-only session also waits for Process this session.
+  expect(await f.sync()).toMatchObject({ processRequest: "not_requested" });
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
+  const [one, two] = await Promise.all([f.process(), f.process()]);
   expect(one.run?.id).toBe(two.run?.id);
   expect((await getProcessingRunSnapshot(db, f.ctx, one.run?.id ?? "")).sources).toHaveLength(2);
   await f.work();
@@ -316,8 +328,11 @@ it("processes a fully received declared batch after browser closure with one run
     fileId: secondId,
     sourceId: second,
   });
-  // No client complete request follows these persisted server receipts.
-  const [one, two] = await Promise.all([f.sync(), f.sync()]);
+  // No client complete request follows these persisted server receipts: the server seals the
+  // group, and the session then waits for the learner's press (D105).
+  expect(await f.sync()).toMatchObject({ batchId: null, processRequest: "not_requested" });
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
+  const [one, two] = await Promise.all([f.process(), f.process()]);
   expect(one.run?.id).toBe(two.run?.id);
   expect(
     (await getProcessingRunSnapshot(db, f.ctx, one.run?.id ?? "")).sources
@@ -344,7 +359,7 @@ it("processes a fully received declared batch after browser closure with one run
 it("cancels an incomplete declared group without regenerating or losing earlier notes and cards", async () => {
   const f = await fixture();
   await f.addText("Earlier class material");
-  await f.sync();
+  await f.process();
   await f.work();
   const previous = await getNotebook(db, f.ctx, f.session.id),
     calls = f.provider.calls;
@@ -372,7 +387,7 @@ it("cancels an incomplete declared group without regenerating or losing earlier 
 it("updates after another material batch, preserving edits and card identities", async () => {
   const f = await fixture();
   await f.addText("Original handout");
-  await f.sync();
+  await f.process();
   await f.work();
   const before = await getNotebook(db, f.ctx, f.session.id);
   const cards = await listCards(db, f.ctx, { sessionId: f.session.id });
@@ -388,7 +403,10 @@ it("updates after another material batch, preserving edits and card identities",
   await f.addText("New material");
   await completeAutomaticLearningBatch(db, f.ctx, f.session.id, batch);
   f.provider.answer = "Updated verified answer";
-  await f.sync();
+  // D105: the session is open again; nothing regenerates until the learner presses again.
+  expect(await f.sync()).toMatchObject({ processRequest: "new_material", notesReady: true });
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
+  await f.process();
   await f.work();
   const after = await getNotebook(db, f.ctx, f.session.id);
   expect(after?.current.model.title).toBe("My own title");
@@ -399,10 +417,10 @@ it("updates after another material batch, preserving edits and card identities",
   expect(f.provider.calls).toBe(2);
 });
 
-it("queues new material added while a run is active without concurrent reservations", async () => {
+it("D105: new material added during a run waits for the learner's next press, with no follow-up run", async () => {
   const f = await fixture();
   await f.addText("First material");
-  const first = await f.sync();
+  const first = await f.process();
   f.provider.beforeGenerate = async () => {
     f.provider.beforeGenerate = undefined;
     await f.addText("Late material");
@@ -410,10 +428,24 @@ it("queues new material added while a run is active without concurrent reservati
     expect((await f.sync()).run?.id).toBe(first.run?.id);
   };
   await f.work();
-  expect((await getAutomaticLearningSession(db, f.ctx, f.session.id))?.state).toBe(
-    "waiting_sources",
-  );
-  const next = await f.sync();
+  // The requested run published its notes; the late material reopened the session.
+  expect((await getNotebook(db, f.ctx, f.session.id))?.current.model.learningItems).toHaveLength(1);
+  expect(await getAutomaticLearningSession(db, f.ctx, f.session.id)).toMatchObject({
+    state: "waiting_sources",
+    runId: first.run?.id,
+  });
+  expect(
+    await db
+      .selectFrom("plt.job")
+      .select("id")
+      .where("kind", "=", "proc.automatic_learning")
+      .where("payload", "@>", JSON.stringify({ sessionId: f.session.id }))
+      .execute(),
+  ).toEqual([]);
+  const waiting = await f.sync();
+  expect(waiting).toMatchObject({ processRequest: "new_material", run: { id: first.run?.id } });
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
+  const next = await f.process();
   expect(next.run?.id).not.toBe(first.run?.id);
   await f.work();
   expect((await getNotebook(db, f.ctx, f.session.id))?.current.model.learningItems).toHaveLength(2);
@@ -425,7 +457,8 @@ it("read-only visits do not enable old classes and insufficient allowance never 
   expect((await readAutomaticLearning(db, f.ctx, f.session.id)).state).toBe("idle");
   expect(await getAutomaticLearningSession(db, f.ctx, f.session.id)).toBeNull();
   await f.addText("Allowance test");
-  expect(await f.sync()).toMatchObject({ state: "blocked", lastError: "quota_insufficient" });
+  expect(await f.sync()).toMatchObject({ processRequest: "not_requested", lastError: null });
+  expect(await f.process()).toMatchObject({ state: "blocked", lastError: "quota_insufficient" });
   await readAutomaticLearning(db, f.ctx, f.session.id);
   expect(f.provider.calls).toBe(0);
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
@@ -434,7 +467,7 @@ it("read-only visits do not enable old classes and insufficient allowance never 
 it("reads an old ambiguous failed quota run as an operator check without changing its history", async () => {
   const f = await fixture();
   await f.addText("Old quota diagnostic material");
-  const current = await f.sync();
+  const current = await f.process();
   const runId = current.run?.id;
   if (!runId) throw new Error("Expected a synthetic processing run");
   const policy = await db.selectFrom("quota.cost_policy").selectAll().executeTakeFirstOrThrow();
@@ -562,7 +595,7 @@ it("keeps explicit retries inside the AI budget and resumes after an operator up
       },
       { actorId: "synthetic-operator", reason: "Local guarded retry regression" },
     );
-    await f.sync();
+    await f.process();
     await f.work();
     await retry();
     await f.work();
@@ -593,7 +626,7 @@ it("keeps explicit retries inside the AI budget and resumes after an operator up
 it("keeps a newer failed retry visible when an older successful callback arrives late", async () => {
   const f = await fixture();
   await f.addText("Delayed finalization material");
-  const original = await f.sync();
+  const original = await f.process();
   await f.work();
   const notes = await getNotebook(db, f.ctx, f.session.id);
   f.provider.beforeGenerate = async () => {
@@ -615,7 +648,7 @@ it("keeps a newer failed retry visible when an older successful callback arrives
 it("acknowledges the same retry key after extraction fingerprint changes without new provider work", async () => {
   const f = await fixture();
   const sourceId = await f.addText("Retry acknowledgement material");
-  await f.sync();
+  await f.process();
   await f.work();
   const retryKey = randomUUID();
   const retry = await automaticLearningSync(db, f.ctx, f.session.id, {
@@ -635,6 +668,8 @@ it("acknowledges the same retry key after extraction fingerprint changes without
     }),
   );
   await requestAutomaticLearning(db, f.ctx, f.session.id);
+  // D105: the change reopened the session; the learner presses Process this session again.
+  await processAutomaticFixtureSession(db, f.ctx, f.session.id);
   const after = await selectProcessingSourceSnapshot(db, f.ctx, f.session.id);
   expect(after.fingerprint).not.toBe(before.fingerprint);
   expect(after.sourcesVersion).toBeGreaterThan(before.sourcesVersion);
@@ -658,7 +693,7 @@ it("acknowledges the same retry key after extraction fingerprint changes without
 it("FR-PROC-003 automatically recovers a provider configuration interruption without rewriting its diagnostic", async () => {
   const f = await fixture();
   await f.addText("Recoverable configuration material");
-  await f.sync();
+  await f.process();
   f.setWorkerProvider(false);
   await f.work();
   const failed = await getAutomaticLearningSession(db, f.ctx, f.session.id);
@@ -689,7 +724,7 @@ it("FR-PROC-003 automatically recovers a provider configuration interruption wit
 it("ignores unselected upload failures while selected incomplete files still need attention", async () => {
   const f = await fixture();
   await f.addText("Selected working handout");
-  const original = await f.sync();
+  const original = await f.process();
   const unavailableId = await f.addText("Unselected failed handout.txt");
   await db
     .updateTable("src.session_source")
@@ -734,7 +769,7 @@ it("ignores unselected upload failures while selected incomplete files still nee
 it("fences a batch opened after snapshot selection before any allowance reservation", async () => {
   const f = await fixture();
   await f.addText("Guard test");
-  const intent = await requestAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+  const intent = await processAutomaticFixtureSession(db, f.ctx, f.session.id);
   await beginAutomaticLearningBatch(db, f.ctx, f.session.id, randomUUID());
   await expect(
     createProcessingRun(
@@ -772,13 +807,15 @@ async function limitedFixture(units: Parameters<typeof amounts>[0]) {
 it("D59: an update reserves only the new file and names a real shortage with its amounts (FR-QUOTA-007)", async () => {
   const f = await limitedFixture({ document: 1, regeneration: 5 });
   await f.addText("D59 first file");
-  await f.sync();
+  await f.process();
   await f.work();
   expect(await readAutomaticLearning(db, f.ctx, f.session.id, () => f.provider)).toMatchObject({
     state: "ready",
   });
   await f.addText("D59 second file");
-  const blocked = await f.sync();
+  // The material routes raise the request version for a new file; the learner presses again.
+  await requestAutomaticLearning(db, f.ctx, f.session.id);
+  const blocked = await f.process();
   expect(blocked).toMatchObject({
     state: "blocked",
     lastError: "quota_insufficient",
@@ -818,7 +855,7 @@ it("D59: an update reserves only the new file and names a real shortage with its
 it("D59: the same file in another class of the period is processed without new allowance", async () => {
   const f = await limitedFixture({ document: 1, regeneration: 5 });
   await f.addText("D59 shared recording transcript");
-  await f.sync();
+  await f.process();
   await f.work();
   const copy = await createSession(db, f.ctx, {}, { key: randomUUID() });
   const asset = await db
@@ -859,6 +896,7 @@ it("D59: the same file in another class of the period is processed without new a
       blocks: [{ id: "text", kind: "paragraph", unitId: "doc", text: "D59 shared recording" }],
     }),
   );
+  await processAutomaticFixtureSession(db, f.ctx, copy.id);
   const started = await automaticLearningSync(db, f.ctx, copy.id, {
     dependencies: { provider: () => f.provider, processing: () => f.job },
   });
@@ -876,4 +914,60 @@ it("D59: the same file in another class of the period is processed without new a
   );
   expect((await listRuns(db, f.ctx, copy.id))[0]?.state).toBe("ready");
   expect((await allowance(db, f.ctx)).consumed.document).toBe(1);
+});
+
+// D105 (owner decision 2026-10-20): the production pattern of several runs per class came from
+// Stop, a lapsed capture lease and follow-ups each starting lesson work. Only the learner's
+// "Process this session" starts it now, once, for the material present at that press.
+it("D105: Stop, a lapsed capture lease, the reconciler and Retry start no lesson until the learner presses Process", async () => {
+  const f = await fixture();
+  const learningJobs = () =>
+    db
+      .selectFrom("plt.job")
+      .select("id")
+      .where("kind", "=", "proc.automatic_learning")
+      .where("payload", "@>", JSON.stringify({ sessionId: f.session.id }))
+      .execute();
+  // Part 1 is registered while recording; the material routes raise the request version.
+  await renewCaptureLease(db, f.ctx, f.session.id);
+  await f.addText("Recorded part 1");
+  await requestAutomaticLearning(db, f.ctx, f.session.id);
+  expect((await f.sync()).processRequest).toBe("not_requested");
+  // Process never stops a recording.
+  await expect(processAutomaticFixtureSession(db, f.ctx, f.session.id)).rejects.toMatchObject({
+    code: "conflict",
+    details: { fields: { session: ["capture_in_progress"] } },
+  });
+  // Stop releases the lease: still nothing to process until the learner asks.
+  await releaseCaptureLease(db, f.ctx, f.session.id);
+  expect(await f.sync()).toMatchObject({ processRequest: "not_requested", run: null });
+  // Recording again, then the page is lost: the lease lapses on its own.
+  await renewCaptureLease(db, f.ctx, f.session.id, new Date(Date.now() - 60 * 60 * 1000));
+  await f.addText("Recorded part 2");
+  await requestAutomaticLearning(db, f.ctx, f.session.id);
+  // What the 60 s reconciler does: the class is not pending, and scheduling queues nothing.
+  expect(
+    (await listPendingAutomaticLearning(db, 250)).some((row) => row.sessionId === f.session.id),
+  ).toBe(false);
+  await scheduleAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+  expect(await learningJobs()).toEqual([]);
+  // A Retry is for a requested version only.
+  await automaticLearningSync(db, f.ctx, f.session.id, {
+    retryKey: randomUUID(),
+    dependencies: { provider: () => f.provider, processing: () => f.job },
+  });
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
+  // One press, even pressed twice, makes exactly one run with every part.
+  const [one, two] = await Promise.all([f.process(), f.process()]);
+  expect(one.run?.id).toBeTruthy();
+  expect(two.run?.id).toBe(one.run?.id);
+  expect(one).toMatchObject({ processRequest: "requested", requestedRevision: one.revision });
+  expect((await getProcessingRunSnapshot(db, f.ctx, one.run?.id ?? "")).sources).toHaveLength(2);
+  await f.work();
+  expect(await f.process()).toMatchObject({ state: "ready", run: { id: one.run?.id } });
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
+  expect(f.provider.calls).toBe(1);
+  // Once requested, a wake-up queues the lesson job again; that job finds the class ready.
+  await scheduleAutomaticLearning(db, f.ctx, f.session.id, { changed: false });
+  expect(await learningJobs()).toHaveLength(1);
 });

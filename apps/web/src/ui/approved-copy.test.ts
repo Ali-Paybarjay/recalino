@@ -6,11 +6,14 @@ import { describe, expect, it } from "vitest";
 import { adminTaskTitleCopy, pilotProgressCopy, systemHealthCopy } from "./admin/copy";
 import { allowanceHelp } from "./allowance-copy";
 import { experienceCopy } from "./experience-copy";
+import { recordingCopy } from "./recording/recording-copy";
 import { cardActionsCopy } from "./workspace/card-actions-copy";
 import { cardStatusLabel, cardTemplateLabel, mediaAssetLabel } from "./workspace/card-labels";
 import { workspaceErrors } from "./workspace/error-copy";
 import { learningProgressCopy } from "./workspace/learning-progress-copy";
 import { privacyCopy } from "./workspace/privacy-copy";
+import { processSessionCopy } from "./workspace/process-session-copy";
+import { sessionMaterialCopy } from "./workspace/session-material-copy";
 import { sourceKindLabel } from "./workspace/source-labels";
 
 const register = readFileSync(
@@ -25,6 +28,8 @@ const approved = register.slice(
 
 // The ten texts the owner approved word for word on 2026-10-19. They live in their screen's copy
 // module (not in pending-copy.ts) and are recorded here, so neither can drift from the other.
+// allowanceHelp.need and learningProgressCopy.waitEstimate were corrected on 2026-10-20 (D107);
+// the D107 tests below hold them, and this section keeps the earlier wording as history.
 const texts: Array<[string, string, string]> = [
   ["cardActionsCopy.rejected", cardActionsCopy.rejected, "Card rejected"],
   [
@@ -43,11 +48,6 @@ const texts: Array<[string, string, string]> = [
     "To keep a copy first, open a session, choose More session tools, then Download notes and cards.",
   ],
   [
-    "allowanceHelp.need",
-    allowanceHelp.need,
-    "The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.",
-  ],
-  [
     "allowanceHelp.reserved",
     allowanceHelp.reserved,
     "Reserved allowance is held while your material is processed. Only usable published output is charged.",
@@ -61,11 +61,6 @@ const texts: Array<[string, string, string]> = [
     "experienceCopy.welcome.pilotNote",
     experienceCopy.welcome.pilotNote,
     "Built for a small pilot group. Sign in with Google to start.",
-  ],
-  [
-    "learningProgressCopy.waitEstimate",
-    learningProgressCopy.waitEstimate,
-    "Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.",
   ],
   [
     "learningProgressCopy.notificationQuestion + notificationAction",
@@ -245,4 +240,124 @@ describe("the card image label and deletion sheet approved on 2026-10-20", () =>
     expect(view).not.toMatch(/server cleanup/i);
     expect(section).toContain(`«${sentence}»`);
   });
+});
+
+// D105 (owner decision 2026-10-20): the refusal of Process this session while a recording of the
+// session is open. The other texts approved that day come with the interface that shows them.
+describe("the Process this session refusal approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — پردازش صریح جلسه");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+
+  it("records the refusal word for word", () => {
+    expect(start).toBeGreaterThan(-1);
+    const sentence = "Stop the recording before you process this session.";
+    expect(workspaceErrors.captureInProgress).toBe(sentence);
+    expect(section).toContain("`capture_in_progress`");
+    expect(section).toContain(`«${sentence}»`);
+  });
+});
+
+// D106 (owner decision 2026-10-20): the add control at the end of the session material list.
+describe("the session material text approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — فهرست Session material (D106)");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+
+  it("records Add more material word for word", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(sessionMaterialCopy.addMore).toBe("Add more material");
+    expect(section).toContain(
+      `| دکمهٔ پایان فهرست Session material (\`sessionMaterialCopy.addMore\`) | فهرست خالی نیست | «${sessionMaterialCopy.addMore}» |`,
+    );
+  });
+});
+
+// D107 (owner decision 2026-10-20): the recording page's list of this session's parts and the
+// Process this session interface, with the five sentences that promised processing at Stop.
+describe("the recording page and Process this session texts approved on 2026-10-20", () => {
+  const start = register.indexOf("## تأیید 2026-10-20 — صفحهٔ ضبط و Process this session (D107)");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+  const added: Array<[string, string, string]> = [
+    ["processSessionCopy.action", processSessionCopy.action, "Process this session"],
+    ["processSessionCopy.title", processSessionCopy.title, "Process this session?"],
+    [
+      "processSessionCopy.nothingYet",
+      processSessionCopy.nothingYet,
+      "Nothing is processed or charged until you confirm.",
+    ],
+    [
+      "processSessionCopy.readyDetail",
+      processSessionCopy.readyDetail,
+      "Your notes and flashcards are made when you process this session.",
+    ],
+    ["recordingCopy.continueRecording", recordingCopy.continueRecording, "Continue recording"],
+    [
+      "recordingCopy.staysOpen",
+      recordingCopy.staysOpen,
+      "This session stays open. Record more, or process it when the class is over.",
+    ],
+    ["recordingCopy.recordedParts", recordingCopy.recordedParts, "Recorded parts"],
+    ["recordingCopy.partTitle", recordingCopy.partTitle, "Part {n} · {duration}"],
+  ];
+  const sessionPage = readFileSync(
+    resolve(import.meta.dirname, "../app/(app)/sessions/[id]/page.tsx"),
+    "utf8",
+  );
+  const topics = {
+    old: "Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically.",
+    now: "Record this session or add material to get started. Your lesson title, notes and flashcards will appear after you process this session.",
+  };
+  const corrected: Array<[string, string, string, string]> = [
+    [
+      "recordingCopy.introduction",
+      recordingCopy.introduction,
+      "Recorded parts are saved on this device and sent while you record; after Stop the last part is sent and your notes are prepared.",
+      "Recorded parts are saved on this device and sent while you record; after Stop the last part is sent, and your notes are made when you process this session.",
+    ],
+    [
+      "recordingCopy.materialNotice",
+      recordingCopy.materialNotice,
+      "After you stop recording, saved audio and board photos automatically create and save your session notes and flashcards. Audio stays on this device, with a temporary copy uploaded for transcription. Board photos are stored privately.",
+      "When you process this session, saved audio and board photos create and save your session notes and flashcards. Audio stays on this device, with a temporary copy uploaded for transcription. Board photos are stored privately.",
+    ],
+    [
+      "learningProgressCopy.waitEstimate",
+      learningProgressCopy.waitEstimate,
+      "Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.",
+      "Most sessions are ready within a few minutes after you process them. Longer recordings take longer. You can leave this page.",
+    ],
+    [
+      "allowanceHelp.need",
+      allowanceHelp.need,
+      "The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.",
+      "The pilot operator sets your allowance. Processing starts when you process a session, as long as your allowance covers it.",
+    ],
+    [
+      "app/(app)/sessions/[id]/page.tsx",
+      sessionPage.includes(topics.now) && !sessionPage.includes(topics.old) ? topics.now : "",
+      topics.old,
+      topics.now,
+    ],
+  ];
+
+  it("has its own section in the register", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(register.indexOf("## تأیید 2026-10-19 — System health")).toBeGreaterThan(start);
+  });
+
+  it.each(added)(
+    "%s is in the interface and in the register, word for word",
+    (key, text, owner) => {
+      expect(text).toBe(owner);
+      expect(section).toContain(`\`${key}\` | «${owner}»`);
+    },
+  );
+
+  it.each(corrected)(
+    "%s is corrected from the old sentence to the new one",
+    (key, text, old, now) => {
+      expect(text).toBe(now);
+      expect(section).toContain(key);
+      expect(section).toContain(`«${old}» → «${now}»`);
+    },
+  );
 });

@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { recordingHref, useCaptureQuiet } from "./RecordingProvider";
+import { recordingHref, useCaptureQuiet, useWaitingRecordings } from "./RecordingProvider";
 import type { Recording } from "./store";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/today", useRouter: () => ({}) }));
@@ -14,6 +14,21 @@ function Probe() {
 describe("useCaptureQuiet", () => {
   it("is false outside the recording provider, where nothing is being captured", () => {
     expect(renderToStaticMarkup(createElement(Probe))).toBe("<span>false</span>");
+  });
+});
+
+// D107: the notes, flashcards and material pages read it; outside the provider nothing waits.
+describe("useWaitingRecordings", () => {
+  it("finds nothing recorded or waiting on this device outside the recording provider", () => {
+    function Waiting() {
+      const device = useWaitingRecordings("session", "1");
+      return createElement(
+        "span",
+        null,
+        `${device.capturing} ${device.waiting} ${device.background}`,
+      );
+    }
+    expect(renderToStaticMarkup(createElement(Waiting))).toBe("<span>false 0 false</span>");
   });
 });
 

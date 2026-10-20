@@ -81,6 +81,9 @@ test("captures the photo rows and the zoom sheet at 390 and 1440 px", async ({ p
   await acceptMaterialNotice(page);
   await page.goto("/recordings");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
+  // D107: once its session exists, the address becomes the session's recording page (no server
+  // navigation during capture; the capture goes on).
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   const add = page.getByRole("button", { name: "Add board photo", exact: true });
   await expect(add).toBeEnabled();
   // Chromium's "mid-tier mobile" CPU (4× slowdown) while the photos are judged.

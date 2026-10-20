@@ -14,7 +14,7 @@ import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
-import { captureIsQuiet } from "./capture-phase";
+import { captureIsActive, captureIsQuiet } from "./capture-phase";
 import { CaptureUploader } from "./capture-uploader";
 import { RecordingController } from "./controller";
 import { MissingAudioNotice } from "./MissingAudioNotice";
@@ -223,6 +223,82 @@ export function useCaptureQuiet(): boolean {
     () => (value ? captureIsQuiet(value.controller.snapshot().phase) : false),
     () => false,
   );
+}
+/**
+ * D107: this device is recording this session (starting to saving). Its pages then lead back to
+ * the capture and never offer Process this session, which the server refuses while a recording is
+ * open. Safe outside the provider, like `useCaptureQuiet`.
+ */
+export function useCapturingSession(sessionId: string): boolean {
+  const value = useContext(RecordingContext);
+  return useSyncExternalStore(
+    value ? value.controller.subscribe : NO_UPDATES,
+    () => {
+      const state = value?.controller.snapshot();
+      return !!state && captureIsActive(state.phase) && state.recording?.sessionId === sessionId;
+    },
+    () => false,
+  );
+}
+const NO_STATE = () => null;
+/**
+ * D107: this session on this device. Its finished parts that have not reached the server yet and
+ * its board photos not uploaded yet are `waiting`; Process this session waits for them wherever it
+ * is offered (the session page's next step, the Session material page and the notes and
+ * flashcards notice; the recording page itself uses `sessionMaterialSent`), since a press before
+ * they arrive would process the session without them and reopen it when they do. `refresh`
+ * re-reads the device when the session's status changes. Safe outside the provider, like
+ * `useCaptureQuiet` (then nothing is recorded or waiting here).
+ */
+export function useWaitingRecordings(sessionId: string, refresh: string) {
+  const value = useContext(RecordingContext);
+  const state = useSyncExternalStore(
+    value ? value.controller.subscribe : NO_UPDATES,
+    value ? value.controller.snapshot : NO_STATE,
+    value ? value.controller.snapshot : NO_STATE,
+  );
+  const syncState = useSyncExternalStore(
+    value ? value.sourceSync.subscribe : NO_UPDATES,
+    value ? value.sourceSync.snapshot : NO_STATE,
+    value ? value.sourceSync.snapshot : NO_STATE,
+  );
+  const [rows, setRows] = useState<Recording[]>([]);
+  const [photos, setPhotos] = useState(0);
+  const phase = state?.phase;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: phase, the sync and the status are the refresh tokens; a stopped capture, an added part and an uploaded photo change the saved rows.
+  useEffect(() => {
+    if (!value) return;
+    const { store, userId } = value;
+    let active = true;
+    void store
+      .list(userId)
+      .then(async (all) => {
+        const mine = all.filter((row) => row.sessionId === sessionId);
+        const local = (await Promise.all(mine.map((row) => store.photos(userId, row.id)))).flat();
+        if (!active) return;
+        setRows(mine);
+        setPhotos(local.filter((photo) => !photo.sourceAssetId).length);
+      })
+      .catch(() => {
+        /* Device storage problems are reported by the upload tray. */
+      });
+    return () => {
+      active = false;
+    };
+  }, [value, sessionId, phase, syncState, refresh]);
+  const finished = rows.filter((row) => row.completedAt && row.bytes > 0);
+  const capturingHere =
+    !!state && captureIsActive(state.phase) && state.recording?.sessionId === sessionId;
+  const captureId = state?.recording?.captureId;
+  return {
+    capturing: capturingHere,
+    waiting: finished.filter((row) => !row.sourceAssetId).length + photos,
+    // D60: a sealed part of the running capture already registered on the server.
+    background:
+      capturingHere &&
+      !!captureId &&
+      finished.some((row) => row.captureId === captureId && row.sourceAssetId),
+  };
 }
 export async function ensureRecordingClass(recording: Recording, controller: RecordingController) {
   if (recording.sessionId) return recording.sessionId;

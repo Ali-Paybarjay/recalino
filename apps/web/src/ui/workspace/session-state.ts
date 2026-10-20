@@ -1,7 +1,8 @@
 import { settingsStrings as strings } from "../strings-settings";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
-import { learningProgress } from "./learning-progress";
+import { awaitingProcess, learningProgress } from "./learning-progress";
+import { processSessionCopy } from "./process-session-copy";
 import { sessionNavigationCopy } from "./session-navigation-copy";
 import type { UploadBatch } from "./upload-store";
 
@@ -9,9 +10,10 @@ const copy = sessionNavigationCopy;
 
 /**
  * Every action a session can name as its next step. Links carry `href`; the others are commands the
- * session card runs itself (retry, review request, saved-audio retry).
+ * session card runs itself (retry, review request, saved-audio retry, Process this session).
  */
 export type SessionActionId =
+  | "process_session"
   | "record"
   | "read_notes"
   | "practise_cards"
@@ -98,6 +100,8 @@ export function uploadRetryCanHelp(transfer: SessionAudioTransfer) {
 function actions(sessionId: string) {
   const session = `/sessions/${sessionId}`;
   return {
+    // A command (D107): the card opens the summary and allowance sheet before anything starts.
+    process_session: { id: "process_session", label: processSessionCopy.action },
     // On the session page this starts capture at once (RecordLauncher); as a link it opens the
     // session's recording page.
     record: { id: "record", label: "Record a session", href: `${session}/record` },
@@ -291,6 +295,18 @@ export function sessionNextStep(input: SessionStateInput): SessionNextStep {
       input.online === false ? copy.savedOnDevice.offline : copy.savedOnDevice.online,
       study ?? go.view_progress,
       [go.view_progress, ...studyActions],
+    );
+
+  // D105/D107: the material waits for the learner; nothing starts until Process this session,
+  // and material added after the notes waits for another press.
+  const waiting = awaitingProcess(status, notes);
+  if (waiting)
+    return step(
+      "active",
+      waiting === "reopened" ? processSessionCopy.reopenedHeading : processSessionCopy.readyHeading,
+      waiting === "reopened" ? processSessionCopy.reopenedDetail : processSessionCopy.readyDetail,
+      go.process_session,
+      [go.add_material, ...studyActions],
     );
 
   if (progress.active) {

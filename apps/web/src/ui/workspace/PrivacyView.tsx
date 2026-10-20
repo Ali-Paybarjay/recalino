@@ -122,7 +122,8 @@ export function PrivacyView({
         new IndexedUploadStore().removeAccount(userId),
         new IndexedManualAudioStore().removeAccount(userId),
         Promise.resolve().then(() => {
-          const prefixes = ["batch", "photos", "recording"].map(
+          // "parts": the recording part numbers a removed part keeps (D107, part-numbers.ts).
+          const prefixes = ["batch", "photos", "recording", "parts"].map(
             (kind) => `recalino:learning-${kind}:${userId}:`,
           );
           const keys = Array.from({ length: localStorage.length }, (_, index) =>

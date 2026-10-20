@@ -2,6 +2,7 @@ import { retryAllowanceCopy } from "../retry-allowance-copy";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { learningProgressCopy } from "./learning-progress-copy";
+import { processSessionCopy } from "./process-session-copy";
 import type { UploadBatch, UploadEntry } from "./upload-store";
 
 export type LearningStage = "upload" | "verify" | "process" | "ready";
@@ -23,6 +24,8 @@ export interface LearningProgress {
   active: boolean;
   preparing: boolean;
   needsMaterialReview: boolean;
+  /** D107: the material waits for the learner's "Process this session" (see awaitingProcess). */
+  awaitingProcess: "first" | "reopened" | null;
   steps: {
     id: LearningStage;
     label: string;
@@ -42,6 +45,29 @@ const stages: { id: LearningStage; label: string }[] = [
   { id: "process", label: "Create notes & flashcards" },
   { id: "ready", label: "Ready" },
 ];
+
+/**
+ * D105/D107: the session's material waits for the learner's "Process this session", the only way
+ * lesson work starts: "first" before any press, "reopened" when material arrived after the notes
+ * (or after the last press). A status without the field (an older server, a fixture) never waits.
+ * An upload group still open, or nothing selected, is not ready to process yet.
+ */
+export function awaitingProcess(
+  status: AutomaticLearningStatus | null | undefined,
+  notes = false,
+): "first" | "reopened" | null {
+  if (!status?.processRequest || status.processRequest === "requested") return null;
+  if (
+    status.state !== "waiting_sources" ||
+    status.batchId ||
+    status.lastError === "batch_open" ||
+    status.lastError === "select_at_least_one"
+  )
+    return null;
+  return status.processRequest === "new_material" || notes || status.notesReady
+    ? "reopened"
+    : "first";
+}
 
 function bytes(value: number) {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
@@ -198,11 +224,18 @@ export function learningProgress(
   );
   const idle =
     (status.state === "idle" || status.lastError === "select_at_least_one") && !localWork;
-  const active = !idle && !blocked && !ready;
+  const waiting = needsMaterialReview || localWork ? null : awaitingProcess(status);
+  // Nothing runs while the session waits for the learner, so nothing moves on the card.
+  const active = !idle && !blocked && !ready && !waiting;
   let heading: string;
   let guidance: string;
   let showsWait = false;
-  if (needsMaterialReview) {
+  if (waiting) {
+    heading =
+      waiting === "reopened" ? processSessionCopy.reopenedHeading : processSessionCopy.readyHeading;
+    guidance =
+      waiting === "reopened" ? processSessionCopy.reopenedDetail : processSessionCopy.readyDetail;
+  } else if (needsMaterialReview) {
     heading = "Your upload needs attention";
     guidance = "Open Review material and retry the affected file to continue.";
   } else if (blocked) {
@@ -324,6 +357,7 @@ export function learningProgress(
     active,
     preparing,
     needsMaterialReview,
+    awaitingProcess: waiting,
     steps: stages.map((step) => ({
       ...step,
       state:
