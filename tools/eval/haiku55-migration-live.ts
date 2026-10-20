@@ -29,6 +29,7 @@ import { usesContentKnowledgeContract } from "../../packages/core/src/proc/knowl
 import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/knowledge-generation";
 import { generateCanonicalKnowledge } from "../../packages/core/src/proc/knowledge-generation-step";
 import { buildKnowledgeStudyRepairInput } from "../../packages/core/src/proc/knowledge-study-repair";
+import { LESSON_PRODUCTION_MAXIMUM } from "../../packages/core/src/proc/lesson-budget";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import { migrationHoldoutSets } from "./haiku55-holdout-registry";
 import {
@@ -898,11 +899,13 @@ for (const task of schedule) {
     await save(resolve(dossier, "canonical-generated.json"), generated);
     let validated: ReturnType<typeof validateGeneratedKnowledge>;
     try {
+      // D110: strict, as the model wrote it (no budget here, so the D62 limit of 18).
       validated = validateGeneratedKnowledge(
         generated,
         data.sources,
         data.missingSourceIds,
         data.explanationLanguage,
+        { productionLimit: LESSON_PRODUCTION_MAXIMUM },
       );
     } catch (error) {
       const validationFailure = failure(error);
@@ -941,6 +944,7 @@ for (const task of schedule) {
         data.sources,
         data.missingSourceIds,
         data.explanationLanguage,
+        { productionLimit: LESSON_PRODUCTION_MAXIMUM },
       );
     }
     const projected = finalizeGeneratedStudyPractice(
@@ -966,6 +970,8 @@ for (const task of schedule) {
       finalLocalPass: true,
       firstGenerationPass: calls === 1,
       projection: projected.audit,
+      // D110: the guard's gap rebuilds, kept apart from the model's own first pass.
+      guardGapsRebuilt: validated.audit.gapsRebuilt,
       productionItems: projected.model.learningItems.filter(
         (item) => item.study?.set === "production",
       ).length,

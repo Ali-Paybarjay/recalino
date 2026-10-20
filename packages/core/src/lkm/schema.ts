@@ -8,6 +8,11 @@ import { studyLexicalTarget, studyLexicalTargetMatches } from "./study-target";
 export const LKM_SCHEMA_VERSION = "1";
 /** Most class summary claims one knowledge model may hold. */
 export const KNOWLEDGE_SUMMARY_LIMIT = 100;
+/**
+ * D78: the most production cards any class may keep (18 plus one per marked span). Each lesson's
+ * own limit (18 without marks) is enforced where the lesson is generated (D110).
+ */
+export const STUDY_PRODUCTION_CEILING = 25;
 const id = z.string().min(1).max(100);
 const text = z.string().min(1).max(20000);
 const integer = z.number().int().nonnegative();
@@ -240,7 +245,10 @@ export function validateKnowledgeModel(
       }
     }
   }
-  if (model.learningItems.filter((item) => item.study?.set === "production").length > 18)
+  if (
+    model.learningItems.filter((item) => item.study?.set === "production").length >
+    STUDY_PRODUCTION_CEILING
+  )
     fail("study_core_limit");
   for (const mistake of model.classNotes?.mistakes?.items ?? []) {
     if (

@@ -6,6 +6,7 @@ import {
   stageRun,
   syntheticJob,
 } from "../../../test/processing-run";
+import { emptyStudyOutputAudit } from "../study-output-guard";
 import type { LessonInput } from "./lesson-input";
 import { publishLesson } from "./publish";
 
@@ -38,6 +39,7 @@ const lesson = (missing: string[]) =>
   ({ extracted: [withText, empty], missing, practiceFocus: [] }) as unknown as LessonInput;
 const classified = [{ ...withText, role: "user_notes" }, empty] as never;
 const model = { learningItems: [] } as never;
+const studyOutput = emptyStudyOutputAudit(18);
 
 beforeEach(() => {
   for (const mock of Object.values(m)) mock.mockReset();
@@ -61,6 +63,7 @@ describe("publishLesson", () => {
         classified,
         model,
         practiceAudit: { applied: false } as never,
+        studyOutput,
       }),
     ).toBe("published");
     expect(m.assertSourcesLive).toHaveBeenCalledWith(expect.anything(), run.ctx, [
@@ -75,6 +78,16 @@ describe("publishLesson", () => {
     expect(published).toMatchObject({ runId: RUN_ID, sessionId: SESSION_ID, model });
     expect(published.generation).not.toHaveProperty("studyPractice");
     expect(published.generation).not.toHaveProperty("teachingAdaptation");
+    // D110: the guard's version and counts are recorded whenever it ran, even with no change.
+    expect(published.generation.studyOutput).toEqual({
+      version: "study-output-guard-1",
+      productionLimit: 18,
+      gapsRebuilt: { spacing: 0, derivedBlank: 0 },
+      droppedItems: {},
+      trimmedOverLimit: 0,
+      unlinkedMistakes: 0,
+      assemblyOmitted: {},
+    });
     expect(m.settle.mock.calls[0]?.[2]).toMatchObject({
       reservationId: RESERVATION,
       held,
@@ -93,6 +106,7 @@ describe("publishLesson", () => {
       classified,
       model,
       practiceAudit: { applied: true } as never,
+      studyOutput,
     });
     expect(m.publish.mock.calls[0]?.[2].generation.studyPractice).toEqual({ applied: true });
     expect(calls).toContainEqual(["set", expect.objectContaining({ state: "partial_ready" })]);

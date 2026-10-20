@@ -18,6 +18,7 @@ import {
 import type { RunSource } from "./contracts";
 import { finalizeGeneratedStudyPractice } from "./generated-study-practice";
 import {
+  type AssemblyTolerance,
   buildKnowledgeGenerationInput,
   classQuotationSources,
   gapHidesWholeTarget,
@@ -27,6 +28,7 @@ import {
   lexicalIpaExceedsHeadword,
   quotesClassSources,
 } from "./knowledge-generation";
+import { generateCanonicalKnowledge } from "./knowledge-generation-step";
 
 function first<T>(values: readonly T[]): T {
   const value = values[0];
@@ -2673,5 +2675,131 @@ describe("knowledge generation request checks", () => {
     expect(Object.keys(confirmed.schema.shape.classNotes.shape)).toContain("mistakes");
     expect(confirmed.system).toContain("server-confirmed handwriting keys authorize");
     expect(plain.system).toContain("There is no confirmed handwritten authorship");
+  });
+});
+
+describe("D110 assembly item tolerance and the D78 wire maximum", () => {
+  const failure = (code: string) =>
+    expect.objectContaining({ details: { fields: { output: [code] } } });
+  // The incident's run-2 shape: one item whose gap leaves part of its target visible.
+  const partial = () => ({
+    ...lexical(),
+    gapSentence: "I look ______ to meeting my new neighbours.",
+  });
+  const handwriting = () => {
+    const notes = source("image");
+    notes.role = "user_notes";
+    first(notes.blocks).text = "She walk to school. Teacher correction: She walks to school.";
+    const data = input([notes]);
+    data.confirmedHandwritingKeys = ["r0"];
+    return data;
+  };
+  const mistake = (learningItemIndex: number) => ({
+    said: "She **walk** to school.",
+    correct: "She **walks** to school.",
+    whyFa: "فعل سوم شخص مفرد تغییر می‌کند.",
+    kind: "grammar",
+    evidenceKeys: ["r0"],
+    learningItemIndex,
+    where: "",
+  });
+  const lesson = (items: unknown[], mistakes: unknown[] = []) =>
+    wire({
+      ...output(),
+      learningItems: items,
+      classNotes: { ...output().classNotes, mistakes: { noteFa: "", items: mistakes } },
+    });
+
+  it("omits an item it cannot expand, keeps positions, and unlinks only that item's mistake", () => {
+    const prepared = prepare(handwriting());
+    const raw = lesson([partial(), grammar()], [mistake(0), mistake(1)]);
+    // Without a tolerance (evals, first-attempt tests) the response fails exactly as before.
+    expect(() => prepared.assemble(raw)).toThrow(failure("study_gap_partial"));
+    const tolerance: AssemblyTolerance = {};
+    const assembled = prepared.assemble(raw, tolerance);
+    expect(tolerance.omissions).toEqual({
+      omitted: { study_gap_partial: 1 },
+      omittedProduction: 1,
+    });
+    expect(assembled.learningItems).toHaveLength(1);
+    const [kept] = assembled.learningItems;
+    expect(kept?.study?.set).toBe("production");
+    // The mistake linked to the item after the omitted one still names that item.
+    expect(assembled.classNotes?.mistakes?.items.map((item) => item.itemId)).toEqual([
+      undefined,
+      kept?.id,
+    ]);
+    // A tolerant assembly of a valid response omits nothing and reports nothing.
+    const clean: AssemblyTolerance = {};
+    prepared.assemble(lesson([grammar()], [mistake(0)]), clean);
+    expect(clean.omissions).toBeUndefined();
+  });
+
+  it("throws the first item's error beyond the allowance or when no production card would remain", () => {
+    const prepared = prepare();
+    for (const items of [[partial()], [partial(), partial(), partial(), lexical(), lexical()]])
+      expect(() => prepared.assemble(lesson(items), {})).toThrow(failure("study_gap_partial"));
+    const tolerance: AssemblyTolerance = {};
+    expect(
+      prepared.assemble(lesson([partial(), partial(), lexical()]), tolerance).learningItems,
+    ).toHaveLength(1);
+    expect(tolerance.omissions?.omitted).toEqual({ study_gap_partial: 2 });
+    // An out-of-range mistake link stays an error, as before; with an omitted item the
+    // response keeps the error it had before, its first invalid item's.
+    expect(() => prepare(handwriting()).assemble(lesson([grammar()], [mistake(5)]), {})).toThrow(
+      failure("study_mistake_item_missing"),
+    );
+    expect(() =>
+      prepare(handwriting()).assemble(lesson([partial(), grammar()], [mistake(5)]), {}),
+    ).toThrow(failure("study_gap_partial"));
+  });
+
+  it("keeps a paid response with an omitted item, and its assembly detail beyond the allowance", async () => {
+    const prepared = prepare();
+    const provider = (raw: unknown) =>
+      ({
+        structured: async () => ({
+          output: raw,
+          provider: "synthetic",
+          model: "synthetic/llm",
+          requestId: null,
+          actualMicros: 5,
+          usage: {},
+        }),
+      }) as never;
+    const tolerance: AssemblyTolerance = {};
+    const kept = await generateCanonicalKnowledge(
+      provider(lesson([partial(), lexical()])),
+      "synthetic/llm",
+      "op",
+      prepared,
+      undefined,
+      tolerance,
+    );
+    expect(kept.output.learningItems).toHaveLength(1);
+    expect(tolerance.omissions?.omitted).toEqual({ study_gap_partial: 1 });
+    await expect(
+      generateCanonicalKnowledge(
+        provider(lesson([partial()])),
+        "synthetic/llm",
+        "op",
+        prepared,
+        undefined,
+        {},
+      ),
+    ).rejects.toMatchObject({
+      code: "provider_schema_invalid",
+      diagnostic: "assembly:study_gap_partial",
+    });
+  });
+
+  it("D78 accepts 25 production and 6 recognition items on the content wire", () => {
+    const prepared = prepare();
+    const items = [
+      ...Array.from({ length: 25 }, () => lexical()),
+      ...Array.from({ length: 6 }, () => recognitionItem()),
+    ];
+    expect(prepared.schema.safeParse(lesson(items)).success).toBe(true);
+    expect(prepared.schema.safeParse(lesson([...items, lexical()])).success).toBe(false);
   });
 });

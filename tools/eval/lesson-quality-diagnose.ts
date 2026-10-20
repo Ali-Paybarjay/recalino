@@ -14,7 +14,12 @@ import { buildKnowledgeGenerationInput } from "../../packages/core/src/proc/know
 import { generateCanonicalKnowledge } from "../../packages/core/src/proc/knowledge-generation-step";
 import { mergeLessonParts, planLessonParts } from "../../packages/core/src/proc/knowledge-parts";
 import { modelTeachingContext } from "../../packages/core/src/proc/learner-context";
-import { lessonBudget, measureLessonContent } from "../../packages/core/src/proc/lesson-budget";
+import {
+  LESSON_PRODUCTION_MAXIMUM,
+  lessonBudget,
+  lessonProductionLimit,
+  measureLessonContent,
+} from "../../packages/core/src/proc/lesson-budget";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import {
   BudgetGuard,
@@ -145,13 +150,16 @@ for (const index of selected) {
       latencyMs: Date.now() - started,
     });
     try {
-      validateGeneratedKnowledge(
+      // D110: strict, as the model wrote it; the guard's gap rebuilds are reported separately.
+      const { audit } = validateGeneratedKnowledge(
         result.output,
         part.sources,
         [...part.missingSourceIds],
         long.data.explanationLanguage,
+        { productionLimit: lessonProductionLimit(budget.content.markedSpans) },
       );
       entry.outcome = "valid";
+      entry.guardGapsRebuilt = audit.gapsRebuilt;
       accepted.set(index, result.output);
       await writeFile(
         resolve(out, `part-${index}-accepted.json`),
@@ -187,6 +195,7 @@ if (parts.every((part) => accepted.has(part.index))) {
       long.data.sources,
       [...long.data.missingSourceIds],
       long.data.explanationLanguage,
+      { productionLimit: LESSON_PRODUCTION_MAXIMUM },
     );
     const { model: lesson } = finalizeGeneratedStudyPractice(
       normalizeGeneratedStudyModel(validated.model, true, long.data.lessonContext),

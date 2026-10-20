@@ -4,6 +4,7 @@ import { assertSourcesLive, updateAutomaticSourceRoles } from "../../src";
 import { settleClassMaterial } from "../charged-material";
 import type { finalizeGeneratedStudyPractice } from "../generated-study-practice";
 import { teachingAdaptation } from "../learner-context";
+import type { StudyOutputAudit } from "../study-output-guard";
 import type { ProcessingStage } from "./context";
 import type { ValidatedKnowledge } from "./legacy-knowledge-repair";
 import type { LessonInput } from "./lesson-input";
@@ -22,9 +23,11 @@ export const publishLesson: ProcessingStage<
     classified: ValidatedKnowledge["classified"];
     model: FinalizedPractice["model"];
     practiceAudit: FinalizedPractice["audit"];
+    /** D110: the study output guard's code-owned counts; recorded whenever the guard ran. */
+    studyOutput: StudyOutputAudit;
   },
   "published"
-> = async (run, { lesson, classified, model, practiceAudit }) => {
+> = async (run, { lesson, classified, model, practiceAudit, studyOutput }) => {
   const { job, ctx, payload, provider, settings, snapshot } = run;
   const { extracted, missing, practiceFocus } = lesson;
   await job.db.transaction().execute(async (tx) => {
@@ -65,6 +68,7 @@ export const publishLesson: ProcessingStage<
           profileVersion: settings.profileVersion,
           teachingPreferences: settings.teachingPreferences,
           ...(practiceAudit.applied ? { studyPractice: practiceAudit } : {}),
+          studyOutput,
           ...(settings.learnerContext
             ? {
                 teachingAdaptation: teachingAdaptation({

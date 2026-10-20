@@ -4,6 +4,7 @@
 import type { z } from "zod";
 import {
   assignGeneratedKnowledgeIds,
+  type KnowledgeModel,
   normalizeGeneratedStudyModel,
   validateKnowledgeModel,
 } from "../../lkm";
@@ -13,6 +14,13 @@ import { automaticSourceRole } from "../../src";
 import type { RunSource } from "../contracts";
 import type { generatedKnowledgeSchema } from "../generated-knowledge";
 import type { ModelTeachingContext } from "../learner-context";
+import {
+  type AssemblyOmissions,
+  assertLessonProductionLimit,
+  emptyStudyOutputAudit,
+  salvageStudyItems,
+  sanitizeGeneratedStudyGaps,
+} from "../study-output-guard";
 import { studyPrompt } from "../study-prompt";
 
 const repairableKnowledgeProblems = new Set([
@@ -107,11 +115,27 @@ export function processingFailureCode(error: AppError): string | null {
   return null;
 }
 
+/** How one generated response is checked (D78 limit, D110 bounded salvage). */
+export interface GeneratedKnowledgeChecks {
+  /** This lesson's (or part's) production limit: 18, or more for marked spans (D78). */
+  productionLimit: number;
+  /**
+   * D110: drop invalid cards within the response's allowance instead of failing. Off for evals,
+   * which measure the model's own output.
+   */
+  salvage?: boolean;
+  /** D110: a part of a multi-part lesson may lose all its cards; the merged lesson may not. */
+  floor?: boolean;
+  /** D110: what the content-contract assembly already omitted from this response. */
+  assemblyOmitted?: AssemblyOmissions | null;
+}
+
 export function validateGeneratedKnowledge(
   generated: z.infer<typeof generatedKnowledgeSchema>,
   extracted: readonly RunSource[],
   missing: string[],
   explanationLanguage: string,
+  checks: GeneratedKnowledgeChecks,
 ) {
   const { sourceClassifications, ...knowledge } = generated;
   if (
@@ -136,25 +160,48 @@ export function validateGeneratedKnowledge(
             },
           ),
   }));
-  const model = validateKnowledgeModel(
-    {
-      ...assignGeneratedKnowledgeIds(
-        normalizeGeneratedStudyModel(
-          knowledge,
-          classified.some((source) => source.kind === "audio"),
-        ),
+  // D110: gaps the full sentence alone fixes are rebuilt before IDs are content-hashed.
+  const sanitized = sanitizeGeneratedStudyGaps(knowledge);
+  const audit = emptyStudyOutputAudit(checks.productionLimit);
+  audit.gapsRebuilt = { spacing: sanitized.spacing, derivedBlank: sanitized.derivedBlank };
+  if (checks.assemblyOmitted) audit.assemblyOmitted = { ...checks.assemblyOmitted.omitted };
+  const candidate = {
+    ...assignGeneratedKnowledgeIds(
+      normalizeGeneratedStudyModel(
+        sanitized.model,
+        classified.some((source) => source.kind === "audio"),
       ),
-      coverage: {
-        complete: missing.length === 0,
-        missingSourceIds: missing,
-        // Server-derived per-source use (lesson-quality-1) survives availability recomputation.
-        ...(knowledge.coverage.sources ? { sources: knowledge.coverage.sources } : {}),
-      },
+    ),
+    coverage: {
+      complete: missing.length === 0,
+      missingSourceIds: missing,
+      // Server-derived per-source use (lesson-quality-1) survives availability recomputation.
+      ...(knowledge.coverage.sources ? { sources: knowledge.coverage.sources } : {}),
     },
-    classified,
-    explanationLanguage,
-  );
-  return { classified, model };
+  };
+  let model: KnowledgeModel;
+  try {
+    model = validateKnowledgeModel(candidate, classified, explanationLanguage);
+    assertLessonProductionLimit(model, checks.productionLimit);
+  } catch (error) {
+    if (!checks.salvage) throw error;
+    const salvaged = salvageStudyItems(
+      candidate,
+      classified,
+      explanationLanguage,
+      {
+        productionLimit: checks.productionLimit,
+        floor: checks.floor ?? true,
+        ...(checks.assemblyOmitted ? { assemblyOmitted: checks.assemblyOmitted } : {}),
+      },
+      error,
+    );
+    model = salvaged.model;
+    audit.droppedItems = salvaged.droppedItems;
+    audit.trimmedOverLimit = salvaged.trimmedOverLimit;
+    audit.unlinkedMistakes = salvaged.unlinkedMistakes;
+  }
+  return { classified, model, audit, sourceClassifications };
 }
 
 export function knowledgePrompt(

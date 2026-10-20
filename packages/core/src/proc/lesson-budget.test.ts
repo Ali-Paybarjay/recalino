@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { RunSource } from "./contracts";
 import {
+  invalidCardAllowance,
   LESSON_BUDGET_VERSION,
   LESSON_MARKED_PRODUCTION_MAXIMUM,
   lessonBudget,
@@ -181,5 +182,14 @@ describe("D78 marked spans in the lesson budget", () => {
       production: 4,
       compact: true,
     });
+  });
+});
+
+describe("D110 invalid card allowance", () => {
+  it("allows two invalid cards, or a fifth of the production cards when that is more", () => {
+    expect([1, 2, 10, 14, 15, 18, 19, 20, 25].map(invalidCardAllowance)).toEqual([
+      2, 2, 2, 2, 3, 3, 3, 4, 5,
+    ]);
+    expect(LESSON_MARKED_PRODUCTION_MAXIMUM).toBe(25);
   });
 });

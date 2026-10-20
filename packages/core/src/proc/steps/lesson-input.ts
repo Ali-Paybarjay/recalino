@@ -4,7 +4,12 @@ import type { RunSource } from "../contracts";
 import { usesContentKnowledgeContract } from "../knowledge-contract";
 import { buildKnowledgeInput } from "../knowledge-input";
 import { modelTeachingContext, selectPracticeFocus } from "../learner-context";
-import { lessonBudget, measureLessonContent } from "../lesson-budget";
+import {
+  LESSON_PRODUCTION_MAXIMUM,
+  lessonBudget,
+  lessonProductionLimit,
+  measureLessonContent,
+} from "../lesson-budget";
 import type { ProcessingRun } from "./context";
 
 /**
@@ -60,6 +65,13 @@ export async function prepareLesson(run: ProcessingRun, extracted: RunSource[]) 
       })()
     : {};
   const knowledgeInput = buildKnowledgeInput(generationData, settings.provider.maxInputCharacters);
+  // D78: the lesson's production limit is raised by marked spans only where its prompt asked for
+  // it (the lesson-quality budget); every other lesson keeps 18 (D62).
+  const productionLimit = quality
+    ? lessonProductionLimit(
+        measureLessonContent(extracted, settings.provider.charactersPerPage).markedSpans,
+      )
+    : LESSON_PRODUCTION_MAXIMUM;
   return {
     extracted,
     missing,
@@ -71,6 +83,7 @@ export async function prepareLesson(run: ProcessingRun, extracted: RunSource[]) 
     quality,
     qualityOptions,
     knowledgeInput,
+    productionLimit,
   };
 }
 

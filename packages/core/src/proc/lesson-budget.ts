@@ -1,3 +1,4 @@
+import { STUDY_PRODUCTION_CEILING } from "../lkm";
 import { learnerMarksIn } from "../src";
 import type { RunSource } from "./contracts";
 
@@ -16,7 +17,7 @@ export const LESSON_PRODUCTION_MAXIMUM = 18;
  * D78: each span the learner marked adds one production item, up to this lesson limit: what one
  * response of the lesson model (32000 output tokens) still holds.
  */
-export const LESSON_MARKED_PRODUCTION_MAXIMUM = 25;
+export const LESSON_MARKED_PRODUCTION_MAXIMUM = STUDY_PRODUCTION_CEILING;
 export const LESSON_RECOGNITION_MAXIMUM = 6;
 const CLAIM_MAXIMUM = 8;
 /** Every lesson, however small, may keep a few core items. */
@@ -37,6 +38,14 @@ export interface LessonContentSize {
   textPages: number;
   /** D78: distinct spans marked on photos or pages; absent when there are none. */
   markedSpans?: number;
+}
+
+/**
+ * D110: invalid cards one model response may lose before its lesson takes the repair or failure
+ * it took before: at most two, or a fifth of its production cards when that is more.
+ */
+export function invalidCardAllowance(productionCards: number): number {
+  return Math.max(2, Math.floor(productionCards / 5));
 }
 
 /** D78: the lesson's production limit; without marks it stays LESSON_PRODUCTION_MAXIMUM. */

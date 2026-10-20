@@ -2,6 +2,7 @@ import { normalizeGeneratedStudyModel } from "../../lkm";
 import type { RunSource } from "../contracts";
 import { finalizeGeneratedStudyPractice } from "../generated-study-practice";
 import { planLessonParts } from "../knowledge-parts";
+import { assertStudyFloor, combineStudyOutputAudits } from "../study-output-guard";
 import type { ProcessingStage } from "./context";
 import { validateGeneratedKnowledge } from "./knowledge-checks";
 import type { ValidatedKnowledge } from "./legacy-knowledge-repair";
@@ -9,6 +10,7 @@ import { prepareLesson } from "./lesson-input";
 import { generateLessonKnowledge } from "./lesson-knowledge";
 import { generateLessonParts } from "./lesson-parts";
 import { publishLesson } from "./publish";
+import { logStudyOutput } from "./study-output";
 import type { VoiceCheck } from "./voice-check";
 import { correctSpokenMistakes } from "./voice-correction";
 
@@ -33,14 +35,19 @@ export const teachLesson: ProcessingStage<
       ? planLessonParts(extracted, quality.classPartMinutes, missing)
       : null;
   if (partPlan) {
-    const merged = await generateLessonParts(run, { lesson: prepared, plan: partPlan });
-    if (merged === "checkpoint") return "checkpoint";
-    validated = validateGeneratedKnowledge(
-      merged,
+    const parts = await generateLessonParts(run, { lesson: prepared, plan: partPlan });
+    if (parts === "checkpoint") return "checkpoint";
+    const merged = validateGeneratedKnowledge(
+      parts.knowledge,
       extracted,
       missing,
       settings.explanationLanguage,
+      { productionLimit: prepared.productionLimit, salvage: true },
     );
+    // D110: the parts' counts and the merged lesson's own; the lesson keeps a production card.
+    const audit = combineStudyOutputAudits(prepared.productionLimit, [parts.audit, merged.audit]);
+    assertStudyFloor(merged.model, audit);
+    validated = { ...merged, audit };
   } else {
     const dispatch = { knowledgeDispatched };
     const knowledge = await generateLessonKnowledge(run, { lesson: prepared, dispatch });
@@ -48,7 +55,7 @@ export const teachLesson: ProcessingStage<
     if (knowledge === "checkpoint") return "checkpoint";
     validated = knowledge;
   }
-  const { classified } = validated;
+  const { classified, audit: studyOutput } = validated;
   const { model, audit: practiceAudit } = finalizeGeneratedStudyPractice(
     normalizeGeneratedStudyModel(
       validated.model,
@@ -67,5 +74,6 @@ export const teachLesson: ProcessingStage<
     })) === "checkpoint"
   )
     return "checkpoint";
-  return publishLesson(run, { lesson: prepared, classified, model, practiceAudit });
+  logStudyOutput(run.job, studyOutput);
+  return publishLesson(run, { lesson: prepared, classified, model, practiceAudit, studyOutput });
 };
