@@ -56,18 +56,29 @@ const provider: AiProvider = {
   speech: refuse,
 };
 
+type Statement = Parameters<Parameters<Database["withPlugin"]>[0]["transformQuery"]>[0]["node"];
+const ROW_LOCKS = ["ForUpdate", "ForNoKeyUpdate", "ForShare", "ForKeyShare"];
+/** "select", a row-locking select such as "select ForUpdate", or the kind of a write. */
+function statementKind(node: Statement): string {
+  if (node.kind !== "SelectQueryNode") return node.kind;
+  const locks = (node.endModifiers ?? []).flatMap((modifier) =>
+    modifier.modifier && ROW_LOCKS.includes(modifier.modifier) ? [modifier.modifier] : [],
+  );
+  return ["select", ...locks].join(" ");
+}
+
 function countingDatabase(database: Database) {
-  let count = 0;
+  const statements: string[] = [];
   const counted = database.withPlugin({
     transformQuery(args) {
-      count++;
+      statements.push(statementKind(args.node));
       return args.node;
     },
     async transformResult(args) {
       return args.result;
     },
   });
-  return { db: counted, queries: () => count };
+  return { db: counted, queries: () => statements.length, kinds: () => new Set(statements) };
 }
 
 async function learner() {
@@ -191,8 +202,9 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
     deleted.id,
     foreign.session.id,
   ];
+  const single = countingDatabase(db);
   const expected = await Promise.all(
-    ids.map((id) => readAutomaticLearning(db, ctx, id, () => provider).catch(() => null)),
+    ids.map((id) => readAutomaticLearning(single.db, ctx, id, () => provider).catch(() => null)),
   );
   expect(expected.slice(5)).toEqual([null, null]);
   expect(expected[0]?.notesReady).toBe(true);
@@ -205,6 +217,12 @@ it("PERF-04 reads Today's statuses in bulk exactly as each class reads its own",
   // Sessions, intents, notes (three reads), runs, review requests and the finishing stage
   // (three reads), however many classes there are.
   expect(counted.queries()).toBeLessThanOrEqual(10);
+  // Neither read writes. The class's own read locks its class row for one statement at a time
+  // (assertSessionOwner, outside any transaction); the bulk read takes no row lock at all.
+  expect([...single.kinds()].every((kind) => ["select", "select ForUpdate"].includes(kind))).toBe(
+    true,
+  );
+  expect([...counted.kinds()]).toEqual(["select"]);
 });
 
 it("PERF-04 reads ten classes' statuses in at most eight queries, as many as for three", async () => {
