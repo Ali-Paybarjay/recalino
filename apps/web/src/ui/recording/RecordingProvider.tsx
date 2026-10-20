@@ -14,7 +14,7 @@ import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
-import { captureIsQuiet } from "./capture-phase";
+import { captureIsActive, captureIsQuiet } from "./capture-phase";
 import { CaptureUploader } from "./capture-uploader";
 import { RecordingController } from "./controller";
 import { MissingAudioNotice } from "./MissingAudioNotice";
@@ -221,6 +221,22 @@ export function useCaptureQuiet(): boolean {
   return useSyncExternalStore(
     value ? value.controller.subscribe : NO_UPDATES,
     () => (value ? captureIsQuiet(value.controller.snapshot().phase) : false),
+    () => false,
+  );
+}
+/**
+ * D107: this device is recording this session (starting to saving). Its pages then lead back to
+ * the capture and never offer Process this session, which the server refuses while a recording is
+ * open. Safe outside the provider, like `useCaptureQuiet`.
+ */
+export function useCapturingSession(sessionId: string): boolean {
+  const value = useContext(RecordingContext);
+  return useSyncExternalStore(
+    value ? value.controller.subscribe : NO_UPDATES,
+    () => {
+      const state = value?.controller.snapshot();
+      return !!state && captureIsActive(state.phase) && state.recording?.sessionId === sessionId;
+    },
     () => false,
   );
 }

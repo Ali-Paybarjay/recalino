@@ -14,6 +14,11 @@ const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   accept: vi.fn(),
   buttons: new Map<string, () => unknown>(),
+  capturing: null as string | null,
+}));
+vi.mock("../recording/RecordingProvider", async (original) => ({
+  ...(await original<object>()),
+  useCapturingSession: (id: string) => mocks.capturing === id,
 }));
 vi.mock("./UploadProvider", () => ({ useUploadBatches: () => mocks.batches }));
 vi.mock("./AutomaticLearningProvider", () => ({
@@ -85,6 +90,7 @@ beforeEach(() => {
   mocks.notify.mockReset();
   mocks.accept.mockReset();
   mocks.buttons.clear();
+  mocks.capturing = null;
 });
 
 describe("retry from the class notice", () => {
@@ -494,4 +500,60 @@ describe("recovery actions match the processing blocker", () => {
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
     expect(mocks.request).not.toHaveBeenCalled();
   });
+});
+
+// D107 (owner decision 2026-10-20): Process this session is refused while a recording of the
+// session is open, so capture comes first here as on the session page's next step.
+describe("Process this session while this device records the session", () => {
+  const waiting: AutomaticLearningStatus = {
+    ...blocked,
+    state: "waiting_sources",
+    lastError: null,
+    message: "Waiting for your material.",
+    notesReady: false,
+    processRequest: "not_requested",
+    requestedRevision: null,
+  };
+  const reopened: AutomaticLearningStatus = {
+    ...waiting,
+    notesReady: true,
+    processRequest: "new_material",
+    requestedRevision: 1,
+  };
+  it.each(["notice", "progress"] as const)(
+    "the %s offers it only while no recording of the session is open",
+    (view) => {
+      mocks.status = waiting;
+      let html = render(view);
+      expect(html).toContain("Ready to process");
+      expect(html).toContain("Process this session");
+
+      mocks.capturing = sessionId;
+      html = render(view);
+      expect(html).toContain("Recording in progress");
+      for (const text of [
+        "Ready to process",
+        "Your notes and flashcards are made when you process this session.",
+        "Process this session",
+      ])
+        expect(html).not.toContain(text);
+
+      mocks.status = reopened;
+      html = render(view);
+      expect(html).toContain("Recording in progress");
+      for (const text of [
+        "New sources since your notes were made",
+        "A new version of existing notes also uses 1 New versions unit.",
+        "Process this session",
+      ])
+        expect(html).not.toContain(text);
+
+      // A recording of another session does not hold this one back.
+      mocks.capturing = "20000000-0000-4000-8000-000000000009";
+      html = render(view);
+      expect(html).toContain("New sources since your notes were made");
+      expect(html).toContain("Process this session");
+      expect(html).not.toContain("Recording in progress");
+    },
+  );
 });
