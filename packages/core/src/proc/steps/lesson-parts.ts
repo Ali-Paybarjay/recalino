@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { effectiveStructuredMaxOutputTokens, ProviderError } from "../../aip";
+import { AppError } from "../../plt";
 import { generatedKnowledgeSchema } from "../generated-knowledge";
 import {
   type AssemblyTolerance,
@@ -12,21 +13,33 @@ import {
 } from "../knowledge-generation-step";
 import { type LessonPart, mergeLessonParts } from "../knowledge-parts";
 import { lessonBudget, lessonProductionLimit, measureLessonContent } from "../lesson-budget";
-import { combineStudyOutputAudits, type StudyOutputAudit } from "../study-output-guard";
+import {
+  addStudyTally,
+  combineStudyOutputAudits,
+  emptyStudyTally,
+  type StudyOutputAudit,
+} from "../study-output-guard";
 import type { ProcessingStage } from "./context";
 import { semanticRepairReason, validateGeneratedKnowledge } from "./knowledge-checks";
 import type { ValidatedKnowledge } from "./legacy-knowledge-repair";
 import type { LessonInput } from "./lesson-input";
 import { cached, liveRun, providerStep, saveStep } from "./runtime";
-import { assemblyOmissions, preferRepaired, saveAssemblyOmissions } from "./study-output";
+import {
+  assemblyOmissions,
+  assemblyRecovery,
+  preferRepaired,
+  saveAssemblyOmissions,
+} from "./study-output";
 
 /**
  * D63: each part has one paid generation and at most one bounded regeneration, each
  * saved before the next call; a job returns after any paid call. Parts are merged by
  * code, so no further provider call and no extra quota charge follows.
- * D110: each part response is checked with its own limit and allowance; invalid cards within
- * the allowance are dropped without the part's regeneration, and the pruned part is merged, so
- * a dropped card never takes a merged slot. Only the merged lesson keeps the production floor.
+ * D110: each part response is checked with its own limit. Its invalid cards are dropped without
+ * the part's regeneration only while the lesson so far (this part and every earlier one) stays
+ * within one allowance and keeps a production card; otherwise the part takes the regeneration it
+ * took before, from its original first problem. The pruned part is merged, so a dropped card
+ * never takes a merged slot. Every decision is a pure function of the saved part steps.
  */
 export const generateLessonParts: ProcessingStage<
   { lesson: LessonInput; plan: LessonPart[] },
@@ -36,6 +49,8 @@ export const generateLessonParts: ProcessingStage<
   const { generationData, quality } = lesson;
   const outputs: z.infer<typeof generatedKnowledgeSchema>[] = [];
   const audits: StudyOutputAudit[] = [];
+  // D110: what the accepted parts removed and kept; the lesson, never a part, holds the bound.
+  let tally = emptyStudyTally();
   const model = settings.provider.llmModel;
   const outputTokens = effectiveStructuredMaxOutputTokens(settings.provider, model);
   for (const part of plan) {
@@ -57,24 +72,29 @@ export const generateLessonParts: ProcessingStage<
     const repairStep = `${step}:repair`;
     // D78: a part is checked against its own marked spans.
     const check = async (checkpoint: string, value: z.infer<typeof generatedKnowledgeSchema>) => {
+      const omissions = await assemblyOmissions(job.db, payload.runId, checkpoint);
       const checks = {
         productionLimit: lessonProductionLimit(budget.content.markedSpans),
         salvage: true,
-        floor: false,
-        assemblyOmitted: await assemblyOmissions(job.db, payload.runId, checkpoint),
+        assemblyOmitted: omissions,
+        prior: tally,
       };
-      return () =>
-        validateGeneratedKnowledge(
-          value,
-          part.sources,
-          part.missingSourceIds,
-          settings.explanationLanguage,
-          checks,
-        );
+      return {
+        omissions,
+        validate: () =>
+          validateGeneratedKnowledge(
+            value,
+            part.sources,
+            part.missingSourceIds,
+            settings.explanationLanguage,
+            checks,
+          ),
+      };
     };
     const keep = (validated: ValidatedKnowledge) => {
       outputs.push({ ...validated.model, sourceClassifications: validated.sourceClassifications });
       audits.push(validated.audit);
+      tally = addStudyTally(tally, validated.tally);
     };
     const output = await cached(job.db, payload.runId, step, generatedKnowledgeSchema);
     const original = output ? await check(step, output) : null;
@@ -82,8 +102,10 @@ export const generateLessonParts: ProcessingStage<
     if (repaired) {
       // A part's single regeneration is final: the bounded repair, or the bounded original
       // when it keeps more cards; a remaining problem fails the run.
-      const validate = await check(repairStep, repaired);
-      const chosen = await preferRepaired(original, async () => validate());
+      const repairCheck = await check(repairStep, repaired);
+      const chosen = await preferRepaired(original?.validate ?? null, async () =>
+        repairCheck.validate(),
+      );
       if (chosen === "checkpoint") return chosen;
       keep(chosen);
       continue;
@@ -165,13 +187,18 @@ export const generateLessonParts: ProcessingStage<
       repairDetail = marker.detail;
     } else {
       try {
-        // D110 drop first: invalid cards within the part's allowance need no regeneration.
-        keep(original());
+        // D110 drop first: invalid cards within the lesson's allowance need no regeneration.
+        keep(original.validate());
         continue;
       } catch (error) {
-        const reason = semanticRepairReason(error);
-        if (!reason) throw error;
-        repairReason = reason;
+        if (original.omissions && error instanceof AppError && error.code === "validation_failed") {
+          // Without the tolerance this response failed its assembly: today's schema recovery.
+          ({ repairReason, repairDetail } = assemblyRecovery(original.omissions));
+        } else {
+          const reason = semanticRepairReason(error);
+          if (!reason) throw error;
+          repairReason = reason;
+        }
       }
     }
     const generation = buildKnowledgeGenerationInput(
@@ -180,7 +207,7 @@ export const generateLessonParts: ProcessingStage<
       { ...partOptions, repairReason, ...(repairDetail ? { repairDetail } : {}) },
     );
     const tolerance: AssemblyTolerance = {};
-    const bought = await preferRepaired(original, async () => {
+    const bought = await preferRepaired(original?.validate ?? null, async () => {
       await providerStep(
         job,
         ctx,

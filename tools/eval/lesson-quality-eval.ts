@@ -28,7 +28,7 @@ import {
   lessonProductionLimit,
   measureLessonContent,
 } from "../../packages/core/src/proc/lesson-budget";
-import type { StudyOutputAudit } from "../../packages/core/src/proc/study-output-guard";
+import { sanitizeGeneratedStudyGaps } from "../../packages/core/src/proc/study-output-guard";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 
 /**
@@ -166,14 +166,18 @@ export async function generateArmLesson(
     };
   };
   const totals = { costMicros: 0, latencyMs: 0, outputTokens: 0, attempts: 0 };
-  // D110: evals stay strict (no card is dropped) so model regressions stay visible; the guard's
-  // gap rebuilds are reported separately from the model's own result.
+  // D110: evals stay strict (no gap is rebuilt and no card is dropped) so model regressions stay
+  // visible; the gaps the guard would rebuild are counted apart from the model's own result.
   const strictChecks = (options: KnowledgeGenerationOptions) => ({
     productionLimit: options.budget
       ? lessonProductionLimit(options.budget.content.markedSpans)
       : LESSON_PRODUCTION_MAXIMUM,
   });
-  const guardAudits: StudyOutputAudit[] = [];
+  let guardGapsRebuilt = 0;
+  const countGuard = (output: Generated) => {
+    const would = sanitizeGeneratedStudyGaps(output);
+    guardGapsRebuilt += would.spacing + would.derivedBlank;
+  };
   async function call(
     input: KnowledgeGenerationInput,
     options: KnowledgeGenerationOptions,
@@ -240,15 +244,15 @@ export async function generateArmLesson(
     const first = await call(input, options);
     let retry: KnowledgeGenerationOptions;
     if ("output" in first) {
+      countGuard(first.output);
       try {
-        const checked = validateGeneratedKnowledge(
+        validateGeneratedKnowledge(
           first.output,
           input.sources,
           [...input.missingSourceIds],
           input.explanationLanguage,
           strictChecks(options),
         );
-        guardAudits.push(checked.audit);
         return { output: first.output, first: true };
       } catch (error) {
         guard.outcomes.push(`${operation}:${totals.attempts}:semantic:${errorCode(error)}`);
@@ -272,14 +276,13 @@ export async function generateArmLesson(
     } else throw first.error;
     const second = await call(input, retry);
     if (!("output" in second)) throw second.error;
-    guardAudits.push(
-      validateGeneratedKnowledge(
-        second.output,
-        input.sources,
-        [...input.missingSourceIds],
-        input.explanationLanguage,
-        strictChecks(retry),
-      ).audit,
+    countGuard(second.output);
+    validateGeneratedKnowledge(
+      second.output,
+      input.sources,
+      [...input.missingSourceIds],
+      input.explanationLanguage,
+      strictChecks(retry),
     );
     return { output: second.output, first: false };
   }
@@ -319,17 +322,13 @@ export async function generateArmLesson(
       validated.classified,
       data.learnerContext,
     );
-    const gapsRebuilt = guardAudits.reduce(
-      (sum, audit) => sum + audit.gapsRebuilt.spacing + audit.gapsRebuilt.derivedBlank,
-      0,
-    );
     return {
       valid: true,
       firstTry,
       parts: plan?.length ?? 1,
       ...totals,
       model: lessonModel,
-      ...(gapsRebuilt ? { guardGapsRebuilt: gapsRebuilt } : {}),
+      ...(guardGapsRebuilt ? { guardGapsRebuilt } : {}),
     };
   } catch (error) {
     if (error instanceof BudgetStop) throw error;
@@ -339,6 +338,7 @@ export async function generateArmLesson(
       parts: plan?.length ?? 1,
       ...totals,
       error: errorCode(error),
+      ...(guardGapsRebuilt ? { guardGapsRebuilt } : {}),
     };
   }
 }

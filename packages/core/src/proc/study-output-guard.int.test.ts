@@ -263,6 +263,7 @@ describe("D110 study output guard on a content-contract run", () => {
       version: 1,
       omitted: { study_gap_partial: 1 },
       omittedProduction: 1,
+      first: "study_gap_partial",
     });
     const latest = await getLatestVersion(db, f.ctx, f.session.id);
     expect(latest?.runId).toBe(f.run.id);

@@ -2,7 +2,6 @@ import { normalizeGeneratedStudyModel } from "../../lkm";
 import type { RunSource } from "../contracts";
 import { finalizeGeneratedStudyPractice } from "../generated-study-practice";
 import { planLessonParts } from "../knowledge-parts";
-import { assertStudyFloor, combineStudyOutputAudits } from "../study-output-guard";
 import type { ProcessingStage } from "./context";
 import { validateGeneratedKnowledge } from "./knowledge-checks";
 import type { ValidatedKnowledge } from "./legacy-knowledge-repair";
@@ -37,17 +36,16 @@ export const teachLesson: ProcessingStage<
   if (partPlan) {
     const parts = await generateLessonParts(run, { lesson: prepared, plan: partPlan });
     if (parts === "checkpoint") return "checkpoint";
+    // The merged lesson is checked strictly, as before: D110 bounded each part's drops within
+    // one lesson-wide allowance and floor, so a merge-level problem fails the run as it did.
     const merged = validateGeneratedKnowledge(
       parts.knowledge,
       extracted,
       missing,
       settings.explanationLanguage,
-      { productionLimit: prepared.productionLimit, salvage: true },
+      { productionLimit: prepared.productionLimit },
     );
-    // D110: the parts' counts and the merged lesson's own; the lesson keeps a production card.
-    const audit = combineStudyOutputAudits(prepared.productionLimit, [parts.audit, merged.audit]);
-    assertStudyFloor(merged.model, audit);
-    validated = { ...merged, audit };
+    validated = { ...merged, audit: parts.audit };
   } else {
     const dispatch = { knowledgeDispatched };
     const knowledge = await generateLessonKnowledge(run, { lesson: prepared, dispatch });

@@ -9,8 +9,8 @@ export const LKM_SCHEMA_VERSION = "1";
 /** Most class summary claims one knowledge model may hold. */
 export const KNOWLEDGE_SUMMARY_LIMIT = 100;
 /**
- * D78: the most production cards any class may keep (18 plus one per marked span). Each lesson's
- * own limit (18 without marks) is enforced where the lesson is generated (D110).
+ * D78: the most production cards any class may keep (18 plus one per marked span). A generated
+ * lesson passes its own limit (18 without marks) to validateKnowledgeModel (D110).
  */
 export const STUDY_PRODUCTION_CEILING = 25;
 const id = z.string().min(1).max(100);
@@ -119,6 +119,8 @@ export function validateKnowledgeModel(
   raw: unknown,
   sources: readonly EvidenceSource[],
   explanationLanguage: string,
+  /** D62, D78: this lesson's own production limit, checked in its usual place; never above the ceiling. */
+  productionLimit: number = STUDY_PRODUCTION_CEILING,
 ): KnowledgeModel {
   const parsed = knowledgeModelSchema.safeParse(raw);
   if (!parsed.success) throw errors.validationFailed({ output: ["schema_invalid"] });
@@ -247,7 +249,7 @@ export function validateKnowledgeModel(
   }
   if (
     model.learningItems.filter((item) => item.study?.set === "production").length >
-    STUDY_PRODUCTION_CEILING
+    Math.min(productionLimit, STUDY_PRODUCTION_CEILING)
   )
     fail("study_core_limit");
   for (const mistake of model.classNotes?.mistakes?.items ?? []) {

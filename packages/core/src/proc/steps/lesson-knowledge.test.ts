@@ -379,14 +379,54 @@ describe("generateLessonKnowledge requests", () => {
 });
 
 // D110: drop first, a repair only beyond the allowance, and the bounded original as fallback.
+const omissionMarker = {
+  version: 1,
+  omitted: { study_gap_partial: 1 },
+  omittedProduction: 1,
+  first: "study_gap_partial",
+};
 describe("generateLessonKnowledge study output guard (D110)", () => {
+  it("recovers a lesson with assembly omissions it cannot accept as the schema failure it was", async () => {
+    m.checkpoints.set("knowledge", { title: "Saved" });
+    m.checkpoints.set("knowledge:assembly-omitted", omissionMarker);
+    m.validate.mockImplementation((value: { title: string }) => {
+      if (value.title === "Saved") throw problem("study_sentence_mismatch");
+      return valid;
+    });
+    m.providerStep.mockResolvedValue({ title: "Repaired" });
+    const dispatch = { knowledgeDispatched: false };
+    expect(await generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch })).toBe(
+      valid,
+    );
+    // Not the answer-span repair its first remaining code would pick: today's regeneration.
+    expect(steps()).toEqual(["knowledge:repair"]);
+    expect(m.build).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.any(Number),
+      expect.objectContaining({
+        repairReason: "provider_schema_invalid",
+        repairDetail: "assembly:study_gap_partial",
+      }),
+    );
+  });
+  it("ends a recovered lesson whose omissions it cannot accept as provider_schema_invalid", async () => {
+    m.checkpoints.set("knowledge", { title: "Recovered" });
+    m.checkpoints.set("knowledge:schema-invalid", { reason: "provider_schema_invalid" });
+    m.checkpoints.set("knowledge:assembly-omitted", omissionMarker);
+    m.validate.mockImplementation(() => {
+      throw problem("study_target_unsupported");
+    });
+    await expect(
+      generateLessonKnowledge(stageRun(), {
+        lesson: lesson(true),
+        dispatch: { knowledgeDispatched: false },
+      }),
+    ).rejects.toMatchObject({ code: "provider_schema_invalid" });
+    expect(m.providerStep).not.toHaveBeenCalled();
+  });
   it("publishes a saved lesson whose invalid cards fit the allowance without a paid repair", async () => {
     m.checkpoints.set("knowledge", { title: "Saved" });
-    m.checkpoints.set("knowledge:assembly-omitted", {
-      version: 1,
-      omitted: { study_gap_partial: 1 },
-      omittedProduction: 1,
-    });
+    m.checkpoints.set("knowledge:assembly-omitted", omissionMarker);
     const dispatch = { knowledgeDispatched: true };
     expect(await generateLessonKnowledge(stageRun(), { lesson: lesson(true), dispatch })).toBe(
       valid,
@@ -399,7 +439,11 @@ describe("generateLessonKnowledge study output guard (D110)", () => {
         "fa",
         {
           ...checks,
-          assemblyOmitted: { omitted: { study_gap_partial: 1 }, omittedProduction: 1 },
+          assemblyOmitted: {
+            omitted: { study_gap_partial: 1 },
+            omittedProduction: 1,
+            first: "study_gap_partial",
+          },
         },
       ],
     ]);

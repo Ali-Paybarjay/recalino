@@ -7,6 +7,7 @@ import {
   type AssemblyOmissions,
   productionCards,
   type StudyOutputAudit,
+  studyCount,
 } from "../study-output-guard";
 import type { ValidatedKnowledge } from "./legacy-knowledge-repair";
 import { cached, saveStep } from "./runtime";
@@ -41,7 +42,25 @@ export async function assemblyOmissions(
     assemblyOmissionsStep(checkpoint),
     assemblyOmissionsSchema,
   );
-  return marker ? { omitted: marker.omitted, omittedProduction: marker.omittedProduction } : null;
+  return marker
+    ? {
+        omitted: marker.omitted,
+        omittedProduction: marker.omittedProduction,
+        first: marker.first,
+      }
+    : null;
+}
+
+/**
+ * D110: a response with assembly omissions that the guard cannot accept takes the recovery it
+ * took before the tolerance: its assembly failed, so the regeneration is asked as a schema
+ * recovery with the first omitted item's code (`assembly:<code>`).
+ */
+export function assemblyRecovery(omissions: AssemblyOmissions) {
+  return {
+    repairReason: "provider_schema_invalid" as const,
+    repairDetail: `assembly:${omissions.first}`,
+  };
 }
 
 /**
@@ -88,16 +107,27 @@ export async function preferRepaired(
     : repaired;
 }
 
-/** D110: one log line of code-owned counts when the guard changed the lesson (PRD-PRIV-06). */
+/** The most frequent code of a count record (ties alphabetical), for the log's `code` field. */
+function mainCode(counts: Readonly<Record<string, number>>): string | undefined {
+  return Object.entries(counts).sort(
+    ([code, value], [other, otherValue]) => otherValue - value || code.localeCompare(other),
+  )[0]?.[0];
+}
+
+/**
+ * D110: one log line of code-owned counts when the guard changed the lesson (PRD-PRIV-06): the
+ * guard version, integers and the most frequent removal code, all allow-listed in plt/log.ts.
+ */
 export function logStudyOutput(job: JobContext, audit: StudyOutputAudit) {
-  const dropped = Object.values(audit.droppedItems).reduce((sum, value) => sum + value, 0);
-  const omitted = Object.values(audit.assemblyOmitted).reduce((sum, value) => sum + value, 0);
+  const dropped = studyCount(audit.droppedItems);
+  const omitted = studyCount(audit.assemblyOmitted);
   const rebuilt = audit.gapsRebuilt.spacing + audit.gapsRebuilt.derivedBlank;
   if (!dropped && !omitted && !rebuilt && !audit.trimmedOverLimit) return;
+  const code = mainCode(audit.droppedItems) ?? mainCode(audit.assemblyOmitted);
   job.log?.("info", "study_output_guard", {
     module: "proc",
     job_id: job.job.id,
-    version: audit.version,
+    guard_version: audit.version,
     production_limit: audit.productionLimit,
     gaps_spacing: audit.gapsRebuilt.spacing,
     gaps_derived_blank: audit.gapsRebuilt.derivedBlank,
@@ -105,11 +135,6 @@ export function logStudyOutput(job: JobContext, audit: StudyOutputAudit) {
     trimmed_over_limit: audit.trimmedOverLimit,
     unlinked_mistakes: audit.unlinkedMistakes,
     assembly_omitted: omitted,
-    ...Object.fromEntries(
-      Object.entries(audit.droppedItems).map(([code, value]) => [`dropped.${code}`, value]),
-    ),
-    ...Object.fromEntries(
-      Object.entries(audit.assemblyOmitted).map(([code, value]) => [`omitted.${code}`, value]),
-    ),
+    ...(code ? { code } : {}),
   });
 }

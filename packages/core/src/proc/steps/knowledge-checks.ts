@@ -16,10 +16,14 @@ import type { generatedKnowledgeSchema } from "../generated-knowledge";
 import type { ModelTeachingContext } from "../learner-context";
 import {
   type AssemblyOmissions,
-  assertLessonProductionLimit,
   emptyStudyOutputAudit,
+  emptyStudyTally,
+  productionCards,
+  type StudyTally,
   salvageStudyItems,
   sanitizeGeneratedStudyGaps,
+  studyCount,
+  withinStudyBound,
 } from "../study-output-guard";
 import { studyPrompt } from "../study-prompt";
 
@@ -120,14 +124,25 @@ export interface GeneratedKnowledgeChecks {
   /** This lesson's (or part's) production limit: 18, or more for marked spans (D78). */
   productionLimit: number;
   /**
-   * D110: drop invalid cards within the response's allowance instead of failing. Off for evals,
-   * which measure the model's own output.
+   * D110 guard: rebuild the gaps the full sentence alone fixes, then drop invalid cards within
+   * the lesson's allowance instead of failing. Off for evals, which check the model's own output
+   * strictly; the audit then counts only the gaps the guard would have rebuilt.
    */
   salvage?: boolean;
-  /** D110: a part of a multi-part lesson may lose all its cards; the merged lesson may not. */
-  floor?: boolean;
   /** D110: what the content-contract assembly already omitted from this response. */
   assemblyOmitted?: AssemblyOmissions | null;
+  /** D110: what earlier parts of the same lesson removed and kept; the lesson holds the bound. */
+  prior?: StudyTally;
+}
+
+/** The validation failure of a candidate, or null when it is valid. */
+function strictFailure(validate: () => unknown): unknown {
+  try {
+    validate();
+    return null;
+  } catch (error) {
+    return error;
+  }
 }
 
 export function validateGeneratedKnowledge(
@@ -160,48 +175,72 @@ export function validateGeneratedKnowledge(
             },
           ),
   }));
-  // D110: gaps the full sentence alone fixes are rebuilt before IDs are content-hashed.
+  // D110: gaps the full sentence alone fixes are rebuilt before IDs are content-hashed. Strict
+  // checks (evals) validate the model's own gaps and only count what the guard would rebuild.
   const sanitized = sanitizeGeneratedStudyGaps(knowledge);
   const audit = emptyStudyOutputAudit(checks.productionLimit);
   audit.gapsRebuilt = { spacing: sanitized.spacing, derivedBlank: sanitized.derivedBlank };
-  if (checks.assemblyOmitted) audit.assemblyOmitted = { ...checks.assemblyOmitted.omitted };
-  const candidate = {
-    ...assignGeneratedKnowledgeIds(
-      normalizeGeneratedStudyModel(
-        sanitized.model,
-        classified.some((source) => source.kind === "audio"),
-      ),
-    ),
+  const omitted = checks.assemblyOmitted;
+  if (omitted) audit.assemblyOmitted = { ...omitted.omitted };
+  const audio = classified.some((source) => source.kind === "audio");
+  const candidateOf = (value: typeof knowledge) => ({
+    ...assignGeneratedKnowledgeIds(normalizeGeneratedStudyModel(value, audio)),
     coverage: {
       complete: missing.length === 0,
       missingSourceIds: missing,
       // Server-derived per-source use (lesson-quality-1) survives availability recomputation.
       ...(knowledge.coverage.sources ? { sources: knowledge.coverage.sources } : {}),
     },
-  };
-  let model: KnowledgeModel;
+  });
+  // D62, D78: the lesson's own production limit is checked in its usual place in the rules.
+  const strict = (value: unknown) =>
+    validateKnowledgeModel(value, classified, explanationLanguage, checks.productionLimit);
+  const candidate = candidateOf(checks.salvage ? sanitized.model : knowledge);
+  let validated: KnowledgeModel | null = null;
+  let error: unknown = null;
   try {
-    model = validateKnowledgeModel(candidate, classified, explanationLanguage);
-    assertLessonProductionLimit(model, checks.productionLimit);
-  } catch (error) {
+    validated = strict(candidate);
+  } catch (failure) {
+    error = failure;
+  }
+  let model: KnowledgeModel;
+  let tally: StudyTally;
+  if (validated) {
+    model = validated;
+    const production = productionCards(model);
+    tally = {
+      invalid: omitted ? studyCount(omitted.omitted) : 0,
+      basis: production + (omitted?.omittedProduction ?? 0),
+      production,
+    };
+    // A lesson taught in parts holds one bound: this part's omissions count with earlier parts'.
+    if (omitted && tally.invalid && !withinStudyBound(checks.prior ?? emptyStudyTally(), tally))
+      throw errors.validationFailed({ output: [omitted.first] });
+  } else {
     if (!checks.salvage) throw error;
+    // The repair route and a failure keep today's first problem: the model's own gaps' error.
+    const trigger =
+      (sanitized.spacing || sanitized.derivedBlank
+        ? strictFailure(() => strict(candidateOf(knowledge)))
+        : null) ?? error;
     const salvaged = salvageStudyItems(
       candidate,
       classified,
       explanationLanguage,
       {
         productionLimit: checks.productionLimit,
-        floor: checks.floor ?? true,
-        ...(checks.assemblyOmitted ? { assemblyOmitted: checks.assemblyOmitted } : {}),
+        ...(omitted ? { assemblyOmitted: omitted } : {}),
+        ...(checks.prior ? { prior: checks.prior } : {}),
       },
-      error,
+      trigger,
     );
     model = salvaged.model;
+    tally = salvaged.tally;
     audit.droppedItems = salvaged.droppedItems;
     audit.trimmedOverLimit = salvaged.trimmedOverLimit;
     audit.unlinkedMistakes = salvaged.unlinkedMistakes;
   }
-  return { classified, model, audit, sourceClassifications };
+  return { classified, model, audit, sourceClassifications, tally };
 }
 
 export function knowledgePrompt(

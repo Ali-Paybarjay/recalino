@@ -47,7 +47,12 @@ export interface KnowledgeGenerationInput extends KnowledgeEvidenceInput {
 
 /** D110: filled by a tolerant assembly with what it omitted (codes and counts only). */
 export interface AssemblyTolerance {
-  omissions?: { omitted: Record<string, number>; omittedProduction: number };
+  omissions?: {
+    omitted: Record<string, number>;
+    omittedProduction: number;
+    /** The first omitted item's code: without the tolerance, the response's assembly error. */
+    first: string;
+  };
 }
 
 export interface KnowledgeGenerationOptions {
@@ -1589,6 +1594,7 @@ function expandLearningItems(
   let omittedCount = 0;
   let omittedProduction = 0;
   let firstError: unknown;
+  let first: string | undefined;
   const expanded = items.map((item, index) => {
     try {
       return expandLearningItem(assembly, item, index);
@@ -1596,6 +1602,7 @@ function expandLearningItems(
       const code = itemFailureCode(error);
       if (!code) throw firstError ?? error;
       firstError ??= error;
+      first ??= code;
       omitted[code] = (omitted[code] ?? 0) + 1;
       omittedCount += 1;
       if (item.type !== "recognition") omittedProduction += 1;
@@ -1608,8 +1615,29 @@ function expandLearningItems(
     (omittedCount > invalidCardAllowance(production) || omittedProduction >= production)
   )
     throw firstError;
-  if (omittedCount) tolerance.omissions = { omitted, omittedProduction };
+  if (omittedCount && first) tolerance.omissions = { omitted, omittedProduction, first };
   return { items: expanded, firstError };
+}
+
+/** Every planned card concept must be stated by a claim citing at least one of its keys. */
+function planUncovered(wire: ParsedWire, items: readonly ParsedWire["learningItems"][number][]) {
+  const cited = new Set(
+    [
+      ...items.map((item) => item.claim),
+      ...(wire.summary ?? []),
+      ...(wire.topics ?? []).flatMap((topic) => topic.claims),
+      ...(wire.homework ?? []),
+      ...(wire.uncertainties ?? []),
+    ].flatMap((entry) => entry.evidenceKeys),
+  );
+  return {
+    cited,
+    uncovered: wire.lessonPlan.some(
+      (entry) =>
+        entry.teachAs === "card" &&
+        !entry.evidenceKeys.some((evidenceKey) => cited.has(evidenceKey)),
+    ),
+  };
 }
 
 type ParsedWire = ReturnType<GenerationWire["schema"]["parse"]>;
@@ -1625,23 +1653,8 @@ function assembleGeneratedKnowledge(
   const notes = wire.classNotes;
   const activities = notes.activities ?? {};
   // Every planned concept must be stated by a claim citing at least one of its keys.
-  const cited = new Set(
-    [
-      ...wire.learningItems.map((item) => item.claim),
-      ...(wire.summary ?? []),
-      ...(wire.topics ?? []).flatMap((topic) => topic.claims),
-      ...(wire.homework ?? []),
-      ...(wire.uncertainties ?? []),
-    ].flatMap((entry) => entry.evidenceKeys),
-  );
-  if (
-    wire.lessonPlan.some(
-      (entry) =>
-        entry.teachAs === "card" &&
-        !entry.evidenceKeys.some((evidenceKey) => cited.has(evidenceKey)),
-    )
-  )
-    throw errors.validationFailed({ output: ["study_plan_uncovered"] });
+  const { cited, uncovered } = planUncovered(wire, wire.learningItems);
+  if (uncovered) throw errors.validationFailed({ output: ["study_plan_uncovered"] });
   // Coverage counts the citations of every wire item, also one omitted below (a D110 limitation).
   const sourceCoverage = assembly.coverage
     ? accountSources(assembly, wire as { unusedSources?: { source: string; reason: string }[] }, [
@@ -1655,6 +1668,15 @@ function assembleGeneratedKnowledge(
     : undefined;
   const expanded = expandLearningItems(assembly, wire.learningItems, tolerance);
   try {
+    // D110: the kept items alone must still state every planned card concept.
+    if (
+      expanded.firstError &&
+      planUncovered(
+        wire,
+        wire.learningItems.filter((_item, index) => expanded.items[index] !== undefined),
+      ).uncovered
+    )
+      throw expanded.firstError;
     return assembledModel(assembly, wire, expanded.items, sourceCoverage);
   } catch (error) {
     if (tolerance) delete tolerance.omissions;

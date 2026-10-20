@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { type LearningItem, validateKnowledgeModel } from "../lkm";
 import type { generatedKnowledgeSchema } from "./generated-knowledge";
+import { mergeLessonParts } from "./knowledge-parts";
 import { validateGeneratedKnowledge } from "./steps/knowledge-checks";
-import { sanitizeGeneratedStudyGaps } from "./study-output-guard";
+import { emptyStudyTally, sanitizeGeneratedStudyGaps } from "./study-output-guard";
 
 type Generated = ReturnType<typeof generatedKnowledgeSchema.parse>;
 
@@ -160,6 +161,15 @@ describe("sanitizeGeneratedStudyGaps (D110)", () => {
     ["a joined word", "conceal", "Their conceal-ment was total."],
     ["only an inflected form", "conceal", "They concealed it well."],
     ["two occurrences", "conceal", "Conceal it, then conceal them."],
+    [
+      "a word containing the answer",
+      "conceal",
+      "They conceal it, though the rest stays unconcealed.",
+    ],
+    ["an inflected short answer", "go", "Let's go now, she goes there daily."],
+    ["an inflected function-word answer", "do", "We do it; she does it too."],
+    ["a target without a content word", "go on", "Please go on; he talks on and on."],
+    ["a stem before -e", "make", "We make tea while they are making soup."],
     ["a separable target", "kit sb/sth out", "We kit the room out today."],
     ["an unsupported target", "no face, no case", "They said no face, no case."],
   ])("never derives a blank with %s", (_case, en, full) => {
@@ -201,8 +211,8 @@ describe("sanitizeGeneratedStudyGaps (D110)", () => {
 describe("validateGeneratedKnowledge with the D110 guard", () => {
   it("publishes the run-1 shape with 17 cards: one gap respaced, the slogan dropped", () => {
     const run1 = lesson([...fillers(16), momentum(), slogan()]);
-    // Strict, the sanitized lesson still fails on the slogan, which no repair can fix.
-    expect(code(thrown(() => check(run1, 18, false)))).toEqual(["study_target_unsupported"]);
+    // Strict (evals), the model's own lesson fails on its stray space, exactly as before D110.
+    expect(code(thrown(() => check(run1, 18, false)))).toEqual(["study_sentence_mismatch"]);
     const { model, audit } = check(run1);
     expect(model.learningItems.filter((entry) => entry.study?.set === "production")).toHaveLength(
       17,
@@ -232,7 +242,11 @@ describe("validateGeneratedKnowledge with the D110 guard", () => {
       18,
       true,
       {
-        assemblyOmitted: { omitted: { study_gap_partial: 1 }, omittedProduction: 1 },
+        assemblyOmitted: {
+          omitted: { study_gap_partial: 1 },
+          omittedProduction: 1,
+          first: "study_gap_partial",
+        },
       },
     );
     expect(model.learningItems).toHaveLength(18);
@@ -275,7 +289,11 @@ describe("validateGeneratedKnowledge with the D110 guard", () => {
       code(
         thrown(() =>
           check(fewer, 18, true, {
-            assemblyOmitted: { omitted: { study_gap_partial: 2 }, omittedProduction: 2 },
+            assemblyOmitted: {
+              omitted: { study_gap_partial: 2 },
+              omittedProduction: 2,
+              first: "study_gap_partial",
+            },
           }),
         ),
       ),
@@ -320,12 +338,64 @@ describe("validateGeneratedKnowledge with the D110 guard", () => {
     ];
     expect(code(thrown(() => check(summary)))).toEqual(["class_evidence_missing"]);
   });
-  it("keeps at least one production card, except for a part of a multi-part lesson", () => {
+  it("keeps a production card in the lesson; a later part may lose its own after an earlier kept some", () => {
     const value = lesson([slogan(), slogan()]);
     expect(code(thrown(() => check(value)))).toEqual(["study_target_unsupported"]);
-    const part = check(value, 18, true, { floor: false });
+    // A first part keeps nothing for the lesson yet: it takes its regeneration, as before.
+    expect(code(thrown(() => check(value, 18, true, { prior: emptyStudyTally() })))).toEqual([
+      "study_target_unsupported",
+    ]);
+    const part = check(value, 18, true, { prior: { invalid: 0, basis: 8, production: 8 } });
     expect(part.model.learningItems).toEqual([]);
     expect(part.audit.droppedItems).toEqual({ study_target_unsupported: 2 });
+    expect(part.tally).toEqual({ invalid: 2, basis: 2, production: 0 });
+  });
+  it("holds one allowance for a lesson taught in parts, never one per part", () => {
+    // Two parts of five cards with two invalid each: each fits max(2, 1) = 2 alone, but the
+    // lesson's ten cards allow only max(2, 2) = 2, so the second part takes its regeneration.
+    const partA = lesson([...fillers(3), slogan(), slogan()]);
+    const partB = lesson([...fillers(3, 3), slogan(), slogan()]);
+    const first = check(partA, 18, true, { prior: emptyStudyTally() });
+    expect(first.tally).toEqual({ invalid: 2, basis: 5, production: 3 });
+    expect(code(thrown(() => check(partB, 18, true, { prior: first.tally })))).toEqual([
+      "study_target_unsupported",
+    ]);
+    // The same ten cards as one response fail exactly the same way.
+    const whole = lesson([...fillers(6), slogan(), slogan(), slogan(), slogan()]);
+    expect(code(thrown(() => check(whole)))).toEqual(["study_target_unsupported"]);
+    // Assembly omissions of a part that is otherwise valid count toward the same allowance.
+    const clean = lesson(fillers(5, 6));
+    const omitted = {
+      omitted: { study_gap_partial: 1 },
+      omittedProduction: 1,
+      first: "study_gap_partial",
+    };
+    expect(check(clean, 18, true, { assemblyOmitted: omitted }).tally).toEqual({
+      invalid: 1,
+      basis: 6,
+      production: 5,
+    });
+    expect(
+      code(thrown(() => check(clean, 18, true, { assemblyOmitted: omitted, prior: first.tally }))),
+    ).toEqual(["study_gap_partial"]);
+  });
+  it("keeps today's first problem as the trigger beyond the allowance", () => {
+    // The lesson's own limit is checked where it always was, before the class notes' script.
+    const notes = lesson(fillers(20));
+    if (notes.classNotes) notes.classNotes.sourceNote = "درس مصنوعی.";
+    expect(code(thrown(() => check(notes, 18, false)))).toEqual(["study_core_limit"]);
+    expect(code(thrown(() => check(notes)))).toEqual(["study_core_limit"]);
+    // A gap the guard rebuilds is still the trigger, so the cheap answer-span route is kept.
+    const spaced = lesson([...fillers(13), momentum(), slogan(), slogan(), slogan(), slogan()]);
+    expect(code(thrown(() => check(spaced)))).toEqual(["study_sentence_mismatch"]);
+  });
+  it("never rebuilds a gap when strict (evals): the model's own gap is what is checked", () => {
+    const fixed = sanitizeGeneratedStudyGaps(lesson([...fillers(3), momentum()])).model;
+    const strict = check({ ...fixed, learningItems: fixed.learningItems }, 18, false);
+    expect(strict.audit.gapsRebuilt).toEqual({ spacing: 0, derivedBlank: 0 });
+    expect(code(thrown(() => check(lesson([...fillers(3), momentum()]), 18, false)))).toEqual([
+      "study_sentence_mismatch",
+    ]);
   });
   it("is deterministic and records only code-owned counts", () => {
     const run2 = lesson([...fillers(16), conceal(), cloak(), slogan()]);
@@ -334,5 +404,24 @@ describe("validateGeneratedKnowledge with the D110 guard", () => {
     const audit = JSON.stringify(first.audit);
     for (const text of ["no face", "conceal", "cloak", "anchor", "Some people", "synthetic"])
       expect(audit).not.toContain(text);
+  });
+  it("merges pruned parts into a lesson that passes the strict merged check", () => {
+    // Part A: a respaced gap and a dropped slogan whose mistake is unlinked; part B: clean.
+    const rawA = lesson([...fillers(4), momentum(), slogan()]);
+    const sloganId = rawA.learningItems[5]?.id ?? "";
+    const partA = check(lesson(rawA.learningItems, [sloganId]), 18, true, {
+      prior: emptyStudyTally(),
+    });
+    const partB = check(lesson(fillers(4, 4)), 18, true, { prior: partA.tally });
+    const merged = mergeLessonParts(
+      [partA, partB].map((part) => ({ ...part.model, sourceClassifications: [] })),
+      18,
+    );
+    const lessonCheck = check(merged, 18, false);
+    expect(lessonCheck.model.learningItems).toHaveLength(9);
+    expect(gaps(lessonCheck.model)).toContain(
+      "The plan has gradually ______, with new members every week.",
+    );
+    expect(lessonCheck.model.classNotes?.mistakes?.items[0]).not.toHaveProperty("itemId");
   });
 });

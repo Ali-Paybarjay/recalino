@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ProviderError } from "../../aip";
+import { AppError } from "../../plt";
 import { sourceClassificationPrompt } from "../../src";
 import { generatedKnowledgeSchema, legacyKnowledgeWireSchema } from "../generated-knowledge";
 import {
@@ -29,7 +30,12 @@ import {
 } from "./legacy-knowledge-repair";
 import type { LessonInput } from "./lesson-input";
 import { cached, providerStep, saveStep } from "./runtime";
-import { assemblyOmissions, preferRepaired, saveAssemblyOmissions } from "./study-output";
+import {
+  assemblyOmissions,
+  assemblyRecovery,
+  preferRepaired,
+  saveAssemblyOmissions,
+} from "./study-output";
 
 type GeneratedKnowledge = z.output<typeof generatedKnowledgeSchema>;
 type LessonKnowledgeInput = { lesson: LessonInput; dispatch: KnowledgeDispatch };
@@ -246,7 +252,7 @@ async function repairStudySentences(
 async function regenerateLessonKnowledge(
   run: ProcessingRun,
   { lesson, dispatch }: LessonKnowledgeInput,
-  error: unknown,
+  failure: Pick<RepairFailure, "error" | "recovery">,
 ) {
   const { job, ctx, payload, provider, settings } = run;
   const { extracted, missing, generationData, qualityOptions } = lesson;
@@ -256,7 +262,8 @@ async function regenerateLessonKnowledge(
     {
       maxOutputTokens: settings.provider.maxOutputTokens,
       ...qualityOptions,
-      repairReason: semanticRepairReason(error) ?? undefined,
+      // D110: a response whose assembly omissions the guard cannot accept is recovered as before.
+      ...(failure.recovery ?? { repairReason: semanticRepairReason(failure.error) ?? undefined }),
     },
   );
   const priorRepair = await cached(
@@ -300,6 +307,22 @@ async function regenerateLessonKnowledge(
 }
 
 type RepairRoute = "study" | "regenerate" | "legacy";
+/** The saved lesson's failure, and the schema recovery its assembly omissions call for (D110). */
+interface RepairFailure {
+  error: unknown;
+  generated: GeneratedKnowledge;
+  recovery?: ReturnType<typeof assemblyRecovery>;
+}
+
+/**
+ * D110: a lesson whose assembly omitted items and that the guard cannot accept failed its
+ * assembly before the tolerance, so it takes the recovery and failure it took then.
+ */
+function omissionRecovery(error: unknown, omissions: AssemblyOmissions | null) {
+  return omissions && error instanceof AppError && error.code === "validation_failed"
+    ? assemblyRecovery(omissions)
+    : undefined;
+}
 
 /** Whether a known truncated or invalid first response already used both content attempts. */
 async function bothAttemptsUsed(run: ProcessingRun, lesson: LessonInput) {
@@ -342,14 +365,14 @@ function runRepair(
   run: ProcessingRun,
   input: LessonKnowledgeInput,
   route: RepairRoute,
-  failure: { error: unknown; generated: GeneratedKnowledge },
+  failure: RepairFailure,
   original: () => ValidatedKnowledge,
 ) {
   return preferRepaired(original, async () =>
     route === "study"
       ? repairStudySentences(run, input, failure.generated)
       : route === "regenerate"
-        ? regenerateLessonKnowledge(run, input, failure.error)
+        ? regenerateLessonKnowledge(run, input, failure)
         : repairLegacyKnowledge(run, input),
   );
 }
@@ -358,23 +381,28 @@ function runRepair(
 async function repairLessonKnowledge(
   run: ProcessingRun,
   input: LessonKnowledgeInput,
-  failure: { error: unknown; generated: GeneratedKnowledge; priorKnowledge: unknown },
+  failure: RepairFailure & { priorKnowledge: unknown },
   original: () => ValidatedKnowledge,
 ): Promise<"checkpoint" | ValidatedKnowledge> {
   const { compactGeneration } = input.lesson;
-  const { error, priorKnowledge } = failure;
+  const { error, priorKnowledge, recovery } = failure;
   // Only a complete, saved response with a known semantic failure permits repair.
   // Provider uncertainty, changed settings and account/source failures never enter here.
-  if (!semanticRepairReason(error)) throw error;
+  if (!recovery && !semanticRepairReason(error)) throw error;
   // A known invalid response or truncation and its recovery consume both
   // content-contract attempts. Never buy a third generation after semantic validation.
-  if (await bothAttemptsUsed(run, input.lesson)) throw error;
+  if (await bothAttemptsUsed(run, input.lesson))
+    // D110: a recovery whose assembly fails ends the run as provider_schema_invalid, as before.
+    throw recovery
+      ? new ProviderError("provider_schema_invalid", false, false, undefined, recovery.repairDetail)
+      : error;
   // Persist each paid result before the next provider call gets its own job budget.
   if (!priorKnowledge) {
     return "checkpoint";
   }
-  const route: RepairRoute =
-    semanticRepairReason(error) === "study_sentence_mismatch"
+  const route: RepairRoute = recovery
+    ? "regenerate"
+    : semanticRepairReason(error) === "study_sentence_mismatch"
       ? "study"
       : compactGeneration
         ? "regenerate"
@@ -401,12 +429,8 @@ export const generateLessonKnowledge: ProcessingStage<
     generated = bought;
   }
   const input = { lesson, dispatch };
-  const original = originalCheck(
-    run,
-    lesson,
-    generated,
-    await assemblyOmissions(job.db, payload.runId, "knowledge"),
-  );
+  const omissions = await assemblyOmissions(job.db, payload.runId, "knowledge");
+  const original = originalCheck(run, lesson, generated, omissions);
   // D110: a repair already paid for this run is used, compared with the bounded original.
   const route = priorKnowledge ? await savedRepairRoute(run, lesson) : null;
   if (route) {
@@ -417,12 +441,25 @@ export const generateLessonKnowledge: ProcessingStage<
       // Kept for the route's request; a saved repair is used as it was paid for.
       error = failure;
     }
-    return runRepair(run, input, route, { error, generated }, original);
+    const recovery = omissionRecovery(error, omissions);
+    return runRepair(
+      run,
+      input,
+      route,
+      { error, generated, ...(recovery ? { recovery } : {}) },
+      original,
+    );
   }
   try {
     // D110 drop first: invalid cards within the allowance are dropped without a paid repair.
     return original();
   } catch (error) {
-    return await repairLessonKnowledge(run, input, { error, generated, priorKnowledge }, original);
+    const recovery = omissionRecovery(error, omissions);
+    return await repairLessonKnowledge(
+      run,
+      input,
+      { error, generated, priorKnowledge, ...(recovery ? { recovery } : {}) },
+      original,
+    );
   }
 };

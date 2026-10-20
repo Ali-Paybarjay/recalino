@@ -20,6 +20,7 @@ import {
   lessonProductionLimit,
   measureLessonContent,
 } from "../../packages/core/src/proc/lesson-budget";
+import { sanitizeGeneratedStudyGaps } from "../../packages/core/src/proc/study-output-guard";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import {
   BudgetGuard,
@@ -149,9 +150,12 @@ for (const index of selected) {
       outputTokens: result.usage.outputTokens ?? null,
       latencyMs: Date.now() - started,
     });
+    // D110: the gaps the guard would rebuild, counted apart from the strict result below.
+    const would = sanitizeGeneratedStudyGaps(result.output);
+    entry.guardGapsRebuilt = { spacing: would.spacing, derivedBlank: would.derivedBlank };
     try {
-      // D110: strict, as the model wrote it; the guard's gap rebuilds are reported separately.
-      const { audit } = validateGeneratedKnowledge(
+      // D110: strict, as the model wrote it: no gap is rebuilt and no card is dropped.
+      validateGeneratedKnowledge(
         result.output,
         part.sources,
         [...part.missingSourceIds],
@@ -159,7 +163,6 @@ for (const index of selected) {
         { productionLimit: lessonProductionLimit(budget.content.markedSpans) },
       );
       entry.outcome = "valid";
-      entry.guardGapsRebuilt = audit.gapsRebuilt;
       accepted.set(index, result.output);
       await writeFile(
         resolve(out, `part-${index}-accepted.json`),

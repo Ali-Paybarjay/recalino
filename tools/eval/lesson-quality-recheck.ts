@@ -13,6 +13,7 @@ import {
   lessonProductionLimit,
   measureLessonContent,
 } from "../../packages/core/src/proc/lesson-budget";
+import { sanitizeGeneratedStudyGaps } from "../../packages/core/src/proc/study-output-guard";
 import { validateGeneratedKnowledge } from "../../packages/core/src/proc/worker";
 import { lessonMetrics, lessonQualityArms } from "./lesson-quality-eval";
 import { lessonQualityCases } from "./lesson-quality-fixtures";
@@ -62,11 +63,15 @@ for (const part of parts) {
       sourceCoverage: candidate.lessonQuality?.sourceCoverage ?? false,
     },
   );
+  let guardGapsRebuilt: { spacing: number; derivedBlank: number } | undefined;
   try {
     // As generateCanonicalKnowledge: assembly first, then the worker's semantic validation.
     const output = generatedKnowledgeSchema.parse(prepared.assemble(raw));
-    // D110: strict, as the model wrote it; the guard's gap rebuilds are reported separately.
-    const { audit } = validateGeneratedKnowledge(
+    // D110: the gaps the guard would rebuild, counted apart from the strict result below.
+    const would = sanitizeGeneratedStudyGaps(output);
+    guardGapsRebuilt = { spacing: would.spacing, derivedBlank: would.derivedBlank };
+    // D110: strict, as the model wrote it: no gap is rebuilt and no card is dropped.
+    validateGeneratedKnowledge(
       output,
       part.sources,
       [...part.missingSourceIds],
@@ -78,10 +83,14 @@ for (const part of parts) {
       part: part.index,
       outcome: "valid",
       items: output.learningItems.length,
-      guardGapsRebuilt: audit.gapsRebuilt,
+      guardGapsRebuilt,
     });
   } catch (error) {
-    outcomes.push({ part: part.index, outcome: `rejected:${fieldOf(error)}` });
+    outcomes.push({
+      part: part.index,
+      outcome: `rejected:${fieldOf(error)}`,
+      ...(guardGapsRebuilt ? { guardGapsRebuilt } : {}),
+    });
   }
 }
 let merged: Record<string, unknown> | null = null;

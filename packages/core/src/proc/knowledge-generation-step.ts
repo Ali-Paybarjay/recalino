@@ -22,10 +22,16 @@ export const knowledgeSchemaFailureSchema = z.strictObject({
  * step, never a field of the checkpoint, so the checkpoint contract and Retry reuse are unchanged
  * and a rollback ignores it.
  */
+const omissionCode = z.string().regex(/^[a-z][a-z0-9_]{0,79}$/u);
 export const assemblyOmissionsSchema = z.strictObject({
   version: z.literal(1),
-  omitted: z.record(z.string().regex(/^[a-z][a-z0-9_]{0,79}$/u), z.number().int().positive()),
+  omitted: z.record(omissionCode, z.number().int().positive()),
   omittedProduction: z.number().int().nonnegative(),
+  /**
+   * The first omitted item's code. Without the tolerance it was the response's assembly error
+   * (`assembly:<code>`), so a response the guard cannot accept takes today's schema recovery.
+   */
+  first: omissionCode,
 });
 export const assemblyOmissionsStep = (checkpoint: string) => `${checkpoint}:assembly-omitted`;
 

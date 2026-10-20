@@ -2720,6 +2720,7 @@ describe("D110 assembly item tolerance and the D78 wire maximum", () => {
     expect(tolerance.omissions).toEqual({
       omitted: { study_gap_partial: 1 },
       omittedProduction: 1,
+      first: "study_gap_partial",
     });
     expect(assembled.learningItems).toHaveLength(1);
     const [kept] = assembled.learningItems;
@@ -2733,6 +2734,37 @@ describe("D110 assembly item tolerance and the D78 wire maximum", () => {
     const clean: AssemblyTolerance = {};
     prepared.assemble(lesson([grammar()], [mistake(0)]), clean);
     expect(clean.omissions).toBeUndefined();
+  });
+
+  it("keeps every planned card concept stated by a kept item, or fails as before", () => {
+    const prepared = prepare(input([source(), source()]));
+    const planned = (items: unknown[], summary: unknown[] = []) =>
+      wire({
+        ...output(),
+        lessonPlan: [
+          { concept: "r0", evidenceKeys: ["r0"], teachAs: "card" },
+          { concept: "r1", evidenceKeys: ["r1"], teachAs: "card" },
+        ],
+        learningItems: items,
+        summary,
+      });
+    // The only claim stating the second concept belongs to the omitted item.
+    const onlyCover = { ...partial(), claim: claim(["r1"]) };
+    const tolerance: AssemblyTolerance = {};
+    expect(() => prepared.assemble(planned([onlyCover, lexical()]), tolerance)).toThrow(
+      failure("study_gap_partial"),
+    );
+    expect(tolerance.omissions).toBeUndefined();
+    // Another claim still states it: the item alone is omitted.
+    const covered = prepared.assemble(
+      planned(
+        [onlyCover, lexical()],
+        [{ ...claim(["r1"]), text: "نکتهٔ دوم در یادداشت آمده است." }],
+      ),
+      tolerance,
+    );
+    expect(covered.learningItems).toHaveLength(1);
+    expect(tolerance.omissions?.first).toBe("study_gap_partial");
   });
 
   it("throws the first item's error beyond the allowance or when no production card would remain", () => {
