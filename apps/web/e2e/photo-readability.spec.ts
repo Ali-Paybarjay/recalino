@@ -70,6 +70,9 @@ test("judges board photos on the device, keeps every photo and zooms without int
   await acceptMaterialNotice(page);
   await page.goto("/recordings");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
+  // D107: once its session exists, the page becomes the session's recording page (client
+  // navigation; the capture goes on).
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   const addPhotoButton = page.getByRole("button", { name: "Add board photo", exact: true });
   await expect(addPhotoButton).toBeEnabled();
 
@@ -77,7 +80,7 @@ test("judges board photos on the device, keeps every photo and zooms without int
   const blurred = await board(page, 4);
   await addPhoto(page, () => addPhotoButton.click(), "sharp.png", sharp);
   await addPhoto(page, () => addPhotoButton.click(), "blurred.png", blurred);
-  // During capture only the current part shows its photos.
+  // During capture the recording's photos are in one gallery (D107), not one per part.
   await expect(page.getByText("2 board photos saved on this device")).toBeVisible();
   await expect(page.getByText("Looks sharp", { exact: true })).toBeVisible();
   await expect(
@@ -149,7 +152,9 @@ test("judges board photos on the device, keeps every photo and zooms without int
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Stop and save", exact: true }).click();
-  await expect(page.getByText("Saved on this device", { exact: true })).toBeVisible();
+  // The panel title and the part's line both say so (D107).
+  await expect(page.getByText("Saved on this device", { exact: true }).first()).toBeVisible();
+  // After Stop the same photos are in the one gallery under the recorded parts.
   await expect(page.getByText("Looks sharp", { exact: true })).toHaveCount(2);
   await expect(page.getByText("May be hard to read: blurry. Retake?", { exact: true })).toHaveCount(
     0,

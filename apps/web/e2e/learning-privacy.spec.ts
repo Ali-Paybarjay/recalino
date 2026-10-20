@@ -74,7 +74,9 @@ test("account deletion waits for capture to stop and removes only its device cop
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   // The recording bar on Today shows Pause as soon as capture starts, before the recording page
   // opens; going back before that would leave the app.
-  await expect(page).toHaveURL(/\/recordings$/);
+  // D107: /recordings becomes the session's recording page once the session exists; waiting
+  // for it keeps that replace from landing after the Back below.
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
   // The recording page has no navigation (UX-02): go back to Today, where the recording continues.
   await page.goBack();
@@ -179,7 +181,9 @@ for (const outcome of ["pending", "unknown"] as const) {
     await page.goto("/today");
     await page.getByRole("button", { name: "Record a session", exact: true }).click();
     // As above: wait for the recording page before going back to Today.
-    await expect(page).toHaveURL(/\/recordings$/);
+    // D107: /recordings becomes the session's recording page once the session exists; waiting
+    // for it keeps that replace from landing after the Back below.
+    await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
     await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/today$/);

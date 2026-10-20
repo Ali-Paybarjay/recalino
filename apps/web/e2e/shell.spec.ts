@@ -134,5 +134,20 @@ for (const [name, viewport] of [
     await expect(page.getByRole("link", { name: "Skip to content" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Stop and save", exact: true })).toBeInViewport();
     await expectNoAxeViolations(page);
+
+    // D107: after Stop the session stays open, still without navigation, with its parts listed.
+    await page.goto("/dev/ui/recording-shell?state=saved");
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Process this session", exact: true }),
+    ).toBeInViewport();
+    await expect(
+      page.getByRole("button", { name: "Continue recording", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/^Part 3 · 3:42$/)).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+    ).toBe(false);
+    await expectNoAxeViolations(page);
   });
 }

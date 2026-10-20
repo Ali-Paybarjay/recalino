@@ -125,6 +125,9 @@ test("declared part durations match the server's decode within 2% after hidden, 
   await page.goto("/recordings");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  // D107: once its session exists, the page becomes the session's recording page (client
+  // navigation; the capture goes on).
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+\/record$/);
   await page.waitForTimeout(4000);
 
   // 1. Hidden and frozen for a while, as a locked phone does to a page (Page Lifecycle API).
@@ -169,7 +172,8 @@ test("declared part durations match the server's decode within 2% after hidden, 
     .toBeGreaterThan(before - 1);
   await page.waitForTimeout(4000);
   await page.getByRole("button", { name: "Stop and save", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Record a session", exact: true })).toBeVisible();
+  // D107: Stop ends this recording, not the session; the next one continues it.
+  await expect(page.getByRole("button", { name: "Continue recording", exact: true })).toBeVisible();
 
   const parts = (await savedParts(page)).sort((a, b) => (a.segment ?? 1) - (b.segment ?? 1));
   expect(parts.length).toBeGreaterThanOrEqual(1);
