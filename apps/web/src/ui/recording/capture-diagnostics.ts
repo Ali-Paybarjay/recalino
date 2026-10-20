@@ -37,6 +37,14 @@ export const captureHealthEventSchema = z.discriminatedUnion("type", [
     cause: z.enum(GAP_CAUSES),
   }),
   z.strictObject({ type: z.literal("interrupted"), part }),
+  z.strictObject({ type: z.literal("pause"), part }),
+  z.strictObject({ type: z.literal("resume"), part, reconnect: z.boolean() }),
+  z.strictObject({
+    type: z.literal("restored"),
+    parts: part,
+    state: z.enum(["recording", "paused", "sealed"]),
+    awayMs: ms,
+  }),
   z.strictObject({
     type: z.literal("staged"),
     part,
@@ -152,10 +160,13 @@ export function watchCaptureDiagnostics(source: Source, options: Options) {
     }
     queue.push({ at: now(), event });
     if (queue.length > 200) queue = queue.slice(-200);
-    // A part's summary, a gap or a hidden page are moments worth sending now.
+    // A part's summary, a gap, a hidden page, a pause or a restore are moments worth sending now:
+    // the page may be lost soon after (D104).
     if (
       event.type === "part" ||
       event.type === "gap" ||
+      event.type === "pause" ||
+      event.type === "restored" ||
       (event.type === "visibility" && !event.visible)
     )
       flush();
