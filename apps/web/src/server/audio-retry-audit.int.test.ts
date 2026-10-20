@@ -6,12 +6,12 @@ import {
   failAwaitingUploadRun,
   getRun,
   requestAutomaticLearning,
-  requestAutomaticProcessing,
   updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
 import { allowance } from "@recalino/core/quota";
 import { IDBFactory } from "fake-indexeddb";
 import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
+import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { workspaceRequest } from "../ui/workspace/api";
 import {
@@ -199,7 +199,7 @@ it("shape (a): a run the old sweep closed as audio_upload_rejected, with no uplo
   await failAwaitingUploadRun(db, learner.ctx, stuck.id, "audio_upload_rejected");
   await requestAutomaticLearning(db, learner.ctx, classB.id, { changed: true });
   // D105: the stuck run was the learner's request (Process this session).
-  const intent = await requestAutomaticProcessing(db, learner.ctx, classB.id);
+  const intent = await processAutomaticFixtureSession(db, learner.ctx, classB.id);
   await updateAutomaticLearningProgress(db, learner.ctx, classB.id, intent.requestVersion, {
     state: "blocked",
     lastError: "audio_upload_rejected",
@@ -273,7 +273,7 @@ it("shape (b): a run whose upload lapsed (not started, then incomplete) is retri
     });
     // The reconciler records the stop on the class, as it does after every expiry. D105: the
     // lapsed run was the learner's request (Process this session).
-    await requestAutomaticProcessing(db, learner.ctx, klass.id);
+    await processAutomaticFixtureSession(db, learner.ctx, klass.id);
     const synced = await automaticLearningSync(db, learner.ctx, klass.id, {
       dependencies: { provider: () => options.provider, processing: () => options.job },
     });

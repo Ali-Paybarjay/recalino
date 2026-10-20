@@ -204,8 +204,9 @@
 
 مالک محصول در 2026-10-20 متن‌های «Process this session» را عیناً تأیید کرد. ثبت نسخه‌دار: [D105](../PRODUCT_DECISIONS_LOG.md). این بخش فقط متنی را ثبت می‌کند که در رابط به کار رفته است. متن‌های دیگر آن تأیید («Process this session»، «Process this session?»، «Continue recording» و مانند آن‌ها) همراه رابطی ثبت می‌شوند که نشانشان می‌دهد، در همین PR. `approved-copy.test.ts` و `workspace/api.test.ts` متن زیر را عیناً می‌سنجند.
 
-- **رد درخواست پردازش هنگام ضبط:** سرور `POST /api/classes/[id]/learning` با `{ action: "process" }` را تا وقتی lease ضبط این جلسه روی هر دستگاهی باز است، با `conflict` و دلیل `capture_in_progress` رد می‌کند (Process هیچ ضبطی را متوقف نمی‌کند). `workspaceRequest` در [`workspace/api.ts`](../../apps/web/src/ui/workspace/api.ts) این دلیل را به `workspaceErrors.captureInProgress` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts) برمی‌گرداند.
+- **رد درخواست پردازش هنگام ضبط:** سرور `POST /api/classes/[id]/learning` با `{ action: "process", revision }` را تا وقتی lease ضبط این جلسه روی هر دستگاهی باز است، با `conflict` و دلیل `capture_in_progress` رد می‌کند (Process هیچ ضبطی را متوقف نمی‌کند). `workspaceRequest` در [`workspace/api.ts`](../../apps/web/src/ui/workspace/api.ts) این دلیل را به `workspaceErrors.captureInProgress` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts) برمی‌گرداند.
 - رد هنگام گروه آپلود باز (`batch_open`) متن تازه ندارد و همان پیام پیش‌فرض `conflict` است.
+- رد فشاری که نسخهٔ دیده‌شده‌اش دیگر جاری نیست (دلیل `changed_after_estimate`) متن تازه ندارد و از متن موجود `workspaceErrors.sourcesChanged` استفاده می‌کند.
 
 | جا | مقدار ذخیره‌شده | متن |
 |---|---|---|

@@ -7,12 +7,12 @@ import {
   listRuns,
   processingQueue,
   requestAutomaticLearning,
-  requestAutomaticProcessing,
   updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
 import { amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
 import { afterAll, expect, it } from "vitest";
+import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
 import {
@@ -161,7 +161,7 @@ async function classWithText(ctx: LearnerContext, text: string) {
     }),
   );
   // D105: the learner pressed Process this session.
-  await requestAutomaticProcessing(db, ctx, session.id);
+  await processAutomaticFixtureSession(db, ctx, session.id);
   const started = await automaticLearningSync(db, ctx, session.id, {
     dependencies: { provider: () => provider, processing: () => processingQueue },
   });

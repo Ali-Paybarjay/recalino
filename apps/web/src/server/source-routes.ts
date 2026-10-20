@@ -58,6 +58,18 @@ function store() {
   return value;
 }
 /**
+ * D105: a file added or attached outside a declared upload group, or a changed selection, is new
+ * material. Committed with the change, it opens a processed session again, so nothing is
+ * regenerated or charged before the learner's next Process this session.
+ */
+function materialAdded(
+  tx: Parameters<typeof requestAutomaticLearning>[0],
+  learner: LearnerContext,
+  sessionId: string,
+) {
+  return requestAutomaticLearning(tx, learner, sessionId, { changed: true });
+}
+/**
  * D105: removed material changes the lesson's sources too. Committed with the removal, it opens a
  * processed session again, so the notes change only after the learner's next Process this session.
  */
@@ -123,9 +135,11 @@ export function sourcesHandler(): Handler {
           new Date(),
           false,
         );
+      else if (!created.replayed) await materialAdded(tx, learner, sessionId);
       return created;
     });
-    await notifyAutomaticLearning(db, learner, sessionId, !fields.batchId);
+    // The new material is committed above; this only wakes the class's queued work.
+    await notifyAutomaticLearning(db, learner, sessionId, false);
     return { status: 201, body };
   };
 }
@@ -190,9 +204,10 @@ export function classSourcesHandler(id: string): Handler {
           new Date(),
           false,
         );
+      else await materialAdded(tx, learner, id);
       return link;
     });
-    await notifyAutomaticLearning(db, learner, id, !fields.batchId);
+    await notifyAutomaticLearning(db, learner, id, false);
     return { body: { linkId } };
   };
 }
@@ -208,8 +223,12 @@ export function classSourceHandler(id: string, sourceId: string): Handler {
       return { body: { removed: true } };
     }
     const learner = learnerActor(ctx);
-    const body = await updateSourceSelection(db, learner, id, sourceId, input);
-    await notifyAutomaticLearning(db, learner, id);
+    const body = await db.transaction().execute(async (tx) => {
+      const updated = await updateSourceSelection(tx, learner, id, sourceId, input);
+      await materialAdded(tx, learner, id);
+      return updated;
+    });
+    await notifyAutomaticLearning(db, learner, id, false);
     return { body };
   };
 }

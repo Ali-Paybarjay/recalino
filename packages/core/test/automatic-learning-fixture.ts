@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Database } from "../src/db";
 import { type EvidenceSource, type KnowledgeModel, publishKnowledgeVersion } from "../src/lkm";
 import type { LearnerContext } from "../src/plt";
+import { getAutomaticLearningSession, requestAutomaticProcessing } from "../src/proc";
 import { submitReview } from "../src/srs";
 
 export async function publishAutomaticFixtureVersion(
@@ -46,4 +47,15 @@ export async function reviewAutomaticFixtureCard(
     },
     now,
   );
+}
+
+/** D105: the learner presses Process this session on the revision the status shows now. */
+export async function processAutomaticFixtureSession(
+  db: Database,
+  ctx: LearnerContext,
+  sessionId: string,
+  now = new Date(),
+) {
+  const intent = await getAutomaticLearningSession(db, ctx, sessionId);
+  return requestAutomaticProcessing(db, ctx, sessionId, now, intent?.requestVersion ?? 0);
 }

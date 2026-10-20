@@ -24,7 +24,6 @@ import {
   processingJob,
   registerAutomaticLearningFile,
   requestAutomaticLearning,
-  requestAutomaticProcessing,
   selectProcessingSourceSnapshot,
 } from "@recalino/core/proc";
 import {
@@ -36,6 +35,7 @@ import {
 } from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
 import { afterAll, expect, it } from "vitest";
+import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
 import {
@@ -237,7 +237,7 @@ async function fixture(grant = true) {
     });
   // D105: the learner presses Process this session; the route then syncs, as here.
   const process = async () => {
-    await requestAutomaticProcessing(db, base.ctx, session.id);
+    await processAutomaticFixtureSession(db, base.ctx, session.id);
     return sync();
   };
   // Other integration fixtures leave durable jobs queued. Drive only this owned class through
@@ -669,7 +669,7 @@ it("acknowledges the same retry key after extraction fingerprint changes without
   );
   await requestAutomaticLearning(db, f.ctx, f.session.id);
   // D105: the change reopened the session; the learner presses Process this session again.
-  await requestAutomaticProcessing(db, f.ctx, f.session.id);
+  await processAutomaticFixtureSession(db, f.ctx, f.session.id);
   const after = await selectProcessingSourceSnapshot(db, f.ctx, f.session.id);
   expect(after.fingerprint).not.toBe(before.fingerprint);
   expect(after.sourcesVersion).toBeGreaterThan(before.sourcesVersion);
@@ -769,7 +769,7 @@ it("ignores unselected upload failures while selected incomplete files still nee
 it("fences a batch opened after snapshot selection before any allowance reservation", async () => {
   const f = await fixture();
   await f.addText("Guard test");
-  const intent = await requestAutomaticProcessing(db, f.ctx, f.session.id);
+  const intent = await processAutomaticFixtureSession(db, f.ctx, f.session.id);
   await beginAutomaticLearningBatch(db, f.ctx, f.session.id, randomUUID());
   await expect(
     createProcessingRun(
@@ -896,7 +896,7 @@ it("D59: the same file in another class of the period is processed without new a
       blocks: [{ id: "text", kind: "paragraph", unitId: "doc", text: "D59 shared recording" }],
     }),
   );
-  await requestAutomaticProcessing(db, f.ctx, copy.id);
+  await processAutomaticFixtureSession(db, f.ctx, copy.id);
   const started = await automaticLearningSync(db, f.ctx, copy.id, {
     dependencies: { provider: () => f.provider, processing: () => f.job },
   });
@@ -934,7 +934,7 @@ it("D105: Stop, a lapsed capture lease, the reconciler and Retry start no lesson
   await requestAutomaticLearning(db, f.ctx, f.session.id);
   expect((await f.sync()).processRequest).toBe("not_requested");
   // Process never stops a recording.
-  await expect(requestAutomaticProcessing(db, f.ctx, f.session.id)).rejects.toMatchObject({
+  await expect(processAutomaticFixtureSession(db, f.ctx, f.session.id)).rejects.toMatchObject({
     code: "conflict",
     details: { fields: { session: ["capture_in_progress"] } },
   });

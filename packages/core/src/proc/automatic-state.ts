@@ -137,16 +137,18 @@ export async function requestAutomaticLearning(
   });
 }
 /**
- * D105 (owner decision 2026-10-20): the learner's "Process this session". The current material
- * becomes the request; a later material change raises requestVersion above it, so the session
- * waits for another press. Pressing again changes nothing. Refused while an upload group is open
- * or while any device records into the session: Process never stops a recording.
+ * D105 (owner decision 2026-10-20): the learner's "Process this session". The material of the
+ * revision the learner confirmed becomes the request; a later material change raises
+ * requestVersion above it, so the session waits for another press. Pressing again changes
+ * nothing. Refused while an upload group is open or while any device records into the session
+ * (Process never stops a recording), and when the material changed after the learner saw it.
  */
 export async function requestAutomaticProcessing(
   db: Database | Tx,
   ctx: LearnerContext,
   sessionId: string,
-  now = new Date(),
+  now: Date,
+  expectedRevision: number,
 ): Promise<AutomaticLearningSession> {
   return transaction(db, async (tx) => {
     await lockAccount(tx, ctx.userId);
@@ -154,7 +156,17 @@ export async function requestAutomaticProcessing(
     if (previous?.batch_id) throw errors.conflict({ batch: ["batch_open"] });
     if (await captureInProgress(tx, ctx, sessionId, now))
       throw errors.conflict({ session: ["capture_in_progress"] });
-    if (previous && previous.requested_version === previous.request_version) return view(previous);
+    if (
+      previous &&
+      previous.requested_version === previous.request_version &&
+      // A replay of the press that created the intent still names revision 0.
+      (expectedRevision === previous.request_version ||
+        (expectedRevision === 0 && previous.request_version === 1))
+    )
+      return view(previous);
+    // A replay after new material, or a second device's addition, is never processed unseen.
+    if ((previous?.request_version ?? 0) !== expectedRevision)
+      throw errors.validationFailed({ sources: ["changed_after_estimate"] });
     const row = previous
       ? await tx
           .updateTable("proc.automatic_session")

@@ -3,15 +3,11 @@ import type { AiProvider } from "@recalino/core/aip";
 import { createDatabase } from "@recalino/core/db";
 import { createSession, releaseCaptureLease, renewCaptureLease } from "@recalino/core/org";
 import { MemoryObjectStore, sha256Hex } from "@recalino/core/plt";
-import {
-  listRuns,
-  processingJob,
-  requestAutomaticLearning,
-  requestAutomaticProcessing,
-} from "@recalino/core/proc";
+import { listRuns, processingJob, requestAutomaticLearning } from "@recalino/core/proc";
 import { amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
 import { appendContentVersion } from "@recalino/core/src";
 import { afterAll, expect, it } from "vitest";
+import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
 import { automaticLearningSync } from "./automatic-learning";
@@ -121,7 +117,7 @@ it("D60/D105: lesson work waits while a capture is open; after Stop it starts at
   expect((await sync()).state).toBe("waiting_sources");
   expect(await listRuns(db, base.ctx, session.id)).toHaveLength(0);
   // D105: Process never stops a recording, so it is refused while the lease is open.
-  await expect(requestAutomaticProcessing(db, base.ctx, session.id)).rejects.toMatchObject({
+  await expect(processAutomaticFixtureSession(db, base.ctx, session.id)).rejects.toMatchObject({
     code: "conflict",
     details: { fields: { session: ["capture_in_progress"] } },
   });
@@ -130,7 +126,7 @@ it("D60/D105: lesson work waits while a capture is open; after Stop it starts at
   // D105: Stop ends the recording, not the session.
   expect(await sync()).toMatchObject({ processRequest: "not_requested", run: null });
   expect(await listRuns(db, base.ctx, session.id)).toHaveLength(0);
-  await requestAutomaticProcessing(db, base.ctx, session.id);
+  await processAutomaticFixtureSession(db, base.ctx, session.id);
   const after = await sync();
   expect(after.run).toBeTruthy();
   expect(await listRuns(db, base.ctx, session.id)).toHaveLength(1);

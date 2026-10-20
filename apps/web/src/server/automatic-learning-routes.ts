@@ -35,8 +35,9 @@ const actions = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("cancel_batch"), batchId: z.uuid() }),
   z.strictObject({ action: z.literal("complete"), batchId: z.uuid() }),
   z.strictObject({ action: z.literal("sync") }),
-  // D105: the learner's "Process this session"; the only action that starts lesson work.
-  z.strictObject({ action: z.literal("process") }),
+  // D105: the learner's "Process this session"; the only action that starts lesson work. The
+  // revision is the status revision the learner confirmed (0 before the class has any intent).
+  z.strictObject({ action: z.literal("process"), revision: z.int().nonnegative() }),
   z.strictObject({ action: z.literal("retry") }),
   z.strictObject({ action: z.literal("request_review"), runId: z.uuid() }),
   // NFR-07 (D71): an interval this device's page was hidden while the class was in progress.
@@ -123,9 +124,10 @@ export function automaticLearningHandler(
       return { status: 202, body };
     }
     if (fields.action === "process") {
-      // Pressing twice has no second effect: the same request version is already the request.
+      // A replay, or a press after other material arrived, names a revision that is no longer
+      // current and is refused; a press on the already requested revision has no second effect.
       idempotencyKey(request);
-      await requestAutomaticProcessing(db, learner, sessionId);
+      await requestAutomaticProcessing(db, learner, sessionId, new Date(), fields.revision);
     }
     const retryKey = fields.action === "retry" ? idempotencyKey(request) : null;
     const body = await deps.sync(db, learner, sessionId, retryKey ? { retryKey } : {});

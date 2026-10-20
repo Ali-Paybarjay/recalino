@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createAuthUser } from "../../test/auth-users";
+import { processAutomaticFixtureSession } from "../../test/automatic-learning-fixture";
 import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
 import {
   cleanupFixtureProcessingJobs,
@@ -45,7 +46,6 @@ import {
   beginAutomaticLearningBatch,
   getAutomaticLearningSession,
   requestAutomaticLearning,
-  requestAutomaticProcessing,
   updateAutomaticLearningProgress,
 } from "./automatic-state";
 import { awaitingUploadRuns, expireAwaitingUploads } from "./maintenance";
@@ -319,7 +319,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     await f.work();
     expect((await getRun(db, f.ctx, failed.id)).state).toBe("failed");
     // D105: the failed run was the learner's request (Process this session).
-    const intent = await requestAutomaticProcessing(db, f.ctx, f.session.id);
+    const intent = await processAutomaticFixtureSession(db, f.ctx, f.session.id);
     await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
       state: "blocked",
       runId: failed.id,
@@ -395,7 +395,7 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
       f.provider.failure = new ProviderError("provider_http_400", false, false);
       const failed = await f.start();
       await f.work();
-      const intent = await requestAutomaticProcessing(db, f.ctx, f.session.id);
+      const intent = await processAutomaticFixtureSession(db, f.ctx, f.session.id);
       await updateAutomaticLearningProgress(db, f.ctx, f.session.id, intent.requestVersion, {
         state: "blocked",
         runId: failed.id,

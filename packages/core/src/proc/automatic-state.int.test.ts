@@ -468,8 +468,8 @@ it("reconciles pending intent only while its class and owner are live", async ()
   const x = await studyFixture(db);
   const y = await studyFixture(db);
   // D105: only material the learner asked to process is pending.
-  await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date("2020-01-01T00:00:00Z"));
-  await requestAutomaticProcessing(db, y.ctx, y.session.id, new Date("2020-01-02T00:00:00Z"));
+  await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date("2020-01-01T00:00:00Z"), 0);
+  await requestAutomaticProcessing(db, y.ctx, y.session.id, new Date("2020-01-02T00:00:00Z"), 0);
   expect((await listPendingAutomaticLearning(db, 250)).map((row) => row.sessionId)).toContain(
     x.session.id,
   );
@@ -498,6 +498,7 @@ it("reconciles temporary service blocks without automatically retrying quota or 
     x.ctx,
     x.session.id,
     new Date("2019-01-01T00:00:00Z"),
+    0,
   );
   for (const code of [
     "configuration_unavailable",
@@ -533,7 +534,7 @@ it("filters deleted classes and accounts before applying the reconciliation limi
     [deletedOwner, "2001-01-02T00:00:00Z"],
     [live, "2001-01-03T00:00:00Z"],
   ] as const)
-    await requestAutomaticProcessing(db, fixture.ctx, fixture.session.id, new Date(date));
+    await requestAutomaticProcessing(db, fixture.ctx, fixture.session.id, new Date(date), 0);
   await db
     .updateTable("org.class_session")
     .set({ deleted_at: new Date(), deletion_request_id: randomUUID() })
@@ -611,8 +612,8 @@ it("D105: records the learner's request once, under the account lock, for the cu
   // An old time sorts this class before other fixtures' pending rows within the read limit.
   const now = new Date("2021-01-01T00:00:00Z");
   const [first, double] = await Promise.all([
-    requestAutomaticProcessing(db, x.ctx, x.session.id, now),
-    requestAutomaticProcessing(db, x.ctx, x.session.id, now),
+    requestAutomaticProcessing(db, x.ctx, x.session.id, now, 1),
+    requestAutomaticProcessing(db, x.ctx, x.session.id, now, 1),
   ]);
   expect(first).toEqual(double);
   expect(first).toMatchObject({
@@ -624,12 +625,12 @@ it("D105: records the learner's request once, under the account lock, for the cu
   });
   expect(await pending()).toBe(true);
   // Pressing again later has no second effect.
-  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date())).toEqual(first);
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), 1)).toEqual(first);
   // New material reopens the session: it waits for the next press and is no longer pending.
   const reopened = await requestAutomaticLearning(db, x.ctx, x.session.id);
   expect(reopened).toMatchObject({ requestVersion: 2, requestedVersion: 1 });
   expect(await pending()).toBe(false);
-  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, now)).toMatchObject({
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, now, 2)).toMatchObject({
     requestVersion: 2,
     requestedVersion: 2,
   });
@@ -639,25 +640,77 @@ it("D105: records the learner's request once, under the account lock, for the cu
 it("D105: a first press creates the intent of a class that has none", async () => {
   const x = await studyFixture(db);
   expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toBeNull();
-  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id)).toMatchObject({
+  // A double press of a class without intent: both name revision 0, one creates the intent.
+  const [created, double] = await Promise.all([
+    requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), 0),
+    requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), 0),
+  ]);
+  expect(created).toMatchObject({
     sessionId: x.session.id,
     requestVersion: 1,
     requestedVersion: 1,
     batchId: null,
+  });
+  expect(double).toEqual(created);
+  // Its replay still names revision 0 and changes nothing.
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), 0)).toEqual(created);
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toEqual(created);
+});
+
+// D105: the press names the revision the learner saw in the summary, so a replay or a press made
+// after other material arrived never processes or charges material the learner did not confirm.
+it("D105: refuses a press on a revision that is no longer current, changing nothing", async () => {
+  const x = await studyFixture(db);
+  const changed = {
+    code: "validation_failed",
+    details: { fields: { sources: ["changed_after_estimate"] } },
+  };
+  // The summary showed revision 0; a part registered meanwhile made revision 1.
+  const opened = await requestAutomaticLearning(db, x.ctx, x.session.id);
+  await expect(
+    requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), 0),
+  ).rejects.toMatchObject(changed);
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toEqual(opened);
+  const pressedAt = new Date();
+  const pressed = await requestAutomaticProcessing(db, x.ctx, x.session.id, pressedAt, 1);
+  expect(pressed).toMatchObject({
+    requestVersion: 1,
+    requestedVersion: 1,
+    requestedAt: pressedAt.toISOString(),
+  });
+  // A new part arrives; the same press sent again names revision 1, which the learner confirmed
+  // before the part existed.
+  const reopened = await requestAutomaticLearning(db, x.ctx, x.session.id);
+  expect(reopened).toMatchObject({ requestVersion: 2, requestedVersion: 1 });
+  for (const revision of [1, 0, 3])
+    await expect(
+      requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), revision),
+    ).rejects.toMatchObject(changed);
+  expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toEqual(reopened);
+  // A press on the revision the learner now sees is accepted.
+  const now = new Date(pressedAt.getTime() + 1000);
+  expect(await requestAutomaticProcessing(db, x.ctx, x.session.id, now, 2)).toMatchObject({
+    requestVersion: 2,
+    requestedVersion: 2,
+    requestedAt: now.toISOString(),
   });
 });
 
 it("D105: refuses while a recording or an upload group of the class is open, changing nothing", async () => {
   const x = await studyFixture(db);
   await renewCaptureLease(db, x.ctx, x.session.id);
-  await expect(requestAutomaticProcessing(db, x.ctx, x.session.id)).rejects.toMatchObject({
+  await expect(
+    requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), 0),
+  ).rejects.toMatchObject({
     code: "conflict",
     details: { fields: { session: ["capture_in_progress"] } },
   });
   expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toBeNull();
   await releaseCaptureLease(db, x.ctx, x.session.id);
   const batch = await beginAutomaticLearningBatch(db, x.ctx, x.session.id, randomUUID());
-  await expect(requestAutomaticProcessing(db, x.ctx, x.session.id)).rejects.toMatchObject({
+  await expect(
+    requestAutomaticProcessing(db, x.ctx, x.session.id, new Date(), batch.requestVersion),
+  ).rejects.toMatchObject({
     code: "conflict",
     details: { fields: { batch: ["batch_open"] } },
   });
@@ -682,7 +735,9 @@ it("D105: refuses while a recording or an upload group of the class is open, cha
 it("D105: refuses another owner's class before reading or changing its intent", async () => {
   const x = await studyFixture(db);
   const other = await studyFixture(db);
-  await expect(requestAutomaticProcessing(db, other.ctx, x.session.id)).rejects.toMatchObject({
+  await expect(
+    requestAutomaticProcessing(db, other.ctx, x.session.id, new Date(), 0),
+  ).rejects.toMatchObject({
     code: "not_found",
   });
   expect(await getAutomaticLearningSession(db, x.ctx, x.session.id)).toBeNull();
