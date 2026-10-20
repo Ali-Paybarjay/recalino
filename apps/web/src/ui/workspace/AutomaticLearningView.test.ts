@@ -231,7 +231,7 @@ describe("retry from the class notice", () => {
     const html = render("progress");
     expect(html).toContain("Creating notes and flashcards");
     expect(html).toContain(
-      "Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.",
+      "Most sessions are ready within a few minutes after you process them. Longer recordings take longer. You can leave this page.",
     );
     expect(html).not.toContain("Action needed");
   });

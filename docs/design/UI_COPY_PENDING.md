@@ -49,12 +49,12 @@
 - **UX-03، پیام Undo پس از Reject** (`cardActionsCopy.rejected` در [`workspace/card-actions-copy.ts`](../../apps/web/src/ui/workspace/card-actions-copy.ts)): «Card rejected». Snackbar با دکمهٔ Undo و الگوی قاب E3؛ هنگام ضبط فعال نمایش داده نمی‌شود (PRD-REC-02). دکمهٔ موقت «Undo last card change» روی کارت ردشده برداشته شد.
 - **UX-09، راهنمای پیشرفت وقتی Terms تازه پردازش را نگه داشته** (`learningProgressCopy.termsGuidance` در [`workspace/learning-progress-copy.ts`](../../apps/web/src/ui/workspace/learning-progress-copy.ts)): «Read and accept the updated Terms to continue.» جملهٔ موقت `strings.settings.termsChanged` و تاریخ آن (`termsChangedOn`) از مسیر پیشرفت برداشته شد.
 - **UX-10، رسید حذف حساب در وضعیت `needs_operator`** (`privacyCopy.needsOperator` در [`workspace/privacy-copy.ts`](../../apps/web/src/ui/workspace/privacy-copy.ts)): «Your account and sessions are already hidden. Removing the rest of your data needs the pilot operator. Contact the pilot operator and give them the request reference below.»
-- **UX-12، صفحهٔ Allowance، «Need more allowance?»** (`allowanceHelp.need` در [`allowance-copy.ts`](../../apps/web/src/ui/allowance-copy.ts)): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.»
+- **UX-12، صفحهٔ Allowance، «Need more allowance?»** (`allowanceHelp.need` در [`allowance-copy.ts`](../../apps/web/src/ui/allowance-copy.ts)): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.» (در 2026-10-20 با D107 اصلاح شد؛ بخش D107 پایین‌تر.)
 - **UX-12، صفحهٔ Allowance، «Reserved and used»** (`allowanceHelp.reserved`): «Reserved allowance is held while your material is processed. Only usable published output is charged.»
 - **UX-12، خطای تغییر منابع پس از برآورد** (`workspaceErrors.sourcesChanged` در [`workspace/error-copy.ts`](../../apps/web/src/ui/workspace/error-copy.ts)): «The selected sources have changed. Check your session material, then try again.» عیناً مانده است، حتی با واژهٔ «sources»؛ بند «واژهٔ material» پایین‌تر را ببینید.
 - **UX-14، بالای صفحهٔ Your data** (`privacyCopy.downloadFirst`): «To keep a copy first, open a session, choose More session tools, then Download notes and cards.»
 - **UX-01، صفحهٔ ورود** (`experienceCopy.welcome.pilotNote` در [`experience-copy.ts`](../../apps/web/src/ui/experience-copy.ts)): «Built for a small pilot group. Sign in with Google to start.» همان جایی است که یادداشت حذف‌شدهٔ «coming next» بود.
-- **UX-13، برآورد انتظار** (`learningProgressCopy.waitEstimate`): «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» زیر «Waiting to process» و «Creating notes and flashcards» می‌آید و پیش از جملهٔ قبلی «Processing continues automatically, and progress updates here.» است. بدون عدد و بدون داده‌های NFR-07 است.
+- **UX-13، برآورد انتظار** (`learningProgressCopy.waitEstimate`): «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» (در 2026-10-20 با D107 اصلاح شد.) زیر «Waiting to process» و «Creating notes and flashcards» می‌آید و پیش از جملهٔ قبلی «Processing continues automatically, and progress updates here.» است. بدون عدد و بدون داده‌های NFR-07 است.
 - **UX-13، دعوت به اعلان** (`learningProgressCopy.notificationQuestion` و `notificationAction`): «Want a message when your notes are ready? Turn on notifications in Settings.» جملهٔ دوم دکمه‌ای است که پنل «Notifications» را باز می‌کند؛ کلید روشن‌کردن اعلان دستگاه همان‌جاست و در صفحهٔ `/me` چنین ردیفی نیست. فقط وقتی دیده می‌شود که مرورگر Push را بشناسد و اجازه هنوز پرسیده نشده باشد، و هرگز هنگام ضبط فعال.
 
 ## تأیید 2026-10-19 — واژگان A (تصمیم مالک محصول برای دستهٔ ۵، UX-06)
@@ -222,6 +222,31 @@
 
 - فهرست خالی متن‌های پیشین خود را نگه می‌دارد: «Add your first material»، «Bring together your recording, handouts, photos and notes.» و دکمهٔ «Add Files».
 - برچسب کنترل‌های کوچک هر خط («Open original»، «Remove from session»، «Skip this file» و «Delete options») و متن برگهٔ «Delete options» همان متن‌های پیشین‌اند. متن تازهٔ دیگری اضافه نشد.
+
+## تأیید 2026-10-20 — صفحهٔ ضبط و Process this session (D107)
+
+مالک محصول در 2026-10-20 متن‌های فهرست پارت‌های صفحهٔ ضبط و رابط «Process this session» را عیناً تأیید کرد. ثبت نسخه‌دار: [D107](../PRODUCT_DECISIONS_LOG.md). متن‌های تازه در `processSessionCopy` در [`workspace/process-session-copy.ts`](../../apps/web/src/ui/workspace/process-session-copy.ts) و `recordingCopy` در [`recording/recording-copy.ts`](../../apps/web/src/ui/recording/recording-copy.ts) هستند. `approved-copy.test.ts` هر متن تازه و هر اصلاح را عیناً با همین بخش می‌سنجد. «Add more material» (D106) و «Stop the recording before you process this session.» (D105) پیش‌تر ثبت شده‌اند و اینجا تکرار نمی‌شوند.
+
+| جا | کلید | متن |
+|---|---|---|
+| دکمهٔ صفحهٔ ضبط پس از Stop، کارت گام بعد (جلسه و Today) و صفحهٔ Session material | `processSessionCopy.action` | «Process this session» |
+| عنوان برگهٔ خلاصه و سهمیه پیش از هر Process (قاب C5 با واژگان D50) | `processSessionCopy.title` | «Process this session?» |
+| برگهٔ خلاصه، زیر ردیف‌های مواد و سهمیه | `processSessionCopy.nothingYet` | «Nothing is processed or charged until you confirm.» |
+| زیر «Ready to process» در کارت گام بعد و کارت صفحهٔ Session material | `processSessionCopy.readyDetail` | «Your notes and flashcards are made when you process this session.» |
+| دکمهٔ دوم صفحهٔ ضبط پس از Stop: ضبط تازه در همان جلسه | `recordingCopy.continueRecording` | «Continue recording» |
+| جملهٔ صفحهٔ ضبط پس از Stop | `recordingCopy.staysOpen` | «This session stays open. Record more, or process it when the class is over.» |
+| عنوان فهرست پارت‌های همین جلسه در صفحهٔ ضبط | `recordingCopy.recordedParts` | «Recorded parts» |
+| خط اول هر پارت؛ `{n}` شمارهٔ پارت (Part 1 هم) و `{duration}` طول آن به شکل m:ss | `recordingCopy.partTitle` | «Part {n} · {duration}» |
+
+اصلاح پنج جمله‌ای که پردازش را درست پس از Stop وعده می‌دادند (قدیم → تازه):
+
+- **مقدمهٔ صفحهٔ ضبط** (`recordingCopy.introduction`): «Recorded parts are saved on this device and sent while you record; after Stop the last part is sent and your notes are prepared.» → «Recorded parts are saved on this device and sent while you record; after Stop the last part is sent, and your notes are made when you process this session.»
+- **اعلان مواد در صفحهٔ ضبط** (`recordingCopy.materialNotice`، پیش‌تر متن درون `RecordingView.tsx`): «After you stop recording, saved audio and board photos automatically create and save your session notes and flashcards. Audio stays on this device, with a temporary copy uploaded for transcription. Board photos are stored privately.» → «When you process this session, saved audio and board photos create and save your session notes and flashcards. Audio stays on this device, with a temporary copy uploaded for transcription. Board photos are stored privately.»
+- **برآورد انتظار** (`learningProgressCopy.waitEstimate`): «Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.» → «Most sessions are ready within a few minutes after you process them. Longer recordings take longer. You can leave this page.»
+- **صفحهٔ Allowance** (`allowanceHelp.need`): «The pilot operator sets your allowance. Processing starts automatically when your material is ready, as long as your allowance covers it.» → «The pilot operator sets your allowance. Processing starts when you process a session, as long as your allowance covers it.»
+- **«Topics covered» جلسهٔ خالی** (`app/(app)/sessions/[id]/page.tsx`): «Record this session or add material to get started. Your lesson title, notes and flashcards will appear automatically.» → «Record this session or add material to get started. Your lesson title, notes and flashcards will appear after you process this session.»
+
+متن‌های موجودی که بدون تغییر دوباره به کار رفته‌اند: «Ready to process» (`handoff/copy.md`، Class statuses)، «New sources since your notes were made» (Changed sources)، «A new version of existing notes also uses 1 New versions unit.» (Retry، D59)، «Confirm and process» و «Not now» (قاب C5)، ردیف‌های C5 با برچسب‌های موجود («Class audio» از `allowanceLabels`، «Board photos»، `sourceKindLabel`)، خط‌های سهمیه با `allowanceCopy.shortageItem`، «Saved on this device»، «Recording in progress»، «Listen»، «Export audio»، «Remove from this device»، «Confirm local removal»، «Keep»، «Back to session»، «Saved and recoverable recordings» و «No recordings on this device yet.».
 
 ## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 
