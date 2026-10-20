@@ -49,10 +49,17 @@ export function RecordingView({
 }) {
   const { controller, state, store, userId, sourceSync, syncState } = useRecording();
   const router = useRouter();
-  // D107: after Stop the learning loop uploads the session's board photos; its status update
-  // reads them again, so Process this session is offered once they are on the server.
-  const learning = useAutomaticLearning(state.recording?.sessionId ?? sessionId ?? "");
   const [rows, setRows] = useState<Recording[]>([]);
+  // D107: only this session's parts, Part 1 on top. While a recording starts, nothing from the
+  // rest of the device flashes up on /recordings.
+  const scope = useMemo(
+    () => partScope(rows, state.recording, sessionId),
+    [rows, state.recording, sessionId],
+  );
+  // D107: after Stop the learning loop uploads the session's board photos; its status update
+  // reads them again, so Process this session is offered once they are on the server. The status
+  // is the listed session's, never that of this tab's last recording of another session.
+  const learning = useAutomaticLearning(scope.sessionId ?? "");
   const [time, setTime] = useState({ elapsed: 0, segmentElapsed: 0 });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -269,9 +276,6 @@ export function RecordingView({
   const quiet = captureIsQuiet(state.phase);
   const current = state.recording;
   const currentId = current?.id;
-  // D107: only this session's parts, Part 1 on top. While a recording starts, nothing from the
-  // rest of the device flashes up on /recordings.
-  const scope = useMemo(() => partScope(rows, current, sessionId), [rows, current, sessionId]);
   const shown = active && !current && !sessionId ? [] : scope.rows;
   const shownIds = new Set(shown.map((row) => row.id));
   const shownPhotos = photos.filter((photo) => shownIds.has(photo.recordingId));

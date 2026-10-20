@@ -16,9 +16,14 @@ const mocks = vi.hoisted(() => ({
   // stands in for the rows the page would list.
   scope: null as PartScope | null,
   learning: null as null | { processRequest: string; revision: number; requestedRevision: number },
+  // When set, only this session has the status above.
+  learningSession: null as string | null,
 }));
 vi.mock("../workspace/AutomaticLearningProvider", () => ({
-  useAutomaticLearning: () => ({ status: mocks.learning, acceptStatus: vi.fn() }),
+  useAutomaticLearning: (id: string) => ({
+    status: !mocks.learningSession || mocks.learningSession === id ? mocks.learning : null,
+    acceptStatus: vi.fn(),
+  }),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
@@ -99,6 +104,7 @@ beforeEach(() => {
   mocks.sync = { phase: "idle", count: 0, pending: 0, error: "" };
   mocks.scope = null;
   mocks.learning = null;
+  mocks.learningSession = null;
 });
 
 // UX-11 and PRD-REC-02: until Stop, nothing but a real capture failure may speak.
@@ -267,6 +273,24 @@ describe("the recorded parts", () => {
     mocks.learning = { processRequest: "new_material", revision: 4, requestedRevision: 3 };
     html = render();
     expect(html).toContain(">Process this session<");
+  });
+
+  it("reads the listed session's status, not that of a recording of another session", () => {
+    const other = "20000000-0000-4000-8000-000000000009";
+    mocks.phase = "saved";
+    // This tab's last recording belongs to another session, already asked for there.
+    mocks.recording = part(1, { sessionId: other, sourceAssetId: "t" });
+    mocks.learning = { processRequest: "requested", revision: 3, requestedRevision: 3 };
+    mocks.learningSession = other;
+    mocks.scope = {
+      kind: "session",
+      sessionId: session,
+      rows: [part(2, { captureId: part(2).id, sourceAssetId: "s" })],
+    };
+    const html = render({ sessionId: session });
+    const process = html.match(/<button[^>]*>Process this session<\/button>/)?.[0] ?? "";
+    expect(process).not.toBe("");
+    expect(process).not.toContain("disabled");
   });
 
   it("gives every finished part small controls named by its line", () => {
