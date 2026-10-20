@@ -15,7 +15,7 @@ export const learningMemoryCopy = {
   nextNothingDue: "Nothing is due right now.",
   nextDueAt: (date: string) => `Your next review is due on ${date}.`,
   nextNoCards: "Add a session to start your flashcards.",
-  nextNoCardsAction: "Go to courses",
+  nextNoCardsAction: "Go to sessions",
   noticedTitle: "What Recalino has noticed",
   noticedIntro:
     "Based only on your own Recall answers in the last 30 days. It describes that practice, not your level, speaking or exam readiness.",

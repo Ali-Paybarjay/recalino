@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Actions, Button, Field, Panel, Status } from "../workspace/primitives";
 import styles from "./LearningViews.module.css";
 import { type PreviewState, type SampleCard, usePreview } from "./PreviewContext";
-import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { LinkButton, PageHeader } from "./preview-links";
 
 type Rating = PreviewState["reviewEvents"][number]["rating"];
 const TYPES: Record<SampleCard["type"], string> = {
@@ -70,7 +71,11 @@ function SourceLabel({ source, classId }: { source: string; classId?: string }) 
     <div className={styles.provenance}>
       <span
         className={
-          prepared ? "preview-chip" : ai ? "preview-provenance-ai" : "preview-provenance-class"
+          prepared
+            ? "workspace-chip"
+            : ai
+              ? "workspace-provenance-ai"
+              : "workspace-provenance-class"
         }
       >
         {prepared ? "Prepared sample" : ai ? "AI explanation · sample" : "From class · sample"}
@@ -124,7 +129,7 @@ function ComputerVoice({ text }: { text: string }) {
     setSpeaking(true);
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <p className={styles.muted}>
         Computer voice demonstration. This is not your session recording.
       </p>
@@ -171,7 +176,7 @@ function Notes() {
         </Status>
       ) : null}
       <div className={styles.readerLayout}>
-        <div className={`${styles.reading} preview-stack`}>
+        <div className={`${styles.reading} workspace-stack`}>
           <Panel title="In this class" tone="hero">
             <p>Talk about things that happened before now and still matter now.</p>
             <p className={styles.muted}>
@@ -182,7 +187,7 @@ function Notes() {
             <h2>Already and yet</h2>
             <SourceLabel source={authored ? "Prepared sample reference" : "Audio 18:42"} />
             <blockquote className={styles.quote}>“I’ve already finished my homework.”</blockquote>
-            <span className={edited ? "preview-chip" : "preview-provenance-class"}>
+            <span className={edited ? "workspace-chip" : "workspace-provenance-class"}>
               {edited
                 ? "Edited by you · sample version"
                 : authored
@@ -191,7 +196,7 @@ function Notes() {
             </span>
             <p className={styles.edited}>{state.noteText}</p>
             <p>
-              <span className="preview-provenance-ai">AI explanation · sample</span>
+              <span className="workspace-provenance-ai">AI explanation · sample</span>
             </p>
             <p>
               Already often comes before the main verb: “I have <strong>already finished</strong>.”
@@ -230,7 +235,7 @@ function Notes() {
             </nav>
           </Panel>
           <Panel title="Keep learning">
-            <div className="preview-stack">
+            <div className="workspace-stack">
               <LinkButton to="cards">Suggested cards</LinkButton>
               <LinkButton to="edit-notes" secondary>
                 Edit notes
@@ -288,7 +293,7 @@ function Source() {
             Synthetic sample page, shown as readable text. This is not an uploaded PDF.
           </p>
           <article className={styles.sheet} aria-label="Sample present perfect handout, page 2">
-            <span className="preview-provenance-class">Sample class material</span>
+            <span className="workspace-provenance-class">Sample class material</span>
             <h3>Present perfect</h3>
             <p>Use it for a past action connected to now.</p>
             <div className={styles.formula}>have / has + past participle</div>
@@ -383,7 +388,7 @@ function EditNotes() {
         back="notes"
       />
       <form
-        className="preview-stack"
+        className="workspace-stack"
         onSubmit={(event) => {
           event.preventDefault();
           if (!text.trim()) return;
@@ -454,7 +459,7 @@ function History() {
               <strong>
                 Version {state.noteHistory.length - index} · {version.label}
               </strong>
-              {index === 0 ? <span className="preview-chip">Current</span> : null}
+              {index === 0 ? <span className="workspace-chip">Current</span> : null}
               <details>
                 <summary className={styles.sourceLink}>Read this version</summary>
                 <p className={styles.edited}>{version.text}</p>
@@ -495,7 +500,7 @@ function History() {
           <div className={styles.comparison}>
             <Panel title="Your current section">
               <p className={styles.edited}>{state.noteText}</p>
-              <span className="preview-chip">Kept until you accept changes</span>
+              <span className="workspace-chip">Kept until you accept changes</span>
             </Panel>
             <Panel title="Suggested section">
               <fieldset className={styles.choices}>
@@ -549,7 +554,7 @@ function Transcript() {
       <Panel title="18:42 · sample audio">
         <SourceLabel source="Audio 18:42" />
         <form
-          className="preview-stack"
+          className="workspace-stack"
           onSubmit={(event) => {
             event.preventDefault();
             const nextText = text.replace(
@@ -646,7 +651,7 @@ function ExportNotes() {
         description="Choose what to include before you export."
         back="notes"
       />
-      <div className="preview-grid">
+      <div className="workspace-grid">
         <Panel title="HTML notes">
           <p>
             A readable, standalone copy of Version {state.noteHistory.length}. Your notes are always
@@ -883,7 +888,7 @@ function Cards() {
             return (
               <article key={card.id} className={styles.card}>
                 <div className={styles.cardTop}>
-                  <span className="preview-chip">{TYPES[card.type]}</span>
+                  <span className="workspace-chip">{TYPES[card.type]}</span>
                   <label className={styles.check}>
                     <input
                       type="checkbox"
@@ -901,7 +906,7 @@ function Cards() {
                   </label>
                 </div>
                 <CardInstruction type={card.type} />
-                <h3>{card.question}</h3>
+                <h2>{card.question}</h2>
                 <p>{card.answer}</p>
                 <SourceLabel source={card.source} classId={card.classId} />
                 {card.status !== "suggested" ? (
@@ -1057,9 +1062,9 @@ function CardTypes() {
       <div className={styles.cards}>
         {examples.map((card) => (
           <article className={styles.card} key={card.type}>
-            <span className="preview-chip">{TYPES[card.type]}</span>
+            <span className="workspace-chip">{TYPES[card.type]}</span>
             <CardInstruction type={card.type} />
-            <h3>{card.question}</h3>
+            <h2>{card.question}</h2>
             {card.type === "listening" ? <ComputerVoice text={card.answer} /> : null}
             <Button
               secondary
@@ -1162,7 +1167,7 @@ function CardEditor() {
         back="cards"
       />
       <form
-        className="preview-stack"
+        className="workspace-stack"
         onSubmit={(event) => {
           event.preventDefault();
           if (!question.trim() || !answer.trim() || (objectiveChanged && !historyChoice)) return;
@@ -1194,7 +1199,7 @@ function CardEditor() {
         }}
       >
         <Panel title="Card content">
-          <div className="preview-stack">
+          <div className="workspace-stack">
             <Field label="Card type" hint={FORMAT_HINTS[type]}>
               <select
                 className={styles.field}
@@ -1355,7 +1360,7 @@ function CardEditor() {
           </Button>
         </Actions>
         {deleting ? (
-          <div className="preview-stack">
+          <div className="workspace-stack">
             <Status>
               Remove this sample card from your queue? Its sample review history remains. You can
               undo this removal here.
@@ -1440,7 +1445,7 @@ function CardUpdate() {
         <Panel title="Suggested update">
           <h3>{card.question}</h3>
           <p>{answer}</p>
-          <span className="preview-provenance-ai">Sample suggestion · not applied</span>
+          <span className="workspace-provenance-ai">Sample suggestion · not applied</span>
         </Panel>
       </div>
       <Panel title="Review history">
@@ -1592,7 +1597,7 @@ function Review() {
           Start review
         </Button>
       </Panel>
-      <div className="preview-grid">
+      <div className="workspace-grid">
         <Panel title="Keep the review manageable">
           <label className={styles.check}>
             <input
@@ -1782,7 +1787,7 @@ function ReviewCard({ revealed }: { revealed: boolean }) {
         back="review"
       />
       <article className={styles.flashcard}>
-        <span className="preview-chip">{TYPES[card.type]}</span>
+        <span className="workspace-chip">{TYPES[card.type]}</span>
         <CardInstruction type={card.type} />
         <h2>{card.question}</h2>
         {card.type === "listening" ? <ComputerVoice text={card.answer} /> : null}
@@ -1826,7 +1831,7 @@ function ReviewCard({ revealed }: { revealed: boolean }) {
           {pending ? (
             <Status>Saving this sample answer…</Status>
           ) : unsaved || failed ? (
-            <div className="preview-stack">
+            <div className="workspace-stack">
               <Status tone="error">This sample answer is not saved. Retry before moving on.</Status>
               <Button
                 onClick={() => {
@@ -1972,7 +1977,7 @@ function Progress() {
           <dd>{again}</dd>
         </div>
       </dl>
-      <div className="preview-grid">
+      <div className="workspace-grid">
         <Panel title="What you are practising">
           {saved.length ? (
             <ul className={styles.activity}>
@@ -2003,7 +2008,7 @@ function Progress() {
         <Panel title="Your English level">
           <h3>
             {state.profile.level || "Not chosen"}{" "}
-            <span className="preview-chip">Chosen by you</span>
+            <span className="workspace-chip">Chosen by you</span>
           </h3>
           <p>This is your own view, not a language test.</p>
           <p className={styles.muted}>

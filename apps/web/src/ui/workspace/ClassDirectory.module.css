@@ -37,8 +37,8 @@
   font-size: 16px;
 }
 
-.courseControl :global(.preview-field),
-.unitControl :global(.preview-field) {
+.courseControl :global(.workspace-field),
+.unitControl :global(.workspace-field) {
   margin-bottom: 0;
 }
 
@@ -141,13 +141,13 @@
   flex-basis: 100%;
 }
 
-.manage :global(.preview-actions) {
+.manage :global(.workspace-actions) {
   padding-top: 8px;
 }
 
 .newClass:focus-visible,
 .manage summary:focus-visible {
-  outline: 3px solid var(--rc-focus);
+  outline: 2px solid var(--rc-focus);
   outline-offset: 4px;
   border-radius: 4px;
 }

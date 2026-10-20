@@ -376,6 +376,8 @@
 - مسیرها، API، نام جدول‌ها و شناسه‌های کد (`/classes`، `org.class_session`، `kind = 'class'`) و پرامپت‌های AI تغییر نمی‌کنند (مسیر صفحه‌ها با D51 به `/sessions` منتقل شد). migration یا تغییر داده لازم نیست. این تصمیم مجوز استقرار نیست.
 - تفاوت با متن طرح در [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md)، مورد ۱۱، ثبت شده است.
 
+> **اصلاحیه (2026-10-19، D87، پایین‌تر در همین سند):** نام تب ناوبری «Sessions» است، نه «Courses»، چون تب به `/sessions` می‌رود و فهرست جلسه‌ها را نشان می‌دهد. بقیهٔ D50، از جمله «Manage courses»، بی‌تغییر است.
+
 ## D51 — دوره پیش‌فرض «My Courses»، آدرس `/sessions` و نام جلسه فقط در ویرایش
 
 > شناسه: پیش از ادغام با نام D49 ثبت شد و به همان دلیل به D51 تغییر کرد.
@@ -729,6 +731,179 @@
 - **هم‌خوانی با D78:** کارت‌های بخش‌های علامت‌دار عکس که در ترتیب خود جلسه پیش از کارت‌های دیگر نوشته می‌شوند، در صف هم پیش از دیگر کارت‌های Core همان جلسه می‌آیند.
 - **شماره:** این تصمیم در 2026-10-15 روی شاخهٔ `claude/relaxed-allen-okw4q3` با شناسهٔ D78 ثبت شد. چون `main` همان روز D78 را برای «بخش‌های علامت‌دار در عکس متن» گرفت، هنگام ادغام `main` به D79 رفت. متن آن تغییر نکرده است.
 - **وضعیت production (2026-10-16):** با ادغام #62 (`4b4fa05`) روشن است. migration `20261015120000` در 2026-10-15 با `pnpm db:apply --apply` اعمال شد. deploy: `dpl_4etGBqoY9uqth9jDLp1ymSc5QifK`، آماده در 01:16 UTC پس از بررسی بیکاری صف.
+
+> **اصلاحیه (2026-10-19، D88، پایین‌تر در همین سند):** برچسب نوع کارت روی کارت مرور «Core cards» و «Supplementary cards» است، نه «Core · production» و «Supplementary · recognition». بقیهٔ D79 بی‌تغییر است.
+
+## D80 تا D93 — تصمیم‌های ممیزی 2026-10-18 (2026-10-19)
+
+مبنا: تصمیم‌های صریح مالک محصول در 2026-10-19 برای [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) (بخش ۱۰، «تصمیم‌های لازم») که دستهٔ ۹ (`fix/audit-9`) ثبت کرد. هر موضوع یک شناسه دارد. شمارهٔ آزاد بعدی، پس از بررسی همهٔ شاخه‌های `fix/audit-*` و `audit-fixes/2026-10-18` (آخرین شناسه همه D79)، D80 بود. هیچ‌کدام مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست؛ گام‌های تنظیمات با خود مالک محصول است.
+
+### D80 — جزوه و کارت بدون فونت وب (SEC-04)
+
+- **گزینهٔ A مصوب:** کارت‌های `lesson_html` و جزوهٔ کلاس (نمای داخل اپ و HTML دانلودی) دیگر از `fonts.googleapis.com` و `fonts.gstatic.com` فونت نمی‌گیرند. همان پشته‌های فونت موجود دستگاه (`CardFace.module.css` و stylesheet جزوه، با fallback `Tahoma, sans-serif` و stack جدای IPA) به کار می‌روند. نام‌هایی مثل Vazirmatn و Lora در این پشته‌ها فقط فونت نصب‌شده روی دستگاه را برمی‌دارند و درخواست شبکه نمی‌سازند.
+- CSP فریم جزوه (`class-notes-pronunciation.ts`) دامنه‌های Google را ندارد: `style-src 'unsafe-inline'` و برای فونت همان `default-src 'none'`.
+- با قاعدهٔ «هرگز web font اضافه نکن» در CLAUDE.md و قاعدهٔ فونت دستگاه در همین دفتر یکی است و تعارض با brief بازتولید «دقیق» جزوه را به نفع حریم خصوصی حل می‌کند. ظاهر روی دستگاهی که Vazirmatn یا Lora ندارد کمی با نمونهٔ مرجع فرق می‌کند. نمونه‌های مرجع بایگانی‌شده در `packages/core/test/reference-output/` تغییر نکردند.
+- متن حقوقی تغییری لازم ندارد، چون Google دیگر برای فونت داده‌ای نمی‌گیرد.
+
+### D81 — گارد هارنس برای SQL مخرب و `--approve-data-loss` (SEC-05)
+
+- **گزینهٔ B مصوب:** فهرست `permissions.allow` در `.claude/settings.json` بی‌تغییر می‌ماند. یک hook از نوع `PreToolUse` ([`.claude/hooks/data-loss-guard.ts`](../.claude/hooks/data-loss-guard.ts)، آزمون: `tools/claude-hooks/data-loss-guard.test.ts`) اضافه شد:
+  - `execute_sql` در هر دو کانکتور Supabase برای `select` و نوشتن محدود بی‌پرسش می‌ماند. پیش از `drop`، `truncate`، `alter`، `create`، `grant`، `revoke`، `merge`، `copy`، SQL پویا یا زمان‌بندی‌شده (`execute`، `dblink`، `cron.schedule`)، `delete` یا `update` که `where` آن همهٔ ردیف‌ها را می‌گیرد (بی `where`، `where true`، `where 2=2`، `where id = id`، `… or true`، `where exists (select 1)`)، upsert با `on conflict … do update` که ردیف‌هایش را از یک query می‌گیرد، و تغییر `standard_conforming_strings` پنجرهٔ تأیید (ask) باز می‌شود. همین قاعده‌ها روی بدنهٔ dollar-quote، همهٔ رشته‌های یک دستور `do` و هر رشته‌ای که با واژهٔ آغاز یک دستور Postgres شروع می‌شود (پس از کنار گذاشتن فاصله، توضیح، `(` و `;` و اعمال escape) هم اجرا می‌شوند. توضیح‌ها، `E'…'`، `U&'…'`، dollar-quote و ادامهٔ رشته در خط بعد مثل Postgres خوانده می‌شوند: دو رشته که فقط فاصله‌ای با دست‌کم یک خط تازه (و شاید توضیح `--`) میانشان است یک رشته‌اند، با همان حالت escape رشتهٔ اول (پس `do 'begin dele'` و در خط بعد `'te from t; end'` یعنی `delete from t`). نام‌های داخل `"…"` (از جمله `U&"…"`) هم مثل نام بی‌نقل‌قول بررسی می‌شوند، پس `"cron"."schedule"`، `cron."schedule"`، `"cron"."alter_job"` و `"dblink_exec"` هم پنجرهٔ تأیید می‌گیرند (بازبینی سوم، 2026-10-19). بند `UESCAPE` حتی پس از توضیح مثل Postgres خوانده می‌شود و بندی که hook نمی‌خواند می‌پرسد؛ دستوری هم که `search_path` را با `cron` تنظیم کند (`set [local] search_path`، `set_config`) می‌پرسد، چون پس از آن تابع‌های `cron` بی‌نام schema اجرا می‌شوند (پیگیری 2026-10-19، دستهٔ ۱۶).
+  - فراخوانی‌ای که hook نمی‌تواند بخواند (JSON نامعتبر، بی `tool_name`، یا Bash بی `command`) پنجرهٔ تأیید می‌گیرد، تا اگر Claude Code نام فیلدها را عوض کند، گارد بی‌صدا خاموش نشود و allow list (از جمله `Bash(pnpm db:apply:*)` و `execute_sql`) بی‌پرسش اجرا نشود (بازبینی سوم، 2026-10-19).
+  - هر دستور Bash که `approve-data-loss` دارد، حتی با نقل‌قول یا backslash، پنجرهٔ تأیید (ask) می‌گیرد، با این پیام که Claude آن را فقط پس از «بله» صریح مالک محصول در چت برای همان نسخهٔ migration اجرا می‌کند (CLAUDE.md، D77). پس روال D77 کار می‌کند و هارنس هنگام اجرا بررسی دوم را انجام می‌دهد. فقط `pnpm db:apply` (dry run) و `pnpm db:apply --apply`، تنها روی خط، و `supabase db push` مثل قبل بی‌پرسش‌اند؛ هر دستور دیگری که `db:apply` یا `db-apply` دارد (آرگومان اضافه، `$…`، pipe یا دستور زنجیره‌ای) پنجرهٔ تأیید باز می‌کند.
+  - `update` پس از `for` یا `for no key` فقط وقتی قفل ردیف (row lock) است و بی‌پرسش می‌ماند که پس از آن پایان دستور، `;`، `)`، `of`، `nowait`، `skip`، `for`، `limit`، `offset`، `fetch` یا `into` بیاید؛ `open cur for update t set …` در plpgsql مثل هر `update` دیگری بررسی می‌شود (بازبینی دوم، 2026-10-19).
+  - کار hook محدود است، چون اگر از مهلت ۱۰ ثانیه‌ای بگذرد Claude Code فراخوانی allow-list را بی‌تصمیم اجرا می‌کند: SQL بلندتر از ۱۰۰٬۰۰۰ نویسه بی‌خواندن، و SQL که بررسی‌اش از سقف کار hook بیشتر شود، پنجرهٔ تأیید می‌گیرد. بدترین ورودی زیر این سقف در آزمون‌ها زیر ۲ ثانیه (در عمل زیر ۱۰۰ میلی‌ثانیه) تصمیم می‌گیرد.
+  - hook از مسیر symlink هم اجرا می‌شود و نه SQL را چاپ می‌کند و نه دستور را. پارسر کامل نیست و این‌ها دیده نمی‌شوند: تابعی که هنگام `select` داده یا job را تغییر می‌دهد (مثل `pgmq.drop_queue`، `cron.unschedule` یا `setval`)، SQL ساخته‌شده از تکه‌ها در زمان اجرا، `where` همیشه‌درستی با شکل دیگر (`id > 0`، `id in (select id from t)`)، و دستور Bash که هر دو رشتهٔ `approve-data-loss` و `db-apply`/`db:apply` را با متغیر یا glob پنهان کند (مثل `F=loss; node tools/db-*/apply.ts --approve-data-$F <v>`). این دستور آخر به جریان عادی مجوز می‌رود: در حالت پیش‌فرض، چون `node` در allow list نیست، پنجرهٔ تأیید باز می‌شود، ولی در `bypassPermissions` اجرا می‌شود. پس قاعدهٔ «اجازهٔ صریح» CLAUDE.md همچنان پابرجاست. فهرست کامل در [CLOUD_ENVIRONMENT_FA.md](ops/CLOUD_ENVIRONMENT_FA.md) بخش «گارد هارنس».
+- **اصلاح 2026-10-19 (دستهٔ ۱۲، تصمیم مالک محصول):** متن نخست D81 دستورهای `--approve-data-loss` را رد (deny) می‌کرد و با روال CLAUDE.md و D77 در تعارض بود. مالک محصول ask را انتخاب کرد؛ با این تغییر تعارضی باقی نیست و CLAUDE.md بی‌تغییر می‌ماند.
+
+### D82 — Preview بدون اسرار پایلوت (OPS-03)
+
+- **گزینهٔ A مصوب:** اسرار پایلوت (`DATABASE_URL`، `SUPABASE_*`، `BLOB_*`، `CRON_SECRET`، `RATE_LIMIT_IP_KEY`، `OPENROUTER_*` و بقیهٔ اسرار [SECRETS.md](runbooks/SECRETS.md)) فقط در target **Production** و با گزینهٔ Sensitive. Preview فقط در حالت fixture (`RECALINO_UI_PREVIEW=1`، الگوی `tools/deploy-ui-preview.ps1`) ساخته می‌شود. این همان Q-SPEC-1 در [PROJECT_SPEC](PROJECT_SPEC.md) است.
+- `BLOB_READ_WRITE_TOKEN` چون خواندنی و مشترک بین سه محیط بوده، چرخش داده و Sensitive و فقط Production می‌شود. پیگیری D76 دربارهٔ همین توکن («پس از راه‌اندازی پشتیبان دوباره بررسی می‌شود») با این تصمیم پاسخ می‌گیرد. فایل پیکربندی پشتیبان میزبان اپراتور (D53) باید هم‌زمان با توکن تازه به‌روز شود. `NODE_ENV` دستی Production حذف می‌شود.
+- تغییرات Vercel با خود مالک محصول است: چک‌لیست در [CLOUD_SETUP.md](runbooks/CLOUD_SETUP.md) بخش «جداسازی Preview از پایلوت». دو runbook `CLOUD_SETUP.md` و `SECRETS.md` با Q-SPEC-1 هم‌خوان شدند.
+- گارد کد پیشنهادی ممیزی (رد اتصال دیتابیس در Preview بدون حالت fixture، در `packages/core/src/db/connection.ts`) در این دسته ساخته نشد. **پیگیری 2026-10-19:** در دستهٔ ۱۴ ساخته شد (D97، پایین).
+
+### D83 — دروازهٔ CI پیش از production (OPS-04)
+
+- **گزینهٔ A مصوب:** ruleset برای `main` با PR اجباری و check الزامی «Lint, types, boundaries, tests, build»، منع force push و حذف شاخه، به‌علاوهٔ Vercel Deployment Checks که دامنهٔ production را فقط پس از سبز شدن همان check به استقرار تازه می‌دهد. با سیاست CI کم‌مصرف سازگار است، چون CI روی PR به `main` اجرا می‌شود.
+- تنظیم GitHub و Vercel با خود مالک محصول است: گام‌ها در [docs/ops/BRANCH_PROTECTION_FA.md](ops/BRANCH_PROTECTION_FA.md). تا اجرای آن چک‌لیست، قاعدهٔ قبلی (هر push به `main` مستقر می‌شود) برقرار است.
+- D67 (انتشار بر پایهٔ شواهد محلی وقتی Actions از کار افتاده) با ruleset فقط با bypass مالک ممکن است؛ این در همان سند آمده است.
+
+### D84 — CI: e2e بدون build دوباره و Dependabot فقط امنیتی (OPS-10)
+
+- **گزینهٔ A مصوب:** job `e2e` خروجی `apps/web/.next` (بدون `.next/cache`) را از job `verify` همان اجرا با `actions/upload-artifact` و `actions/download-artifact` (pin شده به SHA) می‌گیرد و `pnpm build` را دوباره اجرا نمی‌کند. artifact فقط وقتی e2e اجرا می‌شود ساخته و یک روز نگه داشته می‌شود. triggerها، concurrency، برچسب `e2e` و شرط jobها تغییر نکردند.
+- `.github/dependabot.yml` فقط برای security updates اکوسیستم npm است (`open-pull-requests-limit: 0`، یعنی بی‌PR نسخه‌ای). روشن کردن Dependabot alerts و security updates در تنظیمات مخزن با مالک محصول است ([BRANCH_PROTECTION_FA.md](ops/BRANCH_PROTECTION_FA.md)).
+
+### D85 — نگهداری سه پشتیبان آمادهٔ آخر (OPS-01)
+
+- چرخهٔ ۳۰ روزهٔ پشتیبان می‌ماند، ولی سه پشتیبان آمادهٔ (ready) آخر حتی پس از ۳۰ روز نگه داشته می‌شوند تا یک دورهٔ شکست پشتیبان شبانه هیچ‌وقت نسخهٔ قابل بازیابی را از بین نبرد. پیاده‌سازی در `packages/core/src/ops/backups.ts` (`DEFAULT_BACKUP_RETENTION.keepReady = 3`، قابل تغییر با `RECALINO_BACKUP_RETENTION_JSON`) در دستهٔ ۱ ساخته شد.
+- اصلاح نسخه‌دار: جملهٔ نگهداری ۳۰ روزه در [ADR-0001](adr/0001-stack-and-hosting.md)، و جملهٔ نگهداری پشتیبان در پیش‌نویس [privacy-notice.md](legal/privacy-notice.md) و [PILOT_TECHNICAL_FACTS.md](legal/PILOT_TECHNICAL_FACTS.md). نسخهٔ متن حریم خصوصی (۰٫۲) عوض نشد؛ بالا بردن آن پذیرش دوباره را فعال می‌کند و تصمیم جدا می‌خواهد ([راهنمای متن‌های حقوقی](legal/README.md)، نسخه‌گذاری). آن تصمیم در D94 گرفته شد.
+
+### D86 — ده متن دستهٔ ۵ و واژگان A (UX-01، UX-03، UX-06، UX-09، UX-10، UX-12، UX-13، UX-14)
+
+- ده متنی که مالک محصول در 2026-10-19 عیناً تأیید کرد، و جدول برچسب‌های واژگان A («session» برای جلسه، «course» برای درس، «material» برای فایل‌ها و «Manage courses» برای پیوند `/courses`)، همان‌اند که در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش‌های «تأیید 2026-10-19») آمده است. آزمون `approved-copy.test.ts` متن‌ها را با همان فهرست می‌سنجد.
+- «class» فقط برای کلاس واقعی می‌ماند («From class»، «Class audio»، «During class»). متن نسخه‌دار رضایت ضبط و متن‌های حقوقی تغییر نکردند.
+
+### D87 — نام تب ناوبری «Sessions» (اصلاح D50)
+
+- تب ناوبری که به `/sessions` می‌رود و فهرست جلسه‌ها را نشان می‌دهد، «Sessions» نام دارد، نه «Courses». جای جملهٔ «زبانهٔ ناوبری Classes به Courses تغییر می‌کند» در D50 را می‌گیرد. «Manage courses» برای صفحهٔ مدیریت کورس‌ها (D50) بی‌تغییر است. `strings.test.ts` این تفاوت با `copy.md` را در `APPROVED_DEVIATIONS` دارد.
+- بند ۱۱ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) هم‌خوان شد.
+
+### D88 — برچسب مجموعه‌های کارت (UX-05، اصلاح D79)
+
+- روی کارت مرور، برچسب مجموعه «Core cards» و «Supplementary cards» است (`studySetLabel`، از متن مصوب `learning-memory-copy.ts`)، به‌جای «Core · production» و «Supplementary · recognition» که D79 نوشته بود. ترتیب صف، سقف کارت جدید و بقیهٔ D79 تغییر نمی‌کند.
+
+### D89 — پیام `provider_outcome_unresolved` (UX-05)
+
+- وقتی نتیجهٔ یک تأمین‌کننده هنوز باید بررسی شود، رابط این جمله را نشان می‌دهد: «A result is still being checked. Contact the pilot operator before trying again.» (`workspaceErrors.outcomeUnresolved`). جای متن موقت «The change could not be saved. Try again.» را می‌گیرد که برخلاف سرور به تلاش دوباره دعوت می‌کرد.
+
+### D90 — ناوبری صفحهٔ ضبط: focus mode کامل (UX-02)
+
+- **متن فعلی (اصلاح 2026-10-19، دستهٔ ۱۲):** در `/recordings` و `/sessions/<id>/record` ناوبری پوسته در **هیچ فازی** نمایش داده نمی‌شود: نه sidebar، نه bottom nav، نه «New session»، نه skip link و نه اعلان Terms (HANDOFF §4 و قاب C2، «full-screen focus mode, no nav»). راه بازگشت خود صفحه («Back to session» / «Back to Today») بیرون از ضبط هست. PRD-REC-02 حین ضبط بی‌تغییر است. جزئیات: [RECORDING_NAVIGATION_2026-10-19.md](design/RECORDING_NAVIGATION_2026-10-19.md).
+- پیاده‌سازی: `RECORDING_FOCUS_MODE = "always"` در `apps/web/src/ui/recording/recording-focus.ts`. کد سوئیچ می‌ماند، پس گزینهٔ دیگر یک ثابت فاصله دارد: `"while-capturing"` ناوبری را فقط در فازهای ضبط فعال پنهان می‌کند.
+- **یادداشت اصلاح:** متن نخست D90 (دستهٔ ۹، 2026-10-19) ناوبری را فقط هنگام ضبط فعال (`starting`، `recording`، `recovering`، `paused`) پنهان می‌کرد و پیش از شروع و پس از Stop، از جمله `saving`، نشان می‌داد، و تأیید نهایی را به پایان اجرای اصلاح ممیزی موکول کرده بود. مالک محصول پس از دیدن پیش‌نمایش هر دو حالت (`/dev/ui/recording-shell`) focus mode کامل را انتخاب کرد (تصمیم مالک محصول، 2026-10-19). با این اصلاح، صفحه با HANDOFF §4 هم‌خوان است و بند ۱۲ [بازبینی تحویل](design/HANDOFF_R1_REVIEW.md) دیگر تفاوتی ثبت نمی‌کند.
+
+### D91 — cooldown سخت انتشار بسته‌ها (OPS-12)
+
+- `minimumReleaseAge: 1440` (۲۴ ساعت) در `pnpm-workspace.yaml` صریح و سخت است: نسخه‌ای که کمتر از ۲۴ ساعت از انتشارش گذشته انتخاب نمی‌شود، و فهرست `minimumReleaseAgeExclude` فقط نسخه‌های دقیق را معاف می‌کند. `engineStrict: true` نسخهٔ Node را اجباری می‌کند. (پیاده‌سازی در دستهٔ ۸.)
+
+### D92 — `getUser` با سقف ۲٫۵ ثانیه برای هر گام Auth (PERF-03)
+
+- سنجش نشست سمت سرور همچنان با `getUser` است (FR-PLT-001)، نه خواندن محلی JWT. هر گام Auth یک درخواست (refresh در proxy، یا سنجش صفحه یا route)، با retryها، حداکثر ۲٫۵ ثانیه منتظر می‌ماند (`AUTH_STEP_TIMEOUT_MS = 2500` در `apps/web/src/server/auth/supabase.ts`، دستهٔ ۷).
+
+### D93 — محاسبهٔ فعلی برآورد هزینه می‌ماند (QUA-09)
+
+- حساب برآورد هزینه در `packages/core/src/aip/pricing.ts` همان رفتار پایه می‌ماند و گرد کردن عدد صحیح برای هر نرخ اعمال نمی‌شود، چون خروجی `estimated_micros` و سقف‌های هزینه را جابه‌جا می‌کرد. آزمون QUA-09 خروجی‌های فعلی را قفل می‌کند. بازنویسی `lockAccount(db: Tx)` می‌ماند.
+
+## D94 — نسخهٔ ۰٫۳ اطلاعیهٔ حریم خصوصی و دورهٔ پاک‌سازی صوت (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (پیگیری ممیزی 2026-10-18، دستهٔ ۱۲)؛ یافته‌های PRD-05 و OPS-01 و D85. شمارهٔ آزاد بعدی پس از D93.
+
+- [privacy-notice.md](legal/privacy-notice.md) از پیش‌نویس ۰٫۲ به **۰٫۳** (`Version 0.3 · Draft · 19 October 2026`) رسید، با دو اصلاح و بی هیچ جمله یا وعدهٔ تازهٔ دیگر:
+  1. جملهٔ نگهداری پشتیبان که در D85 اصلاح شده بود (سه پشتیبان آمادهٔ آخر حتی پس از ۳۰ روز نگه داشته می‌شوند) با این نسخه منتشر و پذیرفته می‌شود.
+  2. «An hourly cleanup job removes expired copies and retries failures;» جای خود را به «A cleanup job runs at least once an hour, removes expired copies and retries failures;» داد، چون پاک‌سازی صوت موقت هر ۳۰۰ ثانیه اجرا می‌شود (`TEMPORARY_AUDIO_SWEEP_SECONDS` در `packages/core/src/src/audio.ts`) و متن نباید دورهٔ دقیقی بگوید که با کد نمی‌خواند (PRD-05).
+- [CLASSROOM_NOTICE.md](legal/CLASSROOM_NOTICE.md): «cleanup is hourly and retries failures» به «cleanup runs at least once an hour and retries failures» تغییر کرد. نسخهٔ این متن تاریخ «Review copy» آن است و طبق [راهنمای متن‌های حقوقی](legal/README.md) (هر تغییر معنا نسخهٔ تازه) به 19 October 2026 رسید. این متن در اپ پذیرفته نمی‌شود.
+- نسخهٔ پذیرش: `CURRENT_VERSIONS.privacy = "0.3"` در `packages/core/src/acc/documents.ts` و جدول [consents.md](legal/consents.md). زبان‌آموزی که ۰٫۲ را پذیرفته، یک بار اعلان تغییر Terms را می‌بیند و دوباره می‌پذیرد (FR-ACC-007، D33 قاعدهٔ ۳). Terms و رضایت ضبط ۰٫۱ می‌مانند. `apps/web/src/legal/texts.generated.ts` با `pnpm legal:build` بازسازی شد؛ `acc.test.ts` نسخهٔ سرعنوان دو متن را هم با `CURRENT_VERSIONS` می‌سنجد.
+- متن همچنان Draft است و G11 باز می‌ماند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
+
+## D95 — نگهداری رخدادهای امنیتی و ناشناس‌سازی ممیزی پس از حذف حساب (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (موج ۶ اصلاح ممیزی 2026-10-18، دستهٔ ۱۳)؛ یافتهٔ SEC-07، PRD-DEL-01 و PRD-DEL-04. شمارهٔ آزاد بعدی پس از D94.
+
+- **`plt.security_event`:** ردیف‌های قدیمی‌تر از ۹۰ روز را job روزانهٔ `plt.purge_security_events` پاک می‌کند. مدت در `PltSettings.securityEventRetentionDays` است (پیش‌فرض ۹۰، قابل تغییر با `PLT_SETTINGS_JSON` بدون تغییر کد).
+- **`plt.audit_event`:** ردیف می‌ماند، ولی شناسهٔ حساب حذف‌شده در `actor_id` با نشانگر ثابت `deleted_account` جایگزین می‌شود:
+  - در جریان حذف حساب، همان job پاک‌سازی (`priv.cleanup`) این کار را در همان تراکنش پاک‌سازی پروفایل حساب و پیش از حذف هویت می‌کند؛ نشست‌ها پیش‌تر در گام `revoke_auth` باطل شده‌اند، پس میان این دو ردیف ممیزی تازه‌ای از آن حساب ثبت نمی‌شود. اگر job تکرار شود، هر دو دوباره و بی‌اثر اجرا می‌شوند.
+  - برای حساب‌هایی که پیش‌تر حذف کامل شده‌اند، job روزانهٔ `priv.anonymise_deleted_actors` در زمان اجرا همین کار را می‌کند، نه migration. تکرار آن اثری ندارد.
+- **کمترین دسترسی (migration `20261019120000_plt_event_retention`):** فقط `delete` روی `plt.security_event` و `update (actor_id)` روی `plt.audit_event` به `recalino_app` داده شد. trigger `audit_event_history_immutable` هر تغییری جز گذاشتن `deleted_account` در `actor_id` را رد می‌کند؛ ستون‌های دیگر ممیزی و حذف ردیف همچنان ممنوع‌اند. migration هیچ ردیفی را تغییر نمی‌دهد.
+- **متن حقوقی:** یک جملهٔ نگهداری در ردیف «Security, audit and usage records» جدول بخش ۸ [privacy-notice.md](legal/privacy-notice.md) نشست. نسخه همان ۰٫۳ ماند، چون ۰٫۳ هنوز منتشر نشده است؛ مدت نگهداری usage records و دورهٔ شرکت‌های خدمات همچنان `⟨…⟩` است.
+- این تصمیم مجوز اجرای migration روی دیتابیس ابری یا استقرار production نیست؛ اعمال migration طبق قاعدهٔ موجود پس از ادغام در `main` است.
+
+## D96 — پیشرفت پایلوت و وظیفه‌های حذف متوقف و هشدار سلامت در پنل مالک (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 (دستهٔ ۱۳؛ تصمیم ۹، گزینهٔ A)؛ یافته‌های PRD-03 و پیگیری OPS-02.
+
+- **پیشرفت پایلوت:** view `ops.admin_user_progress` (migration `20261019120300_admin_pilot_progress`) برای هر حساب زنده فقط تاریخ نخستین بار هر گام را از جدول‌های موجود می‌خواند: ورود (`acc.user_account.created_at`)، پایان setup (`acc.learning_profile.completed_at`)، نخستین صوت کلاس (`src.asset`، نوع `audio`)، نخستین پردازش موفق کلاس (`proc.processing_run`، `ready` یا `partial_ready`) و نخستین مرور (`srs.review_event`). بی‌هیچ متن کلاس و بی analytics شخص ثالث. قرارداد: `AdminUser.progress` (`PilotProgress` در `packages/core/src/ops/admin-contracts.ts`) در نماهای `users` و `user`.
+- **ستون‌های رابط هنوز ساخته نشده‌اند:** برچسب مصوبی برای آن‌ها نیست؛ برچسب‌های پیشنهادی در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش دستهٔ ۱۳) ثبت شده‌اند. **پیگیری 2026-10-19:** بخش رابط این تصمیم (ستون‌ها، عنوان دو وظیفه و مقصد دکمهٔ آن‌ها) با D98 ساخته شد (پایین).
+- **وظیفه‌ها:** `ops.admin_task` دو نوع تازه دارد:
+  - `privacy`: هر `priv.deletion_request` در وضعیت `needs_operator`. مثل `ops.admin_privacy` فقط شناسهٔ درخواست را می‌دهد، نه حساب را.
+  - `health`: هر هشدار باز job ساعتی سلامت (OPS-02)، یک وظیفه برای هر دوره. رخدادهای ممیزی `ops.health_alert` و `ops.health_recovered` دستهٔ ۳ بی‌تغییر می‌مانند.
+  - عنوان هر دو تا تأیید متن، همان عنوان عمومی «Review this task» است (با D98 عنوان مصوب خودشان را گرفتند). توضیح وظیفهٔ `health` جملهٔ هشدار همان شاخص از متن‌های «System health» است که مالک محصول در 2026-10-19 عیناً تأیید کرد.
+
+## D97 — کارت System health و گارد دیتابیس Preview (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای موج ۶ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md)، دستهٔ ۱۴ (`fix/audit-14`)؛ یافته‌های OPS-02 و OPS-03. D95 و D96 برای دستهٔ ۱۳ کنار گذاشته شده‌اند. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
+
+- **کارت «System health» (OPS-02؛ ADM-01 و ADM-12):** مالک محصول هر ۱۶ متن پیشنهادی دستهٔ ۳ را، انگلیسی و فارسی، عیناً تأیید کرد. متن‌ها در `systemHealthCopy` در `apps/web/src/ui/admin/copy.ts` هستند و در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش «تأیید 2026-10-19 — System health») ثبت شده‌اند؛ `approved-copy.test.ts` آن‌ها را با هم می‌سنجد. کارت در نمای کلی پنل مالک، پیش از «Recent activity»، از داده‌های موجود `SystemHealth` (`packages/core/src/ops/health.ts`) و فقط با کامپوننت‌های موجود پنل ساخته شد. قرارداد `admin-read` و ساختار دیتابیس تغییر نکردند. هشدار رخداد audit است (`ops.health_alert` و `ops.health_recovered`)؛ وظیفهٔ ادمین `health` را D96 می‌سازد و ایمیل ساخته نمی‌شود.
+- **گارد دیتابیس Preview (OPS-03، پیگیری D82):** `connectionConfig` در `packages/core/src/db/connection.ts`، که هر pool و client اپ با آن ساخته می‌شود، وقتی `VERCEL_ENV` برابر `preview` است و `RECALINO_UI_PREVIEW` برابر `1` نیست، پیش از ساختن pool با خطای `ConfigurationError` و پیامی که نام دو متغیر و قاعده را می‌گوید (نه مقدار) متوقف می‌شود. Production، Preview در حالت fixture و اجرای محلی (بدون `VERCEL_ENV` یا با `development`) بی‌تغییرند. این گارد فقط دیتابیس را می‌بندد؛ کلیدهای Supabase Auth و توکن Blob را همچنان چک‌لیست D82 در [CLOUD_SETUP.md](runbooks/CLOUD_SETUP.md) از Preview برمی‌دارد.
+
+## D98 — ستون‌های پیشرفت پایلوت و عنوان وظیفه‌های حذف متوقف و هشدار سلامت در پنل مالک (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای دستهٔ ۱۵ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) (`fix/audit-15`)؛ یافته‌های PRD-03 و پیگیری OPS-02؛ بخش رابطِ D96. این تصمیم مجوز استقرار production یا تغییر تنظیمات Vercel، GitHub یا Supabase نیست.
+
+- **متن:** مالک محصول هر هشت متن پیشنهادی دستهٔ ۱۳ را، انگلیسی و فارسی، عیناً تأیید کرد: پنج برچسب ستون «First sign-in»، «Setup finished»، «First class audio»، «First session processed» و «First review»، مقدار خالی «Not yet»، و عنوان وظیفه‌های «Finish a stopped data deletion» (`privacy`) و «Review a system health alert» (`health`). متن‌ها در `pilotProgressCopy` و `adminTaskTitleCopy` در `apps/web/src/ui/admin/copy.ts` هستند و در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش «تأیید 2026-10-19 — پیشرفت پایلوت و وظیفه‌های تازه») ثبت شده‌اند؛ `approved-copy.test.ts` آن‌ها را با هم می‌سنجد.
+- **ستون‌ها:** فهرست کاربران و جزئیات کاربر در پنل مالک پنج گام را با همان `Table` موجود و همان قالب تاریخ پنل نشان می‌دهند؛ گام رخ‌نداده «Not yet» است. داده همان `AdminUser.progress` موجود D96 است: فقط تاریخ، بدون متن کلاس یا ایمیل تازه. مسیر مجوز ادمین، قرارداد `admin-read` و ساختار دیتابیس تغییر نکردند؛ migration، وابستگی، رنگ، فونت یا token تازه‌ای اضافه نشد.
+- **وظیفه‌ها:** `readAdminSnapshot` عنوان مصوب دو نوع `privacy` و `health` را می‌فرستد (`ADMIN_TASK_TITLE` در `packages/core/src/ops/admin-read.ts`) و پنل همان متن را از `copy.ts` نشان می‌دهد؛ `admin-task-copy.test.ts` دو نسخه را یکسان نگه می‌دارد. دکمهٔ «Take action» وظیفهٔ `privacy` نمای «Privacy & storage» و وظیفهٔ `health` نمای کلی (کارت «System health») را باز می‌کند؛ مقصد وظیفه‌های دیگر تغییری نکرد.
+
+## D99 — کنتراست مرز کنترل‌های فرم و مقیاس اندازهٔ متن (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای دستهٔ ۱۷ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) (`fix/audit-17`)؛ یافته‌های A11Y-01 (گزینهٔ A تصمیم ۸ گزارش) و UI-02. vendor و `tokens.css` تغییر نکردند (`vendor.test.ts`)؛ فونت، سایه، انیمیشن یا رنگی جز مقدار تازهٔ مرز اضافه نشد.
+
+- **مرز کنترل‌ها (A11Y-01، WCAG 1.4.11):** در تم روشن، `--rc-border-strong` در `apps/web/src/ui/styles/app.css` از `#8c9c91` به `#7a8d80` رسید: همان خانوادهٔ رنگ (hue حدود ۱۳۹ درجه و اشباع حدود ۰٫۰۸ بی‌تغییر، فقط lightness از ۰٫۵۸ به ۰٫۵۲) و کمترین تیرگی‌ای که روی همهٔ سطح‌هایی که این token مرزشان را می‌کشد دست‌کم ۳:۱ می‌دهد:
+
+  | سطح | پیش‌تر | اکنون |
+  |---|---|---|
+  | صفحه `--color-bg` (`#f6f7f2`) | ۲٫۶۸ | ۳٫۲۸ |
+  | سطح کارت و فیلد `--color-surface` (`#ffffff`) | ۲٫۸۸ | ۳٫۵۳ |
+  | track کلید `--rc-surface-2` (`#edf1e9`) | ۲٫۵۲ | ۳٫۰۹ |
+  | ردیف انتخاب‌شده `--rc-primary-tint` (`#e7f0e6`) | ۲٫۴۷ | ۳٫۰۳ |
+
+  مرز فیلد متن (`.input`) هم با یک قاعده در `app.css` از همین token است، نه از `--color-divider` (۱٫۳۱:۱ روی سفید در تم روشن و ۱٫۵۴:۱ روی سطح در تم تیره). مقدار تیرهٔ `--rc-border-strong` (`#7e9685`) روی همهٔ سطح‌های تم تیره از ۳٫۶۷ تا ۵٫۵۲ است و تغییر نکرد؛ پس فیلد متن در تم تیره هم به ۴٫۸۷:۱ رسید. hover و focus فیلد همان رنگ‌های لایهٔ پایه‌اند (hover در تم روشن با D101 و در تم تیره با D102 اصلاح شد). آزمون `apps/web/src/ui/styles/contrast.test.ts` نسبت‌ها را از مقدارهای `app.css` با فرمول WCAG حساب می‌کند.
+- **مقیاس اندازهٔ متن (UI-02):** نگاشت پیشنهادی [UI_TOKEN_FOLLOWUPS_2026-10-19.md](design/UI_TOKEN_FOLLOWUPS_2026-10-19.md) اعمال شد: `13px` → `var(--rc-text-sm)` (14px)، `15px` → `var(--rc-text-md)` (16px) و `18px` → `var(--rc-text-read)` (17px)، هر ۵۸ مورد بیرون از vendor. اندازه‌های دیگر (17px و عنوان‌ها) در این تصمیم نیستند. `token-rules.test.ts` بازگشت 13/15/18 را می‌گیرد.
+
+## D100 — برچسب‌های کارت و فهرست خروجی با snapshot خراب (2026-10-19)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-19 برای دستهٔ ۱۷ (`fix/audit-17`)؛ یافته‌های UX-05 و QUA-05 [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md). migration، وابستگی یا تغییر ساختار ذخیره‌شده‌ای در کار نیست.
+
+- **برچسب‌های کارت (UX-05):** برچسب‌های `apps/web/src/ui/workspace/card-labels.ts` همان‌طور که هستند تأیید شدند: وضعیت «Suggested»، «Suspended»، «Known» و «Rejected»، و نام نوع‌ها «Question and answer»، «Vocabulary»، «Cloze»، «Grammar point»، «Error correction» و «Listening». کارت فعال و حذف‌شده برچسب وضعیت ندارند؛ پیشنهاد «In your review queue» جزو این تأیید نیست (برای کارت فعال با D101 تأیید شد). ثبت عین متن در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) (بخش «تأیید 2026-10-19 — برچسب‌های کارت»)؛ `approved-copy.test.ts` دو نسخه را یکسان نگه می‌دارد.
+- **فهرست خروجی‌ها با snapshot خراب (QUA-05):** وقتی snapshot ذخیره‌شدهٔ یک خروجی Anki یا HTML با schema نمی‌خواند، `listAnkiExports` و `listHtmlExports` همان یک ردیف را کنار می‌گذارند و بقیه را برمی‌گردانند، به‌جای اینکه کل فهرست با `snapshot_invalid` شکست بخورد. برای هر ردیف کنارگذاشته یک رخداد log با سطح `error` ثبت می‌شود (`anki_export_snapshot_invalid` یا `html_export_snapshot_invalid`) که فقط شناسهٔ خروجی (`export_id`، فیلد تازهٔ allow-list در `packages/core/src/plt/log.ts`) را دارد، نه محتوای snapshot. خواندن، ساختن یا دانلود همان یک خروجی خراب مثل قبل با خطای کنترل‌شدهٔ `internal` و دلیل `snapshot_invalid` متوقف می‌شود.
+
+## D101 — متن‌های باقی‌ماندهٔ UX-05 و مرز فیلد متن هنگام hover (2026-10-20)
+
+مبنا: تصمیم صریح مالک محصول در 2026-10-20 برای دستهٔ ۱۹ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) (`fix/audit-19`)؛ یافته‌های UX-05 و پیگیری A11Y-01 (D99). همهٔ متن‌ها عیناً از بخش «ممیزی 2026-10-18، دستهٔ ۵ — پیشنهادهای ثبت‌شده (UX-04 و UX-05)» در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md) آمده‌اند و در بخش «تأیید 2026-10-20 — متن‌های باقی‌ماندهٔ UX-05» همان سند ثبت شده‌اند؛ `approved-copy.test.ts` و `automatic-learning-message.test.ts` آن‌ها را با ثبت می‌سنجند. migration، وابستگی، فونت، سایه، انیمیشن یا رنگ تازه‌ای جز مقدار hover زیر اضافه نشد؛ vendor تغییر نکرد. PRD-REC-02 دست نخورد: هیچ‌کدام از این متن‌ها حین ضبط نمایش داده نمی‌شوند.
+
+- **رسید حذف حساب در حالت جاری (UX-05):** «Your account and sessions are hidden. The rest of your data is being removed.» (`privacyCopy.accountHidden` در `apps/web/src/ui/workspace/privacy-copy.ts`) جای جملهٔ موقت «Your account and sessions are hidden.» را در `PrivacyView.tsx` گرفت. حالت توقف برای اپراتور همان متن مصوب `privacyCopy.needsOperator` است.
+- **پیام سرور هنگام توقف پردازش (UX-05):** در `apps/web/src/server/automatic-learning.ts` فقط پیامی که واژهٔ داخلی provider داشت (کدهای `provider_outcome_unresolved`، `provider_outcome_unknown` و `provider_timestamps_invalid`) به «Processing is paused while a result is checked. Your earlier notes and cards are available. Contact the pilot operator before retrying.» تغییر کرد. منطق خواندن فایل دست نخورد. پیام «…the AI service rejected a processing request…» واژهٔ provider ندارد و تغییر نکرد.
+- **برچسب کارت فعال (UX-05، تکمیل D100):** `cardStatusLabel("active")` در `apps/web/src/ui/workspace/card-labels.ts` «In your review queue» است و در خلاصهٔ کارت پیش از نوع کارت می‌آید. کارت حذف‌شده برچسب ندارد.
+- **نوع فایل و رسانه (UX-05):** برچسب‌های موجود رابط همان‌طور که هستند تأیید شدند: «Audio»، «Photo»، «PDF»، «HTML»، «Plain text» و برای نوع ناشناخته «File» (`source-labels.ts`)، و «Computer voice N · Ready» (`mediaAssetLabel`). «Class image N» جزو این تأیید نیست.
+- **مرز فیلد متن هنگام hover (A11Y-01، پیگیری D99، WCAG 1.4.11):** hover لایهٔ پایه (۴۵٪ رنگ متن روی سطح فیلد) در تم روشن از مرز عادی `--rc-border-strong` روشن‌تر بود و روی سفید فقط ۲٫۶۲:۱ می‌داد. در `apps/web/src/ui/styles/app.css` و فقط برای تم روشن، hover همان ۴۵٪ رنگ متن را با token مرز می‌آمیزد: `color-mix(in srgb, var(--color-text) 45%, var(--rc-border-strong))`، یعنی حدود `#506358`. کنتراست روی صفحه، سطح، `--rc-surface-2` و `--rc-primary-tint` به ترتیب ۵٫۹۶، ۶٫۴۲، ۵٫۶۱ و ۵٫۵۰ است (مرز عادی ۳٫۲۸ تا ۳٫۵۳). selector با `:where()` نوشته شده تا specificity همان لایهٔ پایه بماند و focus و فیلد نامعتبر (`aria-invalid`) همچنان رنگ خود را داشته باشند. تم تیره تغییر نکرد *(اصلاح 2026-10-20، [D102](#d102--hover-فیلد-متن-در-تم-تیره-برچسب-تصویر-کارت-و-برگهٔ-حذف-حساب-2026-10-20): تم تیره هم همین قاعده را گرفت)*. آزمون `apps/web/src/ui/styles/contrast.test.ts` این نسبت‌ها را از مقدارهای `app.css` حساب می‌کند.
+
+## D102 — hover فیلد متن در تم تیره، برچسب تصویر کارت و برگهٔ حذف حساب (2026-10-20)
+
+مبنا: تأیید صریح مالک محصول در 2026-10-20 برای سه پرسشی که پس از دستهٔ ۱۹ اجرای اصلاح [ممیزی 2026-10-18](audit/2026-10-18-project-audit.md) باز مانده بود. ثبت متن‌ها در بخش «تأیید 2026-10-20 — برچسب تصویر کارت و برگهٔ حذف حساب» در [UI_COPY_PENDING.md](design/UI_COPY_PENDING.md). migration، وابستگی، فونت، سایه، انیمیشن یا token تازه‌ای اضافه نشد؛ vendor تغییر نکرد. PRD-REC-02 دست نخورد: هیچ‌کدام از این متن‌ها حین ضبط نمایش داده نمی‌شوند.
+
+- **مرز فیلد متن هنگام hover در تم تیره (A11Y-01، تکمیل D101، WCAG 1.4.11):** hover لایهٔ پایه در تم تیره روی `--rc-primary-tint` فقط ۲٫۹۱:۱ می‌داد. قاعدهٔ D101 در `apps/web/src/ui/styles/app.css` حالا برای هر دو تم است: `:where(:root[data-theme]) .input:hover:where(:not(:focus-visible))` با همان `color-mix(in srgb, var(--color-text) 45%, var(--rc-border-strong))`. در تم تیره کنتراست روی صفحه، سطح، `--rc-surface-2` و `--rc-primary-tint` به ترتیب ۹٫۱۰، ۸٫۰۳، ۶٫۷۲ و ۶٫۰۵ است (مرز عادی ۳٫۶۷ تا ۵٫۵۲). در تم روشن چیزی عوض نشد. جملهٔ «تم تیره تغییر نکرد» در D101 با این تصمیم اصلاح می‌شود. آزمون `apps/web/src/ui/styles/contrast.test.ts` هر دو تم را می‌سنجد.
+- **برچسب تصویر کارت (UX-05، تکمیل D101):** «Class image N» در `mediaAssetLabel` (`apps/web/src/ui/workspace/card-labels.ts`)، مثل «Class image 2 · Ready»، همان‌طور که در رابط بود تأیید شد.
+- **برگهٔ تأیید حذف حساب (UX-05):** جملهٔ برگه در `apps/web/src/ui/workspace/PrivacyView.tsx` «All your sessions and account data will disappear immediately. This cannot be undone.» است. فقط بند «and server cleanup will begin» حذف شد و واژهٔ تازه‌ای اضافه نشد.
 
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 

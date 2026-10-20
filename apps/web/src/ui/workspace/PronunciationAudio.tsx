@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SpeakerHigh } from "../icons";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import styles from "./PronunciationAudio.module.css";
 import {
   freshPronunciationPlayback,
@@ -55,12 +55,12 @@ function pronunciationProblem(failure: unknown): string {
     )
   )
     return "Pronunciation is not configured yet. You can keep studying.";
-  return failure instanceof Error ? failure.message : "Pronunciation is unavailable. Try again.";
+  return userMessage(failure, "Pronunciation is unavailable. Try again.");
 }
 
 function pauseOtherStudyAudio(player: HTMLAudioElement) {
   // Listening attachments and inline players share a study Panel; other app audio stays alone.
-  const panel = player.closest(".preview-panel");
+  const panel = player.closest(".workspace-panel");
   if (!panel) return;
   for (const other of panel.querySelectorAll("audio")) {
     if (other !== player) other.pause();

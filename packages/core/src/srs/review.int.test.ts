@@ -278,3 +278,58 @@ it("D49: offers exactly the cards the review queue shows, including sibling bury
   const other = await studyFixture(db, { autoAdd: true });
   expect((await cardsOfferedForReview(db, other.ctx, cards, nextDay)).size).toBe(0);
 });
+
+/** PERF-02: every listening card but the first, each with its own (not yet ready) audio. */
+async function listeningFixture(count: number) {
+  const fixture = await studyFixture(db, { count, autoAdd: true });
+  for (const card of fixture.cards.slice(1)) {
+    const media = await db
+      .insertInto("media.asset")
+      .values({
+        user_id: fixture.ctx.userId,
+        session_id: fixture.session.id,
+        kind: "tts",
+        state: "queued",
+        synthetic: true,
+        cache_key: randomUUID(),
+        generation: "{}",
+        operation_key: randomUUID(),
+        request_hash: randomUUID(),
+        request: "{}",
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    await db
+      .updateTable("card.card")
+      .set({ template: "listening", front_media_id: media.id })
+      .where("id", "=", card.id)
+      .execute();
+  }
+  return fixture;
+}
+function countingDatabase() {
+  let count = 0;
+  const counted = db.withPlugin({
+    transformQuery(args) {
+      count++;
+      return args.node;
+    },
+    async transformResult(args) {
+      return args.result;
+    },
+  });
+  return { db: counted, queries: () => count };
+}
+it("PERF-02 reads the review queue in a number of queries that does not grow with listening cards", async () => {
+  const small = await listeningFixture(10);
+  const large = await listeningFixture(50);
+  const counts: number[] = [];
+  for (const fixture of [small, large]) {
+    const counted = countingDatabase();
+    const queue = await getReviewQueue(counted.db, fixture.ctx, { now: fixture.now });
+    // Only the first card has no audio to wait for; the listening cards wait for theirs.
+    expect(queue.cards.map((item) => item.card.id)).toEqual([fixture.cards[0]?.id]);
+    counts.push(counted.queries());
+  }
+  expect(counts[1]).toBe(counts[0]);
+});

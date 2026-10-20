@@ -1,13 +1,16 @@
 import { requireLearner } from "../../../../server/auth/learner";
-import { createAuthClient } from "../../../../server/auth/supabase";
+import { AUTH_TIMED_OUT, authStep, createAuthClient } from "../../../../server/auth/supabase";
 import { PageHeader } from "../../../../ui/shell/AppShell";
 import { SupportForm } from "../../../../ui/support/Support";
 import { LearnerShell } from "../../LearnerShell";
 export const dynamic = "force-dynamic";
 export default async function NewFeedbackPage() {
   const learner = await requireLearner("/help/new");
-  const { data } = await (await createAuthClient()).auth.getUser();
-  const email = data.user?.id === learner.userId ? (data.user.email ?? null) : null;
+  // PERF-03: the email lookup is one more bounded Auth step; without an answer, no email is shown.
+  const step = authStep();
+  const result = await step.run((await createAuthClient(step.fetch)).auth.getUser());
+  const user = result === AUTH_TIMED_OUT ? null : result.data.user;
+  const email = user?.id === learner.userId ? (user.email ?? null) : null;
   return (
     <LearnerShell
       learner={learner}

@@ -1,28 +1,12 @@
 import { CURRENT_VERSIONS } from "@recalino/core/acc";
 import type { ReactNode } from "react";
-import { LEGAL_TEXTS } from "../../legal/texts.generated";
 import type { Learner } from "../../server/auth/learner";
 import { legalValues } from "../../server/legal";
 import { LegalDocument } from "../../ui/components/LegalDocument";
 import { AppShell, type NavId } from "../../ui/shell/AppShell";
+import { NAV_HREFS } from "./nav";
 import { TermsNotice } from "./TermsNotice";
-
-/** The newer publication date of the two texts, e.g. "1 Oct" (frame G3). */
-function textsChangedOn(): string {
-  const latest = [LEGAL_TEXTS.terms.published, LEGAL_TEXTS.privacy.published].sort().at(-1) ?? "";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(new Date(`${latest}T00:00:00Z`));
-}
-
-export const NAV_HREFS: Record<NavId, string> = {
-  today: "/today",
-  classes: "/sessions",
-  review: "/review",
-  me: "/me",
-};
+import { textsChangedOn } from "./texts-changed-on";
 
 /**
  * The signed-in pages: the app shell, plus the calm notice about changed Terms on every page until
@@ -33,16 +17,24 @@ export function LearnerShell({
   learner,
   current,
   header,
+  reviewDue,
   children,
 }: {
   learner: Learner;
   current: NavId;
   /** The page title (PageHeader). */
   header: ReactNode;
+  /** Cards due now, for the badge on Review. Only pages that already read the queue pass it. */
+  reviewDue?: number;
   children: ReactNode;
 }) {
   return (
-    <AppShell current={current} hrefs={NAV_HREFS} newClassHref="/sessions/new">
+    <AppShell
+      current={current}
+      hrefs={NAV_HREFS}
+      newClassHref="/sessions/new"
+      reviewDue={reviewDue}
+    >
       {header}
       <LearnerTermsNotice learner={learner} />
       {children}

@@ -19,9 +19,11 @@ export {
   type ExportMediaBytes,
   type ExportSettings,
   escapeExportHtml,
+  exportMediaSchema,
   exportSettingsSchema,
 } from "./export";
 export { canonicalJson, hmacSha256Hex, sha256Hex } from "./hash";
+export { type PlatformHealth, pingDatabase, readPlatformHealth } from "./health";
 export {
   type IdempotentRequest,
   type IdempotentResult,
@@ -47,6 +49,7 @@ export {
   type JobOptions,
   type JobState,
   jobState,
+  jobStates,
   latestJobStateForPayload,
   purgeFinishedJobs,
   type RunOptions,
@@ -57,7 +60,9 @@ export {
   sweepJobs,
 } from "./jobs";
 export {
+  causeCode,
   createLogger,
+  errorLocation,
   formatLogLine,
   type Logger,
   type LogLevel,
@@ -101,9 +106,23 @@ export {
   rateLimitBuckets,
 } from "./rate-limit";
 export {
+  compareSchemaVersions,
+  createSchemaGuard,
+  readAppliedSchemaVersion,
+  type SchemaCheck,
+  type SchemaGuard,
+  type SchemaGuardOptions,
+  type SchemaState,
+} from "./schema-version";
+export {
   type AuditInput,
+  anonymiseAuditActors,
+  DELETED_ACCOUNT_ACTOR,
   latestSubjectAudit,
+  latestSubjectAudits,
+  purgeSecurityEvents,
   recordAudit,
+  recordAuditOnce,
   recordSecurityEvent,
   type SecurityEventInput,
   type SecurityEventKind,
@@ -116,7 +135,7 @@ export {
   type RateLimitRule,
   readPltSettings,
 } from "./settings";
-export { spikeCleanup, spikeJobReport, spikeObjects } from "./spike";
+export { parseSnapshot, storedObject } from "./snapshot";
 export {
   type ConfirmResult,
   composeOwnedObjects,

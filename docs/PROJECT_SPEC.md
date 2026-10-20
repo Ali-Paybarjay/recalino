@@ -29,7 +29,7 @@
 | لایه | انتخاب |
 |---|---|
 | Runtime | Node.js 24 LTS (`.nvmrc` و `engines`) |
-| مدیر بسته | pnpm 12، workspace؛ نسخه در فیلد `packageManager`. build script بسته‌ها فقط با فهرست `allowBuilds` در `pnpm-workspace.yaml` اجرا می‌شود |
+| مدیر بسته | pnpm 12، workspace؛ نسخه در فیلد `packageManager`. build script بسته‌ها فقط با فهرست `allowBuilds` در `pnpm-workspace.yaml` اجرا می‌شود؛ نسخه‌های وابستگی فقط پس از ۲۴ ساعت از انتشار پذیرفته می‌شوند (`minimumReleaseAge: 1440` در همان فایل: پیش‌فرض داخلی pnpm 12 همین مقدار است، ولی غیرسخت‌گیر؛ تنظیم صریح آن را سخت‌گیر می‌کند و استثناها در `minimumReleaseAgeExclude` با نسخهٔ دقیق ثبت می‌شوند). `engineStrict: true` وابستگی ناسازگار با Node جاری را خطا می‌کند؛ بازهٔ Node خود مخزن را `engines` و `.nvmrc` نگه می‌دارند و pnpm آن را اعمال نمی‌کند |
 | زبان | TypeScript با `strict`؛ نسخه 6.0.3. TypeScript 7.0 هنوز API جاوااسکریپتی لازم Next.js را ندارد (M0، 2026-09-30) |
 | وب و API | Next.js 16.3 (App Router) و React 19.3 روی Vercel در `lhr1` |
 | داده | Kysely 0.29 و `pg` 8؛ migration با Supabase CLI 2.x (ADR-0002) |
@@ -74,6 +74,7 @@ pnpm format                # biome check --write .
 pnpm typecheck             # tsc --noEmit در همه بسته‌ها
 pnpm check:boundaries      # dependency-cruiser: جهت وابستگی ماژول‌ها
 pnpm check:client-bundle   # پس از build: نبود اسرار در خروجی قابل دریافت مرورگر (FR-PLT-009)
+pnpm check:function-size   # پس از build: اندازهٔ هر Function ردیابی‌شده زیر ۲۲۵ مگابایت (سقف Vercel ۲۵۰)؛ build وب آن را خودش اجرا می‌کند؛ آستانه: `--limit-mb` یا `RECALINO_FUNCTION_SIZE_LIMIT_MB`
 pnpm legal:build           # ساخت متن‌های حقوقی اپ از docs/legal؛ آزمونی ناهمخوانی را می‌گیرد
 
 # آزمون
@@ -210,8 +211,9 @@ describe("FR-QUOTA-005 reserve", () => {
 | پایلوت | پروژه Supabase `recalino`؛ Vercel Blob خصوصی در `lhr1` | تأمین‌کننده واقعی، پس از G03 و تأیید هزینه | متغیرهای محیطی Vercel |
 
 - `.env.example` فقط نام متغیرها را دارد و commit می‌شود.
+  - آزمون `tools/env-example.test.ts` هر نام متغیر محیطی را که کد تحویلی می‌خواند با این فایل مقایسه می‌کند. نامی که در این فایل نیست و در فهرست استثنای مستند همان آزمون هم نیامده (مثل `NODE_ENV` و `VERCEL*`)، آزمون را می‌شکند (QUA-02). `pnpm check:client-bundle` نیز از همین فایل برای جست‌وجوی نام‌ها در خروجی مرورگر استفاده می‌کند. فهرست اسرار و روال چرخش در [`docs/runbooks/SECRETS.md`](runbooks/SECRETS.md).
 - مقدارهای وابسته به دروازه‌ها، مثل سهمیه، سقف هزینه، سطح کیفیت زبان‌ها و سقف فایل، در کد نیستند؛ در جدول پیکربندی یا متغیر محیطی‌اند.
-- Deployment پیش‌نمایش Vercel به دیتابیس پایلوت وصل نمی‌شود (Q-SPEC-1).
+- Deployment پیش‌نمایش Vercel به دیتابیس پایلوت وصل نمی‌شود (Q-SPEC-1). اسرار پایلوت فقط در Production‌اند (D82) و کد هم در Preview بدون `RECALINO_UI_PREVIEW=1` اتصال دیتابیس را رد می‌کند (`packages/core/src/db/connection.ts`، D97).
 
 ## ۹. مرزها
 

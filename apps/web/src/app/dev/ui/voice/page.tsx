@@ -3,7 +3,7 @@ import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { voiceSettingsReturnHref } from "../../../../ui/voice/navigation";
 import { VoiceConfirmation } from "../../../../ui/voice/VoiceConfirmation";
 import { VoiceProfileForm } from "../../../../ui/voice/VoiceProfile";
-import "../../../../ui/preview/preview.css";
+import "../../../../ui/workspace/workspace.css";
 
 /** Test APIs are intercepted in Playwright. This guarded page never creates a real class. */
 export default async function VoiceReferencePage({
@@ -13,7 +13,7 @@ export default async function VoiceReferencePage({
 }) {
   const { view, blocked, returnTo } = await searchParams;
   return (
-    <div className="preview-root">
+    <div className="workspace-root">
       <AppShell
         current="me"
         hrefs={{
@@ -34,13 +34,13 @@ export default async function VoiceReferencePage({
           <Link href="/dev/ui/voice">Voice settings</Link>
           <Link href="/dev/ui/voice?view=class">Session confirmation</Link>
         </nav>
-        <div className="preview-stack">
+        <div className="workspace-stack">
           {view === "class" ? (
             <VoiceConfirmation
               sessionId="10000000-0000-4000-8000-000000000001"
               userId="10000000-0000-4000-8000-000000000002"
             >
-              <section aria-label="Synthetic session notes" className="preview-panel">
+              <section aria-label="Synthetic session notes" className="workspace-panel">
                 <h2>Session notes</h2>
                 <p>Synthetic written notes remain independent of speaker confirmation.</p>
               </section>

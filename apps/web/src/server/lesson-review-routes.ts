@@ -1,10 +1,9 @@
 import "server-only";
 import { requireProvider } from "@recalino/core/aip";
 import { readLessonReview, scheduleLessonReview } from "@recalino/core/eval";
-import { errors, isValidIdempotencyKey, type LearnerContext } from "@recalino/core/plt";
 import { z } from "zod";
 import { getAiProvider } from "./ai";
-import type { Handler } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 
 interface Dependencies {
@@ -28,16 +27,13 @@ export function classLessonReviewHandler(
   };
   return async ({ db, ctx, request, input }) => {
     z.uuid().parse(sessionId);
-    if (!ctx.userId) throw errors.unauthenticated();
-    const learner: LearnerContext = { userId: ctx.userId, requestId: ctx.requestId };
+    const learner = learnerActor(ctx);
     if (request.method === "GET") {
       const versionId = z.uuid().parse(new URL(request.url).searchParams.get("versionId"));
       return { body: await deps.read(db, learner, sessionId, versionId) };
     }
     const fields = z.strictObject({ knowledgeVersionId: z.uuid() }).parse(input);
-    const key = request.headers.get("idempotency-key");
-    if (!key || !isValidIdempotencyKey(key))
-      throw errors.validationFailed({ "Idempotency-Key": [key ? "invalid" : "required"] });
+    const key = idempotencyKey(request);
     const result = await deps.schedule(db, learner, sessionId, fields, {
       key,
       provider: requireProvider(deps.provider()),

@@ -11,7 +11,10 @@ const APPROVED_DEVIATIONS: Record<string, string> = {
   "Sign out": "HANDOFF_R1_REVIEW.md, item 8: FR-ACC-002 needs sign-out; approved 2026-10-01",
   "Clear search":
     "HANDOFF_R1_REVIEW.md, item 10: names the clear button of frame A2-1b; approved 2026-10-02",
-  Courses: "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
+  // Vocabulary A, decided by the product owner on 2026-10-19: "session" for a class meeting. The
+  // tab opens the list of sessions (it was "Courses", which D50 approved on 2026-10-08).
+  Sessions:
+    "UI_COPY_PENDING.md, vocabulary A: nav tab to /sessions, approved by the owner 2026-10-19",
   "New session": "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
   "Record your first session. We'll help you make notes and cards from it.":
     "HANDOFF_R1_REVIEW.md, item 11: D50 Course/Session naming; approved 2026-10-08",
@@ -59,6 +62,27 @@ describe("UI strings", () => {
     expect(fragments.length).toBeGreaterThan(0);
     for (const fragment of fragments) {
       expect(corpus, `"${fragment}" is not in copy.md or a frame`).toContain(fragment);
+    }
+  });
+
+  // PERF-06: the words live in one module per area; every area must be part of `strings`, so the
+  // origin check above covers each of its strings.
+  it("composes every area module into strings", async () => {
+    const areas = readdirSync(import.meta.dirname).filter(
+      (name) =>
+        /^strings-.+\.ts$/.test(name) && name !== "strings-fill.ts" && !name.includes(".test."),
+    );
+    expect(areas.length).toBeGreaterThan(0);
+    for (const name of areas) {
+      const area: Record<string, Record<string, unknown>> = await import(
+        join(import.meta.dirname, name)
+      );
+      expect(Object.keys(area).length, name).toBeGreaterThan(0);
+      for (const [exported, groups] of Object.entries(area))
+        for (const [key, group] of Object.entries(groups))
+          expect((strings as Record<string, unknown>)[key], `${name}: ${exported}.${key}`).toBe(
+            group,
+          );
     }
   });
 

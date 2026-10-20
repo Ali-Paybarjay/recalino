@@ -42,12 +42,14 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
     .first();
   await expect(attribution).toHaveJSProperty("open", false);
   await attribution.locator("summary").click();
-  await expect(attribution.getByText("AI expansion", { exact: true })).toBeVisible();
+  // UX-12: the origin label is strings.provenance.ai, the same words as the summary above it.
+  await expect(attribution.locator("p", { hasText: /^AI explanation$/ })).toBeVisible();
   await attribution.locator("summary").click();
   const preview = await browserGet(page, `/api/classes/${sessionId}/notes`);
   expect(preview.status()).toBe(200);
   expect((await preview.json()).notebook.current.number).toBe(1);
   await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
 
   await expect(page.getByRole("button", { name: "Save notes", exact: true })).toHaveCount(0);
   await expect(page.getByText(/^Note version 1 ·/)).toBeVisible();
@@ -163,6 +165,61 @@ test("automatic saved notes, edits, flashcards, review and undo use real owner A
       reviewScheduleVersionAfterUndo: queue.cards[0].schedule.version,
     }),
   });
+});
+
+async function studyFixture(page: Page) {
+  const response = await page.request.post("/dev/auth/session", {
+    data: { setup: "complete", studyFixture: true, automaticStudyFixture: true },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()) as { sessionId: string };
+}
+
+// A11Y-03: the button that had focus is replaced, so focus must move on purpose.
+test("review keeps keyboard focus on the answer and then on what comes next", async ({ page }) => {
+  test.setTimeout(90000);
+  const { sessionId } = await studyFixture(page);
+  await page.goto(`/review?sessionId=${sessionId}`);
+  const show = page.getByRole("button", { name: "Show answer", exact: true });
+  await show.focus();
+  await page.keyboard.press("Enter");
+  await expect(show).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Remembered", exact: true })).toBeVisible();
+  const inMain = () =>
+    page.evaluate(() => {
+      const element = document.activeElement;
+      return !!element && element !== document.body && !!element.closest("main");
+    });
+  // The focus is in the answer region, not back at the top of the page.
+  await expect.poll(inMain).toBe(true);
+  await page.getByRole("button", { name: "Remembered", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("You’re ready for a break")).toBeVisible();
+  await expect.poll(inMain).toBe(true);
+  await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
+});
+
+// UX-03: deleting a card asks first, and "Keep it" leaves the card as it was.
+test("deleting a card asks first and can be cancelled", async ({ page }) => {
+  test.setTimeout(90000);
+  const { sessionId } = await studyFixture(page);
+  await page.goto(`/sessions/${sessionId}/cards`);
+  const cards = await browserGet(page, `/api/classes/${sessionId}/cards`);
+  const cardId = (await cards.json()).cards[0].id as string;
+  await page.goto(`/cards/${cardId}`);
+  await page.getByRole("button", { name: "Delete this card", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete this card?", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("Its review history will be deleted.")).toBeVisible();
+  await expectNoAxeViolations(page);
+  await dialog.getByRole("button", { name: "Keep it", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect((await browserGet(page, `/api/cards/${cardId}`)).status()).toBe(200);
+  await page.getByRole("button", { name: "Delete this card", exact: true }).click();
+  await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page).toHaveURL(`/sessions/${sessionId}/cards`, { timeout: 45000 });
+  expect((await browserGet(page, `/api/cards/${cardId}`)).status()).not.toBe(200);
 });
 for (const [name, viewport] of Object.entries(VIEWPORTS))
   test(`study pages fit and are accessible: ${name}`, async ({ page }, testInfo) => {

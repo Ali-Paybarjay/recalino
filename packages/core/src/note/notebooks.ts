@@ -8,8 +8,10 @@ import {
   knowledgeModelSchema,
   listAvailableKnowledgeReferences,
   listVersions,
+  liveKnowledgeVersionIds,
+  ownedKnowledgeVersionSessions,
 } from "../lkm";
-import { assertSessionOwner, getSession } from "../org";
+import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
   assertOwner,
   canonicalJson,
@@ -112,6 +114,38 @@ export async function listPublishedNotebooks(
   }
   return published;
 }
+/**
+ * PERF-04: hasPublishedNotebook for many classes the caller has just found live (getSessionsByIds),
+ * in at most two reads: the classes whose current revision is an owned, not tombstoned version
+ * of that same class. Their liveness is not read again.
+ */
+export async function publishedNotebookSessionIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(sessionIds)];
+  if (!ids.length) return new Set();
+  const rows = await db
+    .selectFrom("note.notebook as notebook")
+    .innerJoin("note.revision as revision", "revision.id", "notebook.current_revision_id")
+    .select(["notebook.session_id", "revision.knowledge_version_id"])
+    .where("notebook.session_id", "in", ids)
+    .where("notebook.user_id", "=", ctx.userId)
+    .where("revision.user_id", "=", ctx.userId)
+    .whereRef("revision.notebook_id", "=", "notebook.id")
+    .execute();
+  const versions = await ownedKnowledgeVersionSessions(
+    db,
+    ctx,
+    rows.map((row) => row.knowledge_version_id),
+  );
+  return new Set(
+    rows
+      .filter((row) => versions.get(row.knowledge_version_id) === row.session_id)
+      .map((row) => row.session_id),
+  );
+}
 /** PRD-CORE-05: a readiness check needs live publication references, not the lesson model. */
 export async function hasPublishedNotebook(
   db: Database | Tx,
@@ -196,6 +230,47 @@ export async function getNotebookRevision(
       revision(row, notebook.session_id).model,
     ),
   };
+}
+/**
+ * PERF-04: which of these revisions getNotebookRevision would return, in a constant number of
+ * reads: owned, of a live knowledge version and of a notebook whose session is live.
+ */
+export async function liveNotebookRevisionIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Set();
+  const rows = await db
+    .selectFrom("note.revision as revision")
+    .innerJoin("note.notebook as notebook", "notebook.id", "revision.notebook_id")
+    .select([
+      "revision.id as id",
+      "revision.knowledge_version_id as versionId",
+      "notebook.session_id as sessionId",
+    ])
+    .where("revision.user_id", "=", ctx.userId)
+    .where("revision.id", "in", unique)
+    .execute();
+  if (!rows.length) return new Set();
+  const versions = await liveKnowledgeVersionIds(
+    db,
+    ctx,
+    rows.map((row) => row.versionId),
+  );
+  const sessions = new Set(
+    await filterLiveSessionIds(
+      db,
+      ctx,
+      rows.map((row) => row.sessionId),
+    ),
+  );
+  return new Set(
+    rows
+      .filter((row) => versions.has(row.versionId) && sessions.has(row.sessionId))
+      .map((row) => row.id),
+  );
 }
 export async function listNotebookRevisions(
   db: Database | Tx,

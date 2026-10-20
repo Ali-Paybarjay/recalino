@@ -39,7 +39,7 @@ export async function SessionMaterialPage({ id, path }: { id: string; path: stri
       current="classes"
       header={<PageHeader title="Session material" subtitle={session.displayTitle} />}
     >
-      <div className="preview-stack">
+      <div className="workspace-stack">
         <AutomaticLearningView sessionId={id} initial={automatic} withMaterial />
         <SourcesView
           key={`${learner.userId}:${id}`}

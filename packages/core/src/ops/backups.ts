@@ -3,9 +3,12 @@ import { z } from "zod";
 import type { Database, Tx } from "../db";
 import {
   canonicalJson,
+  createLogger,
   createObject,
   deleteObject,
   errors,
+  type Logger,
+  latestSubjectAudit,
   type ObjectStore,
   type PeriodicJob,
   readOwnedObject,
@@ -28,6 +31,95 @@ export const backupSettingsSchema = z.strictObject({
 });
 export type BackupSettings = z.infer<typeof backupSettingsSchema>;
 export type BackupOperator = { actorId: string; reason: string };
+
+/**
+ * OPS-01 (audit 2026-10-18). `keepReady` newest ready backups survive retention even past their
+ * 30-day expiry, so a run of failed nightly backups never leaves no restorable copy; 0 restores
+ * the strict 30-day lifecycle. `staleAfterHours` is the age of the newest ready backup that
+ * raises the stale-backup alert. A deployment overrides either with RECALINO_BACKUP_RETENTION_JSON.
+ */
+export const backupRetentionSettingsSchema = z.strictObject({
+  keepReady: z.int().min(0).max(30),
+  staleAfterHours: z.int().min(1).max(720),
+});
+export type BackupRetentionSettings = z.infer<typeof backupRetentionSettingsSchema>;
+export const DEFAULT_BACKUP_RETENTION: BackupRetentionSettings = {
+  keepReady: 3,
+  staleAfterHours: 30,
+};
+export function readBackupRetentionSettings(
+  env: Record<string, string | undefined> = process.env,
+): BackupRetentionSettings {
+  const raw = env.RECALINO_BACKUP_RETENTION_JSON;
+  if (!raw) return DEFAULT_BACKUP_RETENTION;
+  let overrides: unknown;
+  try {
+    overrides = JSON.parse(raw);
+  } catch {
+    throw new Error("Invalid RECALINO_BACKUP_RETENTION_JSON: not valid JSON");
+  }
+  const result = backupRetentionSettingsSchema.safeParse(
+    overrides !== null && typeof overrides === "object" && !Array.isArray(overrides)
+      ? { ...DEFAULT_BACKUP_RETENTION, ...overrides }
+      : overrides,
+  );
+  if (!result.success) {
+    const names = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];
+    throw new Error(`Invalid RECALINO_BACKUP_RETENTION_JSON: ${names.join(", ")}`);
+  }
+  return result.data;
+}
+export type BackupRetentionRow = { id: string; state: string; createdAt: Date; expiresAt: Date };
+/** The newest `keepReady` ready backups, newest first; the order matches `created_at desc, id desc`. */
+export function retainedReadyBackupIds(
+  rows: readonly Pick<BackupRetentionRow, "id" | "state" | "createdAt">[],
+  keepReady: number,
+): string[] {
+  return rows
+    .filter((row) => row.state === "ready")
+    .sort(
+      (a, b) =>
+        b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
+    )
+    .slice(0, keepReady)
+    .map((row) => row.id);
+}
+/** Lapsed backups the retention job deletes now, in input order; the retained ready ones stay. */
+export function backupsToExpire(
+  rows: readonly BackupRetentionRow[],
+  now: Date,
+  keepReady: number,
+): string[] {
+  const retained = new Set(retainedReadyBackupIds(rows, keepReady));
+  return rows
+    .filter((row) => row.state !== "deleted" && row.expiresAt <= now && !retained.has(row.id))
+    .map((row) => row.id);
+}
+/** Stale when the newest ready backup is older than the threshold, or when there is none. */
+export function backupStaleness(
+  newestReady: { id: string; createdAt: Date } | null,
+  now: Date,
+  staleAfterHours: number,
+): { stale: false } | { stale: true; subjectId: string; ageMs: number | null } {
+  if (!newestReady) return { stale: true, subjectId: "none", ageMs: null };
+  const ageMs = now.getTime() - newestReady.createdAt.getTime();
+  return ageMs > staleAfterHours * 3600 * 1000
+    ? { stale: true, subjectId: newestReady.id, ageMs }
+    : { stale: false };
+}
+async function liveBackupRows(tx: Tx) {
+  return tx
+    .selectFrom("ops.database_backup")
+    .select([
+      "id",
+      "state",
+      "object_id as objectId",
+      "created_at as createdAt",
+      "expires_at as expiresAt",
+    ])
+    .where("state", "<>", "deleted")
+    .execute();
+}
 async function lockBackups(tx: Tx) {
   await sql`select pg_advisory_xact_lock(hashtextextended('ops:encrypted-backups', 1))`.execute(tx);
 }
@@ -205,6 +297,7 @@ export async function readDatabaseBackup(
   id: string,
   actor: BackupOperator,
   now = new Date(),
+  retention: BackupRetentionSettings = readBackupRetentionSettings(),
 ) {
   z.uuid().parse(id);
   const trusted = operator(actor);
@@ -215,7 +308,13 @@ export async function readDatabaseBackup(
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
-    if (row?.state !== "ready" || row.expires_at <= now || !row.object_id) throw errors.notFound();
+    if (row?.state !== "ready" || !row.object_id) throw errors.notFound();
+    // A lapsed copy stays readable only while retention keeps it as one of the newest ready.
+    if (
+      row.expires_at <= now &&
+      !retainedReadyBackupIds(await liveBackupRows(tx), retention.keepReady).includes(row.id)
+    )
+      throw errors.notFound();
     const bytes = await readOwnedObject(tx, store, "system", row.object_id);
     const header = backupArchiveHeader(bytes);
     if (
@@ -270,26 +369,79 @@ export async function recordBackupRestoreDrill(
     });
   });
 }
-export async function maintainDatabaseBackups(db: Database, store: ObjectStore, now = new Date()) {
+export async function maintainDatabaseBackups(
+  db: Database,
+  store: ObjectStore,
+  now = new Date(),
+  retention: BackupRetentionSettings = readBackupRetentionSettings(),
+) {
   return db.transaction().execute(async (tx) => {
     await lockBackups(tx);
-    const rows = await tx
-      .selectFrom("ops.database_backup")
-      .select(["id", "object_id"])
-      .where("expires_at", "<=", now)
-      .execute();
+    const rows = await liveBackupRows(tx);
+    const expired = new Set(backupsToExpire(rows, now, retention.keepReady));
     for (const row of rows) {
-      if (row.object_id) await deleteObject(tx, store, "system", row.object_id, now);
+      if (!expired.has(row.id)) continue;
+      if (row.objectId) await deleteObject(tx, store, "system", row.objectId, now);
       await tx
         .updateTable("ops.database_backup")
         .set({ state: "deleted", deleted_at: now, object_id: null })
         .where("id", "=", row.id)
         .execute();
     }
-    return { expired: rows.length };
+    return { expired: expired.size };
   });
 }
-export function databaseBackupMaintenanceJob(store: ObjectStore): PeriodicJob {
+const STALE_ALERT = {
+  actorKind: "system",
+  actorId: "ops.backup_retention",
+  action: "ops.backup_stale",
+  subjectType: "database_backup",
+} as const;
+/**
+ * OPS-01: when the newest ready backup is older than the threshold, record one audit event the
+ * admin overview and audit log show, and one `backup_stale` error log. The alert is keyed by that
+ * backup (or "none"), so the hourly job raises it once per stale period, never again each hour.
+ */
+export async function alertStaleBackups(
+  db: Database,
+  now = new Date(),
+  options: { retention?: BackupRetentionSettings; log?: Logger } = {},
+): Promise<{ stale: boolean; alerted: boolean }> {
+  const retention = options.retention ?? readBackupRetentionSettings();
+  const result = await db.transaction().execute(async (tx) => {
+    await lockBackups(tx);
+    const newest = await tx
+      .selectFrom("ops.database_backup")
+      .select(["id", "created_at as createdAt"])
+      .where("state", "=", "ready")
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(1)
+      .executeTakeFirst();
+    const staleness = backupStaleness(newest ?? null, now, retention.staleAfterHours);
+    if (!staleness.stale) return { stale: false, alerted: false, ageMs: null };
+    const earlier = await latestSubjectAudit(tx, {
+      ...STALE_ALERT,
+      subjectIds: [staleness.subjectId],
+    });
+    if (earlier) return { stale: true, alerted: false, ageMs: staleness.ageMs };
+    await recordAudit(tx, { ...STALE_ALERT, subjectId: staleness.subjectId });
+    return { stale: true, alerted: true, ageMs: staleness.ageMs };
+  });
+  if (result.alerted)
+    // Allow-listed fields only (PRD-PRIV-06): no backup content, key or storage location.
+    (options.log ?? createLogger())("error", "backup_stale", {
+      module: "ops",
+      kind: STALE_ALERT.actorId,
+      reason: result.ageMs === null ? "no_ready_backup" : "newest_ready_backup_too_old",
+      age_ms: result.ageMs,
+    });
+  return { stale: result.stale, alerted: result.alerted };
+}
+export function databaseBackupMaintenanceJob(
+  store: ObjectStore,
+  options: { log?: Logger } = {},
+): PeriodicJob {
   return {
     everySeconds: 3600,
     definition: {
@@ -297,7 +449,10 @@ export function databaseBackupMaintenanceJob(store: ObjectStore): PeriodicJob {
       version: 1,
       payload: z.strictObject({}),
       async run(_input, job) {
-        await maintainDatabaseBackups(job.db, store, job.now());
+        // Read per run: an invalid override fails the job loudly and deletes nothing.
+        const retention = readBackupRetentionSettings();
+        await alertStaleBackups(job.db, job.now(), { retention, log: options.log });
+        await maintainDatabaseBackups(job.db, store, job.now(), retention);
         await maintainDeletionJournals(job.db, store, job.now());
       },
     },

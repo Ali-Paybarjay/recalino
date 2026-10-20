@@ -8,9 +8,11 @@ export {
   updateAdminTask,
 } from "./admin-operations";
 export {
+  ADMIN_TASK_TITLE,
   type AdminDirectory,
   type AdminReadConfiguration,
   type AdminSnapshotParameters,
+  HEALTH_ALERT_TEXT,
   readAdminSnapshot,
   readApprovedEmailResults,
 } from "./admin-read";
@@ -21,16 +23,25 @@ export {
   encryptBackupArchive,
 } from "./backup-crypto";
 export {
+  alertStaleBackups,
   type BackupOperator,
+  type BackupRetentionSettings,
   type BackupSettings,
+  backupRetentionSettingsSchema,
   backupSettingsSchema,
+  backupStaleness,
+  backupsToExpire,
   createDatabaseBackup,
+  DEFAULT_BACKUP_RETENTION,
   databaseBackupMaintenanceJob,
   getDatabaseBackupMetadata,
   maintainDatabaseBackups,
+  readBackupRetentionSettings,
   readDatabaseBackup,
   recordBackupRestoreDrill,
+  retainedReadyBackupIds,
 } from "./backups";
+export { deletionJournalSaved } from "./deletion-journal-state";
 export {
   appendEncryptedDeletionJournal,
   type DeletionJournal,
@@ -39,6 +50,18 @@ export {
   maintainDeletionJournals,
   readEncryptedDeletionJournals,
 } from "./deletion-journals";
+export {
+  DEFAULT_HEALTH_SETTINGS,
+  evaluateHealth,
+  type HealthCheckOptions,
+  type HealthSettings,
+  type HealthSignal,
+  healthSettingsSchema,
+  readHealthSettings,
+  readSystemHealth,
+  runHealthCheck,
+  systemHealthJob,
+} from "./health";
 export { executeOperatorRequest, type OperatorRequest, operatorRequestSchema } from "./operator";
 export { requestClassProcessingReview } from "./processing-review";
 export {

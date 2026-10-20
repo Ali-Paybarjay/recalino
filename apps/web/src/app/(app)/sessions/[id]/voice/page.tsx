@@ -17,8 +17,8 @@ export default async function SessionVoicePage({ params }: { params: Promise<{ i
       current="classes"
       header={<PageHeader title="Your voice in this session" subtitle={session.displayTitle} />}
     >
-      <div className="preview-stack">
-        <Link className="preview-back" href={`/sessions/${id}`}>
+      <div className="workspace-stack">
+        <Link className="workspace-back" href={`/sessions/${id}`}>
           ← Back to session
         </Link>
         <VoiceConfirmation sessionId={id} userId={learner.userId} />

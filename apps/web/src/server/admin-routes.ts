@@ -7,7 +7,7 @@ import {
   updateAdminPreferences,
   updateAdminTask,
 } from "@recalino/core/ops";
-import { errors, isValidIdempotencyKey } from "@recalino/core/plt";
+import { errors } from "@recalino/core/plt";
 import { retryRunAsAdmin } from "@recalino/core/proc";
 import {
   amountsSchema,
@@ -50,7 +50,7 @@ import { adminDirectory } from "./admin-directory";
 import { adminEmailValues } from "./admin-email-values";
 import { adminOperation } from "./admin-operation";
 import { getAiProvider } from "./ai";
-import type { Handler } from "./api";
+import { type Handler, idempotencyKey } from "./api";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getProcessingDefinition } from "./processing-jobs";
 
@@ -88,12 +88,6 @@ function presentationPreview(
     preheader: value.preheader,
     action: value.action,
   };
-}
-function key(request: Request) {
-  const value = request.headers.get("idempotency-key");
-  if (!value || !isValidIdempotencyKey(value))
-    throw errors.validationFailed({ "Idempotency-Key": ["required"] });
-  return value;
 }
 function dispatchSoon(db: Parameters<typeof runEmailOutbox>[0]) {
   after(async () => {
@@ -145,7 +139,7 @@ export function adminHandler(): Handler {
         ),
       };
     }
-    const op = key(request);
+    const op = idempotencyKey(request);
     const envelope = z.strictObject({ action: z.string().min(1), input: z.unknown() }).parse(input);
     await claimAdminRequest(db, actorId, op, envelope);
     const value = envelope.input;

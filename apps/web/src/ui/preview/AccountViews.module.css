@@ -49,7 +49,7 @@
   display: block;
   margin-bottom: 4px;
   color: var(--rc-text-muted);
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
 }
 .rowValue {
   display: block;
@@ -90,7 +90,7 @@
 .allowance span {
   max-width: 160px;
   line-height: 1.5;
-  font-size: 15px;
+  font-size: var(--rc-text-md);
 }
 .badge {
   display: inline-flex;
@@ -98,7 +98,7 @@
   border-radius: 6px;
   background: var(--rc-warning-tint);
   color: var(--rc-warning);
-  font-size: 11px;
+  font-size: var(--rc-text-xs);
 }
 .page [role="listbox"] {
   max-height: min(36dvh, 300px);

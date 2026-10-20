@@ -5,6 +5,8 @@ import {
   dollarsToMicros,
   emailBodyWithNote,
   exactQuotaUnits,
+  formatMegabytes,
+  formatWait,
   friendlyQuotaUnits,
   manualTemplateVariables,
   parseQuota,
@@ -169,5 +171,23 @@ describe("routine email variables", () => {
       "A custom message.\n\nExtra detail.",
     );
     expect(emailBodyWithNote("Hello\n\nThe Recalino team", " ")).toBe("Hello\n\nThe Recalino team");
+  });
+});
+
+// OPS-02: the System health card shows amounts with the locale's own units, never new copy.
+describe("System health amounts (OPS-02)", () => {
+  it("shows the database size in decimal megabytes, as the Supabase plan limit is written", () => {
+    expect(formatMegabytes(123_456_789, "en")).toBe("123.5 MB");
+    expect(formatMegabytes(400_000_000, "en")).toBe("400 MB");
+    expect(formatMegabytes(400_000_000, "fa")).toBe("۴۰۰ MB");
+  });
+
+  it("shows a wait in minutes, then hours, then days", () => {
+    expect(formatWait(0, "en")).toBe("0 mins");
+    expect(formatWait(12 * 60_000 + 20_000, "en")).toBe("12 mins");
+    expect(formatWait(59 * 60_000, "en")).toBe("59 mins");
+    expect(formatWait(150 * 60_000, "en")).toBe("2.5 hrs");
+    expect(formatWait(3 * 86_400_000, "en")).toBe("3 days");
+    expect(formatWait(12 * 60_000, "fa")).toBe("۱۲ دقیقه");
   });
 });

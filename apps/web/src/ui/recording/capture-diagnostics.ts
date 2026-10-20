@@ -1,4 +1,5 @@
-import { z } from "zod";
+// PERF-06: the browser bundles zod/mini, which has the same parsing without the method chain.
+import { z } from "zod/mini";
 import { GAP_CAUSES } from "./capture-meter";
 import type { CaptureHealthEvent } from "./controller";
 import { PHOTO_VERDICTS } from "./photo-quality";
@@ -10,16 +11,12 @@ import { PHOTO_VERDICTS } from "./photo-quality";
  * exception is `photo_quality` (D72): the random local id of a board photo, which is also its
  * upload operation key, so the on-device verdict can be compared with the server's outcome.
  */
-const ms = z
-  .int()
-  .min(0)
-  .max(24 * 60 * 60 * 1000);
-const part = z.int().min(1).max(1000);
-const score = z.int().min(0).max(1000);
+const ms = z.int().check(z.minimum(0), z.maximum(24 * 60 * 60 * 1000));
+const part = z.int().check(z.minimum(1), z.maximum(1000));
+const score = z.int().check(z.minimum(0), z.maximum(1000));
 const mime = z
   .string()
-  .regex(/^audio\/[a-z0-9.+-]+(;\s?codecs=[a-z0-9.,-]+)?$/i)
-  .max(60);
+  .check(z.regex(/^audio\/[a-z0-9.+-]+(;\s?codecs=[a-z0-9.,-]+)?$/i), z.maxLength(60));
 export const captureHealthEventSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("started"), mime, part }),
   z.strictObject({ type: z.literal("visibility"), visible: z.boolean() }),
@@ -63,7 +60,7 @@ export const captureHealthEventSchema = z.discriminatedUnion("type", [
     mediaMs: ms,
     wallMs: ms,
     missingMs: ms,
-    gaps: z.int().min(0).max(500),
+    gaps: z.int().check(z.minimum(0), z.maximum(500)),
   }),
 ]);
 export const PLATFORMS = [
@@ -81,8 +78,7 @@ export const captureDiagnosticsSchema = z.strictObject({
   browser: z.enum(BROWSERS),
   events: z
     .array(z.strictObject({ ageMs: ms, event: captureHealthEventSchema }))
-    .min(1)
-    .max(50),
+    .check(z.minLength(1), z.maxLength(50)),
 });
 export type CaptureDiagnostics = z.infer<typeof captureDiagnosticsSchema>;
 

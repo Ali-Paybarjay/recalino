@@ -1,15 +1,19 @@
 export { type AutomaticCardSyncResult, synchronizeAutomaticCards } from "./automatic";
 export {
   type CardProposal,
+  type CardReads,
   changeCard,
   editCard,
   generateCards,
   getActiveCard,
   getCard,
   isCardReviewable,
+  isCardReviewableWith,
   listCardProposals,
   listCards,
+  readCards,
   resolveCardProposal,
+  reviewableCardIds,
   type StudyCard,
   setCardMedia,
   tombstoneSessionCards,
@@ -21,7 +25,7 @@ export {
   tombstoneAccountCards,
   tombstoneSourceCards,
 } from "./privacy";
-export { learningItemIdsForOwnedCards } from "./projections";
+export { learningItemIdsForOwnedCards, liveCardIds } from "./projections";
 export {
   type CardActionInput,
   type CardStatus,

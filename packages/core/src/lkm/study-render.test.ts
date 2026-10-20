@@ -533,3 +533,17 @@ it("D49 check-yourself uses grammar tasks, a numbered list and English chrome ou
     expect(studyMessage(language, "checkHeading").language).toBe(language === "fa" ? "fa" : "en");
   }
 });
+
+// SEC-04 (audit 2026-10-18, owner decision 2026-10-19): opening class notes, in the app or as the
+// downloaded file, sends nothing to another origin. Fonts come from the device's own font stacks.
+it("SEC-04 class notes load no web font and link to no other origin, in every script", () => {
+  for (const language of ["fa", "en", "ur", "ja", "zh", "ar", "hi"]) {
+    const model = referenceStudyModel();
+    model.language.explanation = language;
+    const html = renderClassNotesHtml(model);
+    expect(html, language).not.toMatch(/fonts\.googleapis|fonts\.gstatic/);
+    const head = elements(parse(html), "link");
+    expect(head, language).toHaveLength(0);
+    expect(html, language).not.toMatch(/(?:src|href)="(?:https?:)?\/\//);
+  }
+});

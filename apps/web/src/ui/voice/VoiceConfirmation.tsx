@@ -7,7 +7,7 @@ import {
 } from "@recalino/core/voice-contracts";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import {
   type ClassVoiceAction,
@@ -123,9 +123,7 @@ export function VoiceConfirmation({
       .then(setView)
       .catch((error) => {
         if (!abort.signal.aborted)
-          setProblem(
-            error instanceof Error ? error.message : "Voice confirmation could not be loaded.",
-          );
+          setProblem(userMessage(error, "Voice confirmation could not be loaded."));
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
@@ -161,11 +159,7 @@ export function VoiceConfirmation({
         })
         .catch((error) => {
           if (!abort.signal.aborted)
-            setProblem(
-              error instanceof Error
-                ? error.message
-                : "Voice analysis status could not be refreshed.",
-            );
+            setProblem(userMessage(error, "Voice analysis status could not be refreshed."));
         });
     }, 4000);
     return () => {
@@ -210,9 +204,7 @@ export function VoiceConfirmation({
         error instanceof WorkspaceRequestError &&
           error.fields?.voice?.includes("original_audio_required")
           ? "The temporary session recording is no longer available. Checking session voices needs the original session recording, even if you have saved a personal voice sample."
-          : error instanceof Error
-            ? error.message
-            : "Your choice could not be saved. Try again.",
+          : userMessage(error, "Your choice could not be saved. Try again."),
       );
       if (
         "action" in payload &&
@@ -250,7 +242,7 @@ export function VoiceConfirmation({
           refreshNotes();
           setProblem(
             "action" in payload && payload.action === "analyze"
-              ? "The session changed or is already being processed. Check its current sources and voice status before trying again."
+              ? "The session changed or is already being processed. Check its current material and voice status before trying again."
               : "These voice excerpts have changed. Please check the current excerpts before choosing again.",
           );
         } catch {
@@ -292,9 +284,7 @@ export function VoiceConfirmation({
             setProblem("");
             void load()
               .catch((error) =>
-                setProblem(
-                  error instanceof Error ? error.message : "Could not load voice confirmation.",
-                ),
+                setProblem(userMessage(error, "Could not load voice confirmation.")),
               )
               .finally(() => setLoading(false));
           }}
@@ -313,9 +303,7 @@ export function VoiceConfirmation({
                 refreshNotes();
               })
               .catch((error) =>
-                setProblem(
-                  error instanceof Error ? error.message : "Could not refresh voice confirmation.",
-                ),
+                setProblem(userMessage(error, "Could not refresh voice confirmation.")),
               )
               .finally(() => setBusy(false));
           }}
@@ -337,7 +325,7 @@ export function VoiceConfirmation({
         <div className={styles.stack}>
           {/* With one choice per class (D64) the parts are not checked one by one. */}
           {classConfirmationActive(view) ? null : (
-            <p className="preview-muted">
+            <p className="workspace-muted">
               Check each source separately. A speaker label in one recording may belong to someone
               else in another. Written mistakes remain available independently.
             </p>
@@ -348,7 +336,7 @@ export function VoiceConfirmation({
               checking the excerpts below.
             </Status>
           ) : null}
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Check the selected session recordings for speakers, then identify which voice is yours.
             A saved voice sample can help suggest a match.
           </p>
@@ -356,9 +344,10 @@ export function VoiceConfirmation({
             (view.analysisBlockedReason === "transcript_required" ||
             view.analysisBlockedReason === "sources_unavailable" ? (
               <Status>
-                Select a session recording in Sources and process it before checking session voices.
+                Select a session recording in Session material and process it before checking
+                session voices.
                 <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                  Open session sources
+                  Open session material
                 </LinkButton>
               </Status>
             ) : view.analysisBlockedReason === "original_audio_required" ? (
@@ -367,7 +356,7 @@ export function VoiceConfirmation({
                 needs the original session recording, even if you have saved a personal voice
                 sample.
                 <LinkButton secondary href={`/sessions/${sessionId}/sources`}>
-                  Open session sources
+                  Open session material
                 </LinkButton>
               </Status>
             ) : view.analysisBlockedReason === "explanation_language_missing" ? (
@@ -388,7 +377,7 @@ export function VoiceConfirmation({
             </LinkButton>
           </Actions>
           {processing ? (
-            <Status>Preparing speaker excerpts from the session sources…</Status>
+            <Status>Preparing speaker excerpts from the session material…</Status>
           ) : !view.analyses.length ? (
             <p>No speaker excerpts have been prepared for this session yet.</p>
           ) : (
@@ -464,7 +453,7 @@ export function VoiceConfirmation({
       )}
       {children ? (
         notesSafe ? (
-          <div id="class-notes" className="preview-stack">
+          <div id="class-notes" className="workspace-stack">
             {children}
           </div>
         ) : (
@@ -593,24 +582,24 @@ function Analysis({
   return (
     <section className={styles.candidate} aria-label={`Source ${index + 1} voice confirmation`}>
       <div className={styles.heading}>
-        <h3 dir="auto">{analysis.source?.name ?? `Session source ${index + 1}`}</h3>
+        <h3 dir="auto">{analysis.source?.name ?? `Session material ${index + 1}`}</h3>
         <span className={styles.badge}>{labels[analysis.status]}</span>
       </div>
       {analysis.source ? (
-        <p className="preview-muted">
-          Session source {index + 1}
+        <p className="workspace-muted">
+          Session material {index + 1}
           {analysis.source.durationMs ? ` · ${duration(analysis.source.durationMs)}` : ""}
         </p>
       ) : null}
       {coverage === "sampled_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">
+        <p className="workspace-muted">
           This long recording was checked using excerpts sampled across your selected class audio.
           Only speech in those checked excerpts can contribute spoken mistakes. Your full transcript
           and session notes remain available.
         </p>
       ) : null}
       {coverage === "partial_audio" || coverage === "sampled_partial_audio" ? (
-        <p className="preview-muted">{voiceCopy.partialCoverage}</p>
+        <p className="workspace-muted">{voiceCopy.partialCoverage}</p>
       ) : null}
       {isServiceBlocked(analysis) ? (
         <Status>{voiceCopy.serviceBlockedDetail}</Status>
@@ -628,11 +617,11 @@ function Analysis({
               ? "Matched from your previously confirmed voice."
               : "Confirmed by you."}
           </p>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Only eligible speech attributed to this speaker can contribute spoken mistakes.
           </p>
           {analysis.verificationMethod === "manual" && analysis.referenceStatus ? (
-            <p className="preview-muted">{voiceCopy.reference[analysis.referenceStatus]}</p>
+            <p className="workspace-muted">{voiceCopy.reference[analysis.referenceStatus]}</p>
           ) : null}
           <Button secondary disabled={disabled} onClick={() => action("revoke")}>
             This is not my voice
@@ -671,7 +660,7 @@ function Analysis({
       ) : (
         <>
           {analysis.matchReason ? (
-            <p className="preview-muted">{voiceCopy.match[analysis.matchReason]}</p>
+            <p className="workspace-muted">{voiceCopy.match[analysis.matchReason]}</p>
           ) : null}
           {audio.state === "playable" ? (
             <>
@@ -693,7 +682,7 @@ function Analysis({
                           count: grouped.length,
                         })}
                       </summary>
-                      <p className="preview-muted">{voiceCopy.shortVoicesDetail}</p>
+                      <p className="workspace-muted">{voiceCopy.shortVoicesDetail}</p>
                       {grouped.map(card)}
                     </details>
                   ) : null}

@@ -101,6 +101,24 @@ describe("route wrapper (FR-PLT-003, FR-PLT-007)", () => {
     expect(lines.map((line) => JSON.parse(line).event)).toEqual(["request_failed", "request"]);
   });
 
+  it("logs where an unexpected error was thrown and its provider cause, never its text (OPS-02)", async () => {
+    const lines: string[] = [];
+    const response = await call(
+      publicRoute,
+      async () => {
+        throw Object.assign(new TypeError(`cannot read "${CANARY}"`), { causeCode: "ECONNRESET" });
+      },
+      testDeps(lines),
+    );
+    expect(response.status).toBe(500);
+    expect(lines.join("\n")).not.toContain(CANARY);
+    const failed = lines
+      .map((line) => JSON.parse(line))
+      .find((line) => line.event === "request_failed");
+    expect(failed).toMatchObject({ error_name: "TypeError", cause_code: "ECONNRESET" });
+    expect(failed.error_location).toMatch(/^apps\/web\/src\/server\/api\.test\.ts:\d+:\d+$/);
+  });
+
   it("logs the reason of a server error without sending it to the client", async () => {
     const lines: string[] = [];
     const response = await call(
@@ -175,6 +193,31 @@ describe("Auth response caching (FR-PLT-001)", () => {
       expect(response.status).toBe(303);
       expect(response.headers.get("cache-control")).toBe("private, no-store");
     }
+  });
+});
+
+describe("redirect targets (FR-PLT-001, SEC-01)", () => {
+  const redirectFrom = (target: string) =>
+    call(publicRoute, async () => ({ redirect: target }), testDeps([]));
+
+  it.each(["//evil.example/x", "/\\evil.example", "/..//evil.example"])(
+    "keeps the relative target %s on the request's origin",
+    async (target) => {
+      const response = await redirectFrom(target);
+      expect(response.status).toBe(303);
+      expect(new URL(response.headers.get("location") ?? "").origin).toBe("http://localhost");
+    },
+  );
+
+  it("keeps a same-origin path and an absolute provider URL as given", async () => {
+    expect((await redirectFrom("/me?x=1#a")).headers.get("location")).toBe(
+      "http://localhost/me?x=1#a",
+    );
+    expect(
+      (await redirectFrom("https://auth.example/authorize?provider=google")).headers.get(
+        "location",
+      ),
+    ).toBe("https://auth.example/authorize?provider=google");
   });
 });
 

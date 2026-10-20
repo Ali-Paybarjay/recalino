@@ -175,7 +175,7 @@ describe("processing next actions", () => {
     const html = render([run("needs_input", { lastError: "new_confirmation_required" })]);
     expect(buttons(html)).not.toContain("Confirm and process");
     expect(buttons(html)).toContain("Review and confirm");
-    expect(html).toContain("The verified source has changed.");
+    expect(html).toContain("The verified material has changed.");
   });
 
   it("offers review and retry for rejected audio alongside changing sources", () => {
@@ -225,7 +225,7 @@ describe("processing next actions", () => {
       sourcesVersion: estimate.snapshot.sourcesVersion + 1,
     });
     expect(html).toContain("Previous attempt");
-    expect(html).toContain("Your sources have changed since this attempt.");
+    expect(html).toContain("Your material has changed since this attempt.");
     expect(html).not.toContain("The audio could not be verified.");
     expect(html).toContain("No material is selected for this session.");
     expect(html).toContain("Add or select material");
@@ -259,7 +259,7 @@ describe("processing next actions", () => {
     const html = render([], null, { initialEstimateProblem });
     expect(html).toContain(message);
     expect(html).not.toContain("No material is selected");
-    expect(html).toContain("Review sources");
+    expect(html).toContain("Review material");
     expect(buttons(html)).not.toContain("Confirm and process");
   });
 

@@ -392,6 +392,15 @@ export interface OpsAdminUser {
   welcome_state: string | null;
 }
 
+export interface OpsAdminUserProgress {
+  first_processed_at: Timestamp | null;
+  first_recording_at: Timestamp | null;
+  first_review_at: Timestamp | null;
+  first_sign_in_at: Timestamp | null;
+  setup_completed_at: Timestamp | null;
+  user_id: string | null;
+}
+
 export interface OpsDatabaseBackup {
   archive_format: Generated<string>;
   created_at: Generated<Timestamp>;
@@ -1209,6 +1218,7 @@ export interface DB {
   "ops.admin_task": OpsAdminTask;
   "ops.admin_thread": OpsAdminThread;
   "ops.admin_user": OpsAdminUser;
+  "ops.admin_user_progress": OpsAdminUserProgress;
   "ops.database_backup": OpsDatabaseBackup;
   "ops.deletion_journal": OpsDeletionJournal;
   "ops.task_preference": OpsTaskPreference;

@@ -44,8 +44,26 @@ test("account deletion requires explicit acknowledgement and hides the account",
     .check();
   await dialog.getByRole("button", { name: "Delete account", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Account deletion requested" })).toBeVisible();
+  // UX-10: leaving by "/" only led back to this page, so the way out is Sign out.
+  await expect(page.getByRole("link", { name: "Return to Recalino" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
   const response = await page.request.get("/api/classes");
   expect(response.status()).toBe(401);
+});
+
+// UX-14: the data page tells where the download is (sentence approved by the owner on 2026-10-19)
+// and links to the session list.
+test("Your data points to the download of notes and cards", async ({ page }) => {
+  await signInAsNewLearner(page, { setup: "complete" });
+  await page.goto("/me/data");
+  await expect(
+    page.getByText(
+      "To keep a copy first, open a session, choose More session tools, then Download notes and cards.",
+    ),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Choose a session", exact: true }).click();
+  await expect(page).toHaveURL(/\/sessions$/);
+  await expectNoAxeViolations(page);
 });
 test("account deletion waits for capture to stop and removes only its device copies", async ({
   page,
@@ -54,7 +72,13 @@ test("account deletion waits for capture to stop and removes only its device cop
   const { userId } = await signInAsNewLearner(page, { setup: "complete" });
   await page.goto("/today");
   await page.getByRole("button", { name: "Record a session", exact: true }).click();
+  // The recording bar on Today shows Pause as soon as capture starts, before the recording page
+  // opens; going back before that would leave the app.
+  await expect(page).toHaveURL(/\/recordings$/);
   await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+  // The recording page has no navigation (UX-02): go back to Today, where the recording continues.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/today$/);
   await page.getByRole("link", { name: "Me", exact: true }).first().click();
   await page.getByRole("link", { name: /Your data/ }).click();
   await expect(page.getByRole("button", { name: "Review account deletion" })).toBeDisabled();
@@ -154,7 +178,11 @@ for (const outcome of ["pending", "unknown"] as const) {
     const { userId } = await signInAsNewLearner(page, { setup: "complete" });
     await page.goto("/today");
     await page.getByRole("button", { name: "Record a session", exact: true }).click();
+    // As above: wait for the recording page before going back to Today.
+    await expect(page).toHaveURL(/\/recordings$/);
     await expect(page.getByRole("button", { name: "Pause recording", exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/today$/);
     await page.getByRole("link", { name: "Me", exact: true }).first().click();
     await page.getByRole("link", { name: /Your data/ }).click();
     await page.getByRole("button", { name: "Stop and save before deletion", exact: true }).click();

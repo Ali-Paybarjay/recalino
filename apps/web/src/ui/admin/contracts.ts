@@ -21,9 +21,12 @@ export type {
   FeedbackMessage,
   FeedbackSummary,
   FeedbackThread,
+  HealthCondition,
   LocalizedText,
+  PilotProgress,
   PilotSummary,
   PriceRate,
   PrivacyItem,
   QuotaAmounts,
+  SystemHealth,
 } from "@recalino/core/ops";

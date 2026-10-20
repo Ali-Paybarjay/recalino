@@ -2,14 +2,28 @@
 import type { MediaAsset } from "@recalino/core/media";
 import type { ReviewInput, ReviewQueue, ReviewReceipt } from "@recalino/core/srs";
 import { useEffect, useRef, useState } from "react";
-import { workspaceRequest } from "./api";
+import { shellStrings as strings } from "../strings-shell";
+import { timeZoneCity } from "../time-zone";
+import { userMessage, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { studySetLabel } from "./card-labels";
+import { mediaAlt } from "./media-alt";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { RecallPronunciation } from "./RecallPronunciation";
+import { type FocusIntent, reviewFocusTarget } from "./review-focus";
 
 /** Learning and relearning steps are minutes apart; an open page picks such a card up when due. */
 const LEARNING_STEP_WAIT_MS = 15 * 60000;
+/** The back of a plain listening card. It is learner text, so its direction follows its first letters (A11Y-02). */
+export function ListeningAnswer({ text }: { text: string }) {
+  return (
+    <p dir="auto" style={{ whiteSpace: "pre-wrap" }}>
+      {text}
+    </p>
+  );
+}
+
 function reviewQueuePath(sessionId: string | undefined): string {
   return sessionId ? `/api/review?${new URLSearchParams({ sessionId })}` : "/api/review";
 }
@@ -46,6 +60,27 @@ export function ReviewView({
   const requestInFlight = useRef(false);
   const current = queue.cards[0];
   const waiting = !current;
+  // A11Y-03: the button that had focus is replaced by the next state, so focus is moved on purpose.
+  const focusIntent = useRef<FocusIntent>(null);
+  const cardRegion = useRef<HTMLDivElement>(null);
+  const showAnswerButton = useRef<HTMLButtonElement>(null);
+  const donePanel = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run when the card, its answer or the busy state changes.
+  useEffect(() => {
+    const target = reviewFocusTarget(focusIntent.current, { shown, hasCard: !!current });
+    if (!target) return;
+    const element =
+      target === "answer"
+        ? cardRegion.current
+        : target === "show-answer"
+          ? showAnswerButton.current
+          : donePanel.current;
+    // A button that is still disabled (the answer is being saved) cannot take focus: wait for
+    // the next change, which is when `busy` ends.
+    if (!element || (element instanceof HTMLButtonElement && element.disabled)) return;
+    focusIntent.current = null;
+    element.focus();
+  }, [shown, current?.card.id, current?.card.contentVersion, busy]);
   // D79: when only a learning step remains a few minutes away, continue without a manual reload.
   useEffect(() => {
     if (!waiting || !queue.nextDueAt) return;
@@ -104,10 +139,10 @@ export function ReviewView({
       active = false;
     };
   }, [current?.card.frontMediaId, current?.card.backMediaId]);
-  function media(value: { url: string; mime: string; synthetic: boolean }) {
+  function media(value: { url: string; mime: string; synthetic: boolean }, side: "front" | "back") {
     return (
       <div>
-        {value.synthetic && <p className="preview-muted">Synthetic audio</p>}
+        {value.synthetic && <p className="workspace-muted">Synthetic audio</p>}
         {value.mime.startsWith("audio/") ? (
           <audio controls src={value.url}>
             <track kind="captions" />
@@ -117,7 +152,9 @@ export function ReviewView({
           // biome-ignore lint/performance/noImgElement: Private signed media must not be sent through an image proxy.
           <img
             src={value.url}
-            alt="Card learning material"
+            // A11Y-05: described by the text of the card side that carries it; "" when it has none.
+            alt={mediaAlt(current?.card[side])}
+            dir="auto"
             style={{ maxWidth: "100%", height: "auto" }}
           />
         )}
@@ -139,6 +176,7 @@ export function ReviewView({
     requestInFlight.current = true;
     setBusy(true);
     setProblem("");
+    focusIntent.current = "next";
     if (!pending.current)
       pending.current = {
         eventId: crypto.randomUUID(),
@@ -161,11 +199,8 @@ export function ReviewView({
       await refresh();
       if (Date.now() - started.current >= softBudget.current) setSoftStop(true);
     } catch (failure) {
-      setProblem(
-        failure instanceof Error
-          ? failure.message
-          : "Your answer could not be saved. Retry the same answer.",
-      );
+      focusIntent.current = null;
+      setProblem(userMessage(failure, "Your answer could not be saved. Retry the same answer."));
     } finally {
       requestInFlight.current = false;
       setBusy(false);
@@ -175,6 +210,7 @@ export function ReviewView({
     if (!receipt) return;
     setBusy(true);
     setProblem("");
+    focusIntent.current = "next";
     try {
       await workspaceRequest(`/api/review/events/${receipt.eventId}/undo`, "POST", {
         expectedVersion: receipt.version,
@@ -183,15 +219,14 @@ export function ReviewView({
       setReviewed((n) => Math.max(0, n - 1));
       await refresh();
     } catch (failure) {
-      setProblem(
-        failure instanceof Error ? failure.message : "The last answer could not be undone.",
-      );
+      focusIntent.current = null;
+      setProblem(userMessage(failure, "The last answer could not be undone."));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Actions>
         <LinkButton secondary href="/me/review-settings">
           Review settings
@@ -207,9 +242,9 @@ export function ReviewView({
           </>
         )}
       </Actions>
-      <p className="preview-muted">
+      <p className="workspace-muted">
         {reviewed} reviewed · {queue.dueCount} due · Up to {queue.newRemaining} new today ·{" "}
-        {queue.timezone}
+        {timeZoneCity(queue.timezone)}
       </p>
       {problem && <Status tone="error">{problem}</Status>}
       {mediaProblem && <Status>{mediaProblem}</Status>}
@@ -241,113 +276,130 @@ export function ReviewView({
           }
         >
           {current.card.studySet && (
-            <p className="preview-muted">
-              {current.card.studySet === "production"
-                ? "Core · production"
-                : "Supplementary · recognition"}
-            </p>
+            <p className="workspace-muted">{studySetLabel(current.card.studySet)}</p>
           )}
-          {current.card.template === "listening" ? (
-            frontMedia ? (
-              media(frontMedia)
+          {/* The card and its answer: focus moves here when the answer appears (A11Y-03). */}
+          <div ref={cardRegion} tabIndex={-1}>
+            {current.card.template === "listening" ? (
+              frontMedia ? (
+                media(frontMedia, "front")
+              ) : (
+                <p>Loading listening audio…</p>
+              )
             ) : (
-              <p>Loading listening audio…</p>
-            )
-          ) : (
-            <CardFace
-              card={current.card}
-              revealed={shown}
-              pronunciation={
-                current.card.pronunciationTarget && current.card.sessionIds[0]
-                  ? {
-                      target: current.card.pronunciationTarget,
-                      control: (
-                        <RecallPronunciation
-                          key={`${current.card.id}:${current.card.contentVersion}`}
-                          cardId={current.card.id}
-                          contentVersion={current.card.contentVersion}
-                          sessionId={sessionId ?? current.card.sessionIds[0]}
-                          target={current.card.pronunciationTarget}
-                        />
-                      ),
-                    }
-                  : undefined
-              }
-            />
-          )}
-          {current.card.template !== "listening" && frontMedia && media(frontMedia)}
+              <CardFace
+                card={current.card}
+                revealed={shown}
+                pronunciation={
+                  current.card.pronunciationTarget && current.card.sessionIds[0]
+                    ? {
+                        target: current.card.pronunciationTarget,
+                        control: (
+                          <RecallPronunciation
+                            key={`${current.card.id}:${current.card.contentVersion}`}
+                            cardId={current.card.id}
+                            contentVersion={current.card.contentVersion}
+                            sessionId={sessionId ?? current.card.sessionIds[0]}
+                            target={current.card.pronunciationTarget}
+                          />
+                        ),
+                      }
+                    : undefined
+                }
+              />
+            )}
+            {current.card.template !== "listening" && frontMedia && media(frontMedia, "front")}
+            {shown ? (
+              <div className="workspace-stack">
+                {current.card.template === "listening" &&
+                  (current.card.contentFormat === "lesson_html" ? (
+                    <CardFace
+                      card={current.card}
+                      revealed
+                      pronunciation={
+                        current.card.pronunciationTarget && current.card.sessionIds[0]
+                          ? {
+                              target: current.card.pronunciationTarget,
+                              control: (
+                                <RecallPronunciation
+                                  key={`${current.card.id}:${current.card.contentVersion}`}
+                                  cardId={current.card.id}
+                                  contentVersion={current.card.contentVersion}
+                                  sessionId={sessionId ?? current.card.sessionIds[0]}
+                                  target={current.card.pronunciationTarget}
+                                />
+                              ),
+                            }
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <ListeningAnswer text={current.card.back} />
+                  ))}
+                {backMedia && media(backMedia, "back")}
+                <ClaimEvidence claim={current.card.provenance} userId={userId} />
+                <Actions>
+                  {(queue.settings.mode === "simple"
+                    ? (["forgot", "remembered"] as const)
+                    : (["again", "hard", "good", "easy"] as const)
+                  ).map((choice) => (
+                    <Button
+                      key={choice}
+                      secondary={choice === "forgot" || choice === "again"}
+                      disabled={busy || (!!pending.current && pending.current.choice !== choice)}
+                      onClick={() => grade(choice)}
+                    >
+                      {choice === "forgot"
+                        ? "Forgot"
+                        : choice === "remembered"
+                          ? "Remembered"
+                          : choice[0]?.toUpperCase() + choice.slice(1)}
+                    </Button>
+                  ))}
+                </Actions>
+                <LinkButton secondary href={`/cards/${current.card.id}`}>
+                  Fix this card
+                </LinkButton>
+              </div>
+            ) : null}
+          </div>
           {!shown ? (
-            <Button disabled={busy} onClick={() => setShown(true)}>
+            <Button
+              ref={showAnswerButton}
+              disabled={busy}
+              onClick={() => {
+                focusIntent.current = "answer";
+                setShown(true);
+              }}
+            >
               Show answer
             </Button>
-          ) : (
-            <div className="preview-stack">
-              {current.card.template === "listening" &&
-                (current.card.contentFormat === "lesson_html" ? (
-                  <CardFace
-                    card={current.card}
-                    revealed
-                    pronunciation={
-                      current.card.pronunciationTarget && current.card.sessionIds[0]
-                        ? {
-                            target: current.card.pronunciationTarget,
-                            control: (
-                              <RecallPronunciation
-                                key={`${current.card.id}:${current.card.contentVersion}`}
-                                cardId={current.card.id}
-                                contentVersion={current.card.contentVersion}
-                                sessionId={sessionId ?? current.card.sessionIds[0]}
-                                target={current.card.pronunciationTarget}
-                              />
-                            ),
-                          }
-                        : undefined
-                    }
-                  />
-                ) : (
-                  <p style={{ whiteSpace: "pre-wrap" }}>{current.card.back}</p>
-                ))}
-              {backMedia && media(backMedia)}
-              <ClaimEvidence claim={current.card.provenance} userId={userId} />
-              <Actions>
-                {(queue.settings.mode === "simple"
-                  ? (["forgot", "remembered"] as const)
-                  : (["again", "hard", "good", "easy"] as const)
-                ).map((choice) => (
-                  <Button
-                    key={choice}
-                    secondary={choice === "forgot" || choice === "again"}
-                    disabled={busy || (!!pending.current && pending.current.choice !== choice)}
-                    onClick={() => grade(choice)}
-                  >
-                    {choice === "forgot"
-                      ? "Forgot"
-                      : choice === "remembered"
-                        ? "Remembered"
-                        : choice[0]?.toUpperCase() + choice.slice(1)}
-                  </Button>
-                ))}
-              </Actions>
-              <LinkButton secondary href={`/cards/${current.card.id}`}>
-                Fix this card
-              </LinkButton>
-            </div>
-          )}
+          ) : null}
         </Panel>
       ) : (
-        <Panel title="You’re ready for a break">
-          <p>{reviewed ? `You reviewed ${reviewed} cards.` : "No cards are due right now."}</p>
-          {queue.nextDueAt && (
-            <p>
-              Next scheduled review:{" "}
-              {new Date(queue.nextDueAt).toLocaleString("en-GB", { timeZone: queue.timezone })}
-            </p>
+        // UX-12: "no cards yet" and "done for now" are different, so they say different things.
+        <div ref={donePanel} tabIndex={-1}>
+          {!queue.hasCards && !reviewed ? (
+            <Panel>
+              <p>{strings.empty.review}</p>
+              <LinkButton href="/sessions">Open your sessions</LinkButton>
+            </Panel>
+          ) : (
+            <Panel title="You’re ready for a break">
+              <p>{reviewed ? `You reviewed ${reviewed} cards.` : "No cards are due right now."}</p>
+              {queue.nextDueAt && (
+                <p>
+                  Next scheduled review:{" "}
+                  {new Date(queue.nextDueAt).toLocaleString("en-GB", { timeZone: queue.timezone })}
+                </p>
+              )}
+              {queue.buriedSiblings > 0 && (
+                <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
+              )}
+              <LinkButton href="/sessions">Open your sessions</LinkButton>
+            </Panel>
           )}
-          {queue.buriedSiblings > 0 && (
-            <p>{queue.buriedSiblings} related cards are saved for a later study day.</p>
-          )}
-          <LinkButton href="/sessions">Open your courses</LinkButton>
-        </Panel>
+        </div>
       )}
       {receipt && (
         <Status tone="success">

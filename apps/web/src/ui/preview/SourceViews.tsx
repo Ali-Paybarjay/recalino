@@ -6,8 +6,9 @@ import { Sheet } from "../components/Sheet";
 import { UploadProgress } from "../components/UploadProgress";
 import { retryAllowanceCopy } from "../retry-allowance-copy";
 import { appendSelectedFiles, type SelectedFile } from "../workspace/file-selection";
+import { Actions, Button, Field, Panel, Status } from "../workspace/primitives";
 import { createSampleState, type SampleSource, usePreview } from "./PreviewContext";
-import { Actions, Button, Field, LinkButton, PageHeader, Panel, Status } from "./primitives";
+import { LinkButton, PageHeader } from "./preview-links";
 import { PREPARED_SAMPLE_MATERIAL, sampleClassSummary } from "./sample-material";
 import {
   confirmedSources,
@@ -364,7 +365,7 @@ export function SourceViews({ screen }: { screen: string }) {
   const statusProblem = problem ? <Status tone="error">{problem}</Status> : null;
   if (screen === "first-upload")
     return (
-      <div className="preview-reader">
+      <div className="workspace-reader">
         <PageHeader
           title="Before you add a file"
           description="Keep session material you are allowed to use."
@@ -375,7 +376,7 @@ export function SourceViews({ screen }: { screen: string }) {
             Only add material you own or have permission to use. Check your teacher’s rules before
             adding a session recording or handout.
           </p>
-          <div className="preview-check">
+          <div className="workspace-check">
             <input
               id="source-rights"
               type="checkbox"
@@ -384,7 +385,9 @@ export function SourceViews({ screen }: { screen: string }) {
             />
             <label htmlFor="source-rights">I have the right to use the material I add.</label>
           </div>
-          <p className="preview-muted">This sample stores file names only. No file is uploaded.</p>
+          <p className="workspace-muted">
+            This sample stores file names only. No file is uploaded.
+          </p>
         </Panel>
         <Actions>
           <Button disabled={!rights} onClick={() => router.push("/preview/upload")}>
@@ -398,7 +401,7 @@ export function SourceViews({ screen }: { screen: string }) {
     );
   if (screen === "microphone")
     return (
-      <div className="preview-reader">
+      <div className="workspace-reader">
         <PageHeader
           title="Ready to record?"
           description="Check permission before your class starts."
@@ -445,8 +448,8 @@ export function SourceViews({ screen }: { screen: string }) {
           description="Recording demonstration · no microphone capture in this preview."
         />
         <Panel>
-          <p className="preview-timer">{clock}</p>
-          <div className="preview-meter">
+          <p className="workspace-timer">{clock}</p>
+          <div className="workspace-meter">
             <strong>
               {!state.recording.active
                 ? "Ready for a demonstration"
@@ -456,7 +459,7 @@ export function SourceViews({ screen }: { screen: string }) {
             </strong>
             {photoCount ? <span>{photoCount} sample photos</span> : null}
           </div>
-          <div className="preview-record-controls">
+          <div className="workspace-record-controls">
             <Button
               secondary
               onClick={() => {
@@ -484,7 +487,7 @@ export function SourceViews({ screen }: { screen: string }) {
               Photo
             </Button>
             <Button
-              className="preview-pause"
+              className="workspace-pause"
               onClick={() => {
                 const paused = state.recording.active && !state.recording.paused;
                 setState((previous) => ({
@@ -516,7 +519,7 @@ export function SourceViews({ screen }: { screen: string }) {
         <PageHeader title="Finish this recording?" description="Choose what happens next." />
         <Panel title="Present perfect">
           <p>{clock} · sample recording</p>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             {state.recording.paused
               ? "The demonstration is paused."
               : state.recording.active
@@ -548,7 +551,7 @@ export function SourceViews({ screen }: { screen: string }) {
               ? "An interrupted session recording can be recovered when its saved part is available."
               : "The recording was interrupted. Check microphone permission before trying again."}
           </p>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             This is a demonstration of recovery. No audio file is held by this preview.
           </p>
         </Panel>
@@ -639,11 +642,11 @@ export function SourceViews({ screen }: { screen: string }) {
               }}
             />
           </Actions>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Supported examples: M4A, MP3, WAV, WEBM, OGG, PDF, JPG, PNG and WEBP. File content stays
             untouched.
           </p>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             File formats are identified from their names. Prepared sample durations and page counts
             are assigned automatically; this preview does not inspect file contents.
           </p>
@@ -679,13 +682,13 @@ export function SourceViews({ screen }: { screen: string }) {
               />
             </div>
           ) : null}
-          <ul className="preview-list">
+          <ul className="workspace-list">
             {state.sources.map((source) => (
               <li key={source.id}>
-                <div className="preview-row">
+                <div className="workspace-row">
                   <div>
                     <strong>{source.name}</strong>
-                    <p className="preview-muted">{source.status}</p>
+                    <p className="workspace-muted">{source.status}</p>
                   </div>
                   <Button
                     secondary
@@ -805,10 +808,10 @@ export function SourceViews({ screen }: { screen: string }) {
           description="Use each whole file, or choose a part when you need it."
           back="class"
         />
-        <div className="preview-stack">
+        <div className="workspace-stack">
           {state.sources.map((source) => (
             <Panel key={source.id} title={source.name}>
-              <div className="preview-check">
+              <div className="workspace-check">
                 <input
                   id={`include-${source.id}`}
                   type="checkbox"
@@ -820,7 +823,7 @@ export function SourceViews({ screen }: { screen: string }) {
                   Include this source · {source.status}
                 </label>
               </div>
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 {source.kind === "audio"
                   ? `${source.durationMinutes} sample audio minutes in this file`
                   : source.kind === "photo"
@@ -828,9 +831,9 @@ export function SourceViews({ screen }: { screen: string }) {
                     : `${source.pages} sample pages in this file`}
               </p>
               {source.kind !== "photo" ? (
-                <fieldset className="preview-source-selection">
+                <fieldset className="workspace-source-selection">
                   <legend>Material to process</legend>
-                  <div className="preview-check">
+                  <div className="workspace-check">
                     <input
                       id={`whole-${source.id}`}
                       name={`extent-${source.id}`}
@@ -840,7 +843,7 @@ export function SourceViews({ screen }: { screen: string }) {
                     />
                     <label htmlFor={`whole-${source.id}`}>Whole file</label>
                   </div>
-                  <div className="preview-check">
+                  <div className="workspace-check">
                     <input
                       id={`part-${source.id}`}
                       name={`extent-${source.id}`}
@@ -852,7 +855,7 @@ export function SourceViews({ screen }: { screen: string }) {
                     <label htmlFor={`part-${source.id}`}>Part of file</label>
                   </div>
                   {sourceUsesPart(source) ? (
-                    <div className="preview-grid">
+                    <div className="workspace-grid">
                       <Field label={source.kind === "audio" ? "Start minute" : "First page"}>
                         <input
                           type="number"
@@ -912,8 +915,8 @@ export function SourceViews({ screen }: { screen: string }) {
                 </fieldset>
               ) : null}
               {source.status === "Needs details" ? (
-                <div className="preview-stack">
-                  <p className="preview-muted">
+                <div className="workspace-stack">
+                  <p className="workspace-muted">
                     Use prepared sample details for this older preview entry. This preview has not
                     measured or checked the file.
                   </p>
@@ -940,7 +943,7 @@ export function SourceViews({ screen }: { screen: string }) {
             </Panel>
           ))}
         </div>
-        <p className="preview-muted">
+        <p className="workspace-muted">
           These are prepared sample details. This preview stores file names and does not classify or
           measure uploaded contents.
         </p>
@@ -960,7 +963,7 @@ export function SourceViews({ screen }: { screen: string }) {
           description="This estimate follows the selected sample files and any parts you chose."
           back="source-settings"
         />
-        <div className="preview-grid">
+        <div className="workspace-grid">
           <Panel title="Selected material">
             <p>
               <strong>{cost.minutes} audio minutes</strong>
@@ -990,7 +993,7 @@ export function SourceViews({ screen }: { screen: string }) {
           <Panel title="Your sample allowance">
             <p>{state.allowance.minutes} audio minutes available</p>
             <p>{state.allowance.pages} pages / photos available</p>
-            <p className="preview-muted">
+            <p className="workspace-muted">
               No real processing, cost or allowance is affected. Reusing the same source counts
               once.
             </p>
@@ -1092,7 +1095,7 @@ export function SourceViews({ screen }: { screen: string }) {
         >
           {!state.processingSnapshot.length ||
           !["queued", "retrying"].includes(state.processing) ? (
-            <div className="preview-stack">
+            <div className="workspace-stack">
               <Status>
                 No active confirmed sample job. Check the selected material and allowance before
                 starting.
@@ -1100,12 +1103,12 @@ export function SourceViews({ screen }: { screen: string }) {
               <LinkButton to="estimate">View estimate</LinkButton>
             </div>
           ) : null}
-          <ol className="preview-list">
+          <ol className="workspace-list">
             <li>1. Check selected material</li>
             <li>2. Prepare transcript and source references</li>
             <li>3. Make notes and suggested cards</li>
           </ol>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             You can leave this screen and return to the session. This preview does not call an AI
             service.
           </p>
@@ -1249,11 +1252,11 @@ export function SourceViews({ screen }: { screen: string }) {
           {!state.processingSnapshot.length ? (
             <Status>No processing job has been confirmed. Start with the estimate.</Status>
           ) : null}
-          <ul className="preview-list">
+          <ul className="workspace-list">
             {state.processingSnapshot.map((source) => (
               <li key={source.id}>
                 <strong>{source.name}</strong>
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {source.kind === "audio"
                     ? `${source.rangeStart}–${source.rangeEnd} minutes`
                     : source.kind === "photo"
@@ -1261,7 +1264,7 @@ export function SourceViews({ screen }: { screen: string }) {
                       : `Pages ${source.rangeStart}–${source.rangeEnd}`}{" "}
                   · fixed when you confirmed this job
                 </p>
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {state.processing === "cancelled"
                     ? "Cancelled · not completed"
                     : source.status === "Needs retry"
@@ -1329,7 +1332,7 @@ export function SourceViews({ screen }: { screen: string }) {
             {network ? "Try offline state" : "Retry connection"}
           </Button>
         </Panel>
-        <div className="preview-grid">
+        <div className="workspace-grid">
           <Panel title="A file needs attention">
             <p>Return to the source and resolve its permission, password or file check.</p>
             <LinkButton secondary to="upload">

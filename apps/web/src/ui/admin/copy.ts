@@ -2,10 +2,14 @@ import { AdminRequestError } from "./api";
 import type {
   AdminEmail,
   AdminLocale,
+  AdminTask,
   AdminView,
   Dimension,
+  HealthCondition,
   LocalizedText,
+  PilotProgress,
   PriceRate,
+  SystemHealth,
 } from "./contracts";
 
 export const viewNames: Record<AdminView, LocalizedText> = {
@@ -47,6 +51,95 @@ export const stageNames: Record<PriceRate["stage"], LocalizedText> = {
   tts: { en: "Speech generation", fa: "تولید گفتار" },
   support: { en: "Support replies", fa: "پاسخ پشتیبانی" },
 };
+/**
+ * OPS-02 (audit 2026-10-18): the System health card of the owner's overview (ADM-01, ADM-12).
+ * The owner approved these 16 texts word for word on 2026-10-19 (D97); they are recorded in
+ * docs/design/UI_COPY_PENDING.md and approved-copy.test.ts holds the two together.
+ */
+export const systemHealthCopy = {
+  title: { en: "System health", fa: "سلامت سامانه" },
+  databaseSize: { en: "Database size", fa: "حجم دیتابیس" },
+  /** {size} and {limit} are filled by systemHealthSize. */
+  databaseSizeDetail: {
+    en: "{size} of {limit} alert limit",
+    fa: "{size} از آستانهٔ هشدار {limit}",
+  },
+  failedJobs: { en: "Jobs failed in the last hour", fa: "کارهای ناموفق در ساعت گذشته" },
+  queueWait: { en: "Longest wait in the queue", fa: "طولانی‌ترین انتظار در صف" },
+  lastRunner: { en: "Last job runner run", fa: "آخرین اجرای اجراکنندهٔ کارها" },
+  schema: { en: "Database schema", fa: "نسخهٔ schema دیتابیس" },
+  schemaState: {
+    current: { en: "Up to date", fa: "به‌روز" },
+    ahead: { en: "Newer than the app", fa: "جلوتر از اپ" },
+    behind: {
+      en: "A migration is missing; jobs are paused",
+      fa: "یک migration اعمال نشده است؛ اجرای کارها متوقف است",
+    },
+    unknown: { en: "Cannot be checked", fa: "قابل بررسی نیست" },
+  } satisfies Record<NonNullable<SystemHealth["schema"]>["state"], LocalizedText>,
+  noAlert: {
+    en: "No signal is over its threshold.",
+    fa: "هیچ شاخصی از آستانه‌اش نگذشته است.",
+  },
+  alert: {
+    database_size: {
+      en: "The database is near its size limit.",
+      fa: "دیتابیس به سقف حجم نزدیک است.",
+    },
+    failed_jobs: {
+      en: "A job failed and will not retry.",
+      fa: "کاری ناموفق شد و دوباره اجرا نمی‌شود.",
+    },
+    queue_delay: {
+      en: "Jobs are waiting longer than expected.",
+      fa: "کارها بیش از حد انتظار در صف مانده‌اند.",
+    },
+    runner_stale: {
+      en: "The job runner has not run recently.",
+      fa: "اجراکنندهٔ کارها اخیراً اجرا نشده است.",
+    },
+  } satisfies Record<HealthCondition, LocalizedText>,
+} as const;
+/** The database size row's detail: the approved sentence with both amounts filled in. */
+export function systemHealthSize(size: string, limit: string, locale: AdminLocale): string {
+  return systemHealthCopy.databaseSizeDetail[locale]
+    .replace("{size}", () => size)
+    .replace("{limit}", () => limit);
+}
+/**
+ * PRD-03 (D96, D98): the pilot progress columns of the users list and the user details, and the
+ * value of a step the learner has not reached yet. Approved word for word by the owner on
+ * 2026-10-19 (docs/design/UI_COPY_PENDING.md, D98); approved-copy.test.ts holds the two together.
+ */
+export const pilotProgressCopy = {
+  column: {
+    firstSignInAt: { en: "First sign-in", fa: "نخستین ورود" },
+    setupCompletedAt: { en: "Setup finished", fa: "پایان راه‌اندازی" },
+    firstRecordingAt: { en: "First class audio", fa: "نخستین صوت کلاس" },
+    firstProcessedAt: { en: "First session processed", fa: "نخستین جلسهٔ پردازش‌شده" },
+    firstReviewAt: { en: "First review", fa: "نخستین مرور" },
+  } satisfies Record<keyof PilotProgress, LocalizedText>,
+  notYet: { en: "Not yet", fa: "هنوز نه" },
+} as const;
+/** The pilot steps in their order, for the columns and the cells. */
+export const pilotProgressSteps = Object.keys(pilotProgressCopy.column) as Array<
+  keyof PilotProgress
+>;
+/**
+ * D96, D98: the titles of the stopped-deletion (`privacy`) and health-alert (`health`) tasks,
+ * approved by the owner on 2026-10-19. The server sends the same titles (ADMIN_TASK_TITLE in
+ * @recalino/core/ops); admin-task-copy.test.ts keeps the two identical.
+ */
+export const adminTaskTitleCopy = {
+  privacy: { en: "Finish a stopped data deletion", fa: "تکمیل حذف داده‌ای که متوقف شده است" },
+  health: { en: "Review a system health alert", fa: "بررسی هشدار سلامت سامانه" },
+} as const;
+/** A task's title: the approved text for the kinds above, otherwise the server's title. */
+export function taskTitle(task: Pick<AdminTask, "kind" | "title">, locale: AdminLocale): string {
+  return Object.hasOwn(adminTaskTitleCopy, task.kind)
+    ? adminTaskTitleCopy[task.kind as keyof typeof adminTaskTitleCopy][locale]
+    : localized(task.title, locale);
+}
 const statuses: Record<string, LocalizedText> = {
   active: { en: "Active", fa: "فعال" },
   inactive: { en: "Inactive", fa: "غیرفعال" },

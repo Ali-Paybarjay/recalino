@@ -3,13 +3,14 @@ import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog, Sheet } from "../components/Sheet";
-import { workspaceRequest } from "../workspace/api";
+import { userMessage, workspaceRequest } from "../workspace/api";
 import {
   notifyAutomaticLearning,
   pendingLearningBatch,
   uploadAutomaticPhoto,
 } from "../workspace/automatic-learning";
-import { Actions, Button, Panel, Status } from "../workspace/primitives";
+import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
+import { captureIsQuiet } from "./capture-phase";
 import { MissingAudioNotice, partMissingLabel } from "./MissingAudioNotice";
 import type { PhotoQuality } from "./photo-quality";
 import { photoQuality } from "./photo-quality-client";
@@ -17,6 +18,8 @@ import { canRemoveLocalPhoto, removeLocalPhoto } from "./photo-removal";
 import styles from "./Recording.module.css";
 import { RecordLauncher, useRecording } from "./RecordingProvider";
 import { recordingCopy } from "./recording-copy";
+import { formatPartDate } from "./recording-format";
+import { SavedPartStatus } from "./SavedPartStatus";
 import { registerRecordingRow } from "./source-sync";
 import type { LocalPhoto, Recording } from "./store";
 
@@ -32,7 +35,16 @@ function download(blob: Blob, name: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
-export function RecordingView({ sessionId }: { sessionId?: string }) {
+export function RecordingView({
+  sessionId,
+  backHref,
+  backLabel = "Back to session",
+}: {
+  sessionId?: string;
+  /** Where the way back leads once capture is over (UX-02); the page has no navigation until then. */
+  backHref?: string;
+  backLabel?: string;
+}) {
   const { controller, state, store, userId, sourceSync, syncState } = useRecording();
   const [rows, setRows] = useState<Recording[]>([]);
   const [time, setTime] = useState({ elapsed: 0, segmentElapsed: 0 });
@@ -101,11 +113,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
         })
         .catch((failure) => {
           if (!abort.signal.aborted)
-            setError(
-              failure instanceof Error
-                ? failure.message
-                : "The material notice could not be opened.",
-            );
+            setError(userMessage(failure, "The material notice could not be opened."));
         });
     };
     load();
@@ -140,7 +148,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
       await action();
       await reload();
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "The recording could not be opened.");
+      setError(userMessage(failure, "The recording could not be opened."));
     } finally {
       setBusy(null);
     }
@@ -241,42 +249,41 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
     notifyAutomaticLearning(recording.sessionId);
   }
   const active = ["starting", "recording", "recovering", "paused", "saving"].includes(state.phase);
+  // PRD-REC-02: until Stop, only a real capture failure may speak (state.error below). Upload
+  // and list problems wait; they stay in state and appear as soon as Stop is pressed (UX-11).
+  const quiet = captureIsQuiet(state.phase);
   const currentId = state.recording?.id;
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
+      {backHref && !active ? (
+        <Actions>
+          <LinkButton secondary href={backHref}>
+            {backLabel}
+          </LinkButton>
+        </Actions>
+      ) : null}
       <Panel
         tone="hero"
         title={active ? "Your session is being recorded" : "Recordings on this device"}
       >
         {active ? (
           <>
-            <p role="timer" className="preview-rec-time" aria-label="Active recording time">
+            <p role="timer" className={styles.timer} aria-label="Active recording time">
               {duration(time.elapsed)}
             </p>
-            <p>
-              {state.phase === "paused"
-                ? "Paused. The microphone is not being recorded."
-                : state.phase === "saving"
-                  ? "Saving the final audio parts…"
-                  : state.phase === "recovering"
-                    ? "Reconnecting the microphone automatically. Audio already saved is kept as a separate part."
-                    : "Recording continues in ten-minute parts, saved on this device."}
-            </p>
-            <p className="preview-muted">
-              Recording and lock-screen controls depend on your browser. Keep Recalino open and the
-              screen on for reliable capture.
-            </p>
+            {/* Pause and Stop come before the explanations, so Stop is on screen without scrolling (UX-02). */}
             <Actions>
               {["recording", "recovering"].includes(state.phase) ? (
-                <Button secondary onClick={() => controller.pause()}>
+                <Button secondary className={styles.control} onClick={() => controller.pause()}>
                   Pause recording
                 </Button>
               ) : state.phase === "paused" ? (
-                <Button secondary onClick={() => controller.resume()}>
+                <Button secondary className={styles.control} onClick={() => controller.resume()}>
                   Resume recording
                 </Button>
               ) : null}
               <Button
+                className={styles.control}
                 disabled={["starting", "saving"].includes(state.phase)}
                 onClick={() => void controller.stop()}
               >
@@ -288,6 +295,19 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                 </Button>
               ) : null}
             </Actions>
+            <p>
+              {state.phase === "paused"
+                ? "Paused. The microphone is not being recorded."
+                : state.phase === "saving"
+                  ? "Saving the final audio parts…"
+                  : state.phase === "recovering"
+                    ? "Reconnecting the microphone automatically. Audio already saved is kept as a separate part."
+                    : "Recording continues in ten-minute parts, saved on this device."}
+            </p>
+            <p className="workspace-muted">
+              Recording and lock-screen controls depend on your browser. Keep Recalino open and the
+              screen on for reliable capture.
+            </p>
             <p>
               {photos.filter((photo) => photo.recordingId === currentId).length} board photos saved
               on this device
@@ -337,8 +357,8 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
         {state.phase === "saved" ? <MissingAudioNotice missing={state.missing} /> : null}
         {state.error ? <Status tone="error">{state.error}</Status> : null}
       </Panel>
-      {error ? <Status tone="error">{error}</Status> : null}
-      {syncState.pending > 0 ? (
+      {error && !quiet ? <Status tone="error">{error}</Status> : null}
+      {syncState.pending > 0 && !quiet ? (
         <Panel title="Adding recorded parts to your session">
           <p role={syncState.phase === "failed" ? "alert" : "status"}>
             {syncState.phase === "syncing"
@@ -346,23 +366,22 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
               : syncState.error}
           </p>
           {syncState.phase === "failed" ? (
-            <Button onClick={() => sourceSync.retry()}>Retry adding session sources</Button>
+            <Button onClick={() => sourceSync.retry()}>Retry adding session material</Button>
           ) : null}
         </Panel>
       ) : null}
       <Panel title="Saved and recoverable recordings">
         {!rows.length ? (
-          <p className="preview-muted">No recordings on this device yet.</p>
+          <p className="workspace-muted">No recordings on this device yet.</p>
         ) : (
           rows.map((row) => (
-            <article key={row.id} className="preview-panel">
+            <article key={row.id} className="workspace-panel">
               <h3>
-                {new Date(row.createdAt).toLocaleString()}
+                {formatPartDate(row.createdAt)}
                 {(row.segment ?? 1) > 1 ? ` · Part ${row.segment}` : null}
               </h3>
               <p>
-                {duration(row.id === currentId && active ? time.segmentElapsed : row.activeMs)} ·{" "}
-                {Math.ceil(row.bytes / 1024)} KB
+                {duration(row.id === currentId && active ? time.segmentElapsed : row.activeMs)}
                 {row.gaps?.length && !(row.id === currentId && active)
                   ? ` · ${partMissingLabel(row.gaps.reduce((sum, gap) => sum + gap.missingMs, 0))}`
                   : null}
@@ -375,14 +394,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                 </p>
               ) : (
                 <>
-                  <p>
-                    {row.awaitingFinalData
-                      ? "Recovering the final audio for this part… You can export the parts already saved."
-                      : row.status === "saved"
-                        ? "Saved on this device"
-                        : "Recording was interrupted. Check and export the saved parts."}
-                  </p>
-                  {row.syncError ? <Status tone="error">{row.syncError}</Status> : null}
+                  <SavedPartStatus row={row} phase={state.phase} />
                   <Actions>
                     <Button
                       secondary
@@ -419,11 +431,11 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                         }
                         onClick={() => void operation(row.id, () => attach(row))}
                       >
-                        Add to session sources
+                        Add to session material
                       </Button>
                     ) : null}
                     {row.sessionId ? (
-                      <Link href={`/sessions/${row.sessionId}/sources`}>Open session sources</Link>
+                      <Link href={`/sessions/${row.sessionId}/sources`}>Open session material</Link>
                     ) : null}
                   </Actions>
                   {player?.id === row.id ? (
@@ -480,7 +492,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
                 · saved on this device, waiting for this notice.
               </p>
             ) : null}
-            <label className="preview-check">
+            <label className="workspace-check">
               <input
                 type="checkbox"
                 checked={noticeConfirmed}
@@ -499,7 +511,7 @@ export function RecordingView({ sessionId }: { sessionId?: string }) {
           </Panel>
         </section>
       ) : null}
-      <p className="preview-muted">
+      <p className="workspace-muted">
         Clearing this browser's site data removes local audio. Keep a copy of recordings you need.
       </p>
     </div>
@@ -587,7 +599,7 @@ function PhotoGallery({
               </Button>
             </>
           ) : (
-            <p>Added to session sources</p>
+            <p>Added to session material</p>
           )}
           {canRemove(photo) ? (
             <Button secondary disabled={disabled} onClick={() => setRemoving(photo)}>

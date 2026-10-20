@@ -5,11 +5,14 @@ import type { Database } from "@recalino/core/db";
 import {
   AppError,
   canonicalJson,
+  causeCode,
   checkRateLimit,
   createLogger,
+  errorLocation,
   errors,
   hmacSha256Hex,
   isValidIdempotencyKey,
+  type LearnerContext,
   type Logger,
   type PltSettings,
   readPltSettings,
@@ -146,7 +149,9 @@ export function defineRoute(
           request_id: requestId,
           route: meta.id,
           error_name: error instanceof Error ? error.name : typeof error,
+          error_location: errorLocation(error),
           pg_code: postgresCode(error),
+          cause_code: causeCode(error),
           reason: error instanceof AppError ? error.reason : undefined,
         });
       }
@@ -191,12 +196,7 @@ async function run(
   args: Omit<HandlerArgs, "db">,
   deps: RouteDeps,
 ): Promise<{ status: number; body: unknown; redirect?: string; replayed?: boolean }> {
-  if (meta.idempotency === "handler") {
-    const key = args.request.headers.get("idempotency-key");
-    if (key === null || !isValidIdempotencyKey(key)) {
-      throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
-    }
-  }
+  if (meta.idempotency === "handler") idempotencyKey(args.request);
   if (meta.idempotency !== "required") {
     const result = await handler({
       ...args,
@@ -209,10 +209,7 @@ async function run(
 
   const userId = args.ctx.userId;
   if (userId === null) throw errors.unauthenticated();
-  const key = args.request.headers.get("idempotency-key");
-  if (key === null || !isValidIdempotencyKey(key)) {
-    throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
-  }
+  const key = idempotencyKey(args.request);
   const requestHash = sha256Hex(
     `${args.request.method} ${meta.id}\n${canonicalJson(args.input ?? null)}`,
   );
@@ -275,8 +272,26 @@ async function recordSignal(
   }
 }
 
+/** The signed-in learner a handler acts for (FR-PLT-002); every learner route uses this check. */
+export function learnerActor(ctx: RequestContext): LearnerContext {
+  if (!ctx.userId) throw errors.unauthenticated();
+  return { userId: ctx.userId, requestId: ctx.requestId };
+}
+
+/**
+ * The request's Idempotency-Key (FR-PLT-004). Every route reports the same problem: a missing
+ * header is `required`, a malformed one is `invalid` (audit QUA-04).
+ */
+export function idempotencyKey(request: Request): string {
+  const key = request.headers.get("idempotency-key");
+  if (key === null || !isValidIdempotencyKey(key)) {
+    throw errors.validationFailed({ "Idempotency-Key": [key === null ? "required" : "invalid"] });
+  }
+  return key;
+}
+
 /** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; compared in constant time. */
-function assertSystemCaller(request: Request, secret: string): void {
+export function assertSystemCaller(request: Request, secret: string): void {
   const digest = (value: string) => createHash("sha256").update(value).digest();
   const given = request.headers.get("authorization") ?? "";
   if (!timingSafeEqual(digest(given), digest(`Bearer ${secret}`))) throw errors.unauthenticated();
@@ -307,8 +322,20 @@ function assertSameOrigin(request: Request): void {
 function redirectTo(path: string, request: Request, requestId: string): Response {
   return new Response(null, {
     status: 303,
-    headers: { location: new URL(path, request.url).toString(), "x-request-id": requestId },
+    headers: { location: redirectLocation(path, request.url), "x-request-id": requestId },
   });
+}
+
+/**
+ * SEC-01: a relative target ("/today", but also "//host" or "/\\host") must stay on the request's
+ * origin, or it falls back to the start page. An absolute URL, such as the hand-off to Google,
+ * is the handler's own choice and is kept.
+ */
+function redirectLocation(path: string, requestUrl: string): string {
+  if (URL.canParse(path)) return new URL(path).toString();
+  const base = new URL(requestUrl);
+  const target = new URL(path, base);
+  return target.origin === base.origin ? target.toString() : new URL("/", base).toString();
 }
 
 async function readBody(request: Request): Promise<unknown> {

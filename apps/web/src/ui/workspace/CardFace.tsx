@@ -1,5 +1,5 @@
 "use client";
-import { safeCardHtml } from "@recalino/core/card-html";
+import { cardHtmlWithLanguages } from "@recalino/core/card-html";
 import { studyLexicalTarget, studyLexicalTargetMatches } from "@recalino/core/study-target";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -58,16 +58,16 @@ export function CardFace({
     <div className={`${styles.face} fc-face`} dir="auto">
       {rich ? (
         <>
-          <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Vazirmatn:wght@400;600;800&display=swap"
-            precedence="study-fonts"
-          />
+          {/* SEC-04 (owner decision 2026-10-19): no web font; CardFace.module.css names the
+              device's own font stacks, so opening a card reaches no other server. */}
           <div
             ref={content}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: escaped template fields checked against an inert tag and attribute allowlist.
             dangerouslySetInnerHTML={{
-              __html: safeCardHtml(card.front) + (revealed ? `<hr>${safeCardHtml(card.back)}` : ""),
+              // A11Y-02: the stored faces stay as rendered; display adds the lang they leave out.
+              __html:
+                cardHtmlWithLanguages(card.front) +
+                (revealed ? `<hr>${cardHtmlWithLanguages(card.back)}` : ""),
             }}
           />
         </>

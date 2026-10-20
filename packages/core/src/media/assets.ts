@@ -5,7 +5,7 @@ import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import { type AiProvider, ProviderError, type ProviderResult, requireProvider } from "../aip";
 import type { Database, DB, Tx } from "../db";
-import { assertSessionOwner, getSession } from "../org";
+import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
   AppError,
   assertOwner,
@@ -35,6 +35,7 @@ import {
   assertSourcesLive,
   detectBinaryMime,
   getSource,
+  liveSourceIds,
   readInputContract,
   sessionSources,
 } from "../src";
@@ -92,6 +93,43 @@ export async function getMediaAsset(
   id: string,
 ): Promise<MediaAsset> {
   return view(await owned(db, ctx, id));
+}
+/**
+ * PERF-02: the learner's media among these identifiers in a constant number of reads, keyed by
+ * id. An asset getMediaAsset would refuse (missing, foreign, tombstoned, or on a deleted session
+ * or source) is omitted.
+ */
+export async function getLiveMediaAssets(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<Map<string, MediaAsset>> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Map();
+  const rows = await db
+    .selectFrom("media.asset")
+    .selectAll()
+    .where("user_id", "=", ctx.userId)
+    .where("id", "in", unique)
+    .where("tombstoned_at", "is", null)
+    .execute();
+  const live = new Set(
+    await filterLiveSessionIds(
+      db,
+      ctx,
+      rows.map((row) => row.session_id),
+    ),
+  );
+  const sources = await liveSourceIds(
+    db,
+    ctx,
+    rows.flatMap((row) => (row.source_id ? [row.source_id] : [])),
+  );
+  return new Map(
+    rows
+      .filter((row) => live.has(row.session_id) && (!row.source_id || sources.has(row.source_id)))
+      .map((row) => [row.id, view(row)]),
+  );
 }
 export async function listMediaAssets(
   db: Database | Tx,

@@ -16,9 +16,11 @@ import {
 import { recordItemFeedback } from "@recalino/core/pers";
 import {
   DEFAULT_PLT_SETTINGS,
+  DELETED_ACCOUNT_ACTOR,
   type JobContext,
   MemoryObjectStore,
   readOwnedObject,
+  recordAudit,
 } from "@recalino/core/plt";
 import {
   coordinateSourceDeletion,
@@ -48,7 +50,9 @@ import { studyFixture, syntheticKnowledge } from "../../../../packages/core/test
 import { privacyDependencies } from "./privacy";
 
 const store = new MemoryObjectStore();
-const deleteIdentity = vi.fn(async () => ({ error: null }));
+const deleteIdentity = vi.fn(
+  async (): Promise<{ error: { status: number } | null }> => ({ error: null }),
+);
 vi.mock("./storage", () => ({ getObjectStore: () => store }));
 vi.mock("./auth/supabase", () => ({ createAuthAdmin: () => ({ deleteUser: deleteIdentity }) }));
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 3 });
@@ -345,6 +349,14 @@ it.each(["source", "session", "account"] as const)(
     expect(cached.every((row) => row.response_body === null && row.response_status === null)).toBe(
       true,
     );
+    // SEC-07 (D95): an audit row this learner made keeps what happened once the account is gone.
+    await recordAudit(db, {
+      actorKind: "learner",
+      actorId: fixtureData.ctx.userId,
+      action: "test.sec07",
+      subjectType: "privacy_request",
+      subjectId: requestId,
+    });
     // A direct invocation selects only this receipt. Advance beyond every issued-link grace window.
     const job: JobContext = {
       db,
@@ -355,6 +367,29 @@ it.each(["source", "session", "account"] as const)(
         return "ran";
       },
     };
+    const auditActor = async () =>
+      (
+        await db
+          .selectFrom("plt.audit_event")
+          .select("actor_id")
+          .where("subject_id", "=", requestId)
+          .where("action", "=", "test.sec07")
+          .executeTakeFirstOrThrow()
+      ).actor_id;
+    if (kind === "account") {
+      // SEC-07 (D95): the id leaves the audit trail in the profile-purge transaction, before the
+      // identity is deleted, so a failed identity deletion cannot leave it behind.
+      deleteIdentity
+        .mockResolvedValueOnce({ error: null })
+        .mockResolvedValueOnce({ error: { status: 500 } });
+      await expect(
+        privacyCleanupJob(dependencies).run({ userId: fixtureData.ctx.userId, requestId }, job),
+      ).rejects.toThrow();
+      expect((await getPrivacyDeletionRequest(db, fixtureData.ctx, requestId)).state).toBe(
+        "needs_operator",
+      );
+      expect(await auditActor()).toBe(DELETED_ACCOUNT_ACTOR);
+    }
     await privacyCleanupJob(dependencies).run({ userId: fixtureData.ctx.userId, requestId }, job);
     expect((await getPrivacyDeletionRequest(db, fixtureData.ctx, requestId)).state).toBe(
       "completed",
@@ -370,6 +405,20 @@ it.each(["source", "session", "account"] as const)(
         .where("request_id", "=", requestId)
         .execute(),
     ).toHaveLength(dependencies.hooks.length);
+    // Only a completed account deletion removes the learner's id from the audit trail.
+    expect(
+      await db
+        .selectFrom("plt.audit_event")
+        .select(["actor_id", "action"])
+        .where("subject_id", "=", requestId)
+        .where("action", "=", "test.sec07")
+        .execute(),
+    ).toEqual([
+      {
+        actor_id: kind === "account" ? DELETED_ACCOUNT_ACTOR : fixtureData.ctx.userId,
+        action: "test.sec07",
+      },
+    ]);
     await expect(getVersion(db, fixtureData.ctx, fixtureData.knowledge.id)).rejects.toMatchObject({
       code: "not_found",
     });

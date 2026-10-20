@@ -101,6 +101,25 @@ test("new Terms: a calm notice until the learner reads and accepts them", async 
   await expect(notice).toBeHidden();
 });
 
+// UX-07: the legal texts stay readable after sign-in.
+test("Settings opens the Terms and the Privacy Notice", async ({ page }) => {
+  await signInAsNewLearner(page, { setup: "complete" });
+  await page.goto("/me");
+  await page.getByRole("button", { name: /Terms and Privacy Notice/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Terms and Privacy Notice", exact: true });
+  await expect(sheet.getByText("These terms are an agreement between you")).toBeVisible();
+  await expectNoAxeViolations(page);
+  await expectNoAxeViolations(page, { colorScheme: "dark" });
+  await sheet.getByRole("button", { name: "Privacy Notice", exact: true }).click();
+  await expect(sheet.getByRole("button", { name: "Privacy Notice", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // The sheet has an X in its header and a Close button in its footer.
+  await sheet.getByRole("button", { name: "Close", exact: true }).last().click();
+  await expect(sheet).toBeHidden();
+});
+
 test("a new recording consent version is asked once before Today", async ({ page }) => {
   await signInAsNewLearner(page, {
     setup: "complete",

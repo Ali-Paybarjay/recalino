@@ -1,0 +1,35 @@
+/* The content column of AppShell without its navigation (same values as AppShell.module.css). */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 20px max(32px, env(safe-area-inset-bottom));
+}
+.main:focus {
+  outline: none;
+}
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+@media (min-width: 768px) {
+  .main {
+    padding: 40px 32px;
+  }
+}
+@media (min-width: 1024px) {
+  .main {
+    padding: 46px clamp(32px, 4vw, 64px) 56px;
+  }
+  .content {
+    gap: 32px;
+  }
+}

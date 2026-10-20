@@ -12,7 +12,7 @@
   align-self: flex-start;
   min-height: 44px;
   color: var(--color-accent);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   text-decoration: none;
 }
 

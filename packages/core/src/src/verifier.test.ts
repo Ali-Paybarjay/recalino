@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { syntheticSourcePdf } from "../../test/source-fixtures";
@@ -42,6 +44,20 @@ describe("bounded media inspection (FR-SRC-005)", () => {
     expect(result.pageCount).toBe(1);
     expect(result.blocks[0]?.text).toContain("Synthetic lesson only.");
     expect(result.units[0]).toMatchObject({ kind: "page", start: 1, status: "extracted" });
+  });
+  it("parses uploaded PDFs with a pdf.js build that has no code-generation path (SEC-06)", () => {
+    // pdf.js 6 removed eval-compiled glyphs together with the isEvalSupported option. If an
+    // upgrade brings either back, every getDocument call must pass isEvalSupported: false.
+    const resolve = createRequire(import.meta.url).resolve;
+    for (const entry of [
+      "pdfjs-dist/legacy/build/pdf.mjs",
+      "pdfjs-dist/legacy/build/pdf.worker.mjs",
+    ]) {
+      const code = readFileSync(resolve(entry), "utf8");
+      expect(code, entry).not.toMatch(/\bnew Function\(/);
+      expect(code, entry).not.toMatch(/(^|[^\w.$])eval\(/);
+      expect(code, entry).not.toMatch(/\bisEvalSupported\b/);
+    }
   });
   it("rejects a valid PDF over the page limit", async () => {
     await expect(extractPdfText(syntheticPdf(), 0)).rejects.toMatchObject({

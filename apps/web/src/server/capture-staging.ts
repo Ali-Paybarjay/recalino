@@ -1,6 +1,6 @@
 import "server-only";
 import { releaseCaptureLease, renewCaptureLease } from "@recalino/core/org";
-import { enqueueJob, errors, type LearnerContext, readPltSettings } from "@recalino/core/plt";
+import { enqueueJob, errors, readPltSettings } from "@recalino/core/plt";
 import {
   beginStagedAudioUpload,
   confirmTemporaryAudioPart,
@@ -10,16 +10,12 @@ import {
   temporaryAudioPartLink,
 } from "@recalino/core/src";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, learnerActor } from "./api";
 import { notifyAutomaticLearning } from "./automatic-learning-notifications";
 import { captureFlags, stagedAudioJobDefinition } from "./capture-staging-jobs";
 import { PROCESSING_WAKE, runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
 
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
 function store() {
   const value = getObjectStore();
   if (!value) throw errors.validationFailed({ storage: ["unavailable"] });
@@ -44,7 +40,7 @@ const stagedRequestSchema = z.discriminatedUnion("action", [
 export const STAGED_AUDIO_MAX_BYTES = 2 * 1024 * 1024;
 export function stagedAudioHandler(assetId: string): Handler {
   return async ({ db, ctx, input, request }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     if (Number(request.headers.get("content-length") ?? 0) > STAGED_AUDIO_MAX_BYTES)
       throw errors.payloadTooLarge();
     await getSource(db, learner, z.uuid().parse(assetId));
@@ -117,7 +113,7 @@ const captureRequestSchema = z.strictObject({ action: z.enum(["open", "close"]) 
  */
 export function classCaptureHandler(sessionId: string): Handler {
   return async ({ db, ctx, input }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const id = z.uuid().parse(sessionId);
     const { action } = captureRequestSchema.parse(input);
     const flags = captureFlags();

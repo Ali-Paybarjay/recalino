@@ -22,7 +22,7 @@
 }
 
 .strip .bannerIcon {
-  font-size: 18px;
+  font-size: var(--rc-text-read);
 }
 
 .bannerBody {
@@ -130,7 +130,7 @@
 }
 
 .inlineErrorTitle {
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   font-weight: 500;
 }
 

@@ -25,18 +25,18 @@ export default async function CoursesPage({
       current="classes"
       header={<PageHeader title="Manage courses" subtitle={courseCopy.courseHelp} />}
     >
-      <div className="preview-stack">
-        <Link className="preview-back" href="/sessions">
-          ← Back to courses
+      <div className="workspace-stack">
+        <Link className="workspace-back" href="/sessions">
+          ← Back to sessions
         </Link>
         <Panel title="Your courses">
-          <p className="preview-muted">{courseCopy.goalHelp}</p>
+          <p className="workspace-muted">{courseCopy.goalHelp}</p>
           {groups.courses.length ? (
-            <ul className="preview-list">
+            <ul className="workspace-list">
               {groups.courses.map((course) => (
                 <li key={course.id}>
                   <h3 dir="auto">{course.name}</h3>
-                  {course.isDefault ? <p className="preview-muted">Default course</p> : null}
+                  {course.isDefault ? <p className="workspace-muted">Default course</p> : null}
                   <Actions>
                     <LinkButton secondary href={`/courses/${course.id}`}>
                       View sessions

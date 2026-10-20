@@ -1,5 +1,5 @@
 import type { LessonAdaptationView } from "@recalino/core/proc";
-import { strings } from "../strings";
+import { setupStrings as strings } from "../strings-setup";
 import { memoryDate } from "./LearningMemory";
 import { learningMemoryCopy as copy } from "./learning-memory-copy";
 import styles from "./NoteView.module.css";
@@ -44,7 +44,7 @@ export function LessonAdaptation({ adaptation }: { adaptation: LessonAdaptationV
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p className="preview-muted">{copy.adaptationNote}</p>
+        <p className="workspace-muted">{copy.adaptationNote}</p>
       </div>
     </details>
   );

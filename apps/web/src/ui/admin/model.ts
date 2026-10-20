@@ -97,6 +97,25 @@ export function formatMoney(micros: number, locale: AdminLocale): string {
     maximumFractionDigits: 6,
   }).format(micros / 1_000_000);
 }
+function formatUnit(value: number, unit: string, locale: AdminLocale): string {
+  return new Intl.NumberFormat(locale === "fa" ? "fa-IR" : "en-GB", {
+    style: "unit",
+    unit,
+    unitDisplay: "short",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+/** OPS-02: decimal megabytes, the unit of the Supabase plan's size limit (ADR-0001). */
+export function formatMegabytes(bytes: number, locale: AdminLocale): string {
+  return formatUnit(bytes / 1_000_000, "megabyte", locale);
+}
+/** OPS-02: a wait in whole minutes under an hour, then hours under two days, then days. */
+export function formatWait(milliseconds: number, locale: AdminLocale): string {
+  const minutes = Math.max(0, milliseconds) / 60_000;
+  if (minutes < 60) return formatUnit(Math.floor(minutes), "minute", locale);
+  if (minutes < 48 * 60) return formatUnit(minutes / 60, "hour", locale);
+  return formatUnit(minutes / 1440, "day", locale);
+}
 export function dollarsToMicros(value: string): number | null {
   if (!value.trim()) return null;
   const dollars = Number(value);

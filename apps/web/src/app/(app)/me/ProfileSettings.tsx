@@ -17,6 +17,7 @@ import { profileCopy } from "../../../ui/profile-copy";
 import { strings } from "../../../ui/strings";
 import { GOAL_LABELS, levelLabel } from "../../setup/labels";
 import { languageName, timeZoneCity, timeZoneOffset } from "../../setup/languages";
+import { LegalTexts } from "./LegalTexts";
 import styles from "./profile.module.css";
 
 function Row({
@@ -46,7 +47,14 @@ function Row({
  * G3 — Settings, the Profile section for now (FR-ACC-004, FR-ACC-006). Review settings come with
  * SRS, Data with PRIV. The summary uses only the learner's own saved choices.
  */
-export function ProfileSettings({ state }: { state: Pick<AccountState, "profile" | "timezone"> }) {
+export function ProfileSettings({
+  state,
+  legal,
+}: {
+  state: Pick<AccountState, "profile" | "timezone">;
+  /** The Terms and the Privacy Notice as rendered text, for the row that opens them (UX-07). */
+  legal?: { terms: ReactNode; privacy: ReactNode };
+}) {
   const { profile, timezone } = state;
   const first = profile.firstLanguage ? languageName(profile.firstLanguage) : null;
   const level = profile.level ? levelLabel(profile.level) : "—";
@@ -91,10 +99,11 @@ export function ProfileSettings({ state }: { state: Pick<AccountState, "profile"
       />
       <Row
         href="/courses"
-        label="Courses"
+        label="Manage courses"
         value="Sessions and learning materials"
         icon={ChalkboardSimple}
       />
+      {legal ? <LegalTexts terms={legal.terms} privacy={legal.privacy} /> : null}
       <section className={styles.summary} aria-labelledby="learning-profile-title">
         <div className={styles.summaryHeading}>
           <span className={styles.summaryIcon}>

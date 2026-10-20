@@ -70,6 +70,57 @@ export interface ProviderStep {
   currency: string;
 }
 
+/**
+ * Spend counted against each cost limit: recorded provider costs (actual, else estimated) of this
+ * month or this session, plus every open hold. PERF-04: one aggregate query instead of reading the
+ * month's rows into memory. A cost with neither amount stops the check, as before.
+ */
+export async function spendTotals(
+  tx: Tx,
+  ctx: LearnerContext,
+  sessionId: string,
+  currency: string,
+  now: Date,
+): Promise<{ session: number; userMonth: number; systemDay: number; systemMonth: number }> {
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const { rows } = await sql<{
+    unknown: string | number;
+    session: string | number;
+    user_month: string | number;
+    system_day: string | number;
+    system_month: string | number;
+  }>`
+    select
+      count(*) filter (where spend.amount is null) as unknown,
+      coalesce(sum(spend.amount) filter (where spend.session_id = ${sessionId}), 0) as session,
+      coalesce(
+        sum(spend.amount) filter (where spend.created_at >= ${month} and spend.user_id = ${ctx.userId}),
+        0
+      ) as user_month,
+      coalesce(sum(spend.amount) filter (where spend.created_at >= ${day}), 0) as system_day,
+      coalesce(sum(spend.amount) filter (where spend.created_at >= ${month}), 0) as system_month
+    from (
+      select user_id, session_id, created_at, coalesce(amount_micros, estimated_micros) as amount
+      from quota.provider_cost
+      where currency = ${currency} and (created_at >= ${month} or session_id = ${sessionId})
+      union all
+      select user_id, session_id, created_at, maximum_micros as amount
+      from quota.cost_hold
+      where currency = ${currency} and closed_at is null
+    ) as spend
+  `.execute(tx);
+  // An aggregate without grouping always answers one row.
+  const row = rows[0] ?? { unknown: 0, session: 0, user_month: 0, system_day: 0, system_month: 0 };
+  if (Number(row.unknown) > 0) throw errors.quotaInsufficient({ reason: "provider_cost_unknown" });
+  return {
+    session: Number(row.session),
+    userMonth: Number(row.user_month),
+    systemDay: Number(row.system_day),
+    systemMonth: Number(row.system_month),
+  };
+}
+
 /** Check and hold cost atomically before every external call (FR-QUOTA-009, 010). */
 export async function beginProviderStep(
   tx: Tx,
@@ -114,38 +165,7 @@ export async function beginProviderStep(
       throw errors.idempotencyMismatch();
     return { id: prior.id, replayed: true, completed: prior.closed_at !== null };
   }
-  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const costs = await tx
-    .selectFrom("quota.provider_cost")
-    .selectAll()
-    .where("currency", "=", policy.currency)
-    .where((eb) => eb.or([eb("created_at", ">=", month), eb("session_id", "=", input.sessionId)]))
-    .execute();
-  const holds = await tx
-    .selectFrom("quota.cost_hold")
-    .selectAll()
-    .where("currency", "=", policy.currency)
-    .where("closed_at", "is", null)
-    .execute();
-  const totals = { session: 0, userMonth: 0, systemDay: 0, systemMonth: 0 };
-  const add = (
-    row: { user_id: string | null; session_id: string | null; created_at: Date },
-    amount: number,
-  ) => {
-    if (row.session_id === input.sessionId) totals.session += amount;
-    if (row.created_at >= month) {
-      totals.systemMonth += amount;
-      if (row.user_id === ctx.userId) totals.userMonth += amount;
-    }
-    if (row.created_at >= day) totals.systemDay += amount;
-  };
-  for (const row of costs) {
-    const value = row.amount_micros ?? row.estimated_micros;
-    if (value === null) throw errors.quotaInsufficient({ reason: "provider_cost_unknown" });
-    add(row, Number(value));
-  }
-  for (const row of holds) add(row, Number(row.maximum_micros));
+  const totals = await spendTotals(tx, ctx, input.sessionId, policy.currency, now);
   for (const scope of ["session", "userMonth", "systemDay", "systemMonth"] as const)
     if (totals[scope] + input.maximumMicros > policy.limits[scope])
       throw errors.quotaInsufficient({ reason: "cost_limit", scope });

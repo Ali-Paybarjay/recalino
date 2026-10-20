@@ -9,11 +9,11 @@
   width: 100%;
   min-height: var(--rc-target-lg);
   gap: 10px;
-  font-size: 18px;
+  font-size: var(--rc-text-read);
 }
 
 .helper {
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }
 
@@ -25,7 +25,7 @@
 
 .heading {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--rc-text-read);
 }
 
 .classRow {

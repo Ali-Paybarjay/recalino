@@ -35,7 +35,8 @@ export async function extendAdapterNativeAssets(ctx, pdf, voice) {
     if (output.runtime !== "nodejs" || !output.assets) continue;
     const existing = new Set(Object.values(output.assets).map((path) => resolve(path)));
     const files = new Set();
-    if (existing.has(pdf.pdfMetadata)) {
+    // PERF-01: only the PDF processing outputs (they carry the PDF.js worker) receive Canvas.
+    if (existing.has(pdf.pdfWorker)) {
       for (const file of pdf.files) files.add(file);
       counts.pdfOutputs++;
     }

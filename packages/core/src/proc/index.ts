@@ -8,6 +8,7 @@ export {
   cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
   getAutomaticLearningSession,
+  listAutomaticLearningSessions,
   listPendingAutomaticLearning,
   reconcileAutomaticLearningBatch,
   registerAutomaticLearningFile,
@@ -44,6 +45,7 @@ export {
 } from "./charged-material";
 export {
   createRunSchema,
+  processingQueue,
   type RunSnapshot,
   type RunSource,
   type RunState,
@@ -68,7 +70,16 @@ export {
   type TeachingAdaptation,
   teachingAdaptationSchema,
 } from "./learner-context";
-export { expireAwaitingUploads, expiredUploadCode, processingPeriodicJobs } from "./maintenance";
+export {
+  ENDED_JOB_RUN_ERROR,
+  endedJobRunOutcome,
+  expireAwaitingUploads,
+  expiredUploadCode,
+  processingPeriodicJobs,
+  type RunClosedHook,
+  reconcileEndedJobRuns,
+  runsLeftByEndedJobs,
+} from "./maintenance";
 export { reconcileProcessingNotifications, recordProcessingNotification } from "./notifications";
 export { processingOperationalSummary } from "./operations";
 export { forgetPracticeSources } from "./practice-privacy";
@@ -76,6 +87,7 @@ export {
   type ProcessingReview,
   processingReviewTarget,
   readClassProcessingReview,
+  readClassProcessingReviews,
 } from "./processing-review";
 export {
   prepareSourceExtractionRetry,
@@ -84,7 +96,12 @@ export {
   type SourceExtractionRetryResult,
   sourceExtractionRetrySchema,
 } from "./recovery";
-export { finishingStage, type RunFinishingStage, runFinishingStage } from "./run-stage";
+export {
+  finishingStage,
+  type RunFinishingStage,
+  runFinishingStage,
+  runFinishingStages,
+} from "./run-stage";
 export {
   type AwaitingUploadFailure,
   activateProcessingRun,
@@ -100,6 +117,7 @@ export {
   findProcessingRunByOperationKey,
   getProcessingRunSnapshot,
   getRun,
+  listClassRunsBySession,
   listRuns,
   markSourceProcessingForCleanup,
   type ProcessingRun,

@@ -1,8 +1,8 @@
 import { listLearningSessions } from "@recalino/core/note";
-import { getAutomaticLearningSession } from "@recalino/core/proc";
+import { listAutomaticLearningSessions } from "@recalino/core/proc";
 import { getReviewQueue } from "@recalino/core/srs";
 import { requireLearner } from "../../../server/auth/learner";
-import { readAutomaticLearning } from "../../../server/automatic-learning";
+import { readAutomaticLearningStatuses } from "../../../server/automatic-learning";
 import { getDatabase } from "../../../server/db";
 import { workspaceActor, workspaceGroups } from "../../../server/workspace";
 import { Icon } from "../../../ui/components/Icon";
@@ -48,9 +48,9 @@ export default async function TodayPage() {
   // D32: Record a session is the only primary action on Today; everything else stays secondary.
   if (!sessions.items.length)
     return (
-      <LearnerShell learner={learner} current="today" header={header}>
+      <LearnerShell learner={learner} current="today" header={header} reviewDue={review.dueCount}>
         {/* B1-empty, in D50 wording: one first step and its quiet alternative, then the routine. */}
-        <div className="preview-stack">
+        <div className="workspace-stack">
           <Panel tone="hero" title="Your first session starts here.">
             <Icon icon={Microphone} size={40} />
             <p>Record your first session. We'll help you make notes and cards from it.</p>
@@ -60,7 +60,7 @@ export default async function TodayPage() {
                 New session without recording
               </LinkButton>
             </Actions>
-            <p className="preview-muted">{RECORD_HELPER}</p>
+            <p className="workspace-muted">{RECORD_HELPER}</p>
           </Panel>
           <LearningLoop />
         </div>
@@ -71,17 +71,22 @@ export default async function TodayPage() {
   // with work in progress, up to three; each step comes from the same resolver as the session page.
   const db = getDatabase(),
     actor = workspaceActor(learner);
-  const intents = await Promise.all(
-    sessions.items
-      .slice(1)
-      .map((item) => getAutomaticLearningSession(db, actor, item.id).catch(() => null)),
-  );
+  // PERF-04: the older sessions' intents in one read; an unreadable intent shows no step.
+  const older = sessions.items.slice(1);
+  const intents = await listAutomaticLearningSessions(
+    db,
+    actor,
+    older.map((item) => item.id),
+  ).catch(() => new Map<string, never>());
   const nextSteps = todayNextSteps(
     sessions.items,
-    intents.map((intent) => intent?.state),
+    older.map((item) => intents.get(item.id)?.state),
   );
-  const statuses = await Promise.all(
-    nextSteps.map((item) => readAutomaticLearning(db, actor, item.id).catch(() => null)),
+  // PERF-04: their statuses in bulk, each as the session page reads it; an unreadable one is null.
+  const statuses = await readAutomaticLearningStatuses(
+    db,
+    actor,
+    nextSteps.map((item) => item.id),
   );
   const record = (
     <Panel tone="hero" title="Your English, one class at a time.">
@@ -90,15 +95,15 @@ export default async function TodayPage() {
       <Actions>
         <RecordLauncher />
       </Actions>
-      <p className="preview-muted">{RECORD_HELPER}</p>
+      <p className="workspace-muted">{RECORD_HELPER}</p>
     </Panel>
   );
   return (
-    <LearnerShell learner={learner} current="today" header={header}>
-      <div className="preview-stack">
+    <LearnerShell learner={learner} current="today" header={header} reviewDue={review.dueCount}>
+      <div className="workspace-stack">
         {/* B1-empty note: no review card until cards exist, so no "0 due" placeholder. */}
         {review.hasCards ? (
-          <div className="preview-grid">
+          <div className="workspace-grid">
             {record}
             <Panel title="Ready for a little practice?">
               <Icon icon={Cards} size={32} />
@@ -110,7 +115,7 @@ export default async function TodayPage() {
                   Open review
                 </LinkButton>
               </Actions>
-              <p className="preview-muted">Your learning stays with your account.</p>
+              <p className="workspace-muted">Your learning stays with your account.</p>
             </Panel>
           </div>
         ) : (

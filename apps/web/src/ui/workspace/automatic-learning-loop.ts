@@ -2,7 +2,7 @@ import type { ProcessingRun, RunSnapshot } from "@recalino/core/proc";
 import type { InputContract } from "@recalino/core/src";
 import { pendingClassRecordings } from "../recording/processing-readiness";
 import type { RecordingStore } from "../recording/store";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import {
   type AutomaticLearningStatus,
   type AutomaticUploadProgress,
@@ -109,9 +109,10 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
       const rows = await store.list(userId).catch((failure: unknown) => {
         if (!abort.signal.aborted)
           deps.onStoreFailure(
-            failure instanceof Error
-              ? failure.message
-              : "Saved recordings could not be restored. Check device storage and retry.",
+            userMessage(
+              failure,
+              "Saved recordings could not be restored. Check device storage and retry.",
+            ),
           );
         throw failure;
       });
@@ -311,9 +312,7 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
             if (!(failure instanceof DOMException && failure.name === "AbortError"))
               report(
                 sessionId,
-                failure instanceof Error
-                  ? failure.message
-                  : "Progress will be checked again when connected.",
+                userMessage(failure, "Progress will be checked again when connected."),
               );
           } finally {
             abort.signal.removeEventListener("abort", cancel);
@@ -334,12 +333,7 @@ export function startLearningLoop(deps: LearningLoopDeps): LearningLoop {
     } catch (failure) {
       const sessionId = CLASS_PATH.exec(deps.currentPath())?.[1];
       if (sessionId && !(failure instanceof DOMException && failure.name === "AbortError"))
-        report(
-          sessionId,
-          failure instanceof Error
-            ? failure.message
-            : "Progress will be checked again when connected.",
-        );
+        report(sessionId, userMessage(failure, "Progress will be checked again when connected."));
     } finally {
       running = false;
     }

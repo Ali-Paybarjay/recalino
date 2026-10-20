@@ -2,7 +2,7 @@
 import type { SourceRef } from "@recalino/core/lkm";
 import { useEffect, useRef, useState } from "react";
 import { IndexedRecordingStore } from "../recording/store";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import { Actions, Button, Status } from "./primitives";
 
 interface ContentVersion {
@@ -107,19 +107,19 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
         setMedia(link.url);
       }
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : "The source could not be opened.");
+      setProblem(userMessage(error, "The source could not be opened."));
     } finally {
       setLoading(false);
     }
   }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Button secondary disabled={loading} onClick={() => void show()} aria-expanded={open}>
         {label}
       </Button>
       {open ? (
-        <div className="preview-panel">
-          <strong dir="auto">{name || "Session source"}</strong>
+        <div className="workspace-panel">
+          <strong dir="auto">{name || "Session material"}</strong>
           {loading ? <Status>Opening source…</Status> : null}
           {text ? (
             <p dir="auto" style={{ whiteSpace: "pre-wrap" }}>
@@ -143,7 +143,7 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
                     audio.current.pause();
                 }}
               />
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 Plays the original saved on this device. Speaker attribution follows the
                 transcript’s confidence.
               </p>

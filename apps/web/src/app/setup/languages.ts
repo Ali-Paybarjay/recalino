@@ -27,10 +27,7 @@ export function languageNames(codes: readonly string[]): LanguageName[] {
     .sort((a, b) => a.english.localeCompare(b.english, "en"));
 }
 
-/** "Europe/London" → "London"; "America/Argentina/Buenos_Aires" → "Buenos Aires". */
-export function timeZoneCity(zone: string): string {
-  return (zone.split("/").at(-1) ?? zone).replaceAll("_", " ");
-}
+export { timeZoneCity } from "../../ui/time-zone";
 
 type LocaleWithZones = Intl.Locale & { getTimeZones?: () => string[]; timeZones?: string[] };
 

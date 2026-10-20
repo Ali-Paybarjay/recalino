@@ -1,6 +1,8 @@
 import { requireLearner } from "../../../server/auth/learner";
+import { legalValues } from "../../../server/legal";
 import { accountCopy } from "../../../ui/account-copy";
 import { Banner } from "../../../ui/components/Feedback";
+import { LegalDocument } from "../../../ui/components/LegalDocument";
 import { WarningCircle } from "../../../ui/icons";
 import { PageHeader } from "../../../ui/shell/AppShell";
 import { strings } from "../../../ui/strings";
@@ -16,6 +18,7 @@ export default async function SettingsPage({
 }) {
   const learner = await requireLearner("/me");
   const { error } = await searchParams;
+  const values = legalValues();
   return (
     <LearnerShell
       learner={learner}
@@ -27,7 +30,13 @@ export default async function SettingsPage({
           {accountCopy.error.signOut}
         </Banner>
       ) : null}
-      <ProfileSettings state={learner.state} />
+      <ProfileSettings
+        state={learner.state}
+        legal={{
+          terms: <LegalDocument id="terms" values={values} />,
+          privacy: <LegalDocument id="privacy" values={values} />,
+        }}
+      />
     </LearnerShell>
   );
 }

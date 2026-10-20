@@ -11,6 +11,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useRecording } from "../recording/RecordingProvider";
+import { userMessage } from "./api";
 import { Button, Panel, Status } from "./primitives";
 import styles from "./UploadProvider.module.css";
 import { UploadManager } from "./upload-manager";
@@ -67,9 +68,10 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     const report = (failure: unknown) => {
       if (active)
         setProblem(
-          failure instanceof Error
-            ? failure.message
-            : "Saved uploads could not be restored. Check device storage and retry.",
+          userMessage(
+            failure,
+            "Saved uploads could not be restored. Check device storage and retry.",
+          ),
         );
     };
     const kick = () => {
@@ -106,11 +108,7 @@ function UploadIndicator({ problem }: { problem: string | null }) {
   const act = (effect: () => Promise<unknown>) => {
     setActionProblem(null);
     void effect().catch((failure: unknown) =>
-      setActionProblem(
-        failure instanceof Error
-          ? failure.message
-          : "The upload change could not be saved. Try again.",
-      ),
+      setActionProblem(userMessage(failure, "The upload change could not be saved. Try again.")),
     );
   };
   const pathname = usePathname();
@@ -132,7 +130,7 @@ function UploadIndicator({ problem }: { problem: string | null }) {
                   ? batch.problem
                   : `Uploading ${batch.entries.length} files · ${Math.min(100, Math.floor((sent / Math.max(1, total)) * 100))}%`}
               </p>
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 You can use other pages. If your browser pauses, your saved upload resumes when you
                 return.
               </p>

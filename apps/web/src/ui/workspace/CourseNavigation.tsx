@@ -13,16 +13,16 @@ export function CourseNavigation({
 }) {
   return (
     <Panel>
-      <nav className="preview-actions" aria-label="Course views">
+      <nav className="workspace-actions" aria-label="Course views">
         <Link
-          className="preview-index-link"
+          className="workspace-index-link"
           href={`/courses/${course.id}`}
           aria-current={current === "classes" ? "page" : undefined}
         >
           Sessions
         </Link>
         <Link
-          className="preview-index-link"
+          className="workspace-index-link"
           href={`/courses/${course.id}/materials`}
           aria-current={current === "materials" ? "page" : undefined}
         >
@@ -30,11 +30,11 @@ export function CourseNavigation({
         </Link>
       </nav>
       {courses.length > 1 ? (
-        <nav className="preview-actions" aria-label="Switch course">
+        <nav className="workspace-actions" aria-label="Switch course">
           {courses.map((item) => (
             <Link
               key={item.id}
-              className="preview-index-link"
+              className="workspace-index-link"
               dir="auto"
               href={`/courses/${item.id}${current === "materials" ? "/materials" : ""}`}
               aria-current={item.id === course.id ? "true" : undefined}

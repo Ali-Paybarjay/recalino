@@ -1209,49 +1209,48 @@ const unspacedHomeworkMarkers = new Set(["ja", "ko", "zh-Hans", "zh-Hant"]);
 const rtlLanguages = new Set(["ar", "dv", "fa", "he", "ps", "ug", "ur", "yi"]);
 const ambiguousScripts = new Set(["az", "ks", "ku", "pa", "sd"]);
 
-const fontProfiles: Readonly<Record<string, [string, string]>> = {
-  ar: ["Vazirmatn, Tahoma, sans-serif", "Vazirmatn"],
-  fa: ["Vazirmatn, Tahoma, sans-serif", "Vazirmatn"],
-  ps: ["Vazirmatn, Tahoma, sans-serif", "Vazirmatn"],
-  ug: ["Vazirmatn, Tahoma, sans-serif", "Vazirmatn"],
-  ur: ['"Noto Nastaliq Urdu", Vazirmatn, Tahoma, sans-serif', "Noto+Nastaliq+Urdu"],
-  he: ['"Noto Sans Hebrew", Arial, sans-serif', "Noto+Sans+Hebrew"],
-  yi: ['"Noto Sans Hebrew", Arial, sans-serif', "Noto+Sans+Hebrew"],
-  dv: ['"Noto Sans Thaana", sans-serif', "Noto+Sans+Thaana"],
-  "zh-Hans": ['"Noto Sans SC", "Microsoft YaHei", sans-serif', "Noto+Sans+SC"],
-  "zh-Hant": ['"Noto Sans TC", "Microsoft JhengHei", sans-serif', "Noto+Sans+TC"],
-  ja: ['"Noto Sans JP", "Yu Gothic", sans-serif', "Noto+Sans+JP"],
-  ko: ['"Noto Sans KR", "Malgun Gothic", sans-serif', "Noto+Sans+KR"],
-  "pa-Guru": ['"Noto Sans Gurmukhi", sans-serif', "Noto+Sans+Gurmukhi"],
-  hi: ['"Noto Sans Devanagari", sans-serif', "Noto+Sans+Devanagari"],
-  mr: ['"Noto Sans Devanagari", sans-serif', "Noto+Sans+Devanagari"],
-  ne: ['"Noto Sans Devanagari", sans-serif', "Noto+Sans+Devanagari"],
-  bn: ['"Noto Sans Bengali", sans-serif', "Noto+Sans+Bengali"],
-  as: ['"Noto Sans Bengali", sans-serif', "Noto+Sans+Bengali"],
-  gu: ['"Noto Sans Gujarati", sans-serif', "Noto+Sans+Gujarati"],
-  kn: ['"Noto Sans Kannada", sans-serif', "Noto+Sans+Kannada"],
-  ml: ['"Noto Sans Malayalam", sans-serif', "Noto+Sans+Malayalam"],
-  or: ['"Noto Sans Oriya", sans-serif', "Noto+Sans+Oriya"],
-  ta: ['"Noto Sans Tamil", sans-serif', "Noto+Sans+Tamil"],
-  te: ['"Noto Sans Telugu", sans-serif', "Noto+Sans+Telugu"],
-  si: ['"Noto Sans Sinhala", sans-serif', "Noto+Sans+Sinhala"],
-  th: ['"Noto Sans Thai", sans-serif', "Noto+Sans+Thai"],
-  lo: ['"Noto Sans Lao", sans-serif', "Noto+Sans+Lao"],
-  km: ['"Noto Sans Khmer", sans-serif', "Noto+Sans+Khmer"],
-  my: ['"Noto Sans Myanmar", sans-serif', "Noto+Sans+Myanmar"],
-  bo: ['"Noto Serif Tibetan", sans-serif', "Noto+Serif+Tibetan"],
-  dz: ['"Noto Serif Tibetan", sans-serif', "Noto+Serif+Tibetan"],
-  am: ['"Noto Sans Ethiopic", sans-serif', "Noto+Sans+Ethiopic"],
-  ti: ['"Noto Sans Ethiopic", sans-serif', "Noto+Sans+Ethiopic"],
-  hy: ['"Noto Sans Armenian", sans-serif', "Noto+Sans+Armenian"],
-  ka: ['"Noto Sans Georgian", sans-serif', "Noto+Sans+Georgian"],
+const fontProfiles: Readonly<Record<string, string>> = {
+  ar: "Vazirmatn, Tahoma, sans-serif",
+  fa: "Vazirmatn, Tahoma, sans-serif",
+  ps: "Vazirmatn, Tahoma, sans-serif",
+  ug: "Vazirmatn, Tahoma, sans-serif",
+  ur: '"Noto Nastaliq Urdu", Vazirmatn, Tahoma, sans-serif',
+  he: '"Noto Sans Hebrew", Arial, sans-serif',
+  yi: '"Noto Sans Hebrew", Arial, sans-serif',
+  dv: '"Noto Sans Thaana", sans-serif',
+  "zh-Hans": '"Noto Sans SC", "Microsoft YaHei", sans-serif',
+  "zh-Hant": '"Noto Sans TC", "Microsoft JhengHei", sans-serif',
+  ja: '"Noto Sans JP", "Yu Gothic", sans-serif',
+  ko: '"Noto Sans KR", "Malgun Gothic", sans-serif',
+  "pa-Guru": '"Noto Sans Gurmukhi", sans-serif',
+  hi: '"Noto Sans Devanagari", sans-serif',
+  mr: '"Noto Sans Devanagari", sans-serif',
+  ne: '"Noto Sans Devanagari", sans-serif',
+  bn: '"Noto Sans Bengali", sans-serif',
+  as: '"Noto Sans Bengali", sans-serif',
+  gu: '"Noto Sans Gujarati", sans-serif',
+  kn: '"Noto Sans Kannada", sans-serif',
+  ml: '"Noto Sans Malayalam", sans-serif',
+  or: '"Noto Sans Oriya", sans-serif',
+  ta: '"Noto Sans Tamil", sans-serif',
+  te: '"Noto Sans Telugu", sans-serif',
+  si: '"Noto Sans Sinhala", sans-serif',
+  th: '"Noto Sans Thai", sans-serif',
+  lo: '"Noto Sans Lao", sans-serif',
+  km: '"Noto Sans Khmer", sans-serif',
+  my: '"Noto Sans Myanmar", sans-serif',
+  bo: '"Noto Serif Tibetan", sans-serif',
+  dz: '"Noto Serif Tibetan", sans-serif',
+  am: '"Noto Sans Ethiopic", sans-serif',
+  ti: '"Noto Sans Ethiopic", sans-serif',
+  hy: '"Noto Sans Armenian", sans-serif',
+  ka: '"Noto Sans Georgian", sans-serif',
 };
 export interface StudyLocale {
   language: string;
   direction: "ltr" | "rtl" | "auto";
   isPersian: boolean;
   fontFamily: string;
-  fontGoogleFamily: string;
 }
 
 export function resolveStudyLocale(language: string): StudyLocale {
@@ -1304,16 +1303,14 @@ export function resolveStudyLocale(language: string): StudyLocale {
     Hans: "zh-Hans",
     Hant: "zh-Hant",
   };
-  const font = fontProfiles[(script && explicitScriptFont[script]) || fontKey] ?? [
-    '"Noto Sans", Arial, Tahoma, sans-serif',
-    "Noto+Sans",
-  ];
+  const fontFamily =
+    fontProfiles[(script && explicitScriptFont[script]) || fontKey] ??
+    '"Noto Sans", Arial, Tahoma, sans-serif';
   return {
     language: canonical,
     direction,
     isPersian: base === "fa",
-    fontFamily: font[0],
-    fontGoogleFamily: font[1],
+    fontFamily,
   };
 }
 function translationKey(locale: StudyLocale): string {

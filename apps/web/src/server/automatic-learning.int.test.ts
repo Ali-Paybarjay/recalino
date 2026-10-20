@@ -790,7 +790,7 @@ it("D59: an update reserves only the new file and names a real shortage with its
     },
   });
   expect(blocked.message).toBe(
-    "Your material is saved, but this class needs more allowance than is left. Pages and images: 1 needed, 0 left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
+    "Your material is saved, but this session needs more allowance than is left. Pages and images: 1 needed, 0 left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
   );
   await adjustAllowance(db, {
     userId: f.ctx.userId,
@@ -803,7 +803,7 @@ it("D59: an update reserves only the new file and names a real shortage with its
   });
   const covered = await readAutomaticLearning(db, f.ctx, f.session.id, () => f.provider);
   expect(covered.message).toBe(
-    "Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again.",
+    "Your material is saved. Your allowance now covers this session. Retry to create the notes and flashcards. You do not need to upload the same files again.",
   );
   // FR-QUOTA-007 rule 5: nothing starts until the learner retries.
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);

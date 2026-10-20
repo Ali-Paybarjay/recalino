@@ -73,7 +73,7 @@
 .attributeNote {
   margin: 4px 0 0;
   color: var(--rc-text-muted);
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   line-height: 1.5;
 }
 
@@ -121,6 +121,16 @@
   text-decoration: none;
 }
 
+/* A row that opens a sheet is a button; it looks like the link rows around it (UX-07). */
+button.row {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
 .row + .row {
   border-top: 1px solid var(--color-divider);
 }
@@ -152,7 +162,7 @@
 
 .rowValue {
   color: var(--rc-text-muted);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   line-height: 1.5;
   text-align: end;
   overflow-wrap: anywhere;

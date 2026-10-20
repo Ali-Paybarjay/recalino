@@ -1,7 +1,7 @@
 import type { ProcessingRun, RunSnapshot } from "@recalino/core/proc";
 import type { InputContract } from "@recalino/core/src";
 import type { RecordingStore } from "../recording/store";
-import { WorkspaceRequestError, workspaceRequest } from "./api";
+import { userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import { uploadAutomaticAudio } from "./automatic-learning";
 import type { ManualAudioStore, ManualAudioTransfer } from "./manual-audio-store";
 import { isRetryableUploadFailure } from "./upload";
@@ -261,10 +261,10 @@ export class ManualAudioManager {
                     ? "verifying"
                     : "queued"
                   : "attention",
-                problem:
-                  error instanceof Error
-                    ? error.message
-                    : "The saved audio needs attention. Open processing or retry.",
+                problem: userMessage(
+                  error,
+                  "The saved audio needs attention. Open processing or retry.",
+                ),
                 reason: isRetryableUploadFailure(error)
                   ? null
                   : error instanceof AudioUploadProblem

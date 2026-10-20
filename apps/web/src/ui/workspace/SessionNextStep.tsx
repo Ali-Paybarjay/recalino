@@ -11,13 +11,15 @@ import {
   useLearningRetry,
 } from "./AutomaticLearningView";
 import styles from "./AutomaticLearningView.module.css";
-import { workspaceRequest } from "./api";
+import { useAccountGate } from "./account-gate";
+import { userMessage, workspaceRequest } from "./api";
 import type { AutomaticLearningStatus } from "./automatic-learning";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { sessionNavigationCopy } from "./session-navigation-copy";
 import { type SessionAction, sessionNextStep } from "./session-state";
+import { openTermsNotice } from "./terms-notice-event";
 import { useUploadBatches } from "./UploadProvider";
 
 const capturing = ["starting", "recording", "recovering", "paused", "saving"];
@@ -123,6 +125,7 @@ export function SessionNextStep({
     connectedServerSnapshot,
   );
   const [actionProblem, setActionProblem] = useState("");
+  const account = useAccountGate();
   const status = live.status ?? initial;
   const step = sessionNextStep({
     sessionId,
@@ -135,10 +138,16 @@ export function SessionNextStep({
     audioTransfers: live.manualAudio,
     recordings,
     voicePending,
+    account,
   });
   const progress =
     status && status.state !== "idle" && step.tone !== "ready"
-      ? learningProgress(status, batches, live.uploadProgress)
+      ? learningProgress(
+          status,
+          batches,
+          live.uploadProgress,
+          account.setupComplete && !account.termsPending,
+        )
       : null;
   const pending = retry.action;
   const problem = actionProblem || retry.problem;
@@ -149,6 +158,7 @@ export function SessionNextStep({
 
   function run(action: SessionAction) {
     setActionProblem("");
+    if (action.id === "accept_terms") return openTermsNotice();
     if (action.id === "retry_processing") return void retry.retry();
     if (action.id === "request_review" && action.runId)
       return void retry.requestReview(action.runId);
@@ -156,9 +166,7 @@ export function SessionNextStep({
       return void live
         .retryManualAudio(action.runId)
         .catch((failure: unknown) =>
-          setActionProblem(
-            failure instanceof Error ? failure.message : "The upload could not resume.",
-          ),
+          setActionProblem(userMessage(failure, "The upload could not resume.")),
         );
   }
   function render(action: SessionAction, secondary: boolean) {

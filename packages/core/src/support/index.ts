@@ -3,7 +3,6 @@ export {
   approveEmailDraft,
   createEmailDraft,
   getEmailDraft,
-  listEmailDrafts,
   listEmails,
   listEmailTemplates,
   reconcileEmail,

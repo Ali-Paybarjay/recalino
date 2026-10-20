@@ -147,6 +147,12 @@ describe("return from Google (FR-ACC-001, FR-ACC-002)", () => {
     flow.auth.codes.set("evil", userId);
     await flow.start({ adult: "on", terms: "on", next: "https://evil.example/" });
     expect((await flow.callback("code=evil")).headers.get("location")).toBe(`${ORIGIN}/today`);
+
+    // SEC-01: a tampered cookie whose path normalises to "//host" stays on the app's origin.
+    flow.auth.codes.set("dots", userId);
+    await flow.start({ adult: "on", terms: "on" });
+    flow.jar.values.set(NEXT_COOKIE, "/..//evil.com");
+    expect((await flow.callback("code=dots")).headers.get("location")).toBe(`${ORIGIN}/today`);
   });
 });
 

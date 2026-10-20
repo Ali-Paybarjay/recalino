@@ -182,8 +182,6 @@ export const ROUTES = {
   },
   // M4: the job runner (FR-PLT-005, ADR-0003). Vercel Cron calls it every minute.
   jobsRun: { id: "jobsRun", path: "/api/jobs/run", access: "system" },
-  // SPIKE-05 only (M4): 404 unless RECALINO_SPIKE=1 and SPIKE_TOKEN match. Removed in T6.
-  spike: { id: "spike", path: "/dev/spike/[action]", access: "public" },
   // Local tests only: 404 unless the dev pages are on and Auth runs on this machine.
   devAuthSession: { id: "devAuthSession", path: "/dev/auth/session", access: "public" },
 } as const satisfies Record<string, RouteMeta>;

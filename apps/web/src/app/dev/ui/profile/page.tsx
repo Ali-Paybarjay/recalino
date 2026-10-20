@@ -1,5 +1,7 @@
 import type { AccountState } from "@recalino/core/acc";
 import type { Metadata } from "next";
+import { legalValues } from "../../../../server/legal";
+import { LegalDocument } from "../../../../ui/components/LegalDocument";
 import { AppShell, PageHeader } from "../../../../ui/shell/AppShell";
 import { strings } from "../../../../ui/strings";
 import { ProfileSettings } from "../../../(app)/me/ProfileSettings";
@@ -33,7 +35,13 @@ export default function ProfilePreviewPage() {
       }}
     >
       <PageHeader kicker="Design preview · sample profile" title={strings.settings.title} />
-      <ProfileSettings state={previewState} />
+      <ProfileSettings
+        state={previewState}
+        legal={{
+          terms: <LegalDocument id="terms" values={legalValues()} />,
+          privacy: <LegalDocument id="privacy" values={legalValues()} />,
+        }}
+      />
     </AppShell>
   );
 }

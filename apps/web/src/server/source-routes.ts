@@ -1,5 +1,5 @@
 import "server-only";
-import { enqueueJob, errors, type LearnerContext, readPltSettings } from "@recalino/core/plt";
+import { enqueueJob, errors, readPltSettings } from "@recalino/core/plt";
 import {
   coordinateSourceDeletion,
   findPrivacyDeletionRequest,
@@ -31,7 +31,7 @@ import {
 } from "@recalino/core/src";
 import { after } from "next/server";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import {
   notifyAutomaticLearning,
   notifyAutomaticLearningForUpload,
@@ -41,10 +41,6 @@ import { privacyDependencies } from "./privacy";
 import { sourceAudioJobDefinition, sourceUploadJobDefinition } from "./source-jobs";
 import { getObjectStore } from "./storage";
 
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
 function store() {
   const value = getObjectStore();
   if (!value) throw errors.serviceUnavailable({ storage: ["unavailable"] });
@@ -56,7 +52,7 @@ export function sourceContractHandler(): Handler {
     return {
       body: {
         contract,
-        noticeAccepted: await sourceNoticeAccepted(db, actor(ctx), contract.noticeVersion),
+        noticeAccepted: await sourceNoticeAccepted(db, learnerActor(ctx), contract.noticeVersion),
         storageConfigured: getObjectStore() !== null,
       },
     };
@@ -65,7 +61,7 @@ export function sourceContractHandler(): Handler {
 export function sourceNoticeHandler(): Handler {
   return async ({ db, ctx, input }) => {
     const fields = z.strictObject({ version: z.string(), confirmed: z.boolean() }).parse(input);
-    await acceptSourceNotice(db, actor(ctx), fields.version, fields.confirmed);
+    await acceptSourceNotice(db, learnerActor(ctx), fields.version, fields.confirmed);
     return { body: { accepted: true } };
   };
 }
@@ -75,7 +71,7 @@ export function sourcesHandler(): Handler {
       return {
         body: await sourceAssets(
           db,
-          actor(ctx),
+          learnerActor(ctx),
           new URL(request.url).searchParams.get("checksum") ?? undefined,
         ),
       };
@@ -85,9 +81,8 @@ export function sourcesHandler(): Handler {
     if (Boolean(fields.batchId) !== Boolean(fields.fileId))
       throw errors.validationFailed({ batch: ["file_binding_required"] });
     if (fields.kind !== "audio") store();
-    const operationKey = request.headers.get("idempotency-key");
-    if (!operationKey) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
-    const learner = actor(ctx);
+    const operationKey = idempotencyKey(request);
+    const learner = learnerActor(ctx);
     const { batchId: _batchId, fileId: _fileId, ...sourceInput } = input as Record<string, unknown>;
     const sessionId = z.uuid().parse(sourceInput.sessionId);
     const body = await db.transaction().execute(async (tx) => {
@@ -110,9 +105,9 @@ export function sourcesHandler(): Handler {
 export function sourceHandler(id: string): Handler {
   return async ({ db, ctx, input, request }) => {
     z.uuid().parse(id);
-    if (request.method === "GET") return { body: await getSource(db, actor(ctx), id) };
+    if (request.method === "GET") return { body: await getSource(db, learnerActor(ctx), id) };
     const fields = z.strictObject({ mode: z.enum(["original", "all"]) }).parse(input);
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const dependencies = privacyDependencies();
     const body = await deleteSource(db, learner, id, fields.mode, new Date(), {
       onDelete: async (tx, sourceId, _, sessionIds) => {
@@ -132,12 +127,12 @@ export function sourceHandler(id: string): Handler {
 }
 export function sourceContentHandler(id: string): Handler {
   return async ({ db, ctx }) => ({
-    body: await sourceContentVersions(db, actor(ctx), z.uuid().parse(id)),
+    body: await sourceContentVersions(db, learnerActor(ctx), z.uuid().parse(id)),
   });
 }
 export function sourceReadHandler(id: string): Handler {
   return async ({ db, ctx }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     await getSource(db, learner, z.uuid().parse(id));
     return { body: await sourceReadLink(db, store(), learner, id, readPltSettings().storage) };
   };
@@ -145,7 +140,7 @@ export function sourceReadHandler(id: string): Handler {
 export function classSourcesHandler(id: string): Handler {
   return async ({ db, ctx, input, request }) => {
     z.uuid().parse(id);
-    if (request.method === "GET") return { body: await sessionSources(db, actor(ctx), id) };
+    if (request.method === "GET") return { body: await sessionSources(db, learnerActor(ctx), id) };
     const fields = z
       .strictObject({
         assetId: z.uuid(),
@@ -155,7 +150,7 @@ export function classSourcesHandler(id: string): Handler {
       .parse(input);
     if (Boolean(fields.batchId) !== Boolean(fields.fileId))
       throw errors.validationFailed({ batch: ["file_binding_required"] });
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const linkId = await db.transaction().execute(async (tx) => {
       const link = await attachSource(tx, learner, id, fields.assetId);
       if (fields.batchId && fields.fileId)
@@ -178,10 +173,10 @@ export function classSourceHandler(id: string, sourceId: string): Handler {
     z.uuid().parse(id);
     z.uuid().parse(sourceId);
     if (request.method === "DELETE") {
-      await detachSource(db, actor(ctx), id, sourceId);
+      await detachSource(db, learnerActor(ctx), id, sourceId);
       return { body: { removed: true } };
     }
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const body = await updateSourceSelection(db, learner, id, sourceId, input);
     await notifyAutomaticLearning(db, learner, id);
     return { body };
@@ -189,12 +184,12 @@ export function classSourceHandler(id: string, sourceId: string): Handler {
 }
 export function sourceUploadHandler(id: string): Handler {
   return async ({ db, ctx }) => ({
-    body: await uploadManifest(db, actor(ctx), z.uuid().parse(id)),
+    body: await uploadManifest(db, learnerActor(ctx), z.uuid().parse(id)),
   });
 }
 export function sourcePartHandler(id: string, index: string): Handler {
   return async ({ db, ctx, request }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     await uploadManifest(db, learner, z.uuid().parse(id));
     const partIndex = z.coerce.number().int().nonnegative().parse(index);
     if (request.method === "POST") {
@@ -212,7 +207,7 @@ export function sourcePartHandler(id: string, index: string): Handler {
 }
 export function sourceCompleteHandler(id: string): Handler {
   return async ({ db, ctx }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const manifest = await uploadManifest(db, learner, z.uuid().parse(id));
     if (["verified", "rejected", "abandoned", "deleted"].includes(manifest.state))
       return { body: manifest };
@@ -233,7 +228,7 @@ export function sourceCompleteHandler(id: string): Handler {
 
 export function sourceUnlockHandler(assetId: string): Handler {
   return async ({ db, ctx, input }) => {
-    const learner = actor(ctx),
+    const learner = learnerActor(ctx),
       source = await getSource(db, learner, z.uuid().parse(assetId));
     if (source.kind !== "pdf" || !source.verified_at || source.page_count) throw errors.conflict();
     let { password } = z.strictObject({ password: z.string().min(1).max(1000) }).parse(input);
@@ -275,7 +270,7 @@ const audioRequestSchema = z.discriminatedUnion("action", [
 ]);
 export function sourceAudioHandler(assetId: string): Handler {
   return async ({ db, ctx, input, request }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     await getSource(db, learner, z.uuid().parse(assetId));
     if (request.method === "GET") {
       const query = new URL(request.url).searchParams,

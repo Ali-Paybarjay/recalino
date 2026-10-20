@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations, VIEWPORTS } from "./helpers";
+import { signInAsNewLearner } from "./learner";
 
 // App shell: bottom navigation on mobile, compact labelled sidebar from 768px, and full sidebar
 // from 1024px. Labels remain visible so tablet users can identify every destination.
@@ -54,3 +55,84 @@ test("the first Tab reaches the skip link, which moves focus to the content", as
   await page.keyboard.press("Enter");
   await expect(page.locator("main#content")).toBeFocused();
 });
+
+// UX-08: moving between the four sections keeps the navigation on screen; only the content waits.
+// Next prefetches a page's loading state only in a production build (`next start`, as CI runs
+// it), so that is where a held-back page can be told apart from a slow navigation.
+for (const [name, viewport] of [
+  ["desktop", VIEWPORTS.desktop],
+  ["mobile", VIEWPORTS.mobile],
+] as const) {
+  test(`${name}: the navigation stays while the next page loads`, async ({ page }) => {
+    test.skip(!process.env.CI, "the loading state is prefetched only by a production build");
+    await signInAsNewLearner(page, { setup: "complete" });
+    await page.setViewportSize(viewport);
+    // Hold back the page itself (not the prefetch of its loading state), like a slow network.
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const isPrefetch = (headers: Record<string, string>) =>
+      Boolean(headers["next-router-prefetch"]);
+    await page.route(
+      (url) => url.pathname === "/review",
+      async (route) => {
+        const headers = route.request().headers();
+        if (headers.rsc && !isPrefetch(headers)) await held;
+        await route.continue();
+      },
+    );
+    const prefetched = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/review" && isPrefetch(response.request().headers()),
+    );
+    await page.goto("/today");
+    await prefetched;
+    const nav = page.getByRole("navigation", { name: "Your learning space" });
+    await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+    await nav.getByRole("link", { name: /^Review/ }).click();
+    // The same navigation is still there and already marks Review; the content area is loading.
+    const loading = page.getByRole("status").filter({ hasText: "Loading your learning space" });
+    await expect(loading).toBeVisible();
+    await expect(nav.getByRole("link", { name: /^Review/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(nav.getByRole("link")).toHaveCount(4);
+    await expectNoAxeViolations(page);
+    release();
+    await expect(page).toHaveURL(/\/review$/);
+    await expect(loading).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /^Review/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+}
+
+// UX-02 (owner decision 2026-10-19, D90 as amended): the recording pages' shell is a full focus
+// mode with no navigation before Start or while capture runs. /dev/ui/recording-shell renders the
+// same RecordingShellFrame around sample content, as the real pages need Supabase and a microphone.
+for (const [name, viewport] of [
+  ["mobile", { width: 390, height: 664 }],
+  ["desktop", VIEWPORTS.desktop],
+] as const) {
+  test(`${name}: the recording page shell has no navigation in any phase`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/dev/ui/recording-shell");
+    await expect(page.getByRole("heading", { level: 1, name: "Record a session" })).toBeVisible();
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    await expect(page.locator("aside")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "New session", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Skip to content" })).toHaveCount(0);
+    await expectNoAxeViolations(page);
+
+    await page.goto("/dev/ui/recording-shell?state=recording");
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    await expect(page.locator("aside")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "New session", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Skip to content" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Stop and save", exact: true })).toBeInViewport();
+    await expectNoAxeViolations(page);
+  });
+}

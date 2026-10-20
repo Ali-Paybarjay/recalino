@@ -2,6 +2,7 @@ import { type ButtonHTMLAttributes, createElement, type MouseEvent } from "react
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticLearningNotice, AutomaticLearningView } from "./AutomaticLearningView";
+import { type AccountGate, AccountGateProvider } from "./account-gate";
 import type { AutomaticLearningStatus } from "./automatic-learning";
 import type { UploadBatch } from "./upload-store";
 
@@ -62,11 +63,13 @@ const pendingReview = {
   errorCode: "processing_budget_session",
   canRequest: true,
 };
-function render(view: "notice" | "progress" = "notice") {
-  return renderToStaticMarkup(
+function render(view: "notice" | "progress" = "notice", gate?: AccountGate) {
+  const page =
     view === "notice"
       ? createElement(AutomaticLearningNotice, { sessionId })
-      : createElement(AutomaticLearningView, { sessionId, initial: blocked }),
+      : createElement(AutomaticLearningView, { sessionId, initial: blocked });
+  return renderToStaticMarkup(
+    gate ? createElement(AccountGateProvider, { value: gate }, page) : page,
   );
 }
 function retry() {
@@ -192,6 +195,47 @@ describe("retry from the class notice", () => {
     expect(mocks.buttons.has("Retry failed attempt")).toBe(false);
   });
 
+  // UX-09: /setup sends a learner with finished setup back to Today, so new Terms use their sheet.
+  it.each(["notice", "progress"] as const)(
+    "%s sends a stop for new Terms to the Terms sheet, not to setup",
+    (view) => {
+      mocks.status = { ...blocked, lastError: "acceptance_required" };
+      const html = render(view, { setupComplete: true, termsPending: true });
+      expect(html).toContain("Read and accept");
+      // The sentence the owner approved on 2026-10-19 (UX-09).
+      expect(html).toContain("Read and accept the updated Terms to continue.");
+      expect(html).not.toContain("Review account setup");
+      expect(html).not.toContain('href="/setup"');
+      const dispatchEvent = vi.fn(() => true);
+      vi.stubGlobal("window", { dispatchEvent });
+      try {
+        mocks.buttons.get("Read and accept")?.();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+      expect(dispatchEvent).toHaveBeenCalledTimes(1);
+      const [event] = dispatchEvent.mock.calls[0] as unknown as [Event];
+      expect(event.type).toBe("recalino:open-terms-notice");
+    },
+  );
+
+  // UX-13: the wait gets the owner's estimate of 2026-10-19 and promises nothing more than that.
+  it("shows the approved wait estimate while notes are being made, and no failure text", () => {
+    mocks.status = {
+      ...blocked,
+      state: "processing",
+      lastError: null,
+      message: "Creating your notes and flashcards automatically…",
+      run: { id: "run-1", sessionId, state: "processing" } as AutomaticLearningStatus["run"],
+    };
+    const html = render("progress");
+    expect(html).toContain("Creating notes and flashcards");
+    expect(html).toContain(
+      "Most sessions are ready within a few minutes after you stop recording. Longer recordings take longer. You can leave this page.",
+    );
+    expect(html).not.toContain("Action needed");
+  });
+
   it("replaces the failure notice with a ready state and next actions", () => {
     mocks.status = { ...blocked, state: "ready", lastError: null, cardsReady: true };
     const html = render();
@@ -301,7 +345,7 @@ describe("recovery actions match the processing blocker", () => {
         ...blocked,
         lastError: "quota_insufficient",
         message:
-          "Your material is saved. Your allowance now covers this class. Retry to create the notes and flashcards. You do not need to upload the same files again.",
+          "Your material is saved. Your allowance now covers this session. Retry to create the notes and flashcards. You do not need to upload the same files again.",
         allowance: { active: true, required: amounts(1), available: amounts(1) },
       };
       const html = render(view);
@@ -443,7 +487,7 @@ describe("recovery actions match the processing blocker", () => {
       },
     };
     const html = render("progress");
-    expect(html).toContain("notes and flashcards are available with some source limitations");
+    expect(html).toContain("notes and flashcards are available with some material limitations");
     expect(html).toContain(`href="/sessions/${sessionId}/notes"`);
     expect(html).toContain("Open session notes");
     expect(mocks.buttons.has("Request processing review")).toBe(false);

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 export const OUTPUT = "apps/web/src/legal/texts.generated.ts";
 
-const SOURCES = {
+export const SOURCES = {
   terms: "docs/legal/terms-of-use.md",
   privacy: "docs/legal/privacy-notice.md",
 } as const;
@@ -44,10 +44,25 @@ export function parseHeader(markdown: string, source: string) {
   };
 }
 
-export function buildLegalModule(read: (path: string) => string): string {
-  const entries = Object.entries(SOURCES).map(([id, path]) => {
+export interface LegalText {
+  id: keyof typeof SOURCES;
+  path: string;
+  version: string;
+  draft: boolean;
+  published: string;
+  markdown: string;
+}
+
+/** The texts the app ships, read from docs/legal. */
+export function readLegalTexts(read: (path: string) => string): LegalText[] {
+  return Object.entries(SOURCES).map(([id, path]) => {
     const markdown = read(path);
-    const header = parseHeader(markdown, path);
+    return { id: id as LegalText["id"], path, ...parseHeader(markdown, path), markdown };
+  });
+}
+
+export function buildLegalModule(read: (path: string) => string): string {
+  const entries = readLegalTexts(read).map(({ id, markdown, ...header }) => {
     return `  ${id}: {
     version: ${JSON.stringify(header.version)},
     draft: ${header.draft},

@@ -2,7 +2,9 @@
 import type { StudyCard } from "@recalino/core/card";
 import type { MediaAsset } from "@recalino/core/media";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
+import { mediaAssetLabel } from "./card-labels";
+import { mediaAlt } from "./media-alt";
 import { Actions, Button, Field, Panel, Status } from "./primitives";
 import type { SourceRow } from "./SourcesView";
 export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: StudyCard): void }) {
@@ -21,7 +23,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
     [notice, setNotice] = useState(""),
-    [preview, setPreview] = useState<{ url: string; mime: string } | null>(null);
+    [preview, setPreview] = useState<{ url: string; mime: string; alt: string } | null>(null);
   const key = useRef<{ payload: string; key: string } | null>(null);
   const load = useCallback(async () => {
     if (!sessionId) return;
@@ -87,7 +89,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           : "Media requested. It will appear when processing finishes.",
       );
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Media could not be requested.");
+      setProblem(userMessage(failure, "Media could not be requested."));
     } finally {
       setBusy(false);
     }
@@ -113,7 +115,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
       key.current = null;
       setNotice("Card media saved.");
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Media could not be attached.");
+      setProblem(userMessage(failure, "Media could not be attached."));
     } finally {
       setBusy(false);
     }
@@ -148,10 +150,9 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           }}
         >
           <option value="">Choose media</option>
-          {assets.map((asset) => (
+          {assets.map((asset, index) => (
             <option key={asset.id} value={asset.id} disabled={asset.state !== "ready"}>
-              {asset.synthetic ? "Synthetic TTS" : "Class image"} · {asset.state} ·{" "}
-              {asset.id.slice(0, 8)}
+              {mediaAssetLabel(asset, index)}
             </option>
           ))}
         </select>
@@ -190,7 +191,13 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
                   `/api/media/${selected}/read`,
                   "GET",
                 );
-                setPreview({ url: value.url, mime: asset?.mimeType ?? "" });
+                // A11Y-05: the image is named by its source file, then by the card text on this side.
+                const source = sources.find((item) => item.assetId === asset?.sourceId);
+                setPreview({
+                  url: value.url,
+                  mime: asset?.mimeType ?? "",
+                  alt: mediaAlt(source?.displayName, side === "front" ? card.front : card.back),
+                });
               } catch {
                 setProblem("The media preview is unavailable.");
               }
@@ -210,7 +217,8 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           // biome-ignore lint/performance/noImgElement: Signed private URLs must not pass through an image proxy.
           <img
             src={preview.url}
-            alt="Selected session material"
+            alt={preview.alt}
+            dir="auto"
             style={{ maxWidth: "100%", height: "auto" }}
           />
         ))}
@@ -233,11 +241,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
                 );
                 setAssets((items) => items.map((item) => (item.id === value.id ? value : item)));
               } catch (failure) {
-                setProblem(
-                  failure instanceof Error
-                    ? failure.message
-                    : "Export permission could not be saved.",
-                );
+                setProblem(userMessage(failure, "Export permission could not be saved."));
               } finally {
                 setBusy(false);
               }
@@ -269,6 +273,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
         </Field>
         <Field label="Short English text for synthetic audio">
           <textarea
+            dir="auto"
             value={text}
             onChange={(event) => setText(event.target.value)}
             maxLength={500}
@@ -307,7 +312,7 @@ export function CardMedia({ card, onCard }: { card: StudyCard; onCard(card: Stud
           </select>
         </Field>
         {crop && (
-          <div className="preview-grid">
+          <div className="workspace-grid">
             {(["left", "top", "width", "height"] as const).map((part) => (
               <Field key={part} label={`${part[0]?.toUpperCase()}${part.slice(1)} (pixels)`}>
                 <input

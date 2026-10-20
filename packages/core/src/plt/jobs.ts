@@ -4,7 +4,7 @@ import { sql } from "kysely";
 import type { z } from "zod";
 import type { Database, Tx } from "../db";
 import { AppError } from "./errors";
-import type { Logger } from "./log";
+import { causeCode, errorLocation, type Logger } from "./log";
 import { recordSecurityEvent } from "./security";
 import type { PltSettings } from "./settings";
 
@@ -49,6 +49,8 @@ export interface JobContext {
    * finish before this, and checkpoints instead. Absent when the runner does not know its limit.
    */
   deadline?: Date;
+  /** The runner's allow-listed logger, when it has one (FR-PLT-007); identifiers only. */
+  log?: Logger;
   /**
    * Runs `effect` at most once for this job, in one transaction with the step's record
    * (FR-PLT-005 rule 6). Throws `JobCancelled` when the job was cancelled meanwhile (rule 7).
@@ -260,6 +262,21 @@ export async function jobState(db: Database, jobId: string): Promise<JobState | 
   return (row?.state as JobState | undefined) ?? null;
 }
 
+/** States of several jobs at once; a purged (finished) job is simply absent from the map. */
+export async function jobStates(
+  db: Database | Tx,
+  jobIds: readonly string[],
+): Promise<Map<string, JobState>> {
+  const ids = [...new Set(jobIds)];
+  if (!ids.length) return new Map();
+  const rows = await db
+    .selectFrom("plt.job")
+    .select(["id", "state"])
+    .where("id", "in", ids)
+    .execute();
+  return new Map(rows.map((row) => [row.id, row.state as JobState]));
+}
+
 /** Trusted orchestration avoids duplicate work through the platform API. */
 export async function latestJobStateForPayload(
   db: Database | Tx,
@@ -468,6 +485,7 @@ export async function runDueJobs(
       now,
       job: { id: job.id, attempt: job.attempt },
       ...(options.finishBy ? { deadline: options.finishBy } : {}),
+      ...(options.log ? { log: options.log } : {}),
       step: (name, effect) => runJobStep(db, job, name, effect, now()),
     };
     const stopRenewal = keepLease(db, job, now, options);
@@ -493,6 +511,8 @@ export async function runDueJobs(
         ...fields,
         code,
         error_name: error instanceof Error ? error.name : typeof error,
+        error_location: errorLocation(error),
+        cause_code: causeCode(error),
         reason: error instanceof AppError ? error.reason : undefined,
       });
     }

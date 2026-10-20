@@ -2,12 +2,13 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import { lockAccount, lockAccountForCleanup } from "../acc";
 import type { Database, DB, Tx } from "../db";
-import { getNotebookRevision } from "../note";
+import { getNotebookRevision, liveNotebookRevisionIds } from "../note";
 import {
   AppError,
   assertExportSize,
   assertOwner,
   canonicalJson,
+  createLogger,
   createObject,
   deleteObject,
   type ExportArtifact,
@@ -15,16 +16,20 @@ import {
   type ExportMediaBytes,
   type ExportSettings,
   errors,
+  exportMediaSchema,
   exportSettingsSchema,
   issueReadLink,
   isValidIdempotencyKey,
   type JobDefinition,
   type LearnerContext,
+  type Logger,
   type ObjectStore,
   ownedObjectMetadata,
   type PeriodicJob,
   type PltSettings,
+  parseSnapshot,
   sha256Hex,
+  storedObject,
   writeOwnedObject,
 } from "../plt";
 import { renderNotebookHtml } from "./render";
@@ -43,13 +48,20 @@ export interface HtmlMediaReader {
     expected: ExportMedia,
   ): Promise<ExportMediaBytes>;
 }
-interface HtmlSnapshot {
-  revisionId: string;
-  revisionNumber: number;
-  model: Awaited<ReturnType<typeof getNotebookRevision>>["model"];
-  createdAt: string;
-  media: ExportMedia[];
-}
+/**
+ * `html.export_artifact.snapshot`, version 1 (QUA-05). The notes model was validated, projected
+ * and frozen when the export was requested, so only its container is checked on read.
+ */
+export const htmlSnapshotSchema = z.looseObject({
+  revisionId: z.uuid(),
+  revisionNumber: z.number().int().positive(),
+  model: storedObject<Awaited<ReturnType<typeof getNotebookRevision>>["model"]>(),
+  createdAt: z.string().min(1),
+  media: z.array(exportMediaSchema),
+});
+type HtmlSnapshot = z.infer<typeof htmlSnapshotSchema>;
+const htmlSnapshotRevisionSchema = htmlSnapshotSchema.pick({ revisionId: true });
+const htmlSnapshotMediaSchema = htmlSnapshotSchema.pick({ media: true });
 function view(row: Selectable<DB["html.export_artifact"]>): ExportArtifact {
   return {
     id: row.id,
@@ -73,7 +85,7 @@ async function owned(db: Database | Tx, ctx: LearnerContext, id: string, now: Da
     .executeTakeFirst();
   assertOwner(row && !row.tombstoned_at ? { ownerId: row.user_id } : undefined, ctx);
   if (!row || row.expires_at <= now || !row.snapshot) throw errors.notFound();
-  const snapshot = row.snapshot as unknown as HtmlSnapshot;
+  const snapshot = parseSnapshot(htmlSnapshotRevisionSchema, row.snapshot);
   await getNotebookRevision(db, ctx, snapshot.revisionId);
   return row;
 }
@@ -179,6 +191,7 @@ export async function listHtmlExports(
   ctx: LearnerContext,
   sessionId: string,
   now = new Date(),
+  log: Logger = createLogger(),
 ): Promise<ExportArtifact[]> {
   const rows = await db
     .selectFrom("html.export_artifact")
@@ -189,15 +202,25 @@ export async function listHtmlExports(
     .where("expires_at", ">", now)
     .orderBy("created_at", "desc")
     .execute();
-  const result: ExportArtifact[] = [];
-  for (const row of rows) {
-    try {
-      result.push(await getHtmlExport(db, ctx, row.id, now));
-    } catch (e) {
-      if (!(e instanceof AppError && e.code === "not_found")) throw e;
+  // PERF-04: the same checks as getHtmlExport for every listed export, in a constant number of
+  // reads: an export is listed only while the notes revision it copied is readable.
+  const snapshots = rows.flatMap((row) => {
+    if (!row.snapshot) return [];
+    // D100: one export whose stored snapshot is malformed is left out (logged by its id only, no
+    // content) so the others still list; reading or downloading it still fails as snapshot_invalid.
+    const snapshot = htmlSnapshotRevisionSchema.safeParse(row.snapshot);
+    if (!snapshot.success) {
+      log("error", "html_export_snapshot_invalid", { export_id: row.id });
+      return [];
     }
-  }
-  return result;
+    return [{ row, revisionId: snapshot.data.revisionId }];
+  });
+  const live = await liveNotebookRevisionIds(
+    db,
+    ctx,
+    snapshots.map(({ revisionId }) => revisionId),
+  );
+  return snapshots.filter(({ revisionId }) => live.has(revisionId)).map(({ row }) => view(row));
 }
 export async function htmlExportReadLink(
   db: Database,
@@ -212,7 +235,7 @@ export async function htmlExportReadLink(
     await lockAccount(tx, ctx.userId);
     const row = await owned(tx, ctx, id, now);
     if (row.state !== "ready" || !row.object_id) throw errors.notFound();
-    for (const expected of (row.snapshot as unknown as HtmlSnapshot).media) {
+    for (const expected of parseSnapshot(htmlSnapshotMediaSchema, row.snapshot).media) {
       if (!media) throw errors.notFound();
       const live = await media.describe(tx, ctx, expected.id);
       if (live.objectId !== expected.objectId) throw errors.notFound();
@@ -240,7 +263,7 @@ export function htmlExportJob(
       const actor = { userId: input.userId, requestId: job.job.id };
       const row = await owned(job.db, actor, input.artifactId, job.now());
       if (row.state === "ready") return;
-      const snapshot = row.snapshot as unknown as HtmlSnapshot;
+      const snapshot = parseSnapshot(htmlSnapshotSchema, row.snapshot);
       const settings = exportSettingsSchema.parse(row.settings);
       const images: ExportMediaBytes[] = [];
       for (const image of snapshot.media) {

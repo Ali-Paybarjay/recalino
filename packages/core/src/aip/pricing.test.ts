@@ -54,6 +54,50 @@ describe("owner estimate rates (ADM-I06)", () => {
       ),
     ).toThrow();
   });
+  it("QUA-09 locks the current estimate arithmetic (sum of count/divisor × rate, one ceil)", () => {
+    // Changing this rounding changes estimated_micros and the cost caps in quota/costs.ts;
+    // per-rate integer rounding is an open product-owner decision (audit QUA-09).
+    expect(
+      estimatedUsageCost(
+        [rate("output_million_tokens", 1)],
+        "synthetic/model",
+        { outputTokens: 1 },
+        "generation",
+      ),
+    ).toBe(1);
+    expect(
+      estimatedUsageCost(
+        [rate("input_million_tokens", 300_000)],
+        "synthetic/model",
+        { inputTokens: 10 },
+        "generation",
+      ),
+    ).toBe(4);
+    expect(
+      estimatedUsageCost(
+        [rate("input_million_tokens", 1), rate("output_million_tokens", 1)],
+        "synthetic/model",
+        { inputTokens: 1, outputTokens: 1 },
+        "generation",
+      ),
+    ).toBe(1);
+    expect(
+      estimatedUsageCost(
+        [rate("input_million_tokens", 1_000_000_001)],
+        "synthetic/model",
+        { inputTokens: 10_000_001 },
+        "generation",
+      ),
+    ).toBe(10_000_001_010);
+    expect(
+      estimatedUsageCost(
+        [rate("audio_minute", 120, "transcription")],
+        "synthetic/model",
+        { audioSeconds: 30.25 },
+        "transcription",
+      ),
+    ).toBe(61);
+  });
   it("accepts independent stages but rejects duplicate or ambiguous billing bases", () => {
     expect(
       estimateRatesSchema.safeParse([rate("page", 1, "vision"), rate("page", 2, "generation")])

@@ -51,8 +51,8 @@ export function SignIn({ failed, next, terms, privacy }: SignInProps) {
                 </li>
               ))}
             </ol>
-            <p className={styles.pilotNote}>
-              <Icon icon={Info} className={styles.pilotIcon} />
+            <p className={styles.hint}>
+              <Icon icon={Info} className={styles.hintIcon} />
               {experienceCopy.welcome.pilotNote}
             </p>
           </div>

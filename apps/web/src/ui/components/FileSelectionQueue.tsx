@@ -1,7 +1,7 @@
 "use client";
 
-import { Actions, Button, Panel, Status } from "../preview/primitives";
 import type { SelectedFile } from "../workspace/file-selection";
+import { Actions, Button, Panel, Status } from "../workspace/primitives";
 import styles from "./FileSelectionQueue.module.css";
 
 export function FileSelectionQueue({
@@ -27,16 +27,16 @@ export function FileSelectionQueue({
   const invalid = files.some((entry) => entry.invalid);
   return (
     <Panel title="Files to upload">
-      <p className="preview-muted">
+      <p className="workspace-muted">
         {description ?? "Choose Upload & Process to add these files to your session."}
       </p>
-      <ul className="preview-list" aria-label="Files to upload">
+      <ul className="workspace-list" aria-label="Files to upload">
         {files.map(({ id, file, problem }) => (
           <li key={id}>
-            <div className="preview-row">
+            <div className="workspace-row">
               <div className={styles.file}>
                 <strong dir="auto">{file.name}</strong>
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {(file.size / 1_000_000).toFixed(2)} MB · Waiting to upload
                 </p>
               </div>
@@ -64,12 +64,14 @@ export function FileSelectionQueue({
         </Actions>
       </div>
       {invalid && (
-        <p className="preview-muted">Remove or replace the files marked above before uploading.</p>
+        <p className="workspace-muted">
+          Remove or replace the files marked above before uploading.
+        </p>
       )}
       {uploadHelp && (
         <details className={styles.help}>
           <summary>About background uploads</summary>
-          <p className="preview-muted">
+          <p className="workspace-muted">
             Upload &amp; Process saves these files on this device so you can use other pages while
             they upload. If your browser pauses, uploads resume when you return. Files you have not
             submitted need to be selected again after leaving or reloading.

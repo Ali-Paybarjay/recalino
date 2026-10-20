@@ -1,8 +1,16 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
+import { PushSafeSignOut } from "../notifications/PushSafeSignOut";
 import { useRecording } from "../recording/RecordingProvider";
-import { type PendingDeletion, requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { settingsStrings as strings } from "../strings-settings";
+import {
+  type PendingDeletion,
+  requestKey,
+  userMessage,
+  WorkspaceRequestError,
+  workspaceRequest,
+} from "./api";
 import { IndexedManualAudioStore } from "./manual-audio-store";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
 import {
@@ -10,20 +18,42 @@ import {
   type DeletionReceipt,
   submitAccountDeletion,
 } from "./privacy-actions";
+import { privacyCopy } from "./privacy-copy";
 import { IndexedUploadStore } from "./upload-store";
 
+const DELETION_FAILED = "Your account deletion request could not be saved. Try again.";
+
+/**
+ * `initialPending` is an account that is already hidden. `recoveryStage` says what is left (UX-10):
+ * the receipt still needs saving (the learner confirms it), or it is saved and cleanup is under
+ * way or waits for the operator (nothing to confirm; the learner can sign out).
+ */
 export function PrivacyView({
   initialPending = null,
+  recoveryStage = "journal_unsaved",
+  operatorMailto = null,
 }: {
   initialPending?: PendingDeletion | null;
+  recoveryStage?: "journal_unsaved" | "in_progress" | "needs_operator";
+  /** mailto link to the pilot operator, when the server has one configured. */
+  operatorMailto?: string | null;
 }) {
+  const underway = !!initialPending && recoveryStage !== "journal_unsaved";
   const { controller, state, store, userId } = useRecording();
   const captureActive = ["starting", "recording", "paused", "saving"].includes(state.phase);
   const [confirm, setConfirm] = useState(false),
     [acknowledged, setAcknowledged] = useState(!!initialPending),
     [busy, setBusy] = useState(false),
     [problem, setProblem] = useState(""),
-    [receipt, setReceipt] = useState<DeletionReceipt | null>(null),
+    [receipt, setReceipt] = useState<DeletionReceipt | null>(
+      underway && initialPending
+        ? {
+            id: initialPending.requestId,
+            state: recoveryStage === "needs_operator" ? "needs_operator" : "pending",
+            requestedAt: "",
+          }
+        : null,
+    ),
     [pending, setPending] = useState<PendingDeletion | null>(initialPending),
     [uncertain, setUncertain] = useState(false),
     [deviceCleanup, setDeviceCleanup] = useState<"pending" | "complete" | "failed">("pending");
@@ -35,11 +65,20 @@ export function PrivacyView({
         }
       : null,
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once for the recovered request.
   useEffect(() => {
     if (!initialPending) return;
-    void controller.prepareAccountDeletion().catch(() => {
-      setProblem("Stop and save your active recording before finishing deletion.");
-    });
+    void controller
+      .prepareAccountDeletion()
+      .then(async () => {
+        // The receipt is already saved: only this browser's copies are left to remove.
+        if (!underway) return;
+        controller.completeAccountDeletion();
+        await clearDeviceData();
+      })
+      .catch(() => {
+        setProblem("Stop and save your active recording before finishing deletion.");
+      });
   }, [controller, initialPending]);
   async function remove() {
     if (!acknowledged || busy || captureActive) return;
@@ -66,14 +105,10 @@ export function PrivacyView({
         setConfirm(false);
       } else if (failure instanceof DeletionOutcomeUnknownError) {
         setUncertain(true);
-        setProblem(failure.message);
+        setProblem(userMessage(failure, DELETION_FAILED));
         setConfirm(false);
       } else {
-        setProblem(
-          failure instanceof Error
-            ? failure.message
-            : "Your account deletion request could not be saved. Try again.",
-        );
+        setProblem(userMessage(failure, DELETION_FAILED));
       }
     } finally {
       setBusy(false);
@@ -108,7 +143,14 @@ export function PrivacyView({
   if (receipt)
     return (
       <Panel title="Account deletion requested">
-        <Status>Your account and sessions are hidden. Server cleanup has been queued.</Status>
+        {/* UX-10: while cleanup waits for the pilot operator the receipt says so (approved
+            2026-10-19). UX-05: the other state no longer speaks of a "queue" (approved
+            2026-10-20, D101). */}
+        {receipt.state === "needs_operator" ? (
+          <Status tone="error">{privacyCopy.needsOperator}</Status>
+        ) : (
+          <Status>{privacyCopy.accountHidden}</Status>
+        )}
         <p>Request reference: {receipt.id}</p>
         {deviceCleanup === "complete" ? (
           <Status>
@@ -134,7 +176,11 @@ export function PrivacyView({
           Copies on other devices and files you downloaded remain under your control. Remove those
           copies separately.
         </p>
-        <LinkButton href="/">Return to Recalino</LinkButton>
+        {receipt.state === "needs_operator" && operatorMailto ? (
+          <LinkButton href={operatorMailto}>Ask the pilot operator</LinkButton>
+        ) : null}
+        {/* Leaving by "/" would only come back to this page until cleanup has ended the session. */}
+        <PushSafeSignOut label={strings.settings.signOut} />
       </Panel>
     );
   if (pending)
@@ -154,6 +200,7 @@ export function PrivacyView({
         <Button disabled={busy} onClick={remove}>
           {busy ? "Finishing…" : "Finish deletion"}
         </Button>
+        <PushSafeSignOut label={strings.settings.signOut} />
       </Panel>
     );
   if (uncertain)
@@ -171,23 +218,25 @@ export function PrivacyView({
         <Button disabled={busy} onClick={remove}>
           {busy ? "Checking…" : "Check deletion request"}
         </Button>
+        <PushSafeSignOut label={strings.settings.signOut} />
       </Panel>
     );
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Panel title="Your data, your choices">
+        <p>{privacyCopy.downloadFirst}</p>
         <p>
-          You can remove an individual session from its Session options page, or remove a source
-          from its Sources page.
+          You can remove an individual session from its Session options page, or remove material
+          from its Session material page.
         </p>
         <p>
-          Removing a source from one session keeps its other uses. Deleting its original file keeps
+          Removing material from one session keeps its other uses. Deleting its original file keeps
           saved extraction and derived notes. Complete deletion removes derived content from every
           affected session.
         </p>
         <p>
-          Shared cards and source files are checked before session cleanup. Files already downloaded
-          cannot be removed from your devices by Recalino.
+          Shared cards and material files are checked before session cleanup. Files already
+          downloaded cannot be removed from your devices by Recalino.
         </p>
         <Actions>
           <LinkButton secondary href="/sessions">
@@ -235,10 +284,7 @@ export function PrivacyView({
           if (!busy) setConfirm(false);
         }}
       >
-        <p>
-          All your sessions and account data will disappear immediately, and server cleanup will
-          begin. This cannot be undone.
-        </p>
+        <p>All your sessions and account data will disappear immediately. This cannot be undone.</p>
         <Field label="I understand that account deletion cannot be undone">
           <input
             type="checkbox"
@@ -255,7 +301,7 @@ export function PrivacyView({
           <Button secondary disabled={busy} onClick={() => setConfirm(false)}>
             Keep my account
           </Button>
-          <Button disabled={busy || !acknowledged || captureActive} onClick={remove}>
+          <Button danger disabled={busy || !acknowledged || captureActive} onClick={remove}>
             {busy ? "Requesting deletion…" : "Delete account"}
           </Button>
         </Actions>

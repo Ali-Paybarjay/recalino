@@ -29,7 +29,7 @@
 
 ## ۲. بررسی بی‌کاری پردازش (فقط‌خواندنی، پیش از ادغام در `main`)
 
-ادغام در `main` بلافاصله استقرار production می‌سازد؛ پس این بررسی **پیش از ادغام PR** انجام شود. فقط `select`، با پروژهٔ `twowhuzhvyuzjrpraikm`:
+ادغام در `main` بلافاصله استقرار production می‌سازد؛ پس این بررسی **پیش از ادغام PR** انجام شود. *(به‌روزرسانی 2026-10-19، [D83](../PRODUCT_DECISIONS_LOG.md): پس از اجرای [چک‌لیست دروازهٔ CI](../ops/BRANCH_PROTECTION_FA.md)، استقرار production فقط پس از سبز شدن check «Lint, types, boundaries, tests, build» روی همان commit promote می‌شود؛ این بررسی همچنان پیش از ادغام انجام شود.)* فقط `select`، با پروژهٔ `twowhuzhvyuzjrpraikm`:
 
 ```sql
 -- باید صفر ردیف برگرداند؛ هر ردیف یعنی کاری در جریان است.
@@ -96,6 +96,22 @@ supabase db push
 ```
 
 سپس بررسی: `select version from supabase_migrations.schema_migrations order by version desc limit 3;` باید `20261012230000` و `20261012220000` را نشان دهد.
+
+**نگهبان schema (OPS-05، ممیزی 2026-10-18):** از این پس build نسخهٔ تازه‌ترین فایل `supabase/migrations` را در `apps/web/src/server/schema-version.generated.ts` می‌نویسد (`pnpm schema:version`؛ آزمون واحد کهنگی آن را می‌گیرد). اگر دیتابیس از این نسخه عقب‌تر باشد، runner (`/api/jobs/run` و بیدارباش فوری) هیچ ایمیل، job دوره‌ای یا claim تازه‌ای انجام نمی‌دهد، هر بار لاگ `schema_behind` می‌نویسد، برای هر نسخه یک رخداد ممیزی `ops.schema_behind` (در «Recent activity» پنل مالک) و یک لاگ خطای `schema_behind_alert` می‌سازد، و `/api/health?deep=1` پاسخ 503 می‌دهد. حداکثر ۳۰ ثانیه پس از `db push`، runner خودکار ادامه می‌دهد. اگر نقش برنامه نتواند `supabase_migrations.schema_migrations` را بخواند، نگهبان یک بار هشدار `schema_version_unreadable` می‌نویسد و کار را متوقف نمی‌کند (fail open).
+
+**دسترسی نگهبان (OPS-05، دستهٔ ۱۳، 2026-10-19):** migration `20261019120100_schema_version_read_grant` به `recalino_app` فقط `usage` روی schema `supabase_migrations` و `select` روی ستون `version` جدول `schema_migrations` می‌دهد (نه متن statementها). تا پیش از اعمال آن، نگهبان در production نمی‌تواند نسخه را بخواند و fail open است؛ پس از آن واقعاً کار می‌کند. بررسی پس از اعمال (فقط‌خواندنی):
+
+```sql
+select has_column_privilege('recalino_app','supabase_migrations.schema_migrations','version','SELECT') as version_read,
+       has_table_privilege('recalino_app','supabase_migrations.schema_migrations','SELECT') as table_read;
+-- انتظار: version_read = true و table_read = false
+```
+
+پس از این grant، اگر کدی ادغام شود که migrationش هنوز اعمال نشده، runner تا اعمال آن (`pnpm db:apply --apply` یا `supabase db push`) هیچ job تازه‌ای claim نمی‌کند و `/api/health?deep=1` پاسخ 503 می‌دهد؛ این رفتار مورد انتظار است، نه خرابی.
+
+**حذف حساب پیش از اعمال `20261019120000_plt_event_retention` (SEC-07، D95):** تا این migration اعمال نشده، حذف حسابی که به پاک‌سازی حساب برسد با `permission denied` روی `plt.audit_event` شکست می‌خورد. تراکنش پاک‌سازی پروفایل کامل برمی‌گردد، هویت حذف نمی‌شود و درخواست `needs_operator` می‌شود (کاربر در صفحهٔ Privacy خطا می‌بیند). پس از اعمال migration، retry بعدی همان job حذف را کامل می‌کند (پیش‌فرض ۵ تلاش با فاصلهٔ ۳۰ ثانیه تا ۱ ساعت). اگر تلاش‌ها پیش از اعمال تمام شوند، درخواست در `needs_operator` می‌ماند و در نمای Privacy و وظیفه‌های پنل مالک دیده می‌شود؛ پنل ابزار اجرای دوبارهٔ آن را ندارد و اجرای دوباره تصمیم اپراتور است. پس migrationها را بلافاصله پس از ادغام اعمال کن. پیش از آن، jobهای روزانهٔ `plt.purge_security_events` و `priv.anonymise_deleted_actors` هم با همین خطا retry می‌شوند و نماهای «users» و «user» پنل مالک تا اعمال `20261019120300_admin_pilot_progress` خطا می‌دهند.
+
+**قاعدهٔ ترتیب:** هر migration باید با کد در حال اجرا سازگار باشد (فقط افزایشی؛ ستون not-null تازه با default). ترتیب امن‌تر «اول migration سازگار با عقب، سپس ادغام کد» است؛ چون قاعدهٔ فعلی CLAUDE.md اجرای `db push` را فقط برای migrationهای ادغام‌شده در `main` بی‌پرسش می‌داند، تغییر این ترتیب تصمیم مالک محصول است. تا آن تصمیم، پنجرهٔ میان ادغام و `db push` را نگهبان بالا امن می‌کند.
 
 **ترتیب استقرار و migration:** کد تازه ستون‌های تازه را می‌خواند (`voc.analysis.speaker_links`، `src.audio_upload.staged_at`، `org.class_session.capture_open_until`). ادغام در `main` بلافاصله استقرار می‌سازد و ساخت حدود ۲ تا ۴ دقیقه طول می‌کشد؛ پس `db push` را **بلافاصله پس از ادغام** اجرا کن تا پیش از READY شدن استقرار تمام شود. کد قدیمی در حال اجرا با schema تازه سازگار است: هیچ ستونی حذف یا تغییر نوع نمی‌دهد و تنها ستون not-null تازه default دارد.
 
@@ -213,7 +229,7 @@ where reservation_id is null and state <> 'deleted' and expires_at < now() - int
    - `org.class_session.capture_open_until`: کد قدیمی نمی‌خواند؛ پردازش خودکار دیگر منتظر lease نمی‌ماند.
    - اگر حذف schema لازم شد، فقط با migration تازهٔ رو به جلو و اجازهٔ صریح مالک. پیش از `set not null` دوباره روی `reservation_id`، ردیف‌های staged باید حذف شده باشند.
 4. داده: rollback هیچ دادهٔ کاربر را تغییر نمی‌دهد. حذف دستی ردیف‌ها لازم نیست.
-5. **Vercel مستقل از GitHub Actions است:** استقرار production را Git integration مستقیم از `main` می‌سازد، نه CI. از کار افتادن Actions نه استقرار را متوقف می‌کند و نه rollback را. هر push به `main`، حتی با CI ازکارافتاده یا قرمز، استقرار می‌شود؛ پس push اصلاحی به `main` جایگزین rollback نیست، مگر اینکه محلی `pnpm verify` و `pnpm test:e2e` را گذرانده باشد. Instant Rollback در Vercel همیشه بدون CI کار می‌کند.
+5. **Vercel مستقل از GitHub Actions است:** استقرار production را Git integration مستقیم از `main` می‌سازد، نه CI. از کار افتادن Actions نه استقرار را متوقف می‌کند و نه rollback را. هر push به `main`، حتی با CI ازکارافتاده یا قرمز، استقرار می‌شود؛ پس push اصلاحی به `main` جایگزین rollback نیست، مگر اینکه محلی `pnpm verify` و `pnpm test:e2e` را گذرانده باشد. Instant Rollback در Vercel همیشه بدون CI کار می‌کند. *(به‌روزرسانی 2026-10-19، [D83](../PRODUCT_DECISIONS_LOG.md)، OPS-04: با ruleset `main` و Vercel Deployment Checks طبق [BRANCH_PROTECTION_FA.md](../ops/BRANCH_PROTECTION_FA.md)، push مستقیم به `main` رد می‌شود و استقرار production به سبز بودن همان check وابسته است. تا مالک محصول آن چک‌لیست را اجرا نکرده، جملهٔ قبلی برقرار است. با Actions ازکارافتاده، ادغام فقط با bypass مالک و شواهد محلی D67 ممکن است.)*
 
 ## ۱۱. گزارش پایانی انتشار
 

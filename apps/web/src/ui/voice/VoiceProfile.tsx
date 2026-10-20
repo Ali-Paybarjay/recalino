@@ -3,7 +3,7 @@ import { VOICE_CONSENT_VERSION, type VoiceProfileView } from "@recalino/core/voi
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet } from "../components/Sheet";
 import { useRecording } from "../recording/RecordingProvider";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "../workspace/api";
 import { Actions, Button, LinkButton, Panel, Status } from "../workspace/primitives";
 import { sampleBase64, type VoiceCaptureState, VoiceSampleCapture } from "./sample-capture";
 import styles from "./Voice.module.css";
@@ -73,9 +73,7 @@ export function VoiceProfileForm({
     void load(abort.signal)
       .catch((error) => {
         if (!abort.signal.aborted)
-          setProblem(
-            error instanceof Error ? error.message : "Your voice settings could not be loaded.",
-          );
+          setProblem(userMessage(error, "Your voice settings could not be loaded."));
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
@@ -181,11 +179,7 @@ export function VoiceProfileForm({
         );
         return;
       }
-      setProblem(
-        error instanceof Error
-          ? error.message
-          : "Your voice settings could not be saved. Try again.",
-      );
+      setProblem(userMessage(error, "Your voice settings could not be saved. Try again."));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -241,9 +235,7 @@ export function VoiceProfileForm({
         "Voice confirmation is off. Your saved sample and voice identification data have been deleted.",
       );
     } catch (error) {
-      setProblem(
-        error instanceof Error ? error.message : "Voice data could not be deleted. Try again.",
-      );
+      setProblem(userMessage(error, "Voice data could not be deleted. Try again."));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -271,7 +263,7 @@ export function VoiceProfileForm({
           Help Recalino tell your speech apart from your teacher’s and classmates’. Spoken mistakes
           appear only after your voice is verified.
         </p>
-        <p className="preview-muted">
+        <p className="workspace-muted">
           A voice sample is optional. If you save one, the audio and voice patterns are kept
           privately for your account. Confirmed session samples can improve future matches. You can
           turn this off and delete the voice data {onComplete ? "in Settings" : "here"} at any time.
@@ -297,9 +289,7 @@ export function VoiceProfileForm({
               setLoading(true);
               setProblem("");
               void load()
-                .catch((error) =>
-                  setProblem(error instanceof Error ? error.message : "Could not load settings."),
-                )
+                .catch((error) => setProblem(userMessage(error, "Could not load settings.")))
                 .finally(() => setLoading(false));
             }}
           >
@@ -326,7 +316,7 @@ export function VoiceProfileForm({
             profile.engineAvailable &&
             profile.readiness &&
             profile.readiness.automatic !== "off" ? (
-              <p className="preview-muted">{voiceCopy.readiness[profile.readiness.automatic]}</p>
+              <p className="workspace-muted">{voiceCopy.readiness[profile.readiness.automatic]}</p>
             ) : null}
             {!profile.engineAvailable ? (
               <Status>
@@ -363,7 +353,7 @@ export function VoiceProfileForm({
                 </p>
                 {/* Owner's answer 8 (2026-10-13): a near-mouth sample is hard to match with a
                     far-mic class; the sample is recorded in class conditions. */}
-                <p className="preview-muted">{voiceCopy.voiceSample.classConditions}</p>
+                <p className="workspace-muted">{voiceCopy.voiceSample.classConditions}</p>
                 <p lang="en" dir="ltr">
                   “I am learning English so I can speak with more confidence. In class, I like to
                   ask questions, try new expressions, and practise with other people. Making a
@@ -451,7 +441,7 @@ export function VoiceProfileForm({
                       ) : null}
                     </Actions>
                     {profile.sampleDurationMs !== null && !capture.sample ? (
-                      <p className="preview-muted">{voiceCopy.voiceSample.replaces}</p>
+                      <p className="workspace-muted">{voiceCopy.voiceSample.replaces}</p>
                     ) : null}
                   </>
                 )}
@@ -493,7 +483,7 @@ export function VoiceProfileForm({
           <Button secondary disabled={busy} onClick={() => setDeleting(false)}>
             Keep voice data
           </Button>
-          <Button disabled={busy} onClick={() => void remove()}>
+          <Button danger disabled={busy} onClick={() => void remove()}>
             {busy ? "Deleting…" : "Delete voice data"}
           </Button>
         </Actions>

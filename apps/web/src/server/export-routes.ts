@@ -22,12 +22,11 @@ import {
   type ExportArtifact,
   enqueueJob,
   errors,
-  type LearnerContext,
   ownedObjectMetadata,
   readPltSettings,
 } from "@recalino/core/plt";
 import { z } from "zod";
-import type { Handler, RequestContext } from "./api";
+import { type Handler, idempotencyKey, learnerActor } from "./api";
 import { exportSettings, getExportDefinition, htmlMediaReader } from "./export-jobs";
 import { runJobsSoon } from "./jobs";
 import { getObjectStore } from "./storage";
@@ -51,13 +50,9 @@ const requestSchema = z.discriminatedUnion("kind", [
     confirmed: z.boolean().optional(),
   }),
 ]);
-function actor(ctx: RequestContext): LearnerContext {
-  if (!ctx.userId) throw errors.unauthenticated();
-  return { userId: ctx.userId, requestId: ctx.requestId };
-}
 export function classExportsHandler(sessionId: string): Handler {
   return async ({ db, ctx, input, request }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     await getSession(db, learner, z.uuid().parse(sessionId));
     if (request.method === "GET") {
       const [html, anki] = await Promise.all([
@@ -142,8 +137,7 @@ export function classExportsHandler(sessionId: string): Handler {
       };
     if (fields.confirmed !== true)
       throw errors.validationFailed({ confirmed: ["export_confirmation_required"] });
-    const key = request.headers.get("idempotency-key");
-    if (!key) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
+    const key = idempotencyKey(request);
     const definition = getExportDefinition(fields.kind);
     if (!definition) throw errors.validationFailed({ exports: ["configuration_unavailable"] });
     const onCreated = async (tx: Tx, artifact: ExportArtifact) => {
@@ -180,7 +174,7 @@ export function classExportsHandler(sessionId: string): Handler {
 }
 export function exportArtifactHandler(kind: string, id: string): Handler {
   return async ({ db, ctx }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const type = kindSchema.parse(kind);
     return {
       body:
@@ -192,7 +186,7 @@ export function exportArtifactHandler(kind: string, id: string): Handler {
 }
 export function exportDownloadHandler(kind: string, id: string): Handler {
   return async ({ db, ctx }) => {
-    const learner = actor(ctx);
+    const learner = learnerActor(ctx);
     const type = kindSchema.parse(kind);
     if (type === "html") await getHtmlExport(db, learner, z.uuid().parse(id));
     else await getAnkiExport(db, learner, z.uuid().parse(id));

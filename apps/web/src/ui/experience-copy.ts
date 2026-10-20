@@ -10,7 +10,8 @@ export const experienceCopy = {
       { title: "Notes", description: "Make sense of what you learnt." },
       { title: "Review", description: "Practise a few cards each day." },
     ],
-    pilotNote: "Class capture, notes and reviews are coming next in the pilot.",
+    // Owner-approved 2026-10-19 (audit batch 5, UX-01), replacing the removed "coming next" note.
+    pilotNote: "Built for a small pilot group. Sign in with Google to start.",
     formTitle: "Set up your learning space",
     exampleEyebrow: "A GLIMPSE OF YOUR NOTES",
     exampleHeading: "A useful moment,\nready to remember.",

@@ -1,4 +1,3 @@
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
 import { errors } from "../plt";
 import type { InputContract } from "./contracts";
@@ -6,6 +5,9 @@ import type { SourceVerifier } from "./service";
 
 /** Passive PDF parser: no rendering, JavaScript, attachments, external resources or eval. */
 export async function extractPdfText(bytes: Uint8Array, maxPages: number, password?: string) {
+  // PERF-01: PDF.js loads its optional Canvas when evaluated. Load it only to read a PDF, so a
+  // function that never parses one neither pays for it at cold start nor needs Canvas.
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const task = getDocument({
     data: new Uint8Array(bytes),
     ...(password ? { password } : {}),

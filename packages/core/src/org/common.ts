@@ -18,14 +18,10 @@ export interface CreateOptions {
 export async function requireReadyAccount(
   db: Database | Tx,
   ctx: LearnerContext,
-  recording = false,
 ): Promise<AccountState> {
   const state = await getAccountState(db, ctx.userId);
   if (!state) throw errors.notFound();
   if (!state.setupComplete) throw errors.validationFailed({ profile: ["setup_incomplete"] });
-  if (recording && state.pending.recordingConsent) {
-    throw errors.validationFailed({ recordingConsent: ["acceptance_required"] });
-  }
   return state;
 }
 

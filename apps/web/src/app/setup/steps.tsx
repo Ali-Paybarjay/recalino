@@ -20,7 +20,8 @@ import {
   LockSimple,
   WarningCircle,
 } from "../../ui/icons";
-import { fill, strings } from "../../ui/strings";
+import { fill } from "../../ui/strings-fill";
+import { setupStrings as strings } from "../../ui/strings-setup";
 import { SaveError } from "./api";
 import { GOAL_LABELS } from "./labels";
 import {

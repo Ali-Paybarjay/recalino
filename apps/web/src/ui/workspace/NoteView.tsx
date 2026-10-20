@@ -10,9 +10,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ContentBlock } from "../components/ContentBlock";
 import { directionOf } from "../direction";
 import { SpeakerHigh } from "../icons";
+import { statusStrings as strings } from "../strings-status";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
-import { requestKey, WorkspaceRequestError, workspaceRequest } from "./api";
+import { requestKey, userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import { notifyAutomaticLearning } from "./automatic-learning";
 import { ClassNotesFrame } from "./ClassNotesFrame";
 import { ClassNotesPlayback } from "./ClassNotesPlayback";
@@ -46,9 +47,9 @@ export function ClaimEvidence({
 }) {
   const evidence = (
     <>
-      <p className="preview-muted">
-        {claim.origin === "from_class" ? "From class" : "AI expansion"}
-        {claim.creation === "user_edit" ? " · Edited by you" : ""}
+      <p className="workspace-muted">
+        {claim.origin === "from_class" ? strings.provenance.class : strings.provenance.ai}
+        {claim.creation === "user_edit" ? ` · ${strings.provenance.edited}` : ""}
         {claim.origin === "from_class"
           ? ` · ${claim.evidence} · Speaker: ${claim.speakerRole}`
           : ""}
@@ -66,13 +67,13 @@ export function ClaimEvidence({
   return collapsed ? (
     <details className={styles.evidence}>
       <summary>
-        {claim.origin === "from_class" ? "Session sources" : "AI explanation"}
+        {claim.origin === "from_class" ? "Session material" : strings.provenance.ai}
         {claim.uncertain ? " · Check this" : ""}
       </summary>
       <div className={styles.evidenceBody}>{evidence}</div>
     </details>
   ) : (
-    <div className="preview-stack">{evidence}</div>
+    <div className="workspace-stack">{evidence}</div>
   );
 }
 
@@ -228,9 +229,7 @@ export function NoteView({
           ? `${issue.name}: session material has changed. Refresh the notes and review the current files before retrying.`
           : reasons.includes("provider_outcome_unresolved")
             ? `${issue.name}: an earlier processing attempt still needs checking. Open session processing before starting another attempt.`
-            : failure instanceof Error
-              ? failure.message
-              : `${issue.name} could not be retried.`;
+            : userMessage(failure, `${issue.name} could not be retried.`);
       setProblem(message);
     } finally {
       recoveryInFlight.current = false;
@@ -241,8 +240,8 @@ export function NoteView({
   function materialIssues() {
     if (!sourceIssues.length) {
       return model && !model.coverage.complete ? (
-        <aside className={styles.issues} aria-label="Source details need checking">
-          <p>Some source details need checking. Open session material to review them.</p>
+        <aside className={styles.issues} aria-label="Material details need checking">
+          <p>Some material details need checking. Open session material to review them.</p>
           <QuietLink disabled={busy} href={`/sessions/${sessionId}/sources`}>
             Review session material
           </QuietLink>
@@ -344,7 +343,7 @@ export function NoteView({
       setNotice("Notes saved.");
       router.refresh();
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Notes could not be saved.");
+      setProblem(userMessage(failure, "Notes could not be saved."));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -392,7 +391,7 @@ export function NoteView({
 
   function claim(claim: Claim) {
     return (
-      <article key={claim.id} className="preview-list-item">
+      <article key={claim.id} className="workspace-list-item">
         <NoteText text={claim.text} lang={explanationLanguage} />
         <ClaimEvidence claim={claim} userId={userId} collapsed />
         {canEdit && editMode && (
@@ -525,7 +524,7 @@ export function NoteView({
                       File {source.order} · <bdi>{source.name}</bdi>
                     </strong>
                   </p>
-                  <p className="preview-muted">
+                  <p className="workspace-muted">
                     {source.status === "ready"
                       ? "Ready"
                       : source.status === "uploading"
@@ -574,7 +573,7 @@ export function NoteView({
                 />
               )}
               <details className={styles.evidence}>
-                <summary>Session sources and explanations</summary>
+                <summary>Session material and explanations</summary>
                 <div className={styles.evidenceBody}>
                   {[
                     ...model.summary,
@@ -605,7 +604,7 @@ export function NoteView({
                     {model.title}
                   </ContentBlock>
                 )}
-                <p className="preview-muted">
+                <p className="workspace-muted">
                   {current
                     ? `Note version ${current.number} · ${new Date(current.createdAt).toLocaleString("en-GB")}`
                     : `Read-only preview · ${new Date(preview?.createdAt ?? "").toLocaleString("en-GB")}`}
@@ -636,7 +635,7 @@ export function NoteView({
                       item.id === legacyPlayback?.itemId &&
                       target === legacyPlayback?.target;
                     return (
-                      <article className="preview-list-item" key={item.id}>
+                      <article className="workspace-list-item" key={item.id}>
                         <ContentBlock as="h3" lang={learningLanguage}>
                           {item.front}
                         </ContentBlock>
@@ -727,18 +726,18 @@ export function NoteView({
                 here and in version history.
               </p>
               {unmatchedClaims.map(([id, value]) => (
-                <article key={id} className="preview-list-item">
+                <article key={id} className="workspace-list-item">
                   <NoteText text={value} />
-                  <p className="preview-muted">Edited by you · Earlier item {id}</p>
+                  <p className="workspace-muted">Edited by you · Earlier item {id}</p>
                 </article>
               ))}
               {unmatchedItems.map(([id, value]) => (
-                <article key={id} className="preview-list-item">
+                <article key={id} className="workspace-list-item">
                   <ContentBlock as="h3" dir="auto">
                     {value.front ?? "Earlier question"}
                   </ContentBlock>
                   <NoteText text={value.back ?? "No answer edit"} />
-                  <p className="preview-muted">Edited by you · Earlier item {id}</p>
+                  <p className="workspace-muted">Edited by you · Earlier item {id}</p>
                 </article>
               ))}
             </Panel>

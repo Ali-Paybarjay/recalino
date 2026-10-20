@@ -26,7 +26,7 @@
 }
 .brand small {
   display: block;
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   font-weight: 400;
   letter-spacing: 0;
   color: var(--rc-text-muted);
@@ -103,7 +103,7 @@
   margin-bottom: 28px;
 }
 .eyebrow {
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }
 .panel {
@@ -233,7 +233,7 @@ textarea.input {
   line-height: 1.75;
 }
 .help {
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
   font-weight: 400;
   line-height: 1.6;
@@ -568,7 +568,7 @@ textarea.input {
     flex: none;
     width: auto;
     padding: 10px 12px;
-    font-size: 13px;
+    font-size: var(--rc-text-sm);
   }
   .navIcon {
     display: none;

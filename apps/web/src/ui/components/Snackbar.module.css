@@ -20,7 +20,7 @@
 
 .message {
   flex: 1;
-  font-size: 15px;
+  font-size: var(--rc-text-md);
 }
 
 .undo {

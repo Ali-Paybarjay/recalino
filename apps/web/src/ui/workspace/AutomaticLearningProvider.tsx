@@ -14,7 +14,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useRecording } from "../recording/RecordingProvider";
-import { workspaceRequest } from "./api";
+import { userMessage, workspaceRequest } from "./api";
 import type { AutomaticLearningStatus, AutomaticUploadProgress } from "./automatic-learning";
 import { scheduleManualAudioChecks, startLearningLoop } from "./automatic-learning-loop";
 import { ManualAudioManager } from "./manual-audio-manager";
@@ -80,9 +80,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
         changed: () => router.refresh(),
         failed: (failure) =>
           setManualProblem(
-            failure instanceof Error
-              ? failure.message
-              : "Saved audio uploads need attention. Check device storage.",
+            userMessage(failure, "Saved audio uploads need attention. Check device storage."),
           ),
       }),
   );
@@ -146,11 +144,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
       if (navigator.onLine)
         void manualManager.kick().catch((failure: unknown) => {
           if (active)
-            setManualProblem(
-              failure instanceof Error
-                ? failure.message
-                : "Saved audio transfers could not be restored.",
-            );
+            setManualProblem(userMessage(failure, "Saved audio transfers could not be restored."));
         });
     };
     const captureChanged = () => {
@@ -171,11 +165,7 @@ export function AutomaticLearningProvider({ children }: { children: ReactNode })
       .then(kick)
       .catch((failure: unknown) => {
         if (active)
-          setManualProblem(
-            failure instanceof Error
-              ? failure.message
-              : "Saved audio transfers could not be restored.",
-          );
+          setManualProblem(userMessage(failure, "Saved audio transfers could not be restored."));
       });
     const unsubscribe = controller.subscribe(captureChanged);
     const stopChecks = scheduleManualAudioChecks(manualManager, kick);
@@ -267,7 +257,7 @@ function ManualAudioIndicator({
             <p role="status">{entry.problem ?? entry.message}</p>
             {audioUploadRetryable(entry.reason) ? (
               // A closed upload never resumes; its message names the next step instead.
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 You can use other pages. If your browser closes or pauses, the saved original
                 resumes when you return.
               </p>

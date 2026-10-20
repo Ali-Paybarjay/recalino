@@ -182,7 +182,7 @@ export function ClassDirectory({
         <section className={styles.classes} aria-label="Session list">
           <div className={styles.listHeading}>
             <h2>{allCourses ? "All sessions" : "Sessions"}</h2>
-            <p className="preview-muted">Most recent first · Select a session to see more</p>
+            <p className="workspace-muted">Most recent first · Select a session to see more</p>
           </div>
           {sessions.length ? (
             <ClassRows sessions={sessions} courses={courses} units={units} />
@@ -195,7 +195,7 @@ export function ClassDirectory({
           )}
           {sessions.length ? (
             <div className={styles.listFooter}>
-              <p className="preview-muted" role="status" aria-live="polite">
+              <p className="workspace-muted" role="status" aria-live="polite">
                 {sessions.length} of {total} {total === 1 ? "session" : "sessions"}
               </p>
               {error ? <p role="alert">{error}</p> : null}
@@ -250,7 +250,7 @@ export function ClassDirectory({
               </LinkButton>
             ) : null}
             <LinkButton secondary href="/courses">
-              View courses
+              Manage courses
             </LinkButton>
           </Actions>
         </details>

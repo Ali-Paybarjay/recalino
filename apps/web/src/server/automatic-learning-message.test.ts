@@ -1,6 +1,20 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { uploadCopy } from "../ui/workspace/upload-copy";
 import { automaticLearningMessage } from "./automatic-learning";
+
+const PAUSED_WHILE_CHECKED =
+  "Processing is paused while a result is checked. Your earlier notes and cards are available. Contact the pilot operator before retrying.";
+// The section of the register where the owner's approval of 2026-10-20 (D101) is recorded.
+const register = (() => {
+  const text = readFileSync(
+    resolve(import.meta.dirname, "../../../../docs/design/UI_COPY_PENDING.md"),
+    "utf8",
+  );
+  const start = text.indexOf("## تأیید 2026-10-20");
+  return start < 0 ? "" : text.slice(start, text.indexOf("\n## ", start + 1));
+})();
 
 describe("automatic creation recovery guidance", () => {
   it.each([
@@ -47,7 +61,7 @@ describe("automatic creation recovery guidance", () => {
         available: units({ audio: 4162, document: 77 }),
       }),
     ).toBe(
-      "Your material is saved, but this class needs more allowance than is left. Class audio: 127 min 56 sec needed, 69 min 22 sec left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
+      "Your material is saved, but this session needs more allowance than is left. Class audio: 127 min 56 sec needed, 69 min 22 sec left. Ask the pilot operator for more allowance or select less material, then retry. You do not need to upload the same files again.",
     );
     expect(
       automaticLearningMessage("blocked", "quota_insufficient", {
@@ -74,7 +88,7 @@ describe("automatic creation recovery guidance", () => {
         required: units({ audio: 0, regeneration: 1 }),
         available: units({ audio: 10, regeneration: 1 }),
       }),
-    ).toContain("Your allowance now covers this class. Retry");
+    ).toContain("Your allowance now covers this session. Retry");
   });
 
   it("keeps learner-unit shortage guidance separate from AI spending", () => {
@@ -96,9 +110,30 @@ describe("automatic creation recovery guidance", () => {
     },
   );
 
-  it("does not promise automatic retry for an uncertain paid outcome", () => {
-    expect(automaticLearningMessage("blocked", "provider_outcome_unknown")).toContain(
-      "Contact the operator before retrying",
-    );
+  // UX-05: the sentence the owner approved word for word on 2026-10-20 (D101), without the
+  // internal word "provider"; recorded in docs/design/UI_COPY_PENDING.md.
+  it.each([
+    "provider_outcome_unresolved",
+    "provider_outcome_unknown",
+    "provider_timestamps_invalid",
+  ])("does not promise automatic retry for an uncertain paid outcome (%s)", (code) => {
+    const message = automaticLearningMessage("blocked", code);
+    expect(message).toBe(PAUSED_WHILE_CHECKED);
+    expect(message).toContain("Contact the pilot operator before retrying");
+    expect(register).toContain(`«${message}»`);
+  });
+
+  it("names no internal word in a message the learner reads", () => {
+    const codes = [
+      null,
+      "provider_outcome_unresolved",
+      "provider_outcome_unknown",
+      "provider_timestamps_invalid",
+      "provider_http_400",
+      "provider_request_schema_too_complex",
+      "provider_schema_unsupported",
+    ];
+    for (const code of codes)
+      expect(automaticLearningMessage("blocked", code), String(code)).not.toMatch(/provider/i);
   });
 });

@@ -338,7 +338,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
       {ready ? (
         children
       ) : (
-        <main id="content" className="preview-focus" aria-busy="true">
+        <main id="content" className="workspace-focus" aria-busy="true">
           <p role="status">Opening your sample workspace…</p>
         </main>
       )}

@@ -75,6 +75,26 @@ export async function getAutomaticLearningSession(
   const row = await owned(db, ctx, sessionId);
   return row ? view(row) : null;
 }
+/**
+ * PERF-04: the intents of many sessions in one owner-scoped read, keyed by session. A foreign or
+ * deleted session is omitted, as getAutomaticLearningSession would refuse it.
+ */
+export async function listAutomaticLearningSessions(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  sessionIds: readonly string[],
+): Promise<Map<string, AutomaticLearningSession>> {
+  const ids = [...new Set(sessionIds)].filter((id) => z.uuid().safeParse(id).success);
+  if (!ids.length) return new Map();
+  const rows = await db
+    .selectFrom("proc.automatic_session")
+    .selectAll()
+    .where("user_id", "=", ctx.userId)
+    .where("session_id", "in", ids)
+    .where("session_id", "in", liveSessionIdsQuery(db).where("owner_id", "=", ctx.userId))
+    .execute();
+  return new Map(rows.map((row) => [row.session_id, view(row)]));
+}
 /** An ordinary sync initializes intent once; learner mutations explicitly increment it. */
 export async function requestAutomaticLearning(
   db: Database | Tx,

@@ -9,6 +9,7 @@ import {
 } from "../org";
 import {
   AppError,
+  anonymiseAuditActors,
   assertOwner,
   enqueueJob,
   errors,
@@ -88,14 +89,6 @@ export async function persistDeletionJournal(
     relatedSessions: row.related_sessions,
     requestedAt: request.requestedAt,
   });
-}
-/** Source retries may find their receipt after SRC has already become inaccessible. */
-export async function getSourceDeletionRequest(
-  db: Database,
-  ctx: LearnerContext,
-  sourceId: string,
-): Promise<PrivacyDeletionRequest | null> {
-  return findPrivacyDeletionRequest(db, ctx, "source", sourceId);
 }
 export async function findPrivacyDeletionRequest(
   db: Database,
@@ -417,7 +410,12 @@ export function privacyCleanupJob(
           await cleanupAccountOrg(job.db, ctx, job.now());
         }
         if (request.kind === "account" && authentication) {
-          await job.db.transaction().execute((tx) => purgeAccountProfile(tx, ctx));
+          // SEC-07 (D95): the audit trail keeps what happened, not who the deleted account was.
+          // The id leaves it with the profile, before the identity; sessions are already revoked.
+          await job.db.transaction().execute(async (tx) => {
+            await purgeAccountProfile(tx, ctx);
+            await anonymiseAuditActors(tx, [ctx.userId]);
+          });
           await job.step("delete_auth", async () => authentication.deleteIdentity(ctx.userId));
         }
         await job.db

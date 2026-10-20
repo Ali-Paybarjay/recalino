@@ -7,6 +7,8 @@
 
 **Client secret را هرگز در چت یا فایل‌های مخزن ننویسید.** فقط در فایل `.env` گام ۷ قرار می‌گیرد و git آن را نادیده می‌گیرد.
 
+**مقدارهای Auth ابری (Site URL، Redirect URLs، provider) و گام بازسازی آن‌ها در [CLOUD_AUTH_CONFIG.md](CLOUD_AUTH_CONFIG.md) ثبت می‌شوند. `supabase config push` ابر را با مقدارهای localhost می‌نویسد و فقط با اجازهٔ صریح مالک محصول اجرا می‌شود.**
+
 ## گام‌ها
 
 1. **ورود و ساخت پروژه:**

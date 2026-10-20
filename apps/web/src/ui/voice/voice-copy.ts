@@ -61,15 +61,16 @@ export const voiceCopy = {
       "This session was a voice reference earlier. Newer confirmed sessions or your current voice sample now take its place.",
   },
   // One confirmation per class and line-level choices (D64). The product owner approved these
-  // fifteen texts verbatim on 2026-10-13 (D65 review).
-  classHeading: "Your voice in this class",
+  // fifteen texts verbatim on 2026-10-13 (D65 review). Four of them say "session" instead of
+  // "class" since the owner's vocabulary decision A of 2026-10-19 (UI_COPY_PENDING.md).
+  classHeading: "Your voice in this session",
   classIntro:
-    "Recalino matched the same voices across this class's recordings. Confirm your voice once for the whole class.",
+    "Recalino matched the same voices across this session's recordings. Confirm your voice once for the whole session.",
   heardIn: "Heard in {count} of {total} recordings",
   ambiguous:
     "This voice sounded like more than one voice in another recording, so those recordings were not joined. Check them separately below.",
-  classConfirmed: "Your voice is confirmed for this whole class.",
-  coveredByClass: "Your choice for the whole class above covers this recording.",
+  classConfirmed: "Your voice is confirmed for this whole session.",
+  coveredByClass: "Your choice for the whole session above covers this recording.",
   shortVoices: "Short voices ({count})",
   shortVoicesDetail:
     "These voices have too little clear speech to suggest. Choose one only if you recognise it.",

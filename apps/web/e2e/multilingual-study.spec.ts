@@ -176,9 +176,9 @@ for (const value of MULTILINGUAL_STUDY_CASES) {
       await page.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth),
     ).toBe(true);
     // D79: one queue; the recognition card follows the core card without choosing a set.
-    await expect(page.getByText("Core · production", { exact: true })).toBeVisible();
+    await expect(page.getByText("Core cards", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Remembered", exact: true }).click();
-    await expect(page.getByText("Supplementary · recognition", { exact: true })).toBeVisible();
+    await expect(page.getByText("Supplementary cards", { exact: true })).toBeVisible();
     await expect(face).toContainText("normal use");
     await expect(face).not.toContainText(value.meaning);
     await expect(face.locator("hr")).toHaveCount(0);
@@ -246,7 +246,11 @@ test("unlisted and repeated fixture languages retain the guarded Persian referen
     ).toHaveCount(0);
     await expect(frame.locator("script")).toHaveCount(1);
     expect(await frame.locator("script").textContent()).toBe(NOTE_PRONUNCIATION_BRIDGE);
-    const nonce = await frame.locator("script").getAttribute("nonce");
+    // SEC-03: the srcdoc frame inherits the page's header-delivered CSP, so Chrome hides the
+    // nonce attribute once the script is connected (HTML nonce hiding); the element keeps it.
+    const nonce = await frame
+      .locator("script")
+      .evaluate((script) => (script as HTMLScriptElement).nonce);
     expect(nonce).toMatch(/^[a-zA-Z0-9_-]{10,100}$/);
     await expect(frame.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
       "content",

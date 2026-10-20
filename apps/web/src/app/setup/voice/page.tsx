@@ -1,4 +1,4 @@
-import "../../../ui/preview/preview.css";
+import "../../../ui/workspace/workspace.css";
 import { requireLearner } from "../../../server/auth/learner";
 import { VoiceSetup } from "./VoiceSetup";
 

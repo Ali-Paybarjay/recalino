@@ -268,6 +268,7 @@ SPIKE-05 هم در همین milestone اجرا می‌شود: فرض‌های AD
     - روش بازنده در `VercelBlobStore.compose`
     - `ffmpeg-static`، همراه `allowBuilds` و تنظیمات `next.config.ts`
     - `pg-boss` در ریشه. `pg` و `@types/pg` در ریشه می‌مانند، چون آزمون یکپارچه `tools/db-url` آن‌ها را به کار می‌برد (T10).
+  - *به‌روزرسانی 2026-10-19 (ممیزی 2026-10-18، SEC-02):* کد spike از اپ و مخزن حذف شد: `tools/spikes/`، مسیر `/dev/spike/[action]` و `ROUTES.spike`، `server/spike.ts`، `server/spike-jobs.ts` (`spikeJobDefinitions`)، `plt/spike.ts`، ورودی `/dev/spike/**` در `next.config.ts`، نوشتن `RECALINO_SPIKE` در `tools/configure-runtime-env.mjs` و استثناهای spike در `tools/env-example.test.ts`. بررسی شش‌ساعتهٔ voice-runtime با `VOICE_RELEASE_CHECK_TOKEN` هم همراه مسیر حذف شد. `ffmpeg-static` حذف نمی‌شود، چون decoder تولیدی `audio-preparer` است. هنوز باز: `pg-boss` در ریشه (تصمیم مالک)، روش بازنده در `VercelBlobStore.compose`، و کارهای Vercel و کامپیوتر در ادامه.
   - **در Vercel:** حذف `RECALINO_SPIKE` و `SPIKE_TOKEN`، و باطل کردن bypass.
   - **روی کامپیوتر:**
     - حذف پوشه `.recalino-spike`، همراه `database-url.txt`.

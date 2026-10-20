@@ -5,6 +5,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CardsView } from "./CardsView";
+import { undoOffer } from "./card-actions";
+import { cardActionsCopy } from "./card-actions-copy";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 
@@ -105,5 +107,79 @@ describe("flashcard next actions", () => {
     });
     expect(html).toContain("These notes contain no learning items for flashcards.");
     expect(html).not.toContain("Prepare cards");
+  });
+});
+
+describe("rejecting a suggested card (UX-03)", () => {
+  const rejected: StudyCard = { ...candidate, status: "rejected", contentVersion: 2 };
+
+  it("offers Reject, and shows no Undo message until a card was rejected", () => {
+    const html = render({ notebook, initial: [candidate] });
+    expect(html).toContain("Reject");
+    expect(html).not.toContain(cardActionsCopy.rejected);
+    expect(html).not.toContain(">Undo<");
+  });
+
+  it("keeps Reject out of the way of the confirming action", () => {
+    const html = render({ notebook, initial: [candidate] });
+    expect(html.indexOf("Confirm and add")).toBeLessThan(html.indexOf("Reject"));
+  });
+
+  it("says the approved words after a rejection, and the card says it is rejected", () => {
+    expect(cardActionsCopy.rejected).toBe("Card rejected");
+    const html = render({ notebook, initial: [rejected] });
+    expect(html).toContain("Rejected");
+    expect(html).not.toContain("Confirm and add");
+  });
+
+  it("offers Undo only for a rejection that worked and never while a session is recorded", () => {
+    expect(undoOffer("reject", rejected, false)).toBe(rejected);
+    expect(undoOffer("reject", rejected, true)).toBeNull();
+    expect(undoOffer("reject", undefined, false)).toBeNull();
+    expect(undoOffer("activate", { ...candidate, status: "active" }, false)).toBeNull();
+  });
+});
+
+// UX-05: a card says what it is in words, never the stored value.
+describe("what a card says about itself (UX-05)", () => {
+  it.each([
+    ["candidate", "Suggested · Question and answer"],
+    ["active", "In your review queue · Question and answer"],
+    ["suspended", "Suspended · Question and answer"],
+    ["known", "Known · Question and answer"],
+    ["rejected", "Rejected · Question and answer"],
+  ] as const)("shows a %s card as %s", (status, text) => {
+    const html = render({ notebook, initial: [{ ...candidate, status }] });
+    expect(html).toContain(`>${text}<`);
+    for (const raw of [
+      "candidate ·",
+      "· forward ·",
+      "· basic",
+      "forward",
+      "production",
+      "recognition",
+    ])
+      expect(html).not.toContain(raw);
+  });
+
+  it("names the card type and importance", () => {
+    const html = render({
+      notebook,
+      initial: [{ ...candidate, status: "active", template: "correction", important: true }],
+    });
+    expect(html).toContain(">In your review queue · Error correction · Important<");
+  });
+
+  it("names the study sets with the approved words of Your learning", () => {
+    const html = render({
+      notebook,
+      initial: [
+        { ...candidate, status: "active", studySet: "production", studyPosition: 1 },
+        { ...candidate, id: "card-2", status: "active", studySet: "recognition", studyPosition: 2 },
+      ],
+    });
+    expect(html).toContain("Core cards (1)");
+    expect(html).toContain("Supplementary cards (1)");
+    expect(html).not.toMatch(/Core · production|Supplementary · recognition/);
   });
 });

@@ -2,9 +2,15 @@
 import type { StudyCard } from "@recalino/core/card";
 import type { Notebook } from "@recalino/core/note";
 import { useEffect, useRef, useState } from "react";
+import { Snackbar } from "../components/Snackbar";
+import { XCircle } from "../icons";
+import { useCaptureQuiet } from "../recording/RecordingProvider";
 import { AutomaticLearningNotice } from "./AutomaticLearningView";
-import { requestKey, workspaceRequest } from "./api";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { CardFace } from "./CardFace";
+import { cardActionBody, undoBody, undoOffer } from "./card-actions";
+import { cardActionsCopy } from "./card-actions-copy";
+import { cardSummary, studySetLabel } from "./card-labels";
 import { ClaimEvidence } from "./NoteView";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 
@@ -56,8 +62,11 @@ export function CardsView({
     groups.find((group) => group.cards.length);
   const visibleCards = grouped ? (activeGroup?.cards ?? []) : cards;
   useEffect(() => setCards(initial), [initial]);
-  async function accept(card: StudyCard, action: "activate" | "reject") {
-    const body = { expectedVersion: card.contentVersion, action, confirmQuality: true };
+  // UX-03: Reject can be taken back for a few seconds. Nothing pops up while a session is being
+  // recorded (PRD-REC-02); the card itself still says "Rejected" and can be undone from its page.
+  const [undo, setUndo] = useState<StudyCard | null>(null);
+  const recordingQuietly = useCaptureQuiet();
+  async function change(card: StudyCard, body: ReturnType<typeof cardActionBody>) {
     setBusy(true);
     setProblem("");
     try {
@@ -69,14 +78,23 @@ export function CardsView({
       );
       setCards((items) => items.map((item) => (item.id === changed.id ? changed : item)));
       key.current = null;
+      return changed;
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "Card could not be changed.");
+      setProblem(userMessage(failure, "Card could not be changed."));
     } finally {
       setBusy(false);
     }
   }
+  async function accept(card: StudyCard, action: "activate" | "reject") {
+    setUndo(null);
+    setUndo(undoOffer(action, await change(card, cardActionBody(card, action)), recordingQuietly));
+  }
+  async function undoReject(rejected: StudyCard) {
+    setUndo(null);
+    await change(rejected, undoBody(rejected));
+  }
   return (
-    <div className="preview-stack">
+    <div className="workspace-stack">
       <Actions>
         <LinkButton disabled={busy} secondary href={`/sessions/${sessionId}/notes`}>
           Session notes
@@ -104,11 +122,7 @@ export function CardsView({
                   aria-pressed={activeGroup?.set === group.set}
                   onClick={() => setSelectedSet(group.set)}
                 >
-                  {group.set === "production"
-                    ? "Core · production"
-                    : group.set === "recognition"
-                      ? "Supplementary · recognition"
-                      : "Other cards"}
+                  {studySetLabel(group.set)}
                   {` (${group.cards.length})`}
                 </Button>
               ))}
@@ -124,12 +138,9 @@ export function CardsView({
           </p>
         ) : (
           visibleCards.map((card) => (
-            <article key={card.id} className="preview-list-item">
+            <article key={card.id} className="workspace-list-item">
               <CardPreview card={card} userId={userId} />
-              <p className="preview-muted">
-                {card.status} · {card.direction} · {card.template}
-                {card.important ? " · Important" : ""}
-              </p>
+              <p className="workspace-muted">{cardSummary(card)}</p>
               <Actions>
                 <LinkButton secondary href={`/cards/${card.id}`}>
                   Edit card
@@ -149,6 +160,15 @@ export function CardsView({
           ))
         )}
       </Panel>
+      {undo ? (
+        <Snackbar
+          key={`${undo.id}:${undo.contentVersion}`}
+          icon={XCircle}
+          message={cardActionsCopy.rejected}
+          onUndo={() => void undoReject(undo)}
+          onDismiss={() => setUndo(null)}
+        />
+      ) : null}
     </div>
   );
 }

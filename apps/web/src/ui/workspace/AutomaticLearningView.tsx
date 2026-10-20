@@ -1,15 +1,19 @@
 "use client";
 import Link from "next/link";
 import { type ReactNode, useRef, useState, useSyncExternalStore } from "react";
+import { settingsStrings as strings } from "../strings-settings";
 import { useAutomaticLearning } from "./AutomaticLearningProvider";
 import styles from "./AutomaticLearningView.module.css";
-import { requestKey, workspaceRequest } from "./api";
+import { useAccountGate } from "./account-gate";
+import { requestKey, userMessage, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
+import { NotificationInvite } from "./NotificationInvite";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { uploadRetryCanHelp } from "./session-state";
+import { openTermsNotice } from "./terms-notice-event";
 import { useUploadBatches } from "./UploadProvider";
 
 export function subscribeConnection(changed: () => void) {
@@ -22,6 +26,12 @@ export function subscribeConnection(changed: () => void) {
 }
 export const connectionSnapshot = () => navigator.onLine;
 export const connectedServerSnapshot = () => true;
+
+/** No new Terms wait and setup is done, so a stop for `acceptance_required` is out of date. */
+function useTermsAccepted() {
+  const gate = useAccountGate();
+  return gate.setupComplete && !gate.termsPending;
+}
 
 type Recovery = ReturnType<typeof automaticLearningRecovery>;
 
@@ -46,6 +56,9 @@ function allowanceLinks(sessionId: string, { allowance, lessMaterial }: Recovery
 
 function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: Recovery }) {
   const { kind } = recovery;
+  // New Terms stop processing; the way on is the Terms sheet, not setup (UX-09).
+  if (kind === "setup")
+    return <Button onClick={() => openTermsNotice()}>{strings.settings.readAndAccept}</Button>;
   const links =
     kind === "allowance"
       ? allowanceLinks(sessionId, recovery)
@@ -58,9 +71,7 @@ function RecoveryLinks({ sessionId, recovery }: { sessionId: string; recovery: R
           ]
         : kind === "material"
           ? [{ href: `/sessions/${sessionId}/sources`, label: "Review material" }]
-          : kind === "setup"
-            ? [{ href: "/setup", label: "Review account setup" }]
-            : [];
+          : [];
   return links.map(({ href, label }, index) => (
     <LinkButton key={href} href={href} secondary={index > 0}>
       {label}
@@ -132,7 +143,7 @@ export function useLearningRetry(sessionId: string, live: ReturnType<typeof useA
         );
       }
     } catch (failure) {
-      setProblem(failure instanceof Error ? failure.message : "This attempt could not be resumed.");
+      setProblem(userMessage(failure, "This attempt could not be resumed."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -157,11 +168,7 @@ export function useLearningRetry(sessionId: string, live: ReturnType<typeof useA
       setFeedback("Your processing review request is recorded. You can follow its status below.");
       notifyAutomaticLearning(sessionId);
     } catch (failure) {
-      setProblem(
-        failure instanceof Error
-          ? failure.message
-          : "The processing review could not be requested. Try again.",
-      );
+      setProblem(userMessage(failure, "The processing review could not be requested. Try again."));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -199,7 +206,8 @@ function LearningStatusCard({
   children: ReactNode;
 }) {
   const batches = useUploadBatches(sessionId);
-  const progress = learningProgress(status, batches, live.uploadProgress);
+  const termsAccepted = useTermsAccepted();
+  const progress = learningProgress(status, batches, live.uploadProgress, termsAccepted);
   const online = useSyncExternalStore(
     subscribeConnection,
     connectionSnapshot,
@@ -292,6 +300,7 @@ function LearningStatusCard({
               {status.message}
             </p>
           ) : null}
+          {progress.showsWait && !attention ? <NotificationInvite /> : null}
         </>
       )}
       <div className={styles.cardActions}>
@@ -314,7 +323,8 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const batches = useUploadBatches(sessionId);
   const { status, problem } = live;
   const retry = useLearningRetry(sessionId, live);
-  const recovery = automaticLearningRecovery(status);
+  const termsAccepted = useTermsAccepted();
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const fallback: AutomaticLearningStatus = {
@@ -328,7 +338,12 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
     notesReady: false,
     cardsReady: false,
   };
-  const progress = learningProgress(status ?? fallback, batches, live.uploadProgress);
+  const progress = learningProgress(
+    status ?? fallback,
+    batches,
+    live.uploadProgress,
+    termsAccepted,
+  );
   if (
     !problem &&
     (!status || status.state === "idle") &&
@@ -400,12 +415,13 @@ export function AutomaticLearningView({
   const stoppedUpload = live.manualAudio?.find(
     (entry) => entry.phase === "attention" && uploadRetryCanHelp(entry),
   );
-  const recovery = automaticLearningRecovery(status);
+  const termsAccepted = useTermsAccepted();
+  const recovery = automaticLearningRecovery(status, termsAccepted);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
   return (
-    <div className="preview-stack">
-      <Link className="preview-back" href={`/sessions/${sessionId}`}>
+    <div className="workspace-stack">
+      <Link className="workspace-back" href={`/sessions/${sessionId}`}>
         ← Back to session
       </Link>
       <LearningStatusCard
@@ -425,9 +441,7 @@ export function AutomaticLearningView({
                 void live
                   .retryManualAudio(stoppedUpload.runId)
                   .catch((failure: unknown) =>
-                    setUploadProblem(
-                      failure instanceof Error ? failure.message : "The upload could not resume.",
-                    ),
+                    setUploadProblem(userMessage(failure, "The upload could not resume.")),
                   );
               }}
             >
@@ -487,7 +501,7 @@ export function AutomaticLearningView({
               {review?.state === "resolved"
                 ? review.partialResult
                   ? // Approved by the product owner on 2026-10-10.
-                    "Your session notes and flashcards are available with some source limitations. Open the notes to see what could not be processed."
+                    "Your session notes and flashcards are available with some material limitations. Open the notes to see what could not be processed."
                   : "Processing has finished. Your session notes and flashcards are ready."
                 : review?.state === "retrying"
                   ? "Processing is continuing with your saved material. You will receive a notification when the result is ready."
@@ -503,7 +517,7 @@ export function AutomaticLearningView({
               </Button>
             ) : null}
             {!review ? (
-              <p className="preview-muted">
+              <p className="workspace-muted">
                 No failed session attempt is available to attach yet. Check the current status
                 again.
               </p>

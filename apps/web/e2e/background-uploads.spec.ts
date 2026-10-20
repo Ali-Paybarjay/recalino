@@ -259,7 +259,13 @@ async function selectAndSend(page: Page, sessionId: string, bytes: Buffer) {
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(queueTitle).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Session sources", exact: true })).toBeVisible();
+  // The page title is "Session material" too (vocabulary A, D86): the list is the panel of that
+  // name in the material section.
+  await expect(
+    page
+      .locator("#session-material")
+      .getByRole("heading", { level: 2, name: "Session material", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("synthetic-background.pdf", { exact: true }).first()).toBeVisible();
 }
 for (const viewport of [

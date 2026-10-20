@@ -41,5 +41,19 @@
       "mcp__claude_ai_Supabase__generate_typescript_types",
       "mcp__claude_ai_Supabase__execute_sql"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__Supabase__execute_sql|mcp__claude_ai_Supabase__execute_sql",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/data-loss-guard.ts\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

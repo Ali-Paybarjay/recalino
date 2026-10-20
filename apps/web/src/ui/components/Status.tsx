@@ -22,7 +22,8 @@ import {
   WarningCircle,
   XCircle,
 } from "../icons";
-import { fill, strings } from "../strings";
+import { fill } from "../strings-fill";
+import { statusStrings as strings } from "../strings-status";
 import { ContentBlock } from "./ContentBlock";
 import { Icon, type IconComponent } from "./Icon";
 import styles from "./Status.module.css";

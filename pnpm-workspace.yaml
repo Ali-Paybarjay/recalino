@@ -6,10 +6,17 @@ packages:
 allowBuilds:
   # Downloads the pinned Supabase CLI binary used by the db:* scripts.
   supabase: true
-  # SPIKE-05 only (M4, T5): downloads a static ffmpeg for the platform. Removed with the spike.
+  # Downloads the platform's static ffmpeg: the production decoder of the recording verifier and
+  # the audio preparer (apps/web/src/server/audio-preparer.ts). Not a spike-only package.
   ffmpeg-static: true
   # Pinned tsx operator runtime uses esbuild's platform binary.
   esbuild: true
+
+# Release cooldown (OPS-12): a package version published less than 24 hours (1440 minutes) ago is
+# not selected. pnpm 12 applies 1440 minutes without this key, but not strictly; the explicit value
+# makes the policy visible and strict (an immature version is refused, not silently added to the
+# exclude list). The exclude list below exempts only those exact versions, never a whole package.
+minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
   - '@biomejs/biome@2.5.15'
@@ -43,3 +50,14 @@ minimumReleaseAgeExclude:
 
 # Record exact versions in package.json (PROJECT_SPEC §3).
 saveExact: true
+
+# Security overrides (audit SEC-10, 2026-10-19). pnpm 12 reads overrides only from this file,
+# not from the "pnpm" field of package.json. source-map-js below 1.2.2 has GHSA-68fv-2mgg-jv7q;
+# it reaches the build through next > postcss. Remove the entry once next ships 1.2.2 or later.
+overrides:
+  source-map-js: 1.2.2
+
+# A dependency whose `engines` rules out the running Node.js fails the install instead of warning.
+# The repository's own Node range (>=24 <25) is in package.json `engines` and .nvmrc; pnpm does not
+# enforce a workspace's own `engines.node`.
+engineStrict: true

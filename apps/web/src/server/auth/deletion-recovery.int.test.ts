@@ -25,6 +25,11 @@ vi.mock("next/navigation", () => ({
   },
 }));
 const db = orgTestDatabase();
+function fakeIdentity(userId: string) {
+  const auth = fakeAuth().gateway;
+  auth.currentUser = async () => ({ id: userId });
+  return auth;
+}
 const dependencies: PrivacyDependencies = {
   hooks: [
     {
@@ -51,9 +56,11 @@ it("verified hidden owners recover their one pending receipt while learner pages
   const fixture = await orgFixture(db);
   const receipt = await requestAccountDeletion(db, fixture.actor, randomUUID(), dependencies);
   identity.current = fixture.owner;
+  // No durable receipt was written for this request, so the learner still has to confirm it.
   expect(await getPendingAccountDeletion()).toEqual({
     userId: fixture.owner,
     requestId: receipt.id,
+    stage: "journal_unsaved",
   });
   await expect(requireLearner("/today")).rejects.toThrow("Redirect:/deletion");
   await expect(WelcomePage({ searchParams: Promise.resolve({}) })).rejects.toThrow(
@@ -78,6 +85,34 @@ it("verified hidden owners recover their one pending receipt while learner pages
     .where("user_id", "=", fixture.owner)
     .execute();
   expect(requests).toHaveLength(1);
+});
+
+it("a saved receipt reads as in progress, and a stopped cleanup as waiting for the operator (UX-10)", async () => {
+  const fixture = await orgFixture(db);
+  const receipt = await requestAccountDeletion(db, fixture.actor, randomUUID(), dependencies);
+  identity.current = fixture.owner;
+  await db
+    .insertInto("ops.deletion_journal")
+    .values({
+      request_id: receipt.id,
+      request_hash: "a".repeat(64),
+      key_id: "test-key",
+      requested_at: new Date(),
+      state: "deleted",
+      deleted_at: new Date(),
+    })
+    .execute();
+  expect((await pendingAccountDeletion(fakeIdentity(fixture.owner), () => db))?.stage).toBe(
+    "in_progress",
+  );
+  await db
+    .updateTable("priv.deletion_request")
+    .set({ state: "needs_operator" })
+    .where("id", "=", receipt.id)
+    .execute();
+  expect((await pendingAccountDeletion(fakeIdentity(fixture.owner), () => db))?.stage).toBe(
+    "needs_operator",
+  );
 });
 
 it("live accounts, other identities and completed receipts cannot enter recovery", async () => {

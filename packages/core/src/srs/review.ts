@@ -15,9 +15,9 @@ import { getAccountState, lockAccount } from "../acc";
 import {
   getActiveCard,
   getCard,
-  isCardReviewable,
   learningItemIdsForOwnedCards,
   listCards,
+  reviewableCardIds,
   type StudyCard,
 } from "../card";
 import type { Database, DB, Tx } from "../db";
@@ -26,6 +26,7 @@ import {
   canonicalJson,
   errors,
   type LearnerContext,
+  parseSnapshot,
   readPltSettings,
   resolveTimeZone,
   sha256Hex,
@@ -81,6 +82,17 @@ const storedCardSchema = z.object({
   lapses: z.number(),
   state: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   last_review: z.iso.datetime().optional(),
+});
+/**
+ * `srs.review_event.before_state` / `after_state`: a CardSchedule saved as JSON (QUA-05). Replay
+ * reads its version and due time, undo its FSRS state (decoded by storedCardSchema) and
+ * introduction time, which stays optional as undo already treated a missing one as null.
+ */
+export const storedScheduleSchema = z.looseObject({
+  version: z.number().int().nonnegative(),
+  dueAt: z.iso.datetime(),
+  state: z.unknown(),
+  introducedAt: z.iso.datetime().nullable().optional(),
 });
 function decodeState(value: unknown): FsrsCard {
   return TypeConvert.card(storedCardSchema.parse(value) as CardInput);
@@ -228,16 +240,16 @@ export async function cardsOfferedForReview(
   const local = settledRead(reads[1]);
   const events = await todayEvents(db, ctx, local.day);
   const schedules = new Map(rows.map((row) => [row.card_id, schedule(row)]));
-  const offered = new Set<string>();
-  for (const card of active) {
+  const candidates = active.filter((card) => {
     const current = schedules.get(card.id);
-    if (!current?.introducedAt || new Date(current.dueAt).getTime() > now.getTime()) continue;
-    const buried = events.some(
+    if (!current?.introducedAt || new Date(current.dueAt).getTime() > now.getTime()) return false;
+    return !events.some(
       (event) => event.learning_item_id === card.learningItemId && event.card_id !== card.id,
     );
-    if (!buried && (await isCardReviewable(db, ctx, card))) offered.add(card.id);
-  }
-  return offered;
+  });
+  // PERF-02: one owner-scoped media read for every listening card, not one per card.
+  const reviewable = await reviewableCardIds(db, ctx, candidates);
+  return new Set(candidates.filter((card) => reviewable.has(card.id)).map((card) => card.id));
 }
 export async function getReviewQueue(
   db: Database | Tx,
@@ -274,8 +286,10 @@ export async function getReviewQueue(
   const future: number[] = [];
   let buriedSiblings = 0;
   let hasCards = false;
+  // PERF-02: one owner-scoped media read for every listening card, not one per card.
+  const reviewable = await reviewableCardIds(db, ctx, cards);
   for (const card of cards) {
-    if (!(await isCardReviewable(db, ctx, card))) continue;
+    if (!reviewable.has(card.id)) continue;
     hasCards = true;
     const current = schedules.get(card.id) ?? fresh(card);
     const siblings = reviewedItems.get(card.learningItemId);
@@ -343,7 +357,7 @@ export async function submitReview(
       assertOwner({ ownerId: replay.user_id }, ctx);
       await getCard(tx, ctx, replay.card_id);
       if (replay.request_hash !== hash) throw errors.idempotencyMismatch();
-      const after = replay.after_state as unknown as CardSchedule;
+      const after = parseSnapshot(storedScheduleSchema, replay.after_state);
       return {
         eventId: replay.id,
         cardId: replay.card_id,
@@ -495,7 +509,7 @@ export async function undoReview(
       row.version !== event.expected_version + 1
     )
       throw errors.conflict();
-    const before = event.before_state as unknown as CardSchedule;
+    const before = parseSnapshot(storedScheduleSchema, event.before_state);
     const restored = decodeState(before.state);
     const version = row.version + 1;
     await tx

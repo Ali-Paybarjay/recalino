@@ -36,6 +36,17 @@ export type AdminView =
   | "settings";
 export type Dimension = "audio" | "document" | "regeneration" | "tts" | "storage";
 export type QuotaAmounts = Record<Dimension, number>;
+/**
+ * PRD-03 (decision 9 option A, D96): when a learner first reached each pilot step, from
+ * ops.admin_user_progress. Dates only, never content; null until the step happens.
+ */
+export type PilotProgress = {
+  firstSignInAt: string | null;
+  setupCompletedAt: string | null;
+  firstRecordingAt: string | null;
+  firstProcessedAt: string | null;
+  firstReviewAt: string | null;
+};
 export type AdminUser = {
   id: string;
   name: string | null;
@@ -44,6 +55,8 @@ export type AdminUser = {
   pilot: boolean;
   quotaActive: boolean;
   welcomeState: string;
+  /** Read for the users list and one user; the console shows it as dated columns (D98). */
+  progress?: PilotProgress;
 };
 export type AdminQuota = {
   entitlementId: string | null;
@@ -193,6 +206,25 @@ export type AdminSettings = {
   appLink: string | null;
   aiConfigured: boolean;
 };
+/** OPS-02: a health signal over its threshold (packages/core/src/ops/health.ts). */
+export type HealthCondition = "database_size" | "failed_jobs" | "queue_delay" | "runner_stale";
+/** OPS-02/OPS-05: counts and times only, for the admin overview; never content or keys. */
+export type SystemHealth = {
+  checkedAt: string;
+  databaseBytes: number;
+  /** The alert threshold of the database size. */
+  databaseBytesLimit: number;
+  failedJobsLastHour: number;
+  oldestQueuedAt: string | null;
+  lastRunnerAt: string | null;
+  /** Null when the caller did not compare the deployed code with the database. */
+  schema: {
+    state: "current" | "ahead" | "behind" | "unknown";
+    expected: string;
+    applied: string | null;
+  } | null;
+  alerts: HealthCondition[];
+};
 export type AdminSnapshot = {
   view: AdminView;
   users?: AdminUser[];
@@ -202,6 +234,7 @@ export type AdminSnapshot = {
   pilot?: PilotSummary;
   costs?: AdminCosts;
   counts?: { users: number; pendingFeedback: number; queuedRuns: number; failedEmails: number };
+  health?: SystemHealth;
   tasks?: AdminTask[];
   rates?: PriceRate[];
   rateVersion?: string;

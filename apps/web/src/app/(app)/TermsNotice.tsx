@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { accountCopy } from "../../ui/account-copy";
 import { Button } from "../../ui/components/Button";
 import { Checkbox } from "../../ui/components/Checkbox";
 import { Banner } from "../../ui/components/Feedback";
 import { Sheet } from "../../ui/components/Sheet";
 import { FileText } from "../../ui/icons";
-import { fill, strings } from "../../ui/strings";
+import { fill } from "../../ui/strings-fill";
+import { settingsStrings } from "../../ui/strings-settings";
+import { signInStrings } from "../../ui/strings-sign-in";
+import { OPEN_TERMS_NOTICE_EVENT } from "../../ui/workspace/terms-notice-event";
 import { acceptTexts, SaveError } from "../setup/api";
 import styles from "./app.module.css";
+
+// PERF-06: only the string areas this component shows.
+const strings = { ...settingsStrings, ...signInStrings };
 
 /**
  * FR-ACC-007 (frame G3): a calm banner; "Read and accept" opens the texts with the same tick as
@@ -37,6 +43,13 @@ export function TermsNotice({
   const [accepted, setAccepted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<SaveError | null>(null);
+
+  // A stopped session's next step opens this sheet too (UX-09).
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_TERMS_NOTICE_EVENT, show);
+    return () => window.removeEventListener(OPEN_TERMS_NOTICE_EVENT, show);
+  }, []);
 
   const accept = async () => {
     setSaving(true);

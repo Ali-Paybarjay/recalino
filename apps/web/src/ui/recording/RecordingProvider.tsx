@@ -9,11 +9,12 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { workspaceRequest } from "../workspace/api";
+import { userMessage, workspaceRequest } from "../workspace/api";
 import { Button, Status } from "../workspace/primitives";
 import { watchCaptureDiagnostics } from "./capture-diagnostics";
 import { watchCaptureLifecycle } from "./capture-lifecycle";
 import { watchRecordingMediaSession } from "./capture-media-session";
+import { captureIsQuiet } from "./capture-phase";
 import { CaptureUploader } from "./capture-uploader";
 import { RecordingController } from "./controller";
 import { MissingAudioNotice } from "./MissingAudioNotice";
@@ -157,7 +158,7 @@ function RecordingIndicator() {
       ) : null}
       {syncState.phase === "failed" ? (
         <Button secondary onClick={() => sourceSync.retry()}>
-          Retry adding session sources
+          Retry adding session material
         </Button>
       ) : null}
       {["recording", "recovering"].includes(state.phase) ? (
@@ -197,6 +198,20 @@ export function useRecording() {
   );
   return { ...value, state, syncState };
 }
+const NO_UPDATES = () => () => {};
+/**
+ * Whether capture is in progress (starting, recording, recovering or paused), when no message may
+ * appear yet (PRD-REC-02). Unlike `useRecording`, it is safe outside the provider (then nothing is
+ * being captured). The recording pages hide the app navigation while it is true (UX-02).
+ */
+export function useCaptureQuiet(): boolean {
+  const value = useContext(RecordingContext);
+  return useSyncExternalStore(
+    value ? value.controller.subscribe : NO_UPDATES,
+    () => (value ? captureIsQuiet(value.controller.snapshot().phase) : false),
+    () => false,
+  );
+}
 export async function ensureRecordingClass(recording: Recording, controller: RecordingController) {
   if (recording.sessionId) return recording.sessionId;
   const created = await workspaceRequest<{ id: string }>(
@@ -232,7 +247,7 @@ export function RecordLauncher({ sessionId }: { sessionId?: string }) {
           .catch(() => {});
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Recording could not start.");
+      setError(userMessage(failure, "Recording could not start."));
     }
   }
   return (

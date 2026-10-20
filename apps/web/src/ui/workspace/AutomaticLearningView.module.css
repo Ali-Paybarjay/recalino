@@ -22,7 +22,7 @@
 }
 
 .card:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 2px solid var(--color-accent);
   outline-offset: 4px;
 }
 
@@ -34,7 +34,7 @@
 .card .eyebrow {
   margin: 0;
   color: var(--color-accent);
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -69,7 +69,7 @@
 .card .detail {
   margin: 0;
   color: var(--rc-text-muted);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   line-height: 1.6;
 }
 
@@ -151,7 +151,7 @@
   border: 1px solid var(--rc-border-strong);
   border-radius: 50%;
   color: var(--rc-text-muted);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   font-weight: 700;
 }
 
@@ -172,7 +172,7 @@
   display: block;
   margin-top: 3px;
   color: var(--rc-text-muted);
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
 }
 
 .files {
@@ -191,7 +191,7 @@
 }
 
 .files strong {
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   overflow-wrap: anywhere;
 }
 
@@ -204,7 +204,7 @@
   display: none;
 }
 
-.cardActions :global(.preview-actions) {
+.cardActions :global(.workspace-actions) {
   margin-top: 0;
 }
 
@@ -234,7 +234,7 @@
     flex-direction: row;
     gap: 12px;
     padding-bottom: 20px;
-    font-size: 15px;
+    font-size: var(--rc-text-md);
   }
 
   .timeline li:last-child {
@@ -251,7 +251,7 @@
     background: var(--rc-border-strong);
   }
 
-  .cardActions :global(.preview-actions) {
+  .cardActions :global(.workspace-actions) {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;

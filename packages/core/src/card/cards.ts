@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Selectable } from "kysely";
+import { z } from "zod";
 import { lockAccount } from "../acc";
 import type { Database, DB, Tx } from "../db";
 import { type Claim, claimSchema } from "../lkm";
-import { getMediaAsset } from "../media";
+import { getLiveMediaAssets, getMediaAsset, type MediaAsset } from "../media";
 import { getNotebook } from "../note";
 import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
@@ -13,9 +14,11 @@ import {
   errors,
   isValidIdempotencyKey,
   type LearnerContext,
+  parseSnapshot,
   readPltSettings,
   runIdempotent,
   sha256Hex,
+  storedObject,
 } from "../plt";
 import {
   type CardActionInput,
@@ -56,6 +59,29 @@ export interface StudyCard extends Partial<StudyMetadata> {
   createdAt: string;
   updatedAt: string;
 }
+/**
+ * `card.revision.snapshot`: the card as saved at that content version (QUA-05). Undo restores
+ * these fields. Study metadata stays unchecked here because savedStudyMetadata validates it and
+ * drops what no longer fits, exactly as before; the claim was validated when the card was read.
+ */
+export const cardRevisionSnapshotSchema = z.looseObject({
+  action: z.string().optional(),
+  front: z.string(),
+  back: z.string(),
+  provenance: storedObject<Claim>(),
+  status: cardStatusSchema,
+  important: z.boolean(),
+  qualityConfirmed: z.boolean(),
+  frontMediaId: z.string().min(1).nullable(),
+  backMediaId: z.string().min(1).nullable(),
+  sessionIds: z.array(z.string()),
+  contentFormat: z.unknown().optional(),
+  studySet: z.unknown().optional(),
+  studyTags: z.unknown().optional(),
+  studyPosition: z.unknown().optional(),
+  pronunciationTarget: z.unknown().optional(),
+});
+const cardRevisionActionSchema = z.looseObject({ action: z.string().optional() });
 export interface CardProposal extends Partial<StudyMetadata> {
   id: string;
   cardId: string;
@@ -188,6 +214,81 @@ export async function getCard(
   if (!sessionIds.length) throw errors.notFound();
   return (await withPronunciationTargets(db, ctx, [view(row, sessionIds)]))[0] as StudyCard;
 }
+/** Cards read together by readCards; each is taken in turn, as getCard would return it. */
+export interface CardReads {
+  /** The card getCard would return for `id`, or the error it would throw for it. */
+  take(id: string): StudyCard;
+}
+/**
+ * PERF-04: getCard for many identifiers in a constant number of reads instead of three or more
+ * per card. A card's own failure (missing, foreign, deleted, or on no live session) is thrown
+ * only when that card is taken. It takes no card lock: resolving an older lesson card's
+ * pronunciation locks its class (assertSessionOwner), and one locked getCard after another takes
+ * that class lock right after the first such card, before the next card's lock.
+ */
+export async function readCards(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  ids: readonly string[],
+): Promise<CardReads> {
+  const unique = [...new Set(ids)];
+  const outcomes = new Map<string, { card: StudyCard } | { failure: unknown }>();
+  if (unique.length) {
+    const query = db
+      .selectFrom("card.card")
+      .selectAll()
+      .where("id", "in", unique)
+      .where("deleted_at", "is", null);
+    const rows = new Map((await query.execute()).map((row) => [row.id, row]));
+    const owned = [...rows.values()].filter((row) => row.user_id === ctx.userId);
+    const links = owned.length
+      ? await db
+          .selectFrom("card.session_link")
+          .select(["card.session_link.card_id", "card.session_link.session_id"])
+          .where(
+            "card.session_link.card_id",
+            "in",
+            owned.map((row) => row.id),
+          )
+          .where("card.session_link.user_id", "=", ctx.userId)
+          .execute()
+      : [];
+    const live = await filterLiveSessionIds(
+      db,
+      ctx,
+      links.map((link) => link.session_id),
+    );
+    const linked = new Map<string, Set<string>>();
+    for (const link of links)
+      linked.set(link.card_id, (linked.get(link.card_id) ?? new Set()).add(link.session_id));
+    const cards: StudyCard[] = [];
+    for (const id of unique) {
+      try {
+        const row = rows.get(id);
+        assertOwner(row ? { ownerId: row.user_id } : undefined, ctx);
+        if (!row) throw errors.notFound();
+        // A card's classes in the order filterLiveSessionIds returns them, as getCard reads them.
+        const sessionIds = live.filter((sessionId) => linked.get(id)?.has(sessionId));
+        if (!sessionIds.length) throw errors.notFound();
+        const card = view(row, sessionIds);
+        cards.push(card);
+        outcomes.set(id, { card });
+      } catch (failure) {
+        outcomes.set(id, { failure });
+      }
+    }
+    // One resolution for every readable card; it reads each class's notebook once.
+    await withPronunciationTargets(db, ctx, cards);
+  }
+  return {
+    take(id) {
+      const outcome = outcomes.get(id);
+      if (!outcome) throw errors.notFound();
+      if ("failure" in outcome) throw outcome.failure;
+      return outcome.card;
+    },
+  };
+}
 export async function getActiveCard(
   db: Database | Tx,
   ctx: LearnerContext,
@@ -200,6 +301,19 @@ export async function getActiveCard(
     throw errors.validationFailed({ media: ["listening_audio_unavailable"] });
   return card;
 }
+/** A listening card needs its own ready computer-voice audio, from one of its sessions. */
+export function isCardReviewableWith(card: StudyCard, asset: MediaAsset | undefined): boolean {
+  if (card.template !== "listening") return true;
+  return (
+    !!asset &&
+    asset.id === card.frontMediaId &&
+    asset.state === "ready" &&
+    asset.kind === "tts" &&
+    !!asset.objectId &&
+    !!asset.mimeType?.startsWith("audio/") &&
+    card.sessionIds.includes(asset.sessionId)
+  );
+}
 export async function isCardReviewable(
   db: Database | Tx,
   ctx: LearnerContext,
@@ -208,18 +322,32 @@ export async function isCardReviewable(
   if (card.template !== "listening") return true;
   if (!card.frontMediaId) return false;
   try {
-    const asset = await getMediaAsset(db, ctx, card.frontMediaId);
-    return (
-      asset.state === "ready" &&
-      asset.kind === "tts" &&
-      !!asset.objectId &&
-      !!asset.mimeType?.startsWith("audio/") &&
-      card.sessionIds.includes(asset.sessionId)
-    );
+    return isCardReviewableWith(card, await getMediaAsset(db, ctx, card.frontMediaId));
   } catch (failure) {
     if (failure instanceof AppError && failure.code === "not_found") return false;
     throw failure;
   }
+}
+/**
+ * PERF-02: isCardReviewable for many cards in a constant number of owner-scoped reads (the
+ * review queue would otherwise read each listening card's audio one after another).
+ */
+export async function reviewableCardIds(
+  db: Database | Tx,
+  ctx: LearnerContext,
+  cards: readonly StudyCard[],
+): Promise<Set<string>> {
+  const mediaIds = cards.flatMap((card) =>
+    card.template === "listening" && card.frontMediaId ? [card.frontMediaId] : [],
+  );
+  const assets = await getLiveMediaAssets(db, ctx, mediaIds);
+  return new Set(
+    cards
+      .filter((card) =>
+        isCardReviewableWith(card, card.frontMediaId ? assets.get(card.frontMediaId) : undefined),
+      )
+      .map((card) => card.id),
+  );
 }
 export async function listCards(
   db: Database | Tx,
@@ -590,7 +718,7 @@ export async function changeCard(
         .where("card_id", "=", id)
         .where("content_version", "=", card.contentVersion)
         .executeTakeFirstOrThrow();
-      if ((current.snapshot as { action?: string }).action === "undo")
+      if (parseSnapshot(cardRevisionActionSchema, current.snapshot).action === "undo")
         throw errors.validationFailed({ action: ["nothing_to_undo"] });
       const previous = await tx
         .selectFrom("card.revision")
@@ -601,7 +729,7 @@ export async function changeCard(
         .limit(1)
         .executeTakeFirst();
       if (!previous) throw errors.validationFailed({ action: ["nothing_to_undo"] });
-      const prior = previous.snapshot as unknown as StudyCard;
+      const prior = parseSnapshot(cardRevisionSnapshotSchema, previous.snapshot);
       await requireUniqueContent(tx, ctx, prior.front, prior.back, id);
       await tx
         .updateTable("card.card")

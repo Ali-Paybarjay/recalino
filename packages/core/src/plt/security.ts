@@ -1,3 +1,5 @@
+import { sql } from "kysely";
+import { z } from "zod";
 import type { Database, Tx } from "../db";
 import type { Logger } from "./log";
 
@@ -76,4 +78,94 @@ export async function latestSubjectAudit(
     .orderBy("id", "desc")
     .executeTakeFirst();
   return row ? { subjectId: row.subject_id, occurredAt: row.occurred_at.toISOString() } : null;
+}
+
+/**
+ * PERF-04: latestSubjectAudit for several groups of subjects in one read, keyed by group. A group
+ * gets the newest row among its own subjects, as latestSubjectAudit would return for them alone.
+ * Domain callers must authorize every subject before using this API.
+ */
+export async function latestSubjectAudits(
+  db: Database | Tx,
+  input: Pick<AuditInput, "actorKind" | "actorId" | "action" | "subjectType"> & {
+    groups: ReadonlyMap<string, readonly string[]>;
+  },
+): Promise<Map<string, { subjectId: string; occurredAt: string }>> {
+  const latest = new Map<string, { subjectId: string; occurredAt: string }>();
+  const subjects = [...new Set([...input.groups.values()].flat())];
+  if (!subjects.length) return latest;
+  const rows = await db
+    .selectFrom("plt.audit_event")
+    .select(["subject_id", "occurred_at"])
+    .where("actor_kind", "=", input.actorKind)
+    .where("actor_id", "=", input.actorId)
+    .where("action", "=", input.action)
+    .where("subject_type", "=", input.subjectType)
+    .where("subject_id", "in", subjects)
+    .orderBy("occurred_at", "desc")
+    .orderBy("id", "desc")
+    .execute();
+  for (const [group, ids] of input.groups) {
+    const members = new Set(ids);
+    const row = rows.find((entry) => members.has(entry.subject_id));
+    if (row)
+      latest.set(group, { subjectId: row.subject_id, occurredAt: row.occurred_at.toISOString() });
+  }
+  return latest;
+}
+
+/**
+ * OPS-02/OPS-05: records `entry` unless the same actor already recorded this action for this
+ * subject, and says whether it did. A transaction lock on the key serialises concurrent callers,
+ * so an alert raised by two runners at once is still written once.
+ */
+export async function recordAuditOnce(db: Database, entry: AuditInput): Promise<boolean> {
+  return db.transaction().execute(async (tx) => {
+    const key = `${entry.actorId}:${entry.action}:${entry.subjectType}:${entry.subjectId}`;
+    await sql`select pg_advisory_xact_lock(hashtextextended(${key}, 1))`.execute(tx);
+    if (await latestSubjectAudit(tx, { ...entry, subjectIds: [entry.subjectId] })) return false;
+    await recordAudit(tx, entry);
+    return true;
+  });
+}
+
+/**
+ * SEC-07 (audit 2026-10-18, D95): written in place of a deleted account's id. The audit row keeps
+ * what happened; a trigger lets the application change `actor_id` to this value and nothing else
+ * (migration 20261019120000_plt_event_retention).
+ */
+export const DELETED_ACCOUNT_ACTOR = "deleted_account";
+
+/** SEC-07 (D95): security events are kept for the configured days, then removed. */
+export async function purgeSecurityEvents(db: Database, before: Date): Promise<number> {
+  const result = await db
+    .deleteFrom("plt.security_event")
+    .where("occurred_at", "<", before)
+    .executeTakeFirst();
+  return Number(result.numDeletedRows);
+}
+
+const ANONYMISE_BATCH = 500;
+const accountIds = z.array(z.uuid());
+
+/**
+ * SEC-07 (D95): removes these deleted accounts' ids from the audit trail. Only account ids are
+ * accepted, so a system actor such as `ops.health_check` is never rewritten. Repeating it changes
+ * nothing; returns the number of rows changed.
+ */
+export async function anonymiseAuditActors(
+  db: Database,
+  userIds: readonly string[],
+): Promise<number> {
+  const ids = [...new Set(accountIds.parse(userIds))];
+  let changed = 0;
+  for (let index = 0; index < ids.length; index += ANONYMISE_BATCH) {
+    const result = await db
+      .updateTable("plt.audit_event")
+      .set({ actor_id: DELETED_ACCOUNT_ACTOR })
+      .where("actor_id", "in", ids.slice(index, index + ANONYMISE_BATCH))
+      .executeTakeFirst();
+    changed += Number(result.numUpdatedRows);
+  }
+  return changed;
 }

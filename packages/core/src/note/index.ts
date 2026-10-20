@@ -23,8 +23,10 @@ export {
   getNotebookRevision,
   hasPublishedNotebook,
   listNotebookRevisions,
+  liveNotebookRevisionIds,
   type Notebook,
   type NotebookRevision,
+  publishedNotebookSessionIds,
   publishNotebook,
   tombstoneSessionNotes,
 } from "./notebooks";

@@ -8,7 +8,9 @@
   --color-text: #1c3028;
   --rc-text-muted: #58685f;
   --color-divider: #dce3d9;
-  --rc-border-strong: #8c9c91;
+  /* A11Y-01, D99: darkened from #8c9c91 (same hue) so control borders reach 3:1 on the page,
+     surface, surface-2 and primary tint (contrast.test.ts). */
+  --rc-border-strong: #7a8d80;
   --color-accent: #28634a;
   --rc-primary-text: #245b43;
   --rc-primary-tint: #e7f0e6;
@@ -73,6 +75,17 @@ body {
   border-color: var(--color-divider);
 }
 
+/* The rule above has the same specificity as the base layer's hover/active and comes later, so it
+   hid them (UI-01). Restate both with the base layer's 7% / 14% mix, laid over the surface fill.
+   The danger variant is this class plus .rc-btn-danger, so it follows. */
+[data-theme] .btn-secondary:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, var(--color-surface));
+}
+
+[data-theme] .btn-secondary:active {
+  background: color-mix(in srgb, var(--color-text) 14%, var(--color-surface));
+}
+
 /* Native controls and scrollbars follow the theme. */
 :root[data-theme="light"] {
   color-scheme: light;
@@ -103,6 +116,20 @@ body {
 .btn.rc-btn-lg {
   min-height: 52px;
   font-size: var(--rc-text-md);
+}
+
+/* A11Y-01, D99: a text field's border is a control boundary, so it takes the 3:1 border token
+   instead of the divider (1.31:1 on white). Focus keeps the base layer's colour. */
+.input {
+  border-color: var(--rc-border-strong);
+}
+
+/* A11Y-01, D101, D102: the base layer's hover (45% text over the field) fades the edge: lighter
+   than the token above in the light theme (2.62:1 on white), 2.91:1 on the dark primary tint. Hover
+   mixes the same 45% into the token instead, so it only moves the edge away from the surface.
+   :where() keeps the base layer's specificity: focus and an invalid field still win. */
+:where(:root[data-theme]) .input:hover:where(:not(:focus-visible)) {
+  border-color: color-mix(in srgb, var(--color-text) 45%, var(--rc-border-strong));
 }
 
 /* Text fields: the focus ring sits on the border (Design System, text field "Focus"). */

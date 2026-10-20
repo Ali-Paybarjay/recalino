@@ -360,7 +360,7 @@ for (const viewport of [
     expect((await persisted(page, seeded)).files).toBe(0);
     await password.getByText("Delete options", { exact: true }).click();
     await password.getByLabel("I understand that deletion cannot be undone.").check();
-    await expect(password.getByRole("button", { name: "Delete entire source" })).toBeDisabled();
+    await expect(password.getByRole("button", { name: "Delete from all sessions" })).toBeDisabled();
     await password.getByLabel("PDF password").fill("synthetic-secret");
     await password.getByRole("button", { name: "Unlock PDF" }).click();
     await expect(password.getByLabel("PDF password")).toHaveValue("");

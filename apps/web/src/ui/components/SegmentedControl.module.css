@@ -15,12 +15,12 @@
   gap: 6px;
   min-height: var(--rc-target);
   border-radius: 9px;
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   cursor: pointer;
 }
 
 .small .option {
-  min-height: 40px;
+  min-height: var(--rc-target);
   font-size: var(--rc-text-sm);
 }
 

@@ -46,7 +46,7 @@
 | سرآیند | جهت | معنی |
 |---|---|---|
 | `x-request-id` | پاسخ | شناسه یکتای هر درخواست؛ همان `request_id` پاکت خطا و لاگ |
-| `Idempotency-Key` | درخواست | الزامی برای ساخت منبع، مصرف سهمیه و آغاز کار AI؛ ۸ تا ۲۰۰ نویسه از `A-Z a-z 0-9 _ . : -`. در محدوده همان کاربر معتبر است و ۲۴ ساعت نگه داشته می‌شود (قابل پیکربندی) |
+| `Idempotency-Key` | درخواست | الزامی برای ساخت منبع، مصرف سهمیه و آغاز کار AI؛ ۸ تا ۲۰۰ نویسه از `A-Z a-z 0-9 _ . : -`. همهٔ routeها خطای یکسان می‌دهند: نبودن header `validation_failed` با `Idempotency-Key: ["required"]` و کلید بدشکل همان خطا با `["invalid"]` (helper مشترک `idempotencyKey` در `apps/web/src/server/api.ts`). در محدوده همان کاربر معتبر است و ۲۴ ساعت نگه داشته می‌شود (قابل پیکربندی) |
 | `idempotent-replayed` | پاسخ | `true` وقتی پاسخ، تکرار پاسخ نخست همان کلید است |
 | `Retry-After` | پاسخ | ثانیه‌های لازم پیش از تلاش دوباره، همراه `rate_limited` |
 
@@ -54,7 +54,7 @@
 
 | شناسه | مسیر | دسترسی | idempotency | کنترل نرخ |
 |---|---|---|---|---|
-| `health` | `GET /api/health` | عمومی | — | — |
+| `health` | `GET /api/health` | عمومی؛ با `?deep=1` فقط bearer `CRON_SECRET` (OPS-02): `select 1` و مقایسهٔ نسخهٔ schema، با 503 وقتی دیتابیس در دسترس نیست یا migration لازم کد را ندارد | — | — |
 | `admin` | `GET /api/admin` | مالک معتبر سمت سرور | — | قاعدهٔ جدا در route جاری ندارد |
 | `admin` | `POST /api/admin` | مالک معتبر سمت سرور | کلید و receipt دامنهٔ OPS | قاعدهٔ جدا در route جاری ندارد |
 | `supportFeedback` | `GET /api/support` | زبان‌آموز؛ فقط پیام‌های خودش | — | `support` |

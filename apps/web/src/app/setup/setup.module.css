@@ -110,7 +110,7 @@
 }
 
 .count {
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--rc-text-muted);
 }
@@ -154,7 +154,7 @@
   min-width: 0;
 }
 
-.voiceStep :global(.preview-panel) {
+.voiceStep :global(.workspace-panel) {
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -197,7 +197,7 @@
 
 .help {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--rc-text-md);
   line-height: 1.55;
   color: var(--rc-text-muted);
 }
@@ -207,7 +207,7 @@
 }
 
 .small {
-  font-size: 13px;
+  font-size: var(--rc-text-sm);
   color: var(--rc-text-muted);
 }
 
@@ -314,7 +314,7 @@
   min-height: var(--rc-target);
   padding: 0 16px;
   border-radius: var(--radius-pill);
-  font-size: 15px;
+  font-size: var(--rc-text-md);
 }
 
 .pair {

@@ -180,6 +180,10 @@ test("courses, optional units and a class can be created, moved and deleted thro
   await page.locator("summary").filter({ hasText: "More session tools" }).click();
   await page.getByRole("link", { name: "Session options", exact: true }).click();
   await expect(page).toHaveURL(`${classUrl}/options`, { timeout: 30_000 });
+  // UX-06: the page is titled like the link that opened it.
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Session options", exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Session name (optional)").fill("کلاس سفر 日本語");
   await page.getByLabel("Unit (optional)").selectOption("");
   const renamedClass = page.waitForResponse(

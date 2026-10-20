@@ -1,6 +1,6 @@
 # Recalino Privacy Notice
 
-Version 0.2 · Draft · 4 October 2026
+Version 0.3 · Draft · 19 October 2026
 
 > **Draft for development only.** This text is not final and has not had a legal review. Parts marked ⟨…⟩ are not finished.
 
@@ -119,16 +119,16 @@ We do not send the password for a PDF, a private file link or a storage key to t
 
 | Data | How long we keep it |
 |---|---|
-| Copy of class audio on our server | The current temporary upload expires 24 hours after the upload begins, whether processing succeeds or fails. Completing a transcript can shorten this period. An hourly cleanup job removes expired copies and retries failures; a service failure can delay physical removal. A retry after expiry needs a new copy from your device. |
+| Copy of class audio on our server | The current temporary upload expires 24 hours after the upload begins, whether processing succeeds or fails. Completing a transcript can shorten this period. A cleanup job runs at least once an hour, removes expired copies and retries failures; a service failure can delay physical removal. A retry after expiry needs a new copy from your device. |
 | Recordings on your device | Until you delete them. Recalino doesn't delete them automatically. |
 | Photos, PDFs and other files | Until you delete them or your account |
 | Transcripts, notes, cards and review history | Until you delete them or your account |
 | Account and learning profile | Until you delete your account |
 | Completed background-job records | Scheduled for cleanup after 30 days |
-| Security, audit and usage records | ⟨Before the pilot: set the retention periods for these separate records and confirm the service companies' periods⟩ |
-| Encrypted app database backups | 30-day retention policy; a backup may contain data that you deleted after it was made |
+| Security, audit and usage records | Security records: 90 days, then a cleanup job removes them. Audit records of sensitive actions: kept, but when your account deletion is complete, your account ID is removed from them. ⟨Before the pilot: set the retention period for usage records and confirm the service companies' periods⟩ |
+| Encrypted app database backups | 30-day retention policy. The three newest complete backups are kept even when they are older than 30 days. A backup may contain data that you deleted after it was made |
 
-When a deletion request is accepted, Recalino hides the affected data and queues server cleanup. If cleanup fails, it retries. ⟨Before the pilot: confirm the operational time limit and any records that must be retained.⟩ The app's backup cleanup removes expired backups after 30 days. A minimal encrypted deletion record is kept while a retained backup could otherwise restore the deleted data. The service companies' own backup and log retention still needs to be confirmed.
+When a deletion request is accepted, Recalino hides the affected data and queues server cleanup. If cleanup fails, it retries. ⟨Before the pilot: confirm the operational time limit and any records that must be retained.⟩ The app's backup cleanup removes backups after 30 days, except the three newest complete backups, which it keeps until newer complete backups replace them. A minimal encrypted deletion record is kept while a retained backup could otherwise restore the deleted data. The service companies' own backup and log retention still needs to be confirmed.
 
 When the pilot ends, we will tell you before we delete accounts.
 

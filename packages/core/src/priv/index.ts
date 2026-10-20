@@ -5,7 +5,6 @@ export {
   type DeletionJournalEntry,
   findPrivacyDeletionRequest,
   getPrivacyDeletionRequest,
-  getSourceDeletionRequest,
   type PrivacyDeletionRequest,
   type PrivacyDependencies,
   type PrivacyHook,
@@ -14,4 +13,5 @@ export {
   requestAccountDeletion,
   requestSessionDeletion,
 } from "./deletion";
+export { anonymiseDeletedAccountActors, privacyPeriodicJobs } from "./jobs";
 export { deletionJournalEntrySchema, replayDeletionJournals } from "./recovery";

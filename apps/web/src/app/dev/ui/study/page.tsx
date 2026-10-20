@@ -15,7 +15,7 @@ import { NoteView } from "../../../../ui/workspace/NoteView";
 import { Panel } from "../../../../ui/workspace/primitives";
 import { ReviewView } from "../../../../ui/workspace/ReviewView";
 import { SessionNotesReader } from "../../../../ui/workspace/SessionNotesReader";
-import "../../../../ui/preview/preview.css";
+import "../../../../ui/workspace/workspace.css";
 
 /** Uses the real reading and review components with a synthetic, local-only lesson. */
 export default async function StudyReferencePage({
@@ -82,7 +82,7 @@ export default async function StudyReferencePage({
   };
   if (view === "reader" || view === "reader-readonly")
     return (
-      <div className="preview-root">
+      <div className="workspace-root">
         <SessionNotesReader
           sessionId={sessionId}
           title={model.title}
@@ -108,7 +108,7 @@ export default async function StudyReferencePage({
     );
   if (view === "reader-session")
     return (
-      <div className="preview-root">
+      <div className="workspace-root">
         <AppShell
           current="classes"
           hrefs={{
@@ -192,7 +192,7 @@ export default async function StudyReferencePage({
     settings: { mode: "simple", desiredRetention: 0.9, dailyNewLimit: 20, timeBudgetMinutes: 10 },
   };
   return (
-    <div className="preview-root">
+    <div className="workspace-root">
       <AppShell
         current="classes"
         hrefs={{

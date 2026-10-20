@@ -1,6 +1,6 @@
 # Recalino: information for teachers and classmates
 
-Review copy — 5 October 2026. This copy is prepared for the initial ESOL pilot with up to eight accounts. The owner reports that permission for recording and AI submission will be obtained verbally from the teacher and people present before each recording. This is a limited product test, not a public or commercial college launch. Formal college approval and the final legal release are deferred to the later launch stage.
+Review copy — 19 October 2026. This copy is prepared for the initial ESOL pilot with up to eight accounts. The owner reports that permission for recording and AI submission will be obtained verbally from the teacher and people present before each recording. This is a limited product test, not a public or commercial college launch. Formal college approval and the final legal release are deferred to the later launch stage.
 
 ## What is the pilot?
 
@@ -16,7 +16,7 @@ Do not record or send personal disclosures about a real person's health, religio
 
 ## What happens to the material?
 
-The learner keeps the recording on their device. A temporary private server copy is used to make a transcript. That copy expires 24 hours after upload begins and may be removed sooner after transcription; cleanup is hourly and retries failures. A service failure can delay physical deletion.
+The learner keeps the recording on their device. A temporary private server copy is used to make a transcript. That copy expires 24 hours after upload begins and may be removed sooner after transcription; cleanup runs at least once an hour and retries failures. A service failure can delay physical deletion.
 
 Transcripts, selected photos/documents, notes and cards are private to the learner's account until they delete them or the account. AI-generated study material can contain errors or names, so the learner should check it. The learner can download their study notes/cards. Downloaded copies and recordings on other devices cannot be removed by the server.
 

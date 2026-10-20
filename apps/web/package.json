@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "node --conditions=react-server ../../tools/voice/prepare-build.mjs && node tools/check-native-runtime.mjs && next build --webpack && node tools/trace-native-dependencies.mjs && node tools/trace-voice-native.mjs",
+    "build": "node ../../tools/legal/guard.ts && node ../../tools/schema-version/build.ts && node --conditions=react-server ../../tools/voice/prepare-build.mjs && node tools/check-native-runtime.mjs && next build --webpack && node tools/trace-native-dependencies.mjs && node tools/trace-voice-native.mjs && node ../../tools/function-size/check.ts",
     "start": "next start",
     "typecheck": "next typegen --webpack && tsc --noEmit",
     "test:e2e": "playwright test",
