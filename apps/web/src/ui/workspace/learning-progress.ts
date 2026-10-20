@@ -290,14 +290,18 @@ export function learningProgress(
   }
 
   const cloudProcessing = status.state === "processing" || ready;
+  // A run that processing ended had every original uploaded and checked first: the server starts
+  // work only after that, so a failed attempt never undoes those steps (owner report 2026-10-20).
+  const processedRun = blocked && status.run?.state === "failed";
   const completedTransfer =
     cloudProcessing ||
+    processedRun ||
     audioTransferred ||
     (batchTransferred && status.state !== "waiting_upload") ||
     (status.state === "waiting_sources" && stage === "verify" && !localAudioPending);
   // A quota/setup block can happen before local audio is uploaded. A stopped
   // stage alone is not evidence that earlier steps succeeded.
-  const verified = cloudProcessing;
+  const verified = cloudProcessing || (processedRun && stage === "process");
   const completed: Record<LearningStage, boolean> = {
     upload: completedTransfer,
     verify: verified,

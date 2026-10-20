@@ -452,7 +452,30 @@ describe("learning progress", () => {
       [batch({ entries: [entry({ phase: "local_saved" })] })],
     );
     expect(result.stage).toBe("process");
-    expect(result.steps[2]?.state).toBe("blocked");
+    expect(result.steps.map((step) => step.state)).toEqual([
+      "complete",
+      "complete",
+      "blocked",
+      "pending",
+    ]);
+  });
+
+  it("keeps the upload done when a run stops on its material, and the check at attention", () => {
+    const result = learningProgress(
+      status({
+        state: "blocked",
+        batchId: null,
+        lastError: "not_verified",
+        run: { ...run("failed"), lastError: "not_verified" },
+      }),
+    );
+    expect(result.stage).toBe("verify");
+    expect(result.steps.map((step) => step.state)).toEqual([
+      "complete",
+      "blocked",
+      "pending",
+      "pending",
+    ]);
   });
 
   it("does not make prior notes or flashcards count as completion of current work", () => {
