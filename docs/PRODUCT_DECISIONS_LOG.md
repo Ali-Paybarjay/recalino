@@ -1064,6 +1064,14 @@
   - صفحه‌های `/dev/ui/recording-shell` (`?state=recording` و `?state=saved`) و `/dev/ui/session` (`ready-to-process` و `reopened`) حالت‌های تازه را نشان می‌دهند.
   - e2e (فقط در CI): `recording.spec.ts`، `recording-capture.spec.ts` (هیچ درخواست RSC یا navigation صفحهٔ ضبط جلسه، حین ضبط و پس از Stop، و «Back to session» به همان جلسه)، `recording-decode.spec.ts`، `photo-readability.spec.ts`، `photo-readability-screens.spec.ts`، `learning-privacy.spec.ts`، `shell.spec.ts` و آزمون تازهٔ برگهٔ Process در `session-navigation.spec.ts` در ۳۹۰ و ۱۴۴۰ پیکسل.
 
+## D108 — بستن نوار ضبط پس از Stop (2026-10-20)
+
+مبنا: درخواست صریح مالک محصول در 2026-10-20 پس از آزمون production: نوار پایین صفحه که پس از Stop پیام نتیجهٔ ضبط («Saved on this device»، «Recording ended during an interruption…»، خلاصهٔ دقیقه‌های ضبط‌نشده) را با «Open recording» و «Export audio» نشان می‌دهد قابل بستن نبود و روی محتوای صفحه می‌ماند.
+
+- `RecordingIndicator` در `apps/web/src/ui/recording/RecordingProvider.tsx` در حالت‌های `saved` و `failed` یک دکمهٔ بستن (آیکون `X` با برچسب موجود `strings.common.close`، «Close») در گوشهٔ بالای نوار دارد. بستن فقط همان نتیجهٔ همان ضبط را پنهان می‌کند (`indicatorDismissKey`): ضبط تازه، «Continue recording» یا نتیجهٔ دیگری نوار را دوباره نشان می‌دهد.
+- حین ضبط (starting، recording، recovering، paused، saving) نوار کنترل‌های Pause، Resume و Stop را دارد و بسته نمی‌شود؛ خرابی واقعی ضبط پنهان نمی‌شود (PRD-REC-03).
+- متن، token یا وابستگی تازه‌ای اضافه نشد؛ فاصلهٔ `padding-inline-end` نوار قابل‌بستن جای هدف ۴۴ پیکسلی را باز می‌کند. آزمون: `RecordingProvider.test.ts` («indicatorDismissKey») و e2e `recording-capture.spec.ts`.
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.

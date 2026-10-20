@@ -21,6 +21,15 @@
 .bar a {
   color: var(--color-accent);
 }
+/* After Stop the bar can be closed: the 44px close target sits in the top corner, clear of the text. */
+.dismissible {
+  padding-inline-end: 56px;
+}
+.barClose {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+}
 /* Recording controls (Pause, Resume, Stop) use the 72px target, not the 52px of a large button
    (tokens.css: --rc-target-lg, "recording controls"). The selector outweighs .btn.rc-btn-lg. */
 .control:global(.btn.rc-btn-lg) {

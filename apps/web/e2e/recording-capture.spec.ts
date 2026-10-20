@@ -157,6 +157,9 @@ test("measures real recorded audio, starts a new part after missing audio, and s
       path: `../../artifacts/verification/feat-recording-capture/recording-bar-after-stop-${name}.png`,
     });
   }
+  // After Stop the bar only reports, so the learner can close it (owner request 2026-10-20).
+  await bar.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(bar).toHaveCount(0);
 });
 
 test("a capture whose page is lost while paused comes back paused; Resume continues it (D104)", async ({
