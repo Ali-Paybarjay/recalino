@@ -200,6 +200,17 @@
 - بخش وضعیت برچسب تصویر کلاس همان `mediaStateLabel` است که برای صدای ساخته‌شده تأیید شد (D101).
 - جملهٔ برگهٔ حذف فقط بند «and server cleanup will begin» را از جملهٔ پیشین کنار گذاشت (UX-05: «server cleanup» به زبان‌آموز نشان داده نمی‌شود). واژهٔ تازه‌ای اضافه نشد. بخش «Delete your account» همچنان حذف داده‌های سرور را توضیح می‌دهد.
 
+## تأیید 2026-10-20 — فهرست Session material (D106)
+
+مالک محصول در 2026-10-20 برچسب دکمهٔ پایان فهرست Session material را عیناً تأیید کرد. ثبت نسخه‌دار: [D106](../PRODUCT_DECISIONS_LOG.md). متن در `sessionMaterialCopy` در [`workspace/session-material-copy.ts`](../../apps/web/src/ui/workspace/session-material-copy.ts) است و `approved-copy.test.ts` آن را عیناً با جدول زیر می‌سنجد.
+
+| جا | مقدار ذخیره‌شده | متن |
+|---|---|---|
+| دکمهٔ پایان فهرست Session material (`sessionMaterialCopy.addMore`) | فهرست خالی نیست | «Add more material» |
+
+- فهرست خالی متن‌های پیشین خود را نگه می‌دارد: «Add your first material»، «Bring together your recording, handouts, photos and notes.» و دکمهٔ «Add Files».
+- برچسب کنترل‌های کوچک هر خط («Open original»، «Remove from session»، «Skip this file» و «Delete options») و متن برگهٔ «Delete options» همان متن‌های پیشین‌اند. متن تازهٔ دیگری اضافه نشد.
+
 ## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 
 مالک محصول در 2026-10-19 هر ۱۶ متن کارت «System health» را که دستهٔ ۳ (`fix/audit-3`، یافتهٔ OPS-02؛ ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`) پیشنهاد کرده بود، عیناً تأیید کرد. ثبت نسخه‌دار: [D97](../PRODUCT_DECISIONS_LOG.md). متن‌ها از این فهرست به `systemHealthCopy` در [`admin/copy.ts`](../../apps/web/src/ui/admin/copy.ts) منتقل شدند و آزمون `approved-copy.test.ts` هر متن انگلیسی و فارسی را عیناً با همین بخش می‌سنجد.

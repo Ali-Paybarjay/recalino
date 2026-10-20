@@ -358,9 +358,12 @@ for (const viewport of [
       0,
     );
     expect((await persisted(page, seeded)).files).toBe(0);
-    await password.getByText("Delete options", { exact: true }).click();
+    // D106: Delete options is a sheet; it is closed again before the password field is used.
+    await password.getByRole("button", { name: "Delete options", exact: true }).click();
     await password.getByLabel("I understand that deletion cannot be undone.").check();
     await expect(password.getByRole("button", { name: "Delete from all sessions" })).toBeDisabled();
+    await password.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(password.getByRole("heading", { name: "Delete options" })).toHaveCount(0);
     await password.getByLabel("PDF password").fill("synthetic-secret");
     await password.getByRole("button", { name: "Unlock PDF" }).click();
     await expect(password.getByLabel("PDF password")).toHaveValue("");
