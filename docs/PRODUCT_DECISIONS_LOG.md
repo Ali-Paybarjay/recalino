@@ -1090,6 +1090,53 @@
   - `automatic-learning-loop.test.ts` (D109)
   - `automatic-learning-statuses.test.ts` (D109)
 
+## D110 — کارت‌های نامعتبرِ یک پاسخ مدل، کل درس را شکست نمی‌دهند (2026-10-20)
+
+مبنا: رخداد production در 2026-10-20 و تصمیم مالک محصول در همان روز. درس بزرگ یک کلاس دو بار شکست خورد. پاسخ مدل چند کارت تولیدیِ نامعتبرِ مستقل داشت. `validateKnowledgeModel` در نخستین خطا می‌ایستد و فقط یک تعمیر پولی مجاز است، پس کل درس شکست خورد و Retry همان را تکرار کرد. شکل‌های واقعی خطا:
+
+- `gain momentum` و `a cloak of anonymity`: فاصلهٔ اضافه پیش از ویرگول در `gapSentence` («…gradually ______ , with…») و در نتیجه `study_sentence_mismatch`.
+- `conceal`: `gapSentence` عین `fullSentence` بود (`study_gap_missing`).
+- `no face, no case`: ویرگول درونی، پس `study_target_unsupported`؛ هیچ تعمیری آن را درست نمی‌کند (AC-D46-01).
+- ۱۹ کارت تولیدی در برابر سقف ۱۸ (`study_core_limit`).
+- پاسخ نخست اجرای دوم در content-contract assembly با جزئیات `assembly:study_gap_partial` (فقط یک آیتم) رد شد و به `provider_schema_invalid` و تولید دوباره رسید.
+
+تصمیم‌ها:
+
+- **حذف کارت، با سقف:** از کارت‌های تولیدیِ یک پاسخ مدل (candidate)، حداکثر `max(2, floor(20%))` کارت نامعتبر حذف می‌شود (`invalidCardAllowance` در `lesson-budget.ts`). کارت تشخیصیِ نامعتبر هم حذف می‌شود و به همین سقف شمرده می‌شود. اگر از سقف بیشتر باشد، هیچ کارت تولیدی نماند، یا مشکل در سطح کل درس باشد، run دقیقاً مثل امروز ادامه می‌یابد یا شکست می‌خورد، با همان `last_error` و `processingFailureCode`. نمونه‌های مشکل سطح درس: `language_mismatch`، `coverage_invalid`، Schema کل مدل، خطای claim یا خطِ summary و classNotes، و پیوند اشتباه mistake.
+- **کارت معتبرِ بیش از سقف درس:** سقف ۱۸ است، یا با بخش‌های علامت‌دار تا ۲۵ (D78). نخستین N کارت به ترتیب مدل می‌ماند و بقیه کنار گذاشته می‌شوند. این کار جزو سقف حذف نامعتبر حساب نمی‌شود.
+- **اول حذف، بدون هزینهٔ اضافه:** اگر مشکل فقط در کارت‌هاست و در سقف می‌گنجد، کارت‌ها بلافاصله پس از پاک‌سازی قطعی حذف می‌شوند و درس منتشر می‌شود. تعمیر پولی `knowledge:study-repair` یا تولید دوباره خریده نمی‌شود.
+  - فقط وقتی سقف رد شود یا مشکل در سطح درس باشد، همان یک تعمیر پولیِ امروز اجرا می‌شود. نتیجهٔ نهایی آن هم با همین حذفِ سقف‌دار سنجیده می‌شود.
+  - اگر تعمیر خروجی قابل‌استفاده ندهد، نسخهٔ اصلی با حذف سقف‌دار سنجیده می‌شود و در غیر این صورت خطای همان تعمیر، مثل امروز، می‌ماند. «خروجی غیرقابل‌استفاده» یعنی هر شکست قطعی: `provider_schema_invalid`، `provider_output_truncated`، `provider_http_*` پس از retryها، `provider_output_commit_failed`، `knowledge_repair_exhausted` یا خطای اعمال study-repair.
+  - اگر هر دو معتبر باشند، نامزدی که کارت تولیدیِ بیشتری نگه می‌دارد انتخاب می‌شود و در تساوی، تعمیر.
+  - مسیر تعمیر در deployهای پیاپی قطعی است: اگر تعمیرِ پرداخت‌شده‌ای برای همین run ذخیره شده باشد، همان مسیر گرفته می‌شود.
+- **بدون پیام به یادگیرنده:** run مثل همیشه `ready` (یا `partial_ready` برای منبع ناقص) می‌شود و سهم عادی کسر می‌شود (D59).
+  - شمارش‌های code-owned، بدون متن، شناسه یا `en`، در metadata نسخهٔ منتشرشده ثبت می‌شوند: `generation.studyOutput = {version: "study-output-guard-1", productionLimit, gapsRebuilt: {spacing, derivedBlank}, droppedItems: {<code>: n}, trimmedOverLimit, unlinkedMistakes, assemblyOmitted: {<code>: n}}`. نسخهٔ guard همیشه ثبت می‌شود، حتی بدون تغییر (PRD-LKM-02).
+  - وقتی guard چیزی را تغییر دهد، یک خط log `study_output_guard` فقط با شمارش‌ها ثبت می‌شود (PRD-PRIV-06).
+- **شعار و عبارت با نقطه‌گذاری درونی** (مثل `no face, no case`) فقط در جزوه می‌مانند و کارتشان با حذفِ سقف‌دار برداشته می‌شود. AC-D46-01 گسترش نمی‌یابد.
+- **حذف یعنی برداشتن آیتم:** کارت به کارت ساده یا تشخیصی تبدیل نمی‌شود. `classNotes.mistakes.items[].itemId` که به کارت حذف‌شده اشاره کند پاک می‌شود؛ خودِ mistake می‌ماند. کارت‌های باقی‌مانده شناسهٔ خود را نگه می‌دارند.
+- **پاک‌سازی قطعی** (`proc/study-output-guard.ts`، تابع خالص و idempotent): پیش از ساخت شناسه‌ها، فقط کارتی که امروز رد می‌شود تغییر می‌کند و کارت سالم byte به byte همان می‌ماند. پس از آن همهٔ قواعد validator بدون تغییر اجرا می‌شوند.
+  - `gap_spacing`: فقط وقتی آزمون skeleton امروز رد شود و تنها تفاوت، فاصلهٔ کنار جای‌خالی باشد. جای‌خالی از برش‌های `fullSentence` و در مرز کلمه دوباره ساخته می‌شود.
+  - `gap_blank_derived`: فقط برای هدف تک‌بخشی که دقیقاً یک بار، بدون صرف و جدا از کلمهٔ دیگر در جمله آمده است (`wordBoundary` با رعایت پیونددهنده‌ها). اگر کلمهٔ دیگری در جمله با کلمهٔ محتوایی سه‌حرفی یا بلندترِ هدف شروع شود، رد می‌شود؛ پس «They conceal what was concealed before.» و «conceal-ment» ساخته نمی‌شوند.
+  - نتیجه فقط وقتی نگه داشته می‌شود که `lexicalGapProblem` و `studyLexicalTargetMatches` آن را بپذیرند.
+- **تحمل آیتم در content-contract assembly:** آیتمی که `expandLearningItem` با یک کد AppError یا ZodError رد می‌کند، در همه تلاش‌ها حذف می‌شود.
+  - شماره‌گذاری آیتم‌ها عوض نمی‌شود، پس `learningItemIndex` اشتباه پیوند نمی‌خورد؛ index آیتم حذف‌شده یعنی mistake بدون پیوند.
+  - حذف‌ها جزو همان سقف درس‌اند. اگر سقف رد شود، دقیقاً مثل امروز `provider_schema_invalid` با همان جزئیات (`assembly:<code>` نخستین آیتم) ثبت می‌شود.
+  - شمارش‌ها در `generatedKnowledgeSchema` نیستند تا rollback و برابری knowledge-reuse حفظ شود. آن‌ها در run_step جداگانهٔ `<checkpoint>:assembly-omitted` و در همان تراکنش commit ذخیره می‌شوند. اعتبارسنجی آن را می‌خواند تا سقف ترکیبی را اعمال کند، و Retry reuse آن را همراه `knowledge` کپی می‌کند. eval و آزمون‌های مستقیم assembly سخت‌گیرانه می‌مانند.
+- **کلاس چندبخشی (D63):** هر پاسخِ بخش candidate خودش است، با سقف حذف خودش و سقف تولیدی خودش از بخش‌های علامت‌دارِ همان بخش (D78). بخشِ هرس‌شده (نه پاسخ خام) ادغام می‌شود، پس کارت حذف‌شده جایی در ادغام نمی‌گیرد. کف «دست‌کم یک کارت تولیدی» فقط برای درس ادغام‌شده است؛ اگر نقض شود، درس با کد نخستین کارت حذف‌شده شکست می‌خورد.
+- **رفع باگ D78:** validator مشترک (`lkm/schema.ts`) هنوز بیش از ۱۸ کارت تولیدی را رد می‌کرد. اکنون سقف کلاس `STUDY_PRODUCTION_CEILING = 25` است و سقف هر درس در `validateGeneratedKnowledge` اعمال می‌شود: درسِ بدون علامت همچنان ۱۸ دارد. `LESSON_MARKED_PRODUCTION_MAXIMUM`، سقف study-repair و حداکثر `learningItems` روی wire (۲۵ تولیدی + ۶ تشخیصی = ۳۱، به‌جای ۲۴) از همین ثابت می‌آیند.
+- **eval:** `tools/eval/*` سخت‌گیرانه و بدون حذف می‌مانند و شمارش بازسازی جای‌خالی را جدا گزارش می‌کنند، تا پسرفت مدل دیده شود.
+- **محدودیت‌ها:**
+  - متن prompt تغییر نکرد، چون نسخهٔ prompt از برچسب env runtime می‌آید و تغییر متن، تغییر env می‌خواهد. مدل ممکن است باز هم شعار یا جای‌خالی نادرست بنویسد؛ guard آن را می‌گیرد.
+  - وضعیت `used` در `coverage.sources` دوباره محاسبه نمی‌شود. ارجاع‌های lessonPlan، تخته و mistake ذخیره نمی‌شوند، پس محاسبهٔ دقیق ممکن نیست. منبعی که فقط کارت حذف‌شده به آن ارجاع داده بود ممکن است «used» بماند (همان معنای lessonPlan امروز).
+  - مسیر decode قرارداد legacy (`knowledge-repair.ts`) سخت‌گیرانه می‌ماند. production از content contract استفاده می‌کند.
+  - deploy میان یک run در جریان ممکن است شکستِ در انتظار را به موفقیت تبدیل کند؛ هیچ فراخوانی پولی تازه‌ای اضافه نمی‌شود.
+  - خروجی اجرای دوم (از `knowledge:repair`) قابل reuse نیست. Retry یا خروجی اجرای اول را reuse می‌کند (بدون فراخوانی پولی، اگر snapshot و تنظیمات برابر باشند) یا تولید تازه می‌خرد.
+- migration، متن رابط یا وابستگی تازه‌ای اضافه نشد. آزمون‌ها:
+  - `study-output-guard.test.ts` (شکل اجرای اول: ۱۷ کارت، spacing:1 و target_unsupported:1؛ شکل اجرای دوم در سقف؛ عبور از سقف و مشکل سطح درس با خطای امروز؛ idempotent؛ audit بدون متن)
+  - `study-output-guard.int.test.ts` (content contract تا `ready` بدون فراخوانی اضافه، requeue بی‌اثر، Retry با reuse اجرای اول بدون فراخوانی پولی)
+  - `lesson-knowledge.test.ts`، `lesson-parts.test.ts`، `lesson.test.ts`، `legacy-knowledge-repair.test.ts`، `publish.test.ts` (D110)
+  - `knowledge-generation.test.ts` (تحمل assembly و wire ۲۵+۶)، `schema.test.ts` و `tools/study-model.test.ts` (۲۵ می‌پذیرد، ۲۶ رد)، `knowledge-parts.test.ts` (ادغام ۲۱ کارتی D78 اعتبارسنجی می‌شود)، `lesson-budget.test.ts`
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.
