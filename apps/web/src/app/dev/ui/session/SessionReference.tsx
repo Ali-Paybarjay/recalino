@@ -44,6 +44,23 @@ export const sessionStates: {
   voice?: boolean;
 }[] = [
   { name: "empty", status: status({}) },
+  // D107: the material waits for the learner's Process this session.
+  {
+    name: "ready-to-process",
+    status: status({ state: "waiting_sources", revision: 3, processRequest: "not_requested" }),
+  },
+  {
+    name: "reopened",
+    status: status({
+      state: "waiting_sources",
+      revision: 4,
+      processRequest: "new_material",
+      requestedRevision: 3,
+      notesReady: true,
+    }),
+    notes: true,
+    cards: true,
+  },
   { name: "processing", status: status({ state: "processing", run: run("processing") }) },
   {
     name: "checking-voices",

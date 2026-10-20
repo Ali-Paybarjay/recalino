@@ -9,8 +9,9 @@ import { requestKey, userMessage, workspaceRequest } from "./api";
 import { type AutomaticLearningStatus, notifyAutomaticLearning } from "./automatic-learning";
 import { automaticLearningRecovery } from "./automatic-learning-recovery";
 import { LearningProgress } from "./LearningProgress";
-import { learningProgress } from "./learning-progress";
+import { awaitingProcess, learningProgress } from "./learning-progress";
 import { NotificationInvite } from "./NotificationInvite";
+import { ProcessSession } from "./ProcessSession";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { uploadRetryCanHelp } from "./session-state";
 import { openTermsNotice } from "./terms-notice-event";
@@ -286,13 +287,17 @@ function LearningStatusCard({
             <Status tone="success">{retry.feedback}</Status>
           ) : null}
           {status.state === "blocked" ? <p className={styles.detail}>{status.message}</p> : null}
-          <LearningProgress
-            progress={progress}
-            compact={compact}
-            paused={!!problem || disconnected}
-            pausedLabel={disconnected ? "Waiting to reconnect" : "Check status"}
-          />
+          {/* Nothing runs while the session waits for Process this session (D107). */}
+          {progress.awaitingProcess ? null : (
+            <LearningProgress
+              progress={progress}
+              compact={compact}
+              paused={!!problem || disconnected}
+              pausedLabel={disconnected ? "Waiting to reconnect" : "Check status"}
+            />
+          )}
           {!progress.preparing &&
+          !progress.awaitingProcess &&
           status.state !== "blocked" &&
           status.state !== "ready" &&
           status.state !== "idle" ? (
@@ -327,6 +332,7 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
   const recovery = automaticLearningRecovery(status, termsAccepted);
   const review = status?.processingReview;
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
+  const [processProblem, setProcessProblem] = useState("");
   const fallback: AutomaticLearningStatus = {
     state: "idle",
     revision: 0,
@@ -359,7 +365,15 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
       retry={retry}
       compact
     >
+      {processProblem ? <Status tone="error">{processProblem}</Status> : null}
       <Actions>
+        {progress.awaitingProcess ? (
+          <ProcessSession
+            sessionId={sessionId}
+            disabled={retry.busy}
+            onProblem={setProcessProblem}
+          />
+        ) : null}
         {canRetry ? (
           <Button
             secondary={recovery.kind === "allowance" && recovery.allowance !== "covered"}
@@ -388,7 +402,9 @@ export function AutomaticLearningNotice({ sessionId }: { sessionId: string }) {
           </Button>
         ) : null}
         <LinkButton
-          secondary={canRetry || !!recovery.kind || status?.state === "ready"}
+          secondary={
+            canRetry || !!recovery.kind || status?.state === "ready" || !!progress.awaitingProcess
+          }
           href={`/sessions/${sessionId}/sources#session-progress`}
         >
           View progress
@@ -419,6 +435,9 @@ export function AutomaticLearningView({
   const recovery = automaticLearningRecovery(status, termsAccepted);
   const canRetry = !!recovery.retryLabel && recovery.kind !== "service";
   const review = status.processingReview;
+  const [processProblem, setProcessProblem] = useState("");
+  // D107: the material page offers the same Process this session as the session page.
+  const waiting = awaitingProcess(status);
   return (
     <div className="workspace-stack">
       <Link className="workspace-back" href={`/sessions/${sessionId}`}>
@@ -432,7 +451,15 @@ export function AutomaticLearningView({
         id="session-progress"
       >
         {uploadProblem ? <Status tone="error">{uploadProblem}</Status> : null}
+        {processProblem ? <Status tone="error">{processProblem}</Status> : null}
         <Actions>
+          {waiting ? (
+            <ProcessSession
+              sessionId={sessionId}
+              disabled={retry.busy}
+              onProblem={setProcessProblem}
+            />
+          ) : null}
           {stoppedUpload ? (
             <Button
               disabled={retry.busy}
@@ -462,7 +489,7 @@ export function AutomaticLearningView({
           ) : null}
           {status.notesReady ? (
             <LinkButton
-              secondary={status.state === "blocked"}
+              secondary={status.state === "blocked" || !!waiting}
               href={`/sessions/${sessionId}/notes`}
             >
               Session notes

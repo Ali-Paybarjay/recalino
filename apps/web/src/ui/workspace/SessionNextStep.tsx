@@ -16,6 +16,7 @@ import { userMessage, workspaceRequest } from "./api";
 import type { AutomaticLearningStatus } from "./automatic-learning";
 import { LearningProgress } from "./LearningProgress";
 import { learningProgress } from "./learning-progress";
+import { ProcessSession } from "./ProcessSession";
 import { Actions, Button, LinkButton, Panel, Status } from "./primitives";
 import { sessionNavigationCopy } from "./session-navigation-copy";
 import { type SessionAction, sessionNextStep } from "./session-state";
@@ -24,18 +25,26 @@ import { useUploadBatches } from "./UploadProvider";
 
 const capturing = ["starting", "recording", "recovering", "paused", "saving"];
 
-/** Finished captures of this session on this device that have not reached the server yet. */
-function useWaitingRecordings(sessionId: string) {
-  const { userId, store, state } = useRecording();
+/**
+ * Finished captures of this session on this device that have not reached the server yet, with
+ * their board photos (D107: Process this session waits for every part and photo).
+ */
+function useWaitingRecordings(sessionId: string, refresh: string) {
+  const { userId, store, state, syncState } = useRecording();
   const [rows, setRows] = useState<Recording[]>([]);
+  const [photos, setPhotos] = useState(0);
   const phase = state.phase;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: phase is the refresh token; a stopped capture changes the saved rows.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: phase, the sync and the status are the refresh tokens; a stopped capture, an added part and an uploaded photo change the saved rows.
   useEffect(() => {
     let active = true;
     void store
       .list(userId)
-      .then((all) => {
-        if (active) setRows(all.filter((row) => row.sessionId === sessionId));
+      .then(async (all) => {
+        const mine = all.filter((row) => row.sessionId === sessionId);
+        const local = (await Promise.all(mine.map((row) => store.photos(userId, row.id)))).flat();
+        if (!active) return;
+        setRows(mine);
+        setPhotos(local.filter((photo) => !photo.sourceAssetId).length);
       })
       .catch(() => {
         /* Device storage problems are reported by the upload tray. */
@@ -43,13 +52,13 @@ function useWaitingRecordings(sessionId: string) {
     return () => {
       active = false;
     };
-  }, [store, userId, sessionId, phase]);
+  }, [store, userId, sessionId, phase, syncState, refresh]);
   const finished = rows.filter((row) => row.completedAt && row.bytes > 0);
   const capturingHere = capturing.includes(state.phase) && state.recording?.sessionId === sessionId;
   const captureId = state.recording?.captureId;
   return {
     capturing: capturingHere,
-    waiting: finished.filter((row) => !row.sourceAssetId).length,
+    waiting: finished.filter((row) => !row.sourceAssetId).length + photos,
     // D60: a sealed part of the running capture already registered on the server.
     background:
       capturingHere &&
@@ -118,7 +127,10 @@ export function SessionNextStep({
   const live = useAutomaticLearning(sessionId);
   const batches = useUploadBatches(sessionId);
   const retry = useLearningRetry(sessionId, live);
-  const recordings = useWaitingRecordings(sessionId);
+  const recordings = useWaitingRecordings(
+    sessionId,
+    `${live.status?.revision}:${live.status?.state}:${live.status?.processRequest}`,
+  );
   const online = useSyncExternalStore(
     subscribeConnection,
     connectionSnapshot,
@@ -141,7 +153,11 @@ export function SessionNextStep({
     account,
   });
   const progress =
-    status && status.state !== "idle" && step.tone !== "ready"
+    status &&
+    status.state !== "idle" &&
+    step.tone !== "ready" &&
+    // Nothing runs while the session waits for Process this session (D107).
+    step.primary.id !== "process_session"
       ? learningProgress(
           status,
           batches,
@@ -170,6 +186,17 @@ export function SessionNextStep({
         );
   }
   function render(action: SessionAction, secondary: boolean) {
+    // D107: opens the summary and allowance sheet; nothing starts before its confirmation.
+    if (action.id === "process_session")
+      return (
+        <ProcessSession
+          key={action.id}
+          sessionId={sessionId}
+          secondary={secondary}
+          disabled={retry.busy}
+          onProblem={setActionProblem}
+        />
+      );
     // The session page's one-tap capture (D32); in a secondary place it links to the recording page.
     if (action.id === "record" && !secondary)
       return <RecordLauncher key={action.id} sessionId={sessionId} />;

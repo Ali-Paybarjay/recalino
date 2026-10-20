@@ -471,3 +471,58 @@ describe("todayNextSteps (owner decision 2026-10-13, D71)", () => {
     expect(todayNextSteps(sessions, ["processing", "processing"], 1)).toEqual(["latest"]);
   });
 });
+
+// D105 and D107 (owner decision 2026-10-20): a session is processed only when the learner
+// presses Process this session; Stop, uploads and new material only make it wait for that press.
+describe("a session that waits for Process this session (D107)", () => {
+  const waiting = (patch: Partial<AutomaticLearningStatus> = {}) =>
+    status({ state: "waiting_sources", revision: 3, processRequest: "not_requested", ...patch });
+
+  it("is Ready to process, with Process this session as its one primary action", () => {
+    const step = next({ status: waiting() });
+    expect(step.heading).toBe("Ready to process");
+    expect(step.detail).toBe("Your notes and flashcards are made when you process this session.");
+    expect(step.tone).toBe("active");
+    expect(step.primary).toEqual({ id: "process_session", label: "Process this session" });
+    expect(ids(step)).toEqual(["add_material"]);
+  });
+
+  it("reopens a processed session when new material arrives, with the New versions unit", () => {
+    const step = next({
+      status: waiting({ processRequest: "new_material", requestedRevision: 2, notesReady: true }),
+      content: { notes: true, cards: true },
+    });
+    expect(step.heading).toBe("New sources since your notes were made");
+    expect(step.detail).toBe("A new version of existing notes also uses 1 New versions unit.");
+    expect(step.primary.id).toBe("process_session");
+    expect(ids(step)).toEqual(["add_material", "read_notes", "practise_cards"]);
+  });
+
+  it("waits for the recording, its parts and an open upload group first", () => {
+    expect(next({ status: waiting(), recordings: { capturing: true, waiting: 0 } }).heading).toBe(
+      "Recording in progress",
+    );
+    expect(next({ status: waiting(), recordings: { capturing: false, waiting: 2 } }).heading).toBe(
+      "Saved on this device",
+    );
+    expect(next({ status: waiting({ lastError: "batch_open" }) }).primary.id).not.toBe(
+      "process_session",
+    );
+    expect(next({ status: waiting({ batchId: sessionId }) }).primary.id).not.toBe(
+      "process_session",
+    );
+    expect(next({ status: waiting({ lastError: "select_at_least_one" }) }).heading).toBe(
+      "Add your session material",
+    );
+  });
+
+  it("shows the progress again once Process this session was pressed", () => {
+    const step = next({ status: waiting({ processRequest: "requested", requestedRevision: 3 }) });
+    expect(step.primary.id).not.toBe("process_session");
+    expect(step.heading).toBe("Checking your files");
+    // A status without the field (an older server) never waits for a press.
+    expect(next({ status: status({ state: "waiting_sources" }) }).primary.id).not.toBe(
+      "process_session",
+    );
+  });
+});

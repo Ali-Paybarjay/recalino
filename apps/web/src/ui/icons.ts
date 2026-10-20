@@ -16,6 +16,7 @@ export { CircleHalfIcon as CircleHalf } from "@phosphor-icons/react/dist/ssr/Cir
 export { CircleNotchIcon as CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch";
 export { DeviceMobileIcon as DeviceMobile } from "@phosphor-icons/react/dist/ssr/DeviceMobile";
 export { DeviceMobileSlashIcon as DeviceMobileSlash } from "@phosphor-icons/react/dist/ssr/DeviceMobileSlash";
+export { DownloadSimpleIcon as DownloadSimple } from "@phosphor-icons/react/dist/ssr/DownloadSimple";
 export { FileDashedIcon as FileDashed } from "@phosphor-icons/react/dist/ssr/FileDashed";
 export { FilePdfIcon as FilePdf } from "@phosphor-icons/react/dist/ssr/FilePdf";
 export { FileTextIcon as FileText } from "@phosphor-icons/react/dist/ssr/FileText";
@@ -41,6 +42,7 @@ export { PlayIcon as Play } from "@phosphor-icons/react/dist/ssr/Play";
 export { PlusIcon as Plus } from "@phosphor-icons/react/dist/ssr/Plus";
 export { ProhibitIcon as Prohibit } from "@phosphor-icons/react/dist/ssr/Prohibit";
 export { QueueIcon as Queue } from "@phosphor-icons/react/dist/ssr/Queue";
+export { ShieldCheckIcon as ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 export { SpeakerHighIcon as SpeakerHigh } from "@phosphor-icons/react/dist/ssr/SpeakerHigh";
 export { SunHorizonIcon as SunHorizon } from "@phosphor-icons/react/dist/ssr/SunHorizon";
 export { TrashIcon as Trash } from "@phosphor-icons/react/dist/ssr/Trash";
