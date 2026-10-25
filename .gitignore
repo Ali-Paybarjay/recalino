@@ -66,3 +66,6 @@ playwright/.cache/
 
 # Claude Code agent worktrees (audit fixes and other isolated work)
 .claude/worktrees/
+
+# Local audit reports that audit skills write at the repository root; they stay on disk.
+/*-project-audit.html
