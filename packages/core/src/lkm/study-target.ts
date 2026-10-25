@@ -71,9 +71,8 @@ export const studyGrammarTerms = [
   "linking word",
 ] as const;
 
-const placeholder = /^(?:sb|sth|someone|somebody|something)$/iu;
-// A spelled-out slot word standing alone cannot be a slot: it is the taught word itself.
-const literalPronoun = /^(?:someone|somebody|something)$/iu;
+const abbreviatedSlot = /^(?:sb|sth)$/iu;
+const spelledOutPronoun = /^(?:someone|somebody|something)$/iu;
 const lexical = /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’-]+$/u;
 const grammarWord = /\b(?:noun|verb|adjective|adverb|adj|adv|participle|ing)\b/iu;
 // "ing"/"ing form" without the hyphen remain accepted spellings of the listed -ing notations.
@@ -85,12 +84,18 @@ const complementPattern = new RegExp(
   "iu",
 );
 
-function headword(value: string): StudyLexicalTarget | undefined {
+function headword(value: string, spelledOutSlots: boolean): StudyLexicalTarget | undefined {
   if (!lexical.test(value) || grammarWord.test(value)) return undefined;
   const parts: string[] = [];
   let words: string[] = [];
-  for (const word of value.split(" ")) {
-    if (placeholder.test(word)) {
+  for (const [index, word] of value.split(" ").entries()) {
+    // A frame starts with its verb, so a leading pronoun is the taught word itself
+    // ("someone else"). A label that marks its slots as sb/sth spells out only
+    // literal words ("do something about sth").
+    if (
+      abbreviatedSlot.test(word) ||
+      (spelledOutSlots && index > 0 && spelledOutPronoun.test(word))
+    ) {
       if (words.length) parts.push(words.join(" "));
       words = [];
     } else words.push(word);
@@ -112,17 +117,21 @@ export function studyLexicalTarget(en: string): StudyLexicalTarget | undefined {
     /\s+\((?:pronunciation|sl|n|v|adj|adv|noun|noun phrase|formal|informal|British English|separable phrasal verb)\)$/iu,
     "",
   );
-  // Checked before slot unwrapping, so "(somebody)", "sb" and "sth" alone stay unsupported.
-  if (!separable && literalPronoun.test(value)) return { text: value, parts: [value] };
+  // AC-D46-01: spelled-out someone/somebody/something are slots only when the label
+  // never uses sb/sth. Parentheses mark an explicit slot, so they become sth here and
+  // "(somebody)" alone stays unsupported like "sb" and "sth".
+  const spelledOutSlots = !/\b(?:sb|sth)\b/iu.test(value);
   value = value.replace(
-    /\((sb|sth|someone|somebody|something)(?:\s*\/\s*(?:sb|sth|someone|somebody|something))?\)/giu,
-    "$1",
+    /\((?:sb|sth|someone|somebody|something)(?:\s*\/\s*(?:sb|sth|someone|somebody|something))?\)/giu,
+    "sth",
   );
   value = value.replace(/\b(?:sb|sth)\s*\/\s*(?:sb|sth)\b/giu, "sth");
   const plus = value.split(/\s*\+\s*/u);
   if (plus.length > 2 || (plus[1] !== undefined && !complementPattern.test(plus[1])))
     return undefined;
-  const alternatives = (plus[0] ?? "").split(/\s+\/\s+/u).map(headword);
+  const alternatives = (plus[0] ?? "")
+    .split(/\s+\/\s+/u)
+    .map((alternative) => headword(alternative, spelledOutSlots));
   const first = alternatives[0];
   if (!first || alternatives.some((entry) => !entry)) return undefined;
   if (separable) {
@@ -132,6 +141,7 @@ export function studyLexicalTarget(en: string): StudyLexicalTarget | undefined {
     if (
       alternatives.length !== 1 ||
       words.length !== 2 ||
+      spelledOutPronoun.test(words[0] ?? "") ||
       !/^(?:away|back|down|in|off|on|out|over|up)$/iu.test(words[1] ?? "")
     )
       return undefined;
