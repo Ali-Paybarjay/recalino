@@ -10,6 +10,10 @@ interface ContentVersion {
   blocks: { id: string; text: string; unitId: string }[];
   units: { id: string; kind: string; start: number; end?: number; status: string }[];
 }
+/** The text a text locator points at. Locators count code points, as the LKM schema checks them. */
+export function textExcerpt(text: string, start: number, end: number): string {
+  return Array.from(text).slice(start, end).join("");
+}
 /** SourceRef uses a pinned immutable extraction; audio is played only from this account's device. */
 export function SourceRefViewer({ reference, userId }: { reference: SourceRef; userId: string }) {
   const [open, setOpen] = useState(false),
@@ -71,7 +75,9 @@ export function SourceRefViewer({ reference, userId }: { reference: SourceRef; u
               );
       setText(
         locator.kind === "text"
-          ? (blocks[0]?.text.slice(locator.start, locator.end) ?? "")
+          ? blocks[0]
+            ? textExcerpt(blocks[0].text, locator.start, locator.end)
+            : ""
           : blocks.map((block) => block.text).join("\n\n"),
       );
       const source = await workspaceRequest<{
