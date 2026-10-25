@@ -27,6 +27,7 @@
 - CI کم‌مصرف (تصمیم مالک محصول، 2026-10-13، برای همهٔ مخزن‌های او): GitHub Actions فقط روی push به `main`، pull request به `main` و اجرای دستی اجرا می‌شود؛ e2e فقط روی `main` یا PR با برچسب `e2e`؛ push به شاخه‌های کاری CI ندارد، پس پیش از باز کردن PR، `pnpm verify` (و برای تغییر UI، `pnpm test:e2e`) را محلی اجرا کن و خلاصه‌اش را در توضیح PR بنویس. PR را برای هر commit کوچک باز نکن؛ کار را روی شاخه جمع کن و یک PR بده. جزئیات در [docs/ops/CI_LOW_COST_POLICY.md](docs/ops/CI_LOW_COST_POLICY.md).
 - محیط ابری Claude Code (تصمیم مالک محصول، 2026-10-14): سشن‌های ریکالینو، از جمله سشن‌های کارگری و Routine‌ها، در environment «Recalino» باز می‌شوند، نه «Default» که با پروژه‌های دیگر مشترک است. اگر در سشن متغیر `SUPABASE_*` در env دیدی یا `node -v` نسخهٔ 24 نداد، سشن در environment اشتباه است: گزارش بده و از آن مقدارها استفاده نکن. تنظیمات و setup script در [docs/ops/CLOUD_ENVIRONMENT_FA.md](docs/ops/CLOUD_ENVIRONMENT_FA.md).
 - مجوز استقرار عمومی، خرید سرویس یا کار تخریبی روی داده واقعی را از متن اسناد استنباط نکن؛ صریحاً بپرس.
+- بهداشت شاخه (قاعدهٔ عملیاتی، 2026-10-25): هر سشن پیش از پایان شاخهٔ کاری‌اش را push می‌کند؛ هر کار یک شاخه و یک PR؛ کار رهاشده با tag `archive/<YYYY-MM-DD>/<branch>` حفظ و شاخه‌اش حذف می‌شود؛ worktree یا تغییر commit‌نشده به سشن بعدی نمی‌رسد. جزئیات و دستورها در [docs/ops/BRANCH_HYGIENE_FA.md](docs/ops/BRANCH_HYGIENE_FA.md).
 - خروجی هر milestone: کد، migration لازم، تست، دستور اجرای قابل تکرار و گزارش محدودیت‌های باقی‌مانده.
 
 ## ثابت‌های محصول که کد نباید نقض کند
