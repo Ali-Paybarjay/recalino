@@ -94,3 +94,49 @@ it("detects exposed lexical chunks without mistaking an unrelated gap complement
   expect(studyLexicalTargetMatches(separable, "We need to kit ______ out.")).toBe(true);
   expect(studyLexicalTargetMatches(separable, "We need to ______ it ______.")).toBe(false);
 });
+
+it.each([
+  ["someone else", "someone else", ["someone else"]],
+  ["Someone else", "Someone else", ["Someone else"]],
+  ["something like that", "something like that", ["something like that"]],
+  ["someone else (pronunciation)", "someone else", ["someone else"]],
+  ["do something about sth", "do something about", ["do something about"]],
+  ["do something about (sth)", "do something about", ["do something about"]],
+  ["have something to do with sb/sth", "have something to do with", ["have something to do with"]],
+])(
+  "AC-D46-01 keeps a leading or sb/sth-marked spelled-out pronoun literal in %s",
+  (en, text, parts) => {
+    expect(studyLexicalTarget(en as string)).toEqual({ text, parts });
+  },
+);
+
+it.each([
+  ["let somebody down", "let down", ["let", "down"]],
+  ["remind somebody of (something)", "remind of", ["remind", "of"]],
+  ["remind sb of (something)", "remind of", ["remind", "of"]],
+  ["kit somebody out (separable phrasal verb)", "kit out", ["kit", "out"]],
+])("AC-D46-01 keeps spelled-out or parenthesised object slots in %s", (en, text, parts) => {
+  expect(studyLexicalTarget(en as string)).toEqual({ text, parts });
+});
+
+it.each(["someone off (separable phrasal verb)", "something out (separable phrasal verb)"])(
+  "AC-D46-01 declines a separable label whose verb would be a pronoun: %s",
+  (en) => {
+    expect(studyLexicalTarget(en)).toBeUndefined();
+  },
+);
+
+it("AC-D46-01 matches a literal pronoun phrase only as one complete chunk", () => {
+  const other = studyLexicalTarget("someone else");
+  const about = studyLexicalTarget("do something about sth");
+  const like = studyLexicalTarget("something like that");
+  if (!other || !about || !like) throw new Error("Missing literal pronoun fixture");
+  expect(studyLexicalTargetMatches(other, "Please ask someone else to lock up.")).toBe(true);
+  expect(studyLexicalTargetMatches(other, "Please ask ______ to lock up.")).toBe(false);
+  expect(studyLexicalTargetMatches(other, "Is there anything else to lock up?")).toBe(false);
+  expect(studyLexicalTargetMatches(about, "We must do something about the noise.")).toBe(true);
+  expect(studyLexicalTargetMatches(about, "We must ______ the noise.")).toBe(false);
+  expect(studyLexicalTargetMatches(about, "What do you think about the noise?")).toBe(false);
+  expect(studyLexicalTargetMatches(like, "It cost ten pounds or something like that.")).toBe(true);
+  expect(studyLexicalTargetMatches(like, "It cost ten pounds or ______.")).toBe(false);
+});

@@ -124,3 +124,13 @@ it("AC-D46-01 extracts only the structured target and preserves old metadata", (
     }),
   ).toBeUndefined();
 });
+
+it.each([
+  ["someone else", "someone else"],
+  ["something like that", "something like that"],
+  ["do something about sth", "do something about"],
+])("AC-D46-01 pronounces the literal pronoun phrase %s in full", (en, spoken) => {
+  const item = referenceStudyModel().learningItems[0];
+  if (item?.study?.set !== "production") throw new Error("Missing reference target");
+  expect(studyPronunciationTarget({ ...item, study: { ...item.study, en } })).toBe(spoken);
+});

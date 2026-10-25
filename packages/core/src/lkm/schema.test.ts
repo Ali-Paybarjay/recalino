@@ -316,3 +316,35 @@ it("D78 keeps up to 25 production cards in one class and rejects the 26th", () =
     expect.objectContaining({ details: { fields: { output: ["study_core_limit"] } } }),
   );
 });
+
+it.each([
+  {
+    en: "someone else",
+    gapSentence: "If you are busy, I can ask ______, or else we can wait.",
+    fullSentence: "If you are busy, I can ask someone else, or else we can wait.",
+    exposed: "If you are busy, I can ask someone else, or ______ we can wait.",
+  },
+  {
+    en: "something like that",
+    gapSentence: "If you'd like that, we can paint it blue or ______.",
+    fullSentence: "If you'd like that, we can paint it blue or something like that.",
+    exposed: "If you'd like ______, we can paint it blue or something like that.",
+  },
+  {
+    en: "do something about sth",
+    gapSentence: "What do you think about it? We must ______ the noise.",
+    fullSentence: "What do you think about it? We must do something about the noise.",
+    exposed: "What do you think about ______? We must do something about the noise.",
+  },
+])("AC-D46-01 validates the literal pronoun phrase $en by its whole target", (fields) => {
+  // The leftover chunk alone (else / like that / do … about) is not the answer.
+  const { exposed, ...valid } = fields;
+  expect(validateKnowledgeModel(lexicalFrameModel(valid), [], "en").learningItems).toHaveLength(1);
+  let failure: unknown;
+  try {
+    validateKnowledgeModel(lexicalFrameModel({ ...valid, gapSentence: exposed }), [], "en");
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toMatchObject({ details: { fields: { output: ["study_answer_exposed"] } } });
+});
