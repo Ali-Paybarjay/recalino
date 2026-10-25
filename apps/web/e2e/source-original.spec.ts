@@ -321,7 +321,10 @@ test.describe("FR-SRC-012 original-file access", () => {
     const opened = page.waitForEvent("popup");
     await button.click();
     const popup = await opened;
-    await expect(popup).toHaveURL(/^blob:http:\/\/localhost:3000\//);
+    await expect(popup).toHaveURL(/^blob:/);
+    await expect
+      .poll(() => new URL(popup.url()).origin)
+      .toBe(new URL(test.info().project.use.baseURL ?? "http://localhost:3000").origin);
     const media = popup.locator("audio, video");
     await expect(media).toBeVisible();
     await expect
@@ -369,7 +372,10 @@ test.describe("FR-SRC-012 original-file access", () => {
     const opened = page.waitForEvent("popup");
     await button.click();
     const popup = await opened;
-    await expect(popup).toHaveURL(/^blob:http:\/\/localhost:3000\//);
+    await expect(popup).toHaveURL(/^blob:/);
+    await expect
+      .poll(() => new URL(popup.url()).origin)
+      .toBe(new URL(test.info().project.use.baseURL ?? "http://localhost:3000").origin);
     const originalUrl = popup.url();
     await expect(page.getByText("Original opened in a new tab.", { exact: true })).toBeVisible();
     await expect(button).toBeEnabled();

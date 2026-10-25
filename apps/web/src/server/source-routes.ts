@@ -5,7 +5,7 @@ import {
   findPrivacyDeletionRequest,
   persistDeletionJournal,
 } from "@recalino/core/priv";
-import { getRun, validateAudioUploadRun } from "@recalino/core/proc";
+import { getRun, registerAutomaticLearningFile, validateAudioUploadRun } from "@recalino/core/proc";
 import {
   acceptSourceNotice,
   attachSource,
@@ -32,7 +32,10 @@ import {
 import { after } from "next/server";
 import { z } from "zod";
 import type { Handler, RequestContext } from "./api";
-import { notifyAutomaticLearning } from "./automatic-learning-notifications";
+import {
+  notifyAutomaticLearning,
+  notifyAutomaticLearningForUpload,
+} from "./automatic-learning-notifications";
 import { runJobsSoon } from "./jobs";
 import { privacyDependencies } from "./privacy";
 import { sourceAudioJobDefinition, sourceUploadJobDefinition } from "./source-jobs";
@@ -76,17 +79,31 @@ export function sourcesHandler(): Handler {
           new URL(request.url).searchParams.get("checksum") ?? undefined,
         ),
       };
-    const fields = z.object({ kind: z.string() }).parse(input);
+    const fields = z
+      .object({ kind: z.string(), batchId: z.uuid().optional(), fileId: z.uuid().optional() })
+      .parse(input);
+    if (Boolean(fields.batchId) !== Boolean(fields.fileId))
+      throw errors.validationFailed({ batch: ["file_binding_required"] });
     if (fields.kind !== "audio") store();
     const operationKey = request.headers.get("idempotency-key");
     if (!operationKey) throw errors.validationFailed({ "Idempotency-Key": ["required"] });
     const learner = actor(ctx);
-    const body = await createSource(db, learner, {
-      ...(input as Record<string, unknown>),
-      operationKey,
+    const { batchId: _batchId, fileId: _fileId, ...sourceInput } = input as Record<string, unknown>;
+    const sessionId = z.uuid().parse(sourceInput.sessionId);
+    const body = await db.transaction().execute(async (tx) => {
+      const created = await createSource(tx, learner, { ...sourceInput, operationKey });
+      if (fields.batchId && fields.fileId)
+        await registerAutomaticLearningFile(
+          tx,
+          learner,
+          sessionId,
+          { batchId: fields.batchId, fileId: fields.fileId, sourceId: created.assetId },
+          new Date(),
+          false,
+        );
+      return created;
     });
-    const sessionId = (input as Record<string, unknown>).sessionId;
-    if (typeof sessionId === "string") await notifyAutomaticLearning(db, learner, sessionId);
+    await notifyAutomaticLearning(db, learner, sessionId, !fields.batchId);
     return { status: 201, body };
   };
 }
@@ -129,10 +146,30 @@ export function classSourcesHandler(id: string): Handler {
   return async ({ db, ctx, input, request }) => {
     z.uuid().parse(id);
     if (request.method === "GET") return { body: await sessionSources(db, actor(ctx), id) };
-    const fields = z.strictObject({ assetId: z.uuid() }).parse(input);
+    const fields = z
+      .strictObject({
+        assetId: z.uuid(),
+        batchId: z.uuid().optional(),
+        fileId: z.uuid().optional(),
+      })
+      .parse(input);
+    if (Boolean(fields.batchId) !== Boolean(fields.fileId))
+      throw errors.validationFailed({ batch: ["file_binding_required"] });
     const learner = actor(ctx);
-    const linkId = await attachSource(db, learner, id, fields.assetId);
-    await notifyAutomaticLearning(db, learner, id);
+    const linkId = await db.transaction().execute(async (tx) => {
+      const link = await attachSource(tx, learner, id, fields.assetId);
+      if (fields.batchId && fields.fileId)
+        await registerAutomaticLearningFile(
+          tx,
+          learner,
+          id,
+          { batchId: fields.batchId, fileId: fields.fileId, sourceId: fields.assetId },
+          new Date(),
+          false,
+        );
+      return link;
+    });
+    await notifyAutomaticLearning(db, learner, id, !fields.batchId);
     return { body: { linkId } };
   };
 }
@@ -164,6 +201,8 @@ export function sourcePartHandler(id: string, index: string): Handler {
       const result = await confirmUploadPart(db, store(), learner, id, partIndex);
       if (result === "missing") return { body: { confirmed: false } };
       if (result !== "verified") throw errors.validationFailed({ upload: ["part_not_verified"] });
+      await notifyAutomaticLearningForUpload(db, learner, id);
+      runJobsSoon(["src.verify_upload", "proc.automatic_learning"], 90);
       return { body: { confirmed: true } };
     }
     return {

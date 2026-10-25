@@ -246,7 +246,7 @@ describe("automatic recording photos", () => {
     ).toBe(after?.fingerprint);
     expect(after?.fingerprint).not.toBe(before?.fingerprint);
   });
-  it("registers and confirms every board photo before completing its audio preparation batch", async () => {
+  it("declares and registers every board photo without requiring client batch completion", async () => {
     const recording = row(),
       local = [photo(recording), photo(recording)];
     const events: string[] = [];
@@ -298,14 +298,15 @@ describe("automatic recording photos", () => {
     expect(events).toEqual([
       "begin",
       "register-photo",
+      "register_file",
       "put",
       "complete-photo",
       "saved-photo",
       "register-photo",
+      "register_file",
       "put",
       "complete-photo",
       "saved-photo",
-      "complete",
     ]);
     expect(saved.map((savedPhoto) => savedPhoto.blob)).toEqual(
       local.map((localPhoto) => localPhoto.blob),
@@ -314,6 +315,15 @@ describe("automatic recording photos", () => {
     expect(
       request.mock.calls.filter((call) => call[0] === "/api/sources").map((call) => call[3]),
     ).toEqual(local.map((photo) => `recorded-photo:${photo.id}`));
+    expect(request.mock.calls[0]?.[2]).toMatchObject({
+      action: "begin",
+      expectedFileIds: local.map((photo) => photo.id),
+    });
+    const batchId = request.mock.calls[0]?.[2]?.batchId;
+    expect(
+      request.mock.calls.filter((call) => call[0] === "/api/sources").map((call) => call[2]),
+    ).toEqual(local.map((photo) => expect.objectContaining({ batchId, fileId: photo.id })));
+    expect(request.mock.calls.some((call) => call[2]?.action === "complete")).toBe(false);
   });
   it("retains a failed photo batch and reuses its id when saved photos resume", async () => {
     const recording = row(),
@@ -338,53 +348,237 @@ describe("automatic recording photos", () => {
       },
     );
     await prepareAutomaticRecordingPhotos(userId, material, contract, { store, request });
-    expect(request.mock.calls[2]?.[2]).toEqual({ action: "begin", batchId });
-    expect(request.mock.calls.at(-1)?.[2]).toEqual({ action: "complete", batchId });
+    expect(request.mock.calls[2]?.[2]).toEqual({
+      action: "begin",
+      batchId,
+      expectedFileIds: [local.id],
+    });
+    expect(request.mock.calls.some((call) => call[2]?.action === "complete")).toBe(false);
     expect(store.savePhoto).toHaveBeenCalledWith({ ...local, sourceAssetId: sourceId });
   });
-  it("reopens a photo fence after a lost completion acknowledgement and never reuploads verified photos", async () => {
+  it("replays an immutable photo declaration after a lost begin acknowledgement and reordered local data", async () => {
+    const recording = row(),
+      local = [photo(recording), photo(recording)];
+    const store = { photos: async () => local, savePhoto: vi.fn() };
+    const material = await automaticRecordingMaterial(userId, sessionId, [recording], store);
+    if (!material) throw new Error("Expected finalized capture");
+    const request = vi.fn().mockRejectedValueOnce(new TypeError("Lost begin acknowledgement"));
+    await expect(
+      prepareAutomaticRecordingPhotos(userId, material, contract, { store, request }),
+    ).rejects.toThrow("Lost begin");
+    const declared = request.mock.calls[0]?.[2];
+    material.photos.reverse();
+    request.mockImplementation(
+      async (path: string, _method: string, body?: { action?: string; batchId?: string }) => {
+        if (body?.action === "begin") return { batchId: body.batchId };
+        if (body?.action === "register_file") return {};
+        if (path === "/api/sources") return { assetId: randomUUID(), uploadId: randomUUID() };
+        return { state: "verified", parts: [] };
+      },
+    );
+    await prepareAutomaticRecordingPhotos(userId, material, contract, { store, request });
+    expect(request.mock.calls[1]?.[2]).toEqual(declared);
+    expect(store.savePhoto).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls.some((call) => call[2]?.action === "complete")).toBe(false);
+  });
+  it("declares only pending photos and leaves already uploaded photos outside the group untouched", async () => {
+    const recording = row(),
+      old = photo(recording, { sourceAssetId: randomUUID() }),
+      pending = photo(recording);
+    const store = { photos: async () => [old, pending], savePhoto: vi.fn() };
+    const material = await automaticRecordingMaterial(userId, sessionId, [recording], store);
+    if (!material) throw new Error("Expected finalized capture");
+    const request = vi.fn(
+      async (path: string, _method: string, body?: { action?: string; batchId?: string }) => {
+        if (body?.action === "begin") return { batchId: body.batchId };
+        if (body?.action === "register_file") return {};
+        if (path === "/api/sources") return { assetId: sourceId, uploadId: "photo-upload" };
+        return { state: "verified", parts: [] };
+      },
+    );
+    await prepareAutomaticRecordingPhotos(userId, material, contract, {
+      store,
+      request: request as typeof workspaceRequest,
+    });
+    expect(request.mock.calls[0]?.[2]).toMatchObject({ expectedFileIds: [pending.id] });
+    expect(request.mock.calls.filter((call) => call[0] === "/api/sources")).toHaveLength(1);
+    expect(store.savePhoto).toHaveBeenCalledExactlyOnceWith({
+      ...pending,
+      sourceAssetId: sourceId,
+    });
+  });
+  it("recovers a saved source ID after server sealing through exact class receipts without creating or attaching material", async () => {
+    const recording = row(),
+      local = photo(recording, { sourceAssetId: sourceId }),
+      batchId = randomUUID();
+    const store = { photos: async () => [local], savePhoto: vi.fn() };
+    const material = await automaticRecordingMaterial(userId, sessionId, [recording], store);
+    if (!material) throw new Error("Expected finalized capture");
+    const key = `recalino:learning-photos:${userId}:${sessionId}`;
+    localStorage.setItem(key, JSON.stringify({ batchId, fileIds: [local.id], sources: {} }));
+    const request = vi.fn(async (path: string, _method: string, body?: { action?: string }) => {
+      if (body?.action === "begin") return { batchId: null, state: "processing" };
+      if (path.startsWith("/api/sources?"))
+        return [
+          { id: randomUUID(), operation_key: "unrelated", uploadId: "unrelated-upload" },
+          { id: sourceId, operation_key: `recorded-photo:${local.id}`, uploadId: "photo-upload" },
+        ];
+      if (path === `/api/classes/${sessionId}/sources`) return [{ assetId: sourceId }];
+      return { state: "verified", parts: [] };
+    });
+    const put = vi.fn();
+    await prepareAutomaticRecordingPhotos(userId, material, contract, {
+      store,
+      request: request as typeof workspaceRequest,
+      put,
+    });
+    expect(request.mock.calls.filter((call) => call[1] === "POST")).toHaveLength(1);
+    expect(request.mock.calls[0]?.[2]).toMatchObject({ action: "begin", batchId });
+    expect(store.savePhoto).toHaveBeenCalledExactlyOnceWith(local);
+    expect(put).not.toHaveBeenCalled();
+  });
+  it("keeps a group fenced when a declared local photo is missing or its capture is no longer authorized", async () => {
     const recording = row(),
       local = photo(recording);
     const store = { photos: async () => [local], savePhoto: vi.fn() };
     const material = await automaticRecordingMaterial(userId, sessionId, [recording], store);
     if (!material) throw new Error("Expected finalized capture");
-    let lost = true,
-      closedId: string | null = null;
+    const key = `recalino:learning-photos:${userId}:${sessionId}`,
+      batchId = randomUUID();
+    localStorage.setItem(
+      key,
+      JSON.stringify({ batchId, fileIds: [local.id, randomUUID()], sources: {} }),
+    );
+    const request = vi.fn();
+    await expect(
+      prepareAutomaticRecordingPhotos(userId, material, contract, { store, request }),
+    ).rejects.toThrow("approved recording");
+    expect(request).not.toHaveBeenCalled();
+    expect(localStorage.getItem(key)).toContain(batchId);
+    localStorage.removeItem(key);
+    recording.autoGenerate = undefined;
+    await expect(
+      prepareAutomaticRecordingPhotos(userId, material, contract, { store, request }),
+    ).rejects.toThrow("approved recording");
+    expect(request).not.toHaveBeenCalled();
+  });
+  it("rejects changed local photo bytes before acknowledging a cached source receipt", async () => {
+    const recording = row(),
+      local = photo(recording),
+      request = vi.fn(),
+      store = { savePhoto: vi.fn() };
+    await expect(
+      uploadAutomaticPhoto(recording, local, contract, {
+        store,
+        request,
+        photoBatch: {
+          id: randomUUID(),
+          closed: false,
+          source: { assetId: sourceId, uploadId: "photo-upload", sha256: "0".repeat(64) },
+          saveSource: vi.fn(),
+        },
+      }),
+    ).rejects.toThrow("saved bytes no longer match");
+    expect(request).not.toHaveBeenCalled();
+    expect(store.savePhoto).not.toHaveBeenCalled();
+  });
+  it("recovers a pre-upgrade photo group's lost closure without opening another group or uploading old photos", async () => {
+    const recording = row(),
+      local = photo(recording, { sourceAssetId: sourceId }),
+      batchId = randomUUID();
+    const key = `recalino:learning-photos:${userId}:${sessionId}`;
+    localStorage.setItem(key, batchId);
+    const store = { photos: async () => [local], savePhoto: vi.fn() };
+    const material = await automaticRecordingMaterial(userId, sessionId, [recording], store);
+    if (!material) throw new Error("Expected finalized capture");
+    let closed = false;
+    const request = vi.fn(
+      async (path: string, _method: string, body?: { action?: string; batchId?: string }) => {
+        if (body?.action === "begin") return { batchId: closed ? null : body.batchId };
+        if (body?.action === "complete") {
+          closed = true;
+          throw new TypeError("Lost legacy closure");
+        }
+        if (path.startsWith("/api/sources?"))
+          return [
+            { id: sourceId, operation_key: `recorded-photo:${local.id}`, uploadId: "photo-upload" },
+          ];
+        if (path === `/api/classes/${sessionId}/sources`) return [{ assetId: sourceId }];
+        return { state: "verified", parts: [] };
+      },
+    );
+    await expect(
+      prepareAutomaticRecordingPhotos(userId, material, contract, {
+        store,
+        request: request as typeof workspaceRequest,
+      }),
+    ).rejects.toThrow("Lost legacy");
+    await prepareAutomaticRecordingPhotos(userId, material, contract, {
+      store,
+      request: request as typeof workspaceRequest,
+    });
+    const posts = request.mock.calls.filter((call) => call[1] === "POST");
+    expect(posts.map((call) => call[2])).toEqual([
+      { action: "begin", batchId },
+      { action: "complete", batchId },
+      { action: "begin", batchId },
+    ]);
+    expect(localStorage.getItem(key)).toBeNull();
+  });
+  it("recovers after tab closure and server auto-sealing without reopening a fence or reuploading bytes", async () => {
+    const recording = row(),
+      local = photo(recording);
+    const store = { photos: async () => [local], savePhoto: vi.fn() };
+    const material = await automaticRecordingMaterial(userId, sessionId, [recording], store);
+    if (!material) throw new Error("Expected finalized capture");
+    const abort = new AbortController();
+    let received = false,
+      confirmations = 0;
     const request = vi.fn(
       async (path: string, _method: string, body?: { action?: string; batchId?: string }) => {
         if (body?.action === "begin")
           return {
-            state: "waiting_sources",
-            batchId: body.batchId === closedId ? null : body.batchId,
+            state: received ? "processing" : "waiting_sources",
+            batchId: received ? null : body.batchId,
           };
-        if (body?.action === "complete" && lost) {
-          lost = false;
-          closedId = body.batchId ?? null;
-          throw new TypeError("Lost completion");
-        }
+        if (body?.action === "register_file") return {};
         if (path === "/api/sources") return { assetId: sourceId, uploadId: "photo-upload" };
-        return { state: "verified", parts: [] };
+        if (path.endsWith("/parts/0") && _method === "POST")
+          return { confirmed: ++confirmations % 2 === 0 };
+        if (path.endsWith("/parts/0")) return { url: "https://storage.example.test/photo" };
+        if (path.endsWith("complete")) {
+          received = true;
+          abort.abort(new DOMException("Tab closed before acknowledgement", "AbortError"));
+          abort.signal.throwIfAborted();
+        }
+        return { state: received ? "verified" : "pending", parts: [] };
       },
     );
-    const put = vi.fn();
+    const put = vi.fn(async () => ({ ok: true, status: 200 }));
     await expect(
       prepareAutomaticRecordingPhotos(userId, material, contract, {
         store,
         request: request as typeof workspaceRequest,
         put,
+        signal: abort.signal,
       }),
-    ).rejects.toThrow("Lost completion");
-    material.photos[0] = { ...local, sourceAssetId: sourceId };
+    ).rejects.toThrow("Tab closed");
     await prepareAutomaticRecordingPhotos(userId, material, contract, {
       store,
       request: request as typeof workspaceRequest,
       put,
     });
     const begins = request.mock.calls.filter((call) => call[2]?.action === "begin");
-    expect(begins).toHaveLength(3);
-    expect(begins[1]?.[2]?.batchId).toBe(closedId);
-    expect(begins[2]?.[2]?.batchId).not.toBe(closedId);
-    expect(put).not.toHaveBeenCalled();
+    expect(begins).toHaveLength(2);
+    expect(begins[1]?.[2]).toEqual(begins[0]?.[2]);
+    expect(put).toHaveBeenCalledOnce();
+    expect(request.mock.calls.filter((call) => call[0] === "/api/sources")).toHaveLength(1);
+    expect(request.mock.calls.filter((call) => call[2]?.action === "register_file")).toHaveLength(
+      1,
+    );
+    expect(request.mock.calls.some((call) => call[2]?.action === "complete")).toBe(false);
+    expect(store.savePhoto).toHaveBeenCalledWith({ ...local, sourceAssetId: sourceId });
+    expect(localStorage.getItem(`recalino:learning-photos:${userId}:${sessionId}`)).toBeNull();
   });
   it("cancels immediately when an in-flight board photo upload is aborted", async () => {
     const recording = row(),

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   confirmPart: vi.fn(),
   uploadManifest: vi.fn(),
   confirmUploadPart: vi.fn(),
+  uploadSessionIds: vi.fn(),
   enqueue: vi.fn(),
   runJobsSoon: vi.fn(),
   audioJob: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("@recalino/core/src", async (original) => ({
   confirmTemporaryAudioPart: mocks.confirmPart,
   uploadManifest: mocks.uploadManifest,
   confirmUploadPart: mocks.confirmUploadPart,
+  uploadSessionIds: mocks.uploadSessionIds,
 }));
 vi.mock("@recalino/core/proc", async (original) => ({
   ...(await original<object>()),
@@ -59,6 +61,7 @@ beforeEach(() => {
   mocks.run.mockResolvedValue({ id: runId });
   mocks.manifest.mockResolvedValue({ reservationId });
   mocks.validateRun.mockResolvedValue(undefined);
+  mocks.uploadSessionIds.mockResolvedValue([]);
 });
 function confirm() {
   return sourceAudioHandler(assetId)({

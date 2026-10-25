@@ -14,12 +14,14 @@ import { createSession } from "@recalino/core/org";
 import { type JobContext, MemoryObjectStore, sha256Hex } from "@recalino/core/plt";
 import {
   beginAutomaticLearningBatch,
+  cancelAutomaticLearningBatch,
   completeAutomaticLearningBatch,
   createProcessingRun,
   getAutomaticLearningSession,
   getProcessingRunSnapshot,
   listRuns,
   processingJob,
+  registerAutomaticLearningFile,
   requestAutomaticLearning,
   selectProcessingSourceSnapshot,
 } from "@recalino/core/proc";
@@ -283,6 +285,82 @@ it("finishes one closed upload batch once, saving notes and active cards without
   expect(f.provider.calls).toBe(1);
   expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
   expect((await getNotebook(db, f.ctx, f.session.id))?.current.number).toBe(1);
+});
+
+it("processes a fully received declared batch after browser closure with one run and no duplicate reservation", async () => {
+  const f = await fixture(),
+    batchId = randomUUID(),
+    firstId = randomUUID(),
+    secondId = randomUUID();
+  await beginAutomaticLearningBatch(db, f.ctx, f.session.id, batchId, new Date(), [
+    firstId,
+    secondId,
+  ]);
+  const first = await f.addText("Background first handout");
+  await registerAutomaticLearningFile(db, f.ctx, f.session.id, {
+    batchId,
+    fileId: firstId,
+    sourceId: first,
+  });
+  expect((await f.sync()).state).toBe("waiting_sources");
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(0);
+  const second = await f.addText("Background second handout");
+  await registerAutomaticLearningFile(db, f.ctx, f.session.id, {
+    batchId,
+    fileId: secondId,
+    sourceId: second,
+  });
+  // No client complete request follows these persisted server receipts.
+  const [one, two] = await Promise.all([f.sync(), f.sync()]);
+  expect(one.run?.id).toBe(two.run?.id);
+  expect(
+    (await getProcessingRunSnapshot(db, f.ctx, one.run?.id ?? "")).sources
+      .map((source) => source.sourceId)
+      .sort(),
+  ).toEqual([first, second].sort());
+  await f.work();
+  expect(await readAutomaticLearning(db, f.ctx, f.session.id)).toMatchObject({
+    state: "ready",
+    notesReady: true,
+    cardsReady: true,
+  });
+  await f.sync();
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
+  expect(
+    await db
+      .selectFrom("quota.reservation")
+      .select("id")
+      .where("user_id", "=", f.ctx.userId)
+      .execute(),
+  ).toHaveLength(1);
+});
+
+it("cancels an incomplete declared group without regenerating or losing earlier notes and cards", async () => {
+  const f = await fixture();
+  await f.addText("Earlier class material");
+  await f.sync();
+  await f.work();
+  const previous = await getNotebook(db, f.ctx, f.session.id),
+    calls = f.provider.calls;
+  const batchId = randomUUID(),
+    fileId = randomUUID();
+  await beginAutomaticLearningBatch(db, f.ctx, f.session.id, batchId, new Date(), [fileId]);
+  const newSource = await f.addText("Cancelled added material");
+  await registerAutomaticLearningFile(db, f.ctx, f.session.id, {
+    batchId,
+    fileId,
+    sourceId: newSource,
+  });
+  await cancelAutomaticLearningBatch(db, f.ctx, f.session.id, batchId);
+  expect(await f.sync()).toMatchObject({
+    state: "blocked",
+    lastError: "upload_batch_cancelled",
+    notesReady: true,
+  });
+  expect(await getNotebook(db, f.ctx, f.session.id)).toEqual(previous);
+  expect(await listCards(db, f.ctx, { sessionId: f.session.id })).toHaveLength(1);
+  expect(await listRuns(db, f.ctx, f.session.id)).toHaveLength(1);
+  expect(f.provider.calls).toBe(calls);
 });
 
 it("updates after another material batch, preserving edits and card identities", async () => {

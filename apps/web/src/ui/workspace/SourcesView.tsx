@@ -1,5 +1,5 @@
 "use client";
-import type { InputContract, SourceKind } from "@recalino/core/src";
+import type { InputContract } from "@recalino/core/src";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,35 +14,17 @@ import {
   notifyAutomaticLearning,
   pendingLearningBatch,
 } from "./automatic-learning";
+import { declaredUploadIssues } from "./declared-upload-issues";
 import { type FileProcessingReceipt, fileProcessingFeedback } from "./file-processing";
 import { appendSelectedFiles, type SelectedFile, selectedFileProblem } from "./file-selection";
 import { openOriginalTab } from "./open-original";
 import { Actions, Button, Field, LinkButton, Panel, Status } from "./primitives";
-import { createSourceUploadRequest, uploadSourceFileParts } from "./source-upload";
-import type { UploadRecovery } from "./upload";
+import type { SourceRow } from "./source-types";
+import { useUploads } from "./UploadProvider";
+import type { UploadEntry } from "./upload-store";
 
-export interface SourceRow {
-  assetId: string;
-  displayName: string;
-  kind: string;
-  mimeType: string;
-  sizeBytes: number;
-  durationMs: number | null;
-  pageCount: number | null;
-  verifiedAt: string | null;
-  originalDeletedAt: string | null;
-  selected: boolean;
-  role: string;
-  ranges: { start: number; end: number }[];
-  timeStatus: string;
-  contentVersionId: string | null;
-  uploadId: string | null;
-  uploadState: string | null;
-  rejectionReason: string | null;
-  anchorSourceId: string | null;
-  captureOffsetMs: number | null;
-  captureState: string | null;
-}
+export type { SourceRow } from "./source-types";
+
 interface OwnSource {
   id: string;
   display_name: string;
@@ -51,73 +33,7 @@ interface OwnSource {
   uploadState: string | null;
   original_deleted_at: string | null;
 }
-interface FileUpload {
-  id: string;
-  displayName: string;
-  sizeBytes: number;
-  phase: "checking" | "uploading" | "saving" | "verifying" | "complete" | "failed";
-  sentBytes: number;
-  startedAt: number;
-  finishedAt?: number;
-  problem?: string;
-  source?: SourceRow;
-  serverSeen: boolean;
-}
-async function checksum(blob: Blob) {
-  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-function kindOf(file: File): SourceKind | null {
-  if (/\.(jpe?g|png|webp)$/i.test(file.name)) return "image";
-  if (/\.pdf$/i.test(file.name)) return "pdf";
-  if (/\.(html?|xhtml)$/i.test(file.name)) return "html";
-  if (/\.txt$/i.test(file.name)) return "text";
-  if (/\.(m4a|mp3|wav|webm|ogg)$/i.test(file.name)) return "audio";
-  return null;
-}
-function mimeOf(file: File, kind: SourceKind) {
-  if (kind === "text") return "text/plain";
-  if (kind === "html") return "text/html";
-  if (kind === "pdf") return "application/pdf";
-  if (kind === "audio")
-    return /\.m4a$/i.test(file.name)
-      ? "audio/mp4"
-      : /\.mp3$/i.test(file.name)
-        ? "audio/mpeg"
-        : /\.wav$/i.test(file.name)
-          ? "audio/wav"
-          : /\.ogg$/i.test(file.name)
-            ? "audio/ogg"
-            : "audio/webm";
-  return /\.png$/i.test(file.name)
-    ? "image/png"
-    : /\.webp$/i.test(file.name)
-      ? "image/webp"
-      : "image/jpeg";
-}
-async function audioDuration(file: File) {
-  const url = URL.createObjectURL(file);
-  try {
-    return await new Promise<number>((resolve, reject) => {
-      const audio = new Audio();
-      audio.preload = "metadata";
-      audio.onloadedmetadata = () => {
-        if (!Number.isFinite(audio.duration) || audio.duration <= 0)
-          reject(
-            new Error(
-              "This audio file has no readable duration. Use a supported file with duration metadata.",
-            ),
-          );
-        else resolve(Math.ceil(audio.duration * 1000));
-        audio.src = "";
-      };
-      audio.onerror = () => reject(new Error("This browser cannot read that audio format."));
-      audio.src = url;
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+type FileUpload = UploadEntry;
 
 export function SourcesView({
   sessionId,
@@ -138,11 +54,30 @@ export function SourcesView({
     fileInput = useRef<HTMLInputElement>(null),
     uploadList = useRef<HTMLUListElement>(null),
     lock = useRef(false);
-  const uploadController = useRef<AbortController | null>(null);
-  const sourceCreationKeys = useRef(new Map<string, string>());
   const processingRetryKey = useRef<{ payload: string; key: string } | null>(null);
-  useEffect(() => () => uploadController.current?.abort(), []);
   const learning = useAutomaticLearning(sessionId);
+  const uploads = useUploads(sessionId);
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => setInteractive(true), []);
+  const managedBatch = uploads.batches.at(-1);
+  const declaredBatch = uploads.batches.find(
+    (row) => row.id === learning.status?.batchId && row.phase !== "cancelled",
+  );
+  const declaredEntry = (assetId: string) =>
+    declaredBatch?.entries.find(
+      (entry) => entry.phase !== "skipped" && entry.source?.assetId === assetId,
+    );
+  const verificationIssues = declaredUploadIssues(
+    declaredBatch,
+    sources,
+    learning.status?.lastError ?? null,
+  );
+  const localSavedIds =
+    managedBatch?.entries
+      .filter((entry) => entry.phase === "local_saved")
+      .map((entry) => entry.source?.assetId)
+      .filter(Boolean)
+      .join(",") ?? "";
   const [interruptedBatch, setInterruptedBatch] = useState(false);
   useEffect(() => {
     setInterruptedBatch(!!pendingLearningBatch(userId, sessionId));
@@ -173,11 +108,31 @@ export function SourcesView({
   const [batch, setBatch] = useState<{ total: number; current: number; active: boolean } | null>(
     null,
   );
-  const updateUpload = useCallback((id: string, patch: Partial<FileUpload>) => {
-    setFileUploads((previous) =>
-      previous.map((file) => (file.id === id ? { ...file, ...patch } : file)),
-    );
-  }, []);
+  useEffect(() => {
+    if (!managedBatch) return;
+    if (managedBatch.phase === "cancelled") {
+      setFileUploads([]);
+      setBatch(null);
+      setReceipt(null);
+      setMessage("Saved upload cancelled. You can add another file.");
+      return;
+    }
+    setFileUploads(managedBatch.entries.filter((entry) => entry.phase !== "skipped"));
+    setBatch({
+      total: managedBatch.entries.length,
+      current: Math.min(
+        managedBatch.entries.length,
+        managedBatch.entries.filter((entry) =>
+          ["local_saved", "verifying", "complete", "skipped"].includes(entry.phase),
+        ).length + 1,
+      ),
+      active: ["queued", "uploading"].includes(managedBatch.phase),
+    });
+    setReceipt({
+      ...managedBatch.receipt,
+      ...(managedBatch.problem ? { problem: managedBatch.problem } : {}),
+    });
+  }, [managedBatch]);
   useEffect(() => {
     setFileUploads((previous) => {
       let changed = false;
@@ -211,8 +166,8 @@ export function SourcesView({
   const pendingFiles = fileUploads.filter((file) => {
     if (file.phase === "failed" && selectedFiles.some((selected) => selected.id === file.id))
       return false;
-    if (["checking", "uploading", "saving", "failed"].includes(file.phase)) return true;
-    if (file.phase === "complete") return false;
+    if (["queued", "checking", "uploading", "saving", "failed"].includes(file.phase)) return true;
+    if (["complete", "local_saved", "skipped"].includes(file.phase)) return false;
     const source = visibleSources.find((source) => source.assetId === file.source?.assetId);
     return (
       !!source && !source.verifiedAt && !source.rejectionReason && source.uploadState !== "rejected"
@@ -246,7 +201,13 @@ export function SourcesView({
     new IndexedRecordingStore()
       .list(userId)
       .then((rows) => {
-        if (active) setLocalAudio(new Set(rows.map((row) => row.sourceAssetId ?? row.id)));
+        if (active)
+          setLocalAudio(
+            new Set([
+              ...rows.map((row) => row.sourceAssetId ?? row.id),
+              ...localSavedIds.split(",").filter(Boolean),
+            ]),
+          );
       })
       .catch(() => {
         if (active) setLocalAudio(new Set());
@@ -254,7 +215,7 @@ export function SourcesView({
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, localSavedIds]);
   const waiting =
     batch?.active ||
     processingBatch ||
@@ -269,11 +230,11 @@ export function SourcesView({
     return () => clearInterval(timer);
   }, [waiting, router]);
   useEffect(() => {
-    if (!selectedFiles.length && !batch?.active) return;
+    if (!selectedFiles.length) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [selectedFiles.length, batch?.active]);
+  }, [selectedFiles.length]);
   async function action(effect: () => Promise<void>) {
     if (lock.current) return;
     lock.current = true;
@@ -333,294 +294,16 @@ export function SourcesView({
       } else setMessage("Original opened in a new tab.");
     });
   }
-  async function upload(file: File, fileId: string, recovery: UploadRecovery) {
-    recovery.signal?.throwIfAborted();
-    const request = createSourceUploadRequest(recovery);
-    if (/\.(heic|heif)$/i.test(file.name) || ["image/heic", "image/heif"].includes(file.type)) {
-      if (file.size > contract.formats.image.maxBytes)
-        throw new Error("This image exceeds the source size limit.");
-      setMessage("Converting the HEIC photo to JPEG on this device…");
-      let bitmap: ImageBitmap | null = null;
-      try {
-        bitmap = await createImageBitmap(file);
-        if (bitmap.width * bitmap.height > (contract.formats.image.maxPixels ?? 0))
-          throw new Error("This image exceeds the pixel limit.");
-        const canvas = document.createElement("canvas");
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("Image conversion unavailable");
-        context.drawImage(bitmap, 0, 0);
-        const jpeg = await new Promise<Blob>((resolve, reject) =>
-          canvas.toBlob(
-            (blob) => (blob ? resolve(blob) : reject(new Error("Image conversion unavailable"))),
-            "image/jpeg",
-            0.92,
-          ),
-        );
-        file = new File([jpeg], file.name.replace(/\.(heic|heif)$/i, ".jpg"), {
-          type: "image/jpeg",
-        });
-      } catch {
-        throw new Error(
-          "This browser cannot convert that HEIC photo. Convert it to JPEG, then add it again.",
-        );
-      } finally {
-        bitmap?.close();
-      }
-    }
-    const kind = kindOf(file);
-    if (!kind)
-      throw new Error(
-        "Choose audio, JPEG, PNG, WebP, PDF, HTML or plain text. Convert HEIC images to JPEG first.",
-      );
-    if (file.size <= 0 || file.size > contract.formats[kind].maxBytes)
-      throw new Error("The file is empty or exceeds the source limit.");
-    if (kind !== "audio" && !storageConfigured)
-      throw new Error("Private file storage has not been configured yet.");
-    setMessage("Checking the file…");
-    const sha256 = await checksum(file),
-      mimeType = mimeOf(file, kind),
-      durationMs = kind === "audio" ? await audioDuration(file) : undefined;
-    if (durationMs && durationMs > (contract.formats.audio.maxDurationMs ?? 0))
-      throw new Error("This audio file exceeds the duration limit.");
-    const parts: { index: number; sizeBytes: number; sha256: string }[] = [];
-    if (kind !== "audio")
-      for (let start = 0; start < file.size; start += contract.partBytes) {
-        const part = file.slice(start, start + contract.partBytes);
-        parts.push({ index: parts.length, sizeBytes: part.size, sha256: await checksum(part) });
-      }
-    const matches = await request<OwnSource[]>(`/api/sources?checksum=${sha256}`, "GET");
-    const creationKey = sourceCreationKeys.current.get(fileId) ?? crypto.randomUUID();
-    sourceCreationKeys.current.set(fileId, creationKey);
-    const resumable = matches.find(
-      (source) =>
-        source.kind === kind &&
-        ["pending", "verifying"].includes(source.uploadState ?? "") &&
-        source.uploadId &&
-        !source.original_deleted_at,
-    );
-    const created = resumable
-      ? { assetId: resumable.id, uploadId: resumable.uploadId }
-      : await request<{ assetId: string; uploadId: string | null }>(
-          "/api/sources",
-          "POST",
-          {
-            sessionId,
-            kind,
-            mimeType,
-            sizeBytes: file.size,
-            sha256,
-            displayName: file.name,
-            ...(durationMs ? { durationMs } : {}),
-            parts,
-          },
-          creationKey,
-        );
-    if (resumable)
-      await request(`/api/classes/${sessionId}/sources`, "POST", {
-        assetId: created.assetId,
-      });
-    const added: SourceRow = {
-      assetId: created.assetId,
-      displayName: file.name,
-      kind,
-      mimeType,
-      sizeBytes: file.size,
-      durationMs: durationMs ?? null,
-      pageCount: null,
-      verifiedAt: null,
-      originalDeletedAt: null,
-      selected: kind === "audio",
-      role: kind === "audio" ? "class_audio" : "class_material",
-      ranges: [],
-      timeStatus: "unknown",
-      contentVersionId: null,
-      uploadId: created.uploadId,
-      uploadState: kind === "audio" ? null : "pending",
-      rejectionReason: null,
-      anchorSourceId: null,
-      captureOffsetMs: null,
-      captureState: null,
-    };
-    setFileUploads((previous) =>
-      previous
-        .filter((entry) => entry.id === fileId || entry.source?.assetId !== created.assetId)
-        .map((entry) =>
-          entry.id === fileId ? { ...entry, source: added, sizeBytes: file.size } : entry,
-        ),
-    );
-    router.refresh();
-    if (kind === "audio") {
-      updateUpload(fileId, { phase: "saving" });
-      const local = new IndexedRecordingStore(),
-        now = new Date().toISOString();
-      const manifest = {
-        id: created.assetId,
-        userId,
-        sessionId,
-        mimeType,
-        status: "saved" as const,
-        createdAt: now,
-        updatedAt: now,
-        activeMs: durationMs ?? 0,
-        chunks: 0,
-        bytes: 0,
-        creationKey: crypto.randomUUID(),
-        sourceAssetId: created.assetId,
-      };
-      await local.put(manifest);
-      await local.append(manifest, file);
-      setLocalAudio((previous) => new Set([...(previous ?? []), created.assetId]));
-      updateUpload(fileId, { phase: "complete", sentBytes: file.size, finishedAt: Date.now() });
-      setMessage(
-        "Audio saved on this device. Upload and note creation start automatically after all files are added.",
-      );
-      return created.assetId;
-    }
-    if (!created.uploadId) throw new Error("The upload could not be created.");
-    const uploadId = created.uploadId;
-    updateUpload(fileId, { phase: "uploading", sentBytes: 0 });
-    setMessage(`Uploading ${file.name}…`);
-    await uploadSourceFileParts(
-      {
-        uploadId,
-        file,
-        mimeType,
-        partBytes: contract.partBytes,
-        parts,
-        onProgress: (sentBytes) => updateUpload(fileId, { sentBytes }),
-      },
-      recovery,
-    );
-    updateUpload(fileId, {
-      phase: "verifying",
-      sentBytes: file.size,
-      finishedAt: Date.now(),
-      source: { ...added, uploadState: "verifying" },
-    });
-    setMessage("File uploaded. Server verification is in progress.");
-    return created.assetId;
-  }
   async function addFiles(files: SelectedFile[]) {
     if (!files.length || files.some((file) => file.invalid)) return;
-    const controller = new AbortController();
-    uploadController.current = controller;
-    setBatch({ total: files.length, current: 1, active: true });
-    setMessage("");
-    setReceipt({
-      revision: null,
-      previousRunId: null,
-      sourceIds: [],
-      total: files.length,
-      failed: 0,
-      startedAt: Date.now(),
-    });
-    setSelectedFiles((previous) => previous.map((file) => ({ ...file, problem: undefined })));
-    const recovery: UploadRecovery = {
-      attempts: 3,
-      signal: controller.signal,
-      onRetry: (attempt) => setMessage(`Retrying upload (${attempt} of 3)…`),
-      onOffline: () => setMessage("Upload paused while offline. It resumes when you reconnect."),
-    };
-    try {
-      const before = await createSourceUploadRequest(recovery)<AutomaticLearningStatus>(
-        `/api/classes/${sessionId}/learning`,
-        "GET",
-      );
-      setReceipt((previous) =>
-        previous ? { ...previous, previousRunId: before.run?.id ?? null } : previous,
-      );
-      await inAutomaticLearningBatch(
-        userId,
-        sessionId,
-        () => uploadFiles(files, recovery),
-        createSourceUploadRequest(recovery),
-        {
-          onCompleted: (status) =>
-            setReceipt((previous) =>
-              previous
-                ? {
-                    ...previous,
-                    revision: status.revision,
-                    confirmedRunId: status.state === "ready" ? status.run?.id : null,
-                  }
-                : previous,
-            ),
-        },
-      );
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "The upload could not finish.";
-      setReceipt((previous) =>
-        previous
-          ? {
-              ...previous,
-              problem: `${detail} Retry the files still selected below. If all files were sent, choose Resume processing.`,
-            }
-          : previous,
-      );
-    } finally {
-      if (uploadController.current === controller) uploadController.current = null;
-      setInterruptedBatch(Boolean(pendingLearningBatch(userId, sessionId)));
-      setBatch((previous) => (previous ? { ...previous, active: false } : null));
-    }
-  }
-  async function uploadFiles(files: SelectedFile[], recovery: UploadRecovery) {
-    let failed = 0;
-    setBatch({ total: files.length, current: 1, active: true });
-    try {
-      for (const [index, entry] of files.entries()) {
-        recovery.signal?.throwIfAborted();
-        const { file, id } = entry;
-        setBatch({ total: files.length, current: index + 1, active: true });
-        setFileUploads((previous) => [
-          ...previous.filter((file) => file.id !== id),
-          {
-            id,
-            displayName: file.name,
-            sizeBytes: file.size,
-            phase: "checking",
-            sentBytes: 0,
-            startedAt: Date.now(),
-            serverSeen: false,
-          },
-        ]);
-        requestAnimationFrame(() =>
-          uploadList.current?.firstElementChild?.scrollIntoView({ block: "nearest" }),
-        );
-        try {
-          const assetId = await upload(file, id, recovery);
-          setReceipt((previous) =>
-            previous
-              ? { ...previous, sourceIds: [...new Set([...previous.sourceIds, assetId])] }
-              : previous,
-          );
-          setSelectedFiles((previous) => previous.filter((file) => file.id !== id));
-        } catch (error) {
-          recovery.signal?.throwIfAborted();
-          failed++;
-          const problem =
-            error instanceof Error ? error.message : "This file could not be added. Try again.";
-          setSelectedFiles((previous) =>
-            previous.map((file) => (file.id === id ? { ...file, problem } : file)),
-          );
-          setReceipt((previous) => (previous ? { ...previous, failed } : previous));
-          updateUpload(id, {
-            phase: "failed",
-            problem,
-            finishedAt: Date.now(),
-          });
-        }
-        router.refresh();
-      }
-      setMessage(
-        failed
-          ? `${files.length - failed} files added. ${failed} need attention; check their status below.`
-          : "Upload complete. Server verification and processing are in progress.",
-      );
-    } finally {
-      setBatch((previous) => (previous ? { ...previous, active: false } : null));
-    }
+    setMessage("Saving your upload on this device…");
+    await uploads.manager.enqueue(sessionId, files, contract, storageConfigured);
+    setSelectedFiles((previous) =>
+      previous.filter((entry) => !files.some((file) => file.id === entry.id)),
+    );
+    setMessage(
+      "Files saved. You can use other pages while they upload. If your browser pauses, upload resumes when you return.",
+    );
   }
   async function resumeProcessing() {
     if (selectedFiles.length) return addFiles(selectedFiles);
@@ -731,12 +414,12 @@ export function SourcesView({
       </Link>
       <Actions>
         <LinkButton href={`/classes/${sessionId}/record`}>Record class</LinkButton>
-        <Button secondary disabled={busy || !accepted} onClick={() => fileInput.current?.click()}>
+        <Button secondary disabled={!interactive || busy || !accepted} onClick={() => fileInput.current?.click()}>
           {visibleSources.length || selectedFiles.length ? "Add More Files" : "Add Files"}
         </Button>
         <Button
           secondary
-          disabled={busy || !accepted}
+          disabled={!interactive || busy || !accepted}
           onClick={() =>
             action(async () => {
               setPrevious(await workspaceRequest<OwnSource[]>("/api/sources", "GET"));
@@ -752,7 +435,7 @@ export function SourcesView({
         type="file"
         hidden
         aria-label="Choose class files"
-        disabled={busy || !accepted}
+        disabled={!interactive || busy || !accepted}
         multiple
         accept=".m4a,.mp3,.wav,.webm,.ogg,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.html,.htm,.xhtml,.txt"
         onChange={(event) => {
@@ -808,7 +491,7 @@ export function SourcesView({
                 }
                 detail={
                   batch?.active
-                    ? "Keep this page open while files are sent. Processing starts after your upload finishes."
+                    ? "You can use other pages while these saved files upload. Processing continues on the server after receiving them."
                     : feedback.detail
                 }
                 startedAt={receipt.startedAt}
@@ -917,6 +600,51 @@ export function SourcesView({
           </a>
         </Actions>
       ) : null}
+      {declaredBatch && verificationIssues.length > 0 && (
+        <Panel title="Resolve uploaded files">
+          <p>
+            Some uploaded files could not finish verification. Enter a PDF password below, skip a
+            file, or cancel this upload group before choosing replacements.
+          </p>
+          {verificationIssues
+            .filter(
+              (entry) => !listedSources.some((source) => source.assetId === entry.source?.assetId),
+            )
+            .map((entry) => (
+              <div key={entry.id}>
+                <strong dir="auto">{entry.displayName}</strong>
+                <p>
+                  This saved upload entry needs attention. Skip it or cancel the group to select a
+                  replacement.
+                </p>
+                <Button
+                  secondary
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      await uploads.manager.skip(declaredBatch.id, entry.id);
+                      await learning.refresh();
+                    })
+                  }
+                >
+                  Skip this file
+                </Button>
+              </div>
+            ))}
+          <Button
+            secondary
+            disabled={busy}
+            onClick={() =>
+              void action(async () => {
+                await uploads.manager.cancel(declaredBatch.id);
+                await learning.refresh();
+              })
+            }
+          >
+            Cancel saved upload
+          </Button>
+        </Panel>
+      )}
       <Panel title="Class sources">
         <p className="preview-muted">
           File formats are detected automatically. During processing, Recalino identifies class
@@ -925,8 +653,7 @@ export function SourcesView({
         </p>
         {batch?.active ? (
           <Status>
-            Adding file {batch.current} of {batch.total}. Keep this page open until the files
-            finish.
+            Sending saved file {batch.current} of {batch.total}. You can use other pages.
           </Status>
         ) : null}
         {!visibleSources.length && !pendingFiles.length ? (
@@ -944,7 +671,22 @@ export function SourcesView({
                   key={file.id}
                   file={file}
                   busy={busy}
+                  retry={
+                    managedBatch
+                      ? () => void action(() => uploads.manager.retry(managedBatch.id, file.id))
+                      : undefined
+                  }
                   remove={() => {
+                    if (
+                      managedBatch?.entries.some(
+                        (entry) => entry.id === file.id && entry.phase === "failed",
+                      )
+                    ) {
+                      void action(async () => {
+                        await uploads.manager.skip(managedBatch.id, file.id);
+                      });
+                      return;
+                    }
                     if (selectedFiles.some((entry) => entry.id === file.id)) {
                       removeSelectedFile(file.id);
                       return;
@@ -973,6 +715,8 @@ export function SourcesView({
                 key={source.assetId}
                 source={source}
                 busy={busy}
+                removeLabel={declaredEntry(source.assetId) ? "Skip this file" : undefined}
+                deletionBlocked={!!declaredEntry(source.assetId)}
                 selectionDirty={selectionDirty}
                 localAvailable={localAudio === null ? null : localAudio.has(source.assetId)}
                 unlock={(password) =>
@@ -1021,6 +765,15 @@ export function SourcesView({
                 change={(patch) => action(() => change(source, patch))}
                 remove={() =>
                   action(async () => {
+                    const entry = declaredEntry(source.assetId);
+                    if (entry && declaredBatch) {
+                      if (await uploads.manager.skip(declaredBatch.id, entry.id)) {
+                        forgetSource(source.assetId);
+                        setMessage("File skipped from this upload group.");
+                      }
+                      await learning.refresh();
+                      return;
+                    }
                     await workspaceRequest(
                       `/api/classes/${sessionId}/sources/${source.assetId}`,
                       "DELETE",
@@ -1084,24 +837,28 @@ function FileUploadItem({
   file,
   busy,
   remove,
+  retry,
 }: {
   file: FileUpload;
   busy: boolean;
   remove: () => void;
+  retry?: () => void;
 }) {
-  const active = ["checking", "uploading", "saving"].includes(file.phase);
+  const active = ["queued", "checking", "uploading", "saving"].includes(file.phase);
   const status =
-    file.phase === "checking"
-      ? "Checking file…"
-      : file.phase === "saving"
-        ? "Saving on this device…"
-        : file.phase === "verifying"
-          ? "Uploaded — checking file"
-          : file.phase === "failed"
-            ? "File needs attention"
-            : file.sentBytes >= file.sizeBytes
-              ? "Finishing upload…"
-              : "Uploading…";
+    file.phase === "queued"
+      ? "Saved — waiting to upload"
+      : file.phase === "checking"
+        ? "Checking file…"
+        : file.phase === "saving"
+          ? "Saving on this device…"
+          : file.phase === "verifying"
+            ? "Uploaded — checking file"
+            : file.phase === "failed"
+              ? "File needs attention"
+              : file.sentBytes >= file.sizeBytes
+                ? "Finishing upload…"
+                : "Uploading…";
   const measured = ["uploading", "verifying"].includes(file.phase);
   return (
     <li aria-busy={active || undefined} className="preview-upload-file">
@@ -1132,8 +889,13 @@ function FileUploadItem({
         <>
           <Status tone="error">{file.problem}</Status>
           <Actions>
+            {retry && (
+              <Button disabled={busy} onClick={retry}>
+                Retry saved file
+              </Button>
+            )}
             <Button secondary disabled={busy} onClick={remove}>
-              {file.source ? "Remove from class" : "Dismiss"}
+              {retry ? "Skip this file" : file.source ? "Remove from class" : "Dismiss"}
             </Button>
           </Actions>
         </>
@@ -1151,6 +913,8 @@ function SourceItem({
   localAvailable,
   deleteSource,
   selectionDirty,
+  removeLabel,
+  deletionBlocked,
 }: {
   source: SourceRow;
   busy: boolean;
@@ -1161,6 +925,8 @@ function SourceItem({
   localAvailable: boolean | null;
   deleteSource: (mode: "original" | "all") => Promise<void>;
   selectionDirty: (assetId: string, dirty: boolean) => void;
+  removeLabel?: string;
+  deletionBlocked?: boolean;
 }) {
   const [password, setPassword] = useState("");
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
@@ -1369,11 +1135,16 @@ function SourceItem({
           </Button>
         ) : null}
         <Button secondary disabled={busy} onClick={() => void remove()}>
-          Remove from class
+          {removeLabel ?? "Remove from class"}
         </Button>
       </Actions>
       <details>
         <summary>Delete options</summary>
+        {deletionBlocked && (
+          <p className="preview-muted">
+            Skip this file or cancel its upload group before deleting the source.
+          </p>
+        )}
         <p className="preview-muted">
           Deleting the original file keeps its saved extraction. Deleting the entire source removes
           it from every class.
@@ -1390,7 +1161,7 @@ function SourceItem({
           {source.kind !== "audio" && source.contentVersionId && !source.originalDeletedAt ? (
             <Button
               secondary
-              disabled={busy || !deleteConfirmed}
+              disabled={busy || !deleteConfirmed || deletionBlocked}
               onClick={() => void deleteSource("original")}
             >
               Delete original file
@@ -1398,7 +1169,7 @@ function SourceItem({
           ) : null}
           <Button
             secondary
-            disabled={busy || !deleteConfirmed}
+            disabled={busy || !deleteConfirmed || deletionBlocked}
             onClick={() => void deleteSource("all")}
           >
             Delete entire source

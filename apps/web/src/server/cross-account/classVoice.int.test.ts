@@ -36,7 +36,9 @@ it("FR-PLT-002 Part6: only the owner can read/confirm candidates; retries do not
   expect((await getClassVoice(db, x.ctx, x.session.id)).analyses[0]?.version).toBe(2);
   const response = await route(requestAs(x.ctx.userId, path, "GET"));
   const data = await response.json();
-  expect(data.analysisBlockedReason).toBeNull();
+  // This ownership fixture has no original audio or timed transcript evidence.
+  // Existing candidates can be confirmed, while a new analysis needs its missing input.
+  expect(data.analysisBlockedReason).toBe("original_audio_required");
   expect(JSON.stringify(data)).not.toContain("whyFa");
   expect(JSON.stringify(data)).not.toContain("embedding");
 });

@@ -52,4 +52,16 @@ it("treats missing and foreign run identifiers as not found without dispatching 
       .where("id", "=", foreignId)
       .executeTakeFirst(),
   ).toEqual({ state: "failed" });
+  for (const runId of [id, foreignId]) {
+    const response = await orgCall(
+      db,
+      ROUTES.processingRun,
+      processingRunHandler(runId),
+      attacker.owner,
+      `/api/runs/${runId}?includeSnapshot=1`,
+      "GET",
+    );
+    expect(response.status).toBe(404);
+    expect(await response.json()).not.toHaveProperty("snapshot");
+  }
 });

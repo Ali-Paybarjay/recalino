@@ -9,6 +9,7 @@ import {
   enqueueJob,
   type JobDefinition,
   type LearnerContext,
+  latestJobStateForPayload,
   type PeriodicJob,
   readPltSettings,
   sha256Hex,
@@ -24,17 +25,24 @@ import {
   type ProcessingRun,
   processingSelectionFingerprint,
   type RunSnapshot,
+  reconcileAutomaticLearningBatch,
   requestAutomaticLearning,
   selectProcessingSourceSnapshot,
   sourceSnapshotSchema,
   updateAutomaticLearningProgress,
 } from "@recalino/core/proc";
-import { sessionSources } from "@recalino/core/src";
+import {
+  DefaultSourceVerifier,
+  receivedSourceUploadIds,
+  sessionSources,
+  sourceVerificationJob,
+} from "@recalino/core/src";
 import type { z } from "zod";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
 import { getProcessingDefinition } from "./processing-jobs";
+import { getObjectStore } from "./storage";
 
 export interface AutomaticLearningStatus {
   state: "idle" | "waiting_sources" | "waiting_upload" | "processing" | "ready" | "blocked";
@@ -99,8 +107,10 @@ export function automaticLearningMessage(
     return "Your material was uploaded, but the AI service rejected a processing request. The service needs a fix before retrying. You do not need to upload the same files again; earlier notes and cards are saved.";
   if (code === "upload_needs_attention")
     return "An upload needs attention. Check the named files in Add material; your earlier notes and cards are available.";
+  if (code === "upload_batch_cancelled")
+    return "This upload group was cancelled. Your earlier notes and flashcards are available; add a new group to continue.";
   if (code === "batch_open")
-    return "Waiting for this group of files to finish uploading. Notes and flashcards will then update automatically.";
+    return "Waiting for this group of files to finish uploading and verification. Notes and flashcards will then update automatically.";
   if (code === "select_at_least_one")
     return "Add documents, audio or photos. Your notes and flashcards will be created automatically.";
   if (code)
@@ -154,10 +164,13 @@ export async function automaticLearningSync(
   options: { retryKey?: string; dependencies?: Partial<AutomaticLearningDependencies> } = {},
 ): Promise<AutomaticLearningStatus> {
   const deps = { ...defaults, ...options.dependencies };
-  const intent = await requestAutomaticLearning(db, ctx, sessionId, {
+  let intent = await requestAutomaticLearning(db, ctx, sessionId, {
     changed: false,
     now: deps.now(),
   });
+  if (intent.batchId && intent.batchFiles)
+    intent = (await reconcileAutomaticLearningBatch(db, ctx, sessionId, deps.now())) ?? intent;
+  if (intent.lastError === "upload_batch_cancelled") return view(db, ctx, sessionId);
   const progress = async (
     state: Progress["state"],
     lastError: string | null,
@@ -177,7 +190,7 @@ export async function automaticLearningSync(
         return view(db, ctx, sessionId);
     return view(db, ctx, sessionId, { state, lastError, run });
   };
-  if (intent.batchId) return progress("waiting_sources", "batch_open", null);
+  if (intent.batchId) return progress("waiting_sources", intent.lastError ?? "batch_open", null);
   const materials = await sessionSources(db, ctx, sessionId);
   if (
     materials.some(
@@ -350,10 +363,39 @@ export async function scheduleAutomaticLearning(
   options: { changed?: boolean; now?: Date } = {},
 ) {
   const now = options.now ?? new Date();
-  const intent = await requestAutomaticLearning(db, ctx, sessionId, {
+  let intent = await requestAutomaticLearning(db, ctx, sessionId, {
     changed: options.changed ?? true,
     now,
   });
+  if (intent.lastError === "upload_batch_cancelled") return;
+  if (intent.batchId && intent.batchFiles) {
+    const store = getObjectStore();
+    // Enqueue the core contract; the app runner supplies its source notification wrapper.
+    const verification = store ? sourceVerificationJob(store, new DefaultSourceVerifier()) : null;
+    if (verification) {
+      const sourceIds = intent.batchFiles.flatMap((file) =>
+        !file.skipped && file.sourceId ? [file.sourceId] : [],
+      );
+      for (const uploadId of await receivedSourceUploadIds(db, ctx, sessionId, sourceIds)) {
+        const existing = await latestJobStateForPayload(db, verification.kind, {
+          uploadId,
+          userId: ctx.userId,
+        });
+        if (existing && ["queued", "running", "retry_scheduled"].includes(existing)) continue;
+        await db.transaction().execute((tx) =>
+          enqueueJob(tx, verification, {
+            payload: { uploadId, userId: ctx.userId },
+            singletonKey: existing
+              ? `batch-recover:${uploadId}:${Math.floor(now.getTime() / 60000)}`
+              : `src:${uploadId}`,
+            now,
+            defaults: readPltSettings().jobs,
+          }),
+        );
+      }
+    }
+    intent = (await reconcileAutomaticLearningBatch(db, ctx, sessionId, now)) ?? intent;
+  }
   if (intent.batchId) return;
   await db.transaction().execute((tx) =>
     enqueueJob(tx, automaticLearningJob(), {

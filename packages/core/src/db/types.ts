@@ -539,6 +539,32 @@ export interface PltJobStep {
   step: string;
 }
 
+export interface PltNotification {
+  created_at: Generated<Timestamp>;
+  deduplication_key: string;
+  href: string;
+  id: Generated<string>;
+  kind: string;
+  read_at: Timestamp | null;
+  user_id: string;
+}
+
+export interface PltPushDelivery {
+  delivered_at: Timestamp | null;
+  notification_id: string;
+  subscription_id: string;
+}
+
+export interface PltPushSubscription {
+  auth: string;
+  created_at: Generated<Timestamp>;
+  endpoint: string;
+  id: Generated<string>;
+  p256dh: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface PltRateLimitBucket {
   bucket: string;
   hits: Generated<number>;
@@ -592,6 +618,7 @@ export interface PrivDeletionRequest {
 
 export interface ProcAutomaticSession {
   batch_id: string | null;
+  batch_manifest: Json | null;
   batch_started_at: Timestamp | null;
   enabled_at: Generated<Timestamp>;
   last_batch_id: string | null;
@@ -612,6 +639,7 @@ export interface ProcProcessingRun {
   job_id: string | null;
   kind: Generated<string>;
   last_error: string | null;
+  notification_recorded_at: Timestamp | null;
   operation_key: string;
   output_version_id: string | null;
   request_hash: string;
@@ -1164,6 +1192,9 @@ export interface DB {
   "plt.idempotency_key": PltIdempotencyKey;
   "plt.job": PltJob;
   "plt.job_step": PltJobStep;
+  "plt.notification": PltNotification;
+  "plt.push_delivery": PltPushDelivery;
+  "plt.push_subscription": PltPushSubscription;
   "plt.rate_limit_bucket": PltRateLimitBucket;
   "plt.security_event": PltSecurityEvent;
   "plt.storage_object": PltStorageObject;

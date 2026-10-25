@@ -992,73 +992,76 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     expect(f.provider.prompts[0]).not.toContain("declared IELTS goal");
     expect(f.provider.calls).toBe(1);
   });
-  it("OCRs only selected PDF pages through durable vision steps and deletes temporary page images", async () => {
-    const f = await fixture();
-    const store = new MemoryObjectStore();
-    const now = new Date();
-    await db
-      .updateTable("src.session_source")
-      .set({ selected: false })
-      .where("asset_id", "=", f.asset.id)
-      .execute();
-    const objectId = await writeOwnedObject(db, store, f.ctx, {
-      module: "src",
-      retention: "durable",
-      contentType: "application/pdf",
-      bytes: Buffer.from("Synthetic parser-free PDF fixture"),
-      now,
-    });
-    const asset = await db
-      .insertInto("src.asset")
-      .values({
-        user_id: f.ctx.userId,
-        kind: "pdf",
-        declared_mime: "application/pdf",
-        verified_mime: "application/pdf",
-        size_bytes: 33,
-        sha256: "b".repeat(64),
-        display_name: "Synthetic scanned.pdf",
-        contract_version: "1",
-        retention: "persistent",
-        page_count: 2,
-        original_object_id: objectId,
-        operation_key: randomUUID(),
-        request_hash: randomUUID(),
-        verified_at: now,
-      })
-      .returning("id")
-      .executeTakeFirstOrThrow();
-    await db
-      .insertInto("src.session_source")
-      .values({
-        user_id: f.ctx.userId,
-        session_id: f.session.id,
-        asset_id: asset.id,
-        role: "class_material",
-        selected: true,
-        ranges: JSON.stringify([{ start: 2, end: 2 }]),
-      })
-      .execute();
-    await db.transaction().execute((tx) =>
-      appendContentVersion(tx, f.ctx, asset.id, {
-        originKey: "synthetic-pdf",
-        schemaVersion: "1",
-        provenance: "machine_extraction",
-        settings: {},
-        units: [
-          { id: "page-1", kind: "page", start: 1, status: "failed", reason: "ocr_required" },
-          { id: "page-2", kind: "page", start: 2, status: "failed", reason: "ocr_required" },
-        ],
-        blocks: [],
-      }),
-    );
-    const rendered: number[] = [];
-    const images: string[] = [];
-    const job = processingJob({
-      provider: f.provider,
-      store,
-      preparePdfPage: async (input) => {
-        rendered.push(input.page);
+  it.each(["single", "batch"] as const)(
+    "OCRs only selected PDF pages with the %s renderer, preserves paid step boundaries and deletes temporary images",
+    async (renderer) => {
+      const f = await fixture();
+      const store = new MemoryObjectStore();
+      const now = new Date();
+      await db
+        .updateTable("src.session_source")
+        .set({ selected: false })
+        .where("asset_id", "=", f.asset.id)
+        .execute();
+      const objectId = await writeOwnedObject(db, store, f.ctx, {
+        module: "src",
+        retention: "durable",
+        contentType: "application/pdf",
+        bytes: Buffer.from("Synthetic parser-free PDF fixture"),
+        now,
+      });
+      const asset = await db
+        .insertInto("src.asset")
+        .values({
+          user_id: f.ctx.userId,
+          kind: "pdf",
+          declared_mime: "application/pdf",
+          verified_mime: "application/pdf",
+          size_bytes: 33,
+          sha256: "b".repeat(64),
+          display_name: "Synthetic scanned.pdf",
+          contract_version: "1",
+          retention: "persistent",
+          page_count: renderer === "batch" ? 5 : 2,
+          original_object_id: objectId,
+          operation_key: randomUUID(),
+          request_hash: randomUUID(),
+          verified_at: now,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      await db
+        .insertInto("src.session_source")
+        .values({
+          user_id: f.ctx.userId,
+          session_id: f.session.id,
+          asset_id: asset.id,
+          role: "class_material",
+          selected: true,
+          ranges: JSON.stringify([{ start: 2, end: renderer === "batch" ? 5 : 2 }]),
+        })
+        .execute();
+      await db.transaction().execute((tx) =>
+        appendContentVersion(tx, f.ctx, asset.id, {
+          originKey: "synthetic-pdf",
+          schemaVersion: "1",
+          provenance: "machine_extraction",
+          settings: {},
+          units: Array.from({ length: renderer === "batch" ? 5 : 2 }, (_, index) => ({
+            id: `page-${index + 1}`,
+            kind: "page" as const,
+            start: index + 1,
+            status: "failed" as const,
+            reason: "ocr_required",
+          })),
+          blocks: [],
+        }),
+      );
+      const rendered: number[] = [];
+      const batches: number[][] = [];
+      const images: string[] = [];
+      const renderPage = async (page: number) => {
+        rendered.push(page);
         const id = await writeOwnedObject(db, store, f.ctx, {
           module: "proc",
           retention: "temporary",
@@ -1067,32 +1070,62 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
           now,
         });
         images.push(id);
-        return { page: input.page, objectId: id, mimeType: "image/jpeg" };
-      },
-    });
-    const run = await createProcessingRun(
-      db,
-      f.ctx,
-      { sessionId: f.session.id, operationKey: randomUUID() },
-      { provider: f.provider, job },
-    );
-    for (
-      let invocation = 0;
-      invocation < 4 && (await getRun(db, f.ctx, run.id)).state !== "ready";
-      invocation++
-    )
-      await runFixtureProcessingJobs(db, job, { userId: f.ctx.userId, sessionId: f.session.id });
-    expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
-    expect(rendered).toEqual([2]);
-    expect(f.provider.calls).toBe(2);
-    const objects = await db
-      .selectFrom("plt.storage_object")
-      .select("state")
-      .where("id", "in", images)
-      .execute();
-    expect(objects.every((object) => object.state === "deleted")).toBe(true);
-    expect((await allowance(db, f.ctx)).consumed.document).toBe(1);
-  });
+        return { page, objectId: id, mimeType: "image/jpeg" as const };
+      };
+      const job = processingJob({
+        provider: f.provider,
+        store,
+        ...(renderer === "batch"
+          ? {
+              preparePdfPages: async ({ pages }: { pages: number[] }) => {
+                batches.push(pages);
+                const result = [];
+                for (const page of pages) result.push(await renderPage(page));
+                return result;
+              },
+            }
+          : { preparePdfPage: async ({ page }: { page: number }) => renderPage(page) }),
+      });
+      const run = await createProcessingRun(
+        db,
+        f.ctx,
+        { sessionId: f.session.id, operationKey: randomUUID() },
+        { provider: f.provider, job },
+      );
+      if (renderer === "batch") {
+        await runFixtureProcessingStep(db, job, { userId: f.ctx.userId, runId: run.id });
+        expect(batches).toEqual([[2, 3, 4]]);
+        expect(f.provider.calls).toBe(1);
+        expect(
+          await db
+            .selectFrom("proc.provider_attempt")
+            .select(["step", "state"])
+            .where("run_id", "=", run.id)
+            .execute(),
+        ).toEqual([{ step: `vision:pdf:${asset.id}:2`, state: "succeeded" }]);
+        await runFixtureProcessingStep(db, job, { userId: f.ctx.userId, runId: run.id });
+        expect(batches).toEqual([[2, 3, 4]]);
+        expect(f.provider.calls).toBe(2);
+      }
+      for (
+        let invocation = 0;
+        invocation < 4 && (await getRun(db, f.ctx, run.id)).state !== "ready";
+        invocation++
+      )
+        await runFixtureProcessingJobs(db, job, { userId: f.ctx.userId, sessionId: f.session.id });
+      expect((await getRun(db, f.ctx, run.id)).state).toBe("ready");
+      expect(rendered).toEqual(renderer === "batch" ? [2, 3, 4, 5] : [2]);
+      if (renderer === "batch") expect(batches).toEqual([[2, 3, 4], [5]]);
+      expect(f.provider.calls).toBe(renderer === "batch" ? 5 : 2);
+      const objects = await db
+        .selectFrom("plt.storage_object")
+        .select("state")
+        .where("id", "in", images)
+        .execute();
+      expect(objects.every((object) => object.state === "deleted")).toBe(true);
+      expect((await allowance(db, f.ctx)).consumed.document).toBe(renderer === "batch" ? 4 : 1);
+    },
+  );
   it("AC-13: duplicate requests create one run, one reservation and one valid publication", async () => {
     const f = await fixture();
     const key = randomUUID();
