@@ -274,3 +274,13 @@
 | D40 | عنوان و موضوع‌های جلسه از مطالب آموزشی با حفظ تاریخ و نام سفارشی | NOTE, LKM | ORG, PROC | PRD-CORE-02، PRD-NOTE-01 | FR-ORG-001، FR-ORG-005؛ [معیارهای تغییر](plans/SESSION_LEARNING_TITLES_2026-10-04.md) | core `note/learning-sessions.int.test.ts`؛ web `e2e/learning-session.spec.ts`؛ preview `e2e-preview/workspace.spec.ts` |
 | D46 | تلفظ Recall و تدریس متناسب با سطح و هدف اعلامی | CARD, MEDIA, PROC, LKM | ACC, NOTE, SRS | PRD-CARD-01، PRD-MEDIA-04، PRD-ONB-05، PRD-SEC-01 | [AC-D46-01 تا AC-D46-07](design/RECALL_PRONUNCIATION_PERSONALIZED_NOTES_2026-10-07.md) | core `card/study-content.test.ts`، `card/study-content.int.test.ts`، `priv/media.int.test.ts`، `proc/learner-context.test.ts`، `proc/processing.int.test.ts`، `proc/generated-study-practice.test.ts`، `lkm/study-target.test.ts`، `lkm/schema.test.ts`، `lkm/study-render.test.ts` و تست‌های transport/repair؛ web `server/recall-pronunciation.test.ts`، `cross-account/classMedia.int.test.ts` و `e2e/recall-pronunciation.spec.ts`؛ ارزیابی live opt-in و replay جدا از CI در مشخصات |
 | D49 | تدریس در Class Notes و حافظهٔ آموزشی شواهدمحور | PERS, LKM, PROC | SRS, CARD, NOTE, ACC, PRIV | PRD-PERS-01 تا PRD-PERS-05، PRD-NOTE-01، PRD-LKM-01، PRD-SRS-02 | [برنامهٔ D49](plans/TEACHING_MEMORY_2026-10-08.md) | core `pers/memory-rules.test.ts`، `pers/memory.int.test.ts`، `proc/learner-context.test.ts`، `proc/processing.int.test.ts`، `lkm/study-render.test.ts`؛ web `cross-account/learningFeedback.int.test.ts`، `privacy-composition.int.test.ts`، `ui/workspace/LearningMemory.test.ts`، `e2e/learning-memory.spec.ts` |
+
+## شناسه‌های بازرسی معماری (`AR-*`، `P-*`، `AQ-*`)
+
+منبع: [docs/architecture/](architecture/01-system-inventory.md)، بازرسی فقط‌خواندنی 2026-10-21 روی `main@924735b` (PR #75). این شناسه‌ها الزام محصول نیستند و FR یا تست تعهدی نمی‌سازند؛ مانند بقیهٔ شناسه‌ها پایدارند و شماره‌گذاری مجدد نمی‌شوند. هر اقدام برآمده از آن‌ها فقط با تصمیم `D` یا ADR وارد دامنه می‌شود.
+
+| خانواده | معنا | محل تعریف | مالک | وضعیت |
+|---|---|---|---|---|
+| `AR-01` تا `AR-23` | ریسک معماری با امتیاز احتمال و اثر و برچسب CONFIRMED / INFERRED / UNKNOWN | [04-risk-register.md](architecture/04-risk-register.md) | OPS (اسناد معماری) | ثبت‌شده |
+| `P-NN` | پیشنهاد بهبود، جدا از یافته‌ها و اجرانشده | [04-risk-register.md](architecture/04-risk-register.md) بخش ۴ | OPS | پیشنهاد |
+| `AQ-01` تا `AQ-19` | پرسش باز (UNKNOWN) و منبع پاسخ آن | [05-open-questions.md](architecture/05-open-questions.md) | OPS | باز؛ پاسخ در [PRODUCT_DECISIONS_LOG.md](PRODUCT_DECISIONS_LOG.md) یا runbook مربوط ثبت می‌شود |
