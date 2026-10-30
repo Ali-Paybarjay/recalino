@@ -168,7 +168,7 @@ ADR-0001 در بخش «تصمیم‌های بعدی» صراحتاً ADR جدا�
 | IMP-09 | **پیکربندی runtime مدل در env production جدا از پیش‌فرض مخزن** | `config/openrouter-defaults.json` در برابر JSON env | D57 خط ۵۱۸ | #25 | [M]؛ مقدار env: [NV] |
 | IMP-10 | **مدل توسعهٔ چندعاملی** (manager و worker، worktree برای هر دسته، شاخه‌های `codex/*` و `claude/*`) | `docs/runbooks/PARALLEL_SESSIONS.md`، `docs/ops/BRANCH_HYGIENE_FA.md` | قاعدهٔ عملیاتی؛ ADR ندارد | `0ee7c33`، #77 | [M] |
 | IMP-11 | **مجوز گستردهٔ عامل:** allow برای `execute_sql`، `db push` و `git push`، با گارد hook | `.claude/settings.json`، `.claude/hooks/data-loss-guard.ts` | D81 و CLAUDE.md؛ ADR ندارد | #31، #32، `5babec3` | [M] |
-| IMP-12 | **پنج مرحلهٔ build سفارشی** (گارد حقوقی، نسخهٔ schema، آماده‌سازی صدا، trace native، اندازهٔ Function) | `apps/web/package.json` اسکریپت `build` | پراکنده در ممیزی؛ ADR ندارد | #67 و قبل از آن | [M] |
+| IMP-12 | **زنجیرهٔ build هشت‌فرمانی** (گارد حقوقی، نسخهٔ schema، آماده‌سازی صدا، بررسی runtime ‏native، `next build`، دو trace ‏native و صدا، اندازهٔ Function؛ اصلاح 2026-10-30 در `risk-register.md` ردیف RR-19) | `apps/web/package.json` اسکریپت `build` | پراکنده در ممیزی؛ ADR ندارد | #67 و قبل از آن | [M] |
 | IMP-13 | **pg-boss رد شد ولی در `devDependencies` ماند** | `package.json` خط ۴۵ | ADR-0003 حذفش را پیامد گرفته است | `1da668e` | [M] |
 
 ## ۶. ناسازگاری‌ها و نکته‌های تاریخی

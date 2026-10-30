@@ -1,0 +1,82 @@
+# Recalino — Risk Register (As-Is)
+
+- Task Card: `REC-1` · نقش: archaeologist · حالت: فقط‌خواندنی (audit، D13)
+- پایه: `a1d559b` · تاریخ: 2026-10-30
+- ورودی: یافته‌های دو Job پیشین که Controller داده است: `auditor.debt` (۱۷ یافته) و `reviewer.security` (۱۰ یافته). شناسه‌های دو Job هم‌پوشانی دارند (هر دو از `F-1` شروع می‌شوند). برای همین در این سند با پیشوند منبع آمده‌اند:
+  - `DEBT-F-n` = یافتهٔ `auditor.debt`
+  - `SEC-F-n` = یافتهٔ `reviewer.security`
+- روش سنجش: فقط `git grep`، `git ls-files`، `git log` و `git show`، و خواندن مستقیم فایل. هیچ کد، تست، اسکریپت یا hook اجرا نشد.
+- برچسب‌ها:
+  - **[M]** = Observed by model: در همین Job از مخزن خوانده شد.
+  - **[NV]** = Not Verified: به وضعیت production، داشبورد Vercel، Supabase یا GitHub وابسته است.
+  - URL عمداً نیامده است (AC-8). پس برچسب «Documented (با URL)» به کار نرفته است.
+- هیچ secret، ایمیل، نام حساب یا شناسهٔ زیرساخت در این سند نیست. فقط شمارش و مسیر آمده است.
+
+## ۱. خلاصه
+
+| وضعیت | تعداد | شناسه‌ها |
+|---|---|---|
+| پذیرفته (پس از ادغام موارد تکراری) | ۲۰ ردیف | RR-01 تا RR-20 |
+| hypothesis (بخش ۳؛ به Roadmap نمی‌رود) | ۳ | H-01 تا H-03 |
+| رد شده | ۱ | DEBT-F-17 |
+
+از ۲۷ یافتهٔ ورودی، این موارد هم‌پوشان بودند و ادغام شدند:
+
+- `DEBT-F-1` و `SEC-F-9`: pg-boss
+- `DEBT-F-5` و `SEC-F-2`: allow list و deny عامل
+- `DEBT-F-13` و `SEC-F-7`: شناسه‌های زیرساخت
+
+## ۲. ردیف‌های پذیرفته
+
+ترتیب: اول شدت، بعد اطمینان.
+
+| ID | منبع | عنوان | دسته | شدت | اطمینان | مسیرها | شاهد (سنجیده در این Job) | اصلاح یا تبصرهٔ این Job |
+|---|---|---|---|---|---|---|---|---|
+| RR-01 | SEC-F-1 | عامل کدنویسی بی‌پرسش دادهٔ production را می‌خواند و می‌نویسد؛ hook فقط حذف انبوه را می‌گیرد | risk | high | confirmed (blocking) | `.claude/settings.json`، `.claude/hooks/data-loss-guard.ts`، `CLAUDE.md` | `.claude/settings.json` خط ۲۴ و ۴۲ (`execute_sql` در allow)، خط ۷۳ (`git push:*`)، خط ۹۸ (`issue_write`). `RISKY_WORDS` در `data-loss-guard.ts` خط ۵۶ شامل `insert` و `update` نیست. `keepsEveryRow` (خط ۵۰۷ تا ۵۳۲) برای `where singleton = true` مقدار false می‌دهد. `CLAUDE.md` خط ۸۵ نوشتن بی‌پرسش را مجاز کرده است. جدول تک‌ردیفی `plt.admin_owner` در `supabase/migrations/20261005192549_admin_console.sql` خط ۲، و مصرف آن در `apps/web/src/server/auth/admin.ts` خط ۱۰ و ۱۱. [M] | این وضعیت تصمیم ثبت‌شدهٔ مالک (2026-10-10، #31 و #32) است. D81 فقط دامنهٔ data loss را پوشش داده است. پس رفع آن تصمیم تازهٔ مالک می‌خواهد. زنجیرهٔ تزریق اجرا نشد. |
+| RR-02 | SEC-F-2، DEBT-F-5 | allow list عامل گسترده است و deny فقط پیشوندهای force push را می‌بندد؛ ruleset ‏`main` نامعلوم | risk | medium | potential | `.claude/settings.json`، `.claude/hooks/data-loss-guard.ts` | `.claude/settings.json` خط ۷۳ و ۷۴ (`git push:*`، `git merge:*`)، خط ۷۹ و ۸۳ تا ۸۵ (`cat`، `grep`، `rg`، `sed -n`)، خط ۱۱۲ تا ۱۱۴ (deny). `decideCommand` در `data-loss-guard.ts` خط ۶۴۵ تا ۶۵۲ فقط `approve-data-loss` و `db:apply` را بررسی می‌کند. D83 در `docs/PRODUCT_DECISIONS_LOG.md` خط ۷۶۸ و ۷۶۹. push مستقیم کد به `main` در `b4aa3d5` (2026-10-11). [M] | رفتار تطبیق پیشوندی و فعال بودن ruleset: [NV]. |
+| RR-03 | SEC-F-3 | استقرارهای قدیمی production ممکن است هنوز مسیر spike و کد پیش از SEC-01 را با اسرار همان زمان اجرا کنند | risk | medium | potential | `docs/plans/M4_QUEUE_STORAGE.md`، `artifacts/verification/**`، `docs/runbooks/CLOUD_AUTH_CONFIG.md` | حذف مسیر در `f24ad27` (2026-10-19). کارهای باز مالک در `docs/plans/M4_QUEUE_STORAGE.md` خط ۲۷۱ («هنوز باز»)، ۲۷۲ و ۲۷۴. `docs/audit/2026-10-18-fix-tracker.md` خط ۸۴: حذف env ‏spike «با ابزارهای این سشن ممکن نبود». نشانی استقرار Vercel در ۴۲ فایل ردیابی‌شده آمده است، ۳۳ تا در `artifacts/verification/`. [M] | در دسترس بودن استقرارهای قدیمی و چرخش اسرار: [NV]. |
+| RR-04 | DEBT-F-4 | گارد SQL یک lexer دست‌ساز ۷۲۲ خطی است و نقطهٔ کور مستند دارد؛ در timeout ‏fail-open است | risk | medium | potential | `.claude/hooks/data-loss-guard.ts`، `.claude/settings.json`، `tools/claude-hooks/data-loss-guard.test.ts` | خود فایل در خط ۲۱ تا ۲۵ می‌گوید parser نیست و نقطه‌های کورش را می‌شمارد. خط ۲۷ ‏fail-open در timeout را ذکر می‌کند. `.claude/settings.json` خط ۱۲۹ timeout را ۱۰ ثانیه گذاشته است. fix-tracker خط ۲۳ از سه دور اصلاح می‌گوید. [M] | رفتار Claude Code در timeout: [NV]. با RR-01 هم‌ریشه است. اگر RR-01 حل شود، این گارد لایهٔ کمکی می‌شود. |
+| RR-05 | DEBT-F-10 | پشتیبان روزانه به یک میزبان Windows وابسته است (نقطهٔ شکست واحد) و در عمل شکست خورده است | risk | medium | confirmed | `tools/backup/**`، `docs/runbooks/BACKUP_RESTORE.md`، `packages/ops-cli/src/backup.ts`، `packages/core/src/ops/backups.ts` | `docs/runbooks/BACKUP_RESTORE.md` خط ۴۲، ۵۰ و ۹۱ (میزبان روشن، حساب واردشده، Docker و CLI معتبر). خط ۱۰۵ تا ۱۱۳: در 2026-10-14 و 2026-10-16 تا 10-18 پشتیبان `failed` بود و 10-11 اجرا نشد. [M] | دو تصحیح: (۱) هشدار کهنگی داخلی از OPS-01 وجود دارد: `ops.backup_stale` پس از ۳۰ ساعت (خط ۱۲۹). ولی بیرون از اپ هشدار نمی‌دهد. (۲) RPO کاملاً تعریف‌نشده نیست: ۲۴ ساعت پیشنهاد شده و منتظر تأیید مالک است (خط ۱۳۷). وضعیت فعلی اجرای task: [NV]. |
+| RR-06 | DEBT-F-2 | مرز ماژول‌ها فقط در `packages/core/src` اجرا می‌شود؛ `apps/web` بی‌نگهبان است | risk | low (از medium کم شد) | confirmed | `.dependency-cruiser.cjs`، `tools/boundaries/rules.cjs`، `tools/capability-map.json`، `packages/core/package.json`، `apps/web/src/server/**`، `apps/web/src/ui/recording/**` | `.dependency-cruiser.cjs` خط ۳۳ تنها فراخوانی `capabilityMapRules` است. `rules.cjs` خط ۳۵ فقط `^${root}/` را می‌گیرد. `packages/core/package.json` خط ۱۶ تا ۲۱ و ۳۴ چند مسیر عمقی را export می‌کند. [M] | دلیل کاهش شدت: (۱) `apps/web/src/ui/recording` امروز فقط یک import از `@recalino/core/src` دارد (`git grep`)، پس مرز `rec → src` نقض نشده و فقط نگهبان ندارد. (۲) فیلد `exports` همراه قاعدهٔ `not-to-unresolvable` جلوی import عمقی بیرون از فهرست را می‌گیرد. شکاف واقعی این است: لایهٔ سرور (۲۱۵ فایل) به همهٔ ۲۲ ورودی core دسترسی دارد. |
+| RR-07 | DEBT-F-3 | آزمون‌های `node:test` در `apps/web/tools` و `tools/backup` در CI اجرا نمی‌شوند | bug | medium | confirmed | `apps/web/tools/native-build-adapter.test.mjs`، `apps/web/tools/trace-native-dependencies.test.mjs`، `tools/backup/daily-task.test.mjs`، `vitest.config.ts`، `.github/workflows/ci.yml` | `git ls-files '*.test.mjs'` چهار فایل نشان می‌دهد. `vitest.config.ts` خط ۱۸ فقط `*.test.ts` را می‌گیرد. `.github/workflows/ci.yml` خط ۷۲ فقط `tools/auth/check-google.test.mjs` را اجرا می‌کند. [M] | تکمیل: فایل سوم `tools/backup/daily-task.test.mjs` هم اجرا نمی‌شود. `tools/voice/README.md` خط ۳۰ اجرای دستی را «جدا از Vitest» مستند کرده است، پس حذفشان از CI عمدی است، ولی پوشش CI ندارند. آزمون پشتیبان به DPAPI ویندوز وابسته است و شاید روی `ubuntu-24.04` اجراشدنی نباشد: [NV]. |
+| RR-08 | DEBT-F-6 | چند تصمیم ADR-0001 با کد ناسازگار است؛ ADRهای وعده‌داده و ADR-0004 نوشته نشده‌اند | smell | medium | confirmed | `docs/adr/0001-stack-and-hosting.md`، `docs/adr/**`، `packages/core/src/plt/storage-vercel-blob.ts` | ADR-0001 خط ۵۵ (صف «یا»)، خط ۵۷ (ffmpeg «فقط در صورت نیاز»)، خط ۱۵۲ (SMTP لازم نیست)، خط ۱۶۵ (`sql.js` و `jszip`) و خط ۱۷۴ تا ۱۷۹ (ADRهای بعدی). در برابر آن: `pnpm-workspace.yaml` خط ۹ و ۱۰ (ffmpeg، decoder تولیدی)، `packages/core/package.json` خط ۴۱ و ۴۳ (`fflate` و `nodemailer`). `docs/adr/` فقط ۰۰۰۱ تا ۰۰۰۳ دارد. ارجاع کد به ADR-0004 در `storage-vercel-blob.ts` خط ۱۸۵ است. [M] | تصحیح: ADR-0001 دو اصلاحیه دارد (D85 در خط ۶۰ و PERF-07 در خط ۱۵۸). پس «اصلاح نشده» دقیق نیست. ولی هیچ‌کدام صف، ffmpeg، Anki یا SMTP را پوشش نمی‌دهد. با IMP-01 تا IMP-08 در `history.md` بخش ۵ هم‌خوان است. |
+| RR-09 | DEBT-F-7 | `CLAUDE.md` و `PROJECT_SPEC` وضعیت کهنه را به عامل‌ها می‌دهند | smell | medium | confirmed | `CLAUDE.md`، `docs/PROJECT_SPEC.md` | `CLAUDE.md` خط ۷ (Google غیرفعال، 2026-10-04) و خط ۱۵ («پیش‌نویس ۰٫۱»). `docs/legal/privacy-notice.md` خط ۳: «Version 0.3». `docs/PROJECT_SPEC.md` خط ۳۹ (صف «انتخاب در SPIKE-05») و خط ۶۹ (`pnpm build # next build`)، در برابر هشت گام `apps/web/package.json` خط ۸. [M] | `docs/runbooks/CLOUD_AUTH_CONFIG.md` خط ۳۳ تعارض اسناد Google را خودش ثبت کرده است. |
+| RR-10 | DEBT-F-8 | Job پردازش پس از شکست Run موفق ثبت می‌شود (هم‌پوشان با AR-19) | risk | medium | confirmed | `packages/core/src/proc/worker.ts`، `packages/core/src/proc/steps/fail-run.ts`، `packages/core/src/plt/jobs.ts`، `packages/core/src/ops/health.ts` | `packages/core/src/proc/worker.ts` خط ۷۸ تا ۸۱: `catch` ← `failRun` ← `return` بدون پرتاب. AR-19 در `docs/architecture/04-risk-register.md` خط ۴۲. [M] | — |
+| RR-11 | DEBT-F-9 | گارد حقوقی build در production با flag بولی و بی‌انقضا دور زده می‌شود | risk | medium | potential | `tools/legal/guard.ts`، `apps/web/package.json`، `docs/legal/**` | `tools/legal/guard.ts` خط ۴۲ (فقط production) و خط ۴۵ تا ۴۹ (flag فقط پیام می‌دهد). fix-tracker خط ۸۴: flag در 2026-10-20 در Production ساخته شد. [M] | flag عمداً برای PRD-01 طراحی شده است (fix-tracker خط ۱۸). ریسک در بی‌انقضا بودن آن است. وضعیت فعلی env: [NV]. |
+| RR-12 | DEBT-F-11 | FR برای ماژول‌های هسته‌ای پردازش وجود ندارد و قاعدهٔ ردیابی اجراشدنی نیست | smell | medium | confirmed | `docs/fr/**`، `packages/core/src/proc/**`، `packages/core/src/lkm/**`، `packages/core/src/card/**`، `packages/core/src/srs/**`، `packages/core/src/note/**` | `git ls-files docs/fr` فقط هفت فایل نشان می‌دهد: ACC، ORG، PLT، QUOTA، SRC، SUPPORT و VOC. `git grep -E 'FR-(PROC\|LKM\|CARD\|SRS\|REC\|NOTE)-' -- docs` نتیجه‌ای بیرون از `docs/aeo/` ندارد. `CLAUDE.md` خط ۱۰ و ۵۵. ماژول‌ها در `docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md` خط ۶۰ تا ۶۶ تعریف شده‌اند. [M] | — |
+| RR-13 | SEC-F-5 | اپ اصلی CSP برای `script-src` ندارد؛ تنها سد XSS کارت، allowlist سفارشی است | risk | low | confirmed | `apps/web/next.config.ts`، `apps/web/src/ui/workspace/CardFace.tsx`، `packages/core/src/lkm/card-html.ts` | `apps/web/next.config.ts` خط ۳۲ و ۳۸. `dangerouslySetInnerHTML` در `CardFace.tsx` خط ۶۶ و در `apps/web/src/app/layout.tsx` خط ۴۴ (اسکریپت تم). [M] | — |
+| RR-14 | SEC-F-6 | کلید پشتیبان و توکن Blob کنار هم‌اند و پشتیبان‌ها با همان توکن پاک‌شدنی‌اند | risk | low | confirmed | `tools/backup/**`، `docs/runbooks/BACKUP_RESTORE.md`، `packages/ops-cli/src/backup-native.ts` | `docs/runbooks/BACKUP_RESTORE.md` خط ۱۴۸ (یک کلید برای دو کار)، ۱۵۴ تا ۱۵۷ (محل‌ها؛ نسخهٔ آفلاین «تثبیت نشده»)، ۱۶۱ و ۱۶۲ (مدل تهدید). [M] | چرخش D82: [NV]. با RR-05 در یک گام Roadmap می‌آید. |
+| RR-15 | SEC-F-8 | جداسازی داده میان کاربران فقط یک لایه دارد: نقش اپ `bypassrls` است | risk | low | confirmed | `supabase/migrations/**`، `apps/web/src/server/**`، `packages/core/src/**` | `supabase/migrations/20260930175238_baseline.sql` خط ۱۱. `git grep -l -i 'create policy' -- supabase/migrations` نتیجه ندارد. AR-18 در `docs/architecture/04-risk-register.md` خط ۴۱. [M] | ADR-0001 قاعدهٔ ۱ (خط ۶۴) RLS را «لایهٔ دفاعی دوم» می‌گوید. با `bypassrls` و بدون policy این لایه برای نقش اپ عمل نمی‌کند. |
+| RR-16 | DEBT-F-13، SEC-F-7 | شناسه‌های زیرساخت و حساب در فایل‌های ردیابی‌شده؛ secret دیده نشد | smell | low | confirmed | `docs/audit/2026-10-18-fix-tracker.md`، `CLAUDE.md`، `docs/adr/0001-stack-and-hosting.md`، `docs/runbooks/BACKUP_RESTORE.md`، `docs/runbooks/CLOUD_AUTH_CONFIG.md`، `docs/plans/M4_QUEUE_STORAGE.md`، `artifacts/**`، `packages/core/src/support/presentation.ts` | شمارش در این Job (`git grep -l`، مقدارها چاپ نشد): الگوی شناسهٔ استقرار Vercel در ۶۴ فایل؛ الگوی شناسهٔ پروژه یا store ‏Vercel در ۱۶ فایل؛ الگوی host پروژهٔ Supabase در دست‌کم ۱۶ فایل (REC-1 با الگوی گسترده‌تر ۵۴ فایل شمرده بود). fix-tracker خط ۸۵ (شناسهٔ استقرار) و خط ۹۱ (URL حاوی نام حساب). `CLOUD_AUTH_CONFIG.md` خط ۳۱ و ۳۵. ADR-0001 خط ۱۵۰. [M] | عمومی بودن مخزن: [NV]. |
+| RR-17 | DEBT-F-1، SEC-F-9 | `pg-boss` بی‌مصرف در devDependencies، برخلاف پیامد ADR-0003 | smell | low | confirmed | `package.json`، `pnpm-lock.yaml`، `docs/adr/0003-job-queue.md` | `git grep -n -E 'pg-boss\|pgboss' -- ':!pnpm-lock.yaml' ':!docs/**' ':!artifacts/**'` فقط `package.json:45` را نشان می‌دهد. ADR-0003 خط ۵۷ (حذف پس از spike) و خط ۶۴ (ارجاع به `tools/spikes/queue/`). `git ls-files tools/spikes` خالی است و حذف در `f24ad27` انجام شد. `docs/plans/M4_QUEUE_STORAGE.md` خط ۲۷۱: «هنوز باز: `pg-boss` (تصمیم مالک)». [M] | فرضِ «بررسی‌نشده» در `DEBT-F-1` در این Job بسته شد: مصرفی نمانده است. |
+| RR-18 | DEBT-F-12 | پیش‌فرض مدل در مخزن با D57 و env ‏production جداست | risk | low | potential | `config/openrouter-defaults.json`، `apps/web/src/server/ai.ts`، `packages/core/src/aip/contracts.ts` | `config/openrouter-defaults.json` خط ۴. D57 در `docs/PRODUCT_DECISIONS_LOG.md` خط ۵۱۸. AR-06 در `docs/architecture/04-risk-register.md` خط ۲۹. [M] | مقدار production: [NV]. با IMP-09 در `history.md` هم‌خوان است. |
+| RR-19 | DEBT-F-14 | زنجیرهٔ build هشت‌گامی در یک رشتهٔ اسکریپت و بدون ADR | smell | low | confirmed | `apps/web/package.json`، `tools/legal/guard.ts`، `tools/schema-version/build.ts`، `tools/voice/prepare-build.mjs`، `tools/function-size/check.ts` | `apps/web/package.json` خط ۸: هشت فرمان با `&&`. `docs/PROJECT_SPEC.md` خط ۶۹. [M] | با IMP-12 در `history.md` هم‌خوان است. آنجا «پنج مرحله» نوشته شده بود. شمار دقیق فرمان‌ها هشت است. |
+| RR-20 | DEBT-F-15 | استثناهای cooldown و override در `pnpm-workspace.yaml` بدون سازوکار پاک‌سازی انباشته می‌شوند | smell | low | potential | `pnpm-workspace.yaml` | `pnpm-workspace.yaml` خط ۲۲ تا ۴۹: ۲۸ نسخهٔ دقیق. خط ۵۵ تا ۵۸: override ‏`source-map-js` با شرط حذف دستی. `git grep -l -E 'minimumReleaseAge\|source-map-js' -- tools packages apps .github` نتیجه ندارد، پس آزمون یا ابزار پاک‌سازی نیست. [M] | — |
+
+## ۳. Hypothesisها (فقط برای پیگیری؛ به گام Roadmap تبدیل نمی‌شوند)
+
+| ID | منبع | ادعا | شدت ادعاشده | آنچه این Job دید | پرسش برای تأیید |
+|---|---|---|---|---|---|
+| H-01 | SEC-F-4 | ثبت‌نام ایمیل و رمز در Supabase Auth ابری ممکن است باز باشد و راه pre-account takeover بدهد (CWE-287) | medium | محلی: `supabase/config.toml` خط ۲۲۷ (`enable_signup = true`) و ۲۳۲ (`enable_confirmations = false`). ابری: `docs/runbooks/CLOUD_AUTH_CONFIG.md` خط ۳۶ و ۳۷ «ثبت نشده». [M]؛ مقدار ابری [NV] | آیا provider ‏Email در پروژهٔ ابری روشن است؟ آیا confirmations روشن است؟ |
+| H-02 | DEBT-F-16 | اسرار spike در env ‏Preview و Production ممکن است هنوز مانده باشند | low | fix-tracker خط ۸۴: حذف «با ابزارهای این سشن ممکن نبود؛ مالک بعداً حذف می‌کند». `docs/plans/M4_QUEUE_STORAGE.md` خط ۲۷۱ و ۲۷۲ هنوز «باز». [M]؛ وضعیت Vercel [NV] | آیا `RECALINO_SPIKE`، `SPIKE_TOKEN` و هفت سرّ Preview حذف شده‌اند؟ (هم‌پوشان با RR-03؛ تأیید آن RR-03 را هم روشن می‌کند.) |
+| H-03 | SEC-F-10 | وابستگی‌ها ممکن است advisory تازه داشته باشند (CWE-1395) | info | آخرین نتیجهٔ ثبت‌شده «`pnpm audit --prod` بدون آسیب‌پذیری» است (fix-tracker خط ۱۶ تا ۲۵، حدود 2026-10-20). کنترل‌ها: `minimumReleaseAge: 1440` (`pnpm-workspace.yaml` خط ۱۹)، `allowBuilds` و Dependabot امنیتی. [M]؛ وضعیت امروز [NV] | نتیجهٔ `pnpm audit --prod` یا osv-scanner روی `pnpm-lock.yaml` در محیطی که شبکه دارد چیست؟ |
+
+## ۴. یافتهٔ رد شده
+
+| منبع | ادعا | دلیل رد |
+|---|---|---|
+| DEBT-F-17 (hypothesis) | ابزار و آزمون ارزیابی Haiku 5.5 احتمالاً کد مرده‌اند | (۱) فایل‌ها هستند: ۱۴ فایل `*haiku55*` ردیابی می‌شوند (`git ls-files '*haiku55*'`). (۲) کد مرده نیستند: `tools/eval/gemini-schema-probe.ts` خط ۲۹، `tools/eval/lesson-quality-live.ts` خط ۶ و ۷، `tools/eval/model-comparison-fixtures.ts` خط ۶ و ۱۱، و `tools/eval/quality-review-blind-export.ts` خط ۷ از ماژول‌های `haiku55-*` import می‌کنند. این ابزارها ارزیابی‌های بعدی (Gemini و مقایسهٔ مدل) را پشتیبانی می‌کنند. (۳) آزمون‌ها طبق `vitest.config.ts` خط ۱۸ و ۲۸ در CI اجرا می‌شوند. پس هزینهٔ اجرا هست، ولی ادعای «بی‌مصرف» با شواهد رد می‌شود. پیشنهاد غیرالزامی: تغییر نام fixtureها به نامی که به مدل وابسته نیست. [M] |
+
+## ۵. تصحیح‌های جزئی بر یافته‌های پذیرفته
+
+- **DEBT-F-2:** شدت از medium به low کم شد. دلیل در ردیف RR-06 آمده است.
+- **DEBT-F-3:** فایل سوم `tools/backup/daily-task.test.mjs` اضافه شد.
+- **DEBT-F-6:** ADR-0001 دو اصلاحیه دارد (D85، PERF-07). پس «اصلاح نشده» دقیق نیست. ناسازگاری‌های ذکرشده پابرجاست.
+- **DEBT-F-10:** هشدار کهنگی داخلی (`ops.backup_stale`، ۳۰ ساعت) از قبل هست. RPO ‏۲۴ ساعته پیشنهاد شده و منتظر تأیید است. شواهد شکست واقعی پشتیبان در runbook هم اضافه شد.
+- **DEBT-F-14 و IMP-12:** شمار گام‌های build هشت است، نه پنج.
+
+## ۶. محدودیت‌ها
+
+- بدنهٔ PRها، reviewها و Issueها در دسترس نبود. ارجاع‌ها فقط به شمارهٔ PR و commit است. [M]
+- هر ادعا دربارهٔ وضعیت Vercel، Supabase ابری یا ruleset ‏GitHub برچسب [NV] دارد.
+- در worktree این Job، `git status` یک فایل تغییرکرده (`.env.example`) و چند فایل ردیابی‌نشده در ریشه نشان می‌دهد، از جمله dotfileهای shell، `.gitconfig`، `.mcp.json` و `.idea`. این‌ها را این Job نساخته و به آن‌ها دست نزده است. خوانده هم نشدند. احتمالاً اثر محیط اجرا (sandbox) هستند: [NV].
