@@ -28,9 +28,7 @@
       "statement": "فقط فایل owns_paths تغییر کرده است؛ هیچ install، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
     }
   ],
-  "owns_paths": [
-    "apps/web/src/server/admin-routes.ts"
-  ],
+  "owns_paths": ["apps/web/src/server/admin-routes.ts"],
   "depends_on": [],
   "context_refs": [
     "docs/aeo/l3/phase1-tasks.md",
@@ -42,9 +40,7 @@
   "roles": {
     "implementer": "implementer.refactoring",
     "test_engineer": "test-engineer",
-    "reviewers": [
-      "reviewer.code"
-    ]
+    "reviewers": ["reviewer.code"]
   },
   "limits": {
     "max_turns": 60,

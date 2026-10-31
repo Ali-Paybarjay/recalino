@@ -32,9 +32,7 @@
       "statement": "هیچ کد، تست، اسکریپت یا hook مخزن اجرا نشده و فایلی بیرون از owns_paths تغییر نکرده است."
     }
   ],
-  "owns_paths": [
-    "docs/aeo/l3/**"
-  ],
+  "owns_paths": ["docs/aeo/l3/**"],
   "depends_on": [],
   "context_refs": [
     "docs/aeo/as-is/overview.md",
@@ -45,9 +43,7 @@
   ],
   "roles": {
     "implementer": "project-manager",
-    "reviewers": [
-      "reviewer.architecture"
-    ]
+    "reviewers": ["reviewer.architecture"]
   },
   "limits": {
     "max_turns": 80

@@ -28,9 +28,7 @@
       "statement": "هیچ کد، تست، اسکریپت یا hook مخزن اجرا نشده و فایلی بیرون از owns_paths تغییر نکرده است."
     }
   ],
-  "owns_paths": [
-    "docs/aeo/as-is/**"
-  ],
+  "owns_paths": ["docs/aeo/as-is/**"],
   "depends_on": [],
   "context_refs": [
     "docs/aeo/as-is/overview.md",
@@ -41,10 +39,7 @@
   ],
   "roles": {
     "implementer": "archaeologist",
-    "reviewers": [
-      "reviewer.architecture",
-      "reviewer.security"
-    ]
+    "reviewers": ["reviewer.architecture", "reviewer.security"]
   },
   "limits": {
     "max_turns": 60
