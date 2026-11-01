@@ -12,6 +12,7 @@
   - **[NV]** = Not Verified: به وضعیت production، داشبورد Vercel، Supabase یا GitHub وابسته است.
   - URL عمداً نیامده است (AC-8). پس برچسب «Documented (با URL)» به کار نرفته است.
 - هیچ secret، ایمیل، نام حساب یا شناسهٔ زیرساخت در این سند نیست. فقط شمارش و مسیر آمده است.
+- اصلاح کم‌ریسک `REC-5` (2026-10-31، پایه `a31cce4`): یافتهٔ F-6 از REC-1-review در این سند اعمال شد. فهرست کامل اعمال‌شده و اعمال‌نشده در بخش ۷ است. هیچ شدت، اطمینان، نتیجه‌گیری یا پیشنهادی تغییر نکرد.
 
 ## ۱. خلاصه
 
@@ -43,7 +44,7 @@
 | RR-03 | SEC-F-3 | استقرارهای قدیمی production ممکن است هنوز مسیر spike و کد پیش از SEC-01 را با اسرار همان زمان اجرا کنند | risk | medium | potential | `docs/plans/M4_QUEUE_STORAGE.md`، `artifacts/verification/**`، `docs/runbooks/CLOUD_AUTH_CONFIG.md` | حذف مسیر در `f24ad27` (2026-10-19). کارهای باز مالک در `docs/plans/M4_QUEUE_STORAGE.md` خط ۲۷۱ («هنوز باز»)، ۲۷۲ و ۲۷۴. `docs/audit/2026-10-18-fix-tracker.md` خط ۸۴: حذف env ‏spike «با ابزارهای این سشن ممکن نبود». نشانی استقرار Vercel در ۴۲ فایل ردیابی‌شده آمده است، ۳۳ تا در `artifacts/verification/`. [M] | در دسترس بودن استقرارهای قدیمی و چرخش اسرار: [NV]. |
 | RR-04 | DEBT-F-4 | گارد SQL یک lexer دست‌ساز ۷۲۲ خطی است و نقطهٔ کور مستند دارد؛ در timeout ‏fail-open است | risk | medium | potential | `.claude/hooks/data-loss-guard.ts`، `.claude/settings.json`، `tools/claude-hooks/data-loss-guard.test.ts` | خود فایل در خط ۲۱ تا ۲۵ می‌گوید parser نیست و نقطه‌های کورش را می‌شمارد. خط ۲۷ ‏fail-open در timeout را ذکر می‌کند. `.claude/settings.json` خط ۱۲۹ timeout را ۱۰ ثانیه گذاشته است. fix-tracker خط ۲۳ از سه دور اصلاح می‌گوید. [M] | رفتار Claude Code در timeout: [NV]. با RR-01 هم‌ریشه است. اگر RR-01 حل شود، این گارد لایهٔ کمکی می‌شود. |
 | RR-05 | DEBT-F-10 | پشتیبان روزانه به یک میزبان Windows وابسته است (نقطهٔ شکست واحد) و در عمل شکست خورده است | risk | medium | confirmed | `tools/backup/**`، `docs/runbooks/BACKUP_RESTORE.md`، `packages/ops-cli/src/backup.ts`، `packages/core/src/ops/backups.ts` | `docs/runbooks/BACKUP_RESTORE.md` خط ۴۲، ۵۰ و ۹۱ (میزبان روشن، حساب واردشده، Docker و CLI معتبر). خط ۱۰۵ تا ۱۱۳: در 2026-10-14 و 2026-10-16 تا 10-18 پشتیبان `failed` بود و 10-11 اجرا نشد. [M] | دو تصحیح: (۱) هشدار کهنگی داخلی از OPS-01 وجود دارد: `ops.backup_stale` پس از ۳۰ ساعت (خط ۱۲۹). ولی بیرون از اپ هشدار نمی‌دهد. (۲) RPO کاملاً تعریف‌نشده نیست: ۲۴ ساعت پیشنهاد شده و منتظر تأیید مالک است (خط ۱۳۷). وضعیت فعلی اجرای task: [NV]. |
-| RR-06 | DEBT-F-2 | مرز ماژول‌ها فقط در `packages/core/src` اجرا می‌شود؛ `apps/web` بی‌نگهبان است | risk | low (از medium کم شد) | confirmed | `.dependency-cruiser.cjs`، `tools/boundaries/rules.cjs`، `tools/capability-map.json`، `packages/core/package.json`، `apps/web/src/server/**`، `apps/web/src/ui/recording/**` | `.dependency-cruiser.cjs` خط ۳۳ تنها فراخوانی `capabilityMapRules` است. `rules.cjs` خط ۳۵ فقط `^${root}/` را می‌گیرد. `packages/core/package.json` خط ۱۶ تا ۲۱ و ۳۴ چند مسیر عمقی را export می‌کند. [M] | دلیل کاهش شدت: (۱) `apps/web/src/ui/recording` امروز فقط یک import از `@recalino/core/src` دارد (`git grep`)، پس مرز `rec → src` نقض نشده و فقط نگهبان ندارد. (۲) فیلد `exports` همراه قاعدهٔ `not-to-unresolvable` جلوی import عمقی بیرون از فهرست را می‌گیرد. شکاف واقعی این است: لایهٔ سرور (۲۱۵ فایل) به همهٔ ۲۲ ورودی core دسترسی دارد. |
+| RR-06 | DEBT-F-2 | مرز ماژول‌ها فقط در `packages/core/src` اجرا می‌شود؛ `apps/web` بی‌نگهبان است | risk | low (از medium کم شد) | confirmed | `.dependency-cruiser.cjs`، `tools/boundaries/rules.cjs`، `tools/capability-map.json`، `packages/core/package.json`، `apps/web/src/server/**`، `apps/web/src/ui/recording/**` | `.dependency-cruiser.cjs` خط ۳۳ تنها فراخوانی `capabilityMapRules` است. `rules.cjs` خط ۳۵ فقط `^${root}/` را می‌گیرد. `packages/core/package.json` خط ۱۶ تا ۲۱ و ۳۴ چند مسیر عمقی را export می‌کند. [M] | دلیل کاهش شدت: (۱) `apps/web/src/ui/recording` امروز فقط یک import از `@recalino/core/src` دارد (`git grep`)، پس مرز `rec → src` نقض نشده و فقط نگهبان ندارد. (۲) فیلد `exports` همراه قاعدهٔ `not-to-unresolvable` جلوی import عمقی بیرون از فهرست را می‌گیرد. شکاف واقعی این است: لایهٔ سرور (۲۱۵ فایل) به همهٔ ۲۸ ورودی core دسترسی دارد: ۲۰ ماژول، `db` و `config`، و ۶ subpath غیر index که RR-26 آن‌ها را پوشش می‌دهد (`packages/core/package.json` خط ۷ تا ۳۴؛ اصلاح شمارش REC-5، F-6). |
 | RR-07 | DEBT-F-3 | آزمون‌های `node:test` در `apps/web/tools` و `tools/backup` در CI اجرا نمی‌شوند | bug | medium | confirmed | `apps/web/tools/native-build-adapter.test.mjs`، `apps/web/tools/trace-native-dependencies.test.mjs`، `tools/backup/daily-task.test.mjs`، `vitest.config.ts`، `.github/workflows/ci.yml` | `git ls-files '*.test.mjs'` چهار فایل نشان می‌دهد. `vitest.config.ts` خط ۱۸ فقط `*.test.ts` را می‌گیرد. `.github/workflows/ci.yml` خط ۷۲ فقط `tools/auth/check-google.test.mjs` را اجرا می‌کند. [M] | تکمیل: فایل سوم `tools/backup/daily-task.test.mjs` هم اجرا نمی‌شود. `tools/voice/README.md` خط ۳۰ اجرای دستی را «جدا از Vitest» مستند کرده است، پس حذفشان از CI عمدی است، ولی پوشش CI ندارند. آزمون پشتیبان به DPAPI ویندوز وابسته است و شاید روی `ubuntu-24.04` اجراشدنی نباشد: [NV]. |
 | RR-08 | DEBT-F-6 | چند تصمیم ADR-0001 با کد ناسازگار است؛ ADRهای وعده‌داده و ADR-0004 نوشته نشده‌اند | smell | medium | confirmed | `docs/adr/0001-stack-and-hosting.md`، `docs/adr/**`، `packages/core/src/plt/storage-vercel-blob.ts` | ADR-0001 خط ۵۵ (صف «یا»)، خط ۵۷ (ffmpeg «فقط در صورت نیاز»)، خط ۱۵۲ (SMTP لازم نیست)، خط ۱۶۵ (`sql.js` و `jszip`) و خط ۱۷۴ تا ۱۷۹ (ADRهای بعدی). در برابر آن: `pnpm-workspace.yaml` خط ۹ و ۱۰ (ffmpeg، decoder تولیدی)، `packages/core/package.json` خط ۴۱ و ۴۳ (`fflate` و `nodemailer`). `docs/adr/` فقط ۰۰۰۱ تا ۰۰۰۳ دارد. ارجاع کد به ADR-0004 در `storage-vercel-blob.ts` خط ۱۸۵ است. [M] | تصحیح: ADR-0001 دو اصلاحیه دارد (D85 در خط ۶۰ و PERF-07 در خط ۱۵۸). پس «اصلاح نشده» دقیق نیست. ولی هیچ‌کدام صف، ffmpeg، Anki یا SMTP را پوشش نمی‌دهد. با IMP-01 تا IMP-08 در `history.md` بخش ۵ هم‌خوان است. |
 | RR-09 | DEBT-F-7 | `CLAUDE.md` و `PROJECT_SPEC` وضعیت کهنه را به عامل‌ها می‌دهند | smell | medium | confirmed | `CLAUDE.md`، `docs/PROJECT_SPEC.md` | `CLAUDE.md` خط ۷ (Google غیرفعال، 2026-10-04) و خط ۱۵ («پیش‌نویس ۰٫۱»). `docs/legal/privacy-notice.md` خط ۳: «Version 0.3». `docs/PROJECT_SPEC.md` خط ۳۹ (صف «انتخاب در SPIKE-05») و خط ۶۹ (`pnpm build # next build`)، در برابر هشت گام `apps/web/package.json` خط ۸. [M] | `docs/runbooks/CLOUD_AUTH_CONFIG.md` خط ۳۳ تعارض اسناد Google را خودش ثبت کرده است. |
@@ -113,3 +114,37 @@
 - هر ادعا دربارهٔ وضعیت Vercel، Supabase ابری یا ruleset ‏GitHub برچسب [NV] دارد.
 - در worktree این Job، `git status` یک فایل تغییرکرده (`.env.example`) و چند فایل ردیابی‌نشده در ریشه نشان می‌دهد، از جمله dotfileهای shell، `.gitconfig`، `.mcp.json` و `.idea`. این‌ها را این Job نساخته و به آن‌ها دست نزده است. خوانده هم نشدند. احتمالاً اثر محیط اجرا (sandbox) هستند: [NV].
 - بخش دوم: Bash فقط برای فرمان‌های git مجاز بود و pipe رد شد. شمارش‌ها با `git grep -c` روی base ‏`a1d559b` انجام شد و جمع‌ها را مدل دستی حساب کرد. هیچ depcruise، آزمون یا اسکریپتی اجرا نشد.
+
+## ۷. اصلاح REC-5: یافته‌های REC-1-review
+
+- منبع: ۱۷ یافتهٔ REC-1-review (Job ‏`job-20261030-60535677`، نقش `reviewer.architecture`). این یافته‌ها در context همین Job آمده‌اند و در مخزن نیستند.
+- معیار «کم‌ریسک» پنج دسته است: املا، ارجاع شکسته، برچسب گمشده، ناسازگاری شمارش و سرآیند. هر یافتهٔ دیگر اعمال نشد.
+- هر اصلاح پیش از اعمال با `git log`، `git rev-list`، `git show` یا خواندن مستقیم فایل روی base دوباره سنجیده شد. [M]
+- جمع: ۶ اعمال‌شده + ۱۱ اعمال‌نشده = ۱۷.
+
+### ۷.۱ یافته‌های اعمال‌شده
+
+| یافته | دسته | سند | تغییر |
+|---|---|---|---|
+| F-3 | برچسب گمشده و ناسازگاری شمارش | `history.md` بخش ۱ | کنار شمار ۷۵ آمد که از فهرست Controller است. شمار قابل بازتولید از git ۷۴ است و وضعیت #13 [NV] است. عدد ۷۵ حذف نشد. |
+| F-4 | ناسازگاری شمارش و تاریخ | `history.md` بخش ۱، ۲.۲، ۲.۳ و ۴ | «۸۱ commit» به «۸۰ commit به‌علاوهٔ merge ‏#12» تغییر کرد (`git rev-list --count 232adcb..11c1a6a` = ۸۰). تاریخ merge ‏#52 و #53 (2026-10-14) و #63 (2026-10-16) کنار ردیف آمد. ردیفی جابه‌جا یا حذف نشد. |
+| F-5 | ناسازگاری شمارش | `overview.md` بخش ۳، `inventory.md` ‏INV-02 | «۲۱ ماژول» به «۲۰ ماژول» تغییر کرد و توضیح `rec` آمد (`git show a1d559b:packages/core/src/`: ۲۰ ماژول به‌علاوهٔ `db` و `config`). تصمیم پیشنهادی INV-02 تغییر نکرد. |
+| F-6 | ناسازگاری شمارش | `risk-register.md` ‏RR-06 | «۲۲ ورودی» به «۲۸ ورودی» تغییر کرد (`packages/core/package.json` خط ۷ تا ۳۴). شدت و اطمینان RR-06 تغییر نکرد. |
+| F-10 | ارجاع شکسته | `inventory.md` ‏INV-36 | شاهد از `CLAUDE.md` (که «۰٫۱» می‌گوید) به `docs/legal/privacy-notice.md` خط ۳ و fix-tracker خط ۲۴ تغییر کرد. |
+| F-16 | برچسب گمشده | `history.md` بخش ۴ بند ۲ | برای نتیجهٔ «استقرار پیش از `main`» برچسب [NV] آمد، چون از عنوان PR استنباط شده است. برچسب [M] عنوان‌ها ماند. |
+
+### ۷.۲ یافته‌های اعمال‌نشده
+
+| یافته | دلیل |
+|---|---|
+| F-1 | اصلاح محتوای ستون «پیدایش» در جدول ماژول‌هاست، نه ارجاع شکسته یا شمارش. بیرون از پنج دسته است. |
+| F-2 | اصلاح ادعای مسیر ادغام #25 و ردیف D57 است، یعنی تغییر یک ادعای تاریخی. بیرون از پنج دسته است. |
+| F-7 | ارزیابی RR-15 و گام R-19 را تغییر می‌دهد و Escalation به Architect می‌خواهد. AC-2 منع کرده است. |
+| F-8 | نوع و شدت «تناقض» در RR-08، IMP-03، INV-12 و R-08 را تغییر می‌دهد. AC-2 منع کرده است. |
+| F-9 | دامنهٔ یک یافتهٔ تاریخی (بخش ۶) را گسترش می‌دهد. بیرون از پنج دسته است. |
+| F-11 | تصمیم پیشنهادی INV-04 و INV-35 را تغییر می‌دهد. AC-2 منع کرده است. |
+| F-12 | الگوی جست‌وجوی اصلی شمارهای ۵۴، ۱۶ و ۶۴ در دسترس نیست. تغییر عدد، شاهد RR-16 و INV-41 را بی‌پشتوانه عوض می‌کند. |
+| F-13 | ثبت منبع یافته‌های پیشین دادهٔ بیرون از مخزن می‌خواهد که در context این Job نیست. بیرون از پنج دسته است. |
+| F-14 | قاعدهٔ ترتیب یا جای گام‌های Roadmap را تغییر می‌دهد، یعنی رتبه. AC-2 منع کرده است. |
+| F-15 | دامنهٔ IMP-01 و ADR پیشنهادی R-08 را گسترش می‌دهد. تغییر محتوا و پیشنهاد است. |
+| F-17 | خود یافته RR-31 را درست می‌داند. تغییری در اسناد لازم نیست. |
