@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-01",
+  "kind": "pass_to_pass",
+  "base_sha": "a31cce4b624b0b1971a02bed41886ff7f473b0cf",
+  "authored_by": {
+    "role": "test-engineer"
+  },
+  "commit_sha": "a31cce4b624b0b1971a02bed41886ff7f473b0cf",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/admin-task-copy.test.ts",
+      "sha256": "93e540db7594f64660018112ac446213ad21bc99e96cb98852aee0ea74115645"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/admin-task-copy.test.ts",
+      "name": "the existing admin-task-copy unit tests and the rest of the unit suite stay green on base and head (pass_to_pass)",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
