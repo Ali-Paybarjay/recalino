@@ -10,13 +10,14 @@
   - **Retire:** حذف یا بایگانی شود.
   - **Investigate:** پیش از تصمیم، شواهد بیشتری لازم است.
 - این تصمیم‌ها پیشنهادند. اجرای هر کدام Task Card جدا و تأیید مالک می‌خواهد.
+- اصلاح کم‌ریسک `REC-5` (2026-10-31، پایه `a31cce4`): یافته‌های F-5 و F-10 از REC-1-review در این سند اعمال شدند. ستون «تصمیم پیشنهادی» تغییر نکرد. فهرست اعمال‌شده و اعمال‌نشده در [risk-register.md بخش ۷](risk-register.md) است.
 
 ## ۱. کد و بسته‌ها
 
 | ID | مورد | مسیر | وضعیت مشاهده‌شده | شاهد | تصمیم پیشنهادی |
 |---|---|---|---|---|---|
 | INV-01 | اپ وب Next.js | `apps/web/` | ۸۲۷ فایل؛ ۶۵ route API؛ Cron دقیقه‌ای | `apps/web/package.json`، `apps/web/vercel.json` [M] | Keep |
-| INV-02 | هستهٔ دامنه | `packages/core/src/` | ۲۱ ماژول با مرز اجراشده | `tools/capability-map.json`، `1445b3a` [M] | Keep |
+| INV-02 | هستهٔ دامنه | `packages/core/src/` | ۲۰ ماژول با مرز اجراشده؛ ماژول بیست‌ویکم، `rec`، فقط در capability map است و در core پوشه ندارد (INV-04، RR-21) | `tools/capability-map.json`، `1445b3a` [M] | Keep |
 | INV-03 | ماژول `proc` | `packages/core/src/proc/` | بزرگ‌ترین ماژول؛ در #67 به `steps/*` شکسته شد | fix-tracker دستهٔ ۱۰ و ۱۸ [M] | Keep؛ نوشتن FR-PROC (INV-30) |
 | INV-04 | ماژول `rec` | `apps/web/src/ui/recording/` | در capability map هست ولی در core پوشه ندارد | `tools/capability-map.json` [M] | Investigate: آیا مرز `rec → src` در کد web هم بررسی می‌شود؟ |
 | INV-05 | ابزار اپراتور | `packages/ops-cli/` | ارزیابی، پشتیبان، زمان‌سنجی | `packages/ops-cli/package.json` [M] | Keep |
@@ -58,7 +59,7 @@
 | INV-33 | اسناد معماری | `docs/architecture/01..05` | #75 | [M] | Keep؛ مرجع As-Is فنی |
 | INV-34 | طرح‌ها و گزارش‌ها | `docs/plans/` (۳۶ فایل) | اسناد تاریخ‌دار؛ بسیاری از آن‌ها گزارش تحویل‌اند | [M] | Keep؛ برچسب «تاریخی» برای موارد بسته‌شده |
 | INV-35 | ارزیابی Haiku 5.5 | `tools/eval/haiku55-*`، `packages/core/src/proc/haiku55-worker.int.test.ts`، `docs/*/HAIKU55_MIGRATION_2026-10-08.md` | ارزیابی نهایی FAIL بود و مدل فعال نشد | `docs/design/HAIKU55_MIGRATION_2026-10-08.md` خط ۵ [M] | Investigate: آیا هنوز در CI مصرفی دارد؟ اگر ندارد، Retire یا بایگانی |
-| INV-36 | متن‌های حقوقی | `docs/legal/` | پیش‌نویس؛ نسخهٔ ۰٫۳ اطلاعیهٔ حریم خصوصی (D94)؛ G11 باز است | `CLAUDE.md` [M] | Keep |
+| INV-36 | متن‌های حقوقی | `docs/legal/` | پیش‌نویس؛ نسخهٔ ۰٫۳ اطلاعیهٔ حریم خصوصی (D94)؛ G11 باز است | `docs/legal/privacy-notice.md` خط ۳ («Version 0.3»)؛ D94 در `docs/audit/2026-10-18-fix-tracker.md` خط ۲۴ [M] | Keep |
 
 ## ۵. داده و شواهد
 
