@@ -1,6 +1,7 @@
 import "server-only";
 import { accountExists } from "@recalino/core/acc";
 import { estimateRatesSchema, saveEstimateRates } from "@recalino/core/aip";
+import type { AdminResult, AdminView, EmailPresentationPreview } from "@recalino/core/ops";
 import {
   claimAdminRequest,
   readApprovedEmailResults,
@@ -44,7 +45,6 @@ import {
 import { after } from "next/server";
 import { z } from "zod";
 import pilotDefaults from "../../../../config/pilot-defaults.json";
-import type { AdminResult, AdminView, EmailPresentationPreview } from "../ui/admin/contracts";
 import { readAdminSnapshot } from "./admin-data";
 import { adminDirectory } from "./admin-directory";
 import { adminEmailValues } from "./admin-email-values";
