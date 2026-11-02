@@ -3,7 +3,7 @@ import { createLogger, errors, type Logger } from "@recalino/core/plt";
 import { requestAutomaticLearning } from "@recalino/core/proc";
 import { createRecordedSource } from "@recalino/core/src";
 import { z } from "zod";
-import { captureDiagnosticsSchema } from "../ui/recording/capture-diagnostics";
+import { captureDiagnosticsSchema } from "../shared/capture-diagnostics-contract";
 import { type Handler, idempotencyKey, learnerActor } from "./api";
 export function recordingSourceHandler(): Handler {
   return async ({ db, ctx, input, request }) => {

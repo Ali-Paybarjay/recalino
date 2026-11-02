@@ -13,15 +13,9 @@
  * No real class photo was used (G11), so the thresholds are a starting point to recheck against
  * the server's `unreadable_image` outcomes (the `photo_quality` diagnostics event).
  */
-export const PHOTO_VERDICTS = [
-  "ok",
-  "blurry",
-  "too_dark",
-  "too_bright",
-  "glare",
-  "low_detail",
-] as const;
-export type PhotoVerdict = (typeof PHOTO_VERDICTS)[number];
+import type { PhotoVerdict } from "../../shared/capture-diagnostics-contract";
+
+export { PHOTO_VERDICTS, type PhotoVerdict } from "../../shared/capture-diagnostics-contract";
 export type PhotoImage = { width: number; height: number; data: Uint8ClampedArray };
 export type PhotoQuality = {
   /** Variance of the Laplacian on edge pixels, divided by contrast²; scale-free. */

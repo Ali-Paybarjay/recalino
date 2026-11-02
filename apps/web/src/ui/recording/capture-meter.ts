@@ -1,16 +1,7 @@
+import { GAP_CAUSES, type GapCause } from "../../shared/capture-diagnostics-contract";
 import { type MediaTimeline, RecorderTimeline } from "./media-timeline";
 
-/** What the page observed while audio was missing; a gap may have several, the first wins. */
-export const GAP_CAUSES = [
-  "ended",
-  "muted",
-  "frozen",
-  "hidden",
-  "stalled",
-  "interrupted",
-  "unknown",
-] as const;
-export type GapCause = (typeof GAP_CAUSES)[number];
+export { GAP_CAUSES, type GapCause } from "../../shared/capture-diagnostics-contract";
 /** An interval the learner meant to record but for which no audio reached this device. */
 export type CaptureGap = {
   /** The last moment audio was known to arrive before the gap (ISO, device clock). */
