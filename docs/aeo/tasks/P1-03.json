@@ -1,0 +1,51 @@
+{
+  "schema_version": "1",
+  "id": "P1-03",
+  "title": "آزمون فهرست ثابت exports بستهٔ core (فاز ۱ L3)",
+  "goal": "آزمونی تازه در tools/test/core-exports-allowlist.test.ts بنویس که کلیدهای exports در packages/core/package.json را با فهرست صریح کنونی (۲۸ کلید) مقایسه کند، و برای هر subpath غیر index یک خط دلیل در خود آزمون بیاورد. افزودن کلید تازه بی به‌روزکردن فهرست آزمون را بشکند. packages/core/package.json تغییر نمی‌کند؛ ADR گام R-27 و قاعدهٔ depcruise در این Task نیستند.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "فایل tools/test/core-exports-allowlist.test.ts هست و کلیدهای exports بستهٔ core را با فهرست صریح ۲۸ کلید کنونی می‌سنجد، با یک خط دلیل برای هر subpath غیر index."
+    },
+    {
+      "id": "AC-2",
+      "statement": "آزمون روی base سبز است و یک case داخلی با کلید اضافهٔ ساختگی شکست می‌خورد."
+    },
+    {
+      "id": "AC-3",
+      "statement": "pnpm test:unit کامل سبز است و packages/core/package.json بی‌تغییر است."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["tools/test/core-exports-allowlist.test.ts"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase1-tasks.md", "packages/core/package.json"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: P1-03 در docs/aeo/l3/phase1-tasks.md (#81، D2). ارجاع: RR-26 (ARCH-F-6)، R-27. اندازه S، ریسک low (فقط تست تازه).",
+    "نقش implementer.backend، چون نقشی با trigger ‏task_type ‏test نیست؛ packages/core/test/ در include ‏vitest نیست، پس آزمون در tools/test/ است.",
+    "نصب: implement و verify با --install \"pnpm install --frozen-lockfile\"، بی --force (باینری ffmpeg در worktree تازه نیست؛ اگر تست‌های صوتی شکست خوردند، یک بار --force و سپس verify دوباره بی آن). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "TestPlan ‏pass_to_pass با pnpm test:unit؛ فایل‌های قفل‌شده ورودی‌هایی‌اند که Task نباید تغییر دهد، چون تست تازهٔ خود Task در base نیست و TestPlan فقط فایل موجود را قفل می‌کند.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}

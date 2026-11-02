@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-02",
+  "kind": "pass_to_pass",
+  "base_sha": "b798cdd36b73480d89098aa2425813a038498c9e",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "b798cdd36b73480d89098aa2425813a038498c9e",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md",
+      "sha256": "28be60dfbaea59de0a51d13a3f3b7797b3c16d2b3c8241af1682ca601279fa94"
+    },
+    {
+      "path": "tools/capability-map.json",
+      "sha256": "cae68a89884fcd0dbaea834c383355eaab001264d6003acdf07229f9315066b7"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md",
+      "name": "the unit suite, with the Task's new test, is green, and the locked inputs stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
