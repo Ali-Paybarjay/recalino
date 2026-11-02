@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-05",
+  "kind": "pass_to_pass",
+  "base_sha": "ded3b16ecf7f62e489d05f7ca4aecb65c2f3006d",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "ded3b16ecf7f62e489d05f7ca4aecb65c2f3006d",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/automatic-learning.test.ts",
+      "sha256": "1e42495ab5acc9d614438bdf33b02e0d0ef79ba34f5020570a401670e58105e8"
+    },
+    {
+      "path": "apps/web/src/server/automatic-learning-message.test.ts",
+      "sha256": "fc0c3e47bf2d59b52a93222725d0bc4137a7c3c89b65a1e9c3d3517fe896098c"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/automatic-learning.test.ts",
+      "name": "the existing automatic-learning and automatic-learning-message unit tests and the rest of the unit suite stay green",
+      "maps_to_criteria": ["AC-3"]
+    }
+  ]
+}
