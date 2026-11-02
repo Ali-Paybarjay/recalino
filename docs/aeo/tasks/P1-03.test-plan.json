@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-03",
+  "kind": "pass_to_pass",
+  "base_sha": "b798cdd36b73480d89098aa2425813a038498c9e",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "b798cdd36b73480d89098aa2425813a038498c9e",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/package.json",
+      "sha256": "c9d5fdc7e5dc966075c906f09e67f4c58de3bd8e44297b94aa9c8628a31a7a16"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/package.json",
+      "name": "the unit suite, with the Task's new test, is green, and the locked inputs stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

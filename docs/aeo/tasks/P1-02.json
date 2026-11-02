@@ -1,0 +1,55 @@
+{
+  "schema_version": "1",
+  "id": "P1-02",
+  "title": "آزمون هم‌خوانی جدول capability سند FR با tools/capability-map.json (فاز ۱ L3)",
+  "goal": "آزمونی تازه در tools/test/capability-map-doc-sync.test.ts بنویس که ستون «وابسته به» جدول بخش ۳ سند docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md را parse کند و با modules در tools/capability-map.json مقایسه کند («همه ماژول‌های داده» معادل *). آزمون روی base سبز است، و یک case داخلی با جدول دست‌کاری‌شده در حافظه باید شکست بخورد تا ثابت شود آزمون اختلاف را می‌گیرد. سند و فایل JSON تغییر نمی‌کنند؛ تصمیم سیاست گذرا (ADR گام R-25) در این Task نیست.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "فایل tools/test/capability-map-doc-sync.test.ts هست و جدول بخش ۳ سند FR را با modules در tools/capability-map.json می‌سنجد؛ «همه ماژول‌های داده» معادل * است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "آزمون روی base سبز است و یک case داخلی، با جدول دست‌کاری‌شده در حافظه، اختلاف را می‌گیرد و شکست می‌خورد."
+    },
+    {
+      "id": "AC-3",
+      "statement": "pnpm test:unit کامل سبز است و docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md و tools/capability-map.json بی‌تغییرند."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["tools/test/capability-map-doc-sync.test.ts"],
+  "depends_on": [],
+  "context_refs": [
+    "docs/aeo/l3/phase1-tasks.md",
+    "docs/MVP_FUNCTIONAL_REQUIREMENTS_FA.md",
+    "tools/capability-map.json"
+  ],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: P1-02 در docs/aeo/l3/phase1-tasks.md (#81، D2). ارجاع: RR-23 (ARCH-F-3)، R-25. اندازه S، ریسک low (فقط تست تازه).",
+    "نقش implementer.backend، چون نقشی با trigger ‏task_type ‏test نیست؛ پوشهٔ tools/test در include ‏vitest است.",
+    "نصب: implement و verify با --install \"pnpm install --frozen-lockfile\"، بی --force (باینری ffmpeg در worktree تازه نیست؛ اگر تست‌های صوتی شکست خوردند، یک بار --force و سپس verify دوباره بی آن). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "TestPlan ‏pass_to_pass با pnpm test:unit؛ فایل‌های قفل‌شده ورودی‌هایی‌اند که Task نباید تغییر دهد، چون تست تازهٔ خود Task در base نیست و TestPlan فقط فایل موجود را قفل می‌کند.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}

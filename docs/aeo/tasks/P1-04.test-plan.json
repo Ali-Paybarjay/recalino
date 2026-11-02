@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-04",
+  "kind": "pass_to_pass",
+  "base_sha": "b798cdd36b73480d89098aa2425813a038498c9e",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "b798cdd36b73480d89098aa2425813a038498c9e",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/ui/recording/capture-diagnostics.test.ts",
+      "sha256": "6725c3a285b5754022f699217e90416a9f06fa6da76036c257fc70037ba91f77"
+    },
+    {
+      "path": "apps/web/src/server/recording-routes.test.ts",
+      "sha256": "f64b8bc6ecd5431533efd1913b700932292c3fedb435b54677d017c82e9b8248"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/ui/recording/capture-diagnostics.test.ts",
+      "name": "the existing capture-diagnostics and recording-routes unit tests and the rest of the unit suite stay green",
+      "maps_to_criteria": ["AC-3"]
+    }
+  ]
+}

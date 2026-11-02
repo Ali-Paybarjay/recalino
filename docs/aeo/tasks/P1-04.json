@@ -1,0 +1,57 @@
+{
+  "schema_version": "1",
+  "id": "P1-04",
+  "title": "انتقال قرارداد captureDiagnosticsSchema به apps/web/src/shared/ (فاز ۱ L3)",
+  "goal": "خط ۶ apps/web/src/server/recording-routes.ts مقدار captureDiagnosticsSchema را از ui/recording/capture-diagnostics می‌گیرد. schema و ثابت‌های لازمش (PLATFORMS، BROWSERS، GAP_CAUSES، PHOTO_VERDICTS) را به apps/web/src/shared/capture-diagnostics-contract.ts منتقل کن؛ فایل‌های ui همان نام‌ها را از shared دوباره export کنند؛ server از shared بخواند. schema عیناً همان بماند (zod/mini). هیچ تغییر رفتار؛ تست‌های موجود بی تغییر انتظار سبز می‌مانند.",
+  "mode": "brownfield",
+  "task_type": "refactor",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "apps/web/src/shared/capture-diagnostics-contract.ts هست و captureDiagnosticsSchema و ثابت‌های PLATFORMS، BROWSERS، GAP_CAUSES و PHOTO_VERDICTS را export می‌کند؛ schema عیناً همان است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "apps/web/src/server/recording-routes.ts دیگر از ../ui/ مقدار import نمی‌کند و schema را از shared می‌گیرد؛ فایل‌های ui همان نام‌ها را از shared دوباره export می‌کنند تا مصرف‌کنندگان client بی‌تغییر بمانند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "pnpm test:unit کامل سبز است و apps/web/src/ui/recording/capture-diagnostics.test.ts و apps/web/src/server/recording-routes.test.ts بی تغییر انتظار سبزند (pass_to_pass)؛ typecheck و lint سبز."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "apps/web/src/shared/capture-diagnostics-contract.ts",
+    "apps/web/src/ui/recording/capture-diagnostics.ts",
+    "apps/web/src/ui/recording/capture-meter.ts",
+    "apps/web/src/ui/recording/photo-quality.ts",
+    "apps/web/src/server/recording-routes.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase1-tasks.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.refactoring",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: P1-04 در docs/aeo/l3/phase1-tasks.md (#81، D2). ارجاع: RR-30 (ARCH-F-11)، R-29. اندازه M، ریسک low (جابه‌جایی بی تغییر رفتار؛ auth، DB یا Storage نیست).",
+    "پوشهٔ apps/web/src/shared/ تازه است و این Task آن را می‌سازد.",
+    "نصب: implement و verify با --install \"pnpm install --frozen-lockfile\"، بی --force (باینری ffmpeg در worktree تازه نیست؛ اگر تست‌های صوتی شکست خوردند، یک بار --force و سپس verify دوباره بی آن). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "TestPlan ‏pass_to_pass با pnpm test:unit؛ فایل‌های قفل‌شده ورودی‌هایی‌اند که Task نباید تغییر دهد، یعنی تست‌های موجود ماژول.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}
