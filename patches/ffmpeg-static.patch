@@ -1,0 +1,15 @@
+diff --git a/install.js b/install.js
+--- a/install.js
++++ b/install.js
+@@ -52,10 +52,9 @@ const proxyUrl = (
+   process.env.HTTP_PROXY ||
+   process.env.http_proxy
+ )
+ if (proxyUrl) {
+   const HttpsProxyAgent = require('https-proxy-agent')
+-  const {hostname, port, protocol} = new URL(proxyUrl)
+-  agent = new HttpsProxyAgent({hostname, port, protocol})
++  agent = new HttpsProxyAgent(proxyUrl)
+ }
+
+ // https://advancedweb.hu/how-s3-signed-urls-work/

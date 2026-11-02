@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-00",
+  "kind": "pass_to_pass",
+  "base_sha": "22fcf846ea6e3f1688360a7bd66603e4e1cc0084",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "22fcf846ea6e3f1688360a7bd66603e4e1cc0084",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/audio-preparer.test.ts",
+      "sha256": "cd0171a098b94bcd8ad5ed01b740d0f4a518f9f0c653cb85f73f13bf478127f3"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/audio-preparer.test.ts",
+      "name": "the existing audio-preparer unit tests, which need the ffmpeg binary from ffmpeg-static, and the rest of the unit suite are green after a full install with lifecycle scripts",
+      "maps_to_criteria": ["AC-3", "AC-4"]
+    }
+  ]
+}
