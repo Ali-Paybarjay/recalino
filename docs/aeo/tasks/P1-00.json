@@ -1,0 +1,56 @@
+{
+  "schema_version": "1",
+  "id": "P1-00",
+  "title": "dev: patch ffmpeg-static so its installer sends proxy credentials (pnpm patchedDependencies)",
+  "goal": "نصب کامل Recalino، با اسکریپت‌های lifecycle، پشت proxyی که اعتبار می‌خواهد (sandbox ‏AEO) بی شکست postinstall ‏ffmpeg-static انجام شود. install.js بستهٔ ffmpeg-static@5.3.0 agent ‏proxy را فقط با host و port می‌سازد، پس proxy با HTTP ‏407 رد می‌کند. با یک patch از راه pnpm ‏patchedDependencies، agent را با نشانی کامل proxy (همراه اعتبارش) بساز. هیچ کد برنامه، تست یا وابستگی دیگری تغییر نکند.",
+  "mode": "brownfield",
+  "task_type": "chore",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "فایل patches/ffmpeg-static.patch (بی شمارهٔ نسخه در نام) هست و فقط install.js بستهٔ ffmpeg-static ‏5.3.0 را تغییر می‌دهد، طوری که HttpsProxyAgent با نشانی کامل proxyUrl (همراه userinfo) ساخته شود، نه فقط با host و port. هیچ اعتباری در patch یا هیچ فایل دیگر نوشته نشده است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "پیکربندی pnpm در patchedDependencies کلید ffmpeg-static@5.3.0 را به مسیر patches/ffmpeg-static.patch می‌برد، در همان جایی که pnpm ‏12.4.2 آن را می‌خواند (pnpm-workspace.yaml یا فیلد pnpm در package.json ریشه)."
+    },
+    {
+      "id": "AC-3",
+      "statement": "pnpm-lock.yaml با patch هم‌خوان است، پس pnpm install --frozen-lockfile بی خطای lockfile می‌گذرد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "نصب کامل با lifecycle (pnpm install --frozen-lockfile) در sandbox ‏AEO بی شکست می‌گذرد و pnpm test:unit همه سبز است، از جمله تست‌های صوتی apps/web/src/server/audio-preparer.test.ts."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، اعتبار proxy، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر CI، .claude/**، CLAUDE.md یا کد برنامه."
+    }
+  ],
+  "owns_paths": ["patches/**", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"],
+  "depends_on": [],
+  "context_refs": ["package.json", "pnpm-workspace.yaml"],
+  "roles": {
+    "implementer": "implementer.devops",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "مخزن recalino؛ تصمیم مالک E67 (راه ۲). علت 407: probe ‏SMK-5 در بلوک ۵۲ (CONNECT بی اعتبار 407، با اعتبار 200). جای ساخت agent در install.js: بازبین در unpkg خطوط ۴۹ تا ۵۸ را دید.",
+    "implement با --install \"pnpm install --frozen-lockfile --ignore-scripts\". patch با Edit و Write نوشته می‌شود، چون pnpm patch و pnpm patch-commit در bash_allow نیستند. به‌روزرسانی lockfile با نصب آفلاین R73 (L-dev بلوک ۲۳) است.",
+    "نام فایل patch بی نسخه است (patches/ffmpeg-static.patch)، چون نام پیش‌فرض pnpm، یعنی بسته و نسخه با پسوند patch، در پویش push ‏Controller شبیه نشانی ایمیل است و push را متوقف می‌کند (Observed by L1 در بلوک ۵۴).",
+    "verify با --install \"pnpm install --frozen-lockfile\" (با lifecycle)، تا خود patch آزموده شود.",
+    "pnpm-workspace.yaml در owns_paths است، چون Recalino تنظیمات pnpm را آنجا دارد (allowBuilds، overrides) و pnpm ‏12 شاید patchedDependencies را هم آنجا بخواند (Not Verified). این بیرون از سه مسیر پیام بلوک ۵۴ است و بازبین می‌تواند آن را بردارد.",
+    "سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد و L1 با بودجهٔ بلوک می‌سنجد).",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1)."
+  ]
+}
