@@ -165,6 +165,9 @@ settings:
 overrides:
   source-map-js: 1.2.2
 
+patchedDependencies:
+  ffmpeg-static@5.3.0: e6cec90afda624931206abd790f461438116e3a87ca5dfe334d7e5e87f92b6ae
+
 importers:
 
   .:
@@ -225,7 +228,7 @@ importers:
         version: 2.117.2
       ffmpeg-static:
         specifier: 5.3.0
-        version: 5.3.0(supports-color@7.2.0)
+        version: 5.3.0(patch_hash=e6cec90afda624931206abd790f461438116e3a87ca5dfe334d7e5e87f92b6ae)(supports-color@7.2.0)
       next:
         specifier: 16.3.8
         version: 16.3.8(@playwright/test@1.63.0)(@types/node@24.19.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -320,7 +323,7 @@ importers:
         version: link:../core
       ffmpeg-static:
         specifier: 5.3.0
-        version: 5.3.0(supports-color@7.2.0)
+        version: 5.3.0(patch_hash=e6cec90afda624931206abd790f461438116e3a87ca5dfe334d7e5e87f92b6ae)(supports-color@7.2.0)
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -2945,7 +2948,7 @@ snapshots:
 
   fflate@0.8.3: {}
 
-  ffmpeg-static@5.3.0(supports-color@7.2.0):
+  ffmpeg-static@5.3.0(patch_hash=e6cec90afda624931206abd790f461438116e3a87ca5dfe334d7e5e87f92b6ae)(supports-color@7.2.0):
     dependencies:
       '@derhuerst/http-basic': 8.2.4
       env-paths: 2.2.1
