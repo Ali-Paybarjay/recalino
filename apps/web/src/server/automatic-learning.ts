@@ -59,9 +59,9 @@ import {
   temporaryAudioUploadStates,
 } from "@recalino/core/src";
 import type { z } from "zod";
-import { allowanceCopy } from "../ui/allowance-copy";
-import { allowanceLabels, allowanceUnits } from "../ui/allowance-units";
-import { uploadCopy } from "../ui/workspace/upload-copy";
+import { allowanceCopy } from "../shared/allowance-copy";
+import { allowanceLabels, allowanceUnits } from "../shared/allowance-units";
+import { uploadCopy } from "../shared/upload-copy";
 import { getAiProvider } from "./ai";
 import { publishAutomaticOutput } from "./automatic-learning-publication";
 import { automaticLearningQueue } from "./automatic-learning-queue";
