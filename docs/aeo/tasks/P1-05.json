@@ -1,0 +1,59 @@
+{
+  "schema_version": "1",
+  "id": "P1-05",
+  "title": "انتقال متن‌های UI مصرفی automatic-learning.ts به apps/web/src/shared/ (فاز ۱ L3)",
+  "goal": "apps/web/src/server/automatic-learning.ts در خط ۶۲ تا ۶۴ مقدارهای allowanceCopy، allowanceLabels، allowanceUnits و uploadCopy را از ui import می‌کند. این متن‌ها را به apps/web/src/shared/ منتقل کن (allowance-copy.ts، allowance-units.ts، upload-copy.ts)؛ فایل‌های ui همان نام‌ها را از shared دوباره export کنند تا مصرف‌کنندگان client بی‌تغییر بمانند؛ server از shared بخواند. منطق orchestration (RR-22) دست نمی‌خورد؛ هیچ تغییر رفتار؛ تست‌های موجود بی تغییر انتظار سبز می‌مانند.",
+  "mode": "brownfield",
+  "task_type": "refactor",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "apps/web/src/shared/allowance-copy.ts، allowance-units.ts و upload-copy.ts هستند و allowanceCopy، allowanceLabels، allowanceUnits و uploadCopy را با همان مقدارها export می‌کنند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "apps/web/src/server/automatic-learning.ts دیگر از ../ui/ مقدار import نمی‌کند و این متن‌ها را از shared می‌گیرد؛ فایل‌های ui همان نام‌ها را از shared دوباره export می‌کنند؛ منطق orchestration تغییر نکرده است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "pnpm test:unit کامل سبز است و apps/web/src/server/automatic-learning.test.ts و automatic-learning-message.test.ts بی تغییر انتظار سبزند (pass_to_pass)؛ typecheck و lint سبز."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "apps/web/src/shared/allowance-copy.ts",
+    "apps/web/src/shared/allowance-units.ts",
+    "apps/web/src/shared/upload-copy.ts",
+    "apps/web/src/ui/allowance-copy.ts",
+    "apps/web/src/ui/allowance-units.ts",
+    "apps/web/src/ui/workspace/upload-copy.ts",
+    "apps/web/src/server/automatic-learning.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase1-tasks.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.refactoring",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: P1-05 در docs/aeo/l3/phase1-tasks.md (#81، D2). ارجاع: RR-30 (ARCH-F-11)، RR-22 (ARCH-F-2)، R-29. اندازه M، ریسک low (فقط ثابت‌های متنی جابه‌جا می‌شوند).",
+    "پوشهٔ apps/web/src/shared/ از P1-04 (#89) هست؛ سه فایل shared این Task تازه‌اند.",
+    "نصب: implement و verify با --install \"pnpm install --frozen-lockfile\"، بی --force (worktree تازه postinstall ‏ffmpeg را اجرا می‌کند؛ patch ‏P1-00 در main است). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "TestPlan ‏pass_to_pass با pnpm test:unit؛ فایل‌های قفل‌شده دو تست موجود ماژول‌اند.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}
