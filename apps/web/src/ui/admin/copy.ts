@@ -90,6 +90,11 @@ export const systemHealthCopy = {
       en: "A job failed and will not retry.",
       fa: "کاری ناموفق شد و دوباره اجرا نمی‌شود.",
     },
+    // P1-09: approved by the owner on 2026-11-03 (E93).
+    failed_runs: {
+      en: "A processing run failed in the last hour.",
+      fa: "پردازشی در ساعت گذشته ناموفق شد.",
+    },
     queue_delay: {
       en: "Jobs are waiting longer than expected.",
       fa: "کارها بیش از حد انتظار در صف مانده‌اند.",

@@ -3,6 +3,8 @@
 // the age of the last cron runner, and raises one audit event (shown in the admin overview and
 // activity history) and one error log when a signal crosses its threshold. The alert is raised
 // once per episode: again only after the signal went back under its threshold, which is recorded.
+// P1-09 (RR-10): a failed processing run ends its job successfully, so failed_jobs misses it; the
+// failed_runs signal counts the runs that failed in the last hour (proc.countFailedRuns) instead.
 import { sql } from "kysely";
 import { z } from "zod";
 import type { Database } from "../db";
@@ -16,6 +18,7 @@ import {
   recordAudit,
   type SchemaCheck,
 } from "../plt";
+import { countFailedRuns } from "../proc";
 import type { HealthCondition, SystemHealth } from "./admin-contracts";
 
 /**
@@ -59,6 +62,21 @@ export function readHealthSettings(
   return result.data;
 }
 
+/** The platform signals and the processing runs that failed in the hour before `now`. */
+export interface HealthReading extends PlatformHealth {
+  failedRunsLastHour: number;
+}
+
+/** One read of every health signal; the failed-run count is proc's own read-only query. */
+export async function readHealth(db: Database, now: Date): Promise<HealthReading> {
+  const platform = await readPlatformHealth(db, now);
+  const failedRunsLastHour = await countFailedRuns(db, {
+    since: new Date(now.getTime() - 3_600_000),
+    until: now,
+  });
+  return { ...platform, failedRunsLastHour };
+}
+
 export interface HealthSignal {
   condition: HealthCondition;
   open: boolean;
@@ -66,9 +84,12 @@ export interface HealthSignal {
   measured: number | null;
 }
 
-/** Each signal against its threshold. A missing runner record counts as a stale runner. */
+/**
+ * Each signal against its threshold. A missing runner record counts as a stale runner. Any failed
+ * run opens failed_runs: it has no setting, since RECALINO_HEALTH_JSON keeps its four keys.
+ */
 export function evaluateHealth(
-  health: PlatformHealth,
+  health: HealthReading,
   now: Date,
   settings: HealthSettings,
 ): HealthSignal[] {
@@ -85,6 +106,11 @@ export function evaluateHealth(
       condition: "failed_jobs",
       open: health.failedJobsLastHour >= settings.failedJobsPerHour,
       measured: health.failedJobsLastHour,
+    },
+    {
+      condition: "failed_runs",
+      open: health.failedRunsLastHour > 0,
+      measured: health.failedRunsLastHour,
     },
     {
       condition: "queue_delay",
@@ -137,7 +163,7 @@ async function settleAlert(
 export interface HealthCheckOptions {
   settings?: HealthSettings;
   log?: Logger;
-  read?: (db: Database, now: Date) => Promise<PlatformHealth>;
+  read?: (db: Database, now: Date) => Promise<HealthReading>;
 }
 
 /** One pass of the health check; returns the conditions it raised and cleared. */
@@ -148,7 +174,7 @@ export async function runHealthCheck(
 ): Promise<{ raised: HealthCondition[]; cleared: HealthCondition[] }> {
   const settings = options.settings ?? readHealthSettings();
   const log = options.log ?? createLogger();
-  const health = await (options.read ?? readPlatformHealth)(db, now);
+  const health = await (options.read ?? readHealth)(db, now);
   const result = { raised: [] as HealthCondition[], cleared: [] as HealthCondition[] };
   for (const signal of evaluateHealth(health, now, settings)) {
     const change = await settleAlert(db, signal.condition, signal.open);
@@ -193,7 +219,7 @@ export async function readSystemHealth(
   options: { settings?: HealthSettings; schema?: SchemaCheck | null } = {},
 ): Promise<SystemHealth> {
   const settings = options.settings ?? readHealthSettings();
-  const health = await readPlatformHealth(db, now);
+  const health = await readHealth(db, now);
   return {
     checkedAt: now.toISOString(),
     databaseBytes: health.databaseBytes,

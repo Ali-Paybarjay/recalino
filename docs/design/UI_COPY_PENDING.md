@@ -255,6 +255,7 @@
 - **کارت:** `SystemHealthCard` در [`admin/CoreScreens.tsx`](../../apps/web/src/ui/admin/CoreScreens.tsx)، در نمای کلی پنل مالک پس از سه کارت شاخص و پیش از «Recent activity». فقط با کامپوننت‌ها و کلاس‌های موجود پنل ساخته شده است: `Panel`، `Notice` (هشدار، یکی برای هر شاخص باز)، ردیف‌های `.task` و متن `.muted`. رنگ، اندازه یا کلاس CSS تازه‌ای ندارد.
 - **داده:** همان فیلد `health` نمای `overview` در `readAdminSnapshot` (نوع `SystemHealth` در `packages/core/src/ops/admin-contracts.ts`)؛ فقط شمار و زمان، بدون متن کلاس، ایمیل یا کلید. آستانه‌ها همان `RECALINO_HEALTH_JSON` هستند. حجم با MB دهدهی (واحد سقف پلن Supabase)، انتظار صف با دقیقه، ساعت یا روزِ خود `Intl` و نسبت به زمان بررسی سرور، و آخرین اجرای runner با همان قالب تاریخ پنل نمایش داده می‌شود. نام واحدها را `Intl` می‌سازد و متن تازه نیست. وقتی صفی نیست یا runner هرگز اجرا نشده، مقدار «—» است، مثل بقیهٔ پنل. اگر نسخهٔ schema مقایسه نشده باشد (`schema: null`)، وضعیت «Cannot be checked» است.
 - هشدارها همچنان در «Recent activity» و «Activity history» با شناسهٔ اقدام هم دیده می‌شوند: `ops.health_alert` و `ops.health_recovered` (موضوع: نام شاخص)، و `ops.schema_behind` (موضوع: نسخهٔ migration مورد انتظار).
+- **افزودهٔ 2026-11-03 (P1-09، E93):** متن هفدهم، هشدار `failed_runs`، را مالک در 2026-11-03 تأیید کرد. این شاخص Run پردازشیِ ناموفق در ساعت گذشته را می‌شمارد، چون Job چنین Runی موفق ثبت می‌شود و `failed_jobs` آن را نمی‌بیند. فقط در فهرست هشدارها می‌آید و ردیف شمارشی تازه‌ای در کارت ندارد.
 
 | جا (کلید در `systemHealthCopy`) | English | فارسی |
 |---|---|---|
@@ -272,5 +273,6 @@
 | بدون هشدار (`noAlert`) | «No signal is over its threshold.» | «هیچ شاخصی از آستانه‌اش نگذشته است.» |
 | هشدار `database_size` (`alert.database_size`) | «The database is near its size limit.» | «دیتابیس به سقف حجم نزدیک است.» |
 | هشدار `failed_jobs` (`alert.failed_jobs`) | «A job failed and will not retry.» | «کاری ناموفق شد و دوباره اجرا نمی‌شود.» |
+| هشدار `failed_runs` (`alert.failed_runs`) | «A processing run failed in the last hour.» | «پردازشی در ساعت گذشته ناموفق شد.» |
 | هشدار `queue_delay` (`alert.queue_delay`) | «Jobs are waiting longer than expected.» | «کارها بیش از حد انتظار در صف مانده‌اند.» |
 | هشدار `runner_stale` (`alert.runner_stale`) | «The job runner has not run recently.» | «اجراکنندهٔ کارها اخیراً اجرا نشده است.» |
