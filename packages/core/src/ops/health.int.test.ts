@@ -106,7 +106,13 @@ it("counts processing runs that failed in the last hour and opens failed_runs", 
     expect(overview).not.toHaveProperty("failedRunsLastHour");
     for (const id of ids) expect(JSON.stringify(overview)).not.toContain(id);
   } finally {
-    await db.deleteFrom("proc.processing_run").where("id", "in", ids).execute();
+    // The application role may not delete runs (select, insert and update only), so the synthetic
+    // runs leave every health window instead: later checks in this shared database see none of them.
+    await db
+      .updateTable("proc.processing_run")
+      .set({ finished_at: new Date(now.getTime() - 30 * 24 * 3_600_000) })
+      .where("id", "in", ids)
+      .execute();
   }
 });
 
