@@ -97,6 +97,7 @@ export {
   type SourceExtractionRetryResult,
   sourceExtractionRetrySchema,
 } from "./recovery";
+export { countFailedRuns, type RunHealthWindow } from "./run-health";
 export {
   finishingStage,
   type RunFinishingStage,

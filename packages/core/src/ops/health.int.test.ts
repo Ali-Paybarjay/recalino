@@ -3,10 +3,17 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
+import { studyFixture } from "../../test/study-fixture";
 import { createDatabase } from "../db";
-import type { Logger, PlatformHealth } from "../plt";
+import type { Logger } from "../plt";
 import { readPlatformHealth } from "../plt";
-import { DEFAULT_HEALTH_SETTINGS, readSystemHealth, runHealthCheck } from "./health";
+import {
+  DEFAULT_HEALTH_SETTINGS,
+  type HealthReading,
+  readHealth,
+  readSystemHealth,
+  runHealthCheck,
+} from "./health";
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 1 });
 afterAll(() => db.destroy());
@@ -57,11 +64,64 @@ it("counts jobs that failed for good and the longest wait of a due job", async (
   }
 });
 
+// P1-09 (RR-10): a failed run ends its job successfully, so only failed_runs sees it.
+it("counts processing runs that failed in the last hour and opens failed_runs", async () => {
+  const x = await studyFixture(db);
+  const now = new Date();
+  const insertRun = async (state: "failed" | "ready", finishedAt: Date) =>
+    (
+      await db
+        .insertInto("proc.processing_run")
+        .values({
+          user_id: x.ctx.userId,
+          session_id: x.session.id,
+          operation_key: randomUUID(),
+          request_hash: "synthetic-health",
+          sources_version: 0,
+          source_fingerprint: "a".repeat(64),
+          input_snapshot: "{}",
+          settings: "{}",
+          requested_amounts: "{}",
+          reservation_id: randomUUID(),
+          kind: "class",
+          state,
+          last_error: state === "failed" ? "processing_failed" : null,
+          finished_at: finishedAt,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow()
+    ).id;
+  const before = await readHealth(db, now);
+  const ids = [
+    await insertRun("failed", new Date(now.getTime() - 60_000)),
+    await insertRun("failed", new Date(now.getTime() - 2 * 3_600_000)),
+    await insertRun("ready", new Date(now.getTime() - 60_000)),
+  ];
+  try {
+    const health = await readHealth(db, now);
+    expect(health.failedRunsLastHour).toBe(before.failedRunsLastHour + 1);
+    expect(health.failedJobsLastHour).toBe(before.failedJobsLastHour);
+    const overview = await readSystemHealth(db, now, { settings: DEFAULT_HEALTH_SETTINGS });
+    expect(overview.alerts).toContain("failed_runs");
+    expect(overview).not.toHaveProperty("failedRunsLastHour");
+    for (const id of ids) expect(JSON.stringify(overview)).not.toContain(id);
+  } finally {
+    // The application role may not delete runs (select, insert and update only), so the synthetic
+    // runs leave every health window instead: later checks in this shared database see none of them.
+    await db
+      .updateTable("proc.processing_run")
+      .set({ finished_at: new Date(now.getTime() - 30 * 24 * 3_600_000) })
+      .where("id", "in", ids)
+      .execute();
+  }
+});
+
 it("raises one alert per episode and records the recovery", async () => {
   const now = new Date();
-  const healthy: PlatformHealth = {
+  const healthy: HealthReading = {
     databaseBytes: 1,
     failedJobsLastHour: 0,
+    failedRunsLastHour: 0,
     oldestQueuedAt: null,
     lastRunnerAt: now,
   };

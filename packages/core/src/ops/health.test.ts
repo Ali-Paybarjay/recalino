@@ -7,6 +7,7 @@ const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60_00
 const healthy = {
   databaseBytes: 50_000_000,
   failedJobsLastHour: 0,
+  failedRunsLastHour: 0,
   oldestQueuedAt: minutesAgo(1),
   lastRunnerAt: minutesAgo(1),
 };
@@ -26,16 +27,38 @@ describe("OPS-02 health thresholds", () => {
       {
         databaseBytes: 400_000_000,
         failedJobsLastHour: 2,
+        failedRunsLastHour: 1,
         oldestQueuedAt: minutesAgo(16),
         lastRunnerAt: minutesAgo(20),
       },
       now,
       DEFAULT_HEALTH_SETTINGS,
     );
-    expect(open(signals)).toEqual(["database_size", "failed_jobs", "queue_delay", "runner_stale"]);
+    expect(open(signals)).toEqual([
+      "database_size",
+      "failed_jobs",
+      "failed_runs",
+      "queue_delay",
+      "runner_stale",
+    ]);
     expect(signals.find((signal) => signal.condition === "queue_delay")?.measured).toBe(
       16 * 60_000,
     );
+  });
+
+  // P1-09 (RR-10): a failed processing run ends its job successfully, so failed_jobs stays closed;
+  // failed_runs opens on any failed run in the last hour and stays closed at zero.
+  it("opens failed_runs when a processing run failed, even with no failed job", () => {
+    const failedRuns = (count: number) =>
+      evaluateHealth({ ...healthy, failedRunsLastHour: count }, now, DEFAULT_HEALTH_SETTINGS).find(
+        (signal) => signal.condition === "failed_runs",
+      );
+    expect(failedRuns(0)).toEqual({ condition: "failed_runs", open: false, measured: 0 });
+    expect(failedRuns(1)).toEqual({ condition: "failed_runs", open: true, measured: 1 });
+    expect(failedRuns(3)).toEqual({ condition: "failed_runs", open: true, measured: 3 });
+    expect(
+      open(evaluateHealth({ ...healthy, failedRunsLastHour: 2 }, now, DEFAULT_HEALTH_SETTINGS)),
+    ).toEqual(["failed_runs"]);
   });
 
   it("counts a database without any runner record as a stale runner", () => {

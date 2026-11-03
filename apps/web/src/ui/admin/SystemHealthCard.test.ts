@@ -45,9 +45,10 @@ describe("System health card (OPS-02)", () => {
       oldestQueuedAt: "2026-10-19T09:48:00.000Z",
       lastRunnerAt: null,
       schema: { state: "behind", expected: "20261019120000", applied: "20261015120000" },
-      alerts: ["failed_jobs", "queue_delay", "runner_stale"],
+      alerts: ["failed_jobs", "failed_runs", "queue_delay", "runner_stale"],
     });
     expect(html).toContain("A job failed and will not retry.");
+    expect(html).toContain("A processing run failed in the last hour.");
     expect(html).toContain("Jobs are waiting longer than expected.");
     expect(html).toContain("The job runner has not run recently.");
     expect(html).not.toContain("The database is near its size limit.");

@@ -99,7 +99,8 @@ describe("the provider_outcome_unresolved sentence approved on 2026-10-19", () =
 });
 
 // D97 (owner decision 2026-10-19, audit batch 14, OPS-02): the 16 texts of the admin overview's
-// System health card, in English and Persian, each recorded word for word in its own section.
+// System health card, in English and Persian, each recorded word for word in its own section. The
+// 17th, the failed_runs alert, was approved on 2026-11-03 (P1-09, E93) and joins the same section.
 describe("the System health texts approved on 2026-10-19", () => {
   const section = register.slice(register.indexOf("## تأیید 2026-10-19 — System health"));
   const entries = (node: object, path: string[] = []): Array<[string, string, string]> =>
@@ -110,10 +111,10 @@ describe("the System health texts approved on 2026-10-19", () => {
     );
   const texts = entries(systemHealthCopy);
 
-  it("are the sixteen texts of the register section", () => {
+  it("are the seventeen texts of the register section", () => {
     expect(section.length).toBeGreaterThan(500);
-    expect(texts).toHaveLength(16);
-    expect(section.match(/^\| .+ \| «.+» \| «.+» \|$/gm)).toHaveLength(16);
+    expect(texts).toHaveLength(17);
+    expect(section.match(/^\| .+ \| «.+» \| «.+» \|$/gm)).toHaveLength(17);
   });
 
   it.each(texts)("%s is in the admin console and in the register, word for word", (key, en, fa) => {

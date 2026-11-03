@@ -206,8 +206,16 @@ export type AdminSettings = {
   appLink: string | null;
   aiConfigured: boolean;
 };
-/** OPS-02: a health signal over its threshold (packages/core/src/ops/health.ts). */
-export type HealthCondition = "database_size" | "failed_jobs" | "queue_delay" | "runner_stale";
+/**
+ * OPS-02: a health signal over its threshold (packages/core/src/ops/health.ts). failed_runs
+ * (P1-09) is only an alert: SystemHealth has no count field for it.
+ */
+export type HealthCondition =
+  | "database_size"
+  | "failed_jobs"
+  | "failed_runs"
+  | "queue_delay"
+  | "runner_stale";
 /** OPS-02/OPS-05: counts and times only, for the admin overview; never content or keys. */
 export type SystemHealth = {
   checkedAt: string;
