@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-09",
+  "kind": "pass_to_pass",
+  "base_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/worker.ts",
+      "sha256": "aa6ac867dcb08df8a39f1f647242a6ec2bdcd21d66c34c85cfad02f174d816b7"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/ops/health.ts",
+      "name": "the unit suite, with a failed_runs case in health.test.ts, is green on head, and proc/worker.ts stays unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

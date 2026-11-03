@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-07",
+  "kind": "pass_to_pass",
+  "base_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/plt/storage-vercel-blob.test.ts",
+      "sha256": "5a7b0c771b0bab4573d740574e810538c97117e07a56ab2f2f6b55886df16ca9"
+    },
+    {
+      "path": "packages/core/src/src/audio.int.test.ts",
+      "sha256": "d4c0697224e3340106888655177ac3420d0f40676bd43d6a8e5d573bb1a8e2aa"
+    },
+    {
+      "path": "packages/core/src/src/service.int.test.ts",
+      "sha256": "ecde2f76bae5d43c2e6c6df20d555b181c45f55bc3b5b0bf8146d65eaeb3d106"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/plt/storage.ts",
+      "name": "the unit suite is green on head, a unit test shows composeOwnedObjects records the module it is given, and the storage tests outside owns_paths stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

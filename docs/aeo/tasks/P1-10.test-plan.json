@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-10",
+  "kind": "pass_to_pass",
+  "base_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "tools/capability-map.json",
+      "sha256": "cae68a89884fcd0dbaea834c383355eaab001264d6003acdf07229f9315066b7"
+    },
+    {
+      "path": "tools/test/capability-map-doc-sync.test.ts",
+      "sha256": "c819208ca8cd108e72fe0ecf6125e3704cd2fc402d886b91f6e301a4f600d2c5"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "tools/capability-map.json",
+      "name": "the unit suite, with the new FK direction test, is green on head, and the capability map and the P1-02 sync test stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

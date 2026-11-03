@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-08",
+  "kind": "pass_to_pass",
+  "base_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "1f6be5035940ae0877c5e6f87d5bd49281639090",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/ops-cli/src/evaluation-config.test.ts",
+      "sha256": "1965b7cba9a13641784bca1a69d53778228085010065b2d4b4fa79a8cb7b78f3"
+    },
+    {
+      "path": "packages/core/test/auth-users.ts",
+      "sha256": "8f6266b2cc2ec3c5adf2d44eeb1057d1b9190a80b602395c6eca371eb8efb489"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/ops-cli/src/evaluate.ts",
+      "name": "the unit suite, with the new local-only adapter test, is green on head, and the evaluation config test and the core auth-users helper stay unchanged",
+      "maps_to_criteria": ["AC-3", "AC-4"]
+    }
+  ]
+}
