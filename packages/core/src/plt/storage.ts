@@ -301,6 +301,8 @@ export async function composeOwnedObjects(
   store: ObjectStore,
   actor: Pick<LearnerContext, "userId">,
   input: {
+    /** The owning module of the destination, e.g. "src"; the first part of its key. */
+    module: string;
     objectIds: string[];
     contentType: string;
     sizeBytes: number;
@@ -333,7 +335,7 @@ export async function composeOwnedObjects(
     target = registered;
   } else {
     target = await createObject(db, {
-      module: "src",
+      module: input.module,
       ownerUserId: actor.userId,
       retention: input.retention ?? "durable",
       contentType: input.contentType,

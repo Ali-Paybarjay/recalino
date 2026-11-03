@@ -673,6 +673,7 @@ async function verifyPendingUpload(
       };
       await register(target);
       const input = {
+        module: "src",
         targetObjectId: target,
         objectIds: parts.map((part) => part.object_id),
         contentType: source.declared_mime,
