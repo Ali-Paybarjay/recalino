@@ -426,6 +426,7 @@ async function verifyPendingTemporaryAudio(
         if (existing.state !== "verified") {
           stagedObjectId = objectId;
           objectId = await composeOwnedObjects(tx, store, ctx, {
+            module: "src",
             targetObjectId: objectId,
             objectIds: parts.map((part) => part.object_id),
             contentType: source.declared_mime,
