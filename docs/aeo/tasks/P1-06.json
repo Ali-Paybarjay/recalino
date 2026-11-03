@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "id": "P1-06",
+  "title": "آزمون نگهبان «server از ui مقدار import نمی‌کند» (فاز ۱ L3)",
+  "goal": "آزمونی تازه در apps/web/src/server/server-ui-boundary.test.ts بنویس که همهٔ فایل‌های غیرآزمونی apps/web/src/server/** را بخواند و هر import مقداری (غیر import type) از ../ui/ یا @/ui/ را خطا بگیرد. فایل‌های *.test.ts، *.int.test.ts و پشتیبان آزمون (*-support.ts، cross-account/**) با فهرست صریح استثنا هستند. این آزمون جای موقت قاعدهٔ depcruise ‏web-server-not-to-ui است، چون .dependency-cruiser.cjs بیرون از write_paths است. هیچ فایل غیرآزمونی تغییر نمی‌کند.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "فایل apps/web/src/server/server-ui-boundary.test.ts هست، همهٔ فایل‌های غیرآزمونی apps/web/src/server/** را می‌خواند و هر import مقداری از ../ui/ یا @/ui/ را خطا می‌گیرد؛ import type مجاز است؛ استثناها فهرست صریح دارند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "آزمون روی base سبز است، چون P1-01، P1-04 و P1-05 importهای مقداری server از ui را برداشته‌اند؛ یک case داخلی با متن import مقداری ساختگی در حافظه شکست می‌خورد، تا ثابت شود نگهبان اختلاف را می‌گیرد."
+    },
+    {
+      "id": "AC-3",
+      "statement": "pnpm test:unit کامل سبز است و هیچ فایل غیرآزمونی apps/web/src/server/** تغییر نکرده است."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل owns_paths تغییر کرده است؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["apps/web/src/server/server-ui-boundary.test.ts"],
+  "depends_on": ["P1-01", "P1-04", "P1-05"],
+  "context_refs": ["docs/aeo/l3/phase1-tasks.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: P1-06 در docs/aeo/l3/phase1-tasks.md (#81، D2). ارجاع: RR-30 (ARCH-F-11)، R-29 (معیار پایان: «server دیگر از ui مقدار import نکند»). اندازه S، ریسک low (فقط تست تازه).",
+    "وابستگی‌ها P1-01 (#85)، P1-04 (#89) و P1-05 (#91) در main ‏Recalino ادغام شده‌اند (c3e8a99). phase1-tasks.md این Task را fail_to_pass نوشته بود، چون پیش از آن سه Task سه import مقداری را می‌گرفت. اکنون روی base سبز است، پس pass_to_pass.",
+    "نقش implementer.backend، چون نقشی با trigger ‏task_type ‏test نیست.",
+    "نصب: implement و verify با --install \"pnpm install --frozen-lockfile\"، بی --force. verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "TestPlan ‏pass_to_pass با pnpm test:unit. تست تازه در base نیست و قفل نمی‌شود؛ فایل‌های قفل‌شده سه فایل server هستند که P1-01، P1-04 و P1-05 تغییر دادند و نگهبان آن‌ها را می‌سنجد، تا Implementer برای سبز شدن تست آن‌ها را تغییر ندهد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}

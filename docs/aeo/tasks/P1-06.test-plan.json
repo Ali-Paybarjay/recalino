@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P1-06",
+  "kind": "pass_to_pass",
+  "base_sha": "c3e8a993da61b1ad5ff17d9c9620468d06122347",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "c3e8a993da61b1ad5ff17d9c9620468d06122347",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/admin-routes.ts",
+      "sha256": "ade25365684c917fce21fba527b25fa094e060499827f803a664a8dacbc0738a"
+    },
+    {
+      "path": "apps/web/src/server/recording-routes.ts",
+      "sha256": "bf69fc8160ce19c197d3e988e81d30a13e5c2cd9602b7cce575556dd24b99783"
+    },
+    {
+      "path": "apps/web/src/server/automatic-learning.ts",
+      "sha256": "9196d4fbb0936e0fcf1d830540cb3b292145c983d7f5dc513b112ce67653302e"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/recording-routes.ts",
+      "name": "the unit suite, with the new server-ui boundary guard, is green on head, and the three locked server files stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
