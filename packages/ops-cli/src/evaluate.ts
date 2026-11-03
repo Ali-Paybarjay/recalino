@@ -64,9 +64,9 @@ import {
 } from "@recalino/core/src";
 import ffmpeg from "ffmpeg-static";
 import { z } from "zod";
-import { createAuthUser } from "../../core/test/auth-users";
 import { assertLocalEvaluationDatabase, evaluationConfigSchema } from "./evaluation-config";
 import { workspacePath } from "./paths";
+import { createSyntheticAuthUser } from "./synthetic-auth-user";
 import { SyntheticEvaluationProvider } from "./synthetic-provider";
 
 const sentence = "I have studied English for two years.";
@@ -244,7 +244,7 @@ async function main() {
       { actorId: config.actorId, reason: config.reason },
     );
     stage = "synthetic_account";
-    const userId = await createAuthUser();
+    const userId = await createSyntheticAuthUser();
     const ctx = { userId, requestId: randomUUID() };
     const intent = await createSignupIntent(db, {
       versions: CURRENT_VERSIONS,
