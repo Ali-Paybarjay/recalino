@@ -2,7 +2,7 @@
   "schema_version": "1",
   "id": "P1-09",
   "title": "سیگنال سلامت failed_runs برای Run شکست‌خورده (فاز ۱ L3)",
-  "goal": "در packages/core/src/proc/worker.ts، catch تابع failRun را صدا می‌زند و return می‌کند، پس Job موفق ثبت می‌شود و سیگنال failed_jobs در ops/health.ts ‏Run شکست‌خورده را نمی‌شمارد. proc یک تابع عمومی شمارش Run شکست‌خورده در بازهٔ زمانی بدهد (packages/core/src/proc/run-health.ts، export از proc/index.ts)؛ ops/health.ts آن را شرط تازهٔ failed_runs بسنجد (وابستگی ops → proc در capability map مجاز است)؛ نوع HealthCondition در ops/admin-contracts.ts گسترش یابد؛ متن admin برای شرط تازه در apps/web/src/ui/admin/copy.ts بیاید. ستون یا migration تازه در این Task نیست؛ worker.ts دست نمی‌خورد.",
+  "goal": "در packages/core/src/proc/worker.ts، catch تابع failRun را صدا می‌زند و return می‌کند، پس Job موفق ثبت می‌شود و سیگنال failed_jobs در ops/health.ts ‏Run شکست‌خورده را نمی‌شمارد. proc یک تابع عمومی شمارش Run شکست‌خورده در بازهٔ زمانی بدهد (packages/core/src/proc/run-health.ts، export از proc/index.ts)؛ ops/health.ts آن را شرط تازهٔ failed_runs بسنجد (وابستگی ops → proc در capability map مجاز است)؛ نوع HealthCondition در ops/admin-contracts.ts گسترش یابد؛ متن admin برای شرط تازه در apps/web/src/ui/admin/copy.ts بیاید. ستون یا migration تازه در این Task نیست؛ worker.ts دست نمی‌خورد. متن admin شرط تازه (E93، مالک): en «A processing run failed in the last hour.» و fa «پردازشی در ساعت گذشته ناموفق شد.» شرط تازه فقط در alerts می‌آید (E93): هیچ فیلد شمارشی تازه در SystemHealth، پس CoreScreens.tsx و سازنده‌های SystemHealth دست نمی‌خورند. کلید failed_runs به HEALTH_ALERT_TEXT در packages/core/src/ops/admin-read.ts می‌رسد، و ردیف تازه در apps/web/src/ui/approved-copy.test.ts (شمار متن‌های System health از ۱۶ به ۱۷) و در docs/design/UI_COPY_PENDING.md ثبت می‌شود.",
   "mode": "brownfield",
   "task_type": "bugfix",
   "risk_level": "high",
@@ -40,7 +40,10 @@
     "packages/core/src/proc/run-health.ts",
     "packages/core/src/proc/index.ts",
     "apps/web/src/ui/admin/copy.ts",
-    "apps/web/src/ui/admin/SystemHealthCard.test.ts"
+    "apps/web/src/ui/admin/SystemHealthCard.test.ts",
+    "packages/core/src/ops/admin-read.ts",
+    "apps/web/src/ui/approved-copy.test.ts",
+    "docs/design/UI_COPY_PENDING.md"
   ],
   "depends_on": [],
   "context_refs": ["docs/aeo/l3/phase1-tasks.md"],
@@ -58,8 +61,11 @@
     "منبع: P1-09 در docs/aeo/l3/phase1-tasks.md (#81، D2). ارجاع: RR-10 (DEBT-F-8)، R-10. اندازه M، ریسک high (DB: پرس‌وجوی تازه روی جدول Run و تغییر قرارداد سلامت admin). بزرگ‌ترین Task فاز.",
     "phase1-tasks.md آزمون را در health.int.test.ts خواسته بود؛ آن فایل در pnpm test:unit نیست، پس شاهد اجرایی در health.test.ts (owns_paths) می‌آید. pass_to_pass با قفل worker.ts، تا Implementer مسیر شکست Run را عوض نکند.",
     "ریسک high (E80): بازبین‌ها reviewer.code و reviewer.security؛ merge با approve مالک (D7 فقط low و medium را بی approve ادغام می‌کند).",
-    "نصب: implement و verify با --install \"pnpm install --frozen-lockfile --config.side-effects-cache=false\" تا merge ‏R80 (پس از آن runner خود cache را خاموش می‌کند و کلید install_assets برای باینری ffmpeg به کارت افزوده می‌شود). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
     "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند (۳۱۴ فایل روی 1f6be50، برابر شمار نام فایل‌ها؛ Observed by L1)؛ *.int.test.ts پایگاه محلی می‌خواهد و در verify اجرا نمی‌شود. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
-    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد)."
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار (D8؛ فیلدی در Task Card ندارد).",
+    "نسخهٔ ۲ کارت (بلوک ۸۴، پس از JobBlocked seq ‏3567 در job-20261103-1d40c82c): سه مسیر به owns_paths افزوده شد (admin-read.ts، approved-copy.test.ts، UI_COPY_PENDING.md)، و پاسخ مالک به چهار پرسش Implementer در goal آمد (E93، 2026-11-03: پرسش‌های ۱ و ۲ بله، ۳ متن Implementer، ۴ فقط alerts؛ همان پیشنهاد بازبین).",
+    "apps/web/src/server/health-alert-copy.test.ts فقط خوانده می‌شود: انتظار این است که با افزودن کلید به HEALTH_ALERT_TEXT سبز بماند، پس در owns_paths نیست. اگر خود آن تست باید عوض شود، Implementer بایستد و بپرسد.",
+    "TestPlan بی‌تغییر است: فقط packages/core/src/proc/worker.ts قفل است، و هیچ مسیر تازه به آن نمی‌رسد؛ قفل seq ‏3348 معتبر می‌ماند."
   ]
 }
