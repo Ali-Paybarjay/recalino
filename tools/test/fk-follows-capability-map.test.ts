@@ -36,26 +36,13 @@ type Exception = {
 };
 
 /**
- * E95 (owner decision, option C, 2026-11-03): known debt, recorded for the phase-2 cleanup card,
- * which removes the FK or moves the table. Only these two FKs are excepted. A new FK against the map
- * fails the test, and so does an entry here that no longer exists in the migrations.
+ * E95 (owner decision, option C, 2026-11-03) excepted the two `plt -> acc.user_account` FKs of the
+ * notification migration as known debt. E105 (option A, 2026-11-04) removed them in migration
+ * 20261104130100, so the list is empty: apart from `auth.users`, every FK follows the map. A new
+ * FK against the map fails the test, and so does an entry here that no longer exists in the
+ * migrations.
  */
-const E95_EXCEPTIONS: readonly Exception[] = [
-  {
-    file: `${migrationsDir}/20261007233920_plt_processing_notifications.sql`,
-    table: "plt.notification",
-    columns: "user_id",
-    references: "acc.user_account",
-    decision: "E95",
-  },
-  {
-    file: `${migrationsDir}/20261007233920_plt_processing_notifications.sql`,
-    table: "plt.push_subscription",
-    columns: "user_id",
-    references: "acc.user_account",
-    decision: "E95",
-  },
-];
+const E95_EXCEPTIONS: readonly Exception[] = [];
 
 type ForeignKey = {
   file: string;
@@ -65,9 +52,14 @@ type ForeignKey = {
   columns: string;
   /** `schema.table` the FK points at. */
   references: string;
+  /** The constraint name: the declared one, or the name Postgres chooses by default. */
+  constraint: string;
 };
 
-type Extraction = { fks: ForeignKey[]; issues: string[] };
+/** An `alter table <table> drop constraint <constraint>`; it removes an earlier FK of that name. */
+type DroppedConstraint = { table: string; constraint: string };
+
+type Extraction = { fks: ForeignKey[]; issues: string[]; drops: DroppedConstraint[] };
 
 const IDENT = `(?:"[^"]+"|[a-z_][a-z0-9_$]*)`;
 const QUALIFIED = String.raw`(${IDENT})\s*\.\s*(${IDENT})`;
@@ -85,6 +77,15 @@ const COLUMN_LEVEL_FK = new RegExp(
   String.raw`^(?:add\s+)?(?:column\s+)?(?:if\s+not\s+exists\s+)?(${IDENT})\s`,
   "i",
 );
+const NAMED_CONSTRAINT = new RegExp(String.raw`^(?:add\s+)?constraint\s+(${IDENT})\s`, "i");
+const COLUMN_CONSTRAINT = new RegExp(String.raw`\bconstraint\s+(${IDENT})\s+references\b`, "i");
+const ALTER_TABLE = /^alter\s/i;
+const DROP_CONSTRAINT = new RegExp(
+  String.raw`^drop\s+constraint\s+(?:if\s+exists\s+)?(${IDENT})(?:\s+(?:cascade|restrict))?$`,
+  "i",
+);
+/** Postgres `NAMEDATALEN - 1`: the longest identifier it keeps. */
+const MAX_IDENTIFIER = 63;
 const NOT_A_COLUMN = new Set([
   "constraint",
   "foreign",
@@ -192,11 +193,43 @@ function clauseColumns(clause: string): string | undefined {
   return ident(column);
 }
 
-/** Every FK of one migration file, and every `references` it could not attribute to one. */
+/**
+ * The name Postgres gives an unnamed FK (`makeObjectName` with the `fkey` label): `<table>_<columns
+ * joined by _>_fkey`, the longer part shortened first to fit 63 characters. A numeric suffix for a
+ * clash is not modelled; such a name does not match a drop, so the FK stays counted.
+ */
+function defaultFkName(table: string, columns: string): string {
+  const relation = table.split(".")[1] ?? table;
+  const addition = columns.split(",").join("_").slice(0, MAX_IDENTIFIER);
+  const label = "fkey";
+  let first = relation.length;
+  let second = addition.length;
+  const available = MAX_IDENTIFIER - 1 - (label.length + 1);
+  while (first + second > available) {
+    if (first > second) first -= 1;
+    else second -= 1;
+  }
+  return `${relation.slice(0, first)}_${addition.slice(0, second)}_${label}`;
+}
+
+function constraintName(clause: string, table: string, columns: string): string {
+  const name = NAMED_CONSTRAINT.exec(clause)?.[1] ?? COLUMN_CONSTRAINT.exec(clause)?.[1];
+  return name === undefined ? defaultFkName(table, columns) : ident(name);
+}
+
+function isDropped(fk: ForeignKey, drops: readonly DroppedConstraint[]): boolean {
+  return drops.some((drop) => drop.table === fk.table && drop.constraint === fk.constraint);
+}
+
+/**
+ * Every FK of one migration file that is still in place at its end, every `references` it could not
+ * attribute to one, and every constraint it drops (which may remove an FK of an earlier file).
+ */
 function extractForeignKeys(file: string, sql: string): Extraction {
   const { masked, bodies } = mask(sql);
-  const fks: ForeignKey[] = [];
+  let fks: ForeignKey[] = [];
   const issues: string[] = [];
+  const drops: DroppedConstraint[] = [];
   for (const body of bodies) {
     if (/\breferences\b/i.test(body)) {
       issues.push(`${file}: 'references' inside a dollar-quoted body cannot be checked statically`);
@@ -204,20 +237,30 @@ function extractForeignKeys(file: string, sql: string): Extraction {
   }
   for (const statement of masked.split(";")) {
     const count = statement.match(REFERENCES)?.length ?? 0;
-    if (count === 0) continue;
     const head = TABLE_STATEMENT.exec(statement);
     const keyword = head?.[1];
     const schema = head?.[2];
     const name = head?.[3];
+    const table =
+      schema === undefined || name === undefined ? "" : `${ident(schema)}.${ident(name)}`;
+    const afterName = head === null ? 0 : head.index + head[0].length;
+    if (table !== "" && keyword !== undefined && ALTER_TABLE.test(keyword)) {
+      for (const action of topLevelItems(statement.slice(afterName))) {
+        const dropped = DROP_CONSTRAINT.exec(action.replace(/\s+/g, " "))?.[1];
+        if (dropped === undefined) continue;
+        const drop = { table, constraint: ident(dropped) };
+        drops.push(drop);
+        fks = fks.filter((fk) => !isDropped(fk, [drop]));
+      }
+    }
+    if (count === 0) continue;
     const oneLine = statement.trim().replace(/\s+/g, " ");
-    if (head === null || keyword === undefined || schema === undefined || name === undefined) {
+    if (head === null || keyword === undefined || table === "") {
       issues.push(
         `${file}: 'references' outside a schema-qualified create/alter table: ${oneLine}`,
       );
       continue;
     }
-    const table = `${ident(schema)}.${ident(name)}`;
-    const afterName = head.index + head[0].length;
     const clauses = keyword.toLowerCase().startsWith("create")
       ? topLevelItems(parenthesized(statement, afterName) ?? "")
       : topLevelItems(statement.slice(afterName));
@@ -238,14 +281,20 @@ function extractForeignKeys(file: string, sql: string): Extraction {
       } else if (columns === undefined) {
         issues.push(`${file}: ${table}: FK column not found: ${clause}`);
       } else {
-        fks.push({ file, table, columns, references: `${ident(target[1])}.${ident(target[2])}` });
+        fks.push({
+          file,
+          table,
+          columns,
+          references: `${ident(target[1])}.${ident(target[2])}`,
+          constraint: constraintName(clause, table, columns),
+        });
       }
       found += inClause;
     }
     if (found !== count)
       issues.push(`${file}: ${table}: ${count - found} 'references' not parsed: ${oneLine}`);
   }
-  return { fks, issues };
+  return { fks, issues, drops };
 }
 
 function sameException(fk: ForeignKey, exception: Exception): boolean {
@@ -311,12 +360,15 @@ function readMigration(file: string): string {
   return readFileSync(resolve(root, file), "utf8");
 }
 
+/** The files in migration order: a drop removes the FKs of the earlier files, not the later ones. */
 function extractAll(files: { file: string; sql: string }[]): Extraction {
-  const all: Extraction = { fks: [], issues: [] };
+  const all: Extraction = { fks: [], issues: [], drops: [] };
   for (const { file, sql } of files) {
-    const { fks, issues } = extractForeignKeys(file, sql);
+    const { fks, issues, drops } = extractForeignKeys(file, sql);
+    all.fks = all.fks.filter((fk) => !isDropped(fk, drops));
     all.fks.push(...fks);
     all.issues.push(...issues);
+    all.drops.push(...drops);
   }
   return all;
 }
@@ -326,7 +378,32 @@ function extractBase(): Extraction {
 }
 
 const E95_FILE = `${migrationsDir}/20261007233920_plt_processing_notifications.sql`;
+const E105_FILE = `${migrationsDir}/20261104130100_plt_drop_acc_user_foreign_keys.sql`;
 const SYNTHETIC = "supabase/migrations/99999999999999_synthetic.sql";
+const LATER = "supabase/migrations/99999999999999_synthetic_later.sql";
+
+/** The two former E95 entries; they only exercise the exception mechanism, never the migrations. */
+const SYNTHETIC_EXCEPTIONS: readonly Exception[] = [
+  {
+    file: E95_FILE,
+    table: "plt.notification",
+    columns: "user_id",
+    references: "acc.user_account",
+    decision: "E95",
+  },
+  {
+    file: E95_FILE,
+    table: "plt.push_subscription",
+    columns: "user_id",
+    references: "acc.user_account",
+    decision: "E95",
+  },
+];
+
+const NOTIFICATION_VIOLATIONS = [
+  `${E95_FILE}: plt.notification(user_id) -> acc.user_account: plt may reference only no other module`,
+  `${E95_FILE}: plt.push_subscription(user_id) -> acc.user_account: plt may reference only no other module`,
+];
 
 describe("foreign keys follow the capability map (RR-32, R-24)", () => {
   it("reads every migration and attributes every 'references' to one FK", () => {
@@ -340,23 +417,35 @@ describe("foreign keys follow the capability map (RR-32, R-24)", () => {
       table: "voc.analysis",
       columns: "session_id,user_id",
       references: "org.class_session",
+      constraint: "analysis_session_id_user_id_fkey",
     });
     expect(fks.some((fk) => fk.references === AUTH_USERS)).toBe(true);
   });
 
-  it("finds every FK on the migrations in the direction of the map, apart from the E95 exceptions", () => {
+  it("finds every FK on the migrations in the direction of the map, with no exception but auth.users", () => {
+    expect(E95_EXCEPTIONS).toEqual([]);
     expect(directionViolations(extractBase().fks, E95_EXCEPTIONS)).toEqual([]);
   });
 
-  it("keeps the E95 list to the two FKs of the notification migration", () => {
-    expect(E95_EXCEPTIONS.map((entry) => `${entry.file}:${entry.table}(${entry.columns})`)).toEqual(
-      [`${E95_FILE}:plt.notification(user_id)`, `${E95_FILE}:plt.push_subscription(user_id)`],
-    );
+  it("keeps the E95 list empty, because E105 drops the two FKs of the notification migration", () => {
     const { fks } = extractForeignKeys(E95_FILE, readMigration(E95_FILE));
-    expect(directionViolations(fks, [])).toEqual([
-      `${E95_FILE}: plt.notification(user_id) -> acc.user_account: plt may reference only no other module`,
-      `${E95_FILE}: plt.push_subscription(user_id) -> acc.user_account: plt may reference only no other module`,
-    ]);
+    expect(directionViolations(fks, [])).toEqual(NOTIFICATION_VIOLATIONS);
+    expect(
+      fks.filter((fk) => fk.references === "acc.user_account").map((fk) => fk.constraint),
+    ).toEqual(["notification_user_id_fkey", "push_subscription_user_id_fkey"]);
+    const dropMigration = extractForeignKeys(E105_FILE, readMigration(E105_FILE));
+    expect(dropMigration).toEqual({
+      fks: [],
+      issues: [],
+      drops: [
+        { table: "plt.notification", constraint: "notification_user_id_fkey" },
+        { table: "plt.push_subscription", constraint: "push_subscription_user_id_fkey" },
+      ],
+    });
+    const base = extractBase();
+    expect(
+      base.fks.filter((fk) => fk.table.startsWith("plt.") && fk.references.startsWith("acc.")),
+    ).toEqual([]);
   });
 
   it("fails an in-memory FK against the map and passes ones that follow it", () => {
@@ -396,7 +485,7 @@ describe("foreign keys follow the capability map (RR-32, R-24)", () => {
     ]);
   });
 
-  it("fails an FK against the map outside the E95 list, even in the E95 migration", () => {
+  it("fails an FK against the map outside an exception list, even in the excepted migration", () => {
     const sql = [
       readMigration(E95_FILE),
       "create table plt.synthetic (owner_id uuid not null references acc.user_account(id));",
@@ -405,23 +494,88 @@ describe("foreign keys follow the capability map (RR-32, R-24)", () => {
     ].join("\n");
     const { fks, issues } = extractForeignKeys(E95_FILE, sql);
     expect(issues).toEqual([]);
-    expect(directionViolations(fks, E95_EXCEPTIONS)).toEqual([
+    expect(directionViolations(fks, SYNTHETIC_EXCEPTIONS)).toEqual([
       `${E95_FILE}: plt.synthetic(owner_id) -> acc.user_account: plt may reference only no other module`,
       `${E95_FILE}: plt.notification(author_id) -> acc.user_account: plt may reference only no other module`,
       `${E95_FILE}: plt.push_subscription(user_id) -> org.course: plt may reference only no other module`,
     ]);
   });
 
-  it("fails an E95 entry that no longer exists in the migrations", () => {
-    const fks = extractBase().fks.filter((fk) => fk.table !== "plt.push_subscription");
-    expect(directionViolations(fks, E95_EXCEPTIONS)).toEqual([
+  it("fails an exception entry that no longer exists in the migrations", () => {
+    expect(directionViolations(extractBase().fks, SYNTHETIC_EXCEPTIONS)).toEqual([
+      `E95 exception not found in the migrations: ${E95_FILE}: plt.notification(user_id) -> acc.user_account`,
       `E95 exception not found in the migrations: ${E95_FILE}: plt.push_subscription(user_id) -> acc.user_account`,
     ]);
-    const moved = extractBase().fks.map((fk) => ({
+    const original = extractForeignKeys(E95_FILE, readMigration(E95_FILE)).fks;
+    expect(directionViolations(original, SYNTHETIC_EXCEPTIONS)).toEqual([]);
+    const moved = original.map((fk) => ({
       ...fk,
       file: fk.file.replace("20261007233920", "20261007233921"),
     }));
-    expect(directionViolations(moved, E95_EXCEPTIONS)).toHaveLength(4);
+    expect(directionViolations(moved, SYNTHETIC_EXCEPTIONS)).toHaveLength(4);
+  });
+
+  it("does not count an FK that a later drop constraint removes, and still counts one it does not", () => {
+    const original = { file: E95_FILE, sql: readMigration(E95_FILE) };
+    const e105 = { file: E105_FILE, sql: readMigration(E105_FILE) };
+    const dropped = extractAll([original, e105]);
+    expect(dropped.issues).toEqual([]);
+    // Only the FKs inside PLT remain: push_delivery -> notification and -> push_subscription.
+    expect(dropped.fks.map((fk) => `${fk.table}(${fk.columns}) -> ${fk.references}`)).toEqual([
+      "plt.push_delivery(notification_id) -> plt.notification",
+      "plt.push_delivery(subscription_id) -> plt.push_subscription",
+    ]);
+    expect(directionViolations(dropped.fks, [])).toEqual([]);
+    // Repeating the idempotent drop changes nothing.
+    expect(directionViolations(extractAll([original, e105, e105]).fks, [])).toEqual([]);
+    // A drop only removes an FK of an earlier migration, on the same table, under the same name.
+    expect(directionViolations(extractAll([e105, original]).fks, [])).toEqual(
+      NOTIFICATION_VIOLATIONS,
+    );
+    const wrongName = [
+      "alter table plt.notification drop constraint if exists notification_user_fkey;",
+      "alter table plt.job drop constraint push_subscription_user_id_fkey;",
+    ].join("\n");
+    expect(
+      directionViolations(extractAll([original, { file: LATER, sql: wrongName }]).fks, []),
+    ).toEqual(NOTIFICATION_VIOLATIONS);
+    // Dropping and adding the FK again, as 20261004062114 does for plt.job, keeps it counted.
+    const readded = [
+      "alter table plt.notification drop constraint notification_user_id_fkey,",
+      "  add constraint notification_user_id_fkey foreign key (user_id) references acc.user_account(id);",
+    ].join("\n");
+    expect(
+      directionViolations(extractAll([original, e105, { file: LATER, sql: readded }]).fks, []),
+    ).toEqual([
+      `${LATER}: plt.notification(user_id) -> acc.user_account: plt may reference only no other module`,
+    ]);
+    // In one file, with a declared name, `only`, quoting and `cascade`.
+    const sameFile = [
+      "create table plt.synthetic (owner_id uuid references acc.user_account(id), org_id uuid,",
+      "  constraint synthetic_org_fk foreign key (org_id) references org.course(id));",
+      "alter table plt.synthetic drop constraint synthetic_owner_id_fkey;",
+      'alter table only plt."synthetic" drop constraint if exists "synthetic_org_fk" cascade;',
+    ].join("\n");
+    expect(extractForeignKeys(SYNTHETIC, sameFile)).toEqual({
+      fks: [],
+      issues: [],
+      drops: [
+        { table: "plt.synthetic", constraint: "synthetic_owner_id_fkey" },
+        { table: "plt.synthetic", constraint: "synthetic_org_fk" },
+      ],
+    });
+  });
+
+  it("names an unnamed FK as Postgres does, shortening the longer part to 63 characters", () => {
+    expect(defaultFkName("voc.analysis", "session_id,user_id")).toBe(
+      "analysis_session_id_user_id_fkey",
+    );
+    const long = defaultFkName(
+      "acc.a_very_long_table_name_that_goes_on_and_on_for_ever",
+      "first_long_column_name,second_long_column_name",
+    );
+    expect(long).toBe("a_very_long_table_name_that_g_first_long_column_name_secon_fkey");
+    expect(long).toHaveLength(63);
   });
 
   it("ignores comments and strings, and reports what it cannot attribute", () => {
