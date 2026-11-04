@@ -2,7 +2,7 @@
 
 | فیلد | مقدار |
 |---|---|
-| نسخه | نسخهٔ 0.3 (2026-11-04، بلوک ۱۰۹ ‏L1: کارت v2 ‏P2-03 پس از blocked ‏attempt 1؛ وضعیت گام‌ها در §۲؛ E115 در §۸؛ همراه PR کارت v2 به Recalino می‌رود)؛ 0.2 (2026-11-04، بلوک ۱۰۲ ‏L1: نامزدهای پیگیری P2-01 در §۷؛ فقط در دفتر)؛ 0.1 (2026-11-04، بلوک ۹۹ ‏L1؛ پیش‌نویس برای بازبینی) |
+| نسخه | نسخهٔ 0.5 (2026-11-04، بلوک ۱۱۳ ‏L1: کارت v2 ‏P2-02 و P2-06 با فایل schema-version؛ وضعیت گام‌های ۴ و ۵؛ درس OPS-05 در §۵؛ E117 در §۸؛ همراه PR کارت‌ها به Recalino می‌رود)؛ 0.4 (2026-11-04، بلوک ۱۱۱ ‏L1: نامزدهای پیگیری P2-03 در §۷؛ فقط در دفتر)؛ 0.3 (2026-11-04، بلوک ۱۰۹ ‏L1: کارت v2 ‏P2-03 پس از blocked ‏attempt 1؛ وضعیت گام‌ها در §۲؛ E115 در §۸؛ همراه PR کارت v2 به Recalino می‌رود)؛ 0.2 (2026-11-04، بلوک ۱۰۲ ‏L1: نامزدهای پیگیری P2-01 در §۷؛ فقط در دفتر)؛ 0.1 (2026-11-04، بلوک ۹۹ ‏L1؛ پیش‌نویس برای بازبینی) |
 | وضعیت | پیش‌نویس. فاز ۲ با تصمیم مالک E104 آغاز شد. E105 = الف و E106 = الف (2026-11-04). هیچ Job تا ادغام PR کارت‌ها اجرا نمی‌شود |
 | بازبینی | بازبینی شد، ایست ۲۰۶ (2026-11-04): sha256 هر فایل، schema کارت‌ها و TestPlanها، قفل‌ها، جدایی owns_paths، ادعای ریسک و R87 |
 | پایه | ‏Recalino ‏`main@d071ba7` (پس از G-L3، ‏#102)؛ aeo ‏`main@3b33d8b` |
@@ -23,14 +23,17 @@
 | گام ۲ | ‏P2-04 | ‏P1-08 ‏(#96)، query در URL پایگاه محلی | ‏CWE-20 | **high** | ‏high (`packages/ops-cli/**`) | ‏approve مالک | ‏`packages/ops-cli/src/evaluation-config.ts`، `evaluation-config.test.ts` |
 | گام ۳ | ‏P2-03 | ‏P1-09 ‏(#100)، پنجرهٔ غلتان هشدار | ‏CWE-778 | ‏low | ‏medium | ‏D7، بی approve | ‏`packages/core/src/ops/health.ts`، `health.test.ts`، `packages/core/src/proc/run-health.ts`؛ در v2 افزون بر این‌ها `packages/core/src/plt/health.ts`، `plt/jobs.ts`، `plt/index.ts`، `tools/test/core-exports-allowlist.test.ts` |
 | گام ۴ | ‏P2-05 | ‏P1-09، پاک‌سازی ردیف‌های ساختگی آزمون int | ‏— | ‏medium | ‏medium؛ high اگر diff ‏`delete from` داشته باشد | ‏D7 یا approve | ‏`packages/core/src/ops/health.int.test.ts` |
-| گام ۵ | ‏P2-02 | ‏P1-09، ایندکس partial ‏`finished_at` | ‏CWE-400 | **high** | ‏high (migration) | ‏approve مالک | ‏`supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql`، `tools/test/proc-failed-run-index-migration.test.ts`، `packages/core/src/proc/run-health-index.int.test.ts` |
-| گام ۶ | ‏P2-06 | ‏P1-10 ‏(#99)، دو FK ‏`plt → acc` ‏(E95؛ E105 = الف) | ‏— | ‏high | ‏high (migration، drop) | ‏approve مالک | ‏`supabase/migrations/20261104130100_plt_drop_acc_user_foreign_keys.sql`، `tools/test/fk-follows-capability-map.test.ts`، `packages/core/src/db/types.ts` |
+| گام ۵ | ‏P2-02 | ‏P1-09، ایندکس partial ‏`finished_at` | ‏CWE-400 | **high** | ‏high (migration) | ‏approve مالک | ‏`supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql`، `tools/test/proc-failed-run-index-migration.test.ts`، `packages/core/src/proc/run-health-index.int.test.ts`؛ در v2 افزون بر این‌ها `apps/web/src/server/schema-version.generated.ts` |
+| گام ۶ | ‏P2-06 | ‏P1-10 ‏(#99)، دو FK ‏`plt → acc` ‏(E95؛ E105 = الف) | ‏— | ‏high | ‏high (migration، drop) | ‏approve مالک | ‏`supabase/migrations/20261104130100_plt_drop_acc_user_foreign_keys.sql`، `tools/test/fk-follows-capability-map.test.ts`، `packages/core/src/db/types.ts`؛ در v2 افزون بر این‌ها `apps/web/src/server/schema-version.generated.ts` |
 
 - مورد وضعیت گام‌ها (Observed by model، ledger؛ 2026-11-04):
   - مورد گام ۱: ‏P2-01 ⇒ Recalino ‏#104 ⇒ `main@1cf0455` (D7)، 1.91 دلار.
   - مورد گام ۲: ‏P2-04 ⇒ Recalino ‏#105 ⇒ `main@707dfea` (approve مالک)، 1.27 دلار.
   - مورد گام ۳: ‏P2-03 ‏attempt 1 ‏blocked (`job-20261104-27d93ec7`، 0.59 دلار، بی تغییر فایل). شمارش failed_jobs در `plt/health.ts` است و زمان چک پیشین فقط در `plt.job` (ADR-0002 قاعدهٔ ۴). کارت v2 با چهار فایل افزوده (E115). attempt 2 پس از merge کارت v2.
-  - مورد گام‌های ۴ تا ۶: آغاز نشده‌اند.
+  - مورد گام ۳ (پایان): ‏attempt 2 ⇒ Recalino ‏#107 ⇒ `main@03521b8` (D7)؛ P2-03 روی هم 2.98 دلار.
+  - مورد گام ۴: ‏P2-05 ⇒ Recalino ‏#108 ⇒ `main@580e017` (D7، medium)، 1.52 دلار.
+  - مورد گام ۵: ‏P2-02 ‏attempt 1 ‏blocked (`job-20261104-a34f3d5e`، 0.46 دلار). کار درون owns_paths تمام شد، ولی `tools/schema-version/build.test.ts` ‏(OPS-05) بازتولید `apps/web/src/server/schema-version.generated.ts` را می‌خواست، که بیرون از owns_paths بود. کارت v2 ‏P2-02 و P2-06 این فایل را دارند (E117). attempt 2 پس از merge کارت‌ها، از نو.
+  - مورد گام ۶: آغاز نشده است. پس از merge ‏P2-02 اجرا می‌شود.
 - مورد ترتیب: نخست low، و DB آخر. P2-06 فقط پس از سبز شدن پنج کارت پیشین و با بودجهٔ باقی‌ماندهٔ هفته اجرا می‌شود.
 - مورد ریسک (Observed by model): gate بیشینهٔ ریسک کارت و ریسک مسیر را می‌گیرد (`gates.ts`، `maxLevel`). در `policy/risk-rules.yaml` هر مسیر بی قاعده medium است، `packages/ops-cli/**` و `supabase/**` ‏high هستند، و بررسی معنایی `sql-destructive` هر `drop`، `alter`، `truncate` یا `delete from` در diff را high می‌کند. شش کارت فاز ۱ با ریسک کارت low در gate ‏medium سنجیده شدند (ledger).
 - مورد اختلاف با دستور بلوک ۹۹: ریسک کارت P2-04 (low خواسته شده بود) و P2-02 (medium) به high رسید، چون مسیرشان آن را تعیین می‌کند. این‌گونه کارت مسیر merge واقعی را نشان می‌دهد.
@@ -62,6 +65,7 @@
 - مورد افزوده‌های فاز ۲:
   - مورد blocked: هر blocked که کارت پیش‌بینی کرده است (P2-01 کلید بیرون از storage.ts؛ P2-03 دادهٔ چک پیشین؛ P2-05 grant؛ P2-02 types؛ P2-06 on delete، FK دیگر یا فایل بیرون از owns_paths) ⇒ توقف بلوک و گزینه‌ها برای مالک. L1 هیچ grant یا فایل تازه‌ای به کارت نمی‌افزاید.
   - مورد R87: رد preflight به دلیل write_paths ⇒ توقف تا ادغام PR سیاست.
+  - مورد درس OPS-05 (بلوک ۱۱۲): هر کارت migration تازه `apps/web/src/server/schema-version.generated.ts` را در owns_paths دارد، و goal آن اجرای `pnpm schema:version` پس از migration است. بی آن، `tools/schema-version/build.test.ts` در `pnpm test:unit` شکست می‌خورد.
   - مورد CI: شکست هر گام CI پس از سبز بودن verify ⇒ یک دور rework، و سپس توقف.
   - مورد regression: main قرمز پس از هر merge ⇒ freeze و توقف دسته.
 
@@ -85,6 +89,9 @@
   - مورد security ‏nit ‏(`storage.ts:299`، hypothesis): سنجش از نوع denylist است و `.` تنها، نویسهٔ کنترلی، `%2F` و `%2E%2E` کدشده و slash مشابه Unicode را رد نمی‌کند. پیشنهاد بازبین: allowlist مانند `/^[a-z][a-z0-9_-]*$/`.
   - مورد code ‏minor ‏(`storage.ts:324`، hypothesis): attestation فقط `pnpm test:unit` را اجرا می‌کند، پس شاهد typecheck و lint فقط از CI است (در #104 سبز بود). نامزد controller یا TestPlan: یک فرمان typecheck در verify.
   - مورد code ‏nit (فایل آزمون): ‏`base_sha` ‏TestPlan ‏`d071ba7` است و پایهٔ attestation ‏`e691b53`، و TestPlan فایل آزمون تازه را قفل نمی‌کند. ایراد فرایندی است، نه نقص diff. پرسش باز implementer: شاخهٔ `targetObjectId` از `module` استفاده نمی‌کند.
+- مورد نامزدهای پیگیری از reviewهای P2-03 (Recalino ‏#107، بلوک ۱۱۰؛ غیرمسدودکننده؛ بی Job؛ Observed by model از خروجی Jobها):
+  - مورد security ‏nit ‏(`health.ts:250`، CWE-451، confirmed): برچسب نمای کلی admin «Jobs failed in the last hour» (`apps/web/src/ui/admin/copy.ts:67`) با پنجرهٔ تازه دقیق نیست، چون `readSystemHealth` هم از `readHealth` می‌خواند. **برای PR اسناد بعدی:** سطر E107 در `docs/design/UI_COPY_PENDING.md` این برچسب failed_jobs را هم بگیرد (امروز فقط failed_runs را دارد). تصمیم متن با مالک است (E107).
+  - مورد code (tests_missing): SQL تازهٔ `lastSucceededJobAt` و کران `since..now` در `readPlatformHealth` در آزمون unit فقط mock شده‌اند. نامزد: یک case در `plt/jobs.int.test.ts` (بیرون از owns_paths ‏P2-03).
 - مورد بقیه: دیگر اصلاح‌های کم‌ریسک پنج حسابرسی بلوک ۸۰ (AUD-1 تا AUD-5). فهرست کامل در گزارش L1 بلوک ۸۰ است. انتخاب دستهٔ بعد با مالک است.
 
 ## ۸. تصمیم‌های مالک
@@ -95,4 +102,5 @@
 | تصمیم E106 | اصلاح‌های حسابرسی بلوک ۸۰ | الف، نه در این دسته (§۷) | ‏2026-11-04 |
 | تصمیم R87 | ‏PR سیاست برای دو فایل migration | ‏approve مالک؛ aeo ‏#99 ⇒ `dca8680` | ‏2026-11-04 |
 | تصمیم E107 | متن هشدار failed_runs («in the last hour») پس از P2-03 | پیش‌فرض الف: متن بی‌تغییر، و یک سطر «متن معلق» در `docs/design/UI_COPY_PENDING.md` (سازوکار E93). مالک تا پیش از Job ‏P2-03 می‌تواند ب (تغییر متن در کارت v2) را بخواهد | ‏2026-11-04 |
-| تصمیم E115 | راه P2-03 پس از blocked ‏attempt 1 | پیشنهاد بازبین گزینهٔ الف (کارت v2: تابع فقط‌خواندنی در `plt`، پارامتر `since` در `readPlatformHealth`، آغاز پنجره `max(prev_success.finished_at − 1h, now − 24h)`). approve مالک روی PR کارت v2 همان تصمیم است؛ منتظر approve | ‏2026-11-04 |
+| تصمیم E115 | راه P2-03 پس از blocked ‏attempt 1 | پیشنهاد بازبین گزینهٔ الف (کارت v2: تابع فقط‌خواندنی در `plt`، پارامتر `since` در `readPlatformHealth`، آغاز پنجره `max(prev_success.finished_at − 1h, now − 24h)`). approve مالک روی PR کارت v2 همان تصمیم است؛ approve مالک (18:43:31Z)، #106 ⇒ `f4a3bf5` | ‏2026-11-04 |
+| تصمیم E117 | راه P2-02 و P2-06 پس از blocked ‏attempt 1 ‏P2-02 | پیشنهاد بازبین گزینهٔ الف: کارت v2 هر دو با `apps/web/src/server/schema-version.generated.ts` در owns_paths و اجرای `pnpm schema:version` (فقط رشتهٔ نسخه). approve مالک روی PR کارت‌ها همان تصمیم است؛ منتظر approve | ‏2026-11-04 |
