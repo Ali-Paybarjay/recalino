@@ -1,0 +1,56 @@
+{
+  "schema_version": "1",
+  "id": "P2-05",
+  "title": "پاک‌سازی ردیف‌های ساختگی آزمون int ‏failed_runs بی grant تازه (فاز ۲ L3)",
+  "goal": "آزمون packages/core/src/ops/health.int.test.ts از commit ‏1d97a5f (P1-09، #100) ردیف‌های ساختگی proc.processing_run را حذف نمی‌کند و finished_at آن‌ها را ۳۰ روز عقب می‌برد، چون نقش recalino_app روی این جدول delete ندارد (migration ‏20261004044059_lkm_processing.sql). پس این ردیف‌ها در پایگاه آزمون مشترک می‌مانند. آزمون باید ردیف‌های ساختگی خودش، و ردیف‌های والدی که برای آن‌ها ساخته، را در پایان پاک کند یا هرگز ماندگار نکند. دو راه نمونه: اجرا درون تراکنشی که rollback می‌شود، یا پاک‌سازی با نقشی که در پایگاه آزمون از پیش این اجازه را دارد. هر راه بی grant تازه، بی migration و بی تغییر schema باشد، و پاک‌سازی فقط به شناسه‌هایی محدود باشد که خود آزمون ساخته است. این کارت هیچ grant نمی‌دهد. اگر چنین راهی نیست، Implementer متوقف شود و blocked برگرداند، با گزینه‌ها: متن دقیق grant یا تابع لازم و پیامد هر گزینه. هیچ گزینه‌ای را خودش اجرا نکند.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "پس از اجرای health.int.test.ts هیچ ردیف ساختگی آن در proc.processing_run یا جدول‌های والدی که آزمون ساخته نمی‌ماند. سه آزمون فایل همان رفتار پیشین را می‌سنجند، و پاک‌سازی فقط به شناسه‌های ساختهٔ همان آزمون محدود است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "هیچ grant، migration، تغییر schema یا تغییر فایل غیرآزمونی؛ نقش recalino_app همان اجازه‌های پیشین را دارد."
+    },
+    {
+      "id": "AC-3",
+      "statement": "اگر AC-1 بی grant یا بی تغییر schema شدنی نیست، Implementer متوقف می‌شود و blocked برمی‌گرداند، با گزینه‌ها (متن دقیق grant یا تابع لازم و پیامد هر یک). هیچ grant یا migration نمی‌نویسد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "pnpm test:unit کامل سبز است؛ typecheck و lint سبز؛ فایل‌های قفل‌شده بی‌تغییر. حکم آزمون int با گام pnpm test:int در CI است، و verify آن را اجرا نمی‌کند."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["packages/core/src/ops/health.int.test.ts"],
+  "depends_on": ["P2-03"],
+  "context_refs": ["docs/aeo/l3/phase2-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: یافتهٔ «پاک‌سازی ردیف‌های ساختگی آزمون» در closeout فاز ۱ §۶ (پیامد اصلاح P1-09، commit ‏1d97a5f) و docs/aeo/l3/phase2-plan.md. اندازه S. الگوی AC-3 همان P1-10 است (E95).",
+    "ریسک کارت medium. owns_paths قاعدهٔ high ندارد، ولی بررسی معنایی sql-destructive در policy/risk-rules.yaml هر `delete from`، `drop`، `alter` یا `truncate` در diff را high می‌کند. اگر پاک‌سازی با `delete from` در متن آزمون بیاید، gate ‏high می‌سنجد و merge با approve مالک است.",
+    "وابستگی به P2-03 نرم است: هر دو کارت روی failed_runs کار می‌کنند، و P2-05 پس از ادغام P2-03 روی base تازه اجرا می‌شود تا آزمون int با پنجرهٔ تازه بخواند.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ این کارت فقط یک *.int.test.ts را تغییر می‌دهد، پس verify فقط نبود regression را می‌سنجد و شاهد اصلی گام pnpm test:int ‏CI است (درس P1-09 attempt 2، ایست ۱۸۷).",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}

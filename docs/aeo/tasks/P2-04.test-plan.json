@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P2-04",
+  "kind": "pass_to_pass",
+  "base_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/ops-cli/src/evaluate.ts",
+      "sha256": "92b20243e2b3a8de14a89a9e1e96a1506b46314d154f7c0db7c761c0332b491d"
+    },
+    {
+      "path": "packages/ops-cli/src/synthetic-auth-user.ts",
+      "sha256": "f273576e5107f580779d40bf31140f4a5ccf1e094406f9905bac0998aac2f6bb"
+    },
+    {
+      "path": "packages/ops-cli/src/synthetic-auth-user.test.ts",
+      "sha256": "0b963cdd69500467027a24fe60b3bd4fa8e9eff0ebb28177d3f94286ac63f2c5"
+    },
+    {
+      "path": "packages/core/src/db/connection.ts",
+      "sha256": "5ab1056005a0ae11bdc2ae02934681c075687758ad79c5ffb177edc3c2facb5b"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/ops-cli/src/evaluation-config.ts",
+      "name": "the unit suite is green on head, the evaluation config test rejects a loopback URL with a query string and accepts the default local URL, and evaluate, the synthetic auth user adapter and the core connection check stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
