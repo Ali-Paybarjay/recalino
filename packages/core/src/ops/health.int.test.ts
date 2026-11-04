@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
-import { studyFixture } from "../../test/study-fixture";
 import { createDatabase } from "../db";
 import type { Logger } from "../plt";
 import { readPlatformHealth } from "../plt";
@@ -65,16 +64,22 @@ it("counts jobs that failed for good and the longest wait of a due job", async (
 });
 
 // P1-09 (RR-10): a failed run ends its job successfully, so only failed_runs sees it.
+// P2-05: the application role may not delete runs (select, insert and update only), so the
+// synthetic runs are never committed: they live in one transaction that is always rolled back,
+// and every read goes through it. processing_run has no foreign key on user_id or session_id, so
+// no parent rows are needed; the repeatable-read snapshot also keeps other files' runs out.
 it("counts processing runs that failed in the last hour and opens failed_runs", async () => {
-  const x = await studyFixture(db);
+  const tx = await db.startTransaction().setIsolationLevel("repeatable read").execute();
+  const user = randomUUID();
+  const session = randomUUID();
   const now = new Date();
   const insertRun = async (state: "failed" | "ready", finishedAt: Date) =>
     (
-      await db
+      await tx
         .insertInto("proc.processing_run")
         .values({
-          user_id: x.ctx.userId,
-          session_id: x.session.id,
+          user_id: user,
+          session_id: session,
           operation_key: randomUUID(),
           request_hash: "synthetic-health",
           sources_version: 0,
@@ -91,28 +96,23 @@ it("counts processing runs that failed in the last hour and opens failed_runs", 
         .returning("id")
         .executeTakeFirstOrThrow()
     ).id;
-  const before = await readHealth(db, now);
-  const ids = [
-    await insertRun("failed", new Date(now.getTime() - 60_000)),
-    await insertRun("failed", new Date(now.getTime() - 2 * 3_600_000)),
-    await insertRun("ready", new Date(now.getTime() - 60_000)),
-  ];
   try {
-    const health = await readHealth(db, now);
+    const before = await readHealth(tx, now);
+    const ids = [
+      await insertRun("failed", new Date(now.getTime() - 60_000)),
+      await insertRun("failed", new Date(now.getTime() - 2 * 3_600_000)),
+      await insertRun("ready", new Date(now.getTime() - 60_000)),
+    ];
+    const health = await readHealth(tx, now);
     expect(health.failedRunsLastHour).toBe(before.failedRunsLastHour + 1);
     expect(health.failedJobsLastHour).toBe(before.failedJobsLastHour);
-    const overview = await readSystemHealth(db, now, { settings: DEFAULT_HEALTH_SETTINGS });
+    const overview = await readSystemHealth(tx, now, { settings: DEFAULT_HEALTH_SETTINGS });
     expect(overview.alerts).toContain("failed_runs");
     expect(overview).not.toHaveProperty("failedRunsLastHour");
     for (const id of ids) expect(JSON.stringify(overview)).not.toContain(id);
   } finally {
-    // The application role may not delete runs (select, insert and update only), so the synthetic
-    // runs leave every health window instead: later checks in this shared database see none of them.
-    await db
-      .updateTable("proc.processing_run")
-      .set({ finished_at: new Date(now.getTime() - 30 * 24 * 3_600_000) })
-      .where("id", "in", ids)
-      .execute();
+    // Discards the three runs; nothing this test wrote reaches the shared database.
+    await tx.rollback().execute();
   }
 });
 
