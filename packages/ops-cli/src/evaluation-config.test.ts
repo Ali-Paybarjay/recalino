@@ -32,6 +32,28 @@ describe("isolated synthetic evaluation gates", () => {
         "local_supabase_database_required",
       );
   });
+  it("accepts the default local URL and rejects a loopback URL with a query string", () => {
+    expect(() =>
+      assertLocalEvaluationDatabase("postgresql://postgres:postgres@127.0.0.1:54322/postgres"),
+    ).not.toThrow();
+    // node-postgres lets `host` (and TLS options) in the query override the checked host.
+    for (const target of [
+      "postgresql://postgres:postgres@127.0.0.1:54322/postgres?host=db.example.com",
+      "postgresql://postgres:postgres@localhost:54322/postgres?host=db.example.com",
+      "postgresql://postgres:postgres@[::1]:54322/postgres?host=db.example.com",
+      "postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable",
+    ]) {
+      let error: unknown;
+      try {
+        assertLocalEvaluationDatabase(target);
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("local_supabase_database_required");
+      expect((error as Error).message).not.toContain("example.com");
+    }
+  });
   it.each(["llmModel", "visionModel"] as const)(
     "bounds the physical output override for active %s",
     (slot) => {
