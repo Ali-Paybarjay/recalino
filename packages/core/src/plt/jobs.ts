@@ -296,6 +296,28 @@ export async function latestJobStateForPayload(
 }
 
 /**
+ * P2-03: when the last job of `kind` that succeeded finished, at or before `before`; null when none
+ * did (or it was purged). Read-only: a time only, never a job's id or payload. The health check
+ * reads it to start its next window where the last successful check left off.
+ */
+export async function lastSucceededJobAt(
+  db: Database | Tx,
+  kind: string,
+  before: Date,
+): Promise<Date | null> {
+  if (!KIND.test(kind) || !Number.isFinite(before.getTime())) throw new Error("Invalid job lookup");
+  const row = await db
+    .selectFrom("plt.job")
+    .select((eb) => eb.fn.max("finished_at").as("finished_at"))
+    .where("kind", "=", kind)
+    .where("state", "=", "succeeded")
+    .where("finished_at", "<=", before)
+    .executeTakeFirst();
+  const at = row?.finished_at ?? null;
+  return at === null ? null : new Date(at);
+}
+
+/**
  * Returns jobs whose lease ran out (the runner crashed or timed out) to the queue, or fails them
  * after their last attempt (rule 5). Every runner sweeps before it claims.
  */
