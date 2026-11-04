@@ -2,7 +2,7 @@
   "schema_version": "1",
   "id": "P2-06",
   "title": "حذف دو FK ‏plt → acc و خالی کردن فهرست استثنای E95 (فاز ۲ L3)",
-  "goal": "دو FK در supabase/migrations/20261007233920_plt_processing_notifications.sql خلاف جهت capability map هستند: (۱) plt.notification.user_id → acc.user_account و (۲) plt.push_subscription.user_id → acc.user_account. آزمون P1-10 (#99) آن‌ها را با فهرست استثنای E95 پذیرفته است. تصمیم مالک E105 گزینهٔ الف است: هر دو FK حذف شوند. یک migration تازه، فقط در فایل supabase/migrations/20261104130100_plt_drop_acc_user_foreign_keys.sql، هر دو constraint را با drop constraint if exists حذف کند. ستون‌های user_id همان uuid ساده می‌مانند، و هیچ ردیف، ستون، ایندکس یا grant تغییر نمی‌کند. migration پیشین ویرایش نمی‌شود. هم‌زمان ثابت فهرست استثنای E95 در tools/test/fk-follows-capability-map.test.ts خالی شود، یا با case‌های وابسته‌اش حذف شود، تا آزمون جهت FK بی هیچ استثنا جز auth.users سبز باشد. Implementer پیش از هر تغییر سه چیز را بسنجد و گزارش کند. یکم، رفتار on delete دو FK. اگر cascade یا set null است و مسیر حذف حساب برای پاک‌سازی این دو جدول به آن تکیه دارد، Implementer متوقف شود و blocked برگرداند با گزینه‌ها، چون حذف FK آن پاک‌سازی را برمی‌دارد. دوم، اگر جدول دیگری از plt هم FK به acc دارد، blocked با گزینه‌ها. سوم، اگر گام CI «Generated DB types match the migrations» تغییر packages/core/src/db/types.ts را لازم کند، فقط ورودی Relationships همین دو FK در آن فایل حذف شود. هر فایل دیگری که لازم شود (مثلاً packages/core/src/db/foreign-key-indexes.int.test.ts) یعنی توقف و blocked.",
+  "goal": "دو FK در supabase/migrations/20261007233920_plt_processing_notifications.sql خلاف جهت capability map هستند: (۱) plt.notification.user_id → acc.user_account و (۲) plt.push_subscription.user_id → acc.user_account. آزمون P1-10 (#99) آن‌ها را با فهرست استثنای E95 پذیرفته است. تصمیم مالک E105 گزینهٔ الف است: هر دو FK حذف شوند. یک migration تازه، فقط در فایل supabase/migrations/20261104130100_plt_drop_acc_user_foreign_keys.sql، هر دو constraint را با drop constraint if exists حذف کند. ستون‌های user_id همان uuid ساده می‌مانند، و هیچ ردیف، ستون، ایندکس یا grant تغییر نمی‌کند. migration پیشین ویرایش نمی‌شود. هم‌زمان ثابت فهرست استثنای E95 در tools/test/fk-follows-capability-map.test.ts خالی شود، یا با case‌های وابسته‌اش حذف شود، تا آزمون جهت FK بی هیچ استثنا جز auth.users سبز باشد. Implementer پیش از هر تغییر سه چیز را بسنجد و گزارش کند. یکم، رفتار on delete دو FK. اگر cascade یا set null است و مسیر حذف حساب برای پاک‌سازی این دو جدول به آن تکیه دارد، Implementer متوقف شود و blocked برگرداند با گزینه‌ها، چون حذف FK آن پاک‌سازی را برمی‌دارد. دوم، اگر جدول دیگری از plt هم FK به acc دارد، blocked با گزینه‌ها. سوم، اگر گام CI «Generated DB types match the migrations» تغییر packages/core/src/db/types.ts را لازم کند، فقط ورودی Relationships همین دو FK در آن فایل حذف شود. هر فایل دیگری که لازم شود (مثلاً packages/core/src/db/foreign-key-indexes.int.test.ts) یعنی توقف و blocked. پس از نوشتن migration، pnpm schema:version اجرا شود و فایل تولیدشدهٔ apps/web/src/server/schema-version.generated.ts commit شود. در آن فایل فقط رشتهٔ نسخه عوض می‌شود، از «20261104130000» به «20261104130100»؛ هیچ ویرایش دستی. چون P2-02 پیش از این کارت ادغام می‌شود، مقدار پایه هنگام اجرا «20261104130000» است. آزمون OPS-05 ‏tools/schema-version/build.test.ts باید سبز باشد.",
   "mode": "brownfield",
   "task_type": "migration",
   "risk_level": "high",
@@ -24,6 +24,10 @@
       "statement": "pnpm test:unit کامل سبز است؛ typecheck و lint سبز؛ فایل‌های قفل‌شده بی‌تغییر. همهٔ گام‌های CI سبزند، از جمله «Generated DB types match the migrations» و pnpm test:int."
     },
     {
+      "id": "AC-5",
+      "statement": "apps/web/src/server/schema-version.generated.ts با pnpm schema:version بازتولید و commit شده است. diff آن فقط همان یک مقدار نسخه است («20261104130000» ⇒ «20261104130100»)، بی هیچ ویرایش دستی. آزمون OPS-05 ‏tools/schema-version/build.test.ts در pnpm test:unit سبز است."
+    },
+    {
       "id": "AC-8",
       "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
     },
@@ -35,7 +39,8 @@
   "owns_paths": [
     "supabase/migrations/20261104130100_plt_drop_acc_user_foreign_keys.sql",
     "tools/test/fk-follows-capability-map.test.ts",
-    "packages/core/src/db/types.ts"
+    "packages/core/src/db/types.ts",
+    "apps/web/src/server/schema-version.generated.ts"
   ],
   "depends_on": ["P2-02"],
   "context_refs": ["docs/aeo/l3/phase2-plan.md"],
@@ -58,6 +63,7 @@
     "مسیر حذف حساب (privacy deletion) بیرون از owns_paths است. اگر به cascade این FKها تکیه دارد، کار در این کارت نیست و تصمیم مالک لازم است (AC-3).",
     "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
     "pnpm test:unit فایل tools/test/fk-follows-capability-map.test.ts را اجرا می‌کند (آزمون ایستا، بی پایگاه)، پس شاهد AC-2 در verify هست. *.int.test.ts فقط در گام pnpm test:int ‏CI اجرا می‌شود.",
+    "v2 (بلوک ۱۱۳، E117): attempt 1 ‏P2-02 ‏(job-20261104-a34f3d5e، 0.46 دلار) با این علت blocked شد: هر migration تازه بازتولید apps/web/src/server/schema-version.generated.ts را می‌خواهد (tools/schema-version/build.test.ts، OPS-05)، و این فایل در owns_paths نبود. این کارت هم migration تازه دارد، پس همان فایل به owns_paths افزوده شد. این فایل درون write_paths.recalino است (apps/web/src/**)، هیچ قاعدهٔ high ندارد و در هیچ فهرست قفلی نیست. TestPlan بی‌تغییر است و قفل seq ‏4011 معتبر می‌ماند. همپوشانی owns_paths با P2-02 فقط در همین فایل تولیدشده و ترتیبی است: P2-06 پس از merge ‏P2-02 اجرا می‌شود. درس runbook 2.94.",
     "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد)."
   ]
 }

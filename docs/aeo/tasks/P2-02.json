@@ -2,7 +2,7 @@
   "schema_version": "1",
   "id": "P2-02",
   "title": "ایندکس partial ‏finished_at برای Runهای failed روی proc.processing_run (فاز ۲ L3)",
-  "goal": "شمارش failed_runs در packages/core/src/proc/run-health.ts (از P1-09، #100) روی proc.processing_run با شرط state = 'failed' و بازهٔ finished_at است، و ایندکس پشتیبان ندارد. پس هر چک سلامت یک seq scan است (یافتهٔ nit بازبین امنیتی P1-09، job-20261103-3956299e، CWE-400). یک migration تازه، فقط در فایل supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql، یک ایندکس partial روی proc.processing_run (finished_at) با شرط where state = 'failed' و با create index if not exists بسازد. بی concurrently (migration درون تراکنش اجرا می‌شود)، بی تغییر داده، بی drop، alter، truncate یا delete، بی grant و بی تغییر ستون. شاهد غیر int یک آزمون ایستا در tools/test/proc-failed-run-index-migration.test.ts است که فقط متن همان فایل migration را می‌خواند. شاهد int یک آزمون تازه در packages/core/src/proc/run-health-index.int.test.ts است که ایندکس را در pg_indexes می‌بیند. اگر نام ستون یا مقدار state با این متن نمی‌خواند، یا گام CI «Generated DB types match the migrations» تغییر packages/core/src/db/types.ts را لازم کند، Implementer متوقف شود و blocked برگرداند.",
+  "goal": "شمارش failed_runs در packages/core/src/proc/run-health.ts (از P1-09، #100) روی proc.processing_run با شرط state = 'failed' و بازهٔ finished_at است، و ایندکس پشتیبان ندارد. پس هر چک سلامت یک seq scan است (یافتهٔ nit بازبین امنیتی P1-09، job-20261103-3956299e، CWE-400). یک migration تازه، فقط در فایل supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql، یک ایندکس partial روی proc.processing_run (finished_at) با شرط where state = 'failed' و با create index if not exists بسازد. بی concurrently (migration درون تراکنش اجرا می‌شود)، بی تغییر داده، بی drop، alter، truncate یا delete، بی grant و بی تغییر ستون. شاهد غیر int یک آزمون ایستا در tools/test/proc-failed-run-index-migration.test.ts است که فقط متن همان فایل migration را می‌خواند. شاهد int یک آزمون تازه در packages/core/src/proc/run-health-index.int.test.ts است که ایندکس را در pg_indexes می‌بیند. اگر نام ستون یا مقدار state با این متن نمی‌خواند، یا گام CI «Generated DB types match the migrations» تغییر packages/core/src/db/types.ts را لازم کند، Implementer متوقف شود و blocked برگرداند. پس از نوشتن migration، pnpm schema:version اجرا شود و فایل تولیدشدهٔ apps/web/src/server/schema-version.generated.ts commit شود. در آن فایل فقط رشتهٔ نسخه عوض می‌شود، از «20261020120000» به «20261104130000»؛ هیچ ویرایش دستی. آزمون OPS-05 ‏tools/schema-version/build.test.ts باید سبز باشد.",
   "mode": "brownfield",
   "task_type": "migration",
   "risk_level": "high",
@@ -24,6 +24,10 @@
       "statement": "pnpm test:unit کامل سبز است؛ typecheck و lint سبز؛ فایل‌های قفل‌شده بی‌تغییر. همهٔ گام‌های CI سبزند، از جمله «Generated DB types match the migrations»."
     },
     {
+      "id": "AC-5",
+      "statement": "apps/web/src/server/schema-version.generated.ts با pnpm schema:version بازتولید و commit شده است. diff آن فقط همان یک مقدار نسخه است («20261020120000» ⇒ «20261104130000»)، بی هیچ ویرایش دستی. آزمون OPS-05 ‏tools/schema-version/build.test.ts در pnpm test:unit سبز است."
+    },
+    {
       "id": "AC-8",
       "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
     },
@@ -35,7 +39,8 @@
   "owns_paths": [
     "supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql",
     "tools/test/proc-failed-run-index-migration.test.ts",
-    "packages/core/src/proc/run-health-index.int.test.ts"
+    "packages/core/src/proc/run-health-index.int.test.ts",
+    "apps/web/src/server/schema-version.generated.ts"
   ],
   "depends_on": ["P2-03"],
   "context_refs": ["docs/aeo/l3/phase2-plan.md"],
@@ -58,6 +63,7 @@
     "ایندکس در خروجی types تولیدشده نمی‌آید (Not Verified؛ X1). اگر گام CI ‏types را ناهم‌خوان بداند، Implementer می‌ایستد، چون packages/core/src/db/types.ts در owns_paths نیست.",
     "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
     "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی در verify همان آزمون ایستای AC-2 است.",
+    "v2 (بلوک ۱۱۳، E117): attempt 1 ‏(job-20261104-a34f3d5e، 0.46 دلار) blocked شد، با آنکه کار درون owns_paths تمام و commit شده بود (commit محلی 37b7a3f). pnpm test:unit فقط در tools/schema-version/build.test.ts ‏(OPS-05) شکست خورد، چون هر migration تازه بازتولید apps/web/src/server/schema-version.generated.ts را می‌خواهد و این فایل بیرون از owns_paths بود. این فایل درون write_paths.recalino است (apps/web/src/**)، هیچ قاعدهٔ high ندارد و در هیچ فهرست قفلی نیست. TestPlan بی‌تغییر است و قفل seq ‏4010 معتبر می‌ماند. attempt 2 از نو روی main تازه اجرا می‌شود (R44؛ مالک worktree پیشین را حذف می‌کند). درس runbook 2.94: هر کارت migration این فایل را در owns_paths دارد.",
     "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد)."
   ]
 }
