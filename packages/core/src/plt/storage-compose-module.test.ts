@@ -1,6 +1,7 @@
 import { Kysely, PostgresDialect, type PostgresPoolClient } from "kysely";
 import { describe, expect, it } from "vitest";
 import type { DB } from "../db";
+import { AppError } from "./errors";
 import { composeOwnedObjects } from "./storage";
 import { MemoryObjectStore } from "./storage-memory";
 
@@ -70,7 +71,10 @@ function database() {
   return { db, rows };
 }
 
-async function composeFor(module: string) {
+async function composeFor(
+  module: string,
+  seen?: { rows?: Map<string, Row>; store?: MemoryObjectStore },
+) {
   const { db, rows } = database();
   const store = new MemoryObjectStore(() => new Date("2026-11-03T00:00:00Z"));
   const now = new Date("2026-11-03T00:00:00Z");
@@ -90,6 +94,7 @@ async function composeFor(module: string) {
     store.seed(key, bytes, contentType, now);
     return id;
   });
+  if (seen) Object.assign(seen, { rows, store });
   try {
     const targetId = await composeOwnedObjects(
       db,
@@ -117,4 +122,45 @@ describe("composeOwnedObjects module (P1-07)", () => {
       expect(await store.read(target?.key ?? "")).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
     },
   );
+
+  it("keeps the src key shape: module, owner and a random id, with no extension", async () => {
+    const { target } = await composeFor("src");
+    expect(target?.key).toMatch(
+      new RegExp(`^src/${userId}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+    );
+  });
+});
+
+describe("composeOwnedObjects module sanitization (P2-01)", () => {
+  it.each([
+    ["empty", ""],
+    ["slash", "exp/x"],
+    ["leading slash", "/src"],
+    ["backslash", "exp\\x"],
+    ["dot-dot", ".."],
+    ["dot-dot inside", "src..exp"],
+    ["traversal", "src/../exp"],
+  ])("rejects a module that is %s before any storage write or record", async (_, module) => {
+    const seen: { rows?: Map<string, Row>; store?: MemoryObjectStore } = {};
+    const failure = await composeFor(module, seen).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(AppError);
+    const appError = failure as AppError;
+    expect(appError.code).toBe("validation_failed");
+    expect(appError.details).toEqual({ fields: { storage: ["invalid_module"] } });
+    if (module !== "") {
+      expect(appError.message).not.toContain(module);
+      expect(JSON.stringify(appError.details)).not.toContain(module);
+    }
+    // Only the two seeded parts: no destination record and no new object in the store.
+    expect(seen.rows?.size).toBe(2);
+    expect([...(seen.rows?.values() ?? [])].every((row) => row.key.includes("/part-"))).toBe(true);
+    const listed = await seen.store?.list("");
+    expect(listed?.objects.map((object) => object.key)).toEqual([
+      `src/${userId}/part-0`,
+      `src/${userId}/part-1`,
+    ]);
+  });
 });

@@ -292,6 +292,15 @@ export async function writeOwnedObject(
 }
 
 /**
+ * The module becomes the first segment of a storage key, so it must be one plain segment:
+ * not empty, no path separator and no `..` (CWE-22). The error never echoes the value.
+ */
+function assertModuleSegment(module: string): void {
+  if (module === "" || module.includes("/") || module.includes("\\") || module.includes(".."))
+    throw errors.validationFailed({ storage: ["invalid_module"] });
+}
+
+/**
  * Worker assembly records the destination first and verifies it before publication.
  * A caller holding an owner transaction supplies a previously committed destination so
  * provider I/O needs no second pool connection and rollback retains its cleanup pointer.
@@ -312,6 +321,7 @@ export async function composeOwnedObjects(
     onRegistered?: (objectId: string) => Promise<void>;
   },
 ): Promise<string> {
+  assertModuleSegment(input.module);
   if (!store.compose) throw errors.validationFailed({ upload: ["multipart_provider_unavailable"] });
   if (db.isTransaction && !input.targetObjectId)
     throw errors.validationFailed({ storage: ["registered_target_required"] });
