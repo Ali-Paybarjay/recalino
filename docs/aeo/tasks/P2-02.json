@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "id": "P2-02",
+  "title": "ایندکس partial ‏finished_at برای Runهای failed روی proc.processing_run (فاز ۲ L3)",
+  "goal": "شمارش failed_runs در packages/core/src/proc/run-health.ts (از P1-09، #100) روی proc.processing_run با شرط state = 'failed' و بازهٔ finished_at است، و ایندکس پشتیبان ندارد. پس هر چک سلامت یک seq scan است (یافتهٔ nit بازبین امنیتی P1-09، job-20261103-3956299e، CWE-400). یک migration تازه، فقط در فایل supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql، یک ایندکس partial روی proc.processing_run (finished_at) با شرط where state = 'failed' و با create index if not exists بسازد. بی concurrently (migration درون تراکنش اجرا می‌شود)، بی تغییر داده، بی drop، alter، truncate یا delete، بی grant و بی تغییر ستون. شاهد غیر int یک آزمون ایستا در tools/test/proc-failed-run-index-migration.test.ts است که فقط متن همان فایل migration را می‌خواند. شاهد int یک آزمون تازه در packages/core/src/proc/run-health-index.int.test.ts است که ایندکس را در pg_indexes می‌بیند. اگر نام ستون یا مقدار state با این متن نمی‌خواند، یا گام CI «Generated DB types match the migrations» تغییر packages/core/src/db/types.ts را لازم کند، Implementer متوقف شود و blocked برگرداند.",
+  "mode": "brownfield",
+  "task_type": "migration",
+  "risk_level": "high",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "فقط یک فایل migration تازه هست: supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql. این فایل فقط یک create index if not exists روی proc.processing_run (finished_at) با where state = 'failed' دارد. اجرای دوبارهٔ آن خطا نمی‌دهد (idempotent) و هیچ ردیفی را تغییر نمی‌دهد."
+    },
+    {
+      "id": "AC-2",
+      "statement": "آزمون غیر int ‏tools/test/proc-failed-run-index-migration.test.ts (با pnpm test:unit) متن migration را می‌خواند و می‌سنجد که همان یک create index if not exists partial را دارد و هیچ drop، alter، truncate، delete، grant یا concurrently ندارد. این آزمون روی base شکست می‌خورد، چون فایل نیست."
+    },
+    {
+      "id": "AC-3",
+      "statement": "آزمون int ‏packages/core/src/proc/run-health-index.int.test.ts ایندکس را با شرط partial در pg_indexes می‌بیند. حکم آن با گام pnpm test:int در CI است، و verify آن را اجرا نمی‌کند."
+    },
+    {
+      "id": "AC-4",
+      "statement": "pnpm test:unit کامل سبز است؛ typecheck و lint سبز؛ فایل‌های قفل‌شده بی‌تغییر. همهٔ گام‌های CI سبزند، از جمله «Generated DB types match the migrations»."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration دیگر، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "supabase/migrations/20261104130000_proc_failed_run_finished_at_index.sql",
+    "tools/test/proc-failed-run-index-migration.test.ts",
+    "packages/core/src/proc/run-health-index.int.test.ts"
+  ],
+  "depends_on": ["P2-03"],
+  "context_refs": ["docs/aeo/l3/phase2-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: یافتهٔ «ایندکس (state, finished_at)» در closeout فاز ۱ §۶ (بازبین امنیتی P1-09، #100 ⇒ c886877؛ job-20261103-3956299e) و docs/aeo/l3/phase2-plan.md. اندازه S.",
+    "ریسک high، نه medium که دستور بلوک ۹۹ خواسته بود: قاعده‌های migrations-schema و recalino-db در policy/risk-rules.yaml هر فایل supabase/** و *.sql را high می‌کنند، و gate بیشینهٔ ریسک کارت و ریسک مسیر را می‌گیرد. پس merge با approve مالک است. بازبین‌ها reviewer.code و reviewer.security (E80).",
+    "فایل migration بیرون از write_paths.recalino در policy/targets.json است (supabase/** بیرون است). پس aeo run و --preflight این کارت را پیش از هر رویداد رد می‌کنند (R87)، تا یک PR سیاست جدا، با approve مالک، فقط همین یک فایل را به write_paths بیفزاید (الگوی E93). tools/test/** و packages/core/** درون write_paths هستند.",
+    "نام فایل با timestamp ‏20261104130000 پس از آخرین migration موجود (20261020120000) می‌آید، و پیش از Job ثابت است تا owns_paths و write_paths دقیق باشند.",
+    "وابستگی به P2-03 نرم است: اگر P2-03 شکل پرس‌وجوی شمارش را عوض کند، ایندکس باید هنوز با آن بخواند. Implementer این را در گزارش می‌نویسد.",
+    "ایندکس در خروجی types تولیدشده نمی‌آید (Not Verified؛ X1). اگر گام CI ‏types را ناهم‌خوان بداند، Implementer می‌ایستد، چون packages/core/src/db/types.ts در owns_paths نیست.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی در verify همان آزمون ایستای AC-2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد)."
+  ]
+}

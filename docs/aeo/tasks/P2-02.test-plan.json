@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P2-02",
+  "kind": "pass_to_pass",
+  "base_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/worker.ts",
+      "sha256": "aa6ac867dcb08df8a39f1f647242a6ec2bdcd21d66c34c85cfad02f174d816b7"
+    },
+    {
+      "path": "supabase/migrations/20261004044059_lkm_processing.sql",
+      "sha256": "a8e1b5fbcea47ee6b8fa3473b79f184627fa1577b6fec935a204c9f129e437fa"
+    },
+    {
+      "path": "packages/core/src/db/types.ts",
+      "sha256": "8f5e6b5ac555fe6246b47825d23bc8d2d93b859c83c1ca24ee407f634da14957"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "tools/test/proc-failed-run-index-migration.test.ts",
+      "name": "the unit suite is green on head, the static test finds one partial create index if not exists and no destructive statement in the new migration, and the worker, the processing migration and the generated DB types stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-4"]
+    }
+  ]
+}

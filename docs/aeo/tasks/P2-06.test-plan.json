@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "task_id": "P2-06",
+  "kind": "pass_to_pass",
+  "base_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "tools/capability-map.json",
+      "sha256": "cae68a89884fcd0dbaea834c383355eaab001264d6003acdf07229f9315066b7"
+    },
+    {
+      "path": "supabase/migrations/20261007233920_plt_processing_notifications.sql",
+      "sha256": "c542c3d32f47ce36dbd2736757d7acc58672a0d5fdd7d6015c0f41607f5743e0"
+    },
+    {
+      "path": "supabase/migrations/20261004051218_privacy_deletion.sql",
+      "sha256": "4e5984b20ddb2a5e6df68680450b81a0be9c78f0d45de2558d3b1fca42ae2ab4"
+    },
+    {
+      "path": "packages/core/src/plt/notifications.ts",
+      "sha256": "bd6dcd8149be1612573342e5cbe082f7df8b29a42c72e897fcbd1526efa925e9"
+    },
+    {
+      "path": "packages/core/src/db/foreign-key-indexes.int.test.ts",
+      "sha256": "ff16403a4fa0976bbd67ae7138604a0ac05e414d5afa3dc4cccfbe88a7f67a4f"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "tools/test/fk-follows-capability-map.test.ts",
+      "name": "the unit suite is green on head, the FK direction test passes with an empty E95 exception list and still fails its in-memory violation cases, and the capability map, the original notifications migration, the privacy deletion migration, plt notifications and the FK index int test stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-4"]
+    }
+  ]
+}

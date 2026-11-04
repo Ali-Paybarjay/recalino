@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "task_id": "P2-03",
+  "kind": "pass_to_pass",
+  "base_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/ui/admin/copy.ts",
+      "sha256": "17d4ff1c845221135eaed833748c6e940e7f048bad7386c6dd43ce262495f516"
+    },
+    {
+      "path": "apps/web/src/ui/approved-copy.test.ts",
+      "sha256": "ffc9ad4fb33e8eb2d3f16c6d8e1d86f208d40a19b1920a49f86dcbbfd6877cef"
+    },
+    {
+      "path": "packages/core/src/proc/worker.ts",
+      "sha256": "aa6ac867dcb08df8a39f1f647242a6ec2bdcd21d66c34c85cfad02f174d816b7"
+    },
+    {
+      "path": "packages/core/src/ops/admin-contracts.ts",
+      "sha256": "76783756e2c9e59640a3511003b6323fe382012a38dd78ad763e375f5c18bf3c"
+    },
+    {
+      "path": "packages/core/src/ops/health.int.test.ts",
+      "sha256": "e74e831c25fe0a200082d654a638a15368df36164658777c7e80f556e0fe7455"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/ops/health.ts",
+      "name": "the unit suite is green on head, health.test.ts with a fake clock shows that a failure between two checks more than an hour apart opens the alert, and the admin copy, the worker, the health contracts and the health int test stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

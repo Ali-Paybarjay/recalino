@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P2-01",
+  "kind": "pass_to_pass",
+  "base_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "d071ba7efa92934c231dad9e63ca0abc1690f3dd",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/src/audio.ts",
+      "sha256": "7e6cdbfe41974d39f6f29f9386f48fa26af7f11411414df6c1879a830f00e13b"
+    },
+    {
+      "path": "packages/core/src/src/service.ts",
+      "sha256": "218fffabe6e7b7022a4749de03e275d33c6a0252d78eb1883c6189cb0a1f86c8"
+    },
+    {
+      "path": "packages/core/src/plt/storage-vercel-blob.test.ts",
+      "sha256": "5a7b0c771b0bab4573d740574e810538c97117e07a56ab2f2f6b55886df16ca9"
+    },
+    {
+      "path": "packages/core/src/plt/storage.int.test.ts",
+      "sha256": "f43d1f18fead60df10bcd4dc67cd1a8f394c6747945763066c13ecada083b83b"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/plt/storage.ts",
+      "name": "the unit suite is green on head, the storage-compose-module test rejects an empty module, a slash and a dot-dot segment and keeps the src key, and the two callers and the other storage tests stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
