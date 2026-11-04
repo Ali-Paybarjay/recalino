@@ -53,14 +53,19 @@ export const evaluationConfigSchema = z
   });
 export type EvaluationConfig = z.infer<typeof evaluationConfigSchema>;
 
-/** This command cannot read cloud learner records or change a cloud budget. */
+/**
+ * This command cannot read cloud learner records or change a cloud budget. Query parameters are
+ * refused, as in core's databaseTls: node-postgres lets `host` in the query override the checked
+ * host. The error never names the URL.
+ */
 export function assertLocalEvaluationDatabase(connectionString: string) {
   const url = new URL(connectionString);
   if (
     !["postgres:", "postgresql:"].includes(url.protocol) ||
     !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
     url.port !== "54322" ||
-    url.pathname !== "/postgres"
+    url.pathname !== "/postgres" ||
+    url.search !== ""
   )
     throw new Error("local_supabase_database_required");
 }
