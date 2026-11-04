@@ -1,28 +1,33 @@
 # Recalino — پذیرش فاز ۱ ‏L3 ‏(Phase 1 acceptance، دروازهٔ G-L3)
 
-- **نسخه:** 0.1-draft · تاریخ: 2026-11-04 · نویسنده: سشن L1 ‏(`aeo-10`) · پایه: `main@c886877`
+- **نسخه:** 0.1 · تاریخ: 2026-11-04 · نویسنده: سشن L1 ‏(`aeo-99`) · پایه: `main@c886877`
 - **مرجع معیارها:** l3-plan §۸ در دفتر مهندسی AEO (Documented: روادمپ §۱-۳ و §۹).
-- **مرجع داده:** سند جمع‌بندی فاز ۱ ‏(`docs/l3/phase1-closeout.md` نسخهٔ 0.1 در دفتر AEO)، دفتر کل `aeo` (۳۹۰۷ رویداد، سالم، لنگرها matched)، و GitHub با خواندن فقط (GET).
+- **مرجع داده:** سند جمع‌بندی فاز ۱ ‏(`docs/l3/phase1-closeout.md` نسخهٔ 0.2 در دفتر AEO)، تحلیل L-bench ‏(`docs/l2/bench/analysis-l3.md` نسخهٔ 0.4 §۷-۹، از دادهٔ خام seq ‏2557 تا 3907)، دفتر کل `aeo` (۳۹۰۷ رویداد، سالم، لنگرها matched)، و GitHub با خواندن فقط (GET).
 - **برچسب‌ها:**
   - **[M]**: Observed by model. L1 خودش از ledger، git یا GitHub خواند.
   - **[D]**: Documented. از سند یا پیام بازبین آمده است.
   - **[NV]**: Not Verified.
-  - **⟨L-bench⟩**: جای عددی که L-bench می‌سنجد. تا تأیید بازبین خالی می‌ماند.
+  - **[L-bench]**: از analysis-l3 0.4 §۷-۹، Observed by model از دادهٔ seq ‏2557 تا 3907.
 - **قید این سند:**
   - URL، نام حساب و ایمیل عمداً نیامده‌اند.
   - این PR فقط `docs/aeo/**` را تغییر می‌دهد.
-  - **این سند پیش‌نویس است. پذیرش با Review ‏APPROVED مالک روی همین PR است (G-L3).**
+  - **پذیرش با Review ‏APPROVED مالک روی head همین PR است (G-L3).**
 
 ## ۱. خلاصهٔ داوری
-| معیار (l3-plan §۸) | هدف | نتیجه | وضعیت |
+| معیار (l3-plan §۸) | هدف | نتیجه | حکم |
 |---|---|---|---|
-| معیار Taskها | ۱۰ Task واقعی از Task Card تا merge؛ ≥ ۸ ادغام‌شده با تست مرجع سبز | **۱۰ از ۱۰** (و P1-00)، همه با verify ‏pass و main-check ‏pass [M] | ✔ برآورده |
-| معیار First-Pass Review Acceptance | نرخ ≥ ۶۰٪ | ⟨L-bench: First-Pass⟩ | منتظر L-bench |
-| معیار Escaped Defects (risk:high) | صفر | ‏defect واقعی: **۰** [M]؛ seeded: ⟨L-bench⟩ | بخش واقعی ✔؛ seeded منتظر L-bench |
-| معیار Recovery Success ‏(B-06) | نرخ ≥ ۸۰٪، فقط با `aeo run` | ⟨L-bench: Recovery⟩ | منتظر L-bench |
-| معیار Usage per Accepted PR ‏(B-07) | ثبت‌شده؛ ظرفیت هفتگی برآوردشده | ⟨L-bench: Usage/PR⟩؛ عدد خام ledger در §۳ | منتظر L-bench |
-| معیار رخداد امنیتی | صفر؛ و صفر در B-08 | **۰** رخداد [M]؛ B-08: ⟨L-bench⟩ | بخش ledger ✔؛ B-08 منتظر L-bench |
+| معیار ۱. Taskها | ۱۰ Task واقعی از Task Card تا merge؛ ≥ ۸ با تست مرجع سبز | **۱۰ از ۱۰** (و P1-00 زیرساخت)؛ ۰ نقض Gate [L-bench] | ✔ برآورده |
+| معیار ۲. First-Pass Review Acceptance | ≥ ۶۰٪ | عدد اصلی **ب۱: ۹ از ۱۰ (۹۰٪)**؛ کنارش الف ۱۰ از ۱۰ (۱۰۰٪) و ب۲ ۷ از ۱۰ (۷۰٪) [L-bench] | ✔ برآورده با هر سه تعریف |
+| معیار ۳. Escaped Defects ‏(risk:high) | ۰ | **۰، موقت** [L-bench] | ✔ برآورده، با قید: پنجرهٔ پیگیری باز است |
+| معیار ۴. Recovery Success ‏(B-06) | ≥ ۸۰٪، فقط با `aeo run` | **با تعریف B-06 اندازه‌پذیر نیست.** جانشین‌ها: الف ۱۱ از ۱۱ (۱۰۰٪)، ب ۰ از ۱۲ (۰٪) [L-bench] | ✘ سنجیده نشد؛ تصمیم مالک |
+| معیار ۵. Usage per Accepted PR ‏(B-07) | ثبت؛ ظرفیت هفتگی برآوردشده | میانگین **2.12** دلار، میانه 1.48، بیشینه 6.92؛ ظرفیت حدود ۴۷ Task در هفته [L-bench] | ✔ ثبت شد (ظرفیت Not Verified) |
+| معیار ۶. رخداد امنیتی | ۰؛ و ۰ در B-08 | **۰** رخداد؛ چهار `PushStopped` پیش از push [L-bench]، [M] | ✔ برآورده، با قید: B-08 در L3 اجرا نشد [NV] |
 | دروازهٔ G-L3 | PR «Phase 1 acceptance» روی `docs/aeo/` با Review ‏APPROVED مالک | همین PR | منتظر approve مالک |
+
+- **جمع‌بندی:**
+  - برآورده بی قید: بندهای ۱، ۲ و ۵.
+  - برآورده با قید: بند ۳ (موقت) و بند ۶ (B-08 اجرا نشد).
+  - سنجیده نشد: بند ۴. Recovery با تعریف B-06 در فاز ۱ رخ نداد، و تصمیمش با مالک است: پذیرش با جانشین‌ها، یا آزمون B-06 در فاز ۲.
 
 ## ۲. معیار Taskها — شاهد [M]
 ستون «attempt» یعنی شمار attemptهای گام implement. هزینه همان `total_cost_usd` در رویدادهای Job است (R50). ستون «seq ‏Merged» از دفتر کل `aeo` آمده است.
@@ -52,18 +57,21 @@
   - ‏P1-06 نخستین merge خودکار D7 بود. [M]، [D]
 - **revert:** هیچ Task پس از merge ‏revert نشد. [M]
 
-## ۳. معیارهای سنجشی — جای خالی برای L-bench
-| سنجه | عدد | روش و منبع | برچسب |
-|---|---|---|---|
-| ‏First-Pass Review Acceptance | ⟨L-bench⟩ | ⟨L-bench: تعریف و شمارنده⟩ | ⟨—⟩ |
-| ‏Recovery Success ‏(B-06) | ⟨L-bench⟩ | ⟨L-bench⟩؛ فقط Jobهای `aeo run` | ⟨—⟩ |
-| ‏Usage per Accepted PR ‏(B-07) | ⟨L-bench⟩ | ⟨L-bench⟩ | ⟨—⟩ |
-| زمان‌ها (Task Card تا merge، PR تا merge) | ⟨L-bench⟩ | ⟨L-bench⟩ | ⟨—⟩ |
-| ‏Escaped Defects ‏(seeded) | ⟨L-bench⟩ | ⟨L-bench⟩ | ⟨—⟩ |
-| رخداد امنیتی در B-08 | ⟨L-bench⟩ | ⟨L-bench⟩ | ⟨—⟩ |
+## ۳. اعداد نهایی L-bench ‏(analysis-l3 0.4 §۷-۹، Observed by model از دادهٔ seq ‏2557–3907؛ عیناً)
+1. Taskها: ۱۰ از ۱۰ Task واقعی (P1-01 تا P1-10) از کارت تا merge، همه با تست مرجع سبز (verify، `required-checks` و `MainChecked` ‏pass؛ ۰ نقض Gate)؛ به‌اضافهٔ P1-00 زیرساخت؛ `Merged` seq ‏2909 تا 3906، `MainChecked` ‏2912 تا 3907 — برآورده (≥ ۸).
+2. First-Pass Review Acceptance: ‏۱۰ از ۱۰ (۱۰۰٪) با تعریف §۸ (نخستین `reviewer.code` ‏approve و نخستین gate ‏`review:code` روی نخستین head ‏pass)؛ ۹ از ۱۰ (۹۰٪) بی implement پس از PR (فقط P1-09، seq ‏3859)؛ ۷ از ۱۰ (۷۰٪) بی هیچ head تازه (P1-03 و P1-04 فقط E22، seq ‏3008 و 3033) — برآورده (≥ ۶۰٪).
+3. Escaped Defects ‏(risk:high): ‏۰ تا امروز، موقت تا بسته شدن پنجرهٔ پیگیری؛ نقص یکپارچگی P1-09 پیش از merge در CI گرفته شد (seq ‏3806 و 3815) و با rework درست شد (3859)؛ ۰ `RegressionDetected` روی Recalino — برآورده (موقت).
+4. Recovery Success ‏(B-06): با تعریف B-06 اندازه‌پذیر نیست (در فاز ۱ قطع تزریق‌شده و Job یتیم نبود)؛ جانشین «بازیابی تا پایان Task» ۱۱ از ۱۱ (۱۰۰٪)؛ جانشین «بی دخالت دستی» ۰ از ۱۲ (۰٪؛ ۷ `JobBlocked`، ۳ `PushStopped` شاخهٔ Task، ۱ شکست CI، ۱ ‏D20) — سنجیده نشد؛ تصمیم مالک.
+5. Usage per Accepted PR: میانگین 2.12 دلار (23.29 ÷ ۱۱ PR)، میانه 1.48، بیشینه 6.92 ‏(P1-09)؛ high میانگین 3.47؛ ظرفیت با D8 ‏(۱۰۰ دلار در هفته) حدود ۴۷ Task، و حدود ۲۹ اگر همه high باشند (کران بودجه، Not Verified) — ثبت شد.
+6. رخداد امنیتی: ‏۰؛ چهار `PushStopped` پیش از push (seq ‏2759، 3490، 3534: مثبت کاذب؛ 3681: توقف درست scope)؛ تغییر policy فقط با PR ‏L1 و approve مالک — برآورده.
+7. زمان‌ها: PR تا merge ‏high میانه ۲٫۲۲ ساعت (۰٫۶۷ تا ۳٫۹۵، با انتظار مالک)؛ D20 روی `aeo`: تشخیص ۴۵ ثانیه، revert باز ۴ ثانیه، freeze ‏۶۰۸ ثانیه، ۱ approve انسانی (seq ‏3178 تا 3200)؛ نخستین merge خودکار D7: ‏#93، ۱۳٫۲ دقیقه (seq ‏3284 تا 3300).
 
-- **عدد خام ledger، برای مقایسه و نه به‌جای عدد L-bench:** ‏23.29 دلار برای ۱۱ PR ‏Task، یعنی میانگین حدود 2.12 دلار برای هر PR؛ ۶۲ Job و ۷۸۴ نوبت. [M]
-- **زمان PR تا merge در GitHub:** از ۰٫۲ تا ۴٫۰ ساعت. این عدد انتظار approve مالک را هم در بر دارد. [M]
+- **تعریف‌های First-Pass ‏[L-bench]:**
+  - الف (تعریف §۸): نخستین `reviewer.code` ‏approve داد و نخستین gate ‏`review:code` روی نخستین head ‏pass شد.
+  - ب۱ (عدد اصلی): هیچ implement تازه‌ای پس از `PROpened` نیامد.
+  - ب۲: هیچ head تازه‌ای پس از `PROpened` نیامد. این تعریف head ‏E22 را هم می‌شمارد.
+  - چرا ب۱ عدد اصلی است: E22 هزینهٔ ترتیب merge است، نه کیفیت کار.
+- **هشدار ‏[L-bench]:** review نخست P1-09 نقص یکپارچگی را ندید، و CI آن را گرفت.
 
 ## ۴. رخداد امنیتی و توقف‌ها — شاهد [M]
 - **خروج داده:** رویدادی ثبت نشد.
@@ -85,6 +93,7 @@
   - موردهای کارت یا base ‏(۳): seq ‏3250 ‏(P1-06)، 3567 ‏(P1-09) و 3612 ‏(P1-10).
   - نتیجه: هر هفت Job ‏blocked ماند، و هیچ‌یک کار ناقص را push نکرد.
 - **نقص آزمون int در CI ‏(P1-09، seq ‏3806 و 3815):**
+  - در همان اجرای gate (seq ‏3807 تا 3809)، verify، review:code و review:security هم ‏fail بودند. علت: base ‏attestation ‏(`c848e51`) با main ‏(`d3baa13`) برابر نبود (R33)، و reviewها مال head پیشین بودند. این شکست بازبینی نبود.
   - مسیر کشف: verify و هر دو review ‏pass بودند، و CI آن را پیش از merge گرفت.
   - اصلاح: attempt 3 ‏(`1d97a5f`).
   - نتیجه: به main نرسید، پس escaped defect نیست.
