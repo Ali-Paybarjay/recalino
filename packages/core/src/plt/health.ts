@@ -7,7 +7,11 @@ import type { Database } from "../db";
 export interface PlatformHealth {
   /** Size of the whole database in bytes; the Supabase Free plan turns read-only at its limit. */
   databaseBytes: number;
-  /** Jobs that failed for good (no retry left) in the hour before `now`. */
+  /**
+   * Jobs that failed for good (no retry left) from `since` up to `now`; by default the hour before
+   * `now`. P2-03: the health check passes a window that starts where its last successful check
+   * left off, so the name keeps its contract field and no longer always means one hour.
+   */
   failedJobsLastHour: number;
   /** When the longest-waiting due job became due; null when nothing is waiting. */
   oldestQueuedAt: Date | null;
@@ -18,8 +22,14 @@ export interface PlatformHealth {
   lastRunnerAt: Date | null;
 }
 
-export async function readPlatformHealth(db: Database, now: Date): Promise<PlatformHealth> {
-  const hourAgo = new Date(now.getTime() - 3_600_000);
+/** Read-only. `since` starts the failed-job window (default: one hour before `now`). */
+export async function readPlatformHealth(
+  db: Database,
+  now: Date,
+  since: Date = new Date(now.getTime() - 3_600_000),
+): Promise<PlatformHealth> {
+  if (!Number.isFinite(now.getTime()) || !Number.isFinite(since.getTime()) || since > now)
+    throw new Error("Invalid failed-job window");
   const { rows } = await sql<{
     database_bytes: string;
     failed_last_hour: string;
@@ -27,7 +37,8 @@ export async function readPlatformHealth(db: Database, now: Date): Promise<Platf
     last_runner_at: Date | null;
   }>`
     select pg_database_size(current_database()) as database_bytes,
-      count(*) filter (where state = 'failed' and finished_at >= ${hourAgo}) as failed_last_hour,
+      count(*) filter (where state = 'failed' and finished_at >= ${since} and finished_at <= ${now})
+        as failed_last_hour,
       min(run_at) filter (where state in ('queued', 'retry_scheduled') and run_at <= ${now})
         as oldest_queued_at,
       max(created_at) filter (where singleton_key like 'every-%') as last_runner_at

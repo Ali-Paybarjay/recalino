@@ -5,12 +5,15 @@
 // once per episode: again only after the signal went back under its threshold, which is recorded.
 // P1-09 (RR-10): a failed processing run ends its job successfully, so failed_jobs misses it; the
 // failed_runs signal counts the runs that failed in the last hour (proc.countFailedRuns) instead.
+// P2-03: both failure counts start where the last successful check left off (healthWindowStart),
+// so two checks more than an hour apart miss no failure between them.
 import { sql } from "kysely";
 import { z } from "zod";
 import type { Database } from "../db";
 import {
   createLogger,
   type Logger,
+  lastSucceededJobAt,
   latestSubjectAudit,
   type PeriodicJob,
   type PlatformHealth,
@@ -20,6 +23,8 @@ import {
 } from "../plt";
 import { countFailedRuns } from "../proc";
 import type { HealthCondition, SystemHealth } from "./admin-contracts";
+
+const HEALTH_CHECK_KIND = "ops.health_check";
 
 /**
  * Thresholds; a deployment overrides any of them with RECALINO_HEALTH_JSON. The database limit is
@@ -62,18 +67,41 @@ export function readHealthSettings(
   return result.data;
 }
 
-/** The platform signals and the processing runs that failed in the hour before `now`. */
+/**
+ * The platform signals and the processing runs that failed within the health window (see
+ * healthWindowStart); the field names keep the admin contract and the int test.
+ */
 export interface HealthReading extends PlatformHealth {
   failedRunsLastHour: number;
 }
 
-/** One read of every health signal; the failed-run count is proc's own read-only query. */
+const HOUR_MS = 3_600_000;
+/** P2-03: the longest window, so the counts stay bounded; a longer gap is its own incident. */
+const MAX_WINDOW_MS = 24 * HOUR_MS;
+
+/**
+ * P2-03 (CWE-778): where the failed-job and failed-run counts start. The check is queued on a
+ * wall-clock key, so two checks may be more than an hour apart; starting one hour before the last
+ * successful check finished leaves no gap between them (the overlap is harmless: an alert is raised
+ * once per episode). Bounded at 24 hours; without a previous successful check, one hour.
+ */
+export function healthWindowStart(now: Date, previousSuccessAt: Date | null): Date {
+  const hourAgo = now.getTime() - HOUR_MS;
+  if (previousSuccessAt === null) return new Date(hourAgo);
+  const start = Math.max(previousSuccessAt.getTime() - HOUR_MS, now.getTime() - MAX_WINDOW_MS);
+  // A previous check never shortens the window below one hour (it is read at or before `now`).
+  return new Date(Math.min(start, hourAgo));
+}
+
+/**
+ * One read of every health signal. The previous check's time comes from plt's own read-only
+ * lookup (ADR-0002 rule 4); the failed-run count is proc's own read-only query.
+ */
 export async function readHealth(db: Database, now: Date): Promise<HealthReading> {
-  const platform = await readPlatformHealth(db, now);
-  const failedRunsLastHour = await countFailedRuns(db, {
-    since: new Date(now.getTime() - 3_600_000),
-    until: now,
-  });
+  const previous = await lastSucceededJobAt(db, HEALTH_CHECK_KIND, now);
+  const since = healthWindowStart(now, previous);
+  const platform = await readPlatformHealth(db, now, since);
+  const failedRunsLastHour = await countFailedRuns(db, { since, until: now });
   return { ...platform, failedRunsLastHour };
 }
 
@@ -198,7 +226,7 @@ export function systemHealthJob(options: { log?: Logger } = {}): PeriodicJob {
   return {
     everySeconds: 3600,
     definition: {
-      kind: "ops.health_check",
+      kind: HEALTH_CHECK_KIND,
       version: 1,
       payload: z.strictObject({}),
       async run(_input, job) {

@@ -50,6 +50,7 @@ export {
   type JobState,
   jobState,
   jobStates,
+  lastSucceededJobAt,
   latestJobStateForPayload,
   purgeFinishedJobs,
   type RunOptions,
