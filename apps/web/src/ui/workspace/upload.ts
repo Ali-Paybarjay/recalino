@@ -24,6 +24,10 @@ export interface UploadPartDiagnostic {
 export interface UploadRecovery {
   attempts?: number;
   signal?: AbortSignal;
+  /**
+   * How long one request attempt may go without progress before it times out (default 90 s).
+   * Each transfer progress reported through `extendUploadDeadline` starts the window again.
+   */
   timeoutMs?: number;
   onRetry?: (attempt: number) => void;
   onOffline?: () => void;
@@ -153,6 +157,17 @@ async function waitForConnection(options: UploadRecovery) {
   });
 }
 
+/** Restarts the no-progress deadline of each request attempt, keyed by the attempt's signal. */
+const deadlineRestarts = new WeakMap<AbortSignal, () => void>();
+
+/**
+ * Reports transfer progress for the request attempt that owns `signal`, so a slow but progressing
+ * transfer is not timed out (AUD-1 F-1). A signal that no attempt owns is ignored.
+ */
+export function extendUploadDeadline(signal?: AbortSignal) {
+  if (signal) deadlineRestarts.get(signal)?.();
+}
+
 async function requestWithDeadline<T>(
   request: (signal: AbortSignal) => Promise<T>,
   options: UploadRecovery,
@@ -162,10 +177,16 @@ async function requestWithDeadline<T>(
   const controller = new AbortController();
   const cancel = () => controller.abort(options.signal?.reason);
   options.signal?.addEventListener("abort", cancel, { once: true });
-  const timer = setTimeout(
-    () => controller.abort(new DOMException("The upload request timed out.", "TimeoutError")),
-    options.timeoutMs ?? 90_000,
-  );
+  const idleMs = options.timeoutMs ?? 90_000;
+  const expire = () =>
+    controller.abort(new DOMException("The upload request timed out.", "TimeoutError"));
+  // A request without progress, such as a signed link GET or a stalled PUT, keeps this bound.
+  let timer = setTimeout(expire, idleMs);
+  deadlineRestarts.set(controller.signal, () => {
+    if (controller.signal.aborted) return;
+    clearTimeout(timer);
+    timer = setTimeout(expire, idleMs);
+  });
   const cancelled = new Promise<never>((_, reject) => {
     controller.signal.addEventListener("abort", () => reject(controller.signal.reason), {
       once: true,
@@ -175,6 +196,7 @@ async function requestWithDeadline<T>(
     // The race also bounds a stalled response reader or a request that ignores abort.
     return await Promise.race([request(controller.signal), cancelled]);
   } finally {
+    deadlineRestarts.delete(controller.signal);
     clearTimeout(timer);
     options.signal?.removeEventListener("abort", cancel);
   }
