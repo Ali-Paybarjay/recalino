@@ -405,14 +405,11 @@ export async function uploadAutomaticPhoto(
             part.index * contract.partBytes,
             (part.index + 1) * contract.partBytes,
           );
+          // Each new byte sent restarts this attempt's no-progress deadline, like the audio parts;
+          // a PUT without progress still times out after 90 seconds.
           return options.put
             ? options.put(link.url, bytes, photo.blob.type, signal)
-            : fetch(link.url, {
-                method: "PUT",
-                headers: { "content-type": photo.blob.type },
-                body: bytes,
-                signal,
-              });
+            : uploadWithProgress(link.url, bytes, photo.blob.type, () => {}, signal);
         },
         async (signal) => {
           check();
