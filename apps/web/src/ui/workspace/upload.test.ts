@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceRequestError, workspaceRequest } from "./api";
 import {
+  extendUploadDeadline,
   resetUploadFailureDiagnostics,
   retryUploadRequest,
   UploadInterruptedError,
   uploadFailureDiagnostics,
   uploadWithConfirmation,
 } from "./upload";
+import { uploadWithProgress } from "./upload-progress";
 
 beforeEach(() => resetUploadFailureDiagnostics());
 afterEach(() => {
@@ -459,5 +461,179 @@ describe("an interrupted upload keeps its last cause (AUD-1 F-6)", () => {
     const diagnostics = uploadFailureDiagnostics();
     expect(diagnostics.total).toBe(60);
     expect(diagnostics.recent).toHaveLength(50);
+  });
+});
+
+describe("a part PUT times out only after its deadline passes without progress (AUD-1 F-1)", () => {
+  class FakeXMLHttpRequest {
+    static instances: FakeXMLHttpRequest[] = [];
+    status = 0;
+    upload: { onprogress: ((event: { loaded: number; total: number }) => void) | null } = {
+      onprogress: null,
+    };
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    onabort: (() => void) | null = null;
+    ontimeout: (() => void) | null = null;
+    open = vi.fn();
+    setRequestHeader = vi.fn();
+    send = vi.fn();
+    abort = vi.fn(() => this.onabort?.());
+
+    constructor() {
+      FakeXMLHttpRequest.instances.push(this);
+    }
+
+    progress(loaded: number) {
+      this.upload.onprogress?.({ loaded, total: loaded });
+    }
+
+    respond(status: number) {
+      this.status = status;
+      this.onload?.();
+    }
+  }
+
+  /** One 8 MiB audio part, the size the upload contract sends. */
+  const part = new Blob([new Uint8Array(8 * 1024 * 1024)], { type: "audio/webm" });
+
+  beforeEach(() => {
+    FakeXMLHttpRequest.instances = [];
+    vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
+    vi.useFakeTimers();
+  });
+
+  /** Writes the part like the app: a signed link GET, then the progress-reporting PUT. */
+  function putPart(
+    options: { timeoutMs?: number; attempts?: number; stalledLink?: boolean },
+    stored: boolean,
+  ) {
+    const signals: AbortSignal[] = [];
+    const write = vi.fn(async (signal?: AbortSignal) => {
+      if (signal) signals.push(signal);
+      await (options.stalledLink ? new Promise<void>(() => {}) : Promise.resolve());
+      return uploadWithProgress("https://storage.example/part", part, part.type, () => {}, signal);
+    });
+    const confirm = vi.fn().mockResolvedValue({ confirmed: stored });
+    const retry = vi.fn();
+    const settled = uploadWithConfirmation(write, confirm, interrupted, {
+      attempts: options.attempts ?? 3,
+      confirmSuccess: true,
+      onRetry: retry,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    }).then(
+      () => "completed" as const,
+      (failure: unknown) => failure,
+    );
+    return { settled, write, confirm, retry, signals };
+  }
+
+  async function activeRequest() {
+    await vi.advanceTimersByTimeAsync(0);
+    const request = FakeXMLHttpRequest.instances[0];
+    if (!request) throw new Error("The part PUT has not started.");
+    return request;
+  }
+
+  it("completes a slow but progressing 120 second PUT without a timeout or a retry", async () => {
+    const upload = putPart({}, true);
+    const request = await activeRequest();
+    for (let second = 10; second <= 120; second += 10) {
+      await vi.advanceTimersByTimeAsync(10_000);
+      request.progress(Math.floor((part.size * second) / 120));
+    }
+    request.respond(201);
+    expect(await upload.settled).toBe("completed");
+    expect(request.abort).not.toHaveBeenCalled();
+    expect(upload.signals[0]?.aborted).toBe(false);
+    expect(upload.write).toHaveBeenCalledTimes(1);
+    expect(upload.retry).not.toHaveBeenCalled();
+    // Only the checkpoint after the successful PUT: no verification of a timed out write.
+    expect(upload.confirm).toHaveBeenCalledTimes(1);
+    expect(FakeXMLHttpRequest.instances).toHaveLength(1);
+    expect(uploadFailureDiagnostics().total).toBe(0);
+  });
+
+  it("times out a stalled PUT without progress at 90 seconds", async () => {
+    const upload = putPart({ attempts: 1 }, false);
+    const request = await activeRequest();
+    await vi.advanceTimersByTimeAsync(89_999);
+    expect(request.abort).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(request.abort).toHaveBeenCalledTimes(1);
+    expect(upload.signals[0]?.reason).toMatchObject({ name: "TimeoutError" });
+    expect(await upload.settled).toMatchObject({ message: interrupted, lastCause: "timeout" });
+  });
+
+  it("times out a stalled signed link GET at 90 seconds before any PUT", async () => {
+    const upload = putPart({ attempts: 1, stalledLink: true }, false);
+    await vi.advanceTimersByTimeAsync(89_999);
+    expect(upload.signals[0]?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(upload.signals[0]?.reason).toMatchObject({ name: "TimeoutError" });
+    expect(await upload.settled).toMatchObject({ message: interrupted, lastCause: "timeout" });
+    expect(FakeXMLHttpRequest.instances).toHaveLength(0);
+  });
+
+  it("times out 90 seconds after the last new bytes, even if repeated progress events follow", async () => {
+    const upload = putPart({ attempts: 1 }, false);
+    const request = await activeRequest();
+    await vi.advanceTimersByTimeAsync(10_000);
+    request.progress(1024);
+    for (let second = 20; second < 100; second += 10) {
+      await vi.advanceTimersByTimeAsync(10_000);
+      request.progress(1024);
+    }
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(request.abort).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(request.abort).toHaveBeenCalledTimes(1);
+    expect(await upload.settled).toMatchObject({ lastCause: "timeout" });
+  });
+
+  it("waits at most 90 seconds for the response once every byte is sent", async () => {
+    const upload = putPart({ attempts: 1 }, false);
+    const request = await activeRequest();
+    await vi.advanceTimersByTimeAsync(30_000);
+    request.progress(part.size);
+    await vi.advanceTimersByTimeAsync(89_999);
+    expect(request.abort).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(request.abort).toHaveBeenCalledTimes(1);
+    expect(await upload.settled).toMatchObject({ lastCause: "timeout" });
+  });
+
+  it("keeps an explicit timeoutMs as the window without progress", async () => {
+    const stalled = putPart({ attempts: 1, timeoutMs: 5000 }, false);
+    const stalledRequest = await activeRequest();
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(stalledRequest.abort).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(stalledRequest.abort).toHaveBeenCalledTimes(1);
+    expect(await stalled.settled).toMatchObject({ lastCause: "timeout" });
+
+    FakeXMLHttpRequest.instances = [];
+    const progressing = putPart({ timeoutMs: 5000 }, true);
+    const request = await activeRequest();
+    for (let second = 4; second <= 12; second += 4) {
+      await vi.advanceTimersByTimeAsync(4_000);
+      request.progress(Math.floor((part.size * second) / 12));
+    }
+    request.respond(201);
+    expect(await progressing.settled).toBe("completed");
+    expect(request.abort).not.toHaveBeenCalled();
+    expect(progressing.retry).not.toHaveBeenCalled();
+  });
+
+  it("a finished attempt leaves no deadline that late progress could restart", async () => {
+    const upload = putPart({}, true);
+    const request = await activeRequest();
+    request.progress(part.size);
+    request.respond(201);
+    expect(await upload.settled).toBe("completed");
+    expect(vi.getTimerCount()).toBe(0);
+    extendUploadDeadline(upload.signals[0]);
+    extendUploadDeadline(undefined);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

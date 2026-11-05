@@ -1,4 +1,9 @@
-/** Reports transmitted bytes; callers still confirm the stored file before accepting it. */
+import { extendUploadDeadline } from "./upload";
+
+/**
+ * Reports transmitted bytes; callers still confirm the stored file before accepting it. Each new
+ * byte sent restarts the no-progress deadline of the upload attempt that owns `signal`.
+ */
 export async function uploadWithProgress(
   signedUrl: string,
   body: Blob,
@@ -10,6 +15,7 @@ export async function uploadWithProgress(
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     let settled = false;
+    let furthest = 0;
     const cleanup = () => {
       request.upload.onprogress = null;
       request.onload = null;
@@ -31,7 +37,13 @@ export async function uploadWithProgress(
 
     // Register before open/send so browsers deliver upload events reliably.
     request.upload.onprogress = (event) => {
-      onProgress(Math.min(body.size, Math.max(0, event.loaded)), body.size);
+      const loaded = Math.min(body.size, Math.max(0, event.loaded));
+      // Only bytes beyond the furthest point reached count as progress for the deadline.
+      if (loaded > furthest) {
+        furthest = loaded;
+        extendUploadDeadline(signal);
+      }
+      onProgress(loaded, body.size);
     };
     request.onload = () => {
       const result = { ok: request.status >= 200 && request.status < 300, status: request.status };
