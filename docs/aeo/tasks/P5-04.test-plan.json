@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "task_id": "P5-04",
+  "kind": "pass_to_pass",
+  "base_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
+  "command": {
+    "argv": [
+      "pnpm",
+      "test:unit"
+    ],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/voc/matching.ts",
+      "sha256": "0cbf9d91579bc557d6cdae2ccc62d61b13db9153b33eb9593cd9b1b23a79235c"
+    },
+    {
+      "path": "packages/core/src/voc/linking.ts",
+      "sha256": "68ba30dbdf87a084e0ac710546b80c99d85e20d2db3503c47dee24f46bed0c28"
+    },
+    {
+      "path": "packages/core/src/voc/analysis.ts",
+      "sha256": "a7e708f9ce734c2e3d26f87edf45bd60c34ab7f0a733cebae005dac509369c92"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/voice-engine.test.ts",
+      "name": "the unit suite is green on head, a new case pins the current voice pipeline settings to the current VOICE_MODEL_REVISION and fails when a setting changes without a revision bump, and voice matching, linking and analysis stay unchanged",
+      "maps_to_criteria": [
+        "AC-1",
+        "AC-3"
+      ]
+    }
+  ]
+}
