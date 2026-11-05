@@ -32,10 +32,7 @@
       "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
     }
   ],
-  "owns_paths": [
-    "apps/web/src/server/voice-engine.test.ts",
-    "apps/web/src/server/voice-engine.ts"
-  ],
+  "owns_paths": ["apps/web/src/server/voice-engine.test.ts", "apps/web/src/server/voice-engine.ts"],
   "depends_on": [],
   "context_refs": ["docs/aeo/l3/phase5-plan.md"],
   "test_plan_kind": "pass_to_pass",
