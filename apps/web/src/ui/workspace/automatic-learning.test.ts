@@ -622,6 +622,143 @@ describe("automatic recording photos", () => {
   });
 });
 
+describe("a board photo part PUT times out only after its deadline passes without progress", () => {
+  class FakeXMLHttpRequest {
+    static instances: FakeXMLHttpRequest[] = [];
+    status = 0;
+    upload: { onprogress: ((event: { loaded: number; total: number }) => void) | null } = {
+      onprogress: null,
+    };
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    onabort: (() => void) | null = null;
+    ontimeout: (() => void) | null = null;
+    open = vi.fn();
+    setRequestHeader = vi.fn();
+    send = vi.fn();
+    abort = vi.fn(() => this.onabort?.());
+
+    constructor() {
+      FakeXMLHttpRequest.instances.push(this);
+    }
+
+    progress(loaded: number) {
+      this.upload.onprogress?.({ loaded, total: loaded });
+    }
+
+    respond(status: number) {
+      this.status = status;
+      this.onload?.();
+    }
+  }
+
+  const contract = { partBytes: 120 } as InputContract;
+  /** One full board photo part of `contract.partBytes` bytes. */
+  const image = new Blob([new Uint8Array(120)], { type: "image/jpeg" });
+  let fetches: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    resetUploadFailureDiagnostics();
+    FakeXMLHttpRequest.instances = [];
+    vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
+    // A PUT that bypasses the progress transport never answers, so only its deadline settles it.
+    fetches = vi.fn(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        new Promise((_, reject) =>
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+            once: true,
+          }),
+        ),
+    );
+    vi.stubGlobal("fetch", fetches);
+    const actual = await vi.importActual<typeof import("./upload-progress")>("./upload-progress");
+    transport.upload.mockImplementation(actual.uploadWithProgress);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  /** Uploads one board photo like the app: no injected `put`, so the default transport is used. */
+  function uploadPhoto(stored: boolean) {
+    const recording = row();
+    const local: LocalPhoto = {
+      id: randomUUID(),
+      userId,
+      recordingId: recording.id,
+      offsetMs: 61_500,
+      captureState: "recording",
+      blob: image,
+      createdAt: recording.createdAt,
+      sourceAssetId: null,
+    };
+    const store = { savePhoto: vi.fn() };
+    const progress: string[] = [];
+    let confirmations = 0;
+    const request = vi.fn(async (path: string, method: string) => {
+      if (path === "/api/sources") return { assetId: sourceId, uploadId: "photo-upload" };
+      // The first check before writing finds nothing; later checks report `stored`.
+      if (path.endsWith("/parts/0") && method === "POST")
+        return { confirmed: confirmations++ > 0 && stored };
+      if (path.endsWith("/parts/0")) return { url: "https://storage.example.test/photo" };
+      if (path.endsWith("complete")) return {};
+      return { state: "pending", parts: [{ index: 0, verifiedAt: null }] };
+    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const settled = uploadAutomaticPhoto(recording, local, contract, {
+      store,
+      request: request as typeof workspaceRequest,
+      onProgress: (message) => progress.push(message),
+    }).then(
+      () => "completed" as const,
+      (failure: unknown) => failure,
+    );
+    return { settled, store, request, progress };
+  }
+
+  /** Lets the hashing and server reads run until the part PUT is in flight. */
+  async function activePut() {
+    for (let turn = 0; turn < 200; turn++) {
+      const request = FakeXMLHttpRequest.instances[0];
+      if (request?.send.mock.calls.length) return request;
+      if (fetches.mock.calls.length) break;
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    throw new Error("The board photo part PUT did not start through the progress transport.");
+  }
+
+  it("completes a slow but progressing 120 second photo PUT without a timeout or a retry", async () => {
+    const upload = uploadPhoto(true);
+    const request = await activePut();
+    for (let second = 10; second <= 120; second += 10) {
+      await vi.advanceTimersByTimeAsync(10_000);
+      request.progress(second);
+    }
+    request.respond(200);
+    expect(await upload.settled).toBe("completed");
+    expect(request.abort).not.toHaveBeenCalled();
+    expect(FakeXMLHttpRequest.instances).toHaveLength(1);
+    expect(fetches).not.toHaveBeenCalled();
+    expect(upload.progress.some((message) => message.startsWith("Retrying"))).toBe(false);
+    expect(upload.store.savePhoto).toHaveBeenCalledOnce();
+    expect(uploadFailureDiagnostics().total).toBe(0);
+  });
+
+  it("times out a stalled photo PUT without progress at 90 seconds", async () => {
+    const upload = uploadPhoto(false);
+    const request = await activePut();
+    await vi.advanceTimersByTimeAsync(89_999);
+    expect(request.abort).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(request.abort).toHaveBeenCalledTimes(1);
+    expect(transport.upload.mock.calls[0]?.[4]?.reason).toMatchObject({ name: "TimeoutError" });
+    // The timed out write is retried after its unconfirmed check, as before.
+    await vi.waitFor(() => expect(FakeXMLHttpRequest.instances).toHaveLength(2), {
+      timeout: 5000,
+      interval: 100,
+    });
+    expect(upload.progress).toContain("Retrying board photo at 1:01 (2 of 3)…");
+    expect(upload.store.savePhoto).not.toHaveBeenCalled();
+  });
+});
+
 describe("recording preparation authorization", () => {
   it("ignores historical recordings and waits for all new parts to register", () => {
     expect(automaticRecordingClasses([row({ autoGenerate: undefined })])).toEqual([]);
