@@ -17,7 +17,7 @@
 2. برنامه یک درخواست حذف privacy از نوع account ثبت می‌کند و رسید رمزشدهٔ حذف را در journal نگه می‌دارد.
 3. در گام tombstone، حساب در `acc.user_account` نشان حذف (`deleted_at`) می‌گیرد، یعنی soft delete می‌شود. hook ماژول `plt` در همین گام همهٔ ردیف‌های `plt.push_subscription` و `plt.notification` این حساب را پاک می‌کند. hookهای ماژول‌های دیگر هم دادهٔ خود را پس می‌گیرند.
 4. در گام cleanup، job ‏privacy همان hookها را دوباره اجرا می‌کند. تکرار بی‌خطر است و ردیفی را که پس از tombstone مانده باشد پاک می‌کند.
-5. در پایان job، نشست‌های کاربر باطل می‌شوند و هویت Auth با soft delete خود Supabase پاک‌سازی می‌شود. این روش ارجاع حساب را برای سوابق ممیزی append-only نگه می‌دارد.
+5. نشست‌های کاربر در گام `revoke_auth` باطل می‌شوند، پیش از hookهای پاک‌سازی ماژول‌ها. در پایان job، در گام `delete_auth`، هویت Auth با soft delete خود Supabase پاک‌سازی می‌شود. این روش ارجاع حساب را برای سوابق ممیزی append-only نگه می‌دارد.
 
 برچسب: Observed by model، از کد privacy و ‏`plt` در base همین Task.
 
