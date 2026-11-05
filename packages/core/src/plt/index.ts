@@ -1,4 +1,14 @@
 // Public API of the PLT module (platform and base protection). Other modules import only this file.
+export {
+  ACCOUNT_ORPHAN_DEFAULT_LIMIT,
+  ACCOUNT_ORPHAN_MAX_LIMIT,
+  type AccountOrphanCounts,
+  type AccountOrphanOptions,
+  type AccountOrphanSummary,
+  accountOrphansJob,
+  type ExistingAccountIds,
+  sweepAccountOrphans,
+} from "./account-orphans";
 export { isAdminOwner } from "./admin-access";
 export {
   AppError,

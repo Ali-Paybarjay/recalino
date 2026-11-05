@@ -47,6 +47,25 @@ export async function accountExists(db: Database, userId: string): Promise<boole
   return row !== undefined;
 }
 
+/**
+ * P4-01 (E123 b): read-only. Which of `userIds` still have an account row, active or tombstoned.
+ * A tombstoned account counts as existing: the privacy cleanup removes its data, not a sweep for
+ * rows whose account is gone. Identifiers only.
+ */
+export async function existingAccountIds(
+  db: Database | Tx,
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(userIds)];
+  if (!ids.length) return new Set();
+  const rows = await db
+    .selectFrom("acc.user_account")
+    .select("id")
+    .where("id", "in", ids)
+    .execute();
+  return new Set(rows.map((row) => row.id));
+}
+
 /** Serialize domain changes per learner inside the caller's transaction (ADR-0002). */
 export async function lockAccount(db: Tx, userId: string): Promise<void> {
   const row = await db

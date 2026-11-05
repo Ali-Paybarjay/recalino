@@ -5,6 +5,7 @@ export {
   accountExists,
   canStartNewProcessing,
   type ExplanationLanguage,
+  existingAccountIds,
   GOALS,
   type Goal,
   getAccountState,
