@@ -8,10 +8,7 @@
   },
   "commit_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
   "command": {
-    "argv": [
-      "pnpm",
-      "test:unit"
-    ],
+    "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
   },
   "files": [
@@ -33,10 +30,7 @@
       "id": "TP-1",
       "file": "apps/web/src/server/voice-engine.test.ts",
       "name": "the unit suite is green on head, a new case pins the current voice pipeline settings to the current VOICE_MODEL_REVISION and fails when a setting changes without a revision bump, and voice matching, linking and analysis stay unchanged",
-      "maps_to_criteria": [
-        "AC-1",
-        "AC-3"
-      ]
+      "maps_to_criteria": ["AC-1", "AC-3"]
     }
   ]
 }

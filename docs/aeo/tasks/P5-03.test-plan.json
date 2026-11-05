@@ -8,10 +8,7 @@
   },
   "commit_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
   "command": {
-    "argv": [
-      "pnpm",
-      "test:unit"
-    ],
+    "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
   },
   "files": [
@@ -37,11 +34,7 @@
       "id": "TP-1",
       "file": "packages/core/src/proc/prompt-version.test.ts",
       "name": "the unit suite is green on head, a new test pins the sha256 of both lesson system prompt templates to the current promptVersion and fails when a template changes without a promptVersion bump, and the prompts, promptVersion, the provider defaults and publish metadata stay unchanged",
-      "maps_to_criteria": [
-        "AC-1",
-        "AC-2",
-        "AC-3"
-      ]
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
     }
   ]
 }

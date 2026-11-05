@@ -8,10 +8,7 @@
   },
   "commit_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
   "command": {
-    "argv": [
-      "pnpm",
-      "test:unit"
-    ],
+    "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
   },
   "files": [
@@ -41,11 +38,7 @@
       "id": "TP-1",
       "file": "packages/core/src/plt/account-orphans.ts",
       "name": "the unit suite is green on head, apply checks for a missing account in the same delete statement (or runs serializable and aborts without deleting on a serialization error) while the dry-run default and the caps stay, a step cost estimate above its hold is logged and still recorded unchanged, and plt notifications, account deletion, the worker, quota costs and pricing stay unchanged",
-      "maps_to_criteria": [
-        "AC-1",
-        "AC-2",
-        "AC-3"
-      ]
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
     }
   ]
 }

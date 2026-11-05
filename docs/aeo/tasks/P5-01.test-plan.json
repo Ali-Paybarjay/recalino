@@ -8,10 +8,7 @@
   },
   "commit_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
   "command": {
-    "argv": [
-      "pnpm",
-      "test:unit"
-    ],
+    "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
   },
   "files": [
@@ -37,11 +34,7 @@
       "id": "TP-1",
       "file": "packages/core/src/acc/jobs.ts",
       "name": "the unit suite is green on head, the account orphan job is registered as a periodic acc job with existingAccountIds only and its scheduled run records per-table counts without ids and runs no delete, existingAccountIds keeps tombstoned accounts, and the plt orphan job, plt maintenance, the worker and account deletion stay unchanged",
-      "maps_to_criteria": [
-        "AC-1",
-        "AC-2",
-        "AC-3"
-      ]
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
     }
   ]
 }

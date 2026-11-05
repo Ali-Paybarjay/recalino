@@ -41,20 +41,13 @@
     "packages/core/src/proc/steps/runtime.ts",
     "packages/core/src/proc/steps/runtime.test.ts"
   ],
-  "depends_on": [
-    "P5-01"
-  ],
-  "context_refs": [
-    "docs/aeo/l3/phase5-plan.md"
-  ],
+  "depends_on": ["P5-01"],
+  "context_refs": ["docs/aeo/l3/phase5-plan.md"],
   "test_plan_kind": "pass_to_pass",
   "roles": {
     "implementer": "implementer.backend",
     "test_engineer": "test-engineer",
-    "reviewers": [
-      "reviewer.code",
-      "reviewer.security"
-    ]
+    "reviewers": ["reviewer.code", "reviewer.security"]
   },
   "limits": {
     "max_turns": 80,
