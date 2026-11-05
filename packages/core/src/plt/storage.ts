@@ -62,6 +62,20 @@ export interface NewObject {
   extension?: "apkg" | "html";
 }
 
+/** A module name is one lowercase ASCII segment: a letter, then letters, digits, `_` or `-`. */
+const MODULE_SEGMENT = /^[a-z][a-z0-9_-]*$/;
+
+/**
+ * The module becomes the first segment of a storage key, so only an allowlisted plain segment
+ * passes (CWE-22): no separator, dot, encoding, control or look-alike character can reach a key.
+ * Every storage writer calls this before any load, record or store write. The error never
+ * echoes the value.
+ */
+function assertModuleSegment(module: string): void {
+  if (typeof module !== "string" || !MODULE_SEGMENT.test(module))
+    throw errors.validationFailed({ storage: ["invalid_module"] });
+}
+
 /**
  * Records an object as pending, before any write link exists (rule 4). The key is built here
  * from the module, the owner and a random id; nothing the user typed becomes part of it.
@@ -70,6 +84,7 @@ export async function createObject(
   tx: Database | Tx,
   input: NewObject,
 ): Promise<{ id: string; key: string }> {
+  assertModuleSegment(input.module);
   const key = `${input.module}/${input.ownerUserId ?? "system"}/${randomUUID()}${input.extension ? `.${input.extension}` : ""}`;
   const row = await tx
     .insertInto("plt.storage_object")
@@ -235,6 +250,7 @@ export async function writeOwnedObject(
     targetObjectId?: string;
   },
 ): Promise<string> {
+  assertModuleSegment(input.module);
   if (!store.write) throw errors.validationFailed({ storage: ["worker_write_unavailable"] });
   if (db.isTransaction && !input.targetObjectId)
     throw errors.validationFailed({ storage: ["registered_target_required"] });
@@ -289,15 +305,6 @@ export async function writeOwnedObject(
     }
     throw failure;
   }
-}
-
-/**
- * The module becomes the first segment of a storage key, so it must be one plain segment:
- * not empty, no path separator and no `..` (CWE-22). The error never echoes the value.
- */
-function assertModuleSegment(module: string): void {
-  if (module === "" || module.includes("/") || module.includes("\\") || module.includes(".."))
-    throw errors.validationFailed({ storage: ["invalid_module"] });
 }
 
 /**
