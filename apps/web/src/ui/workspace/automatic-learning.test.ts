@@ -17,6 +17,11 @@ import {
   uploadAutomaticAudio,
   uploadAutomaticPhoto,
 } from "./automatic-learning";
+import {
+  resetUploadFailureDiagnostics,
+  UploadInterruptedError,
+  uploadFailureDiagnostics,
+} from "./upload";
 import { uploadCopy } from "./upload-copy";
 import { AudioUploadProblem } from "./upload-problems";
 
@@ -1001,6 +1006,68 @@ describe("automatic temporary audio upload", () => {
       files: [{ phase: "verifying" }],
     });
     expect(transport.upload).toHaveBeenCalledTimes(2);
+  });
+  it("an audio part whose XHR keeps timing out is interrupted with the cause timeout and a content-free diagnostic", async () => {
+    resetUploadFailureDiagnostics();
+    class StalledXMLHttpRequest {
+      status = 0;
+      upload: { onprogress: ((event: ProgressEvent) => void) | null } = { onprogress: null };
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      ontimeout: (() => void) | null = null;
+      open = vi.fn();
+      setRequestHeader = vi.fn();
+      abort = vi.fn();
+      send() {
+        this.upload.onprogress?.({ loaded: 1, total: 4, lengthComputable: true } as ProgressEvent);
+        this.ontimeout?.();
+      }
+    }
+    vi.stubGlobal("XMLHttpRequest", StalledXMLHttpRequest);
+    const actual = await vi.importActual<typeof import("./upload-progress")>("./upload-progress");
+    transport.upload.mockImplementation(actual.uploadWithProgress);
+    const request = vi.fn(async (path: string, method: string, body?: { action: string }) => {
+      if (body?.action === "start") return { uploadId: "upload" };
+      if (body?.action === "confirm_part") return { confirmed: false };
+      if (method === "GET" && path.includes("index="))
+        return { url: "https://storage.example.test/private-lecture.webm" };
+      if (method === "GET") return { state: "pending", parts: [] };
+      return {};
+    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const pending = Symbol("pending");
+      let failure: unknown = pending;
+      uploadAutomaticAudio(run, snapshot, { partBytes: 4 } as InputContract, {
+        userId,
+        store,
+        request: request as typeof workspaceRequest,
+      }).then(
+        () => {
+          failure = undefined;
+        },
+        (error: unknown) => {
+          failure = error;
+        },
+      );
+      await vi.waitFor(() => expect(failure).not.toBe(pending), { timeout: 5000, interval: 250 });
+      expect(failure).toBeInstanceOf(UploadInterruptedError);
+      expect(failure).toMatchObject({
+        message: "Audio upload was interrupted. The original is saved on this device.",
+        lastCause: "timeout",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(transport.upload).toHaveBeenCalledTimes(3);
+    const diagnostics = uploadFailureDiagnostics();
+    expect(diagnostics).toEqual({
+      total: 1,
+      recent: [{ kind: "timeout", part: 0, sentBytes: 1 }],
+    });
+    for (const hidden of [userId, sourceId, run.id, "lecture", "storage.example", "upload"])
+      expect(JSON.stringify(diagnostics.recent)).not.toContain(hidden);
   });
   it("names a missing local recording and performs no upload", async () => {
     const request = vi

@@ -4,7 +4,11 @@ import type { RecordingStore } from "../recording/store";
 import { userMessage, WorkspaceRequestError, workspaceRequest } from "./api";
 import { uploadAutomaticAudio } from "./automatic-learning";
 import type { ManualAudioStore, ManualAudioTransfer } from "./manual-audio-store";
-import { isRetryableUploadFailure } from "./upload";
+import {
+  isRetryableUploadFailure,
+  type UploadFailureCause,
+  UploadInterruptedError,
+} from "./upload";
 import { AudioUploadProblem, audioUploadRetryable } from "./upload-problems";
 
 type RunRead = { run: ProcessingRun; snapshot: RunSnapshot | null };
@@ -19,6 +23,8 @@ export class ManualAudioManager {
   private activeRunId: string | null = null;
   private removed = new Set<string>();
   private revision = 0;
+  /** The transport cause of each run's latest interruption; memory only, never saved or sent. */
+  private causes = new Map<string, UploadFailureCause | null>();
   constructor(
     readonly userId: string,
     private store: ManualAudioStore,
@@ -33,6 +39,8 @@ export class ManualAudioManager {
     } = {},
   ) {}
   snapshot = () => this.view;
+  /** Why the run's last upload was interrupted; null before an interruption or after progress. */
+  interruptionCause = (runId: string): UploadFailureCause | null => this.causes.get(runId) ?? null;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {
@@ -109,6 +117,7 @@ export class ManualAudioManager {
   }
   async forget(runId: string) {
     this.removed.add(runId);
+    this.causes.delete(runId);
     if (this.activeRunId === runId && this.operation) this.operation.abort();
     await this.store.remove(this.userId, runId);
     this.entries = this.entries.filter((entry) => entry.runId !== runId);
@@ -204,6 +213,7 @@ export class ManualAudioManager {
                 },
               );
               check();
+              this.causes.delete(entry.runId);
               await this.patch(entry, {
                 phase: "verifying",
                 message: "Audio uploaded. Verification and processing continue on the server.",
@@ -255,6 +265,9 @@ export class ManualAudioManager {
                 this.publish();
                 return;
               }
+              if (error instanceof UploadInterruptedError)
+                this.causes.set(entry.runId, error.lastCause);
+              else this.causes.delete(entry.runId);
               await this.patch(entry, {
                 phase: isRetryableUploadFailure(error)
                   ? entry.phase === "verifying"

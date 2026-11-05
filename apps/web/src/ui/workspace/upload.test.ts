@@ -1,7 +1,14 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceRequestError, workspaceRequest } from "./api";
-import { retryUploadRequest, UploadInterruptedError, uploadWithConfirmation } from "./upload";
+import {
+  resetUploadFailureDiagnostics,
+  retryUploadRequest,
+  UploadInterruptedError,
+  uploadFailureDiagnostics,
+  uploadWithConfirmation,
+} from "./upload";
 
+beforeEach(() => resetUploadFailureDiagnostics());
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -295,4 +302,162 @@ it("safe upload API retries preserve their stable idempotency key", async () => 
   expect(fetchMock).toHaveBeenCalledTimes(2);
   for (const [, init] of fetchMock.mock.calls)
     expect(init.headers["Idempotency-Key"]).toBe("same-key");
+});
+
+describe("an interrupted upload keeps its last cause (AUD-1 F-6)", () => {
+  /** Runs an upload with fake timers until it settles and returns its rejection. */
+  async function interruption(upload: Promise<unknown>): Promise<unknown> {
+    const failure = upload.then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(30_000);
+    return failure;
+  }
+  const start = (signal: AbortSignal) =>
+    workspaceRequest("/audio/start", "POST", { parts: [0] }, "same-key", { signal });
+  const confirmPart = (index: number) => (signal?: AbortSignal) =>
+    workspaceRequest(
+      `/api/sources/uploads/owned-upload/parts/${index}`,
+      "POST",
+      undefined,
+      undefined,
+      { signal },
+    );
+
+  it("a stalled request that times out three times keeps the cause timeout", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+    const failure = await interruption(
+      retryUploadRequest(start, interrupted, { attempts: 3, timeoutMs: 1000 }),
+    );
+    expect(failure).toBeInstanceOf(UploadInterruptedError);
+    expect(failure).toMatchObject({ message: interrupted, lastCause: "timeout" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("a request refused with HTTP 429 three times keeps the cause rate_limited", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => new Response("slow down", { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const failure = await interruption(retryUploadRequest(start, interrupted, { attempts: 3 }));
+    expect(failure).toBeInstanceOf(UploadInterruptedError);
+    expect(failure).toMatchObject({ message: interrupted, lastCause: "rate_limited" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("a request whose connection fails three times keeps the cause offline", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const failure = await interruption(retryUploadRequest(start, interrupted, { attempts: 3 }));
+    expect(failure).toBeInstanceOf(UploadInterruptedError);
+    expect(failure).toMatchObject({ message: interrupted, lastCause: "offline" });
+  });
+
+  it("a part PUT refused with HTTP 429 keeps rate_limited after its bounded retries", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? new Response(null, { status: 429 })
+        : Response.json({ confirmed: false }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const failure = await interruption(
+      uploadWithConfirmation(
+        (signal) => fetch("https://private-upload.example/part", { method: "PUT", signal }),
+        confirmPart(0),
+        interrupted,
+        { attempts: 3, confirmSuccess: true },
+      ),
+    );
+    expect(failure).toMatchObject({ message: interrupted, lastCause: "rate_limited" });
+    // Three PUTs, each verified once: no request beyond the existing recovery.
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it("a confirmation that keeps losing its connection carries offline out of the part", async () => {
+    vi.useFakeTimers();
+    const write = vi.fn().mockRejectedValue(new DOMException("Timed out", "TimeoutError"));
+    const confirm = vi.fn().mockRejectedValue(new TypeError("Confirmation unavailable"));
+    const failure = await interruption(
+      uploadWithConfirmation(write, confirm, interrupted, { attempts: 3 }),
+    );
+    expect(failure).toMatchObject({ message: interrupted, lastCause: "offline" });
+  });
+
+  it("a server outage is not reported as one of the three transport causes", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("gateway unavailable", { status: 503 })),
+    );
+    const failure = await interruption(retryUploadRequest(start, interrupted, { attempts: 3 }));
+    expect(failure).toMatchObject({ message: interrupted, lastCause: null });
+  });
+
+  it("counts each interruption once with only its kind, part number and sent bytes", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => {
+      throw new TypeError("Failed to fetch");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const failure = await interruption(
+      uploadWithConfirmation(
+        (signal) =>
+          fetch("https://private-upload.example/lecture.webm?token=signed", {
+            method: "PUT",
+            signal,
+          }),
+        confirmPart(2),
+        interrupted,
+        { attempts: 3, diagnostic: { part: 2, sentBytes: () => 7 } },
+      ),
+    );
+    expect(failure).toMatchObject({ lastCause: "offline" });
+    const diagnostics = uploadFailureDiagnostics();
+    // The confirmation's interruption is the part's interruption; it is not counted twice.
+    expect(diagnostics.total).toBe(1);
+    expect(diagnostics.recent).toEqual([{ kind: "offline", part: 2, sentBytes: 7 }]);
+    expect(Object.keys(diagnostics.recent[0] ?? {}).sort()).toEqual(["kind", "part", "sentBytes"]);
+    const recorded = JSON.stringify(diagnostics);
+    for (const secret of ["lecture", "private-upload", "token", "owned-upload", "http", "/"])
+      expect(recorded).not.toContain(secret);
+    // One PUT and three verification attempts: diagnostics add no network request.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("records an interruption without part facts as unknown part and bytes", async () => {
+    vi.useFakeTimers();
+    await interruption(
+      retryUploadRequest(
+        async () => {
+          throw new WorkspaceRequestError("Slow down", "rate_limited", undefined, 429);
+        },
+        interrupted,
+        { attempts: 2 },
+      ),
+    );
+    expect(uploadFailureDiagnostics()).toEqual({
+      total: 1,
+      recent: [{ kind: "rate_limited", part: null, sentBytes: null }],
+    });
+  });
+
+  it("keeps the diagnostics bounded while the counter keeps counting", async () => {
+    for (let index = 0; index < 60; index++)
+      await retryUploadRequest(
+        async () => {
+          throw new TypeError("Failed to fetch");
+        },
+        interrupted,
+        { attempts: 1 },
+      ).catch(() => {});
+    const diagnostics = uploadFailureDiagnostics();
+    expect(diagnostics.total).toBe(60);
+    expect(diagnostics.recent).toHaveLength(50);
+  });
 });
