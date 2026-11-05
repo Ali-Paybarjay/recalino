@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P4-04",
+  "kind": "pass_to_pass",
+  "base_sha": "7a794c589a226e380ba6d91d3294f978ac74a425",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7a794c589a226e380ba6d91d3294f978ac74a425",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/aip/pricing.ts",
+      "sha256": "bf5becd87d18b7c3b47cda23d67bbcb1636f23a33f6ee851664e4a0d4ddec427"
+    },
+    {
+      "path": "packages/core/src/aip/openrouter.ts",
+      "sha256": "3c2ac7b4ae6ca86d5080ab50a0063de6e38437907c5995b61bd672c435c1ffb7"
+    },
+    {
+      "path": "packages/core/src/quota/costs.ts",
+      "sha256": "4d6b4af777ef91e2c931084ed72453d168b42d506a18571fccb8db6a5bd0bb20"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/steps/runtime.ts",
+      "name": "the unit suite is green on head, usageKind maps the speech step to tts while every other mapping stays the same, and pricing, the OpenRouter client and quota costs stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

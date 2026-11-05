@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "task_id": "P4-02",
+  "kind": "pass_to_pass",
+  "base_sha": "7a794c589a226e380ba6d91d3294f978ac74a425",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7a794c589a226e380ba6d91d3294f978ac74a425",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/ui/workspace/upload.ts",
+      "sha256": "a2d9f1b425d5ba7021f149867f1c2f1de512547d5865dbc9c98977c00a9d36df"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-progress.ts",
+      "sha256": "d9e351fcace7cb7682f0f12f23aeae775a2485a272fef3db4feb6688a2d788eb"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-copy.ts",
+      "sha256": "5f4d91b3b0d6e47ba5069ec5a2828292fb22a32ebabfc8417832e8783903c027"
+    },
+    {
+      "path": "apps/web/src/ui/approved-copy.test.ts",
+      "sha256": "ffc9ad4fb33e8eb2d3f16c6d8e1d86f208d40a19b1920a49f86dcbbfd6877cef"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-concurrency.ts",
+      "sha256": "540d7b049c84a7f69a9a0902f899d0ae5db1eab88d2527a1793a63496cbbba7b"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/ui/workspace/automatic-learning.ts",
+      "name": "the unit suite is green on head, a slow but progressing board photo part PUT completes without a timeout while a stalled one still times out at 90 seconds, and upload, upload progress, the upload copy, the approved copy test and upload concurrency stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
