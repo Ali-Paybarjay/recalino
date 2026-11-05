@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P3-01",
+  "kind": "pass_to_pass",
+  "base_sha": "49e57e408c165eec0f36147709909eda2ece5993",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "49e57e408c165eec0f36147709909eda2ece5993",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/ui/workspace/upload-copy.ts",
+      "sha256": "5f4d91b3b0d6e47ba5069ec5a2828292fb22a32ebabfc8417832e8783903c027"
+    },
+    {
+      "path": "apps/web/src/ui/approved-copy.test.ts",
+      "sha256": "ffc9ad4fb33e8eb2d3f16c6d8e1d86f208d40a19b1920a49f86dcbbfd6877cef"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/upload-concurrency.ts",
+      "sha256": "540d7b049c84a7f69a9a0902f899d0ae5db1eab88d2527a1793a63496cbbba7b"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/source-upload.ts",
+      "sha256": "38098c86617c7001c8a18db6b3055db179f11dfb2caf067c53fbeccf7b832b2d"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/ui/workspace/upload.ts",
+      "name": "the unit suite is green on head, a slow but progressing part PUT completes without a timeout while a stalled one still times out at 90 seconds, and the upload copy, the approved copy test, upload concurrency and source upload stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}

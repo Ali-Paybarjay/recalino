@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P3-03",
+  "kind": "pass_to_pass",
+  "base_sha": "49e57e408c165eec0f36147709909eda2ece5993",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "49e57e408c165eec0f36147709909eda2ece5993",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/plt/storage-vercel-blob.ts",
+      "sha256": "39529e086181fb3ae48269d8ada1575c3316eb8e99e151edfce1925ae813f515"
+    },
+    {
+      "path": "packages/core/src/plt/storage-memory.ts",
+      "sha256": "52e596a913e5acf730755d845a000d99fdfcee2e3901251361910b47637fd311"
+    },
+    {
+      "path": "packages/core/src/plt/storage.int.test.ts",
+      "sha256": "f43d1f18fead60df10bcd4dc67cd1a8f394c6747945763066c13ecada083b83b"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/plt/storage.ts",
+      "name": "the unit suite is green on head, every storage writer rejects a module outside the allowlist before any write, src keys keep their shape, and the two storage backends and the storage int test stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-3"]
+    }
+  ]
+}
