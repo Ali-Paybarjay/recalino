@@ -217,7 +217,9 @@ function usageKind(step: string) {
     ? "transcription"
     : step.startsWith("vision:")
       ? "vision"
-      : "generation";
+      : step === "speech"
+        ? "tts"
+        : "generation";
 }
 /** The estimated cost of usage without an actual one, at the rates the attempt started with. */
 function estimatedAttemptCost(

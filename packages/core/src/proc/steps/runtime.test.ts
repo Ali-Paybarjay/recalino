@@ -264,6 +264,7 @@ describe("providerStep (characterization)", () => {
   it.each([
     ["stt:chunk", "transcription"],
     ["vision:photo", "vision"],
+    ["speech", "tts"],
     ["knowledge", "generation"],
   ])("estimates a %s call without an actual cost as %s", async (step, kind) => {
     const { job, log } = setup();
