@@ -751,6 +751,8 @@ export async function uploadAutomaticAudio(
         partSlot(async () => {
           check();
           options.onProgress?.(`Uploading audio part ${part.index + 1} of ${parts.length}…`);
+          // Bytes of this part the current attempt sent, for the interruption diagnostics only.
+          let partSent = 0;
           await uploadWithConfirmation(
             async (signal) => {
               check();
@@ -772,7 +774,10 @@ export async function uploadAutomaticAudio(
                     link.url,
                     bytes,
                     source.mimeType,
-                    (sentBytes) => reportPart(part.index, sentBytes),
+                    (sentBytes) => {
+                      partSent = sentBytes;
+                      reportPart(part.index, sentBytes);
+                    },
                     signal,
                   );
             },
@@ -795,9 +800,11 @@ export async function uploadAutomaticAudio(
             {
               ...recovery,
               onRetry: (attempt) => {
+                partSent = 0;
                 reportPart(part.index, 0);
                 recovery.onRetry?.(attempt);
               },
+              diagnostic: { part: part.index, sentBytes: () => partSent },
               confirmBeforeWrite: true,
               confirmSuccess: true,
             },

@@ -1,10 +1,24 @@
 import { WorkspaceRequestError } from "./api";
 
+/** The transport cause of the last failed attempt before an upload was interrupted. */
+export type UploadFailureCause = "timeout" | "rate_limited" | "offline";
+
 export class UploadInterruptedError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** Null when the last failure was not a timeout, a rate limit or a lost connection. */
+    readonly lastCause: UploadFailureCause | null = null,
+  ) {
     super(message);
     this.name = "UploadInterruptedError";
   }
+}
+
+/** Which part of a file a transfer is sending; numbers only, never names or locations. */
+export interface UploadPartDiagnostic {
+  part: number;
+  /** Bytes of this part the current attempt had sent. */
+  sentBytes: () => number;
 }
 
 export interface UploadRecovery {
@@ -13,6 +27,73 @@ export interface UploadRecovery {
   timeoutMs?: number;
   onRetry?: (attempt: number) => void;
   onOffline?: () => void;
+  /** Part facts for the in-memory interruption diagnostics. */
+  diagnostic?: UploadPartDiagnostic;
+}
+
+/**
+ * One interrupted upload, kept only in this tab's memory (PRD-PRIV-06): the error kind, the part
+ * number and the bytes sent. Never a file name, content, user identifier or URL.
+ */
+export interface UploadFailureDiagnostic {
+  kind: UploadFailureCause | "unknown";
+  part: number | null;
+  sentBytes: number | null;
+}
+
+const DIAGNOSTIC_LIMIT = 50;
+const diagnostics: UploadFailureDiagnostic[] = [];
+let interruptions = 0;
+
+/** The interruption counter of this tab and its most recent records. Nothing is sent or stored. */
+export function uploadFailureDiagnostics(): {
+  total: number;
+  recent: UploadFailureDiagnostic[];
+} {
+  return { total: interruptions, recent: diagnostics.map((entry) => ({ ...entry })) };
+}
+
+export function resetUploadFailureDiagnostics() {
+  interruptions = 0;
+  diagnostics.length = 0;
+}
+
+function statusCause(status: number | undefined): UploadFailureCause | null {
+  if (status === 429) return "rate_limited";
+  if (status === 408) return "timeout";
+  return null;
+}
+
+/** Classifies a failed upload attempt; an earlier interruption keeps the cause it carries. */
+export function uploadFailureCause(failure: unknown): UploadFailureCause | null {
+  if (failure instanceof UploadInterruptedError) return failure.lastCause;
+  if (failure instanceof DOMException && failure.name === "TimeoutError") return "timeout";
+  if (failure instanceof TypeError) return "offline";
+  if (failure instanceof WorkspaceRequestError)
+    return failure.code === "rate_limited" ? "rate_limited" : statusCause(failure.status);
+  return null;
+}
+
+/**
+ * The interruption raised for `failure`. A nested interruption was already counted where it was
+ * raised, so it is not counted again.
+ */
+function interruption(
+  message: string,
+  cause: UploadFailureCause | null,
+  failure: unknown,
+  diagnostic?: UploadPartDiagnostic,
+): UploadInterruptedError {
+  if (!(failure instanceof UploadInterruptedError)) {
+    interruptions++;
+    diagnostics.push({
+      kind: cause ?? "unknown",
+      part: diagnostic?.part ?? null,
+      sentBytes: diagnostic ? Math.max(0, Math.floor(diagnostic.sentBytes())) : null,
+    });
+    if (diagnostics.length > DIAGNOSTIC_LIMIT) diagnostics.shift();
+  }
+  return new UploadInterruptedError(message, cause);
 }
 
 export function isRetryableUploadFailure(failure: unknown): boolean {
@@ -112,12 +193,18 @@ export async function retryUploadRequest<T>(
     } catch (failure) {
       aborted(options.signal);
       if (!isRetryableUploadFailure(failure)) throw failure;
-      if (attempt === attempts) throw new UploadInterruptedError(failureMessage);
+      if (attempt === attempts)
+        throw interruption(
+          failureMessage,
+          uploadFailureCause(failure),
+          failure,
+          options.diagnostic,
+        );
       options.onRetry?.(attempt + 1);
       await delay(1000 * 2 ** (attempt - 1), options.signal);
     }
   }
-  throw new UploadInterruptedError(failureMessage);
+  throw interruption(failureMessage, null, undefined, options.diagnostic);
 }
 
 interface PartRecovery extends UploadRecovery {
@@ -137,7 +224,10 @@ export async function uploadWithConfirmation(
   options?: PartRecovery,
 ): Promise<void> {
   const recovery = options ?? { attempts: 1 };
+  // The cause of the latest failed write; a confirmation failure replaces it.
+  let lastCause: UploadFailureCause | null = null;
   const confirm = async () => {
+    let failed: unknown;
     try {
       const confirmation = await retryUploadRequest(confirmStored, failureMessage, recovery);
       if (
@@ -153,9 +243,11 @@ export async function uploadWithConfirmation(
       // Existing source/photo callers keep their original recovery copy. Audio
       // opts in to preserving an authoritative validation or authorization error.
       if (options && !isRetryableUploadFailure(failure)) throw failure;
+      failed = failure;
+      lastCause = uploadFailureCause(failure);
     }
     // Unknown verification must never trigger another PUT.
-    throw new UploadInterruptedError(failureMessage);
+    throw interruption(failureMessage, lastCause, failed, recovery.diagnostic);
   };
   if (recovery.confirmBeforeWrite && (await confirm())) return;
   const attempts = recovery.attempts ?? 3;
@@ -165,12 +257,14 @@ export async function uploadWithConfirmation(
       const response = await requestWithDeadline(write, recovery);
       if (response.ok && !recovery.confirmSuccess) return;
       status = response.status;
+      lastCause = response.ok ? null : statusCause(status);
     } catch (failure) {
       aborted(recovery.signal);
       if (options && failure instanceof WorkspaceRequestError && !isRetryableUploadFailure(failure))
         throw failure;
       if (failure instanceof UploadInterruptedError) throw failure;
       // A lost response leaves the upload outcome unknown, like a rejected repeated PUT.
+      lastCause = uploadFailureCause(failure);
     }
     if (await confirm()) return;
     if (status === 413 || status === 415)
@@ -182,7 +276,8 @@ export async function uploadWithConfirmation(
         undefined,
         status,
       );
-    if (attempt === attempts) throw new UploadInterruptedError(failureMessage);
+    if (attempt === attempts)
+      throw interruption(failureMessage, lastCause, undefined, recovery.diagnostic);
     recovery.onRetry?.(attempt + 1);
     await delay(1000 * 2 ** (attempt - 1), recovery.signal);
   }

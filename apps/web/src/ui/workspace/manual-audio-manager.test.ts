@@ -7,6 +7,7 @@ import type { RecordingStore } from "../recording/store";
 import { WorkspaceRequestError, type workspaceRequest } from "./api";
 import { ManualAudioManager } from "./manual-audio-manager";
 import { IndexedManualAudioStore } from "./manual-audio-store";
+import { UploadInterruptedError } from "./upload";
 import { uploadCopy } from "./upload-copy";
 import { AudioUploadProblem } from "./upload-problems";
 
@@ -421,6 +422,32 @@ it("does not offer a retry that cannot succeed after the server closed the uploa
   expect(f.manager.snapshot()[0]?.phase).toBe("attention");
   expect((await f.store.get("owner", run.id))?.reason).toBe("upload_closed");
 });
+
+it.each(["timeout", "rate_limited", "offline"] as const)(
+  "reads the %s cause of an interrupted upload without saving it or changing the learner's words",
+  async (cause) => {
+    const message = "Audio upload was interrupted. The original is saved on this device.";
+    let fail = true;
+    const f = setup({
+      upload: async () => {
+        if (fail) throw new UploadInterruptedError(message, cause);
+      },
+    });
+    await f.manager.enqueue(run, snapshot, contract);
+    f.allow();
+    expect(f.manager.interruptionCause(run.id)).toBeNull();
+    await f.manager.kick();
+    expect(f.manager.interruptionCause(run.id)).toBe(cause);
+    expect(f.manager.snapshot()[0]).toMatchObject({ phase: "queued", problem: message });
+    const saved = await f.store.get("owner", run.id);
+    expect(saved).toMatchObject({ problem: message, reason: null });
+    expect(JSON.stringify(saved)).not.toContain(cause);
+    fail = false;
+    await f.manager.kick();
+    expect(f.manager.interruptionCause(run.id)).toBeNull();
+    expect(await f.store.list("owner")).toEqual([]);
+  },
+);
 
 it("keeps Retry for an unclassified stop and clears its reason when retried", async () => {
   let fail = true;
