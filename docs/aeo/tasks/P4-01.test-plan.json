@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P4-01",
+  "kind": "pass_to_pass",
+  "base_sha": "7a794c589a226e380ba6d91d3294f978ac74a425",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7a794c589a226e380ba6d91d3294f978ac74a425",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/plt/notifications.ts",
+      "sha256": "bd6dcd8149be1612573342e5cbe082f7df8b29a42c72e897fcbd1526efa925e9"
+    },
+    {
+      "path": "apps/web/src/server/privacy-routes.ts",
+      "sha256": "56fba605282e8fd8e649f2c26320ff96cfbd2a8f77b480e99561fd8f93d48f71"
+    },
+    {
+      "path": "packages/core/src/priv/deletion.ts",
+      "sha256": "d187a77aec873d27ad9c8429fe225e439cbecbb06918abad4629f2528636eab7"
+    },
+    {
+      "path": "packages/core/src/proc/worker.ts",
+      "sha256": "aa6ac867dcb08df8a39f1f647242a6ec2bdcd21d66c34c85cfad02f174d816b7"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/plt/account-orphans.ts",
+      "name": "the unit suite is green on head, the account orphan job counts orphan plt rows in dry-run by default and deletes only with an explicit flag up to a cap, never touching active or privacy-pending accounts, and plt notifications, the privacy routes, account deletion and the worker stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-3"]
+    }
+  ]
+}
