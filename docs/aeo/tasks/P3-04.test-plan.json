@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P3-04",
+  "kind": "pass_to_pass",
+  "base_sha": "49e57e408c165eec0f36147709909eda2ece5993",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "49e57e408c165eec0f36147709909eda2ece5993",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/privacy-routes.ts",
+      "sha256": "56fba605282e8fd8e649f2c26320ff96cfbd2a8f77b480e99561fd8f93d48f71"
+    },
+    {
+      "path": "packages/core/src/plt/notifications.ts",
+      "sha256": "bd6dcd8149be1612573342e5cbe082f7df8b29a42c72e897fcbd1526efa925e9"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "docs/runbooks/USER_ACCOUNT_REMOVAL.md",
+      "name": "the unit suite is green on head, only the new account removal runbook is added, and the privacy routes and plt notifications stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-3"]
+    }
+  ]
+}
