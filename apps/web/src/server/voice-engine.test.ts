@@ -19,6 +19,7 @@ import {
   mergeVoices,
   qualifySegments,
 } from "./voice-engine-quality.mjs";
+import { VOICE_WINDOW_PLAN } from "./voice-source-windows";
 
 describe("local speaker engine trust boundaries", () => {
   it("excludes splice-adjacent and splice-crossing turns before acoustic embeddings are pooled", () => {
@@ -189,12 +190,19 @@ describe("local speaker engine trust boundaries", () => {
   it("pins the voice pipeline settings to the current VOICE_MODEL_REVISION", () => {
     const pinned = {
       revision: "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
-      settings: { clusterThreshold: 0.5, spanMode: "clean-parts", mergeThreshold: 0.65 },
+      settings: {
+        clusterThreshold: 0.5,
+        spanMode: "clean-parts",
+        mergeThreshold: 0.65,
+        // voice-source-windows.ts: which excerpts of the selection build the voiceprint.
+        windowPlan: { windowMs: 58000, maxWindows: 8 },
+      },
     };
     const current = {
       clusterThreshold: VOICE_CLUSTER_THRESHOLD,
       spanMode: VOICE_SPAN_MODE,
       mergeThreshold: VOICE_MERGE_THRESHOLD,
+      windowPlan: VOICE_WINDOW_PLAN,
     };
     expect(
       VOICE_MODEL_REVISION,
