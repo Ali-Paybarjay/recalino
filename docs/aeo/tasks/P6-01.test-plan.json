@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "task_id": "P6-01",
+  "kind": "pass_to_pass",
+  "base_sha": "7897a686c16f1d7e16f985deb24906125a4c874b",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7897a686c16f1d7e16f985deb24906125a4c874b",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/voice-engine.ts",
+      "sha256": "db46effe92f1d3abe984f751400fc790f1f3d859f0bada71af5ba2d1bbf63ad0"
+    },
+    {
+      "path": "apps/web/src/server/voice-engine-quality.mjs",
+      "sha256": "b6fdfedbd32822a676c6c1badc4c854b32edad96f0ffc59b13930b9918f9c4a6"
+    },
+    {
+      "path": "packages/core/src/voc/matching.ts",
+      "sha256": "0cbf9d91579bc557d6cdae2ccc62d61b13db9153b33eb9593cd9b1b23a79235c"
+    },
+    {
+      "path": "packages/core/src/voc/linking.ts",
+      "sha256": "68ba30dbdf87a084e0ac710546b80c99d85e20d2db3503c47dee24f46bed0c28"
+    },
+    {
+      "path": "packages/core/src/voc/enrollment.ts",
+      "sha256": "863e3fbcf4eb4be05434fffa23f105b52005271a73e5f67673cfc330eac06aa6"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/voice-engine.ts",
+      "name": "the unit suite is green on head and the voice engine, quality, matching, linking and enrollment code stay unchanged, so the new voice model revision document changes no behaviour",
+      "maps_to_criteria": ["AC-4"]
+    }
+  ]
+}
