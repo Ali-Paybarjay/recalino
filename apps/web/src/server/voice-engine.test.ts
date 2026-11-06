@@ -6,6 +6,10 @@ import {
   cosineSimilarity,
   loadVoiceEngine,
   poolEmbeddings,
+  VOICE_CLUSTER_THRESHOLD,
+  VOICE_MERGE_THRESHOLD,
+  VOICE_MODEL_REVISION,
+  VOICE_SPAN_MODE,
   validateVoicePcm,
   workerFailureCode,
 } from "./voice-engine";
@@ -179,6 +183,29 @@ describe("local speaker engine trust boundaries", () => {
       vi.unstubAllEnvs();
       await rm(directory, { recursive: true, force: true });
     }
+  });
+  // AUD-3 F-9: sample, reference and link comparisons trust modelVersion equality alone, so any
+  // setting that changes a stored voiceprint must come with a new VOICE_MODEL_REVISION.
+  it("pins the voice pipeline settings to the current VOICE_MODEL_REVISION", () => {
+    const pinned = {
+      revision: "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+      settings: { clusterThreshold: 0.5, spanMode: "clean-parts", mergeThreshold: 0.65 },
+    };
+    const current = {
+      clusterThreshold: VOICE_CLUSTER_THRESHOLD,
+      spanMode: VOICE_SPAN_MODE,
+      mergeThreshold: VOICE_MERGE_THRESHOLD,
+    };
+    expect(
+      VOICE_MODEL_REVISION,
+      "VOICE_MODEL_REVISION changed: update this pin to the new revision and its settings together",
+    ).toBe(pinned.revision);
+    expect(
+      current,
+      "a voice pipeline setting changed under the same VOICE_MODEL_REVISION: bump " +
+        "VOICE_MODEL_REVISION in voice-engine.ts (stored voiceprints must be re-recorded), then " +
+        "update this pin to the new revision and settings",
+    ).toStrictEqual(pinned.settings);
   });
   // FR-VOC-002, PRD-PRIV-06
   it("passes only the worker's own fixed failure codes across the thread boundary", () => {
