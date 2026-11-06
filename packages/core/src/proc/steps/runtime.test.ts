@@ -308,10 +308,12 @@ describe("providerStep (characterization)", () => {
           attempt: 2,
           kind: "vision",
           measured: 12_500,
-          production_limit: 9000,
+          hold_micros: 9000,
         },
       ],
     ]);
+    // P6-03: the hold has its own field; the guard's production_limit is not reused.
+    expect((above.warnings[0] as unknown[])[2]).not.toHaveProperty("production_limit");
 
     // The same for a definite failure settled at its estimated cost.
     const failed = setup();
@@ -333,9 +335,21 @@ describe("providerStep (characterization)", () => {
         attempt: 2,
         kind: "generation",
         measured: 12_500,
-        production_limit: 9000,
+        hold_micros: 9000,
       },
     ]);
+    expect((failed.warnings[0] as unknown[])[2]).not.toHaveProperty("production_limit");
+
+    // An estimate equal to the hold is not above it and logs nothing.
+    const equal = setup();
+    m.estimate = 9000;
+    await providerStep(equal.job, ctx, RUN_ID, "vision:photo", "m", provider, schema, async () =>
+      result({ ok: true }, null),
+    );
+    expect(equal.log.find((entry) => entry.startsWith("finishProviderStep"))).toContain(
+      '"actualMicros":null,"estimatedMicros":9000',
+    );
+    expect(equal.warnings).toEqual([]);
   });
 
   it("numbers the next attempt after a definite failure", async () => {

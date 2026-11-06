@@ -225,8 +225,8 @@ function usageKind(step: string) {
  * The estimated cost of usage without an actual one, at the rates the attempt started with.
  * P5-02 (P4-04 nit): an estimate above the step's hold (`maximumMicros`) is recorded as it is,
  * never clamped, so the recorded cost is not understated; it is only logged, with numbers and
- * identifiers, never user text: `measured` is the estimate and `production_limit` the hold, both
- * in micros.
+ * identifiers, never user text: `measured` is the estimate and `hold_micros` the hold, both in
+ * micros (P6-03).
  */
 function estimatedAttemptCost<T>(
   call: ProviderCall<T>,
@@ -251,7 +251,7 @@ function estimatedAttemptCost<T>(
       attempt: job.job.attempt,
       kind: usageKind(step),
       measured: estimate,
-      production_limit: maximumMicros,
+      hold_micros: maximumMicros,
     });
   return estimate;
 }

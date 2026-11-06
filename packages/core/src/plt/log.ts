@@ -75,6 +75,8 @@ const ALLOWED_FIELDS = new Set([
   "trimmed_over_limit",
   "unlinked_mistakes",
   "assembly_omitted",
+  // P6-03: a provider step's cost hold in micros (an integer), logged beside `measured`.
+  "hold_micros",
 ]);
 
 const IDENTIFIER = /^[A-Za-z0-9_.:/\-[\]]{1,128}$/;
