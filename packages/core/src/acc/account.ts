@@ -1,3 +1,4 @@
+import type { Expression } from "kysely";
 import type { Database, Tx } from "../db";
 import { errors, type LearnerContext } from "../plt";
 import { CURRENT_VERSIONS, type DocumentId, type DocumentVersions } from "./documents";
@@ -65,6 +66,21 @@ export async function existingAccountIds(
     .execute();
   return new Set(rows.map((row) => row.id));
 }
+
+/**
+ * P5-02 (CWE-367 from P4-01): read-only. The account row of `userId`, active or tombstoned (the
+ * same predicate as `existingAccountIds`), as a subquery a caller embeds in its own statement, so
+ * "no account row" is checked by that statement itself: `not exists (accountRowOf(...))`.
+ * `userId` is usually a reference to the caller's own user id column. Identifiers only.
+ */
+export function accountRowOf(db: Database | Tx, userId: Expression<string>) {
+  return db
+    .selectFrom("acc.user_account")
+    .select("acc.user_account.id")
+    .where("acc.user_account.id", "=", userId);
+}
+// PLT receives only `existingAccountIds` (P5-01, CWE-693), so the subquery travels with it.
+existingAccountIds.accountRow = accountRowOf;
 
 /** Serialize domain changes per learner inside the caller's transaction (ADR-0002). */
 export async function lockAccount(db: Tx, userId: string): Promise<void> {

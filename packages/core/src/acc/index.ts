@@ -3,6 +3,7 @@ export {
   type AccountState,
   acceptDocuments,
   accountExists,
+  accountRowOf,
   canStartNewProcessing,
   type ExplanationLanguage,
   existingAccountIds,
