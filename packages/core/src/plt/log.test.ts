@@ -35,6 +35,28 @@ describe("FR-PLT-007 allow-listed logging", () => {
     expect(JSON.parse(line)).toMatchObject({ route: "[redacted]", dropped_fields: 2 });
   });
 
+  // P6-03: a provider step's cost hold is an allowed number, filtered like the other numbers.
+  it("keeps a numeric hold_micros and never writes text or non-numbers in it", () => {
+    const fields = { measured: 12_500, hold_micros: 9000 };
+    expect(JSON.parse(formatLogLine("warn", "provider_estimate_above_hold", fields, NOW))).toEqual({
+      time: "2026-10-01T09:00:00.000Z",
+      level: "warn",
+      event: "provider_estimate_above_hold",
+      measured: 12_500,
+      hold_micros: 9000,
+    });
+
+    const text = formatLogLine("warn", "x", { hold_micros: `I said ${CANARY} in class` }, NOW);
+    expect(text).not.toContain(CANARY);
+    expect(JSON.parse(text)).toMatchObject({ hold_micros: "[redacted]" });
+
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY, { micros: 9000 }, [9000]]) {
+      const line = JSON.parse(formatLogLine("warn", "x", { hold_micros: value }, NOW));
+      expect(line).not.toHaveProperty("hold_micros");
+      expect(line.dropped_fields).toBe(1);
+    }
+  });
+
   it("never writes a signed URL", () => {
     const signed = "https://store.example/blob/abc?token=secret-signature&expires=1";
     const line = formatLogLine("info", "upload", { route: signed }, NOW);
