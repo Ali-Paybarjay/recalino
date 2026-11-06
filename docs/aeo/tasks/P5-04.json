@@ -1,0 +1,57 @@
+{
+  "schema_version": "1",
+  "id": "P5-04",
+  "title": "پین تنظیمات pipeline صدا با VOICE_MODEL_REVISION (دستهٔ ۵ L3؛ AUD-3 F-9)",
+  "goal": "یافتهٔ AUD-3 ‏F-9 (confirmed): commit ‏e460366 مقدار VOICE_SPAN_MODE را از whole-turns به clean-parts و VOICE_MERGE_THRESHOLD را از null به 0.65 برد، ولی VOICE_MODEL_REVISION در apps/web/src/server/voice-engine.ts همان ماند؛ مقایسهٔ نمونه، مرجع و پیوند فقط با برابری modelVersion محافظت می‌شود، پس بردارهای دو روش هم‌نسخه حساب می‌شوند. یک آزمون غیر int در voice-engine.test.ts بنویس که مقدار فعلی تنظیمات pipeline صدا (span mode، merge threshold و آستانه‌های تنظیمی که بردار را عوض می‌کنند) را همراه مقدار فعلی VOICE_MODEL_REVISION پین کند: اگر یکی عوض شود و revision همان بماند، آزمون شکست بخورد و پیامش بگوید revision را بالا ببر. در voice-engine.ts فقط افزودن export به ثابت‌های موجود مجاز است، اگر آزمون بی آن به مقدارها نمی‌رسد؛ هیچ مقدار، revision یا رفتاری عوض نمی‌شود. ناسازگاری گذشتهٔ e460366 در این کارت درست نمی‌شود (بالا بردن revision ضبط دوبارهٔ نمونه را می‌خواهد و تصمیم مالک است).",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "یک case غیر int تازه در apps/web/src/server/voice-engine.test.ts مقدار فعلی تنظیمات pipeline صدا را با مقدار فعلی VOICE_MODEL_REVISION پین می‌کند و روی head سبز است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "در voice-engine.ts فقط واژهٔ export به ثابت‌های موجود افزوده شده است (اگر لازم بود)؛ هیچ مقدار، VOICE_MODEL_REVISION، import یا منطقی تغییر نکرده است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "Implementer نشان می‌دهد case می‌شکند وقتی یک تنظیم لحظه‌ای عوض شود و revision نه (تغییر موقت، پیش از commit بازگردانده)، و پیام شکست راه درست را می‌گوید."
+    },
+    {
+      "id": "AC-4",
+      "statement": "voc/matching.ts، voc/linking.ts و voc/analysis.ts بی‌تغییرند (قفل TestPlan)؛ هیچ تغییر در UI یا متن کاربر."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["apps/web/src/server/voice-engine.test.ts", "apps/web/src/server/voice-engine.ts"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase5-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: AUD-3 ‏F-9 در گزارش L1 بلوک ۸۰ (job-20261103-282eda98)، با گزینهٔ اصلاح «در تغییر بعدی تنظیمات، revision را عوض کن»؛ این کارت نگهبان آزمونی آن است، و docs/aeo/l3/phase5-plan.md. ذخیرهٔ شناسهٔ pipeline کنار revision (گزینهٔ دیگر یافته) در این کارت نیست، چون schema یا دادهٔ ذخیره‌شده را لمس می‌کند. مسیرها از همان گزارش و git ls-tree؛ L1 کد را نخواند (X1).",
+    "ریسک کارت low (آزمون و export)؛ gate ‏medium (apps/web/src/server/voice-engine.* قاعده ندارد)؛ D7.",
+    "اگر مقدار تنظیمی در محیط اجرا (env) تعیین می‌شود و ثابت نیست، Implementer مقدار پیش‌فرض کد را پین می‌کند و این را گزارش می‌دهد؛ اگر هیچ مقدار پیش‌فرض ثابتی نیست، blocked با گزینه‌ها.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند."
+  ]
+}

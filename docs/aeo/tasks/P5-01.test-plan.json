@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P5-01",
+  "kind": "pass_to_pass",
+  "base_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "2fa63d94d365c47e8674db62b215347bd05de7e2",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/plt/account-orphans.ts",
+      "sha256": "96ca95fda7282f582d1e564f74327fd266f1cb89cdceb0a25912650217030dc2"
+    },
+    {
+      "path": "packages/core/src/plt/maintenance.ts",
+      "sha256": "613331146cfbe1789401a62771bd73982be8898aa39d1de8904266981fe74624"
+    },
+    {
+      "path": "packages/core/src/proc/worker.ts",
+      "sha256": "aa6ac867dcb08df8a39f1f647242a6ec2bdcd21d66c34c85cfad02f174d816b7"
+    },
+    {
+      "path": "packages/core/src/priv/deletion.ts",
+      "sha256": "d187a77aec873d27ad9c8429fe225e439cbecbb06918abad4629f2528636eab7"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/acc/jobs.ts",
+      "name": "the unit suite is green on head, the account orphan job is registered as a periodic acc job with existingAccountIds only and its scheduled run records per-table counts without ids and runs no delete, existingAccountIds keeps tombstoned accounts, and the plt orphan job, plt maintenance, the worker and account deletion stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
+    }
+  ]
+}

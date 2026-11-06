@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "id": "P5-01",
+  "title": "زمان‌بندی dry-run ‏job نگهداشت plt در acc و آزمون existingAccountIds (دستهٔ ۵ L3؛ P4-01 AC-5)",
+  "goal": "P4-01 (#122) تابع accountOrphansJob(existingAccountIds) را در plt ساخت: یک JobDefinition فقط‌شمارنده با kind ‏plt.count_account_orphans و payload ‏strictObject تهی که apply را نمی‌پذیرد؛ ولی ثبت دوره‌ای آن درون owns_paths آن کارت شدنی نبود (انحراف مجاز AC-5) و implementer محل را packages/core/src/acc/jobs.ts ‏(accPeriodicJobs) گفت، چون acc هم plt و هم acc را می‌بیند. هر دو reviewer هم گفتند export ‏existingAccountIds در acc آزمونی ندارد. این کارت: (۱) accountOrphansJob(existingAccountIds) را در accPeriodicJobs ثبت کن، با همان بازهٔ jobهای دوره‌ای موجود acc، یا روزانه اگر بازه‌ای نیست؛ فقط existingAccountIds به آن داده شود (CWE-693 ‏P4-01). (۲) یک case غیر int با پایگاه ساختگی نشان دهد job دوره‌ای ثبت‌شده شمار هر جدول را بی شناسه ثبت می‌کند و هیچ دستور delete یا begin اجرا نمی‌کند. (۳) یک case غیر int برای existingAccountIds: حساب فعال و حساب tombstoned ‏(deleted_at پر) موجودند، شناسهٔ ناموجود نه. **زمان‌بندی هرگز apply نمی‌کند**: هیچ apply: true، هیچ delete from و هیچ predicate دیگر. اگر ثبت به فایلی بیرون از owns_paths نیاز دارد (مثلاً proc/worker.ts یا plt/maintenance.ts که قفل‌اند)، Implementer متوقف شود و blocked برگرداند، با نام فایل و گزینه‌ها.",
+  "mode": "brownfield",
+  "task_type": "feature",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "accountOrphansJob(existingAccountIds) در accPeriodicJobs ‏(packages/core/src/acc/jobs.ts) ثبت شده است، فقط با existingAccountIds و بی هیچ payload یا پرچم apply."
+    },
+    {
+      "id": "AC-2",
+      "statement": "یک case غیر int با پایگاه ساختگی: اجرای job دوره‌ای ثبت‌شده شمار ردیف‌های بی حساب هر جدول را برمی‌گرداند و بی شناسه و بی محتوا ثبت می‌کند، و هیچ دستور delete یا begin اجرا نمی‌شود. case روی base شکست می‌خورد، چون job ثبت نیست."
+    },
+    {
+      "id": "AC-3",
+      "statement": "یک case غیر int برای existingAccountIds: حساب فعال و حساب tombstoned ‏(deleted_at پر) در خروجی هستند و شناسهٔ ناموجود نیست."
+    },
+    {
+      "id": "AC-4",
+      "statement": "هیچ delete from در diff؛ plt/account-orphans.ts، plt/maintenance.ts، proc/worker.ts و priv/deletion.ts بی‌تغییرند (قفل TestPlan)؛ هیچ migration، grant یا تغییر schema."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/acc/jobs.ts",
+    "packages/core/src/acc/jobs.test.ts",
+    "packages/core/src/acc/acc.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase5-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: انحراف AC-5 و پرسش باز implementer ‏P4-01 (job-20261105-2947b1f8)، missing test هر دو review ‏P4-01 (job-20261105-b5d8d1e8، job-20261105-5770a49d)، nit ‏CWE-693، تصمیم مالک E134 و docs/aeo/l3/phase5-plan.md. مسیرها از git ls-tree؛ L1 کد را نخواند (X1).",
+    "ریسک کارت medium: job دوره‌ای تازه، ولی فقط‌شمارنده و بی حذف تازه؛ gate ‏medium (packages/core/src/acc/** قاعده ندارد). اگر diff ‏delete from داشت، sql-destructive آن را high می‌کند و کارت این را منع می‌کند. D7.",
+    "acc اجازهٔ import از plt را دارد (Documented، خروجی implementer ‏P4-01)؛ اگر capability map آن را منع کرد، blocked با گزینه‌ها.",
+    "اجرای apply در production در این کارت نیست؛ تصمیم جدای مالک (E136) پس از دیدن شمار dry-runها.",
+    "این Task ‏DB نیست (owns_paths با db_paths هم‌پوشان نیستند، R91).",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند."
+  ]
+}

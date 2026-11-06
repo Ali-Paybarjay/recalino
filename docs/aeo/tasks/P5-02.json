@@ -1,0 +1,67 @@
+{
+  "schema_version": "1",
+  "id": "P5-02",
+  "title": "سخت کردن تراکنش apply ‏job نگهداشت و log برآورد هزینهٔ بیش از hold (دستهٔ ۵ L3؛ nitهای P4-01 و P4-04)",
+  "goal": "دو nit امنیتی دستهٔ ۴. (۱) CWE-367 ‏P4-01 ‏(account-orphans.ts:87، hypothesis): در removeRows وجود حساب درون تراکنش READ COMMITTED دوباره بررسی می‌شود، ولی حسابی که میان این بررسی و DELETE ساخته و commit شود حذف را متوقف نمی‌کند. بررسی «حساب نیست» را به همان دستور DELETE ببر (NOT EXISTS)، با عبارتی که از یک export تازه یا موجود در acc ‏(account.ts) می‌آید، تا نام acc.* در کد غیرآزمونی plt نیاید (AC-2 ‏P4-01، آزمون schema-names)؛ اگر این شدنی نیست، تراکنش apply را SERIALIZABLE کن و هنگام خطای serialization اجرا را بی حذف رها کن. (۲) nit ‏P4-04 ‏(runtime.ts:240): برآورد هزینهٔ گام clamp ندارد و ممکن است از مبلغ hold بیشتر شود؛ این به سمت امن است، پس clamp نکن: فقط وقتی برآورد از hold بیشتر است یک log عددی (بی متن کاربر، با فیلدهای مجاز موجود) ثبت کن. پیش‌فرض dry-run، سقف‌ها (پیش‌فرض ۵۰۰، بیشینه ۵۰۰۰)، رزرو، سقف‌ها و عدد ثبت‌شدهٔ هزینه بی‌تغییر می‌مانند. اگر هیچ گزینهٔ (۱) بی شکستن مرز acc و plt شدنی نیست، Implementer متوقف شود و blocked برگرداند، با گزینه‌ها.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "high",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "در apply، بررسی نبود حساب در همان دستور DELETE رخ می‌دهد (یا تراکنش SERIALIZABLE است و خطای serialization اجرا را بی حذف رها می‌کند)؛ هیچ نام acc.* در کد غیرآزمونی plt نیست (آزمون schema-names سبز)."
+    },
+    {
+      "id": "AC-2",
+      "statement": "case‌های غیر int با پایگاه ساختگی: پیش‌فرض dry-run هنوز هیچ دستور حذف اجرا نمی‌کند؛ apply فقط ردیف یتیم را تا سقف پاک می‌کند و ردیف کاربر فعال و tombstoned می‌ماند؛ شکل تازهٔ DELETE (یا سطح تراکنش) سنجیده می‌شود و روی base شکست می‌خورد. account-orphans.int.test.ts همین را روی پایگاه محلی می‌سنجد؛ حکم آن با pnpm test:int در CI است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "وقتی برآورد هزینهٔ گام از hold بیشتر است، یک log عددی ثبت می‌شود و estimatedMicros و رفتار ثبت هزینه بی‌تغییرند؛ یک case در runtime.test.ts آن را نشان می‌دهد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "هیچ migration، grant یا تغییر schema؛ plt/notifications.ts، priv/deletion.ts، proc/worker.ts، quota/costs.ts و aip/pricing.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/plt/account-orphans.ts",
+    "packages/core/src/plt/account-orphans.test.ts",
+    "packages/core/src/plt/account-orphans.int.test.ts",
+    "packages/core/src/acc/account.ts",
+    "packages/core/src/acc/index.ts",
+    "packages/core/src/proc/steps/runtime.ts",
+    "packages/core/src/proc/steps/runtime.test.ts"
+  ],
+  "depends_on": ["P5-01"],
+  "context_refs": ["docs/aeo/l3/phase5-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: nit ‏CWE-367 ‏review:security ‏P4-01 (job-20261105-5770a49d، refutable_by: «قفل/بررسی NOT EXISTS در همان دستور DELETE»)، nit ‏review:security ‏P4-04 (job-20261105-22ff224d، runtime.ts:240) و docs/aeo/l3/phase5-plan.md. مسیرها از git ls-tree؛ L1 کد را نخواند (X1).",
+    "ریسک high: مسیر حذف تغییر می‌کند (sql-destructive برای delete from در diff). merge با approve مالک؛ gate با ورودی هر دو review (R82).",
+    "clamp برآورد به hold عمداً نیست: عدد ثبت‌شده را کمتر از واقع می‌کند؛ log عددی پیشنهاد L1 است (Not Verified تا بازبین).",
+    "P5-01 پیش از این کارت ادغام می‌شود؛ owns_paths دو کارت هم‌پوشان نیستند و هیچ قفلی فایل P5-01 را نمی‌گیرد.",
+    "این Task ‏DB نیست (owns_paths با db_paths هم‌پوشان نیستند، R91)، پس review منتظر CI نمی‌ماند؛ ولی شاهد int فقط CI است.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند."
+  ]
+}
