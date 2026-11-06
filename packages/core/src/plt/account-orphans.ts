@@ -4,16 +4,22 @@
 // tables (ADR-0002 rule 4) nor import ACC (capability map), so the caller passes ACC's read-only
 // `existingAccountIds`. A dry run is the default: it counts and logs counts only. Rows are removed
 // only with `apply: true`, at most `limit` per run, and never for an active or tombstoned account.
+import type { Expression } from "kysely";
 import type { Database, Tx } from "../db";
 import type { JobDefinition } from "./jobs";
 import type { Logger } from "./log";
 import { type EmptyPayload, emptyPayload } from "./maintenance";
 
 /** Which of the given user ids still have an account row, active or tombstoned (ACC's export). */
-export type ExistingAccountIds = (
-  db: Database | Tx,
-  userIds: readonly string[],
-) => Promise<ReadonlySet<string>>;
+export interface ExistingAccountIds {
+  (db: Database | Tx, userIds: readonly string[]): Promise<ReadonlySet<string>>;
+  /**
+   * P5-02 (CWE-367): the account row of `userId`, active or tombstoned, as a subquery (ACC's
+   * `accountRowOf`). The removal requires `not exists` of it in the DELETE itself, so an account
+   * created and committed after the earlier checks still keeps its rows.
+   */
+  accountRow(db: Database | Tx, userId: Expression<string>): Expression<unknown>;
+}
 
 export interface AccountOrphanOptions {
   /** Removes rows only when exactly `true`; anything else is a dry run. */
@@ -74,7 +80,9 @@ async function countRows(db: Database, table: OrphanTable, userIds: string[]): P
 
 /**
  * Removes up to `limit` rows of these users, in one transaction that first checks again that
- * they still have no account row, so an account that appeared meanwhile keeps its rows.
+ * they still have no account row. The DELETE itself also requires that no account row exists
+ * for each row's user (P5-02, CWE-367), so an account created and committed between that check
+ * and the DELETE keeps its rows too.
  */
 async function removeRows(
   db: Database,
@@ -102,6 +110,13 @@ async function removeRows(
       .deleteFrom(table as "plt.notification")
       .where("id", "in", ids)
       .where("user_id", "in", orphans)
+      .where((eb) =>
+        eb.not(
+          eb.exists(
+            existing.accountRow(tx, eb.ref(`${table}.user_id` as "plt.notification.user_id")),
+          ),
+        ),
+      )
       .executeTakeFirst();
     return Number(result.numDeletedRows);
   });

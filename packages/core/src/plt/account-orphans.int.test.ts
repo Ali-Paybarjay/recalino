@@ -12,15 +12,25 @@ import { type ExistingAccountIds, sweepAccountOrphans } from "./account-orphans"
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 2 });
 afterAll(() => db.destroy());
 
-const existing: ExistingAccountIds = async (handle, userIds) => {
-  if (!userIds.length) return new Set();
-  const rows = await handle
-    .selectFrom("acc.user_account")
-    .select("id")
-    .where("id", "in", [...userIds])
-    .execute();
-  return new Set(rows.map((row) => row.id));
-};
+// P5-02: with ACC's `accountRowOf` stood in as well, the subquery the DELETE requires not to exist.
+const existing: ExistingAccountIds = Object.assign(
+  async (handle: Parameters<ExistingAccountIds>[0], userIds: readonly string[]) => {
+    if (!userIds.length) return new Set<string>();
+    const rows = await handle
+      .selectFrom("acc.user_account")
+      .select("id")
+      .where("id", "in", [...userIds])
+      .execute();
+    return new Set(rows.map((row) => row.id));
+  },
+  {
+    accountRow: ((handle, userId) =>
+      handle
+        .selectFrom("acc.user_account")
+        .select("acc.user_account.id")
+        .where("acc.user_account.id", "=", userId)) as ExistingAccountIds["accountRow"],
+  },
+);
 
 async function account(deletedAt: Date | null): Promise<string> {
   const id = await createAuthUser();
@@ -96,6 +106,26 @@ it("counts by default, removes only rows without an account with apply, and repe
   // Running it again leaves the rows of an active or tombstoned account where they are.
   await sweepAccountOrphans(db, existing, { apply: true });
   expect(await remaining(ours)).toEqual({ subscriptions: kept, notifications: kept });
+});
+
+it("keeps rows of an account the earlier checks missed, as the DELETE checks for it itself (P5-02)", async () => {
+  // Both earlier checks answer "no account" for every id, as if the accounts were created and
+  // committed after them; only the DELETE's own `not exists` can still see the account rows.
+  const active = await account(null);
+  const tombstoned = await account(new Date());
+  const gone = randomUUID();
+  const ours = [active, tombstoned, gone];
+  for (const id of ours) await seed(id);
+  const stale: ExistingAccountIds = Object.assign(async () => new Set<string>(), {
+    accountRow: existing.accountRow,
+  });
+  const applied = await sweepAccountOrphans(db, stale, { apply: true, limit: 5000 });
+  expect(applied.mode).toBe("apply");
+  const kept = [active, tombstoned].sort();
+  const left = await remaining([active, tombstoned]);
+  expect(left).toEqual({ subscriptions: kept, notifications: kept });
+  await db.deleteFrom("plt.push_subscription").where("user_id", "=", gone).execute();
+  await db.deleteFrom("plt.notification").where("user_id", "=", gone).execute();
 });
 
 it("removes at most the limit in one run", async () => {

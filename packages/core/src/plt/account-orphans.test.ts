@@ -24,7 +24,15 @@ import type { LogValue } from "./log";
 type Row = { id: string; user_id: string };
 type Tables = Record<"push_subscription" | "notification", Row[]>;
 
-function fakeDatabase(tables: Tables) {
+/**
+ * P5-02 (CWE-367): the DELETE's own check that the row's user has no account row, active or
+ * tombstoned, as ACC's `accountRowOf` compiles it.
+ */
+const noAccountRow = (name: string) =>
+  ` and not exists (select "acc"."user_account"."id" from "acc"."user_account" where "acc"."user_account"."id" = "plt"."${name}"."user_id")`;
+
+/** `accountRows` holds the account rows the database sees when a statement runs. */
+function fakeDatabase(tables: Tables, accountRows: ReadonlySet<string> = new Set()) {
   const log: string[] = [];
   const params = (query: CompiledQuery) => (placeholder: string) =>
     query.parameters[Number(placeholder.slice(1)) - 1] as string;
@@ -50,8 +58,11 @@ function fakeDatabase(tables: Tables) {
           (!after || row.user_id > params(query)(after)),
       );
       if (query.sql.startsWith("delete from")) {
-        tables[name] = table.filter((row) => !matching.includes(row));
-        return { rows: [] as R[], numAffectedRows: BigInt(matching.length) };
+        // Only a DELETE that ends with its own account check skips rows of an existing account.
+        const checked = query.sql.endsWith(noAccountRow(name));
+        const removed = matching.filter((row) => !checked || !accountRows.has(row.user_id));
+        tables[name] = table.filter((row) => !removed.includes(row));
+        return { rows: [] as R[], numAffectedRows: BigInt(removed.length) };
       }
       if (query.sql.startsWith('select distinct "user_id"')) {
         const distinct = [...new Set(matching.map((row) => row.user_id))].sort();
@@ -94,9 +105,24 @@ function fakeDatabase(tables: Tables) {
   return { db, log, tables };
 }
 
+/**
+ * PLT may not import ACC (capability map), so this stands in ACC's `accountRowOf` with the same
+ * query: the account row of a user id, active or tombstoned.
+ */
+const accountRow: ExistingAccountIds["accountRow"] = (db, userId) =>
+  db
+    .selectFrom("acc.user_account")
+    .select("acc.user_account.id")
+    .where("acc.user_account.id", "=", userId);
+function withAccountRow(
+  ids: (db: Parameters<ExistingAccountIds>[0], userIds: readonly string[]) => Promise<Set<string>>,
+): ExistingAccountIds {
+  return Object.assign(ids, { accountRow });
+}
+
 /** ACC's contract: an id with any account row exists, active or tombstoned (soft-deleted). */
 function accounts(rows: Record<string, { deletedAt: Date | null }>): ExistingAccountIds {
-  return async (_db, userIds) => new Set(userIds.filter((id) => id in rows));
+  return withAccountRow(async (_db, userIds) => new Set(userIds.filter((id) => id in rows)));
 }
 
 const ACTIVE = randomUUID();
@@ -111,11 +137,14 @@ const existing = accounts({
 function rows(...users: string[]): Row[] {
   return users.map((user_id) => ({ id: randomUUID(), user_id }));
 }
-function fixture() {
-  return fakeDatabase({
-    push_subscription: rows(ACTIVE, TOMBSTONED, GONE, GONE, GONE_TOO),
-    notification: rows(ACTIVE, ACTIVE, TOMBSTONED, GONE, GONE_TOO),
-  });
+function fixture(accountRows: Set<string> = new Set([ACTIVE, TOMBSTONED])) {
+  return fakeDatabase(
+    {
+      push_subscription: rows(ACTIVE, TOMBSTONED, GONE, GONE, GONE_TOO),
+      notification: rows(ACTIVE, ACTIVE, TOMBSTONED, GONE, GONE_TOO),
+    },
+    accountRows,
+  );
 }
 const users = (table: Row[]) => table.map((row) => row.user_id).sort();
 const isDelete = (statement: string) => /^delete\b/i.test(statement);
@@ -210,12 +239,12 @@ describe("rows of plt without an account (P4-01, E123 b)", () => {
     const { db, log, tables } = fixture();
     let calls = 0;
     // GONE gets an account between the count and the removal (the second check of each table).
-    const appearing: ExistingAccountIds = async (handle, ids) => {
+    const appearing = withAccountRow(async (handle, ids) => {
       calls += 1;
       const known = new Set(await existing(handle, ids));
       if (calls % 2 === 0) known.add(GONE);
       return known;
-    };
+    });
     const summary = await sweepAccountOrphans(db, appearing, { apply: true });
     expect(summary.found).toEqual({ pushSubscriptions: 3, notifications: 2 });
     expect(summary.removed).toEqual({ pushSubscriptions: 1, notifications: 1 });
@@ -225,14 +254,39 @@ describe("rows of plt without an account (P4-01, E123 b)", () => {
     expect(log.filter((line) => line === "commit")).toHaveLength(2);
   });
 
+  it("checks for a missing account in the DELETE itself, so an account committed after every check keeps its rows (P5-02, CWE-367)", async () => {
+    // GONE's account row is created and committed after both earlier checks (which still miss
+    // it) but before the DELETE runs: only the DELETE's own check can see it.
+    const { db, log, tables } = fixture(new Set([ACTIVE, TOMBSTONED, GONE]));
+    const summary = await sweepAccountOrphans(db, existing, { apply: true });
+    expect(summary.found).toEqual({ pushSubscriptions: 3, notifications: 2 });
+    expect(summary.removed).toEqual({ pushSubscriptions: 1, notifications: 1 });
+    expect(users(tables.push_subscription)).toEqual([ACTIVE, TOMBSTONED, GONE, GONE].sort());
+    expect(users(tables.notification)).toEqual([ACTIVE, ACTIVE, TOMBSTONED, GONE].sort());
+    const deletes = log.filter(isDelete);
+    expect(deletes).toHaveLength(2);
+    for (const [index, name] of ["push_subscription", "notification"].entries()) {
+      const statement = deletes[index] as string;
+      expect(statement.startsWith(`delete from "plt"."${name}" where "id" in (`)).toBe(true);
+      expect(statement.endsWith(noAccountRow(name))).toBe(true);
+    }
+    // Each DELETE still runs inside its own transaction, after the check there, and commits.
+    expect(log.filter((line) => line === "begin")).toHaveLength(2);
+    expect(log.filter((line) => line === "commit")).toHaveLength(2);
+    expect(log).not.toContain("rollback");
+  });
+
   it("reads user ids page by page, and asks ACC only about each page", async () => {
     const many = Array.from({ length: 1201 }, () => randomUUID());
     const { db, log } = fakeDatabase({ push_subscription: rows(...many), notification: [] });
     const asked: number[] = [];
-    const summary = await sweepAccountOrphans(db, async (_handle, ids) => {
-      asked.push(ids.length);
-      return new Set();
-    });
+    const summary = await sweepAccountOrphans(
+      db,
+      withAccountRow(async (_handle, ids) => {
+        asked.push(ids.length);
+        return new Set();
+      }),
+    );
     expect(summary.found.pushSubscriptions).toBe(1201);
     expect(asked).toEqual([500, 500, 201]);
     expect(log.filter((line) => line.startsWith('select distinct "user_id"'))).toHaveLength(4);

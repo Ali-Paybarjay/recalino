@@ -221,15 +221,21 @@ function usageKind(step: string) {
         ? "tts"
         : "generation";
 }
-/** The estimated cost of usage without an actual one, at the rates the attempt started with. */
-function estimatedAttemptCost(
+/**
+ * The estimated cost of usage without an actual one, at the rates the attempt started with.
+ * P5-02 (P4-04 nit): an estimate above the step's hold (`maximumMicros`) is recorded as it is,
+ * never clamped, so the recorded cost is not understated; it is only logged, with numbers and
+ * identifiers, never user text: `measured` is the estimate and `production_limit` the hold, both
+ * in micros.
+ */
+function estimatedAttemptCost<T>(
+  call: ProviderCall<T>,
   attempt: ProviderAttempt,
   model: string,
   usage: ProviderResult<unknown>["usage"],
-  step: string,
-  maximumMicros: number,
 ) {
-  return (
+  const { job, step, maximumMicros } = call;
+  const estimate =
     (attempt.estimate_rates
       ? estimatedUsageCost(
           estimateRatesSchema.parse(attempt.estimate_rates),
@@ -237,8 +243,17 @@ function estimatedAttemptCost(
           usage,
           usageKind(step),
         )
-      : null) ?? maximumMicros
-  );
+      : null) ?? maximumMicros;
+  if (estimate > maximumMicros)
+    job.log?.("warn", "provider_estimate_above_hold", {
+      module: "proc",
+      job_id: job.job.id,
+      attempt: job.job.attempt,
+      kind: usageKind(step),
+      measured: estimate,
+      production_limit: maximumMicros,
+    });
+  return estimate;
 }
 /**
  * QUA-01: the guards that share the account lock and the transaction that inserts the next
@@ -380,7 +395,7 @@ async function commitProviderOutput<T>(
   output: T,
   onCommit: ((tx: Tx, output: T) => Promise<void>) | undefined,
 ): Promise<T> {
-  const { job, ctx, runId, step, provider, maximumMicros } = call;
+  const { job, ctx, runId, step, provider } = call;
   return job.db
     .transaction()
     .execute(async (tx) => {
@@ -398,7 +413,7 @@ async function commitProviderOutput<T>(
           actualMicros: result.actualMicros,
           estimatedMicros:
             result.actualMicros === null
-              ? estimatedAttemptCost(attempt, result.model, result.usage, step, maximumMicros)
+              ? estimatedAttemptCost(call, attempt, result.model, result.usage)
               : null,
           priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
           usage: result.usage,
@@ -443,7 +458,7 @@ async function recordProviderFailure<T>(
   attempt: ProviderAttempt,
   providerError: ProviderError,
 ) {
-  const { job, ctx, runId, step, model, provider, maximumMicros } = call;
+  const { job, ctx, runId, step, model, provider } = call;
   await job.db.transaction().execute(async (tx) => {
     await lockAccountForCleanup(tx, ctx.userId);
     const current = await tx
@@ -467,13 +482,7 @@ async function recordProviderFailure<T>(
             providerError.accounting?.actualMicros ?? (providerError.accounting ? null : 0),
           estimatedMicros:
             providerError.accounting?.actualMicros === null
-              ? estimatedAttemptCost(
-                  attempt,
-                  model,
-                  providerError.accounting.usage,
-                  step,
-                  maximumMicros,
-                )
+              ? estimatedAttemptCost(call, attempt, model, providerError.accounting.usage)
               : null,
           priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
           usage: providerError.accounting?.usage ?? {},

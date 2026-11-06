@@ -15,6 +15,7 @@ const m = vi.hoisted(() => ({
   sessionMissing: false,
   contentContract: false,
   finishFailure: undefined as Error | undefined,
+  estimate: 1234,
 }));
 vi.mock("../../acc", () => ({
   lockAccount: vi.fn(async (_tx: unknown, userId: string) => m.log.push(`lockAccount ${userId}`)),
@@ -61,7 +62,7 @@ vi.mock("../../aip", async (original) => ({
   estimateRatesSchema: { parse: (value: unknown) => value },
   estimatedUsageCost: (_rates: unknown, model: string, usage: unknown, kind: string) => {
     m.log.push(`estimatedUsageCost ${model} ${JSON.stringify(usage)} ${kind}`);
-    return 1234;
+    return m.estimate;
   },
 }));
 
@@ -171,6 +172,7 @@ beforeEach(() => {
   m.sessionMissing = false;
   m.contentContract = false;
   m.finishFailure = undefined;
+  m.estimate = 1234;
 });
 
 describe("providerStep (characterization)", () => {
@@ -275,6 +277,65 @@ describe("providerStep (characterization)", () => {
     expect(log.find((entry) => entry.startsWith("finishProviderStep"))).toContain(
       '"actualMicros":null,"estimatedMicros":1234',
     );
+  });
+
+  // P5-02 (P4-04 nit): an estimate within the hold logs nothing; one above it is recorded
+  // unchanged, never clamped to the hold, and logged once with numbers and identifiers only.
+  it("logs an estimate above its hold with numbers only and records it unchanged", async () => {
+    const within = setup();
+    m.estimate = 9000;
+    await providerStep(within.job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () =>
+      result({ ok: true }, null),
+    );
+    expect(within.warnings).toEqual([]);
+
+    const above = setup();
+    m.estimate = 12_500;
+    await providerStep(above.job, ctx, RUN_ID, "vision:photo", "m", provider, schema, async () =>
+      result({ ok: true }, null),
+    );
+    expect(above.log.find((entry) => entry.startsWith("finishProviderStep"))).toContain(
+      '"actualMicros":null,"estimatedMicros":12500',
+    );
+    expect(above.log).toContain(holdInput("vision:photo"));
+    expect(above.warnings).toEqual([
+      [
+        "warn",
+        "provider_estimate_above_hold",
+        {
+          module: "proc",
+          job_id: "job",
+          attempt: 2,
+          kind: "vision",
+          measured: 12_500,
+          production_limit: 9000,
+        },
+      ],
+    ]);
+
+    // The same for a definite failure settled at its estimated cost.
+    const failed = setup();
+    m.estimate = 12_500;
+    await expect(
+      providerStep(failed.job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
+        throw new ProviderError("provider_http_500", false, false, accounting);
+      }),
+    ).rejects.toMatchObject({ code: "provider_http_500" });
+    expect(failed.log.find((entry) => entry.startsWith("finishProviderStep"))).toContain(
+      '"actualMicros":null,"estimatedMicros":12500',
+    );
+    expect(failed.warnings[0]).toEqual([
+      "warn",
+      "provider_estimate_above_hold",
+      {
+        module: "proc",
+        job_id: "job",
+        attempt: 2,
+        kind: "generation",
+        measured: 12_500,
+        production_limit: 9000,
+      },
+    ]);
   });
 
   it("numbers the next attempt after a definite failure", async () => {
