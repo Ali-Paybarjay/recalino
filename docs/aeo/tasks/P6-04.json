@@ -1,0 +1,60 @@
+{
+  "schema_version": "1",
+  "id": "P6-04",
+  "title": "پین VOICE_WINDOW_PLAN با VOICE_MODEL_REVISION (دستهٔ ۶ L3؛ minor ‏code ‏P5-04)",
+  "goal": "reviewer کد P5-04 (#126، job-20261106-21e5af05) گفت pin تازهٔ voice-engine.test.ts سه ثابت voice-engine.ts را می‌پوشاند ولی VOICE_WINDOW_PLAN در apps/web/src/server/voice-source-windows.ts را نه؛ همان commit ‏e460366 آن را از {30000, 15} به {58000, 8} برد، و این ثابت تعیین می‌کند کدام بخش صوت voiceprint کلاس را می‌سازد. VOICE_WINDOW_PLAN را به همان pin در voice-engine.test.ts بیفزا، با همان پیام شکست («bump VOICE_MODEL_REVISION … then update this pin»). در voice-source-windows.ts فقط افزودن export به ثابت موجود مجاز است، اگر آزمون بی آن به مقدار نمی‌رسد. هیچ مقدار، revision یا رفتاری عوض نمی‌شود. ناسازگاری گذشتهٔ e460366 در این کارت درست نمی‌شود (E145).",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "pin تنظیمات صدا در apps/web/src/server/voice-engine.test.ts مقدار فعلی VOICE_WINDOW_PLAN را همراه سه تنظیم پیشین و VOICE_MODEL_REVISION پین می‌کند و روی head سبز است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "در voice-source-windows.ts فقط واژهٔ export به ثابت موجود افزوده شده است (اگر لازم بود)؛ هیچ مقدار، import یا منطقی تغییر نکرده است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "Implementer نشان می‌دهد case می‌شکند وقتی VOICE_WINDOW_PLAN لحظه‌ای عوض شود و revision نه (تغییر موقت، پیش از commit بازگردانده)، و پیام شکست راه درست را می‌گوید."
+    },
+    {
+      "id": "AC-4",
+      "statement": "voice-engine.ts، audio-preparer.ts و voice-engine-quality.mjs بی‌تغییرند (قفل TestPlan)؛ هیچ تغییر در UI یا متن کاربر."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "apps/web/src/server/voice-engine.test.ts",
+    "apps/web/src/server/voice-source-windows.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase6-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: minor ‏review:code ‏P5-04 (job-20261106-21e5af05)، docs/l3/phase5-closeout.md ‏0.2 §۶-۲ نامزد ۲ و docs/aeo/l3/phase6-plan.md. مسیرها از git ls-tree؛ L1 کد را نخواند (X1).",
+    "ریسک کارت low (آزمون و export)؛ gate ‏medium (apps/web/src/server/voice-* قاعده ندارد)؛ D7.",
+    "عددهای درون‌خطی voice-engine-quality.mjs (minor ‏security ‏P5-04) در این کارت نیستند؛ آن فایل قفل است و نامزد دستهٔ بعد می‌ماند.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. تا R98، L1 مقدار --max-turns را از limits.max_turns همین کارت می‌دهد (E142)."
+  ]
+}

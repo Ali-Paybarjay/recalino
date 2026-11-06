@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P6-04",
+  "kind": "pass_to_pass",
+  "base_sha": "7897a686c16f1d7e16f985deb24906125a4c874b",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7897a686c16f1d7e16f985deb24906125a4c874b",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/voice-engine.ts",
+      "sha256": "db46effe92f1d3abe984f751400fc790f1f3d859f0bada71af5ba2d1bbf63ad0"
+    },
+    {
+      "path": "apps/web/src/server/audio-preparer.ts",
+      "sha256": "768bf5b10ec1b1d049e47318c971dfdd4b4072b80ee7dbe5cdb8a628215fafef"
+    },
+    {
+      "path": "apps/web/src/server/voice-engine-quality.mjs",
+      "sha256": "b6fdfedbd32822a676c6c1badc4c854b32edad96f0ffc59b13930b9918f9c4a6"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/voice-engine.test.ts",
+      "name": "the unit suite is green on head, the voice settings pin also pins the current VOICE_WINDOW_PLAN to the current VOICE_MODEL_REVISION and fails when it changes without a revision bump, and the voice engine, audio preparer and quality code stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-3"]
+    }
+  ]
+}

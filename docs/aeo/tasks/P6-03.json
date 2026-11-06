@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "id": "P6-03",
+  "title": "فیلد hold_micros در allow-list ‏log و استفاده در provider_estimate_above_hold (دستهٔ ۶ L3؛ پرسش باز P5-02)",
+  "goal": "P5-02 (#128) هنگام برآورد هزینهٔ بیش از hold یک log ‏provider_estimate_above_hold ثبت می‌کند؛ چون plt/log.ts فیلدی برای hold نداشت، hold در فیلد موجود production_limit و برآورد در measured آمد (انحراف پذیرفته، پرسش باز implementer). فیلد عددی hold_micros را به ALLOWED_FIELDS در packages/core/src/plt/log.ts بیفزا (همان نوع و پالایش فیلدهای عددی موجود)، و در packages/core/src/proc/steps/runtime.ts همان log را با hold_micros به‌جای production_limit بنویس. آزمون‌ها: plt/log.test.ts نشان دهد hold_micros عددی پذیرفته و مقدار غیرعددی یا متن رد یا پالایش می‌شود؛ runtime.test.ts نشان دهد log با hold_micros و measured است و production_limit ندارد. رفتار ثبت هزینه، شرط log، clamp نداشتن و hold بی‌تغییرند.",
+  "mode": "brownfield",
+  "task_type": "feature",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "hold_micros در ALLOWED_FIELDS ‏plt/log.ts با همان قاعدهٔ فیلدهای عددی موجود آمده است؛ هیچ فیلد دیگری افزوده یا برداشته نشده است."
+    },
+    {
+      "id": "AC-2",
+      "statement": "یک case غیر int در plt/log.test.ts نشان می‌دهد hold_micros عددی ثبت می‌شود و مقدار متنی یا غیرعددی آن ثبت نمی‌شود (همان رفتار فیلدهای عددی موجود)."
+    },
+    {
+      "id": "AC-3",
+      "statement": "case ‏runtime.test.ts برای برآورد بیش از hold نشان می‌دهد log ‏provider_estimate_above_hold فیلدهای measured و hold_micros را دارد و production_limit ندارد؛ estimatedMicros بی clamp و holdInput بی‌تغییر می‌مانند؛ برآورد برابر hold هنوز log نمی‌دهد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "quota/costs.ts، aip/pricing.ts، proc/worker.ts و plt/account-orphans.ts بی‌تغییرند (قفل TestPlan)؛ هیچ migration، grant یا تغییر schema."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/plt/log.ts",
+    "packages/core/src/plt/log.test.ts",
+    "packages/core/src/proc/steps/runtime.ts",
+    "packages/core/src/proc/steps/runtime.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase6-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: انحراف و پرسش باز implementer ‏P5-02 (job-20261106-31104efa)، docs/l3/phase5-closeout.md ‏0.2 §۶-۲ نامزد ۶ و docs/aeo/l3/phase6-plan.md. مسیرها از git ls-tree؛ L1 کد را نخواند (X1).",
+    "ریسک کارت medium: allow-list ‏log مرز حریم خصوصی است؛ فقط یک فیلد عددی افزوده می‌شود. gate ‏medium (packages/core/src/plt/** و proc/** قاعده ندارند)؛ D7.",
+    "اگر فیلد production_limit جای دیگری هم با همین معنا به کار رفته، فقط همین log تغییر می‌کند و Implementer بقیه را گزارش می‌دهد.",
+    "این Task ‏DB نیست (owns_paths با db_paths هم‌پوشان نیستند، R91).",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. تا R98، L1 مقدار --max-turns را از limits.max_turns همین کارت می‌دهد (E142)."
+  ]
+}

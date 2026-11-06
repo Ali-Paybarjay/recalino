@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P6-02",
+  "kind": "pass_to_pass",
+  "base_sha": "7897a686c16f1d7e16f985deb24906125a4c874b",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7897a686c16f1d7e16f985deb24906125a4c874b",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/acc/account.ts",
+      "sha256": "1ba88f3cf7557d157c4ff5c9f7e0bca56473c4229c721c521428d62867dbf557"
+    },
+    {
+      "path": "packages/core/src/acc/jobs.ts",
+      "sha256": "b533bb9036b3ee4d0a755e11ab71c2e48b8cb2fbbad6d89cde6d6aae1f079274"
+    },
+    {
+      "path": "packages/core/src/acc/index.ts",
+      "sha256": "f6c22201ca741010b10947a5e7938e2c14b55b85a6b801ed15f3008f7e83bcf8"
+    },
+    {
+      "path": "packages/core/src/plt/account-orphans.ts",
+      "sha256": "3baa67313d2fe8dd2e01d47eefee550e821b7b1dfdd456c57a7caec0b7d3a0af"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/acc/jobs.test.ts",
+      "name": "the unit suite is green on head, a new case shows existingAccountIds.accountRow is accountRowOf and the sweep with the real accountRow builds a not exists condition on acc.user_account in each apply delete and no delete in the dry-run default, and the acc and plt production files stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2"]
+    }
+  ]
+}
