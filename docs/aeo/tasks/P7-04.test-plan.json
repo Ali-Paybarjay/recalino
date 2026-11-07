@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P7-04",
+  "kind": "pass_to_pass",
+  "base_sha": "2901521d86dae22168c85d2cae423c58b2c73740",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "2901521d86dae22168c85d2cae423c58b2c73740",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/ui/workspace/learning-progress.ts",
+      "sha256": "eff806324e9cebe14bc2aa4f007b42b37aaeb62f5f0972202346d7e319b25f62"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/AutomaticLearningView.tsx",
+      "sha256": "f0588f0fc3cbceea30ce21529ff7b390adbc68e3bb4430ecdabe89cb1e17eb2b"
+    },
+    {
+      "path": "apps/web/src/ui/workspace/process-session-copy.ts",
+      "sha256": "8560fe2a4f72bb2c4c7cfeab51e3377a16e1c21a71e776da9aaed1d26f335d0e"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/ui/workspace/file-processing.test.ts",
+      "name": "the unit suite is green on head, the upload feedback recognises the uploaded but not yet processed state with the approved text and no progress or polling, the real processing branch keeps its text, and the learning progress card and the approved process copy stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
+    }
+  ]
+}
