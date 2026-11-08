@@ -1,7 +1,14 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { ProcessingRun } from "@recalino/core/proc";
 import { describe, expect, it } from "vitest";
 import type { AutomaticLearningStatus } from "./automatic-learning";
-import { type FileProcessingReceipt, fileProcessingFeedback } from "./file-processing";
+import {
+  type FileProcessingReceipt,
+  fileProcessingCopy,
+  fileProcessingFeedback,
+} from "./file-processing";
+import { awaitingProcess } from "./learning-progress";
 import type { SourceRow } from "./SourcesView";
 
 function receipt(patch: Partial<FileProcessingReceipt> = {}): FileProcessingReceipt {
@@ -412,6 +419,137 @@ describe("truthful file processing feedback", () => {
       expect(
         fileProcessingFeedback({ ...acknowledged(), problem }, reused(), [source()]),
       ).toMatchObject({ state: "error", detail: problem });
+    });
+  });
+
+  // AUD-4 F-1 (P7-04): after Upload & Process, files that wait for the learner's Process this
+  // session (D107) must not read as processing, with a progress bar and a refreshing page.
+  describe("uploaded files waiting for Process this session (D107)", () => {
+    const approved =
+      "Your files are uploaded. To create your notes and flashcards, choose “Process this session”.";
+    const sharedDetail =
+      "Large files and audio can take several minutes. Progress updates automatically. You can use other pages. Once the files are received, processing continues on the server even if you close the app. Your result appears in Notifications.";
+    const waiting = (patch: Partial<AutomaticLearningStatus> = {}) =>
+      status({
+        state: "waiting_sources",
+        processRequest: "not_requested",
+        requestedRevision: null,
+        run: null,
+        message: "Waiting for uploaded files to finish verification…",
+        notesReady: false,
+        cardsReady: false,
+        ...patch,
+      });
+
+    it.each([
+      ["before the first press", { processRequest: "not_requested" }],
+      [
+        "after new material reopened processed notes",
+        {
+          processRequest: "new_material",
+          requestedRevision: 3,
+          run: run({ id: "previous-run" }),
+          notesReady: true,
+          cardsReady: true,
+        },
+      ],
+    ] satisfies [string, Partial<AutomaticLearningStatus>][])(
+      "asks the learner to process the session %s, without a processing state",
+      (_reason, patch) => {
+        const feedback = fileProcessingFeedback(receipt(), waiting(patch), [source()]);
+        expect(feedback.state).not.toBe("processing");
+        expect(feedback).toMatchObject({ state: "awaiting_process", message: approved });
+        expect(`${feedback.message} ${feedback.detail}`.trim()).toBe(approved);
+        expect(fileProcessingCopy.awaitingProcess).toBe(approved);
+      },
+    );
+
+    it("keeps verifying while the session has not yet seen or verified the submitted files", () => {
+      for (const [current, sources] of [
+        [receipt(), [source({ verifiedAt: null, uploadState: "verifying" })]],
+        [receipt(), []],
+        [receipt({ sourceIds: ["submitted-source", "not-yet-listed"], total: 2 }), [source()]],
+        [receipt({ revision: null }), [source()]],
+      ] satisfies [FileProcessingReceipt, SourceRow[]][]) {
+        expect(fileProcessingFeedback(current, waiting(), sources)).toMatchObject({
+          state: "processing",
+          message: "Verifying and preparing your files…",
+          detail: sharedDetail,
+        });
+      }
+    });
+
+    it.each([
+      ["an older revision", { revision: 3 }],
+      ["an open upload batch", { batchId: "active-batch" }],
+      ["an open upload batch code", { lastError: "batch_open" }],
+      ["no selected material", { lastError: "select_at_least_one" }],
+      ["a request already made", { processRequest: "requested", requestedRevision: 4 }],
+      ["a status without the request field", { processRequest: undefined }],
+    ] satisfies [string, Partial<AutomaticLearningStatus>][])(
+      "does not ask for Process with %s",
+      (_reason, patch) => {
+        expect(fileProcessingFeedback(receipt(), waiting(patch), [source()])).toMatchObject({
+          state: "processing",
+          message: "Verifying and preparing your files…",
+        });
+      },
+    );
+
+    it("follows the session card's Ready to process rule for verified, current files", () => {
+      const cases: Partial<AutomaticLearningStatus>[] = [
+        {},
+        { processRequest: "new_material", notesReady: true },
+        { processRequest: "requested" },
+        { processRequest: undefined },
+        { batchId: "active-batch", revision: 5 },
+        { lastError: "batch_open" },
+        { lastError: "select_at_least_one" },
+        { lastError: "not_verified" },
+        { state: "waiting_upload" },
+        { state: "idle" },
+      ];
+      for (const patch of cases) {
+        const current = waiting(patch);
+        expect(
+          fileProcessingFeedback(receipt(), current, [source()]).state === "awaiting_process",
+        ).toBe(awaitingProcess(current) !== null);
+      }
+    });
+
+    it("keeps the real processing branch, its text and its progress", () => {
+      expect(
+        fileProcessingFeedback(
+          receipt(),
+          status({ state: "processing", processRequest: "requested", requestedRevision: 4 }),
+          [source()],
+        ),
+      ).toEqual({ state: "processing", message: "Processing your files…", detail: sharedDetail });
+      expect(
+        fileProcessingFeedback(
+          receipt(),
+          waiting({ state: "waiting_upload", processRequest: "requested" }),
+          [source()],
+        ),
+      ).toEqual({
+        state: "processing",
+        message: "Verifying and preparing your files…",
+        detail: sharedDetail,
+      });
+    });
+
+    it("shows the waiting text without a progress bar, aria-busy or page polling", () => {
+      const view = readFileSync(resolve(import.meta.dirname, "SourcesView.tsx"), "utf8").replace(
+        /\s+/g,
+        " ",
+      );
+      // Only a processing state makes the panel busy and keeps the page refreshing.
+      expect(view).toContain('const processingBatch = feedback?.state === "processing";');
+      expect(view).toContain("const waiting = batch?.active || processingBatch ||");
+      expect(view).toContain('{batch?.active || processingBatch ? ( <div aria-busy="true">');
+      expect(view).toContain(') : feedback.state === "awaiting_process" ? (');
+      expect(view).toContain('<Status tone="neutral">{feedback.message}</Status>');
+      expect(view).toContain('"Upload & Process"');
     });
   });
 });

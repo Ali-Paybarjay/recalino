@@ -10,6 +10,7 @@ import { recordingCopy } from "./recording/recording-copy";
 import { cardActionsCopy } from "./workspace/card-actions-copy";
 import { cardStatusLabel, cardTemplateLabel, mediaAssetLabel } from "./workspace/card-labels";
 import { workspaceErrors } from "./workspace/error-copy";
+import { fileProcessingCopy } from "./workspace/file-processing";
 import { learningProgressCopy } from "./workspace/learning-progress-copy";
 import { privacyCopy } from "./workspace/privacy-copy";
 import { processSessionCopy } from "./workspace/process-session-copy";
@@ -361,4 +362,20 @@ describe("the recording page and Process this session texts approved on 2026-10-
       expect(section).toContain(`«${old}» → «${now}»`);
     },
   );
+});
+
+// E160-R (owner approval 2026-11-07, P7-04, AUD-4 F-1): the File processing panel's text for
+// uploaded files that wait for Process this session (D107).
+describe("the File processing text approved on 2026-11-07", () => {
+  const start = register.indexOf("## تأیید 2026-11-07 — پنل File processing");
+  const section = register.slice(start, register.indexOf("\n## ", start + 1));
+
+  it("records the waiting text word for word", () => {
+    expect(start).toBeGreaterThan(-1);
+    const sentence =
+      "Your files are uploaded. To create your notes and flashcards, choose “Process this session”.";
+    expect(fileProcessingCopy.awaitingProcess).toBe(sentence);
+    expect(section).toContain(`| \`fileProcessingCopy.awaitingProcess\` | «${sentence}» |`);
+    expect(section.match(/^\| .+ \| `.+` \| «.+» \|$/gm)).toHaveLength(1);
+  });
 });
