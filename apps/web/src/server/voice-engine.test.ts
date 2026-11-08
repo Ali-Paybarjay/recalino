@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -214,6 +215,39 @@ describe("local speaker engine trust boundaries", () => {
         "VOICE_MODEL_REVISION in voice-engine.ts (stored voiceprints must be re-recorded), then " +
         "update this pin to the new revision and settings",
     ).toStrictEqual(pinned.settings);
+  });
+  // P5-04 review (CWE-1068): the voice quality functions build the voiceprint from inline numbers
+  // (qualifySegments 200 and 2400 ms; embeddingSpans 200 ms margin, 2000 ms minimum, 10000 ms
+  // window, 24 spans, 60000 ms pool; mergeVoices minSpeechMs 4000 and the 0.25 ratio). Their
+  // source text is pinned to the current VOICE_MODEL_REVISION so no number changes silently.
+  it("pins the inline numbers of the voice quality functions to the current VOICE_MODEL_REVISION", () => {
+    const pinned = {
+      revision: "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+      sourceSha256: {
+        qualifySegments: "5a66926c62a336ff2e649ea92fa2610976a6e6f220979c9c80650864394a13d8",
+        embeddingSpans: "708954240f8c15cb299f91802d05cf7623520709f6b60828ea1aa7abbacbc4a2",
+        mergeVoices: "dc65c31a4237874e65779c607b331d99c5c7f5aacacba29c3896bed805461bd8",
+      },
+    };
+    const sourceSha256 = (fn: (...args: never[]) => unknown) =>
+      createHash("sha256").update(fn.toString().replace(/\r\n/g, "\n")).digest("hex");
+    const current = {
+      qualifySegments: sourceSha256(qualifySegments),
+      embeddingSpans: sourceSha256(embeddingSpans),
+      mergeVoices: sourceSha256(mergeVoices),
+    };
+    expect(
+      VOICE_MODEL_REVISION,
+      "VOICE_MODEL_REVISION changed: update this pin to the new revision and its source hashes together",
+    ).toBe(pinned.revision);
+    expect(
+      current,
+      "a voice quality function in voice-engine-quality.mjs changed under the same " +
+        "VOICE_MODEL_REVISION. If its behaviour changed (any inline number or logic that shapes " +
+        "the voiceprint): bump VOICE_MODEL_REVISION in voice-engine.ts (stored voiceprints must be " +
+        "re-recorded), then update this pin to the new revision and hashes. If its behaviour did " +
+        "not change (formatting or comments only): update only the hash in this pin",
+    ).toStrictEqual(pinned.sourceSha256);
   });
   // FR-VOC-002, PRD-PRIV-06
   it("passes only the worker's own fixed failure codes across the thread boundary", () => {
