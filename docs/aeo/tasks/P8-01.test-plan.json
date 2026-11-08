@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P8-01",
+  "kind": "pass_to_pass",
+  "base_sha": "29c80da85e9015ab60d4e1c4651f38f337ddfc4e",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "29c80da85e9015ab60d4e1c4651f38f337ddfc4e",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/voice-engine-worker.mjs",
+      "sha256": "f52ef3ee30184264a5549be9fb90d25142bcfa2494712f0d3b481c44de794575"
+    },
+    {
+      "path": "apps/web/src/server/voice-engine.ts",
+      "sha256": "db46effe92f1d3abe984f751400fc790f1f3d859f0bada71af5ba2d1bbf63ad0"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/voice-engine.test.ts",
+      "name": "the unit suite is green on head, a new pin ties the diarizer configuration of the voice engine worker to the current VOICE_MODEL_REVISION and fails when it changes without a revision bump, and the voice engine worker and voice engine stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "schema_version": "1",
+  "id": "P8-01",
+  "title": "پین عددهای پیکربندی diarizer در voice-engine-worker.mjs با VOICE_MODEL_REVISION (دستهٔ ۸ L3؛ C7-1، minor ‏security ‏P7-02)",
+  "goal": "reviewer امنیت P7-02 (#138، job-20261108-feb263e1؛ CWE-1068، potential) گفت عددهای درون‌خطی پیکربندی diarizer در apps/web/src/server/voice-engine-worker.mjs (windowShiftRatio، minDurationOn و minDurationOff؛ در شاهد reviewer خط‌های 45، 57 و 59) بخش‌های گفتار را شکل می‌دهند که به qualifySegments و سپس به voiceprint ذخیره‌شده می‌رسند، ولی هیچ آزمونی آن‌ها را به VOICE_MODEL_REVISION پین نکرده است. اگر یکی عوض شود و revision نه، voiceprintهای قدیم و تازه «هم‌نسخه» مقایسه می‌شوند. در apps/web/src/server/voice-engine.test.ts یک pin بیفزا که این پیکربندی را همراه VOICE_MODEL_REVISION پین کند و بی bump شکست بخورد، با همان پیام pinهای P5-04، P6-04 و P7-02 (اگر رفتار عوض شده revision را بالا ببر و سپس pin را به‌روز کن؛ اگر فقط قالب یا کامنت عوض شده فقط hash را). راه ترجیحی (phase8-plan §۳): sha256 متن خود فایل worker یا بخش پیکربندی diarizer آن، خوانده از دیسک با CRLF به LF، مثل pin ‏P7-03؛ نه Function.prototype.toString، تا pin به transform ‏vitest وابسته نباشد. voice-engine-worker.mjs قفل است: اگر بی تغییر آن فایل ممکن نیست، Implementer blocked برگرداند، با گزینه‌ها. هیچ عدد، revision یا رفتاری عوض نمی‌شود.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "apps/web/src/server/voice-engine.test.ts پیکربندی diarizer ‏voice-engine-worker.mjs (دست‌کم windowShiftRatio، minDurationOn و minDurationOff) را همراه VOICE_MODEL_REVISION پین می‌کند و روی head سبز است؛ pinهای پیشین P5-04، P6-04 و P7-02 بی‌تغییر می‌مانند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "pin قطعی است: بی ورودی کاربر، صوت واقعی، شبکه یا زمان، و مستقل از transform ‏toolchain؛ دو اجرای پیاپی یک نتیجه می‌دهند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "Implementer نشان می‌دهد pin می‌شکند وقتی یکی از این عددها لحظه‌ای عوض شود و revision نه (تغییر موقت روی متنی که آزمون می‌خواند، پیش از commit بازگردانده)، و پیام شکست هر دو راه را می‌گوید."
+    },
+    {
+      "id": "AC-4",
+      "statement": "voice-engine-worker.mjs و voice-engine.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["apps/web/src/server/voice-engine.test.ts"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase8-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: minor ‏review:security ‏P7-02 (job-20261108-feb263e1)، docs/l3/phase7-findings-candidates.md ‏C7-1 و docs/aeo/l3/phase8-plan.md. مسیرها از git ls-tree و شماره‌خط‌ها از خروجی Job؛ L1 کد را نخواند (X1).",
+    "ریسک کارت low (فقط آزمون)؛ gate ‏medium (apps/web/src/server/voice-* قاعدهٔ high ندارد)؛ D7. مسیر اجرا: بلوک D از راه لایهٔ هماهنگی، جای P7-03 (E176 = الف)؛ هم‌ردیف دستی P7-02. کارت در هر مسیر همین است.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}
