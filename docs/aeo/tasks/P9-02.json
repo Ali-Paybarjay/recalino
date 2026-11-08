@@ -1,0 +1,64 @@
+{
+  "schema_version": "1",
+  "id": "P9-02",
+  "title": "آزمون‌های int اجرای دوباره و قطع گام speech (دستهٔ ۹ L3؛ C8-5، همراه C8-4)",
+  "goal": "P8-02 (job-20261108-28f8c8f5؛ F-5) نشان داد هیچ آزمونی اجرای دوباره یا قطع در میانهٔ گام speech را نمی‌سازد. آزمون‌های mediaTtsJob در packages/core/src/priv/media.int.test.ts فقط اجرای کامل، replay در سطح request، پاسخ صوتی نادرست و حذف را می‌سنجند. سه آزمون int بیفزا که رفتار کنونی را مستند کنند (بی تغییر کد تولیدی): (۱) checkpoint ‏speech پیش‌ساخته و asset در processing، سپس اجرای run: انتظار provider.calls === 0، یک ردیف provider_cost و asset ‏ready؛ (۲) attempt ‏started پیش‌ساخته (قطع در میانهٔ dispatch): هزینه‌ای ثبت نمی‌شود، asset به needs_input می‌رود و hold باز می‌ماند (C8-3)؛ (۳) job ‏media.tts با attempt برابر max_attempts و lease منقضی، سپس reconcileEndedJobRuns: وضعیت asset (C8-4). جایی که رفتار کنونی نادرست است (C8-3، C8-4)، آزمون رفتار کنونی را با نام روشن «documents current behaviour» بپاید تا اصلاح بعدی آن را عمداً عوض کند.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "packages/core/src/priv/media.int.test.ts سه آزمون تازه دارد (اجرای دوباره پس از checkpoint ‏speech؛ attempt ‏started باقی‌مانده؛ reconcile پس از lease منقضی) که رفتار کنونی را می‌سنجند؛ آزمون‌های موجود همان فایل بی‌تغییرند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "شاهد اجرایی (E198‑R، گزینهٔ ب): CI روی head سبز است و job ‏verify ‏CI ‏(pnpm test:int با postgres) این فایل را اجرا می‌کند؛ pnpm test:unit روی head سبز است. اگر پایگاه محلی در sandbox بود، Implementer آزمون‌ها را اجرا کرده و نتیجه را آورده است؛ وگرنه نبود آن را صریح گفته است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "آزمون‌هایی که رفتار نادرست کنونی را مستند می‌کنند (C8-3، C8-4) در نام یا کامنت «documents current behaviour» و شناسهٔ یافته را دارند؛ هیچ آزمونی رفتار نادرست را «درست» نمی‌نامد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "media/assets.ts، proc/steps/runtime.ts، quota/costs.ts و proc/maintenance.ts بی‌تغییرند (قفل TestPlan)؛ هیچ کد تولیدی تغییر نمی‌کند."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، اعتبار proxy، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["packages/core/src/priv/media.int.test.ts"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase9-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C8-5 و C8-4 (P8-02، job-20261108-28f8c8f5؛ F-5 و F-4؛ priv/media.int.test.ts بخش 489-727 در شاهد Job)، docs/l3/phase9-plan.md و E198‑R. L1 کد را نخواند (X1).",
+    "ریسک کارت low (فقط آزمون)؛ gate برآورد medium؛ D7. مسیر اجرا طبق E199.",
+    "TP-1 (E200‑R، الف): آزمون unit موجود proc/steps/runtime.test.ts است و در files[] قفل است؛ فرمان TestPlan دقیقاً pnpm test:unit است. شاهد آزمون int (E198‑R، گزینهٔ ب): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، همان check لازم required-checks) با سرویس postgres اجرا می‌شود. پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox در دسترس بود اجرا می‌کند و نتیجه یا نبود آن را در گزارش می‌آورد.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد، و اگر بد بود، آن را حذف و install را یک بار دیگر اجرا می‌کند.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}
