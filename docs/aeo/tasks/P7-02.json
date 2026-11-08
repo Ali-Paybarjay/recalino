@@ -1,0 +1,59 @@
+{
+  "schema_version": "1",
+  "id": "P7-02",
+  "title": "پین عددهای درون‌خطی voice-engine-quality.mjs با VOICE_MODEL_REVISION (دستهٔ ۷ L3؛ minor ‏security ‏P5-04)",
+  "goal": "reviewer امنیت P5-04 (#126، job-20261106-e32cf916؛ CWE-1068، potential) گفت pin تنظیمات صدا در voice-engine.test.ts فقط ثابت‌های نام‌دار را می‌پوشاند، ولی عددهای درون‌خطی apps/web/src/server/voice-engine-quality.mjs که بردار صدا را می‌سازند پین نیستند: در qualifySegments (200 و 2400)، embeddingSpans (حاشیهٔ 200 ms، کمینهٔ 2000 ms، پنجرهٔ 10000 ms، سقف 24 بازه، سقف 60000 ms) و mergeVoices (minSpeechMs = 4000 و نسبت 0.25). اگر یکی عوض شود و VOICE_MODEL_REVISION نه، بردار قدیم و تازه «هم‌نسخه» مقایسه می‌شوند. pin را در voice-engine.test.ts گسترش بده تا هر تغییر این عددها بی bump شکست بخورد، با همان پیام («bump VOICE_MODEL_REVISION … then update this pin»). راه ترجیحی: sha256 متن سه تابع صادرشده (Function.prototype.toString) همراه VOICE_MODEL_REVISION؛ پیام شکست بگوید اگر رفتار عوض نشده فقط hash را به‌روز کن و اگر عوض شده revision را بالا ببر. در voice-engine-quality.mjs فقط افزودن export به تابع یا ثابت موجود مجاز است. هیچ عدد، revision یا رفتاری عوض نمی‌شود. اگر بی تغییر دیگری ممکن نیست، Implementer blocked برگرداند، با گزینه‌ها.",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "pin تنظیمات صدا در apps/web/src/server/voice-engine.test.ts عددهای درون‌خطی qualifySegments، embeddingSpans و mergeVoices را (از راه sha256 متن تابع یا هر شکل قطعی دیگر) همراه VOICE_MODEL_REVISION پین می‌کند و روی head سبز است؛ pin پیشین P5-04 و P6-04 بی‌تغییر می‌ماند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "در voice-engine-quality.mjs فقط واژهٔ export به تابع یا ثابت موجود افزوده شده است (اگر لازم بود)؛ هیچ عدد، import یا منطقی تغییر نکرده است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "Implementer نشان می‌دهد pin می‌شکند وقتی یکی از این عددها لحظه‌ای عوض شود و revision نه (تغییر موقت، پیش از commit بازگردانده)، و پیام شکست هر دو راه را می‌گوید."
+    },
+    {
+      "id": "AC-4",
+      "statement": "voice-engine.ts و audio-preparer.ts بی‌تغییرند (قفل TestPlan)؛ هیچ تغییر در UI یا متن کاربر."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ install تازه، migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": [
+    "apps/web/src/server/voice-engine.test.ts",
+    "apps/web/src/server/voice-engine-quality.mjs"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase7-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "assumptions": [
+    "منبع: minor ‏review:security ‏P5-04 (job-20261106-e32cf916)، docs/aeo/l3/phase6-acceptance.md §۶ و docs/aeo/l3/phase7-plan.md. مسیرها و شماره‌خط‌ها از خروجی Job؛ L1 کد را نخواند (X1).",
+    "ریسک کارت low (آزمون و export)؛ gate ‏medium (apps/web/src/server/voice-* قاعدهٔ high ندارد؛ audio-preparer.ts قفل است، نه تغییر)؛ D7. این Task هم‌ردیف دستی P7-03 در مقایسهٔ بلوک D است (E157).",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "pnpm test:unit فقط فایل‌های *.test.ts غیر int را اجرا می‌کند؛ *.int.test.ts پایگاه محلی می‌خواهد و فقط در گام pnpm test:int ‏CI اجرا می‌شود، نه در verify. پس شاهد اجرایی هر رفتار تازه باید در یک *.test.ts غیر int باشد.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

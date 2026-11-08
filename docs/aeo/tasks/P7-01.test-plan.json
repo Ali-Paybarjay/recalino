@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P7-01",
+  "kind": "pass_to_pass",
+  "base_sha": "2901521d86dae22168c85d2cae423c58b2c73740",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "2901521d86dae22168c85d2cae423c58b2c73740",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/knowledge-generation.ts",
+      "sha256": "c00d18ecd0fd4aecb3d70e739225c93a422f47adf7a761e86027c8fae064150c"
+    },
+    {
+      "path": "packages/core/src/proc/study-prompt.ts",
+      "sha256": "c7195a4fafbac6b6a17588eef1a6d6bbc4ca8c5f5c286d18c125c2c6030278d7"
+    },
+    {
+      "path": "config/openrouter-defaults.json",
+      "sha256": "06a6e6e305f966eedc53a02137a5f40f49c64f064bd06e7c063efb23610dd5d7"
+    },
+    {
+      "path": "packages/core/src/proc/steps/publish.ts",
+      "sha256": "871270bc67927c1c56431fb2461cf1d11cae8395a5ed8ab6196917c6b341970c"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/prompt-version.test.ts",
+      "name": "the unit suite is green on head, the prompt version test also pins the sha256 of each reachable conditional branch of both lesson system prompt templates to the current promptVersion and fails when a branch text changes without a promptVersion bump, and the prompts, promptVersion, provider defaults and publish metadata stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
+    }
+  ]
+}

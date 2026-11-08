@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P7-03",
+  "kind": "pass_to_pass",
+  "base_sha": "2901521d86dae22168c85d2cae423c58b2c73740",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "2901521d86dae22168c85d2cae423c58b2c73740",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/voice-source-windows.ts",
+      "sha256": "96caa5bb73b36e8831dfcad427c8713c3b858bd24d8f4ddfd50f8bd6b49831ea"
+    },
+    {
+      "path": "apps/web/src/server/voice-engine.ts",
+      "sha256": "db46effe92f1d3abe984f751400fc790f1f3d859f0bada71af5ba2d1bbf63ad0"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/voice-source-windows.test.ts",
+      "name": "the unit suite is green on head, a new pin ties the remapVoiceSegments boundaryUnsafe logic to the current VOICE_MODEL_REVISION and fails when it changes without a revision bump, and the voice source windows and voice engine stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2", "AC-3"]
+    }
+  ]
+}
