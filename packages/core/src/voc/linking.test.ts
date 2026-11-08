@@ -66,6 +66,17 @@ it("FR-VOC-002 a voice like two voices of another part is not linked and stays a
   ]);
 });
 
+it("FR-VOC-002 a conflict resolved by a later join leaves no stale ambiguous flag", () => {
+  // Round 1: a (p1) is almost equally like b and c (both p2), so a~b and a~c are ambiguous;
+  // c~d (p3) then joins. Round 2: a~b has no close rival left (a~{c,d} ≈ 0.87) and joins.
+  // Neither final group has a close rival in the last round, so neither is ambiguous.
+  const result = groups([v("p1", "a", 0), v("p2", "b", 10), v("p2", "c", -11), v("p3", "d", -30)]);
+  expect(result).toEqual([
+    { ambiguous: false, members: ["a", "b"] },
+    { ambiguous: false, members: ["c", "d"] },
+  ]);
+});
+
 it("FR-VOC-002 voices below the threshold or of another model revision stay apart", () => {
   expect(groups([v("p1", "a", 0), v("p2", "b", 60)])).toEqual([
     { ambiguous: false, members: ["a"] },
