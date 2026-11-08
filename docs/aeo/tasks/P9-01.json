@@ -1,0 +1,66 @@
+{
+  "schema_version": "1",
+  "id": "P9-01",
+  "title": "دانلود binary ‏ffmpeg-static در install.js با سنجش کامل بودن (دستهٔ ۹ L3؛ C8-9، ریشهٔ P8-03)",
+  "goal": "L-dev (docs/l2/handoffs/dev-to-L1-045.md) نشان داد binary ‏ffmpeg-static گاهی نیمه‌کاره دانلود می‌شود (۷۷٬۷۱۶٬۵۸۶ در برابر ۷۹٬۸۲۶٬۲۷۲ بایت)، بی بیت اجرایی، و نصب با exit 0 می‌گذرد (۳ از ۴۲ نصب). سازوکار: @derhuerst/http-basic با cache فقط رویدادهای data و end را منتقل می‌کند؛ پس با قطع وسط بدنه promise ‏install.js معلق می‌ماند، chmod ‏(install.js:179 در شاهد L-dev) اجرا نمی‌شود و Node با 0 بیرون می‌رود. patch موجود patches/ffmpeg-static.patch (P1-00، 578ee94) فقط proxy را درست کرده است. همین patch را گسترش بده تا install.js دانلود را کامل بسنجد: یا cache ‏http-basic را خاموش کند تا خطای stream برسد، یا شمار بایت دریافتی را با content-length بسنجد؛ در هر حال، اگر دانلود ناقص یا خطادار بود، فایل ناقص را حذف کند و با کد غیر صفر بیرون برود، و فقط فایل کامل chmod شود. pnpm-lock.yaml (patch hash) را با work_install ‏(pnpm install --offline --ignore-scripts) هم‌خوان کن. رفتار proxy ‏P1-00 بی‌تغییر بماند.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "patches/ffmpeg-static.patch همچنان فقط install.js بستهٔ ffmpeg-static ‏5.3.0 را تغییر می‌دهد؛ تغییر P1-00 (HttpsProxyAgent با proxyUrl کامل) بی‌تغییر است، و افزوده‌اش دانلود ناقص یا خطادار را با حذف فایل ناقص و کد خروج غیر صفر رد می‌کند و فقط فایل کامل را chmod می‌کند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "pnpm-lock.yaml با patch تازه هم‌خوان است، پس pnpm install --frozen-lockfile بی خطای lockfile می‌گذرد؛ pnpm-workspace.yaml و patchedDependencies بی‌تغییرند مگر برای هم‌خوانی لازم (با دلیل در گزارش)."
+    },
+    {
+      "id": "AC-3",
+      "statement": "Implementer با یک کاوش موقت و commit‌نشده (مثلاً اجرای install.js وصله‌شده روی یک stream کوتاه‌شده یا سرور محلی، بی شبکهٔ بیرون) نشان می‌دهد دانلود ناقص اکنون کد غیر صفر و نبود فایل ناقص می‌دهد؛ اگر در sandbox ممکن نیست، از روی کد با path:line نشان می‌دهد و این را صریح می‌گوید."
+    },
+    {
+      "id": "AC-4",
+      "statement": "نصب کامل با lifecycle در sandbox ‏AEO می‌گذرد، binary ‏ffmpeg کامل و اجرایی است (install_assets)، و pnpm test:unit همه سبز است، از جمله apps/web/src/server/audio-preparer.test.ts."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، اعتبار proxy، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر CI، .claude/**، CLAUDE.md یا package.json."
+    }
+  ],
+  "owns_paths": ["patches/ffmpeg-static.patch", "pnpm-workspace.yaml", "pnpm-lock.yaml"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase9-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "work_install": {
+    "argv": ["pnpm", "install", "--offline", "--ignore-scripts"]
+  },
+  "assumptions": [
+    "منبع: C8-9 (docs/l3/phase8-findings-candidates.md)، docs/l2/handoffs/dev-to-L1-045.md، P8-03 (job-20261108-15d200d6)، E192‑R و E198‑R (P9-01 نخست). مسیرها از git ls-tree؛ الگوی P1-00 (owns و work_install). L1 کد را نخواند (X1).",
+    "ریسک کارت medium؛ gate ‏**high** (pnpm-lock.yaml زیر قاعدهٔ manifests) ⇒ approve مالک هنگام ادغام (E198‑R). مسیر اجرا طبق E199.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد، و اگر بد بود، آن را حذف و install را یک بار دیگر اجرا می‌کند.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

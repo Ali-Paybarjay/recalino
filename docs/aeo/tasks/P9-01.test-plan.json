@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P9-01",
+  "kind": "pass_to_pass",
+  "base_sha": "02aac693401fc911f67a60802b601168a8f70cf0",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "02aac693401fc911f67a60802b601168a8f70cf0",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/audio-preparer.test.ts",
+      "sha256": "cd0171a098b94bcd8ad5ed01b740d0f4a518f9f0c653cb85f73f13bf478127f3"
+    },
+    {
+      "path": "package.json",
+      "sha256": "c1cd9cfb231f5c6a616874c12f60de199e40e403f6b0a6e6485b3ac2f9b2009c"
+    },
+    {
+      "path": "apps/web/package.json",
+      "sha256": "27f5f6e1a041415082dbf6db92027e76799edbdf21a0ad62469367b40867634c"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/audio-preparer.test.ts",
+      "name": "the existing audio-preparer unit tests, which need the ffmpeg binary from ffmpeg-static, and the rest of the unit suite are green after a full install with the extended patch, and the manifests other than the lockfile stay unchanged",
+      "maps_to_criteria": ["AC-2", "AC-4"]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P9-03",
+  "kind": "pass_to_pass",
+  "base_sha": "02aac693401fc911f67a60802b601168a8f70cf0",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "02aac693401fc911f67a60802b601168a8f70cf0",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/plt/storage.ts",
+      "sha256": "3af38c88350fb298473210fbf730c9e3d61d0309e0c41324de30ad268235ff75"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.ts",
+      "sha256": "b7fefc0b5800fed917482f47bbbaf227ae7fabe14749108a63307e5ea9e6faa1"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.test.ts",
+      "sha256": "cdef7748073e67a3cedc701fdfd92c047c4ad110645a2835e48e0be9bfdd74ee"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/steps/runtime.test.ts",
+      "name": "the unit suite is green on head, including the unchanged provider step runtime unit tests; the new int test in priv/media.int.test.ts for a rerun after a registered but unverified object runs in CI test:int (required-checks); and the storage and runtime modules stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2"]
+    }
+  ]
+}

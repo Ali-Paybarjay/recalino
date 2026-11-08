@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "task_id": "P9-02",
+  "kind": "pass_to_pass",
+  "base_sha": "02aac693401fc911f67a60802b601168a8f70cf0",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "02aac693401fc911f67a60802b601168a8f70cf0",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/media/assets.ts",
+      "sha256": "bbf4a70f5850e966c5444ff9078722f50c7bc6407015ff406469527c57cd1e14"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.ts",
+      "sha256": "b7fefc0b5800fed917482f47bbbaf227ae7fabe14749108a63307e5ea9e6faa1"
+    },
+    {
+      "path": "packages/core/src/quota/costs.ts",
+      "sha256": "4d6b4af777ef91e2c931084ed72453d168b42d506a18571fccb8db6a5bd0bb20"
+    },
+    {
+      "path": "packages/core/src/proc/maintenance.ts",
+      "sha256": "b827d33756f1cc93c5ccae0e61afcb1f74e88e64f20e72221a2bd1eeacf866a0"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.test.ts",
+      "sha256": "cdef7748073e67a3cedc701fdfd92c047c4ad110645a2835e48e0be9bfdd74ee"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/steps/runtime.test.ts",
+      "name": "the unit suite is green on head, including the unchanged provider step runtime unit tests; the new speech step int tests in priv/media.int.test.ts run in CI test:int (required-checks); and the media, runtime, cost and maintenance modules stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2"]
+    }
+  ]
+}
