@@ -1,0 +1,28 @@
+{
+  "schema_version": "1",
+  "task_id": "P8-03",
+  "kind": "pass_to_pass",
+  "base_sha": "fe9a8457b301c92db46d5ecb10821723ef5d3be0",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "fe9a8457b301c92db46d5ecb10821723ef5d3be0",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/voc/linking.ts",
+      "sha256": "68ba30dbdf87a084e0ac710546b80c99d85e20d2db3503c47dee24f46bed0c28"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/voc/linking.test.ts",
+      "name": "the unit suite is green on head, a three-group linking test builds the audited order and checks the ambiguous flag of the final group, and the linking module stays unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2"]
+    }
+  ]
+}

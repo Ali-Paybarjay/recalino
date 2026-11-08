@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P8-04",
+  "kind": "pass_to_pass",
+  "base_sha": "fe9a8457b301c92db46d5ecb10821723ef5d3be0",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "fe9a8457b301c92db46d5ecb10821723ef5d3be0",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/app/error.tsx",
+      "sha256": "6369a2cbaac5e6e8760292792fd3e4f74de0d7094bc8d7d1a31158d2d9e706a8"
+    },
+    {
+      "path": "apps/web/src/app/global-error.tsx",
+      "sha256": "8d18529285cef3f34e809a7f027375da589f48b14a19146d35d715fdd8cd2c21"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/app/error.test.ts",
+      "name": "the unit suite is green on head, a new test checks that Try again in the app and global error boundaries calls the function Next passes by its props contract, and both error boundaries stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-3"]
+    }
+  ]
+}
