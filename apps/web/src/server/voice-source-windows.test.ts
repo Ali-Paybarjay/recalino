@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
+import { VOICE_MODEL_REVISION } from "./voice-engine";
 import {
   remapVoiceSegments,
   VOICE_CHECK_GAP_MS,
@@ -237,4 +240,47 @@ it("marks a turn unsafe when a voice it was heard over is rejected at an excerpt
     ["classmate", false],
     ["teacher", false],
   ]);
+});
+
+// P6-01 §1: since 34862cb remapVoiceSegments marks a turn boundaryUnsafe when it overlapped a
+// rejected turn of another voice, and that decides which turns build the voiceprint. Its source
+// text (read from disk, so no transpiler output is hashed) is pinned to the current
+// VOICE_MODEL_REVISION so the rejection or boundaryUnsafe logic never changes silently.
+it("pins the remapVoiceSegments boundaryUnsafe logic to the current VOICE_MODEL_REVISION", () => {
+  const pinned = {
+    revision: "sherpa-onnx-1.13.8_pyannote3-220ad67c_wespeaker-resnet34lm-e9848563",
+    sourceSha256: {
+      remapVoiceSegments: "ec13064b4e1f232e68372a32de6f29fcfb1c42f6e0084ccda33e6020979b3aab",
+    },
+  };
+  const source = readFileSync(
+    new URL("./voice-source-windows.ts", import.meta.url),
+    "utf8",
+  ).replace(/\r\n/g, "\n");
+  const start = source.indexOf("export function remapVoiceSegments<");
+  const end = source.indexOf("\n}\n", start);
+  expect(start, "remapVoiceSegments not found in voice-source-windows.ts").toBeGreaterThanOrEqual(
+    0,
+  );
+  expect(end, "end of remapVoiceSegments not found in voice-source-windows.ts").toBeGreaterThan(
+    start,
+  );
+  const current = {
+    remapVoiceSegments: createHash("sha256")
+      .update(source.slice(start, end + 2))
+      .digest("hex"),
+  };
+  expect(
+    VOICE_MODEL_REVISION,
+    "VOICE_MODEL_REVISION changed: update this pin to the new revision and its source hashes together",
+  ).toBe(pinned.revision);
+  expect(
+    current,
+    "remapVoiceSegments in voice-source-windows.ts changed under the same " +
+      "VOICE_MODEL_REVISION. If its behaviour changed (which turns are rejected or marked " +
+      "boundaryUnsafe, including the 200 ms edge margin): bump VOICE_MODEL_REVISION in " +
+      "voice-engine.ts (stored voiceprints must be re-recorded), then update this pin to the new " +
+      "revision and hashes. If its behaviour did not change (formatting or comments only): update " +
+      "only the hash in this pin",
+  ).toStrictEqual(pinned.sourceSha256);
 });
