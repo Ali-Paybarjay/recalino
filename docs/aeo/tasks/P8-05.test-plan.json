@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P8-05",
+  "kind": "pass_to_pass",
+  "base_sha": "f79a486e86a8401626779de0a5ede2880a8f61f5",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "f79a486e86a8401626779de0a5ede2880a8f61f5",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/voc/contracts.ts",
+      "sha256": "cdb80e27ec94ef24af659e291f60bc03c14cc6466827535e8cba8cbeb9a3796e"
+    },
+    {
+      "path": "packages/core/src/voc/index.ts",
+      "sha256": "5e33f91757ce06778ac9b39ef1863b3793cc584328901f313bb8385fbc6376bb"
+    },
+    {
+      "path": "packages/core/src/voc/class-voice.test.ts",
+      "sha256": "9198e68e1eb4fb19ec3dedfdfcffff875a2c11d1dbb8496cf92919569a11102d"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/voc/linking.test.ts",
+      "name": "the unit suite is green on head, the three-group linking test now expects no ambiguous flag on either final group while the existing two-voices test still expects it, and the voice contracts, exports and class voice tests stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-2"]
+    }
+  ]
+}
