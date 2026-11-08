@@ -4,6 +4,16 @@ import {
   allowanceBlock,
   isServiceProcessingBlock,
 } from "./automatic-learning-recovery";
+import { processSessionCopy } from "./process-session-copy";
+
+/**
+ * The File processing panel's text for uploaded files that wait for "Process this session"
+ * (D107), approved word for word by the product owner on 2026-11-07 (E160-R;
+ * docs/design/UI_COPY_PENDING.md). The button name is the approved D107 action.
+ */
+export const fileProcessingCopy = {
+  awaitingProcess: `Your files are uploaded. To create your notes and flashcards, choose “${processSessionCopy.action}”.`,
+} as const;
 
 interface ProcessingSource {
   assetId: string;
@@ -38,7 +48,8 @@ export function fileProcessingFeedback(
   status: AutomaticLearningStatus | null,
   sources: ProcessingSource[],
 ): {
-  state: "processing" | "success" | "error";
+  /** "awaiting_process": the files are in and wait for the learner's Process (D107); not busy. */
+  state: "processing" | "awaiting_process" | "success" | "error";
   message: string;
   detail: string;
   retry?: boolean;
@@ -111,6 +122,17 @@ export function fileProcessingFeedback(
         detail: `${receipt.total} ${receipt.total === 1 ? "file has" : "files have"} been uploaded and processed. Your session notes and flashcards are ready.`,
       };
   }
+  // D107: the submitted files are in and verified, and lesson work waits for the learner's
+  // "Process this session". Nothing is processing, so the panel is not busy and the page does
+  // not keep refreshing.
+  if (
+    current &&
+    awaitsProcess(status) &&
+    uploaded.length === receipt.sourceIds.length &&
+    uploaded.length > 0 &&
+    uploaded.every((source) => source.verifiedAt)
+  )
+    return { state: "awaiting_process", message: fileProcessingCopy.awaitingProcess, detail: "" };
   return {
     state: "processing",
     message:
@@ -120,6 +142,20 @@ export function fileProcessingFeedback(
     detail:
       "Large files and audio can take several minutes. Progress updates automatically. You can use other pages. Once the files are received, processing continues on the server even if you close the app. Your result appears in Notifications.",
   };
+}
+
+/**
+ * The rule of awaitingProcess in learning-progress.ts (the session card's "Ready to process"),
+ * kept here because learning-progress.ts reaches this module through upload-store.ts.
+ */
+function awaitsProcess(status: AutomaticLearningStatus) {
+  return (
+    (status.processRequest === "not_requested" || status.processRequest === "new_material") &&
+    status.state === "waiting_sources" &&
+    !status.batchId &&
+    status.lastError !== "batch_open" &&
+    status.lastError !== "select_at_least_one"
+  );
 }
 
 function processingRecovery(status: AutomaticLearningStatus) {

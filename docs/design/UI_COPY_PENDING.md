@@ -248,6 +248,16 @@
 
 متن‌های موجودی که بدون تغییر دوباره به کار رفته‌اند: «Ready to process» (`handoff/copy.md`، Class statuses)، «New sources since your notes were made» (Changed sources)، «A new version of existing notes also uses 1 New versions unit.» (Retry، D59)، «Confirm and process» و «Not now» (قاب C5)، ردیف‌های C5 با برچسب‌های موجود («Class audio» از `allowanceLabels`، «Board photos»، `sourceKindLabel`)، خط‌های سهمیه با `allowanceCopy.shortageItem`، «Saved on this device»، «Recording in progress»، «Listen»، «Export audio»، «Remove from this device»، «Confirm local removal»، «Keep»، «Back to session»، «Saved and recoverable recordings» و «No recordings on this device yet.».
 
+## تأیید 2026-11-07 — پنل File processing در انتظار Process this session (E160‑R، P7-04)
+
+مالک محصول در 2026-11-07 متن پنل «File processing» صفحهٔ Session material را برای حالتی که فایل‌ها آپلود و بررسی شده‌اند ولی پردازش هنوز درخواست نشده (D107) عیناً تأیید کرد. ثبت: E160‑R در [`docs/aeo/l3/phase7-plan.md`](../aeo/l3/phase7-plan.md) §۴ (یافتهٔ AUD-4 ‏F-1). متن در `fileProcessingCopy` در [`workspace/file-processing.ts`](../../apps/web/src/ui/workspace/file-processing.ts) است و `approved-copy.test.ts` آن را عیناً با جدول زیر می‌سنجد. نام دکمه همان `processSessionCopy.action` تأییدشدهٔ D107 است.
+
+| جا | کلید | متن |
+|---|---|---|
+| پنل «File processing» پس از «Upload & Process»، وقتی جلسه منتظر «Process this session» است (بی نوار پیشرفت و بی refresh پیاپی) | `fileProcessingCopy.awaitingProcess` | «Your files are uploaded. To create your notes and flashcards, choose “Process this session”.» |
+
+- برچسب «Upload & Process»، متن پردازش واقعی («Processing your files…» و «Verifying and preparing your files…» با توضیح آن) و متن‌های دیگر پنل بی‌تغییرند. متن تازهٔ دیگری اضافه نشد.
+
 ## تأیید 2026-10-19 — System health (دستهٔ ۱۴، `fix/audit-14`، D97)
 
 مالک محصول در 2026-10-19 هر ۱۶ متن کارت «System health» را که دستهٔ ۳ (`fix/audit-3`، یافتهٔ OPS-02؛ ADM-01 و ADM-12 در `ADMIN_FEEDBACK_SPEC_2026-10-05.md`) پیشنهاد کرده بود، عیناً تأیید کرد. ثبت نسخه‌دار: [D97](../PRODUCT_DECISIONS_LOG.md). متن‌ها از این فهرست به `systemHealthCopy` در [`admin/copy.ts`](../../apps/web/src/ui/admin/copy.ts) منتقل شدند و آزمون `approved-copy.test.ts` هر متن انگلیسی و فارسی را عیناً با همین بخش می‌سنجد.

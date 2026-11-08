@@ -525,6 +525,9 @@ export function SourcesView({
               />
               {batch?.active && message && <Status>{message}</Status>}
             </div>
+          ) : feedback.state === "awaiting_process" ? (
+            // D107: the files wait for Process this session (the session card above has it).
+            <Status tone="neutral">{feedback.message}</Status>
           ) : (
             <>
               <Status tone={feedback.state === "success" ? "success" : "error"}>
