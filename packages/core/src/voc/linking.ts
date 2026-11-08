@@ -14,6 +14,8 @@ import { voiceCosine } from "./matching";
  *    part with the partner, or is less alike to the partner than `threshold`). Such a voice
  *    resembles two different people's voices; both stay apart and are marked ambiguous, so the
  *    uncertainty stays visible. A third part of the same person is not a conflict: it joins next.
+ *    The mark reflects the last round only: a group is ambiguous when it still has such a
+ *    conflict once no more joins are possible.
  *
  * Joining is greedy from the most similar pair; it is deterministic for a given input.
  */
@@ -70,6 +72,9 @@ export function linkClassVoices(
     })
     .map((voice) => ({ voices: [voice], ambiguous: false }));
   for (;;) {
+    // The flag is not sticky: only this round's conflicts count, so a conflict that a later
+    // join resolved does not stay on (or carry into) the final groups.
+    for (const group of groups) group.ambiguous = false;
     const scores = groups.map((left, i) =>
       groups.map((right, j) => (i === j ? null : linkage(left, right))),
     );
@@ -109,7 +114,6 @@ export function linkClassVoices(
         right = groups[pair.j];
       if (!left || !right) continue;
       left.voices.push(...right.voices);
-      left.ambiguous ||= right.ambiguous;
       groups.splice(pair.j, 1);
       merged = true;
       break;
