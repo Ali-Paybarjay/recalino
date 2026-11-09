@@ -17,6 +17,7 @@ import {
   type JobDefinition,
   type LearnerContext,
   type ObjectStore,
+  ownedObjectMetadata,
   type PltSettings,
   readOwnedObject,
   readPltSettings,
@@ -591,29 +592,36 @@ export function mediaTtsJob(
         const bytes = Buffer.from(output.bytesBase64, "base64");
         if (!bytes.length || bytes.length > limits.maxTtsBytes) throw errors.payloadTooLarge();
         if (detectBinaryMime(bytes) !== "audio/mpeg") throw errors.unsupportedMedia();
-        const objectId =
-          row.object_id ??
-          (await writeOwnedObject(job.db, dependencies.store, ctx, {
-            module: "media",
-            retention: "durable",
-            contentType: output.mimeType,
-            bytes,
-            now: job.now(),
-            onRegistered: async (id) => {
-              stagedObjectId = id;
-              await job.db.transaction().execute(async (tx) => {
-                await lockAccount(tx, ctx.userId);
-                await assertSessionOwner(tx, ctx, row.session_id);
-                const current = await owned(tx, ctx, row.id);
-                if (!["queued", "processing"].includes(current.state)) throw errors.conflict();
-                await tx
-                  .updateTable("media.asset")
-                  .set({ object_id: id })
-                  .where("id", "=", row.id)
-                  .execute();
-              });
-            },
-          }));
+        let objectId: string | null = null;
+        if (row.object_id) {
+          const registered = await ownedObjectMetadata(job.db, ctx, row.object_id);
+          // C8-2: an earlier job may have committed this pointer and stopped before the bytes
+          // were written and verified. Only a verified object is reused; a stale one is deleted
+          // with its key and a fresh object replaces the pointer below.
+          if (registered.state === "verified") objectId = registered.id;
+          else await deleteObject(job.db, dependencies.store, ctx, registered.id, job.now());
+        }
+        objectId ??= await writeOwnedObject(job.db, dependencies.store, ctx, {
+          module: "media",
+          retention: "durable",
+          contentType: output.mimeType,
+          bytes,
+          now: job.now(),
+          onRegistered: async (id) => {
+            stagedObjectId = id;
+            await job.db.transaction().execute(async (tx) => {
+              await lockAccount(tx, ctx.userId);
+              await assertSessionOwner(tx, ctx, row.session_id);
+              const current = await owned(tx, ctx, row.id);
+              if (!["queued", "processing"].includes(current.state)) throw errors.conflict();
+              await tx
+                .updateTable("media.asset")
+                .set({ object_id: id })
+                .where("id", "=", row.id)
+                .execute();
+            });
+          },
+        });
         await job.db.transaction().execute(async (tx) => {
           await lockAccount(tx, ctx.userId);
           await assertSessionOwner(tx, ctx, row.session_id);
