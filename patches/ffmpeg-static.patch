@@ -1,7 +1,16 @@
 diff --git a/install.js b/install.js
 --- a/install.js
 +++ b/install.js
-@@ -52,10 +52,9 @@ const proxyUrl = (
+@@ -4,8 +4,6 @@
+ var os = require("os");
+ const {encode: encodeQuery} = require('querystring')
+ const {strictEqual} = require('assert')
+-const envPaths = require('env-paths')
+-const FileCache = require('@derhuerst/http-basic/lib/FileCache').default
+ const {extname} = require('path')
+ var ProgressBar = require("progress");
+ var request = require('@derhuerst/http-basic')
+@@ -52,10 +50,9 @@ const proxyUrl = (
    process.env.HTTP_PROXY ||
    process.env.http_proxy
  )
@@ -13,3 +22,144 @@ diff --git a/install.js b/install.js
  }
 
  // https://advancedweb.hu/how-s3-signed-urls-work/
+@@ -78,9 +75,4 @@
+ )
+
+-const cache = new FileCache(envPaths(pkg.name).cache)
+-cache.getCacheKey = (url) => {
+-  return FileCache.prototype.getCacheKey(normalizeS3Url(url))
+-}
+-
+ const isGzUrl = (url) => {
+   const path = new URL(url).pathname.split('/')
+@@ -88,57 +80,101 @@
+   return filename && extname(filename) === '.gz'
+ }
+
+ const noop = () => {}
+-function downloadFile(url, destinationPath, progressCallback = noop) {
++// A download counts only when its body ended normally and, if the response
++// declares a content-length, exactly that many bytes arrived. The body goes to
++// `<destination>.download`, which is renamed into place (after an optional
++// chmod) only when complete; a failed download removes it.
++const STALL_TIMEOUT = 60 * 1000 // 60s without data aborts the download
++const removeFile = (path) => {
++  try {
++    fs.unlinkSync(path)
++  } catch (err) {
++    if (err && err.code !== 'ENOENT') console.error(err)
++  }
++}
++function downloadFile(url, destinationPath, progressCallback = noop, mode = null) {
+   let fulfill, reject;
+   let totalBytes = 0;
++  const partialPath = `${destinationPath}.download`
+
+   const promise = new Promise((x, y) => {
+     fulfill = x;
+     reject = y;
+   });
+
++  // No http-basic cache and no gzip option: both put the body behind streams
++  // that forward only `data` and `end`, so a body cut off mid-transfer never
++  // settled this promise and the install exited 0 with a partial binary.
+   request('GET', url, {
+     agent,
+     followRedirects: true,
+     maxRedirects: 3,
+-    gzip: true,
+-    cache,
+     timeout: 30 * 1000, // 30s
+     retry: true,
+   }, (err, response) => {
+     if (err || response.statusCode !== 200) {
+       err = err || new Error(`Failed to download ${executableBaseName} ${release}.`)
+       if (response) {
+         err.url = response.url
+         err.statusCode = response.statusCode
+       }
+       reject(err)
+       return;
+     }
+
+-    const file = fs.createWriteStream(destinationPath);
++    const cLength = response.headers["content-length"]
++    const declaredBytes = cLength ? Number(cLength) : NaN
++    const expectedBytes = Number.isSafeInteger(declaredBytes) && declaredBytes >= 0 ? declaredBytes : null
++    let receivedBytes = 0
++    let stallTimer = null
++    const armStallTimer = () => {
++      clearTimeout(stallTimer)
++      stallTimer = setTimeout(() => {
++        response.body.destroy(new Error(`Download of ${executableBaseName} ${release} stalled.`))
++      }, STALL_TIMEOUT)
++    }
++
++    const file = fs.createWriteStream(partialPath);
+     const streams = isGzUrl(url)
+       ? [response.body, createGunzip(), file]
+       : [response.body, file]
+     pipeline(
+       ...streams,
+       (err) => {
++        clearTimeout(stallTimer)
++        if (!err && expectedBytes !== null && receivedBytes !== expectedBytes) {
++          err = new Error(`Incomplete download of ${executableBaseName} ${release}: ${receivedBytes} of ${expectedBytes} bytes.`)
++        }
++        if (!err) {
++          try {
++            if (mode !== null) fs.chmodSync(partialPath, mode)
++            fs.renameSync(partialPath, destinationPath)
++          } catch (fsErr) {
++            err = fsErr
++          }
++        }
+         if (err) {
++          removeFile(partialPath)
+           err.url = response.url
+           err.statusCode = response.statusCode
+           reject(err)
+         } else fulfill()
+       }
+     )
+
+-    if (!response.fromCache && progressCallback) {
+-      const cLength = response.headers["content-length"]
+-      totalBytes = cLength ? parseInt(cLength, 10) : null
++    armStallTimer()
++    response.body.on('data', (chunk) => {
++      receivedBytes += chunk.length
++      armStallTimer()
++    })
++
++    if (progressCallback) {
++      totalBytes = expectedBytes
+       response.body.on('data', (chunk) => {
+         progressCallback(chunk.length, totalBytes);
+       });
+     }
+   });
+
+   return promise;
+@@ -175,10 +211,19 @@
+ const readmeUrl = `${baseUrl}/${platform}-${arch}.README`
+ const licenseUrl = `${baseUrl}/${platform}-${arch}.LICENSE`
+
+-downloadFile(downloadUrl, binaryPath, onProgress)
++// If the event loop drains while the binary download is still pending, its
++// stream stopped without `end` or `error`: fail the install, do not exit 0.
++let binaryComplete = false
++process.on('beforeExit', () => {
++  if (binaryComplete) return
++  removeFile(`${binaryPath}.download`)
++  exitOnError(`${pkg.name} install failed: the ${executableBaseName} download did not complete.`)
++})
++
++downloadFile(downloadUrl, binaryPath, onProgress, 0o755) // executable only once complete
+ .then(() => {
+-  fs.chmodSync(binaryPath, 0o755) // make executable
++  binaryComplete = true
+ })
+ .catch(exitOnError)
+
+ .then(() => downloadFile(readmeUrl, `${binaryPath}.README`))
