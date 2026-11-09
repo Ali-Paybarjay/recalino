@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
 import { completeSignIn, getAccountState, lockAccount } from "../acc";
@@ -50,20 +51,34 @@ import {
 } from "../note";
 import { appendEncryptedDeletionJournal, readEncryptedDeletionJournals } from "../ops";
 import { getSession } from "../org";
-import { MemoryObjectStore, runDueJobs, writeOwnedObject } from "../plt";
+import {
+  type JobContext,
+  MemoryObjectStore,
+  runDueJobs,
+  sweepJobs,
+  writeOwnedObject,
+} from "../plt";
 import {
   cancelAccountRuns,
   cleanupAccountProcessing,
   cleanupSessionProcessing,
   cleanupSourceProcessing,
   completeAuxiliaryRun,
+  ENDED_JOB_RUN_ERROR,
   executeAuxiliaryProviderStep,
   failAuxiliaryRun,
   getRun,
+  reconcileEndedJobRuns,
   registerProcessingTemporaryObject,
   scheduleAuxiliaryRun,
 } from "../proc";
-import { allowance, amounts, configureCostPolicy, grantEntitlement } from "../quota";
+import {
+  allowance,
+  amounts,
+  beginProviderStep,
+  configureCostPolicy,
+  grantEntitlement,
+} from "../quota";
 import {
   cleanupAccountSrs,
   cleanupSessionSrs,
@@ -279,6 +294,50 @@ async function isolatedPrivacyJob(
   const kind = `priv.synthetic_${randomUUID().replaceAll("-", "")}`;
   await database.updateTable("plt.job").set({ kind }).where("id", "=", receipt.job_id).execute();
   return { ...definition, kind };
+}
+/** The speech checkpoint shape mediaTtsJob reads back; synthetic ID3 bytes only. */
+const speechCheckpoint = z.strictObject({
+  bytesBase64: z.string().min(1),
+  mimeType: z.literal("audio/mpeg"),
+});
+const SYNTHETIC_SPEECH_BYTES = "ID3 synthetic test bytes";
+/** The auxiliary run, its reservation and its queued job behind a requested speech asset. */
+async function speechRun(assetId: string) {
+  const asset = await db
+    .selectFrom("media.asset")
+    .select("run_id")
+    .where("id", "=", assetId)
+    .executeTakeFirstOrThrow();
+  if (!asset.run_id) throw new Error("Expected speech run");
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .select(["id", "reservation_id", "job_id"])
+    .where("id", "=", asset.run_id)
+    .executeTakeFirstOrThrow();
+  if (!row.job_id) throw new Error("Expected speech job");
+  return { runId: row.id, reservationId: row.reservation_id, jobId: row.job_id };
+}
+async function providerCosts(userId: string) {
+  return db
+    .selectFrom("quota.provider_cost")
+    .select(["amount_micros", "run_id"])
+    .where("user_id", "=", userId)
+    .execute();
+}
+async function speechAttempts(runId: string) {
+  return db
+    .selectFrom("proc.provider_attempt")
+    .select(["state", "hold_id"])
+    .where("run_id", "=", runId)
+    .where("step", "=", "speech")
+    .execute();
+}
+async function runState(runId: string) {
+  return db
+    .selectFrom("proc.processing_run")
+    .select(["state", "last_error"])
+    .where("id", "=", runId)
+    .executeTakeFirstOrThrow();
 }
 describe("explicit media and privacy publication", () => {
   it("persists the owned deletion receipt before acknowledgement and permits safe retry after an external append failure", async () => {
@@ -750,5 +809,217 @@ describe("explicit media and privacy publication", () => {
     await expect(
       getPrivacyDeletionRequest(db, { ...f.ctx, userId: randomUUID() }, receipt.id),
     ).rejects.toMatchObject({ code: "not_found" });
+  });
+  // C8-5 (P8-02, F-5): an earlier job committed the paid speech step, then stopped before publishing.
+  it("C8-5 replays a speech job after its committed speech checkpoint without a second provider call or cost", async () => {
+    const f = await fixture();
+    const asset = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: f.session.id,
+        text: "A short sentence.",
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const { runId } = await speechRun(asset.id);
+    // The earlier job's step goes through the production provider step, so its attempt, cost and
+    // checkpoint are committed together; the fixture provider itself is never called.
+    const interruptedJob: JobContext = {
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      async step() {
+        throw new Error("Unused fixture job step");
+      },
+    };
+    await executeAuxiliaryProviderStep(interruptedJob, f.ctx, runId, {
+      step: "speech",
+      model: providerSettings.ttsModel,
+      provider: f.provider,
+      schema: speechCheckpoint,
+      effect: async () => ({
+        output: {
+          bytesBase64: Buffer.from(SYNTHETIC_SPEECH_BYTES).toString("base64"),
+          mimeType: "audio/mpeg" as const,
+        },
+        requestId: "synthetic-speech",
+        model: providerSettings.ttsModel,
+        provider: f.provider.name,
+        usage: { characters: 17 },
+        actualMicros: 2,
+      }),
+    });
+    // The stopped job had already moved its asset to processing.
+    await db
+      .updateTable("media.asset")
+      .set({ state: "processing" })
+      .where("id", "=", asset.id)
+      .execute();
+    expect(await providerCosts(f.ctx.userId)).toHaveLength(1);
+
+    await run(db, mediaTtsJob(f.dependencies));
+    expect(f.provider.calls).toBe(0);
+    const costs = await providerCosts(f.ctx.userId);
+    expect(costs).toHaveLength(1);
+    expect(Number(costs[0]?.amount_micros)).toBe(2);
+    expect(costs[0]?.run_id).toBe(runId);
+    expect((await speechAttempts(runId)).map((attempt) => attempt.state)).toEqual(["succeeded"]);
+    const ready = await getMediaAsset(db, f.ctx, asset.id);
+    expect(ready.state).toBe("ready");
+    expect(Buffer.from((await readMediaBytes(db, f.store, f.ctx, asset.id)).bytes).toString()).toBe(
+      SYNTHETIC_SPEECH_BYTES,
+    );
+    expect((await runState(runId)).state).toBe("ready");
+    expect((await allowance(db, f.ctx)).consumed.tts).toBe(17);
+    expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
+  });
+  // C8-5 (P8-02, F-5) and C8-3 (P8-02, F-3): the job stopped during dispatch, leaving its attempt
+  // started and its maximum cost hold open. documents current behaviour (C8-3): the hold is never
+  // closed; a later fix for C8-3 is expected to change the hold assertion on purpose.
+  it("C8-3 documents current behaviour: a speech attempt left started ends needs_input with no cost while its cost hold stays open", async () => {
+    const f = await fixture();
+    const asset = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: f.session.id,
+        text: "A short sentence.",
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const { runId, reservationId } = await speechRun(asset.id);
+    const holdId = await db.transaction().execute(async (tx) => {
+      // The same operation key and hold the provider step commits before its dispatch.
+      const operationKey = `${runId}:speech:1`;
+      const hold = await beginProviderStep(tx, f.ctx, {
+        sessionId: f.session.id,
+        reservationId,
+        operationKey,
+        maximumMicros: providerSettings.maximumMicros,
+        currency: providerSettings.currency,
+      });
+      await tx
+        .insertInto("proc.provider_attempt")
+        .values({
+          run_id: runId,
+          user_id: f.ctx.userId,
+          step: "speech",
+          attempt: 1,
+          operation_key: operationKey,
+          hold_id: hold.id,
+          provider: f.provider.name,
+          model: providerSettings.ttsModel,
+          state: "started",
+        })
+        .execute();
+      await tx
+        .updateTable("proc.processing_run")
+        .set({ state: "processing" })
+        .where("id", "=", runId)
+        .execute();
+      await tx
+        .updateTable("media.asset")
+        .set({ state: "processing" })
+        .where("id", "=", asset.id)
+        .execute();
+      return hold.id;
+    });
+
+    await run(db, mediaTtsJob(f.dependencies));
+    expect(f.provider.calls).toBe(0);
+    const ended = await getMediaAsset(db, f.ctx, asset.id);
+    expect(ended.state).toBe("needs_input");
+    expect(ended.lastError).toBe("provider_outcome_unresolved");
+    expect(await runState(runId)).toEqual({
+      state: "needs_input",
+      last_error: "provider_outcome_unresolved",
+    });
+    expect(await providerCosts(f.ctx.userId)).toEqual([]);
+    expect(await speechAttempts(runId)).toEqual([{ state: "started", hold_id: holdId }]);
+    expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
+    expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
+    // documents current behaviour (C8-3): nothing closes the maximum cost hold of the started attempt.
+    const hold = await db
+      .selectFrom("quota.cost_hold")
+      .select("closed_at")
+      .where("id", "=", holdId)
+      .executeTakeFirstOrThrow();
+    expect(hold.closed_at).toBeNull();
+  });
+  // C8-5 (P8-02, F-5) and C8-4 (P8-02, F-4): the function was stopped on the job's last attempt,
+  // the sweep failed the job (lease_expired) and reconciliation closed its run. documents current
+  // behaviour (C8-4): the asset is left processing; a later fix for C8-4 is expected to change it.
+  it("C8-4 documents current behaviour: reconciling a speech run whose last job lease expired fails the run but leaves its asset processing", async () => {
+    const f = await fixture();
+    const input = {
+      sessionId: f.session.id,
+      text: "A short sentence.",
+      operationKey: randomUUID(),
+      exportAllowed: false,
+    };
+    const asset = await requestTts(db, f.ctx, input, f.dependencies);
+    const { runId, jobId } = await speechRun(asset.id);
+    const job = await db
+      .selectFrom("plt.job")
+      .select(["kind", "max_attempts"])
+      .where("id", "=", jobId)
+      .executeTakeFirstOrThrow();
+    expect(job.kind).toBe("media.tts");
+    const past = new Date(Date.now() - 600_000);
+    await db
+      .updateTable("plt.job")
+      .set({
+        state: "running",
+        attempt: job.max_attempts,
+        lease_token: randomUUID(),
+        lease_until: past,
+        updated_at: past,
+      })
+      .where("id", "=", jobId)
+      .execute();
+    // The stopped job had already moved its run and asset to processing.
+    await db
+      .updateTable("proc.processing_run")
+      .set({ state: "processing" })
+      .where("id", "=", runId)
+      .execute();
+    await db
+      .updateTable("media.asset")
+      .set({ state: "processing" })
+      .where("id", "=", asset.id)
+      .execute();
+
+    await sweepJobs(db, new Date());
+    expect(
+      await db
+        .selectFrom("plt.job")
+        .select(["state", "last_error"])
+        .where("id", "=", jobId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ state: "failed", last_error: "lease_expired" });
+    expect(await reconcileEndedJobRuns(db, new Date(), { userId: f.ctx.userId })).toBe(1);
+    expect(await runState(runId)).toEqual({ state: "failed", last_error: ENDED_JOB_RUN_ERROR });
+    expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
+    expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
+    expect(await providerCosts(f.ctx.userId)).toEqual([]);
+    expect(f.provider.calls).toBe(0);
+    // documents current behaviour (C8-4): reconciliation ends the run only; the asset stays
+    // processing without an error, and an identical request reuses that stranded asset.
+    const stranded = await getMediaAsset(db, f.ctx, asset.id);
+    expect(stranded.state).toBe("processing");
+    expect(stranded.lastError).toBeNull();
+    const again = await requestTts(
+      db,
+      f.ctx,
+      { ...input, operationKey: randomUUID() },
+      f.dependencies,
+    );
+    expect(again.id).toBe(asset.id);
+    expect(again.state).toBe("processing");
   });
 });
