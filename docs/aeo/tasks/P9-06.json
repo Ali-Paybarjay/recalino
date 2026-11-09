@@ -1,0 +1,69 @@
+{
+  "schema_version": "1",
+  "id": "P9-06",
+  "title": "بستن asset ‏media پس از reconcile ‏run کمکی (دستهٔ ۹ L3؛ C9-4، C8-4)",
+  "goal": "P9-04 (F-4، bug ‏medium ‏confirmed) و P8-02 (F-4) نشان دادند: اگر همهٔ تلاش‌های job ‏media.tts با lease_expired تمام شوند، sweepJobs آن را failed می‌کند و closeEndedJobRun برای run کمکی فقط failAuxiliaryRun را صدا می‌زند (proc/maintenance.ts:143-151 در شاهد Job)؛ hook ‏afterClose فقط برای kind === \"class\" است (maintenance.ts:208). پس media.asset در processing گیر می‌کند و cache همان متن را برای همیشه قفل می‌کند. اصلاح (گزینهٔ P9-04): یک hook بستن run برای auxiliary (مانند RunClosedHook) که ماژول media تزریق کند، تا asset متناظر needs_input یا failed شود، بی عبور مستقیم proc به media. آزمون int ‏«documents current behaviour» ‏C8-4 در priv/media.int.test.ts (P9-02) را عمداً به رفتار درست به‌روز کن. این کارت فقط پس از ادغام P9-05 و روی main تازه اجرا می‌شود (owns مشترک priv/media.int.test.ts)؛ قفل‌هایش آن روز دوباره سنجیده می‌شوند. اگر بی تغییر فایل‌های قفل ممکن نیست، Implementer ‏blocked برگرداند، با گزینه‌ها.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "پس از reconcile یک run کمکی ‏media.tts که job آن با lease_expired ‏failed شده، asset متناظر دیگر در processing نمی‌ماند (needs_input یا failed، با lastError روشن) و درخواست یکسان تازه asset گیرکرده را برنمی‌گرداند؛ بستن run کلاس و دیگر مسیرهای reconcile بی‌تغییرند."
+    },
+    {
+      "id": "AC-2",
+      "statement": "hook از سوی ماژول media تزریق می‌شود و proc مستقیماً media را import نمی‌کند؛ pnpm check:boundaries روی head سبز است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "آزمون int ‏C8-4 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شده و نام آن دیگر «documents current behaviour» نیست؛ دیگر آزمون‌های آن فایل (از جمله C8-5، C8-2 و آزمون P9-05) سبز می‌مانند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int). plt/storage.ts، plt/jobs.ts و proc/maintenance.test.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R)."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/proc/maintenance.ts",
+    "packages/core/src/proc/auxiliary.ts",
+    "packages/core/src/media/assets.ts",
+    "packages/core/src/priv/media.int.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase9-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C9-4 (P9-04، F-4؛ maintenance.ts:143-151 و :208 در شاهد Job)، C8-4 (P8-02، F-4)، docs/l3/phase9-plan.md 0.7 §۱۰ و E211‑R. L1 کد را نخواند (X1).",
+    "ریسک کارت medium (رفتار تولیدی reconcile و media)؛ gate برآورد medium؛ D7. **ترتیب (E211‑R):** فقط پس از ادغام P9-05 و روی main تازه؛ پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود. مسیر اجرا دستی (E199).",
+    "شاهد آزمون int (E198‑R، E200‑R، E211‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P9-06",
+  "kind": "pass_to_pass",
+  "base_sha": "6eeabf81fc09e5b1d260ba52f67b2f894c722b01",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "6eeabf81fc09e5b1d260ba52f67b2f894c722b01",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/plt/storage.ts",
+      "sha256": "3af38c88350fb298473210fbf730c9e3d61d0309e0c41324de30ad268235ff75"
+    },
+    {
+      "path": "packages/core/src/plt/jobs.ts",
+      "sha256": "79c76ffc7715448aefb4556b0b7db971d1b47f3aad28dbcfd60fd3e68b750026"
+    },
+    {
+      "path": "packages/core/src/proc/maintenance.test.ts",
+      "sha256": "af8cb3b1ca7d5306d5695fbf8ccd3d38b58a08bf109b2ee44bc92d6a3a14f1a0"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/maintenance.test.ts",
+      "name": "the unit suite is green on head, including the unchanged maintenance unit tests; the updated reconcile int test for the speech asset runs in CI test:int; and the storage and jobs modules stay unchanged",
+      "maps_to_criteria": ["AC-1", "AC-4"]
+    }
+  ]
+}
