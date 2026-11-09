@@ -115,6 +115,8 @@ function setup(fixture: Fixture = {}) {
           id: ATTEMPT,
           operation_key: query.parameters[4],
           hold_id: "hold",
+          provider: query.parameters[6],
+          model: query.parameters[7],
           estimate_rates: { synthetic: 1 },
           estimate_price_version: "rates-1",
         },
@@ -393,15 +395,98 @@ describe("providerStep (characterization)", () => {
     ]);
   });
 
+  // P9-05 (C9-1, C8-3): a job stopped during dispatch left its attempt started (or uncertain) with
+  // its maximum hold open. The next job closes that hold at the hold's maximum, fails the attempt
+  // and commits, then reports the outcome as unresolved: no dispatch and no retry.
+  const PREVIOUS = "77777777-7777-4777-8777-777777777777";
+  const unresolvedAttempt = (step: string, state: string, error_code: string | null) => ({
+    id: PREVIOUS,
+    run_id: RUN_ID,
+    step,
+    attempt: 1,
+    state,
+    error_code,
+    operation_key: `${RUN_ID}:${step}:1`,
+    hold_id: "previous-hold",
+    provider: "earlier-provider",
+    model: "earlier/model",
+    estimate_price_version: null,
+    provider_request_id: state === "uncertain" ? "request-0" : null,
+  });
   it.each([
-    [{ previous: { attempt: 1, state: "started" } }, "knowledge", "provider_outcome_unresolved"],
-    [{ previous: { attempt: 1, state: "uncertain" } }, "knowledge", "provider_outcome_unresolved"],
-  ])("refuses to dispatch while an attempt is unresolved", async (fixture, step, code) => {
-    const { job, log, statements } = setup(fixture);
+    ["started", null, "provider_outcome_unresolved", null],
+    ["uncertain", "provider_outcome_unknown", "provider_outcome_unknown", "request-0"],
+  ])(
+    "closes the hold of an attempt left %s at its maximum, fails it and does not dispatch",
+    async (state, earlierCode, recordedCode, requestId) => {
+      const { job, log, statements, warnings } = setup({
+        previous: unresolvedAttempt("knowledge", state, earlierCode),
+      });
+      const effect = vi.fn();
+      await expect(
+        providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, effect),
+      ).rejects.toMatchObject({
+        code: "provider_outcome_unresolved",
+        retryable: false,
+        uncertain: true,
+      });
+      expect(effect).not.toHaveBeenCalled();
+      expect(labelled(log, statements)).toEqual([
+        ...dispatch,
+        `finishProviderStep previous-hold ${JSON.stringify({
+          operationKey: `${RUN_ID}:knowledge:1`,
+          provider: "earlier-provider",
+          model: "earlier/model",
+          currency: "USD",
+          actualMicros: null,
+          estimatedMicros: "hold_maximum",
+          priceVersion: provider.settings.priceVersion,
+          usage: {},
+          runId: RUN_ID,
+          attemptId: PREVIOUS,
+        })} ${NOW.toISOString()}`,
+        "update attempt",
+        "commit",
+      ]);
+      expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
+        "failed",
+        recordedCode,
+        requestId,
+        NOW,
+        PREVIOUS,
+      ]);
+      expect(labelled(log, statements)).not.toContain("insert attempt");
+      expect(log.some((entry) => entry.startsWith("beginProviderStep"))).toBe(false);
+      expect(warnings).toEqual([]);
+    },
+  );
+
+  // C9-1: the same holds for every provider step, whatever its kind or response rule.
+  it.each([
+    ["stt:chunk-1", {}],
+    ["vision:page-2", {}],
+    ["speech", {}],
+    ["knowledge:compact", {}],
+    ["evaluation", { singleResponse: true }],
+  ])("closes an unresolved %s attempt's hold before refusing it", async (step, options) => {
+    const { job, log, statements } = setup({
+      previous: unresolvedAttempt(step, "started", null),
+    });
+    const effect = vi.fn();
     await expect(
-      providerStep(job, ctx, RUN_ID, step, "m", provider, schema, vi.fn()),
-    ).rejects.toMatchObject({ code, retryable: false, uncertain: true });
-    expect(labelled(log, statements).slice(-2)).toEqual(["read last attempt", "rollback"]);
+      providerStep(job, ctx, RUN_ID, step, "m", provider, schema, effect, options),
+    ).rejects.toMatchObject({ code: "provider_outcome_unresolved", uncertain: true });
+    expect(effect).not.toHaveBeenCalled();
+    const settled = log.filter((entry) => entry.startsWith("finishProviderStep"));
+    expect(settled).toHaveLength(1);
+    expect(settled[0]).toContain(
+      `"operationKey":"${RUN_ID}:${step}:1","provider":"earlier-provider","model":"earlier/model"`,
+    );
+    expect(settled[0]).toContain('"actualMicros":null,"estimatedMicros":"hold_maximum"');
+    expect(labelled(log, statements).slice(-2)).toEqual(["update attempt", "commit"]);
+    expect(statements.find((query) => label(query) === "update attempt")?.parameters[0]).toBe(
+      "failed",
+    );
   });
 
   it("refuses a second single response unless every earlier one was an HTTP refusal", async () => {
@@ -597,22 +682,78 @@ describe("providerStep (characterization)", () => {
     expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
   });
 
-  it("leaves an unknown outcome uncertain and unsettled", async () => {
-    const { job, log, statements, warnings } = setup();
+  // P9-05 (C9-2): an unknown outcome is not repeated; its hold closes at the hold's maximum and
+  // the attempt fails, in the same commit, for every provider step.
+  it.each([
+    ["knowledge", () => new Error("socket closed"), "provider_outcome_unknown", null],
+    ["stt:chunk-1", () => new Error("socket closed"), "provider_outcome_unknown", null],
+    [
+      "speech",
+      () => new ProviderError("provider_timeout", false, true, accounting),
+      "provider_timeout",
+      "request-1",
+    ],
+    [
+      "vision:page-2",
+      () => new ProviderError("provider_timeout", false, true),
+      "provider_timeout",
+      null,
+    ],
+  ])(
+    "closes the hold of an uncertain %s outcome at its maximum and fails the attempt",
+    async (step, failure, code, requestId) => {
+      const { job, log, statements, warnings } = setup();
+      const effect = vi.fn(async () => {
+        throw failure();
+      });
+      await expect(
+        providerStep(job, ctx, RUN_ID, step, "synthetic/llm", provider, schema, effect),
+      ).rejects.toMatchObject({ code, retryable: false, uncertain: true });
+      expect(effect).toHaveBeenCalledTimes(1);
+      const steps = labelled(log, statements);
+      expect(steps.slice(steps.indexOf("commit") + 1)).toEqual([
+        "begin",
+        `lockAccountForCleanup ${USER_ID}`,
+        "lock attempt",
+        `finishProviderStep hold ${JSON.stringify({
+          operationKey: `${RUN_ID}:${step}:1`,
+          provider: "synthetic",
+          model: "synthetic/llm",
+          currency: "USD",
+          actualMicros: null,
+          estimatedMicros: "hold_maximum",
+          priceVersion: "rates-1",
+          usage: {},
+          runId: RUN_ID,
+          attemptId: ATTEMPT,
+        })} ${NOW.toISOString()}`,
+        "update attempt",
+        "commit",
+      ]);
+      expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
+        "failed",
+        code,
+        requestId,
+        NOW,
+        ATTEMPT,
+      ]);
+      expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
+      expect(log.filter((entry) => entry.startsWith("beginProviderStep"))).toHaveLength(1);
+      expect(warnings).toHaveLength(1);
+    },
+  );
+
+  it("does not settle an uncertain outcome another worker already settled", async () => {
+    const { job, log, statements } = setup({
+      current: { state: "succeeded", provider_request_id: "x" },
+    });
     await expect(
       providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
         throw new Error("socket closed");
       }),
     ).rejects.toMatchObject({ code: "provider_outcome_unknown", uncertain: true });
     expect(log.some((entry) => entry.startsWith("finishProviderStep"))).toBe(false);
-    expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
-      "uncertain",
-      "provider_outcome_unknown",
-      null,
-      NOW,
-      ATTEMPT,
-    ]);
-    expect(warnings).toHaveLength(1);
+    expect(statements.filter((query) => label(query) === "update attempt")).toEqual([]);
   });
 
   it("settles a paid response whose commit failed as provider_output_commit_failed", async () => {
