@@ -52,6 +52,7 @@ import {
 import { appendEncryptedDeletionJournal, readEncryptedDeletionJournals } from "../ops";
 import { getSession } from "../org";
 import {
+  createObject,
   type JobContext,
   MemoryObjectStore,
   runDueJobs,
@@ -1021,5 +1022,88 @@ describe("explicit media and privacy publication", () => {
     );
     expect(again.id).toBe(asset.id);
     expect(again.state).toBe("processing");
+  });
+  // C8-2 (P8-02, F-2): an earlier job committed the asset's object pointer from onRegistered and
+  // stopped before the bytes were written and verified, so the registered object stayed pending.
+  it("C8-2 rewrites a registered but unverified speech object on rerun and publishes only a verified object", async () => {
+    const f = await fixture();
+    const asset = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: f.session.id,
+        text: "A short sentence.",
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const { runId } = await speechRun(asset.id);
+    const interruptedJob: JobContext = {
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      async step() {
+        throw new Error("Unused fixture job step");
+      },
+    };
+    await executeAuxiliaryProviderStep(interruptedJob, f.ctx, runId, {
+      step: "speech",
+      model: providerSettings.ttsModel,
+      provider: f.provider,
+      schema: speechCheckpoint,
+      effect: async () => ({
+        output: {
+          bytesBase64: Buffer.from(SYNTHETIC_SPEECH_BYTES).toString("base64"),
+          mimeType: "audio/mpeg" as const,
+        },
+        requestId: "synthetic-speech",
+        model: providerSettings.ttsModel,
+        provider: f.provider.name,
+        usage: { characters: 17 },
+        actualMicros: 2,
+      }),
+    });
+    // The same pending record writeOwnedObject registers before onRegistered commits its pointer;
+    // the stopped job never wrote its bytes or verified it.
+    const stale = await createObject(db, {
+      module: "media",
+      ownerUserId: f.ctx.userId,
+      retention: "durable",
+      contentType: "audio/mpeg",
+      sizeBytes: Buffer.byteLength(SYNTHETIC_SPEECH_BYTES),
+      now: new Date(),
+    });
+    await db
+      .updateTable("media.asset")
+      .set({ state: "processing", object_id: stale.id })
+      .where("id", "=", asset.id)
+      .execute();
+
+    await run(db, mediaTtsJob(f.dependencies));
+    expect(f.provider.calls).toBe(0);
+    const ready = await getMediaAsset(db, f.ctx, asset.id);
+    expect(ready.state).toBe("ready");
+    expect(ready.objectId).not.toBeNull();
+    const published = await db
+      .selectFrom("plt.storage_object")
+      .select("state")
+      .where("id", "=", ready.objectId as string)
+      .executeTakeFirstOrThrow();
+    expect(published.state).toBe("verified");
+    expect(Buffer.from((await readMediaBytes(db, f.store, f.ctx, asset.id)).bytes).toString()).toBe(
+      SYNTHETIC_SPEECH_BYTES,
+    );
+    const replaced = await db
+      .selectFrom("plt.storage_object")
+      .select("state")
+      .where("id", "=", stale.id)
+      .executeTakeFirstOrThrow();
+    expect(replaced.state).toBe("deleted");
+    expect(await f.store.read(stale.key)).toBeNull();
+    expect((await runState(runId)).state).toBe("ready");
+    expect(await providerCosts(f.ctx.userId)).toHaveLength(1);
+    expect((await allowance(db, f.ctx)).consumed.tts).toBe(17);
+    expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
   });
 });
