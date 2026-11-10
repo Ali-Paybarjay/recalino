@@ -198,7 +198,11 @@ export interface ProviderCost {
   model: string;
   currency: string;
   actualMicros: number | null;
-  estimatedMicros: number | null;
+  /**
+   * `"hold_maximum"` records the hold's own maximum: the conservative cost of an attempt whose
+   * outcome is unknown, so its hold closes without understating what the provider may charge.
+   */
+  estimatedMicros: number | null | "hold_maximum";
   priceVersion: string | null;
   usage: z.infer<typeof providerUsageSchema>;
   runId?: string;
@@ -215,7 +219,7 @@ export async function finishProviderStep(
 ) {
   const usage = providerUsageSchema.parse(input.usage);
   for (const value of [input.actualMicros, input.estimatedMicros])
-    if (value !== null) micros.parse(value);
+    if (value !== null && value !== "hold_maximum") micros.parse(value);
   z.string().min(1).max(100).parse(input.provider);
   z.string().min(1).max(200).parse(input.model);
   await sql`select pg_advisory_xact_lock(hashtext('quota.cost_policy'))`.execute(tx);
@@ -229,19 +233,35 @@ export async function finishProviderStep(
   if (!hold) throw errors.notFound();
   if (hold.operation_key !== input.operationKey || hold.currency !== input.currency)
     throw errors.idempotencyMismatch();
+  const estimatedMicros =
+    input.estimatedMicros === "hold_maximum" ? Number(hold.maximum_micros) : input.estimatedMicros;
   if (hold.closed_at) {
+    // P9-05: an unknown outcome closes its hold once; a hold already closed stays as recorded.
+    if (input.estimatedMicros === "hold_maximum") return;
     const prior = await tx
       .selectFrom("quota.provider_cost")
       .selectAll()
       .where("operation_key", "=", input.operationKey)
       .executeTakeFirst();
+    // P9-05: a reclaimed worker settling the same attempt after a later job closed its hold at
+    // the maximum keeps that conservative record, so its paid response is not lost.
+    if (
+      prior &&
+      input.attemptId !== undefined &&
+      prior.attempt_id === input.attemptId &&
+      prior.amount_micros === null &&
+      prior.estimated_micros !== null &&
+      Number(prior.estimated_micros) === Number(hold.maximum_micros) &&
+      canonicalJson(prior.usage) === canonicalJson({})
+    )
+      return;
     if (
       !prior ||
       prior.provider !== input.provider ||
       prior.model !== input.model ||
       (prior.amount_micros === null ? null : Number(prior.amount_micros)) !== input.actualMicros ||
       (prior.estimated_micros === null ? null : Number(prior.estimated_micros)) !==
-        input.estimatedMicros ||
+        estimatedMicros ||
       prior.price_version !== input.priceVersion ||
       canonicalJson(prior.usage) !== canonicalJson(usage)
     )
@@ -258,7 +278,7 @@ export async function finishProviderStep(
       model: input.model,
       currency: input.currency,
       amount_micros: input.actualMicros,
-      estimated_micros: input.estimatedMicros,
+      estimated_micros: estimatedMicros,
       price_version: input.priceVersion,
       usage: JSON.stringify(usage),
       run_id: input.runId ?? null,

@@ -255,25 +255,56 @@ function estimatedAttemptCost<T>(
     });
   return estimate;
 }
+/** The step's latest attempt, read under the account lock of the dispatch transaction. */
+async function latestAttempt<T>(tx: Tx, call: ProviderCall<T>) {
+  return tx
+    .selectFrom("proc.provider_attempt")
+    .selectAll()
+    .where("run_id", "=", call.runId)
+    .where("step", "=", call.step)
+    .orderBy("attempt", "desc")
+    .executeTakeFirst();
+}
+/**
+ * P9-05 (C9-1, C9-2, C8-3; E215-R): the hold of an attempt whose provider outcome is unknown,
+ * left started by a stopped job or answered with an uncertain result, closes at the hold's own
+ * maximum, the conservative cost, once (a hold already closed is left as it is). The attempt
+ * itself is not touched here: it stays started or uncertain, so every retry guard still reads it
+ * as an unknown outcome awaiting operator review. Nothing here calls the provider again or
+ * schedules a retry.
+ */
+async function closeHoldAtMaximum<T>(tx: Tx, call: ProviderCall<T>, attempt: ProviderAttempt) {
+  const { job, ctx, runId, provider } = call;
+  await finishProviderStep(
+    tx,
+    ctx,
+    attempt.hold_id,
+    {
+      operationKey: attempt.operation_key,
+      provider: attempt.provider,
+      model: attempt.model,
+      currency: provider.settings.currency,
+      actualMicros: null,
+      estimatedMicros: "hold_maximum",
+      priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
+      usage: {},
+      runId,
+      attemptId: attempt.id,
+    },
+    job.now(),
+  );
+}
 /**
  * QUA-01: the guards that share the account lock and the transaction that inserts the next
- * attempt; returns the step's latest attempt.
+ * attempt, for a step whose latest attempt (`previous`) is resolved.
  */
 async function assertAttemptAllowed<T>(
   tx: Tx,
   call: ProviderCall<T>,
+  previous: ProviderAttempt | undefined,
   singleResponse: boolean | undefined,
 ) {
   const { runId, step, model, provider } = call;
-  const previous = await tx
-    .selectFrom("proc.provider_attempt")
-    .selectAll()
-    .where("run_id", "=", runId)
-    .where("step", "=", step)
-    .orderBy("attempt", "desc")
-    .executeTakeFirst();
-  if (previous && ["started", "uncertain"].includes(previous.state))
-    throw new ProviderError("provider_outcome_unresolved", false, true);
   if (singleResponse && previous) {
     const attempts = await tx
       .selectFrom("proc.provider_attempt")
@@ -330,17 +361,18 @@ async function assertAttemptAllowed<T>(
     previous
   )
     throw errors.validationFailed({ output: ["knowledge_repair_exhausted"] });
-  return previous;
 }
 /**
- * QUA-01: the dispatch transaction. A concurrent single response is reused; otherwise the next
- * attempt and its maximum cost hold are committed before any dispatch.
+ * QUA-01: the dispatch transaction. A concurrent single response is reused; an unresolved latest
+ * attempt keeps its state, has its hold closed at its maximum cost and is reported, never
+ * dispatched again (P9-05); otherwise the next attempt and its maximum cost hold are committed
+ * before any dispatch.
  */
 async function beginProviderAttempt<T>(
   call: ProviderCall<T>,
   estimateSchedule: Awaited<ReturnType<typeof readEstimateRates>>,
   singleResponse: boolean | undefined,
-): Promise<{ cachedOutput: T } | ProviderAttempt> {
+): Promise<{ cachedOutput: T } | { unresolved: ProviderError } | ProviderAttempt> {
   const { job, ctx, runId, step, model, provider, schema, maximumMicros } = call;
   return job.db.transaction().execute(async (tx) => {
     const run = await liveRun(tx, ctx, runId);
@@ -350,7 +382,14 @@ async function beginProviderAttempt<T>(
       const checkpoint = await cached(tx, runId, step, schema);
       if (checkpoint !== null) return { cachedOutput: checkpoint };
     }
-    const previous = await assertAttemptAllowed(tx, call, singleResponse);
+    const previous = await latestAttempt(tx, call);
+    if (previous && ["started", "uncertain"].includes(previous.state)) {
+      // Committed with this transaction, so the hold closes even though the step then fails;
+      // the attempt stays started or uncertain for the retry guards (E215-R).
+      await closeHoldAtMaximum(tx, call, previous);
+      return { unresolved: new ProviderError("provider_outcome_unresolved", false, true) };
+    }
+    await assertAttemptAllowed(tx, call, previous, singleResponse);
     const number = (previous?.attempt ?? 0) + 1;
     const operationKey = `${runId}:${step}:${number}`;
     const hold = await beginProviderStep(
@@ -450,8 +489,8 @@ async function commitProviderOutput<T>(
 }
 /**
  * QUA-01: records a failed or unknown outcome once. A definite failure is settled at its
- * reported or estimated cost; a known invalid or truncated lesson keeps a checkpoint for its
- * single recovery.
+ * reported or estimated cost; an unknown one stays uncertain with its hold closed at the hold's
+ * maximum (P9-05); a known invalid or truncated lesson keeps a checkpoint for its single recovery.
  */
 async function recordProviderFailure<T>(
   call: ProviderCall<T>,
@@ -468,7 +507,8 @@ async function recordProviderFailure<T>(
       .forUpdate()
       .executeTakeFirstOrThrow();
     if (current.state === "succeeded") return;
-    if (!providerError.uncertain)
+    if (providerError.uncertain) await closeHoldAtMaximum(tx, call, attempt);
+    else
       await finishProviderStep(
         tx,
         ctx,
@@ -540,7 +580,10 @@ async function recordProviderFailure<T>(
     }
   });
 }
-/** The attempt and maximum cost hold are committed before dispatch; an unknown result is not repeated. */
+/**
+ * The attempt and maximum cost hold are committed before dispatch; an unknown result is not
+ * repeated; its attempt stays unresolved and its hold closes at that maximum (P9-05).
+ */
 export async function providerStep<T>(
   job: JobContext,
   ctx: LearnerContext,
@@ -567,6 +610,7 @@ export async function providerStep<T>(
     options.singleResponse,
   );
   if ("cachedOutput" in attemptOrCheckpoint) return attemptOrCheckpoint.cachedOutput;
+  if ("unresolved" in attemptOrCheckpoint) throw attemptOrCheckpoint.unresolved;
   const attempt = attemptOrCheckpoint;
   let completedAccounting: Omit<ProviderResult<T>, "output"> | undefined;
   try {

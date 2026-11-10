@@ -438,13 +438,20 @@ it("leaves an unknown network outcome without an invented request ID or settled 
       .where("run_id", "=", f.run.id)
       .executeTakeFirst(),
   ).toEqual({ state: "uncertain", provider_request_id: null });
-  expect(
-    await db
-      .selectFrom("quota.provider_cost")
-      .select("id")
-      .where("run_id", "=", f.run.id)
-      .execute(),
-  ).toEqual([]);
+  // P9-05 (C9-2): the unknown outcome's hold is closed once, at its own maximum.
+  const costs = await db
+    .selectFrom("quota.provider_cost")
+    .select(["operation_key", "amount_micros", "estimated_micros"])
+    .where("run_id", "=", f.run.id)
+    .execute();
+  expect(costs).toHaveLength(1);
+  const hold = await db
+    .selectFrom("quota.cost_hold")
+    .select(["closed_at", "maximum_micros"])
+    .where("operation_key", "=", costs[0]?.operation_key ?? "")
+    .executeTakeFirstOrThrow();
+  expect(hold.closed_at).toBeInstanceOf(Date);
+  expect(costs[0]).toMatchObject({ amount_micros: null, estimated_micros: hold.maximum_micros });
 });
 
 it("preserves an already recorded request ID when a later error has no accounting metadata", async () => {

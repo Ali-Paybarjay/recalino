@@ -115,6 +115,8 @@ function setup(fixture: Fixture = {}) {
           id: ATTEMPT,
           operation_key: query.parameters[4],
           hold_id: "hold",
+          provider: query.parameters[6],
+          model: query.parameters[7],
           estimate_rates: { synthetic: 1 },
           estimate_price_version: "rates-1",
         },
@@ -393,15 +395,91 @@ describe("providerStep (characterization)", () => {
     ]);
   });
 
+  // P9-05 (C9-1, C8-3; E215-R, E216): a job stopped during dispatch left its attempt started (or
+  // uncertain) with its maximum hold open. The next run of the same step closes that hold at the
+  // hold's maximum and commits, then reports the outcome as unresolved: no dispatch, no retry,
+  // and the attempt is not written, so it stays started or uncertain for the retry guards.
+  const PREVIOUS = "77777777-7777-4777-8777-777777777777";
+  const unresolvedAttempt = (step: string, state: string, error_code: string | null) => ({
+    id: PREVIOUS,
+    run_id: RUN_ID,
+    step,
+    attempt: 1,
+    state,
+    error_code,
+    operation_key: `${RUN_ID}:${step}:1`,
+    hold_id: "previous-hold",
+    provider: "earlier-provider",
+    model: "earlier/model",
+    estimate_price_version: null,
+    provider_request_id: state === "uncertain" ? "request-0" : null,
+  });
   it.each([
-    [{ previous: { attempt: 1, state: "started" } }, "knowledge", "provider_outcome_unresolved"],
-    [{ previous: { attempt: 1, state: "uncertain" } }, "knowledge", "provider_outcome_unresolved"],
-  ])("refuses to dispatch while an attempt is unresolved", async (fixture, step, code) => {
-    const { job, log, statements } = setup(fixture);
+    ["started", null],
+    ["uncertain", "provider_outcome_unknown"],
+  ])(
+    "closes the hold of an attempt left %s at its maximum, keeps its state and does not dispatch",
+    async (state, earlierCode) => {
+      const { job, log, statements, warnings } = setup({
+        previous: unresolvedAttempt("knowledge", state, earlierCode),
+      });
+      const effect = vi.fn();
+      await expect(
+        providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, effect),
+      ).rejects.toMatchObject({
+        code: "provider_outcome_unresolved",
+        retryable: false,
+        uncertain: true,
+      });
+      expect(effect).not.toHaveBeenCalled();
+      expect(labelled(log, statements)).toEqual([
+        ...dispatch,
+        `finishProviderStep previous-hold ${JSON.stringify({
+          operationKey: `${RUN_ID}:knowledge:1`,
+          provider: "earlier-provider",
+          model: "earlier/model",
+          currency: "USD",
+          actualMicros: null,
+          estimatedMicros: "hold_maximum",
+          priceVersion: provider.settings.priceVersion,
+          usage: {},
+          runId: RUN_ID,
+          attemptId: PREVIOUS,
+        })} ${NOW.toISOString()}`,
+        "commit",
+      ]);
+      // The attempt is neither failed nor otherwise written (E215-R).
+      expect(statements.filter((query) => label(query) === "update attempt")).toEqual([]);
+      expect(labelled(log, statements)).not.toContain("insert attempt");
+      expect(log.some((entry) => entry.startsWith("beginProviderStep"))).toBe(false);
+      expect(warnings).toEqual([]);
+    },
+  );
+
+  // C9-1: the same holds for every provider step, whatever its kind or response rule.
+  it.each([
+    ["stt:chunk-1", {}],
+    ["vision:page-2", {}],
+    ["speech", {}],
+    ["knowledge:compact", {}],
+    ["evaluation", { singleResponse: true }],
+  ])("closes an unresolved %s attempt's hold before refusing it", async (step, options) => {
+    const { job, log, statements } = setup({
+      previous: unresolvedAttempt(step, "started", null),
+    });
+    const effect = vi.fn();
     await expect(
-      providerStep(job, ctx, RUN_ID, step, "m", provider, schema, vi.fn()),
-    ).rejects.toMatchObject({ code, retryable: false, uncertain: true });
-    expect(labelled(log, statements).slice(-2)).toEqual(["read last attempt", "rollback"]);
+      providerStep(job, ctx, RUN_ID, step, "m", provider, schema, effect, options),
+    ).rejects.toMatchObject({ code: "provider_outcome_unresolved", uncertain: true });
+    expect(effect).not.toHaveBeenCalled();
+    const settled = log.filter((entry) => entry.startsWith("finishProviderStep"));
+    expect(settled).toHaveLength(1);
+    expect(settled[0]).toContain(
+      `"operationKey":"${RUN_ID}:${step}:1","provider":"earlier-provider","model":"earlier/model"`,
+    );
+    expect(settled[0]).toContain('"actualMicros":null,"estimatedMicros":"hold_maximum"');
+    expect(labelled(log, statements).slice(-2)).toEqual([settled[0], "commit"]);
+    expect(statements.filter((query) => label(query) === "update attempt")).toEqual([]);
   });
 
   it("refuses a second single response unless every earlier one was an HTTP refusal", async () => {
@@ -597,22 +675,79 @@ describe("providerStep (characterization)", () => {
     expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
   });
 
-  it("leaves an unknown outcome uncertain and unsettled", async () => {
-    const { job, log, statements, warnings } = setup();
+  // P9-05 (C9-2; E215-R): an unknown outcome is not repeated; its hold closes at the hold's
+  // maximum and the attempt is recorded uncertain (never failed), in the same commit, for every
+  // provider step.
+  it.each([
+    ["knowledge", () => new Error("socket closed"), "provider_outcome_unknown", null],
+    ["stt:chunk-1", () => new Error("socket closed"), "provider_outcome_unknown", null],
+    [
+      "speech",
+      () => new ProviderError("provider_timeout", false, true, accounting),
+      "provider_timeout",
+      "request-1",
+    ],
+    [
+      "vision:page-2",
+      () => new ProviderError("provider_timeout", false, true),
+      "provider_timeout",
+      null,
+    ],
+  ])(
+    "closes the hold of an uncertain %s outcome at its maximum and keeps the attempt uncertain",
+    async (step, failure, code, requestId) => {
+      const { job, log, statements, warnings } = setup();
+      const effect = vi.fn(async () => {
+        throw failure();
+      });
+      await expect(
+        providerStep(job, ctx, RUN_ID, step, "synthetic/llm", provider, schema, effect),
+      ).rejects.toMatchObject({ code, retryable: false, uncertain: true });
+      expect(effect).toHaveBeenCalledTimes(1);
+      const steps = labelled(log, statements);
+      expect(steps.slice(steps.indexOf("commit") + 1)).toEqual([
+        "begin",
+        `lockAccountForCleanup ${USER_ID}`,
+        "lock attempt",
+        `finishProviderStep hold ${JSON.stringify({
+          operationKey: `${RUN_ID}:${step}:1`,
+          provider: "synthetic",
+          model: "synthetic/llm",
+          currency: "USD",
+          actualMicros: null,
+          estimatedMicros: "hold_maximum",
+          priceVersion: "rates-1",
+          usage: {},
+          runId: RUN_ID,
+          attemptId: ATTEMPT,
+        })} ${NOW.toISOString()}`,
+        "update attempt",
+        "commit",
+      ]);
+      expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
+        "uncertain",
+        code,
+        requestId,
+        NOW,
+        ATTEMPT,
+      ]);
+      expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
+      expect(log.filter((entry) => entry.startsWith("beginProviderStep"))).toHaveLength(1);
+      expect(warnings).toHaveLength(1);
+    },
+  );
+
+  it("does not settle an uncertain outcome another worker already settled", async () => {
+    const { job, log, statements } = setup({
+      current: { state: "succeeded", provider_request_id: "x" },
+    });
     await expect(
       providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
         throw new Error("socket closed");
       }),
     ).rejects.toMatchObject({ code: "provider_outcome_unknown", uncertain: true });
     expect(log.some((entry) => entry.startsWith("finishProviderStep"))).toBe(false);
-    expect(statements.find((query) => label(query) === "update attempt")?.parameters).toEqual([
-      "uncertain",
-      "provider_outcome_unknown",
-      null,
-      NOW,
-      ATTEMPT,
-    ]);
-    expect(warnings).toHaveLength(1);
+    expect(statements.filter((query) => label(query) === "update attempt")).toEqual([]);
   });
 
   it("settles a paid response whose commit failed as provider_output_commit_failed", async () => {
@@ -667,5 +802,137 @@ describe("providerStep (characterization)", () => {
     ).rejects.toBeInstanceOf(JobCancelled);
     expect(effect).not.toHaveBeenCalled();
     expect(log.at(-1)).toBe("rollback");
+  });
+});
+
+// P9-05 (AC-10; E219-R): the real finishProviderStep over one in-memory hold and its cost rows.
+// A conservative close records the hold's maximum once; a later settle of the same attempt is a
+// no-op on that exact record, so the attempt keeps exactly one provider_cost row.
+describe("finishProviderStep after a conservative close (AC-10)", () => {
+  const OPERATION = `${RUN_ID}:knowledge:1`;
+  const ESTIMATE_COLUMNS = ["amount_micros", "estimated_micros"];
+  function costLedger() {
+    const hold = {
+      id: "hold",
+      user_id: USER_ID,
+      session_id: SESSION_ID,
+      reservation_id: "reservation",
+      operation_key: OPERATION,
+      maximum_micros: "9000",
+      currency: "USD",
+      closed_at: null as Date | null,
+    };
+    const costs: Record<string, unknown>[] = [];
+    const { db, statements } = statementLogDatabase((query) => {
+      if (query.sql.startsWith('select * from "quota"."cost_hold"')) return [{ ...hold }];
+      if (query.sql.startsWith('select * from "quota"."provider_cost"'))
+        return costs.filter((row) => row.operation_key === query.parameters[0]);
+      if (query.sql.startsWith('update "quota"."cost_hold"')) {
+        hold.closed_at = query.parameters[0] as Date;
+        return [];
+      }
+      if (query.sql.startsWith('insert into "quota"."provider_cost"')) {
+        // Postgres answers bigint columns as strings and jsonb as values.
+        const columns = [
+          ...(query.sql.match(/\(([^)]*)\) values/)?.[1] ?? "").matchAll(/"(\w+)"/g),
+        ];
+        const row = Object.fromEntries(
+          columns.map(([, column], index) => {
+            const value = query.parameters[index];
+            if (column === "usage") return [column, JSON.parse(String(value))];
+            if (ESTIMATE_COLUMNS.includes(column ?? "") && value !== null)
+              return [column, String(value)];
+            return [column, value];
+          }),
+        );
+        costs.push(row);
+      }
+      return [];
+    });
+    const inserts = () =>
+      statements.filter((query) => query.sql.startsWith('insert into "quota"."provider_cost"'));
+    return { db, hold, costs, inserts };
+  }
+  const cost = (overrides: Record<string, unknown> = {}) => ({
+    operationKey: OPERATION,
+    provider: "synthetic",
+    model: "synthetic/llm",
+    currency: "USD",
+    actualMicros: null as number | null,
+    estimatedMicros: "hold_maximum" as number | null | "hold_maximum",
+    priceVersion: "rates-1",
+    usage: {},
+    runId: RUN_ID,
+    attemptId: ATTEMPT,
+    ...overrides,
+  });
+
+  it("conservative close, then settle of the same attempt gives one row", async () => {
+    const { finishProviderStep } =
+      await vi.importActual<typeof import("../../quota")>("../../quota");
+    const { db, hold, costs, inserts } = costLedger();
+    const finish = (input: ReturnType<typeof cost>) =>
+      db.transaction().execute((tx) => finishProviderStep(tx, ctx, "hold", input, NOW));
+    await finish(cost());
+    expect(hold.closed_at).toEqual(NOW);
+    expect(costs).toEqual([
+      expect.objectContaining({
+        operation_key: OPERATION,
+        amount_micros: null,
+        estimated_micros: "9000",
+        usage: {},
+        attempt_id: ATTEMPT,
+      }),
+    ]);
+    const conservative = { ...costs[0] };
+    // A reclaimed worker settles the same attempt with its real usage: kept as the one record.
+    await finish(cost({ actualMicros: 700, estimatedMicros: null, usage: { inputTokens: 10 } }));
+    // A second conservative close of the same attempt is a no-op too.
+    await finish(cost());
+    expect(inserts()).toHaveLength(1);
+    expect(costs).toEqual([conservative]);
+  });
+
+  it.each([
+    ["another attempt", { attemptId: "88888888-8888-4888-8888-888888888888" }],
+    ["no attempt", { attemptId: undefined }],
+  ])("refuses a settle from %s after a conservative close", async (_name, overrides) => {
+    const { finishProviderStep } =
+      await vi.importActual<typeof import("../../quota")>("../../quota");
+    const { db, costs, inserts } = costLedger();
+    const finish = (input: ReturnType<typeof cost>) =>
+      db.transaction().execute((tx) => finishProviderStep(tx, ctx, "hold", input, NOW));
+    await finish(cost());
+    await expect(
+      finish(
+        cost({
+          actualMicros: 700,
+          estimatedMicros: null,
+          usage: { inputTokens: 10 },
+          ...overrides,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+    expect(inserts()).toHaveLength(1);
+    expect(costs).toHaveLength(1);
+  });
+
+  it("keeps the idempotency check for a record that is not the conservative one", async () => {
+    const { finishProviderStep } =
+      await vi.importActual<typeof import("../../quota")>("../../quota");
+    const { db, costs, inserts } = costLedger();
+    const finish = (input: ReturnType<typeof cost>) =>
+      db.transaction().execute((tx) => finishProviderStep(tx, ctx, "hold", input, NOW));
+    // A definite failure settled at its own estimate, below the hold's maximum.
+    await finish(cost({ estimatedMicros: 1234 }));
+    await expect(
+      finish(cost({ actualMicros: 700, estimatedMicros: null, usage: { inputTokens: 10 } })),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+    // A later conservative close leaves that settled record as it is.
+    await finish(cost());
+    expect(inserts()).toHaveLength(1);
+    expect(costs).toEqual([
+      expect.objectContaining({ amount_micros: null, estimated_micros: "1234" }),
+    ]);
   });
 });

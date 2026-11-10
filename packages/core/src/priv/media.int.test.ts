@@ -877,10 +877,11 @@ describe("explicit media and privacy publication", () => {
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(17);
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
   });
-  // C8-5 (P8-02, F-5) and C8-3 (P8-02, F-3): the job stopped during dispatch, leaving its attempt
-  // started and its maximum cost hold open. documents current behaviour (C8-3): the hold is never
-  // closed; a later fix for C8-3 is expected to change the hold assertion on purpose.
-  it("C8-3 documents current behaviour: a speech attempt left started ends needs_input with no cost while its cost hold stays open", async () => {
+  // C8-5 (P8-02, F-5) and C8-3 (P8-02, F-3; P9-05, C9-1): the job stopped during dispatch, leaving
+  // its attempt started and its maximum cost hold open. The next job closes that hold at its
+  // maximum (the conservative cost) without calling the provider again; the attempt stays started
+  // so the retry guards still see an unknown outcome (E215-R).
+  it("C8-3 closes the open cost hold of a speech attempt left started at its maximum, keeps the attempt started and ends needs_input without a provider call", async () => {
     const f = await fixture();
     const asset = await requestTts(
       db,
@@ -940,17 +941,32 @@ describe("explicit media and privacy publication", () => {
       state: "needs_input",
       last_error: "provider_outcome_unresolved",
     });
-    expect(await providerCosts(f.ctx.userId)).toEqual([]);
+    // The unknown outcome is recorded once, at the hold's maximum, with no actual amount.
+    expect(
+      await db
+        .selectFrom("quota.provider_cost")
+        .select(["operation_key", "amount_micros", "estimated_micros", "run_id"])
+        .where("user_id", "=", f.ctx.userId)
+        .execute(),
+    ).toEqual([
+      {
+        operation_key: `${runId}:speech:1`,
+        amount_micros: null,
+        estimated_micros: String(providerSettings.maximumMicros),
+        run_id: runId,
+      },
+    ]);
+    // The attempt is not failed: it stays started, an unknown outcome for operator review.
     expect(await speechAttempts(runId)).toEqual([{ state: "started", hold_id: holdId }]);
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
-    // documents current behaviour (C8-3): nothing closes the maximum cost hold of the started attempt.
+    // C8-3 (P9-05): the maximum cost hold of the started attempt is closed.
     const hold = await db
       .selectFrom("quota.cost_hold")
       .select("closed_at")
       .where("id", "=", holdId)
       .executeTakeFirstOrThrow();
-    expect(hold.closed_at).toBeNull();
+    expect(hold.closed_at).not.toBeNull();
   });
   // C8-5 (P8-02, F-5) and C8-4 (P8-02, F-4): the function was stopped on the job's last attempt,
   // the sweep failed the job (lease_expired) and reconciliation closed its run. documents current
