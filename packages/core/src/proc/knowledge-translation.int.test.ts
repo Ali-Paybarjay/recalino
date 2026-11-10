@@ -576,22 +576,20 @@ it("blocks an unknown translation outcome and keeps its unresolved hold without 
     .where("step", "=", "knowledge:repair-language")
     .executeTakeFirstOrThrow();
   expect(attempt.state).toBe("uncertain");
-  expect(
-    (
-      await db
-        .selectFrom("quota.cost_hold")
-        .select("closed_at")
-        .where("id", "=", attempt.hold_id)
-        .executeTakeFirstOrThrow()
-    ).closed_at,
-  ).toBeNull();
+  // P9-05 (C9-2): the unknown outcome's hold is closed once, at its own maximum.
+  const hold = await db
+    .selectFrom("quota.cost_hold")
+    .select(["closed_at", "maximum_micros"])
+    .where("id", "=", attempt.hold_id)
+    .executeTakeFirstOrThrow();
+  expect(hold.closed_at).toBeInstanceOf(Date);
   expect(
     await db
       .selectFrom("quota.provider_cost")
-      .select("id")
+      .select(["amount_micros", "estimated_micros"])
       .where("attempt_id", "=", attempt.id)
       .execute(),
-  ).toEqual([]);
+  ).toEqual([{ amount_micros: null, estimated_micros: hold.maximum_micros }]);
   await f.requeue();
   await f.work();
   expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);

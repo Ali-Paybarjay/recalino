@@ -804,3 +804,135 @@ describe("providerStep (characterization)", () => {
     expect(log.at(-1)).toBe("rollback");
   });
 });
+
+// P9-05 (AC-10; E219-R): the real finishProviderStep over one in-memory hold and its cost rows.
+// A conservative close records the hold's maximum once; a later settle of the same attempt is a
+// no-op on that exact record, so the attempt keeps exactly one provider_cost row.
+describe("finishProviderStep after a conservative close (AC-10)", () => {
+  const OPERATION = `${RUN_ID}:knowledge:1`;
+  const ESTIMATE_COLUMNS = ["amount_micros", "estimated_micros"];
+  function costLedger() {
+    const hold = {
+      id: "hold",
+      user_id: USER_ID,
+      session_id: SESSION_ID,
+      reservation_id: "reservation",
+      operation_key: OPERATION,
+      maximum_micros: "9000",
+      currency: "USD",
+      closed_at: null as Date | null,
+    };
+    const costs: Record<string, unknown>[] = [];
+    const { db, statements } = statementLogDatabase((query) => {
+      if (query.sql.startsWith('select * from "quota"."cost_hold"')) return [{ ...hold }];
+      if (query.sql.startsWith('select * from "quota"."provider_cost"'))
+        return costs.filter((row) => row.operation_key === query.parameters[0]);
+      if (query.sql.startsWith('update "quota"."cost_hold"')) {
+        hold.closed_at = query.parameters[0] as Date;
+        return [];
+      }
+      if (query.sql.startsWith('insert into "quota"."provider_cost"')) {
+        // Postgres answers bigint columns as strings and jsonb as values.
+        const columns = [
+          ...(query.sql.match(/\(([^)]*)\) values/)?.[1] ?? "").matchAll(/"(\w+)"/g),
+        ];
+        const row = Object.fromEntries(
+          columns.map(([, column], index) => {
+            const value = query.parameters[index];
+            if (column === "usage") return [column, JSON.parse(String(value))];
+            if (ESTIMATE_COLUMNS.includes(column ?? "") && value !== null)
+              return [column, String(value)];
+            return [column, value];
+          }),
+        );
+        costs.push(row);
+      }
+      return [];
+    });
+    const inserts = () =>
+      statements.filter((query) => query.sql.startsWith('insert into "quota"."provider_cost"'));
+    return { db, hold, costs, inserts };
+  }
+  const cost = (overrides: Record<string, unknown> = {}) => ({
+    operationKey: OPERATION,
+    provider: "synthetic",
+    model: "synthetic/llm",
+    currency: "USD",
+    actualMicros: null as number | null,
+    estimatedMicros: "hold_maximum" as number | null | "hold_maximum",
+    priceVersion: "rates-1",
+    usage: {},
+    runId: RUN_ID,
+    attemptId: ATTEMPT,
+    ...overrides,
+  });
+
+  it("conservative close, then settle of the same attempt gives one row", async () => {
+    const { finishProviderStep } =
+      await vi.importActual<typeof import("../../quota")>("../../quota");
+    const { db, hold, costs, inserts } = costLedger();
+    const finish = (input: ReturnType<typeof cost>) =>
+      db.transaction().execute((tx) => finishProviderStep(tx, ctx, "hold", input, NOW));
+    await finish(cost());
+    expect(hold.closed_at).toEqual(NOW);
+    expect(costs).toEqual([
+      expect.objectContaining({
+        operation_key: OPERATION,
+        amount_micros: null,
+        estimated_micros: "9000",
+        usage: {},
+        attempt_id: ATTEMPT,
+      }),
+    ]);
+    const conservative = { ...costs[0] };
+    // A reclaimed worker settles the same attempt with its real usage: kept as the one record.
+    await finish(cost({ actualMicros: 700, estimatedMicros: null, usage: { inputTokens: 10 } }));
+    // A second conservative close of the same attempt is a no-op too.
+    await finish(cost());
+    expect(inserts()).toHaveLength(1);
+    expect(costs).toEqual([conservative]);
+  });
+
+  it.each([
+    ["another attempt", { attemptId: "88888888-8888-4888-8888-888888888888" }],
+    ["no attempt", { attemptId: undefined }],
+  ])("refuses a settle from %s after a conservative close", async (_name, overrides) => {
+    const { finishProviderStep } =
+      await vi.importActual<typeof import("../../quota")>("../../quota");
+    const { db, costs, inserts } = costLedger();
+    const finish = (input: ReturnType<typeof cost>) =>
+      db.transaction().execute((tx) => finishProviderStep(tx, ctx, "hold", input, NOW));
+    await finish(cost());
+    await expect(
+      finish(
+        cost({
+          actualMicros: 700,
+          estimatedMicros: null,
+          usage: { inputTokens: 10 },
+          ...overrides,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+    expect(inserts()).toHaveLength(1);
+    expect(costs).toHaveLength(1);
+  });
+
+  it("keeps the idempotency check for a record that is not the conservative one", async () => {
+    const { finishProviderStep } =
+      await vi.importActual<typeof import("../../quota")>("../../quota");
+    const { db, costs, inserts } = costLedger();
+    const finish = (input: ReturnType<typeof cost>) =>
+      db.transaction().execute((tx) => finishProviderStep(tx, ctx, "hold", input, NOW));
+    // A definite failure settled at its own estimate, below the hold's maximum.
+    await finish(cost({ estimatedMicros: 1234 }));
+    await expect(
+      finish(cost({ actualMicros: 700, estimatedMicros: null, usage: { inputTokens: 10 } })),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+    // A later conservative close leaves that settled record as it is.
+    await finish(cost());
+    expect(inserts()).toHaveLength(1);
+    expect(costs).toEqual([
+      expect.objectContaining({ amount_micros: null, estimated_micros: "1234" }),
+    ]);
+  });
+});
