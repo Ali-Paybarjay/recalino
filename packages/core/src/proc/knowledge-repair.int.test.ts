@@ -842,6 +842,7 @@ it("preserves an unresolved compact hold and never dispatches it again", async (
     .where("step", "=", "knowledge:compact")
     .executeTakeFirstOrThrow();
   expect(attempt.state).toBe("uncertain");
+  // P9-05 (C9-2): the unknown outcome's hold is closed at its own maximum.
   expect(
     (
       await db
@@ -850,7 +851,7 @@ it("preserves an unresolved compact hold and never dispatches it again", async (
         .where("id", "=", attempt.hold_id)
         .executeTakeFirstOrThrow()
     ).closed_at,
-  ).toBeNull();
+  ).toBeInstanceOf(Date);
   await db
     .updateTable("proc.processing_run")
     .set({ state: "queued" })
@@ -1075,22 +1076,20 @@ it("does not attempt semantic repair after an unknown original provider outcome"
     .executeTakeFirstOrThrow();
   expect(attempt.step).toBe("knowledge");
   expect(attempt.state).toBe("uncertain");
-  expect(
-    (
-      await db
-        .selectFrom("quota.cost_hold")
-        .select("closed_at")
-        .where("id", "=", attempt.hold_id)
-        .executeTakeFirstOrThrow()
-    ).closed_at,
-  ).toBeNull();
+  // P9-05 (C9-2): the unknown outcome's hold is closed once, at its own maximum.
+  const hold = await db
+    .selectFrom("quota.cost_hold")
+    .select(["closed_at", "maximum_micros"])
+    .where("id", "=", attempt.hold_id)
+    .executeTakeFirstOrThrow();
+  expect(hold.closed_at).toBeInstanceOf(Date);
   expect(
     await db
       .selectFrom("quota.provider_cost")
-      .select("id")
+      .select(["amount_micros", "estimated_micros"])
       .where("run_id", "=", f.run.id)
       .execute(),
-  ).toEqual([]);
+  ).toEqual([{ amount_micros: null, estimated_micros: hold.maximum_micros }]);
 });
 
 it("reuses a valid cached repair without another provider call after a continuation", async () => {
@@ -1199,22 +1198,20 @@ it("blocks an unknown repair outcome without repeating its dispatch or settling 
     .where("step", "=", "knowledge:repair")
     .executeTakeFirstOrThrow();
   expect(attempt.state).toBe("uncertain");
-  expect(
-    (
-      await db
-        .selectFrom("quota.cost_hold")
-        .select("closed_at")
-        .where("id", "=", attempt.hold_id)
-        .executeTakeFirstOrThrow()
-    ).closed_at,
-  ).toBeNull();
+  // P9-05 (C9-2): the unknown outcome's hold is closed once, at its own maximum.
+  const hold = await db
+    .selectFrom("quota.cost_hold")
+    .select(["closed_at", "maximum_micros"])
+    .where("id", "=", attempt.hold_id)
+    .executeTakeFirstOrThrow();
+  expect(hold.closed_at).toBeInstanceOf(Date);
   expect(
     await db
       .selectFrom("quota.provider_cost")
-      .select("id")
+      .select(["amount_micros", "estimated_micros"])
       .where("attempt_id", "=", attempt.id)
       .execute(),
-  ).toEqual([]);
+  ).toEqual([{ amount_micros: null, estimated_micros: hold.maximum_micros }]);
   await db
     .updateTable("proc.processing_run")
     .set({ state: "queued" })

@@ -430,19 +430,20 @@ it.each([false, true])(
     expect(attempts).toHaveLength(1);
     expect(attempts[0]?.state).toBe(uncertain ? "uncertain" : "failed");
     if (uncertain) {
+      // P9-05 (C9-2): the unknown outcome's hold is closed once, at its own maximum.
       const hold = await db
         .selectFrom("quota.cost_hold")
-        .select("closed_at")
+        .select(["closed_at", "maximum_micros"])
         .where("id", "=", attempts[0]?.hold_id ?? "")
         .executeTakeFirstOrThrow();
-      expect(hold.closed_at).toBeNull();
+      expect(hold.closed_at).toBeInstanceOf(Date);
       expect(
         await db
           .selectFrom("quota.provider_cost")
-          .select("id")
+          .select(["amount_micros", "estimated_micros"])
           .where("run_id", "=", f.run.id)
           .execute(),
-      ).toEqual([]);
+      ).toEqual([{ amount_micros: null, estimated_micros: hold.maximum_micros }]);
     }
   },
 );

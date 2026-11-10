@@ -582,10 +582,11 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
     });
     const attempts = await f.attempts();
     expect(attempts).toHaveLength(2);
+    let repairMaximum: string | undefined;
     for (const attempt of attempts) {
       const hold = await db
         .selectFrom("quota.cost_hold")
-        .select("closed_at")
+        .select(["closed_at", "maximum_micros"])
         .where("id", "=", attempt.hold_id)
         .executeTakeFirstOrThrow();
       if (attempt.step === "knowledge") {
@@ -593,10 +594,15 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
         expect(hold.closed_at).toBeInstanceOf(Date);
       } else {
         expect(attempt).toMatchObject({ step: "knowledge:repair", state: "uncertain" });
-        expect(hold.closed_at).toBeNull();
+        // P9-05 (C9-2): the unknown outcome's hold is closed at its own maximum.
+        expect(hold.closed_at).toBeInstanceOf(Date);
+        repairMaximum = hold.maximum_micros;
       }
     }
-    expect(await f.costs()).toEqual([{ amount_micros: "5", estimated_micros: null }]);
+    expect(await f.costs()).toEqual([
+      { amount_micros: "5", estimated_micros: null },
+      { amount_micros: null, estimated_micros: repairMaximum },
+    ]);
     expect(
       (await f.checkpoints()).filter((entry) => entry.step.startsWith("knowledge")),
     ).toHaveLength(1);
@@ -620,16 +626,16 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
       .where("run_id", "=", f.run.id)
       .executeTakeFirstOrThrow();
     expect(attempt.state).toBe("uncertain");
-    expect(
-      (
-        await db
-          .selectFrom("quota.cost_hold")
-          .select("closed_at")
-          .where("id", "=", attempt.hold_id)
-          .executeTakeFirstOrThrow()
-      ).closed_at,
-    ).toBeNull();
-    expect(await f.costs()).toHaveLength(0);
+    // P9-05 (C9-2): the hold is closed once, at its own maximum, never released at zero.
+    const hold = await db
+      .selectFrom("quota.cost_hold")
+      .select(["closed_at", "maximum_micros"])
+      .where("id", "=", attempt.hold_id)
+      .executeTakeFirstOrThrow();
+    expect(hold.closed_at).toBeInstanceOf(Date);
+    expect(await f.costs()).toEqual([
+      { amount_micros: null, estimated_micros: hold.maximum_micros },
+    ]);
     expect(await f.work()).toBe(false);
     expect(request).toHaveBeenCalledTimes(1);
   });

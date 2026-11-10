@@ -236,11 +236,25 @@ export async function finishProviderStep(
   const estimatedMicros =
     input.estimatedMicros === "hold_maximum" ? Number(hold.maximum_micros) : input.estimatedMicros;
   if (hold.closed_at) {
+    // P9-05: an unknown outcome closes its hold once; a hold already closed stays as recorded.
+    if (input.estimatedMicros === "hold_maximum") return;
     const prior = await tx
       .selectFrom("quota.provider_cost")
       .selectAll()
       .where("operation_key", "=", input.operationKey)
       .executeTakeFirst();
+    // P9-05: a reclaimed worker settling the same attempt after a later job closed its hold at
+    // the maximum keeps that conservative record, so its paid response is not lost.
+    if (
+      prior &&
+      input.attemptId !== undefined &&
+      prior.attempt_id === input.attemptId &&
+      prior.amount_micros === null &&
+      prior.estimated_micros !== null &&
+      Number(prior.estimated_micros) === Number(hold.maximum_micros) &&
+      canonicalJson(prior.usage) === canonicalJson({})
+    )
+      return;
     if (
       !prior ||
       prior.provider !== input.provider ||

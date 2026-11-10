@@ -266,18 +266,14 @@ async function latestAttempt<T>(tx: Tx, call: ProviderCall<T>) {
     .executeTakeFirst();
 }
 /**
- * P9-05 (C9-1, C9-2, C8-3): an attempt whose provider outcome is unknown, left started by a
- * stopped job or answered with an uncertain result, closes its hold at the hold's own maximum,
- * the conservative cost, and ends failed. Nothing here calls the provider again or schedules a
- * retry; the caller still reports the outcome as unresolved.
+ * P9-05 (C9-1, C9-2, C8-3; E215-R): the hold of an attempt whose provider outcome is unknown,
+ * left started by a stopped job or answered with an uncertain result, closes at the hold's own
+ * maximum, the conservative cost, once (a hold already closed is left as it is). The attempt
+ * itself is not touched here: it stays started or uncertain, so every retry guard still reads it
+ * as an unknown outcome awaiting operator review. Nothing here calls the provider again or
+ * schedules a retry.
  */
-async function closeUnresolvedAttempt<T>(
-  tx: Tx,
-  call: ProviderCall<T>,
-  attempt: ProviderAttempt,
-  errorCode: string,
-  providerRequestId: string | null,
-) {
+async function closeHoldAtMaximum<T>(tx: Tx, call: ProviderCall<T>, attempt: ProviderAttempt) {
   const { job, ctx, runId, provider } = call;
   await finishProviderStep(
     tx,
@@ -297,16 +293,6 @@ async function closeUnresolvedAttempt<T>(
     },
     job.now(),
   );
-  await tx
-    .updateTable("proc.provider_attempt")
-    .set({
-      state: "failed",
-      error_code: errorCode,
-      provider_request_id: providerRequestId,
-      finished_at: job.now(),
-    })
-    .where("id", "=", attempt.id)
-    .execute();
 }
 /**
  * QUA-01: the guards that share the account lock and the transaction that inserts the next
@@ -378,8 +364,9 @@ async function assertAttemptAllowed<T>(
 }
 /**
  * QUA-01: the dispatch transaction. A concurrent single response is reused; an unresolved latest
- * attempt is closed at its maximum cost and reported, never dispatched again (P9-05); otherwise
- * the next attempt and its maximum cost hold are committed before any dispatch.
+ * attempt keeps its state, has its hold closed at its maximum cost and is reported, never
+ * dispatched again (P9-05); otherwise the next attempt and its maximum cost hold are committed
+ * before any dispatch.
  */
 async function beginProviderAttempt<T>(
   call: ProviderCall<T>,
@@ -397,14 +384,9 @@ async function beginProviderAttempt<T>(
     }
     const previous = await latestAttempt(tx, call);
     if (previous && ["started", "uncertain"].includes(previous.state)) {
-      // Committed with this transaction, so the hold closes even though the step then fails.
-      await closeUnresolvedAttempt(
-        tx,
-        call,
-        previous,
-        previous.error_code ?? "provider_outcome_unresolved",
-        previous.provider_request_id,
-      );
+      // Committed with this transaction, so the hold closes even though the step then fails;
+      // the attempt stays started or uncertain for the retry guards (E215-R).
+      await closeHoldAtMaximum(tx, call, previous);
       return { unresolved: new ProviderError("provider_outcome_unresolved", false, true) };
     }
     await assertAttemptAllowed(tx, call, previous, singleResponse);
@@ -507,8 +489,8 @@ async function commitProviderOutput<T>(
 }
 /**
  * QUA-01: records a failed or unknown outcome once. A definite failure is settled at its
- * reported or estimated cost; an unknown one at its hold's maximum (P9-05); a known invalid or
- * truncated lesson keeps a checkpoint for its single recovery.
+ * reported or estimated cost; an unknown one stays uncertain with its hold closed at the hold's
+ * maximum (P9-05); a known invalid or truncated lesson keeps a checkpoint for its single recovery.
  */
 async function recordProviderFailure<T>(
   call: ProviderCall<T>,
@@ -525,42 +507,34 @@ async function recordProviderFailure<T>(
       .forUpdate()
       .executeTakeFirstOrThrow();
     if (current.state === "succeeded") return;
-    if (providerError.uncertain) {
-      await closeUnresolvedAttempt(
+    if (providerError.uncertain) await closeHoldAtMaximum(tx, call, attempt);
+    else
+      await finishProviderStep(
         tx,
-        call,
-        attempt,
-        providerError.code,
-        providerError.accounting?.requestId ?? current.provider_request_id,
+        ctx,
+        attempt.hold_id,
+        {
+          operationKey: attempt.operation_key,
+          provider: providerError.accounting?.provider ?? provider.name,
+          model: providerError.accounting?.model ?? model,
+          currency: provider.settings.currency,
+          actualMicros:
+            providerError.accounting?.actualMicros ?? (providerError.accounting ? null : 0),
+          estimatedMicros:
+            providerError.accounting?.actualMicros === null
+              ? estimatedAttemptCost(call, attempt, model, providerError.accounting.usage)
+              : null,
+          priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
+          usage: providerError.accounting?.usage ?? {},
+          runId,
+          attemptId: attempt.id,
+        },
+        job.now(),
       );
-      return;
-    }
-    await finishProviderStep(
-      tx,
-      ctx,
-      attempt.hold_id,
-      {
-        operationKey: attempt.operation_key,
-        provider: providerError.accounting?.provider ?? provider.name,
-        model: providerError.accounting?.model ?? model,
-        currency: provider.settings.currency,
-        actualMicros:
-          providerError.accounting?.actualMicros ?? (providerError.accounting ? null : 0),
-        estimatedMicros:
-          providerError.accounting?.actualMicros === null
-            ? estimatedAttemptCost(call, attempt, model, providerError.accounting.usage)
-            : null,
-        priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
-        usage: providerError.accounting?.usage ?? {},
-        runId,
-        attemptId: attempt.id,
-      },
-      job.now(),
-    );
     await tx
       .updateTable("proc.provider_attempt")
       .set({
-        state: "failed",
+        state: providerError.uncertain ? "uncertain" : "failed",
         error_code: providerError.code,
         provider_request_id: providerError.accounting?.requestId ?? current.provider_request_id,
         finished_at: job.now(),
@@ -570,6 +544,7 @@ async function recordProviderFailure<T>(
     if (
       step === "knowledge" &&
       providerError.code === "provider_output_truncated" &&
+      !providerError.uncertain &&
       providerError.accounting
     ) {
       await saveStep(
@@ -587,6 +562,7 @@ async function recordProviderFailure<T>(
       step === "knowledge" &&
       usesContentKnowledgeContract(provider.settings, model) &&
       providerError.code === "provider_schema_invalid" &&
+      !providerError.uncertain &&
       providerError.accounting
     ) {
       const detail = knowledgeRepairDetailSchema.safeParse(providerError.diagnostic);
@@ -606,7 +582,7 @@ async function recordProviderFailure<T>(
 }
 /**
  * The attempt and maximum cost hold are committed before dispatch; an unknown result is not
- * repeated, and its hold closes at that maximum (P9-05).
+ * repeated; its attempt stays unresolved and its hold closes at that maximum (P9-05).
  */
 export async function providerStep<T>(
   job: JobContext,

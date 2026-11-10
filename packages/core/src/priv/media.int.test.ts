@@ -879,8 +879,9 @@ describe("explicit media and privacy publication", () => {
   });
   // C8-5 (P8-02, F-5) and C8-3 (P8-02, F-3; P9-05, C9-1): the job stopped during dispatch, leaving
   // its attempt started and its maximum cost hold open. The next job closes that hold at its
-  // maximum (the conservative cost) and fails the attempt, without calling the provider again.
-  it("C8-3 closes the open cost hold of a speech attempt left started at its maximum, fails the attempt and ends needs_input without a provider call", async () => {
+  // maximum (the conservative cost) without calling the provider again; the attempt stays started
+  // so the retry guards still see an unknown outcome (E215-R).
+  it("C8-3 closes the open cost hold of a speech attempt left started at its maximum, keeps the attempt started and ends needs_input without a provider call", async () => {
     const f = await fixture();
     const asset = await requestTts(
       db,
@@ -955,14 +956,8 @@ describe("explicit media and privacy publication", () => {
         run_id: runId,
       },
     ]);
-    expect(await speechAttempts(runId)).toEqual([{ state: "failed", hold_id: holdId }]);
-    expect(
-      await db
-        .selectFrom("proc.provider_attempt")
-        .select("error_code")
-        .where("run_id", "=", runId)
-        .executeTakeFirstOrThrow(),
-    ).toEqual({ error_code: "provider_outcome_unresolved" });
+    // The attempt is not failed: it stays started, an unknown outcome for operator review.
+    expect(await speechAttempts(runId)).toEqual([{ state: "started", hold_id: holdId }]);
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
     // C8-3 (P9-05): the maximum cost hold of the started attempt is closed.
