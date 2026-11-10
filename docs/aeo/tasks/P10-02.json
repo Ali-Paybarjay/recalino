@@ -1,0 +1,68 @@
+{
+  "schema_version": "1",
+  "id": "P10-02",
+  "title": "ارز بستن hold با بیشینه از خود hold (دستهٔ ۱۰ L3؛ C9-11)",
+  "goal": "review:code ‏P9-05 (job-20261110-8429d5e1؛ #154؛ minor، hypothesis) گفت: closeHoldAtMaximum ارز را از provider.settings.currency کنونی می‌گیرد، نه از خود hold (proc/steps/runtime.ts:286 و quota/costs.ts:234 در شاهد Job). اگر ارز میان ثبت hold و اجرای دوباره عوض شود، بستن با idempotency_mismatch شکست می‌خورد و hold باز می‌ماند. اصلاح: بستن با بیشینه ارز را از خود hold بگیرد. این کارت پس از investigate ‏P10-01 اجرا می‌شود؛ اگر P10-01 یا خود Implementer نشان داد hold ارز را نگه نمی‌دارد و اصلاح migration یا ستون تازه می‌خواهد، Implementer ‏blocked برمی‌گرداند با شواهد (کلاس ۱، مالک؛ E228‑R)، بی هیچ تغییر schema.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "بستن hold با بیشینه (closeHoldAtMaximum) ارز ردیف provider_cost را از خود hold می‌گیرد، نه از تنظیمات کنونی provider؛ اگر ارز تنظیمات میان ثبت hold و اجرای دوباره عوض شده باشد، hold باز یک بار بسته می‌شود و دقیقاً یک ردیف provider_cost با ارز hold ثبت می‌شود."
+    },
+    {
+      "id": "AC-2",
+      "statement": "رفتار P9-05 بی‌تغییر می‌ماند: attempt در started یا uncertain می‌ماند، گاردهای retry ‏(proc/runs.ts، proc/recovery.ts، proc/admin.ts، proc/maintenance.ts) دست نمی‌خورند، و امضای دقیق settle در AC-10 ‏P9-05 همان است؛ pnpm check:boundaries روی head سبز است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "یک آزمون int تازه در quota/costs.int.test.ts سناریوی تغییر ارز میان hold و بستن را می‌سازد و AC-1 را می‌سنجد؛ آزمون‌های موجود آن فایل دست نمی‌خورند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int). proc/steps/runtime.test.ts، plt/storage.ts و plt/jobs.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R). اگر اصلاح migration یا ستون تازه بخواهد، Implementer ‏blocked برمی‌گرداند با شواهد (کلاس ۱)."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/proc/steps/runtime.ts",
+    "packages/core/src/quota/costs.ts",
+    "packages/core/src/quota/costs.int.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase10-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C9-11 (review:code ‏P9-05، job-20261110-8429d5e1؛ runtime.ts:286 و costs.ts:234 در شاهد Job)، docs/l3/phase10-plan.md 0.2 §۳ و E228‑R. L1 کد را نخواند (X1).",
+    "ریسک کارت medium (مسیر هزینه)؛ gate برآورد medium؛ D7. قاعدهٔ recalino-quota-cost فقط migrationها را high می‌کند. **ترتیب (E228‑R):** پس از P10-01؛ پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود. مسیر اجرا دستی (E199).",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/steps/runtime.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

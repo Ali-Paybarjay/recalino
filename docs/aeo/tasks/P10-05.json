@@ -1,0 +1,69 @@
+{
+  "schema_version": "1",
+  "id": "P10-05",
+  "title": "شمردن تلاش started در نتیجهٔ نامعلوم پنل مدیر (دستهٔ ۱۰ L3؛ C9-6)",
+  "goal": "P9-04 (F-6، smell ‏low ‏confirmed؛ job-20261109-32dc6134) گفت: پنل مدیر تلاش provider در حالت started را جزو «نتیجهٔ نامعلوم» نمی‌شمارد (ops/admin-read.ts در شاهد Job). پس از P9-05، attempt گیرکرده در started می‌ماند و hold آن بسته می‌شود (E215‑R)، پس اپراتور باید آن را در شمار نتیجهٔ نامعلوم ببیند. اصلاح: خواندن پنل مدیر در packages/core تلاش started را هم مانند uncertain بشمارد. بی تغییر در apps/web، به‌ویژه apps/web/src/app/api/** ‏(E228‑R).",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "خواندن پنل مدیر (ops/admin-read.ts) تلاش provider در حالت started را مانند uncertain در شمار یا فهرست «نتیجهٔ نامعلوم» می‌آورد؛ دیگر حالت‌ها و شمارها بی‌تغییرند؛ شکل خروجی (قرارداد) تغییر نمی‌کند، مگر افزودن عضو به همان شمار."
+    },
+    {
+      "id": "AC-2",
+      "statement": "یک آزمون (unit یا int، در owns) AC-1 را می‌سنجد؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد؛ pnpm check:boundaries روی head سبز است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "هیچ تغییر در apps/web (از جمله apps/web/src/app/api/**) و در ops/admin-contracts.ts نیست."
+    },
+    {
+      "id": "AC-4",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int). ops/admin-tasks.test.ts، plt/storage.ts و plt/jobs.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R)."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/ops/admin-read.ts",
+    "packages/core/src/ops/admin-read.test.ts",
+    "packages/core/src/ops/admin-read.int.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase10-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C9-6 (P9-04، F-6)، docs/l3/phase10-plan.md 0.2 §۳ و E228‑R. L1 کد را نخواند (X1).",
+    "ls-tree ‏6ff97eb: ops/admin-read.ts هست و هیچ admin-read.test.ts یا admin-read.int.test.ts نیست؛ هر دو نام در owns آمده‌اند تا Implementer آزمون تازه را unit یا int بسازد. TP-1 نزدیک‌ترین آزمون unit موجود در ops/ است: packages/core/src/ops/admin-tasks.test.ts (قفل).",
+    "ریسک کارت low؛ gate برآورد medium؛ D7. فقط packages/core (E228‑R). **ترتیب:** مستقل؛ اگر P10-03 منتظر E229 ماند، جلو می‌افتد. پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود.",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/ops/admin-tasks.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

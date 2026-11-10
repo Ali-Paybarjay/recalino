@@ -1,0 +1,65 @@
+{
+  "schema_version": "1",
+  "id": "P10-03",
+  "title": "پاک کردن شیء pending asset گفتار در بستن reconcile (دستهٔ ۱۰ L3؛ C9-15؛ شکل الف، منتظر E229)",
+  "goal": "بازبین امنیت ‏P9-06 (job-20261110-f426ccf3 و job-20261110-2c70abb7؛ CWE-459، hypothesis) گفت: closeEndedSpeechRunMedia وضعیت asset را failed یا needs_input می‌کند، اما object_id آن را پاک نمی‌کند (media/assets.ts:694 در شاهد Job). اگر job پیش از توقف از onRegistered یک pointer به شیء pending ثبت کرده باشد (سناریوی C8-2)، آن شیء تا حذف session یا حساب در storage می‌ماند. مسیر catch در mediaTtsJob دست‌کم stagedObjectId را حذف می‌کند. اصلاح (شکل الف): بستن reconcile همان شیء pending همان run را مانند مسیر catch پاک کند. این کارت تا پاسخ مالک به E229 («شروع» نمی‌گیرد)؛ اگر پاسخ شکل ب (بی Task) بود، کارت کنار گذاشته می‌شود.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "وقتی reconcile asset گفتار یک run بسته‌شده را failed یا needs_input می‌کند و object_id آن به شیء pending (ثبت‌شده و تأییدنشده) همان run اشاره دارد، آن شیء همان‌گونه که مسیر catch در mediaTtsJob ‏stagedObjectId را حذف می‌کند حذف می‌شود و object_id پاک می‌شود؛ شیء تأییدشده یا متعلق به asset ‏ready هرگز حذف نمی‌شود."
+    },
+    {
+      "id": "AC-2",
+      "statement": "فقط شیء همان run و همان مالک (user_id) حذف می‌شود؛ assetها و اشیای run دیگر یا کاربر دیگر دست نمی‌خورند؛ اگر حذف شیء شکست خورد، رفتار همان مسیر catch است (بی شکستن بستن run) و Implementer آن را صریح می‌گوید؛ pnpm check:boundaries روی head سبز است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "آزمون int در priv/media.int.test.ts سناریوی شیء pending را می‌سازد و AC-1 و AC-2 را می‌سنجد؛ آزمون‌های موجود آن فایل (از جمله C8-2 و C8-4) بی‌تغییر و سبز می‌مانند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
+    },
+    {
+      "id": "AC-4",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int). proc/maintenance.test.ts، plt/storage.ts و plt/jobs.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R). هیچ شیء یا ردیف دیگری جز شیء pending همان run (AC-1) حذف نمی‌شود."
+    }
+  ],
+  "owns_paths": ["packages/core/src/media/assets.ts", "packages/core/src/priv/media.int.test.ts"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase10-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C9-15 (review:security ‏P9-06 ‏a2 و a3؛ assets.ts:694 در شاهد Job)، docs/l3/phase10-plan.md 0.2 §۳ و E228‑R (پرسش ۲). L1 کد را نخواند (X1).",
+    "**شکل الف، منتظر E229:** حذف شیء pending را بازبین به مالک داد (کلاس ۱ یا ۵ در تردید). این کارت تا پاسخ «شروع» نمی‌گیرد؛ اگر نوبتش رسید و پاسخ نبود، P10-05 جلو می‌افتد. شکل ب = بی Task (کارت کنار گذاشته می‌شود).",
+    "ریسک کارت medium (حذف شیء storage)؛ gate برآورد medium. اگر diff با قاعدهٔ sql-destructive (الگوی delete from) جور شود، gate ‏high است و approve مالک لازم است. **ترتیب:** پس از P10-02؛ پیش از P10-04 (owns مشترک priv/media.int.test.ts). پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود.",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts (در ls-tree ‏6ff97eb هیچ آزمون unit در packages/core/src/media/ نیست) است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}
