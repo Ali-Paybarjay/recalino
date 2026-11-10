@@ -1078,6 +1078,17 @@ describe("explicit media and privacy publication", () => {
       }),
     ).toBe(0);
     expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe(expected.state);
+    // The new request's job runs on its own queue kind with this fixture's provider, so no due
+    // media.tts job is left for a later test's mediaTtsJob run (C8-2 counts its provider calls).
+    const { jobId: againJobId } = await speechRun(again.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", againJobId).execute();
+    await runDueJobs(db, [{ ...mediaTtsJob(f.dependencies), kind }], {
+      deadline: new Date(Date.now() + 5000),
+      kinds: [kind],
+    });
+    expect((await getMediaAsset(db, f.ctx, again.id)).state).toBe("ready");
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe(expected.state);
   }
   it("C8-4 reconciling a speech run whose last job lease expired fails the run and its asset with processing_interrupted", async () => {
     await expectSpeechRunClosed(false);
