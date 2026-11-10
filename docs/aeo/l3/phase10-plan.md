@@ -2,7 +2,7 @@
 
 | فیلد | مقدار |
 |---|---|
-| نسخه | نسخهٔ 0.2 (2026-11-10، E228‑R: پاسخ شش پرسش، شرط‌ها؛ کارت‌ها و TestPlanها، §۶ و §۷)؛ 0.1 (sha256 ‏`d2a38af6…`؛ پذیرفته با شرط) |
+| نسخه | نسخهٔ 0.3 (2026-11-10، E236‑R: کارت P10-03 ‏v2، §۸)؛ 0.2 (sha256 ‏`9379bd94…`؛ E228‑R: پاسخ شش پرسش، شرط‌ها؛ کارت‌ها و TestPlanها، §۶ و §۷)؛ 0.1 (sha256 ‏`d2a38af6…`؛ پذیرفته با شرط) |
 | وضعیت | **0.1 با شرط پذیرفته شد (E228‑R).** کارت‌های P10-01 (audit، دفتری) و P10-02 تا P10-06 همراه TestPlan در دفتر، برای پیش‌سنجی بازبین. هیچ Job و PR تا پیش‌سنجی؛ سپس PR کارت (high ⇒ approve مالک) و فرمان قفل TestPlanها به مالک |
 | پایه | Recalino ‏`main@6ff97eb047e6c848fc00873a985c96032576bbca` (پس از P9-06، #156)؛ aeo ‏`main@90964c2` |
 | مرجع‌ها | `docs/l3/phase9-findings-candidates.md` (C9-1 تا C9-16، ستون «وضع»)؛ `docs/l3/phase8-findings-candidates.md` (C8-1 تا C8-10)؛ `docs/l3/phase9-closeout.md` ‏0.2؛ `docs/l3/phase9-plan.md` ‏0.10 §۴ (نامزدهای هسته)؛ `docs/l3/audit/P9-04.report.json` |
@@ -51,7 +51,7 @@
 |---|---|---|---|---|---|---|
 | ‏P10-01 | C8-6، C9-9، C9-12، C9-13 | investigate (audit، فقط‌خواندنی) | low | — | ندارد؛ خروجی `docs/l3/audit/P10-01.report.json` (دفتری) | ندارد (R92، audit معاف) |
 | ‏P10-02 | C9-11 | bugfix | medium | medium | `packages/core/src/proc/steps/runtime.ts`، `packages/core/src/quota/costs.ts`، `packages/core/src/quota/costs.int.test.ts` | `packages/core/src/proc/steps/runtime.test.ts` ‏(pass_to_pass، قفل) |
-| ‏P10-03 | C9-15 | bugfix | medium | medium، یا high اگر diff با `sql-destructive` جور شود | `packages/core/src/media/assets.ts`، `packages/core/src/priv/media.int.test.ts` | `packages/core/src/proc/maintenance.test.ts` ‏(pass_to_pass، قفل) |
+| ‏P10-03 | C9-15 | bugfix | medium | medium، یا high اگر diff با `sql-destructive` جور شود | `packages/core/src/media/assets.ts`، `packages/core/src/priv/media.int.test.ts`؛ v2: + `apps/web/src/server/jobs.ts` (فقط wiring)، + `packages/core/src/media/index.ts` (مشروط، فقط export) | `packages/core/src/proc/maintenance.test.ts` ‏(pass_to_pass، قفل) |
 | ‏P10-04 | C9-16 | test | low | medium | `packages/core/src/priv/media.int.test.ts` | `packages/core/src/proc/maintenance.test.ts` ‏(pass_to_pass، قفل) |
 | ‏P10-05 | C9-6 | bugfix | low | medium | `packages/core/src/ops/admin-read.ts`، و آزمون تازه `admin-read.test.ts` یا `admin-read.int.test.ts` (هیچ‌کدام در ls-tree نیست) | `packages/core/src/ops/admin-tasks.test.ts` (§۶) |
 | ‏P10-06 (اختیاری) | C9-10 | test (تغییر نام) | low | medium | آزمون‌های int بیرونی P9-05، مانند `proc/haiku55-worker.int.test.ts` و `proc/knowledge-repair.int.test.ts` | `packages/core/src/proc/maintenance.test.ts` |
@@ -131,3 +131,10 @@
 - مورد مسیرها: همهٔ مسیرهای owns زیر `packages/core/src/` هستند، جز owns ‏P10-01.
 - مورد PR کارت: پس از پیش‌سنجی بازبین. PR ده فایل `docs/aeo/tasks/P10-02` تا `P10-06` (کارت و TestPlan) و `docs/aeo/l3/phase10-plan.md` را دارد. ریسک آن high است (`docs/aeo/**`)، پس approve مالک لازم است. P10-01 دفتری است و در PR نمی‌آید.
 
+## ۸. کارت P10-03 ‏v2 (0.3؛ E236‑R)
+- مورد علت: attempt 1 ‏(`job-20261110-f44eb44e`، JobBlocked ‏6225، بی commit) نشان داد hook بستن reconcile برای حذف bytes شیء pending به ObjectStore نیاز دارد، و store فقط در wiring ‏`apps/web/src/server/jobs.ts` در دسترس است.
+- مورد تصمیم E236‑R: راه ۱ (owns و wiring)؛ راه ۲ (adapter بی‌عمل store و حذف دیرتر bytes) رد شد؛ رفتار B در شکست حذف: خطا ثبت می‌شود و بستن run کامل می‌شود، با قید ردیابی (ردیف شیء deleted و object_id پاک).
+- مورد تغییر کارت: owns + `apps/web/src/server/jobs.ts` و `packages/core/src/media/index.ts` (مشروط)؛ AC-2 بازنویسی (رفتار B و قید ردیابی)؛ AC-3 + سناریوی int شکست `store.delete`؛ AC-10 تازه (فقط wiring و export)؛ assumptions: E229 = الف، بند v2 و trade-off تماس Blob درون تراکنش. AC-1، AC-4، AC-8 و AC-9 بی‌تغییر.
+- مورد ریسک: هیچ‌کدام از دو فایل تازه زیر قاعدهٔ high در `risk-rules.yaml` نیست (بازبین، policy ‏`90964c2`). ریسک کارت medium می‌ماند؛ قاعدهٔ `sql-destructive` همچنان ممکن است gate را high کند.
+- مورد TestPlan: بی‌تغییر (`c8089a1a…`، قفل 6184). owns با فایل‌های قفل اشتراک ندارد.
+- مورد ورودی attempt 2: `docs/l3/cards/P10-03.rework-2.md` با `--rework-findings`، روی همان worktree.
