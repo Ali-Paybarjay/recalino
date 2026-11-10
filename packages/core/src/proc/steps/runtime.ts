@@ -271,7 +271,8 @@ async function latestAttempt<T>(tx: Tx, call: ProviderCall<T>) {
  * maximum, the conservative cost, once (a hold already closed is left as it is). The attempt
  * itself is not touched here: it stays started or uncertain, so every retry guard still reads it
  * as an unknown outcome awaiting operator review. Nothing here calls the provider again or
- * schedules a retry.
+ * schedules a retry. The cost row takes the hold's own currency, so a currency setting changed
+ * since the hold was taken still closes it (P10-02, C9-11).
  */
 async function closeHoldAtMaximum<T>(tx: Tx, call: ProviderCall<T>, attempt: ProviderAttempt) {
   const { job, ctx, runId, provider } = call;

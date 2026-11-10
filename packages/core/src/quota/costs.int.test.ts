@@ -147,4 +147,57 @@ describe("AI cost controls (FR-QUOTA-008..010)", () => {
       ).replayed,
     ).toBe(false);
   });
+  // P10-02 (C9-11): the currency setting changes between the hold and its close at the maximum.
+  it("closes a hold at its maximum in the hold's currency after the currency setting changed", async () => {
+    const { ctx, reservationId, sessionId } = await caller();
+    await configureCostPolicy(db, policy, operator);
+    const key = randomUUID();
+    const hold = await db.transaction().execute((tx) =>
+      beginProviderStep(tx, ctx, {
+        sessionId,
+        reservationId,
+        operationKey: key,
+        maximumMicros: 60,
+        currency: "GBP",
+      }),
+    );
+    await configureCostPolicy(db, { ...policy, version: "test-2", currency: "EUR" }, operator);
+    const close = {
+      operationKey: key,
+      provider: "synthetic",
+      model: "fixture-1",
+      currency: "EUR",
+      actualMicros: null,
+      estimatedMicros: "hold_maximum" as const,
+      priceVersion: "fixture-1",
+      usage: {},
+    };
+    // A definite settle in another currency is still refused, and leaves the hold open.
+    await expect(
+      db.transaction().execute((tx) =>
+        finishProviderStep(tx, ctx, hold.id, {
+          ...close,
+          actualMicros: 20,
+          estimatedMicros: null,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "idempotency_mismatch" });
+    await db.transaction().execute((tx) => finishProviderStep(tx, ctx, hold.id, close));
+    await db.transaction().execute((tx) => finishProviderStep(tx, ctx, hold.id, close));
+    const closed = await db
+      .selectFrom("quota.cost_hold")
+      .select(["closed_at", "currency"])
+      .where("id", "=", hold.id)
+      .executeTakeFirstOrThrow();
+    expect(closed.closed_at).not.toBeNull();
+    expect(closed.currency).toBe("GBP");
+    const rows = await db
+      .selectFrom("quota.provider_cost")
+      .selectAll()
+      .where("operation_key", "=", key)
+      .execute();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ currency: "GBP", amount_micros: null });
+    expect(Number(rows[0]?.estimated_micros)).toBe(60);
+  });
 });

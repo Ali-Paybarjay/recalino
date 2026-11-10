@@ -201,6 +201,7 @@ export interface ProviderCost {
   /**
    * `"hold_maximum"` records the hold's own maximum: the conservative cost of an attempt whose
    * outcome is unknown, so its hold closes without understating what the provider may charge.
+   * That record takes the hold's own currency; `currency` is then not compared (P10-02).
    */
   estimatedMicros: number | null | "hold_maximum";
   priceVersion: string | null;
@@ -231,13 +232,15 @@ export async function finishProviderStep(
     .forUpdate()
     .executeTakeFirst();
   if (!hold) throw errors.notFound();
-  if (hold.operation_key !== input.operationKey || hold.currency !== input.currency)
+  const atMaximum = input.estimatedMicros === "hold_maximum";
+  // P10-02 (C9-11): a close at the hold's maximum records the hold's own amount, so it takes the
+  // hold's currency, not the caller's current setting; every other settle must still match it.
+  if (hold.operation_key !== input.operationKey || (!atMaximum && hold.currency !== input.currency))
     throw errors.idempotencyMismatch();
-  const estimatedMicros =
-    input.estimatedMicros === "hold_maximum" ? Number(hold.maximum_micros) : input.estimatedMicros;
+  const estimatedMicros = atMaximum ? Number(hold.maximum_micros) : input.estimatedMicros;
   if (hold.closed_at) {
     // P9-05: an unknown outcome closes its hold once; a hold already closed stays as recorded.
-    if (input.estimatedMicros === "hold_maximum") return;
+    if (atMaximum) return;
     const prior = await tx
       .selectFrom("quota.provider_cost")
       .selectAll()
@@ -276,7 +279,8 @@ export async function finishProviderStep(
       operation_key: input.operationKey,
       provider: input.provider,
       model: input.model,
-      currency: input.currency,
+      // Equal to `input.currency` for every settle but a close at the hold's maximum.
+      currency: hold.currency,
       amount_micros: input.actualMicros,
       estimated_micros: estimatedMicros,
       price_version: input.priceVersion,
