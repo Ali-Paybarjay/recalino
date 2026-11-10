@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
   "id": "P10-03",
-  "title": "پاک کردن شیء pending asset گفتار در بستن reconcile (دستهٔ ۱۰ L3؛ C9-15؛ شکل الف، منتظر E229)",
-  "goal": "بازبین امنیت ‏P9-06 (job-20261110-f426ccf3 و job-20261110-2c70abb7؛ CWE-459، hypothesis) گفت: closeEndedSpeechRunMedia وضعیت asset را failed یا needs_input می‌کند، اما object_id آن را پاک نمی‌کند (media/assets.ts:694 در شاهد Job). اگر job پیش از توقف از onRegistered یک pointer به شیء pending ثبت کرده باشد (سناریوی C8-2)، آن شیء تا حذف session یا حساب در storage می‌ماند. مسیر catch در mediaTtsJob دست‌کم stagedObjectId را حذف می‌کند. اصلاح (شکل الف): بستن reconcile همان شیء pending همان run را مانند مسیر catch پاک کند. این کارت تا پاسخ مالک به E229 («شروع» نمی‌گیرد)؛ اگر پاسخ شکل ب (بی Task) بود، کارت کنار گذاشته می‌شود.",
+  "title": "پاک کردن شیء pending asset گفتار در بستن reconcile (دستهٔ ۱۰ L3؛ C9-15؛ شکل الف؛ v2، E236‑R)",
+  "goal": "بازبین امنیت ‏P9-06 (job-20261110-f426ccf3 و job-20261110-2c70abb7؛ CWE-459، hypothesis) گفت: closeEndedSpeechRunMedia وضعیت asset را failed یا needs_input می‌کند، اما object_id آن را پاک نمی‌کند (media/assets.ts:694 در شاهد Job). اگر job پیش از توقف از onRegistered یک pointer به شیء pending ثبت کرده باشد (سناریوی C8-2)، آن شیء تا حذف session یا حساب در storage می‌ماند. مسیر catch در mediaTtsJob دست‌کم stagedObjectId را حذف می‌کند. اصلاح (شکل الف): بستن reconcile همان شیء pending همان run را مانند مسیر catch پاک کند. مالک شکل الف را برگزید (E229، 2026-11-10). v2 (E236‑R): hook بستن به ObjectStore نیاز دارد، پس wiring آن در apps/web/src/server/jobs.ts در owns است؛ شکست حذف bytes بستن run را نمی‌شکند (رفتار B).",
   "mode": "brownfield",
   "task_type": "bugfix",
   "risk_level": "medium",
@@ -13,11 +13,11 @@
     },
     {
       "id": "AC-2",
-      "statement": "فقط شیء همان run و همان مالک (user_id) حذف می‌شود؛ assetها و اشیای run دیگر یا کاربر دیگر دست نمی‌خورند؛ اگر حذف شیء شکست خورد، رفتار همان مسیر catch است (بی شکستن بستن run) و Implementer آن را صریح می‌گوید؛ pnpm check:boundaries روی head سبز است."
+      "statement": "فقط شیء همان run و همان مالک (user_id) حذف می‌شود؛ assetها و اشیای run دیگر یا کاربر دیگر دست نمی‌خورند. اگر حذف bytes در storage شکست خورد، خطا گرفته و ثبت می‌شود و بستن run کامل می‌شود (بستن run هرگز به دسترس‌پذیری Blob وابسته نیست). قید ردیابی: پس از شکست حذف bytes، ردیف شیء deleted علامت خورده و object_id پاک است تا reconcileStorage ‏bytes را بعداً بردارد؛ هیچ شیء یتیم بی‌ردیابی نمی‌ماند. اگر ترتیب درون deleteObject این را تضمین نکند، Implementer علامت را صریح می‌زند و در deviations می‌گوید. Implementer رفتار شکست را صریح می‌گوید. pnpm check:boundaries روی head سبز است."
     },
     {
       "id": "AC-3",
-      "statement": "آزمون int در priv/media.int.test.ts سناریوی شیء pending را می‌سازد و AC-1 و AC-2 را می‌سنجد؛ آزمون‌های موجود آن فایل (از جمله C8-2 و C8-4) بی‌تغییر و سبز می‌مانند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
+      "statement": "آزمون int در priv/media.int.test.ts سناریوی شیء pending را می‌سازد و AC-1 و AC-2 را می‌سنجد؛ و یک سناریوی int دیگر شکست store.delete را می‌سازد: run بسته می‌شود، استثنا بالا نمی‌رود و وضع ردیف شیء طبق قید ردیابی AC-2 است. آزمون‌های موجود آن فایل (از جمله C8-2 و C8-4) بی‌تغییر و سبز می‌مانند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
     },
     {
       "id": "AC-4",
@@ -30,9 +30,18 @@
     {
       "id": "AC-9",
       "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R). هیچ شیء یا ردیف دیگری جز شیء pending همان run (AC-1) حذف نمی‌شود."
+    },
+    {
+      "id": "AC-10",
+      "statement": "در apps/web/src/server/jobs.ts فقط wiring است (رساندن ObjectStore به hook بستن asset گفتار در همان نقطهٔ wiring ‏P9-06)؛ در packages/core/src/media/index.ts فقط افزودن export است، و فقط اگر لازم باشد؛ هیچ تغییر دیگر در این دو فایل نیست."
     }
   ],
-  "owns_paths": ["packages/core/src/media/assets.ts", "packages/core/src/priv/media.int.test.ts"],
+  "owns_paths": [
+    "packages/core/src/media/assets.ts",
+    "packages/core/src/priv/media.int.test.ts",
+    "apps/web/src/server/jobs.ts",
+    "packages/core/src/media/index.ts"
+  ],
   "depends_on": [],
   "context_refs": ["docs/aeo/l3/phase10-plan.md"],
   "test_plan_kind": "pass_to_pass",
@@ -54,7 +63,9 @@
   ],
   "assumptions": [
     "منبع: C9-15 (review:security ‏P9-06 ‏a2 و a3؛ assets.ts:694 در شاهد Job)، docs/l3/phase10-plan.md 0.2 §۳ و E228‑R (پرسش ۲). L1 کد را نخواند (X1).",
-    "**شکل الف، منتظر E229:** حذف شیء pending را بازبین به مالک داد (کلاس ۱ یا ۵ در تردید). این کارت تا پاسخ «شروع» نمی‌گیرد؛ اگر نوبتش رسید و پاسخ نبود، P10-05 جلو می‌افتد. شکل ب = بی Task (کارت کنار گذاشته می‌شود).",
+    "**شکل الف، E229 = الف (2026-11-10):** حذف شیء pending را مالک پذیرفت. شکل ب (بی Task) کنار رفت.",
+    "v2 (E236‑R): attempt 1 ‏(job-20261110-f44eb44e، JobBlocked 6225، بی commit) نشان داد hook بستن reconcile برای حذف bytes به ObjectStore نیاز دارد. owns به apps/web/src/server/jobs.ts (فقط wiring) و packages/core/src/media/index.ts (مشروط، فقط export) گسترده شد (AC-10)، مانند P9-06 v2 ‏(E222‑R). راه adapter بی‌عمل store با حذف دیرتر bytes رد شد. هیچ‌کدام از دو فایل قفل نیست و هیچ قاعدهٔ high در risk-rules آن‌ها را نمی‌گیرد. TestPlan و قفل 6184 بی‌تغییر.",
+    "trade-off شناخته‌شده (E236‑R): تماس کوتاه store.delete به Blob درون تراکنش reconcile و با account lock انجام می‌شود، همان الگوی مسیر catch در mediaTtsJob. شکست آن بستن run را نمی‌شکند (AC-2، رفتار B).",
     "ریسک کارت medium (حذف شیء storage)؛ gate برآورد medium. اگر diff با قاعدهٔ sql-destructive (الگوی delete from) جور شود، gate ‏high است و approve مالک لازم است. **ترتیب:** پس از P10-02؛ پیش از P10-04 (owns مشترک priv/media.int.test.ts). پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود.",
     "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts (در ls-tree ‏6ff97eb هیچ آزمون unit در packages/core/src/media/ نیست) است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
     "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
