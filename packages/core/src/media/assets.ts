@@ -683,6 +683,35 @@ export function mediaTtsJob(
     },
   };
 }
+/**
+ * C8-4: PROC reconciliation closed this auxiliary run because its `media.tts` job ended without
+ * the worker settling it (e.g. every attempt's lease expired). Injected as PROC's auxiliary
+ * run-closed hook and called inside that transaction, it ends the speech asset of the run the way
+ * mediaTtsJob's final-failure path does: an uncertain outcome waits for review (`needs_input`),
+ * anything else fails, both with the run's code. Only a live queued or processing speech asset of
+ * this owner and run changes, so the cache no longer returns it; other runs match nothing.
+ */
+export async function closeEndedSpeechRunMedia(
+  tx: Tx,
+  ctx: LearnerContext,
+  runId: string,
+  outcome: { code: string; uncertain: boolean },
+  now: Date,
+): Promise<void> {
+  await tx
+    .updateTable("media.asset")
+    .set({
+      state: outcome.uncertain ? "needs_input" : "failed",
+      last_error: outcome.code,
+      completed_at: now,
+    })
+    .where("user_id", "=", ctx.userId)
+    .where("run_id", "=", runId)
+    .where("kind", "=", "tts")
+    .where("tombstoned_at", "is", null)
+    .where("state", "in", ["queued", "processing"])
+    .execute();
+}
 export async function tombstoneSessionMedia(
   tx: Tx,
   ctx: LearnerContext,

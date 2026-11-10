@@ -32,6 +32,7 @@ import {
   cleanupAccountMedia,
   cleanupSessionMedia,
   cleanupSourceMedia,
+  closeEndedSpeechRunMedia,
   getMediaAsset,
   type MediaDependencies,
   mediaTtsJob,
@@ -968,10 +969,11 @@ describe("explicit media and privacy publication", () => {
       .executeTakeFirstOrThrow();
     expect(hold.closed_at).not.toBeNull();
   });
-  // C8-5 (P8-02, F-5) and C8-4 (P8-02, F-4): the function was stopped on the job's last attempt,
-  // the sweep failed the job (lease_expired) and reconciliation closed its run. documents current
-  // behaviour (C8-4): the asset is left processing; a later fix for C8-4 is expected to change it.
-  it("C8-4 documents current behaviour: reconciling a speech run whose last job lease expired fails the run but leaves its asset processing", async () => {
+  // C8-5 (P8-02, F-5) and C8-4 (P8-02, F-4; P9-06): the function was stopped on the job's last
+  // attempt, the sweep failed the job (lease_expired) and reconciliation closed its run. The media
+  // hook injected into reconciliation ends the run's speech asset in the same transaction, with the
+  // mapping of mediaTtsJob's final-failure path, so an identical request no longer reuses it.
+  async function strandedSpeechAsset(inFlight: boolean) {
     const f = await fixture();
     const input = {
       sessionId: f.session.id,
@@ -1010,6 +1012,22 @@ describe("explicit media and privacy publication", () => {
       .set({ state: "processing" })
       .where("id", "=", asset.id)
       .execute();
+    // A speech request still marked in flight: its outcome is unknown (synthetic hold id).
+    if (inFlight)
+      await db
+        .insertInto("proc.provider_attempt")
+        .values({
+          run_id: runId,
+          user_id: f.ctx.userId,
+          step: "speech",
+          attempt: 1,
+          operation_key: `${runId}:speech:1`,
+          hold_id: randomUUID(),
+          provider: f.provider.name,
+          model: providerSettings.ttsModel,
+          state: "started",
+        })
+        .execute();
 
     await sweepJobs(db, new Date());
     expect(
@@ -1019,25 +1037,92 @@ describe("explicit media and privacy publication", () => {
         .where("id", "=", jobId)
         .executeTakeFirstOrThrow(),
     ).toEqual({ state: "failed", last_error: "lease_expired" });
-    expect(await reconcileEndedJobRuns(db, new Date(), { userId: f.ctx.userId })).toBe(1);
-    expect(await runState(runId)).toEqual({ state: "failed", last_error: ENDED_JOB_RUN_ERROR });
+    return { f, input, asset, runId };
+  }
+  async function expectSpeechRunClosed(inFlight: boolean) {
+    const { f, input, asset, runId } = await strandedSpeechAsset(inFlight);
+    const expected = inFlight
+      ? { state: "needs_input", lastError: "provider_outcome_unresolved" }
+      : { state: "failed", lastError: ENDED_JOB_RUN_ERROR };
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBe(1);
+    expect(await runState(runId)).toEqual({
+      state: expected.state,
+      last_error: expected.lastError,
+    });
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
     expect(await providerCosts(f.ctx.userId)).toEqual([]);
     expect(f.provider.calls).toBe(0);
-    // documents current behaviour (C8-4): reconciliation ends the run only; the asset stays
-    // processing without an error, and an identical request reuses that stranded asset.
-    const stranded = await getMediaAsset(db, f.ctx, asset.id);
-    expect(stranded.state).toBe("processing");
-    expect(stranded.lastError).toBeNull();
+    // The asset is no longer processing: it carries the run's outcome and code.
+    const closed = await getMediaAsset(db, f.ctx, asset.id);
+    expect({ state: closed.state, lastError: closed.lastError }).toEqual(expected);
+    // An identical request no longer returns the stranded asset; it starts a new one.
     const again = await requestTts(
       db,
       f.ctx,
       { ...input, operationKey: randomUUID() },
       f.dependencies,
     );
-    expect(again.id).toBe(asset.id);
-    expect(again.state).toBe("processing");
+    expect(again.id).not.toBe(asset.id);
+    expect(again.state).toBe("queued");
+    // Running reconciliation again changes nothing further.
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBe(0);
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe(expected.state);
+    // The new request's job runs on its own queue kind with this fixture's provider, so no due
+    // media.tts job is left for a later test's mediaTtsJob run (C8-2 counts its provider calls).
+    const { jobId: againJobId } = await speechRun(again.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", againJobId).execute();
+    await runDueJobs(db, [{ ...mediaTtsJob(f.dependencies), kind }], {
+      deadline: new Date(Date.now() + 5000),
+      kinds: [kind],
+    });
+    expect((await getMediaAsset(db, f.ctx, again.id)).state).toBe("ready");
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe(expected.state);
+  }
+  it("C8-4 reconciling a speech run whose last job lease expired fails the run and its asset with processing_interrupted", async () => {
+    await expectSpeechRunClosed(false);
+  });
+  it("C8-4 reconciling a speech run whose last job lease expired with a request in flight leaves the run and its asset needs_input with provider_outcome_unresolved", async () => {
+    await expectSpeechRunClosed(true);
+  });
+  it("C8-4 keeps the speech run open when the media hook fails, and the next reconciliation closes both", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(false);
+    await expect(
+      reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: async () => {
+          throw new Error("Synthetic hook failure");
+        },
+      }),
+    ).rejects.toThrow("Synthetic hook failure");
+    // The hook shares the run's transaction: neither the run nor its reservation was closed.
+    expect((await runState(runId)).state).toBe("processing");
+    expect((await allowance(db, f.ctx)).reserved.tts).toBeGreaterThan(0);
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe("processing");
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBe(1);
+    expect(await runState(runId)).toEqual({ state: "failed", last_error: ENDED_JOB_RUN_ERROR });
+    expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
+    const closed = await getMediaAsset(db, f.ctx, asset.id);
+    expect({ state: closed.state, lastError: closed.lastError }).toEqual({
+      state: "failed",
+      lastError: ENDED_JOB_RUN_ERROR,
+    });
   });
   // C8-2 (P8-02, F-2): an earlier job committed the asset's object pointer from onRegistered and
   // stopped before the bytes were written and verified, so the registered object stayed pending.

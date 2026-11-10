@@ -1,6 +1,7 @@
 import "server-only";
 import { accPeriodicJobs } from "@recalino/core/acc";
 import { longestProviderTimeoutMs } from "@recalino/core/aip";
+import { closeEndedSpeechRunMedia } from "@recalino/core/media";
 import { databaseBackupMaintenanceJob, systemHealthJob } from "@recalino/core/ops";
 import {
   createLogger,
@@ -128,7 +129,10 @@ export function periodicJobs(settings: PltSettings): PeriodicJob[] {
     ...privacyPeriodicJobs(),
     ...sourcePeriodicJobs(),
     ...exportPeriodicJobs(),
-    ...processingPeriodicJobs({ afterRunClosed: notifyClosedRun }),
+    ...processingPeriodicJobs({
+      afterRunClosed: notifyClosedRun,
+      afterAuxiliaryClose: closeEndedSpeechRunMedia,
+    }),
     ...automaticLearningPeriodicJobs(),
     ...processingNotificationPeriodicJobs(),
   ];
