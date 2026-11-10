@@ -1,0 +1,71 @@
+{
+  "schema_version": "1",
+  "id": "P10-06",
+  "title": "هم‌خوان کردن نام آزمون‌های int بیرونی P9-05 با رفتار تازه (دستهٔ ۱۰ L3؛ C9-10؛ اختیاری)",
+  "goal": "implement ‏P9-05 (attempt 2 و 3؛ job-20261110-962ee117، job-20261110-ad0af835) گفت: نام برخی آزمون‌های int بیرونی، مانند «preserves an unresolved compact hold…»، با رفتار تازه (بستن hold با بیشینه؛ attempt در started یا uncertain می‌ماند) کمی ناهم‌خوان است؛ AC-3 ‏P9-05 تغییر نام را اجازه نداد. این کارت فقط نام آزمون‌ها (رشتهٔ it یا describe) را با رفتار تازه هم‌خوان می‌کند. اختیاری است: آخر دسته و فقط اگر باقی‌ماندهٔ هفته دست‌کم ۱۰ دلار باشد (E228‑R).",
+  "mode": "brownfield",
+  "task_type": "test",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "در شش آزمون int بیرونی P9-05 فقط رشتهٔ نام it یا describe آزمون‌هایی که رفتار قدیم hold را می‌گفتند با رفتار تازه هم‌خوان می‌شود؛ Implementer فهرست نام قدیم ⇒ نام تازه را در خروجی می‌آورد."
+    },
+    {
+      "id": "AC-2",
+      "statement": "هیچ assertion، fixture، جریان آزمون یا کد تولیدی تغییر نمی‌کند؛ diff هر فایل فقط سطرهای نام است."
+    },
+    {
+      "id": "AC-3",
+      "statement": "همهٔ آزمون‌های این شش فایل در CI روی head سبز می‌مانند و شمار آن‌ها برابر پیش از تغییر است."
+    },
+    {
+      "id": "AC-4",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int). proc/maintenance.test.ts، plt/storage.ts و plt/jobs.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R)."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/proc/haiku55-worker.int.test.ts",
+    "packages/core/src/proc/knowledge-study-repair.int.test.ts",
+    "packages/core/src/proc/knowledge-repair.int.test.ts",
+    "packages/core/src/eval/lesson-review-service.int.test.ts",
+    "packages/core/src/proc/knowledge-translation.int.test.ts",
+    "packages/core/src/proc/knowledge-response-budget.int.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase10-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C9-10 (implement ‏P9-05 attempt 2 و 3)، docs/l3/phase10-plan.md 0.2 §۳ و E228‑R (پرسش ۳). L1 کد را نخواند (X1).",
+    "ریسک کارت low (فقط نام آزمون)؛ gate برآورد medium؛ D7. **اختیاری:** آخر دسته و فقط اگر باقی‌ماندهٔ هفتهٔ D8 دست‌کم ۱۰ دلار باشد. پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود.",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}
