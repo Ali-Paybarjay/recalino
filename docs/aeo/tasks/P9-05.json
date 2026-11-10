@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
   "id": "P9-05",
-  "title": "بستن hold هزینه در providerStep هنگام attempt حل‌نشده و نتیجهٔ uncertain، بی تغییر گارد retry (دستهٔ ۹ L3؛ C9-1، C9-2، C8-3، AR-05؛ v2، E215‑R و E216)",
-  "goal": "P9-04 (job-20261109-32dc6134؛ F-1 و F-2، confirmed) نشان داد attempt و hold پیش از dispatch با هم commit می‌شوند (proc/steps/runtime.ts:345-385 در شاهد Job). اگر job در میانهٔ فراخوانی provider قطع شود، در اجرای دوباره assertAttemptAllowed پیش از بلوک try خطای provider_outcome_unresolved می‌دهد (runtime.ts:275) و hold برای همیشه باز می‌ماند؛ نتیجهٔ uncertain هم hold را باز می‌گذارد (runtime.ts:471). این در همهٔ providerStepها است. attempt 1 این کارت (job-20261109-5e966630، commit 8693ccb) نشان داد failed کردن attempt گاردهای retry را برمی‌دارد (proc/runs.ts:414 و :764، proc/recovery.ts:136، proc/admin.ts:32، proc/maintenance.ts:140) و خطر صورت‌حساب دوبار باز می‌شود. تصمیم بازبین (E215‑R، گزینهٔ ب): **attempt در وضعیت started یا uncertain همان‌طور می‌ماند (failed نمی‌شود)** و فقط hold با برآورد بیشینهٔ خودش بسته می‌شود (estimatedMicros برابر hold_maximum؛ مانند commit 8693ccb)؛ گاردهای retry دست نمی‌خورند. تصمیم مالک (E216 = الف): اجرای دوبارهٔ هر attempt گیرکرده، حتی attemptی که پیش از deploy مانده، hold باز همان attempt را یک بار و در همان مسیر اجرای دوبارهٔ همان گام می‌بندد؛ هیچ پاک‌سازی یا sweep دسته‌جمعی نیست. آزمون unit در proc/steps/runtime.test.ts برای هر دو مسیر (attempt حل‌نشده و نتیجهٔ uncertain)؛ آزمون int ‏«documents current behaviour» ‏C8-3 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شود (hold بسته، attempt همچنان uncertain یا started)؛ و assertionهای hold باز یا شمار provider_cost در چهار آزمون int بیرونی (proc/haiku55-worker.int.test.ts، proc/knowledge-study-repair.int.test.ts، proc/knowledge-repair.int.test.ts، eval/lesson-review-service.int.test.ts) **فقط برای همین تغییر** عمداً به‌روز شوند. این rework روی همان worktree ‏(attempt 2) است و از commit ‏8693ccb آغاز می‌کند. اگر بی تغییر گارد retry یا فایل‌های قفل ممکن نیست، Implementer ‏blocked برگرداند، با گزینه‌ها.",
+  "title": "بستن hold هزینه در providerStep هنگام attempt حل‌نشده و نتیجهٔ uncertain، بی تغییر گارد retry (دستهٔ ۹ L3؛ C9-1، C9-2، C8-3، AR-05؛ v3، E215‑R، E216 و E219‑R)",
+  "goal": "P9-04 (job-20261109-32dc6134؛ F-1 و F-2، confirmed) نشان داد attempt و hold پیش از dispatch با هم commit می‌شوند (proc/steps/runtime.ts:345-385 در شاهد Job). اگر job در میانهٔ فراخوانی provider قطع شود، در اجرای دوباره assertAttemptAllowed پیش از بلوک try خطای provider_outcome_unresolved می‌دهد (runtime.ts:275) و hold برای همیشه باز می‌ماند؛ نتیجهٔ uncertain هم hold را باز می‌گذارد (runtime.ts:471). این در همهٔ providerStepها است. attempt 1 این کارت (job-20261109-5e966630، commit 8693ccb) نشان داد failed کردن attempt گاردهای retry را برمی‌دارد (proc/runs.ts:414 و :764، proc/recovery.ts:136، proc/admin.ts:32، proc/maintenance.ts:140) و خطر صورت‌حساب دوبار باز می‌شود. تصمیم بازبین (E215‑R، گزینهٔ ب): **attempt در وضعیت started یا uncertain همان‌طور می‌ماند (failed نمی‌شود)** و فقط hold با برآورد بیشینهٔ خودش بسته می‌شود (estimatedMicros برابر hold_maximum؛ مانند commit 8693ccb)؛ گاردهای retry دست نمی‌خورند. تصمیم مالک (E216 = الف): اجرای دوبارهٔ هر attempt گیرکرده، حتی attemptی که پیش از deploy مانده، hold باز همان attempt را یک بار و در همان مسیر اجرای دوبارهٔ همان گام می‌بندد؛ هیچ پاک‌سازی یا sweep دسته‌جمعی نیست. آزمون unit در proc/steps/runtime.test.ts برای هر دو مسیر (attempt حل‌نشده و نتیجهٔ uncertain)؛ آزمون int ‏«documents current behaviour» ‏C8-3 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شود (hold بسته، attempt همچنان uncertain یا started)؛ و assertionهای hold باز یا شمار provider_cost در شش آزمون int بیرونی (proc/haiku55-worker.int.test.ts، proc/knowledge-study-repair.int.test.ts، proc/knowledge-repair.int.test.ts، eval/lesson-review-service.int.test.ts، proc/knowledge-translation.int.test.ts، proc/knowledge-response-budget.int.test.ts) **فقط برای همین تغییر** عمداً به‌روز شوند. attempt 2 ‏(job-20261110-962ee117، commit 488c59f) نشان داد دو آزمون int بیرونی دیگر هم رفتار قدیم را assert می‌کنند، و در quota/costs.ts تحملی برای settle همان attempt لازم شد؛ تصمیم بازبین (E219‑R، گزینهٔ الف): owns به آن دو آزمون گسترش می‌یابد و تحمل settle با شرط AC-10 پذیرفته است. این rework روی همان worktree ‏(attempt 3) است و از commit ‏488c59f آغاز می‌کند. اگر بی تغییر گارد retry یا فایل‌های قفل ممکن نیست، Implementer ‏blocked برگرداند، با گزینه‌ها.",
   "mode": "brownfield",
   "task_type": "bugfix",
   "risk_level": "medium",
@@ -17,11 +17,11 @@
     },
     {
       "id": "AC-3",
-      "statement": "proc/steps/runtime.test.ts آزمون unit برای هر دو مسیر دارد و روی head سبز است؛ آزمون int ‏C8-3 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شده (hold بسته، attempt ‏uncertain یا started) و نامش دیگر «documents current behaviour» نیست؛ در چهار آزمون int بیرونی فقط assertionهای hold باز یا شمار provider_cost عمداً به‌روز شده‌اند، و هر تغییر دیگر در آن‌ها نیست؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون‌های تازه بی اصلاح شکست می‌خورند."
+      "statement": "proc/steps/runtime.test.ts آزمون unit برای هر دو مسیر دارد و روی head سبز است؛ آزمون int ‏C8-3 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شده (hold بسته، attempt ‏uncertain یا started) و نامش دیگر «documents current behaviour» نیست؛ در شش آزمون int بیرونی (چهار فایل v2، و proc/knowledge-translation.int.test.ts و proc/knowledge-response-budget.int.test.ts) فقط assertionهای hold باز یا شمار provider_cost عمداً به‌روز شده‌اند، و کنار هر assertion به‌روزشده یک خط توضیح مجاز است؛ نام آزمون‌ها، fixtureها و جریان آزمون دست نمی‌خورند، و هر تغییر دیگر در آن‌ها نیست؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون‌های تازه بی اصلاح شکست می‌خورند."
     },
     {
       "id": "AC-4",
-      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int، از جمله چهار آزمون بیرونی). plt/storage.ts، plt/jobs.ts و proc/maintenance.test.ts بی‌تغییرند (قفل TestPlan)؛ media/assets.ts و proc/auxiliary.ts هم دست نمی‌خورند (owns ‏P9-06)."
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int، از جمله شش آزمون بیرونی و آزمون int ‏AC-10 اگر هست). plt/storage.ts، plt/jobs.ts و proc/maintenance.test.ts بی‌تغییرند (قفل TestPlan)؛ media/assets.ts و proc/auxiliary.ts هم دست نمی‌خورند (owns ‏P9-06)."
     },
     {
       "id": "AC-8",
@@ -30,6 +30,10 @@
     {
       "id": "AC-9",
       "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود، **جز** hold همان attempt در مسیر اجرای دوبارهٔ همان گام (E216 = الف)؛ هیچ پاک‌سازی یا sweep دسته‌جمعی نیست."
+    },
+    {
+      "id": "AC-10",
+      "statement": "تحمل settle در quota/costs.ts فقط برای امضای دقیق رکورد محافظه‌کارانهٔ همان attempt است (amount_micros برابر null، estimated_micros برابر maximum_micros، usage خالی، همان attempt_id)؛ پس از چنین settle **دقیقاً یک ردیف provider_cost** برای آن attempt می‌ماند (جایگزینی رکورد برآورد با usage واقعی، یا no-op؛ هرگز ردیف دوم)؛ هیچ گارد retry و هیچ بررسی idempotency دیگر تغییر نمی‌کند. آزمون unit «بستن محافظه‌کارانه، سپس settle همان attempt ⇒ یک ردیف» در proc/steps/runtime.test.ts هست، یا اگر مسیر واقعی settle لازم است، آزمون int در quota/costs.int.test.ts با شاهد CI. در quota/costs.int.test.ts فقط افزودن آزمون AC-10 مجاز است؛ آزمون‌های موجود آن دست نمی‌خورند. review:security جداگانه به سه پرسش پاسخ می‌دهد: یک ردیف؟ امضا دقیق؟ گاردها دست‌نخورده؟ پاسخ منفی به هر یک ⇒ block."
     }
   ],
   "owns_paths": [
@@ -40,7 +44,10 @@
     "packages/core/src/proc/haiku55-worker.int.test.ts",
     "packages/core/src/proc/knowledge-study-repair.int.test.ts",
     "packages/core/src/proc/knowledge-repair.int.test.ts",
-    "packages/core/src/eval/lesson-review-service.int.test.ts"
+    "packages/core/src/eval/lesson-review-service.int.test.ts",
+    "packages/core/src/proc/knowledge-translation.int.test.ts",
+    "packages/core/src/proc/knowledge-response-budget.int.test.ts",
+    "packages/core/src/quota/costs.int.test.ts"
   ],
   "depends_on": [],
   "context_refs": ["docs/aeo/l3/phase9-plan.md"],
@@ -62,8 +69,9 @@
     }
   ],
   "assumptions": [
-    "منبع: C9-1 و C9-2 (P9-04)، C8-3 (P8-02)، AR-05؛ attempt 1 ‏(job-20261109-5e966630، JobBlocked ‏5966، commit 8693ccb)؛ E215‑R (گزینهٔ ب) و E216 = الف (مالک)؛ docs/aeo/l3/phase9-plan.md 0.8. L1 کد را نخواند (X1).",
+    "منبع: C9-1 و C9-2 (P9-04)، C8-3 (P8-02)، AR-05؛ attempt 1 ‏(job-20261109-5e966630، JobBlocked ‏5966، commit 8693ccb)؛ attempt 2 ‏(job-20261110-962ee117، JobBlocked ‏5993، commit 488c59f)؛ E215‑R (گزینهٔ ب)، E216 = الف (مالک) و E219‑R (گزینهٔ الف)؛ docs/aeo/l3/phase9-plan.md 0.9. L1 کد را نخواند (X1).",
     "v2: owns گسترده به چهار آزمون int بیرونی فقط برای به‌روزرسانی عمدی assertionهای hold و provider_cost (AC-3). TestPlan و قفل 5959 بی‌تغییر، چون files[] عوض نشده است.",
+    "v3: owns گسترده به proc/knowledge-translation.int.test.ts و proc/knowledge-response-budget.int.test.ts فقط برای به‌روزرسانی عمدی assertionهای hold و provider_cost (AC-3)، و به quota/costs.int.test.ts فقط برای آزمون int ‏AC-10 اگر مسیر واقعی settle لازم است. نام‌های ناهم‌خوان آزمون‌ها عوض نمی‌شوند (نامزد C9-10). TestPlan و قفل 5959 بی‌تغییر.",
     "ریسک کارت medium (رفتار تولیدی هزینه)؛ gate برآورد medium (packages/core/src/proc/** و quota/costs.ts قاعدهٔ high ندارند؛ migration نیست)؛ D7. مسیر اجرا دستی (E199). پس از P9-02 و P9-03 (انجام شد).",
     "شاهد آزمون int (E198‑R، E200‑R، E211‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
     "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
