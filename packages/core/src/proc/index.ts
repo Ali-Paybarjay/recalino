@@ -72,6 +72,7 @@ export {
   teachingAdaptationSchema,
 } from "./learner-context";
 export {
+  type AuxiliaryRunClosedHook,
   ENDED_JOB_RUN_ERROR,
   endedJobRunOutcome,
   expireAwaitingUploads,

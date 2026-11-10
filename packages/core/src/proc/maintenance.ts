@@ -1,7 +1,7 @@
 import { sql } from "kysely";
 import { z } from "zod";
 import { lockAccount } from "../acc";
-import type { Database } from "../db";
+import type { Database, Tx } from "../db";
 import {
   AppError,
   emptyPayload,
@@ -126,7 +126,13 @@ export function runsLeftByEndedJobs(
  * under the account and run locks, so a run the worker settled or a continuation re-queued is
  * left alone, and running it again has no further effect (PRD-COST-02).
  */
-async function closeEndedJobRun(db: Database, ctx: LearnerContext, runId: string, now: Date) {
+async function closeEndedJobRun(
+  db: Database,
+  ctx: LearnerContext,
+  runId: string,
+  now: Date,
+  afterAuxiliaryClose?: AuxiliaryRunClosedHook,
+) {
   return db.transaction().execute(async (tx) => {
     await lockAccount(tx, ctx.userId);
     const run = await ownedRun(tx, ctx, runId, true);
@@ -141,13 +147,11 @@ async function closeEndedJobRun(db: Database, ctx: LearnerContext, runId: string
       .executeTakeFirst();
     const outcome = endedJobRunOutcome(inFlight !== undefined);
     if (run.kind === "auxiliary") {
-      await failAuxiliaryRun(
-        tx,
-        ctx,
-        run.id,
-        { code: outcome.code, uncertain: outcome.state === "needs_input" },
-        now,
-      );
+      const closed = { code: outcome.code, uncertain: outcome.state === "needs_input" };
+      await failAuxiliaryRun(tx, ctx, run.id, closed, now);
+      // C8-4: the owning module ends its own record of this run (a speech asset) in the same
+      // transaction, so a failing hook leaves the run open for the next reconciliation.
+      await afterAuxiliaryClose?.(tx, ctx, run.id, closed, now);
       return run.kind;
     }
     await settleAllowance(tx, ctx, run.reservation_id, emptyAmounts(), now);
@@ -171,6 +175,19 @@ export type RunClosedHook = (
   now: Date,
 ) => Promise<void>;
 /**
+ * C8-4: called when reconciliation fails an auxiliary run, after `failAuxiliaryRun` and inside its
+ * transaction, with the code and certainty the run was closed with. The module that scheduled the
+ * run (MEDIA for `media.tts`) injects it to end its own record of that run; PROC never imports
+ * that module. A hook ignores runs it does not own.
+ */
+export type AuxiliaryRunClosedHook = (
+  tx: Tx,
+  ctx: LearnerContext,
+  runId: string,
+  outcome: { code: string; uncertain: boolean },
+  now: Date,
+) => Promise<void>;
+/**
  * PRD-02: closes runs whose job ended without the worker settling them, so the reservation is
  * released, the learner is told, and the same session can be processed again (or, with a provider
  * request in flight, reviewed by the operator first). Stuck runs are never updated, so they sort
@@ -180,7 +197,12 @@ export type RunClosedHook = (
 export async function reconcileEndedJobRuns(
   db: Database,
   now = new Date(),
-  options: { afterClose?: RunClosedHook; userId?: string; limit?: number } = {},
+  options: {
+    afterClose?: RunClosedHook;
+    afterAuxiliaryClose?: AuxiliaryRunClosedHook;
+    userId?: string;
+    limit?: number;
+  } = {},
 ): Promise<number> {
   const runs = await db
     .selectFrom("proc.processing_run")
@@ -201,7 +223,7 @@ export async function reconcileEndedJobRuns(
   for (const runId of runsLeftByEndedJobs(runs, states)) {
     const ctx = { userId: owners.get(runId) as string, requestId: `reconcile:${runId}` };
     try {
-      const kind = await closeEndedJobRun(db, ctx, runId, now);
+      const kind = await closeEndedJobRun(db, ctx, runId, now, options.afterAuxiliaryClose);
       if (!kind) continue;
       closed++;
       // Like the worker's completion hook; the minute notification sweep repairs a failure here.
@@ -216,7 +238,7 @@ export async function reconcileEndedJobRuns(
   return closed;
 }
 export function processingPeriodicJobs(
-  options: { afterRunClosed?: RunClosedHook } = {},
+  options: { afterRunClosed?: RunClosedHook; afterAuxiliaryClose?: AuxiliaryRunClosedHook } = {},
 ): PeriodicJob[] {
   return [
     {
@@ -237,7 +259,10 @@ export function processingPeriodicJobs(
         version: 1,
         payload: emptyPayload,
         async run(_payload, job) {
-          await reconcileEndedJobRuns(job.db, job.now(), { afterClose: options.afterRunClosed });
+          await reconcileEndedJobRuns(job.db, job.now(), {
+            afterClose: options.afterRunClosed,
+            afterAuxiliaryClose: options.afterAuxiliaryClose,
+          });
         },
       },
     },

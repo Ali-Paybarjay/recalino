@@ -2,6 +2,7 @@ export {
   cleanupAccountMedia,
   cleanupSessionMedia,
   cleanupSourceMedia,
+  closeEndedSpeechRunMedia,
   createImageMedia,
   getLiveMediaAssets,
   getMediaAsset,
