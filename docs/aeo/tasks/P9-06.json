@@ -1,15 +1,15 @@
 {
   "schema_version": "1",
   "id": "P9-06",
-  "title": "بستن asset ‏media پس از reconcile ‏run کمکی (دستهٔ ۹ L3؛ C9-4، C8-4)",
-  "goal": "P9-04 (F-4، bug ‏medium ‏confirmed) و P8-02 (F-4) نشان دادند: اگر همهٔ تلاش‌های job ‏media.tts با lease_expired تمام شوند، sweepJobs آن را failed می‌کند و closeEndedJobRun برای run کمکی فقط failAuxiliaryRun را صدا می‌زند (proc/maintenance.ts:143-151 در شاهد Job)؛ hook ‏afterClose فقط برای kind === \"class\" است (maintenance.ts:208). پس media.asset در processing گیر می‌کند و cache همان متن را برای همیشه قفل می‌کند. اصلاح (گزینهٔ P9-04): یک hook بستن run برای auxiliary (مانند RunClosedHook) که ماژول media تزریق کند، تا asset متناظر needs_input یا failed شود، بی عبور مستقیم proc به media. آزمون int ‏«documents current behaviour» ‏C8-4 در priv/media.int.test.ts (P9-02) را عمداً به رفتار درست به‌روز کن. این کارت فقط پس از ادغام P9-05 و روی main تازه اجرا می‌شود (owns مشترک priv/media.int.test.ts)؛ قفل‌هایش آن روز دوباره سنجیده می‌شوند. اگر بی تغییر فایل‌های قفل ممکن نیست، Implementer ‏blocked برگرداند، با گزینه‌ها.",
+  "title": "بستن asset ‏media پس از reconcile ‏run کمکی (دستهٔ ۹ L3؛ C9-4، C8-4؛ v2، E222‑R)",
+  "goal": "P9-04 (F-4، bug ‏medium ‏confirmed) و P8-02 (F-4) نشان دادند: اگر همهٔ تلاش‌های job ‏media.tts با lease_expired تمام شوند، sweepJobs آن را failed می‌کند و closeEndedJobRun برای run کمکی فقط failAuxiliaryRun را صدا می‌زند (proc/maintenance.ts:143-151 در شاهد Job)؛ hook ‏afterClose فقط برای kind === \"class\" است (maintenance.ts:208). پس media.asset در processing گیر می‌کند و cache همان متن را برای همیشه قفل می‌کند. اصلاح (گزینهٔ P9-04): یک hook بستن run برای auxiliary (مانند RunClosedHook) که ماژول media تزریق کند، تا asset متناظر needs_input یا failed شود، بی عبور مستقیم proc به media. آزمون int ‏«documents current behaviour» ‏C8-4 در priv/media.int.test.ts (P9-02) را عمداً به رفتار درست به‌روز کن. این کارت فقط پس از ادغام P9-05 و روی main تازه اجرا می‌شود (owns مشترک priv/media.int.test.ts)؛ قفل‌هایش آن روز دوباره سنجیده می‌شوند. attempt 1 (job-20261110-cde5f463، JobBlocked 6070، بی commit) نشان داد تزریق hook از composition root به سه فایل wiring بیرون از owns نیاز دارد؛ تصمیم بازبین (E222‑R، گزینهٔ ۱): owns به packages/core/src/media/index.ts، packages/core/src/proc/index.ts و apps/web/src/server/jobs.ts گسترش می‌یابد، فقط برای export و wiring (AC-10). این rework روی همان worktree ‏(attempt 2) از 98e9407 است. اگر بی تغییر فایل‌های قفل ممکن نیست، Implementer ‏blocked برگرداند، با گزینه‌ها.",
   "mode": "brownfield",
   "task_type": "bugfix",
   "risk_level": "medium",
   "acceptance_criteria": [
     {
       "id": "AC-1",
-      "statement": "پس از reconcile یک run کمکی ‏media.tts که job آن با lease_expired ‏failed شده، asset متناظر دیگر در processing نمی‌ماند (needs_input یا failed، با lastError روشن) و درخواست یکسان تازه asset گیرکرده را برنمی‌گرداند؛ بستن run کلاس و دیگر مسیرهای reconcile بی‌تغییرند."
+      "statement": "پس از reconcile یک run کمکی ‏media.tts که job آن با lease_expired ‏failed شده، asset متناظر دیگر در processing نمی‌ماند (needs_input یا failed، با lastError روشن) و درخواست یکسان تازه asset گیرکرده را برنمی‌گرداند؛ hook ‏(AuxiliaryRunClosedHook) پس از failAuxiliaryRun و در همان تراکنش اجرا می‌شود؛ اگر hook خطا داد run هم بسته نمی‌شود و reconcile بعدی دوباره تلاش می‌کند؛ hook فقط برای runهای کمکی media.tts است؛ بستن run کلاس و دیگر مسیرهای reconcile بی‌تغییرند."
     },
     {
       "id": "AC-2",
@@ -17,7 +17,7 @@
     },
     {
       "id": "AC-3",
-      "statement": "آزمون int ‏C8-4 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شده و نام آن دیگر «documents current behaviour» نیست؛ دیگر آزمون‌های آن فایل (از جمله C8-5، C8-2 و آزمون P9-05) سبز می‌مانند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
+      "statement": "آزمون int ‏C8-4 در priv/media.int.test.ts عمداً به رفتار درست به‌روز شده و نام آن دیگر «documents current behaviour» نیست؛ این آزمون همان hook را به reconcileEndedJobRuns می‌دهد و هر دو نگاشت AC-11 (needs_input و failed) را می‌سنجد؛ دیگر آزمون‌های آن فایل (از جمله C8-5، C8-2 و آزمون P9-05) سبز می‌مانند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون بی اصلاح شکست می‌خورد."
     },
     {
       "id": "AC-4",
@@ -30,13 +30,24 @@
     {
       "id": "AC-9",
       "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R)."
+    },
+    {
+      "id": "AC-10",
+      "statement": "در packages/core/src/media/index.ts و packages/core/src/proc/index.ts فقط افزودن export است (نوع hook و تابع media)؛ در apps/web/src/server/jobs.ts فقط wiring است (دادن تابع media به گزینهٔ afterAuxiliaryClose برای reconcileEndedJobRuns و processingPeriodicJobs)؛ هیچ تغییر دیگر در این سه فایل نیست."
+    },
+    {
+      "id": "AC-11",
+      "statement": "asset همان run، اگر queued یا processing است: با نتیجهٔ uncertain ⇒ needs_input با lastError ‏provider_outcome_unresolved؛ در غیر این صورت ⇒ failed با lastError ‏processing_interrupted (همان نگاشت مسیر catch در mediaTtsJob)؛ assetهای دیگر و حالت‌های دیگر دست نمی‌خورند."
     }
   ],
   "owns_paths": [
     "packages/core/src/proc/maintenance.ts",
     "packages/core/src/proc/auxiliary.ts",
     "packages/core/src/media/assets.ts",
-    "packages/core/src/priv/media.int.test.ts"
+    "packages/core/src/priv/media.int.test.ts",
+    "packages/core/src/media/index.ts",
+    "packages/core/src/proc/index.ts",
+    "apps/web/src/server/jobs.ts"
   ],
   "depends_on": [],
   "context_refs": ["docs/aeo/l3/phase9-plan.md"],
@@ -58,7 +69,8 @@
     }
   ],
   "assumptions": [
-    "منبع: C9-4 (P9-04، F-4؛ maintenance.ts:143-151 و :208 در شاهد Job)، C8-4 (P8-02، F-4)، docs/l3/phase9-plan.md 0.7 §۱۰ و E211‑R. L1 کد را نخواند (X1).",
+    "منبع: C9-4 (P9-04، F-4؛ maintenance.ts:143-151 و :208 در شاهد Job)، C8-4 (P8-02، F-4)، docs/l3/phase9-plan.md 0.10 §۱۳، E211‑R و E222‑R (گزینهٔ ۱)؛ attempt 1 ‏(job-20261110-cde5f463، JobBlocked 6070، بی commit). L1 کد را نخواند (X1).",
+    "v2: owns گسترده به سه فایل wiring (media/index.ts، proc/index.ts، apps/web/src/server/jobs.ts) فقط برای export و تزریق hook (AC-10)؛ گزینهٔ ۲ (SQL مستقیم media روی جدول‌های PROC) و گزینهٔ ۳ (registry سراسری) رد شدند (E222‑R). هیچ‌کدام از سه فایل قفل نیست و هیچ قاعدهٔ high در risk-rules آن‌ها را نمی‌گیرد. TestPlan و قفل 5960 بی‌تغییر.",
     "ریسک کارت medium (رفتار تولیدی reconcile و media)؛ gate برآورد medium؛ D7. **ترتیب (E211‑R):** فقط پس از ادغام P9-05 و روی main تازه؛ پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود. مسیر اجرا دستی (E199).",
     "شاهد آزمون int (E198‑R، E200‑R، E211‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
     "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
