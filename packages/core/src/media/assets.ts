@@ -715,41 +715,15 @@ export async function closeEndedSpeechRunMedia(
     .execute();
 }
 /**
- * The store deleteObject uses in the close hook below: every call goes to the real store, but a
- * failed byte delete is reported instead of thrown. deleteObject marks its record deleted only
- * after the byte delete returns, and MEDIA never writes PLT's table (ADR-0002 rule 4), so this is
- * how the record is still marked deleted when the store is unavailable; reconcileStorage then
- * removes the bytes of the deleted record.
- */
-function byteDeleteFailureLogged(
-  store: ObjectStore,
-  onFailure: (error: unknown) => void,
-): ObjectStore {
-  return {
-    name: store.name,
-    signWrite: (key, limits) => store.signWrite(key, limits),
-    signRead: (key, validUntil, options) => store.signRead(key, validUntil, options),
-    head: (key) => store.head(key),
-    read: (key) => store.read(key),
-    list: (prefix, cursor) => store.list(prefix, cursor),
-    async delete(key) {
-      try {
-        await store.delete(key);
-      } catch (error) {
-        onFailure(error);
-      }
-    },
-  };
-}
-/**
  * C9-15 (P10-03): the reconciliation close hook with the object store. Before ending the speech
  * asset of the closed run (closeEndedSpeechRunMedia), it removes the pending object an earlier job
  * of this run registered and committed from onRegistered (C8-2), the way mediaTtsJob's catch path
  * deletes its staged object. Only a pending object of this owner, pointed to by a live queued or
  * processing speech asset of this run, is deleted; a verified object, or the object of a ready
- * asset, is never touched. Closing the run never depends on the store: when the byte delete fails,
- * the error is logged, deleteObject still marks the record deleted (byteDeleteFailureLogged) and
- * the pointer is cleared, so reconcileStorage removes the bytes later.
+ * asset, is never touched: PLT marks the record deleted only in an update conditional on pending
+ * (C10-5), before any byte delete. Closing the run never depends on the store: when the byte
+ * delete fails, the error is logged, the record stays deleted and the pointer is cleared, so
+ * reconcileStorage removes the bytes later. MEDIA never writes PLT's table (ADR-0002 rule 4).
  */
 export function speechRunClosedHook(
   store: ObjectStore,
@@ -784,19 +758,17 @@ export function speechRunClosedHook(
       }
       if (object.state !== "pending") continue;
       const objectId = object.id;
-      await deleteObject(
-        tx,
-        byteDeleteFailureLogged(store, (error) =>
+      const deleted = await deleteObject(tx, store, ctx, objectId, now, {
+        pendingOnly: true,
+        onByteDeleteFailure: (error) =>
           log("error", "media_speech_object_delete_failed", {
             module: "media",
             object_id: objectId,
             error_name: error instanceof Error ? error.name : "unknown",
           }),
-        ),
-        ctx,
-        objectId,
-        now,
-      );
+      });
+      // Verified since the read above: the object and the pointer stay.
+      if (!deleted) continue;
       await tx
         .updateTable("media.asset")
         .set({ object_id: null })

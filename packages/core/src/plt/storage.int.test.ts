@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { KyselyPlugin } from "kysely";
 import { afterAll, describe, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { createDatabase } from "../db";
@@ -10,6 +11,7 @@ import {
   deleteObject,
   issueReadLink,
   issueWriteLink,
+  markPendingObjectDeleted,
   ownerStorageAccessExpiry,
   reconcileStorage,
 } from "./storage";
@@ -233,5 +235,173 @@ describe("FR-PLT-014 storage layer", () => {
     });
     expect(summary.orphansDeleted).toBe(1);
     expect(await store.head(object.key)).toBeNull();
+  });
+});
+
+async function objectRow(id: string) {
+  return db
+    .selectFrom("plt.storage_object")
+    .select(["state", "deleted_at"])
+    .where("id", "=", id)
+    .executeTakeFirstOrThrow();
+}
+
+/**
+ * The database as a call sees it when another session verifies the object right after the call's
+ * first read: the verification commits between that read and the call's own update. `readStates`
+ * collects the state each such read returned, so a test can show the read still saw pending.
+ */
+function verifiedAfterFirstRead(id: string, readStates: unknown[]) {
+  const selects = new Set<unknown>();
+  let raced = false;
+  const plugin: KyselyPlugin = {
+    transformQuery: ({ node, queryId }) => {
+      if (node.kind === "SelectQueryNode") selects.add(queryId);
+      return node;
+    },
+    transformResult: async ({ queryId, result }) => {
+      if (!raced && selects.has(queryId)) {
+        raced = true;
+        readStates.push(result.rows[0]?.state);
+        await db
+          .updateTable("plt.storage_object")
+          .set({ state: "verified", verified_at: T0 })
+          .where("id", "=", id)
+          .execute();
+      }
+      return result;
+    },
+  };
+  return db.withPlugin(plugin);
+}
+
+describe("P11-03 conditional storage state changes", () => {
+  it("C10-3 confirmObject does not report verified when the record left pending before its update", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    // A concurrent cleanup marks the record deleted while the store is being checked.
+    const racing = Object.assign(Object.create(store) as typeof store, {
+      head: async (key: string) => {
+        await db
+          .updateTable("plt.storage_object")
+          .set({ state: "deleted", deleted_at: at(1) })
+          .where("id", "=", object.id)
+          .execute();
+        return store.head(key);
+      },
+    });
+    expect(await codeOf(confirmObject(db, racing, { userId: owner }, object.id, { now: T0 }))).toBe(
+      "conflict",
+    );
+    expect(await objectRow(object.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+  });
+
+  it("C10-5 never marks deleted an object verified between the read and the conditional update", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    // The mark reads the pending record; the record turns verified before the mark's update.
+    const reads: unknown[] = [];
+    expect(
+      await markPendingObjectDeleted(
+        verifiedAfterFirstRead(object.id, reads),
+        { userId: owner },
+        object.id,
+        at(1),
+      ),
+    ).toBe(false);
+    expect(reads).toEqual(["pending"]);
+    expect(await objectRow(object.id)).toEqual({ state: "verified", deleted_at: null });
+    expect(await store.head(object.key)).not.toBeNull();
+
+    // The same window for the pending-only delete: neither the record nor the bytes change.
+    const other = await pngFor(owner);
+    store.seed(other.key, PNG, "image/png", T0);
+    const otherReads: unknown[] = [];
+    expect(
+      await deleteObject(
+        verifiedAfterFirstRead(other.id, otherReads),
+        store,
+        { userId: owner },
+        other.id,
+        at(1),
+        { pendingOnly: true },
+      ),
+    ).toBe(false);
+    expect(otherReads).toEqual(["pending"]);
+    expect(await objectRow(other.id)).toEqual({ state: "verified", deleted_at: null });
+    expect(await store.head(other.key)).not.toBeNull();
+  });
+
+  it("C10-5 a pending-only delete leaves a verified object, its record and its bytes alone", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    expect(await confirmObject(db, store, { userId: owner }, object.id, { now: T0 })).toBe(
+      "verified",
+    );
+    expect(
+      await deleteObject(db, store, { userId: owner }, object.id, at(1), { pendingOnly: true }),
+    ).toBe(false);
+    expect(await markPendingObjectDeleted(db, { userId: owner }, object.id, at(1))).toBe(false);
+    expect(await objectRow(object.id)).toEqual({ state: "verified", deleted_at: null });
+    expect(await store.head(object.key)).not.toBeNull();
+  });
+
+  it("marks a pending object deleted without deleting its bytes; storage reconciliation removes them", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    expect(
+      await codeOf(markPendingObjectDeleted(db, { userId: randomUUID() }, object.id, at(1))),
+    ).toBe("not_found");
+    expect(await markPendingObjectDeleted(db, { userId: owner }, object.id, at(1))).toBe(true);
+    expect(await objectRow(object.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    expect(await store.head(object.key)).not.toBeNull();
+    // Repeating it has no further effect.
+    expect(await markPendingObjectDeleted(db, { userId: owner }, object.id, at(2))).toBe(false);
+    expect(await objectRow(object.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    const summary = await reconcileStorage(db, store, {
+      now: at(3),
+      settings,
+      prefix: `src/${owner}/`,
+    });
+    expect(summary.orphansDeleted).toBe(1);
+    expect(await store.head(object.key)).toBeNull();
+  });
+
+  it("a pending-only delete tries the bytes at once and reports a failed byte delete, keeping the record deleted", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const removed = await pngFor(owner);
+    store.seed(removed.key, PNG, "image/png", T0);
+    expect(
+      await deleteObject(db, store, { userId: owner }, removed.id, at(1), { pendingOnly: true }),
+    ).toBe(true);
+    expect(await objectRow(removed.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    expect(await store.head(removed.key)).toBeNull();
+
+    const kept = await pngFor(owner);
+    store.seed(kept.key, PNG, "image/png", T0);
+    const failing = Object.assign(Object.create(store) as typeof store, {
+      delete: async () => {
+        throw new Error("Synthetic store outage");
+      },
+    });
+    const failures: unknown[] = [];
+    expect(
+      await deleteObject(db, failing, { userId: owner }, kept.id, at(1), {
+        pendingOnly: true,
+        onByteDeleteFailure: (error) => failures.push(error),
+      }),
+    ).toBe(true);
+    expect(failures).toHaveLength(1);
+    expect(await objectRow(kept.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    expect(await store.head(kept.key)).not.toBeNull();
   });
 });

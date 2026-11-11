@@ -57,10 +57,18 @@ function database() {
     }
     if (statement.startsWith('update "plt"."storage_object"')) {
       const id = parameters.find((value) => typeof value === "string" && rows.has(value));
-      const row = typeof id === "string" ? rows.get(id) : undefined;
+      const found = typeof id === "string" ? rows.get(id) : undefined;
+      // A `"state" = 'pending'` condition in the same update matches only a pending row.
+      const matches = !parameters.includes("pending") || found?.state === "pending";
+      const row = matches ? found : undefined;
       if (row && parameters.includes("verified")) row.state = "verified";
       if (row && parameters.includes("deleted")) row.state = "deleted";
-      return result([]);
+      const updated = row ? [row] : [];
+      return {
+        command: "UPDATE" as const,
+        rowCount: updated.length,
+        rows: statement.includes(" returning ") ? updated.map(({ id }) => ({ id })) : [],
+      };
     }
     throw new Error(`unexpected statement: ${statement}`);
   };
