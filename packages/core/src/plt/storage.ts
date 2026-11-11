@@ -418,33 +418,98 @@ export async function confirmObject(
       return "checksum_mismatch";
     }
   }
-  await db
+  // C10-3: the record may leave pending between the read above and this update (a concurrent
+  // cleanup marks it deleted). Only the update that matched the pending row verifies it.
+  const verified = await db
     .updateTable("plt.storage_object")
     .set({ state: "verified", verified_at: check.now })
     .where("id", "=", object.id)
     .where("state", "=", "pending")
-    .execute();
+    .returning("id")
+    .executeTakeFirst();
+  if (!verified) throw errors.conflict();
   return "verified";
 }
 
-/** Deletes the object and marks its record; repeating it has no further effect (PRD-DEL-03). */
+/**
+ * Marks a pending object deleted without touching its bytes; reconcileStorage removes the bytes
+ * of a deleted record later. The state check is part of the update itself (C10-5): an object
+ * verified after any earlier read, such as the object of a published asset, is never marked.
+ * Returns whether this call marked the record.
+ */
+export async function markPendingObjectDeleted(
+  db: Database | Tx,
+  actor: StorageActor,
+  objectId: string,
+  now: Date,
+): Promise<boolean> {
+  return (await markPending(db, actor, objectId, now)) !== null;
+}
+
+/** The key of the pending object this call marked deleted, or null when nothing was marked. */
+async function markPending(
+  db: Database | Tx,
+  actor: StorageActor,
+  objectId: string,
+  now: Date,
+): Promise<string | null> {
+  const object = await loadOwned(db, objectId, actor);
+  if (object.state !== "pending") return null;
+  const marked = await db
+    .updateTable("plt.storage_object")
+    .set({ state: "deleted", deleted_at: now })
+    .where("id", "=", object.id)
+    .where("state", "=", "pending")
+    .returning("id")
+    .executeTakeFirst();
+  return marked ? object.key : null;
+}
+
+/**
+ * Only a pending object is deleted: the record is marked first by markPendingObjectDeleted, and
+ * the bytes are deleted only when that conditional update matched. A failed byte delete goes to
+ * onByteDeleteFailure, when given, instead of being thrown; the record stays deleted.
+ */
+export interface PendingDeleteOptions {
+  pendingOnly: true;
+  onByteDeleteFailure?: (error: unknown) => void;
+}
+
+/**
+ * Deletes the object and marks its record; repeating it has no further effect (PRD-DEL-03).
+ * With `pendingOnly`, see PendingDeleteOptions; it returns whether the pending record was marked
+ * deleted, and a verified or already deleted object is left as it is.
+ */
 export async function deleteObject(
   db: Database | Tx,
   store: ObjectStore,
   actor: StorageActor,
   objectId: string,
   now: Date,
-): Promise<void> {
+  options?: PendingDeleteOptions,
+): Promise<boolean> {
+  if (options?.pendingOnly) {
+    const key = await markPending(db, actor, objectId, now);
+    if (key === null) return false;
+    try {
+      await store.delete(key);
+    } catch (error) {
+      if (!options.onByteDeleteFailure) throw error;
+      options.onByteDeleteFailure(error);
+    }
+    return true;
+  }
   const object = await loadOwned(db, objectId, actor);
   // A still-valid old PUT token can recreate bytes after the first deletion. A final
   // privacy cleanup after token expiry must delete those bytes again.
   await store.delete(object.key);
-  if (object.state === "deleted") return;
+  if (object.state === "deleted") return true;
   await db
     .updateTable("plt.storage_object")
     .set({ state: "deleted", deleted_at: now })
     .where("id", "=", object.id)
     .execute();
+  return true;
 }
 
 export interface ReconcileSummary {
