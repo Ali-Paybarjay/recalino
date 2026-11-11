@@ -2,7 +2,7 @@
 
 | فیلد | مقدار |
 |---|---|
-| نسخه | نسخهٔ 0.3 (2026-11-11، E263‑R: کارت P11-03 ‏v2، C11-2، §۹)؛ 0.2 (sha256 ‏`7ef09fd1…`؛ E249‑R: پاسخ شش پرسش؛ قاعدهٔ قفل؛ دور اول P11-03 تا P11-05 با کارت و TestPlan، §۶ و §۷)؛ 0.1 (sha256 ‏`7c6a1c7c…`؛ پذیرفته با شرط) |
+| نسخه | نسخهٔ 0.4 (2026-11-11، E268 و E269‑R: کارت P11-07 ‏investigate؛ §۳، §۴، §۸ و §۱۰)؛ 0.3 (sha256 ‏`dae8d1be…`؛ E263‑R: کارت P11-03 ‏v2، C11-2، §۹)؛ 0.2 (sha256 ‏`7ef09fd1…`؛ E249‑R: پاسخ شش پرسش؛ قاعدهٔ قفل؛ دور اول P11-03 تا P11-05 با کارت و TestPlan، §۶ و §۷)؛ 0.1 (sha256 ‏`7c6a1c7c…`؛ پذیرفته با شرط) |
 | وضعیت | **0.1 با شرط پذیرفته شد (E249‑R).** کارت‌ها و TestPlanهای دور اول (P11-03، P11-04، P11-05) در دفتر، برای پیش‌سنجی بازبین. کارت‌های دور دوم (P11-01، P11-02، P11-06) اکنون نوشته نمی‌شوند. هیچ Job و PR تا پیش‌سنجی |
 | پایه | Recalino ‏`main@8742a9aec7af3a26691cf114f7b750af052c5b5d` (پس از P10-06، #163)؛ aeo ‏`main@90964c2` |
 | مرجع‌ها | `docs/l3/phase10-findings-candidates.md` (C10-1 تا C10-6 و نامزد تابع PLT)؛ `docs/l3/phase9-findings-candidates.md` (C9-9، C9-12، C9-13)؛ `docs/l3/phase8-findings-candidates.md` (C8-6)؛ `docs/l3/audit/P10-01.*`؛ `docs/l3/phase10-closeout.md` ‏0.2؛ `docs/l3/adr-0003-amendment-draft.md` ‏0.1 |
@@ -44,6 +44,7 @@
 | ‏P11-04 (دور اول) | C10-4 | bugfix | low | medium | `packages/core/src/quota/costs.ts`، `quota/costs.int.test.ts` | قفل‌های دور اول (§۶) |
 | ‏P11-05 (دور اول) | C10-6 | test | low | medium | `packages/core/src/priv/media.int.test.ts` | قفل‌های دور اول (§۶) |
 | ‏P11-06 (اختیاری) | C9-13 (usage واقعی) | bugfix | medium | medium | `packages/core/src/quota/costs.ts`، و به‌روزرسانی عمدی `proc/steps/runtime.test.ts:887-893` (به گفتهٔ F-5) | پس از P11-02؛ TestPlan جدا، چون یک آزمون قفل‌شدهٔ پیشین را عمداً تغییر می‌دهد |
+| ‏P11-07 (investigate) | E268 شرط ۵؛ ADR-0004 ‏0.3 §۴ و §۶؛ J2 ‏F-2 و F-4 | investigate (audit، فقط‌خواندنی) | low | — | ندارد (`docs/aeo/audit/**` مانند P10-01)؛ خروجی `docs/l3/audit/P11-07.report.json` (دفتری) | ندارد (R92، audit معاف) |
 
 - مورد شمار: ۵ Task، و ۱ Task اختیاری.
 - مورد ریسک gate: هیچ‌کدام از owns زیر قاعدهٔ high نیست (`plt/**`، `quota/**`، `proc/**`، `priv/**` فقط `default-medium`). کارت‌های low در gate به medium می‌رسند (C5)، مانند دستهٔ ۱۰. اگر diff الگوی `sql-destructive` داشته باشد، high می‌شود.
@@ -61,6 +62,7 @@
 4. P11-01 (fencing در PLT): فقط پس از پذیرش اصلاحیهٔ ADR-0003 به‌دست مالک.
 5. P11-02 (fencing در providerStep): پس از ادغام P11-01.
 6. P11-06 (اختیاری): پس از P11-02، اگر بودجه بماند.
+7. P11-07 (investigate، E268 شرط ۵): موازی با پیش‌نویس ADR-0004 ‏0.3 و مستقل از پذیرش آن؛ پس از PR کارت آن. ورودی کارت‌های بازیابی دستهٔ ۱۲.
 
 ## ۵. پرسش‌ها برای بازبین (هر کدام با گزینه)
 - مورد پرسش ۱، مسیر ADR: الف) fencing؛ ب) at-least-once صریح؛ ج) ترکیب (پیشنهاد L1). پرسش اصلی نزد بازبین ساختاری است؛ این‌جا فقط برای ترتیب.
@@ -102,7 +104,7 @@
 - مورد PR کارت: پس از پیش‌سنجی بازبین. شش فایل `docs/aeo/tasks/P11-03` تا `P11-05` (کارت و TestPlan) و `docs/aeo/l3/phase11-plan.md`. ریسک high (`docs/aeo/**`)، پس approve مالک. سپس قفل سه TestPlan به‌دست مالک (R92).
 
 ## ۸. دور دوم (پس از تصمیم ADR مالک)
-- مورد P11-01: کارت high پس از پذیرش اصلاحیهٔ ADR-0003؛ owns ‏`plt/jobs.ts` و آزمون‌های آن؛ قفل‌ها بیرون از owns.
+- مورد P11-01: کارت high پس از پذیرش Recalino ADR-0004 (E257 و E268؛ جانشین «اصلاحیهٔ ADR-0003»)؛ owns ‏`plt/jobs.ts` و آزمون‌های آن؛ قفل‌ها بیرون از owns.
 - مورد P11-02: پس از ادغام P11-01؛ قفل `plt/jobs.test.ts`؛ آزمون int ‏F-2 با شاهد شکست پیش از اصلاح.
 - مورد P11-06 (اختیاری): usage واقعی C9-13؛ TestPlan جدا، چون `proc/steps/runtime.test.ts:887-893` را عمداً تغییر می‌دهد.
 - مورد زمان نوشتن: کارت‌های دور دوم اکنون نوشته نمی‌شوند.
@@ -112,3 +114,9 @@
 - مورد تصمیم E263‑R: پرسش ۱ = بله (owns + `plt/storage-compose-module.test.ts`، فقط رفتار fake برای update؛ بی تغییر assertion؛ شمار آزمون ۴)؛ پرسش ۲ = شکل کنونی (`deleteObject` با `pendingOnly` و `onByteDeleteFailure`؛ بی owns تازه برای `plt/index.ts`). انحراف void ⇒ boolean پذیرفته. انحراف (ج) ⇒ C11-2.
 - مورد تغییر کارت: owns ‏۴ ⇒ ۵؛ AC-3 بازنویسی به شکل پذیرفته؛ AC-4 + قید fake؛ assumptions ‏۸ ⇒ ۹ (بند v2). AC-1، AC-2، AC-5، AC-8، AC-9 و AC-10 بی‌تغییر. TestPlan بی‌تغییر (`fcbfcc45…`، قفل 6413)؛ owns∩قفل تهی.
 - مورد ورودی attempt 2: `docs/l3/cards/P11-03.rework-2.md` با `--rework-findings`، روی همان worktree از `d36d133`. این ادامهٔ blocked است، نه دور rework؛ دور یگانهٔ rework برای یافته‌های CI یا بازبینی می‌ماند.
+
+## ۱۰. کارت P11-07 ‏investigate (0.4؛ E268 و E269‑R)
+- مورد تصویب: مالک (E268 شرط ۵) investigate فقط‌خواندنی پیش از کارت‌های بازیابی دستهٔ ۱۲ را همین حالا تصویب کرد؛ منتظر پذیرش ADR-0004 نمی‌ماند.
+- مورد کارت: `P11-07.json`؛ نقش auditor.debt؛ بازبینی reviewer.architecture با `--step audit --context` در صورت نیاز (مانند P10-01)؛ max_turns ‏80؛ بی TestPlan (R92)؛ task_type ‏docs و owns ‏`docs/aeo/audit/**` مانند P10-01، چون schema ‏task-card/v1 ‏investigate ندارد و owns خالی نمی‌پذیرد.
+- مورد AC (پنج خروجی عین شرط ۵): AC-1 نگهداری یا بازیابی خروجی بی پرداخت تازه برای هر مسیر provider؛ AC-2 هویت عملیات و حدود idempotency؛ AC-3 حالت «نتیجهٔ نامعلوم»؛ AC-4 مسیر تحویل نتیجهٔ worker کهنه به عامل دارای اختیار تازه؛ AC-5 اثر settle دیرهنگام بر فرض‌های J2/F-4؛ AC-6 جمع‌بندی هر مسیر؛ AC-7 (E271‑R) سازوکار مانع استقرار: بستن پذیرش کار تازه در نسخهٔ قدیم و اثبات توقف اجراهای قدیم (ADR-0001، مسیر Cron، maxDuration)، ورودی طراحی P11-01؛ AC-8 و AC-9 معمول.
+- مورد ترتیب: موازی با ADR-0004 ‏0.3؛ پس از PR کارت (high، approve مالک)؛ base ‏main روز اجرا.
