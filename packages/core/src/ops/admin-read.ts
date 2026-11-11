@@ -490,6 +490,8 @@ async function pilotSummary(
     periodDays: approvedPilot.periodDays,
   };
 }
+/** Provider attempt states whose outcome the operator has to verify. */
+const UNRESOLVED_ATTEMPT_STATES = ["started", "uncertain"];
 async function costsSummary(db: Database, now: Date): Promise<AdminCosts | null> {
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const summary = await providerCostSummary(db, since);
@@ -500,10 +502,12 @@ async function costsSummary(db: Database, now: Date): Promise<AdminCosts | null>
     summary.unresolvedHolds.some((hold) => hold.currency !== "USD")
   )
     throw new Error("unsupported_cost_currency");
+  // C9-6: an attempt still `started` has no known provider outcome (its hold may already be
+  // closed), so the operator sees it among the unknown outcomes, like an `uncertain` one.
   const { rows } = await sql<{
     count: string;
   }>`select count(*) as count from ops.admin_attempt_outcome
-    where state='uncertain' and started_at>=${since}`.execute(db);
+    where state=any(${UNRESOLVED_ATTEMPT_STATES}::text[]) and started_at>=${since}`.execute(db);
   const uncertain = rows[0];
   if (!uncertain) throw new Error("admin_attempt_counts_missing");
   return {
