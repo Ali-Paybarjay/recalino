@@ -823,7 +823,7 @@ it("resumes the compact step when a worker stops after saving truncation account
   expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "partial_ready" });
 });
 
-it("preserves an unresolved compact hold and never dispatches it again", async () => {
+it("keeps an unresolved compact attempt uncertain, closes its hold at the maximum and never dispatches it again", async () => {
   const f = await fixture({ seedOriginal: false });
   f.provider.response = (input) => {
     if (input.operationKey === `${f.run.id}:knowledge:1`) throw knownTruncation();
@@ -1182,7 +1182,7 @@ it("blocks a second paid dispatch after a known failed repair response", async (
   ).toHaveLength(1);
 });
 
-it("blocks an unknown repair outcome without repeating its dispatch or settling its cost", async () => {
+it("blocks an unknown repair outcome without repeating its dispatch, closing its hold at the maximum without an actual cost", async () => {
   const f = await fixture();
   const before = await originalEvidence(f.run.id);
   f.provider.failure = new ProviderError("provider_outcome_unknown", false, true);

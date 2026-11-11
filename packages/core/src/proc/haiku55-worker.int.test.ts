@@ -567,7 +567,7 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("retains only the second hold when a schema recovery outcome is unknown, without replay", async () => {
+  it("keeps an unknown schema recovery attempt uncertain and closes its hold at the maximum, without replay", async () => {
     let responseCount = 0;
     const request = vi.fn<typeof fetch>(async () => {
       if (++responseCount === 1) return response(invalidWire("zod"), 1);
@@ -610,7 +610,7 @@ describe("FR-PROC-003 Haiku 5.5 durable knowledge migration", () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
-  it("retains uncertainty without repeating or releasing a paid hold whose outcome is unknown", async () => {
+  it("retains uncertainty and closes a paid hold whose outcome is unknown at its maximum, never repeating it or releasing it at zero", async () => {
     const request = vi.fn<typeof fetch>(async () => {
       throw new Error("Synthetic unknown transport outcome");
     });

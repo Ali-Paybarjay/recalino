@@ -421,7 +421,7 @@ it("settles each truncated request exactly once while checkpointing one bounded 
       .execute(),
   ).toHaveLength(2);
 });
-it("leaves an unknown network outcome without an invented request ID or settled provider cost", async () => {
+it("leaves an unknown network outcome without an invented request ID or actual provider cost, closing its hold at the maximum", async () => {
   const request = vi.fn<typeof fetch>(async () => {
     throw new Error("Synthetic interrupted provider connection");
   });

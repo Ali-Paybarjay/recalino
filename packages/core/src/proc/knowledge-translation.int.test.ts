@@ -561,7 +561,7 @@ it.each(["missing", "duplicate", "wrong-key", "wrong-language", "latin-only"] as
   },
 );
 
-it("blocks an unknown translation outcome and keeps its unresolved hold without fabricated cost", async () => {
+it("blocks an unknown translation outcome and closes its hold at the maximum without a fabricated actual cost", async () => {
   const f = await fixture({ fullHistory: false });
   f.provider.failure = new ProviderError("provider_outcome_unknown", false, true);
   await f.work();
