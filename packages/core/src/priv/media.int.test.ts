@@ -1473,4 +1473,118 @@ describe("explicit media and privacy publication", () => {
     expect(summary.orphansDeleted).toBe(1);
     expect(await f.store.read(pending.key)).toBeNull();
   });
+  // C9-16 (P10-04): the reconciliation close hook (closeEndedSpeechRunMedia) filters by run_id and
+  // user_id, so closing one run never changes the speech asset of another run of the same owner or
+  // of another owner (P9-06 AC-11, tenant isolation).
+  async function assetRow(id: string) {
+    return db
+      .selectFrom("media.asset")
+      .select(["state", "last_error", "completed_at", "run_id", "user_id"])
+      .where("id", "=", id)
+      .executeTakeFirstOrThrow();
+  }
+  it("C9-16 closing a stranded speech run changes only that run's asset of that owner, and leaves other runs and owners in their state and lastError", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(false);
+    // Another live run of the same owner in its own session, still queued. Its job moves to its own
+    // kind so no due media.tts job is left for a later test (E226-R).
+    const sameOwner = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: await otherSessionId(f),
+        text: "Another queued sentence.",
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const sameOwnerRun = await speechRun(sameOwner.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", sameOwnerRun.jobId).execute();
+    // A stranded run of another owner with a request in flight; its job already failed by sweep.
+    const stranger = await strandedSpeechAsset(true);
+    const before = {
+      sameOwner: await assetRow(sameOwner.id),
+      stranger: await assetRow(stranger.asset.id),
+      own: await assetRow(asset.id),
+      sameOwnerRun: await runState(sameOwnerRun.runId),
+      strangerRun: await runState(stranger.runId),
+    };
+    expect(before.strangerRun.state).toBe("processing");
+    expect(before.sameOwner).toMatchObject({
+      state: "queued",
+      last_error: null,
+      completed_at: null,
+    });
+    expect(before.stranger).toMatchObject({
+      state: "processing",
+      last_error: null,
+      completed_at: null,
+    });
+    expect(before.own).toMatchObject({ state: "processing", last_error: null, completed_at: null });
+    expect(before.stranger.user_id).not.toBe(f.ctx.userId);
+
+    // Called directly with a run of the other owner, or with this owner's run under the other
+    // owner's context, the hook matches nothing.
+    const outcome = { code: ENDED_JOB_RUN_ERROR, uncertain: false };
+    await db
+      .transaction()
+      .execute((tx) => closeEndedSpeechRunMedia(tx, f.ctx, stranger.runId, outcome, new Date()));
+    await db
+      .transaction()
+      .execute((tx) => closeEndedSpeechRunMedia(tx, stranger.f.ctx, runId, outcome, new Date()));
+    expect(await assetRow(stranger.asset.id)).toEqual(before.stranger);
+    expect(await assetRow(asset.id)).toEqual(before.own);
+    expect(await assetRow(sameOwner.id)).toEqual(before.sameOwner);
+
+    // Reconciliation of this owner closes only its stranded run and that run's asset.
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBe(1);
+    expect(await runState(runId)).toEqual({ state: "failed", last_error: ENDED_JOB_RUN_ERROR });
+    const closed = await getMediaAsset(db, f.ctx, asset.id);
+    expect({ state: closed.state, lastError: closed.lastError }).toEqual({
+      state: "failed",
+      lastError: ENDED_JOB_RUN_ERROR,
+    });
+    // The other run of the same owner keeps its state, lastError and completion.
+    expect(await assetRow(sameOwner.id)).toEqual(before.sameOwner);
+    const sameOwnerAsset = await getMediaAsset(db, f.ctx, sameOwner.id);
+    expect({ state: sameOwnerAsset.state, lastError: sameOwnerAsset.lastError }).toEqual({
+      state: "queued",
+      lastError: null,
+    });
+    expect(await runState(sameOwnerRun.runId)).toEqual(before.sameOwnerRun);
+    // The other owner's stranded run and asset are untouched.
+    expect(await runState(stranger.runId)).toEqual(before.strangerRun);
+    expect(await assetRow(stranger.asset.id)).toEqual(before.stranger);
+    const strangerAsset = await getMediaAsset(db, stranger.f.ctx, stranger.asset.id);
+    expect({ state: strangerAsset.state, lastError: strangerAsset.lastError }).toEqual({
+      state: "processing",
+      lastError: null,
+    });
+
+    // The other owner's run closes only on its own reconciliation, with its own outcome, and the
+    // closed asset of this owner keeps the outcome of its run.
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: stranger.f.ctx.userId,
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBe(1);
+    const strangerClosed = await getMediaAsset(db, stranger.f.ctx, stranger.asset.id);
+    expect({ state: strangerClosed.state, lastError: strangerClosed.lastError }).toEqual({
+      state: "needs_input",
+      lastError: "provider_outcome_unresolved",
+    });
+    const ownAfter = await getMediaAsset(db, f.ctx, asset.id);
+    expect({ state: ownAfter.state, lastError: ownAfter.lastError }).toEqual({
+      state: "failed",
+      lastError: ENDED_JOB_RUN_ERROR,
+    });
+    expect(await assetRow(sameOwner.id)).toEqual(before.sameOwner);
+  });
 });
