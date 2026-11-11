@@ -83,6 +83,7 @@ import {
   beginProviderStep,
   configureCostPolicy,
   grantEntitlement,
+  reservationIsOpen,
 } from "../quota";
 import {
   cleanupAccountSrs,
@@ -1586,5 +1587,138 @@ describe("explicit media and privacy publication", () => {
       lastError: ENDED_JOB_RUN_ERROR,
     });
     expect(await assetRow(sameOwner.id)).toEqual(before.sameOwner);
+  });
+  // C10-6 (P11-05): the periodic job calls reconcileEndedJobRuns without userId, so one pass closes
+  // the stranded runs of every owner and builds each run's context from its own user_id. Each
+  // owner's asset ends with its own run's outcome; no other asset changes.
+  /** A queued speech asset of this owner in its own session; its job moves to its own kind (E226-R). */
+  async function queuedSpeechAsset(f: Awaited<ReturnType<typeof fixture>>, text: string) {
+    const queued = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: await otherSessionId(f),
+        text,
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const queuedRun = await speechRun(queued.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", queuedRun.jobId).execute();
+    return { asset: queued, runId: queuedRun.runId };
+  }
+  it("C10-6 one reconciliation pass without userId closes the stranded speech runs of two owners, each asset with its own run's outcome, and changes no other asset", async () => {
+    // Two owners with different outcomes, so an asset closed under the wrong run or owner shows.
+    const first = await strandedSpeechAsset(false);
+    const second = await strandedSpeechAsset(true);
+    expect(second.f.ctx.userId).not.toBe(first.f.ctx.userId);
+    const firstQueued = await queuedSpeechAsset(first.f, "A first owner's queued sentence.");
+    const secondQueued = await queuedSpeechAsset(second.f, "A second owner's queued sentence.");
+    // The pass reads at most 250 live runs, oldest update first; these runs sort first, so runs
+    // other files leave in the shared database cannot push them out of the pass.
+    const oldest = new Date("2000-01-01T00:00:00.000Z");
+    await db
+      .updateTable("proc.processing_run")
+      .set({ updated_at: oldest })
+      .where("id", "in", [first.runId, second.runId])
+      .execute();
+    const before = {
+      first: await assetRow(first.asset.id),
+      second: await assetRow(second.asset.id),
+      firstQueued: await assetRow(firstQueued.asset.id),
+      secondQueued: await assetRow(secondQueued.asset.id),
+      firstQueuedRun: await runState(firstQueued.runId),
+      secondQueuedRun: await runState(secondQueued.runId),
+    };
+    expect(before.first).toMatchObject({
+      state: "processing",
+      last_error: null,
+      completed_at: null,
+      user_id: first.f.ctx.userId,
+      run_id: first.runId,
+    });
+    expect(before.second).toMatchObject({
+      state: "processing",
+      last_error: null,
+      completed_at: null,
+      user_id: second.f.ctx.userId,
+      run_id: second.runId,
+    });
+    expect(before.firstQueued).toMatchObject({ state: "queued", last_error: null });
+    expect(before.secondQueued).toMatchObject({ state: "queued", last_error: null });
+
+    // One pass of every owner, as the periodic job runs it. Stranded runs other tests left in the
+    // shared database may close in the same pass, so the count is at least these two.
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBeGreaterThanOrEqual(2);
+
+    expect(await runState(first.runId)).toEqual({
+      state: "failed",
+      last_error: ENDED_JOB_RUN_ERROR,
+    });
+    expect(await runState(second.runId)).toEqual({
+      state: "needs_input",
+      last_error: "provider_outcome_unresolved",
+    });
+    const firstClosed = await getMediaAsset(db, first.f.ctx, first.asset.id);
+    expect({ state: firstClosed.state, lastError: firstClosed.lastError }).toEqual({
+      state: "failed",
+      lastError: ENDED_JOB_RUN_ERROR,
+    });
+    const secondClosed = await getMediaAsset(db, second.f.ctx, second.asset.id);
+    expect({ state: secondClosed.state, lastError: secondClosed.lastError }).toEqual({
+      state: "needs_input",
+      lastError: "provider_outcome_unresolved",
+    });
+    // Each closed asset keeps its owner and run.
+    expect(await assetRow(first.asset.id)).toMatchObject({
+      user_id: first.f.ctx.userId,
+      run_id: first.runId,
+    });
+    expect((await assetRow(first.asset.id)).completed_at).not.toBeNull();
+    expect(await assetRow(second.asset.id)).toMatchObject({
+      user_id: second.f.ctx.userId,
+      run_id: second.runId,
+    });
+    expect((await assetRow(second.asset.id)).completed_at).not.toBeNull();
+    // Each closed run's reservation is released under its own owner, the queued runs' reservations
+    // stay open, and nothing is charged.
+    for (const [owner, queued] of [
+      [first, firstQueued],
+      [second, secondQueued],
+    ] as const) {
+      const { reservationId } = await speechRun(owner.asset.id);
+      expect(await reservationIsOpen(db, owner.f.ctx, reservationId)).toBe(false);
+      const queuedReservation = (await speechRun(queued.asset.id)).reservationId;
+      expect(await reservationIsOpen(db, owner.f.ctx, queuedReservation)).toBe(true);
+      expect((await allowance(db, owner.f.ctx)).consumed.tts).toBe(0);
+    }
+    expect(await providerCosts(first.f.ctx.userId)).toEqual([]);
+    expect(await providerCosts(second.f.ctx.userId)).toEqual([]);
+    // The queued assets and runs of both owners are unchanged.
+    expect(await assetRow(firstQueued.asset.id)).toEqual(before.firstQueued);
+    expect(await assetRow(secondQueued.asset.id)).toEqual(before.secondQueued);
+    expect(await runState(firstQueued.runId)).toEqual(before.firstQueuedRun);
+    expect(await runState(secondQueued.runId)).toEqual(before.secondQueuedRun);
+
+    // Running the pass again changes nothing further.
+    const after = {
+      first: await assetRow(first.asset.id),
+      second: await assetRow(second.asset.id),
+    };
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        afterAuxiliaryClose: closeEndedSpeechRunMedia,
+      }),
+    ).toBe(0);
+    expect(await assetRow(first.asset.id)).toEqual(after.first);
+    expect(await assetRow(second.asset.id)).toEqual(after.second);
+    expect(await assetRow(firstQueued.asset.id)).toEqual(before.firstQueued);
+    expect(await assetRow(secondQueued.asset.id)).toEqual(before.secondQueued);
   });
 });
