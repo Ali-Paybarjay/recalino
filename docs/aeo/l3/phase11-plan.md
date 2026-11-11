@@ -2,7 +2,7 @@
 
 | فیلد | مقدار |
 |---|---|
-| نسخه | نسخهٔ 0.2 (2026-11-11، E249‑R: پاسخ شش پرسش؛ قاعدهٔ قفل؛ دور اول P11-03 تا P11-05 با کارت و TestPlan، §۶ و §۷)؛ 0.1 (sha256 ‏`7c6a1c7c…`؛ پذیرفته با شرط) |
+| نسخه | نسخهٔ 0.3 (2026-11-11، E263‑R: کارت P11-03 ‏v2، C11-2، §۹)؛ 0.2 (sha256 ‏`7ef09fd1…`؛ E249‑R: پاسخ شش پرسش؛ قاعدهٔ قفل؛ دور اول P11-03 تا P11-05 با کارت و TestPlan، §۶ و §۷)؛ 0.1 (sha256 ‏`7c6a1c7c…`؛ پذیرفته با شرط) |
 | وضعیت | **0.1 با شرط پذیرفته شد (E249‑R).** کارت‌ها و TestPlanهای دور اول (P11-03، P11-04، P11-05) در دفتر، برای پیش‌سنجی بازبین. کارت‌های دور دوم (P11-01، P11-02، P11-06) اکنون نوشته نمی‌شوند. هیچ Job و PR تا پیش‌سنجی |
 | پایه | Recalino ‏`main@8742a9aec7af3a26691cf114f7b750af052c5b5d` (پس از P10-06، #163)؛ aeo ‏`main@90964c2` |
 | مرجع‌ها | `docs/l3/phase10-findings-candidates.md` (C10-1 تا C10-6 و نامزد تابع PLT)؛ `docs/l3/phase9-findings-candidates.md` (C9-9، C9-12، C9-13)؛ `docs/l3/phase8-findings-candidates.md` (C8-6)؛ `docs/l3/audit/P10-01.*`؛ `docs/l3/phase10-closeout.md` ‏0.2؛ `docs/l3/adr-0003-amendment-draft.md` ‏0.1 |
@@ -32,6 +32,8 @@
 | ‏C10-4 | review:security ‏P10-02 | Task‌شدنی، مستقل | رد `actualMicros` غیر null در مسیر hold_maximum |
 | ‏C10-6 | review:security ‏P10-04 | Task‌شدنی، مستقل | آزمون int ‏reconcile چندکاربره بی گزینهٔ `userId` |
 | ‏C9-12 | P10-01، F-4 | بدهی | نارسیدنی در main؛ هر دو Job: «Task فوری لازم نیست» |
+| ‏C11-1 | بازبینی‌های P11-05 | test-robustness، بی Task | ناپایداری احتمالی پاس دوم آزمون C10-6 (`phase11-findings-candidates.md`) |
+| ‏C11-2 | implement ‏P11-03 ‏a1 (E263‑R) | Task‌شدنی، دامنهٔ P11-02/ADR-0004 یا دستهٔ ۱۲ | علامت deleted بی‌شرط در catchهای `writeOwnedObject` و `composeOwnedObjects`؛ هم‌راستا نیست با V3-06 |
 
 ## ۳. Taskهای پیشنهادی
 | کارت | منبع | نوع | ریسک کارت (برآورد) | ریسک gate (برآورد) | ‏owns_paths (برآورد؛ نام از ls-tree) | TP-1 و قفل‌ها (پیشنهاد) |
@@ -104,3 +106,9 @@
 - مورد P11-02: پس از ادغام P11-01؛ قفل `plt/jobs.test.ts`؛ آزمون int ‏F-2 با شاهد شکست پیش از اصلاح.
 - مورد P11-06 (اختیاری): usage واقعی C9-13؛ TestPlan جدا، چون `proc/steps/runtime.test.ts:887-893` را عمداً تغییر می‌دهد.
 - مورد زمان نوشتن: کارت‌های دور دوم اکنون نوشته نمی‌شوند.
+
+## ۹. کارت P11-03 ‏v2 (0.3؛ E263‑R)
+- مورد علت: attempt 1 ‏(`job-20261111-2a86f358`، JobBlocked ‏6486) با commit ‏`d36d133` (push نشده) ایستاد. آزمون unit موجود `plt/storage-compose-module.test.ts` با fake DB که برای هر update صفر ردیف برمی‌گرداند با AC-2 جور نبود.
+- مورد تصمیم E263‑R: پرسش ۱ = بله (owns + `plt/storage-compose-module.test.ts`، فقط رفتار fake برای update؛ بی تغییر assertion؛ شمار آزمون ۴)؛ پرسش ۲ = شکل کنونی (`deleteObject` با `pendingOnly` و `onByteDeleteFailure`؛ بی owns تازه برای `plt/index.ts`). انحراف void ⇒ boolean پذیرفته. انحراف (ج) ⇒ C11-2.
+- مورد تغییر کارت: owns ‏۴ ⇒ ۵؛ AC-3 بازنویسی به شکل پذیرفته؛ AC-4 + قید fake؛ assumptions ‏۸ ⇒ ۹ (بند v2). AC-1، AC-2، AC-5، AC-8، AC-9 و AC-10 بی‌تغییر. TestPlan بی‌تغییر (`fcbfcc45…`، قفل 6413)؛ owns∩قفل تهی.
+- مورد ورودی attempt 2: `docs/l3/cards/P11-03.rework-2.md` با `--rework-findings`، روی همان worktree از `d36d133`. این ادامهٔ blocked است، نه دور rework؛ دور یگانهٔ rework برای یافته‌های CI یا بازبینی می‌ماند.

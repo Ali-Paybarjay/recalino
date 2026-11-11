@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "id": "P11-03",
-  "title": "علامت deleted شرطی و تابع PLT بی حذف bytes، و جایگزینی wrapper ‏P10-03 (دستهٔ ۱۱ L3؛ C10-3، C10-5)",
+  "title": "علامت deleted شرطی در PLT و جایگزینی wrapper ‏P10-03 (دستهٔ ۱۱ L3؛ C10-3، C10-5؛ v2، E263‑R)",
   "goal": "سه نامزد یک مسیر را دارند. C10-3 (بازبینی معماری P10-01 ذیل F-3): confirmObject شمار ردیف‌های update‌شده را نمی‌سنجد (plt/storage.ts:421-427 در شاهد Job). C10-5 (review:security ‏P10-03، CWE-367، hypothesis): hook بستن asset گفتار وضع pending را می‌خواند و سپس deleteObject را صدا می‌زند، و deleteObject هنگام علامت deleted شرطی روی state ندارد (media/assets.ts:785 در شاهد Job)؛ پس شیئی که در همان پنجره verified شده ممکن است deleted شود. نامزد تابع PLT (E239‑R): P10-03 برای قید ردیابی AC-2 خود wrapper ‏byteDeleteFailureLogged را در media گذاشت، چون deleteObject پیش از علامت deleted حذف bytes را انجام می‌دهد و plt/storage.ts قفل بود. اصلاح: در PLT علامت deleted شرطی (فقط pending)، سنجش شمار ردیف در confirmObject، و یک تابع PLT که ردیف را بی حذف bytes deleted علامت می‌زند؛ سپس hook ‏P10-03 از این تابع استفاده می‌کند و wrapper حذف می‌شود.",
   "mode": "brownfield",
   "task_type": "bugfix",
@@ -17,11 +17,11 @@
     },
     {
       "id": "AC-3",
-      "statement": "یک تابع PLT تازه ردیف شیء pending را deleted علامت می‌زند بی آنکه bytes را حذف کند؛ bytes را reconcileStorage بعداً برمی‌دارد. hook بستن asset گفتار در media/assets.ts به جای wrapper ‏byteDeleteFailureLogged از این تابع استفاده می‌کند و wrapper حذف می‌شود. رفتار B ‏P10-03 حفظ است: حذف bytes همان لحظه امتحان می‌شود، شکست آن فقط ثبت می‌شود و بستن run کامل می‌شود؛ پس از شکست، ردیف deleted و object_id پاک است. media هیچ SQL مستقیم روی جدول‌های plt ندارد (قاعدهٔ ۴ ADR-0002)."
+      "statement": "یک helper شرطی تازه در PLT ردیف شیء را فقط با state = 'pending' در همان update ‏deleted علامت می‌زند و شمار ردیف را می‌سنجد. hook بستن asset گفتار در media/assets.ts از راه deleteObject با گزینه‌های pendingOnly و onByteDeleteFailure به آن واگذار می‌کند. wrapper ‏byteDeleteFailureLogged حذف می‌شود. media هیچ SQL مستقیم روی جدول‌های plt ندارد (قاعدهٔ ۴ ADR-0002). رفتار B ‏P10-03 حفظ است: حذف bytes همان لحظه امتحان می‌شود، شکست آن فقط ثبت می‌شود و بستن run کامل می‌شود؛ پس از شکست، ردیف deleted و object_id پاک است."
     },
     {
       "id": "AC-4",
-      "statement": "آزمون‌های int تازه در plt/storage.int.test.ts علامت شرطی (AC-1)، شمار ردیف confirmObject (AC-2) و تابع تازه (AC-3) را می‌سنجند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون‌های AC-1 و AC-2 بی اصلاح شکست می‌خورند. آزمون‌های موجود plt/storage.int.test.ts و priv/media.int.test.ts، از جمله سه آزمون C9-15 ‏P10-03 و آزمون C9-16 ‏P10-04، بی‌تغییر و سبزند؛ pnpm check:boundaries روی head سبز است."
+      "statement": "آزمون‌های int تازه در plt/storage.int.test.ts علامت شرطی (AC-1)، شمار ردیف confirmObject (AC-2) و تابع تازه (AC-3) را می‌سنجند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون‌های AC-1 و AC-2 بی اصلاح شکست می‌خورند. آزمون‌های موجود plt/storage.int.test.ts و priv/media.int.test.ts، از جمله سه آزمون C9-15 ‏P10-03 و آزمون C9-16 ‏P10-04، بی‌تغییر و سبزند؛ pnpm check:boundaries روی head سبز است. در packages/core/src/plt/storage-compose-module.test.ts فقط رفتار fake DB برای update تغییر می‌کند (برگرداندن ردیف با returning یا rowCount برای UPDATE)؛ هیچ assertion و هیچ آزمون موجود آن فایل تغییر نمی‌کند و شمار آزمون‌های آن (۴) ثابت می‌ماند."
     },
     {
       "id": "AC-5",
@@ -43,6 +43,7 @@
   "owns_paths": [
     "packages/core/src/plt/storage.ts",
     "packages/core/src/plt/storage.int.test.ts",
+    "packages/core/src/plt/storage-compose-module.test.ts",
     "packages/core/src/media/assets.ts",
     "packages/core/src/media/index.ts"
   ],
@@ -69,6 +70,7 @@
     "منبع: C10-3 (بازبینی معماری P10-01، job-20261110-f4941144)، C10-5 (review:security ‏P10-03، job-20261110-aac57fb8) و نامزد تابع PLT (E239‑R)؛ گزینه‌های اصلاح از F-3 دو Job ‏P10-01؛ docs/l3/phase11-plan.md 0.2 و E249‑R (پرسش ۳ = ب). L1 کد را نخواند (X1).",
     "ریسک کارت medium (PLT storage و مسیر حذف شیء)؛ gate برآورد medium؛ D7. اگر diff با قاعدهٔ sql-destructive (الگوی delete from) جور شود، gate ‏high است و approve مالک لازم است. ترتیب دور اول دستهٔ ۱۱ (E249‑R): P11-04 ⇒ P11-05 ⇒ P11-03؛ هر کدام با «شروع» جداگانه. قاعدهٔ قفل: هیچ فایل owns یک کارت این دور در TestPlan کارت هم‌دور قفل نیست. پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود. مسیر اجرا دستی.",
     "وابستگی: مستقل از اصلاحیهٔ ADR-0003. این کارت fencing ‏lease را پیاده نمی‌کند (P11-01، دور دوم)؛ فقط مسیر storage را شرطی می‌کند.",
+    "v2 (E263‑R): attempt 1 ‏(job-20261111-2a86f358، JobBlocked 6486) با commit ‏d36d133 (push نشده) ایستاد. آزمون unit موجود plt/storage-compose-module.test.ts با fake DB که برای هر update صفر ردیف برمی‌گرداند با AC-2 جور نبود ⇒ این فایل فقط برای رفتار fake به owns افزوده شد (AC-4). شکل کنونی AC-3 (deleteObject با pendingOnly و onByteDeleteFailure، بی export تازه در plt/index.ts) پذیرفته شد. نوع بازگشتی deleteObject از void به boolean پذیرفته شد. attempt 2 روی همان worktree از d36d133، با --rework-findings ‏(P11-03.rework-2.md)؛ ادامهٔ blocked، نه دور rework. هیچ‌کدام از فایل‌های owns قفل نیست؛ TestPlan و قفل 6413 بی‌تغییر.",
     "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
     "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
     "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
