@@ -200,4 +200,60 @@ describe("AI cost controls (FR-QUOTA-008..010)", () => {
     expect(rows[0]).toMatchObject({ currency: "GBP", amount_micros: null });
     expect(Number(rows[0]?.estimated_micros)).toBe(60);
   });
+  // P11-04 (C10-4): a close at the maximum has no measured cost, so a measured amount is refused.
+  it("refuses a measured amount on a close at the hold's maximum and writes nothing", async () => {
+    const { ctx, reservationId, sessionId } = await caller();
+    await configureCostPolicy(db, policy, operator);
+    const key = randomUUID();
+    const hold = await db.transaction().execute((tx) =>
+      beginProviderStep(tx, ctx, {
+        sessionId,
+        reservationId,
+        operationKey: key,
+        maximumMicros: 60,
+        currency: "GBP",
+      }),
+    );
+    const close = {
+      operationKey: key,
+      provider: "synthetic",
+      model: "fixture-1",
+      currency: "EUR",
+      actualMicros: null,
+      estimatedMicros: "hold_maximum" as const,
+      priceVersion: "fixture-1",
+      usage: {},
+    };
+    for (const actualMicros of [20, 0])
+      await expect(
+        db
+          .transaction()
+          .execute((tx) => finishProviderStep(tx, ctx, hold.id, { ...close, actualMicros })),
+      ).rejects.toMatchObject({
+        code: "validation_failed",
+        details: { fields: { actualMicros: ["must_be_null_at_hold_maximum"] } },
+      });
+    expect(
+      await db
+        .selectFrom("quota.provider_cost")
+        .selectAll()
+        .where("operation_key", "=", key)
+        .execute(),
+    ).toHaveLength(0);
+    const open = await db
+      .selectFrom("quota.cost_hold")
+      .select(["closed_at"])
+      .where("id", "=", hold.id)
+      .executeTakeFirstOrThrow();
+    expect(open.closed_at).toBeNull();
+    // The close with no measured amount still closes the hold once at its maximum.
+    await db.transaction().execute((tx) => finishProviderStep(tx, ctx, hold.id, close));
+    const rows = await db
+      .selectFrom("quota.provider_cost")
+      .selectAll()
+      .where("operation_key", "=", key)
+      .execute();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ currency: "GBP", amount_micros: null });
+  });
 });

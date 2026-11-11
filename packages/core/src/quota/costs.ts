@@ -202,6 +202,7 @@ export interface ProviderCost {
    * `"hold_maximum"` records the hold's own maximum: the conservative cost of an attempt whose
    * outcome is unknown, so its hold closes without understating what the provider may charge.
    * That record takes the hold's own currency; `currency` is then not compared (P10-02).
+   * `actualMicros` must then be null; any measured amount is refused (P11-04).
    */
   estimatedMicros: number | null | "hold_maximum";
   priceVersion: string | null;
@@ -221,6 +222,10 @@ export async function finishProviderStep(
   const usage = providerUsageSchema.parse(input.usage);
   for (const value of [input.actualMicros, input.estimatedMicros])
     if (value !== null && value !== "hold_maximum") micros.parse(value);
+  // P11-04 (C10-4): a close at the hold's maximum has no measured cost; refuse one before any
+  // write, so it can never record a measured amount in the hold's currency unchecked.
+  if (input.estimatedMicros === "hold_maximum" && input.actualMicros !== null)
+    throw errors.validationFailed({ actualMicros: ["must_be_null_at_hold_maximum"] });
   z.string().min(1).max(100).parse(input.provider);
   z.string().min(1).max(200).parse(input.model);
   await sql`select pg_advisory_xact_lock(hashtext('quota.cost_policy'))`.execute(tx);
