@@ -1,0 +1,78 @@
+{
+  "schema_version": "1",
+  "id": "P11-03",
+  "title": "علامت deleted شرطی و تابع PLT بی حذف bytes، و جایگزینی wrapper ‏P10-03 (دستهٔ ۱۱ L3؛ C10-3، C10-5)",
+  "goal": "سه نامزد یک مسیر را دارند. C10-3 (بازبینی معماری P10-01 ذیل F-3): confirmObject شمار ردیف‌های update‌شده را نمی‌سنجد (plt/storage.ts:421-427 در شاهد Job). C10-5 (review:security ‏P10-03، CWE-367، hypothesis): hook بستن asset گفتار وضع pending را می‌خواند و سپس deleteObject را صدا می‌زند، و deleteObject هنگام علامت deleted شرطی روی state ندارد (media/assets.ts:785 در شاهد Job)؛ پس شیئی که در همان پنجره verified شده ممکن است deleted شود. نامزد تابع PLT (E239‑R): P10-03 برای قید ردیابی AC-2 خود wrapper ‏byteDeleteFailureLogged را در media گذاشت، چون deleteObject پیش از علامت deleted حذف bytes را انجام می‌دهد و plt/storage.ts قفل بود. اصلاح: در PLT علامت deleted شرطی (فقط pending)، سنجش شمار ردیف در confirmObject، و یک تابع PLT که ردیف را بی حذف bytes deleted علامت می‌زند؛ سپس hook ‏P10-03 از این تابع استفاده می‌کند و wrapper حذف می‌شود.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "علامت deleted شیء در PLT شرطی است (state = 'pending' در همان update) و شمار ردیف‌های update‌شده سنجیده می‌شود؛ شیء verified یا متعلق به asset ‏ready هرگز با این مسیر deleted نمی‌شود، حتی اگر میان خواندن و update ‏verified شده باشد (C10-5)."
+    },
+    {
+      "id": "AC-2",
+      "statement": "confirmObject شمار ردیف‌های update‌شده را می‌سنجد و اگر صفر بود verified برنمی‌گرداند (C10-3)."
+    },
+    {
+      "id": "AC-3",
+      "statement": "یک تابع PLT تازه ردیف شیء pending را deleted علامت می‌زند بی آنکه bytes را حذف کند؛ bytes را reconcileStorage بعداً برمی‌دارد. hook بستن asset گفتار در media/assets.ts به جای wrapper ‏byteDeleteFailureLogged از این تابع استفاده می‌کند و wrapper حذف می‌شود. رفتار B ‏P10-03 حفظ است: حذف bytes همان لحظه امتحان می‌شود، شکست آن فقط ثبت می‌شود و بستن run کامل می‌شود؛ پس از شکست، ردیف deleted و object_id پاک است. media هیچ SQL مستقیم روی جدول‌های plt ندارد (قاعدهٔ ۴ ADR-0002)."
+    },
+    {
+      "id": "AC-4",
+      "statement": "آزمون‌های int تازه در plt/storage.int.test.ts علامت شرطی (AC-1)، شمار ردیف confirmObject (AC-2) و تابع تازه (AC-3) را می‌سنجند؛ Implementer با کاوش یا از روی کد نشان می‌دهد آزمون‌های AC-1 و AC-2 بی اصلاح شکست می‌خورند. آزمون‌های موجود plt/storage.int.test.ts و priv/media.int.test.ts، از جمله سه آزمون C9-15 ‏P10-03 و آزمون C9-16 ‏P10-04، بی‌تغییر و سبزند؛ pnpm check:boundaries روی head سبز است."
+    },
+    {
+      "id": "AC-5",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است و CI روی head سبز است (pnpm test:int). proc/maintenance.test.ts، ops/admin-tasks.test.ts و proc/steps/runtime.test.ts بی‌تغییرند (قفل TestPlan)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md یا package.json. هیچ hold یا ردیف موجود در پایگاه پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R). حذف شیء فقط همان مسیر پیشین (pending همان run) است؛ هیچ حذف دسته‌جمعی."
+    },
+    {
+      "id": "AC-10",
+      "statement": "در packages/core/src/media/index.ts فقط افزودن export است، و فقط اگر لازم باشد؛ هیچ تغییر دیگر در آن فایل نیست."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/plt/storage.ts",
+    "packages/core/src/plt/storage.int.test.ts",
+    "packages/core/src/media/assets.ts",
+    "packages/core/src/media/index.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase11-plan.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C10-3 (بازبینی معماری P10-01، job-20261110-f4941144)، C10-5 (review:security ‏P10-03، job-20261110-aac57fb8) و نامزد تابع PLT (E239‑R)؛ گزینه‌های اصلاح از F-3 دو Job ‏P10-01؛ docs/l3/phase11-plan.md 0.2 و E249‑R (پرسش ۳ = ب). L1 کد را نخواند (X1).",
+    "ریسک کارت medium (PLT storage و مسیر حذف شیء)؛ gate برآورد medium؛ D7. اگر diff با قاعدهٔ sql-destructive (الگوی delete from) جور شود، gate ‏high است و approve مالک لازم است. ترتیب دور اول دستهٔ ۱۱ (E249‑R): P11-04 ⇒ P11-05 ⇒ P11-03؛ هر کدام با «شروع» جداگانه. قاعدهٔ قفل: هیچ فایل owns یک کارت این دور در TestPlan کارت هم‌دور قفل نیست. پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود. مسیر اجرا دستی.",
+    "وابستگی: مستقل از اصلاحیهٔ ADR-0003. این کارت fencing ‏lease را پیاده نمی‌کند (P11-01، دور دوم)؛ فقط مسیر storage را شرطی می‌کند.",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است و در files[] قفل است. *.int.test.ts در job ‏verify ‏CI («Lint, types, boundaries, tests, build»، check لازم required-checks) با postgres اجرا می‌شود؛ پس شاهد اجرایی آزمون‌های int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "install_assets (E192‑R؛ R80): هر کارت apps/web این را دارد. runner پس از install اندازه و اجرایی بودن binary ‏ffmpeg-static را می‌سنجد.",
+    "نصب: پیش‌فرض runner پس از R80 (بی side-effects cache). verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8؛ فیلدی در Task Card ندارد).",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

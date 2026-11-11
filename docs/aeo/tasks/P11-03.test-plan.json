@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "task_id": "P11-03",
+  "kind": "pass_to_pass",
+  "base_sha": "8742a9aec7af3a26691cf114f7b750af052c5b5d",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "8742a9aec7af3a26691cf114f7b750af052c5b5d",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/maintenance.test.ts",
+      "sha256": "af8cb3b1ca7d5306d5695fbf8ccd3d38b58a08bf109b2ee44bc92d6a3a14f1a0"
+    },
+    {
+      "path": "packages/core/src/ops/admin-tasks.test.ts",
+      "sha256": "53168072d8bcaf649c2fa2041591249c87f4b498a3ed204b849915d72151496e"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.test.ts",
+      "sha256": "759e18ce74954e75ac71faa47eb8eb749671fef2d474a4215f035d96bc8cbe7a"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/maintenance.test.ts",
+      "name": "the unit suite is green on head, including the unchanged maintenance unit tests; the new storage int tests in plt/storage.int.test.ts and the unchanged media int tests run in CI test:int; and the admin tasks and provider step runtime unit tests stay unchanged",
+      "maps_to_criteria": ["AC-4", "AC-5"]
+    }
+  ]
+}
