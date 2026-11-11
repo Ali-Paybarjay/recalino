@@ -17,6 +17,7 @@ export {
   readMediaBytes,
   requestTts,
   setMediaExportPermission,
+  speechRunClosedHook,
   tombstoneAccountMedia,
   tombstoneSessionMedia,
   tombstoneSourceMedia,

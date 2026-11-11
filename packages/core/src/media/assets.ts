@@ -10,12 +10,14 @@ import {
   AppError,
   assertOwner,
   canonicalJson,
+  createLogger,
   deleteObject,
   errors,
   issueReadLink,
   type JobContext,
   type JobDefinition,
   type LearnerContext,
+  type Logger,
   type ObjectStore,
   ownedObjectMetadata,
   type PltSettings,
@@ -711,6 +713,99 @@ export async function closeEndedSpeechRunMedia(
     .where("tombstoned_at", "is", null)
     .where("state", "in", ["queued", "processing"])
     .execute();
+}
+/**
+ * The store deleteObject uses in the close hook below: every call goes to the real store, but a
+ * failed byte delete is reported instead of thrown. deleteObject marks its record deleted only
+ * after the byte delete returns, and MEDIA never writes PLT's table (ADR-0002 rule 4), so this is
+ * how the record is still marked deleted when the store is unavailable; reconcileStorage then
+ * removes the bytes of the deleted record.
+ */
+function byteDeleteFailureLogged(
+  store: ObjectStore,
+  onFailure: (error: unknown) => void,
+): ObjectStore {
+  return {
+    name: store.name,
+    signWrite: (key, limits) => store.signWrite(key, limits),
+    signRead: (key, validUntil, options) => store.signRead(key, validUntil, options),
+    head: (key) => store.head(key),
+    read: (key) => store.read(key),
+    list: (prefix, cursor) => store.list(prefix, cursor),
+    async delete(key) {
+      try {
+        await store.delete(key);
+      } catch (error) {
+        onFailure(error);
+      }
+    },
+  };
+}
+/**
+ * C9-15 (P10-03): the reconciliation close hook with the object store. Before ending the speech
+ * asset of the closed run (closeEndedSpeechRunMedia), it removes the pending object an earlier job
+ * of this run registered and committed from onRegistered (C8-2), the way mediaTtsJob's catch path
+ * deletes its staged object. Only a pending object of this owner, pointed to by a live queued or
+ * processing speech asset of this run, is deleted; a verified object, or the object of a ready
+ * asset, is never touched. Closing the run never depends on the store: when the byte delete fails,
+ * the error is logged, deleteObject still marks the record deleted (byteDeleteFailureLogged) and
+ * the pointer is cleared, so reconcileStorage removes the bytes later.
+ */
+export function speechRunClosedHook(
+  store: ObjectStore,
+  log: Logger = createLogger(),
+): (
+  tx: Tx,
+  ctx: LearnerContext,
+  runId: string,
+  outcome: { code: string; uncertain: boolean },
+  now: Date,
+) => Promise<void> {
+  return async (tx, ctx, runId, outcome, now) => {
+    const rows = await tx
+      .selectFrom("media.asset")
+      .select(["id", "object_id"])
+      .where("user_id", "=", ctx.userId)
+      .where("run_id", "=", runId)
+      .where("kind", "=", "tts")
+      .where("tombstoned_at", "is", null)
+      .where("state", "in", ["queued", "processing"])
+      .forUpdate()
+      .execute();
+    for (const row of rows) {
+      if (!row.object_id) continue;
+      let object: Awaited<ReturnType<typeof ownedObjectMetadata>>;
+      try {
+        object = await ownedObjectMetadata(tx, ctx, row.object_id);
+      } catch (error) {
+        // An object this owner does not own is never deleted; the asset still closes below.
+        if (error instanceof AppError) continue;
+        throw error;
+      }
+      if (object.state !== "pending") continue;
+      const objectId = object.id;
+      await deleteObject(
+        tx,
+        byteDeleteFailureLogged(store, (error) =>
+          log("error", "media_speech_object_delete_failed", {
+            module: "media",
+            object_id: objectId,
+            error_name: error instanceof Error ? error.name : "unknown",
+          }),
+        ),
+        ctx,
+        objectId,
+        now,
+      );
+      await tx
+        .updateTable("media.asset")
+        .set({ object_id: null })
+        .where("id", "=", row.id)
+        .where("user_id", "=", ctx.userId)
+        .execute();
+    }
+    await closeEndedSpeechRunMedia(tx, ctx, runId, outcome, now);
+  };
 }
 export async function tombstoneSessionMedia(
   tx: Tx,

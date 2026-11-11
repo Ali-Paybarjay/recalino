@@ -38,6 +38,7 @@ import {
   mediaTtsJob,
   readMediaBytes,
   requestTts,
+  speechRunClosedHook,
   tombstoneAccountMedia,
   tombstoneSessionMedia,
   tombstoneSourceMedia,
@@ -54,8 +55,10 @@ import { appendEncryptedDeletionJournal, readEncryptedDeletionJournals } from ".
 import { getSession } from "../org";
 import {
   createObject,
+  DEFAULT_PLT_SETTINGS,
   type JobContext,
   MemoryObjectStore,
+  reconcileStorage,
   runDueJobs,
   sweepJobs,
   writeOwnedObject,
@@ -1206,5 +1209,268 @@ describe("explicit media and privacy publication", () => {
     expect(await providerCosts(f.ctx.userId)).toHaveLength(1);
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(17);
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
+  });
+  // C9-15 (P10-03): an earlier job of the stranded run committed the asset's pointer to a pending
+  // object from onRegistered (C8-2). The close hook with the store deletes that object and clears
+  // the pointer, like mediaTtsJob's catch path deletes its staged object.
+  async function pendingSpeechObject(userId: string, store: MemoryObjectStore) {
+    const object = await createObject(db, {
+      module: "media",
+      ownerUserId: userId,
+      retention: "durable",
+      contentType: "audio/mpeg",
+      sizeBytes: Buffer.byteLength(SYNTHETIC_SPEECH_BYTES),
+      now: new Date(),
+    });
+    store.seed(object.key, Buffer.from(SYNTHETIC_SPEECH_BYTES), "audio/mpeg", new Date());
+    return object;
+  }
+  async function objectState(id: string) {
+    return (
+      await db
+        .selectFrom("plt.storage_object")
+        .select("state")
+        .where("id", "=", id)
+        .executeTakeFirstOrThrow()
+    ).state;
+  }
+  async function assetObjectId(id: string) {
+    return (
+      await db
+        .selectFrom("media.asset")
+        .select("object_id")
+        .where("id", "=", id)
+        .executeTakeFirstOrThrow()
+    ).object_id;
+  }
+  /**
+   * A second session of the same owner and course. scheduleAuxiliaryRun refuses a second live run
+   * in a session (409), so another live run of this owner needs its own session.
+   */
+  async function otherSessionId(f: Awaited<ReturnType<typeof fixture>>) {
+    const first = await db
+      .selectFrom("org.class_session")
+      .select(["course_id", "class_date"])
+      .where("id", "=", f.session.id)
+      .executeTakeFirstOrThrow();
+    return (
+      await db
+        .insertInto("org.class_session")
+        .values({
+          owner_id: f.ctx.userId,
+          course_id: first.course_id,
+          unit_id: null,
+          title: null,
+          class_date: first.class_date,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow()
+    ).id;
+  }
+  /** A second live speech asset whose queued job is moved to its own kind, so no test runs it. */
+  async function otherLiveSpeechAsset(f: Awaited<ReturnType<typeof fixture>>, text: string) {
+    const other = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: await otherSessionId(f),
+        text,
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const { runId, jobId } = await speechRun(other.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", jobId).execute();
+    const object = await pendingSpeechObject(f.ctx.userId, f.store);
+    await db
+      .updateTable("media.asset")
+      .set({ state: "processing", object_id: object.id })
+      .where("id", "=", other.id)
+      .execute();
+    return { asset: other, runId, object };
+  }
+  it("C9-15 closing a stranded speech run deletes the pending object of that run and clears its pointer, and leaves other runs and owners alone", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(false);
+    const pending = await pendingSpeechObject(f.ctx.userId, f.store);
+    await db
+      .updateTable("media.asset")
+      .set({ object_id: pending.id })
+      .where("id", "=", asset.id)
+      .execute();
+    // Another live run of the same owner, and a stranded run of another owner, each with a
+    // pending object of their own.
+    const sameOwner = await otherLiveSpeechAsset(f, "Another short sentence.");
+    const stranger = await strandedSpeechAsset(false);
+    const strangerObject = await pendingSpeechObject(stranger.f.ctx.userId, stranger.f.store);
+    await db
+      .updateTable("media.asset")
+      .set({ object_id: strangerObject.id })
+      .where("id", "=", stranger.asset.id)
+      .execute();
+    // The hook called directly with this owner and the other owner's run matches nothing.
+    await db
+      .transaction()
+      .execute((tx) =>
+        speechRunClosedHook(f.store)(
+          tx,
+          f.ctx,
+          stranger.runId,
+          { code: ENDED_JOB_RUN_ERROR, uncertain: false },
+          new Date(),
+        ),
+      );
+
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: speechRunClosedHook(f.store),
+      }),
+    ).toBe(1);
+    expect(await runState(runId)).toEqual({ state: "failed", last_error: ENDED_JOB_RUN_ERROR });
+    const closed = await getMediaAsset(db, f.ctx, asset.id);
+    expect({ state: closed.state, lastError: closed.lastError, objectId: closed.objectId }).toEqual(
+      { state: "failed", lastError: ENDED_JOB_RUN_ERROR, objectId: null },
+    );
+    expect(await objectState(pending.id)).toBe("deleted");
+    expect(await f.store.read(pending.key)).toBeNull();
+    // The other run of the same owner keeps its asset, pointer, record and bytes.
+    expect((await getMediaAsset(db, f.ctx, sameOwner.asset.id)).state).toBe("processing");
+    expect(await assetObjectId(sameOwner.asset.id)).toBe(sameOwner.object.id);
+    expect(await objectState(sameOwner.object.id)).toBe("pending");
+    expect(await f.store.read(sameOwner.object.key)).not.toBeNull();
+    // The other owner's stranded run is untouched.
+    expect((await runState(stranger.runId)).state).toBe("processing");
+    expect((await getMediaAsset(db, stranger.f.ctx, stranger.asset.id)).state).toBe("processing");
+    expect(await assetObjectId(stranger.asset.id)).toBe(strangerObject.id);
+    expect(await objectState(strangerObject.id)).toBe("pending");
+    expect(await stranger.f.store.read(strangerObject.key)).not.toBeNull();
+    // Running reconciliation again changes nothing further.
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: speechRunClosedHook(f.store),
+      }),
+    ).toBe(0);
+    // The other owner's run closes on its own reconciliation, with its own object.
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: stranger.f.ctx.userId,
+        afterAuxiliaryClose: speechRunClosedHook(stranger.f.store),
+      }),
+    ).toBe(1);
+    expect(await objectState(strangerObject.id)).toBe("deleted");
+    expect(await objectState(sameOwner.object.id)).toBe("pending");
+  });
+  it("C9-15 never deletes a verified object of a stranded speech asset or the object of a ready asset", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(false);
+    const verifiedId = await writeOwnedObject(db, f.store, f.ctx, {
+      module: "media",
+      retention: "durable",
+      contentType: "audio/mpeg",
+      bytes: Buffer.from(SYNTHETIC_SPEECH_BYTES),
+      now: new Date(),
+    });
+    await db
+      .updateTable("media.asset")
+      .set({ object_id: verifiedId })
+      .where("id", "=", asset.id)
+      .execute();
+    // A ready asset of the same owner in another session, published by its own job.
+    const ready = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: await otherSessionId(f),
+        text: "A ready sentence.",
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const readyRun = await speechRun(ready.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", readyRun.jobId).execute();
+    await runDueJobs(db, [{ ...mediaTtsJob(f.dependencies), kind }], {
+      deadline: new Date(Date.now() + 5000),
+      kinds: [kind],
+    });
+    const published = await getMediaAsset(db, f.ctx, ready.id);
+    expect(published.state).toBe("ready");
+    const publishedId = published.objectId as string;
+    await db
+      .transaction()
+      .execute((tx) =>
+        speechRunClosedHook(f.store)(
+          tx,
+          f.ctx,
+          readyRun.runId,
+          { code: ENDED_JOB_RUN_ERROR, uncertain: false },
+          new Date(),
+        ),
+      );
+
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: speechRunClosedHook(f.store),
+      }),
+    ).toBe(1);
+    expect(await runState(runId)).toEqual({ state: "failed", last_error: ENDED_JOB_RUN_ERROR });
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe("failed");
+    expect(await assetObjectId(asset.id)).toBe(verifiedId);
+    expect(await objectState(verifiedId)).toBe("verified");
+    expect(await getMediaAsset(db, f.ctx, ready.id)).toEqual(published);
+    expect(await objectState(publishedId)).toBe("verified");
+    expect(Buffer.from((await readMediaBytes(db, f.store, f.ctx, ready.id)).bytes).toString()).toBe(
+      SYNTHETIC_SPEECH_BYTES,
+    );
+  });
+  it("C9-15 closes the stranded speech run when the store fails to delete the pending object, marks the record deleted and clears the pointer for storage reconciliation", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(true);
+    const pending = await pendingSpeechObject(f.ctx.userId, f.store);
+    await db
+      .updateTable("media.asset")
+      .set({ object_id: pending.id })
+      .where("id", "=", asset.id)
+      .execute();
+    class FailingDeleteStore extends MemoryObjectStore {
+      override async delete(_key: string): Promise<void> {
+        throw new Error("Synthetic store outage");
+      }
+    }
+    const logged: Array<{ event: string; objectId: unknown }> = [];
+    const hook = speechRunClosedHook(new FailingDeleteStore(), (_level, event, fields) =>
+      logged.push({ event, objectId: fields?.object_id }),
+    );
+
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: hook,
+      }),
+    ).toBe(1);
+    expect(logged).toEqual([{ event: "media_speech_object_delete_failed", objectId: pending.id }]);
+    expect(await runState(runId)).toEqual({
+      state: "needs_input",
+      last_error: "provider_outcome_unresolved",
+    });
+    expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
+    const closed = await getMediaAsset(db, f.ctx, asset.id);
+    expect({ state: closed.state, lastError: closed.lastError, objectId: closed.objectId }).toEqual(
+      { state: "needs_input", lastError: "provider_outcome_unresolved", objectId: null },
+    );
+    // Tracked, not orphaned: the record is deleted while its bytes are still in the store, so
+    // storage reconciliation removes them.
+    expect(await objectState(pending.id)).toBe("deleted");
+    expect(await f.store.read(pending.key)).not.toBeNull();
+    const summary = await reconcileStorage(db, f.store, {
+      now: new Date(),
+      settings: DEFAULT_PLT_SETTINGS.storage,
+      prefix: `media/${f.ctx.userId}/`,
+    });
+    expect(summary.orphansDeleted).toBe(1);
+    expect(await f.store.read(pending.key)).toBeNull();
   });
 });
