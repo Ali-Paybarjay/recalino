@@ -1243,12 +1243,41 @@ describe("explicit media and privacy publication", () => {
         .executeTakeFirstOrThrow()
     ).object_id;
   }
+  /**
+   * A second session of the same owner and course. scheduleAuxiliaryRun refuses a second live run
+   * in a session (409), so another live run of this owner needs its own session.
+   */
+  async function otherSessionId(f: Awaited<ReturnType<typeof fixture>>) {
+    const first = await db
+      .selectFrom("org.class_session")
+      .select(["course_id", "class_date"])
+      .where("id", "=", f.session.id)
+      .executeTakeFirstOrThrow();
+    return (
+      await db
+        .insertInto("org.class_session")
+        .values({
+          owner_id: f.ctx.userId,
+          course_id: first.course_id,
+          unit_id: null,
+          title: null,
+          class_date: first.class_date,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow()
+    ).id;
+  }
   /** A second live speech asset whose queued job is moved to its own kind, so no test runs it. */
   async function otherLiveSpeechAsset(f: Awaited<ReturnType<typeof fixture>>, text: string) {
     const other = await requestTts(
       db,
       f.ctx,
-      { sessionId: f.session.id, text, operationKey: randomUUID(), exportAllowed: false },
+      {
+        sessionId: await otherSessionId(f),
+        text,
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
       f.dependencies,
     );
     const { runId, jobId } = await speechRun(other.id);
@@ -1348,12 +1377,12 @@ describe("explicit media and privacy publication", () => {
       .set({ object_id: verifiedId })
       .where("id", "=", asset.id)
       .execute();
-    // A ready asset of the same owner, published by its own job.
+    // A ready asset of the same owner in another session, published by its own job.
     const ready = await requestTts(
       db,
       f.ctx,
       {
-        sessionId: f.session.id,
+        sessionId: await otherSessionId(f),
         text: "A ready sentence.",
         operationKey: randomUUID(),
         exportAllowed: false,
