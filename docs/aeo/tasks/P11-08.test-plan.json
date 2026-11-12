@@ -33,8 +33,19 @@
     {
       "id": "TP-1",
       "file": "packages/core/src/proc/maintenance.test.ts",
-      "name": "the unit suite is green on head, including the unchanged maintenance, admin tasks and schema version unit tests and the schema version build test; the new barrier int test in plt/claim-barrier.int.test.ts runs in CI test:int on the same head with the migrations applied from scratch, covering the payload requeue, the six barrier states and the held old runner",
-      "maps_to_criteria": ["AC-4", "AC-6", "AC-9"]
+      "name": "the unit suite is green on head, including the unchanged maintenance, admin tasks and schema version unit tests and the schema version build test; CI test:int on the same head, with the migrations applied from scratch, passes each of these tests of packages/core/src/plt/claim-barrier.int.test.ts under its exact title, none missing or skipped: \"B01 barrier inactive: an old-code claim that writes no generation or build passes unchanged\"; \"B02 barrier active: a claim with a NULL generation or build is rejected\"; \"B03 barrier active: a generation or build left by an earlier claim does not authorize a claim that does not write it\"; \"B04 barrier active: a claim with a build outside the allowed build set is rejected\"; \"B05 barrier active: a new job is claimed with the current generation and an allowed build\"; \"B06 barrier active: a job the new build claimed before activation loses authority at the token rotation and continues only by a new claim\"; \"B07 activation fails and changes nothing when the allowed build set is empty\"; \"B08 activation fails and changes nothing when the current build is not in the allowed build set\"; \"B09 activation is idempotent: a second call with the same input raises no generation and rotates no token\"; \"B10 deactivation turns the barrier off without deleting data, and an old-code claim passes again\"; \"B11 the activation and deactivation functions are not executable by public, anon or authenticated\"; \"B12 instant rollback: a pre-barrier build is rejected and a post-barrier build claims only after the allowed build row is updated\"; \"B13 a held old runner can neither claim, complete, fail nor record an effect on a guarded path after activation\"; \"B14 payload version requeue: a job of a higher payload version returns to the queue with no net attempt and a later run_at\"; \"B15 a job of an unknown kind is not claimed\"; \"B16 barrier active: an empty or NULL allowed build set rejects every claim\"; the same CI test:int also passes every test of packages/core/src/plt/lease-generation.int.test.ts, none removed, skipped or marked todo (E297-R)",
+      "maps_to_criteria": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-9",
+        "AC-12",
+        "AC-14"
+      ]
     }
   ]
 }

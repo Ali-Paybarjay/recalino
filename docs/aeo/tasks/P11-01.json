@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "id": "P11-01",
-  "title": "اختیار Job و fencing مهلت در PLT (دستهٔ ۱۱ L3، دور دوم؛ C10-1؛ v3، E280‑R؛ Recalino ADR-0004 ‏0.6 بندهای 2، 3 و 4)",
+  "title": "اختیار Job و fencing مهلت در PLT (دستهٔ ۱۱ L3، دور دوم؛ C10-1؛ v4، E280‑R و E297‑R؛ Recalino ADR-0004 ‏0.6 بندهای 2، 3 و 4)",
   "goal": "C10-1 (P10-01، F-1): اجراکننده‌ای که مهلتش گذشته ولی زنده است، پس از برداشت دوبارهٔ Job می‌تواند Handler را ادامه دهد و اثر ثبت کند؛ ADR-0003 فقط برداشت و بستن را با توکن محافظت می‌کند. Recalino ADR-0004 (0.6، پذیرفتهٔ بازبین ساختاری در سطح تصمیم معماری، 2026-11-11) اختیار را تعریف می‌کند: وضعیت running، توکن برابر با lease_token کنونی، lease_until > now() با ساعت پایگاه داده، و نسل توکن برابر نسل کنونی مهلت؛ در هر حالت دیگر، بی استثنا، اختیار باطل است. این کارت مرحلهٔ P11-01 جدول «تحویل پلکانی» ADR است: تعریف اختیار، ساعت پایگاه داده در هر چهار منبع زمان، timeout تمدید، سنجش نسل، و نسل در SQL، حمل توکن و نسل در JobContext، و guard در completeJob، failJob و runJobStep. guard مسیرهای provider و storage در P11-02 است؛ بازیابی و تطبیق هزینه در دستهٔ ۱۲. فعال‌سازی نسخهٔ تازه فقط پشت مانع استقرار بند 3 است و در این کارت نیست.",
   "mode": "brownfield",
   "task_type": "bugfix",
@@ -54,13 +54,18 @@
     {
       "id": "AC-12",
       "statement": "API عمومی اختیار (یادداشت تفسیری (الف) حکم بازبین ساختاری بر 0.6؛ مرز مالکیت ADR-0002 به نقل همان حکم): بررسی اختیار AC-1 برای مسیرهای بیرون از plt (نوشتن‌های دامنهٔ P11-02 در proc و media) فقط از راه API عمومی PLT در دسترس است: تابع یا روش افزودنی که با JobContext (توکن و نسل؛ AC-6) و تراکنش فراخوان، ردیف plt.job را در همان تراکنش قفل می‌کند یا با update شرطی بر هر چهار شرط AC-1 می‌سنجد، و رد آن تراکنش را برمی‌گرداند. هیچ ماژول دیگری SQL مستقیم بر schema ‏plt نمی‌نویسد. اگر این API از راه export موجود در دسترس نیست، فقط export آن در packages/core/src/plt/index.ts افزوده می‌شود (owns مشروط؛ هیچ تغییر دیگر در آن فایل). آزمون int در plt/jobs.int.test.ts نشان می‌دهد این API پس از reclaim در تراکنش فراخوان رد می‌کند و تراکنش برمی‌گردد."
+    },
+    {
+      "id": "AC-13",
+      "statement": "آزمون P11-09 ‏(E297‑R): در packages/core/src/plt/lease-generation.int.test.ts فقط assertion ستون نسل به رفتار تازه می‌رود: پس از claim، ستون نسل همان claim برابر نسل کنونی ردیف singleton است. ستون build همچنان NULL می‌ماند (آن را P11-08 پر می‌کند). سه حالت مالک به شکل حالت ورودی می‌مانند: ستون NULL، مقدار باقی‌مانده از claim قبلی و build بیرون از مجموعهٔ مجاز، تا وقتی مانع فعال نیست، جلوی claim را نمی‌گیرند. هیچ آزمونی حذف، skip یا todo نمی‌شود و شمار it( از شمار پیش از این کارت کم نمی‌شود (پس از P11-09 ۹ است). گزارش Implementer همهٔ hunkهای این فایل را می‌آورد. این فایل در قفل هیچ TestPlan نیست."
     }
   ],
   "owns_paths": [
     "packages/core/src/plt/jobs.ts",
     "packages/core/src/plt/jobs.test.ts",
     "packages/core/src/plt/jobs.int.test.ts",
-    "packages/core/src/plt/index.ts"
+    "packages/core/src/plt/index.ts",
+    "packages/core/src/plt/lease-generation.int.test.ts"
   ],
   "depends_on": ["P11-09"],
   "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
@@ -91,6 +96,7 @@
     "قاعدهٔ قفل (E249‑R، E276‑R): دور دوم ترتیبی است. قفل‌های این کارت (maintenance، admin-tasks، runtime، compose) در زمان اجرای آن ثابت‌اند؛ دو فایل آخر از owns ‏P11-02 فقط برای fake هستند و P11-02 پس از ادغام این کارت اجرا می‌شود. P11-02 و P11-08 فایل‌های owns این کارت را قفل نمی‌کنند (E287‑R)، چون gate ‏testplan-lock هر قفل را روی head ‏PR می‌سنجد و این کارت آن‌ها را تغییر می‌دهد. پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود.",
     "install_assets (E192‑R؛ R80): مانند کارت‌های دستهٔ ۱۱. نصب: پیش‌فرض runner. verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
     "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8). برآورد 3 تا 8 دلار.",
-    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (80) است و L1 ‏--max-turns نمی‌دهد."
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (80) است و L1 ‏--max-turns نمی‌دهد.",
+    "E297‑R (پرسش باز Implementer ‏P11-09): packages/core/src/plt/lease-generation.int.test.ts فقط برای AC-13 به owns افزوده شد؛ چهار نام سیاست aeo ‏(E284 شرط ۴) دست نخوردند. TestPlan این کارت بی‌تغییر است و قفل مالک (ledger ‏6632) می‌ماند؛ این فایل در قفل هیچ TestPlan نیست. P11-08 همین فایل را برای ستون build در owns دارد."
   ]
 }
