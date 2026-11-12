@@ -65,6 +65,15 @@ async function leaseColumns(id: string) {
     .executeTakeFirstOrThrow();
 }
 
+/** P11-01 (ADR-0004 rule 3 step 2): a claim records the singleton row's current generation. */
+async function currentGeneration(): Promise<number> {
+  const row = await admin
+    .selectFrom("plt.job_lease_generation")
+    .select("generation")
+    .executeTakeFirstOrThrow();
+  return row.generation;
+}
+
 describe("lease generation row (ADR-0004 rules 2 and 3, P11-09)", () => {
   it("holds exactly one row, at generation 1", async () => {
     const rows = await admin
@@ -193,12 +202,13 @@ describe("the code deployed before the migration is unchanged (ADR-0004 rule 3 s
     const job = await claimOne(def, T0);
     expect(job).toMatchObject({ id, attempt: 1 });
     expect(await jobState(app, id)).toBe("running");
-    expect(await leaseColumns(id)).toEqual({ lease_generation: null, lease_build: null });
+    const generation = await currentGeneration();
+    expect(await leaseColumns(id)).toEqual({ lease_generation: generation, lease_build: null });
 
     expect(await renewJobLease(app, job, at(10))).toBe(true);
     expect(await completeJob(app, job, at(20))).toBe(true);
     expect(await jobState(app, id)).toBe("succeeded");
-    expect(await leaseColumns(id)).toEqual({ lease_generation: null, lease_build: null });
+    expect(await leaseColumns(id)).toEqual({ lease_generation: generation, lease_build: null });
   });
 
   it("claims a job whose columns hold values left by an earlier claim, and fails it", async () => {
@@ -238,7 +248,10 @@ describe("the code deployed before the migration is unchanged (ADR-0004 rule 3 s
         const id = await enqueue(def);
         const job = await claimOne(def, T0);
         expect(job).toMatchObject({ id, attempt: 1 });
-        expect(await leaseColumns(id)).toEqual({ lease_generation: null, lease_build: null });
+        expect(await leaseColumns(id)).toEqual({
+          lease_generation: await currentGeneration(),
+          lease_build: null,
+        });
         expect(await completeJob(app, job, at(1))).toBe(true);
         expect(await jobState(app, id)).toBe("succeeded");
       }

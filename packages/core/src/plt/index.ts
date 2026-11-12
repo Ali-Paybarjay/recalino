@@ -44,6 +44,7 @@ export {
   type StoredResponse,
 } from "./idempotency";
 export {
+  assertJobAuthority,
   type ClaimedJob,
   cancelJob,
   claimJobs,
