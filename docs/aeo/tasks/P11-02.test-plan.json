@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "task_id": "P11-02",
+  "kind": "pass_to_pass",
+  "base_sha": "7cc035dbc9d535b67bf899fa1cb7836f1709dc7b",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7cc035dbc9d535b67bf899fa1cb7836f1709dc7b",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/maintenance.test.ts",
+      "sha256": "af8cb3b1ca7d5306d5695fbf8ccd3d38b58a08bf109b2ee44bc92d6a3a14f1a0"
+    },
+    {
+      "path": "packages/core/src/ops/admin-tasks.test.ts",
+      "sha256": "53168072d8bcaf649c2fa2041591249c87f4b498a3ed204b849915d72151496e"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/maintenance.test.ts",
+      "name": "the unit suite is green on head, including the unchanged maintenance and admin tasks unit tests and the job authority unit tests merged with P11-01; the new F-2 int test in priv/media.int.test.ts and the new storage int tests in plt/storage.int.test.ts run in CI test:int on the same head with P11-01 merged",
+      "maps_to_criteria": ["AC-5", "AC-6"]
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": "1",
+  "id": "P11-09",
+  "title": "migration افزایشی نسل مهلت و build مجاز در plt (دستهٔ ۱۱ L3، دور دوم؛ گام 1 مانع استقرار؛ Recalino ADR-0004 ‏0.6 بندهای 2 و 3؛ E279)",
+  "goal": "بازبینی معماری P11-07 (F-12) نشان داد نسل مهلت در plt/settings.ts بی migration شدنی نیست: settings از env هر استقرار و strictObject است و میان استقرارها مشترک نیست؛ plt.job ستونی برای نسل یا build ندارد. Recalino ADR-0004 ‏0.6 (بندهای 2 و 3) نسل کنونی و مجموعهٔ build مجاز را در یک ردیف singleton در plt، و نسل هر claim را در یک ستون nullable در plt.job می‌گذارد. این کارت گام 1 ترتیب سه‌گامهٔ استقرار است: فقط migration افزایشی، بی قید، بی trigger و بی تغییر رفتار؛ کد قدیم آن را ahead و سازگار می‌بیند. پر کردن ستون در claim (گام 2) در P11-01 است و فعال‌سازی قید (گام 3) در P11-08.",
+  "mode": "brownfield",
+  "task_type": "migration",
+  "risk_level": "high",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "دقیقاً یک فایل migration تازه: supabase/migrations/20261112120000_plt_job_lease_generation.sql (نام دقیق owns؛ E282). اگر timestamp آن از همهٔ migrationهای موجود base بزرگ‌تر نباشد، Implementer با شاهد blocked می‌شود و نام را تغییر نمی‌دهد. هیچ migration دیگری افزوده یا تغییر داده نمی‌شود. این فایل یک جدول singleton در schema ‏plt می‌سازد با: نسل صعودی (عدد صحیح، not null، مقدار آغاز 1)، مجموعهٔ build مجاز (nullable یا تهی؛ تا P11-08 هیچ کدی آن را نمی‌خواند)، و زمان تغییر (با ساعت پایگاه داده). جدول دقیقاً یک ردیف دارد و یک قید ساختاری روی همین جدول تازه ردیف دوم را ناممکن می‌کند؛ این تنها قید migration است و بر plt.job نیست (E279 قید ۳). ردیف آغازین در همان migration درج می‌شود."
+    },
+    {
+      "id": "AC-2",
+      "statement": "همان migration دو ستون nullable به plt.job می‌افزاید، هر دو قطعی (E281‑R): نسل همان claim و شناسهٔ build همان claim. این کارت هیچ‌کدام را پر نمی‌کند؛ ستون نسل را P11-01 پر می‌کند و ستون build را P11-08 (AC-3 آن)، پس migration ‏P11-08 فقط قید یا trigger می‌افزاید. فقط افزودن (E279 قیدهای ۱ تا ۳): هیچ DEFAULT بر این دو ستون؛ هیچ backfill یا update که ردیفی از plt.job را بازنویسی کند؛ هیچ قید، index یکتا یا trigger بر plt.job. هیچ ستون یا جدول موجودی حذف یا تغییر نوع نمی‌دهد."
+    },
+    {
+      "id": "AC-3",
+      "statement": "سازگاری با کد قدیم (ADR-0004 بند 3 گام 1؛ F-12): پس از migration، کد کنونی main بی‌تغییر کار می‌کند؛ schema guard وضع ahead را می‌پذیرد؛ claim، renew، sweep، complete و fail موجود همان رفتار پیشین را دارند و دو ستون تازه را null می‌گذارند. grant و RLS جدول تازه طبق AC-12 است."
+    },
+    {
+      "id": "AC-4",
+      "statement": "فایل‌های تولیدی (E282 قیدهای ۱ و ۲؛ E283 = الف): apps/web/src/server/schema-version.generated.ts فقط خروجی pnpm schema:version است و هیچ ویرایش دستی ندارد؛ شاهد آن آزمون قفل‌شدهٔ tools/schema-version/build.test.ts ‏(OPS-05) است که در verify سبز است (R96؛ Documented: P2-02). packages/core/src/db/types.ts را Implementer فقط با ورودی‌های افزودنی می‌نویسد: نوع جدول تازه و دو ستون تازهٔ plt.job؛ هیچ سطر موجود آن حذف یا تغییر داده نمی‌شود. Job ابزار tools/db-types.mjs را اجرا نمی‌کند (سیاست Job ‏pnpm db:*، supabase * و pnpm exec supabase * را deny می‌کند و verify ‏Postgres ندارد). شاهد (E283 = الف): گام CI «Generated DB types match the migrations» روی همان head ‏PR سبز است و diff همین فایل در PR صفر سطر حذف‌شده دارد؛ بازبین هر دو را پیش از فرمان approve می‌سنجد. گام قرمز یا هر حذف ⇒ blocked و گزارش، بی approve و بی merge."
+    },
+    {
+      "id": "AC-5",
+      "statement": "آزمون int (E282 قید ۳؛ E279 قید ۸؛ سه حالت مالک): packages/core/src/plt/lease-generation.int.test.ts فقط فایل تازه است و هیچ آزمون موجودی تغییر نمی‌کند. با Postgres واقعی می‌سنجد: (۱) جدول singleton دقیقاً یک ردیف با نسل 1 دارد و درج ردیف دوم رد می‌شود؛ RLS آن فعال و بی policy است (AC-12). (۲) سه حالت مالک، در شکل سازگاری گام 1 (بی قید): claim کد کنونی هر دو ستون تازه را NULL می‌گذارد (شاهد Q6-1)؛ ردیفی که خود آزمون در ستون نسل یا build آن مقدار باقی‌مانده از claim قبلی می‌نهد، همچنان با کد کنونی claim می‌شود و رفتار بی‌تغییر است؛ هر مقداری که مجموعهٔ build مجاز در singleton داشته باشد، claim کنونی را تغییر نمی‌دهد. (۳) claim، complete و fail موجود بی‌تغییر کار می‌کنند. شکل «رد» حالت‌های دوم و سوم در P11-08 ‏(AC-6) است. Implementer نشان می‌دهد آزمون بی migration شکست می‌خورد."
+    },
+    {
+      "id": "AC-6",
+      "statement": "شاهد اجرایی (E198‑R): pnpm test:unit روی head سبز است (verify ‏AEO)؛ CI روی همان head سبز است (pnpm test:int با Postgres، که migrationها را از صفر اجرا می‌کند)؛ و پس از merge، CI روی commit ادغام‌شده دوباره سبز است. فایل‌های قفل TestPlan بی‌تغییرند."
+    },
+    {
+      "id": "AC-7",
+      "statement": "مرز: هیچ کد رفتاری (E282 قید ۴): هیچ تغییر کد TypeScript جز دو فایل تولیدی AC-4 و آزمون AC-5؛ اگر کار به مسیر پنجمی نیاز داشت ⇒ blocked با پرسش باز، نه گسترش owns. هیچ فعال‌سازی، قید روی claim یا trigger (P11-08)؛ هیچ بالا بردن نسل. هیچ دستور اجرایی drop، delete from یا truncate در migration نیست؛ این واژه‌ها فقط در بلوک توضیح down ‏(AC-11) می‌آیند. gate ‏sql-destructive به‌سبب alter و همان متن high است، که همان ریسک کارت است. اعمال migration بر پایگاه production فقط در cutover و با مالک است (کلاس ۲؛ E279 قید ۹)، نه این Task."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط چهار فایل دقیق owns_paths تغییر کرده‌اند (E282)؛ هیچ تغییر CI، .claude/**، CLAUDE.md، package.json یا docs/adr/**. هیچ دادهٔ موجود پاک یا تغییر داده نمی‌شود (E279 قید ۴)؛ تنها درج داده همان ردیف آغازین singleton است."
+    },
+    {
+      "id": "AC-10",
+      "statement": "اجرای دوباره (E279 قید ۵): جدول و ستون‌ها با IF NOT EXISTS ساخته می‌شوند و ردیف آغازین با ON CONFLICT DO NOTHING یا معادل درج می‌شود؛ اجرای دوم همان فایل بر پایگاهی که آن را دارد خطا نمی‌دهد و هیچ ردیفی را تغییر نمی‌دهد. برای بخشی که Postgres شکل IF NOT EXISTS برایش ندارد (مانند policy یا قید)، معادل ایمن (بررسی وجود در catalog پیش از ساخت) به کار می‌رود و گزارش آن را نام می‌برد."
+    },
+    {
+      "id": "AC-11",
+      "statement": "down-migration مستند (E279 قید ۶): انتهای همان فایل migration یک بلوک توضیح SQL دارد با گام‌های برگشت (برداشتن دو ستون plt.job و جدول singleton) که اجرا نمی‌شود؛ هیچ فایل جدا برای down در supabase/migrations/ ساخته نمی‌شود، چون CLI ‏Supabase هر فایل آن پوشه را اجرا می‌کند. بلوک می‌گوید برگشت فقط پیش از استقرار کد P11-01 بی‌خطر است، چون پس از آن claim ستون نسل را می‌نویسد. قرارداد down دیگری در دفتر یا گزارش Jobها ثبت نشده است."
+    },
+    {
+      "id": "AC-12",
+      "statement": "دسترسی API (E279 قید ۷): RLS روی جدول singleton تازه فعال است و هیچ policy ندارد (deny پیش‌فرض)؛ هیچ grant به anon، authenticated یا public بر جدول تازه، و هیچ grant ستونی تازه بر plt.job؛ دسترسی نقش سرور طبق قواعد migrationهای موجود plt (ADR-0002). آزمون AC-5 فعال بودن RLS و نبود policy را از catalog می‌سنجد. بیرون بودن schema ‏plt از exposed schemas پروژهٔ Supabase شاهد مالک است و از کد Not Verified؛ گزارش آن را همین‌طور برچسب می‌زند."
+    }
+  ],
+  "owns_paths": [
+    "supabase/migrations/20261112120000_plt_job_lease_generation.sql",
+    "packages/core/src/plt/lease-generation.int.test.ts",
+    "packages/core/src/db/types.ts",
+    "apps/web/src/server/schema-version.generated.ts"
+  ],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.database",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: بازبینی معماری P11-07 (job-20261111-c6ac9d81)، F-12 و F-13؛ Recalino ADR-0004 ‏0.6 (بند 2 شرط چهارم، بند 3 ترتیب سه‌گامه، «تحویل پلکانی»)؛ E280‑R و E281‑R. L1 کد را نخواند (X1)؛ نام فایل‌ها از git ls-tree روی main@7cc035d است؛ نام migration و آزمون تازه پیشنهاد L1 است و E282 نام دقیق migration را تثبیت کرد (الگوی E281‑R لغو شد). آخرین migration موجود base امروز 20261104130100 است.",
+    "تصمیم مالک: E279 ‏Q6-1 الف (migration افزایشی با قید) و Q6-2 الف (کارت جدا پیش از P11-01؛ implementer.database؛ approve مالک روی همان PR). نگاشت قیدهای Q6-1: ۱ تا ۳ ⇒ AC-1 و AC-2؛ ۴ ⇒ AC-9؛ ۵ ⇒ AC-10؛ ۶ ⇒ AC-11؛ ۷ ⇒ AC-12؛ ۸ ⇒ AC-5 و AC-6؛ ۹ ⇒ AC-7. E282 = الف با قید: owns همان چهار مسیر دقیق کارت v3، بی الگو؛ نگاشت قیدها: ۱ و ۲ ⇒ AC-4؛ E283 = الف (مالک) برای db/types.ts: فقط افزودنی، با شاهد گام CI سبز روی head ‏PR و صفر حذف؛ ۳ ⇒ AC-5؛ ۴ ⇒ AC-7. سه حالت آزمون مالک (claim با NULL، مقدار باقی‌مانده، build بیرون از مجموعه) در شکل سازگاری گام 1 ⇒ AC-5؛ شکل «رد» آن‌ها ⇒ P11-08 ‏AC-6.",
+    "ریسک کارت high (migration؛ implementer.database ‏default_risk high)؛ PR با approve مالک، بیرون از D7. gate احتمالاً high (supabase/**).",
+    "سیاست AEO (E284 = الف، مالک، کلاس ۳): PR ‏policy(targets) در aeo ‏(#110) چهار مدخل دقیق به write_paths.recalino می‌افزاید، بی glob: docs/adr/0004-job-lease-fencing.md، نام دقیق migration ‏P11-09 و P11-08، و docs/runbooks/JOB_LEASE_BARRIER.md. approve مالک پس از حکم بازبین ساختاری بر diff آن است. تا merge آن، aeo run این کارت را پیش از هر رویداد رد می‌کند (R87) و aeo pr open پیش از push می‌ایستد؛ PR کارت‌ها پس از merge آن باز می‌شود. تغییر نام یا timestamp هر فایل پرسش تازهٔ مالک است، نه glob؛ گارد push دور زده نمی‌شود.",
+    "نوع‌های db/types.ts (Documented: گزارش بلوک ۹۹ و ۱۱۲ L1؛ Observed by model در CI run 43048889702 روی main@7cc035d): CI گام «Generated DB types match the migrations» در job «Lint, types, boundaries, tests, build» دارد؛ اینکه در ناهم‌خوانی شکست می‌خورد فقط از نام گام و همین گزارش‌هاست (Not Verified). tools/db-types.mjs (kysely-codegen) فقط جدول و ستون تولید می‌کند، پس جدول و دو ستون تازه باید در types.ts بیایند. شیوهٔ شاهد: E283 = الف (AC-4): همین گام سبز روی head ‏PR و صفر سطر حذف‌شده در diff ‏types.ts، که بازبین پیش از فرمان approve می‌سنجد.",
+    "وابستگی و ترتیب (دستور مالک): حکم بازبین ساختاری بر ADR-0004 ‏0.6 «پذیرفته» است (2026-11-11؛ بی یافته)، پس E274 بر 0.6 جاری است؛ E284 = الف ⇒ merge ‏PR سیاست aeo ‏#110 (پس از حکم بازبین ساختاری بر diff آن و approve مالک) ⇒ PR کارت‌ها (+ ADR) ⇒ approve مالک ⇒ این کارت ⇒ P11-01 ⇒ P11-02 ⇒ P11-08 ⇒ cutover (مالک؛ کلاس ۲). این کارت خودش مانع لازم ندارد، چون افزایشی و برای کد قدیم سازگار است؛ ادغام آن رفتار را تغییر نمی‌دهد. یادداشت تفسیری (ب) حکم بر 0.6: «بی migration» در مثال بند 4 نیاز به همین migration مشترک نسل را حذف نمی‌کند.",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند؛ TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است. *.int.test.ts در CI با Postgres اجرا می‌شود؛ شاهد migration و آزمون int همان CI سبز روی head است. Implementer آزمون int را فقط اگر پایگاه محلی در sandbox بود اجرا می‌کند.",
+    "قاعدهٔ قفل (E249‑R): دور دوم ترتیبی است؛ هیچ فایل owns این کارت در TestPlan کارت دیگری قفل نیست. پیش از قفل TestPlan، sha256 قفل‌ها از main همان روز دوباره سنجیده می‌شود.",
+    "install_assets (E192‑R؛ R80): مانند کارت‌های دستهٔ ۱۱. نصب: پیش‌فرض runner. verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8). برآورد 1.5 تا 3 دلار.",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت است و L1 ‏--max-turns نمی‌دهد.",
+    "context_refs (E274 ‏Q5-2 = الف، جاری بر 0.6): ‏docs/adr/0004-job-lease-fencing.md متن پذیرفتهٔ بازبین ساختاری است (0.6؛ تفاوت با 0.6 فقط در خط عنوان و ردیف‌های نسخه و وضعیت) و در همان PR کارت‌ها به main می‌رسد؛ این کارت و نسخه‌های بعدی آن ADR را تغییر نمی‌دهند (docs/adr/** بیرون از owns)."
+  ]
+}
