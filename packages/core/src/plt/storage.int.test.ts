@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { KyselyPlugin } from "kysely";
+import { type KyselyPlugin, sql } from "kysely";
 import { afterAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { testDatabaseUrl } from "../../test/local-db";
 import { createDatabase } from "../db";
 import { AppError } from "./errors";
+import { cancelJob, claimJobs, enqueueJob, type JobLease, sweepJobs } from "./jobs";
 import { DEFAULT_PLT_SETTINGS } from "./settings";
 import {
   confirmObject,
@@ -14,6 +16,7 @@ import {
   markPendingObjectDeleted,
   ownerStorageAccessExpiry,
   reconcileStorage,
+  writeOwnedObject,
 } from "./storage";
 import { MemoryObjectStore } from "./storage-memory";
 
@@ -403,5 +406,198 @@ describe("P11-03 conditional storage state changes", () => {
     expect(failures).toHaveLength(1);
     expect(await objectRow(kept.id)).toEqual({ state: "deleted", deleted_at: at(1) });
     expect(await store.head(kept.key)).not.toBeNull();
+  });
+});
+
+/**
+ * A job of its own queue kind, claimed by worker A, and `reclaim`: A's lease ends on the database
+ * clock, the sweep returns the job and worker B claims it, so A's claim is void (ADR-0004 rule 2).
+ */
+async function claimedJob() {
+  const kind = `plt.synthetic_${randomUUID().replaceAll("-", "")}`;
+  const now = new Date();
+  await db
+    .transaction()
+    .execute((tx) =>
+      enqueueJob(
+        tx,
+        { kind, version: 1, payload: z.strictObject({}) },
+        { payload: {}, now, defaults: DEFAULT_PLT_SETTINGS.jobs },
+      ),
+    );
+  const leaseOf = async (): Promise<JobLease> => {
+    const [claim] = await claimJobs(db, [kind], 1, new Date());
+    if (!claim || claim.generation === undefined) throw new Error("Expected a claim");
+    return { id: claim.id, token: claim.token, generation: claim.generation };
+  };
+  const a = await leaseOf();
+  return {
+    a,
+    async reclaim(): Promise<JobLease> {
+      await db
+        .updateTable("plt.job")
+        .set({ lease_until: sql<Date>`now() - interval '1 minute'` })
+        .where("id", "=", a.id)
+        .execute();
+      await sweepJobs(db, new Date());
+      const b = await leaseOf();
+      expect(b.id).toBe(a.id);
+      expect(b.token).not.toBe(a.token);
+      return b;
+    },
+    done: () => cancelJob(db, a.id, new Date()),
+  };
+}
+
+async function ownerObjects(owner: string) {
+  return db
+    .selectFrom("plt.storage_object")
+    .select(["id", "state"])
+    .where("owner_user_id", "=", owner)
+    .execute();
+}
+
+const leaseLost = { name: "JobLeaseLost" };
+
+describe("P11-02 storage records written for a job need its authority (ADR-0004 rules 4 and 6)", () => {
+  it("AC-3 writeOwnedObject from a job records and verifies the object only with that job's authority", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const job = await claimedJob();
+    const write = (lease: JobLease, target = store) =>
+      writeOwnedObject(
+        db,
+        target,
+        { userId: owner },
+        {
+          module: "src",
+          retention: "durable",
+          contentType: "image/png",
+          bytes: PNG,
+          now: T0,
+          lease,
+        },
+      );
+    // With the authority, as before.
+    const first = await write(job.a);
+    expect(await ownerObjects(owner)).toEqual([{ id: first, state: "verified" }]);
+
+    // After the reclaim, A records nothing: the registration rolls back and no bytes are written.
+    const b = await job.reclaim();
+    await expect(write(job.a)).rejects.toMatchObject(leaseLost);
+    expect(await ownerObjects(owner)).toEqual([{ id: first, state: "verified" }]);
+    expect((await store.list(`src/${owner}/`)).objects).toHaveLength(1);
+
+    // B, the current claim, writes as the contract says.
+    const second = await write(b);
+    expect((await ownerObjects(owner)).find((row) => row.id === second)?.state).toBe("verified");
+    await job.done();
+  });
+
+  it("AC-3 a job whose claim becomes void while its bytes are written never verifies the record", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const job = await claimedJob();
+    // A registers the record with its authority; the job is reclaimed while A writes the bytes.
+    const reclaimedDuringWrite = Object.assign(Object.create(store) as typeof store, {
+      write: async (key: string, bytes: Uint8Array, contentType: string) => {
+        await store.write(key, bytes, contentType);
+        await job.reclaim();
+      },
+    });
+    await expect(
+      writeOwnedObject(
+        db,
+        reclaimedDuringWrite,
+        { userId: owner },
+        {
+          module: "src",
+          retention: "durable",
+          contentType: "image/png",
+          bytes: PNG,
+          now: T0,
+          lease: job.a,
+        },
+      ),
+    ).rejects.toMatchObject(leaseLost);
+    // The verification rolled back; the cleanup marks the record deleted and removes the bytes.
+    const rows = await ownerObjects(owner);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.state).toBe("deleted");
+    expect((await store.list(`src/${owner}/`)).objects).toHaveLength(0);
+    await job.done();
+  });
+
+  it("AC-4 a pending-only delete from a job marks the record only with that job's authority, and deletes the bytes only after the mark committed", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const job = await claimedJob();
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    const b = await job.reclaim();
+
+    // A, after the reclaim: neither the record nor the bytes change, alone or in its transaction.
+    await expect(
+      deleteObject(db, store, { userId: owner }, object.id, at(1), {
+        pendingOnly: true,
+        lease: job.a,
+      }),
+    ).rejects.toMatchObject(leaseLost);
+    await expect(
+      db.transaction().execute((tx) =>
+        deleteObject(tx, store, { userId: owner }, object.id, at(1), {
+          pendingOnly: true,
+          lease: job.a,
+        }),
+      ),
+    ).rejects.toMatchObject(leaseLost);
+    expect(await objectRow(object.id)).toEqual({ state: "pending", deleted_at: null });
+    expect(await store.head(object.key)).not.toBeNull();
+
+    // B: the mark commits first; the byte delete sees it from another session.
+    const seenAtByteDelete: unknown[] = [];
+    const observing = Object.assign(Object.create(store) as typeof store, {
+      delete: async (key: string) => {
+        seenAtByteDelete.push((await objectRow(object.id)).state);
+        await store.delete(key);
+      },
+    });
+    expect(
+      await deleteObject(db, observing, { userId: owner }, object.id, at(1), {
+        pendingOnly: true,
+        lease: b,
+      }),
+    ).toBe(true);
+    expect(seenAtByteDelete).toEqual(["deleted"]);
+    expect(await objectRow(object.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    expect(await store.head(object.key)).toBeNull();
+    // Zero rows is never a success, with the authority too.
+    expect(
+      await deleteObject(db, store, { userId: owner }, object.id, at(2), {
+        pendingOnly: true,
+        lease: b,
+      }),
+    ).toBe(false);
+
+    // A failed byte delete keeps the record deleted for storage reconciliation (P10-03 B).
+    const kept = await pngFor(owner);
+    store.seed(kept.key, PNG, "image/png", T0);
+    const failing = Object.assign(Object.create(store) as typeof store, {
+      delete: async () => {
+        throw new Error("Synthetic store outage");
+      },
+    });
+    const failures: unknown[] = [];
+    expect(
+      await deleteObject(db, failing, { userId: owner }, kept.id, at(1), {
+        pendingOnly: true,
+        lease: b,
+        onByteDeleteFailure: (error) => failures.push(error),
+      }),
+    ).toBe(true);
+    expect(failures).toHaveLength(1);
+    expect(await objectRow(kept.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    expect(await store.head(kept.key)).not.toBeNull();
+    await job.done();
   });
 });

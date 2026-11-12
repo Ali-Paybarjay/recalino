@@ -8,12 +8,14 @@ import type { Database, DB, Tx } from "../db";
 import { assertSessionOwner, filterLiveSessionIds, getSession } from "../org";
 import {
   AppError,
+  assertJobAuthority,
   assertOwner,
   canonicalJson,
   createLogger,
   deleteObject,
   errors,
   issueReadLink,
+  JobCancelled,
   type JobContext,
   type JobDefinition,
   type LearnerContext,
@@ -543,6 +545,24 @@ export async function requestTts(
     return view(row);
   });
 }
+/**
+ * ADR-0004 rule 4 (P11-02): a write of the speech job runs only with the job's authority, checked
+ * first in the write's own transaction with the claim from JobContext (PLT's public check). A
+ * context without a lease is not a claim and keeps the earlier behaviour.
+ */
+async function assertSpeechJobAuthority(tx: Tx, job: JobContext): Promise<void> {
+  if (job.lease !== undefined) await assertJobAuthority(tx, job.lease);
+}
+/** PLT's refused authority check: a `JobCancelled` named JobLeaseLost. */
+function isJobLeaseLost(error: unknown): boolean {
+  return error instanceof JobCancelled && error.name === "JobLeaseLost";
+}
+/**
+ * The speech job. Its paid step, the object record it writes and every record it changes after
+ * the provider call (asset pointer, publication, final failure) need the job's authority
+ * (ADR-0004 rule 4, P11-02); a worker whose claim became void stops with `JobLeaseLost` and
+ * settles nothing, leaving the run to the current claim or to reconciliation.
+ */
 export function mediaTtsJob(
   dependencies: MediaDependencies,
 ): JobDefinition<z.infer<typeof ttsPayload>> {
@@ -609,9 +629,11 @@ export function mediaTtsJob(
           contentType: output.mimeType,
           bytes,
           now: job.now(),
+          ...(job.lease === undefined ? {} : { lease: job.lease }),
           onRegistered: async (id) => {
             stagedObjectId = id;
             await job.db.transaction().execute(async (tx) => {
+              await assertSpeechJobAuthority(tx, job);
               await lockAccount(tx, ctx.userId);
               await assertSessionOwner(tx, ctx, row.session_id);
               const current = await owned(tx, ctx, row.id);
@@ -625,6 +647,7 @@ export function mediaTtsJob(
           },
         });
         await job.db.transaction().execute(async (tx) => {
+          await assertSpeechJobAuthority(tx, job);
           await lockAccount(tx, ctx.userId);
           await assertSessionOwner(tx, ctx, row.session_id);
           const current = await owned(tx, ctx, row.id);
@@ -648,6 +671,9 @@ export function mediaTtsJob(
             .execute();
         });
       } catch (error) {
+        // No authority: nothing to settle or clean up from this worker (ADR-0004 rule 4). A staged
+        // pending object is the current claim's or reconciliation's to remove (C9-15).
+        if (isJobLeaseLost(error)) throw error;
         const retryable =
           error instanceof ProviderError &&
           error.retryable &&
@@ -662,6 +688,7 @@ export function mediaTtsJob(
               ? error.code
               : "media_failed";
         await job.db.transaction().execute(async (tx) => {
+          await assertSpeechJobAuthority(tx, job);
           await dependencies.processor.fail(
             tx,
             ctx,
