@@ -44,17 +44,21 @@ export async function runFixtureProcessingStep<P extends { runId: string; userId
     )
       throw new Error("Fixture job ownership or version mismatch");
     const token = randomUUID();
-    await tx
+    // As claimJobs does (ADR-0004 rules 2 and 3): the lease ends on the database clock and the
+    // claim records the current lease generation.
+    const { lease_generation: generation } = await tx
       .updateTable("plt.job")
       .set({
         state: "running",
         attempt: job.attempt + 1,
         lease_token: token,
-        lease_until: new Date(now.getTime() + job.lease_seconds * 1000),
+        lease_until: sql<Date>`now() + make_interval(secs => lease_seconds)`,
+        lease_generation: (eb) => eb.selectFrom("plt.job_lease_generation").select("generation"),
         updated_at: now,
       })
       .where("id", "=", job.id)
-      .execute();
+      .returning("lease_generation")
+      .executeTakeFirstOrThrow();
     const claim: ClaimedJob = {
       id: job.id,
       kind: job.kind,
@@ -63,6 +67,7 @@ export async function runFixtureProcessingStep<P extends { runId: string; userId
       attempt: job.attempt + 1,
       token,
       leaseSeconds: job.lease_seconds,
+      ...(generation === null ? {} : { generation }),
     };
     return { claim, payload };
   });
