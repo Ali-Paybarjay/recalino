@@ -542,6 +542,8 @@ export interface PltJob {
   id: Generated<string>;
   kind: string;
   last_error: string | null;
+  lease_build: string | null;
+  lease_generation: number | null;
   lease_seconds: number;
   lease_token: string | null;
   lease_until: Timestamp | null;
@@ -554,6 +556,13 @@ export interface PltJob {
   singleton_key: string | null;
   state: Generated<string>;
   updated_at: Timestamp;
+}
+
+export interface PltJobLeaseGeneration {
+  allowed_builds: string[] | null;
+  changed_at: Generated<Timestamp>;
+  generation: number;
+  singleton: Generated<boolean>;
 }
 
 export interface PltJobStep {
@@ -1234,6 +1243,7 @@ export interface DB {
   "plt.audit_event": PltAuditEvent;
   "plt.idempotency_key": PltIdempotencyKey;
   "plt.job": PltJob;
+  "plt.job_lease_generation": PltJobLeaseGeneration;
   "plt.job_step": PltJobStep;
   "plt.notification": PltNotification;
   "plt.push_delivery": PltPushDelivery;
