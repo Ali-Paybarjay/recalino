@@ -1,5 +1,8 @@
 // FR-PLT-005: the durable job queue (ADR-0003). A plain table in `plt`, claimed with
-// FOR UPDATE SKIP LOCKED. Times come from the caller, so every rule is testable without waiting.
+// FOR UPDATE SKIP LOCKED. Recalino ADR-0004 rule 2: a lease is set, compared and checked only on
+// the database clock (`DB_CLOCK`), never on the process clock. The caller's time is used only for
+// scheduling (run_at, retry backoff) and for the record (updated_at, finished_at), which decide
+// nothing about a runner's authority.
 import { sql } from "kysely";
 import type { z } from "zod";
 import type { Database, Tx } from "../db";
@@ -31,6 +34,22 @@ export interface ClaimedJob {
   token: string;
   /** A live runner renews the lease before it ends (rule 5). */
   leaseSeconds: number;
+  /**
+   * The lease generation this claim was made in (ADR-0004 rules 2 and 3). Every claim sets it;
+   * it is optional in the type only, so hand-made test claims keep compiling. A claim without it
+   * has no authority: every guarded path refuses it (fail-closed).
+   */
+  generation?: number;
+}
+
+/**
+ * What a runner presents as its authority over a job (ADR-0004 rule 2): the job, the claim's token
+ * and the claim's lease generation.
+ */
+export interface JobLease {
+  readonly id: string;
+  readonly token: string;
+  readonly generation: number;
 }
 
 /** Internal orchestration target, derived from an already-authorized resource. */
@@ -44,6 +63,12 @@ export interface JobContext {
   now: () => Date;
   /** For records and logs; the payload carries the job's subject. */
   job: { id: string; attempt: number };
+  /**
+   * The claim's token and generation, for `assertJobAuthority` in a domain write's own
+   * transaction (ADR-0004 rule 4). The runner always sets it; it is optional in the type only, so
+   * hand-made test contexts keep compiling. Without it every guarded path refuses (fail-closed).
+   */
+  lease?: JobLease;
   /**
    * When the runner's function stops. A long handler starts no new external call it cannot
    * finish before this, and checkpoints instead. Absent when the runner does not know its limit.
@@ -76,6 +101,81 @@ export class JobCancelled extends Error {
     super("job cancelled");
     this.name = "JobCancelled";
   }
+}
+
+/**
+ * Thrown when the runner has no authority over its job (ADR-0004 rule 2): the lease ended, the job
+ * was claimed again, finished or cancelled, or the claim carries no lease. A guarded write's
+ * transaction rolls back. It is a `JobCancelled`, so every caller that stops without settling on
+ * a cancellation stops the same way here: a runner without authority can settle nothing.
+ */
+export class JobLeaseLost extends JobCancelled {
+  constructor() {
+    super();
+    this.message = "job lease lost";
+    this.name = "JobLeaseLost";
+  }
+}
+
+/**
+ * The database clock for every lease decision (ADR-0004 rules 2 and 3). `statement_timestamp()` is
+ * the database's now() for the statement that reads it: in a single statement it equals now(), and
+ * a check made after waiting for the job row in a longer transaction reads the time after that
+ * wait, so a wait that outlasts the lease is refused (rule 4). now() alone would read the
+ * transaction's start.
+ */
+const DB_CLOCK = sql`statement_timestamp()`;
+
+/** The claim's lease, or undefined when it carries none; undefined is refused everywhere. */
+export function jobLease(job: ClaimedJob): JobLease | undefined {
+  return job.generation === undefined
+    ? undefined
+    : { id: job.id, token: job.token, generation: job.generation };
+}
+
+function isLease(lease: JobLease | undefined): lease is JobLease {
+  return (
+    typeof lease === "object" &&
+    lease !== null &&
+    typeof lease.id === "string" &&
+    lease.id.length > 0 &&
+    typeof lease.token === "string" &&
+    lease.token.length > 0 &&
+    Number.isSafeInteger(lease.generation)
+  );
+}
+
+/**
+ * The one authority condition (ADR-0004 rule 2), on the job row aliased `j`: the job is running,
+ * the token is its current lease token, the lease has not ended on the database clock, and the
+ * claim's generation is the job row's generation and the current one. A row whose generation is
+ * NULL, or older than the current one, never matches. In every other case there is no authority.
+ */
+function authorityHolds(lease: JobLease) {
+  return sql`j.id = ${lease.id} and j.state = 'running' and j.lease_token = ${lease.token}
+    and j.lease_until > ${DB_CLOCK}
+    and j.lease_generation = ${lease.generation}
+    and j.lease_generation = (select g.generation from plt.job_lease_generation g)`;
+}
+
+/** Locks the job row, waiting for any other holder, before the authority is read (rule 4). */
+async function lockJobRow(tx: Tx, jobId: string): Promise<void> {
+  await sql`select id from plt.job where id = ${jobId} for update`.execute(tx);
+}
+
+/**
+ * The public authority check (ADR-0004 rules 2 and 4) for a write made on a job's behalf, in the
+ * caller's transaction: locks the plt.job row (so a reclaim, which updates that row, is ordered
+ * before or after this write), then checks all four conditions on the database clock read after
+ * the lock was granted. Throws `JobLeaseLost` otherwise, so the caller's transaction rolls back.
+ * A missing or malformed lease is refused before any query (fail-closed).
+ */
+export async function assertJobAuthority(tx: Tx, lease: JobLease | undefined): Promise<void> {
+  if (!isLease(lease)) throw new JobLeaseLost();
+  await lockJobRow(tx, lease.id);
+  const held = await sql<{ id: string }>`
+    select j.id from plt.job j where ${authorityHolds(lease)}`.execute(tx);
+  if (held.rows.length !== 1) throw new JobLeaseLost();
 }
 
 const KIND = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/;
@@ -125,7 +225,12 @@ export async function enqueueJob<P>(
   return row?.id ?? null;
 }
 
-/** Claims due jobs of the given kinds; concurrent claims never get the same job (rule 3). */
+/**
+ * Claims due jobs of the given kinds; concurrent claims never get the same job (rule 3). `now`
+ * decides only which jobs are due (run_at) and the record; the lease ends `lease_seconds` after the
+ * database clock, and the claim records the current lease generation (ADR-0004 rules 2 and 3).
+ * Without the generation row nothing is claimed.
+ */
 export async function claimJobs(
   db: Database,
   kinds: readonly string[],
@@ -155,8 +260,11 @@ export async function claimJobs(
     attempt: number;
     lease_token: string;
     lease_seconds: number;
+    lease_generation: number;
   }>`
-    with picked as (
+    with generation as (
+      select g.generation from plt.job_lease_generation g
+    ), picked as (
       select id from plt.job
       where state in ('queued', 'retry_scheduled') and run_at <= ${now}
         and kind = any(${kinds as string[]})
@@ -167,11 +275,12 @@ export async function claimJobs(
     )
     update plt.job j
     set state = 'running', attempt = j.attempt + 1, lease_token = gen_random_uuid(),
-        lease_until = ${now}::timestamptz + make_interval(secs => j.lease_seconds),
+        lease_until = ${DB_CLOCK} + make_interval(secs => j.lease_seconds),
+        lease_generation = generation.generation,
         updated_at = ${now}
-    from picked where j.id = picked.id
+    from picked, generation where j.id = picked.id
     returning j.id, j.kind, j.payload, j.payload_version, j.attempt, j.lease_token,
-      j.lease_seconds`.execute(db);
+      j.lease_seconds, j.lease_generation`.execute(db);
   return result.rows.map((row) => ({
     id: row.id,
     kind: row.kind,
@@ -180,42 +289,79 @@ export async function claimJobs(
     attempt: row.attempt,
     token: row.lease_token,
     leaseSeconds: row.lease_seconds,
+    generation: row.lease_generation,
   }));
 }
 
-/**
- * Extends a running job's lease from `now` (rule 5). Only the current claim may renew, so a
- * runner whose lease already ran out, or whose job was cancelled, gets false and stops renewing.
- */
-export async function renewJobLease(db: Database, job: ClaimedJob, now: Date): Promise<boolean> {
-  const result = await sql`
-    update plt.job
-    set lease_until = ${now}::timestamptz + make_interval(secs => lease_seconds)
-    where id = ${job.id} and lease_token = ${job.token} and state = 'running'`.execute(db);
-  return Number(result.numAffectedRows ?? 0) === 1;
+/** The default renewal period: a quarter of the lease, at least a second. */
+function defaultRenewalMs(job: Pick<ClaimedJob, "leaseSeconds">): number {
+  return Math.max(1000, (job.leaseSeconds * 1000) / 4);
 }
 
-/** False when this claim is void: its lease ran out, or the job was cancelled. */
+/** A renewal's statement timeout: half its period, so it ends well before the next one is due. */
+export function renewalTimeoutMs(everyMs: number): number {
+  return Math.max(1, Math.floor(everyMs / 2));
+}
+
+export interface RenewOptions {
+  /** The renewal's statement timeout; defaults to half the default renewal period. */
+  timeoutMs?: number;
+}
+
+/**
+ * Extends a running job's lease by `lease_seconds` from the database clock (rule 5; ADR-0004
+ * rule 2). Only where all four authority conditions still hold, so a late renewal never brings
+ * back a lease that ended, and a renewal of a claim made void (expired, claimed again, finished
+ * or cancelled) gets false. Every statement runs under a statement timeout shorter than the
+ * renewal period; a timed-out renewal rejects and extends nothing. `_now` is the caller's time,
+ * kept in the signature only: no lease is set from it.
+ */
+export async function renewJobLease(
+  db: Database,
+  job: ClaimedJob,
+  _now: Date,
+  options: RenewOptions = {},
+): Promise<boolean> {
+  const lease = jobLease(job);
+  if (!isLease(lease)) return false;
+  const timeoutMs = options.timeoutMs ?? renewalTimeoutMs(defaultRenewalMs(job));
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) throw new Error("Invalid renewal timeout");
+  return db.transaction().execute(async (tx) => {
+    await sql`select set_config('statement_timeout', ${String(timeoutMs)}, true)`.execute(tx);
+    await lockJobRow(tx, lease.id);
+    const result = await sql`
+      update plt.job j
+      set lease_until = ${DB_CLOCK} + make_interval(secs => j.lease_seconds)
+      where ${authorityHolds(lease)}`.execute(tx);
+    return Number(result.numAffectedRows ?? 0) === 1;
+  });
+}
+
+/**
+ * Closes the job as succeeded, only with authority (ADR-0004 rules 2 and 4): false, and nothing
+ * changed, when this claim is void, i.e. its lease ended (even before any reclaim), the job was
+ * claimed again, already finished or was cancelled, or the claim carries no lease. `now` is the
+ * record's time only.
+ */
 export async function completeJob(db: Database, job: ClaimedJob, now: Date): Promise<boolean> {
-  const result = await db
-    .updateTable("plt.job")
-    .set({
-      state: "succeeded",
-      lease_token: null,
-      lease_until: null,
-      updated_at: now,
-      finished_at: now,
-    })
-    .where("id", "=", job.id)
-    .where("lease_token", "=", job.token)
-    .where("state", "=", "running")
-    .executeTakeFirst();
-  return Number(result.numUpdatedRows) === 1;
+  const lease = jobLease(job);
+  if (!isLease(lease)) return false;
+  return db.transaction().execute(async (tx) => {
+    await lockJobRow(tx, lease.id);
+    const result = await sql`
+      update plt.job j
+      set state = 'succeeded', lease_token = null, lease_until = null,
+          updated_at = ${now}, finished_at = ${now}
+      where ${authorityHolds(lease)}`.execute(tx);
+    return Number(result.numAffectedRows ?? 0) === 1;
+  });
 }
 
 /**
  * Records a failed attempt with a short reason code. Retries later with a growing delay, or
- * fails for good after the last attempt or when `terminal` (rule 4).
+ * fails for good after the last attempt or when `terminal` (rule 4). Only with authority
+ * (ADR-0004 rules 2 and 4): null, and nothing changed, when this claim is void. `now` schedules
+ * the retry (run_at) and stamps the record only.
  */
 export async function failJob(
   db: Database,
@@ -224,17 +370,24 @@ export async function failJob(
   now: Date,
   terminal = false,
 ): Promise<JobState | null> {
+  const lease = jobLease(job);
+  if (!isLease(lease)) return null;
   const code = REASON.test(reason) ? reason : "handler_error";
-  const result = await sql<{ state: JobState }>`
-    update plt.job
-    set state = case when ${terminal} or attempt >= max_attempts then 'failed' else 'retry_scheduled' end,
-        run_at = ${now}::timestamptz + make_interval(secs =>
-          least(retry_max_seconds, retry_base_seconds * power(2, attempt - 1))),
-        finished_at = case when ${terminal} or attempt >= max_attempts then ${now}::timestamptz end,
-        last_error = ${code}, lease_token = null, lease_until = null, updated_at = ${now}
-    where id = ${job.id} and lease_token = ${job.token} and state = 'running'
-    returning state`.execute(db);
-  return result.rows[0]?.state ?? null;
+  return db.transaction().execute(async (tx) => {
+    await lockJobRow(tx, lease.id);
+    const result = await sql<{ state: JobState }>`
+      update plt.job j
+      set state = case when ${terminal} or j.attempt >= j.max_attempts then 'failed'
+            else 'retry_scheduled' end,
+          run_at = ${now}::timestamptz + make_interval(secs =>
+            least(j.retry_max_seconds, j.retry_base_seconds * power(2, j.attempt - 1))),
+          finished_at = case when ${terminal} or j.attempt >= j.max_attempts
+            then ${now}::timestamptz end,
+          last_error = ${code}, lease_token = null, lease_until = null, updated_at = ${now}
+      where ${authorityHolds(lease)}
+      returning j.state`.execute(tx);
+    return result.rows.length === 1 ? (result.rows[0]?.state ?? null) : null;
+  });
 }
 
 /** A cancelled job is never claimed; a running one stops at its next step (rule 7). */
@@ -319,7 +472,10 @@ export async function lastSucceededJobAt(
 
 /**
  * Returns jobs whose lease ran out (the runner crashed or timed out) to the queue, or fails them
- * after their last attempt (rule 5). Every runner sweeps before it claims.
+ * after their last attempt (rule 5). Every runner sweeps before it claims. The lease is compared
+ * with the database clock (ADR-0004 rule 2), with no generation condition: a job claimed with a
+ * NULL or older generation has no authority, and is swept once its lease ends. `now` schedules the
+ * job again (run_at) and stamps the record only.
  */
 export async function sweepJobs(db: Database, now: Date): Promise<number> {
   const result = await sql`
@@ -328,7 +484,7 @@ export async function sweepJobs(db: Database, now: Date): Promise<number> {
         finished_at = case when attempt >= max_attempts then ${now}::timestamptz end,
         run_at = ${now}, last_error = 'lease_expired', lease_token = null, lease_until = null,
         updated_at = ${now}
-    where state = 'running' and lease_until < ${now}`.execute(db);
+    where state = 'running' and lease_until < ${DB_CLOCK}`.execute(db);
   return Number(result.numAffectedRows ?? 0);
 }
 
@@ -343,7 +499,12 @@ export async function hasJobStep(db: Database, jobId: string, name: string): Pro
   return marked !== undefined;
 }
 
-/** One step of a claimed job; `JobContext.step` calls this. Exported for tests and tools. */
+/**
+ * One step of a claimed job; `JobContext.step` calls this. Exported for tests and tools. In one
+ * transaction: the cancelled check at the step boundary (rule 7), then the authority check on the
+ * locked job row (ADR-0004 rule 4), then the step's key and its effect (rule 6). A refused check
+ * throws `JobLeaseLost` and the transaction rolls back. `now` stamps the step record only.
+ */
 export async function runJobStep(
   db: Database,
   job: ClaimedJob,
@@ -359,6 +520,7 @@ export async function runJobStep(
       .forUpdate()
       .executeTakeFirst();
     if (current?.state === "cancelled") throw new JobCancelled();
+    await assertJobAuthority(tx, jobLease(job));
     const marked = await tx
       .insertInto("plt.job_step")
       .values({ job_id: job.id, step: name, done_at: now })
@@ -386,16 +548,13 @@ export interface RunOptions {
   leaseRenewalMs?: number;
 }
 
-/** A hung renewal plus one more; any more would only take further pool connections. */
-const MAX_UNSETTLED_RENEWALS = 2;
-
 /**
- * Calls `renew` every `every` ms until stopped or until it reports the claim lost. A renewal
- * still unsettled after most of its period counts as failed, so the next one still runs: the
- * pool has no query timeout, and one hung connection must not let the lease run out. Each
- * unsettled renewal still holds a pool connection, so no new one starts while
- * `MAX_UNSETTLED_RENEWALS` are unsettled. The returned stop waits for a renewal in flight only up
- * to that bound.
+ * Calls `renew` every `every` ms until stopped or until the claim counts as lost (ADR-0004 rule 2).
+ * A renewal that answers false, fails, or is still unsettled after most of its period counts as
+ * lost: the runner stops renewing, and no answer that arrives later brings the claim back. The
+ * database decides authority on every guarded write; the runner never assumes more than it was
+ * last told. At most one renewal is in flight, and the returned stop waits for it only up to that
+ * bound.
  */
 export function keepRenewing(
   renew: () => Promise<boolean>,
@@ -406,29 +565,28 @@ export function keepRenewing(
 ): () => Promise<void> {
   const boundMs = Math.max(1, Math.floor(every * 0.8));
   let renewal: Promise<void> | null = null;
-  let unsettled = 0;
   let lost = false;
+  const lose = (cause?: "job_lease_renewal_failed" | "job_lease_renewal_timeout") => {
+    if (lost) return;
+    lost = true;
+    clearInterval(timer);
+    if (cause) report(cause);
+    report("job_lease_lost");
+  };
   const timer = setInterval(() => {
-    if (renewal || lost || unsettled >= MAX_UNSETTLED_RENEWALS) return;
+    if (renewal || lost) return;
     let bound: ReturnType<typeof setTimeout> | undefined;
-    unsettled += 1;
-    const call = renew().finally(() => {
-      unsettled -= 1;
-    });
     const current: Promise<void> = Promise.race([
-      call.then(
+      renew().then(
         (renewed) => {
-          // Cancelled, or claimed again after an expiry: the token guards completion either way.
-          if (!renewed) {
-            lost = true;
-            report("job_lease_lost");
-          }
+          // Expired, cancelled, finished or claimed again: no authority from here on.
+          if (!renewed) lose();
         },
-        () => report("job_lease_renewal_failed"),
+        () => lose("job_lease_renewal_failed"),
       ),
       new Promise<void>((resolve) => {
         bound = setTimeout(() => {
-          report("job_lease_renewal_timeout");
+          lose("job_lease_renewal_timeout");
           resolve();
         }, boundMs);
       }),
@@ -446,7 +604,7 @@ export function keepRenewing(
 
 /**
  * Renews the claim while its handler runs (rule 5), so a lease can be short and a runner that
- * stopped is found soon after.
+ * stopped is found soon after. Each renewal's statement timeout is shorter than its period.
  */
 function keepLease(
   db: Database,
@@ -454,10 +612,10 @@ function keepLease(
   now: () => Date,
   options: Pick<RunOptions, "leaseRenewalMs" | "log">,
 ): () => Promise<void> {
-  const every = options.leaseRenewalMs ?? Math.max(1000, (job.leaseSeconds * 1000) / 4);
+  const every = options.leaseRenewalMs ?? defaultRenewalMs(job);
   const fields = { kind: job.kind, job_id: job.id, attempt: job.attempt };
   return keepRenewing(
-    () => renewJobLease(db, job, now()),
+    () => renewJobLease(db, job, now(), { timeoutMs: renewalTimeoutMs(every) }),
     every,
     (event) => options.log?.("warn", event, fields),
   );
@@ -502,10 +660,12 @@ export async function runDueJobs(
       summary.failed += 1;
       continue;
     }
+    const lease = jobLease(job);
     const ctx: JobContext = {
       db,
       now,
       job: { id: job.id, attempt: job.attempt },
+      ...(lease ? { lease } : {}),
       ...(options.finishBy ? { deadline: options.finishBy } : {}),
       ...(options.log ? { log: options.log } : {}),
       step: (name, effect) => runJobStep(db, job, name, effect, now()),
@@ -517,9 +677,17 @@ export async function runDueJobs(
       } finally {
         await stopRenewal();
       }
-      if (await completeJob(db, job, now())) summary.succeeded += 1;
-      options.log?.("info", "job_succeeded", fields);
+      // Zero rows is never a success (ADR-0004 rule 2): the claim was void by then.
+      if (await completeJob(db, job, now())) {
+        summary.succeeded += 1;
+        options.log?.("info", "job_succeeded", fields);
+      } else options.log?.("warn", "job_lease_lost", fields);
     } catch (error) {
+      if (error instanceof JobLeaseLost) {
+        // No authority, so nothing to settle: the current claim or the sweep decides the job.
+        options.log?.("warn", "job_lease_lost", fields);
+        continue;
+      }
       if (error instanceof JobCancelled) {
         summary.cancelled += 1;
         options.log?.("info", "job_cancelled", fields);
@@ -527,6 +695,10 @@ export async function runDueJobs(
       }
       const code = error instanceof AppError ? error.code : "handler_error";
       const state = await failJob(db, job, code, now());
+      if (state === null) {
+        options.log?.("warn", "job_lease_lost", fields);
+        continue;
+      }
       if (state === "failed") summary.failed += 1;
       else summary.retried += 1;
       options.log?.(state === "failed" ? "error" : "warn", "job_failed", {
