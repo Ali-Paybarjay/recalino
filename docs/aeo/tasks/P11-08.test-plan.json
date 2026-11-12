@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P11-08",
+  "kind": "pass_to_pass",
+  "base_sha": "7cc035dbc9d535b67bf899fa1cb7836f1709dc7b",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7cc035dbc9d535b67bf899fa1cb7836f1709dc7b",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/maintenance.test.ts",
+      "sha256": "af8cb3b1ca7d5306d5695fbf8ccd3d38b58a08bf109b2ee44bc92d6a3a14f1a0"
+    },
+    {
+      "path": "packages/core/src/ops/admin-tasks.test.ts",
+      "sha256": "53168072d8bcaf649c2fa2041591249c87f4b498a3ed204b849915d72151496e"
+    },
+    {
+      "path": "packages/core/src/plt/schema-version.test.ts",
+      "sha256": "56f80906191b6ad10b24f1d0922119abec1e320b526ebfda443e29fef75c35bd"
+    },
+    {
+      "path": "tools/schema-version/build.test.ts",
+      "sha256": "91f382ae31bd11651089aecd2cfd55f59154a2d7acbd03e2977290611b76a5a4"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/maintenance.test.ts",
+      "name": "the unit suite is green on head, including the unchanged maintenance, admin tasks and schema version unit tests and the schema version build test; the new barrier int test in plt/claim-barrier.int.test.ts runs in CI test:int on the same head with the migrations applied from scratch, covering the payload requeue, the six barrier states and the held old runner",
+      "maps_to_criteria": ["AC-4", "AC-6", "AC-9"]
+    }
+  ]
+}

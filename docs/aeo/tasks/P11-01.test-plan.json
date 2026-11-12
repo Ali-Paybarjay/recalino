@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "task_id": "P11-01",
+  "kind": "pass_to_pass",
+  "base_sha": "7cc035dbc9d535b67bf899fa1cb7836f1709dc7b",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "7cc035dbc9d535b67bf899fa1cb7836f1709dc7b",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/maintenance.test.ts",
+      "sha256": "af8cb3b1ca7d5306d5695fbf8ccd3d38b58a08bf109b2ee44bc92d6a3a14f1a0"
+    },
+    {
+      "path": "packages/core/src/ops/admin-tasks.test.ts",
+      "sha256": "53168072d8bcaf649c2fa2041591249c87f4b498a3ed204b849915d72151496e"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.test.ts",
+      "sha256": "759e18ce74954e75ac71faa47eb8eb749671fef2d474a4215f035d96bc8cbe7a"
+    },
+    {
+      "path": "packages/core/src/plt/storage-compose-module.test.ts",
+      "sha256": "31662464b6e1d01b4856dc112e434d77fa5bdafbea6d40263e33e17dbf7b7176"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/maintenance.test.ts",
+      "name": "the unit suite is green on head, including the unchanged maintenance unit tests and the new job authority unit tests in plt/jobs.test.ts; the new V3-01, V3-02, V3-03 and V3-07 int tests in plt/jobs.int.test.ts run in CI test:int on the same head; and the admin tasks, provider step runtime and storage compose module unit tests stay unchanged",
+      "maps_to_criteria": ["AC-8", "AC-9"]
+    }
+  ]
+}

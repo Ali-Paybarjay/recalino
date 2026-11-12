@@ -1,0 +1,93 @@
+{
+  "schema_version": "1",
+  "id": "P11-02",
+  "title": "fencing اثرهای provider و storage زیر اختیار Job (دستهٔ ۱۱ L3، دور دوم؛ C8-6 و C9-13 بخش fencing، C11-4؛ v3، E280‑R؛ Recalino ADR-0004 ‏0.6 بندهای 4 و 6)",
+  "goal": "C8-6 (P8-02، F-6؛ P10-01، F-2): پاسخ پولی worker کهنه پس از برداشت دوبارهٔ Job گم می‌شود یا با اختیار باطل commit می‌شود. C9-13 (بخش fencing): اجراکنندهٔ کهنه نباید ردیف هزینه یا settle ثبت کند. C11-4 (review:security ‏P11-03، hypothesis): در مسیر pendingOnly، bytes پیش از commit علامت deleted حذف می‌شوند. C11-12 (بازبینی معماری P11-07، F-11): نوشتن‌های دامنه (liveRun، شاخهٔ ذخیرهٔ commitProviderOutput، failRun، storeExtraction) فقط وضعیت run را می‌سنجند، پس fencing در plt.job به‌تنهایی worker کهنه را متوقف نمی‌کند. Recalino ADR-0004 (0.6، پذیرفته؛ بند 4) این مسیرها را تحت حفاظت می‌گذارد: providerStep (وضعیت attempt، checkpoint خروجی provider، settle هزینه)، writeOwnedObject (ردیف شیء برای bytes ذخیره‌شده)، حذف بیرونی storage (علامت ردیف و حذف bytes)، و نوشتن‌های دامنه از طرف Job (checkpoint، content version، dispatch پولی، بستن یا شکست run). این کارت مرحلهٔ P11-02 جدول «تحویل پلکانی» است، پس از ادغام P11-01 و با اختیار تعریف‌شدهٔ آن. بازیابی نتیجه و تطبیق هزینه (ADR بند 7؛ V3-04 بخش بازیابی، V3-05، V3-08) در دستهٔ ۱۲ است.",
+  "mode": "brownfield",
+  "task_type": "bugfix",
+  "risk_level": "high",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "providerStep (ADR-0004 بند 4؛ V3-01 بخش provider؛ V3-04 بخش رد commit): وضعیت provider attempt، checkpoint خروجی provider و settle هزینه فقط با اختیار P11-01 و با بررسی اتمی در همان تراکنش، از راه API عمومی اختیار PLT ‏(P11-01 ‏AC-12)، ثبت می‌شوند. پاسخ providerی که پس از ابطال اختیار A می‌رسد، از A ‏commit نمی‌شود؛ تراکنش برمی‌گردد. B طبق قرارداد ادامه می‌دهد. اجراکنندهٔ کهنه هیچ ردیف provider_cost تازه یا settle ثبت نمی‌کند (C9-13، بخش fencing)."
+    },
+    {
+      "id": "AC-2",
+      "statement": "ردپای نتیجهٔ ردشده (V3-04: «نتیجه بی‌ردپا گم نشود»): وقتی commit از A رد می‌شود، یک ثبت فقط با شناسه‌ها (شناسهٔ Job، attempt، کلید عملیات و شناسهٔ درخواست provider در صورت وجود)، بی محتوای خروجی و بی دادهٔ کاربر، از مسیر ثبت موجود انجام می‌شود. هیچ جدول یا ستون تازه‌ای ساخته نمی‌شود. بازیابی همان نتیجه در دستهٔ ۱۲ است و V3-04 در وضعیت «باز، دستهٔ ۱۲» می‌ماند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "writeOwnedObject (ADR-0004 بند 4): ردیف شیء برای bytes ذخیره‌شده وقتی از درون یک Job نوشته می‌شود، فقط با اختیار همان Job و با بررسی اتمی ثبت می‌شود؛ رد بررسی تراکنش را برمی‌گرداند. فراخوان‌های بیرون از Job همان رفتار پیشین را دارند."
+    },
+    {
+      "id": "AC-10",
+      "statement": "نوشتن‌های دامنه (ADR-0004 ‏0.6 بند 4؛ C11-12): liveRun، شاخهٔ ذخیرهٔ commitProviderOutput، failRun و storeExtraction، وقتی از طرف Job اجرا می‌شوند، همان بررسی اختیار P11-01 را در همان تراکنش می‌گذرانند: با توکن و نسل JobContext و فقط از راه API عمومی اختیار PLT ‏(P11-01 ‏AC-12)، ردیف plt.job با توکن برابر، وضعیت running، نسل کنونی و lease_until > now() قفل و بررسی می‌شود؛ هیچ SQL مستقیم بر schema ‏plt در proc یا media نیست (مرز مالکیت ADR-0002؛ یادداشت تفسیری (الف) حکم بازبین ساختاری بر 0.6). این سازوکار ترجیحی ADR است و در این کارت migration تازه نمی‌خواهد؛ «بی migration» مثال بند 4 نیاز به migration مشترک نسل ‏(P11-09) را حذف نمی‌کند (یادداشت تفسیری (ب)). بررسی وضعیت run به‌تنهایی اختیار نیست. رد بررسی تراکنش را برمی‌گرداند؛ worker کهنه نه checkpoint ذخیره می‌کند، نه content version می‌سازد، نه گام بعد را dispatch می‌کند، نه run را می‌بندد. فراخوان‌های بیرون از Job همان رفتار پیشین را دارند. اگر سازوکار ترجیحی ناشدنی باشد (جایگزین lease_token روی proc.processing_run migration می‌خواهد)، Implementer با شاهد blocked می‌شود."
+    },
+    {
+      "id": "AC-4",
+      "statement": "حذف بیرونی storage (ADR-0004 بند 6؛ V3-06 مرز اختیار؛ C11-4): علامت deleted یک update شرطی بر شناسهٔ شیء و state = 'pending' است و صفر ردیف هرگز موفقیت گزارش نمی‌شود (رفتار P11-03 حفظ). bytes فقط پس از commit علامت حذف می‌شوند؛ شکست حذف bytes یک ردیف ردیابی‌شده برای reconcile ‏storage باقی می‌گذارد و بستن run را نمی‌شکند (رفتار B ‏P10-03 حفظ). وقتی حذف از درون Job است، علامت فقط با اختیار همان Job ثبت می‌شود."
+    },
+    {
+      "id": "AC-5",
+      "statement": "آزمون int ‏F-2 (E249‑R پرسش ۵ = الف): یک آزمون int در priv/media.int.test.ts ترتیب F-2 را بازتولید می‌کند: A ‏attempt و hold را commit کرده؛ مهلت A می‌گذرد و B ‏claim می‌کند؛ پاسخ provider ‏A پس از reclaim می‌رسد. Implementer نشان می‌دهد آزمون بی اصلاح شکست می‌خورد. پس از اصلاح: commit از A رد، ردپای AC-2 موجود، و B طبق قرارداد. آزمون‌های int تازه برای AC-3 و AC-4 در plt/storage.int.test.ts. آزمون‌های موجود priv/media.int.test.ts و plt/storage.int.test.ts، از جمله آزمون‌های C9-15، C9-16، C10-6 و P11-03، بی‌تغییر و سبزند. آزمون int تازه در priv/media.int.test.ts یا plt/storage.int.test.ts نشان می‌دهد worker کهنه پس از reclaim نه checkpoint ذخیره می‌کند و نه run را می‌بندد (AC-10)، با شاهد شکست پیش از اصلاح."
+    },
+    {
+      "id": "AC-6",
+      "statement": "شاهد اجرایی (E198‑R؛ ADR-0004 «شواهد»؛ تحویل پلکانی): pnpm test:unit روی head سبز است؛ CI روی همان head سبز است (pnpm test:int)، که ترکیب نهایی claim، renew، sweep و commit را با P11-01 ادغام‌شده می‌سنجد؛ و پس از merge، CI روی commit ادغام‌شده دوباره سبز است. فایل‌های قفل TestPlan بی‌تغییرند."
+    },
+    {
+      "id": "AC-7",
+      "statement": "مانع استقرار: این کارت هیچ فعال‌سازی، تغییر نسل یا چرخش توکن، و هیچ تغییر پیکربندی Cron یا استقرار ندارد (ADR-0004 بند 3؛ P11-08). PR این کارت پس از سبز شدن CI و approve مالک نگه داشته می‌شود و فقط درون پنجرهٔ مانع استقرار، پس از آماده شدن کارت P11-08 و به ترتیب P11-01 ⇒ P11-02، ادغام می‌شود (E276‑R، Q-3 = الف؛ پیامد ADR-0004 بند 3)؛ PR کهنه با E22 تازه می‌شود. کلید خاموش رد است (E257 شرط ۲). اجرای cutover محیط production است (کلاس ۲) و با کارت P11-08 به مالک می‌رود. D7 بر merge این کارت جاری نیست."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL. fixtureها هیچ رشتهٔ هم‌شکل نشانی ایمیل جز دامنهٔ رزرو (example.com، ‎.test، ‎.invalid) ندارند (E173‑R)."
+    },
+    {
+      "id": "AC-9",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md، package.json یا docs/adr/**. هیچ hold، ردیف هزینه یا شیء موجود پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R)؛ هیچ حذف دسته‌جمعی. در packages/core/src/proc/steps/runtime.test.ts، packages/core/src/plt/storage-compose-module.test.ts و packages/core/src/proc/steps/fail-run.test.ts فقط fake یا wiring آزمون تغییر می‌کند (مثلاً پاسخ fake به بررسی اختیار یا update)؛ هیچ منطق آزمون، assertion یا آزمونی تغییر نمی‌کند و شمار آزمون‌های هر سه فایل ثابت می‌ماند (سابقهٔ P11-03 v2، E263‑R)."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/proc/steps/runtime.ts",
+    "packages/core/src/proc/steps/fail-run.ts",
+    "packages/core/src/plt/storage.ts",
+    "packages/core/src/plt/storage.int.test.ts",
+    "packages/core/src/media/assets.ts",
+    "packages/core/src/priv/media.int.test.ts",
+    "packages/core/src/proc/steps/runtime.test.ts",
+    "packages/core/src/plt/storage-compose-module.test.ts",
+    "packages/core/src/proc/steps/fail-run.test.ts"
+  ],
+  "depends_on": ["P11-01"],
+  "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C8-6 (P8-02، F-6؛ P10-01، F-2)، C9-13 (بخش fencing؛ E249‑R پرسش ۴ = الف؛ usage واقعی در P11-06)، C11-4 (review:security ‏P11-03، job-20261111-82761d51)؛ C11-12 (بازبینی معماری P11-07، F-11؛ job-20261111-c6ac9d81)؛ Recalino ADR-0004 ‏0.6 پذیرفته (حکم بازبین ساختاری، 2026-11-11) (بندهای 4 و 6، «تحویل پلکانی»، «پذیرش» و «شواهد»). L1 کد را نخواند (X1)؛ نام فایل‌ها از git ls-tree روی main@7cc035d است. محل providerStep، liveRun، commitProviderOutput و storeExtraction در proc/steps/runtime.ts، failRun در proc/steps/fail-run.ts و writeOwnedObject در plt/storage.ts از J1، J2 و گزارش P11-03 است (Documented).",
+    "ریسک کارت high (E276‑R، Q-5 = ب): اثر پولی و storage را fencing می‌کند؛ هم‌تراز P11-01؛ PR با approve مالک، بیرون از D7. gate برآورد medium (proc/**، plt/**، media/**، priv/** زیر default-medium)؛ C5 سطح بالاتر را می‌گیرد.",
+    "وابستگی: پس از ادغام P11-01 (اختیار و API عمومی آن، P11-01 ‏AC-12)؛ base پس از آن ادغام از main همان روز گرفته می‌شود. TestPlan روی main@7cc035d است و تازه نمی‌شود (E287‑R): هیچ کارت پیشینی قفل‌های آن را تغییر نمی‌دهد، و پیش از قفل مالک sha256 آن‌ها از main همان روز دوباره سنجیده می‌شود.",
+    "دامنه (E276‑R Q-4 = الف؛ E280‑R): C8-6، C9-13 (بخش fencing)، C11-4 و C11-12 (نوشتن‌های دامنه؛ پیشنهاد L1: همین کارت، چون liveRun، commitProviderOutput و storeExtraction در runtime.ts همین کارت‌اند و فقط fail-run.ts افزوده می‌شود). C11-2، C11-3 و C11-5 به دستهٔ ۱۲. بازیابی و تطبیق هزینه (C11-6 تا C11-9، C11-11؛ F-4 جز بخش ADR) به دستهٔ ۱۲.",
+    "context_refs (E274 ‏Q5-2 = الف، جاری بر 0.6): ‏docs/adr/0004-job-lease-fencing.md متن پذیرفتهٔ بازبین ساختاری است (0.6؛ تفاوت با 0.6 فقط در خط عنوان و ردیف‌های نسخه و وضعیت) و در همان PR کارت‌ها به main می‌رسد؛ این کارت و نسخه‌های بعدی آن ADR را تغییر نمی‌دهند (docs/adr/** بیرون از owns).",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند؛ TP-1 آزمون unit موجود packages/core/src/proc/maintenance.test.ts است (E287‑R)؛ آزمون‌های unit اختیار P11-01 در plt/jobs.test.ts جزء همان suite سبزند. *.int.test.ts در CI با Postgres اجرا می‌شود؛ شاهد int همان CI سبز روی head و دوباره روی commit ادغام‌شده است.",
+    "قاعدهٔ قفل (E249‑R، E276‑R Q-4 = ب برای fake): proc/steps/runtime.test.ts، plt/storage-compose-module.test.ts و proc/steps/fail-run.test.ts فقط برای fake در owns هستند (AC-9) و در TestPlan قفل نیستند. قفل‌ها (E287‑R): proc/maintenance.test.ts و ops/admin-tasks.test.ts. plt/jobs.test.ts و plt/jobs.int.test.ts (owns ‏P11-01) قفل نمی‌شوند، چون gate ‏testplan-lock هر قفل را روی head ‏PR با sha256 درون TestPlan می‌سنجد (controller/src/gate/gates.ts، testPlanLockChecks) و کارت پیشین آن‌ها را تغییر می‌دهد؛ این کارت آن‌ها را در owns ندارد، پس gate ‏scope تغییرشان را رد می‌کند و نگهبانی از دست نمی‌رود.",
+    "install_assets (E192‑R؛ R80): مانند کارت‌های دستهٔ ۱۱. نصب: پیش‌فرض runner. verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8). برآورد 3 تا 8 دلار.",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (80) است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}

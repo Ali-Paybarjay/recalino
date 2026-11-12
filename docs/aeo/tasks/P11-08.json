@@ -1,0 +1,101 @@
+{
+  "schema_version": "1",
+  "id": "P11-08",
+  "title": "مانع استقرار: قید سمت پایگاه داده روی claim، runbook ‏cutover و Rollback (دستهٔ ۱۱ L3، دور دوم؛ گام 3؛ C11-10، C11-13؛ Recalino ADR-0004 ‏0.6 بند 3)",
+  "goal": "P11-07 (F-7) و بازبینی معماری آن (F-13) نشان دادند امروز هیچ سازوکاری پذیرش کار را در نسخهٔ قدیم نمی‌بندد: claimJobs فیلتر build ندارد، runner قدیم تا 800 ثانیه claim می‌کند، و Instant Rollback کد قدیم را دوباره فعال می‌کند؛ مانعی که فقط کد تازه آن را بخواند، کد قدیم را نمی‌بندد. Recalino ADR-0004 ‏0.6 (بند 3) سازوکار را قید سمت پایگاه داده روی claim با ترتیب سه‌گامه می‌گذارد. این کارت گام 3 است: قید یا trigger روی claim که فقط با یک کنش فعال‌سازی اجرا می‌شود، کنش فعال‌سازی تراکنشی (بالا بردن نسل، تعیین build مجاز، چرخش توکن Jobهای running)، requeue نسخهٔ payload، runbook ‏cutover و Rollback، و آزمون «اجرای قدیم عمداً نگه‌داشته‌شده». اجرای cutover در production کار مالک است (کلاس ۲).",
+  "mode": "brownfield",
+  "task_type": "migration",
+  "risk_level": "high",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "قید سمت پایگاه داده (ADR-0004 ‏0.6 بند 3؛ C11-13): دقیقاً یک فایل migration تازه: supabase/migrations/20261112130000_plt_job_claim_barrier.sql (نام دقیق owns). اگر timestamp آن از همهٔ migrationهای موجود base، از جمله migration ‏P11-09، بزرگ‌تر نباشد، Implementer با شاهد blocked می‌شود و نام را تغییر نمی‌دهد. هیچ migration دیگری افزوده یا تغییر داده نمی‌شود. این فایل فقط قید یا trigger روی plt.job می‌سازد (ستون‌ها را P11-09 ساخته است) که پس از فعال‌سازی، هر claim (گذار به running) را رد می‌کند مگر نسل ثبت‌شده در ستون نسل P11-09 برابر نسل کنونی ردیف singleton باشد، و اگر مجموعهٔ build مجاز تهی نباشد، مقدار ستون build ‏P11-09 همان claim در آن مجموعه باشد. ستون null پس از فعال‌سازی رد می‌شود. پیش از فعال‌سازی، قید هیچ اثری ندارد."
+    },
+    {
+      "id": "AC-2",
+      "statement": "کنش فعال‌سازی: یک تابع SQL یا روال واحد، در یک تراکنش، نسل را بالا می‌برد، مجموعهٔ build مجاز را تعیین می‌کند، lease_token همهٔ Jobهای running را می‌چرخاند و قید را فعال می‌کند (ADR-0004 بند 3: «نسل بالا رفته باشد، که توکن هر Job در حال اجرا را می‌چرخاند»). هیچ migration یا مسیر خودکار کد آن را اجرا نمی‌کند؛ فقط مالک طبق runbook (AC-5) آن را اجرا می‌کند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "شناسهٔ build در claim: claim شناسهٔ build استقرار جاری را در ستون build که P11-09 ساخته (AC-2 آن) ثبت می‌کند؛ این کارت ستون تازه نمی‌سازد. منبع شناسه (متغیر محیط سکوی استقرار یا commit) در گزارش صریح می‌آید؛ اگر Implementer منبع پایدار نیابد، Task با پرسش باز blocked می‌شود و مانع فقط با نسل طراحی می‌شود (تصمیم بازبین)."
+    },
+    {
+      "id": "AC-4",
+      "statement": "نسخهٔ payload (ADR-0004 ‏0.6 بند 3؛ R2-R0004-05؛ J4 ‏F-13 و F-7): Jobی که payloadVersion آن از definition.version همان kind در اجراکننده بالاتر است، به صف برمی‌گردد: attempt برداشت پس داده می‌شود (مصرف خالص صفر) و run_at به تعویق می‌افتد؛ terminal fail و job_tampered فقط برای ناسازگاری‌های دیگر می‌ماند. kind ناشناخته مشمول این requeue نیست و برداشت نمی‌شود. دو سناریو: (یک) منع انتشار: این کارت version تعریف هیچ kind را بالا نمی‌برد، و runbook ‏(AC-5، بند ۵) افزایش payloadVersion را تا فعال‌سازی مانع و استقرار requeue در همهٔ buildهای مجاز ممنوع می‌کند؛ (دو) آزمون int در packages/core/src/plt/claim-barrier.int.test.ts نشان می‌دهد Job نسخهٔ بالاتر پس از requeue هیچ attempt خالصی مصرف نکرده است و run_at آن از now() پایگاه داده جلوتر است، پس در همان نوبت claim دوباره برداشته نمی‌شود؛ و Job با kind ناشناخته برداشت نمی‌شود."
+    },
+    {
+      "id": "AC-5",
+      "statement": "runbook تازه docs/runbooks/JOB_LEASE_BARRIER.md: (۱) پیش‌شرط‌ها: P11-09 اعمال‌شده، کد P11-01 و P11-02 مستقر و پرکنندهٔ ستون، و «ورودی مالک» (AC-8) موجود؛ هر کدام نامعلوم ⇒ فعال نکن؛ (۲) ترتیب cutover: استقرار، انتظار بیشینهٔ زمان اجرای نسخهٔ قدیم یا شاهد توقف همهٔ اجراهای قدیم از لاگ، سپس کنش فعال‌سازی AC-2؛ (۳) Instant Rollback: بازگشت به build پیش از مانع fail-closed است؛ بازگشت به build پس از مانع پیش از هر چیز ردیف build مجاز را به‌روز می‌کند؛ (۴) بازگشت از مانع (غیرفعال‌سازی) و پیامدش؛ (۵) منع افزایش payloadVersion تا فعال‌سازی مانع و استقرار requeue در همهٔ buildهای مجاز (ADR-0004 ‏0.6 بند 3). بی هیچ secret، نشانی یا شناسهٔ حساب."
+    },
+    {
+      "id": "AC-6",
+      "statement": "آزمون مانع (ADR-0004 «حالت مانع استقرار»؛ E268 شرط ۱؛ حکم بازبین ساختاری بر delta ‏0.5): آزمون int تازه در packages/core/src/plt/claim-barrier.int.test.ts با Postgres واقعی، پس از فعال‌سازی، این حالت‌ها را می‌پوشاند: (۱) Job تازه با نسل کنونی و build مجاز claim می‌شود؛ (۲) Jobی که build تازه پیش از فعال‌سازی برداشته، پس از چرخش توکن اختیار ندارد و فقط با claim تازه در نسل کنونی ادامه می‌دهد؛ (۳) claim با ستون نسل یا build برابر NULL رد می‌شود؛ (۴) مقدار باقی‌مانده از claim قبلی در ستون نسل یا build، حتی برابر نسل کنونی، به claimی که آن ستون را در همان update نمی‌نویسد اختیار نمی‌دهد و رد می‌شود؛ (۵) claim با build بیرون از مجموعهٔ مجاز رد می‌شود؛ (۶) همین حالت‌ها پس از Instant Rollback شبیه‌سازی‌شده: claim از build پیش از مانع رد می‌شود (fail-closed) و build پس از مانع فقط پس از به‌روزرسانی ردیف build مجاز claim می‌کند. افزون بر این، یک اجراکنندهٔ قدیم (claim بی ستون نسل یا build، و توکن پیش از فعال‌سازی) در طول فعال‌سازی زنده نگه داشته می‌شود و نشان داده می‌شود پس از فعال‌سازی نه می‌تواند claim کند، نه complete یا fail، و نه از مسیرهای تحت حفاظت P11-01 و P11-02 اثری ثبت کند؛ و پیش از فعال‌سازی هیچ رفتاری تغییر نمی‌کند. Implementer نشان می‌دهد آزمون بی قید شکست می‌خورد."
+    },
+    {
+      "id": "AC-7",
+      "statement": "سازگاری (E276‑R Q-2): ادغام و استقرار خود این کارت، با مانع غیرفعال، رفتار runner قدیم یا تازه را تغییر نمی‌دهد؛ پس استقرار مانع به مانع نیاز ندارد. PRهای P11-01، P11-02 و این کارت پس از سبز شدن و approve نگه داشته می‌شوند و درون پنجرهٔ cutover به ترتیب P11-01 ⇒ P11-02 ⇒ P11-08 ادغام می‌شوند (Q-3 = الف؛ کهنه ⇒ E22)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "ورودی مالک (بیرون از Task؛ کلاس ۲؛ E276‑R): (۱) مستند رسمی سکوی استقرار برای سه مورد Not Verified ‏C11-10: پایان اجرا در بیشینهٔ زمان تابع، از جمله کار پس از پاسخ؛ اینکه Cron فقط استقرار production جاری را صدا می‌زند؛ و ادامهٔ invocationهای در جریان پس از promote؛ (۲) لاگ runtime به تفکیک deployment پس از یک promote (رویدادهای claim و از دست رفتن lease از deployment قدیم)؛ (۳) اجرای cutover و کنش فعال‌سازی در production. Implementer این‌ها را اجرا یا جعل نمی‌کند؛ runbook جای آن‌ها را مشخص می‌کند و تا وقتی نامعلوم‌اند، فعال‌سازی ممنوع است."
+    },
+    {
+      "id": "AC-9",
+      "statement": "شاهد اجرایی (E198‑R؛ ADR-0004 «شواهد»): pnpm test:unit روی head سبز است؛ CI روی همان head سبز است (pnpm test:int، با migration از صفر)؛ پس از ادغام در پنجرهٔ cutover، CI روی commit ادغام‌شده دوباره سبز است. فایل‌های قفل TestPlan بی‌تغییرند."
+    },
+    {
+      "id": "AC-10",
+      "statement": "هیچ مقدار secret، نشانی ایمیل، نام حساب GitHub، شناسهٔ پروژه یا استقرار، یا دادهٔ کاربر در خروجی نیست؛ ارجاع فقط با شمارهٔ PR یا Issue و شناسهٔ commit، بدون URL (E173‑R)."
+    },
+    {
+      "id": "AC-11",
+      "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ تغییر CI، vercel.json، .claude/**، CLAUDE.md، package.json یا docs/adr/**. هیچ الگوی sql-destructive جز آنچه برای ساخت قید لازم است؛ هیچ دادهٔ موجود پاک یا تغییر داده نمی‌شود؛ کنش فعال‌سازی در Task اجرا نمی‌شود."
+    },
+    {
+      "id": "AC-12",
+      "statement": "فایل‌های تولیدی (هم‌سان P11-09 ‏AC-4؛ E282 و E283 = الف؛ اعمال قاعدهٔ E283 بر این کارت منوط به پاسخ مالک به پرسش کلاس ۱ migration ‏P11-08 است، چون E283 مالک فقط برای P11-09 بود؛ E287‑R): apps/web/src/server/schema-version.generated.ts فقط خروجی pnpm schema:version است و هیچ ویرایش دستی ندارد؛ شاهد آن آزمون قفل‌شدهٔ tools/schema-version/build.test.ts ‏(OPS-05) است که در verify سبز است. packages/core/src/db/types.ts فقط اگر migration این کارت جدول یا ستون تازه بسازد تغییر می‌کند، و آن هم فقط افزودنی؛ هیچ سطر موجود آن حذف یا تغییر داده نمی‌شود. شاهد: گام CI «Generated DB types match the migrations» روی همان head ‏PR سبز است و diff همین فایل در PR صفر سطر حذف‌شده دارد؛ بازبین هر دو را پیش از فرمان approve می‌سنجد. گام قرمز یا هر حذف ⇒ blocked و گزارش، بی approve و بی merge."
+    }
+  ],
+  "owns_paths": [
+    "supabase/migrations/20261112130000_plt_job_claim_barrier.sql",
+    "packages/core/src/plt/jobs.ts",
+    "packages/core/src/plt/jobs.test.ts",
+    "packages/core/src/plt/claim-barrier.int.test.ts",
+    "apps/web/src/server/jobs.ts",
+    "packages/core/src/db/types.ts",
+    "apps/web/src/server/schema-version.generated.ts",
+    "docs/runbooks/JOB_LEASE_BARRIER.md"
+  ],
+  "depends_on": ["P11-01", "P11-02"],
+  "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.database",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 1
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: C11-10 (P11-07، F-7) و C11-13 (بازبینی معماری، F-13)؛ Recalino ADR-0004 ‏0.6 پذیرفته (حکم بازبین ساختاری، 2026-11-11) (بند 3: سازوکار، ردیف مانع، ترتیب سه‌گامه، Instant Rollback، نسخهٔ payload، شاهد بیرون از کد)؛ E276‑R ‏Q-2 و Q-3؛ E280‑R. L1 کد را نخواند (X1)؛ نام فایل‌ها از git ls-tree روی main@7cc035d است؛ نام آزمون و runbook تازه پیشنهاد L1 است و نام دقیق migration برای یکدستی با E282 و چون targets.json رشتهٔ دقیق می‌خواهد ثابت شد (الگوی E281‑R لغو شد). Instant Rollback در docs/plans/RELEASE_RUNBOOK_2026-10-12.md است (به گفتهٔ Job)؛ این کارت آن فایل را تغییر نمی‌دهد و runbook تازه به آن ارجاع می‌دهد.",
+    "TestPlan این کارت (E286‑R، E287‑R): همراه کارت در PR کارت‌های دور دوم می‌آید تا هر چهار کارت در یک PR باشند؛ روی main@7cc035d است و پس از ادغام کارت‌های پیشین تازه نمی‌شود. قفل‌ها: proc/maintenance.test.ts، ops/admin-tasks.test.ts، plt/schema-version.test.ts و tools/schema-version/build.test.ts ‏(OPS-05؛ چون این کارت migration و schema-version.generated.ts دارد). plt/jobs.int.test.ts (owns ‏P11-01) و proc/steps/runtime.test.ts و plt/storage-compose-module.test.ts (owns ‏P11-02) قفل نمی‌شوند، چون gate ‏testplan-lock هر قفل را روی head ‏PR با sha256 درون TestPlan می‌سنجد (controller/src/gate/gates.ts، testPlanLockChecks) و کارت پیشین آن‌ها را تغییر می‌دهد؛ این کارت آن‌ها را در owns ندارد، پس gate ‏scope تغییرشان را رد می‌کند و نگهبانی از دست نمی‌رود. پیش از قفل مالک، sha256 چهار قفل از main همان روز دوباره سنجیده می‌شود.",
+    "ریسک کارت high (migration؛ مانع استقرار)؛ PR با approve مالک، بیرون از D7. gate احتمالاً high (supabase/**). کنش فعال‌سازی و cutover در production کلاس ۲ است و با مالک.",
+    "تصمیم مالک لازم (کلاس ۱؛ E279 فقط migration ‏P11-09 را پوشاند): migration این کارت (قید یا trigger غیرفعال) پیش از نخستین Job پرسش جداگانهٔ مالک می‌خواهد؛ همان پرسش اعمال قاعدهٔ E283 بر این کارت (AC-12) را هم دربرمی‌گیرد. تا شاهد AC-8، فعال‌سازی ممنوع است (ADR-0004). مدخل migration این کارت در PR سیاست aeo ‏#110 تصویب آن migration نیست.",
+    "سیاست AEO (E284 = الف، مالک، کلاس ۳): PR ‏policy(targets) در aeo ‏(#110) چهار مدخل دقیق به write_paths.recalino می‌افزاید، بی glob: docs/adr/0004-job-lease-fencing.md، نام دقیق migration ‏P11-09 و P11-08، و docs/runbooks/JOB_LEASE_BARRIER.md. approve مالک پس از حکم بازبین ساختاری بر diff آن است. تا merge آن، aeo run این کارت را پیش از هر رویداد رد می‌کند (R87) و aeo pr open پیش از push می‌ایستد؛ PR کارت‌ها پس از merge آن باز می‌شود. تغییر نام یا timestamp هر فایل پرسش تازهٔ مالک است، نه glob؛ گارد push دور زده نمی‌شود.",
+    "وابستگی: P11-09 ⇒ P11-01 ⇒ P11-02 ⇒ این کارت ⇒ cutover (مالک). plt/jobs.ts و plt/jobs.test.ts در owns ‏P11-01 هم هستند؛ دور ترتیبی است و این کارت پس از ادغام P11-01 و P11-02 اجرا می‌شود.",
+    "شاهد آزمون int (E198‑R): verify ‏AEO فقط pnpm test:unit را اجرا می‌کند. *.int.test.ts در CI با Postgres اجرا می‌شود؛ شاهد قید و آزمون اجرای قدیم همان CI سبز روی head است.",
+    "context_refs (E274 ‏Q5-2 = الف، جاری بر 0.6): ‏docs/adr/0004-job-lease-fencing.md متن پذیرفتهٔ بازبین ساختاری است (0.6؛ تفاوت با 0.6 فقط در خط عنوان و ردیف‌های نسخه و وضعیت) و در همان PR کارت‌ها به main می‌رسد؛ این کارت و نسخه‌های بعدی آن ADR را تغییر نمی‌دهند (docs/adr/** بیرون از owns).",
+    "install_assets (E192‑R؛ R80): مانند کارت‌های دستهٔ ۱۱.",
+    "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8). برآورد 3 تا 8 دلار.",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود. از R98 سقف نوبت کار از limits.max_turns همین کارت (80) است و L1 ‏--max-turns نمی‌دهد."
+  ]
+}
