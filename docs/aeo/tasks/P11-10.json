@@ -1,0 +1,64 @@
+{
+  "schema_version": "1",
+  "id": "P11-10",
+  "title": "فاصلهٔ انتشار ‏2b158f4..main: migrationها، env، پیکربندی و گام‌های دستی cutover (investigate فقط‌خواندنی؛ دستهٔ ۱۱ L3؛ E304، E308‑R، E309‑R)",
+  "goal": "مالک (E304) گفت آخرین استقرار production در 2026-10-25 روی commit ‏2b158f4 است و از آن زمان هیچ استقراری ساخته نشده؛ main حدود ۹۸ commit جلوتر است و استقرار خودکار تا پس از cutover خاموش می‌ماند. runbook ‏cutover ‏(P11-08 ‏AC-5 بند ۷) باید کل این فاصله را بپوشاند، نه فقط فعال‌سازی مانع. فهرست دفتری «آمادگی انتشار» از git فقط سه migration تازه و هیچ تغییر .env.example، vercel.json یا .github را نشان می‌دهد؛ تغییر کلیدهای env، پیکربندی و گام‌های دستی از خروجی‌های موجود معلوم نیست. این فاصله را بسنج، فقط از روی کد، تست‌ها، docs و git log/show/diff بازهٔ 2b158f4..base؛ بی تغییر کد، بی دادهٔ production و بی اجرای کد مخزن. خروجی: Finding v1.",
+  "mode": "brownfield",
+  "task_type": "docs",
+  "risk_level": "low",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "برای هر migration افزوده در بازهٔ 2b158f4..base (فهرست کامل با commit): چه می‌کند (جدول، ستون، index، قید، تابع، grant)، هر دستور ویرانگر (drop، delete، alter type، rename)، قفل‌هایی که می‌گیرد و lock_timeout، و idempotent بودن (if not exists، on conflict)، با شاهد path:line."
+    },
+    {
+      "id": "AC-2",
+      "statement": "برای هر migration معوق (E309‑R): آیا اعمال آن روی production در حالی که build قدیم (2b158f4) هنوز سرویس می‌دهد سازگار است (ترتیب expand/contract)؛ یعنی آیا کد 2b158f4 به چیزی که migration حذف یا عوض می‌کند وابسته است؛ و هر قید ترتیب میان migrationها و promote (پیش یا پس از promote، و چرا). هر ادعا با برچسب Documented (path:line) یا Not Verified."
+    },
+    {
+      "id": "AC-3",
+      "statement": "کلیدهای env که کد بازه تازه می‌خواند یا خواندنشان را تغییر داده، فقط نام کلید و بی مقدار: محل خواندن (path:line)، اجباری یا اختیاری، پیش‌فرض، و commit افزاینده؛ و هر تغییر در schema تنظیماتی که از env خوانده می‌شود (مثلاً کلیدهای PLT_SETTINGS_JSON) که کد قدیم یا تازه را با schema سخت‌گیر بشکند."
+    },
+    {
+      "id": "AC-4",
+      "statement": "تغییرهای پیکربندی اثرگذار بر استقرار در بازه: Cron، routeها و maxDuration، پیکربندی سکوی استقرار و Next، middleware، و اسکریپت‌های build، با path:line و commit؛ اگر هیچ، «هیچ»."
+    },
+    {
+      "id": "AC-5",
+      "statement": "گام‌های دستی: runbookها و planهای افزوده یا تغییرکرده در بازه (docs/runbooks/**، docs/plans/**) و هر گام دستی انتشار که می‌خواهند (backfill، اسکریپت، کلید یا تنظیم)، با path:line."
+    },
+    {
+      "id": "AC-6",
+      "statement": "نسخهٔ schema: نسخهٔ مورد انتظار کد روی base، رفتار schema guard هنگام promote وقتی پایگاه داده behind، ahead یا unknown است، و ترتیب امن اعمال migration و promote، با path:line."
+    },
+    {
+      "id": "AC-7",
+      "statement": "summary_fa: فهرست مرتب پیش از cutover: migrationها به ترتیب، کلیدهای env، پیکربندی، گام‌های دستی و سنجش‌ها؛ هر بند با Documented یا Not Verified؛ و هر چیزی که مالک باید در cutover انجام دهد یا تصمیم بگیرد. هر حدس با category و confidence برابر hypothesis."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ مقدار env، secret، کلید، نشانی ایمیل، نام حساب، شناسهٔ پروژه یا استقرار، یا دادهٔ کاربر در خروجی نیست؛ فقط مسیر، نام کلید، شمارش، نام تابع و commit."
+    },
+    {
+      "id": "AC-9",
+      "statement": "هیچ کد، تست، اسکریپت یا hook مخزن اجرا نشده و هیچ فایلی تغییر نکرده است (فقط Read و git log/show/diff/ls-files/grep)."
+    }
+  ],
+  "owns_paths": ["docs/aeo/audit/**"],
+  "depends_on": [],
+  "context_refs": ["docs/aeo/l3/phase11-plan.md"],
+  "roles": {
+    "implementer": "auditor.debt",
+    "reviewers": ["reviewer.architecture"]
+  },
+  "limits": {
+    "max_turns": 80
+  },
+  "assumptions": [
+    "مخزن recalino، base ‏main در روز اجرا (اکنون be0f8fe51c33c35bfa47feebc0a88c7e1715a456). منبع: E304 (مالک)، E308‑R و E309‑R؛ فهرست دفتری «آمادگی انتشار» 0.2. سه migration بازه به گفتهٔ git: 20261104130000_proc_failed_run_finished_at_index.sql، 20261104130100_plt_drop_acc_user_foreign_keys.sql و 20261112120000_plt_job_lease_generation.sql. migration ‏P11-08 ‏(20261112130000_plt_job_claim_barrier.sql) هنوز ادغام نشده است؛ اگر روی base بود، آن هم سنجیده شود. آغاز بازه 2b158f4، آخرین استقرار production به گفتهٔ مالک.",
+    "اجرا: --step audit، بی --test-plan (R92، audit معاف). سقف نوبت از limits.max_turns همین کارت (R98؛ ۸۰ مانند P11-07). سقف بلوک ۲۰ دلار (D8). برآورد 1.5 تا 3.5 دلار (P10-01: 1.33؛ P11-07: 3.28).",
+    "ورودی فقط Task Card و base است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1).",
+    "هیچ install و هیچ اجرای کد مخزن، پس install_assets ندارد. نقش auditor.debt هیچ write_paths ندارد؛ هیچ commit یا PR. owns_paths و task_type مانند P11-07 است. خروجی دفتری docs/l3/audit/P11-10.report.json. بازبینی معماری (reviewer.architecture) فقط پس از دیدن گزارش و با تصمیم بازبین اجرا می‌شود (E309‑R).",
+    "ترتیب (E309‑R): پس از ادغام PR کارت و «شروع» بازبین؛ موازی با P11-01 و P11-02 مجاز است، ولی هر بار فقط یک Job. خروجی آن ورودی runbook ‏P11-08 ‏(AC-5 بند ۷) و فهرست آمادگی است و پیش از Job ‏P11-08 می‌آید."
+  ]
+}
