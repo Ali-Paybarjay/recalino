@@ -475,7 +475,7 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
           contentType: "image/png",
           bytes: PNG,
           now: T0,
-          lease,
+          job: { lease },
         },
       );
     // With the authority, as before.
@@ -516,7 +516,7 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
           contentType: "image/png",
           bytes: PNG,
           now: T0,
-          lease: job.a,
+          job: { lease: job.a },
         },
       ),
     ).rejects.toMatchObject(leaseLost);
@@ -540,14 +540,14 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
     await expect(
       deleteObject(db, store, { userId: owner }, object.id, at(1), {
         pendingOnly: true,
-        lease: job.a,
+        job: { lease: job.a },
       }),
     ).rejects.toMatchObject(leaseLost);
     await expect(
       db.transaction().execute((tx) =>
         deleteObject(tx, store, { userId: owner }, object.id, at(1), {
           pendingOnly: true,
-          lease: job.a,
+          job: { lease: job.a },
         }),
       ),
     ).rejects.toMatchObject(leaseLost);
@@ -565,7 +565,7 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
     expect(
       await deleteObject(db, observing, { userId: owner }, object.id, at(1), {
         pendingOnly: true,
-        lease: b,
+        job: { lease: b },
       }),
     ).toBe(true);
     expect(seenAtByteDelete).toEqual(["deleted"]);
@@ -575,7 +575,7 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
     expect(
       await deleteObject(db, store, { userId: owner }, object.id, at(2), {
         pendingOnly: true,
-        lease: b,
+        job: { lease: b },
       }),
     ).toBe(false);
 
@@ -591,13 +591,94 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
     expect(
       await deleteObject(db, failing, { userId: owner }, kept.id, at(1), {
         pendingOnly: true,
-        lease: b,
+        job: { lease: b },
         onByteDeleteFailure: (error) => failures.push(error),
       }),
     ).toBe(true);
     expect(failures).toHaveLength(1);
     expect(await objectRow(kept.id)).toEqual({ state: "deleted", deleted_at: at(1) });
     expect(await store.head(kept.key)).not.toBeNull();
+    await job.done();
+  });
+
+  it("AC-13 a JobContext without a lease is refused by every guarded storage write (fail-closed)", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const noLease = {};
+    await expect(
+      writeOwnedObject(
+        db,
+        store,
+        { userId: owner },
+        {
+          module: "src",
+          retention: "durable",
+          contentType: "image/png",
+          bytes: PNG,
+          now: T0,
+          job: noLease,
+        },
+      ),
+    ).rejects.toMatchObject(leaseLost);
+    expect(await ownerObjects(owner)).toEqual([]);
+    expect((await store.list(`src/${owner}/`)).objects).toHaveLength(0);
+
+    const object = await pngFor(owner);
+    store.seed(object.key, PNG, "image/png", T0);
+    await expect(
+      confirmObject(db, store, { userId: owner }, object.id, { now: at(1), job: noLease }),
+    ).rejects.toMatchObject(leaseLost);
+    await expect(
+      deleteObject(db, store, { userId: owner }, object.id, at(1), {
+        pendingOnly: true,
+        job: noLease,
+      }),
+    ).rejects.toMatchObject(leaseLost);
+    expect(await objectRow(object.id)).toEqual({ state: "pending", deleted_at: null });
+    expect(await store.head(object.key)).not.toBeNull();
+  });
+
+  it("AC-4 C11-4 in a caller's transaction, the bytes are deleted only after the mark committed, and never when it rolls back", async () => {
+    const { store } = setup();
+    const owner = randomUUID();
+    const job = await claimedJob();
+
+    // Rolled back after the mark: the record stays pending and the bytes stay.
+    const rolledBack = await pngFor(owner);
+    store.seed(rolledBack.key, PNG, "image/png", T0);
+    const discarded: (() => Promise<void>)[] = [];
+    await expect(
+      db.transaction().execute(async (tx) => {
+        expect(
+          await deleteObject(tx, store, { userId: owner }, rolledBack.id, at(1), {
+            pendingOnly: true,
+            job: { lease: job.a },
+            afterCommit: (effect) => discarded.push(effect),
+          }),
+        ).toBe(true);
+        throw new Error("Synthetic rollback");
+      }),
+    ).rejects.toThrow("Synthetic rollback");
+    expect(await objectRow(rolledBack.id)).toEqual({ state: "pending", deleted_at: null });
+    expect(await store.head(rolledBack.key)).not.toBeNull();
+
+    // Committed: no byte is deleted inside the transaction; the deferred delete runs after it.
+    const committed = await pngFor(owner);
+    store.seed(committed.key, PNG, "image/png", T0);
+    const deferred: (() => Promise<void>)[] = [];
+    await db.transaction().execute(async (tx) => {
+      await deleteObject(tx, store, { userId: owner }, committed.id, at(1), {
+        pendingOnly: true,
+        job: { lease: job.a },
+        afterCommit: (effect) => deferred.push(effect),
+      });
+      expect(await store.head(committed.key)).not.toBeNull();
+    });
+    expect(deferred).toHaveLength(1);
+    expect(await store.head(committed.key)).not.toBeNull();
+    for (const effect of deferred) await effect();
+    expect(await objectRow(committed.id)).toEqual({ state: "deleted", deleted_at: at(1) });
+    expect(await store.head(committed.key)).toBeNull();
     await job.done();
   });
 });

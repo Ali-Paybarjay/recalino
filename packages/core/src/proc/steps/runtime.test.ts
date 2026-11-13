@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { mockProvider, NOW, RUN_ID, SESSION_ID, USER_ID } from "../../../test/processing-run";
 import { statementLogDatabase } from "../../../test/statement-log";
+import { testOnlyJobContext } from "../../../test/test-only-job-context";
 import { ProviderError, type ProviderResult } from "../../aip";
 import { AppError, errors, JobCancelled, type JobContext } from "../../plt";
 import { providerStep } from "./runtime";
@@ -127,13 +128,13 @@ function setup(fixture: Fixture = {}) {
   });
   m.log = log;
   const warnings: unknown[] = [];
-  const job = {
+  const job = testOnlyJobContext({
     db,
     now: () => NOW,
     job: { id: "job", attempt: 2 },
     log: (...args: unknown[]) => warnings.push(args),
     step: vi.fn(),
-  } as unknown as JobContext;
+  }) as unknown as JobContext;
   const statement = (name: string) => statements.find((query) => label(query) === name);
   return { job, log, statements, warnings, statement };
 }

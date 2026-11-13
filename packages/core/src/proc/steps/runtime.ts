@@ -23,6 +23,7 @@ import {
   deleteObject,
   enqueueJob,
   errors,
+  isTestOnlyJobContext,
   JobCancelled,
   type JobContext,
   type JobDefinition,
@@ -148,13 +149,16 @@ export const pdfPageImageSchema = z.strictObject({
  * (the job row is locked first, as in runJobStep). The check is the public PLT one, with the
  * claim's token and generation from JobContext; a refused check throws `JobLeaseLost` and the
  * transaction rolls back. The run's own state is no authority. The runner always sets the lease; a
- * context without one (a hand-made tool or test context, not a claim) keeps the earlier behaviour.
+ * JobContext without one is refused too (fail-closed, AC-13), unless it carries PLT's explicit
+ * test-only mark (AC-14), which keeps the earlier behaviour. No job (a caller outside a job) keeps
+ * the earlier behaviour.
  */
 export async function assertWriteAuthority(
   tx: Tx,
   job: Pick<JobContext, "lease"> | undefined,
 ): Promise<void> {
-  if (job?.lease !== undefined) await assertJobAuthority(tx, job.lease);
+  if (job === undefined || (job.lease === undefined && isTestOnlyJobContext(job))) return;
+  await assertJobAuthority(tx, job.lease);
 }
 
 /** Whether the error is PLT's refused authority check (a `JobCancelled` named JobLeaseLost). */

@@ -1,6 +1,12 @@
 import { lockAccount } from "../../acc";
 import { ProviderError } from "../../aip";
-import { AppError, assertJobAuthority, JobCancelled, readPltSettings } from "../../plt";
+import {
+  AppError,
+  assertJobAuthority,
+  isTestOnlyJobContext,
+  JobCancelled,
+  readPltSettings,
+} from "../../plt";
 import { emptyAmounts, settleAllowance } from "../../quota";
 import { ownedRun } from "../runs";
 import type { ProcessingRun } from "./context";
@@ -12,7 +18,8 @@ import { processingFailureCode } from "./knowledge-checks";
  * whole hold is released and the run records a code-owned failure code. ADR-0004 rule 4 (P11-02,
  * C11-12): the run is closed only with the job's authority, checked first in the same transaction
  * with the claim's token and generation; a worker whose claim is void closes nothing
- * (`JobLeaseLost`, rolled back). A context without a lease (not a claim) keeps the earlier path.
+ * (`JobLeaseLost`, rolled back). A context without a lease is refused too (fail-closed, AC-13),
+ * unless it carries PLT's explicit test-only mark (AC-14), which keeps the earlier path.
  */
 export async function failRun(
   base: Pick<ProcessingRun, "job" | "ctx" | "payload">,
@@ -27,7 +34,8 @@ export async function failRun(
   )
     throw error;
   await job.db.transaction().execute(async (tx) => {
-    if (job.lease !== undefined) await assertJobAuthority(tx, job.lease);
+    if (job.lease !== undefined || !isTestOnlyJobContext(job))
+      await assertJobAuthority(tx, job.lease);
     await lockAccount(tx, ctx.userId);
     const run = await ownedRun(tx, ctx, payload.runId, true);
     if (!["queued", "processing"].includes(run.state)) return;

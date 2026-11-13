@@ -15,6 +15,7 @@ import {
   deleteObject,
   errors,
   issueReadLink,
+  isTestOnlyJobContext,
   JobCancelled,
   type JobContext,
   type JobDefinition,
@@ -548,10 +549,12 @@ export async function requestTts(
 /**
  * ADR-0004 rule 4 (P11-02): a write of the speech job runs only with the job's authority, checked
  * first in the write's own transaction with the claim from JobContext (PLT's public check). A
- * context without a lease is not a claim and keeps the earlier behaviour.
+ * context without a lease is refused (fail-closed, AC-13), unless it carries PLT's explicit
+ * test-only mark (AC-14), which keeps the earlier behaviour.
  */
 async function assertSpeechJobAuthority(tx: Tx, job: JobContext): Promise<void> {
-  if (job.lease !== undefined) await assertJobAuthority(tx, job.lease);
+  if (job.lease === undefined && isTestOnlyJobContext(job)) return;
+  await assertJobAuthority(tx, job.lease);
 }
 /** PLT's refused authority check: a `JobCancelled` named JobLeaseLost. */
 function isJobLeaseLost(error: unknown): boolean {
@@ -629,7 +632,7 @@ export function mediaTtsJob(
           contentType: output.mimeType,
           bytes,
           now: job.now(),
-          ...(job.lease === undefined ? {} : { lease: job.lease }),
+          job,
           onRegistered: async (id) => {
             stagedObjectId = id;
             await job.db.transaction().execute(async (tx) => {
@@ -751,6 +754,8 @@ export async function closeEndedSpeechRunMedia(
  * (C10-5), before any byte delete. Closing the run never depends on the store: when the byte
  * delete fails, the error is logged, the record stays deleted and the pointer is cleared, so
  * reconcileStorage removes the bytes later. MEDIA never writes PLT's table (ADR-0002 rule 4).
+ * C11-4 (P11-02): given the closing transaction's `afterCommit`, the bytes are deleted only after
+ * the mark committed; without it, at once, as before.
  */
 export function speechRunClosedHook(
   store: ObjectStore,
@@ -761,8 +766,9 @@ export function speechRunClosedHook(
   runId: string,
   outcome: { code: string; uncertain: boolean },
   now: Date,
+  afterCommit?: (effect: () => Promise<void>) => void,
 ) => Promise<void> {
-  return async (tx, ctx, runId, outcome, now) => {
+  return async (tx, ctx, runId, outcome, now, afterCommit) => {
     const rows = await tx
       .selectFrom("media.asset")
       .select(["id", "object_id"])
@@ -787,6 +793,7 @@ export function speechRunClosedHook(
       const objectId = object.id;
       const deleted = await deleteObject(tx, store, ctx, objectId, now, {
         pendingOnly: true,
+        ...(afterCommit === undefined ? {} : { afterCommit }),
         onByteDeleteFailure: (error) =>
           log("error", "media_speech_object_delete_failed", {
             module: "media",

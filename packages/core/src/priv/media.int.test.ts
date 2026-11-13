@@ -4,6 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { completeSignIn, getAccountState, lockAccount } from "../acc";
 import {
   type AiProvider,
@@ -839,14 +840,14 @@ describe("explicit media and privacy publication", () => {
     const { runId } = await speechRun(asset.id);
     // The earlier job's step goes through the production provider step, so its attempt, cost and
     // checkpoint are committed together; the fixture provider itself is never called.
-    const interruptedJob: JobContext = {
+    const interruptedJob: JobContext = testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 1 },
       async step() {
         throw new Error("Unused fixture job step");
       },
-    };
+    });
     await executeAuxiliaryProviderStep(interruptedJob, f.ctx, runId, {
       step: "speech",
       model: providerSettings.ttsModel,
@@ -1150,14 +1151,14 @@ describe("explicit media and privacy publication", () => {
       f.dependencies,
     );
     const { runId } = await speechRun(asset.id);
-    const interruptedJob: JobContext = {
+    const interruptedJob: JobContext = testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 1 },
       async step() {
         throw new Error("Unused fixture job step");
       },
-    };
+    });
     await executeAuxiliaryProviderStep(interruptedJob, f.ctx, runId, {
       step: "speech",
       model: providerSettings.ttsModel,
@@ -1479,6 +1480,37 @@ describe("explicit media and privacy publication", () => {
     });
     expect(summary.orphansDeleted).toBe(1);
     expect(await f.store.read(pending.key)).toBeNull();
+  });
+  it("C11-4 closing a stranded speech run deletes the pending object's bytes only after the deleted mark committed", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(false);
+    const pending = await pendingSpeechObject(f.ctx.userId, f.store);
+    await db
+      .updateTable("media.asset")
+      .set({ object_id: pending.id })
+      .where("id", "=", asset.id)
+      .execute();
+    // The byte delete reads the record from another session: only a committed mark is visible.
+    const seenAtByteDelete: unknown[] = [];
+    class ObservingStore extends MemoryObjectStore {
+      override async delete(key: string): Promise<void> {
+        seenAtByteDelete.push(await objectState(pending.id));
+        await f.store.delete(key);
+      }
+    }
+
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: speechRunClosedHook(new ObservingStore()),
+      }),
+    ).toBe(1);
+    expect(seenAtByteDelete).toEqual(["deleted"]);
+    expect(await objectState(pending.id)).toBe("deleted");
+    expect(await f.store.read(pending.key)).toBeNull();
+    expect(await runState(runId)).toEqual({
+      state: "failed",
+      last_error: "processing_interrupted",
+    });
   });
   // C9-16 (P10-04): the reconciliation close hook (closeEndedSpeechRunMedia) filters by run_id and
   // user_id, so closing one run never changes the speech asset of another run of the same owner or
@@ -1939,6 +1971,22 @@ describe("explicit media and privacy publication", () => {
         request_id: undefined,
       },
     ]);
+  });
+  it("AC-13 a speech job whose JobContext carries no lease is refused before the paid call (fail-closed): no attempt, hold, cost, checkpoint or run change", async () => {
+    const { f, asset, runId, payload, jobA } = await speechClaimedByA();
+    const { lease: _lease, ...noLease } = jobA;
+    const runBefore = await runState(runId);
+
+    await expect(mediaTtsJob(f.dependencies).run(payload, noLease)).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    expect(f.provider.calls).toBe(0);
+    expect(await speechAttempts(runId)).toEqual([]);
+    expect(await speechCosts(f.ctx.userId)).toEqual([]);
+    expect(await speechCheckpointRow(runId)).toBeUndefined();
+    expect(await runState(runId)).toEqual(runBefore);
+    expect(await objectsOf(f.ctx.userId)).toEqual([]);
+    expect(["queued", "processing"]).toContain((await getMediaAsset(db, f.ctx, asset.id)).state);
   });
   async function objectsOf(userId: string) {
     return db

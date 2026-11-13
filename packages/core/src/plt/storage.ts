@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import type { Database, Tx } from "../db";
 import { errors } from "./errors";
-import { assertJobAuthority, type JobLease } from "./jobs";
+import { assertJobAuthority, type JobContext } from "./jobs";
 import type { Logger } from "./log";
 import { assertOwner, type LearnerContext } from "./ownership";
 import type { PltSettings } from "./settings";
@@ -77,25 +77,50 @@ function assertModuleSegment(module: string): void {
     throw errors.validationFailed({ storage: ["invalid_module"] });
 }
 
+/** The key of the explicit test-only mark on a hand-made JobContext (P11-02 AC-14). */
+const TEST_ONLY_JOB_CONTEXT = Symbol.for("recalino.test-only-job-context");
+
+/**
+ * P11-02 AC-13 and AC-14: whether a JobContext carries the explicit test-only mark. The mark is
+ * set only by the test helper (packages/core/test); no env, flag, setting or payload sets it, and
+ * this is the one place production code reads it. It only reads. A marked context without a lease
+ * keeps the earlier behaviour of a guarded write; an unmarked one without a lease is refused.
+ */
+export function isTestOnlyJobContext(job: object): boolean {
+  return (
+    Object.hasOwn(job, TEST_ONLY_JOB_CONTEXT) &&
+    (job as Record<symbol, unknown>)[TEST_ONLY_JOB_CONTEXT] === true
+  );
+}
+
+/** The job a storage write runs for: its claim, from JobContext (ADR-0004 rule 4). */
+export type StorageJob = Pick<JobContext, "lease">;
+
+/** A hand-made test context without a lease, marked as such: the earlier, unchecked behaviour. */
+function markedTestContext(job: StorageJob): boolean {
+  return job.lease === undefined && isTestOnlyJobContext(job);
+}
+
 /**
  * ADR-0004 rule 4 (P11-02): a record write made on a job's behalf runs only with that job's
  * authority, checked in the same transaction (assertJobAuthority locks the job row first). In the
  * caller's transaction when given one, else in a transaction of its own that commits with the
- * write. A refused check throws `JobLeaseLost` and nothing is written. Without a lease (a caller
- * outside a job) the write runs as before.
+ * write. A refused check throws `JobLeaseLost` and nothing is written; a JobContext without a
+ * lease is refused too (fail-closed, AC-13) unless it carries the test-only mark. Without a job (a
+ * caller outside a job) the write runs as before.
  */
 async function withAuthority<T>(
   db: Database | Tx,
-  lease: JobLease | undefined,
+  job: StorageJob | undefined,
   write: (tx: Database | Tx) => Promise<T>,
 ): Promise<T> {
-  if (lease === undefined) return write(db);
+  if (job === undefined || markedTestContext(job)) return write(db);
   if (db.isTransaction) {
-    await assertJobAuthority(db as Tx, lease);
+    await assertJobAuthority(db as Tx, job.lease);
     return write(db);
   }
   return (db as Database).transaction().execute(async (tx) => {
-    await assertJobAuthority(tx, lease);
+    await assertJobAuthority(tx, job.lease);
     return write(tx);
   });
 }
@@ -273,11 +298,12 @@ export async function writeOwnedObject(
     /** Already committed with its domain cleanup pointer before a caller opens its IO transaction. */
     targetObjectId?: string;
     /**
-     * The claim of the job this write runs for (ADR-0004 rule 4, P11-02): the object's record is
-     * created and verified only with that job's authority, each in the transaction that writes
-     * it. A refused check throws `JobLeaseLost` and records nothing. Absent outside a job.
+     * The JobContext this write runs for (ADR-0004 rule 4, P11-02): the object's record is
+     * created and verified only with that job's authority (its lease), each in the transaction
+     * that writes it. A refused check, or a context without a lease, throws `JobLeaseLost` and
+     * records nothing. Absent outside a job.
      */
-    lease?: JobLease;
+    job?: StorageJob;
   },
 ): Promise<string> {
   assertModuleSegment(input.module);
@@ -299,7 +325,7 @@ export async function writeOwnedObject(
       throw errors.conflict();
     object = registered;
   } else {
-    object = await withAuthority(db, input.lease, (tx) =>
+    object = await withAuthority(db, input.job, (tx) =>
       createObject(tx, {
         module: input.module,
         ownerUserId: actor === "system" ? null : actor.userId,
@@ -318,7 +344,7 @@ export async function writeOwnedObject(
       (await confirmObject(db, store, actor, object.id, {
         now: input.now,
         sha256: createHash("sha256").update(input.bytes).digest("hex"),
-        ...(input.lease === undefined ? {} : { lease: input.lease }),
+        ...(input.job === undefined ? {} : { job: input.job }),
       })) !== "verified"
     )
       throw errors.conflict();
@@ -428,8 +454,8 @@ export type ConfirmResult =
 
 /**
  * After an upload: the object is "verified" only when it exists with the recorded size and type,
- * and, when given, the SHA-256 the client declared (rule 4). Given a job's lease, the record is
- * verified only with that job's authority, in the transaction of the conditional update
+ * and, when given, the SHA-256 the client declared (rule 4). Given the job it runs for, the record
+ * is verified only with that job's authority, in the transaction of the conditional update
  * (ADR-0004 rule 4, P11-02); a refused check throws `JobLeaseLost` and leaves it pending.
  */
 export async function confirmObject(
@@ -437,7 +463,7 @@ export async function confirmObject(
   store: ObjectStore,
   actor: StorageActor,
   objectId: string,
-  check: { now: Date; sha256?: string; lease?: JobLease },
+  check: { now: Date; sha256?: string; job?: StorageJob },
 ): Promise<ConfirmResult> {
   const object = await loadOwned(db, objectId, actor);
   if (object.state === "verified") return "verified";
@@ -455,7 +481,7 @@ export async function confirmObject(
   }
   // C10-3: the record may leave pending between the read above and this update (a concurrent
   // cleanup marks it deleted). Only the update that matched the pending row verifies it.
-  const verified = await withAuthority(db, check.lease, (tx) =>
+  const verified = await withAuthority(db, check.job, (tx) =>
     tx
       .updateTable("plt.storage_object")
       .set({ state: "verified", verified_at: check.now })
@@ -511,13 +537,20 @@ export interface PendingDeleteOptions {
   pendingOnly: true;
   onByteDeleteFailure?: (error: unknown) => void;
   /**
-   * The claim of the job this deletion runs for (ADR-0004 rules 4 and 6, P11-02): the record is
-   * marked only with that job's authority, checked in the transaction of the conditional update;
-   * a refused check throws `JobLeaseLost` and neither the record nor the bytes change. Given a
-   * database rather than a transaction, the mark commits in its own transaction before any byte
-   * is deleted. Absent outside a job.
+   * The JobContext this deletion runs for (ADR-0004 rules 4 and 6, P11-02): the record is marked
+   * only with that job's authority, checked in the transaction of the conditional update; a
+   * refused check, or a context without a lease, throws `JobLeaseLost` and neither the record nor
+   * the bytes change. Given a database rather than a transaction, the mark commits in its own
+   * transaction before any byte is deleted. Absent outside a job.
    */
-  lease?: JobLease;
+  job?: StorageJob;
+  /**
+   * C11-4 (P11-02 AC-4): given a caller's transaction, the bytes are deleted only after it
+   * commits. The byte delete is handed to this callback, which the transaction's owner runs once
+   * the mark committed; a failure there goes to onByteDeleteFailure and the record stays deleted
+   * for reconcileStorage. Without it, the bytes are deleted at once, as before.
+   */
+  afterCommit?: (effect: () => Promise<void>) => void;
 }
 
 /**
@@ -535,16 +568,18 @@ export async function deleteObject(
 ): Promise<boolean> {
   if (options?.pendingOnly) {
     // Zero rows is never a success (C10-5): only the update that matched the pending row marks it.
-    const key = await withAuthority(db, options.lease, (tx) =>
-      markPending(tx, actor, objectId, now),
-    );
+    const key = await withAuthority(db, options.job, (tx) => markPending(tx, actor, objectId, now));
     if (key === null) return false;
-    try {
-      await store.delete(key);
-    } catch (error) {
-      if (!options.onByteDeleteFailure) throw error;
-      options.onByteDeleteFailure(error);
-    }
+    const deleteBytes = async () => {
+      try {
+        await store.delete(key);
+      } catch (error) {
+        if (!options.onByteDeleteFailure) throw error;
+        options.onByteDeleteFailure(error);
+      }
+    };
+    if (options.afterCommit) options.afterCommit(deleteBytes);
+    else await deleteBytes();
     return true;
   }
   const object = await loadOwned(db, objectId, actor);

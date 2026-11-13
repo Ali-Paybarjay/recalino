@@ -133,7 +133,9 @@ async function closeEndedJobRun(
   now: Date,
   afterAuxiliaryClose?: AuxiliaryRunClosedHook,
 ) {
-  return db.transaction().execute(async (tx) => {
+  // C11-4 (P11-02): effects a hook defers until this transaction commits (a byte delete).
+  const afterCommit: (() => Promise<void>)[] = [];
+  const kind = await db.transaction().execute(async (tx) => {
     await lockAccount(tx, ctx.userId);
     const run = await ownedRun(tx, ctx, runId, true);
     const states = run.job_id ? await jobStates(tx, [run.job_id]) : new Map<string, JobState>();
@@ -151,7 +153,9 @@ async function closeEndedJobRun(
       await failAuxiliaryRun(tx, ctx, run.id, closed, now);
       // C8-4: the owning module ends its own record of this run (a speech asset) in the same
       // transaction, so a failing hook leaves the run open for the next reconciliation.
-      await afterAuxiliaryClose?.(tx, ctx, run.id, closed, now);
+      await afterAuxiliaryClose?.(tx, ctx, run.id, closed, now, (effect) => {
+        afterCommit.push(effect);
+      });
       return run.kind;
     }
     await settleAllowance(tx, ctx, run.reservation_id, emptyAmounts(), now);
@@ -167,6 +171,8 @@ async function closeEndedJobRun(
       .execute();
     return run.kind;
   });
+  for (const effect of afterCommit) await effect();
+  return kind;
 }
 export type RunClosedHook = (
   db: Database,
@@ -186,6 +192,8 @@ export type AuxiliaryRunClosedHook = (
   runId: string,
   outcome: { code: string; uncertain: boolean },
   now: Date,
+  /** C11-4 (P11-02): runs `effect` once the transaction committed, e.g. a byte delete. */
+  afterCommit?: (effect: () => Promise<void>) => void,
 ) => Promise<void>;
 /**
  * PRD-02: closes runs whose job ended without the worker settling them, so the reservation is

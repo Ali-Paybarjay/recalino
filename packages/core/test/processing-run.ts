@@ -5,6 +5,7 @@ import type { JobContext } from "../src/plt";
 import type { RunSource } from "../src/proc";
 import type { ProcessingRun } from "../src/proc/steps/context";
 import { visionContract } from "../src/proc/steps/vision";
+import { testOnlyJobContext } from "./test-only-job-context";
 
 // Synthetic fixtures for unit tests of the processing stages (audit QUA-01): no database, no
 // network. A stage's checkpoint helpers are mocked per test; `job.db` only records writes.
@@ -107,13 +108,13 @@ export function syntheticJob(
       execute: async <T>(work: (tx: Tx) => Promise<T>) => work(recordingTx(calls, rows)),
     }),
   } as unknown as Database;
-  return {
+  return testOnlyJobContext({
     db,
     now: () => NOW,
     job: { id: "synthetic-job", attempt: 1 },
     ...(deadline ? { deadline } : {}),
     step: vi.fn(),
-  } as unknown as JobContext;
+  }) as unknown as JobContext;
 }
 
 export function stageRun(overrides: Partial<ProcessingRun> = {}): ProcessingRun {
