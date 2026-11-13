@@ -160,7 +160,7 @@ export const generateLessonParts: ProcessingStage<
             throw error;
           const detail = knowledgeRepairDetailSchema.safeParse(error.diagnostic);
           await job.db.transaction().execute(async (tx) => {
-            await liveRun(tx, ctx, payload.runId);
+            await liveRun(tx, ctx, payload.runId, job);
             const attempt = await tx
               .selectFrom("proc.provider_attempt")
               .select("id")

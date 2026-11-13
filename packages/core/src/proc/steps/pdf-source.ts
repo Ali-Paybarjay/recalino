@@ -43,7 +43,7 @@ export const extractPdfSource: ProcessingStage<StoredSource, RunSource | Yielded
     }
     const prepared = content;
     await job.db.transaction().execute(async (tx) => {
-      await liveRun(tx, ctx, payload.runId);
+      await liveRun(tx, ctx, payload.runId, job);
       await saveStep(tx, payload.runId, `pdf:text:${source.sourceId}`, prepared, job.now());
     });
   }
@@ -117,7 +117,7 @@ export const extractPdfSource: ProcessingStage<StoredSource, RunSource | Yielded
         throw errors.validationFailed({ pdf: ["page_manifest_invalid"] });
       if (!rendered[0]) throw errors.validationFailed({ pdf: ["page_manifest_invalid"] });
       await job.db.transaction().execute(async (tx) => {
-        await liveRun(tx, ctx, payload.runId);
+        await liveRun(tx, ctx, payload.runId, job);
         for (const page of rendered)
           await saveStep(
             tx,

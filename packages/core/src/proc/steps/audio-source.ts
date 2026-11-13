@@ -59,7 +59,7 @@ export const extractAudioSource: ProcessingStage<StoredSource, RunSource | Yield
     )
       throw errors.validationFailed({ audio: ["manifest_invalid"] });
     await job.db.transaction().execute(async (tx) => {
-      await liveRun(tx, ctx, payload.runId);
+      await liveRun(tx, ctx, payload.runId, job);
       await saveStep(tx, payload.runId, `audio:${source.sourceId}`, chunks, job.now());
     });
   }
