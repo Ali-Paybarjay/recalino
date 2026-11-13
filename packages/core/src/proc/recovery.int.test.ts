@@ -6,6 +6,7 @@ import {
   readSourceRecoveryNotebook,
 } from "../../test/source-recovery-fixture";
 import { studyFixture, syntheticKnowledge } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import type { AiProvider, ProviderResult, ProviderSettings, StructuredInput } from "../aip";
 import { createDatabase } from "../db";
 import { getLatestVersion, getVersion, publishKnowledgeVersion } from "../lkm";
@@ -282,12 +283,13 @@ it("a confirmed later run extracts the failed original instead of reusing its un
     { sessionId: x.session.id, operationKey: randomUUID() },
     { provider: x.provider, job: x.job },
   );
-  const context = (): JobContext => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const context = (): JobContext =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
   await x.job.run({ runId: run.id, userId: x.ctx.userId }, context());
   await x.job.run({ runId: run.id, userId: x.ctx.userId }, context());
   expect((await getRun(db, x.ctx, run.id)).state).toBe("ready");

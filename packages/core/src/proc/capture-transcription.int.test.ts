@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { OpenRouterProvider, type ProviderSettings } from "../aip";
 import { createDatabase } from "../db";
 import { renewCaptureLease } from "../org";
@@ -142,12 +143,13 @@ async function stagedPartFixture(audio = 60) {
     prepareAudio,
     onTranscribed: markSourceAudioTranscribed,
   };
-  const context = (): JobContext => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const context = (): JobContext =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
   return { ...x, source, staged, stt, store, provider, dependencies, context };
 }
 

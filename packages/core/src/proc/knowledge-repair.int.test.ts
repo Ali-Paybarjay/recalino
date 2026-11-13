@@ -3,6 +3,7 @@ import { afterAll, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { saveTeachingPreference, updateProfile } from "../acc";
 import {
   type AiProvider,
@@ -249,12 +250,13 @@ async function fixture(
         completed_at: new Date(),
       })
       .execute();
-  const jobContext = (): JobContext => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const jobContext = (): JobContext =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
   const audio = snapshot.sources.find((source) => source.kind === "audio");
   if (!audio?.contentVersionId) throw new Error("Synthetic source missing");
   const repair = buildKnowledgeRepairInput(

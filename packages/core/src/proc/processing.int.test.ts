@@ -9,6 +9,7 @@ import {
   runFixtureProcessingJobs,
   runFixtureProcessingStep,
 } from "../../test/processing-jobs";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import {
   acceptDocuments,
   CURRENT_VERSIONS,
@@ -837,13 +838,13 @@ describe("durable processing, atomic quota and provenance on Postgres", () => {
     const invoke = (deadline?: Date) =>
       job.run(
         { runId: run.id, userId: f.ctx.userId },
-        {
+        testOnlyJobContext({
           db,
           now: () => new Date(),
           job: { id: randomUUID(), attempt: 1 },
           step: async () => "ran" as const,
           ...(deadline ? { deadline } : {}),
-        },
+        }),
       );
     // Less than one vision request plus the time kept after it.
     await invoke(new Date(Date.now() + settings.timeoutMs));

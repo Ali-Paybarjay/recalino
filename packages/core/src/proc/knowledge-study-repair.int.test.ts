@@ -4,6 +4,7 @@ import { z } from "zod";
 import { LOCAL_ADMIN_DATABASE_URL, LOCAL_APP_DATABASE_URL } from "../../test/local-db";
 import { cleanupFixtureProcessingJobs } from "../../test/processing-jobs";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { updateProfile } from "../acc";
 import {
   type AiProvider,
@@ -239,12 +240,13 @@ async function fixture(fullSentence = "The council clamped down on unsafe parkin
     ],
   });
   provider.original = original;
-  const context = (): JobContext => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const context = (): JobContext =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
   const work = () => job.run({ runId: run.id, userId: x.ctx.userId }, context());
   return { x, run, provider, original, context, work, job, source };
 }

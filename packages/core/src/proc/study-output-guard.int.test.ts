@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { cleanupFixtureProcessingJobs, runFixtureProcessingJobs } from "../../test/processing-jobs";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import type {
   AiProvider,
   ProviderResult,
@@ -222,12 +223,13 @@ async function shortClass() {
     { provider, job },
   );
   runIds.push(run.id);
-  const jobContext = (): JobContext => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const jobContext = (): JobContext =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
   const work = async () => {
     for (
       let attempt = 0;

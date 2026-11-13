@@ -3,6 +3,7 @@ import { afterAll, expect, it } from "vitest";
 import { lessonReviewFixture, lessonReviewFixtureSettings } from "../../test/lesson-review-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../test/local-db";
 import { runFixtureProcessingStep } from "../../test/processing-jobs";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { updateProfile } from "../acc";
 import { type AiProvider, ProviderError, type ProviderResult, type StructuredInput } from "../aip";
 import { createDatabase, type Database, type Tx } from "../db";
@@ -174,7 +175,7 @@ it("reviews the selected version with its frozen level, persists an advisory che
     .execute();
   await lessonReviewJob({ provider }).run(
     { runId: a.runId, userId: x.ctx.userId, subjectId: x.knowledge.id },
-    {
+    testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: record.job_id ?? randomUUID(), attempt: 2 },
@@ -182,7 +183,7 @@ it("reviews the selected version with its frozen level, persists an advisory che
         await db.transaction().execute(effect);
         return "ran";
       },
-    },
+    }),
   );
   expect(provider.calls).toHaveLength(1);
   expect((await readLessonReview(db, x.ctx, x.session.id, x.knowledge.id))?.state).toBe("ready");
@@ -322,7 +323,7 @@ it("rejects unsupported target quotations with known cost and never publishes a 
       userId: x.ctx.userId,
       subjectId: x.knowledge.id,
     },
-    {
+    testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 2 },
@@ -330,7 +331,7 @@ it("rejects unsupported target quotations with known cost and never publishes a 
         await db.transaction().execute(effect);
         return "ran";
       },
-    },
+    }),
   );
   expect(provider.calls).toHaveLength(1);
   expect(await attempts(queued.runId)).toHaveLength(1);
@@ -388,12 +389,13 @@ it.each(["invalid", "valid"] as const)(
         return typeof value === "function" ? value.bind(target) : value;
       },
     });
-    const context = (database: Database): JobContext => ({
-      db: database,
-      now: () => new Date(),
-      job: { id: randomUUID(), attempt: 1 },
-      step: async () => "skipped",
-    });
+    const context = (database: Database): JobContext =>
+      testOnlyJobContext<JobContext>({
+        db: database,
+        now: () => new Date(),
+        job: { id: randomUUID(), attempt: 1 },
+        step: async () => "skipped",
+      });
     const options = {
       step: "lesson-review:report",
       model: provider.settings.llmModel,
