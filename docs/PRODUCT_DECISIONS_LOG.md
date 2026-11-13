@@ -1146,6 +1146,17 @@
   - `lesson-knowledge.test.ts` (بازیابی schema برای حذف assembly)، `lesson-parts.test.ts` (بخشِ بیش از سقف درس و بخشِ دارای حذف assembly به تولید دوباره می‌روند)، `lesson.test.ts`، `legacy-knowledge-repair.test.ts`، `publish.test.ts` (D110)
   - `knowledge-generation.test.ts` (تحمل assembly، پوشش lessonPlan پس از حذف و wire ۲۵+۶)، `schema.test.ts` و `tools/study-model.test.ts` (۲۵ می‌پذیرد، ۲۶ رد)، `knowledge-parts.test.ts` (ادغام ۲۱ کارتی D78 اعتبارسنجی می‌شود)، `lesson-budget.test.ts`
 
+## D111 — public شدن مخزن recalino (2026-11-13)
+
+مبنا: تصمیم مالک محصول، 2026-11-12 و 2026-11-13. CI این مخزن سهمیهٔ رایگان GitHub Actions حساب را در نوامبر 2026 تمام کرد. Actions روی مخزن public رایگان است.
+
+- مخزن public می‌شود. پیش‌شرط‌ها:
+  - بررسی secret در کل تاریخچه و refهای PR. بررسی 2026-11-12 با detect-secrets و الگوهای اختصاصی، و بررسی دوم 2026-11-13 با gitleaks 8.30.1 روی mirror (۴ شاخه، ۶ tag، ۱۸۰ ref از PRها). secret واقعی پیدا نشد؛ همهٔ یافته‌ها fixture تست، hash فایل یا prompt، کلید idempotency یا شناسهٔ فایل Figma بودند.
+  - رضایت کاربر پایلوتی که ایمیلش در تاریخچه است (گرفته شد، 2026-11-13). تاریخچه بازنویسی نمی‌شود.
+  - Issues خاموش، Interaction limits فقط برای collaboratorها، تأیید workflow برای PRهای همهٔ مشارکت‌کنندگان بیرونی (fork)، و secret scanning با push protection.
+- `ci.yml` بدون تغییر می‌ماند: secret، `pull_request_target` و self-hosted runner ندارد و `permissions: contents: read` است.
+- قواعد کار در مخزن عمومی در `CLAUDE.md`، بخش «مخزن عمومی و مرز اعتماد».
+
 ## ایده‌های ثبت‌شده برای بعد از MVP (ساخته نمی‌شوند)
 
 - **رونویسی کامل روی دستگاه به‌عنوان «حالت حریم خصوصی»، ابتدا برای دسکتاپ:** صوت اصلاً از دستگاه خارج نمی‌شود.
