@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "id": "P11-02",
-  "title": "fencing اثرهای provider و storage زیر اختیار Job (دستهٔ ۱۱ L3، دور دوم؛ C8-6 و C9-13 بخش fencing، C11-4؛ v4، E280‑R و E309‑R؛ Recalino ADR-0004 ‏0.6 بندهای 4 و 6)",
+  "title": "fencing اثرهای provider و storage زیر اختیار Job (دستهٔ ۱۱ L3، دور دوم؛ C8-6 و C9-13 بخش fencing، C11-4؛ v5، E280‑R، E309‑R و E320‑R؛ Recalino ADR-0004 ‏0.6 بندهای 4 و 6)",
   "goal": "C8-6 (P8-02، F-6؛ P10-01، F-2): پاسخ پولی worker کهنه پس از برداشت دوبارهٔ Job گم می‌شود یا با اختیار باطل commit می‌شود. C9-13 (بخش fencing): اجراکنندهٔ کهنه نباید ردیف هزینه یا settle ثبت کند. C11-4 (review:security ‏P11-03، hypothesis): در مسیر pendingOnly، bytes پیش از commit علامت deleted حذف می‌شوند. C11-12 (بازبینی معماری P11-07، F-11): نوشتن‌های دامنه (liveRun، شاخهٔ ذخیرهٔ commitProviderOutput، failRun، storeExtraction) فقط وضعیت run را می‌سنجند، پس fencing در plt.job به‌تنهایی worker کهنه را متوقف نمی‌کند. Recalino ADR-0004 (0.6، پذیرفته؛ بند 4) این مسیرها را تحت حفاظت می‌گذارد: providerStep (وضعیت attempt، checkpoint خروجی provider، settle هزینه)، writeOwnedObject (ردیف شیء برای bytes ذخیره‌شده)، حذف بیرونی storage (علامت ردیف و حذف bytes)، و نوشتن‌های دامنه از طرف Job (checkpoint، content version، dispatch پولی، بستن یا شکست run). این کارت مرحلهٔ P11-02 جدول «تحویل پلکانی» است، پس از ادغام P11-01 و با اختیار تعریف‌شدهٔ آن. بازیابی نتیجه و تطبیق هزینه (ADR بند 7؛ V3-04 بخش بازیابی، V3-05، V3-08) در دستهٔ ۱۲ است.",
   "mode": "brownfield",
   "task_type": "bugfix",
@@ -46,6 +46,34 @@
     {
       "id": "AC-9",
       "statement": "فقط فایل‌های owns_paths تغییر کرده‌اند؛ هیچ migration، تغییر schema یا داده، تغییر CI، .claude/**، CLAUDE.md، package.json یا docs/adr/**. هیچ hold، ردیف هزینه یا شیء موجود پاک یا تسویه نمی‌شود (کلاس ۱، مالک؛ E207‑R)؛ هیچ حذف دسته‌جمعی. در packages/core/src/proc/steps/runtime.test.ts، packages/core/src/plt/storage-compose-module.test.ts و packages/core/src/proc/steps/fail-run.test.ts فقط fake یا wiring آزمون تغییر می‌کند (مثلاً پاسخ fake به بررسی اختیار یا update)؛ هیچ منطق آزمون، assertion یا آزمونی تغییر نمی‌کند و شمار آزمون‌های هر سه فایل ثابت می‌ماند (سابقهٔ P11-03 v2، E263‑R)."
+    },
+    {
+      "id": "AC-11",
+      "statement": "گذراندن job به liveRun (E320‑R، پرسش Q0 ‏attempt 2): در packages/core/src/proc/steps/start.ts، packages/core/src/proc/steps/publish.ts، packages/core/src/proc/steps/audio-source.ts، packages/core/src/proc/steps/pdf-source.ts، packages/core/src/proc/steps/lesson-parts.ts فقط فراخوان‌های liveRun، job را به‌عنوان پارامتر چهارم می‌گذرانند تا همان بررسی اختیار AC-10 در همان تراکنش اجرا شود؛ هیچ تغییر دیگری در این پنج فایل نیست. گزارش Implementer همهٔ hunkهای این پنج فایل را می‌آورد."
+    },
+    {
+      "id": "AC-12",
+      "statement": "callback پس از commit (E320‑R، پرسش Q1 ‏attempt 2؛ C11-4): در packages/core/src/proc/maintenance.ts فقط یک callback پس از commit در مسیر بستن run ‏(closeEndedJobRun) افزوده می‌شود تا bytes شیء pending پس از commit حذف شوند (AC-4)؛ هیچ تغییر دیگری در این فایل نیست. packages/core/src/proc/maintenance.test.ts قفل TestPlan است و بی‌تغییر می‌ماند؛ اگر تغییر آن لازم شد، Implementer با شاهد blocked می‌شود. گزارش Implementer همهٔ hunkهای این فایل را می‌آورد."
+    },
+    {
+      "id": "AC-13",
+      "statement": "JobContext بی lease (انحراف D0 ‏attempt 2؛ E321 = الف، مالک؛ E322‑R): در نوشتن‌های دامنهٔ AC-10 و AC-1 تا AC-4، JobContext با lease واقعی ⇒ بررسی اختیار P11-01؛ JobContext بی lease و بی نشانگر ⇒ رد (fail-closed)، با آزمون؛ JobContext با نشانگر صریح «فقط آزمون» (AC-14) ⇒ رفتار پیشین. فراخوان بیرون از Job (بی JobContext) همان رفتار پیشین را دارد."
+    },
+    {
+      "id": "AC-14",
+      "statement": "نشانگر فقط آزمون (قید ۱ مالک): نشانگر فقط در ماژول کمکی تازهٔ packages/core/test/test-only-job-context.ts ساخته یا بر JobContext نهاده می‌شود؛ هیچ env، پرچم، تنظیم یا مقدار زمان اجرا آن را فعال نمی‌کند. کد تولید نشانگر را فقط در یک جا می‌خواند: یک تابع در یکی از فایل‌های owns این کارت، که Implementer نام فایل و تابع آن را در گزارش می‌آورد (proc و media می‌توانند به plt وابسته باشند، plt به proc نه). packages/core/src/plt/jobs.ts تغییر نمی‌کند؛ اگر تغییر نوع در آن ناگزیر بود، Implementer با دلیل blocked می‌شود. Implementer با شاهد path:line نشان می‌دهد packages/core/test/** در build تولید و در exportهای بستهٔ packages/core نیست؛ اگر نتواند ⇒ blocked."
+    },
+    {
+      "id": "AC-15",
+      "statement": "آزمون ایستا (قید ۲ مالک): آزمون unit تازهٔ tools/test/test-only-job-context-marker.test.ts، که در verify اجرا می‌شود، همهٔ فایل‌های غیرآزمون زیر packages/** و apps/** را می‌گردد و با هر ارجاع به نشانگر یا import ماژول آن قرمز می‌شود، جز همان یک جای خواندن AC-14. «فایل آزمون» یعنی: *.test.ts (از جمله *.int.test.ts)، هر فایل زیر packages/core/test/**، و فایل‌های پشتیبان نام‌برده در فهرست بستهٔ AC-17 که نه *.test.ts هستند و نه زیر packages/core/test/** (اکنون فقط apps/web/src/server/audio-audit-support.ts)؛ چنین فایل پشتیبانی فقط وقتی نشانگر می‌گیرد که Implementer با شاهد path:line نشان دهد جز فایل‌های آزمون آن را import نمی‌کنند. Implementer در گزارش نشان می‌دهد آزمون با یک استفادهٔ تولیدی ساختگی قرمز می‌شود (بی commit آن)."
+    },
+    {
+      "id": "AC-16",
+      "statement": "آزمون‌های مسیر تحت حفاظت (قید ۳ مالک): آزمون‌های V3، آزمون‌های int تازهٔ AC-5 و AC-10، و هر آزمونی که خود مسیر تحت حفاظت را می‌سنجد، با Job واقعی claim‌شده و lease واقعی اجرا می‌شوند؛ نشانگر در آن‌ها ممنوع است."
+    },
+    {
+      "id": "AC-17",
+      "statement": "فهرست بستهٔ نشانگر (قید ۴ مالک): فقط این فایل‌ها اجازهٔ گرفتن نشانگر دارند و در owns این کارت‌اند: apps/web/src/server/audio-audit-support.ts، apps/web/src/server/audio-retry-audit.int.test.ts، apps/web/src/server/audio-upload-audit.int.test.ts، apps/web/src/server/automatic-learning.int.test.ts، apps/web/src/server/privacy-composition.int.test.ts، apps/web/src/server/upload-batch-recovery.int.test.ts، packages/core/src/eval/lesson-review-service.int.test.ts، packages/core/src/plt/notifications.int.test.ts، packages/core/src/priv/media.int.test.ts، packages/core/src/priv/org-cleanup.int.test.ts، packages/core/src/proc/capture-transcription.int.test.ts، packages/core/src/proc/knowledge-repair.int.test.ts، packages/core/src/proc/knowledge-study-repair.int.test.ts، packages/core/src/proc/knowledge-translation.int.test.ts، packages/core/src/proc/recovery.int.test.ts، packages/core/src/proc/study-output-guard.int.test.ts، packages/core/src/proc/transcription-parallel.int.test.ts، packages/core/src/proc/steps/runtime.test.ts، packages/core/src/proc/steps/study-output.test.ts، packages/core/test/processing-run.ts، packages/core/test/processing-jobs.ts. در هر کدام فقط افزودن نشانگر در ساخت JobContext؛ هیچ تغییر assertion یا منطق آزمون. proc/steps/runtime.test.ts قید fake-only ‏AC-9 را نگه می‌دارد. فایل فهرست‌شده‌ای که تغییر نکند اشکالی ندارد. فایل بیرون از این فهرست که به نشانگر نیاز دارد ⇒ blocked با فهرست کامل نیازها (کارت تازه). گزارش Implementer می‌گوید کدام فایل‌ها واقعاً نشانگر گرفتند، با hunk."
     }
   ],
   "owns_paths": [
@@ -57,7 +85,34 @@
     "packages/core/src/priv/media.int.test.ts",
     "packages/core/src/proc/steps/runtime.test.ts",
     "packages/core/src/plt/storage-compose-module.test.ts",
-    "packages/core/src/proc/steps/fail-run.test.ts"
+    "packages/core/src/proc/steps/fail-run.test.ts",
+    "packages/core/src/proc/steps/start.ts",
+    "packages/core/src/proc/steps/publish.ts",
+    "packages/core/src/proc/steps/audio-source.ts",
+    "packages/core/src/proc/steps/pdf-source.ts",
+    "packages/core/src/proc/steps/lesson-parts.ts",
+    "packages/core/src/proc/maintenance.ts",
+    "apps/web/src/server/audio-audit-support.ts",
+    "apps/web/src/server/audio-retry-audit.int.test.ts",
+    "apps/web/src/server/audio-upload-audit.int.test.ts",
+    "apps/web/src/server/automatic-learning.int.test.ts",
+    "apps/web/src/server/privacy-composition.int.test.ts",
+    "apps/web/src/server/upload-batch-recovery.int.test.ts",
+    "packages/core/src/eval/lesson-review-service.int.test.ts",
+    "packages/core/src/plt/notifications.int.test.ts",
+    "packages/core/src/priv/org-cleanup.int.test.ts",
+    "packages/core/src/proc/capture-transcription.int.test.ts",
+    "packages/core/src/proc/knowledge-repair.int.test.ts",
+    "packages/core/src/proc/knowledge-study-repair.int.test.ts",
+    "packages/core/src/proc/knowledge-translation.int.test.ts",
+    "packages/core/src/proc/recovery.int.test.ts",
+    "packages/core/src/proc/study-output-guard.int.test.ts",
+    "packages/core/src/proc/transcription-parallel.int.test.ts",
+    "packages/core/src/proc/steps/study-output.test.ts",
+    "packages/core/test/processing-run.ts",
+    "packages/core/test/processing-jobs.ts",
+    "packages/core/test/test-only-job-context.ts",
+    "tools/test/test-only-job-context-marker.test.ts"
   ],
   "depends_on": ["P11-01"],
   "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
@@ -68,7 +123,7 @@
     "reviewers": ["reviewer.code", "reviewer.security"]
   },
   "limits": {
-    "max_turns": 80,
+    "max_turns": 110,
     "max_rework_rounds": 1
   },
   "install_assets": [
@@ -88,6 +143,8 @@
     "قاعدهٔ قفل (E249‑R، E276‑R Q-4 = ب برای fake): proc/steps/runtime.test.ts، plt/storage-compose-module.test.ts و proc/steps/fail-run.test.ts فقط برای fake در owns هستند (AC-9) و در TestPlan قفل نیستند. قفل‌ها (E287‑R): proc/maintenance.test.ts و ops/admin-tasks.test.ts. plt/jobs.test.ts و plt/jobs.int.test.ts (owns ‏P11-01) قفل نمی‌شوند، چون gate ‏testplan-lock هر قفل را روی head ‏PR با sha256 درون TestPlan می‌سنجد (controller/src/gate/gates.ts، testPlanLockChecks) و کارت پیشین آن‌ها را تغییر می‌دهد؛ این کارت آن‌ها را در owns ندارد، پس gate ‏scope تغییرشان را رد می‌کند و نگهبانی از دست نمی‌رود.",
     "install_assets (E192‑R؛ R80): مانند کارت‌های دستهٔ ۱۱. نصب: پیش‌فرض runner. verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
     "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8). برآورد 3 تا 8 دلار.",
-    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (80) است و L1 ‏--max-turns نمی‌دهد."
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (110؛ E322‑R، چون attempt 2 ‏۸۴ نوبت بود) است و L1 ‏--max-turns نمی‌دهد.",
+    "E320‑R (پاسخ پرسش‌های attempt 2، ‏`job-20261112-7b768460`): Q0 ⇒ AC-11؛ Q1 ⇒ AC-12؛ Q2 (allowlist ‏packages/core/src/plt/log.ts بیرون از owns برای operation_key و provider_request_id) نامزد C11-33 است. D1 پذیرفته: ردپای AC-2 در فیلدهای موجود reason و request_id ثبت می‌شود. D2 پذیرفته: mediaTtsJob با JobLeaseLost بی تسویه و بی پاک‌سازی staged object متوقف می‌شود و pending object را claim جاری یا reconcile ‏(C9-15) پاک می‌کند. D0: E321 = الف (مالک) ⇒ AC-13 تا AC-17 ‏(E322‑R). attempt 3 از commit جزئی f88efee با --rework-findings ‏docs/l3/cards/P11-02.rework-3.md اجرا می‌شود و دور rework مصرف نمی‌شود. شش مسیر تازهٔ owns درون write_paths است (packages/core/**). TestPlan بی‌تغییر است و قفل مالک (ledger ‏6633) می‌ماند.",
+    "E321 و E322‑R (مالک، 2026-11-12): Q9-1 = الف با چهار قید (نشانگر فقط از مسیر کمکی آزمون و بی env یا پرچم ⇒ AC-14؛ آزمون ایستا بر همهٔ فایل‌های غیرآزمون ⇒ AC-15؛ مسیرهای تحت حفاظت با lease واقعی ⇒ AC-16؛ فهرست بسته در کارت ⇒ AC-17). Q9-2 = ب: سقف این هفته ۱۲۰ دلار فقط برای تمام کردن P11-02 و P11-08؛ هزینهٔ ماندهٔ این کارت از 2026-11-12 ‏14:36 UK حداکثر ۱۲ دلار است؛ اگر برآورد از آن گذشت، ایست و گزارش. برآورد L1 برای attempt 3، verify و دو بازبینی: 4 تا 9 دلار. owns این کارت ۳۶ مسیر است، همه درون write_paths؛ هیچ‌کدام قفل TestPlan این کارت (proc/maintenance.test.ts، ops/admin-tasks.test.ts) نیست."
   ]
 }
