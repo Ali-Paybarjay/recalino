@@ -469,11 +469,13 @@ async function beginProviderAttempt<T>(
   });
 }
 /**
- * QUA-01: settles a valid response and saves its checkpoint in one commit. The accounting
- * persists even when the run ended or its class was deleted during dispatch; the job then ends.
- * ADR-0004 rule 4 (P11-02, C8-6, C9-13): only with the job's authority, checked first in the same
- * transaction. A response that arrives after the claim became void commits nothing from this
- * worker: no settle, no cost row, no attempt state, no checkpoint (`JobLeaseLost`, rolled back).
+ * QUA-01: settles a valid response and saves its checkpoint in one commit. ADR-0004 rule 4
+ * (P11-02, C8-6, C9-13): only with the job's authority, checked first in the same transaction.
+ * A response that arrives after the claim became void commits nothing from this worker: no
+ * settle, no cost row, no attempt state, no checkpoint (`JobLeaseLost`, rolled back). Ending or
+ * deleting the run cancels its job, so a response that arrives after the run was cancelled or its
+ * class was deleted during dispatch is refused the same way (ADR-0004 rule 5): the attempt stays
+ * started and its hold stays open until category 12 reconciles it (C11-36).
  */
 async function commitProviderOutput<T>(
   call: ProviderCall<T>,
@@ -487,7 +489,8 @@ async function commitProviderOutput<T>(
     .transaction()
     .execute(async (tx) => {
       await assertWriteAuthority(tx, job);
-      // Provider accounting persists even when cancellation/deletion happened during dispatch.
+      // Reached only with the authority (or PLT's test-only mark). If the run has nonetheless
+      // ended, the accounting still persists here and the job then ends.
       await lockAccountForCleanup(tx, ctx.userId);
       await finishProviderStep(
         tx,
