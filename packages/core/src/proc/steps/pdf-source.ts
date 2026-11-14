@@ -86,6 +86,7 @@ export const extractPdfSource: ProcessingStage<StoredSource, RunSource | Yielded
         runId: payload.runId,
         source,
         now: job.now(),
+        job,
       };
       const pages = [unit.start];
       if (dependencies.preparePdfPages) {

@@ -48,6 +48,7 @@ export const extractAudioSource: ProcessingStage<StoredSource, RunSource | Yield
           runId: payload.runId,
           source,
           now: job.now(),
+          job,
         }),
       );
     if (

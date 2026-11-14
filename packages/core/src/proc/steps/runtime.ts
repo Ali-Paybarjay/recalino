@@ -58,6 +58,11 @@ export type AudioPreparer = (input: {
   runId: string;
   source: RunSource;
   now: Date;
+  /**
+   * The JobContext the preparation runs for (ADR-0004 rule 4, P11-02 AC-19): each object record is
+   * created and verified only with that job's authority (writeOwnedObject). Absent outside a job.
+   */
+  job?: Pick<JobContext, "lease">;
 }) => Promise<AudioChunk[]>;
 export interface PdfPageImage {
   page: number;
@@ -72,6 +77,8 @@ export type PdfPagePreparer = (input: {
   source: RunSource;
   page: number;
   now: Date;
+  /** As in AudioPreparer (P11-02 AC-19): the job whose authority each object record needs. */
+  job?: Pick<JobContext, "lease">;
 }) => Promise<PdfPageImage>;
 /** Bound speculative page rendering without increasing paid provider calls per invocation. */
 export const PDF_PAGE_PREPARATION_BATCH_SIZE = 3;
