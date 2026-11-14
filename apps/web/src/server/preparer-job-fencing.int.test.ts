@@ -3,6 +3,7 @@
 // no test-only mark (AC-16). A worker whose claim was taken by a reclaim neither creates nor
 // verifies a plt.storage_object row through either preparer.
 import { createHash, randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import type { AiProvider, ProviderSettings } from "@recalino/core/aip";
 import { createDatabase } from "@recalino/core/db";
 import {
@@ -263,6 +264,30 @@ function reclaimingDuringWrite(store: MemoryObjectStore, reclaim: () => Promise<
   });
 }
 
+/** Every row of the four tables a stale preparer could touch, keyed by row identity. */
+async function tableRows() {
+  const objects = await db.selectFrom("plt.storage_object").selectAll().execute();
+  const temporaries = await db.selectFrom("proc.temporary_object").selectAll().execute();
+  const jobs = await db.selectFrom("plt.job").selectAll().execute();
+  const runs = await db.selectFrom("proc.processing_run").selectAll().execute();
+  return {
+    objects: new Map(objects.map((row) => [row.id, row])),
+    temporaries: new Map(temporaries.map((row) => [`${row.run_id}/${row.object_id}`, row])),
+    jobs: new Map(jobs.map((row) => [row.id, row])),
+    runs: new Map(runs.map((row) => [row.id, row])),
+  };
+}
+
+/** The keys added after `before`, and the keys of `before` whose row changed or went away. */
+function changes<T>(before: Map<string, T>, after: Map<string, T>) {
+  return {
+    added: [...after.keys()].filter((key) => !before.has(key)),
+    changed: [...before.keys()].filter(
+      (key) => !after.has(key) || !isDeepStrictEqual(before.get(key), after.get(key)),
+    ),
+  };
+}
+
 describe("P11-02 AC-20 preparers inside a processing job write object records only with its authority", () => {
   it("a stale worker's audio preparer, after the reclaim, creates no object row", async () => {
     const { f, store, run, audioSource, preparedObjects } = await preparedRun();
@@ -348,6 +373,99 @@ describe("P11-02 AC-20 preparers inside a processing job write object records on
     await cancelRun(db, f.ctx, run.id);
     await job.done();
   }, 60000);
+
+  it("a PDF preparer that loses its claim between createObject and confirmObject leaves only its own pending object and its temporary_object registration", async () => {
+    // Another learner's run, verified prepared object, temporary_object registration and job.
+    const other = await preparedRun();
+    const otherJob = await claimedJob();
+    const [otherImage] = await preparePdfPages({
+      db,
+      store: other.store,
+      ctx: other.f.ctx,
+      runId: other.run.id,
+      source: other.pdfSource,
+      pages: [1],
+      now: other.f.now,
+      job: { lease: otherJob.a },
+    });
+    if (!otherImage) throw new Error("Expected the other prepared page");
+    const { f, store, run, pdfSource } = await preparedRun();
+    const job = await claimedJob();
+    // Leases ended earlier are swept now, so the reclaim below changes only this job's row.
+    await sweepJobs(db, new Date());
+    const before = await tableRows();
+    expect(before.objects.get(otherImage.objectId)?.state).toBe("verified");
+    expect(before.temporaries.has(`${other.run.id}/${otherImage.objectId}`)).toBe(true);
+    expect(before.jobs.get(otherJob.a.id)?.lease_token).toBe(otherJob.a.token);
+    expect(before.runs.has(other.run.id)).toBe(true);
+    // The reclaim runs after createObject and onRegistered, once the bytes are written, and
+    // before confirmObject; head() is confirmObject's first store call.
+    const confirmHeads: string[] = [];
+    const window = Object.assign(Object.create(store) as MemoryObjectStore, {
+      write: async (key: string, bytes: Uint8Array, contentType: string) => {
+        await store.write(key, bytes, contentType);
+        await job.reclaim();
+      },
+      head: async (key: string) => {
+        confirmHeads.push(key);
+        return store.head(key);
+      },
+    });
+    await expect(
+      preparePdfPages({
+        db,
+        store: window,
+        ctx: f.ctx,
+        runId: run.id,
+        source: pdfSource,
+        pages: [1],
+        now: f.now,
+        job: { lease: job.a },
+      }),
+    ).rejects.toMatchObject(leaseLost);
+    const after = await tableRows();
+    const objects = changes(before.objects, after.objects);
+    const temporaries = changes(before.temporaries, after.temporaries);
+    const jobs = changes(before.jobs, after.jobs);
+    const runs = changes(before.runs, after.runs);
+    const [ownId] = objects.added;
+    const own = ownId === undefined ? undefined : after.objects.get(ownId);
+    // 1. confirmObject reached its guarded update after the reclaim and was refused: the worker's
+    // own object stays pending, never verified.
+    expect({ confirmHeads, state: own?.state }).toEqual({
+      confirmHeads: [own?.key],
+      state: "pending",
+    });
+    // 2. What remains of that worker: its own pending object and the temporary_object
+    // registration that points the run's cleanup at it, nothing else.
+    expect({
+      objects: objects.added.map((id) => after.objects.get(id)?.owner_user_id),
+      temporaries: temporaries.added.map((key) => {
+        const row = after.temporaries.get(key);
+        return row && { run: row.run_id, object: row.object_id, user: row.user_id };
+      }),
+      jobs: jobs.added,
+      runs: runs.added,
+    }).toEqual({
+      objects: [f.ctx.userId],
+      temporaries: [{ run: run.id, object: ownId, user: f.ctx.userId }],
+      jobs: [],
+      runs: [],
+    });
+    // 3. No row of another storage object, temporary_object, job or run changed. The one changed
+    // job row is this job's, and the change is the test's reclaim: worker B holds the claim.
+    expect({
+      objects: objects.changed,
+      temporaries: temporaries.changed,
+      jobs: jobs.changed,
+      runs: runs.changed,
+      claim: after.jobs.get(job.a.id)?.lease_token === job.a.token,
+    }).toEqual({ objects: [], temporaries: [], jobs: [job.a.id], runs: [], claim: false });
+    await cancelRun(db, f.ctx, run.id);
+    await cancelRun(db, other.f.ctx, other.run.id);
+    await job.done();
+    await otherJob.done();
+  }, 120000);
 
   it("with its current claim, the PDF preparer creates and verifies the row as before", async () => {
     const { f, store, run, pdfSource, preparedObjects } = await preparedRun();
