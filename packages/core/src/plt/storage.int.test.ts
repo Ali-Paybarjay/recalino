@@ -520,11 +520,12 @@ describe("P11-02 storage records written for a job need its authority (ADR-0004 
         },
       ),
     ).rejects.toMatchObject(leaseLost);
-    // The verification rolled back; the cleanup marks the record deleted and removes the bytes.
+    // AC-21: the verification rolled back, and A, without authority, neither changes the record
+    // nor deletes the bytes; the pending object stays for the current claim or reconcile (D2).
     const rows = await ownerObjects(owner);
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.state).toBe("deleted");
-    expect((await store.list(`src/${owner}/`)).objects).toHaveLength(0);
+    expect(rows[0]?.state).toBe("pending");
+    expect((await store.list(`src/${owner}/`)).objects).toHaveLength(1);
     await job.done();
   });
 

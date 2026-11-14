@@ -350,15 +350,27 @@ export async function writeOwnedObject(
       throw errors.conflict();
     return object.id;
   } catch (failure) {
-    // A concurrent cleanup may have marked it deleted before a slow write finished.
-    // Always delete the physical key again; a state-only check could leave late bytes behind.
+    // P11-02 AC-21 (ADR-0004 rules 4 and 6): the record changes only with the job's authority and
+    // only from pending; the bytes go only once the record reads deleted, after that change. A
+    // concurrent cleanup may have marked it deleted before a slow write finished, so its late bytes
+    // go too. A worker whose claim is void changes nothing and deletes nothing: the pending object
+    // stays for the current claim or reconciliation (D2).
     try {
-      await store.delete(object.key);
-      await db
-        .updateTable("plt.storage_object")
-        .set({ state: "deleted", deleted_at: input.now })
-        .where("id", "=", object.id)
-        .execute();
+      const deleted = await withAuthority(db, input.job, async (tx) => {
+        await tx
+          .updateTable("plt.storage_object")
+          .set({ state: "deleted", deleted_at: input.now })
+          .where("id", "=", object.id)
+          .where("state", "=", "pending")
+          .execute();
+        const row = await tx
+          .selectFrom("plt.storage_object")
+          .select("state")
+          .where("id", "=", object.id)
+          .executeTakeFirst();
+        return row?.state === "deleted";
+      });
+      if (deleted) await store.delete(object.key);
     } catch {
       /* Periodic reconciliation retries pending/deleted orphan objects. */
     }
