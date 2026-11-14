@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "id": "P11-02",
-  "title": "fencing اثرهای provider و storage زیر اختیار Job (دستهٔ ۱۱ L3، دور دوم؛ C8-6 و C9-13 بخش fencing، C11-4؛ v6، E280‑R، E309‑R، E320‑R و E334‑R؛ Recalino ADR-0004 ‏0.6 بندهای 4 و 6)",
+  "title": "fencing اثرهای provider و storage زیر اختیار Job (دستهٔ ۱۱ L3، دور دوم؛ C8-6 و C9-13 بخش fencing، C11-4؛ v7، E280‑R، E309‑R، E320‑R، E334‑R و E339‑R؛ Recalino ADR-0004 ‏0.6 بندهای 4 و 6)",
   "goal": "C8-6 (P8-02، F-6؛ P10-01، F-2): پاسخ پولی worker کهنه پس از برداشت دوبارهٔ Job گم می‌شود یا با اختیار باطل commit می‌شود. C9-13 (بخش fencing): اجراکنندهٔ کهنه نباید ردیف هزینه یا settle ثبت کند. C11-4 (review:security ‏P11-03، hypothesis): در مسیر pendingOnly، bytes پیش از commit علامت deleted حذف می‌شوند. C11-12 (بازبینی معماری P11-07، F-11): نوشتن‌های دامنه (liveRun، شاخهٔ ذخیرهٔ commitProviderOutput، failRun، storeExtraction) فقط وضعیت run را می‌سنجند، پس fencing در plt.job به‌تنهایی worker کهنه را متوقف نمی‌کند. Recalino ADR-0004 (0.6، پذیرفته؛ بند 4) این مسیرها را تحت حفاظت می‌گذارد: providerStep (وضعیت attempt، checkpoint خروجی provider، settle هزینه)، writeOwnedObject (ردیف شیء برای bytes ذخیره‌شده)، حذف بیرونی storage (علامت ردیف و حذف bytes)، و نوشتن‌های دامنه از طرف Job (checkpoint، content version، dispatch پولی، بستن یا شکست run). این کارت مرحلهٔ P11-02 جدول «تحویل پلکانی» است، پس از ادغام P11-01 و با اختیار تعریف‌شدهٔ آن. بازیابی نتیجه و تطبیق هزینه (ADR بند 7؛ V3-04 بخش بازیابی، V3-05، V3-08) در دستهٔ ۱۲ است.",
   "mode": "brownfield",
   "task_type": "bugfix",
@@ -49,7 +49,7 @@
     },
     {
       "id": "AC-11",
-      "statement": "گذراندن job به liveRun (E320‑R، پرسش Q0 ‏attempt 2): در packages/core/src/proc/steps/start.ts، packages/core/src/proc/steps/publish.ts، packages/core/src/proc/steps/audio-source.ts، packages/core/src/proc/steps/pdf-source.ts، packages/core/src/proc/steps/lesson-parts.ts فقط فراخوان‌های liveRun، job را به‌عنوان پارامتر چهارم می‌گذرانند تا همان بررسی اختیار AC-10 در همان تراکنش اجرا شود؛ هیچ تغییر دیگری در این پنج فایل نیست. گزارش Implementer همهٔ hunkهای این پنج فایل را می‌آورد."
+      "statement": "گذراندن job به liveRun (E320‑R، پرسش Q0 ‏attempt 2): در packages/core/src/proc/steps/start.ts، packages/core/src/proc/steps/publish.ts، packages/core/src/proc/steps/audio-source.ts، packages/core/src/proc/steps/pdf-source.ts، packages/core/src/proc/steps/lesson-parts.ts فقط فراخوان‌های liveRun، job را به‌عنوان پارامتر چهارم می‌گذرانند تا همان بررسی اختیار AC-10 در همان تراکنش اجرا شود؛ هیچ تغییر دیگری در این پنج فایل نیست، جز گذراندن job به فراخوان preparer صدا یا PDF (AC-19، E339‑R). گزارش Implementer همهٔ hunkهای این پنج فایل را می‌آورد."
     },
     {
       "id": "AC-12",
@@ -78,6 +78,26 @@
     {
       "id": "AC-18",
       "statement": "start.test.ts (E334‑R، پرسش Q1 ‏attempt 3): در packages/core/src/proc/steps/start.test.ts فقط آرگومان چهارم (job) به expect موجود فراخوان liveRun افزوده می‌شود. این تغییر assertion است، نه fake-only، و فقط پیامد امضای AC-11 است. هیچ آزمونی افزوده یا حذف نمی‌شود، شمار آزمون‌های این فایل ثابت می‌ماند و هیچ تغییر دیگری نیست. گزارش Implementer همهٔ hunkهای این فایل را می‌آورد."
+    },
+    {
+      "id": "AC-19",
+      "statement": "preparerهای صدا و PDF درون Job (E339‑R، یافتهٔ major ‏review:code روی attempt 4؛ AC-3 همهٔ نوشتن‌های ردیف شیء از درون Job را دربر می‌گیرد): در apps/web/src/server/audio-preparer.ts و apps/web/src/server/pdf-preparer.ts فقط job تا writeOwnedObject گذرانده می‌شود و onRegistered ‏(registerProcessingTemporaryObject) زیر همان اختیار ثبت می‌شود؛ نوع‌های AudioPreparer و PdfPagePreparer در packages/core/src/proc/steps/runtime.ts فیلد job می‌گیرند و فراخوان preparer در فایل‌های AC-11 آن را می‌گذراند. apps/web/src/server/processing-jobs.ts فقط اگر wiring ناگزیر باشد تغییر می‌کند، و فقط در wiring. هیچ تغییر رفتاری دیگر. آزمون‌های موجود apps/web/src/server/audio-preparer.test.ts، apps/web/src/server/audio-preparer.runtime.test.ts، apps/web/src/server/pdf-preparer.test.ts، apps/web/src/server/pdf-preparer.int.test.ts فقط اگر امضا آن را ناگزیر کند و فقط در fake یا wiring تغییر می‌کنند؛ شمار آزمون هر فایل ثابت می‌ماند (مثل AC-9). گزارش Implementer همهٔ hunkهای این فایل‌ها را می‌آورد."
+    },
+    {
+      "id": "AC-20",
+      "statement": "آزمون int تازهٔ apps/web/src/server/preparer-job-fencing.int.test.ts (AC-16: Job واقعی claim‌شده و lease واقعی؛ نشانگر ممنوع): worker کهنه پس از reclaim از راه preparer صدا یا PDF ردیف plt.storage_object نمی‌سازد و verify نمی‌کند."
+    },
+    {
+      "id": "AC-21",
+      "statement": "شکست writeOwnedObject (E339‑R، یافتهٔ minor ‏review:code روی attempt 4؛ D2، AC-3، AC-4): در packages/core/src/plt/storage.ts، worker بی اختیار ردیف شیء را تغییر نمی‌دهد و bytes را حذف نمی‌کند؛ هر تغییر ردیف شیء فقط زیر withAuthority و با شرط state = 'pending' است. آزمون storage.int.test.ts که رفتار کنونی را تأیید می‌کند («a job whose claim becomes void while its bytes are written») با همین اصلاح عوض می‌شود؛ آزمون خود این Task است، نه قفل. پاک‌سازی شیء pending با claim جاری یا reconcile می‌ماند (D2)."
+    },
+    {
+      "id": "AC-22",
+      "statement": "آزمون‌های مستقیم (E339‑R، tests_missing ‏review:code روی attempt 4): برای failRun، storeExtraction و checkpointAndContinue، هم رد JobContext بی lease (AC-13) و هم رد پس از reclaim، با Job واقعی claim‌شده و lease واقعی و بی نشانگر (AC-16)، در فایل int تازهٔ packages/core/src/proc/step-authority.int.test.ts."
+    },
+    {
+      "id": "AC-23",
+      "statement": "دامنهٔ AC-3 در این کارت (E341‑R): mediaTtsJob و preparerهای صدا و PDF در job پردازش (AC-19). این پنج فایل غیرآزمون، که writeOwnedObject را نام می‌برند، در این کارت تغییر نمی‌کنند: packages/core/src/anki/exports.ts، packages/core/src/html/exports.ts، packages/core/src/ops/backups.ts، packages/core/src/ops/deletion-journals.ts، packages/core/src/voc/profile.ts. Implementer برای هر کدام با شاهد path:line می‌گوید آیا می‌تواند از درون Job اجرا شود؛ مورد مثبت در open_questions گزارش می‌شود و نامزد کارت بعدی است (C11-34)؛ Implementer به‌خاطر آن blocked نمی‌شود و اصلاحش در این Task نیست. تصمیم دربارهٔ آن پیش از فعال‌سازی P11-08 با مالک است."
     }
   ],
   "owns_paths": [
@@ -123,7 +143,16 @@
     "packages/core/src/proc/knowledge-response-budget.int.test.ts",
     "packages/core/src/proc/transcription-timing.int.test.ts",
     "packages/core/src/proc/audio-charged-material.int.test.ts",
-    "packages/core/src/plt/index.ts"
+    "packages/core/src/plt/index.ts",
+    "apps/web/src/server/audio-preparer.ts",
+    "apps/web/src/server/pdf-preparer.ts",
+    "apps/web/src/server/processing-jobs.ts",
+    "apps/web/src/server/audio-preparer.test.ts",
+    "apps/web/src/server/audio-preparer.runtime.test.ts",
+    "apps/web/src/server/pdf-preparer.test.ts",
+    "apps/web/src/server/pdf-preparer.int.test.ts",
+    "apps/web/src/server/preparer-job-fencing.int.test.ts",
+    "packages/core/src/proc/step-authority.int.test.ts"
   ],
   "depends_on": ["P11-01"],
   "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
@@ -154,9 +183,10 @@
     "قاعدهٔ قفل (E249‑R، E276‑R Q-4 = ب برای fake): proc/steps/runtime.test.ts، plt/storage-compose-module.test.ts و proc/steps/fail-run.test.ts فقط برای fake در owns هستند (AC-9) و در TestPlan قفل نیستند. قفل‌ها (E287‑R): proc/maintenance.test.ts و ops/admin-tasks.test.ts. plt/jobs.test.ts و plt/jobs.int.test.ts (owns ‏P11-01) قفل نمی‌شوند، چون gate ‏testplan-lock هر قفل را روی head ‏PR با sha256 درون TestPlan می‌سنجد (controller/src/gate/gates.ts، testPlanLockChecks) و کارت پیشین آن‌ها را تغییر می‌دهد؛ این کارت آن‌ها را در owns ندارد، پس gate ‏scope تغییرشان را رد می‌کند و نگهبانی از دست نمی‌رود.",
     "install_assets (E192‑R؛ R80): مانند کارت‌های دستهٔ ۱۱. نصب: پیش‌فرض runner. verify فقط وقتی load ‏۱ دقیقهٔ میزبان کمتر از 2 است.",
     "ورودی فقط Task Card، base و context است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). سقف هزینه 20 دلار هر بلوک (D8). برآورد 3 تا 8 دلار.",
-    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (110؛ E322‑R، چون attempt 2 ‏۸۴ نوبت بود؛ E334‑R: برای attempt 4 هم 110) است و L1 ‏--max-turns نمی‌دهد.",
+    "R92: Job فقط از TestPlan قفل‌شده آغاز می‌شود؛ مالک TestPlan را پیش از نخستین Job قفل می‌کند. از R98 سقف نوبت کار از limits.max_turns همین کارت (110؛ E322‑R، چون attempt 2 ‏۸۴ نوبت بود؛ E334‑R: برای attempt 4 هم 110؛ E339‑R: برای attempt 5 هم 110) است و L1 ‏--max-turns نمی‌دهد.",
     "E320‑R (پاسخ پرسش‌های attempt 2، ‏`job-20261112-7b768460`): Q0 ⇒ AC-11؛ Q1 ⇒ AC-12؛ Q2 (allowlist ‏packages/core/src/plt/log.ts بیرون از owns برای operation_key و provider_request_id) نامزد C11-33 است. D1 پذیرفته: ردپای AC-2 در فیلدهای موجود reason و request_id ثبت می‌شود. D2 پذیرفته: mediaTtsJob با JobLeaseLost بی تسویه و بی پاک‌سازی staged object متوقف می‌شود و pending object را claim جاری یا reconcile ‏(C9-15) پاک می‌کند. D0: E321 = الف (مالک) ⇒ AC-13 تا AC-17 ‏(E322‑R). attempt 3 از commit جزئی f88efee با --rework-findings ‏docs/l3/cards/P11-02.rework-3.md اجرا می‌شود و دور rework مصرف نمی‌شود. شش مسیر تازهٔ owns درون write_paths است (packages/core/**). TestPlan بی‌تغییر است و قفل مالک (ledger ‏6633) می‌ماند.",
-    "E321 و E322‑R (مالک، 2026-11-12): Q9-1 = الف با چهار قید (نشانگر فقط از مسیر کمکی آزمون و بی env یا پرچم ⇒ AC-14؛ آزمون ایستا بر همهٔ فایل‌های غیرآزمون ⇒ AC-15؛ مسیرهای تحت حفاظت با lease واقعی ⇒ AC-16؛ فهرست بسته در کارت ⇒ AC-17). Q9-2 = ب: سقف این هفته ۱۲۰ دلار فقط برای تمام کردن P11-02 و P11-08؛ هزینهٔ ماندهٔ این کارت از 2026-11-12 ‏14:36 UK حداکثر ۱۲ دلار است؛ اگر برآورد از آن گذشت، ایست و گزارش. برآورد L1 برای attempt 3، verify و دو بازبینی: 4 تا 9 دلار. owns این کارت در v5 ‏۳۶ مسیر بود و در v6 ‏۴۳ است (E334‑R)، همه درون write_paths؛ هیچ‌کدام قفل TestPlan این کارت (proc/maintenance.test.ts، ops/admin-tasks.test.ts) نیست.",
-    "E334‑R (پاسخ پرسش‌های attempt 3، ‏`job-20261113-e17a4f8f`؛ blocked، بی commit): Q1 ⇒ AC-18؛ Q2 ⇒ AC-17 با پنج فایل و دو شرط (۲۱ ⇒ ۲۶)؛ Q3 = الف ⇒ AC-14 (plt/index.ts فقط export، حداکثر ۲ خط افزوده)؛ Q4 ⇒ AC-12 (پارامتر ششم اختیاری afterCommit). هفت مسیر تازهٔ owns درون write_paths است (packages/core/**)؛ هیچ‌کدام فایل TestPlan این کارت یا در owns کارت P11-08 نیست. attempt 4 از HEAD ‏`5454307` (f88efee به‌اضافهٔ merge از main) با --rework-findings ‏docs/l3/cards/P11-02.rework-4.md اجرا می‌شود و مانند attempt 3 دور rework شمرده نمی‌شود. max_turns ‏110 می‌ماند: ۹۱ نوبت attempt 3 بیشتر صرف کاوش و برگرداندن دو تعارض شد و rework-4 هر چهار پرسش را بسته است؛ شش فایل بزرگ‌تر در f88efee آماده است؛ با هزینهٔ دیده‌شدهٔ 0.037 تا 0.055 دلار در نوبت (attempt 3 و 2)، ۱۱۰ نوبت حدود 4.1 تا 6.1 دلار است که با verify و دو بازبینی (1.1 تا 2.3 دلار در P11-09 و P11-01) در ماندهٔ 8.54 دلار سقف مالک (Q9-2) می‌گنجد. هزینهٔ این کارت از 2026-11-12 ‏14:36 UK تا پایان attempt 3: 3.46 دلار."
+    "E321 و E322‑R (مالک، 2026-11-12): Q9-1 = الف با چهار قید (نشانگر فقط از مسیر کمکی آزمون و بی env یا پرچم ⇒ AC-14؛ آزمون ایستا بر همهٔ فایل‌های غیرآزمون ⇒ AC-15؛ مسیرهای تحت حفاظت با lease واقعی ⇒ AC-16؛ فهرست بسته در کارت ⇒ AC-17). Q9-2 = ب: سقف این هفته ۱۲۰ دلار فقط برای تمام کردن P11-02 و P11-08؛ هزینهٔ ماندهٔ این کارت از 2026-11-12 ‏14:36 UK حداکثر ۱۲ دلار است؛ اگر برآورد از آن گذشت، ایست و گزارش. برآورد L1 برای attempt 3، verify و دو بازبینی: 4 تا 9 دلار. owns این کارت در v5 ‏۳۶ مسیر بود و در v6 ‏۴۳ و در v7 ‏۵۲ است (E334‑R، E339‑R)، همه درون write_paths؛ هیچ‌کدام قفل TestPlan این کارت (proc/maintenance.test.ts، ops/admin-tasks.test.ts) نیست.",
+    "E334‑R (پاسخ پرسش‌های attempt 3، ‏`job-20261113-e17a4f8f`؛ blocked، بی commit): Q1 ⇒ AC-18؛ Q2 ⇒ AC-17 با پنج فایل و دو شرط (۲۱ ⇒ ۲۶)؛ Q3 = الف ⇒ AC-14 (plt/index.ts فقط export، حداکثر ۲ خط افزوده)؛ Q4 ⇒ AC-12 (پارامتر ششم اختیاری afterCommit). هفت مسیر تازهٔ owns درون write_paths است (packages/core/**)؛ هیچ‌کدام فایل TestPlan این کارت یا در owns کارت P11-08 نیست. attempt 4 از HEAD ‏`5454307` (f88efee به‌اضافهٔ merge از main) با --rework-findings ‏docs/l3/cards/P11-02.rework-4.md اجرا می‌شود و مانند attempt 3 دور rework شمرده نمی‌شود. max_turns ‏110 می‌ماند: ۹۱ نوبت attempt 3 بیشتر صرف کاوش و برگرداندن دو تعارض شد و rework-4 هر چهار پرسش را بسته است؛ شش فایل بزرگ‌تر در f88efee آماده است؛ با هزینهٔ دیده‌شدهٔ 0.037 تا 0.055 دلار در نوبت (attempt 3 و 2)، ۱۱۰ نوبت حدود 4.1 تا 6.1 دلار است که با verify و دو بازبینی (1.1 تا 2.3 دلار در P11-09 و P11-01) در ماندهٔ 8.54 دلار سقف مالک (Q9-2) می‌گنجد. هزینهٔ این کارت از 2026-11-12 ‏14:36 UK تا پایان attempt 3: 3.46 دلار.",
+    "E339‑R (ایست ۱ پس از attempt 4): implement ‏`job-20261113-69c5af71` با error_max_turns ایستاد (111/110؛ 5.69 دلار؛ بی گزارش ساخت‌یافته) و چهار commit مرحله‌ای گذاشت (HEAD ‏`ca82b81`)؛ verify ‏`job-20261113-acc8dcce` ⇒ TP-1 ‏pass و ۵۰۵۹ آزمون unit؛ review:code ‏`job-20261113-dcf6b281` ⇒ request_changes (major ⇒ AC-19 و AC-20؛ minor ⇒ AC-21؛ tests_missing ⇒ AC-22). نُه مسیر تازهٔ owns درون write_paths است (apps/web/src/** و packages/core/**)؛ هیچ‌کدام فایل TestPlan این کارت یا در owns کارت باز دیگری نیست؛ دو فایل AC-20 و AC-22 روی main نیستند. attempt 5 از HEAD ‏`ca82b81` با --rework-findings ‏docs/l3/cards/P11-02.rework-5.md اجرا می‌شود و تنها دور rework این کارت است (limits.max_rework_rounds = 1). هزینهٔ این کارت از 2026-11-12 ‏14:36 UK تا ایست ۱: 10.55 دلار؛ ماندهٔ سقف ۱۲ دلار (Q9-2) برای attempt 5 بس نیست ⇒ افزایش سقف تصمیم مالک است (D8). attempt 5 تا پاسخ مالک آغاز نمی‌شود."
   ]
 }
