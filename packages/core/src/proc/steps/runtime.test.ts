@@ -85,6 +85,12 @@ interface Fixture {
   previous?: Record<string, unknown>;
   attempts?: Record<string, unknown>[];
   current?: Record<string, unknown>;
+  /**
+   * P11-02 AC-26 (3): the fake answer to PLT's authority check, read only for a JobContext with a
+   * lease. Fail-closed: without this the check finds no row and refuses (JobLeaseLost); it gives
+   * authority only while the test's own grant returns true.
+   */
+  authority?: () => boolean;
 }
 /** Labels the statements providerStep writes; any other statement shows its whole SQL. */
 function label(query: CompiledQuery): string {
@@ -124,6 +130,8 @@ function setup(fixture: Fixture = {}) {
       ];
     if (name === "lock attempt")
       return [fixture.current ?? { state: "started", provider_request_id: null }];
+    if (query.sql.trimStart().startsWith("select j.id from plt.job j"))
+      return fixture.authority?.() ? [{ id: query.parameters[0] }] : [];
     return [];
   });
   m.log = log;
@@ -781,17 +789,42 @@ describe("providerStep (characterization)", () => {
   it.each([
     ["a run that ended meanwhile", () => (m.runState = "cancelled")],
     ["a deleted class", () => (m.sessionMissing = true)],
-  ])("keeps the accounting of %s and cancels the job", async (_name, change) => {
-    const { job, log, statements } = setup();
-    await expect(
-      providerStep(job, ctx, RUN_ID, "knowledge", "m", provider, schema, async () => {
+  ])("commits no accounting for %s and cancels the job", async (_name, change) => {
+    // P11-02 AC-26 (3): this test's own JobContext carries a lease and no test-only mark, so every
+    // guarded write runs PLT's authority check against this fake. Ending the run or deleting its
+    // class cancels the job in production (runs.ts cancelRun, cancelSessionRuns), so the fake
+    // gives authority only while the run is live and its class exists.
+    const { job, log, statements } = setup({
+      authority: () => m.runState === "processing" && !m.sessionMissing,
+    });
+    const leased: JobContext = {
+      db: job.db,
+      now: job.now,
+      job: job.job,
+      log: job.log,
+      step: job.step,
+      lease: { id: "job", token: "token", generation: 1 },
+    };
+    const refusal = await providerStep(
+      leased,
+      ctx,
+      RUN_ID,
+      "knowledge",
+      "m",
+      provider,
+      schema,
+      async () => {
         change();
         return result({ ok: true });
-      }),
-    ).rejects.toBeInstanceOf(JobCancelled);
-    expect(log.filter((entry) => entry.startsWith("finishProviderStep"))).toHaveLength(1);
+      },
+    ).catch((error: unknown) => error);
+    expect(refusal).toBeInstanceOf(JobCancelled);
+    expect((refusal as Error).name).toBe("JobLeaseLost");
+    expect(log.filter((entry) => entry.startsWith("beginProviderStep"))).toHaveLength(1);
+    expect(log.filter((entry) => entry.startsWith("finishProviderStep"))).toHaveLength(0);
+    expect(statements.filter((query) => label(query) === "update attempt")).toEqual([]);
     expect(statements.filter((query) => label(query) === "save step")).toEqual([]);
-    expect(log.at(-1)).toBe("commit");
+    expect(log.at(-1)).toBe("rollback");
   });
 
   it("does not dispatch for a run that is no longer live", async () => {
