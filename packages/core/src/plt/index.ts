@@ -156,6 +156,7 @@ export {
   deleteObject,
   issueReadLink,
   issueWriteLink,
+  isTestOnlyJobContext,
   type LinkRequest,
   type NewObject,
   type ObjectState,

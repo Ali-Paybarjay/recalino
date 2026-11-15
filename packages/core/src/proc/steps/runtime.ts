@@ -19,9 +19,11 @@ import type { Database, DB, Tx } from "../../db";
 import { assertSessionOwner } from "../../org";
 import {
   AppError,
+  assertJobAuthority,
   deleteObject,
   enqueueJob,
   errors,
+  isTestOnlyJobContext,
   JobCancelled,
   type JobContext,
   type JobDefinition,
@@ -56,6 +58,11 @@ export type AudioPreparer = (input: {
   runId: string;
   source: RunSource;
   now: Date;
+  /**
+   * The JobContext the preparation runs for (ADR-0004 rule 4, P11-02 AC-19): each object record is
+   * created and verified only with that job's authority (writeOwnedObject). Absent outside a job.
+   */
+  job?: Pick<JobContext, "lease">;
 }) => Promise<AudioChunk[]>;
 export interface PdfPageImage {
   page: number;
@@ -70,6 +77,8 @@ export type PdfPagePreparer = (input: {
   source: RunSource;
   page: number;
   now: Date;
+  /** As in AudioPreparer (P11-02 AC-19): the job whose authority each object record needs. */
+  job?: Pick<JobContext, "lease">;
 }) => Promise<PdfPageImage>;
 /** Bound speculative page rendering without increasing paid provider calls per invocation. */
 export const PDF_PAGE_PREPARATION_BATCH_SIZE = 3;
@@ -141,7 +150,41 @@ export const pdfPageImageSchema = z.strictObject({
   mimeType: z.enum(["image/png", "image/jpeg"]),
 });
 
-export async function liveRun(tx: Tx, ctx: LearnerContext, id: string) {
+/**
+ * ADR-0004 rule 4 (P11-02, C11-12): a write made on a job's behalf passes the job's authority check
+ * in its own transaction, before any lock of its own, so it is ordered with a reclaim of the job
+ * (the job row is locked first, as in runJobStep). The check is the public PLT one, with the
+ * claim's token and generation from JobContext; a refused check throws `JobLeaseLost` and the
+ * transaction rolls back. The run's own state is no authority. The runner always sets the lease; a
+ * JobContext without one is refused too (fail-closed, AC-13), unless it carries PLT's explicit
+ * test-only mark (AC-14), which keeps the earlier behaviour. No job (a caller outside a job) keeps
+ * the earlier behaviour.
+ */
+export async function assertWriteAuthority(
+  tx: Tx,
+  job: Pick<JobContext, "lease"> | undefined,
+): Promise<void> {
+  if (job === undefined || (job.lease === undefined && isTestOnlyJobContext(job))) return;
+  await assertJobAuthority(tx, job.lease);
+}
+
+/** Whether the error is PLT's refused authority check (a `JobCancelled` named JobLeaseLost). */
+export function isJobLeaseLost(error: unknown): boolean {
+  return error instanceof JobCancelled && error.name === "JobLeaseLost";
+}
+
+/**
+ * The run, locked under its owner's account, while it is still queued or processing. Given the
+ * job it runs for, the job's authority is checked first in the same transaction
+ * (assertWriteAuthority), so a worker whose claim is void writes nothing under this lock.
+ */
+export async function liveRun(
+  tx: Tx,
+  ctx: LearnerContext,
+  id: string,
+  job?: Pick<JobContext, "lease">,
+) {
+  await assertWriteAuthority(tx, job);
   await lockAccount(tx, ctx.userId);
   const run = await ownedRun(tx, ctx, id, true);
   if (!["queued", "processing"].includes(run.state)) throw new JobCancelled();
@@ -376,7 +419,8 @@ async function beginProviderAttempt<T>(
 ): Promise<{ cachedOutput: T } | { unresolved: ProviderError } | ProviderAttempt> {
   const { job, ctx, runId, step, model, provider, schema, maximumMicros } = call;
   return job.db.transaction().execute(async (tx) => {
-    const run = await liveRun(tx, ctx, runId);
+    // ADR-0004 rule 4: the attempt, its hold and a close at the maximum only with the authority.
+    const run = await liveRun(tx, ctx, runId, job);
     if (singleResponse) {
       // A concurrent worker may have committed its valid response after our optimistic read.
       // Reuse it under the dispatch lock, before deciding whether another response is allowed.
@@ -425,8 +469,13 @@ async function beginProviderAttempt<T>(
   });
 }
 /**
- * QUA-01: settles a valid response and saves its checkpoint in one commit. The accounting
- * persists even when the run ended or its class was deleted during dispatch; the job then ends.
+ * QUA-01: settles a valid response and saves its checkpoint in one commit. ADR-0004 rule 4
+ * (P11-02, C8-6, C9-13): only with the job's authority, checked first in the same transaction.
+ * A response that arrives after the claim became void commits nothing from this worker: no
+ * settle, no cost row, no attempt state, no checkpoint (`JobLeaseLost`, rolled back). Ending or
+ * deleting the run cancels its job, so a response that arrives after the run was cancelled or its
+ * class was deleted during dispatch is refused the same way (ADR-0004 rule 5): the attempt stays
+ * started and its hold stays open until category 12 reconciles it (C11-36).
  */
 async function commitProviderOutput<T>(
   call: ProviderCall<T>,
@@ -439,7 +488,9 @@ async function commitProviderOutput<T>(
   return job.db
     .transaction()
     .execute(async (tx) => {
-      // Provider accounting persists even when cancellation/deletion happened during dispatch.
+      await assertWriteAuthority(tx, job);
+      // Reached only with the authority (or PLT's test-only mark). If the run has nonetheless
+      // ended, the accounting still persists here and the job then ends.
       await lockAccountForCleanup(tx, ctx.userId);
       await finishProviderStep(
         tx,
@@ -492,6 +543,7 @@ async function commitProviderOutput<T>(
  * QUA-01: records a failed or unknown outcome once. A definite failure is settled at its
  * reported or estimated cost; an unknown one stays uncertain with its hold closed at the hold's
  * maximum (P9-05); a known invalid or truncated lesson keeps a checkpoint for its single recovery.
+ * Only with the job's authority (ADR-0004 rule 4), checked first in the same transaction.
  */
 async function recordProviderFailure<T>(
   call: ProviderCall<T>,
@@ -500,6 +552,7 @@ async function recordProviderFailure<T>(
 ) {
   const { job, ctx, runId, step, model, provider } = call;
   await job.db.transaction().execute(async (tx) => {
+    await assertWriteAuthority(tx, job);
     await lockAccountForCleanup(tx, ctx.userId);
     const current = await tx
       .selectFrom("proc.provider_attempt")
@@ -582,8 +635,32 @@ async function recordProviderFailure<T>(
   });
 }
 /**
+ * V3-04 (P11-02 AC-2): a provider outcome this worker could not commit because its claim was void
+ * leaves a trace on the existing allow-listed log, identifiers only: the job, its attempt, the
+ * attempt's operation key (`reason`) and the provider's request id (`request_id`) when there is
+ * one; never the output, the usage or user data. Recovering that outcome is batch 12's (ADR-0004
+ * rule 7); the attempt row stays as the current claim left it.
+ */
+function traceUncommittedResult<T>(
+  call: ProviderCall<T>,
+  attempt: ProviderAttempt,
+  requestId: string | null | undefined,
+) {
+  const { job } = call;
+  job.log?.("warn", "provider_result_not_committed", {
+    module: "proc",
+    job_id: job.job.id,
+    attempt: job.job.attempt,
+    code: "job_lease_lost",
+    reason: attempt.operation_key,
+    request_id: requestId ?? undefined,
+  });
+}
+/**
  * The attempt and maximum cost hold are committed before dispatch; an unknown result is not
- * repeated; its attempt stays unresolved and its hold closes at that maximum (P9-05).
+ * repeated; its attempt stays unresolved and its hold closes at that maximum (P9-05). Every write
+ * runs only with the job's authority (ADR-0004 rule 4); a worker whose claim became void commits
+ * nothing, leaves a trace (traceUncommittedResult) and stops with `JobLeaseLost`.
  */
 export async function providerStep<T>(
   job: JobContext,
@@ -614,10 +691,12 @@ export async function providerStep<T>(
   if ("unresolved" in attemptOrCheckpoint) throw attemptOrCheckpoint.unresolved;
   const attempt = attemptOrCheckpoint;
   let completedAccounting: Omit<ProviderResult<T>, "output"> | undefined;
+  let requestId: string | null | undefined;
   try {
     const result = await effect(attempt.operation_key);
     const { output: _output, ...accounting } = result;
     completedAccounting = accounting;
+    requestId = result.requestId;
     const parsed = schema.safeParse(result.output);
     if (!parsed.success) {
       const { output: _output, ...accounting } = result;
@@ -625,6 +704,7 @@ export async function providerStep<T>(
     }
     return await commitProviderOutput(call, attempt, result, parsed.data, options.onCommit);
   } catch (error) {
+    if (isJobLeaseLost(error)) traceUncommittedResult(call, attempt, requestId);
     if (error instanceof JobCancelled) throw error;
     const providerError =
       error instanceof ProviderError
@@ -632,7 +712,13 @@ export async function providerStep<T>(
         : completedAccounting
           ? new ProviderError("provider_output_commit_failed", false, false, completedAccounting)
           : new ProviderError("provider_outcome_unknown", false, true);
-    await recordProviderFailure(call, attempt, providerError);
+    requestId ??= providerError.accounting?.requestId;
+    try {
+      await recordProviderFailure(call, attempt, providerError);
+    } catch (recordError) {
+      if (isJobLeaseLost(recordError)) traceUncommittedResult(call, attempt, requestId);
+      throw recordError;
+    }
     // OPS-02: the provider's code and transport cause only, never its output (PRD-PRIV-06).
     job.log?.("warn", "provider_step_failed", {
       module: "proc",
@@ -720,7 +806,8 @@ export async function checkpointAndContinue(
   delaySeconds = 0,
 ) {
   await job.db.transaction().execute(async (tx) => {
-    await liveRun(tx, ctx, runId);
+    // ADR-0004 rule 4: the next job is dispatched only with this job's authority.
+    await liveRun(tx, ctx, runId, job);
     const id = await enqueueJob(tx, definition, {
       payload: { runId, userId: ctx.userId },
       singletonKey: `${runId}:${job.job.id}`,
@@ -758,7 +845,8 @@ export async function storeExtraction(
   settings: Record<string, unknown>,
 ): Promise<RunSource> {
   return job.db.transaction().execute(async (tx) => {
-    await liveRun(tx, ctx, runId);
+    // ADR-0004 rule 4: the content version and its checkpoint only with this job's authority.
+    await liveRun(tx, ctx, runId, job);
     const contentVersionId = await appendContentVersion(
       tx,
       ctx,

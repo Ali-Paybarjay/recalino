@@ -8,9 +8,11 @@ import {
   completeJob,
   failJob,
   JobCancelled,
+  type JobContext,
   type JobDefinition,
   runJobStep,
 } from "../src/plt";
+import { testOnlyJobContext } from "./test-only-job-context";
 
 /** Exercise the real job lease/checkpoints while never claiming another fixture's queue. */
 export async function runFixtureProcessingStep<P extends { runId: string; userId: string }>(
@@ -74,12 +76,15 @@ export async function runFixtureProcessingStep<P extends { runId: string; userId
   if (!claimed) return false;
   const { claim, payload } = claimed;
   try {
-    await definition.run(payload, {
-      db,
-      now: () => new Date(),
-      job: { id: claim.id, attempt: claim.attempt },
-      step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
-    });
+    await definition.run(
+      payload,
+      testOnlyJobContext<JobContext>({
+        db,
+        now: () => new Date(),
+        job: { id: claim.id, attempt: claim.attempt },
+        step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
+      }),
+    );
     await completeJob(db, claim, new Date());
   } catch (error) {
     if (!(error instanceof JobCancelled))

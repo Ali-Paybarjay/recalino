@@ -1,21 +1,23 @@
 import { randomUUID } from "node:crypto";
+import { sql } from "kysely";
 import { afterAll, expect, it } from "vitest";
 import { lessonReviewFixture, lessonReviewFixtureSettings } from "../../test/lesson-review-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../test/local-db";
 import { runFixtureProcessingStep } from "../../test/processing-jobs";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { updateProfile } from "../acc";
 import { type AiProvider, ProviderError, type ProviderResult, type StructuredInput } from "../aip";
 import { createDatabase, type Database, type Tx } from "../db";
 import { getVersion, tombstoneKnowledge } from "../lkm";
-import { cancelJob, type JobContext } from "../plt";
+import { cancelJob, claimJobs, JobCancelled, type JobContext, sweepJobs } from "../plt";
 import {
+  cancelSessionRuns,
   cleanupSessionProcessing,
-  completeAuxiliaryRun,
   executeAuxiliaryProviderStep,
-  failAuxiliaryRun,
   getRun,
 } from "../proc";
 import { amounts } from "../quota";
+import { deleteSource } from "../src";
 import {
   LESSON_REVIEW_RUBRIC_VERSION,
   lessonReviewCriteria,
@@ -174,7 +176,7 @@ it("reviews the selected version with its frozen level, persists an advisory che
     .execute();
   await lessonReviewJob({ provider }).run(
     { runId: a.runId, userId: x.ctx.userId, subjectId: x.knowledge.id },
-    {
+    testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: record.job_id ?? randomUUID(), attempt: 2 },
@@ -182,7 +184,7 @@ it("reviews the selected version with its frozen level, persists an advisory che
         await db.transaction().execute(effect);
         return "ran";
       },
-    },
+    }),
   );
   expect(provider.calls).toHaveLength(1);
   expect((await readLessonReview(db, x.ctx, x.session.id, x.knowledge.id))?.state).toBe("ready");
@@ -322,7 +324,7 @@ it("rejects unsupported target quotations with known cost and never publishes a 
       userId: x.ctx.userId,
       subjectId: x.knowledge.id,
     },
-    {
+    testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 2 },
@@ -330,7 +332,7 @@ it("rejects unsupported target quotations with known cost and never publishes a 
         await db.transaction().execute(effect);
         return "ran";
       },
-    },
+    }),
   );
   expect(provider.calls).toHaveLength(1);
   expect(await attempts(queued.runId)).toHaveLength(1);
@@ -338,11 +340,24 @@ it("rejects unsupported target quotations with known cost and never publishes a 
 });
 
 it.each(["invalid", "valid"] as const)(
-  "atomically reuses a %s paid outcome recorded after a delayed worker's preflight",
+  "keeps unresolved a %s paid outcome its reclaimed worker returns after a delayed worker's preflight",
   async (responseKind) => {
     const x = await lessonReviewFixture(db);
     const provider = new ReviewProvider();
     const queued = await scheduled(x, provider);
+    // P11-02 AC-26 (2) (ADR-0004 rules 2 and 5): both workers run with really claimed jobs and real
+    // leases, without the test-only mark. The review job takes a queue kind of its own so no other
+    // fixture's job is taken; worker two claims it after worker one's lease ended and the sweep
+    // returned it, so worker one's claim is void.
+    const record = await db
+      .selectFrom("proc.processing_run")
+      .select("job_id")
+      .where("id", "=", queued.runId)
+      .executeTakeFirstOrThrow();
+    const jobId = record.job_id;
+    if (!jobId) throw new Error("Missing fixture review job");
+    const kind = `eval.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", jobId).execute();
     const latch = () => {
       let release = () => {};
       const promise = new Promise<void>((resolve) => {
@@ -388,12 +403,18 @@ it.each(["invalid", "valid"] as const)(
         return typeof value === "function" ? value.bind(target) : value;
       },
     });
-    const context = (database: Database): JobContext => ({
-      db: database,
-      now: () => new Date(),
-      job: { id: randomUUID(), attempt: 1 },
-      step: async () => "skipped",
-    });
+    const context = async (database: Database): Promise<JobContext> => {
+      const [claim] = await claimJobs(db, [kind], 1, new Date());
+      if (!claim || claim.id !== jobId || claim.generation === undefined)
+        throw new Error("Expected a claim of the review job with its generation");
+      return {
+        db: database,
+        now: () => new Date(),
+        job: { id: claim.id, attempt: claim.attempt },
+        lease: { id: claim.id, token: claim.token, generation: claim.generation },
+        step: async () => "skipped",
+      };
+    };
     const options = {
       step: "lesson-review:report",
       model: provider.settings.llmModel,
@@ -410,13 +431,24 @@ it.each(["invalid", "valid"] as const)(
           input: JSON.stringify({ learner: { declaredLevel: "A2" } }),
         }),
     };
-    const first = executeAuxiliaryProviderStep(context(db), x.ctx, queued.runId, options).then(
+    const first = executeAuxiliaryProviderStep(
+      await context(db),
+      x.ctx,
+      queued.runId,
+      options,
+    ).then(
       (output) => output,
       (error: unknown) => error,
     );
     await firstDispatched.promise;
+    await db
+      .updateTable("plt.job")
+      .set({ lease_until: sql<Date>`now() - interval '1 minute'` })
+      .where("id", "=", jobId)
+      .execute();
+    await sweepJobs(db, new Date());
     const second = executeAuxiliaryProviderStep(
-      context(delayedDb),
+      await context(delayedDb),
       x.ctx,
       queued.runId,
       options,
@@ -431,26 +463,42 @@ it.each(["invalid", "valid"] as const)(
     const secondOutcome = await second;
     expect(provider.calls).toHaveLength(1);
     expect(await attempts(queued.runId)).toHaveLength(1);
-    if (responseKind === "invalid") {
-      expect(firstOutcome).toMatchObject({ code: "provider_schema_invalid", uncertain: false });
-      expect(secondOutcome).toMatchObject({ code: "provider_schema_invalid", uncertain: false });
+    // Worker one's claim is void, so its commit is refused (JobLeaseLost) and rolls back: a valid
+    // response at commitProviderOutput, an invalid one at recordProviderFailure. Worker two then
+    // finds the attempt started, closes its hold at the maximum and reports the outcome unresolved.
+    // Both response kinds end the same way.
+    expect(firstOutcome).toBeInstanceOf(JobCancelled);
+    expect((firstOutcome as Error).name).toBe("JobLeaseLost");
+    expect(secondOutcome).toMatchObject({ code: "provider_outcome_unresolved", uncertain: true });
+    const [attempt] = await attempts(queued.runId);
+    expect(attempt?.state).toBe("started");
+    expect(
       await db
-        .transaction()
-        .execute((tx) =>
-          failAuxiliaryRun(tx, x.ctx, queued.runId, { code: "provider_schema_invalid" }),
-        );
-    } else {
-      expect(firstOutcome).toMatchObject({ rubricVersion: LESSON_REVIEW_RUBRIC_VERSION });
-      expect(secondOutcome).toEqual(firstOutcome);
-      await db
-        .transaction()
-        .execute((tx) => completeAuxiliaryRun(tx, x.ctx, queued.runId, amounts({})));
-      expect(await readLessonReview(db, x.ctx, x.session.id, x.knowledge.id)).toMatchObject({
-        state: "ready",
-        verdict: "no_major_issues_found",
-        response: firstOutcome,
-      });
-    }
+        .selectFrom("proc.run_step")
+        .select("step")
+        .where("run_id", "=", queued.runId)
+        .execute(),
+    ).toEqual([]);
+    const hold = await db
+      .selectFrom("quota.cost_hold")
+      .select(["maximum_micros", "closed_at"])
+      .where("id", "=", attempt?.hold_id ?? "")
+      .executeTakeFirstOrThrow();
+    expect(hold.closed_at).toBeInstanceOf(Date);
+    const costs = await db
+      .selectFrom("quota.provider_cost")
+      .select(["amount_micros", "estimated_micros", "attempt_id"])
+      .where("run_id", "=", queued.runId)
+      .execute();
+    expect(costs).toHaveLength(1);
+    expect(costs[0]?.amount_micros).toBe(null);
+    expect(Number(costs[0]?.estimated_micros)).toBe(Number(hold.maximum_micros));
+    expect(costs[0]?.attempt_id).toBe(attempt?.id);
+    expect(await readLessonReview(db, x.ctx, x.session.id, x.knowledge.id)).toMatchObject({
+      state: "processing",
+      response: null,
+      verdict: null,
+    });
   },
 );
 
@@ -471,19 +519,45 @@ it("cancels a source-deleted queued lesson before dispatch and refuses the stale
   });
 });
 
-it("rechecks deletion at the provider commit without forgetting the known paid response", async () => {
+it("rechecks deletion at the provider commit and leaves the known paid response to reconciliation", async () => {
   const x = await lessonReviewFixture(db);
   const provider = new ReviewProvider();
+  // P11-02 AC-26 (4): the source is deleted during dispatch through SRC's full delete, whose
+  // deletion step cancels each linked session's runs and their jobs as PRIV's
+  // coordinateSourceDeletion does (priv/deletion.ts, cancelSessionRuns); EVAL may not import PRIV.
   provider.beforeReply = async () => {
-    await db
-      .updateTable("src.asset")
-      .set({ tombstoned_at: new Date() })
-      .where("id", "=", x.sourceId)
-      .execute();
+    await deleteSource(db, x.ctx, x.sourceId, "all", new Date(), {
+      onDelete: async (tx, _sourceId, _receiptId, sessionIds) => {
+        for (const sessionId of [...new Set(sessionIds)].sort())
+          await cancelSessionRuns(tx, x.ctx, sessionId);
+      },
+    });
   };
   const queued = await scheduled(x, provider);
-  await run(x, provider, queued.runId);
-  expect((await getRun(db, x.ctx, queued.runId)).state).toBe("failed");
+  // The review job is really claimed, on a queue kind of its own so no other fixture's job is
+  // taken, and runs with its real lease, without the test-only mark.
+  const record = await db
+    .selectFrom("proc.processing_run")
+    .select("job_id")
+    .where("id", "=", queued.runId)
+    .executeTakeFirstOrThrow();
+  if (!record.job_id) throw new Error("Missing fixture review job");
+  const kind = `eval.synthetic_${randomUUID().replaceAll("-", "")}`;
+  await db.updateTable("plt.job").set({ kind }).where("id", "=", record.job_id).execute();
+  const [claim] = await claimJobs(db, [kind], 1, new Date());
+  if (!claim || claim.generation === undefined)
+    throw new Error("Expected a claim of the review job with its generation");
+  const definition = lessonReviewJob({ provider });
+  await definition.run(definition.payload.parse(claim.payload), {
+    db,
+    now: () => new Date(),
+    job: { id: claim.id, attempt: claim.attempt },
+    lease: { id: claim.id, token: claim.token, generation: claim.generation },
+    step: async () => "skipped",
+  });
+  // The deletion cancelled the job, so commitProviderOutput was refused (JobLeaseLost): no cost
+  // row, the attempt stays started and its hold stays open until category 12 reconciles it.
+  expect((await getRun(db, x.ctx, queued.runId)).state).toBe("cancelled");
   expect(provider.calls).toHaveLength(1);
   expect(
     await db
@@ -498,7 +572,15 @@ it("rechecks deletion at the provider commit without forgetting the known paid r
       .select("id")
       .where("run_id", "=", queued.runId)
       .execute(),
-  ).toHaveLength(1);
+  ).toHaveLength(0);
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .innerJoin("quota.cost_hold", "quota.cost_hold.id", "proc.provider_attempt.hold_id")
+      .select(["proc.provider_attempt.state", "quota.cost_hold.closed_at"])
+      .where("proc.provider_attempt.run_id", "=", queued.runId)
+      .execute(),
+  ).toEqual([{ state: "started", closed_at: null }]);
 });
 
 it("refuses provider setting drift without dispatching or guessing a missing declared level", async () => {

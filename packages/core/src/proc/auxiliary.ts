@@ -24,6 +24,7 @@ import {
   settleAllowance,
 } from "../quota";
 import { ownedRun, type ProcessingRun, runView } from "./runs";
+import { assertWriteAuthority } from "./steps/runtime";
 import { providerStep } from "./worker";
 
 /** Owned, live-session context only; higher modules never query PROC tables themselves. */
@@ -201,6 +202,9 @@ export async function executeAuxiliaryProviderStep<T>(
   },
 ): Promise<T> {
   await job.db.transaction().execute(async (tx) => {
+    // ADR-0004 rule 4 (P11-02 AC-27): the job's authority is checked first, before the run leaves
+    // queued, so a JobContext without a lease, or a job whose claim is void, changes nothing.
+    await assertWriteAuthority(tx, job);
     await lockAccount(tx, ctx.userId);
     const run = await ownedRun(tx, ctx, runId, true);
     await assertSessionOwner(tx, ctx, run.session_id);
