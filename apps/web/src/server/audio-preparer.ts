@@ -475,7 +475,7 @@ async function cutRange(
  */
 export const AUDIO_PREPARATION_CONCURRENCY = 3;
 /** Temporary extraction artifacts only (D29); source ranges remain in original time coordinates. */
-export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, source, now }) => {
+export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, source, now, job }) => {
   if (!source.objectId || !source.durationMs)
     throw errors.validationFailed({ audio: ["verified_original_required"] });
   const bytes = await readOwnedObject(db, store, ctx, source.objectId);
@@ -512,6 +512,7 @@ export const prepareAudio: AudioPreparer = async ({ db, store, ctx, runId, sourc
           onRegistered: async (objectId) => {
             await registerProcessingTemporaryObject(db, ctx, runId, objectId, now);
           },
+          ...(job === undefined ? {} : { job }),
         });
         const chunk: AudioChunk = {
           // A class run can contain several independently recorded audio sources.

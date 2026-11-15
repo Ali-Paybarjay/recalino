@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { OpenRouterProvider, type ProviderSettings } from "../aip";
 import { createDatabase } from "../db";
 import { getLatestVersion } from "../lkm";
@@ -163,12 +164,13 @@ it("D59 regression: the same audio in another class of the period uploads, trans
       await activateProcessingRun(database, ctx, runId, job);
     },
   );
-  const context = () => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const context = () =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
 
   /** The client path of `POST /api/sources/{id}/audio`: start, confirm_part, complete. */
   async function processClassAudio(sessionId: string) {

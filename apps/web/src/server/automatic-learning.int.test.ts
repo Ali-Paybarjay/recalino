@@ -38,6 +38,7 @@ import { afterAll, expect, it } from "vitest";
 import { processAutomaticFixtureSession } from "../../../../packages/core/test/automatic-learning-fixture";
 import { LOCAL_APP_DATABASE_URL } from "../../../../packages/core/test/local-db";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
+import { testOnlyJobContext } from "../../../../packages/core/test/test-only-job-context";
 import {
   automaticLearningJob,
   automaticLearningSync,
@@ -248,12 +249,12 @@ async function fixture(grant = true) {
         ["queued", "processing"].includes(run.state),
       );
       if (!active) return;
-      const context: JobContext = {
+      const context: JobContext = testOnlyJobContext({
         db,
         now: () => new Date(),
         job: { id: randomUUID(), attempt: 1 },
         step: async () => "ran" as const,
-      };
+      });
       await job.run({ runId: active.id, userId: base.ctx.userId }, context);
     }
     throw new Error("Synthetic automatic run did not finish within its checkpoint limit");
@@ -939,12 +940,12 @@ it("D59: the same file in another class of the period is processed without new a
   if (!run) throw new Error("Expected the copied class to start processing");
   await f.job.run(
     { runId: run.id, userId: f.ctx.userId },
-    {
+    testOnlyJobContext({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 1 },
       step: async () => "ran" as const,
-    },
+    }),
   );
   expect((await listRuns(db, f.ctx, copy.id))[0]?.state).toBe("ready");
   expect((await allowance(db, f.ctx)).consumed.document).toBe(1);

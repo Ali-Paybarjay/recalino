@@ -12,7 +12,7 @@ export async function startRun(
   const { job, ctx, payload, dependencies } = base;
   const provider = requireProvider(dependencies.provider);
   const initial = await job.db.transaction().execute(async (tx) => {
-    const run = await liveRun(tx, ctx, payload.runId);
+    const run = await liveRun(tx, ctx, payload.runId, job);
     await tx
       .updateTable("proc.processing_run")
       .set({ state: "processing", updated_at: job.now() })

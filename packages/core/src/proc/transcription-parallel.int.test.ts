@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { OpenRouterProvider, ProviderError, type ProviderSettings } from "../aip";
 import { createDatabase } from "../db";
 import {
@@ -205,13 +206,13 @@ async function parallelClass(
   const invoke = (overrides: Partial<JobContext> = {}) =>
     job.run(
       { runId: run.id, userId: x.ctx.userId },
-      {
+      testOnlyJobContext<JobContext>({
         db,
         now: () => new Date(),
         job: { id: randomUUID(), attempt: 1 },
         step: async () => "ran" as const,
         ...overrides,
-      },
+      }),
     );
   const objectStates = async () =>
     (

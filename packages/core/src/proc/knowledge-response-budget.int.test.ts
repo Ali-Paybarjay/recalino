@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { saveTeachingPreference } from "../acc";
 import { OpenRouterProvider, type ProviderSettings } from "../aip";
 import { createDatabase } from "../db";
@@ -123,12 +124,12 @@ async function fixture(request: typeof fetch, sourceCount = 1, outputTokens = 61
   const work = () =>
     job.run(
       { runId: run.id, userId: x.ctx.userId },
-      {
+      testOnlyJobContext({
         db,
         now: () => new Date(),
         job: { id: randomUUID(), attempt: 1 },
         step: async () => "ran" as const,
-      },
+      }),
     );
   return { x, run, work, texts };
 }

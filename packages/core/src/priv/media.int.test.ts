@@ -1,16 +1,19 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { sql } from "kysely";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { completeSignIn, getAccountState, lockAccount } from "../acc";
-import type {
-  AiProvider,
-  ProviderResult,
-  ProviderSettings,
-  StructuredInput,
-  Transcript,
-  TranscriptionInput,
+import {
+  type AiProvider,
+  ProviderError,
+  type ProviderResult,
+  type ProviderSettings,
+  type StructuredInput,
+  type Transcript,
+  type TranscriptionInput,
 } from "../aip";
 import {
   cleanupAccountCards,
@@ -54,12 +57,16 @@ import {
 import { appendEncryptedDeletionJournal, readEncryptedDeletionJournals } from "../ops";
 import { getSession } from "../org";
 import {
+  type ClaimedJob,
+  claimJobs,
   createObject,
   DEFAULT_PLT_SETTINGS,
   type JobContext,
   MemoryObjectStore,
+  type RunSummary,
   reconcileStorage,
   runDueJobs,
+  runJobStep,
   sweepJobs,
   writeOwnedObject,
 } from "../plt";
@@ -771,7 +778,11 @@ describe("explicit media and privacy publication", () => {
     await expect(getCard(db, f.ctx, card.id)).rejects.toMatchObject({ code: "not_found" });
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
   });
-  it("records a late provider cost after account tombstone without resurrecting the output", async () => {
+  // P11-02 AC-28 (C11-36, ADR-0004 rule 5): the speech job runs with its real claim and lease, no
+  // test-only mark. Deleting the account during the paid call cancels the run and its job
+  // (cancelAccountRuns, cancelJob), which voids the claim, so the late answer is not committed: no
+  // cost row and no output; the attempt stays started and its hold open for category 12.
+  it("leaves a late provider cost after account tombstone to reconciliation without resurrecting the output", async () => {
     const f = await fixture();
     const privacy = privacyDependencies(f.store);
     let receiptId = "";
@@ -789,18 +800,44 @@ describe("explicit media and privacy publication", () => {
       },
       f.dependencies,
     );
-    await run(db, mediaTtsJob(f.dependencies));
+    const { runId, jobId } = await speechRun(asset.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", jobId).execute();
+    const events: string[] = [];
+    const summary = await runDueJobs(db, [{ ...mediaTtsJob(f.dependencies), kind }], {
+      deadline: new Date(Date.now() + 5000),
+      kinds: [kind],
+      log: (_level, event) => {
+        events.push(event);
+      },
+    });
+    // The worker stopped with JobLeaseLost and settled nothing.
+    expect(summary).toMatchObject({ succeeded: 0, failed: 0, retried: 0, cancelled: 0 });
+    expect(events).toContain("provider_result_not_committed");
+    expect(events).toContain("job_lease_lost");
     expect(f.provider.calls).toBe(1);
     expect(await getAccountState(db, f.ctx.userId)).toBeNull();
     await expect(getMediaAsset(db, f.ctx, asset.id)).rejects.toMatchObject({ code: "not_found" });
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
-    const cost = await db
-      .selectFrom("quota.provider_cost")
-      .select("amount_micros")
-      .where("user_id", "=", f.ctx.userId)
-      .executeTakeFirstOrThrow();
-    expect(Number(cost.amount_micros)).toBe(2);
+    expect(await providerCosts(f.ctx.userId)).toEqual([]);
+    expect(
+      await db
+        .selectFrom("proc.provider_attempt")
+        .innerJoin("quota.cost_hold", "quota.cost_hold.id", "proc.provider_attempt.hold_id")
+        .select(["proc.provider_attempt.state", "quota.cost_hold.closed_at"])
+        .where("proc.provider_attempt.run_id", "=", runId)
+        .execute(),
+    ).toEqual([{ state: "started", closed_at: null }]);
+    expect(await runState(runId)).toEqual({ state: "cancelled", last_error: null });
+    expect(
+      await db
+        .selectFrom("plt.job")
+        .select("state")
+        .where("id", "=", jobId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ state: "cancelled" });
     await run(db, privacyCleanupJob(privacy));
+    expect(await providerCosts(f.ctx.userId)).toEqual([]);
     expect((await getPrivacyDeletionRequest(db, f.ctx, receiptId)).state).toBe("completed");
     expect(
       await completeSignIn(db, { userId: f.ctx.userId, intentId: null, now: new Date() }),
@@ -833,14 +870,14 @@ describe("explicit media and privacy publication", () => {
     const { runId } = await speechRun(asset.id);
     // The earlier job's step goes through the production provider step, so its attempt, cost and
     // checkpoint are committed together; the fixture provider itself is never called.
-    const interruptedJob: JobContext = {
+    const interruptedJob: JobContext = testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 1 },
       async step() {
         throw new Error("Unused fixture job step");
       },
-    };
+    });
     await executeAuxiliaryProviderStep(interruptedJob, f.ctx, runId, {
       step: "speech",
       model: providerSettings.ttsModel,
@@ -1144,14 +1181,14 @@ describe("explicit media and privacy publication", () => {
       f.dependencies,
     );
     const { runId } = await speechRun(asset.id);
-    const interruptedJob: JobContext = {
+    const interruptedJob: JobContext = testOnlyJobContext<JobContext>({
       db,
       now: () => new Date(),
       job: { id: randomUUID(), attempt: 1 },
       async step() {
         throw new Error("Unused fixture job step");
       },
-    };
+    });
     await executeAuxiliaryProviderStep(interruptedJob, f.ctx, runId, {
       step: "speech",
       model: providerSettings.ttsModel,
@@ -1474,6 +1511,37 @@ describe("explicit media and privacy publication", () => {
     expect(summary.orphansDeleted).toBe(1);
     expect(await f.store.read(pending.key)).toBeNull();
   });
+  it("C11-4 closing a stranded speech run deletes the pending object's bytes only after the deleted mark committed", async () => {
+    const { f, asset, runId } = await strandedSpeechAsset(false);
+    const pending = await pendingSpeechObject(f.ctx.userId, f.store);
+    await db
+      .updateTable("media.asset")
+      .set({ object_id: pending.id })
+      .where("id", "=", asset.id)
+      .execute();
+    // The byte delete reads the record from another session: only a committed mark is visible.
+    const seenAtByteDelete: unknown[] = [];
+    class ObservingStore extends MemoryObjectStore {
+      override async delete(key: string): Promise<void> {
+        seenAtByteDelete.push(await objectState(pending.id));
+        await f.store.delete(key);
+      }
+    }
+
+    expect(
+      await reconcileEndedJobRuns(db, new Date(), {
+        userId: f.ctx.userId,
+        afterAuxiliaryClose: speechRunClosedHook(new ObservingStore()),
+      }),
+    ).toBe(1);
+    expect(seenAtByteDelete).toEqual(["deleted"]);
+    expect(await objectState(pending.id)).toBe("deleted");
+    expect(await f.store.read(pending.key)).toBeNull();
+    expect(await runState(runId)).toEqual({
+      state: "failed",
+      last_error: "processing_interrupted",
+    });
+  });
   // C9-16 (P10-04): the reconciliation close hook (closeEndedSpeechRunMedia) filters by run_id and
   // user_id, so closing one run never changes the speech asset of another run of the same owner or
   // of another owner (P9-06 AC-11, tenant isolation).
@@ -1721,4 +1789,240 @@ describe("explicit media and privacy publication", () => {
     expect(await assetRow(firstQueued.asset.id)).toEqual(before.firstQueued);
     expect(await assetRow(secondQueued.asset.id)).toEqual(before.secondQueued);
   });
+  // C8-6 (P8-02, F-6; P10-01, F-2), C9-13 (fencing) and C11-12 (P11-02, ADR-0004 rules 4 and 6):
+  // worker A committed its speech attempt and maximum cost hold, its lease ran out and worker B
+  // claimed the job; A's provider answer arrives only after that reclaim.
+  type Logged = Array<{ event: string; fields: Record<string, unknown> | undefined }>;
+  /** A worker's context for a claim, as the runner builds it: the claim's lease and a logger. */
+  function claimContext(claim: ClaimedJob, logged: Logged): JobContext {
+    if (claim.generation === undefined) throw new Error("Expected a claim with its generation");
+    return {
+      db,
+      now: () => new Date(),
+      job: { id: claim.id, attempt: claim.attempt },
+      lease: { id: claim.id, token: claim.token, generation: claim.generation },
+      log: (_level, event, fields) => {
+        logged.push({ event, fields });
+      },
+      step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
+    };
+  }
+  /** A speech request whose job, on its own queue kind, worker A has claimed. */
+  async function speechClaimedByA() {
+    const f = await fixture();
+    const asset = await requestTts(
+      db,
+      f.ctx,
+      {
+        sessionId: f.session.id,
+        text: "A short sentence.",
+        operationKey: randomUUID(),
+        exportAllowed: false,
+      },
+      f.dependencies,
+    );
+    const { runId, jobId } = await speechRun(asset.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", jobId).execute();
+    const [claim] = await claimJobs(db, [kind], 1, new Date());
+    if (!claim || claim.id !== jobId) throw new Error("Expected worker A's claim");
+    const logged: Logged = [];
+    const payload = { runId, userId: f.ctx.userId, subjectId: asset.id };
+    return { f, asset, runId, jobId, kind, payload, logged, jobA: claimContext(claim, logged) };
+  }
+  /** A's lease ends on the database clock, as it does when its renewal stops. */
+  async function endLease(jobId: string) {
+    await db
+      .updateTable("plt.job")
+      .set({ lease_until: sql<Date>`now() - interval '1 minute'` })
+      .where("id", "=", jobId)
+      .execute();
+  }
+  async function speechCheckpointRow(runId: string) {
+    return db
+      .selectFrom("proc.run_step")
+      .select("step")
+      .where("run_id", "=", runId)
+      .where("step", "=", "speech")
+      .executeTakeFirst();
+  }
+  async function speechCosts(userId: string) {
+    return db
+      .selectFrom("quota.provider_cost")
+      .select(["operation_key", "amount_micros", "estimated_micros"])
+      .where("user_id", "=", userId)
+      .execute();
+  }
+  it("C8-6 F-2 a speech answer that arrives after the job was reclaimed is not committed from worker A, leaves an identifiers-only trace, and B ends the run as the contract says", async () => {
+    const { f, asset, runId, jobId, kind, payload, logged, jobA } = await speechClaimedByA();
+    const providerB = new SyntheticSpeech();
+    let reclaimed: RunSummary | undefined;
+    let committedBeforeAnswer: unknown;
+    f.provider.beforeResult = async () => {
+      // A's attempt and its maximum cost hold were committed before the call.
+      committedBeforeAnswer = await speechAttempts(runId);
+      await endLease(jobId);
+      // B sweeps, claims and runs the job: it finds A's attempt started, closes its hold at the
+      // maximum and ends the run needs_input without a provider call (P9-05).
+      reclaimed = await runDueJobs(
+        db,
+        [{ ...mediaTtsJob(mediaDependencies(f.store, providerB)), kind }],
+        { deadline: new Date(Date.now() + 5000), kinds: [kind] },
+      );
+    };
+
+    await expect(mediaTtsJob(f.dependencies).run(payload, jobA)).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    expect(committedBeforeAnswer).toEqual([{ state: "started", hold_id: expect.any(String) }]);
+    expect(reclaimed).toMatchObject({ succeeded: 1, failed: 0, retried: 0 });
+    expect(f.provider.calls).toBe(1);
+    expect(providerB.calls).toBe(0);
+    // A committed nothing: the attempt stays as B left it, the only cost row is B's close at the
+    // hold's maximum, and there is no speech checkpoint.
+    expect(await speechAttempts(runId)).toEqual(committedBeforeAnswer);
+    expect(await speechCosts(f.ctx.userId)).toEqual([
+      {
+        operation_key: `${runId}:speech:1`,
+        amount_micros: null,
+        estimated_micros: String(providerSettings.maximumMicros),
+      },
+    ]);
+    expect(await speechCheckpointRow(runId)).toBeUndefined();
+    // B ended the run and its asset as the contract says.
+    expect(await runState(runId)).toEqual({
+      state: "needs_input",
+      last_error: "provider_outcome_unresolved",
+    });
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe("needs_input");
+    expect(
+      await db
+        .selectFrom("plt.job")
+        .select(["state", "attempt"])
+        .where("id", "=", jobId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ state: "succeeded", attempt: 2 });
+    // AC-2: one trace of the result A could not commit, identifiers only.
+    const traces = logged.filter((entry) => entry.event === "provider_result_not_committed");
+    expect(traces).toEqual([
+      {
+        event: "provider_result_not_committed",
+        fields: {
+          module: "proc",
+          job_id: jobId,
+          attempt: 1,
+          code: "job_lease_lost",
+          reason: `${runId}:speech:1`,
+          request_id: "synthetic-speech",
+        },
+      },
+    ]);
+    const written = JSON.stringify(logged);
+    expect(written).not.toContain(Buffer.from(SYNTHETIC_SPEECH_BYTES).toString("base64"));
+    expect(written).not.toContain("A short sentence.");
+    expect(written).not.toContain(f.ctx.userId);
+  });
+  it("C11-12 a worker whose job was reclaimed neither saves the speech checkpoint nor settles or closes the run, and the current claim goes on", async () => {
+    const { f, asset, runId, jobId, kind, payload, logged, jobA } = await speechClaimedByA();
+    let claimB: ClaimedJob | undefined;
+    f.provider.beforeResult = async () => {
+      await endLease(jobId);
+      await sweepJobs(db, new Date());
+      [claimB] = await claimJobs(db, [kind], 1, new Date());
+    };
+
+    await expect(mediaTtsJob(f.dependencies).run(payload, jobA)).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    expect(claimB).toMatchObject({ id: jobId, attempt: 2 });
+    // Nothing from A: no checkpoint, no cost row or settle, the attempt still started, and the
+    // run and asset still open for the current claim.
+    expect(await speechCheckpointRow(runId)).toBeUndefined();
+    expect(await speechCosts(f.ctx.userId)).toEqual([]);
+    expect(await speechAttempts(runId)).toEqual([
+      { state: "started", hold_id: expect.any(String) },
+    ]);
+    expect(await runState(runId)).toEqual({ state: "processing", last_error: null });
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe("processing");
+    expect(await objectsOf(f.ctx.userId)).toEqual([]);
+    expect(logged.map((entry) => entry.event)).toContain("provider_result_not_committed");
+
+    // B, the current claim, goes on as the contract says (P9-05): no second call, the hold
+    // closes at its maximum, and the run waits for review.
+    const providerB = new SyntheticSpeech();
+    await mediaTtsJob(mediaDependencies(f.store, providerB)).run(
+      payload,
+      claimContext(claimB as ClaimedJob, []),
+    );
+    expect(providerB.calls).toBe(0);
+    expect(await runState(runId)).toEqual({
+      state: "needs_input",
+      last_error: "provider_outcome_unresolved",
+    });
+    expect(await speechCosts(f.ctx.userId)).toEqual([
+      {
+        operation_key: `${runId}:speech:1`,
+        amount_micros: null,
+        estimated_micros: String(providerSettings.maximumMicros),
+      },
+    ]);
+  });
+  it("C11-12 a definite provider failure that arrives after the reclaim is neither settled nor closes the run from the worker that lost its claim", async () => {
+    const { f, asset, runId, jobId, kind, payload, logged, jobA } = await speechClaimedByA();
+    let claimB: ClaimedJob | undefined;
+    f.provider.beforeResult = async () => {
+      await endLease(jobId);
+      await sweepJobs(db, new Date());
+      [claimB] = await claimJobs(db, [kind], 1, new Date());
+      throw new ProviderError("provider_http_400", false, false);
+    };
+
+    await expect(mediaTtsJob(f.dependencies).run(payload, jobA)).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    expect(claimB).toMatchObject({ id: jobId, attempt: 2 });
+    expect(await speechCosts(f.ctx.userId)).toEqual([]);
+    expect(await speechAttempts(runId)).toEqual([
+      { state: "started", hold_id: expect.any(String) },
+    ]);
+    expect(await runState(runId)).toEqual({ state: "processing", last_error: null });
+    expect((await getMediaAsset(db, f.ctx, asset.id)).state).toBe("processing");
+    expect(
+      logged
+        .filter((entry) => entry.event === "provider_result_not_committed")
+        .map((entry) => entry.fields),
+    ).toEqual([
+      {
+        module: "proc",
+        job_id: jobId,
+        attempt: 1,
+        code: "job_lease_lost",
+        reason: `${runId}:speech:1`,
+        request_id: undefined,
+      },
+    ]);
+  });
+  it("AC-13 a speech job whose JobContext carries no lease is refused before the paid call (fail-closed): no attempt, hold, cost, checkpoint or run change", async () => {
+    const { f, asset, runId, payload, jobA } = await speechClaimedByA();
+    const { lease: _lease, ...noLease } = jobA;
+    const runBefore = await runState(runId);
+
+    await expect(mediaTtsJob(f.dependencies).run(payload, noLease)).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    expect(f.provider.calls).toBe(0);
+    expect(await speechAttempts(runId)).toEqual([]);
+    expect(await speechCosts(f.ctx.userId)).toEqual([]);
+    expect(await speechCheckpointRow(runId)).toBeUndefined();
+    expect(await runState(runId)).toEqual(runBefore);
+    expect(await objectsOf(f.ctx.userId)).toEqual([]);
+    expect(["queued", "processing"]).toContain((await getMediaAsset(db, f.ctx, asset.id)).state);
+  });
+  async function objectsOf(userId: string) {
+    return db
+      .selectFrom("plt.storage_object")
+      .select("state")
+      .where("owner_user_id", "=", userId)
+      .execute();
+  }
 });

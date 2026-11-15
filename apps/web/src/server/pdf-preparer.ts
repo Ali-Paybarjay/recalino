@@ -101,6 +101,7 @@ export const preparePdfPages: PdfPagesPreparer = async ({
   source,
   pages,
   now,
+  job,
 }) => {
   const settings = readPdfRenderSettings();
   assertInstalledResources();
@@ -198,6 +199,7 @@ export const preparePdfPages: PdfPagesPreparer = async ({
             bytes: image,
             now,
             onRegistered: (id) => registerProcessingTemporaryObject(db, ctx, runId, id, now),
+            ...(job === undefined ? {} : { job }),
           });
           prepared.push({ page, objectId, mimeType: "image/jpeg" });
         } finally {

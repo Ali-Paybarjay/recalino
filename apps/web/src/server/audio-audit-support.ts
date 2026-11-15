@@ -7,6 +7,7 @@ import { createProcessingRun, getRun } from "@recalino/core/proc";
 import { amounts, configureCostPolicy, grantEntitlement } from "@recalino/core/quota";
 import { acceptSourceNotice, createSource, readInputContract } from "@recalino/core/src";
 import { studyFixture } from "../../../../packages/core/test/study-fixture";
+import { testOnlyJobContext } from "../../../../packages/core/test/test-only-job-context";
 import type { Recording } from "../ui/recording/store";
 import { defineRoute } from "./api";
 import { automaticLearningHandler } from "./automatic-learning-routes";
@@ -285,12 +286,12 @@ export function auditFetch(db: Database, user: () => string | null): typeof fetc
 }
 
 export function auditJobContext(db: Database): JobContext {
-  return {
+  return testOnlyJobContext({
     db,
     now: () => new Date(),
     job: { id: randomUUID(), attempt: 1 },
     step: async () => "ran" as const,
-  };
+  });
 }
 
 /** Drives one class run through the processing job until it leaves the active states. */

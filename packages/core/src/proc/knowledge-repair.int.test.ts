@@ -3,6 +3,7 @@ import { afterAll, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { saveTeachingPreference, updateProfile } from "../acc";
 import {
   type AiProvider,
@@ -13,7 +14,16 @@ import {
 } from "../aip";
 import { createDatabase } from "../db";
 import { getLatestVersion, knowledgeModelSchema, modelClaims } from "../lkm";
-import { type JobContext, MemoryObjectStore } from "../plt";
+import {
+  AppError,
+  claimJobs,
+  completeJob,
+  failJob,
+  JobCancelled,
+  type JobContext,
+  MemoryObjectStore,
+  runJobStep,
+} from "../plt";
 import { amounts, configureCostPolicy, grantEntitlement } from "../quota";
 import { appendContentVersion, sourceClassificationSchema } from "../src";
 import { sourceSnapshotSchema } from "./contracts";
@@ -249,12 +259,13 @@ async function fixture(
         completed_at: new Date(),
       })
       .execute();
-  const jobContext = (): JobContext => ({
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async () => "ran" as const,
-  });
+  const jobContext = (): JobContext =>
+    testOnlyJobContext({
+      db,
+      now: () => new Date(),
+      job: { id: randomUUID(), attempt: 1 },
+      step: async () => "ran" as const,
+    });
   const audio = snapshot.sources.find((source) => source.kind === "audio");
   if (!audio?.contentVersionId) throw new Error("Synthetic source missing");
   const repair = buildKnowledgeRepairInput(
@@ -865,22 +876,78 @@ it("keeps an unresolved compact attempt uncertain, closes its hold at the maximu
   });
 });
 
-it("settles a finished truncated response after cancellation without dispatching compact recovery", async () => {
+it("leaves a finished truncated response unsettled after cancellation without dispatching compact recovery", async () => {
   const f = await fixture({ seedOriginal: false });
   f.provider.response = async () => {
     await cancelRun(db, f.x.ctx, f.run.id);
     throw knownTruncation();
   };
-  await f.workStep();
-  await f.workStep();
+  // P11-02 AC-26 (1) (ADR-0004 rule 5): each job of the run is really claimed, on a queue kind of
+  // its own so no other fixture's job is taken, and runs with its real lease, without the
+  // test-only mark.
+  const workClaimedStep = async () => {
+    const current = await db
+      .selectFrom("proc.processing_run")
+      .select(["job_id", "state"])
+      .where("id", "=", f.run.id)
+      .executeTakeFirstOrThrow();
+    if (!current.job_id || !["queued", "processing"].includes(current.state)) return;
+    const kind = `proc.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", current.job_id).execute();
+    const [claim] = await claimJobs(db, [kind], 1, new Date());
+    if (!claim) return;
+    if (claim.generation === undefined) throw new Error("Expected a claim with its generation");
+    const context: JobContext = {
+      db,
+      now: () => new Date(),
+      job: { id: claim.id, attempt: claim.attempt },
+      lease: { id: claim.id, token: claim.token, generation: claim.generation },
+      step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
+    };
+    try {
+      await f.job.run(f.job.payload.parse(claim.payload), context);
+      await completeJob(db, claim, new Date());
+    } catch (error) {
+      if (!(error instanceof JobCancelled))
+        await failJob(
+          db,
+          claim,
+          error instanceof AppError ? error.code : "handler_error",
+          new Date(),
+        );
+    }
+  };
+  await workClaimedStep();
+  await workClaimedStep();
   expect(f.provider.structuredCalls).toHaveBeenCalledTimes(1);
   expect(await getRun(db, f.x.ctx, f.run.id)).toMatchObject({ state: "cancelled" });
-  const cost = await db
-    .selectFrom("quota.provider_cost")
-    .select("amount_micros")
-    .where("run_id", "=", f.run.id)
-    .executeTakeFirstOrThrow();
-  expect(Number(cost.amount_micros)).toBe(68060);
+  // The cancellation cancelled the job, so recordProviderFailure was refused (JobLeaseLost) and
+  // rolled back: no cost row, no knowledge:truncated checkpoint, the attempt stays started and its
+  // hold stays open until category 12 reconciles it.
+  expect(
+    await db
+      .selectFrom("quota.provider_cost")
+      .select("id")
+      .where("run_id", "=", f.run.id)
+      .execute(),
+  ).toHaveLength(0);
+  expect(
+    await db
+      .selectFrom("proc.run_step")
+      .select("step")
+      .where("run_id", "=", f.run.id)
+      .where("step", "=", "knowledge:truncated")
+      .execute(),
+  ).toHaveLength(0);
+  expect(
+    await db
+      .selectFrom("proc.provider_attempt")
+      .innerJoin("quota.cost_hold", "quota.cost_hold.id", "proc.provider_attempt.hold_id")
+      .select(["proc.provider_attempt.state", "quota.cost_hold.closed_at"])
+      .where("proc.provider_attempt.run_id", "=", f.run.id)
+      .where("proc.provider_attempt.step", "=", "knowledge")
+      .execute(),
+  ).toEqual([{ state: "started", closed_at: null }]);
   expect(
     await db
       .selectFrom("proc.provider_attempt")

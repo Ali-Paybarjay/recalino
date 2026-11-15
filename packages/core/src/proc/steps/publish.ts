@@ -31,7 +31,7 @@ export const publishLesson: ProcessingStage<
   const { job, ctx, payload, provider, settings, snapshot } = run;
   const { extracted, missing, practiceFocus } = lesson;
   await job.db.transaction().execute(async (tx) => {
-    const run = await liveRun(tx, ctx, payload.runId);
+    const run = await liveRun(tx, ctx, payload.runId, job);
     // The source's own lock prevents a late worker from publishing after an asset tombstone.
     await assertSourcesLive(
       tx,

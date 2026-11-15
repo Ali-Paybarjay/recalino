@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
+import { testOnlyJobContext } from "../../test/test-only-job-context";
 import { OpenRouterProvider, type ProviderSettings } from "../aip";
 import { createDatabase } from "../db";
 import { getLatestVersion } from "../lkm";
@@ -192,12 +193,12 @@ it("publishes partial audio notes with complete text evidence and settled costs 
     inspect: async () => ({ durationMs: 2000, audioOnly: true }),
   });
   await activateProcessingRun(db, x.ctx, run.id, job);
-  const context = {
+  const context = testOnlyJobContext({
     db,
     now: () => new Date(),
     job: { id: randomUUID(), attempt: 1 },
     step: async () => "ran" as const,
-  };
+  });
   // One native transcription per invocation, then the durable continuation publishes notes.
   await job.run({ runId: run.id, userId: x.ctx.userId }, context);
   await job.run(

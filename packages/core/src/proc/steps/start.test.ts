@@ -54,7 +54,7 @@ describe("startRun", () => {
     runtime.liveRun.mockResolvedValue(runRow());
     const { base: input, calls } = base();
     const run = await startRun(input);
-    expect(runtime.liveRun).toHaveBeenCalledWith(expect.anything(), input.ctx, RUN_ID);
+    expect(runtime.liveRun).toHaveBeenCalledWith(expect.anything(), input.ctx, RUN_ID, input.job);
     expect(calls).toContainEqual(["updateTable", "proc.processing_run"]);
     expect(calls).toContainEqual(["set", { state: "processing", updated_at: input.job.now() }]);
     expect(run.settings.teachingPreferences).toEqual({ shorterExamples: false });
