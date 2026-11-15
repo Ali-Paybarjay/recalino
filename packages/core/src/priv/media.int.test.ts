@@ -778,7 +778,11 @@ describe("explicit media and privacy publication", () => {
     await expect(getCard(db, f.ctx, card.id)).rejects.toMatchObject({ code: "not_found" });
     expect((await allowance(db, f.ctx)).reserved.tts).toBe(0);
   });
-  it("records a late provider cost after account tombstone without resurrecting the output", async () => {
+  // P11-02 AC-28 (C11-36, ADR-0004 rule 5): the speech job runs with its real claim and lease, no
+  // test-only mark. Deleting the account during the paid call cancels the run and its job
+  // (cancelAccountRuns, cancelJob), which voids the claim, so the late answer is not committed: no
+  // cost row and no output; the attempt stays started and its hold open for category 12.
+  it("leaves a late provider cost after account tombstone to reconciliation without resurrecting the output", async () => {
     const f = await fixture();
     const privacy = privacyDependencies(f.store);
     let receiptId = "";
@@ -796,18 +800,44 @@ describe("explicit media and privacy publication", () => {
       },
       f.dependencies,
     );
-    await run(db, mediaTtsJob(f.dependencies));
+    const { runId, jobId } = await speechRun(asset.id);
+    const kind = `media.synthetic_${randomUUID().replaceAll("-", "")}`;
+    await db.updateTable("plt.job").set({ kind }).where("id", "=", jobId).execute();
+    const events: string[] = [];
+    const summary = await runDueJobs(db, [{ ...mediaTtsJob(f.dependencies), kind }], {
+      deadline: new Date(Date.now() + 5000),
+      kinds: [kind],
+      log: (_level, event) => {
+        events.push(event);
+      },
+    });
+    // The worker stopped with JobLeaseLost and settled nothing.
+    expect(summary).toMatchObject({ succeeded: 0, failed: 0, retried: 0, cancelled: 0 });
+    expect(events).toContain("provider_result_not_committed");
+    expect(events).toContain("job_lease_lost");
     expect(f.provider.calls).toBe(1);
     expect(await getAccountState(db, f.ctx.userId)).toBeNull();
     await expect(getMediaAsset(db, f.ctx, asset.id)).rejects.toMatchObject({ code: "not_found" });
     expect((await allowance(db, f.ctx)).consumed.tts).toBe(0);
-    const cost = await db
-      .selectFrom("quota.provider_cost")
-      .select("amount_micros")
-      .where("user_id", "=", f.ctx.userId)
-      .executeTakeFirstOrThrow();
-    expect(Number(cost.amount_micros)).toBe(2);
+    expect(await providerCosts(f.ctx.userId)).toEqual([]);
+    expect(
+      await db
+        .selectFrom("proc.provider_attempt")
+        .innerJoin("quota.cost_hold", "quota.cost_hold.id", "proc.provider_attempt.hold_id")
+        .select(["proc.provider_attempt.state", "quota.cost_hold.closed_at"])
+        .where("proc.provider_attempt.run_id", "=", runId)
+        .execute(),
+    ).toEqual([{ state: "started", closed_at: null }]);
+    expect(await runState(runId)).toEqual({ state: "cancelled", last_error: null });
+    expect(
+      await db
+        .selectFrom("plt.job")
+        .select("state")
+        .where("id", "=", jobId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual({ state: "cancelled" });
     await run(db, privacyCleanupJob(privacy));
+    expect(await providerCosts(f.ctx.userId)).toEqual([]);
     expect((await getPrivacyDeletionRequest(db, f.ctx, receiptId)).state).toBe("completed");
     expect(
       await completeSignIn(db, { userId: f.ctx.userId, intentId: null, now: new Date() }),
