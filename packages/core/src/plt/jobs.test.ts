@@ -1,5 +1,6 @@
 import { Kysely, PostgresDialect, type PostgresPoolClient, sql } from "kysely";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { DB, Tx } from "../db";
 import {
   assertJobAuthority,
@@ -8,11 +9,14 @@ import {
   completeJob,
   failJob,
   JobCancelled,
+  type JobDefinition,
   JobLeaseLost,
   jobLease,
   keepRenewing,
+  type RunOptions,
   renewalTimeoutMs,
   renewJobLease,
+  runDueJobs,
   runJobStep,
   sweepJobs,
 } from "./jobs";
@@ -356,6 +360,20 @@ describe("ADR-0004 rules 2 and 4: one authority condition, on the database clock
     expectNoProcessClockLease(statements());
   });
 
+  it("claimJobs records the build it is given, and NULL without one (P11-08 AC-3)", async () => {
+    const { db, calls, statements } = database();
+    const build = "0123456789abcdef0123456789abcdef01234567";
+    await claimJobs(db, ["test.kind"], 1, PROCESS_TIME, undefined, build);
+    await claimJobs(db, ["test.kind"], 1, PROCESS_TIME);
+    const [withBuild, withoutBuild] = statements();
+    for (const claim of [withBuild, withoutBuild])
+      expect(claim).toMatch(/lease_generation = generation\.generation, lease_build = \$\d+,/);
+    const index = (claim: string | undefined) =>
+      Number(/lease_build = \$(\d+)/.exec(claim ?? "")?.[1]) - 1;
+    expect(calls[0]?.parameters[index(withBuild)]).toBe(build);
+    expect(calls[1]?.parameters[index(withoutBuild)]).toBeNull();
+  });
+
   it("sweepJobs compares the lease with the database clock, without a generation condition", async () => {
     const { db, statements } = database();
     await sweepJobs(db, PROCESS_TIME);
@@ -363,5 +381,132 @@ describe("ADR-0004 rules 2 and 4: one authority condition, on the database clock
     expect(sweep).toMatch(/where state = 'running' and lease_until < statement_timestamp\(\)$/);
     expect(sweep).not.toMatch(/generation/);
     expectNoProcessClockLease(statements());
+  });
+});
+
+describe("runDueJobs: payload versions, unknown kinds and a lost claim (P11-08)", () => {
+  const definition: JobDefinition<{ sessionId: string }> = {
+    kind: "test.kind",
+    version: 1,
+    payload: z.strictObject({ sessionId: z.uuid() }),
+    run: vi.fn(async () => {}),
+  };
+  const CLAIM = "with generation as";
+
+  /** A database whose claim answers `row` once, then nothing; `answer` handles the rest. */
+  function queue(row: Record<string, unknown>, answer: (sql: string) => unknown[] = () => []) {
+    let claimed = false;
+    return database((statement) => {
+      if (statement.startsWith(CLAIM)) {
+        if (claimed) return [];
+        claimed = true;
+        return [
+          {
+            id: JOB_ID,
+            kind: "test.kind",
+            payload: { sessionId: TOKEN },
+            payload_version: 1,
+            attempt: 1,
+            lease_token: TOKEN,
+            lease_seconds: 60,
+            lease_generation: 1,
+            ...row,
+          },
+        ];
+      }
+      return answer(statement);
+    });
+  }
+
+  function run(db: Kysely<DB>, options: Partial<RunOptions> = {}) {
+    const events: string[] = [];
+    const summary = runDueJobs(db, [definition], {
+      deadline: new Date(Date.now() + 60_000),
+      log: (_level, event) => {
+        events.push(event);
+      },
+      ...options,
+    });
+    return { summary, events };
+  }
+
+  it("AC-15: payload_invalid whose failJob finds no authority logs only job_lease_lost", async () => {
+    const { db, statements } = queue({ payload: { sessionId: "not-a-uuid" } });
+    const { summary, events } = run(db);
+    expect(await summary).toEqual({ swept: 0, succeeded: 0, failed: 0, retried: 0, cancelled: 0 });
+    expect(events).toEqual(["job_lease_lost"]);
+    const fail = statements().find((sql) => sql.startsWith("update plt.job j set state = case"));
+    expect(fail).toMatch(AUTHORITY);
+    expect(statements().some((sql) => sql.includes("security_event"))).toBe(false);
+  });
+
+  it("AC-15: payload_invalid with authority still fails the job and records job_tampered", async () => {
+    const { db, statements } = queue({ payload: { sessionId: "not-a-uuid" } }, (sql) =>
+      sql.startsWith("update plt.job j") ? [{ state: "failed" }] : [],
+    );
+    const { summary, events } = run(db);
+    expect(await summary).toMatchObject({ failed: 1 });
+    expect(events).not.toContain("job_lease_lost");
+    expect(statements().some((sql) => sql.includes("security_event"))).toBe(true);
+  });
+
+  it("AC-4: a newer payload version goes back to the queue with its attempt given back", async () => {
+    const { db, calls, statements } = queue({ payload_version: 2 }, (sql) =>
+      sql.startsWith("update plt.job j") ? [{}] : [],
+    );
+    const { summary, events } = run(db, { now: () => PROCESS_TIME });
+    expect(await summary).toEqual({ swept: 0, succeeded: 0, failed: 0, retried: 0, cancelled: 0 });
+    expect(events).toEqual(["job_requeued"]);
+    expect(definition.run).not.toHaveBeenCalled();
+    const sent = statements();
+    const requeue = sent.find((sql) => sql.startsWith("update plt.job j"));
+    expect(requeue).toMatch(
+      /set state = case when j\.attempt > 1 then 'retry_scheduled' else 'queued' end, attempt = j\.attempt - 1, run_at = greatest\(\$\d+::timestamptz, statement_timestamp\(\)\) \+ make_interval\(secs => 60\)/,
+    );
+    expect(requeue).toMatch(AUTHORITY);
+    expect(requeue).not.toMatch(/payload_invalid/);
+    expect(sent[sent.indexOf(requeue ?? "") - 1]).toBe(
+      "select id from plt.job where id = $1 for update",
+    );
+    expect(sent.some((sql) => sql.includes("security_event"))).toBe(false);
+    // The caller's time is only a floor for run_at; no lease is set from it.
+    expect(calls.some((call) => call.parameters.includes(PROCESS_TIME))).toBe(true);
+    expectNoProcessClockLease(sent);
+  });
+
+  it("AC-4: a requeue without authority logs job_lease_lost and changes nothing", async () => {
+    const { db } = queue({ payload_version: 2 });
+    const { summary, events } = run(db);
+    expect(await summary).toMatchObject({ failed: 0 });
+    expect(events).toEqual(["job_lease_lost"]);
+  });
+
+  it("AC-4: an older payload version is still payload_invalid, not requeued", async () => {
+    const { db, statements } = queue({ payload_version: 0 }, (sql) =>
+      sql.startsWith("update plt.job j") ? [{ state: "failed" }] : [],
+    );
+    const { summary } = run(db);
+    expect(await summary).toMatchObject({ failed: 1 });
+    expect(statements().some((sql) => sql.includes("attempt = j.attempt - 1"))).toBe(false);
+  });
+
+  it("AC-4: a kind without a definition is never sent to the claim", async () => {
+    const { db, calls, statements } = database();
+    const { summary } = run(db, { kinds: ["test.unknown", "test.kind"] });
+    await summary;
+    const claim = calls.find((call) => call.sql.includes(CLAIM));
+    expect(claim?.parameters).toContainEqual(["test.kind"]);
+    const none = database();
+    await run(none.db, { kinds: ["test.unknown"] }).summary;
+    expect(none.statements().some((sql) => sql.startsWith(CLAIM))).toBe(false);
+    expect(statements().filter((sql) => sql.startsWith(CLAIM))).toHaveLength(1);
+  });
+
+  it("passes the runner's build to the claim", async () => {
+    const { db, calls } = database();
+    const build = "0123456789abcdef0123456789abcdef01234567";
+    await run(db, { build }).summary;
+    const claim = calls.find((call) => call.sql.includes(CLAIM));
+    expect(claim?.parameters).toContain(build);
   });
 });

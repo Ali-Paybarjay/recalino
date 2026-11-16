@@ -229,7 +229,10 @@ export async function enqueueJob<P>(
  * Claims due jobs of the given kinds; concurrent claims never get the same job (rule 3). `now`
  * decides only which jobs are due (run_at) and the record; the lease ends `lease_seconds` after the
  * database clock, and the claim records the current lease generation (ADR-0004 rules 2 and 3).
- * Without the generation row nothing is claimed.
+ * Without the generation row nothing is claimed. The claim also records `build`, the deployed
+ * build's identifier (P11-08), or NULL without one. Once the owner activates the claim barrier
+ * (supabase/migrations/20261112130000_plt_job_claim_barrier.sql), the database refuses a claim
+ * without the current generation and an allowed build, and the whole claim statement fails.
  */
 export async function claimJobs(
   db: Database,
@@ -237,6 +240,7 @@ export async function claimJobs(
   limit: number,
   now: Date,
   target?: JobTarget,
+  build?: string,
 ): Promise<ClaimedJob[]> {
   if (kinds.length === 0) return [];
   if (
@@ -276,7 +280,7 @@ export async function claimJobs(
     update plt.job j
     set state = 'running', attempt = j.attempt + 1, lease_token = gen_random_uuid(),
         lease_until = ${DB_CLOCK} + make_interval(secs => j.lease_seconds),
-        lease_generation = generation.generation,
+        lease_generation = generation.generation, lease_build = ${build ?? null},
         updated_at = ${now}
     from picked, generation where j.id = picked.id
     returning j.id, j.kind, j.payload, j.payload_version, j.attempt, j.lease_token,
@@ -387,6 +391,34 @@ export async function failJob(
       where ${authorityHolds(lease)}
       returning j.state`.execute(tx);
     return result.rows.length === 1 ? (result.rows[0]?.state ?? null) : null;
+  });
+}
+
+/** How long a job of a newer payload version waits before it is due again (ADR-0004 rule 3). */
+export const PAYLOAD_VERSION_RETRY_SECONDS = 60;
+
+/**
+ * ADR-0004 rule 3, "payload version" (P11-08): returns a job whose payload version is newer than
+ * this runner's definition of its kind to the queue, only with authority. The claim's attempt is
+ * given back (net use zero) and run_at moves past both the database clock and the caller's time,
+ * so the same runner does not claim it again in the same round. False, and nothing changed, when
+ * this claim is void. `now` stamps the record and is a floor for run_at only.
+ */
+export async function requeueJob(db: Database, job: ClaimedJob, now: Date): Promise<boolean> {
+  const lease = jobLease(job);
+  if (!isLease(lease)) return false;
+  return db.transaction().execute(async (tx) => {
+    await lockJobRow(tx, lease.id);
+    const result = await sql`
+      update plt.job j
+      set state = case when j.attempt > 1 then 'retry_scheduled' else 'queued' end,
+          attempt = j.attempt - 1,
+          run_at = greatest(${now}::timestamptz, ${DB_CLOCK})
+            + make_interval(secs => ${sql.lit(PAYLOAD_VERSION_RETRY_SECONDS)}),
+          last_error = 'payload_version_newer', lease_token = null, lease_until = null,
+          updated_at = ${now}
+      where ${authorityHolds(lease)}`.execute(tx);
+    return Number(result.numAffectedRows ?? 0) === 1;
   });
 }
 
@@ -546,6 +578,11 @@ export interface RunOptions {
   target?: JobTarget;
   /** How often a running job's lease is renewed; defaults to a quarter of its lease. */
   leaseRenewalMs?: number;
+  /**
+   * The deployed build's identifier, recorded by every claim (P11-08). Without it a claim records
+   * NULL, which the claim barrier refuses once the owner activates it.
+   */
+  build?: string;
 }
 
 /**
@@ -638,7 +675,8 @@ export async function runDueJobs(
 ): Promise<RunSummary> {
   const now = options.now ?? (() => new Date());
   const byKind = new Map(definitions.map((definition) => [definition.kind, definition]));
-  const kinds = options.kinds ?? [...byKind.keys()];
+  // ADR-0004 rule 3: a kind this runner has no definition for is never claimed.
+  const kinds = (options.kinds ?? [...byKind.keys()]).filter((kind) => byKind.has(kind));
   const summary: RunSummary = {
     swept: await sweepJobs(db, now()),
     succeeded: 0,
@@ -648,14 +686,25 @@ export async function runDueJobs(
   };
 
   while (now() < options.deadline) {
-    const [job] = await claimJobs(db, kinds, 1, now(), options.target);
+    const [job] = await claimJobs(db, kinds, 1, now(), options.target, options.build);
     if (!job) break;
     const definition = byKind.get(job.kind);
     const fields = { kind: job.kind, job_id: job.id, attempt: job.attempt };
+    if (definition && job.payloadVersion > definition.version) {
+      // ADR-0004 rule 3: written by a newer build; back to the queue for it, no attempt used.
+      if (await requeueJob(db, job, now()))
+        options.log?.("info", "job_requeued", { ...fields, code: "payload_version_newer" });
+      else options.log?.("warn", "job_lease_lost", fields);
+      continue;
+    }
     const parsed = definition?.payload.safeParse(job.payload);
     if (!definition || !parsed?.success || job.payloadVersion !== definition.version) {
       // A payload that doesn't match its definition was not written by our code.
-      await failJob(db, job, "payload_invalid", now(), true);
+      if ((await failJob(db, job, "payload_invalid", now(), true)) === null) {
+        // C11-21: no authority, so nothing was failed and nothing is recorded as tampering.
+        options.log?.("warn", "job_lease_lost", fields);
+        continue;
+      }
       await recordSecurityEvent(db, { kind: "job_tampered", route: job.kind }, options.log);
       summary.failed += 1;
       continue;

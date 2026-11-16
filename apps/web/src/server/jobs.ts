@@ -94,6 +94,23 @@ export function processingWakeBudgetSeconds(longestProviderTimeoutMs?: number): 
   );
 }
 
+/** A full git commit SHA, the only form a build identifier takes. */
+const COMMIT_SHA = /^[0-9a-f]{40}$/;
+
+/**
+ * P11-08 (ADR-0004 rule 3): the identifier every claim records as its build. It is the commit
+ * the deployment was built from, VERCEL_GIT_COMMIT_SHA, a system variable the deployment platform
+ * sets at build and run time; the owner reads the same commit from the production deployment and
+ * passes it to plt.activate_job_claim_barrier (docs/runbooks/JOB_LEASE_BARRIER.md). Missing or
+ * malformed: no build, so claims record NULL, which the active barrier refuses (fail-closed).
+ */
+export function runnerBuild(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string | undefined {
+  const value = env.VERCEL_GIT_COMMIT_SHA;
+  return value !== undefined && COMMIT_SHA.test(value) ? value : undefined;
+}
+
 /**
  * A processing wake keeps a class's or a session voice check's continuation jobs moving on this
  * request's own function instead of leaving each next step to the next cron minute. The waking
@@ -218,6 +235,7 @@ export function runJobsHandler(overrides: Partial<RunnerDeps> = {}): Handler {
       now: deps.now,
       log: deps.log,
       kinds: deps.kinds,
+      build: runnerBuild(),
     });
     return { body: summary };
   };
@@ -246,6 +264,7 @@ export function runJobsSoon(
       // The request already used some of its limit before after() began.
       finishBy: new Date(started + (functionSeconds - 2 * RUNNER_FINISH_MARGIN_SECONDS) * 1000),
       log: defaultRunnerDeps.log,
+      build: runnerBuild(),
     });
   });
 }
