@@ -123,22 +123,13 @@
     "docs/runbooks/JOB_LEASE_BARRIER.md",
     "packages/core/src/plt/lease-generation.int.test.ts"
   ],
-  "depends_on": [
-    "P11-01",
-    "P11-02"
-  ],
-  "context_refs": [
-    "docs/aeo/l3/phase11-plan.md",
-    "docs/adr/0004-job-lease-fencing.md"
-  ],
+  "depends_on": ["P11-01", "P11-02"],
+  "context_refs": ["docs/aeo/l3/phase11-plan.md", "docs/adr/0004-job-lease-fencing.md"],
   "test_plan_kind": "pass_to_pass",
   "roles": {
     "implementer": "implementer.database",
     "test_engineer": "test-engineer",
-    "reviewers": [
-      "reviewer.code",
-      "reviewer.security"
-    ]
+    "reviewers": ["reviewer.code", "reviewer.security"]
   },
   "limits": {
     "max_turns": 80,
