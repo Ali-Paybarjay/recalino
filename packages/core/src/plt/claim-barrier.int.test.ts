@@ -37,8 +37,27 @@ const SESSION = "0b6f6a0e-7f1d-4c38-8d39-2a5d3f0c9e14";
 const A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const B = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const REFUSED = /claim refused by the claim barrier/;
+/** The barrier's exact refusal (AC-6): no other error stands in for it. */
+const REFUSAL = "job claim refused by the claim barrier";
 
 type Payload = { sessionId: string };
+/** A claim's job and lease token, whichever code made it. */
+type Claimed = { id: string; token: string };
+/** The generation and build a job holds, or a claim writes. */
+type Scenario = { lease_generation: number | null; lease_build: string | null };
+const NO_CLAIM_DATA: Scenario = { lease_generation: null, lease_build: null };
+
+/**
+ * AC-26: the CI log line of each test, printed after its assertions. A line alone is no pass; the
+ * evidence is these lines with the green summary of this file in the same run.
+ */
+function evidence(title: string, subCase: string | undefined, outcome: string): void {
+  console.log(`[AC-6] ${title}${subCase === undefined ? "" : ` (${subCase})`}: ${outcome}`);
+}
+
+function passed(title: string): void {
+  evidence(title, undefined, "passed");
+}
 
 function definition(run: JobDefinition<Payload>["run"] = async () => {}): JobDefinition<Payload> {
   return {
@@ -179,9 +198,23 @@ async function oldFail(id: string, token: string, now = new Date()) {
   return result.rows.length;
 }
 
+async function oldClaimed(kind: string): Promise<Claimed[]> {
+  return (await oldClaim(kind)).map((row) => ({ id: row.id, token: row.lease_token }));
+}
+
+/** A claim by the current code (claimJobs: the current generation and this build, or NULL). */
+async function claimCurrent(kind: string, build: string | undefined): Promise<Claimed[]> {
+  const claimed = await claimJobs(app, [kind], 1, new Date(), undefined, build);
+  return claimed.map((row) => ({ id: row.id, token: row.token }));
+}
+
 /** A claim that writes exactly the given generation and build. */
-async function claimWriting(kind: string, generation: number | null, build: string | null) {
-  return sql`
+async function claimWriting(
+  kind: string,
+  generation: number | null,
+  build: string | null,
+): Promise<Claimed[]> {
+  const result = await sql<{ id: string; lease_token: string }>`
     with picked as (
       select id from plt.job
       where state in ('queued', 'retry_scheduled') and kind = any(${[kind]})
@@ -192,7 +225,118 @@ async function claimWriting(kind: string, generation: number | null, build: stri
         lease_until = statement_timestamp() + make_interval(secs => j.lease_seconds),
         lease_generation = ${generation}, lease_build = ${build}
     from picked where j.id = picked.id
-    returning j.id`.execute(app);
+    returning j.id, j.lease_token`.execute(app);
+  return result.rows.map((row) => ({ id: row.id, token: row.lease_token }));
+}
+
+/**
+ * The fixture of either half of a paired control (AC-6): a job of a claimable kind, waiting
+ * (queued or retry_scheduled), due by the database clock, with no lease and exactly `data`.
+ */
+async function expectEligible(id: string, kind: string, data: Scenario): Promise<void> {
+  const result = await sql<{
+    state: string;
+    kind: string;
+    due: boolean;
+    lease_token: string | null;
+    lease_generation: number | null;
+    lease_build: string | null;
+  }>`
+    select state, kind, run_at <= now() as due, lease_token, lease_generation, lease_build
+    from plt.job where id = ${id}`.execute(admin);
+  expect(result.rows).toHaveLength(1);
+  const [row] = result.rows;
+  expect(["queued", "retry_scheduled"]).toContain(row?.state);
+  expect(row).toMatchObject({ kind, due: true, lease_token: null, ...data });
+}
+
+/** Accepted: exactly this job, now running under the token the claim returned. */
+async function expectAccepted(
+  claim: Promise<Claimed[]>,
+  id: string,
+  wrote: Scenario,
+): Promise<void> {
+  const rows = await claim;
+  expect(rows).toHaveLength(1);
+  const [claimed] = rows;
+  expect(claimed?.id).toBe(id);
+  const row = await job(id);
+  expect(row.state).toBe("running");
+  expect(row.lease_token).not.toBeNull();
+  expect(row.lease_token).toBe(claimed?.token);
+  expect(row).toMatchObject(wrote);
+}
+
+/** Refused by the barrier itself: zero rows or any other error does not count. */
+async function expectRefused(claim: Promise<unknown>): Promise<void> {
+  const error = await claim.then(
+    () => null,
+    (caught: unknown) => caught,
+  );
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toBe(REFUSAL);
+  expect((error as { code?: unknown }).code).toBe("P0001");
+}
+
+/** Turns the barrier off and returns the generation in force. */
+async function barrierOff(): Promise<number> {
+  await deactivate();
+  expect(await triggerState()).toBe("D");
+  return (await barrierRow()).generation;
+}
+
+/** Activates the barrier from off and asserts that it succeeded; returns the new generation. */
+async function barrierOn(allowed: string[], current: string): Promise<number> {
+  const before = await barrierRow();
+  expect(await triggerState()).toBe("D");
+  const generation = await activate(allowed, current);
+  expect(generation).toBe(before.generation + 1);
+  const after = await barrierRow();
+  expect(after.generation).toBe(generation);
+  expect(after.allowed_builds).toEqual([...new Set(allowed)].sort());
+  expect(await triggerState()).toBe("O");
+  return generation;
+}
+
+interface FreshJobCase {
+  name: string;
+  /** The claim under test; `generation` is the generation in force for its half. */
+  claim: (kind: string, generation: number) => Promise<Claimed[]>;
+  /** What that claim writes, given the generation in force. */
+  writes: (generation: number) => Scenario;
+}
+
+/**
+ * AC-6 paired control on a fresh queued job: the claim is accepted with the barrier off, then,
+ * after a successful activation with allowed builds [A], the same claim on an equivalent job is
+ * refused with the barrier's exact error and the job stays eligible and unchanged. `cause` asserts
+ * the scenario's data against the generation in force, so the refusal has the cause under test.
+ */
+async function pairedOnFreshJob(
+  title: string,
+  subCase: FreshJobCase,
+  cause: (written: Scenario, barrier: BarrierRow) => void,
+): Promise<void> {
+  const offGeneration = await barrierOff();
+  const off = definition();
+  const offId = await enqueue(off);
+  await expectEligible(offId, off.kind, NO_CLAIM_DATA);
+  await expectAccepted(
+    subCase.claim(off.kind, offGeneration),
+    offId,
+    subCase.writes(offGeneration),
+  );
+  evidence(title, subCase.name, "barrier off: accepted");
+
+  const on = definition();
+  const onId = await enqueue(on);
+  const generation = await barrierOn([A], A);
+  cause(subCase.writes(generation), await barrierRow());
+  await expectEligible(onId, on.kind, NO_CLAIM_DATA);
+  await expectRefused(subCase.claim(on.kind, generation));
+  await expectEligible(onId, on.kind, NO_CLAIM_DATA);
+  expect(await job(onId)).toMatchObject({ state: "queued", attempt: 0 });
+  evidence(title, subCase.name, "barrier on: rejected");
 }
 
 async function effect(tx: Tx, jobId: string) {
@@ -250,7 +394,9 @@ afterAll(async () => {
 });
 
 describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
-  it("B01 barrier inactive: an old-code claim that writes no generation or build passes unchanged", async () => {
+  it("B01 barrier inactive: an old-code claim that writes no generation or build passes unchanged", async ({
+    task,
+  }) => {
     expect(await triggerState()).toBe("D");
     const def = definition();
     const id = await enqueue(def);
@@ -266,63 +412,167 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await oldRenew(id, claimed?.lease_token ?? "")).toBe(1);
     expect(await oldComplete(id, claimed?.lease_token ?? "")).toBe(1);
     expect(await job(id)).toMatchObject({ state: "succeeded" });
+    passed(task.name);
   });
 
-  it("B02 barrier active: a claim with a NULL generation or build is rejected", async () => {
-    const generation = await activate([A], A);
-    const def = definition();
-    const id = await enqueue(def);
-    await expect(oldClaim(def.kind)).rejects.toThrow(REFUSED);
-    // The current code without a build: generation written, build NULL.
-    await expect(claimJobs(app, [def.kind], 1, new Date())).rejects.toThrow(REFUSED);
-    await expect(claimWriting(def.kind, generation, null)).rejects.toThrow(REFUSED);
-    await expect(claimWriting(def.kind, null, A)).rejects.toThrow(REFUSED);
-    expect(await job(id)).toMatchObject({ state: "queued", attempt: 0, lease_token: null });
+  it("B02 barrier active: a claim with a NULL generation or build is rejected", async ({
+    task,
+  }) => {
+    // Everything but the NULL is valid against the generation in force, so the NULL is the cause.
+    const onlyTheNull = (written: Scenario, barrier: BarrierRow) => {
+      expect(written.lease_generation === null || written.lease_build === null).toBe(true);
+      if (written.lease_generation !== null)
+        expect(written.lease_generation).toBe(barrier.generation);
+      if (written.lease_build !== null)
+        expect(barrier.allowed_builds).toContain(written.lease_build);
+    };
+    const subCases: FreshJobCase[] = [
+      {
+        name: "NULL generation",
+        claim: (kind) => claimWriting(kind, null, A),
+        writes: () => ({ lease_generation: null, lease_build: A }),
+      },
+      {
+        // The current code without a build: the current generation, build NULL.
+        name: "NULL build",
+        claim: (kind) => claimCurrent(kind, undefined),
+        writes: (generation) => ({ lease_generation: generation, lease_build: null }),
+      },
+      {
+        // The code before the barrier (2b158f4) writes neither.
+        name: "old code: NULL generation and build",
+        claim: (kind) => oldClaimed(kind),
+        writes: () => NO_CLAIM_DATA,
+      },
+    ];
+    for (const subCase of subCases) await pairedOnFreshJob(task.name, subCase, onlyTheNull);
   });
 
-  it("B03 barrier active: a generation or build left by an earlier claim does not authorize a claim that does not write it", async () => {
-    const def = definition();
-    const id = await enqueue(def);
-    // Left before activation by a claim of an allowed build.
-    const earlier = await claimNew(def, A, T0);
-    expect(await failJob(app, earlier, "test_retry", at(1))).toBe("retry_scheduled");
-    expect(await job(id)).toMatchObject({ lease_generation: earlier.generation, lease_build: A });
-    const generation = await activate([A], A);
-    await expect(oldClaim(def.kind)).rejects.toThrow(REFUSED);
+  it("B03 barrier active: a generation or build left by an earlier claim does not authorize a claim that does not write it", async ({
+    task,
+  }) => {
+    // The claim under test is the old code's: it writes neither, so only data left on the row
+    // could stand for it. Each half has its own job of its own kind, prepared the same way.
 
-    // Left after activation: a write that leaves a job not running clears both columns.
-    const later = await claimNew(def, A);
-    expect(later.generation).toBe(generation);
-    expect(await failJob(app, later, "test_retry", new Date())).toBe("retry_scheduled");
-    expect(await job(id)).toMatchObject({ lease_generation: null, lease_build: null });
-    await expect(oldClaim(def.kind, at(86_400 * 365))).rejects.toThrow(REFUSED);
+    // (1) Left before activation by a claim of an allowed build, at the generation then in force.
+    {
+      const subCase = "left before activation";
+      const current = await barrierOff();
+      const leave = async () => {
+        const def = definition();
+        const id = await enqueue(def);
+        const earlier = await claimNew(def, A);
+        expect(earlier.generation).toBe(current);
+        expect(await failJob(app, earlier, "test_retry", at(1))).toBe("retry_scheduled");
+        return { def, id };
+      };
+      const off = await leave();
+      const on = await leave();
+      const left: Scenario = { lease_generation: current, lease_build: A };
+      await expectEligible(off.id, off.def.kind, left);
+      await expectAccepted(oldClaimed(off.def.kind), off.id, left);
+      evidence(task.name, subCase, "barrier off: accepted");
 
-    // Written onto the waiting job directly: cleared as well, and the old claim is still refused.
-    await admin
-      .updateTable("plt.job")
-      .set({ lease_generation: generation, lease_build: A })
-      .where("id", "=", id)
-      .execute();
-    expect(await job(id)).toMatchObject({
-      state: "retry_scheduled",
-      lease_generation: null,
-      lease_build: null,
-    });
-    await expect(oldClaim(def.kind, at(86_400 * 365))).rejects.toThrow(REFUSED);
-    expect(await job(id)).toMatchObject({ state: "retry_scheduled", attempt: 2 });
+      const generation = await barrierOn([A], A);
+      // The left data: the generation before activation and an allowed build.
+      expect(left.lease_generation).toBe(generation - 1);
+      expect((await barrierRow()).allowed_builds).toContain(left.lease_build);
+      await expectEligible(on.id, on.def.kind, left);
+      await expectRefused(oldClaimed(on.def.kind));
+      await expectEligible(on.id, on.def.kind, left);
+      expect(await job(on.id)).toMatchObject({ state: "retry_scheduled", attempt: 1 });
+      evidence(task.name, subCase, "barrier on: rejected");
+    }
+
+    // (2) The cycle after activation: a claim of an allowed build at the current generation,
+    // then a write that leaves the job not running, which clears both columns.
+    {
+      const subCase = "left after activation and cleared";
+      const current = await barrierOff();
+      const off = definition();
+      const offId = await enqueue(off);
+      const offEarlier = await claimNew(off, A);
+      expect(offEarlier.generation).toBe(current);
+      expect(await failJob(app, offEarlier, "test_retry", at(1))).toBe("retry_scheduled");
+      // Barrier off: nothing clears the columns.
+      const offLeft: Scenario = { lease_generation: current, lease_build: A };
+      await expectEligible(offId, off.kind, offLeft);
+      await expectAccepted(oldClaimed(off.kind), offId, offLeft);
+      evidence(task.name, subCase, "barrier off: accepted");
+
+      const generation = await barrierOn([A], A);
+      const on = definition();
+      const onId = await enqueue(on);
+      const later = await claimNew(on, A);
+      expect(later.generation).toBe(generation);
+      expect(await job(onId)).toMatchObject({ lease_generation: generation, lease_build: A });
+      expect(await failJob(app, later, "test_retry", at(1))).toBe("retry_scheduled");
+      await expectEligible(onId, on.kind, NO_CLAIM_DATA);
+      await expectRefused(oldClaimed(on.kind));
+      await expectEligible(onId, on.kind, NO_CLAIM_DATA);
+      expect(await job(onId)).toMatchObject({ state: "retry_scheduled", attempt: 1 });
+      evidence(task.name, subCase, "barrier on: rejected");
+    }
+
+    // (3) The current generation and an allowed build written straight onto the waiting job.
+    {
+      const subCase = "written onto the waiting job";
+      const writeOnto = (id: string, generation: number) =>
+        admin
+          .updateTable("plt.job")
+          .set({ lease_generation: generation, lease_build: A })
+          .where("id", "=", id)
+          .execute();
+      const current = await barrierOff();
+      const off = definition();
+      const offId = await enqueue(off);
+      await writeOnto(offId, current);
+      const offWritten: Scenario = { lease_generation: current, lease_build: A };
+      await expectEligible(offId, off.kind, offWritten);
+      await expectAccepted(oldClaimed(off.kind), offId, offWritten);
+      evidence(task.name, subCase, "barrier off: accepted");
+
+      const generation = await barrierOn([A], A);
+      const on = definition();
+      const onId = await enqueue(on);
+      await writeOnto(onId, generation);
+      // The barrier clears it on the waiting job, so nothing is left for the claim.
+      await expectEligible(onId, on.kind, NO_CLAIM_DATA);
+      await expectRefused(oldClaimed(on.kind));
+      await expectEligible(onId, on.kind, NO_CLAIM_DATA);
+      expect(await job(onId)).toMatchObject({ state: "queued", attempt: 0 });
+      evidence(task.name, subCase, "barrier on: rejected");
+    }
   });
 
-  it("B04 barrier active: a claim with a build outside the allowed build set is rejected", async () => {
-    const generation = await activate([A], A);
-    const def = definition();
-    const id = await enqueue(def);
-    await expect(claimJobs(app, [def.kind], 1, new Date(), undefined, B)).rejects.toThrow(REFUSED);
-    await expect(claimWriting(def.kind, generation, B)).rejects.toThrow(REFUSED);
-    await expect(claimWriting(def.kind, generation - 1, A)).rejects.toThrow(REFUSED);
-    expect(await job(id)).toMatchObject({ state: "queued", attempt: 0, lease_token: null });
+  it("B04 barrier active: a claim with a build outside the allowed build set is rejected", async ({
+    task,
+  }) => {
+    // The generation is the one in force; only the build is outside the set.
+    const onlyTheBuild = (written: Scenario, barrier: BarrierRow) => {
+      expect(written.lease_generation).toBe(barrier.generation);
+      expect(written.lease_build).toBe(B);
+      expect(barrier.allowed_builds).toEqual([A]);
+      expect(barrier.allowed_builds).not.toContain(B);
+    };
+    const subCases: FreshJobCase[] = [
+      {
+        name: "current code, build outside the set",
+        claim: (kind) => claimCurrent(kind, B),
+        writes: (generation) => ({ lease_generation: generation, lease_build: B }),
+      },
+      {
+        name: "current generation written, build outside the set",
+        claim: (kind, generation) => claimWriting(kind, generation, B),
+        writes: (generation) => ({ lease_generation: generation, lease_build: B }),
+      },
+    ];
+    for (const subCase of subCases) await pairedOnFreshJob(task.name, subCase, onlyTheBuild);
   });
 
-  it("B05 barrier active: a new job is claimed with the current generation and an allowed build", async () => {
+  it("B05 barrier active: a new job is claimed with the current generation and an allowed build", async ({
+    task,
+  }) => {
     const generation = await activate([A, B], A);
     for (const build of [A, B]) {
       const def = definition();
@@ -338,9 +588,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
       expect(await completeJob(app, claimed, new Date())).toBe(true);
       expect(await job(id)).toMatchObject({ state: "succeeded" });
     }
+    passed(task.name);
   });
 
-  it("B06 barrier active: a job the new build claimed before activation loses authority at the token rotation and continues only by a new claim", async () => {
+  it("B06 barrier active: a job the new build claimed before activation loses authority at the token rotation and continues only by a new claim", async ({
+    task,
+  }) => {
     const def = definition();
     const id = await enqueue(def);
     const before = await claimNew(def, A);
@@ -372,9 +625,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await runJobStep(app, again, "after_rotation", step, new Date())).toBe("ran");
     expect(await completeJob(app, again, new Date())).toBe(true);
     expect(await effects(id)).toBe(1);
+    passed(task.name);
   });
 
-  it("B07 activation fails and changes nothing when the allowed build set is empty", async () => {
+  it("B07 activation fails and changes nothing when the allowed build set is empty", async ({
+    task,
+  }) => {
     const def = definition();
     const id = await enqueue(def);
     await claimNew(def, A);
@@ -387,9 +643,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await barrierRow()).toEqual(row);
     expect(await runningTokens([id])).toEqual(tokens);
     expect(await triggerState()).toBe("D");
+    passed(task.name);
   });
 
-  it("B08 activation fails and changes nothing when the current build is not in the allowed build set", async () => {
+  it("B08 activation fails and changes nothing when the current build is not in the allowed build set", async ({
+    task,
+  }) => {
     const def = definition();
     const id = await enqueue(def);
     await claimNew(def, A);
@@ -400,9 +659,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await barrierRow()).toEqual(row);
     expect(await runningTokens([id])).toEqual(tokens);
     expect(await triggerState()).toBe("D");
+    passed(task.name);
   });
 
-  it("B09 activation is idempotent: a second call with the same input raises no generation and rotates no token", async () => {
+  it("B09 activation is idempotent: a second call with the same input raises no generation and rotates no token", async ({
+    task,
+  }) => {
     const def = definition();
     const id = await enqueue(def);
     await claimNew(def, A);
@@ -416,9 +678,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await barrierRow()).toEqual(row);
     expect(await runningTokens([id])).toEqual(tokens);
     expect(await triggerState()).toBe("O");
+    passed(task.name);
   });
 
-  it("B10 deactivation turns the barrier off without deleting data, and an old-code claim passes again", async () => {
+  it("B10 deactivation turns the barrier off without deleting data, and an old-code claim passes again", async ({
+    task,
+  }) => {
     const def = definition();
     const running = await enqueue(def);
     await claimNew(def, A);
@@ -452,9 +717,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
       lease_generation: null,
       lease_build: null,
     });
+    passed(task.name);
   });
 
-  it("B11 the activation and deactivation functions are not executable by public, anon or authenticated", async () => {
+  it("B11 the activation and deactivation functions are not executable by public, anon or authenticated", async ({
+    task,
+  }) => {
     for (const signature of [
       "plt.activate_job_claim_barrier(text[], text)",
       "plt.deactivate_job_claim_barrier()",
@@ -494,9 +762,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
       /permission denied/,
     );
     expect(await triggerState()).toBe("D");
+    passed(task.name);
   });
 
-  it("B12 instant rollback: a pre-barrier build is rejected and a post-barrier build claims only after the allowed build row is updated", async () => {
+  it("B12 instant rollback: a pre-barrier build is rejected and a post-barrier build claims only after the allowed build row is updated", async ({
+    task,
+  }) => {
     const generation = await activate([A], A);
     const def = definition();
     const id = await enqueue(def);
@@ -512,9 +783,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await completeJob(app, claimed, new Date())).toBe(true);
     await enqueue(def);
     await expect(oldClaim(def.kind)).rejects.toThrow(REFUSED);
+    passed(task.name);
   });
 
-  it("B13 a held old runner can neither claim, complete, fail nor record an effect on a guarded path after activation", async () => {
+  it("B13 a held old runner can neither claim, complete, fail nor record an effect on a guarded path after activation", async ({
+    task,
+  }) => {
     const def = definition();
     const held = await enqueue(def);
     const generationBefore = (await barrierRow()).generation;
@@ -568,9 +842,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     const after = await job(held);
     expect(after.state).toBe("running");
     expect(after.lease_token).not.toBe(token);
+    passed(task.name);
   });
 
-  it("B14 payload version requeue: a job of a higher payload version returns to the queue with no net attempt and a later run_at", async () => {
+  it("B14 payload version requeue: a job of a higher payload version returns to the queue with no net attempt and a later run_at", async ({
+    task,
+  }) => {
     await activate([A], A);
     const run = vi.fn(async () => {});
     const def = definition(run);
@@ -599,9 +876,10 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
     expect(await tamperedEvents(def.kind)).toBe(0);
     // Not due again in the same round.
     expect(await claimJobs(app, [def.kind], 1, new Date(), undefined, A)).toEqual([]);
+    passed(task.name);
   });
 
-  it("B15 a job of an unknown kind is not claimed", async () => {
+  it("B15 a job of an unknown kind is not claimed", async ({ task }) => {
     const known = definition();
     const unknown = definition();
     const id = await enqueue(unknown);
@@ -615,9 +893,12 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
       last_error: null,
     });
     expect(await tamperedEvents(unknown.kind)).toBe(0);
+    passed(task.name);
   });
 
-  it("B16 barrier active: an empty or NULL allowed build set rejects every claim", async () => {
+  it("B16 barrier active: an empty or NULL allowed build set rejects every claim", async ({
+    task,
+  }) => {
     await activate([A], A);
     const def = definition();
     const id = await enqueue(def);
@@ -634,5 +915,6 @@ describe("claim barrier (ADR-0004 rule 3, step 3; P11-08)", () => {
       await expect(oldClaim(def.kind)).rejects.toThrow(REFUSED);
     }
     expect(await job(id)).toMatchObject({ state: "queued", attempt: 0 });
+    passed(task.name);
   });
 });
