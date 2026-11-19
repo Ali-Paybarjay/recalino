@@ -32,7 +32,7 @@ import {
   readOwnedObject,
   readPltSettings,
 } from "../../plt";
-import { beginProviderStep, finishProviderStep } from "../../quota";
+import { beginProviderStep, finishProviderStep, type ProviderSettleOutcome } from "../../quota";
 import { appendContentVersion, automaticSourceRole, sourceContentSchema } from "../../src";
 import type { RunSource } from "../contracts";
 import { knowledgeTruncationSchema } from "../knowledge-compact";
@@ -319,7 +319,30 @@ async function latestAttempt<T>(tx: Tx, call: ProviderCall<T>) {
  */
 async function closeHoldAtMaximum<T>(tx: Tx, call: ProviderCall<T>, attempt: ProviderAttempt) {
   const { job, ctx, runId, provider } = call;
-  await finishProviderStep(
+  await closeAttemptHoldAtMaximum(tx, ctx, runId, attempt, {
+    currency: provider.settings.currency,
+    priceVersion: provider.settings.priceVersion,
+    now: job.now(),
+  });
+}
+/**
+ * P12-01 (AC-2): the one close at the hold's maximum, shared by the dispatch path above and by the
+ * reconciliation of an attempt whose job has no authority left (maintenance.ts). One cost row with
+ * the hold's maximum, for this attempt, and the hold closed; the attempt itself is never written.
+ * The caller holds the authority it needs. `recordAtHoldTime` dates the row at the hold's own
+ * time (the reconciliation's choice, AC-13); the dispatch path keeps its earlier date.
+ */
+export async function closeAttemptHoldAtMaximum(
+  tx: Tx,
+  ctx: LearnerContext,
+  runId: string,
+  attempt: Pick<
+    ProviderAttempt,
+    "id" | "hold_id" | "operation_key" | "provider" | "model" | "estimate_price_version"
+  >,
+  options: { currency: string; priceVersion: string | null; now: Date; recordAtHoldTime?: true },
+): Promise<ProviderSettleOutcome> {
+  return finishProviderStep(
     tx,
     ctx,
     attempt.hold_id,
@@ -327,16 +350,32 @@ async function closeHoldAtMaximum<T>(tx: Tx, call: ProviderCall<T>, attempt: Pro
       operationKey: attempt.operation_key,
       provider: attempt.provider,
       model: attempt.model,
-      currency: provider.settings.currency,
+      currency: options.currency,
       actualMicros: null,
       estimatedMicros: "hold_maximum",
-      priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
+      priceVersion: attempt.estimate_price_version ?? options.priceVersion,
       usage: {},
       runId,
       attemptId: attempt.id,
+      ...(options.recordAtHoldTime ? { recordAtHoldTime: true } : {}),
     },
-    job.now(),
+    options.now,
   );
+}
+/**
+ * P12-01 (AC-4): a settle that found its attempt's hold already closed at the maximum keeps that
+ * one conservative row (no second row) and is logged, identifiers only, instead of being dropped
+ * silently. Reconciling it with the real amount is C11-62's.
+ */
+function traceLateSettle<T>(call: ProviderCall<T>, attempt: ProviderAttempt) {
+  const { job } = call;
+  job.log?.("warn", "provider_late_settle_kept_conservative", {
+    module: "proc",
+    job_id: job.job.id,
+    attempt: job.job.attempt,
+    code: "hold_closed_at_maximum",
+    reason: attempt.operation_key,
+  });
 }
 /**
  * QUA-01: the guards that share the account lock and the transaction that inserts the next
@@ -475,7 +514,8 @@ async function beginProviderAttempt<T>(
  * settle, no cost row, no attempt state, no checkpoint (`JobLeaseLost`, rolled back). Ending or
  * deleting the run cancels its job, so a response that arrives after the run was cancelled or its
  * class was deleted during dispatch is refused the same way (ADR-0004 rule 5): the attempt stays
- * started and its hold stays open until category 12 reconciles it (C11-36).
+ * started and its hold stays open until the ended-job reconciliation, with its own job's
+ * authority, closes that hold at its maximum (P12-01, step one of C11-36; maintenance.ts).
  */
 async function commitProviderOutput<T>(
   call: ProviderCall<T>,
@@ -492,7 +532,7 @@ async function commitProviderOutput<T>(
       // Reached only with the authority (or PLT's test-only mark). If the run has nonetheless
       // ended, the accounting still persists here and the job then ends.
       await lockAccountForCleanup(tx, ctx.userId);
-      await finishProviderStep(
+      const settled = await finishProviderStep(
         tx,
         ctx,
         attempt.hold_id,
@@ -513,6 +553,7 @@ async function commitProviderOutput<T>(
         },
         job.now(),
       );
+      if (settled === "conservative_kept") traceLateSettle(call, attempt);
       await tx
         .updateTable("proc.provider_attempt")
         .set({
@@ -562,8 +603,8 @@ async function recordProviderFailure<T>(
       .executeTakeFirstOrThrow();
     if (current.state === "succeeded") return;
     if (providerError.uncertain) await closeHoldAtMaximum(tx, call, attempt);
-    else
-      await finishProviderStep(
+    else if (
+      (await finishProviderStep(
         tx,
         ctx,
         attempt.hold_id,
@@ -584,7 +625,9 @@ async function recordProviderFailure<T>(
           attemptId: attempt.id,
         },
         job.now(),
-      );
+      )) === "conservative_kept"
+    )
+      traceLateSettle(call, attempt);
     await tx
       .updateTable("proc.provider_attempt")
       .set({

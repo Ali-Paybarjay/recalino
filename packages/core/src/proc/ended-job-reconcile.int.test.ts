@@ -3,8 +3,21 @@ import { afterAll, expect, it } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
 import { createDatabase } from "../db";
-import { DEFAULT_PLT_SETTINGS, learnerNotifications, sweepJobs } from "../plt";
-import { amounts, grantEntitlement, reservationIsOpen, reserveAllowance } from "../quota";
+import {
+  claimJobs,
+  completeJob,
+  DEFAULT_PLT_SETTINGS,
+  learnerNotifications,
+  sweepJobs,
+} from "../plt";
+import {
+  amounts,
+  beginProviderStep,
+  configureCostPolicy,
+  grantEntitlement,
+  reservationIsOpen,
+  reserveAllowance,
+} from "../quota";
 import { ENDED_JOB_RUN_ERROR, reconcileEndedJobRuns } from "./maintenance";
 import { recordProcessingNotification } from "./notifications";
 
@@ -152,6 +165,123 @@ it("waits for the operator when a provider request was still in flight", async (
     .executeTakeFirstOrThrow();
   expect(run).toEqual({ state: "needs_input", last_error: "provider_outcome_unresolved" });
   expect(await reservationIsOpen(db, x.ctx, x.holdId)).toBe(false);
+});
+
+// P12-01 (AC-1, AC-2, AC-13): the reconciliation, run as a really claimed job, also closes the
+// cost hold of the attempt left in flight, once, at the hold's maximum, dated at the hold's time;
+// the attempt stays started. Without a job, the run is closed as before and the hold stays open.
+it("closes the in-flight attempt's cost hold at its maximum under its own job's authority", async () => {
+  const x = await stuckRun("running");
+  await configureCostPolicy(
+    db,
+    {
+      version: "fixture",
+      currency: "USD",
+      killSwitch: false,
+      limits: {
+        session: 100000000,
+        userMonth: 100000000,
+        systemDay: 100000000,
+        systemMonth: 100000000,
+      },
+    },
+    { actorId: "synthetic-operator", reason: "Synthetic ended-job reconciliation tests" },
+  );
+  const operationKey = `${x.runId}:synthetic:1`;
+  const hold = await db.transaction().execute((tx) =>
+    beginProviderStep(tx, x.ctx, {
+      sessionId: x.session.id,
+      reservationId: x.holdId,
+      operationKey,
+      maximumMicros: 25,
+      currency: "USD",
+    }),
+  );
+  const attempt = await db
+    .insertInto("proc.provider_attempt")
+    .values({
+      run_id: x.runId,
+      user_id: x.ctx.userId,
+      step: "synthetic",
+      attempt: 1,
+      operation_key: operationKey,
+      hold_id: hold.id,
+      provider: "synthetic",
+      model: "synthetic/llm",
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  await sweepJobs(db, new Date());
+  const costHold = () =>
+    db
+      .selectFrom("quota.cost_hold")
+      .select(["created_at", "closed_at"])
+      .where("id", "=", hold.id)
+      .executeTakeFirstOrThrow();
+  const costs = () =>
+    db
+      .selectFrom("quota.provider_cost")
+      .select(["attempt_id", "amount_micros", "estimated_micros", "created_at"])
+      .where("operation_key", "=", operationKey)
+      .execute();
+
+  // A caller without a job: the run closes as before; no cost hold is closed.
+  expect(await reconcileEndedJobRuns(db, new Date(), { userId: x.ctx.userId })).toBe(1);
+  expect((await costHold()).closed_at).toBeNull();
+  expect(await costs()).toEqual([]);
+
+  const kind = `proc.reconcile_${randomUUID().replaceAll("-", "")}`;
+  const now = new Date();
+  await db
+    .insertInto("plt.job")
+    .values({
+      kind,
+      payload: JSON.stringify({}),
+      payload_version: 1,
+      max_attempts: 3,
+      lease_seconds: 300,
+      retry_base_seconds: 30,
+      retry_max_seconds: 3600,
+      run_at: now,
+      created_at: now,
+      updated_at: now,
+    })
+    .execute();
+  const [claim] = await claimJobs(db, [kind], 1, new Date());
+  if (!claim || claim.generation === undefined) throw new Error("Expected a reconcile claim");
+  const job = {
+    db,
+    now: () => new Date(),
+    job: { id: claim.id, attempt: claim.attempt },
+    lease: { id: claim.id, token: claim.token, generation: claim.generation },
+  };
+  const before = new Date();
+  expect(await reconcileEndedJobRuns(db, new Date(), { userId: x.ctx.userId, job })).toBe(0);
+  const closed = await costHold();
+  expect(closed.closed_at).not.toBeNull();
+  expect(new Date(closed.closed_at as Date).getTime()).toBeGreaterThanOrEqual(
+    before.getTime() - 1000,
+  );
+  expect(
+    (await costs()).map((row) => ({
+      attemptId: row.attempt_id,
+      amount: row.amount_micros,
+      estimated: Number(row.estimated_micros),
+      createdAt: new Date(row.created_at),
+    })),
+  ).toEqual([
+    { attemptId: attempt.id, amount: null, estimated: 25, createdAt: new Date(closed.created_at) },
+  ]);
+  const state = await db
+    .selectFrom("proc.provider_attempt")
+    .select("state")
+    .where("id", "=", attempt.id)
+    .executeTakeFirstOrThrow();
+  expect(state.state).toBe("started");
+  // Idempotent: another period writes nothing more.
+  await reconcileEndedJobRuns(db, new Date(), { userId: x.ctx.userId, job });
+  expect(await costs()).toHaveLength(1);
+  expect(await completeJob(db, claim, new Date())).toBe(true);
 });
 
 it("leaves a run whose job is still queued to that job", async () => {
