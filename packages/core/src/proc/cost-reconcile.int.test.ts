@@ -11,13 +11,14 @@ import {
   createSignupIntent,
   updateProfile,
 } from "../acc";
-import type {
-  AiProvider,
-  ProviderResult,
-  ProviderSettings,
-  StructuredInput,
-  Transcript,
-  TranscriptionInput,
+import {
+  type AiProvider,
+  ProviderError,
+  type ProviderResult,
+  type ProviderSettings,
+  type StructuredInput,
+  type Transcript,
+  type TranscriptionInput,
 } from "../aip";
 import { createDatabase } from "../db";
 import type { KnowledgeModel } from "../lkm";
@@ -273,12 +274,13 @@ async function fixture() {
   return { ctx, session, provider, job, start };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
+type Logged = { level: string; event: string; fields: Record<string, unknown> };
 
 /**
  * P11-02 AC-24: each job of the run is really claimed, on a queue kind of its own so no other
  * fixture's job is taken, and runs with its real lease, without the test-only mark.
  */
-async function drive(f: Fixture, runId: string) {
+async function drive(f: Fixture, runId: string, logs?: Logged[]) {
   for (let step = 0; step < 20; step++) {
     const current = await db
       .selectFrom("proc.processing_run")
@@ -297,6 +299,13 @@ async function drive(f: Fixture, runId: string) {
       job: { id: claim.id, attempt: claim.attempt },
       lease: { id: claim.id, token: claim.token, generation: claim.generation },
       step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
+      ...(logs
+        ? {
+            log: (level, event, fields) => {
+              logs.push({ level, event, fields: { ...(fields ?? {}) } });
+            },
+          }
+        : {}),
     };
     try {
       await f.job.run(f.job.payload.parse(claim.payload), context);
@@ -313,7 +322,6 @@ async function drive(f: Fixture, runId: string) {
   }
 }
 
-type Logged = { level: string; event: string; fields: Record<string, unknown> };
 /** The reconciliation job, really claimed on a queue kind of its own, with its real lease. */
 async function reconcileJob() {
   const kind = `proc.reconcile_${randomUUID().replaceAll("-", "")}`;
@@ -829,5 +837,163 @@ describe("conservative close of an unowned provider hold (P12-01)", () => {
     expect(after.now.userMonth).toBe(before.now.userMonth);
     expect(before.atHold.userMonth).toBeGreaterThanOrEqual(attempt.maximum);
     await completeJob(db, claim, new Date());
+  });
+});
+
+const REFUSED_AFTER_CLOSE = "provider_result_refused_after_conservative_close";
+/** The run's checkpoints of its attempts' own steps: a refused worker saves none. */
+async function attemptCheckpoints(runId: string) {
+  return db
+    .selectFrom("proc.run_step as s")
+    .innerJoin("proc.provider_attempt as a", (join) =>
+      join.onRef("a.run_id", "=", "s.run_id").onRef("a.step", "=", "s.step"),
+    )
+    .select("s.step")
+    .where("s.run_id", "=", runId)
+    .execute();
+}
+/**
+ * R2-P1201-01 (AC-4 point 2): the real worker path. The worker's job is really claimed and its
+ * provider call is held in dispatch; meanwhile its authority ends and an independent, really
+ * claimed reconciliation job closes the attempt's hold at its maximum; only then does the
+ * provider answer. The worker commits nothing and says so, apart from a plain lost lease.
+ */
+async function refusedAfterClose(endAuthority: (f: Fixture, runId: string) => Promise<unknown>) {
+  const f = await fixture();
+  const run = await f.start();
+  const worker: Logged[] = [];
+  let reconciler: Awaited<ReturnType<typeof reconcileJob>> | undefined;
+  const close = async () => {
+    await endAuthority(f, run.id);
+    reconciler = await reconcileJob();
+    await reconcile(reconciler.job, f.ctx.userId);
+    await completeJob(db, reconciler.claim, new Date());
+  };
+  return { f, run, worker, close, reconciler: () => reconciler };
+}
+/** What every refused late result leaves: one conservative row, the attempt as it was, no output. */
+async function expectRefusedAfterClose(
+  ctx: { f: Fixture; run: { id: string }; worker: Logged[] },
+  result: "response" | "failure" | "unknown",
+  requestId: string | undefined,
+) {
+  const { f, run, worker } = ctx;
+  expect(f.provider.calls).toBe(1);
+  const attempt = await expectClosedConservatively(run.id, new Date(0));
+  expect(await attemptCheckpoints(run.id)).toEqual([]);
+  // The plain trace of the refused result stays as it was, and the distinct one follows it.
+  const events = worker.map((line) => line.event);
+  expect(events).toContain("provider_result_not_committed");
+  const refused = worker.filter((line) => line.event === REFUSED_AFTER_CLOSE);
+  expect(refused).toHaveLength(1);
+  expect(refused[0]).toMatchObject({ level: "warn" });
+  expect(refused[0]?.fields).toEqual({
+    module: "proc",
+    job_id: expect.any(String),
+    attempt: expect.any(Number),
+    code: "hold_closed_at_maximum",
+    cause: "job_lease_lost",
+    result,
+    reason: attempt.operationKey,
+    request_id: requestId,
+  });
+  expect(events.indexOf("provider_result_not_committed")).toBeLessThan(
+    events.indexOf(REFUSED_AFTER_CLOSE),
+  );
+  // It reports no commit: neither the generic late-settle line nor any other settle of the worker.
+  expect(events).not.toContain("provider_late_settle_kept_conservative");
+  // Identifiers only: no user, session or output in the worker's lines.
+  const written = JSON.stringify(worker);
+  expect(written).not.toContain(f.ctx.userId);
+  expect(written).not.toContain(f.session.id);
+  expect(written).not.toContain("A synthetic class example.");
+  expect(written).not.toContain("Present perfect");
+  return attempt;
+}
+
+describe("a provider result refused after the conservative close is told apart (P12-01, R2-P1201-01)", () => {
+  it("a valid response that returns after the run was cancelled and its hold closed", async () => {
+    const t = await refusedAfterClose((f, runId) => cancelRun(db, f.ctx, runId));
+    t.f.provider.beforeResult = t.close;
+    await drive(t.f, t.run.id, t.worker);
+    expect(t.reconciler()).toBeDefined();
+    expect((await runRow(t.run.id)).state).toBe("cancelled");
+    await expectRefusedAfterClose(t, "response", "synthetic-generation");
+  });
+
+  it("a valid response that returns after the job failed on its last try and its hold closed", async () => {
+    const t = await refusedAfterClose((_f, runId) => loseLastTry(runId));
+    t.f.provider.beforeResult = t.close;
+    await drive(t.f, t.run.id, t.worker);
+    expect(await runRow(t.run.id)).toMatchObject({
+      state: "needs_input",
+      last_error: "provider_outcome_unresolved",
+    });
+    await expectRefusedAfterClose(t, "response", "synthetic-generation");
+  });
+
+  it("a definite provider failure that returns after the close", async () => {
+    const t = await refusedAfterClose((f, runId) => cancelRun(db, f.ctx, runId));
+    t.f.provider.beforeResult = async () => {
+      await t.close();
+      throw new ProviderError("provider_http_400", false, false);
+    };
+    await drive(t.f, t.run.id, t.worker);
+    await expectRefusedAfterClose(t, "failure", undefined);
+  });
+
+  it("an unknown provider outcome that returns after the close", async () => {
+    const t = await refusedAfterClose((f, runId) => cancelRun(db, f.ctx, runId));
+    t.f.provider.beforeResult = async () => {
+      await t.close();
+      throw new Error("Synthetic transport failure");
+    };
+    await drive(t.f, t.run.id, t.worker);
+    await expectRefusedAfterClose(t, "unknown", undefined);
+  });
+
+  it("a plain lost lease, without a conservative close, never takes that label", async () => {
+    // The response and the failure path, each refused with no close at all.
+    for (const fail of [false, true]) {
+      const f = await fixture();
+      const run = await f.start();
+      const worker: Logged[] = [];
+      f.provider.beforeResult = async () => {
+        await cancelRun(db, f.ctx, run.id);
+        if (fail) throw new ProviderError("provider_http_400", false, false);
+      };
+      await drive(f, run.id, worker);
+      await expectLeftOpen(run.id);
+      expect(worker.map((line) => line.event)).toContain("provider_result_not_committed");
+      expect(worker.map((line) => line.event)).not.toContain(REFUSED_AFTER_CLOSE);
+      // Closed afterwards: the worker's lines stay as they were.
+      const before = [...worker];
+      await closeAndRepeat(f, run.id);
+      expect(worker).toEqual(before);
+    }
+    // A lost lease while a reconciliation without authority tried, and failed, to close the hold:
+    // the hold stays open, so the worker's refusal stays a plain lost lease.
+    const f = await fixture();
+    const run = await f.start();
+    const worker: Logged[] = [];
+    let refusal: unknown;
+    f.provider.beforeResult = async () => {
+      await cancelRun(db, f.ctx, run.id);
+      const expired = await reconcileJob();
+      await db
+        .updateTable("plt.job")
+        .set({ lease_until: new Date(Date.now() - 1000) })
+        .where("id", "=", expired.claim.id)
+        .execute();
+      refusal = await reconcile(expired.job, f.ctx.userId).then(
+        () => "closed",
+        (error: unknown) => (error instanceof Error ? error.name : error),
+      );
+    };
+    await drive(f, run.id, worker);
+    expect(refusal).toBe("JobLeaseLost");
+    await expectLeftOpen(run.id);
+    expect(worker.map((line) => line.event)).toContain("provider_result_not_committed");
+    expect(worker.map((line) => line.event)).not.toContain(REFUSED_AFTER_CLOSE);
   });
 });

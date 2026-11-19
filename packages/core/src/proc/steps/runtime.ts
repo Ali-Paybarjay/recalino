@@ -32,7 +32,12 @@ import {
   readOwnedObject,
   readPltSettings,
 } from "../../plt";
-import { beginProviderStep, finishProviderStep, type ProviderSettleOutcome } from "../../quota";
+import {
+  beginProviderStep,
+  finishProviderStep,
+  type ProviderSettleOutcome,
+  providerAttemptHoldSql,
+} from "../../quota";
 import { appendContentVersion, automaticSourceRole, sourceContentSchema } from "../../src";
 import type { RunSource } from "../contracts";
 import { knowledgeTruncationSchema } from "../knowledge-compact";
@@ -362,10 +367,94 @@ export async function closeAttemptHoldAtMaximum(
     options.now,
   );
 }
+/** Provider attempt states whose outcome is not known. */
+export const UNRESOLVED_ATTEMPT_STATES: readonly string[] = ["started", "uncertain"];
+/**
+ * P12-01 (AC-3, r1): a conservative close is recognised only from all three parts of the same
+ * attempt: the attempt still unresolved, its own hold closed, and a provider_cost row with this
+ * attempt's id. An ordinary estimated settle (its attempt resolved), a definite failure, an open
+ * hold, or a closed hold without that row is not one, whatever the row's amount and usage. The one
+ * definition, shared by the reconciliation and the operator's counts (maintenance.ts) and by the
+ * trace of a result refused after such a close (below).
+ */
+export function isConservativelyClosedAttempt(facts: {
+  attemptState: string;
+  holdClosed: boolean;
+  costRecorded: boolean;
+}): boolean {
+  return (
+    UNRESOLVED_ATTEMPT_STATES.includes(facts.attemptState) && facts.holdClosed && facts.costRecorded
+  );
+}
+/**
+ * P12-01 (AC-4, R2-P1201-01): whether this attempt is, as committed now, a conservative close (the
+ * three-part record). Read outside any transaction of the worker, so only committed state counts.
+ */
+async function attemptClosedConservatively(db: Database, attemptId: string): Promise<boolean> {
+  const hold = providerAttemptHoldSql({
+    attemptId: "a.id",
+    holdId: "a.hold_id",
+    userId: "a.user_id",
+  });
+  const row = await db
+    .selectFrom("proc.provider_attempt as a")
+    .select([
+      "a.state as state",
+      hold.closed.as("hold_closed"),
+      hold.costRecorded.as("cost_recorded"),
+    ])
+    .where("a.id", "=", attemptId)
+    .executeTakeFirst();
+  return (
+    row !== undefined &&
+    isConservativelyClosedAttempt({
+      attemptState: row.state,
+      holdClosed: Boolean(row.hold_closed),
+      costRecorded: Boolean(row.cost_recorded),
+    })
+  );
+}
+/**
+ * P12-01 (AC-4 point 2, R2-P1201-01): a provider result (a response, a definite failure or an
+ * unknown outcome) that this worker could not commit because its claim was void, for an attempt
+ * whose hold another job has meanwhile closed at its maximum. Called only after the refused
+ * transaction rolled back, so it reports nothing as committed: the worker wrote no settle, no cost
+ * row, no attempt state and no output. It is told apart from a plain lost lease (the generic
+ * provider_result_not_committed line, kept as it was) by its own event, and only when the attempt
+ * is the three-part record. Identifiers only: the job, its attempt, the attempt's operation key
+ * (`reason`), the provider's request id and what came back (`result`); never the output, the usage
+ * or user data. A failed read writes nothing more and never hides the refusal itself.
+ */
+async function traceRefusedAfterConservativeClose<T>(
+  call: ProviderCall<T>,
+  attempt: ProviderAttempt,
+  requestId: string | null | undefined,
+  result: "response" | "failure" | "unknown",
+) {
+  const { job } = call;
+  let closed: boolean;
+  try {
+    closed = await attemptClosedConservatively(job.db, attempt.id);
+  } catch {
+    return;
+  }
+  if (!closed) return;
+  job.log?.("warn", "provider_result_refused_after_conservative_close", {
+    module: "proc",
+    job_id: job.job.id,
+    attempt: job.job.attempt,
+    code: "hold_closed_at_maximum",
+    cause: "job_lease_lost",
+    result,
+    reason: attempt.operation_key,
+    request_id: requestId ?? undefined,
+  });
+}
 /**
  * P12-01 (AC-4): a settle that found its attempt's hold already closed at the maximum keeps that
  * one conservative row (no second row) and is logged, identifiers only, instead of being dropped
- * silently. Reconciling it with the real amount is C11-62's.
+ * silently; logged only once its transaction committed. Reconciling it with the real amount is
+ * C11-62's.
  */
 function traceLateSettle<T>(call: ProviderCall<T>, attempt: ProviderAttempt) {
   const { job } = call;
@@ -525,6 +614,7 @@ async function commitProviderOutput<T>(
   onCommit: ((tx: Tx, output: T) => Promise<void>) | undefined,
 ): Promise<T> {
   const { job, ctx, runId, step, provider } = call;
+  let keptConservative = false;
   return job.db
     .transaction()
     .execute(async (tx) => {
@@ -553,7 +643,7 @@ async function commitProviderOutput<T>(
         },
         job.now(),
       );
-      if (settled === "conservative_kept") traceLateSettle(call, attempt);
+      keptConservative = settled === "conservative_kept";
       await tx
         .updateTable("proc.provider_attempt")
         .set({
@@ -576,6 +666,8 @@ async function commitProviderOutput<T>(
       return output;
     })
     .then((output) => {
+      // Committed by now (P12-01, AC-4): the conservative row was kept and nothing else settled.
+      if (keptConservative) traceLateSettle(call, attempt);
       if (output === null) throw new JobCancelled();
       return output;
     });
@@ -592,6 +684,7 @@ async function recordProviderFailure<T>(
   providerError: ProviderError,
 ) {
   const { job, ctx, runId, step, model, provider } = call;
+  let keptConservative = false;
   await job.db.transaction().execute(async (tx) => {
     await assertWriteAuthority(tx, job);
     await lockAccountForCleanup(tx, ctx.userId);
@@ -603,8 +696,8 @@ async function recordProviderFailure<T>(
       .executeTakeFirstOrThrow();
     if (current.state === "succeeded") return;
     if (providerError.uncertain) await closeHoldAtMaximum(tx, call, attempt);
-    else if (
-      (await finishProviderStep(
+    else {
+      const settled = await finishProviderStep(
         tx,
         ctx,
         attempt.hold_id,
@@ -625,9 +718,9 @@ async function recordProviderFailure<T>(
           attemptId: attempt.id,
         },
         job.now(),
-      )) === "conservative_kept"
-    )
-      traceLateSettle(call, attempt);
+      );
+      keptConservative = settled === "conservative_kept";
+    }
     await tx
       .updateTable("proc.provider_attempt")
       .set({
@@ -676,6 +769,8 @@ async function recordProviderFailure<T>(
       );
     }
   });
+  // Committed by now (P12-01, AC-4): the conservative row was kept and nothing else settled.
+  if (keptConservative) traceLateSettle(call, attempt);
 }
 /**
  * V3-04 (P11-02 AC-2): a provider outcome this worker could not commit because its claim was void
@@ -703,7 +798,9 @@ function traceUncommittedResult<T>(
  * The attempt and maximum cost hold are committed before dispatch; an unknown result is not
  * repeated; its attempt stays unresolved and its hold closes at that maximum (P9-05). Every write
  * runs only with the job's authority (ADR-0004 rule 4); a worker whose claim became void commits
- * nothing, leaves a trace (traceUncommittedResult) and stops with `JobLeaseLost`.
+ * nothing, leaves a trace (traceUncommittedResult) and stops with `JobLeaseLost`. When another job
+ * had meanwhile closed the attempt's hold conservatively, a second, distinct trace says so
+ * (traceRefusedAfterConservativeClose, P12-01 AC-4).
  */
 export async function providerStep<T>(
   job: JobContext,
@@ -747,7 +844,11 @@ export async function providerStep<T>(
     }
     return await commitProviderOutput(call, attempt, result, parsed.data, options.onCommit);
   } catch (error) {
-    if (isJobLeaseLost(error)) traceUncommittedResult(call, attempt, requestId);
+    if (isJobLeaseLost(error)) {
+      traceUncommittedResult(call, attempt, requestId);
+      // Only a valid response reaches the commit; its transaction has rolled back by now.
+      await traceRefusedAfterConservativeClose(call, attempt, requestId, "response");
+    }
     if (error instanceof JobCancelled) throw error;
     const providerError =
       error instanceof ProviderError
@@ -759,7 +860,15 @@ export async function providerStep<T>(
     try {
       await recordProviderFailure(call, attempt, providerError);
     } catch (recordError) {
-      if (isJobLeaseLost(recordError)) traceUncommittedResult(call, attempt, requestId);
+      if (isJobLeaseLost(recordError)) {
+        traceUncommittedResult(call, attempt, requestId);
+        await traceRefusedAfterConservativeClose(
+          call,
+          attempt,
+          requestId,
+          providerError.uncertain ? "unknown" : "failure",
+        );
+      }
       throw recordError;
     }
     // OPS-02: the provider's code and transport cause only, never its output (PRD-PRIV-06).

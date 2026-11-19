@@ -18,7 +18,17 @@ import { getSource, readInputContract, temporaryAudioUploadStates } from "../src
 import { failAuxiliaryRun } from "./auxiliary";
 import { snapshotSourceSchema } from "./contracts";
 import { type AwaitingUploadFailure, failAwaitingUploadRun, ownedRun } from "./runs";
-import { assertWriteAuthority, closeAttemptHoldAtMaximum, isJobLeaseLost } from "./steps/runtime";
+import {
+  assertWriteAuthority,
+  closeAttemptHoldAtMaximum,
+  isConservativelyClosedAttempt,
+  isJobLeaseLost,
+  UNRESOLVED_ATTEMPT_STATES,
+} from "./steps/runtime";
+
+// P12-01 (AC-3, r1): the one three-part definition lives beside the worker's trace that also reads
+// it (steps/runtime.ts); the reconciliation and the operator's counts use it from here.
+export { isConservativelyClosedAttempt };
 
 const audioSourceIdsSchema = z.array(snapshotSourceSchema.shape.sourceId);
 
@@ -203,8 +213,6 @@ export type AuxiliaryRunClosedHook = (
   /** C11-4 (P11-02): runs `effect` once the transaction committed, e.g. a byte delete. */
   afterCommit?: (effect: () => Promise<void>) => void,
 ) => Promise<void>;
-/** Provider attempt states whose outcome is not known. */
-const UNRESOLVED_ATTEMPT_STATES: readonly string[] = ["started", "uncertain"];
 /**
  * P12-01 (AC-1, AC-8): job states whose work is still live, so their run's attempts are left to
  * them: a claim (with a valid lease, or an ended one the sweep requeues or fails), a queued job,
@@ -265,17 +273,6 @@ export function isUnownedOpenAttempt(facts: AttemptClassFacts): boolean {
     !facts.holdClosed &&
     UNOWNED_ATTEMPT_RUN_STATES.includes(facts.runState) &&
     (facts.jobState === null || !LIVE_JOB_STATES.includes(facts.jobState))
-  );
-}
-/**
- * P12-01 (AC-3, r1): a conservative close is recognised only from all three parts of the same
- * attempt: the attempt still unresolved, its own hold closed, and a provider_cost row with this
- * attempt's id. An ordinary estimated settle (its attempt resolved), a definite failure, an open
- * hold, or a closed hold without that row is not one, whatever the row's amount and usage.
- */
-export function isConservativelyClosedAttempt(facts: AttemptClassFacts): boolean {
-  return (
-    UNRESOLVED_ATTEMPT_STATES.includes(facts.attemptState) && facts.holdClosed && facts.costRecorded
   );
 }
 /**
