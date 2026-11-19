@@ -1,0 +1,62 @@
+{
+  "schema_version": "1",
+  "task_id": "P12-01",
+  "kind": "pass_to_pass",
+  "base_sha": "f35dddbd183cb3fdb14264e7be07a8f5ffed9a23",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "f35dddbd183cb3fdb14264e7be07a8f5ffed9a23",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/processing.int.test.ts",
+      "sha256": "3ff6a29da4a559ec8ac51728439e2fac9503452497740b4c00e1518318b50ec9"
+    },
+    {
+      "path": "packages/core/src/proc/knowledge-repair.int.test.ts",
+      "sha256": "48b4aed1c1bebce92f6d3e1c2bdf5f1b263fda4714a2ab15baf9face9e78319a"
+    },
+    {
+      "path": "packages/core/src/eval/lesson-review-service.int.test.ts",
+      "sha256": "c48c8d6cd71880315e4bb3ec2f2c486b9cb5d336a1dafbdc06db6f29ea04552d"
+    },
+    {
+      "path": "packages/core/src/priv/media.int.test.ts",
+      "sha256": "1230f27482b970c367137180213f7f9d1197b878e0e800bc7bf522ba61fad317"
+    },
+    {
+      "path": "packages/core/src/proc/steps/runtime.test.ts",
+      "sha256": "44aa4a1e074354d1a7387d812ccb6861720e07b58ae248e2ad55edadb32e00a5"
+    },
+    {
+      "path": "packages/core/src/proc/maintenance.test.ts",
+      "sha256": "af8cb3b1ca7d5306d5695fbf8ccd3d38b58a08bf109b2ee44bc92d6a3a14f1a0"
+    },
+    {
+      "path": "packages/core/src/ops/admin-tasks.test.ts",
+      "sha256": "53168072d8bcaf649c2fa2041591249c87f4b498a3ed204b849915d72151496e"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/steps/runtime.test.ts",
+      "name": "the unit suite is green on head, including the unchanged runtime, maintenance and admin tasks unit tests and the new admin read and spend totals unit tests; the new int tests in proc/cost-reconcile.int.test.ts, the extended proc/ended-job-reconcile.int.test.ts and the unchanged P11-02 int tests (processing, knowledge-repair, lesson-review-service, priv/media) run in CI test:int on the same head. AC-13 is traced to the cost-reconcile.int.test.ts tests for a hold from an earlier day or month (the cost row created_at equals the hold created_at, each cap counts it once, the real close time is recoverable, the meaning of closed_at is stated) and for a reconcile job whose authority is lost (nothing is closed and no row is written). AC-14 is traced, in branch (a), to the cost-reconcile.int.test.ts test for a run whose job_id became null through the real chain of job end, purge and pointer null; in branch (b), to the test or path:line the report names, with no code for that case",
+      "maps_to_criteria": [
+        "AC-2",
+        "AC-3",
+        "AC-5",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-13",
+        "AC-14"
+      ]
+    }
+  ]
+}
