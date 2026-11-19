@@ -31,6 +31,8 @@ const T0 = new Date("2026-11-12T10:00:00Z");
 const at = (seconds: number) => new Date(T0.getTime() + seconds * 1000);
 const DEFAULTS = { ...DEFAULT_PLT_SETTINGS.jobs, retryBaseSeconds: 30, retryMaxSeconds: 3600 };
 const SESSION = "0b6f6a0e-7f1d-4c38-8d39-2a5d3f0c9e14";
+/** P11-08 AC-3: the deployed build's identifier, the commit a deployment was built from. */
+const BUILD = "0123456789abcdef0123456789abcdef01234567";
 
 function definition(): JobDefinition<{ sessionId: string }> {
   return {
@@ -50,7 +52,7 @@ async function enqueue(def: JobDefinition<{ sessionId: string }>): Promise<strin
 }
 
 async function claimOne(def: { kind: string }, now: Date): Promise<ClaimedJob> {
-  const claimed = await claimJobs(app, [def.kind], 1, now);
+  const claimed = await claimJobs(app, [def.kind], 1, now, undefined, BUILD);
   expect(claimed).toHaveLength(1);
   const [job] = claimed;
   if (!job) throw new Error("job not claimed");
@@ -186,10 +188,11 @@ describe("plt.job lease columns, additive only (P11-09)", () => {
       where i.indrelid = 'plt.job'::regclass
         and a.attname in ('lease_generation', 'lease_build')`.execute(admin);
     expect(Number(indexes.rows[0]?.n)).toBe(0);
-    const triggers = await sql<{ n: string }>`
-      select count(*) as n from pg_trigger
+    // P11-08 adds the one trigger, its claim barrier, and applies it disabled (tgenabled 'D').
+    const triggers = await sql<{ name: string; enabled: string }>`
+      select tgname as name, tgenabled as enabled from pg_trigger
       where tgrelid = 'plt.job'::regclass and not tgisinternal`.execute(admin);
-    expect(Number(triggers.rows[0]?.n)).toBe(0);
+    expect(triggers.rows).toEqual([{ name: "job_claim_barrier", enabled: "D" }]);
   });
 });
 
@@ -203,12 +206,12 @@ describe("the code deployed before the migration is unchanged (ADR-0004 rule 3 s
     expect(job).toMatchObject({ id, attempt: 1 });
     expect(await jobState(app, id)).toBe("running");
     const generation = await currentGeneration();
-    expect(await leaseColumns(id)).toEqual({ lease_generation: generation, lease_build: null });
+    expect(await leaseColumns(id)).toEqual({ lease_generation: generation, lease_build: BUILD });
 
     expect(await renewJobLease(app, job, at(10))).toBe(true);
     expect(await completeJob(app, job, at(20))).toBe(true);
     expect(await jobState(app, id)).toBe("succeeded");
-    expect(await leaseColumns(id)).toEqual({ lease_generation: generation, lease_build: null });
+    expect(await leaseColumns(id)).toEqual({ lease_generation: generation, lease_build: BUILD });
   });
 
   it("claims a job whose columns hold values left by an earlier claim, and fails it", async () => {
@@ -228,6 +231,7 @@ describe("the code deployed before the migration is unchanged (ADR-0004 rule 3 s
     expect(second).toMatchObject({ id, attempt: 2 });
     expect(second.token).not.toBe(first.token);
     expect(await jobState(app, id)).toBe("running");
+    expect(await leaseColumns(id)).toMatchObject({ lease_build: BUILD }); // this claim's build
     expect(await completeJob(app, first, at(3601))).toBe(false); // the earlier claim is void
     expect(await failJob(app, second, "test_terminal", at(3602), true)).toBe("failed");
     expect(await jobState(app, id)).toBe("failed");
@@ -250,7 +254,7 @@ describe("the code deployed before the migration is unchanged (ADR-0004 rule 3 s
         expect(job).toMatchObject({ id, attempt: 1 });
         expect(await leaseColumns(id)).toEqual({
           lease_generation: await currentGeneration(),
-          lease_build: null,
+          lease_build: BUILD,
         });
         expect(await completeJob(app, job, at(1))).toBe(true);
         expect(await jobState(app, id)).toBe("succeeded");
