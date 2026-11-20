@@ -1,0 +1,61 @@
+{
+  "schema_version": "1",
+  "mode": "brownfield",
+  "task_type": "docs",
+  "risk_level": "low",
+  "owns_paths": ["docs/aeo/audit/**"],
+  "depends_on": [],
+  "roles": {
+    "implementer": "auditor.debt",
+    "reviewers": ["reviewer.architecture"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 3
+  },
+  "id": "P12-03",
+  "title": "پیش‌سنجی C11-34: نوشتن ردیف شیء بی اختیار Job در چهار جا، با مسیر پاک‌سازی حریم خصوصی مقدم (investigate فقط‌خواندنی؛ دستهٔ ۱۲ L3)",
+  "goal": "مالک (E489، 2026-11-19) دربارهٔ C11-34 گزینهٔ الف را برگزید: «اصلاح هر چهار جا در دستهٔ ۱۲، با audit فقط‌خواندنی پیش از کارت؛ مسیر پاک‌سازی حریم خصوصی مقدم». به گفتهٔ Jobهای پیشین، writeOwnedObject در چهار جا از درون Job و بی job صدا زده می‌شود، پس worker کهنه پس از reclaim هنوز ردیف شیء می‌نویسد: anki.build_export، html.build_export و run ‏priv.cleanup؛ و prepareAudio بی job در capture-transcription، درون handler ‏captureTranscriptionJob. این audit برای هر جا پاسخ می‌دهد که چه نوشته می‌شود، worker کهنه چه می‌تواند بکند، و کمینهٔ تغییر fencing چیست، فقط از روی کد، تست‌ها، migrationها، docs و git log/show؛ بی تغییر کد، بی دادهٔ production و بی اجرای کد مخزن. خروجی: Finding v1.",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "مسیر پاک‌سازی حریم خصوصی، نخست (E489): برای run ‏priv.cleanup، جای فراخوان writeOwnedObject (یا هر نوشتن شیء دیگر) با path:line؛ آیا job به آن داده می‌شود؛ کدام ردیف‌های شیء نوشته، علامت‌گذاری یا حذف می‌شوند؛ worker کهنه پس از reclaim چه می‌تواند بکند (نوشتن یا حذف پس از worker تازه‌تر) و پیامد آن برای تضمین حذف دادهٔ کاربر؛ و کدام API موجود با اختیار Job (fenced) جای آن را می‌گیرد. کمینهٔ تغییر لازم فقط نام برده شود، نوشته نشود."
+    },
+    {
+      "id": "AC-2",
+      "statement": "سه جای دیگر، هر کدام جدا و به همان شکل AC-1: anki.build_export، html.build_export، و prepareAudio در capture-transcription (handler ‏captureTranscriptionJob). برای هر جا: path:line فراخوان، ردیف‌های نوشته‌شده، اثر نوشتن کهنه پس از reclaim، و جایگزین fenced موجود. اگر جایی امروز با job صدا زده می‌شود یا وجود ندارد، همان را با path:line بگو."
+    },
+    {
+      "id": "AC-3",
+      "statement": "نتیجهٔ صریح: یک سطر دقیقاً به یکی از سه شکل «migration لازم است: بله»، «migration لازم است: نه» یا «migration لازم است: Not Verified»، با شاهد path:line برای چهار جا. «نه» فقط وقتی است که هر چهار جا با API یا ستون موجود fenced شدنی است؛ شاهد ناکافی Not Verified است، نه «نه»."
+    },
+    {
+      "id": "AC-4",
+      "statement": "آزمون‌ها: برای هر جا، آزمون‌های موجودی که آن را می‌پوشانند (نام آزمون و path)، و اینکه آیا اصلاح آن به تغییر فایل آزمون قفل‌شدهٔ TestPlan یک Task پیشین (مانند P11-08 یا P12-01) نیاز دارد؛ فقط نام فایل و آزمون، بی پیشنهاد تغییر."
+    },
+    {
+      "id": "AC-5",
+      "statement": "نامزدها: هر نویسندهٔ دیگر ردیف شیء از درون Job و بی job که در این audit دیده شود (Jobهای پیشین ops/backups.ts و voc/profile.ts را منفی گفته‌اند؛ بسنج)، هر کدام با path:line، category و confidence؛ هر حدس با confidence برابر hypothesis. اگر نامزدی نیست، «هیچ»."
+    },
+    {
+      "id": "AC-6",
+      "statement": "summary_fa: یک بند برای هر جا، با مسیر پاک‌سازی حریم خصوصی نخست؛ سطر AC-3 به همان شکل؛ و آنچه برگهٔ پرسش مالک لازم دارد: ترتیب پیشنهادی اصلاح، و اینکه یک کارت کد بس است یا چند کارت. هر بند با Documented (path:line) یا Not Verified."
+    },
+    {
+      "id": "AC-7",
+      "statement": "هیچ مقدار env، secret، کلید، نشانی ایمیل، نام حساب، شناسهٔ پروژه یا استقرار، یا دادهٔ کاربر در خروجی نیست؛ فقط مسیر، نام ستون یا مقدار، شمارش، نام تابع و commit."
+    },
+    {
+      "id": "AC-8",
+      "statement": "هیچ کد، تست، اسکریپت یا hook مخزن اجرا نشده و هیچ فایلی تغییر نکرده است (فقط Read و git log/show/ls-files/grep)."
+    }
+  ],
+  "context_refs": ["docs/adr/0004-job-lease-fencing.md", "docs/aeo/l3/phase11-plan.md"],
+  "assumptions": [
+    "مخزن recalino، base ‏main در روز اجرا (اکنون 02da45bbdd3db850358a710c8f11410e039ca49f). منبع: تصمیم مالک E489 دربارهٔ C11-34 (2026-11-19) و ردیف C11-34 پروندهٔ نامزدها. نام تابع‌ها و path:lineها به گفتهٔ Jobهای پیشین است؛ L1 کد را نخوانده است (X1).",
+    "اجرا: --step audit، بی --test-plan (R92، audit معاف). سقف نوبت از limits.max_turns همین کارت (R98؛ ۶۰، مانند P12-02). سقف خرج Task در دفتر بازبین است، نه در کارت (E485 بند ۲).",
+    "ورودی فقط Task Card و base است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1).",
+    "هیچ install و هیچ اجرای کد مخزن، پس install_assets ندارد. نقش auditor.debt هیچ write_paths ندارد؛ هیچ commit یا PR. owns_paths و task_type مانند P12-02 است. خروجی دفتری docs/l3/audit/P12-03.report.json. بازبینی معماری (reviewer.architecture) در برنامه نیست و تنها با تصمیم جدا اجرا می‌شود.",
+    "ترتیب: پس از ادغام PR این کارت با approve مالک و «شروع» بازبین. تقدم با P12-01 است و این Job هم‌زمان با هیچ Job دیگری روی همان رایانه اجرا نمی‌شود. نتیجه به یک برگهٔ پرسش مالک در یک نوبت می‌رود و کارت کد پس از پاسخ مالک نوشته می‌شود (E485 بند ۵)."
+  ]
+}
