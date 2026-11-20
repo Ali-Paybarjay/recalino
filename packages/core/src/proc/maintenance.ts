@@ -11,12 +11,13 @@ import {
   type JobState,
   jobStates,
   type LearnerContext,
+  latestJobStateForPayload,
   type PeriodicJob,
 } from "../plt";
 import { emptyAmounts, providerAttemptHoldSql, settleAllowance } from "../quota";
 import { getSource, readInputContract, temporaryAudioUploadStates } from "../src";
 import { failAuxiliaryRun } from "./auxiliary";
-import { snapshotSourceSchema } from "./contracts";
+import { processingQueue, snapshotSourceSchema } from "./contracts";
 import { type AwaitingUploadFailure, failAwaitingUploadRun, ownedRun } from "./runs";
 import {
   assertWriteAuthority,
@@ -218,7 +219,8 @@ export type AuxiliaryRunClosedHook = (
  * them: a claim (with a valid lease, or an ended one the sweep requeues or fails), a queued job,
  * and one whose retry is scheduled; a job dispatched again closes its own unresolved hold
  * (beginProviderAttempt). Any other job, or none (its finished job was purged), has no authority
- * left over the run's attempts.
+ * left over the run's attempts, unless a live processing job still carries the run's id
+ * (providerAttemptFacts, R2-P1201-02).
  */
 const LIVE_JOB_STATES: readonly string[] = ["queued", "running", "retry_scheduled"];
 /**
@@ -248,7 +250,13 @@ export interface ProviderAttemptFacts {
   estimatePriceVersion: string | null;
   attemptState: string;
   runState: string;
-  /** Null when the run has no job: its finished job was purged (the pointer is set null). */
+  /**
+   * The state of the job that still holds the run: its pointer's job when that one is live;
+   * otherwise a live processing job that carries the run's id (R2-P1201-02, C11-77: a retried job
+   * whose continuation already exists writes a null pointer while that continuation lives on);
+   * otherwise the pointer's ended job. Null when the run has neither: its finished job was purged
+   * (the pointer is set null) and no processing job of the run is left.
+   */
   jobState: string | null;
   holdCurrency: string;
   holdMaximumMicros: number;
@@ -330,6 +338,27 @@ export async function providerAttemptFacts(
     .execute();
   const jobIds = rows.flatMap((row) => (row.job_id ? [row.job_id] : []));
   const states = await jobStates(db, jobIds);
+  const live = (state: string | null | undefined): state is string =>
+    state != null && LIVE_JOB_STATES.includes(state);
+  // R2-P1201-02 (C11-77): a null or ended pointer alone never proves that no job holds the run.
+  // A retried job whose continuation already exists gets null back from the enqueue (singleton
+  // key) and writes it over the pointer while that continuation still runs its paid call. So,
+  // through PLT's own read, the latest processing job that carries the run's id is asked too; a
+  // live one keeps the run's attempts its own. Read per run, here and again under the account lock.
+  const continuation = new Map<string, string | null>();
+  for (const row of rows) {
+    if (live(row.job_id ? states.get(row.job_id) : null) || continuation.has(row.run_id)) continue;
+    continuation.set(
+      row.run_id,
+      await latestJobStateForPayload(db, processingQueue.kind, { runId: row.run_id }),
+    );
+  }
+  const jobState = (row: (typeof rows)[number]): string | null => {
+    const pointer = row.job_id ? (states.get(row.job_id) ?? null) : null;
+    if (live(pointer)) return pointer;
+    const latest = continuation.get(row.run_id);
+    return live(latest) ? latest : pointer;
+  };
   return rows.map((row) => ({
     attemptId: row.attempt_id,
     userId: row.user_id,
@@ -341,8 +370,7 @@ export async function providerAttemptFacts(
     estimatePriceVersion: row.estimate_price_version,
     attemptState: row.attempt_state,
     runState: row.run_state,
-    // A run without a job (its finished job was purged) has no job state.
-    jobState: row.job_id ? (states.get(row.job_id) ?? null) : null,
+    jobState: jobState(row),
     holdCurrency: row.hold_currency,
     holdMaximumMicros: Number(row.hold_maximum_micros),
     holdCreatedAt: new Date(row.hold_created_at),

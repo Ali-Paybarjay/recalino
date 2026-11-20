@@ -997,3 +997,138 @@ describe("a provider result refused after the conservative close is told apart (
     expect(worker.map((line) => line.event)).not.toContain(REFUSED_AFTER_CLOSE);
   });
 });
+
+/**
+ * R2-P1201-02: one processing job, really claimed on a queue kind of its own (made due now), with
+ * its real lease and no test-only mark. With `asProcessing`, the claimed job takes its real kind
+ * back at once, as in production: a running job is never claimed again, and its record is what
+ * the singleton key and PLT's own read see.
+ */
+async function claimProcessingJob(
+  f: Fixture,
+  jobId: string,
+  options: { deadline?: Date; asProcessing?: boolean } = {},
+) {
+  const kind = `proc.synthetic_${randomUUID().replaceAll("-", "")}`;
+  await db
+    .updateTable("plt.job")
+    .set({ kind, run_at: new Date(Date.now() - 1000) })
+    .where("id", "=", jobId)
+    .execute();
+  const [claim] = await claimJobs(db, [kind], 1, new Date());
+  if (!claim || claim.id !== jobId || claim.generation === undefined)
+    throw new Error("Expected a claim of the job");
+  if (options.asProcessing)
+    await db.updateTable("plt.job").set({ kind: f.job.kind }).where("id", "=", jobId).execute();
+  const context: JobContext = {
+    db,
+    now: () => new Date(),
+    job: { id: claim.id, attempt: claim.attempt },
+    lease: { id: claim.id, token: claim.token, generation: claim.generation },
+    step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
+    ...(options.deadline ? { deadline: options.deadline } : {}),
+  };
+  const run = () => f.job.run(f.job.payload.parse(claim.payload), context);
+  return { claim, context, run };
+}
+const jobRow = (jobId: string) =>
+  db
+    .selectFrom("plt.job")
+    .select(["state", "kind"])
+    .where("id", "=", jobId)
+    .executeTakeFirstOrThrow();
+
+describe("a live continuation keeps its hold although a retried job set the pointer null (P12-01, R2-P1201-02)", () => {
+  it("closes nothing while the continuation's lease is valid, and its own settle stays the normal one", async () => {
+    const f = await fixture();
+    const run = await f.start();
+    const { job_id: first } = await runRow(run.id);
+    if (!first) throw new Error("Expected the run's first job");
+
+    // J, really claimed, has no time left for a lesson call: it creates its continuation J2 and
+    // puts the pointer on it, then stops before it completes (its lease ends, the sweep retries it).
+    const j = await claimProcessingJob(f, first, { deadline: new Date(Date.now() + 1000) });
+    await j.run();
+    const { job_id: second } = await runRow(run.id);
+    if (!second || second === first) throw new Error("Expected the continuation on the pointer");
+    expect(await jobRow(second)).toEqual({ state: "queued", kind: f.job.kind });
+    expect(f.provider.calls).toBe(0);
+    await db
+      .updateTable("plt.job")
+      .set({ lease_until: new Date(Date.now() - 60_000) })
+      .where("id", "=", first)
+      .execute();
+    await sweepJobs(db, new Date());
+    expect((await jobRow(first)).state).toBe("retry_scheduled");
+
+    // J2, really claimed with its real kind back, holds its paid call in dispatch.
+    const j2 = await claimProcessingJob(f, second, { asProcessing: true });
+    const reconciler: Logged[] = [];
+    let during:
+      | {
+          closed: number;
+          ranOnce: number;
+          counts: { conservativelyClosed: number; unownedOpen: number };
+        }
+      | undefined;
+    f.provider.beforeResult = async () => {
+      f.provider.beforeResult = undefined;
+      const open = await expectLeftOpen(run.id);
+      // J's retry, really claimed: the same singleton key finds J2, the enqueue returns null and
+      // that null is written over the pointer, while J2 still runs. J then completes.
+      const retry = await claimProcessingJob(f, first, { deadline: new Date(Date.now() + 1000) });
+      expect(retry.claim.attempt).toBe(2);
+      await retry.run();
+      expect(await completeJob(db, retry.claim, new Date())).toBe(true);
+      expect(await runRow(run.id)).toMatchObject({ state: "processing", job_id: null });
+      expect(await jobRow(second)).toEqual({ state: "running", kind: f.job.kind });
+      expect(await jobRow(first)).toMatchObject({ state: "succeeded" });
+
+      // An independent reconciliation, really claimed, in this very order: with J2's lease
+      // valid, no financial close, the hold open and no conservative row.
+      const { job, claim, logs } = await reconcileJob();
+      const ranOnce = await reconcile(job, f.ctx.userId);
+      const closed = await closeUnownedProviderHolds(job, { userId: f.ctx.userId });
+      reconciler.push(...logs);
+      const [facts] = await providerAttemptFacts(db, { attemptId: open.id });
+      expect(facts).toMatchObject({ attemptState: "started", holdClosed: false });
+      expect(facts?.jobState).toBe("running");
+      expect(facts && isUnownedOpenAttempt(facts)).toBe(false);
+      during = {
+        ranOnce,
+        closed,
+        counts: await providerHoldReconcileCounts(db, new Date(0), { userId: f.ctx.userId }),
+      };
+      await expectLeftOpen(run.id);
+      expect(await completeJob(db, claim, new Date())).toBe(true);
+    };
+    await j2.run();
+    expect(f.provider.calls).toBeGreaterThanOrEqual(1);
+    expect(during).toEqual({
+      ranOnce: 0,
+      closed: 0,
+      counts: { conservativelyClosed: 0, unownedOpen: 0 },
+    });
+    expect(reconciler.map((line) => line.event)).not.toContain(
+      "provider_hold_closed_conservatively",
+    );
+
+    // J2's authorised answer settles through the normal path: the real amount, the attempt
+    // resolved, never the conservative record.
+    expect(await completeJob(db, j2.claim, new Date())).toBe(true);
+    const { attempts, costs } = await ledger(run.id);
+    const attempt = attempts[0];
+    if (!attempt) throw new Error("Expected J2's attempt");
+    expect(attempt.state).toBe("succeeded");
+    expect(attempt.closedAt).not.toBeNull();
+    expect(costs.filter((row) => row.attemptId === attempt.id)).toEqual([
+      expect.objectContaining({ attemptId: attempt.id, amount: 1 }),
+    ]);
+    const [after] = await providerAttemptFacts(db, { attemptId: attempt.id });
+    expect(after).toBeUndefined();
+    expect(await providerHoldReconcileCounts(db, new Date(0), { userId: f.ctx.userId })).toEqual({
+      conservativelyClosed: 0,
+      unownedOpen: 0,
+    });
+  });
+});
