@@ -4,7 +4,7 @@ import { readEstimateRates } from "../aip";
 import type { Database } from "../db";
 import { getSession } from "../org";
 import { compareSchemaVersions, errors, readAppliedSchemaVersion } from "../plt";
-import { readClassProcessingReview } from "../proc";
+import { providerHoldReconcileCounts, readClassProcessingReview } from "../proc";
 import {
   emptyAmounts,
   providerCostSummary,
@@ -492,7 +492,18 @@ async function pilotSummary(
 }
 /** Provider attempt states whose outcome the operator has to verify. */
 const UNRESOLVED_ATTEMPT_STATES = ["started", "uncertain"];
-async function costsSummary(db: Database, now: Date): Promise<AdminCosts | null> {
+/**
+ * P12-01 (AC-8): the costs view's output also carries two counts, in this output only (the
+ * AdminCosts contract and the admin page show them later, C11-67): attempts of this month whose
+ * hold was closed conservatively at its maximum (the three-part record, an estimate, never an
+ * actual charge), and attempts still open that no job will settle (the reconciliation's own
+ * selection). Both stay among the unknown outcomes too; counts only, no user data or output.
+ */
+export type AdminCostsWithReconcile = AdminCosts & {
+  conservativelyClosedAttempts: number;
+  unownedOpenAttempts: number;
+};
+async function costsSummary(db: Database, now: Date): Promise<AdminCostsWithReconcile | null> {
   const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const summary = await providerCostSummary(db, since);
   if (!summary.policy) return null;
@@ -510,6 +521,7 @@ async function costsSummary(db: Database, now: Date): Promise<AdminCosts | null>
     where state=any(${UNRESOLVED_ATTEMPT_STATES}::text[]) and started_at>=${since}`.execute(db);
   const uncertain = rows[0];
   if (!uncertain) throw new Error("admin_attempt_counts_missing");
+  const holds = await providerHoldReconcileCounts(db, since);
   return {
     actualMicros: summary.costs.reduce((sum, cost) => sum + cost.actualMicros, 0),
     estimatedMicros: summary.costs.reduce((sum, cost) => sum + cost.estimatedMicros, 0),
@@ -520,6 +532,8 @@ async function costsSummary(db: Database, now: Date): Promise<AdminCosts | null>
     version: summary.policy.version,
     killSwitch: summary.policy.killSwitch,
     limits: summary.policy.limits,
+    conservativelyClosedAttempts: holds.conservativelyClosed,
+    unownedOpenAttempts: holds.unownedOpen,
   };
 }
 /**

@@ -209,6 +209,49 @@ export interface ProviderCost {
   usage: z.infer<typeof providerUsageSchema>;
   runId?: string;
   attemptId?: string;
+  /**
+   * P12-01 (AC-13, F-10): only with `"hold_maximum"`. The cost row takes the hold's own
+   * `created_at`, so a conservative close counts once, in the day and month the hold was counted
+   * in, never again in the period of the close. The hold's `closed_at` still records `now`, the
+   * real time of the close. This date is the row's accounting date only; it decides nothing about
+   * a lease or a job's authority (ADR-0004 rule 7).
+   */
+  recordAtHoldTime?: boolean;
+}
+
+/**
+ * What a settle did (P12-01, AC-4, AC-5): `recorded` wrote the one cost row and closed the hold;
+ * `already_recorded` found the hold already closed and wrote nothing; `conservative_kept` is a
+ * later settle of the same attempt after its hold was closed at the maximum: nothing is written,
+ * the conservative row stays, and the caller makes it visible instead of dropping it silently.
+ */
+export type ProviderSettleOutcome = "recorded" | "already_recorded" | "conservative_kept";
+
+/**
+ * P12-01 (AC-3, AC-8; ADR-0002 rule 4): QUOTA's own reads of one provider attempt's hold and cost
+ * row, as correlated subqueries on the caller's columns (the attempt's id, hold id and user id), so
+ * the reconciliation in PROC never names QUOTA's tables. `costRecorded` is true only for a
+ * provider_cost row carrying this attempt's own id.
+ */
+export function providerAttemptHoldSql(columns: {
+  attemptId: string;
+  holdId: string;
+  userId: string;
+}) {
+  const attempt = sql.ref(columns.attemptId);
+  const hold = sql.ref(columns.holdId);
+  const user = sql.ref(columns.userId);
+  const value = <T>(column: string) =>
+    sql<T>`(select ${sql.ref(`h.${column}`)} from quota.cost_hold h where h.id = ${hold} and h.user_id = ${user})`;
+  return {
+    exists: sql<boolean>`exists(select 1 from quota.cost_hold h where h.id = ${hold} and h.user_id = ${user})`,
+    open: sql<boolean>`exists(select 1 from quota.cost_hold h where h.id = ${hold} and h.user_id = ${user} and h.closed_at is null)`,
+    closed: sql<boolean>`exists(select 1 from quota.cost_hold h where h.id = ${hold} and h.user_id = ${user} and h.closed_at is not null)`,
+    currency: value<string>("currency"),
+    maximumMicros: value<string | number>("maximum_micros"),
+    createdAt: value<Date>("created_at"),
+    costRecorded: sql<boolean>`exists(select 1 from quota.provider_cost c where c.attempt_id = ${attempt})`,
+  };
 }
 
 /** A provider attempt is recorded once; no content or prompts are accepted (FR-QUOTA-008). */
@@ -218,7 +261,7 @@ export async function finishProviderStep(
   holdId: string,
   input: ProviderCost,
   now = new Date(),
-) {
+): Promise<ProviderSettleOutcome> {
   const usage = providerUsageSchema.parse(input.usage);
   for (const value of [input.actualMicros, input.estimatedMicros])
     if (value !== null && value !== "hold_maximum") micros.parse(value);
@@ -226,6 +269,8 @@ export async function finishProviderStep(
   // write, so it can never record a measured amount in the hold's currency unchecked.
   if (input.estimatedMicros === "hold_maximum" && input.actualMicros !== null)
     throw errors.validationFailed({ actualMicros: ["must_be_null_at_hold_maximum"] });
+  if (input.recordAtHoldTime && input.estimatedMicros !== "hold_maximum")
+    throw errors.validationFailed({ recordAtHoldTime: ["only_at_hold_maximum"] });
   z.string().min(1).max(100).parse(input.provider);
   z.string().min(1).max(200).parse(input.model);
   await sql`select pg_advisory_xact_lock(hashtext('quota.cost_policy'))`.execute(tx);
@@ -245,14 +290,27 @@ export async function finishProviderStep(
   const estimatedMicros = atMaximum ? Number(hold.maximum_micros) : input.estimatedMicros;
   if (hold.closed_at) {
     // P9-05: an unknown outcome closes its hold once; a hold already closed stays as recorded.
-    if (atMaximum) return;
+    if (atMaximum) return "already_recorded";
     const prior = await tx
       .selectFrom("quota.provider_cost")
       .selectAll()
       .where("operation_key", "=", input.operationKey)
       .executeTakeFirst();
     // P9-05: a reclaimed worker settling the same attempt after a later job closed its hold at
-    // the maximum keeps that conservative record, so its paid response is not lost.
+    // the maximum keeps that conservative record, so its paid response is not lost. P12-01
+    // (AC-4): no second row, and the caller is told, so the late settle is never dropped silently.
+    // Reconciling it with the real amount is C11-62's (it needs a migration).
+    const replay =
+      prior !== undefined &&
+      prior.provider === input.provider &&
+      prior.model === input.model &&
+      (prior.amount_micros === null ? null : Number(prior.amount_micros)) === input.actualMicros &&
+      (prior.estimated_micros === null ? null : Number(prior.estimated_micros)) ===
+        estimatedMicros &&
+      prior.price_version === input.priceVersion &&
+      canonicalJson(prior.usage) === canonicalJson(usage);
+    // The same settle again (also one that equals the conservative row) changes nothing.
+    if (replay) return "already_recorded";
     if (
       prior &&
       input.attemptId !== undefined &&
@@ -262,19 +320,8 @@ export async function finishProviderStep(
       Number(prior.estimated_micros) === Number(hold.maximum_micros) &&
       canonicalJson(prior.usage) === canonicalJson({})
     )
-      return;
-    if (
-      !prior ||
-      prior.provider !== input.provider ||
-      prior.model !== input.model ||
-      (prior.amount_micros === null ? null : Number(prior.amount_micros)) !== input.actualMicros ||
-      (prior.estimated_micros === null ? null : Number(prior.estimated_micros)) !==
-        estimatedMicros ||
-      prior.price_version !== input.priceVersion ||
-      canonicalJson(prior.usage) !== canonicalJson(usage)
-    )
-      throw errors.idempotencyMismatch();
-    return;
+      return "conservative_kept";
+    throw errors.idempotencyMismatch();
   }
   await tx
     .insertInto("quota.provider_cost")
@@ -292,12 +339,17 @@ export async function finishProviderStep(
       usage: JSON.stringify(usage),
       run_id: input.runId ?? null,
       attempt_id: input.attemptId ?? null,
-      created_at: now,
+      // P12-01 (AC-13): a reconciliation's conservative close is dated at the hold's own time.
+      created_at: input.recordAtHoldTime ? hold.created_at : now,
     })
     .execute();
+  // P12-01 (AC-5): conditional too. The hold row is locked above and was open, so this closes it;
+  // a reconciliation still reads the close back before it reports one (maintenance.ts).
   await tx
     .updateTable("quota.cost_hold")
     .set({ closed_at: now })
     .where("id", "=", hold.id)
+    .where("closed_at", "is", null)
     .execute();
+  return "recorded";
 }
