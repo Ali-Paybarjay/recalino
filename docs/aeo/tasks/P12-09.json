@@ -1,0 +1,93 @@
+{
+  "schema_version": "1",
+  "id": "P12-09",
+  "title": "دفتر حذف حریم خصوصی: سنجش اختیار Job در نوشتن دفتر حذف، بستن مسابقهٔ حذف شیء verified، و حذف نرم در مسیر ورودِ حسابِ در حال حذف (F-1، F-2 و F-9 ‏audit ‏P12-03؛ F-4 ‏audit ‏P12-04، بخش بی migration)",
+  "goal": "به گفتهٔ دو audit فقط‌خواندنی P12-03 (job-20261124-58d66069؛ ۱۰ Finding) و P12-04 (job-20261124-69e7a83c؛ ۱۰ Finding)، هر دو با «migration لازم است: نه» برای کمینهٔ رفع: (۱) handler ‏priv.cleanup دفتر حذف رمزشده را بی اختیار Job می‌نویسد: ردیف شیء می‌سازد، تأیید و حذف می‌کند (P12-03 ‏F-1؛ packages/core/src/priv/deletion.ts:362، apps/web/src/server/privacy-journal.ts:22 و :38، packages/core/src/ops/deletion-journals.ts:48-125). (۲) catch در deletion-journals.ts:125 پس از rollback و بیرون از قفل، شیء را بی pendingOnly حذف می‌کند؛ پس در مسابقهٔ دو نویسنده دفتر ready ممکن است bytes خود را از دست بدهد و رسید حذف برای بازپخش پس از بازگردانی backup گم شود، حتی بی worker کهنه (F-2، potential). (۳) catch همان handler درخواست را بی شرط state و بی اختیار needs_operator می‌کند (F-9). (۴) callback ورود برای حسابِ در حال حذف همان مسیر «بی حساب» را می‌رود و کاربر Auth را سخت حذف می‌کند؛ کلیدهای cascade ردیف حساب و ردیف‌های هزینه و hold او را پاک می‌کنند و جمع سقف سیستم کم‌شماری می‌کند (P12-04 ‏F-4، potential؛ apps/web/src/server/auth/flow.ts:101-103 و gateway.ts:66-69، در برابر privacy.ts:90-94). تصمیم مالک، پاسخ E606: پرسش ۱ = بله، نخست؛ پرسش ۵ = الف (اکنون فقط مسیر ورود به حذف نرم؛ سخت‌تر کردن کلیدهای خارجی بعداً با برگهٔ migration جدا). این کارت هر چهار را در کد رفع می‌کند، بی migration.",
+  "task_type": "bugfix",
+  "mode": "brownfield",
+  "risk_level": "high",
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 3
+  },
+  "owns_paths": [
+    "packages/core/src/ops/deletion-journals.ts",
+    "packages/core/src/priv/deletion.ts",
+    "apps/web/src/server/privacy-journal.ts",
+    "apps/web/src/server/auth/flow.ts",
+    "apps/web/src/server/auth/gateway.ts",
+    "packages/core/src/ops/index.ts",
+    "packages/core/src/priv/index.ts",
+    "packages/core/src/ops/deletion-journal-authority.int.test.ts",
+    "apps/web/src/server/auth/deleting-account-sign-in.int.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": [
+    "docs/aeo/tasks/P12-03.json",
+    "docs/aeo/tasks/P12-04.json",
+    "docs/runbooks/USER_ACCOUNT_REMOVAL.md",
+    "docs/legal/privacy-notice.md"
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "اختیار در نوشتن دفتر (P12-03 ‏F-1): وقتی priv.cleanup دفتر حذف را می‌نویسد، JobContext خود را تا appendEncryptedDeletionJournal می‌رساند: از deletion.ts:362، از راه DeletionJournal.record ‏(deletion.ts:61) و adapter ‏apps/web/src/server/privacy-journal.ts (:22، :38)، به‌صورت پارامتر اختیاری (شیء options، چون پارامتر پنجم امروز now است؛ ops/deletion-journals.ts:31-37). با job: در هر دو تراکنش (:48-88 و :90-123)، بلافاصله پس از advisory lock و پیش از هر نوشتن ردیف شیء و پیش از گذاشتن stagedId ‏(:103)، assertJobAuthority(tx, job.lease) ‏(plt/jobs.ts:173) اجرا می‌شود؛ writeOwnedObject همان job را می‌گیرد (:104)؛ deleteObject در :73 با {pendingOnly: true, job} است. worker کهنه پس از reclaim هیچ ردیف شیء نمی‌سازد، تأیید یا حذف نمی‌کند و pointer ‏ops.deletion_journal.object_id را نمی‌برد؛ وضع درخواست را هم عوض نمی‌کند (AC-4)."
+    },
+    {
+      "id": "AC-2",
+      "statement": "مسابقهٔ دو نویسنده (P12-03 ‏F-2): catch در deletion-journals.ts:125 فقط شیء pending را حذف می‌کند (deleteObject با pendingOnly: true، و با job اگر هست). شیء verified هرگز به دست نویسندهٔ شکست‌خورده حذف نمی‌شود: با Job یا بی Job، با worker کهنه یا بی آن. هر ردیف ops.deletion_journal در state ‏ready شیء verified با bytes خود دارد که readEncryptedDeletionJournals ‏(plt/system-journals.ts:10) می‌خواند. هشدار audit رعایت می‌شود: سنجش اختیار پیش از :103 است، تا JobLeaseLost از confirmObject پس از گذاشتن stagedId همین catch را برای worker کهنه فعال نکند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "مسیر API و job اختیاری: persistDeletionJournal ‏(priv/deletion.ts:69-92) بیرون از Job است و رفتار کنونی خود را نگه می‌دارد، جز رفع catch در AC-2 که برای همهٔ فراخوان‌هاست. job اختیاری می‌ماند؛ فراخوان‌های بی job، از جمله adapter آزمون قفل‌شدهٔ media.int.test.ts ‏(:423، :432-435) و recordهای جعلی privacy-composition.int.test.ts:293 و org-cleanup.int.test.ts:31، بی‌تغییر کار می‌کنند."
+    },
+    {
+      "id": "AC-4",
+      "statement": "نوشتن‌های دامنهٔ priv.cleanup ‏(P12-03 ‏F-9): priv.cleanup_step ‏(deletion.ts:399-403)، completed ‏(:421-425) و needs_operator در catch ‏(:426-435) با اختیار Job انجام می‌شوند (assertJobAuthority در همان تراکنش)، و catch درخواستی را که completed است هرگز به needs_operator نمی‌برد (شرط state). worker کهنه‌ای که پس از تکمیل به دست worker تازه شکست بخورد، وضع درخواست را عوض نمی‌کند. (شاهد سمت مالک، پاسخ E617: این خطاگیر امروز فقط با شرط id می‌نویسد.)"
+    },
+    {
+      "id": "AC-5",
+      "statement": "مسیر ورودِ حسابِ در حال حذف (P12-04 ‏F-4، بخش بی migration). قید ۲ پاسخ مالک به E606، عین متن: «در کارت نخست، تغییر مسیر ورود فقط برای حسابِ در حال حذف باشد؛ پاک‌سازی عادی حالت «بی حساب» دست نخورد؛ برای هر دو آزمون بیاید.» حسابِ در حال حذف یعنی ردیف acc.user_account با deleted_at (tombstone در تراکنش درخواست، priv/deletion.ts:295) که هویتش هنوز به دست Job پاک‌سازی نرم حذف نشده است. برای چنین حسابی، callback ورود (apps/web/src/server/auth/flow.ts:101-103) کاربر Auth را سخت حذف نمی‌کند و آن را نرم حذف می‌کند، همان‌گونه که مسیر حریم خصوصی می‌کند (privacy.ts:90-94؛ پاسخ مالک به E606، پرسش ۱). ردیف حساب و ردیف‌های quota.provider_cost، quota.cost_hold، دفتر و رزرو او می‌مانند، و جمع سیستم در spendTotals ‏(quota/costs.ts:101-110) کم‌شماری نمی‌کند. نتیجهٔ completeSignIn ‏(acc/signup.ts:66) و آزمون‌های قفل آن بی‌تغییرند؛ اینکه flow.ts دو حالت را از کجا جدا می‌کند انتخاب Implementer درون owns است."
+    },
+    {
+      "id": "AC-6",
+      "statement": "پاک‌سازی عادی «بی حساب» دست‌نخورده (همان قید ۲): برای کاربر Auth که هیچ ردیف حساب ندارد، callback همان فراخوان امروز را می‌زند: deps.auth.deleteUser(user.id) با همان آرگومان‌ها و بی پرچم نرم (flow.ts:101-103، gateway.ts:66-69). شاخهٔ «بی حساب» جز جدا شدن حالت در حال حذف تغییری ندارد. (شاهد سمت مالک، پاسخ E617: flow.int.test.ts:109-118 همین حالت را انتظار دارد و قفل TestPlan است.)"
+    },
+    {
+      "id": "AC-7",
+      "statement": "آزمون دفتر، با زنجیرهٔ واقعی لایهٔ Job (نه نشانگر test-only، نه نوشتن مستقیم وضع Job یا lease؛ ساعت تزریقی مجاز)، در فایل تازهٔ packages/core/src/ops/deletion-journal-authority.int.test.ts: (الف) worker کهنه پس از sweep و reclaim هیچ ردیف شیء نمی‌نویسد، تأیید یا حذف نمی‌کند و pointer را نمی‌برد، و worker تازه دفتر را ready می‌کند؛ (ب) دو نویسنده پشت همان advisory lock: نویسندهٔ شکست‌خورده شیء verified دیگری را حذف نمی‌کند، و دفتر ready با bytes خوانا می‌ماند؛ (ج) مسیر API بی Job همان رفتار را دارد؛ (د) worker کهنه درخواست completed را needs_operator نمی‌کند. نام‌های پایدار، هر یک یک رشتهٔ یکتا: «privacy journal: a stale worker after reclaim writes no journal object and moves no pointer»، «privacy journal: a failing writer never deletes the verified object of another writer»، «privacy journal: a ready journal always has its encrypted bytes»، «privacy journal: the API path without a Job keeps its behaviour» و «privacy cleanup: a stale worker cannot move a completed request to needs_operator»."
+    },
+    {
+      "id": "AC-8",
+      "statement": "آزمون مسیر ورود برای هر دو حالت (قید ۲ پاسخ مالک به E606)، در فایل تازهٔ apps/web/src/server/auth/deleting-account-sign-in.int.test.ts: (الف) حسابِ در حال حذف دوباره وارد می‌شود: حذف سخت رخ نمی‌دهد و حذف نرم رخ می‌دهد؛ ردیف حساب و ردیف‌های هزینه و hold می‌مانند و جمع سیستم spendTotals پیش و پس برابر است؛ (ب) کاربر بی حساب: همان فراخوان امروز deleteUser(user.id)، بی پرچم نرم. نام‌های پایدار: «sign-in: an account in deletion is soft-deleted, not hard-deleted, and keeps its cost rows» و «sign-in: a user with no account is cleaned up exactly as before»."
+    },
+    {
+      "id": "AC-9",
+      "statement": "آزمون‌های موجود: فایل‌های قفل TestPlan دست نمی‌خورند و سبز می‌مانند، از جمله چهار آزمون auth ‏(apps/web/src/server/auth/flow.int.test.ts، gateway.test.ts، deletion-recovery.int.test.ts و deletion-stage.test.ts) که قفل TestPlan و بیرون از owns‌اند. اگر رفع یکی از فایل‌های قفل یا هر آزمون دیگر بیرون از owns را بشکند یا تغییرش را بخواهد: blocked با مسیر، خط و دلیل. هیچ assertion حذف، شل، skip یا وارونه نمی‌شود."
+    },
+    {
+      "id": "AC-10",
+      "statement": "مرز: فقط owns_paths تغییر می‌کنند. در ops/index.ts و priv/index.ts فقط نام تازه درون بلوک export موجود افزوده می‌شود؛ هیچ export حذف، بازنام یا جابه‌جا نمی‌شود؛ سنجش پذیرش: numstat هر دو index شمار حذف صفر دارد. بی migration: سخت‌تر کردن کلیدهای خارجی user_id در quota.provider_cost و quota.cost_hold بیرون از دامنه است (پاسخ مالک به E606، پرسش ۵ = الف؛ برگهٔ migration جدا). plt/storage.ts، plt/jobs.ts، acc/signup.ts، privacy.ts و هر فایل supabase/** دست نمی‌خورند؛ اگر لازم شد: blocked با مسیر و دلیل. خروجی‌های anki و html ‏(P12-03 ‏F-3 و F-4) کارت جدای بعدی‌اند."
+    },
+    {
+      "id": "AC-11",
+      "statement": "گزارش: changed_paths با numstat؛ جای هر سنجش اختیار و هر pendingOnly با path:line؛ جای جدا شدن حالت در حال حذف در flow.ts؛ برای هر آزمون تازه، AC آن؛ نتیجهٔ کامل pnpm test:unit؛ int فقط از CI ‏test:int روی همان head؛ و سطر صریح دربارهٔ اینکه آزمون‌های موجود بیرون از owns دست نخوردند."
+    }
+  ],
+  "assumptions": [
+    "منبع: audit فقط‌خواندنی P12-03 (job-20261124-58d66069؛ گزارش docs/l3/audit/P12-03.report.json) و P12-04 (job-20261124-69e7a83c؛ docs/l3/audit/P12-04.report.json)، و برگهٔ E606. نام تابع‌ها و path:lineها به گفتهٔ Jobها روی base همان auditهاست و باید سنجیده شوند؛ L1 کد Recalino را نخوانده است (X1).",
+    "پاسخ مالک به E606 (عین متن در docs/reviews/2026-11-24-owner-actions.md بخش ۱۱): پرسش ۱ = بله، نخست؛ پرسش ۲ = کارت anki و html پس از این کارت؛ پرسش ۵ = الف؛ پرسش ۸ = P12-04 ‏F-7 و P12-03 ‏F-7 تا F-9 نامزد. F-9 درون این کارت است (AC-4)؛ پاسخ مالک به E617، پرسش ۱ = بله.",
+    "شاهد سمت مالک (پاسخ E617): (۱) خطاگیر packages/core/src/priv/deletion.ts (حدود :426-435) امروز فقط با شرط id می‌نویسد. (۲) هیچ آزمون پرسیده‌شده حذف سخت کاربر Auth را هنگام ورود دوبارهٔ حسابِ در حال حذف انتظار ندارد. apps/web/src/server/auth/flow.int.test.ts:109-118 حذف کاربر Auth را در حالت عادی «بی حساب» انتظار دارد، نه برای حسابِ در حال حذف؛ این هم‌راستا با AC-6 است. apps/web/src/server/privacy-composition.int.test.ts:518 حذف نرم (شناسه، true) را در مسیر حریم خصوصی انتظار دارد. privacy-voice.int.test.ts فقط mock دارد و انتظاری ندارد. (۳) flow.int.test.ts و privacy-composition.int.test.ts هر دو قفل TestPlan‌اند و باید بی‌تغییر سبز بمانند.",
+    "پیش از نوشتن کد (درس تلاش ۶ ‏P12-01): Implementer آزمون‌های موجودی را که به مسیرهای این کارت اشاره دارند شناسایی می‌کند. اگر یکی از فایل‌های قفل یا آزمونی بیرون از owns رفتار کهنه را انتظار دارد، همان آغاز کار blocked با مسیر، خط و دلیل برمی‌گرداند، نه پس از ساخت کامل.",
+    "Not Verified، به گفتهٔ audit ‏P12-04 ‏F-4: اینکه deleteUser بی پرچم نرم ردیف auth.users را واقعاً حذف می‌کند، و اینکه ورود پس از حذف نرم همان شناسه را برمی‌گرداند. هر دو مستند بیرونی می‌خواهند؛ آزمون AC-8 رفتار برنامه را از راه وابستگی auth همان callback می‌سنجد.",
+    "install: pnpm install --frozen-lockfile. فرمان TestPlan: pnpm test:unit. آزمون‌های int فقط در CI ‏test:int روی همان head داوری می‌شوند؛ چون این Task آزمون int دارد، PR به‌صورت draft باز می‌شود و بازبینی‌های پولی پس از CI سبز همان head است (E377).",
+    "ترتیب: PR این کارت پس از ادغام ‎#204 ‏(P12-08) روی main ‏eeb820e7 و پیش از تصمیم دربارهٔ ‎#197 باز می‌شود (E635‑R). base_sha و commit_sha ‏TestPlan و hash فایل‌های قفل از همان main گرفته شده‌اند؛ اگر main تا باز شدن PR جلو رفت، از main همان لحظه دوباره گرفته می‌شوند.",
+    "max_rework_rounds برابر ۳ است. سقف خرج این Task در کارت نیست و در دفتر بازبین است."
+  ]
+}
