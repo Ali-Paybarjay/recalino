@@ -1,5 +1,11 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { CURRENT_VERSIONS, completeSignIn, createSignupIntent } from "@recalino/core/acc";
+import {
+  acceptDocuments,
+  CURRENT_VERSIONS,
+  completeSignIn,
+  createSignupIntent,
+  updateProfile,
+} from "@recalino/core/acc";
 import { createDatabase } from "@recalino/core/db";
 import { appendEncryptedDeletionJournal, readEncryptedDeletionJournals } from "@recalino/core/ops";
 import { createSession } from "@recalino/core/org";
@@ -336,6 +342,23 @@ describe("privacy cleanup under the job's authority (P12-09 AC-4, AC-7)", () => 
       now,
     });
     await completeSignIn(db, { userId, intentId: intent.id, now });
+    // A ready account, as packages/core/src/org/org.int.test.ts:35-57 prepares one: a session can
+    // be created only once the setup is complete (requireReadyAccount, org/common.ts:18-26).
+    await updateProfile(db, ctx, { field: "first_language", firstLanguage: "fa" }, { now });
+    await updateProfile(
+      db,
+      ctx,
+      { field: "explanation_language", explanationLanguage: "english" },
+      { now },
+    );
+    await updateProfile(db, ctx, { field: "level_goal", level: null, goal: null }, { now });
+    await updateProfile(db, ctx, { field: "timezone", timezone: "Europe/London" }, { now });
+    await acceptDocuments(
+      db,
+      ctx,
+      [{ document: "recording-consent", version: CURRENT_VERSIONS["recording-consent"] }],
+      { now },
+    );
     const session = await createSession(db, ctx, {}, { key: randomUUID(), now });
     const request = await requestSessionDeletion(
       db,
