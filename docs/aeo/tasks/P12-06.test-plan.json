@@ -1,0 +1,56 @@
+{
+  "schema_version": "1",
+  "task_id": "P12-06",
+  "kind": "pass_to_pass",
+  "base_sha": "98386639097417947f9efd70643e031d324cd427",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "98386639097417947f9efd70643e031d324cd427",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/proc/capture-transcription.int.test.ts",
+      "sha256": "1304515a18e67b1c7002114092784b67d5a489443d853ce4626c51a72780abf1"
+    },
+    {
+      "path": "packages/core/src/proc/voice-processing.int.test.ts",
+      "sha256": "fa451c21bd93638c7984b5c55c67f24d4e9e6dfbf721db468f4b4fe4cd12e7b7"
+    },
+    {
+      "path": "packages/core/src/proc/step-authority.int.test.ts",
+      "sha256": "806f2616679ca5f1c5b6788088a1f5d60f9bd154588b33098aa72eaf2640f81a"
+    },
+    {
+      "path": "packages/core/src/proc/voice-processing.test.ts",
+      "sha256": "f5581a5a38f6c61761a9243a5a777ffe67da10586168c9f9374a947b5a1963f5"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/proc/voice-processing.test.ts",
+      "name": "The unit suite is green on head, including the unchanged voice-processing.test.ts. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run. The int scenarios below run in CI test:int on the same head and are judged from that run (file, result, no skip) and from the diff. They are in the new file packages/core/src/proc/aux-continuation-owner.int.test.ts (written by the implementer, not locked by sha here). Each name is one exact, unique string literal in the diff (a test.each row is fine if it holds the full name) and appears exactly in the CI test:int output. Owner constraint 2 of E553, the two retry tests: «aux owner proc.capture_transcription: retry after the continuation keeps the pointer»، «aux owner proc.voice_analysis: retry after the continuation keeps the pointer» (AC-1, AC-2, AC-4, AC-12). Further: «aux owner proc.capture_transcription: J2 to J3 chain keeps the pointer on the live continuation»، «aux owner proc.voice_analysis: J2 to J3 chain keeps the pointer on the live continuation» (AC-1, AC-4); «aux owner proc.capture_transcription: zombie with the same id and a stale lease writes nothing»، «aux owner proc.voice_analysis: zombie with the same id and a stale lease writes nothing» (AC-2, AC-3, AC-4, AC-12); «aux owner proc.capture_transcription: zero-row pointer update commits no continuation and no checkpoint»، «aux owner proc.voice_analysis: zero-row pointer update commits no continuation and no checkpoint» (AC-1); «aux owner proc.capture_transcription: lease loss in the error path does not fail the run or settle the allowance»، «aux owner proc.voice_analysis: lease loss in the error path does not fail the run or settle the allowance» (AC-5); «aux owner proc.capture_transcription: legacy null pointer is not taken over»، «aux owner proc.voice_analysis: legacy null pointer is not taken over» (AC-10); «aux owner proc.capture_transcription: valid owner moves the pointer and still fails the run on a real error»، «aux owner proc.voice_analysis: valid owner moves the pointer and still fails the run on a real error» (AC-14). The unchanged locked int tests (capture-transcription, voice-processing, step-authority) stay green in the same CI run (AC-9). AC-6, AC-7, AC-8, AC-11, AC-13 and AC-15 are judged from the diff and the report",
+      "maps_to_criteria": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15"
+      ]
+    }
+  ]
+}

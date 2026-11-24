@@ -1,0 +1,77 @@
+{
+  "schema_version": "1",
+  "mode": "brownfield",
+  "task_type": "docs",
+  "risk_level": "low",
+  "owns_paths": ["docs/aeo/audit/**"],
+  "depends_on": [],
+  "roles": {
+    "implementer": "auditor.debt",
+    "reviewers": ["reviewer.architecture"]
+  },
+  "limits": {
+    "max_turns": 60,
+    "max_rework_rounds": 3
+  },
+  "id": "P12-05",
+  "title": "پیش‌سنجی ریشهٔ C11-77: تهی شدن اشاره‌گر run در سازنده‌های Job ادامه با singleton key، و مسیر لغو run کمکی (investigate فقط‌خواندنی؛ دستهٔ ۱۲ L3)",
+  "goal": "مالک ریشهٔ C11-77 را «پیش از کاربران تازه» خواست (E534 قید ۳)، و پیش از هر کارت تازه با ریسک medium یا high یک audit فقط‌خواندنی کوچک می‌آید (E485 بند ۵). به گفتهٔ Jobهای پیشین، وقتی Job ‏J برای یک run یک Job ادامه ‏J2 با singleton key می‌سازد و نتیجهٔ enqueue را در اشاره‌گر run ‏(job_id) می‌نویسد، retry ‏J با همان کلید از enqueue مقدار null می‌گیرد و اشاره‌گر را تهی می‌کند، در حالی که J2 هنوز زنده است؛ و به گفتهٔ همان Jobها، آنگاه reconcile ممکن است hold یک attempt زنده را ببندد. به گفتهٔ Jobها دست‌کم سه جا این الگو را دارند: checkpointAndContinue در proc/steps/runtime.ts، capture-transcription.ts، و continueVoiceJob در voice-jobs.ts. این audit همهٔ این ادعاها را روی main می‌سنجد، فقط از روی کد، تست‌ها، migrationها، docs و git log/show؛ بی تغییر کد، بی دادهٔ production و بی اجرای کد مخزن. خروجی: Finding v1.",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "فهرست سازنده‌ها: همهٔ جاهایی که برای یک run، Job ادامه با singleton key ساخته می‌شود و نتیجهٔ enqueue در اشاره‌گر run نوشته می‌شود، هر کدام با path:line و kind. به گفتهٔ Jobها دست‌کم checkpointAndContinue در packages/core/src/proc/steps/runtime.ts، capture-transcription.ts و continueVoiceJob در voice-jobs.ts؛ بسنج و فهرست را کامل کن. اگر جایی نتیجه را با شرط می‌نویسد یا اصلاً نمی‌نویسد، همان را با path:line بگو."
+    },
+    {
+      "id": "AC-2",
+      "statement": "برای هر جای AC-1: آیا retry Job سازنده می‌تواند اشاره‌گر run را تهی کند (یا به Job دیگری ببرد) در حالی که Job ادامه هنوز زنده است (queued، running یا retry_scheduled، با مهلت معتبر)؛ زنجیره با path:line، از جمله رفتار enqueue در تعارض singleton (به گفتهٔ Job در packages/core/src/plt/jobs.ts:220-225؛ بسنج)؛ یا شاهد path:line که نمی‌تواند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "مسیر لغو: لغو یا شکست run کمکی (به گفتهٔ Job در failAuxiliaryRun؛ بسنج) و لغو run اصلی کدام Jobها را cancel می‌کنند؛ آیا تنها Job اشاره‌گر cancel می‌شود و Job ادامهٔ زنده جا می‌ماند؛ و پیامد آن برای attempt و cost hold آن Job؛ با path:line."
+    },
+    {
+      "id": "AC-4",
+      "statement": "کمینهٔ رفع ریشه: گزینه‌ها فقط نام برده شوند، نوشته نشوند (مثلاً ننوشتن null در اشاره‌گر هنگام تعارض singleton، یا خواندن Job موجود با همان کلید و نوشتن شناسهٔ آن)، با فهرست فایل‌هایی که هر گزینه عوض می‌کند و اینکه هر گزینه همهٔ جاهای AC-1 و مسیر AC-3 را می‌پوشاند یا نه."
+    },
+    {
+      "id": "AC-5",
+      "statement": "خواندن Jobهای زندهٔ یک run در PLT: آیا تابعی هست که هر Job زندهٔ دارای runId را، از هر kind، برگرداند (path:line)، یا تنها خواندن بر پایهٔ یک kind هست؛ منبع ساعت created_at هنگام ساخت Job (ساعت برنامه یا پایگاه داده؛ path:line)؛ و اینکه ترتیب created_at میان سازنده‌های گوناگون (فرایندها یا رایانه‌های جدا) قابل اتکا است یا نه، با شاهد."
+    },
+    {
+      "id": "AC-6",
+      "statement": "آزمون‌ها: برای هر جای AC-1 و مسیر AC-3، آزمون‌های موجودی که آن را می‌پوشانند (نام آزمون و path)، و اینکه آیا رفع ریشه به تغییر فایل آزمون قفل‌شدهٔ TestPlan یک Task پیشین (مانند P11-08 یا P12-01) نیاز دارد؛ فقط نام فایل و آزمون، بی پیشنهاد تغییر."
+    },
+    {
+      "id": "AC-7",
+      "statement": "نتیجهٔ صریح: یک سطر دقیقاً به یکی از سه شکل «migration لازم است: بله»، «migration لازم است: نه» یا «migration لازم است: Not Verified» برای کمینهٔ رفع ریشه، با شاهد path:line؛ شاهد ناکافی Not Verified است، نه «نه»."
+    },
+    {
+      "id": "AC-8",
+      "statement": "نامزدها: هر یافتهٔ دیگری دربارهٔ اشاره‌گر run، Job ادامه یا hold بی‌صاحب که در این audit دیده شود، هر کدام با path:line، category و confidence؛ هر حدس با confidence برابر hypothesis. اگر نامزدی نیست، «هیچ»."
+    },
+    {
+      "id": "AC-9",
+      "statement": "summary_fa: یک بند برای هر جای AC-1، یک بند برای مسیر لغو و یک بند برای AC-5؛ سطر AC-7 به همان شکل؛ و آنچه برگهٔ پرسش مالک لازم دارد: یک کارت کد بس است یا چند کارت، و ترتیب پیشنهادی. هر بند با Documented (path:line) یا Not Verified."
+    },
+    {
+      "id": "AC-10",
+      "statement": "هیچ مقدار env، secret، کلید، نشانی ایمیل، نام حساب، شناسهٔ پروژه یا استقرار، یا دادهٔ کاربر در خروجی نیست؛ فقط مسیر، نام ستون یا مقدار، شمارش، نام تابع و commit."
+    },
+    {
+      "id": "AC-11",
+      "statement": "هیچ کد، تست، اسکریپت یا hook مخزن اجرا نشده و هیچ فایلی تغییر نکرده است (فقط Read و git log/show/ls-files/grep)."
+    }
+  ],
+  "context_refs": [
+    "docs/adr/0004-job-lease-fencing.md",
+    "docs/aeo/l3/phase11-plan.md",
+    "docs/aeo/tasks/P12-01.json"
+  ],
+  "assumptions": [
+    "مخزن recalino، base ‏main در روز اجرا (اکنون 02da45bbdd3db850358a710c8f11410e039ca49f). کد P12-01 (‎#197) روی main نیست؛ این audit ریشه را روی main می‌سنجد. منبع: ردیف C11-77 پروندهٔ نامزدها، قید ۳ مالک در E534 و E485 بند ۵. نام تابع‌ها، kindها و path:lineها به گفتهٔ Jobهای پیشین است و باید سنجیده شوند؛ L1 کد را نخوانده است (X1).",
+    "اجرا: --step audit، بی --test-plan (R92، audit معاف). سقف نوبت از limits.max_turns همین کارت (R98؛ ۶۰، مانند P12-02 و P12-03). سقف خرج Task در دفتر بازبین است، نه در کارت (E485 بند ۲).",
+    "ورودی فقط Task Card و base است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1).",
+    "هیچ install و هیچ اجرای کد مخزن، پس install_assets ندارد. نقش auditor.debt هیچ write_paths ندارد؛ هیچ commit یا PR. owns_paths و task_type مانند P12-02 است. خروجی دفتری docs/l3/audit/P12-05.report.json. بازبینی معماری (reviewer.architecture) در برنامه نیست و تنها با تصمیم جدا اجرا می‌شود.",
+    "ترتیب: پس از ادغام PR این کارت با approve مالک و «شروع» بازبین؛ ترتیب آن با P12-03 و P12-04 را بازبین پس از پاسخ مالک می‌گوید. این Job هم‌زمان با هیچ Job دیگری روی همان رایانه اجرا نمی‌شود. نتیجه به یک برگهٔ پرسش مالک در یک نوبت می‌رود و کارت کد پس از پاسخ مالک نوشته می‌شود (E485 بند ۵)."
+  ]
+}
