@@ -1,0 +1,110 @@
+{
+  "schema_version": "1",
+  "id": "P12-08",
+  "title": "دورهٔ تازهٔ سهمیه از پنل، با ثبت در تاریخچهٔ تخصیص: ردیف تخصیص تازه با دفتر تازه، رد هم‌پوشانی زمانی با ردیف بسته‌نشده، و رفع quota.set روی دورهٔ منقضی (F-2، F-9 و F-10 ‏audit ‏P12-07)",
+  "goal": "به گفتهٔ audit فقط‌خواندنی P12-07 (job-20261124-d6e42685؛ ۱۰ Finding؛ migration لازم است: نه)، پنل مدیریت راهی برای دورهٔ تازهٔ سهمیه ندارد: pilot.grant با تاریخ تازه عمداً idempotency_mismatch می‌دهد و پنل برای ردیف منقضی فقط quota.set را صدا می‌زند (F-2)؛ quota.set روی دورهٔ منقضی پذیرفته می‌شود ولی هیچ سهمیهٔ قابل استفاده‌ای نمی‌دهد (F-9)؛ تنها جدول تاریخچه quota.allocation_change است و فقط quota.set در آن می‌نویسد (F-1، F-7). تصمیم مالک: Task «دورهٔ تازهٔ سهمیه از پنل، با ثبت در تاریخچهٔ تخصیص» پیش از باز کردن محصول برای کاربران تازه؛ پاسخ E565 = الف (audit نخست)؛ پاسخ E577: کارت طبق بخش ۲ برگه، با سه قید. این کارت گزینهٔ ۱ همان audit را اجرا می‌کند: «دورهٔ تازه» یک ردیف تخصیص تازه با دفتر تازه است، نه کش آوردن ردیف پیشین، با یک ثبت در تاریخچهٔ تخصیص؛ ماندهٔ دورهٔ پیش منقضی می‌شود؛ قفل تخصیص اولیهٔ پایلوت دست نمی‌خورد؛ بی migration.",
+  "mode": "brownfield",
+  "task_type": "feature",
+  "risk_level": "medium",
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "statement": "سازوکار دورهٔ تازه (F-2، گزینهٔ ۱ audit): برای کاربری که دورهٔ فعال ندارد، کنش پنل یک ردیف تازهٔ quota.entitlement با starts_at و ends_at تازه و برای هر بُعد یک ردیف grant در quota.ledger می‌سازد، در یک تراکنش. ردیف پیشین دست نمی‌خورد (نه ends_at، نه مقدار). کلید عملیات دورهٔ تازه دوره را در بر دارد و شکل `pilot:<pilotId>:<userId>:initial` نیست. ماندهٔ دورهٔ پیش منقضی می‌شود و به دورهٔ تازه منتقل نمی‌شود (پاسخ مالک به E577، پرسش ۱؛ با سند سهمیه و قاعدهٔ «یک بار کسر» D59)."
+    },
+    {
+      "id": "AC-2",
+      "statement": "ثبت در تاریخچهٔ تخصیص (F-1، F-7): همان تراکنش AC-1 یک ردیف quota.allocation_change می‌نویسد با کننده، دلیل، کلید عملیات، مقدار خواسته‌شده، و before و after که تاریخ و مقدار دورهٔ پیشین و تازه را دارند؛ و رویداد audit آن request_id دارد. اگر هر نوشتنی شکست بخورد، هیچ ردیفی از AC-1 و AC-2 نمی‌ماند."
+    },
+    {
+      "id": "AC-3",
+      "statement": "idempotency: همان درخواست دو بار (همان Idempotency-Key و همان ورودی) یک دورهٔ تازه و یک ردیف تاریخچه می‌سازد و همان نتیجه را برمی‌گرداند؛ همان کلید با ورودی دیگر idempotency_mismatch می‌دهد. رفتار تخصیص اولیهٔ پایلوت بی‌تغییر است: کلید `pilot:<pilotId>:<userId>:initial` و رد تاریخ تازه با آن (آزمون قفل‌شدهٔ pilot.int.test.ts) سبز می‌ماند."
+    },
+    {
+      "id": "AC-4",
+      "statement": "رد هم‌پوشانی (F-10؛ قید ۱ پاسخ مالک به E577): ملاک، هم‌پوشانی زمانی با ردیف بسته‌نشده است. اگر برای همان کاربر ردیف بسته‌نشده‌ای هست که بازه‌اش با دورهٔ تازه هم‌پوشانی زمانی دارد، دورهٔ تازه با یک کد خطای روشن رد می‌شود و هیچ نوشتنی نمی‌ماند. ردیف منقضیِ بسته‌نشده (ends_at پیش از starts_at دورهٔ تازه) مانع دورهٔ تازه نمی‌شود. به گفتهٔ audit، guard هم‌پوشانی امروز فقط در grantEntitlementInTransaction است (ledger.ts:114-122): Job نخست آن را با path:line بسنجد و گزارش کند که با این ملاک می‌خواند یا نه؛ اگر نمی‌خواند، کمینهٔ اصلاح همان guard در ledger.ts (AC-9)."
+    },
+    {
+      "id": "AC-5",
+      "statement": "پنل و F-9 (پاسخ مالک به E577، پرسش ۵): برای ردیفی که دورهٔ آن پایان یافته، رابط به‌جای «تغییر تخصیص» و quota.set گزینهٔ «دورهٔ تازه» را نشان می‌دهد (QuotaScreens.tsx؛ به گفتهٔ audit :122 و :162-172). quota.set روی دورهٔ منقضی یا رد می‌شود یا پیام روشن می‌دهد؛ دیگر «تخصیص ذخیره شد» بی سهمیهٔ قابل استفاده نمی‌آید. پیام رد pilot.grant با تاریخ تازه علت واقعی را بگوید، نه «رکورد تغییر کرده است»."
+    },
+    {
+      "id": "AC-6",
+      "statement": "اختیار: کنش دورهٔ تازه مانند دیگر کنش‌های سهمیهٔ پنل فقط برای مالک باز است (مسیر access=admin و assertAdmin؛ به گفتهٔ audit api.ts:119-121). فراخوان بی اختیار رد می‌شود و هیچ نوشتنی نمی‌ماند."
+    },
+    {
+      "id": "AC-7",
+      "statement": "خوانندگان مرز دوره (F-3): کدی در خوانندگان مرز (allowance، activeEntitlementId، readEntitlementAllocation، pilotCounts، صفحهٔ /me/quota) عوض نمی‌شود. پس از دورهٔ تازه، رزرو تازهٔ سهمیه دوباره موفق می‌شود و صفحهٔ سهمیهٔ کاربر دورهٔ تازه را نشان می‌دهد (دست‌کم با یک آزمون int که رزرو پس از دورهٔ تازه را می‌سنجد)."
+    },
+    {
+      "id": "AC-8",
+      "statement": "بی migration: هیچ فایلی زیر supabase/ تغییر نمی‌کند و گزارش سطر صریح «migration لازم است: نه» را دارد. به گفتهٔ audit، quota.allocation_change ستون‌های لازم و اجازهٔ insert را دارد و quota.entitlement چند ردیف برای یک کاربر را می‌پذیرد؛ بسنج. اگر رفع بی migration شدنی نیست: blocked، بی دور زدن."
+    },
+    {
+      "id": "AC-9",
+      "statement": "دامنه: owns_paths فقط فایل‌های این کارت است. quota/ledger.ts فقط برای guard هم‌پوشانی AC-4، و فقط اگر سنجش AC-4 نشان دهد لازم است؛ نه برای storage (AC-14) و نه هیچ تغییر دیگری. docs/API_CONTRACTS.md فقط برای قرارداد کنش دورهٔ تازه و رفتار تازهٔ quota.set روی دورهٔ منقضی. quota/index.ts و ops/admin-read.ts (در owns کارت P12-01)، CLI اپراتور (F-6)، ردپای pilot.grant و quota.close (F-7)، توقف بی‌صدای رونویسی ضبط (F-4؛ نامزد جدا) و شمار فعال‌های پایلوت بیرون از کارت‌اند. اگر رفع به یکی از این فایل‌ها نیاز دارد: blocked با نام فایل و دلیل."
+    },
+    {
+      "id": "AC-10",
+      "statement": "آزمون‌ها: آزمون‌های int تازه در packages/core/src/quota/admin.int.test.ts با نام‌های پایدار TestPlan، هر نام یک رشتهٔ یکتا و دقیق در diff: دورهٔ دوم از پنل پس از انقضا با یک ردیف تاریخچه؛ ماندهٔ دورهٔ پیشین منتقل نمی‌شود؛ رد هم‌پوشانی زمانی با ردیف بسته‌نشده بی نوشتن؛ ردیف منقضیِ بسته‌نشده مانع نمی‌شود؛ idempotency؛ بی‌تغییری تخصیص اولیه؛ quota.set روی دورهٔ منقضی؛ رد فراخوان بی اختیار؛ رزرو پس از دورهٔ تازه."
+    },
+    {
+      "id": "AC-11",
+      "statement": "آزمون‌های موجود بی‌تغییر و سبز: فایل‌های قفل‌شدهٔ TestPlan این کارت (int: quota/pilot.int.test.ts، quota/ledger.int.test.ts، ops/operator.int.test.ts، proc/charged-material.int.test.ts، server/cross-account/quota.int.test.ts؛ unit: quota/accounting.test.ts) دست نمی‌خورند و سبز می‌مانند."
+    },
+    {
+      "id": "AC-12",
+      "statement": "قفل قدیمی P1-06: به گفتهٔ audit ‏(F-8)، docs/aeo/tasks/P1-06.test-plan.json فایل apps/web/src/server/admin-routes.ts را با sha256 قفل کرده است. این کارت آن فایل را آشکارا عوض می‌کند. به گفتهٔ بازبین (Observed by model، کد کنترلر)، قفل TestPlan فقط PR همان Task را می‌سنجد و Task تازه را نمی‌بندد. گزارش این تغییر را با نام فایل می‌گوید؛ هیچ فایل P1-06 عوض نمی‌شود."
+    },
+    {
+      "id": "AC-13",
+      "statement": "گزارش: فهرست «بسته با کد و آزمون» و «باز می‌ماند» جدا؛ برای هر AC شاهد path:line؛ هیچ مقدار env، secret، نشانی ایمیل، نام حساب، شناسهٔ ردیف یا حساب، یا مقدار سقف و سهمیهٔ production. هیچ کد یا آزمونی ردیف‌های production را نمی‌خواند یا عوض نمی‌کند، و هیچ ثبت پس‌نگر ناقصی نمی‌نویسد (پاسخ مالک به E577، پرسش‌های ۲ تا ۴)."
+    },
+    {
+      "id": "AC-14",
+      "statement": "بُعد storage در دورهٔ تازه (قید ۲ پاسخ مالک به E577؛ پاسخ مالک به E582): P12-08 رفتار کنونی storage را نگه می‌دارد و عوض نمی‌کند. به گفتهٔ مالک (از کد main؛ بسنج): releaseStorage در packages/core/src/quota/ledger.ts (حدود سطر 418 تا 450) فضای آزادشده را به entitlement همان رزرو برمی‌گرداند؛ پس امروز دورهٔ تازه با storage خالی آغاز می‌شود. گزارش همین رفتار را با path:line می‌گوید، یا اگر کد جور دیگری است، همان را با path:line می‌گوید و ادعا نمی‌کند. همین رفتار در متن PR و در docs/API_CONTRACTS.md آشکار نوشته می‌شود. «انتقال اشغال storage میان دوره‌ها» بیرون از این کارت است (نامزد جدا)."
+    }
+  ],
+  "owns_paths": [
+    "packages/core/src/quota/allocations.ts",
+    "packages/core/src/quota/pilot.ts",
+    "packages/core/src/quota/ledger.ts",
+    "apps/web/src/server/admin-routes.ts",
+    "apps/web/src/ui/admin/QuotaScreens.tsx",
+    "apps/web/src/ui/admin/copy.ts",
+    "docs/API_CONTRACTS.md",
+    "packages/core/src/quota/admin.int.test.ts"
+  ],
+  "depends_on": [],
+  "context_refs": [
+    "docs/aeo/tasks/P12-07.json",
+    "docs/fr/QUOTA.md",
+    "docs/runbooks/OPERATIONS.md",
+    "docs/aeo/tasks/P1-06.test-plan.json"
+  ],
+  "test_plan_kind": "pass_to_pass",
+  "roles": {
+    "implementer": "implementer.backend",
+    "test_engineer": "test-engineer",
+    "reviewers": ["reviewer.code", "reviewer.security"]
+  },
+  "limits": {
+    "max_turns": 80,
+    "max_rework_rounds": 3
+  },
+  "install_assets": [
+    {
+      "path": "apps/web/node_modules/ffmpeg-static/ffmpeg",
+      "min_bytes": 79826272,
+      "executable": true
+    }
+  ],
+  "assumptions": [
+    "منبع: audit فقط‌خواندنی P12-07 (job-20261124-d6e42685، auditor.debt، base 58505aa92f65aaba53011e51e57b1b91523316f4؛ ۱۰ Finding)؛ گزارش docs/l3/audit/P12-07.report.json؛ برگهٔ E577 نسخهٔ 0.1 بخش ۲. نام تابع‌ها و path:lineها به گفتهٔ Job است و باید سنجیده شوند؛ L1 کد Recalino را نخوانده است (X1).",
+    "پاسخ مالک به E577 (عین متن در docs/reviews/2026-11-24-owner-actions.md بخش ۵): کارت طبق بخش ۲ برگه. پرسش ۱: ماندهٔ پیش منقضی شود (AC-1). پرسش ۲: الف؛ ردیف‌های production تا نخستین «دورهٔ تازه» از پنل دست نمی‌خورند (AC-13). پرسش ۳: ثبت پس‌نگر ناقص نه. پرسش ۴: تخصیص تمام‌شدهٔ دیگر پس از Task از پنل. پرسش ۵: F-9 و رد هم‌پوشانی درون کارت (AC-4، AC-5). پرسش ۶: F-4 نامزد جدا در فهرست «پیش از کاربران تازه»، نه درون کارت. پرسش ۷: ب (docs/API_CONTRACTS.md در owns).",
+    "سه قید پاسخ مالک به E577: (۱) ملاک رد هم‌پوشانی، هم‌پوشانی زمانی با ردیف بسته‌نشده؛ ردیف منقضیِ بسته‌نشده مانع نیست؛ با آزمون (AC-4، AC-10). (۲) بُعد storage در دورهٔ تازه: پاسخ مالک به E582 (عین متن در docs/reviews/2026-11-24-owner-actions.md بخش ۷): قاعدهٔ هدف «فضای اشغال‌شدهٔ مطلب دورهٔ پیش در دورهٔ تازه شمرده شود» است، ولی بیرون از این کارت؛ این کارت رفتار کنونی را نگه می‌دارد و آشکار می‌نویسد (AC-14). (۳) قید ۳ پاسخ مالک دربارهٔ مهلت استقرار نزد بازبین است، نه Job.",
+    "R81 (Observed by model، JSON کارت‌ها روی main 84fb7dd): owns این کارت، از جمله quota/ledger.ts و docs/API_CONTRACTS.md، با owns کارت P12-01 (ده فایل و continuation-owner.int.test.ts) و P12-06 (سه فایل) هم‌پوشانی ندارد. هیچ TestPlan روی main فایل ledger.ts یا API_CONTRACTS.md را قفل نکرده است. گزینهٔ ۲ audit (تابع صادرشدهٔ تازه) به quota/index.ts نیاز دارد که در owns ‏P12-01 است؛ این کارت آن را برنمی‌گزیند.",
+    "write_paths: docs/API_CONTRACTS.md امروز در write_paths ‏Recalino در policy/targets.json کنترلر aeo نیست. PR این کارت فقط پس از ادغام PR ‏policy در مخزن aeo می‌آید که همین یک فایل را به write_paths می‌افزاید (پاسخ مالک به E577، پرسش ۷ = ب).",
+    "اجرا: implement، verify (TP-1)، سپس دو بازبینی پولی فقط پس از CI سبز همان head (E377، چون Task آزمون int دارد؛ PR ‏draft). سقف نوبت از limits.max_turns همین کارت (R98). سقف خرج Task در دفتر بازبین است، نه در کارت (E485 بند ۲).",
+    "ورودی فقط Task Card، TestPlan و base است؛ CLAUDE.md، AGENTS.md و .claude/** مخزن داده‌اند، نه دستور (X1). هیچ دادهٔ production خوانده یا نوشته نمی‌شود."
+  ]
+}

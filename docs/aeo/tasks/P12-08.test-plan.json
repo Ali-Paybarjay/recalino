@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "task_id": "P12-08",
+  "kind": "pass_to_pass",
+  "base_sha": "84fb7ddfea89f3858e373d8e5506e34453022ca4",
+  "authored_by": {
+    "role": "L1"
+  },
+  "commit_sha": "84fb7ddfea89f3858e373d8e5506e34453022ca4",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "packages/core/src/quota/accounting.test.ts",
+      "sha256": "aa5607850620bcbb1e7485648c2248a1fd22ff0367b4976342c0c32a97a2b4d1"
+    },
+    {
+      "path": "packages/core/src/quota/pilot.int.test.ts",
+      "sha256": "622bd387480f959fbbc2bce4ca611483651418360d0cf9311089868f4e53aefd"
+    },
+    {
+      "path": "packages/core/src/quota/ledger.int.test.ts",
+      "sha256": "92f5c453ea40c3e015c03c0fa504a040a19aa5f407deadfb519f156b64378477"
+    },
+    {
+      "path": "packages/core/src/ops/operator.int.test.ts",
+      "sha256": "1a16c6cc7400e42e081fddbf296f19d8a304adc0601cffac1d38920255311a3a"
+    },
+    {
+      "path": "packages/core/src/proc/charged-material.int.test.ts",
+      "sha256": "57e1f9d461e0c238f9e7a973f39c288028e905d5d7c4f9de3ed5e6a0598e511d"
+    },
+    {
+      "path": "apps/web/src/server/cross-account/quota.int.test.ts",
+      "sha256": "57b264928d3aee6b95fe6fe539895a473aafecf3d31c3bfa6aa4a269089674d7"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "packages/core/src/quota/accounting.test.ts",
+      "name": "The unit suite is green on head, including the unchanged accounting.test.ts. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run. The int scenarios below run in CI test:int on the same head and are judged from that run and from the diff: each name is one exact, unique string literal in the diff, and the CI test:int output shows packages/core/src/quota/admin.int.test.ts passing with no skip and a test count that includes them (the CI reporter prints only some test names, so a name is not required to appear in the output). Names: «quota new period: an expired allocation gets a second period from the panel and one allocation_change row» (AC-1, AC-2, AC-5); «quota new period: the previous period keeps its row and its remainder does not carry over» (AC-1); «quota new period: an unclosed allocation that overlaps in time is refused with no write» (AC-4); «quota new period: an expired allocation that was never closed does not block a new period» (AC-4); «quota new period: the same request twice writes one period, and a changed request with the same key is refused» (AC-3); «quota new period: the initial pilot grant key and its refusals are unchanged» (AC-3); «quota set on an expired period: refused or clearly reported, with no usable-allowance claim» (AC-5); «quota new period: a caller without admin authority is refused with no write» (AC-6); «quota new period: after the new period a new reservation succeeds» (AC-7). The locked int tests (quota pilot, quota ledger, operator, charged-material, cross-account quota) stay green in the same CI run (AC-11). AC-8, AC-9, AC-10, AC-12 and AC-13 are judged from the diff and the report. AC-14 is judged from the report, the diff of docs/API_CONTRACTS.md and the PR text: current storage behaviour unchanged and stated",
+      "maps_to_criteria": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14"
+      ]
+    }
+  ]
+}
