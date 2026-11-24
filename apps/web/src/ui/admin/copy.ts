@@ -145,6 +145,38 @@ export function taskTitle(task: Pick<AdminTask, "kind" | "title">, locale: Admin
     ? adminTaskTitleCopy[task.kind as keyof typeof adminTaskTitleCopy][locale]
     : localized(task.title, locale);
 }
+/** P12-08 (F-2, F-9): an ended allowance period gets a new period, not a changed allocation. */
+export const newPeriodCopy = {
+  action: { en: "New period", fa: "دورهٔ تازه" },
+  title: { en: "New allowance period", fa: "دورهٔ تازهٔ سهمیه" },
+  ended: {
+    en: "This period has ended and gives no usable allowance. Changing its allocation would not help; start a new period instead.",
+    fa: "این دوره پایان یافته است و سهمیهٔ قابل استفاده‌ای نمی‌دهد. تغییر تخصیص آن کمکی نمی‌کند؛ به‌جای آن دورهٔ تازه بسازید.",
+  },
+  carryOver: {
+    en: "The new period starts from these totals. What remained of the previous period does not carry over, and storage still occupied by earlier material stays counted in the previous period.",
+    fa: "دورهٔ تازه از همین مقدارها آغاز می‌شود. ماندهٔ دورهٔ پیش منتقل نمی‌شود و فضای اشغال‌شدهٔ مطلب‌های پیشین در دورهٔ پیش شمرده می‌ماند.",
+  },
+} as const;
+/** Field reasons of quota actions whose real cause the owner must see (P12-08). */
+const quotaReasons: Record<string, LocalizedText> = {
+  period_ended: {
+    en: "This period has ended, so changing its allocation gives no usable allowance. Start a new period instead.",
+    fa: "این دوره پایان یافته است و تغییر تخصیص آن سهمیهٔ قابل استفاده نمی‌دهد. به‌جای آن دورهٔ تازه بسازید.",
+  },
+  period_not_ended: {
+    en: "The current period has not ended yet. Adjust its allocation or close it first.",
+    fa: "دورهٔ جاری هنوز پایان نیافته است. تخصیص آن را تغییر دهید یا نخست آن را ببندید.",
+  },
+  overlaps_unclosed_period: {
+    en: "The new period overlaps another period that is not closed. Choose a start after that period ends, or close it first.",
+    fa: "دورهٔ تازه با دورهٔ بسته‌نشدهٔ دیگری هم‌پوشانی زمانی دارد. شروع را پس از پایان آن دوره بگذارید یا نخست آن را ببندید.",
+  },
+  pilot_admission_exists: {
+    en: "This account was already admitted to the pilot. The initial admission is not repeated with other dates or amounts; start a new period instead.",
+    fa: "این حساب پیش‌تر در پایلوت پذیرفته شده است. پذیرش اولیه با تاریخ یا مقدار دیگر تکرار نمی‌شود؛ به‌جای آن دورهٔ تازه بسازید.",
+  },
+};
 const statuses: Record<string, LocalizedText> = {
   active: { en: "Active", fa: "فعال" },
   inactive: { en: "Inactive", fa: "غیرفعال" },
@@ -220,6 +252,8 @@ export function errorMessage(error: unknown, locale: AdminLocale): string {
       return en
         ? "This account does not have administrator access."
         : "این حساب دسترسی مدیریت ندارد.";
+    const quotaReason = error.reasons.find((reason) => Object.hasOwn(quotaReasons, reason));
+    if (quotaReason) return quotaReasons[quotaReason]?.[locale] ?? quotaReason;
     if (error.code === "conflict" || error.code === "idempotency_mismatch")
       return en
         ? "The record changed. Refresh it and review the change again."

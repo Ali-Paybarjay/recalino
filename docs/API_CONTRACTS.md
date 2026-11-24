@@ -101,7 +101,8 @@
 |---|---|---|
 | `pilot.configure` | `capacity` عدد صحیح نامنفی ایمن، `reason` | 200 `{ok:true}`؛ revision تازه، بدون اعطای سهمیه |
 | `pilot.grant` | `userId`، `amounts`، `startsAt`، `periodDays` عدد صحیح مثبت ایمن، `reason` | 200 `{ok:true, entitlementId}`؛ پایان از شروع + روزها، پذیرش زیر قفل ظرفیت |
-| `quota.set` | `userId`، `entitlementId`، `amounts` (کل تخصیص)، `reason` | 200 `{ok:true, before, after, replayed}`؛ snapshotهای تخصیص با مصرف/رزرو محفوظ |
+| `quota.set` | `userId`، `entitlementId`، `amounts` (کل تخصیص)، `reason` | 200 `{ok:true, before, after, replayed}`؛ snapshotهای تخصیص با مصرف/رزرو محفوظ. روی دورهٔ پایان‌یافته (`ends_at` نه پس از اکنون) `409 conflict` با `entitlementId: ["period_ended"]` و بی هیچ نوشتن (P12-08، F-9) |
+| `quota.new_period` | `userId`، `entitlementId` (دورهٔ پیشین)، `amounts` (کل تخصیص دورهٔ تازه)، `startsAt`، `periodDays` عدد صحیح مثبت ایمن، `reason` | 200 `{ok:true, before, after, replayed}`؛ `before` دورهٔ پیشین و `after` دورهٔ تازه با تاریخ و مقدار. جزئیات در «دورهٔ تازهٔ سهمیه» پایین |
 | `quota.close` | `userId`، `entitlementId`، `reason` | 200 `{ok:true}` |
 | `pricing.save` | `rates`، `reason` | 200 `{ok:true, version, rates}`؛ revision immutable |
 | `cost.configure` | `limits:{session,userMonth,systemDay,systemMonth}` با micros صحیح مثبت ایمن، `killSwitch` boolean، `reason` | 200 `{ok:true}`؛ USD، نسخه از operation key |
@@ -116,6 +117,16 @@
 | `job.retry` | `runId`، `reason?` | 202 `{ok:true}`؛ state، source و outcome هنگام mutation دوباره بررسی می‌شوند |
 | `task.update` | `taskId` (۱..۳۰۰)، `state` یکی از open/dismissed/snoozed، `snoozedUntil?` آینده و الزامی برای snoozed، `reason` | 200 `{ok:true}` |
 | `settings.save` | `language` en/fa، `theme` یکی از system/light/dark | 200 `{ok:true}`؛ ترجیح مالک پایدار |
+
+### دورهٔ تازهٔ سهمیه — `quota.new_period` (P12-08)
+
+- دورهٔ تازه یک ردیف تازهٔ `quota.entitlement` با `startsAt` و پایان «شروع + روزها» است، با یک ردیف `grant` در `quota.ledger` برای هر پنج بُعد، یک ردیف `quota.allocation_change` و یک رویداد audit `quota.new_period` با `request_id` همان درخواست؛ همه در یک تراکنش، یا هیچ. ردیف `allocation_change` کننده، دلیل، `Idempotency-Key`، `amounts` خواسته‌شده و snapshotهای `before` (دورهٔ پیشین) و `after` (دورهٔ تازه) را دارد.
+- ردیف دورهٔ پیشین و دفترش دست نمی‌خورند. ماندهٔ دورهٔ پیشین منقضی می‌شود و به دورهٔ تازه منتقل نمی‌شود.
+- کلید خصوصی ردیف تازه و grantهایش `period:<userId>:<startsAt>:<endsAt>:<Idempotency-Key>` است، نه `pilot:<pilotId>:<userId>:initial`؛ پس دورهٔ تازه پذیرش دوم پایلوت نیست و در شمار پذیرش یا فعال‌های پایلوت نمی‌آید. `pilot.grant` بی‌تغییر است: یک پذیرش اولیه برای هر حساب، و تاریخ یا مقدار دیگر با همان پذیرش `422 idempotency_mismatch` می‌گیرد، اکنون با `period: ["pilot_admission_exists"]` در `details.fields`.
+- شرط‌ها: دورهٔ پیشین (`entitlementId`) باید از همان حساب باشد و پایان یافته یا بسته شده باشد، وگرنه `409 conflict` با `entitlementId: ["period_not_ended"]`. هیچ ردیف بسته‌نشدهٔ همان حساب نباید با بازهٔ تازه هم‌پوشانی زمانی داشته باشد (`starts_at < پایان تازه` و `ends_at > شروع تازه`)، وگرنه `409 conflict` با `period: ["overlaps_unclosed_period"]`. ردیف بسته‌نشده‌ای که پیش از شروع دورهٔ تازه پایان یافته مانع نیست.
+- idempotency: همان کلید و همان ورودی همان `before`/`after` را با `replayed: true` برمی‌گرداند و چیزی نمی‌نویسد؛ همان کلید با ورودی دیگر `422 idempotency_mismatch` است.
+- اختیار: مانند دیگر actionهای این gateway فقط مالک معتبر؛ دامنه هم کننده را دوباره با `plt.admin_owner` می‌سنجد و برای غیرمالک `404 not_found` بی هیچ نوشتن می‌دهد.
+- storage: رفتار کنونی بی‌تغییر است. `releaseStorage` فضای آزادشده را به entitlement همان رزرو برمی‌گرداند (`packages/core/src/quota/ledger.ts`)، پس دورهٔ تازه با storage مصرف‌شدهٔ صفر آغاز می‌شود و فضای اشغال‌شدهٔ مطلب‌های دورهٔ پیش در دورهٔ تازه شمرده نمی‌شود. شمردن آن در دورهٔ تازه کار جداگانه‌ای است.
 
 هر rate حاوی `id`، `stage` (`generation/vision/transcription/tts/support`)، `model`، `unit` (`input_million_tokens/output_million_tokens/audio_minute/page/tts_thousand_characters`) و `rateMicros` صحیح نامنفی ایمن است. حداکثر ۱۰۰ نرخ و یکتایی stage/model/unit لازم است؛ ترکیب مبنای غیرتوکنی با چند واحد یک مدل/مرحله مبهم و نامعتبر است. نرخ برآورد فقط forecast هزینه است؛ policy و hard hold را عوض نمی‌کند.
 

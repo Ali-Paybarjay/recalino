@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAuthUser } from "../../test/auth-users";
 import { LOCAL_ADMIN_DATABASE_URL, testDatabaseUrl } from "../../test/local-db";
 import { CURRENT_VERSIONS, completeSignIn, createSignupIntent, tombstoneAccount } from "../acc";
 import { createDatabase } from "../db";
-import { readEntitlementAllocation, setAllowanceAllocation } from "./allocations";
+import {
+  readEntitlementAllocation,
+  type SetAllocationInput,
+  setAllowanceAllocation,
+} from "./allocations";
 import { amounts, emptyAmounts } from "./amounts";
 import {
   allowance,
@@ -426,5 +430,453 @@ describe("admin pilot revisions and allocations (ADM-I03/I14/I15/I16)", () => {
         return sql`select * from quota.pilot_revision`.execute(tx);
       }),
     ).rejects.toMatchObject({ code: "42501" });
+  });
+});
+
+// P12-08: a new allowance period from the panel (F-2, F-9, F-10). Synthetic local accounts only.
+const DAY = 86400000;
+describe("quota new period from the admin panel (P12-08)", () => {
+  let owner = "";
+  let previousOwner: { user_id: string; enabled: boolean; created_at: Date } | undefined;
+  beforeAll(async () => {
+    owner = await createAuthUser();
+    previousOwner = (
+      await sql<{
+        user_id: string;
+        enabled: boolean;
+        created_at: Date;
+      }>`select user_id, enabled, created_at from plt.admin_owner`.execute(admin)
+    ).rows[0];
+    await sql`insert into plt.admin_owner(singleton, user_id, enabled)
+      values (true, ${owner}::uuid, true)
+      on conflict (singleton) do update set user_id = excluded.user_id, enabled = true`.execute(
+      admin,
+    );
+  });
+  afterAll(async () => {
+    if (previousOwner)
+      await sql`update plt.admin_owner set user_id = ${previousOwner.user_id}::uuid,
+        enabled = ${previousOwner.enabled}, created_at = ${previousOwner.created_at}`.execute(
+        admin,
+      );
+    else await sql`delete from plt.admin_owner where user_id = ${owner}::uuid`.execute(admin);
+  });
+
+  /** An unclosed period that ended a day ago. */
+  async function endedPeriod(
+    userId: string,
+    units = amounts({ audio: 600, document: 10, storage: 1000 }),
+  ) {
+    const now = Date.now();
+    return grantEntitlement(db, {
+      ...actor,
+      userId,
+      startsAt: new Date(now - 3 * DAY),
+      endsAt: new Date(now - DAY),
+      amounts: units,
+      operationKey: randomUUID(),
+    });
+  }
+  function newPeriod(
+    userId: string,
+    entitlementId: string,
+    units = amounts({ audio: 900, document: 20, tts: 50, storage: 2000 }),
+  ): SetAllocationInput {
+    const startsAt = new Date(Date.now() - 1000);
+    return {
+      userId,
+      entitlementId,
+      amounts: units,
+      operationKey: randomUUID(),
+      actorId: owner,
+      reason: "Synthetic new allowance period",
+      requestId: randomUUID(),
+      period: { startsAt, endsAt: new Date(startsAt.getTime() + 30 * DAY) },
+    };
+  }
+  async function writes(userId: string) {
+    const count = async (table: "quota.entitlement" | "quota.ledger" | "quota.allocation_change") =>
+      Number(
+        (
+          await db
+            .selectFrom(table)
+            .select((eb) => eb.fn.countAll<string>().as("n"))
+            .where("user_id", "=", userId)
+            .executeTakeFirstOrThrow()
+        ).n,
+      );
+    return {
+      entitlements: await count("quota.entitlement"),
+      ledger: await count("quota.ledger"),
+      changes: await count("quota.allocation_change"),
+    };
+  }
+  async function newPeriodAudits(subjectIds: string[]) {
+    if (!subjectIds.length) return [];
+    return db
+      .selectFrom("plt.audit_event")
+      .selectAll()
+      .where("action", "=", "quota.new_period")
+      .where("subject_id", "in", subjectIds)
+      .execute();
+  }
+
+  it("quota new period: an expired allocation gets a second period from the panel and one allocation_change row", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const previous = await readEntitlementAllocation(db, ctx.userId, previousId);
+    expect(previous.active).toBe(false);
+    const input = newPeriod(ctx.userId, previousId);
+    const result = await setAllowanceAllocation(db, input);
+    expect(result.replayed).toBe(false);
+    const newId = result.after.entitlementId;
+    expect(newId).not.toBe(previousId);
+    expect(result.before).toMatchObject({
+      entitlementId: previousId,
+      startsAt: previous.startsAt,
+      endsAt: previous.endsAt,
+      allocated: previous.allocated,
+      active: false,
+    });
+    expect(result.after).toMatchObject({
+      entitlementId: newId,
+      startsAt: input.period?.startsAt,
+      endsAt: input.period?.endsAt,
+      allocated: input.amounts,
+      used: emptyAmounts(),
+      reserved: emptyAmounts(),
+      available: input.amounts,
+      active: true,
+    });
+    const rows = await db
+      .selectFrom("quota.entitlement")
+      .selectAll()
+      .where("user_id", "=", ctx.userId)
+      .orderBy("starts_at")
+      .execute();
+    expect(rows.map((row) => row.id)).toEqual([previousId, newId]);
+    const created = rows[1];
+    expect(created?.closed_at).toBeNull();
+    expect(created?.operation_key).not.toMatch(/^pilot:.*:initial$/);
+    expect(created?.operation_key).toContain(input.period?.startsAt.toISOString());
+    expect(created?.operation_key).toContain(input.period?.endsAt.toISOString());
+    const grants = await db
+      .selectFrom("quota.ledger")
+      .selectAll()
+      .where("entitlement_id", "=", newId)
+      .execute();
+    expect(grants).toHaveLength(5);
+    expect(grants.every((row) => row.kind === "grant")).toBe(true);
+    const changes = await db
+      .selectFrom("quota.allocation_change")
+      .selectAll()
+      .where("user_id", "=", ctx.userId)
+      .execute();
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({
+      entitlement_id: newId,
+      operation_key: input.operationKey,
+      actor_id: owner,
+      reason: input.reason,
+      requested_amounts: input.amounts,
+      before_snapshot: {
+        entitlementId: previousId,
+        startsAt: previous.startsAt.toISOString(),
+        endsAt: previous.endsAt.toISOString(),
+        allocated: previous.allocated,
+      },
+      after_snapshot: {
+        entitlementId: newId,
+        startsAt: input.period?.startsAt.toISOString(),
+        endsAt: input.period?.endsAt.toISOString(),
+        allocated: input.amounts,
+      },
+    });
+    const audits = await newPeriodAudits([newId]);
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actor_id: owner,
+      reason: input.reason,
+      request_id: input.requestId,
+    });
+    expect(await allowance(db, ctx)).toMatchObject({
+      entitlementId: newId,
+      remaining: input.amounts,
+    });
+  });
+
+  it("quota new period: the previous period keeps its row and its remainder does not carry over", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const during = new Date(Date.now() - 2 * DAY);
+    const used = amounts({ audio: 120, storage: 400 });
+    const hold = await db
+      .transaction()
+      .execute((tx) => reserveAllowance(tx, ctx, randomUUID(), used, during));
+    await db.transaction().execute((tx) => settleAllowance(tx, ctx, hold.id, used, during));
+    const rowBefore = await db
+      .selectFrom("quota.entitlement")
+      .selectAll()
+      .where("id", "=", previousId)
+      .executeTakeFirstOrThrow();
+    const ledgerBefore = await db
+      .selectFrom("quota.ledger")
+      .selectAll()
+      .where("entitlement_id", "=", previousId)
+      .orderBy("id")
+      .execute();
+    const input = newPeriod(ctx.userId, previousId, amounts({ audio: 300, document: 5 }));
+    const result = await setAllowanceAllocation(db, input);
+    // 480 audio seconds remained in the previous period; none of it reaches the new one.
+    expect(result.before).toMatchObject({ allocated: { audio: 600 }, used });
+    expect(result.after).toMatchObject({
+      allocated: { audio: 300, document: 5, storage: 0 },
+      used: emptyAmounts(),
+      available: { audio: 300, document: 5, storage: 0 },
+    });
+    expect(
+      await db
+        .selectFrom("quota.entitlement")
+        .selectAll()
+        .where("id", "=", previousId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual(rowBefore);
+    expect(
+      await db
+        .selectFrom("quota.ledger")
+        .selectAll()
+        .where("entitlement_id", "=", previousId)
+        .orderBy("id")
+        .execute(),
+    ).toEqual(ledgerBefore);
+    expect((await allowance(db, ctx)).remaining).toEqual(amounts({ audio: 300, document: 5 }));
+    expect(await readEntitlementAllocation(db, ctx.userId, previousId)).toMatchObject({
+      allocated: { audio: 600 },
+      used,
+      available: emptyAmounts(),
+    });
+    // AC-14, current behaviour kept: storage freed later returns to the reservation's period.
+    await db.transaction().execute((tx) => releaseStorage(tx, ctx, hold.id));
+    expect(await readEntitlementAllocation(db, ctx.userId, previousId)).toMatchObject({
+      used: { audio: 120, storage: 0 },
+    });
+    expect(
+      await readEntitlementAllocation(db, ctx.userId, result.after.entitlementId),
+    ).toMatchObject({ used: emptyAmounts(), allocated: { storage: 0 } });
+  });
+
+  it("quota new period: an unclosed allocation that overlaps in time is refused with no write", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const before = await writes(ctx.userId);
+    // The new period would start inside the unclosed previous period.
+    const inside = newPeriod(ctx.userId, previousId);
+    const insideStart = new Date(Date.now() - 2 * DAY);
+    inside.period = { startsAt: insideStart, endsAt: new Date(insideStart.getTime() + 30 * DAY) };
+    await expect(setAllowanceAllocation(db, inside)).rejects.toMatchObject({
+      code: "conflict",
+      details: { fields: { period: ["overlaps_unclosed_period"] } },
+    });
+    // Another unclosed period overlaps the new one in time.
+    const activeId = await period(ctx.userId);
+    const afterActive = await writes(ctx.userId);
+    const overlapping = newPeriod(ctx.userId, previousId);
+    await expect(setAllowanceAllocation(db, overlapping)).rejects.toMatchObject({
+      code: "conflict",
+      details: { fields: { period: ["overlaps_unclosed_period"] } },
+    });
+    // A period that has not ended is never the previous period of a new one.
+    await expect(setAllowanceAllocation(db, newPeriod(ctx.userId, activeId))).rejects.toMatchObject(
+      {
+        code: "conflict",
+        details: { fields: { entitlementId: ["period_not_ended"] } },
+      },
+    );
+    expect(await writes(ctx.userId)).toEqual(afterActive);
+    expect(afterActive).toEqual({ ...before, entitlements: before.entitlements + 1, ledger: 10 });
+    expect(before.changes).toBe(0);
+    // Only unclosed periods block: once the overlapping one is closed, the same request passes.
+    await closeEntitlement(db, { ...actor, userId: ctx.userId, entitlementId: activeId });
+    const result = await setAllowanceAllocation(db, overlapping);
+    expect(result.replayed).toBe(false);
+    expect(await newPeriodAudits([result.after.entitlementId])).toHaveLength(1);
+  });
+
+  it("quota new period: an expired allocation that was never closed does not block a new period", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const previous = await db
+      .selectFrom("quota.entitlement")
+      .selectAll()
+      .where("id", "=", previousId)
+      .executeTakeFirstOrThrow();
+    expect(previous.closed_at).toBeNull();
+    // The new period starts exactly where the unclosed one ended: adjacent, not overlapping.
+    const input = newPeriod(ctx.userId, previousId);
+    input.period = {
+      startsAt: previous.ends_at,
+      endsAt: new Date(previous.ends_at.getTime() + 30 * DAY),
+    };
+    const result = await setAllowanceAllocation(db, input);
+    expect(result.after).toMatchObject({ active: true, allocated: input.amounts });
+    expect(await writes(ctx.userId)).toEqual({ entitlements: 2, ledger: 10, changes: 1 });
+  });
+
+  it("quota new period: the same request twice writes one period, and a changed request with the same key is refused", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const input = newPeriod(ctx.userId, previousId);
+    const outcomes = await Promise.all([
+      setAllowanceAllocation(db, input),
+      setAllowanceAllocation(second, input),
+    ]);
+    expect(outcomes.map((outcome) => outcome.replayed).sort()).toEqual([false, true]);
+    const [first, replay] = outcomes;
+    expect(replay?.after).toEqual(first?.after);
+    expect(replay?.before).toEqual(first?.before);
+    expect(await setAllowanceAllocation(db, input)).toEqual({ ...first, replayed: true });
+    const settled = await writes(ctx.userId);
+    expect(settled).toEqual({ entitlements: 2, ledger: 10, changes: 1 });
+    const later = new Date((input.period?.startsAt.getTime() ?? 0) + DAY);
+    for (const changed of [
+      { ...input, amounts: amounts({ audio: 901 }) },
+      { ...input, period: { startsAt: later, endsAt: new Date(later.getTime() + 30 * DAY) } },
+      { ...input, entitlementId: first?.after.entitlementId ?? "" },
+      { ...input, period: undefined },
+      { ...input, period: undefined, entitlementId: first?.after.entitlementId ?? "" },
+    ])
+      await expect(setAllowanceAllocation(db, changed)).rejects.toMatchObject({
+        code: "idempotency_mismatch",
+      });
+    expect(await writes(ctx.userId)).toEqual(settled);
+    expect(await newPeriodAudits([first?.after.entitlementId ?? ""])).toHaveLength(1);
+  });
+
+  it("quota new period: the initial pilot grant key and its refusals are unchanged", async () => {
+    const config = configuration(1);
+    await configurePilot(db, config);
+    const ctx = await learner();
+    const startsAt = new Date(Date.now() - 40 * DAY);
+    const initial: AdminPilotGrantInput = {
+      ...admission(ctx.userId, config),
+      startsAt,
+      endsAt: new Date(startsAt.getTime() + 30 * DAY),
+    };
+    expect(initial.operationKey).toBe(`pilot:${config.pilotId}:${ctx.userId}:initial`);
+    const initialId = await grantAdminPilotEntitlement(db, initial);
+    const initialRow = await db
+      .selectFrom("quota.entitlement")
+      .selectAll()
+      .where("id", "=", initialId)
+      .executeTakeFirstOrThrow();
+    expect(initialRow.operation_key).toMatch(
+      new RegExp(`^pilot:${config.pilotId}:${ctx.userId}:[0-9a-f]{64}:initial$`),
+    );
+    const fresh = new Date(Date.now() - 1000);
+    const freshDates = {
+      ...initial,
+      startsAt: fresh,
+      endsAt: new Date(fresh.getTime() + 30 * DAY),
+    };
+    await expect(grantAdminPilotEntitlement(db, freshDates)).rejects.toMatchObject({
+      code: "idempotency_mismatch",
+      details: { fields: { period: ["pilot_admission_exists"] } },
+    });
+    await expect(
+      grantAdminPilotEntitlement(db, { ...freshDates, operationKey: randomUUID() }),
+    ).rejects.toMatchObject({ code: "validation_failed" });
+    const result = await setAllowanceAllocation(db, newPeriod(ctx.userId, initialId));
+    const created = await db
+      .selectFrom("quota.entitlement")
+      .selectAll()
+      .where("id", "=", result.after.entitlementId)
+      .executeTakeFirstOrThrow();
+    expect(created.operation_key.startsWith("pilot:")).toBe(false);
+    expect(
+      await db
+        .selectFrom("quota.entitlement")
+        .selectAll()
+        .where("id", "=", initialId)
+        .executeTakeFirstOrThrow(),
+    ).toEqual(initialRow);
+    // Still one admission: the new period takes no pilot place and replays keep the original.
+    expect(await readPilotConfiguration(db, config.pilotId)).toMatchObject({
+      historicalAdmissions: 1,
+      remainingPlaces: 0,
+    });
+    expect(await grantAdminPilotEntitlement(db, initial)).toBe(initialId);
+    await expect(grantAdminPilotEntitlement(db, freshDates)).rejects.toMatchObject({
+      code: "idempotency_mismatch",
+    });
+  });
+
+  it("quota set on an expired period: refused or clearly reported, with no usable-allowance claim", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const before = await writes(ctx.userId);
+    await expect(
+      setAllowanceAllocation(db, {
+        ...actor,
+        userId: ctx.userId,
+        entitlementId: previousId,
+        amounts: amounts({ audio: 5000 }),
+        operationKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({
+      code: "conflict",
+      details: { fields: { entitlementId: ["period_ended"] } },
+    });
+    expect(await writes(ctx.userId)).toEqual(before);
+    expect(await readEntitlementAllocation(db, ctx.userId, previousId)).toMatchObject({
+      active: false,
+      allocated: { audio: 600 },
+      available: emptyAmounts(),
+    });
+    expect(await allowance(db, ctx)).toMatchObject({
+      entitlementId: null,
+      remaining: emptyAmounts(),
+    });
+  });
+
+  it("quota new period: a caller without admin authority is refused with no write", async () => {
+    const ctx = await learner();
+    const stranger = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    const before = await writes(ctx.userId);
+    for (const actorId of [stranger.userId, ctx.userId, actor.actorId])
+      await expect(
+        setAllowanceAllocation(db, { ...newPeriod(ctx.userId, previousId), actorId }),
+      ).rejects.toMatchObject({ code: "not_found" });
+    expect(await writes(ctx.userId)).toEqual(before);
+    expect(before).toEqual({ entitlements: 1, ledger: 5, changes: 0 });
+    expect(await allowance(db, ctx)).toMatchObject({ entitlementId: null });
+  });
+
+  it("quota new period: after the new period a new reservation succeeds", async () => {
+    const ctx = await learner();
+    const previousId = await endedPeriod(ctx.userId);
+    await expect(
+      db
+        .transaction()
+        .execute((tx) => reserveAllowance(tx, ctx, randomUUID(), amounts({ audio: 60 }))),
+    ).rejects.toMatchObject({ code: "quota_insufficient" });
+    const result = await setAllowanceAllocation(db, newPeriod(ctx.userId, previousId));
+    const hold = await db
+      .transaction()
+      .execute((tx) =>
+        reserveAllowance(tx, ctx, randomUUID(), amounts({ audio: 60, storage: 500 })),
+      );
+    expect(hold).toMatchObject({ entitlementId: result.after.entitlementId, replayed: false });
+    await db
+      .transaction()
+      .execute((tx) => settleAllowance(tx, ctx, hold.id, amounts({ audio: 45, storage: 500 })));
+    expect(await allowance(db, ctx)).toMatchObject({
+      entitlementId: result.after.entitlementId,
+      consumed: { audio: 45, storage: 500 },
+      remaining: { audio: 855, storage: 1500 },
+    });
+    // Storage freed later returns to the period of its reservation (releaseStorage).
+    await db.transaction().execute((tx) => releaseStorage(tx, ctx, hold.id));
+    expect((await allowance(db, ctx)).remaining.storage).toBe(2000);
   });
 });
