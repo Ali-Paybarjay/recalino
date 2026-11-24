@@ -210,6 +210,38 @@ export function adminHandler(): Handler {
           },
         };
       }
+      case "quota.new_period": {
+        // P12-08 (F-2): a new entitlement with its own ledger after the previous one ended.
+        const p = z
+          .strictObject({
+            userId: z.uuid(),
+            entitlementId: z.uuid(),
+            amounts: amountsSchema,
+            startsAt: z.iso.datetime(),
+            periodDays: z.number().int().positive().safe(),
+            reason: reasonSchema,
+          })
+          .parse(value);
+        const startsAt = new Date(p.startsAt),
+          endsAt = new Date(startsAt.getTime() + p.periodDays * 86_400_000);
+        if (!Number.isFinite(endsAt.getTime()))
+          throw errors.validationFailed({ periodDays: ["invalid_period"] });
+        return {
+          body: {
+            ok: true,
+            ...(await setAllowanceAllocation(db, {
+              userId: p.userId,
+              entitlementId: p.entitlementId,
+              amounts: p.amounts,
+              reason: p.reason,
+              period: { startsAt, endsAt },
+              operationKey: op,
+              actorId,
+              requestId: ctx.requestId,
+            })),
+          },
+        };
+      }
       case "quota.close": {
         const p = z
           .strictObject({ userId: z.uuid(), entitlementId: z.uuid(), reason: reasonSchema })

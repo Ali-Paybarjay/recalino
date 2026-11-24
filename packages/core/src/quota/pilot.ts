@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { sql } from "kysely";
 import { z } from "zod";
 import type { Database, Tx } from "../db";
-import { canonicalJson, errors, recordAudit } from "../plt";
+import { AppError, canonicalJson, errors, recordAudit } from "../plt";
 import { type Amounts, amountsSchema, DIMENSIONS, emptyAmounts } from "./amounts";
 import { grantEntitlementInTransaction } from "./ledger";
 
@@ -291,12 +291,16 @@ export async function grantAdminPilotEntitlement(
       const original = emptyAmounts();
       for (const row of grants)
         original[z.enum(DIMENSIONS).parse(row.dimension)] = Number(row.amount);
+      // The one initial admission is never repeated with other dates or amounts. The code stays
+      // idempotency_mismatch; the field reason names the real cause for the panel (P12-08, F-2).
       if (
         previous.starts_at.getTime() !== input.startsAt.getTime() ||
         previous.ends_at.getTime() !== input.endsAt.getTime() ||
         canonicalJson(original) !== canonicalJson(units)
       )
-        throw errors.idempotencyMismatch();
+        throw new AppError("idempotency_mismatch", {
+          details: { fields: { period: ["pilot_admission_exists"] } },
+        });
       return grantEntitlementInTransaction(
         tx,
         {

@@ -5,7 +5,7 @@ import styles from "./Admin.module.css";
 import type { AdminScreenProps } from "./AdminScreenProps";
 import { dateLabel, PilotProgressCells, pilotProgressColumns } from "./CoreScreens";
 import type { AdminQuota, Dimension, PriceRate, QuotaAmounts } from "./contracts";
-import { dimensionNames, stageNames, unitNames } from "./copy";
+import { dimensionNames, newPeriodCopy, stageNames, unitNames } from "./copy";
 import {
   availableQuota,
   dimensions,
@@ -25,6 +25,10 @@ import { ProcessingReviewDetails } from "./ProcessingReviewDetails";
 import { Badge, Button, Empty, Field, Notice, Panel, Table } from "./primitives";
 
 const zero: QuotaAmounts = { audio: 0, document: 0, regeneration: 0, tts: 0, storage: 0 };
+/** Same boundary as the server: a period has ended once its end is not after now. */
+function quotaPeriodEnded(endsAt: string | null, now: number): boolean {
+  return endsAt !== null && Date.parse(endsAt) <= now;
+}
 function QuotaTable({
   quota,
   props,
@@ -119,7 +123,6 @@ function UserQuota(props: AdminScreenProps) {
         )}
       </Empty>
     );
-  const existing = Boolean(data.quota?.entitlementId);
   const quota = data.quota ?? {
     entitlementId: null,
     allocated: zero,
@@ -129,6 +132,14 @@ function UserQuota(props: AdminScreenProps) {
     startsAt: null,
     endsAt: null,
   };
+  // P12-08 (F-2, F-9): an ended period gets a new period, never a change of its allocation.
+  const ended = quotaPeriodEnded(quota.endsAt, Date.now());
+  const existing = Boolean(data.quota?.entitlementId) && !ended;
+  const newPeriod = Boolean(data.quota?.entitlementId) && ended;
+  // A new period starts with its own ledger: nothing used, reserved or carried over.
+  const reviewQuota = newPeriod
+    ? { ...quota, allocated: zero, consumed: zero, reserved: zero, available: zero }
+    : quota;
   function prepare() {
     const amounts = parseQuota(values, units);
     const validPeriod =
@@ -159,19 +170,27 @@ function UserQuota(props: AdminScreenProps) {
   }
   async function save() {
     if (!review) return;
+    const period = {
+      startsAt: new Date(`${startsAt}Z`).toISOString(),
+      periodDays: Number(periodDays),
+    };
     const input = existing
       ? { userId: user?.id, entitlementId: quota.entitlementId, amounts: review, reason }
-      : {
-          userId: user?.id,
-          amounts: review,
-          startsAt: new Date(`${startsAt}Z`).toISOString(),
-          periodDays: Number(periodDays),
-          reason,
-        };
+      : newPeriod
+        ? {
+            userId: user?.id,
+            entitlementId: quota.entitlementId,
+            amounts: review,
+            ...period,
+            reason,
+          }
+        : { userId: user?.id, amounts: review, ...period, reason };
     const result = await act(
-      existing ? "quota.set" : "pilot.grant",
+      existing ? "quota.set" : newPeriod ? "quota.new_period" : "pilot.grant",
       input,
-      t("The allocation was saved.", "تخصیص سهمیه ذخیره شد."),
+      newPeriod
+        ? t("The new period was saved.", "دورهٔ تازهٔ سهمیه ذخیره شد.")
+        : t("The allocation was saved.", "تخصیص سهمیه ذخیره شد."),
     );
     if (result) {
       setEditing(false);
@@ -217,6 +236,15 @@ function UserQuota(props: AdminScreenProps) {
               )}
             </p>
           </>
+        ) : newPeriod ? (
+          <>
+            <p className={styles.muted}>
+              {t("Ended period", "دورهٔ پایان‌یافته")}: {dateLabel(quota.startsAt, locale)} —{" "}
+              {dateLabel(quota.endsAt, locale)}
+            </p>
+            <QuotaTable quota={quota} props={props} units={units} />
+            <Notice>{newPeriodCopy.ended[locale]}</Notice>
+          </>
         ) : (
           <Empty>
             {t(
@@ -231,14 +259,17 @@ function UserQuota(props: AdminScreenProps) {
             onClick={() => {
               setEditing(true);
               setReview(null);
-              fillAmounts(existing ? quota.allocated : (data.pilot?.defaults ?? zero));
+              setStartsAt(new Date().toISOString().slice(0, 16));
+              fillAmounts(existing || newPeriod ? quota.allocated : (data.pilot?.defaults ?? zero));
             }}
           >
             {existing
               ? t("Adjust allocation", "تغییر تخصیص")
-              : t("Admit to pilot", "پذیرش در پایلوت")}
+              : newPeriod
+                ? newPeriodCopy.action[locale]
+                : t("Admit to pilot", "پذیرش در پایلوت")}
           </Button>
-          {existing && (
+          {(existing || newPeriod) && (
             <Button
               danger
               onClick={() => {
@@ -256,7 +287,9 @@ function UserQuota(props: AdminScreenProps) {
           title={
             existing
               ? t("Set any allocation for this user", "تخصیص دلخواه برای این کاربر")
-              : t("Custom pilot allocation", "تخصیص سفارشی پایلوت")
+              : newPeriod
+                ? newPeriodCopy.title[locale]
+                : t("Custom pilot allocation", "تخصیص سفارشی پایلوت")
           }
         >
           <Notice>
@@ -265,6 +298,7 @@ function UserQuota(props: AdminScreenProps) {
               "کل هر سهمیه را مستقل تعیین کنید. پیش‌فرض فقط فرم را پر می‌کند و سقف تخصیص نیست. بودجهٔ مشترک API همچنان اعمال می‌شود.",
             )}
           </Notice>
+          {newPeriod && <Notice warning>{newPeriodCopy.carryOver[locale]}</Notice>}
           {data.pilot && (
             <div className={styles.actions} style={{ marginBottom: 20 }}>
               <Button
@@ -426,9 +460,9 @@ function UserQuota(props: AdminScreenProps) {
           {review && (
             <div style={{ marginTop: 24 }}>
               <h3>{t("Review before saving", "پیش از ذخیره بررسی کنید")}</h3>
-              <QuotaTable quota={quota} props={props} proposed={review} units={units} />
+              <QuotaTable quota={reviewQuota} props={props} proposed={review} units={units} />
               {dimensions.some(
-                (key) => review[key] < quota.consumed[key] + quota.reserved[key],
+                (key) => review[key] < reviewQuota.consumed[key] + reviewQuota.reserved[key],
               ) && (
                 <Notice warning>
                   {t(
