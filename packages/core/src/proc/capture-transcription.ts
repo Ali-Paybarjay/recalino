@@ -1,18 +1,10 @@
 import { z } from "zod";
-import { lockAccount } from "../acc";
-import {
-  type AiProvider,
-  ProviderError,
-  providerSettingsSchema,
-  requireProvider,
-  transcriptSchema,
-} from "../aip";
-import type { Database } from "../db";
+import { type AiProvider, providerSettingsSchema, requireProvider, transcriptSchema } from "../aip";
+import type { Database, Tx } from "../db";
 import {
   AppError,
   canonicalJson,
   deleteObject,
-  enqueueJob,
   errors,
   type JobContext,
   type JobDefinition,
@@ -20,18 +12,22 @@ import {
   type ObjectStore,
   ownedObjectMetadata,
   readOwnedObject,
-  readPltSettings,
 } from "../plt";
 import { allowance, emptyAmounts } from "../quota";
 import { appendContentVersion, recordedPartSessionId, type sourceContentSchema } from "../src";
 import {
   completeAuxiliaryRun,
   executeAuxiliaryProviderStep,
-  failAuxiliaryRun,
   scheduleAuxiliaryRun,
 } from "./auxiliary";
 import { type RunSource, sourceSnapshotSchema } from "./contracts";
 import { ownedRun, selectProcessingSourceSnapshot } from "./runs";
+import { assertWriteAuthority } from "./steps/runtime";
+import {
+  completeOwnedAuxiliaryRun,
+  continueAuxiliaryJob,
+  failOwnedAuxiliaryRun,
+} from "./voice-jobs";
 import { scopedVoiceSpeakerId } from "./voice-processing";
 import { type AudioChunk, type AudioPreparer, audioChunkSchema } from "./worker";
 
@@ -156,8 +152,8 @@ export async function captureTranscriptionActive(
 function hasTime(job: JobContext, ms: number): boolean {
   return !job.deadline || job.deadline.getTime() - job.now().getTime() >= ms;
 }
-async function checkpoint(db: Database, runId: string, step: string, output: unknown, now: Date) {
-  await db
+async function checkpoint(tx: Tx, runId: string, step: string, output: unknown, now: Date) {
+  await tx
     .insertInto("proc.run_step")
     .values({ run_id: runId, step, output: JSON.stringify(output), completed_at: now })
     .onConflict((oc) => oc.columns(["run_id", "step"]).doNothing())
@@ -245,21 +241,23 @@ export function captureTranscriptionJob(
         if (!dependencies.prepareAudio)
           throw errors.validationFailed({ audio: ["preparer_unavailable"] });
         const part = await stagedPart(job.db, ctx, request.sourceId);
-        const done = () =>
-          job.db
-            .transaction()
-            .execute((tx) => completeAuxiliaryRun(tx, ctx, run.id, emptyAmounts(), job.now()));
+        // P12-06: the run ends only by its owner, the job its pointer names (voice-jobs.ts).
+        const complete = (write: (tx: Tx) => Promise<void>) =>
+          completeOwnedAuxiliaryRun(job, ctx, run.id, definition.kind, write);
         // Already transcribed, or removed from the class: nothing to add.
-        if (!part || part.source.contentVersionId) return await done();
+        if (!part || part.source.contentVersionId) {
+          await complete((tx) => completeAuxiliaryRun(tx, ctx, run.id, emptyAmounts(), job.now()));
+          return;
+        }
         if (part.source.objectId !== request.objectId)
           throw errors.validationFailed({ audio: ["staged_copy_changed"] });
         const source = part.source;
-        let chunks = await saved(
-          job.db,
-          run.id,
-          `audio:${source.sourceId}`,
-          z.array(audioChunkSchema),
-        );
+        const planStep = `audio:${source.sourceId}`;
+        let chunks = await saved(job.db, run.id, planStep, z.array(audioChunkSchema));
+        // A plan prepared here is saved with the job's authority (ADR-0004 rule 4): before the
+        // first provider call, or with the next job when this one continues at once (P12-06), so
+        // a job that may not hand the run on leaves no plan either.
+        let unsavedPlan: AudioChunk[] | null = null;
         if (!chunks) {
           chunks = z
             .array(audioChunkSchema)
@@ -272,6 +270,8 @@ export function captureTranscriptionJob(
                 runId: run.id,
                 source,
                 now: job.now(),
+                // Each object record only with this job's authority (AudioPreparer, P11-02 AC-19).
+                job,
               }),
             );
           if (
@@ -282,8 +282,10 @@ export function captureTranscriptionJob(
             )
           )
             throw errors.validationFailed({ audio: ["manifest_invalid"] });
-          await checkpoint(job.db, run.id, `audio:${source.sourceId}`, chunks, job.now());
+          unsavedPlan = chunks;
         }
+        const savePlan = (tx: Tx, plan: AudioChunk[]) =>
+          checkpoint(tx, run.id, planStep, plan, job.now());
         const model = settings.provider.sttModel;
         const callMs = settings.provider.timeoutMs + PROVIDER_CALL_SAFETY_MS;
         const transcripts = new Map<string, z.infer<typeof transcriptSchema>>();
@@ -298,23 +300,23 @@ export function captureTranscriptionJob(
           }
           // A fresh runner continues from the saved chunk plan.
           if (!hasTime(job, callMs)) {
-            await job.db.transaction().execute(async (tx) => {
-              await lockAccount(tx, ctx.userId);
-              const current = await ownedRun(tx, ctx, run.id, true);
-              if (!["queued", "processing"].includes(current.state)) return;
-              const jobId = await enqueueJob(tx, definition, {
-                payload,
-                singletonKey: `${run.id}:${job.job.id}`,
-                now: job.now(),
-                defaults: readPltSettings().jobs,
-              });
-              await tx
-                .updateTable("proc.processing_run")
-                .set({ job_id: jobId, state: "processing", updated_at: job.now() })
-                .where("id", "=", run.id)
-                .execute();
-            });
+            const plan = unsavedPlan;
+            await continueAuxiliaryJob(
+              job,
+              ctx,
+              definition,
+              payload,
+              plan ? (tx) => savePlan(tx, plan) : undefined,
+            );
             return;
+          }
+          if (unsavedPlan) {
+            const plan = unsavedPlan;
+            await job.db.transaction().execute(async (tx) => {
+              await assertWriteAuthority(tx, job);
+              await savePlan(tx, plan);
+            });
+            unsavedPlan = null;
           }
           const bytes = await readOwnedObject(job.db, dependencies.store, ctx, chunk.objectId);
           const transcript = await executeAuxiliaryProviderStep(job, ctx, run.id, {
@@ -335,7 +337,7 @@ export function captureTranscriptionJob(
           await deleteObject(job.db, dependencies.store, ctx, chunk.objectId, job.now());
         }
         const content = transcriptContent(source, chunks, transcripts);
-        await job.db.transaction().execute(async (tx) => {
+        const ended = await complete(async (tx) => {
           await appendContentVersion(
             tx,
             ctx,
@@ -357,30 +359,15 @@ export function captureTranscriptionJob(
           await completeAuxiliaryRun(tx, ctx, run.id, emptyAmounts(), job.now());
         });
         // D29: the temporary copy is deleted within 24 hours of a successful transcription.
-        await dependencies.onTranscribed?.(job.db, ctx, source.sourceId, job.now());
+        if (ended) await dependencies.onTranscribed?.(job.db, ctx, source.sourceId, job.now());
       } catch (error) {
-        if (
-          error instanceof ProviderError &&
-          error.retryable &&
-          job.job.attempt < readPltSettings().jobs.maxAttempts
-        )
-          throw error;
-        await job.db.transaction().execute((tx) =>
-          failAuxiliaryRun(
-            tx,
-            ctx,
-            payload.runId,
-            {
-              code:
-                error instanceof ProviderError
-                  ? error.code
-                  : error instanceof AppError
-                    ? error.code
-                    : "capture_transcription_failed",
-              uncertain: error instanceof ProviderError && error.uncertain,
-            },
-            job.now(),
-          ),
+        await failOwnedAuxiliaryRun(
+          job,
+          ctx,
+          payload.runId,
+          definition.kind,
+          error,
+          "capture_transcription_failed",
         );
       }
     },

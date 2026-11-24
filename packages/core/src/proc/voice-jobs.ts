@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getAccountState, lockAccount } from "../acc";
+import { getAccountState, lockAccount, lockAccountForCleanup } from "../acc";
 import { type AiProvider, ProviderError, providerSettingsSchema, requireProvider } from "../aip";
 import type { Database, Tx } from "../db";
 import { getLatestVersion, isExplanationLanguage } from "../lkm";
@@ -26,6 +26,7 @@ import {
 } from "./auxiliary";
 import { sourceSnapshotSchema } from "./contracts";
 import { ownedRun, selectProcessingSourceSnapshot } from "./runs";
+import { assertWriteAuthority, isJobLeaseLost } from "./steps/runtime";
 import {
   analyzeVoiceSources,
   correctVoiceCandidates,
@@ -217,30 +218,182 @@ export async function voiceProcessingStatus(
   );
 }
 
-type VoicePayload = z.infer<typeof payloadSchema>;
-/** Each saved step continues in a fresh job, so no job holds both a check and a paid call. */
-async function continueVoiceJob(
+/**
+ * C11-77 (P12-06; owner answers to E553 and E559): an auxiliary job writes its run's pointer
+ * (proc.processing_run.job_id), ends the run or fails it only while it owns the run: its claim is
+ * valid (ADR-0004 rule 4) and the pointer names it, both checked in the transaction that writes,
+ * with the job row locked first, then the account, then the run (as liveRun in steps/runtime.ts).
+ * A job that does not own the run stands aside: it writes nothing and leaves one log line. With a
+ * valid claim it then ends as a success with nothing done; without one it throws `JobLeaseLost`, so
+ * the runner leaves its job as it is. The guard of a new provider attempt is P12-01's (runtime.ts).
+ */
+type AuxiliaryPayload = { runId: string; userId: string; subjectId: string };
+type StandAsideCode = "continuation_exists" | "pointer_moved" | "not_owner" | "job_lease_lost";
+
+/** Thrown inside a transaction so that everything it wrote rolls back; never leaves this file. */
+class StandAside extends Error {
+  constructor(readonly code: StandAsideCode) {
+    super(code);
+    this.name = "StandAside";
+  }
+}
+
+/** The one distinguishable log line of a stand-aside: identifiers and codes only (FR-PLT-007). */
+function logStandAside(
+  job: JobContext,
+  kind: string,
+  code: StandAsideCode,
+  step: "continue" | "complete" | "fail",
+) {
+  job.log?.("warn", "auxiliary_run_not_owner", {
+    module: "proc",
+    kind,
+    job_id: job.job.id,
+    attempt: job.job.attempt,
+    code,
+    reason: step,
+  });
+}
+
+/**
+ * The run, locked after the job's authority and the account (ADR-0004 rule 4). A job without a
+ * valid claim gets `JobLeaseLost` here and the transaction rolls back.
+ */
+async function lockedRun(
+  tx: Tx,
   job: JobContext,
   ctx: LearnerContext,
   runId: string,
-  definition: JobDefinition<VoicePayload>,
-  payload: VoicePayload,
+  lock: (tx: Tx, userId: string) => Promise<unknown> = lockAccount,
 ) {
-  await job.db.transaction().execute(async (tx) => {
-    const current = await ownedRun(tx, ctx, runId, true);
-    if (!["queued", "processing"].includes(current.state)) return;
-    const jobId = await enqueueJob(tx, definition, {
-      payload,
-      singletonKey: `${runId}:${job.job.id}`,
-      now: job.now(),
-      defaults: readPltSettings().jobs,
+  await assertWriteAuthority(tx, job);
+  await lock(tx, ctx.userId);
+  return ownedRun(tx, ctx, runId, true);
+}
+
+/**
+ * Whether the job owns the run: the run's pointer names it. Read only after lockedRun, where a
+ * context without a lease can only be PLT's hand-made test-only one (P11-02 AC-14), which keeps
+ * the earlier behaviour of ending and failing the run. The pointer move itself has no such
+ * exception (continueAuxiliaryJob).
+ */
+function ownsRun(job: JobContext, run: { job_id: string | null }): boolean {
+  return job.lease === undefined || run.job_id === job.job.id;
+}
+
+/**
+ * Each saved step continues in a fresh job, so no job holds both a check and a paid call. In one
+ * transaction, after the authority check: the `dependent` checkpoint, the next job and the pointer
+ * moved from this job to that one, and only from this job (a conditional write). If the next job
+ * already exists (this job continued before and was claimed again) or the pointer no longer names
+ * this job, all of it rolls back: no checkpoint, no next job, the pointer as it was. Returns
+ * whether the run was handed on; false also when the run has ended.
+ */
+export async function continueAuxiliaryJob<P extends AuxiliaryPayload>(
+  job: JobContext,
+  ctx: LearnerContext,
+  definition: JobDefinition<P>,
+  payload: P,
+  dependent?: (tx: Tx) => Promise<void>,
+): Promise<boolean> {
+  try {
+    return await job.db.transaction().execute(async (tx) => {
+      const run = await lockedRun(tx, job, ctx, payload.runId);
+      if (!["queued", "processing"].includes(run.state)) return false;
+      await dependent?.(tx);
+      const next = await enqueueJob(tx, definition, {
+        payload,
+        singletonKey: `${run.id}:${job.job.id}`,
+        now: job.now(),
+        defaults: readPltSettings().jobs,
+      });
+      if (next === null) throw new StandAside("continuation_exists");
+      const moved = await tx
+        .updateTable("proc.processing_run")
+        .set({ job_id: next, state: "processing", updated_at: job.now() })
+        .where("id", "=", run.id)
+        .where("job_id", "=", job.job.id)
+        .where("state", "in", ["queued", "processing"])
+        .executeTakeFirst();
+      if (Number(moved.numUpdatedRows) !== 1) throw new StandAside("pointer_moved");
+      return true;
     });
-    await tx
-      .updateTable("proc.processing_run")
-      .set({ job_id: jobId, state: "processing", updated_at: job.now() })
-      .where("id", "=", runId)
-      .execute();
+  } catch (error) {
+    if (!(error instanceof StandAside)) throw error;
+    logStandAside(job, definition.kind, error.code, "continue");
+    return false;
+  }
+}
+
+/**
+ * Ends the run with `complete` in the caller's place, only as its owner. Returns false, having
+ * written nothing, when the job does not own the run.
+ */
+export async function completeOwnedAuxiliaryRun(
+  job: JobContext,
+  ctx: LearnerContext,
+  runId: string,
+  kind: string,
+  complete: (tx: Tx) => Promise<void>,
+): Promise<boolean> {
+  const owner = await job.db.transaction().execute(async (tx) => {
+    if (!ownsRun(job, await lockedRun(tx, job, ctx, runId))) return false;
+    await complete(tx);
+    return true;
   });
+  if (!owner) logStandAside(job, kind, "not_owner", "complete");
+  return owner;
+}
+
+/**
+ * F-7 (P12-06 AC-5): the error path of an auxiliary job. A job without a valid claim (its error
+ * is `JobLeaseLost`, or the check here refuses it) and a job that does not own the run fail
+ * nothing, settle nothing and leave the run's pointer and its other jobs alone. The owner keeps the
+ * existing contract: a retryable provider error with attempts left is thrown again for the
+ * runner's retry, any other error fails the run and releases its whole hold (failAuxiliaryRun).
+ */
+export async function failOwnedAuxiliaryRun(
+  job: JobContext,
+  ctx: LearnerContext,
+  runId: string,
+  kind: string,
+  error: unknown,
+  fallbackCode: string,
+): Promise<void> {
+  const retry =
+    error instanceof ProviderError &&
+    error.retryable &&
+    job.job.attempt < readPltSettings().jobs.maxAttempts;
+  let outcome: "failed" | "retry" | "not_owner";
+  try {
+    if (isJobLeaseLost(error)) throw error;
+    outcome = await job.db.transaction().execute(async (tx) => {
+      if (!ownsRun(job, await lockedRun(tx, job, ctx, runId, lockAccountForCleanup)))
+        return "not_owner";
+      if (retry) return "retry";
+      await failAuxiliaryRun(
+        tx,
+        ctx,
+        runId,
+        {
+          code:
+            error instanceof ProviderError
+              ? error.code
+              : error instanceof AppError
+                ? error.code
+                : fallbackCode,
+          uncertain: error instanceof ProviderError && error.uncertain,
+        },
+        job.now(),
+      );
+      return "failed";
+    });
+  } catch (failure) {
+    if (isJobLeaseLost(failure)) logStandAside(job, kind, "job_lease_lost", "fail");
+    throw failure;
+  }
+  if (outcome === "not_owner") logStandAside(job, kind, "not_owner", "fail");
+  if (outcome === "retry") throw error;
 }
 
 export function voiceAnalysisJob(
@@ -310,12 +463,12 @@ export function voiceAnalysisJob(
               }),
           });
           if (progress !== "unchanged") {
-            await continueVoiceJob(job, ctx, run.id, definition, payload);
+            await continueAuxiliaryJob(job, ctx, definition, payload);
             return;
           }
         }
         if (analyzed) {
-          await continueVoiceJob(job, ctx, run.id, definition, payload);
+          await continueAuxiliaryJob(job, ctx, definition, payload);
           return;
         }
         const charged = await job.db
@@ -324,40 +477,23 @@ export function voiceAnalysisJob(
           .where("run_id", "=", run.id)
           .where("state", "=", "succeeded")
           .executeTakeFirst();
-        await job.db
-          .transaction()
-          .execute((tx) =>
-            completeAuxiliaryRun(
-              tx,
-              ctx,
-              run.id,
-              charged ? amountsSchema.parse(run.requested_amounts) : emptyAmounts(),
-              job.now(),
-            ),
-          );
-      } catch (error) {
-        if (
-          error instanceof ProviderError &&
-          error.retryable &&
-          job.job.attempt < readPltSettings().jobs.maxAttempts
-        )
-          throw error;
-        await job.db.transaction().execute((tx) =>
-          failAuxiliaryRun(
+        await completeOwnedAuxiliaryRun(job, ctx, run.id, definition.kind, (tx) =>
+          completeAuxiliaryRun(
             tx,
             ctx,
-            payload.runId,
-            {
-              code:
-                error instanceof ProviderError
-                  ? error.code
-                  : error instanceof AppError
-                    ? error.code
-                    : "voice_processing_failed",
-              uncertain: error instanceof ProviderError && error.uncertain,
-            },
+            run.id,
+            charged ? amountsSchema.parse(run.requested_amounts) : emptyAmounts(),
             job.now(),
           ),
+        );
+      } catch (error) {
+        await failOwnedAuxiliaryRun(
+          job,
+          ctx,
+          payload.runId,
+          definition.kind,
+          error,
+          "voice_processing_failed",
         );
       }
     },
