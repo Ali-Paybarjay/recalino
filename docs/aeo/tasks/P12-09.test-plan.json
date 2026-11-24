@@ -1,0 +1,108 @@
+{
+  "schema_version": "1",
+  "task_id": "P12-09",
+  "kind": "pass_to_pass",
+  "authored_by": {
+    "role": "L1"
+  },
+  "base_sha": "eeb820e71fc85ce744a127aa19a7cfdc4668d5f9",
+  "commit_sha": "eeb820e71fc85ce744a127aa19a7cfdc4668d5f9",
+  "command": {
+    "argv": ["pnpm", "test:unit"],
+    "timeout_seconds": 1200
+  },
+  "files": [
+    {
+      "path": "apps/web/src/server/privacy-journal.test.ts",
+      "sha256": "946ab62afe716dd3c9cc5c9648849199be6b7f2df0749384be174cdee91e1cac"
+    },
+    {
+      "path": "packages/core/src/priv/media.int.test.ts",
+      "sha256": "1230f27482b970c367137180213f7f9d1197b878e0e800bc7bf522ba61fad317"
+    },
+    {
+      "path": "packages/core/src/ops/backups.int.test.ts",
+      "sha256": "de8f771c9cbe12d4370e32b17c9e4cf5b3b0d4f4fc7fd47316a9a16a2fa532cd"
+    },
+    {
+      "path": "packages/ops-cli/src/backup-native.int.test.ts",
+      "sha256": "fdca2e613c7cbc26ec344a8a1338757312fa4a387fc24651e0d8f3a161300366"
+    },
+    {
+      "path": "apps/web/src/server/privacy-composition.int.test.ts",
+      "sha256": "4b287674c3db864dd126d68743996823fef3cc4de9aa548cec0f3278895e5372"
+    },
+    {
+      "path": "packages/core/src/priv/org-cleanup.int.test.ts",
+      "sha256": "ad4d5895969bc45c089b906f2344a3c507245cdaba228e835c33f5b336f63a07"
+    },
+    {
+      "path": "packages/core/src/acc/signup.int.test.ts",
+      "sha256": "e7c9693284baa5aabd91e8113a48a31c23a1be83dc383adfaccb7c910c2f3e13"
+    },
+    {
+      "path": "apps/web/src/server/cross-account/privacyRequest.int.test.ts",
+      "sha256": "eed07b0bc20618252192edb90df52667a249363b31f65cea8e48a7fa5555db59"
+    },
+    {
+      "path": "apps/web/src/server/cross-account/privacyAccount.int.test.ts",
+      "sha256": "b884686ae46e4c15efb8761dff659131fe03dd28e65ee45532b888109fa72eb6"
+    },
+    {
+      "path": "apps/web/src/server/privacy-ack.int.test.ts",
+      "sha256": "e27cba418e417eb1b03485b1e07c305ce1d262edca2df78c01583bc2bff61f80"
+    },
+    {
+      "path": "packages/core/src/ops/backup-crypto.test.ts",
+      "sha256": "46b443f0152a0ea4473816364cbd40fb7a4e19e7f1afc39803b1ba2b058863f7"
+    },
+    {
+      "path": "packages/core/src/priv/recovery.int.test.ts",
+      "sha256": "4f40685528c0a07493e002349477c2805e38a0e9936c6fec32abdc764954301f"
+    },
+    {
+      "path": "apps/web/src/server/privacy-voice.int.test.ts",
+      "sha256": "d1da433c3ac2602e97c9aa9e80a55fcc1910cfa3ebd20d8cb9e208ad66a05bbf"
+    },
+    {
+      "path": "packages/core/src/priv/jobs.int.test.ts",
+      "sha256": "ac7d6c8740698a11d3a4f29f3d2f714360ec88e108ca27399c4be72ac94fa31b"
+    },
+    {
+      "path": "apps/web/src/server/auth/flow.int.test.ts",
+      "sha256": "45a12bbf9a3032e6a71c0243401e9dcb9b8ef42fef6f869e8ba07d15662fe04e"
+    },
+    {
+      "path": "apps/web/src/server/auth/gateway.test.ts",
+      "sha256": "51ee9427521d9cb61e2a04e92968ae6d7b286a7ee5b51694a5f79fffc82bd1ff"
+    },
+    {
+      "path": "apps/web/src/server/auth/deletion-recovery.int.test.ts",
+      "sha256": "4c21352027cd8df3322996566a58f100236e94379b5e1bb57cf1b2023c947c2a"
+    },
+    {
+      "path": "apps/web/src/server/auth/deletion-stage.test.ts",
+      "sha256": "b9a18b264b085a3e7120d44cc8f153ece1f09a9061e85dabd1ad58b1eb07738c"
+    }
+  ],
+  "tests": [
+    {
+      "id": "TP-1",
+      "file": "apps/web/src/server/privacy-journal.test.ts",
+      "maps_to_criteria": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11"
+      ],
+      "name": "The unit suite is green on head, including the unchanged privacy-journal.test.ts. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run. The int scenarios below run in CI test:int on the same head and are judged from that run and from the diff: each name is one exact, unique string literal in the diff, and the CI test:int output shows packages/core/src/ops/deletion-journal-authority.int.test.ts and apps/web/src/server/auth/deleting-account-sign-in.int.test.ts passing with no skip and test counts that include them (the CI reporter prints only some test names, so a name is not required to appear in the output). Names: «privacy journal: a stale worker after reclaim writes no journal object and moves no pointer» (AC-1, AC-7); «privacy journal: a failing writer never deletes the verified object of another writer» (AC-2, AC-7); «privacy journal: a ready journal always has its encrypted bytes» (AC-2, AC-7); «privacy journal: the API path without a Job keeps its behaviour» (AC-3, AC-7); «privacy cleanup: a stale worker cannot move a completed request to needs_operator» (AC-4, AC-7); «sign-in: an account in deletion is soft-deleted, not hard-deleted, and keeps its cost rows» (AC-5, AC-8); «sign-in: a user with no account is cleaned up exactly as before» (AC-6, AC-8). The locked unit tests (privacy-journal, backup-crypto, auth gateway and auth deletion-stage) stay green in the unit run, and the locked int tests (priv media, backups, backup-native, privacy-composition, org-cleanup, signup, the two cross-account privacy tests, privacy-ack, privacy-voice, priv recovery, priv jobs, auth flow and auth deletion-recovery) stay green in the same CI run (AC-3, AC-9). AC-10 and AC-11 are judged from the diff and the report."
+    }
+  ]
+}
