@@ -1,11 +1,14 @@
 import { sql } from "kysely";
 import { z } from "zod";
-import type { Database } from "../db";
+import type { Database, Tx } from "../db";
 import {
+  assertJobAuthority,
   canonicalJson,
   createObject,
   deleteObject,
   errors,
+  isTestOnlyJobContext,
+  type JobContext,
   type ObjectStore,
   readSystemJournalObjects,
   sha256Hex,
@@ -27,6 +30,23 @@ export const deletionJournalSchema = z.strictObject({
 });
 export type DeletionJournal = z.infer<typeof deletionJournalSchema>;
 export type JournalEncryption = { keyId: string; key: Uint8Array };
+/** The job a journal write runs for: its claim, from JobContext (ADR-0004 rule 4). */
+export type DeletionJournalJob = Pick<JobContext, "lease">;
+export interface DeletionJournalAppendOptions {
+  /**
+   * P12-09 AC-1 (P12-03 F-1): the JobContext of the privacy cleanup this write runs for. Each of
+   * the two transactions checks the job's authority right after the advisory lock, before any
+   * object record or journal pointer is written, and the object writes carry the same job. A
+   * worker whose claim is void writes, verifies and deletes nothing. Absent outside a job (the
+   * API path), which keeps its behaviour.
+   */
+  job?: DeletionJournalJob;
+}
+/** ADR-0004 rule 4: the same rule as PLT storage for a hand-made, test-only context. */
+async function assertJournalAuthority(tx: Tx, job: DeletionJournalJob | undefined) {
+  if (job === undefined || (job.lease === undefined && isTestOnlyJobContext(job))) return;
+  await assertJobAuthority(tx, job.lease);
+}
 /** Called before PRIV marks physical cleanup complete; a failed durable write must retry. */
 export async function appendEncryptedDeletionJournal(
   db: Database,
@@ -34,7 +54,10 @@ export async function appendEncryptedDeletionJournal(
   encryption: JournalEncryption,
   raw: unknown,
   now = new Date(),
+  options: DeletionJournalAppendOptions = {},
 ) {
+  const job = options.job;
+  const withJob = job === undefined ? {} : { job };
   const input = deletionJournalSchema.parse(raw);
   const requestHash = sha256Hex(canonicalJson(input));
   const ciphertext = await encryptDeletionJournal(
@@ -49,6 +72,7 @@ export async function appendEncryptedDeletionJournal(
       await sql`select pg_advisory_xact_lock(hashtextextended('ops:encrypted-backups', 1))`.execute(
         tx,
       );
+      await assertJournalAuthority(tx, job);
       const existing = await tx
         .selectFrom("ops.deletion_journal")
         .selectAll()
@@ -70,7 +94,12 @@ export async function appendEncryptedDeletionJournal(
           })
           .returningAll()
           .executeTakeFirstOrThrow());
-      if (row.object_id) await deleteObject(tx, store, "system", row.object_id, now);
+      // P12-09 AC-1 and AC-2: only an earlier writer's pending target goes; a verified one never.
+      if (row.object_id)
+        await deleteObject(tx, store, "system", row.object_id, now, {
+          pendingOnly: true,
+          ...withJob,
+        });
       const target = await createObject(tx, {
         module: "priv",
         ownerUserId: null,
@@ -91,6 +120,9 @@ export async function appendEncryptedDeletionJournal(
       await sql`select pg_advisory_xact_lock(hashtextextended('ops:encrypted-backups', 1))`.execute(
         tx,
       );
+      // P12-09 AC-2: checked before stagedId is set, so a void claim never reaches the catch below
+      // with a staged object.
+      await assertJournalAuthority(tx, job);
       const current = await tx
         .selectFrom("ops.deletion_journal")
         .selectAll()
@@ -108,6 +140,7 @@ export async function appendEncryptedDeletionJournal(
         contentType: "application/octet-stream",
         bytes: ciphertext,
         now,
+        ...withJob,
       });
       await tx
         .updateTable("ops.deletion_journal")
@@ -122,7 +155,16 @@ export async function appendEncryptedDeletionJournal(
       return { journalId: current.id };
     });
   } catch (failure) {
-    if (stagedId) await deleteObject(db, store, "system", stagedId, now);
+    // P12-09 AC-2 (P12-03 F-2): outside the lock, the staged object may already be verified and
+    // be the bytes of a ready journal (a commit whose answer was lost). Only a pending object is
+    // deleted, with the job's authority when there is a job; anything else stays for the ready
+    // journal, for the next writer (which marks a pending target deleted) or for reconciliation.
+    // The original failure is what the caller sees.
+    if (stagedId)
+      await deleteObject(db, store, "system", stagedId, now, {
+        pendingOnly: true,
+        ...withJob,
+      }).catch(() => false);
     throw failure;
   }
 }

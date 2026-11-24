@@ -4,6 +4,7 @@ import {
   CURRENT_VERSIONS,
   completeSignIn,
   createSignupIntent,
+  existingAccountIds,
   readAccSettings,
 } from "@recalino/core/acc";
 import { errors, removeBrowserPushSubscription } from "@recalino/core/plt";
@@ -100,7 +101,13 @@ export function callbackHandler(deps: FlowDeps = defaultFlowDeps): Handler {
     const outcome = await completeSignIn(db, { userId: user.id, intentId, now: deps.now() });
     if (outcome.kind === "no_account") {
       await deps.auth.signOut();
-      await deps.auth.deleteUser(user.id);
+      // P12-09 AC-5 (P12-04 F-4): an account row that completeSignIn refused is an account in
+      // deletion (tombstoned). Its identity is soft-deleted, as the privacy cleanup does, so the
+      // cascade never removes the account row, its cost rows or its holds. Without any account
+      // row the Auth user is removed exactly as before (AC-6).
+      if ((await existingAccountIds(db, [user.id])).has(user.id))
+        await deps.auth.deleteUser(user.id, { soft: true });
+      else await deps.auth.deleteUser(user.id);
       throw errors.unauthenticated();
     }
     return { redirect: outcome.kind === "created" ? "/setup" : safeReturnPath(next) };
