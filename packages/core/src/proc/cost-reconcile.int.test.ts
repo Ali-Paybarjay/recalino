@@ -1038,7 +1038,7 @@ const jobRow = (jobId: string) =>
     .where("id", "=", jobId)
     .executeTakeFirstOrThrow();
 
-describe("a live continuation keeps its hold although a retried job set the pointer null (P12-01, R2-P1201-02)", () => {
+describe("a live continuation keeps its hold although older code left the pointer null (P12-01, R2-P1201-02)", () => {
   it("closes nothing while the continuation's lease is valid, and its own settle stays the normal one", async () => {
     const f = await fixture();
     const run = await f.start();
@@ -1074,13 +1074,20 @@ describe("a live continuation keeps its hold although a retried job set the poin
     f.provider.beforeResult = async () => {
       f.provider.beforeResult = undefined;
       const open = await expectLeftOpen(run.id);
-      // J's retry, really claimed: the same singleton key finds J2, the enqueue returns null and
-      // that null is written over the pointer, while J2 still runs. J then completes.
+      // J's retry, really claimed: the pointer names J2, so J does not own the run and stands
+      // aside (AC-15, AC-17): no next job, the pointer kept, never null. J then completes.
       const retry = await claimProcessingJob(f, first, { deadline: new Date(Date.now() + 1000) });
       expect(retry.claim.attempt).toBe(2);
       await retry.run();
       expect(await completeJob(db, retry.claim, new Date())).toBe(true);
-      expect(await runRow(run.id)).toMatchObject({ state: "processing", job_id: null });
+      expect(await runRow(run.id)).toMatchObject({ state: "processing", job_id: second });
+      // Data older code left (C11-77): that retry wrote a null pointer while J2 still ran its paid
+      // call. No code writes one now; the row is set here as that legacy data.
+      await db
+        .updateTable("proc.processing_run")
+        .set({ job_id: null })
+        .where("id", "=", run.id)
+        .execute();
       expect(await jobRow(second)).toEqual({ state: "running", kind: f.job.kind });
       expect(await jobRow(first)).toMatchObject({ state: "succeeded" });
 

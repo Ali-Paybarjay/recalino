@@ -37,6 +37,11 @@ type FactRow = {
   hold_created_at: Date;
   hold_closed: boolean;
   cost_recorded: boolean;
+  /**
+   * P12-01 (AC-20, AC-23): the states of the latest jobs that carry the run's id in their payload
+   * (PLT's latestJobStateForPayload, one per kind), latest first; none after a purge.
+   */
+  run_jobs?: string[];
 };
 
 /**
@@ -52,6 +57,15 @@ function costsDatabase(attempts: Attempt[], unknownCosts: number, facts: FactRow
     // Kysely quotes builder table names ("quota"."provider_cost"); raw sql keeps them bare.
     const table = (name: string) => query.sql.replaceAll('"', "").includes(name);
     if (table("proc.provider_attempt as a")) return facts;
+    if (table("plt.job") && query.sql.includes("payload")) {
+      // PLT's latest job of a kind that carries a run's id: the fixture's run_jobs, latest first.
+      const carried = query.parameters
+        .filter((value): value is string => typeof value === "string" && value.includes("runId"))
+        .map((value) => (JSON.parse(value) as { runId: string }).runId);
+      const row = facts.find((item) => carried.includes(item.run_id));
+      const latest = row?.run_jobs?.[0];
+      return latest ? [{ state: latest }] : [];
+    }
     if (table("plt.job"))
       return facts.flatMap((row) =>
         row.job_id && row.job_state ? [{ id: row.job_id, state: row.job_state }] : [],
@@ -212,14 +226,42 @@ describe("admin costs reconciliation counts (P12-01)", () => {
       job_state: "failed",
     }),
     fact("job purged", { run_state: "processing", job_id: null, job_state: null }),
+    // AC-20: data older code left, a null pointer while a job of the run is still there: no
+    // ownership proven either way, so kept from the automatic close and from this count.
+    fact("legacy null pointer, job left", {
+      run_state: "processing",
+      job_id: null,
+      job_state: null,
+      run_jobs: ["succeeded"],
+    }),
+    // AC-23 (R2-P1201-02, review:security round five): a live job carries the run although the
+    // pointer is null, or names a cancelled job: its attempt is that job's own.
+    fact("legacy null pointer, live continuation", {
+      run_state: "processing",
+      job_id: null,
+      job_state: null,
+      run_jobs: ["running"],
+    }),
+    fact("cancelled, live continuation", {
+      run_state: "cancelled",
+      job_state: "cancelled",
+      run_jobs: ["running"],
+    }),
   ];
+  const live = (state: string | null | undefined): state is string =>
+    state != null && ["queued", "running", "retry_scheduled"].includes(state);
+  /** The facts as providerAttemptFacts derives them from these rows. */
   const classify = (row: FactRow) => {
+    const others = row.run_jobs ?? [];
+    const pointer = row.job_id ? row.job_state : null;
+    const jobState = live(pointer) ? pointer : (others.find(live) ?? pointer);
     const facts = {
       attemptState: row.attempt_state,
       runState: row.run_state,
-      jobState: row.job_state,
+      jobState,
       holdClosed: row.hold_closed,
       costRecorded: row.cost_recorded,
+      pointerUnproven: row.job_id === null && jobState === null && others.length > 0,
     };
     return {
       conservative: isConservativelyClosedAttempt(facts),
@@ -239,7 +281,14 @@ describe("admin costs reconciliation counts (P12-01)", () => {
       "last try failed",
       "job purged",
     ]);
-    for (const name of ["live claim", "queued again", "retry scheduled"])
+    for (const name of [
+      "live claim",
+      "queued again",
+      "retry scheduled",
+      "legacy null pointer, job left",
+      "legacy null pointer, live continuation",
+      "cancelled, live continuation",
+    ])
       expect(classify(facts.find((row) => row.name === name) as FactRow).unowned).toBe(false);
   });
 
@@ -264,7 +313,7 @@ describe("admin costs reconciliation counts (P12-01)", () => {
       // E477 rule 3: unchanged; the conservative record and every stuck attempt stay in it.
       unknownCount: 2 + unresolved.length,
     });
-    expect(unresolved).toHaveLength(8);
+    expect(unresolved).toHaveLength(11);
     // The facts are read for this month's closed holds and every open one, unresolved only.
     const query = seen.find((entry) =>
       entry.sql.replaceAll('"', "").includes("proc.provider_attempt as a"),

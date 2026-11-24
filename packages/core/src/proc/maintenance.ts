@@ -258,6 +258,13 @@ export interface ProviderAttemptFacts {
    * (the pointer is set null) and no processing job of the run is left.
    */
   jobState: string | null;
+  /**
+   * P12-01 (AC-20, AC-22, AC-23; R2-P1201-02): the pointer is null while a job of the run (any of
+   * RUN_JOB_KINDS) still exists, so neither a live owner nor its absence is proven: data left by
+   * older code (C11-77), not a purge. Such an attempt is kept from the automatic close until those
+   * jobs have ended and been purged; a purge (AC-14) leaves no job of the run, so it never sets this.
+   */
+  pointerUnproven: boolean;
   holdCurrency: string;
   holdMaximumMicros: number;
   holdCreatedAt: Date;
@@ -267,22 +274,36 @@ export interface ProviderAttemptFacts {
 }
 type AttemptClassFacts = Pick<
   ProviderAttemptFacts,
-  "attemptState" | "runState" | "jobState" | "holdClosed" | "costRecorded"
+  "attemptState" | "runState" | "jobState" | "holdClosed" | "costRecorded" | "pointerUnproven"
 >;
 /**
  * P12-01 (AC-1, AC-8, E477 rule 2): the one definition of an attempt that no job will settle: its
- * outcome unknown, its hold still open, its run in a state an ended job leaves, and no live job on
- * the run. The reconciliation selects exactly these, re-checks each under the account lock, and
- * the operator's count of "still open, without authority" counts exactly these.
+ * outcome unknown, its hold still open, its run in a state an ended job leaves, no live job on
+ * the run, and the run's ownership not left unproven by a legacy null pointer (AC-20). The
+ * reconciliation selects exactly these, re-checks each under the account lock, and the operator's
+ * count of "still open, without authority" counts exactly these.
  */
 export function isUnownedOpenAttempt(facts: AttemptClassFacts): boolean {
   return (
     UNRESOLVED_ATTEMPT_STATES.includes(facts.attemptState) &&
     !facts.holdClosed &&
     UNOWNED_ATTEMPT_RUN_STATES.includes(facts.runState) &&
-    (facts.jobState === null || !LIVE_JOB_STATES.includes(facts.jobState))
+    (facts.jobState === null || !LIVE_JOB_STATES.includes(facts.jobState)) &&
+    !facts.pointerUnproven
   );
 }
+/**
+ * P12-01 (AC-16, AC-21 to AC-23; review:security round five, R2-P1201-02): the job kinds that run a
+ * processing run and start its provider attempts, each with the run's id in its payload: the class
+ * run and the two auxiliary kinds that hand a run on to a continuation with a singleton key. The
+ * other auxiliary kinds (EVAL, MEDIA) never hand a run on: their pointer is written once, when the
+ * run is scheduled (auxiliary.ts scheduleAuxiliaryRun), and is null only after a purge.
+ */
+const RUN_JOB_KINDS: readonly string[] = [
+  processingQueue.kind,
+  "proc.capture_transcription",
+  "proc.voice_analysis",
+];
 /**
  * P12-01: the facts of unresolved attempts whose hold is open; with `startedSince`, also those
  * started since then whose hold is closed; with `attemptId`, that attempt whatever its hold. A
@@ -341,24 +362,31 @@ export async function providerAttemptFacts(
   const live = (state: string | null | undefined): state is string =>
     state != null && LIVE_JOB_STATES.includes(state);
   // R2-P1201-02 (C11-77): a null or ended pointer alone never proves that no job holds the run.
-  // A retried job whose continuation already exists gets null back from the enqueue (singleton
-  // key) and writes it over the pointer while that continuation still runs its paid call. So,
-  // through PLT's own read, the latest processing job that carries the run's id is asked too; a
-  // live one keeps the run's attempts its own. Read per run, here and again under the account lock.
-  const continuation = new Map<string, string | null>();
+  // Older code let a retried job whose continuation already existed write a null pointer while
+  // that continuation still ran its paid call; since P12-01 no builder writes one (AC-15, and
+  // P12-06 for the auxiliary kinds), and no job that does not own the run starts an attempt
+  // (liveRun, AC-16). For the data older code left, PLT's own read is asked for the latest job of
+  // each kind of RUN_JOB_KINDS that carries the run's id: a live one keeps the run's attempts its
+  // own. Read per run, here and again under the account lock.
+  const others = new Map<string, { live: string | null; any: boolean }>();
   for (const row of rows) {
-    if (live(row.job_id ? states.get(row.job_id) : null) || continuation.has(row.run_id)) continue;
-    continuation.set(
-      row.run_id,
-      await latestJobStateForPayload(db, processingQueue.kind, { runId: row.run_id }),
-    );
+    if (live(row.job_id ? states.get(row.job_id) : null) || others.has(row.run_id)) continue;
+    const latest: (string | null)[] = [];
+    for (const kind of RUN_JOB_KINDS)
+      latest.push(await latestJobStateForPayload(db, kind, { runId: row.run_id }));
+    others.set(row.run_id, {
+      live: latest.find((state) => live(state)) ?? null,
+      any: latest.some((state) => state !== null),
+    });
   }
   const jobState = (row: (typeof rows)[number]): string | null => {
     const pointer = row.job_id ? (states.get(row.job_id) ?? null) : null;
     if (live(pointer)) return pointer;
-    const latest = continuation.get(row.run_id);
-    return live(latest) ? latest : pointer;
+    return others.get(row.run_id)?.live ?? pointer;
   };
+  // AC-20: a null pointer with a job of the run still there proves no ownership either way.
+  const pointerUnproven = (row: (typeof rows)[number]): boolean =>
+    row.job_id === null && jobState(row) === null && (others.get(row.run_id)?.any ?? false);
   return rows.map((row) => ({
     attemptId: row.attempt_id,
     userId: row.user_id,
@@ -371,6 +399,7 @@ export async function providerAttemptFacts(
     attemptState: row.attempt_state,
     runState: row.run_state,
     jobState: jobState(row),
+    pointerUnproven: pointerUnproven(row),
     holdCurrency: row.hold_currency,
     holdMaximumMicros: Number(row.hold_maximum_micros),
     holdCreatedAt: new Date(row.hold_created_at),
