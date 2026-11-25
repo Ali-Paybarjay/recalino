@@ -1,22 +1,25 @@
-// P12-01 (C11-77 main builder and F-8; AC-15 to AC-25; owner answers to E553 and E559): a processing
-// job writes its run's pointer (proc.processing_run.job_id) only as the run's owner, with a valid
-// claim, and only to the continuation it creates in the same transaction (checkpointAndContinue);
-// a job that does not own its run starts no provider attempt and closes no live hold, for all three
-// kinds (proc.process, proc.capture_transcription, proc.voice_analysis; liveRun); and the real
-// ended-job reconciliation leaves the hold of a live owner's attempt in flight to that owner.
+// P12-01 part A (C11-77 main builder, F-8 and R2-P1201-03; AC-15 to AC-20, AC-25, AC-27 and AC-30;
+// owner answers to E553, E559 and E631): a processing job writes its run's pointer
+// (proc.processing_run.job_id) only as the run's owner, with a valid claim, and only to the
+// continuation it creates in the same transaction (checkpointAndContinue); a job that does not own
+// its run starts no provider attempt and closes no live hold, for all three kinds (proc.process,
+// proc.capture_transcription, proc.voice_analysis; liveRun); a responder that lost the run's
+// ownership while its call was in flight accounts its own attempt once and writes no run result,
+// checkpoint or callback (providerStep); and the existing ended-job reconciliation of main leaves
+// the hold of a live owner's attempt in flight to that owner.
 //
 // Every job here is enqueued by the code under test and really claimed with a real lease; no
 // test-only mark. The auxiliary jobs run through the real PLT runner (runDueJobs), as in P12-06's
 // aux-continuation-owner.int.test.ts; a class job, whose payload names no subject a runner can be
 // targeted to, is claimed on a queue kind of its own and takes its real kind back at once (as in
 // the P11-02 tests), its lease renewed while its handler runs. A lease is lost by really running
-// out on the database clock, and the real sweep returns or fails the job. Only two scenarios write
-// a pointer directly, as data the job layer can no longer produce: a legacy null pointer and a
-// pointer another writer moved.
+// out on the database clock, and the real sweep returns or fails the job. A pointer is written
+// directly only as injected state the job layer can no longer produce, each marked "Injected
+// state": a legacy null pointer, a pointer another writer moved, and the pointer that leaves a
+// responder whose call is in flight.
 import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import { afterAll, expect, it, vi } from "vitest";
-import { z } from "zod";
 import { createAuthUser } from "../../test/auth-users";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
@@ -27,12 +30,13 @@ import {
   createSignupIntent,
   updateProfile,
 } from "../acc";
-import type {
-  AiProvider,
-  ProviderResult,
-  ProviderSettings,
-  StructuredInput,
-  Transcript,
+import {
+  type AiProvider,
+  ProviderError,
+  type ProviderResult,
+  type ProviderSettings,
+  type StructuredInput,
+  type Transcript,
 } from "../aip";
 import { createDatabase } from "../db";
 import type { KnowledgeModel } from "../lkm";
@@ -48,6 +52,7 @@ import {
   type JobDefinition,
   type LogValue,
   MemoryObjectStore,
+  ownedObjectMetadata,
   renewJobLease,
   runDueJobs,
   runJobStep,
@@ -67,13 +72,7 @@ import {
 } from "../src";
 import { enableVoice, VOICE_CONSENT_VERSION } from "../voc";
 import { captureTranscriptionJob, scheduleCaptureTranscription } from "./capture-transcription";
-import {
-  isUnownedOpenAttempt,
-  providerAttemptFacts,
-  providerHoldReconcileCounts,
-  type ReconcileJob,
-  reconcileEndedJobRuns,
-} from "./maintenance";
+import { reconcileEndedJobRuns } from "./maintenance";
 import { createProcessingRun } from "./runs";
 import { scheduleVoiceReanalysis, voiceAnalysisJob } from "./voice-jobs";
 import { scopedVoiceSpeakerId, type VoiceDiarization } from "./voice-processing";
@@ -85,7 +84,6 @@ vi.stubEnv("PLT_SETTINGS_JSON", JSON.stringify({ jobs: { leaseSeconds: LEASE_SEC
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 6 });
 const runIds: string[] = [];
-const otherJobIds: string[] = [];
 afterAll(async () => {
   try {
     // Only this file's runs and jobs: nothing is left for another file's runner.
@@ -97,7 +95,6 @@ afterAll(async () => {
         .execute();
       for (const job of jobs) await cancelJob(db, job.id, new Date());
     }
-    for (const id of otherJobIds) await cancelJob(db, id, new Date());
   } finally {
     vi.unstubAllEnvs();
     await db.destroy();
@@ -108,13 +105,15 @@ const MINUTE = 60_000;
 const TEST_TIMEOUT_MS = 120_000;
 const CLASS_NOT_OWNER = "processing_run_not_owner";
 const AUX_NOT_OWNER = "auxiliary_run_not_owner";
-const CONSERVATIVE_CLOSE = "provider_hold_closed_conservatively";
+const NOT_COMMITTED = "provider_result_not_committed";
 
 type Logged = { event: string } & Record<string, LogValue>;
 /** A provider answer held until the test's own step, run inside the provider call, is done. */
 interface Gate {
   calls: number;
   hook?: () => Promise<void>;
+  /** The provider's answer to the next structured call is this known failure, with its cost. */
+  failWith?: (model: string) => ProviderError;
 }
 async function passGate(gate: Gate) {
   gate.calls++;
@@ -123,7 +122,7 @@ async function passGate(gate: Gate) {
   await hook?.();
 }
 
-function syntheticSettings(version: string): ProviderSettings {
+function syntheticSettings(version: string, contentContract = false): ProviderSettings {
   return {
     version,
     llmModel: "synthetic/llm",
@@ -142,9 +141,21 @@ function syntheticSettings(version: string): ProviderSettings {
     audioUrlSupported: false,
     sttProviderOptions: {},
     dataContractApproved: true,
+    ...(contentContract
+      ? { structuredModelOverrides: { "synthetic/llm": { knowledgeContract: "content" as const } } }
+      : {}),
   };
 }
 const CALL_MICROS = 10;
+/** A known paid failure of a lesson call: the provider's own code, with its cost. */
+const knownFailure = (code: string) => (model: string) =>
+  new ProviderError(code, false, false, {
+    provider: "synthetic-owner",
+    model,
+    requestId: `synthetic-owner-${code}`,
+    actualMicros: CALL_MICROS,
+    usage: { inputTokens: 10, outputTokens: 10 },
+  });
 
 /** The class lesson, a transcript or the voice correction, each after the gate. */
 function gatedProvider(settings: ProviderSettings, gate: Gate): AiProvider {
@@ -154,6 +165,9 @@ function gatedProvider(settings: ProviderSettings, gate: Gate): AiProvider {
     settings,
     async structured<T>(input: StructuredInput<T>): Promise<ProviderResult<T>> {
       await passGate(gate);
+      const failure = gate.failWith;
+      gate.failWith = undefined;
+      if (failure) throw failure(input.model);
       const data = JSON.parse(input.input);
       if (input.schemaName === "spoken_mistake_candidates") {
         const learner = data.utterances.find((item: { text: string }) =>
@@ -312,7 +326,8 @@ async function learner() {
 }
 
 type ClassPayload = { runId: string; userId: string };
-async function classSubject() {
+/** With `contentContract`, the lesson uses the content-only knowledge contract. */
+async function classSubject(options: { contentContract?: boolean } = {}) {
   const ctx = await learner();
   const now = new Date();
   const session = await createSession(db, ctx, {}, { key: randomUUID() });
@@ -357,7 +372,10 @@ async function classSubject() {
   await allowanceFor(ctx.userId, { document: 100, regeneration: 100, audio: 100 });
   await costPolicy();
   const gate: Gate = { calls: 0 };
-  const provider = gatedProvider(syntheticSettings("synthetic-owner"), gate);
+  const provider = gatedProvider(
+    syntheticSettings("synthetic-owner", options.contentContract ?? false),
+    gate,
+  );
   const job = processingJob({ provider, store: new MemoryObjectStore() });
   /** The same kind with provider settings that no longer match the run's: a real error. */
   const broken = processingJob({
@@ -438,7 +456,7 @@ async function leaseEnded(jobId: string): Promise<void> {
   throw new Error("Expected the lease to run out");
 }
 /** The claim's authority ends before its completeJob: the lease runs out, the sweep returns it. */
-async function loseLease(claim: ClaimedJob) {
+async function loseLease(claim: Pick<ClaimedJob, "id">) {
   await leaseEnded(claim.id);
   await sweepJobs(db, new Date());
 }
@@ -466,7 +484,13 @@ async function observe(runId: string) {
     await db
       .selectFrom("proc.provider_attempt as a")
       .innerJoin("quota.cost_hold as h", "h.id", "a.hold_id")
-      .select(["a.id as id", "a.state as state", "h.closed_at as closedAt"])
+      .select([
+        "a.id as id",
+        "a.step as step",
+        "a.state as state",
+        "a.error_code as errorCode",
+        "h.closed_at as closedAt",
+      ])
       .where("a.run_id", "=", runId)
       .orderBy("a.started_at")
       .execute()
@@ -495,59 +519,56 @@ async function observe(runId: string) {
   };
 }
 type Observed = Awaited<ReturnType<typeof observe>>;
+type Attempt = Observed["attempts"][number];
 const pointerOf = async (runId: string) => {
   const { pointer } = await observe(runId);
   if (!pointer) throw new Error("Expected the run's pointer");
   return pointer;
 };
-
-/** The ended-job reconciliation as a really claimed job on a queue kind of its own. */
-async function reconcileJob() {
-  const kind = `proc.reconcile_${randomUUID().replaceAll("-", "")}`;
-  await db
-    .transaction()
-    .execute((tx) =>
-      enqueueJob(
-        tx,
-        { kind, version: 1, payload: z.strictObject({}) },
-        { payload: {}, now: new Date(), defaults: DEFAULT_PLT_SETTINGS.jobs },
-      ),
-    );
-  const [claim] = await claimJobs(db, [kind], 1, new Date());
-  if (!claim || claim.generation === undefined) throw new Error("Expected a reconcile claim");
-  otherJobIds.push(claim.id);
-  const logs: Logged[] = [];
-  const job: ReconcileJob = {
-    db,
-    now: () => new Date(),
-    job: { id: claim.id, attempt: claim.attempt },
-    lease: { id: claim.id, token: claim.token, generation: claim.generation },
-    log: (_level, event, fields) => {
-      logs.push({ ...fields, event });
-    },
-  };
-  return { claim, job, logs };
+/** A checkpoint's saved content, not only its name. */
+async function stepOutput(runId: string, step: string): Promise<unknown> {
+  const row = await db
+    .selectFrom("proc.run_step")
+    .select("output")
+    .where("run_id", "=", runId)
+    .where("step", "=", step)
+    .executeTakeFirst();
+  return row?.output;
 }
+/** The one attempt whose hold is still open: the call in flight. */
+function inFlightAttempt(observed: Observed): Attempt {
+  const open = observed.attempts.filter((row) => row.closedAt === null);
+  expect(open).toHaveLength(1);
+  const attempt = open[0] as Attempt;
+  expect(attempt.state).toBe("started");
+  expect(observed.costs.filter((row) => row.attemptId === attempt.id)).toEqual([]);
+  return attempt;
+}
+/** The run's own facts and its jobs (ids and states), as a job could change them. */
+function runFacts(observed: Observed) {
+  return {
+    pointer: observed.pointer,
+    state: observed.state,
+    lastError: observed.lastError,
+    steps: observed.steps,
+    jobs: observed.jobs.map((row) => ({ id: row.id, state: row.state })),
+  };
+}
+
 /**
- * The real reconciliation, run while a live owner's attempt is in flight: it closes no hold, the
- * attempt is not counted as still open without authority, and no conservative row is written.
+ * The existing ended-job reconciliation of main, run while a live owner's attempt is in flight
+ * (AC-19): before it, the attempt is started, its hold open and it has no cost row; after it, the
+ * same attempt and hold are still open, no cost row is written and the run is not changed.
  */
 async function reconcileKeepsLiveHold(runId: string, userId: string) {
   const open = await observe(runId);
-  const inFlight = open.attempts.filter((row) => row.closedAt === null);
-  expect(inFlight).toHaveLength(1);
-  const attempt = inFlight[0] as Observed["attempts"][number];
-  const { job, claim, logs } = await reconcileJob();
-  await reconcileEndedJobRuns(db, new Date(), { userId, job });
-  const [facts] = await providerAttemptFacts(db, { attemptId: attempt.id });
-  expect(facts).toMatchObject({ attemptState: "started", holdClosed: false });
-  expect(facts && isUnownedOpenAttempt(facts)).toBe(false);
-  expect((await providerHoldReconcileCounts(db, new Date(0), { userId })).unownedOpen).toBe(0);
+  const attempt = inFlightAttempt(open);
+  await reconcileEndedJobRuns(db, new Date(), { userId });
   const after = await observe(runId);
-  expect(after.attempts.find((row) => row.id === attempt.id)?.closedAt).toBeNull();
+  expect(after.attempts).toEqual(open.attempts);
+  expect(after.costs).toEqual(open.costs);
   expect(after.costs.filter((row) => row.attemptId === attempt.id)).toEqual([]);
-  expect(logs.map((line) => line.event)).not.toContain(CONSERVATIVE_CLOSE);
-  expect(await completeJob(db, claim, new Date())).toBe(true);
+  expect(runFacts(after)).toEqual(runFacts(open));
   return attempt.id;
 }
 /** The owner's own settle: the attempt resolved, one row at the real amount, the hold closed. */
@@ -559,6 +580,34 @@ async function expectNormalSettle(runId: string, attemptId: string) {
   expect(after.costs.filter((row) => row.attemptId === attemptId)).toEqual([
     { attemptId, amount: CALL_MICROS, estimated: null },
   ]);
+  return attempt as Attempt;
+}
+/** Run again after the settle: the reconciliation writes no second row for the attempt. */
+async function expectNoSecondRow(runId: string, userId: string, attemptId: string) {
+  const settled = await observe(runId);
+  await reconcileEndedJobRuns(db, new Date(), { userId });
+  const after = await observe(runId);
+  expect(after.costs).toEqual(settled.costs);
+  expect(after.costs.filter((row) => row.attemptId === attemptId)).toHaveLength(1);
+}
+
+/** Injected state: the run's pointer, as a writer the job layer can no longer produce sets it. */
+async function injectPointer(runId: string, to: string | null) {
+  await db.updateTable("proc.processing_run").set({ job_id: to }).where("id", "=", runId).execute();
+}
+/** Another job of the same run (an injected owner), due much later, so no runner here takes it. */
+async function anotherClassJob(s: ClassSubject): Promise<string> {
+  const id = await db.transaction().execute((tx) =>
+    enqueueJob(tx, s.job, {
+      payload: { runId: s.runId, userId: s.ctx.userId },
+      singletonKey: `${s.runId}:another-writer`,
+      now: new Date(),
+      runAt: new Date(Date.now() + 48 * 60 * MINUTE),
+      defaults: DEFAULT_PLT_SETTINGS.jobs,
+    }),
+  );
+  if (!id) throw new Error("Expected the other writer's job");
+  return id;
 }
 
 /** J hands the run on to J2 as its owner, and its authority ends before its completeJob. */
@@ -678,29 +727,17 @@ it(
 );
 
 it(
-  "continuation owner proc.process: zero-row pointer update commits no continuation and no checkpoint",
+  "continuation owner proc.process: the zero-row pointer case stops at the early guard and commits no continuation and no checkpoint",
   async () => {
     const s = await classSubject();
     const j = await pointerOf(s.runId);
-    // Another writer moved the pointer to a job of the same run, due later.
-    const sibling = await db.transaction().execute((tx) =>
-      enqueueJob(tx, s.job, {
-        payload: { runId: s.runId, userId: s.ctx.userId },
-        singletonKey: `${s.runId}:another-writer`,
-        now: new Date(),
-        runAt: new Date(Date.now() + 24 * 60 * MINUTE),
-        defaults: DEFAULT_PLT_SETTINGS.jobs,
-      }),
-    );
-    if (!sibling) throw new Error("Expected the other writer's job");
-    await db
-      .updateTable("proc.processing_run")
-      .set({ job_id: sibling })
-      .where("id", "=", s.runId)
-      .execute();
+    // Injected state: another writer moved the pointer to a job of the same run, due later.
+    const sibling = await anotherClassJob(s);
+    await injectPointer(s.runId, sibling);
     const before = await observe(s.runId);
-    // J, with a valid claim, finds in its own transaction that the pointer is not its own: the
-    // conditional pointer write is never made, and nothing of it commits.
+    // J, with a valid claim, finds in its first transaction (liveRun, the early guard) that the
+    // pointer is not its own: it stops there, before checkpointAndContinue's conditional write
+    // could change zero rows, and nothing of it commits.
     const own = await claimClass(s, j, short());
     await own.run();
     expect(await completeJob(db, own.claim, new Date())).toBe(true);
@@ -764,12 +801,8 @@ it(
       { state: "started", closedAt: null },
     ]);
     expect(left.costs).toEqual([]);
-    // Data older code left (C11-77): the live run's pointer is empty.
-    await db
-      .updateTable("proc.processing_run")
-      .set({ job_id: null })
-      .where("id", "=", s.runId)
-      .execute();
+    // Injected state: data older code left (C11-77), the live run's pointer is empty.
+    await injectPointer(s.runId, null);
     const before = await observe(s.runId);
     // J, claimed again with a valid lease, proves no ownership: it takes nothing over, fails
     // nothing, starts no attempt and does not close the started attempt's hold.
@@ -789,27 +822,25 @@ it(
     expect(retry.standAsides()).toEqual([
       expect.objectContaining({ job_id: j, code: "not_owner", reason: "live_run" }),
     ]);
-    // AC-20: the reconciliation does not close it either while a job of the run is still there.
-    const { job, claim, logs } = await reconcileJob();
-    await reconcileEndedJobRuns(db, new Date(), { userId: s.ctx.userId, job });
-    const [facts] = await providerAttemptFacts(db, {
-      attemptId: (before.attempts[0] as Observed["attempts"][number]).id,
-    });
-    expect(facts).toMatchObject({ pointerUnproven: true, holdClosed: false });
-    expect(facts && isUnownedOpenAttempt(facts)).toBe(false);
-    expect(
-      (await providerHoldReconcileCounts(db, new Date(0), { userId: s.ctx.userId })).unownedOpen,
-    ).toBe(0);
-    expect(await observe(s.runId)).toMatchObject({ attempts: before.attempts, costs: [] });
-    expect(logs.map((line) => line.event)).not.toContain(CONSERVATIVE_CLOSE);
-    expect(await completeJob(db, claim, new Date())).toBe(true);
+    // AC-20: the existing reconciliation of main then changes none of it either: the pointer, the
+    // run, the attempt, its hold and the cost rows are as they were.
+    const reconciled = await observe(s.runId);
+    await reconcileEndedJobRuns(db, new Date(), { userId: s.ctx.userId });
+    const last = await observe(s.runId);
+    expect(last.pointer).toBeNull();
+    expect(runFacts(last)).toEqual(runFacts(reconciled));
+    expect(last.attempts).toEqual(before.attempts);
+    expect(last.attempts.map((row) => ({ state: row.state, closedAt: row.closedAt }))).toEqual([
+      { state: "started", closedAt: null },
+    ]);
+    expect(last.costs).toEqual([]);
   },
   TEST_TIMEOUT_MS,
 );
 
 /**
  * J2, the owner, holds its paid lesson call; inside that call J's retry, really claimed, stands
- * aside, and with `reconcile` the real reconciliation runs too. The answer then arrives.
+ * aside, and with `reconcile` the existing reconciliation runs too. The answer then arrives.
  */
 async function classInFlight(reconcile: boolean) {
   const s = await classSubject();
@@ -860,30 +891,206 @@ it(
     const { s, during, attemptId } = await classInFlight(true);
     expect(during?.stood).toHaveLength(1);
     expect(attemptId).not.toBe("");
-    await expectNormalSettle(s.runId, attemptId);
-    expect((await observe(s.runId)).costs).toHaveLength(1);
-    expect(await providerHoldReconcileCounts(db, new Date(0), { userId: s.ctx.userId })).toEqual({
-      conservativelyClosed: 0,
-      unownedOpen: 0,
-    });
+    const attempt = await expectNormalSettle(s.runId, attemptId);
+    const after = await observe(s.runId);
+    expect(after.costs).toHaveLength(1);
+    expect(after.lastError).toBeNull();
+    // The owner's checkpoint holds the lesson it bought, and its callback saved its context.
+    expect(attempt.step).toBe("knowledge");
+    expect(JSON.stringify(await stepOutput(s.runId, "knowledge"))).toContain("Synthetic class");
+    expect(after.steps).toContain("knowledge:input-context");
+    // The reconciliation run again after the response writes no second row.
+    await expectNoSecondRow(s.runId, s.ctx.userId, attemptId);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The response guard of proc.process (AC-27, AC-30): the responder, really claimed and the run's
+// owner, starts its attempt; while its call is in flight its ownership goes (injected state); its
+// lease stays valid; the answer then arrives.
+
+/** The responder's run, with the pointer moved away while its call is in flight. */
+async function classResponseAway(
+  to: "another" | "null",
+  options: { contentContract?: boolean; failWith?: (model: string) => ProviderError } = {},
+) {
+  const s = await classSubject({ contentContract: options.contentContract ?? false });
+  const j = await pointerOf(s.runId);
+  const responder = await claimClass(s, j);
+  let moved: Observed | undefined;
+  let target: string | null = null;
+  s.gate.hook = async () => {
+    target = to === "another" ? await anotherClassJob(s) : null;
+    // Injected state: the pointer leaves the responder while its own attempt is in flight.
+    await injectPointer(s.runId, target);
+    moved = await observe(s.runId);
+  };
+  if (options.failWith) s.gate.failWith = options.failWith;
+  await responder.run();
+  if (!moved) throw new Error("Expected the responder's call");
+  return { s, j, responder, moved: moved as Observed, target: target as string | null };
+}
+/**
+ * The responder's own attempt is accounted once (its state `state`, its hold closed, one row at
+ * the real amount); nothing else of the run, its jobs or its checkpoints changed; and the responder
+ * stood aside once, at its response.
+ */
+async function expectAccountedOnly(
+  r: Awaited<ReturnType<typeof classResponseAway>>,
+  state: "succeeded" | "failed",
+  errorCode: string | null = null,
+) {
+  const { s, j, responder, moved, target } = r;
+  const attempt = inFlightAttempt(moved);
+  const after = await observe(s.runId);
+  expect(after.attempts).toEqual([{ ...attempt, state, closedAt: expect.any(Date), errorCode }]);
+  expect(after.costs).toEqual([{ attemptId: attempt.id, amount: CALL_MICROS, estimated: null }]);
+  expect(after.pointer).toBe(target);
+  expect(runFacts(after)).toEqual(runFacts(moved));
+  expect(after.state).toBe("processing");
+  expect(after.lastError).toBeNull();
+  if (target) expect(after.job(target)).toEqual(moved.job(target));
+  expect(s.gate.calls).toBe(1);
+  expect(responder.standAsides()).toEqual([
+    expect.objectContaining({ job_id: j, code: "not_owner", reason: "response" }),
+  ]);
+  return { attempt, after };
+}
+
+it.each([
+  [
+    "response guard proc.process: the responder started the attempt, then the pointer moved to another job; with a valid lease it accounts once and writes no run result, checkpoint or callback",
+    "another",
+  ],
+  [
+    "response guard proc.process: the responder started the attempt, then the pointer became null; with a valid lease it accounts once and writes no run result, checkpoint or callback",
+    "null",
+  ],
+] as [string, "another" | "null"][])(
+  "%s",
+  async (_name, to) => {
+    const r = await classResponseAway(to);
+    const { s, j, responder } = r;
+    const { attempt, after } = await expectAccountedOnly(r, "succeeded");
+    expect(attempt.step).toBe("knowledge");
+    // No checkpoint of the response and no effect of its callback (the lesson's input context).
+    expect(after.steps).not.toContain("knowledge");
+    expect(after.steps).not.toContain("knowledge:input-context");
+    expect(await stepOutput(s.runId, "knowledge")).toBeUndefined();
+    // The handler wrote nothing after the stand-aside; its valid claim ends as a success.
+    expect(await completeJob(db, responder.claim, new Date())).toBe(true);
+    expect((await observe(s.runId)).job(j)?.state).toBe("succeeded");
   },
   TEST_TIMEOUT_MS,
 );
 
 it(
-  "final combination proc.process: real reconcile keeps the live owner hold open, unownedOpen is 0, then the normal settle closes it",
+  "response guard proc.process: a repeated response after losing ownership writes no second cost row and nothing to the run",
+  async () => {
+    const r = await classResponseAway("another");
+    const { s, j, responder } = r;
+    const { after: first } = await expectAccountedOnly(r, "succeeded");
+    // The same job's handler runs again under the same valid claim (a redelivery): the lesson is
+    // not bought or recorded again, and the run is left as it was.
+    await responder.run();
+    const again = await observe(s.runId);
+    expect(again.costs).toEqual(first.costs);
+    expect(again.attempts).toEqual(first.attempts);
+    expect(runFacts(again)).toEqual(runFacts(first));
+    expect(s.gate.calls).toBe(1);
+    expect(responder.standAsides()).toEqual([
+      expect.objectContaining({ job_id: j, code: "not_owner", reason: "response" }),
+      expect.objectContaining({ job_id: j, code: "not_owner", reason: "live_run" }),
+    ]);
+    expect(await completeJob(db, responder.claim, new Date())).toBe(true);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "response guard proc.process: the valid owner still writes its result and checkpoint",
   async () => {
     const s = await classSubject();
-    const owner = await claimClass(s, await pointerOf(s.runId));
-    let attemptId = "";
+    const j = await pointerOf(s.runId);
+    const owner = await claimClass(s, j);
+    let during: Observed | undefined;
     s.gate.hook = async () => {
-      attemptId = await reconcileKeepsLiveHold(s.runId, s.ctx.userId);
+      during = await observe(s.runId);
     };
     await owner.run();
     expect(await completeJob(db, owner.claim, new Date())).toBe(true);
-    expect(attemptId).not.toBe("");
-    await expectNormalSettle(s.runId, attemptId);
-    expect((await observe(s.runId)).lastError).toBeNull();
+    if (!during) throw new Error("Expected the owner's call");
+    const attempt = inFlightAttempt(during);
+    await expectNormalSettle(s.runId, attempt.id);
+    const after = await observe(s.runId);
+    expect(owner.standAsides()).toEqual([]);
+    expect(after.lastError).toBeNull();
+    expect(after.costs).toHaveLength(1);
+    // Its checkpoint holds the lesson it bought, and its callback saved the lesson's context.
+    expect(JSON.stringify(await stepOutput(s.runId, "knowledge"))).toContain("Synthetic class");
+    expect(after.steps).toContain("knowledge:input-context");
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "response guard proc.process: an invalid lease is still refused as today",
+  async () => {
+    const s = await classSubject();
+    const j = await pointerOf(s.runId);
+    const owner = await claimClass(s, j, { renew: false });
+    let during: Observed | undefined;
+    s.gate.hook = async () => {
+      during = await observe(s.runId);
+      await loseLease(owner.claim);
+    };
+    await owner.run();
+    if (!during) throw new Error("Expected the owner's call");
+    // Nothing of the response commits: no settle, no cost row, the attempt started, its hold open.
+    const after = await observe(s.runId);
+    expect(after.attempts).toEqual(during.attempts);
+    expect(after.attempts.map((row) => ({ state: row.state, closedAt: row.closedAt }))).toEqual([
+      { state: "started", closedAt: null },
+    ]);
+    expect(after.costs).toEqual([]);
+    expect(after.pointer).toBe(j);
+    expect(after.steps).toEqual(during.steps);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    expect(owner.logs.map((line) => line.event)).toContain(NOT_COMMITTED);
+    expect(owner.standAsides()).toEqual([]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "response guard proc.process: a knowledge:truncated failure of a non-owner accounts once and writes no knowledge checkpoint",
+  async () => {
+    const r = await classResponseAway("another", {
+      failWith: knownFailure("provider_output_truncated"),
+    });
+    const { attempt, after } = await expectAccountedOnly(r, "failed", "provider_output_truncated");
+    expect(attempt.step).toBe("knowledge");
+    expect(after.steps).not.toContain("knowledge:truncated");
+    expect(await stepOutput(r.s.runId, "knowledge:truncated")).toBeUndefined();
+    expect(await completeJob(db, r.responder.claim, new Date())).toBe(true);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "response guard proc.process: a knowledge:schema-invalid failure of a non-owner accounts once and writes no knowledge checkpoint",
+  async () => {
+    const r = await classResponseAway("another", {
+      contentContract: true,
+      failWith: knownFailure("provider_schema_invalid"),
+    });
+    const { attempt, after } = await expectAccountedOnly(r, "failed", "provider_schema_invalid");
+    expect(attempt.step).toBe("knowledge");
+    expect(after.steps).not.toContain("knowledge:schema-invalid");
+    expect(await stepOutput(r.s.runId, "knowledge:schema-invalid")).toBeUndefined();
+    expect(await completeJob(db, r.responder.claim, new Date())).toBe(true);
   },
   TEST_TIMEOUT_MS,
 );
@@ -899,6 +1106,11 @@ interface AuxSubject {
   gate: Gate;
   target: { userId: string; subjectId: string };
   definition: JobDefinition<AuxPayload>;
+  /**
+   * What the caller writes after a response (capture: the source's content versions and the
+   * chunks' object states; voice: the analysis' saved mistakes).
+   */
+  effects: () => Promise<unknown>;
 }
 const CHUNK_MS = 2000;
 
@@ -966,6 +1178,28 @@ async function captureSubject(): Promise<AuxSubject> {
   const runId = await scheduleCaptureTranscription(db, x.ctx, source.assetId, dependencies);
   if (!runId) throw new Error("Expected a capture transcription run");
   runIds.push(runId);
+  const effects = async () => {
+    const versions = await db
+      .selectFrom("src.content_version")
+      .select("id")
+      .where("asset_id", "=", source.assetId)
+      .execute();
+    const plans = await db
+      .selectFrom("proc.run_step")
+      .select("output")
+      .where("run_id", "=", runId)
+      .where("step", "like", "audio:%")
+      .execute();
+    const objectIds = plans.flatMap((row) =>
+      (row.output as unknown as { objectId: string }[]).map((chunk) => chunk.objectId),
+    );
+    const objects = await Promise.all(
+      objectIds.map(
+        async (id) => (await ownedObjectMetadata(db, x.ctx, id).catch(() => null))?.state ?? null,
+      ),
+    );
+    return { versions: versions.length, objects };
+  };
   return {
     kind: "proc.capture_transcription",
     runId,
@@ -973,6 +1207,7 @@ async function captureSubject(): Promise<AuxSubject> {
     gate,
     target: { userId: x.ctx.userId, subjectId: source.assetId },
     definition: captureTranscriptionJob(dependencies),
+    effects,
   };
 }
 
@@ -1061,6 +1296,15 @@ async function voiceSubject(): Promise<AuxSubject> {
     operationKey: randomUUID(),
   });
   runIds.push(runId);
+  const effects = async () =>
+    (
+      await db
+        .selectFrom("voc.analysis")
+        .select(["id", "mistakes"])
+        .where("run_id", "=", runId)
+        .orderBy("id")
+        .execute()
+    ).map((row) => ({ id: row.id, mistakes: row.mistakes }));
   return {
     kind: "proc.voice_analysis",
     runId,
@@ -1068,6 +1312,7 @@ async function voiceSubject(): Promise<AuxSubject> {
     gate,
     target: { userId: x.ctx.userId, subjectId: x.session.id },
     definition: voiceAnalysisJob(dependencies),
+    effects,
   };
 }
 
@@ -1078,6 +1323,8 @@ interface Round {
   time?: boolean;
   /** After the handler, its lease runs out unrenewed: the runner's completeJob then refuses. */
   loseLease?: boolean;
+  /** The handler runs twice under the same claim, a redelivery, before the runner completes it. */
+  repeat?: boolean;
 }
 /** One round of the real PLT runner over this subject's jobs only (its target), one job at most. */
 async function round(s: AuxSubject, r: Round) {
@@ -1090,6 +1337,7 @@ async function round(s: AuxSubject, r: Round) {
       ran.push(job.job.id);
       try {
         await s.definition.run(payload, job);
+        if (r.repeat) await s.definition.run(payload, job);
         if (r.loseLease) await leaseEnded(job.job.id);
       } finally {
         // Past the round's deadline: the runner claims nothing more.
@@ -1119,7 +1367,8 @@ type AuxKind = keyof typeof auxMakers;
  * J hands the run on to J2 as its owner (capture: no time for a call; voice: its analysis saved)
  * and its authority ends before its completeJob, so the sweep returns it. J2, claimed first, then
  * holds its paid call; inside that call J's retry, really claimed by the runner, reaches its
- * provider step, and with `reconcile` the real reconciliation runs too. The answer then arrives.
+ * provider step, and with `reconcile` the existing reconciliation runs too. The answer then
+ * arrives.
  */
 async function auxInFlight(kind: AuxKind, reconcile: boolean) {
   const s = await auxMakers[kind]();
@@ -1130,7 +1379,13 @@ async function auxInFlight(kind: AuxKind, reconcile: boolean) {
   const j2 = await pointerOf(s.runId);
   expect(j2).not.toBe(j);
   let during:
-    | { attempts: Observed["attempts"]; ran: string[]; stood: Logged[]; job: string | undefined }
+    | {
+        attempts: Observed["attempts"];
+        ran: string[];
+        stood: Logged[];
+        job: string | undefined;
+        effects: unknown;
+      }
     | undefined;
   let attemptId = "";
   s.gate.hook = async () => {
@@ -1142,6 +1397,7 @@ async function auxInFlight(kind: AuxKind, reconcile: boolean) {
       ran: retry.ran,
       stood: retry.standAsides,
       job: now.job(j)?.state,
+      effects: await s.effects(),
     };
     expect(now.attempts).toEqual(open.attempts);
     expect(now.pointer).toBe(j2);
@@ -1204,48 +1460,222 @@ it.each([
     expect(during?.ran).toEqual([j]);
     expect(during?.stood).toHaveLength(1);
     expect(attemptId).not.toBe("");
-    await expectNormalSettle(s.runId, attemptId);
-    expect(await providerHoldReconcileCounts(db, new Date(0), { userId: s.userId })).toEqual({
-      conservativelyClosed: 0,
-      unownedOpen: 0,
-    });
+    const attempt = await expectNormalSettle(s.runId, attemptId);
+    const after = await observe(s.runId);
+    expect(after.lastError).toBeNull();
+    expect(after.costs).toHaveLength(after.attempts.length);
+    // The owner's checkpoint holds what it bought, and its own effect after the response is there.
+    const output = JSON.stringify(await stepOutput(s.runId, attempt.step));
+    expect(output).toContain(kind === "proc.capture_transcription" ? "Synthetic speech." : "true");
+    expect(await s.effects()).not.toEqual(during?.effects);
+    // The reconciliation run again after the response writes no second row.
+    await expectNoSecondRow(s.runId, s.userId, attemptId);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The response guard of the two auxiliary kinds (AC-27, AC-30), through the real PLT runner.
+
+/** The run's owner before its paid call (voice: the check saves its analysis and hands on first). */
+async function auxOwner(kind: AuxKind) {
+  const s = await auxMakers[kind]();
+  const base = Date.now();
+  if (kind === "proc.voice_analysis") {
+    const first = await round(s, { at: base + 10 * MINUTE });
+    expect(first.standAsides).toEqual([]);
+  }
+  return { s, base, owner: await pointerOf(s.runId) };
+}
+/** Another job of the same run (an injected owner), due much later, so no runner here takes it. */
+async function anotherAuxJob(s: AuxSubject): Promise<string> {
+  const id = await db.transaction().execute((tx) =>
+    enqueueJob(tx, s.definition, {
+      payload: { runId: s.runId, ...s.target },
+      singletonKey: `${s.runId}:another-writer`,
+      now: new Date(),
+      runAt: new Date(Date.now() + 48 * 60 * MINUTE),
+      defaults: DEFAULT_PLT_SETTINGS.jobs,
+    }),
+  );
+  if (!id) throw new Error("Expected the other writer's job");
+  return id;
+}
+/** The owner, really claimed by the runner, starts its attempt; the pointer then moves away. */
+async function auxResponseAway(kind: AuxKind, to: "another" | "null", repeat = false) {
+  const { s, base, owner } = await auxOwner(kind);
+  let moved: { observed: Observed; effects: unknown } | undefined;
+  let target: string | null = null;
+  s.gate.hook = async () => {
+    target = to === "another" ? await anotherAuxJob(s) : null;
+    // Injected state: the pointer leaves the responder while its own attempt is in flight.
+    await injectPointer(s.runId, target);
+    moved = { observed: await observe(s.runId), effects: await s.effects() };
+  };
+  const paid = await round(s, { at: base + 20 * MINUTE, time: true, repeat });
+  expect(paid.ran).toEqual([owner]);
+  if (!moved) throw new Error("Expected the responder's call");
+  const { observed, effects } = moved as { observed: Observed; effects: unknown };
+  const attempt = inFlightAttempt(observed);
+  const after = await observe(s.runId);
+  // Its own attempt accounted once: resolved, its hold closed, one row at the real amount.
+  expect(after.attempts).toEqual(
+    observed.attempts.map((row) =>
+      row.id === attempt.id ? { ...row, state: "succeeded", closedAt: expect.any(Date) } : row,
+    ),
+  );
+  expect(after.costs.filter((row) => row.attemptId === attempt.id)).toEqual([
+    { attemptId: attempt.id, amount: CALL_MICROS, estimated: null },
+  ]);
+  expect(after.costs).toHaveLength(observed.costs.length + 1);
+  // No run result, checkpoint, callback or caller effect; the new owner's data as it was.
+  expect(after.pointer).toBe(target);
+  expect(runFacts(after)).toEqual({
+    ...runFacts(observed),
+    jobs: runFacts(observed).jobs.map((row) =>
+      row.id === owner ? { ...row, state: "succeeded" } : row,
+    ),
+  });
+  expect(after.steps).not.toContain(attempt.step);
+  expect(await stepOutput(s.runId, attempt.step)).toBeUndefined();
+  expect(after.state).toBe("processing");
+  expect(after.lastError).toBeNull();
+  const t = target as string | null;
+  if (t) expect(after.job(t)).toEqual(observed.job(t));
+  expect(await s.effects()).toEqual(effects);
+  expect(s.gate.calls).toBe(1);
+  return { s, owner, paid, after };
+}
+
+it.each([
+  [
+    "response guard proc.capture_transcription: the responder started the attempt, then the pointer moved to another job; with a valid lease it accounts once and writes no run result, checkpoint or callback",
+    "proc.capture_transcription",
+    "another",
+  ],
+  [
+    "response guard proc.capture_transcription: the responder started the attempt, then the pointer became null; with a valid lease it accounts once and writes no run result, checkpoint or callback",
+    "proc.capture_transcription",
+    "null",
+  ],
+  [
+    "response guard proc.voice_analysis: the responder started the attempt, then the pointer moved to another job; with a valid lease it accounts once and writes no run result, checkpoint or callback",
+    "proc.voice_analysis",
+    "another",
+  ],
+  [
+    "response guard proc.voice_analysis: the responder started the attempt, then the pointer became null; with a valid lease it accounts once and writes no run result, checkpoint or callback",
+    "proc.voice_analysis",
+    "null",
+  ],
+] as [string, AuxKind, "another" | "null"][])(
+  "%s",
+  async (_name, kind, to) => {
+    const { s, owner, paid } = await auxResponseAway(kind, to);
+    // A valid non-owner ends as a success with nothing more done, and says so once.
+    expect(paid.standAsides).toEqual([
+      expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+    ]);
   },
   TEST_TIMEOUT_MS,
 );
 
 it.each([
   [
-    "final combination proc.capture_transcription: real reconcile keeps the live owner hold open, unownedOpen is 0, then the normal settle closes it",
+    "response guard proc.capture_transcription: a repeated response after losing ownership writes no second cost row and nothing to the run",
     "proc.capture_transcription",
   ],
   [
-    "final combination proc.voice_analysis: real reconcile keeps the live owner hold open, unownedOpen is 0, then the normal settle closes it",
+    "response guard proc.voice_analysis: a repeated response after losing ownership writes no second cost row and nothing to the run",
     "proc.voice_analysis",
   ],
 ] as [string, AuxKind][])(
   "%s",
   async (_name, kind) => {
-    const s = await auxMakers[kind]();
-    const base = Date.now();
-    if (kind === "proc.voice_analysis") {
-      // The voice check saves its analysis and hands on as the owner; the correction is next.
-      const first = await round(s, { at: base + 10 * MINUTE });
-      expect(first.standAsides).toEqual([]);
-    }
-    const owner = await pointerOf(s.runId);
-    let attemptId = "";
+    // The handler runs twice under the same valid claim (a redelivery): the second run buys and
+    // records nothing again; auxResponseAway's checks hold after both.
+    const { s, owner, paid } = await auxResponseAway(kind, "another", true);
+    expect(paid.standAsides).toEqual([
+      expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+      expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+    ]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it.each([
+  [
+    "response guard proc.capture_transcription: the valid owner still writes its result and checkpoint",
+    "proc.capture_transcription",
+  ],
+  [
+    "response guard proc.voice_analysis: the valid owner still writes its result and checkpoint",
+    "proc.voice_analysis",
+  ],
+] as [string, AuxKind][])(
+  "%s",
+  async (_name, kind) => {
+    const { s, base, owner } = await auxOwner(kind);
+    let during: { observed: Observed; effects: unknown } | undefined;
     s.gate.hook = async () => {
-      expect(await pointerOf(s.runId)).toBe(owner);
-      attemptId = await reconcileKeepsLiveHold(s.runId, s.userId);
+      during = { observed: await observe(s.runId), effects: await s.effects() };
     };
     const paid = await round(s, { at: base + 20 * MINUTE, time: true });
     expect(paid.ran).toEqual([owner]);
     expect(paid.standAsides).toEqual([]);
-    expect(attemptId).not.toBe("");
-    await expectNormalSettle(s.runId, attemptId);
+    if (!during) throw new Error("Expected the owner's call");
+    const { observed, effects } = during as { observed: Observed; effects: unknown };
+    const attempt = inFlightAttempt(observed);
+    await expectNormalSettle(s.runId, attempt.id);
     const after = await observe(s.runId);
-    expect(after.costs).toHaveLength(after.attempts.length);
     expect(after.lastError).toBeNull();
+    expect(after.attempts.every((row) => row.state === "succeeded")).toBe(true);
+    expect(after.costs).toHaveLength(after.attempts.length);
+    // Its checkpoint holds what it bought, and its own effect after the response is there.
+    expect(after.steps).toContain(attempt.step);
+    const output = JSON.stringify(await stepOutput(s.runId, attempt.step));
+    expect(output).toContain(kind === "proc.capture_transcription" ? "Synthetic speech." : "true");
+    expect(await s.effects()).not.toEqual(effects);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it.each([
+  [
+    "response guard proc.capture_transcription: an invalid lease is still refused as today",
+    "proc.capture_transcription",
+  ],
+  [
+    "response guard proc.voice_analysis: an invalid lease is still refused as today",
+    "proc.voice_analysis",
+  ],
+] as [string, AuxKind][])(
+  "%s",
+  async (_name, kind) => {
+    const { s, base, owner } = await auxOwner(kind);
+    let during: Observed | undefined;
+    s.gate.hook = async () => {
+      during = await observe(s.runId);
+      await loseLease({ id: owner });
+    };
+    const paid = await round(s, { at: base + 20 * MINUTE, time: true, loseLease: true });
+    expect(paid.ran).toEqual([owner]);
+    if (!during) throw new Error("Expected the owner's call");
+    const observed = during as Observed;
+    const attempt = inFlightAttempt(observed);
+    // Nothing of the response commits: no settle, no cost row, the attempt started, its hold open.
+    const after = await observe(s.runId);
+    expect(after.attempts).toEqual(observed.attempts);
+    expect(after.attempts.find((row) => row.id === attempt.id)).toMatchObject({
+      state: "started",
+      closedAt: null,
+    });
+    expect(after.costs).toEqual(observed.costs);
+    expect(after.pointer).toBe(owner);
+    expect(after.steps).toEqual(observed.steps);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    expect(paid.logs.map((line) => line.event)).toContain(NOT_COMMITTED);
   },
   TEST_TIMEOUT_MS,
 );

@@ -32,12 +32,7 @@ import {
   readOwnedObject,
   readPltSettings,
 } from "../../plt";
-import {
-  beginProviderStep,
-  finishProviderStep,
-  type ProviderSettleOutcome,
-  providerAttemptHoldSql,
-} from "../../quota";
+import { beginProviderStep, finishProviderStep } from "../../quota";
 import { appendContentVersion, automaticSourceRole, sourceContentSchema } from "../../src";
 import type { RunSource } from "../contracts";
 import { knowledgeTruncationSchema } from "../knowledge-compact";
@@ -181,8 +176,9 @@ export function isJobLeaseLost(error: unknown): boolean {
 /**
  * P12-01 (C11-77, AC-15 to AC-17; owner answer to E553): a job that does not own its run stands
  * aside. Thrown for a class run, it is a `JobCancelled`, so the processing job's own failure path
- * (failRun) ends quietly: the run is not failed, nothing is settled, and the runner then completes
- * the job as a success with nothing done. Not a `JobLeaseLost`: the claim itself is valid.
+ * (failRun) ends quietly: the run is not failed, its allowance is not settled, and the runner then
+ * completes the job as a success with nothing more done (a response it already bought keeps only
+ * its own attempt's accounting, AC-27). Not a `JobLeaseLost`: the claim itself is valid.
  */
 export class RunNotOwned extends JobCancelled {
   constructor() {
@@ -204,7 +200,7 @@ export const RUN_NOT_OWNED_CODE = "run_not_owned";
 function logRunNotOwner(
   job: Partial<Pick<JobContext, "job" | "log">>,
   code: "not_owner" | "continuation_exists" | "pointer_moved",
-  reason: "live_run" | "continue",
+  reason: "live_run" | "continue" | "response",
   kind?: string,
 ) {
   job.log?.("warn", "processing_run_not_owner", {
@@ -218,19 +214,51 @@ function logRunNotOwner(
 }
 
 /**
- * P12-01 (AC-15, AC-16): whether the run's pointer (proc.processing_run.job_id) names another job,
- * or none. Read in the caller's transaction, after its authority check and with the run row already
- * locked, so it is ordered with every pointer write. It asks for a reason to refuse: the locked row
- * is returned only when its pointer is not this job's id; a null pointer is never this job's.
+ * P12-01 (AC-15, AC-16, AC-27): the run, when its pointer (proc.processing_run.job_id) names another
+ * job, or none; undefined when this job owns it (or no such run is there). Read in the caller's
+ * transaction, after its authority check and under the account lock, with the run row locked, so
+ * it is ordered with every pointer write (lock order job, account, run). It asks for a reason to
+ * refuse: a row is returned only when its pointer is not this job's id; a null pointer is never
+ * this job's.
  */
-async function pointerNamesAnotherJob(tx: Tx, runId: string, jobId: string): Promise<boolean> {
-  const other = await tx
+async function runOwnedByAnother(
+  tx: Tx,
+  runId: string,
+  jobId: string,
+): Promise<{ kind: string } | undefined> {
+  return tx
     .selectFrom("proc.processing_run")
-    .select("id")
+    .select("kind")
     .where("id", "=", runId)
     .where(sql<boolean>`job_id is distinct from ${jobId}`)
+    .forUpdate()
     .executeTakeFirst();
-  return other !== undefined;
+}
+/**
+ * P12-01 (AC-16, AC-27): the stand-aside a job that does not own its run throws. A class run's job
+ * logs its one line here and ends through failRun's quiet `JobCancelled` path; an auxiliary job's
+ * handler logs its own line (voice-jobs.ts failOwnedAuxiliaryRun) on a retryable ProviderError
+ * with RUN_NOT_OWNED_CODE.
+ */
+function runNotOwned(
+  job: Partial<Pick<JobContext, "job" | "log">>,
+  kind: string | undefined,
+  reason: "live_run" | "response",
+): Error {
+  if (kind === "auxiliary") return new ProviderError(RUN_NOT_OWNED_CODE, true, false);
+  logRunNotOwner(job, "not_owner", reason);
+  return new RunNotOwned();
+}
+/**
+ * P12-01 (AC-27): a valid response or failure of a responder that no longer owns its run, after
+ * its accounting committed. Carried out of providerStep's own failure path (so the attempt is not
+ * recorded a second time) and then thrown to the caller as the stand-aside of `runNotOwned`.
+ */
+class ResponseNotOwned extends Error {
+  constructor(readonly kind: string | undefined) {
+    super("response not owned");
+    this.name = "ResponseNotOwned";
+  }
 }
 
 /**
@@ -258,12 +286,8 @@ export async function liveRun(
   await lockAccount(tx, ctx.userId);
   const run = await ownedRun(tx, ctx, id, true);
   if (!["queued", "processing"].includes(run.state)) throw new JobCancelled();
-  if (job?.lease !== undefined && (await pointerNamesAnotherJob(tx, run.id, job.lease.id))) {
-    // An auxiliary handler logs its own stand-aside line (voice-jobs.ts); a class run's is here.
-    if (run.kind === "auxiliary") throw new ProviderError(RUN_NOT_OWNED_CODE, true, false);
-    logRunNotOwner(job, "not_owner", "live_run");
-    throw new RunNotOwned();
-  }
+  if (job?.lease !== undefined && (await runOwnedByAnother(tx, run.id, job.lease.id)))
+    throw runNotOwned(job, run.kind, "live_run");
   await assertSessionOwner(tx, ctx, run.session_id);
   return run;
 }
@@ -395,30 +419,7 @@ async function latestAttempt<T>(tx: Tx, call: ProviderCall<T>) {
  */
 async function closeHoldAtMaximum<T>(tx: Tx, call: ProviderCall<T>, attempt: ProviderAttempt) {
   const { job, ctx, runId, provider } = call;
-  await closeAttemptHoldAtMaximum(tx, ctx, runId, attempt, {
-    currency: provider.settings.currency,
-    priceVersion: provider.settings.priceVersion,
-    now: job.now(),
-  });
-}
-/**
- * P12-01 (AC-2): the one close at the hold's maximum, shared by the dispatch path above and by the
- * reconciliation of an attempt whose job has no authority left (maintenance.ts). One cost row with
- * the hold's maximum, for this attempt, and the hold closed; the attempt itself is never written.
- * The caller holds the authority it needs. `recordAtHoldTime` dates the row at the hold's own
- * time (the reconciliation's choice, AC-13); the dispatch path keeps its earlier date.
- */
-export async function closeAttemptHoldAtMaximum(
-  tx: Tx,
-  ctx: LearnerContext,
-  runId: string,
-  attempt: Pick<
-    ProviderAttempt,
-    "id" | "hold_id" | "operation_key" | "provider" | "model" | "estimate_price_version"
-  >,
-  options: { currency: string; priceVersion: string | null; now: Date; recordAtHoldTime?: true },
-): Promise<ProviderSettleOutcome> {
-  return finishProviderStep(
+  await finishProviderStep(
     tx,
     ctx,
     attempt.hold_id,
@@ -426,116 +427,16 @@ export async function closeAttemptHoldAtMaximum(
       operationKey: attempt.operation_key,
       provider: attempt.provider,
       model: attempt.model,
-      currency: options.currency,
+      currency: provider.settings.currency,
       actualMicros: null,
       estimatedMicros: "hold_maximum",
-      priceVersion: attempt.estimate_price_version ?? options.priceVersion,
+      priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
       usage: {},
       runId,
       attemptId: attempt.id,
-      ...(options.recordAtHoldTime ? { recordAtHoldTime: true } : {}),
     },
-    options.now,
+    job.now(),
   );
-}
-/** Provider attempt states whose outcome is not known. */
-export const UNRESOLVED_ATTEMPT_STATES: readonly string[] = ["started", "uncertain"];
-/**
- * P12-01 (AC-3, r1): a conservative close is recognised only from all three parts of the same
- * attempt: the attempt still unresolved, its own hold closed, and a provider_cost row with this
- * attempt's id. An ordinary estimated settle (its attempt resolved), a definite failure, an open
- * hold, or a closed hold without that row is not one, whatever the row's amount and usage. The one
- * definition, shared by the reconciliation and the operator's counts (maintenance.ts) and by the
- * trace of a result refused after such a close (below).
- */
-export function isConservativelyClosedAttempt(facts: {
-  attemptState: string;
-  holdClosed: boolean;
-  costRecorded: boolean;
-}): boolean {
-  return (
-    UNRESOLVED_ATTEMPT_STATES.includes(facts.attemptState) && facts.holdClosed && facts.costRecorded
-  );
-}
-/**
- * P12-01 (AC-4, R2-P1201-01): whether this attempt is, as committed now, a conservative close (the
- * three-part record). Read outside any transaction of the worker, so only committed state counts.
- */
-async function attemptClosedConservatively(db: Database, attemptId: string): Promise<boolean> {
-  const hold = providerAttemptHoldSql({
-    attemptId: "a.id",
-    holdId: "a.hold_id",
-    userId: "a.user_id",
-  });
-  const row = await db
-    .selectFrom("proc.provider_attempt as a")
-    .select([
-      "a.state as state",
-      hold.closed.as("hold_closed"),
-      hold.costRecorded.as("cost_recorded"),
-    ])
-    .where("a.id", "=", attemptId)
-    .executeTakeFirst();
-  return (
-    row !== undefined &&
-    isConservativelyClosedAttempt({
-      attemptState: row.state,
-      holdClosed: Boolean(row.hold_closed),
-      costRecorded: Boolean(row.cost_recorded),
-    })
-  );
-}
-/**
- * P12-01 (AC-4 point 2, R2-P1201-01): a provider result (a response, a definite failure or an
- * unknown outcome) that this worker could not commit because its claim was void, for an attempt
- * whose hold another job has meanwhile closed at its maximum. Called only after the refused
- * transaction rolled back, so it reports nothing as committed: the worker wrote no settle, no cost
- * row, no attempt state and no output. It is told apart from a plain lost lease (the generic
- * provider_result_not_committed line, kept as it was) by its own event, and only when the attempt
- * is the three-part record. Identifiers only: the job, its attempt, the attempt's operation key
- * (`reason`), the provider's request id and what came back (`result`); never the output, the usage
- * or user data. A failed read writes nothing more and never hides the refusal itself.
- */
-async function traceRefusedAfterConservativeClose<T>(
-  call: ProviderCall<T>,
-  attempt: ProviderAttempt,
-  requestId: string | null | undefined,
-  result: "response" | "failure" | "unknown",
-) {
-  const { job } = call;
-  let closed: boolean;
-  try {
-    closed = await attemptClosedConservatively(job.db, attempt.id);
-  } catch {
-    return;
-  }
-  if (!closed) return;
-  job.log?.("warn", "provider_result_refused_after_conservative_close", {
-    module: "proc",
-    job_id: job.job.id,
-    attempt: job.job.attempt,
-    code: "hold_closed_at_maximum",
-    cause: "job_lease_lost",
-    result,
-    reason: attempt.operation_key,
-    request_id: requestId ?? undefined,
-  });
-}
-/**
- * P12-01 (AC-4): a settle that found its attempt's hold already closed at the maximum keeps that
- * one conservative row (no second row) and is logged, identifiers only, instead of being dropped
- * silently; logged only once its transaction committed. Reconciling it with the real amount is
- * C11-62's.
- */
-function traceLateSettle<T>(call: ProviderCall<T>, attempt: ProviderAttempt) {
-  const { job } = call;
-  job.log?.("warn", "provider_late_settle_kept_conservative", {
-    module: "proc",
-    job_id: job.job.id,
-    attempt: job.job.attempt,
-    code: "hold_closed_at_maximum",
-    reason: attempt.operation_key,
-  });
 }
 /**
  * QUA-01: the guards that share the account lock and the transaction that inserts the next
@@ -676,8 +577,14 @@ async function beginProviderAttempt<T>(
  * settle, no cost row, no attempt state, no checkpoint (`JobLeaseLost`, rolled back). Ending or
  * deleting the run cancels its job, so a response that arrives after the run was cancelled or its
  * class was deleted during dispatch is refused the same way (ADR-0004 rule 5): the attempt stays
- * started and its hold stays open until the ended-job reconciliation, with its own job's
- * authority, closes that hold at its maximum (P12-01, step one of C11-36; maintenance.ts).
+ * started and its hold stays open until category 12 reconciles it (C11-36).
+ *
+ * P12-01 (AC-27, R2-P1201-03): a responder with a valid claim that no longer owns the run (its
+ * pointer names another job, or none) keeps the accounting of its own attempt: the settle and the
+ * attempt's state commit, exactly once. In the same transaction, after that accounting and with
+ * the run row locked (lock order job, account, run), the pointer is read; such a responder writes
+ * no run result: no `onCommit` callback and no checkpoint. Its stand-aside reaches the caller only
+ * after the commit (`notOwned`), so the caller writes nothing further.
  */
 async function commitProviderOutput<T>(
   call: ProviderCall<T>,
@@ -687,15 +594,14 @@ async function commitProviderOutput<T>(
   onCommit: ((tx: Tx, output: T) => Promise<void>) | undefined,
 ): Promise<T> {
   const { job, ctx, runId, step, provider } = call;
-  let keptConservative = false;
   return job.db
     .transaction()
-    .execute(async (tx) => {
+    .execute(async (tx): Promise<{ output: T } | { notOwned: string | undefined } | null> => {
       await assertWriteAuthority(tx, job);
       // Reached only with the authority (or PLT's test-only mark). If the run has nonetheless
       // ended, the accounting still persists here and the job then ends.
       await lockAccountForCleanup(tx, ctx.userId);
-      const settled = await finishProviderStep(
+      await finishProviderStep(
         tx,
         ctx,
         attempt.hold_id,
@@ -716,7 +622,6 @@ async function commitProviderOutput<T>(
         },
         job.now(),
       );
-      keptConservative = settled === "conservative_kept";
       await tx
         .updateTable("proc.provider_attempt")
         .set({
@@ -728,6 +633,9 @@ async function commitProviderOutput<T>(
         .execute();
       const run = await ownedRun(tx, ctx, runId, true);
       if (!["queued", "processing"].includes(run.state)) return null;
+      // P12-01 (AC-27): the accounting above commits; a non-owner's run result does not.
+      if (job.lease !== undefined && (await runOwnedByAnother(tx, runId, job.lease.id)))
+        return { notOwned: run.kind };
       try {
         await assertSessionOwner(tx, ctx, run.session_id);
       } catch (error) {
@@ -736,13 +644,13 @@ async function commitProviderOutput<T>(
       }
       await onCommit?.(tx, output);
       await saveStep(tx, runId, step, output, job.now());
-      return output;
+      return { output };
     })
-    .then((output) => {
-      // Committed by now (P12-01, AC-4): the conservative row was kept and nothing else settled.
-      if (keptConservative) traceLateSettle(call, attempt);
-      if (output === null) throw new JobCancelled();
-      return output;
+    .then((committed) => {
+      if (committed === null) throw new JobCancelled();
+      // Committed by now: only the accounting of the attempt; the caller stands aside.
+      if ("notOwned" in committed) throw new ResponseNotOwned(committed.notOwned);
+      return committed.output;
     });
 }
 /**
@@ -750,15 +658,19 @@ async function commitProviderOutput<T>(
  * reported or estimated cost; an unknown one stays uncertain with its hold closed at the hold's
  * maximum (P9-05); a known invalid or truncated lesson keeps a checkpoint for its single recovery.
  * Only with the job's authority (ADR-0004 rule 4), checked first in the same transaction.
+ *
+ * P12-01 (AC-27): a responder with a valid claim that no longer owns the run keeps this accounting
+ * of its own attempt, but writes neither knowledge checkpoint; the run's pointer is read after the
+ * accounting and before them, in the same transaction, with the run row locked. Returns the run's
+ * kind for such a responder, so that it stands aside after the commit instead of failing the run.
  */
 async function recordProviderFailure<T>(
   call: ProviderCall<T>,
   attempt: ProviderAttempt,
   providerError: ProviderError,
-) {
+): Promise<{ notOwned: string } | undefined> {
   const { job, ctx, runId, step, model, provider } = call;
-  let keptConservative = false;
-  await job.db.transaction().execute(async (tx) => {
+  return job.db.transaction().execute(async (tx) => {
     await assertWriteAuthority(tx, job);
     await lockAccountForCleanup(tx, ctx.userId);
     const current = await tx
@@ -767,10 +679,10 @@ async function recordProviderFailure<T>(
       .where("id", "=", attempt.id)
       .forUpdate()
       .executeTakeFirstOrThrow();
-    if (current.state === "succeeded") return;
+    if (current.state === "succeeded") return undefined;
     if (providerError.uncertain) await closeHoldAtMaximum(tx, call, attempt);
-    else {
-      const settled = await finishProviderStep(
+    else
+      await finishProviderStep(
         tx,
         ctx,
         attempt.hold_id,
@@ -792,8 +704,6 @@ async function recordProviderFailure<T>(
         },
         job.now(),
       );
-      keptConservative = settled === "conservative_kept";
-    }
     await tx
       .updateTable("proc.provider_attempt")
       .set({
@@ -804,6 +714,11 @@ async function recordProviderFailure<T>(
       })
       .where("id", "=", attempt.id)
       .execute();
+    // P12-01 (AC-27): the accounting above commits; a non-owner writes no knowledge checkpoint.
+    if (job.lease !== undefined) {
+      const other = await runOwnedByAnother(tx, runId, job.lease.id);
+      if (other) return { notOwned: other.kind };
+    }
     if (
       step === "knowledge" &&
       providerError.code === "provider_output_truncated" &&
@@ -841,9 +756,8 @@ async function recordProviderFailure<T>(
         job.now(),
       );
     }
+    return undefined;
   });
-  // Committed by now (P12-01, AC-4): the conservative row was kept and nothing else settled.
-  if (keptConservative) traceLateSettle(call, attempt);
 }
 /**
  * V3-04 (P11-02 AC-2): a provider outcome this worker could not commit because its claim was void
@@ -871,9 +785,11 @@ function traceUncommittedResult<T>(
  * The attempt and maximum cost hold are committed before dispatch; an unknown result is not
  * repeated; its attempt stays unresolved and its hold closes at that maximum (P9-05). Every write
  * runs only with the job's authority (ADR-0004 rule 4); a worker whose claim became void commits
- * nothing, leaves a trace (traceUncommittedResult) and stops with `JobLeaseLost`. When another job
- * had meanwhile closed the attempt's hold conservatively, a second, distinct trace says so
- * (traceRefusedAfterConservativeClose, P12-01 AC-4).
+ * nothing, leaves a trace (traceUncommittedResult) and stops with `JobLeaseLost`.
+ *
+ * P12-01 (AC-27): a responder with a valid claim that lost the run's ownership while its call was
+ * in flight commits the accounting of its own attempt once and then stands aside (`runNotOwned`):
+ * no result, checkpoint or callback, no failure of the run, and no further record of the attempt.
  */
 export async function providerStep<T>(
   job: JobContext,
@@ -917,11 +833,8 @@ export async function providerStep<T>(
     }
     return await commitProviderOutput(call, attempt, result, parsed.data, options.onCommit);
   } catch (error) {
-    if (isJobLeaseLost(error)) {
-      traceUncommittedResult(call, attempt, requestId);
-      // Only a valid response reaches the commit; its transaction has rolled back by now.
-      await traceRefusedAfterConservativeClose(call, attempt, requestId, "response");
-    }
+    if (error instanceof ResponseNotOwned) throw runNotOwned(job, error.kind, "response");
+    if (isJobLeaseLost(error)) traceUncommittedResult(call, attempt, requestId);
     if (error instanceof JobCancelled) throw error;
     const providerError =
       error instanceof ProviderError
@@ -930,20 +843,15 @@ export async function providerStep<T>(
           ? new ProviderError("provider_output_commit_failed", false, false, completedAccounting)
           : new ProviderError("provider_outcome_unknown", false, true);
     requestId ??= providerError.accounting?.requestId;
+    let recorded: Awaited<ReturnType<typeof recordProviderFailure>>;
     try {
-      await recordProviderFailure(call, attempt, providerError);
+      recorded = await recordProviderFailure(call, attempt, providerError);
     } catch (recordError) {
-      if (isJobLeaseLost(recordError)) {
-        traceUncommittedResult(call, attempt, requestId);
-        await traceRefusedAfterConservativeClose(
-          call,
-          attempt,
-          requestId,
-          providerError.uncertain ? "unknown" : "failure",
-        );
-      }
+      if (isJobLeaseLost(recordError)) traceUncommittedResult(call, attempt, requestId);
       throw recordError;
     }
+    // Committed by now: only the accounting of the attempt; the caller stands aside (AC-27).
+    if (recorded) throw runNotOwned(job, recorded.notOwned, "response");
     // OPS-02: the provider's code and transport cause only, never its output (PRD-PRIV-06).
     job.log?.("warn", "provider_step_failed", {
       module: "proc",
