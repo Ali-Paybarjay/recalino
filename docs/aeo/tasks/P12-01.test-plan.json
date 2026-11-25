@@ -2,11 +2,11 @@
   "schema_version": "1",
   "task_id": "P12-01",
   "kind": "pass_to_pass",
-  "base_sha": "f35dddbd183cb3fdb14264e7be07a8f5ffed9a23",
   "authored_by": {
     "role": "L1"
   },
-  "commit_sha": "f35dddbd183cb3fdb14264e7be07a8f5ffed9a23",
+  "base_sha": "e10f4593954993b9d69802c1649a57707407c7fb",
+  "commit_sha": "e10f4593954993b9d69802c1649a57707407c7fb",
   "command": {
     "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
@@ -57,34 +57,25 @@
     {
       "id": "TP-1",
       "file": "packages/core/src/proc/steps/runtime.test.ts",
-      "name": "the unit suite is green on head, including the unchanged runtime, maintenance and admin tasks unit tests and the new admin read and spend totals unit tests; the new int tests in proc/cost-reconcile.int.test.ts, the extended proc/ended-job-reconcile.int.test.ts and the unchanged P11-02 int tests (processing, knowledge-repair, lesson-review-service, priv/media) run in CI test:int on the same head. AC-13 is traced to the cost-reconcile.int.test.ts tests for a hold from an earlier day or month (the cost row created_at equals the hold created_at, each cap counts it once, the real close time is recoverable, the meaning of closed_at is stated) and for a reconcile job whose authority is lost (nothing is closed and no row is written). AC-14 is traced, in branch (a), to the cost-reconcile.int.test.ts test for a run whose job_id became null through the real chain of job end, purge and pointer null; in branch (b), to the test or path:line the report names, with no code for that case. Root fix part (P12-01 card AC-15 to AC-25): a pass of TP-1 in the verify attestation covers the unit command only and claims no int run. The new int scenarios run in CI test:int on the same head, which contains the P12-06 auxiliary part from main, and are judged from that run (file, result, no skip) and the diff. They are in the new file packages/core/src/proc/continuation-owner.int.test.ts (written by the implementer, not locked by sha here); the \"aux owner\" names are in packages/core/src/proc/aux-continuation-owner.int.test.ts from P12-06. Each name is one exact, unique string literal in the diff (a test.each row is fine if it holds the full name) and appears exactly in the CI test:int output. Owner constraint 5 of E559, four proofs to stable names (AC-25 of the card writes every name in full; below, K stands for the kind written into the name): atomic ownership transfer: «continuation owner proc.process: zero-row pointer update commits no continuation and no checkpoint», «continuation owner proc.process: zombie with the same id and a stale lease writes nothing», and «aux owner K: zero-row pointer update commits no continuation and no checkpoint», «aux owner K: zombie with the same id and a stale lease writes nothing» for K = proc.capture_transcription and proc.voice_analysis; in-flight attempt: «in-flight K: provider waits, reconcile runs, the response arrives: one accounting and no wrong close» for K = proc.process, proc.capture_transcription and proc.voice_analysis; legacy state: «legacy null pointer proc.process: no takeover, no fail, no new attempt, no close for the ambiguity» and «aux owner K: legacy null pointer is not taken over» for the two auxiliary kinds; final combination: «final combination K: real reconcile keeps the live owner hold open, unownedOpen is 0, then the normal settle closes it» for the three kinds. Owner constraint 2 of E553, the main creator retry test: «continuation owner proc.process: retry after the continuation keeps the pointer» (AC-15, AC-17, AC-18). Also «continuation owner proc.process: J2 to J3 chain keeps the pointer on the live continuation» (AC-15, AC-18), «continuation owner proc.process: valid owner moves the pointer and still fails the run on a real error» (AC-18), and the F-8 guard «attempt guard K: a non-owner starts no provider attempt and closes no live hold» for the three kinds (AC-16, AC-17). Mapping: atomic transfer AC-15; in-flight AC-19; legacy AC-20; final combination AC-21 and AC-22. The added locked int tests (step-authority, capture-transcription, voice-processing) stay unchanged and green in the same CI run (AC-10). AC-23 and AC-24 are judged from the diff and the report",
       "maps_to_criteria": [
-        "AC-1",
-        "AC-2",
-        "AC-3",
-        "AC-4",
-        "AC-5",
-        "AC-6",
-        "AC-7",
-        "AC-8",
-        "AC-9",
         "AC-10",
         "AC-11",
         "AC-12",
-        "AC-13",
-        "AC-14",
         "AC-15",
         "AC-16",
         "AC-17",
         "AC-18",
         "AC-19",
         "AC-20",
-        "AC-21",
-        "AC-22",
-        "AC-23",
         "AC-24",
-        "AC-25"
-      ]
+        "AC-25",
+        "AC-26",
+        "AC-27",
+        "AC-28",
+        "AC-29",
+        "AC-30"
+      ],
+      "name": "The unit suite is green on head, including the unchanged runtime, maintenance and admin tasks unit tests. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run, no reset of the eight paths and no scope. The int scenarios of this part run in CI test:int on the same head, which prints each test name (AC-28), and are judged from that run (file, result, no skip) and from the diff, before the two paid reviews: the AC-25 names and the 17 AC-30 response guard names in packages/core/src/proc/continuation-owner.int.test.ts, each new name one exact, unique string literal in the diff, and the \"aux owner\" names in packages/core/src/proc/aux-continuation-owner.int.test.ts, from P12-06 on base, with the one AC-26 change. The three in-flight tests and the legacy null pointer test run the existing main reconcile and check attempt, hold and cost rows directly, with no part B helper or count (AC-19, AC-20); the three final combination tests are not in this part. The locked int tests (processing, knowledge-repair, lesson-review-service, priv media, step-authority, capture-transcription and voice-processing) stay green in the same CI run (AC-10). The full diff from base e10f459 to the head of this part changes only the five owned files, and the eight AC-29 paths equal base or are absent (AC-11, AC-24, AC-29); this is judged from the diff, not from TP-1. AC-12 is judged from the report."
     }
   ]
 }
