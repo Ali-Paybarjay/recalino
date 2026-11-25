@@ -5,8 +5,8 @@
   "authored_by": {
     "role": "L1"
   },
-  "base_sha": "eeb820e71fc85ce744a127aa19a7cfdc4668d5f9",
-  "commit_sha": "eeb820e71fc85ce744a127aa19a7cfdc4668d5f9",
+  "base_sha": "fc81c5a437e145f113ef0ca49d00d65371a5c91d",
+  "commit_sha": "fc81c5a437e145f113ef0ca49d00d65371a5c91d",
   "command": {
     "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
@@ -31,10 +31,6 @@
     {
       "path": "apps/web/src/server/privacy-composition.int.test.ts",
       "sha256": "4b287674c3db864dd126d68743996823fef3cc4de9aa548cec0f3278895e5372"
-    },
-    {
-      "path": "packages/core/src/priv/org-cleanup.int.test.ts",
-      "sha256": "ad4d5895969bc45c089b906f2344a3c507245cdaba228e835c33f5b336f63a07"
     },
     {
       "path": "packages/core/src/acc/signup.int.test.ts",
@@ -83,6 +79,22 @@
     {
       "path": "apps/web/src/server/auth/deletion-stage.test.ts",
       "sha256": "b9a18b264b085a3e7120d44cc8f153ece1f09a9061e85dabd1ad58b1eb07738c"
+    },
+    {
+      "path": "packages/core/src/acc/acc.test.ts",
+      "sha256": "60a247ad6ebd44d5bb131d5bfe78fe3ae604cb43da63d40d29a759a4d7784775"
+    },
+    {
+      "path": "packages/core/src/acc/jobs.test.ts",
+      "sha256": "8a98c01cfe3f18ed5c4aac926a1d08bf9ff06140bf3f66b64754096fb09a66b0"
+    },
+    {
+      "path": "packages/core/src/acc/profile.int.test.ts",
+      "sha256": "e5a1e37eff45a7642df16259449e81a2eb54c56b8ad2899bd86ebc43a01c7857"
+    },
+    {
+      "path": "packages/core/src/plt/account-orphans.int.test.ts",
+      "sha256": "e63b19dfe48844cbd8e011aea5ae47370c1083d7eb9416f538119009c62cee11"
     }
   ],
   "tests": [
@@ -100,9 +112,12 @@
         "AC-8",
         "AC-9",
         "AC-10",
-        "AC-11"
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14"
       ],
-      "name": "The unit suite is green on head, including the unchanged privacy-journal.test.ts. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run. The int scenarios below run in CI test:int on the same head and are judged from that run and from the diff: each name is one exact, unique string literal in the diff, and the CI test:int output shows packages/core/src/ops/deletion-journal-authority.int.test.ts and apps/web/src/server/auth/deleting-account-sign-in.int.test.ts passing with no skip and test counts that include them (the CI reporter prints only some test names, so a name is not required to appear in the output). Names: «privacy journal: a stale worker after reclaim writes no journal object and moves no pointer» (AC-1, AC-7); «privacy journal: a failing writer never deletes the verified object of another writer» (AC-2, AC-7); «privacy journal: a ready journal always has its encrypted bytes» (AC-2, AC-7); «privacy journal: the API path without a Job keeps its behaviour» (AC-3, AC-7); «privacy cleanup: a stale worker cannot move a completed request to needs_operator» (AC-4, AC-7); «sign-in: an account in deletion is soft-deleted, not hard-deleted, and keeps its cost rows» (AC-5, AC-8); «sign-in: a user with no account is cleaned up exactly as before» (AC-6, AC-8). The locked unit tests (privacy-journal, backup-crypto, auth gateway and auth deletion-stage) stay green in the unit run, and the locked int tests (priv media, backups, backup-native, privacy-composition, org-cleanup, signup, the two cross-account privacy tests, privacy-ack, privacy-voice, priv recovery, priv jobs, auth flow and auth deletion-recovery) stay green in the same CI run (AC-3, AC-9). AC-10 and AC-11 are judged from the diff and the report."
+      "name": "The unit suite is green on head, including the unchanged privacy-journal.test.ts and the locked acc unit tests. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run. The int scenarios below run in CI test:int on the same head and are judged from that run and from the diff: each name is one exact, unique string literal in the diff, and the CI test:int output shows packages/core/src/ops/deletion-journal-authority.int.test.ts, apps/web/src/server/auth/deleting-account-sign-in.int.test.ts and packages/core/src/priv/org-cleanup.int.test.ts passing with no skip and test counts that include them (the CI reporter prints only some test names, so a name is not required to appear in the output). Names: «privacy journal: a stale worker after reclaim writes no journal object and moves no pointer» (AC-1, AC-7); «privacy journal: a failing writer never deletes the verified object of another writer» (AC-2, AC-7); «privacy journal: a ready journal always has its encrypted bytes» (AC-2, AC-7); «privacy journal: the API path without a Job keeps its behaviour» (AC-3, AC-7); «privacy cleanup: a stale worker cannot move a completed request to needs_operator» (AC-4, AC-7); «sign-in: an account in deletion is soft-deleted, not hard-deleted, and keeps its cost rows» (AC-5, AC-8, AC-13 control); «sign-in: a user with no account is cleaned up exactly as before» (AC-6, AC-8, AC-13 control); «privacy cleanup: a Job context without a lease is refused before it writes the journal, the cleanup step or the state» (AC-12, R2-P1209-01); «privacy cleanup: the API path without a Job still records its journal» (AC-12, R2-P1209-01); «privacy cleanup: a valid claim records the journal with its Job and completes the request» (AC-12, R2-P1209-01); «privacy cleanup: a stale claim records no journal, no cleanup step and no state» (AC-12, R2-P1209-01); «sign-in: an active account signs in normally and is never deleted» (AC-13 control, R2-P1209-02); «sign-in: an active account created by a second callback after the first result is never deleted» (AC-13 timing (a), R2-P1209-02); «sign-in: an account created between the final decision and the delete is never deleted by the stale decision» (AC-13 timing (b), R2-P1209-02). In the sign-in test file the cleanup tests (AC-7 (d) and AC-12) and the sign-in tests (AC-8 and AC-13) are in separate describe groups mapped to their ACs. The AC-12 negative test uses a context that truly has no lease and no test-only marker; the stale-claim test includes a positive control with a fresh claim. The two AC-13 timings use real callbacks and real account creation with controlled stops, and check that the account and its rows remain and the result of the second path, not only the deleteUser count. The locked unit tests (privacy-journal, backup-crypto, auth gateway, auth deletion-stage, acc and acc jobs) stay green in the unit run, and the locked int tests (priv media, backups, backup-native, privacy-composition, signup, acc profile, account-orphans, the two cross-account privacy tests, privacy-ack, privacy-voice, priv recovery, priv jobs, auth flow and auth deletion-recovery) stay green in the same CI run (AC-3, AC-9). org-cleanup.int.test.ts is not locked in this plan: only its fixture changes to a real valid lease (AC-14), judged from the diff against the locked copy ad4d5895969bc45c089b906f2344a3c507245cdaba228e835c33f5b336f63a07, with no skip, only or todo and no fewer runs, and its tests pass in the same CI run. AC-10, AC-11 and AC-14 are judged from the diff and the report."
     }
   ]
 }
