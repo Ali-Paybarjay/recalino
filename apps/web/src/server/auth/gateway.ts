@@ -22,12 +22,8 @@ export interface AuthGateway {
   currentUser(): Promise<AuthUser | null>;
   /** Ends the session on the server and clears the cookies. Repeating it has no effect. */
   signOut(): Promise<void>;
-  /**
-   * Removes an Auth user that never became a Recalino account (FR-ACC-001). With `soft`, the
-   * identity of an account in deletion is soft-deleted instead, as the privacy cleanup does, so
-   * the account row and the cost rows that reference it stay (P12-09 AC-5, P12-04 F-4).
-   */
-  deleteUser(id: string, options?: { soft: true }): Promise<void>;
+  /** Removes an Auth user that never became a Recalino account (FR-ACC-001). */
+  deleteUser(id: string): Promise<void>;
 }
 
 export const supabaseAuth: AuthGateway = {
@@ -67,13 +63,7 @@ export const supabaseAuth: AuthGateway = {
     if (error) throw new Error("Sign-out could not complete");
   },
 
-  async deleteUser(id, options) {
-    if (options?.soft === true) {
-      // The same soft deletion as the privacy cleanup (privacy.ts); repeating it is idempotent.
-      const { error } = await createAuthAdmin().deleteUser(id, true);
-      if (error && error.status !== 404) throw new Error("Auth user could not be deleted");
-      return;
-    }
+  async deleteUser(id) {
     const { error } = await createAuthAdmin().deleteUser(id);
     if (error) throw new Error("Auth user could not be deleted");
   },

@@ -15,15 +15,24 @@ import {
 } from "@recalino/core/org";
 import { recordItemFeedback } from "@recalino/core/pers";
 import {
+  type ClaimedJob,
+  claimJobs,
+  completeJob,
   DEFAULT_PLT_SETTINGS,
   DELETED_ACCOUNT_ACTOR,
+  enqueueJob,
   type JobContext,
+  type JobDefinition,
   MemoryObjectStore,
   readOwnedObject,
+  readPltSettings,
   recordAudit,
+  renewJobLease,
+  runJobStep,
 } from "@recalino/core/plt";
 import {
   coordinateSourceDeletion,
+  type DeletionJournalEntry,
   getPrivacyDeletionRequest,
   privacyCleanupJob,
   requestAccountDeletion,
@@ -43,7 +52,7 @@ import {
   verifyUpload,
 } from "@recalino/core/src";
 import { sql } from "kysely";
-import { afterAll, expect, it, vi } from "vitest";
+import { afterAll, expect, it, onTestFinished, vi } from "vitest";
 import { z } from "zod";
 import { testDatabaseUrl } from "../../../../packages/core/test/local-db";
 import { studyFixture, syntheticKnowledge } from "../../../../packages/core/test/study-fixture";
@@ -69,6 +78,54 @@ const unusedJob = {
   payload: z.strictObject({ runId: z.uuid(), userId: z.uuid(), subjectId: z.uuid() }),
   async run() {},
 };
+
+/**
+ * P12-09 AC-14 and AC-16: a real claim of a job of its own queue kind (so no other test's runner
+ * takes it) for exactly this payload; the claim ends when the test finishes.
+ */
+async function claimedJob<P extends Record<string, string>>(
+  definition: JobDefinition<P>,
+  payload: P,
+): Promise<ClaimedJob> {
+  const owner = definition.kind.split(".")[0];
+  const kind = `${owner}.synthetic_${randomUUID().replaceAll("-", "")}`;
+  const jobId = await db
+    .transaction()
+    .execute((tx) =>
+      enqueueJob(
+        tx,
+        { ...definition, kind, options: { ...definition.options, leaseSeconds: 300 } },
+        { payload, now: new Date(), defaults: readPltSettings().jobs },
+      ),
+    );
+  const [claimed] = await claimJobs(db, [kind], 1, new Date());
+  if (!jobId || !claimed || claimed.id !== jobId) throw new Error("Expected the job's claim");
+  const claimedPayload = claimed.payload as Partial<P>;
+  if (Object.entries(payload).some(([key, value]) => claimedPayload[key] !== value))
+    throw new Error("Expected the job's payload");
+  onTestFinished(async () => {
+    await completeJob(db, claimed, new Date());
+  });
+  return claimed;
+}
+
+/** What the runner gives a handler for this claim (runDueJobs builds the same context). */
+function contextOf(claimed: ClaimedJob, now: () => Date = () => new Date()): JobContext {
+  if (claimed.generation === undefined) throw new Error("Expected a lease generation");
+  return {
+    db,
+    now,
+    job: { id: claimed.id, attempt: claimed.attempt },
+    lease: { id: claimed.id, token: claimed.token, generation: claimed.generation },
+    step: (name, effect) => runJobStep(db, claimed, name, effect, now()),
+  };
+}
+
+/** A live runner renews its lease before the next run (ADR-0004 rule 5). */
+async function renewClaim(claimed: ClaimedJob) {
+  if (!(await renewJobLease(db, claimed, new Date())))
+    throw new Error("Expected the job's lease to renew");
+}
 
 async function fixture() {
   const study = await studyFixture(db, { count: 1, autoAdd: true });
@@ -194,17 +251,12 @@ async function fixture() {
     { sessionId: study.session.id, cardIds: [card.id], tags: [], includeMedia: false },
     { key: randomUUID(), settings: exportSettings },
   );
-  const job: JobContext = {
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async (_name, effect) => {
-      await db.transaction().execute(effect);
-      return "ran";
-    },
-  };
-  await htmlExportJob(store).run({ userId: study.ctx.userId, artifactId: html.id }, job);
-  await ankiExportJob(store).run({ userId: study.ctx.userId, artifactId: anki.id }, job);
+  const htmlPayload = { userId: study.ctx.userId, artifactId: html.id };
+  const htmlJob = contextOf(await claimedJob(htmlExportJob(store), htmlPayload));
+  await htmlExportJob(store).run(htmlPayload, htmlJob);
+  const ankiPayload = { userId: study.ctx.userId, artifactId: anki.id };
+  const ankiJob = contextOf(await claimedJob(ankiExportJob(store), ankiPayload));
+  await ankiExportJob(store).run(ankiPayload, ankiJob);
   // D49: a sibling class in the same course froze a memory point from this class.
   const sibling = await createSession(
     db,
@@ -290,7 +342,15 @@ it.each(["source", "session", "account"] as const)(
     );
     const dependencies = privacyDependencies();
     const recordJournal = vi.fn(async () => {});
-    dependencies.deletionJournal = { record: recordJournal };
+    // P12-09 AC-16 (b): the spy still sees the entry alone; the job each call carried is kept apart.
+    const journalJobs: unknown[] = [];
+    const recordEntry = recordJournal as (entry: DeletionJournalEntry) => Promise<void>;
+    dependencies.deletionJournal = {
+      record: async (entry, options) => {
+        journalJobs.push(options?.job);
+        await recordEntry(entry);
+      },
+    };
     const now = new Date();
     const originalGrants = await db
       .selectFrom("quota.ledger")
@@ -358,15 +418,9 @@ it.each(["source", "session", "account"] as const)(
       subjectId: requestId,
     });
     // A direct invocation selects only this receipt. Advance beyond every issued-link grace window.
-    const job: JobContext = {
-      db,
-      now: () => new Date(now.getTime() + 3600000),
-      job: { id: randomUUID(), attempt: 1 },
-      step: async (_name, effect) => {
-        await db.transaction().execute(effect);
-        return "ran";
-      },
-    };
+    const cleanupPayload = { userId: fixtureData.ctx.userId, requestId };
+    const claimed = await claimedJob(privacyCleanupJob(dependencies), cleanupPayload);
+    const job = contextOf(claimed, () => new Date(now.getTime() + 3600000));
     const auditActor = async () =>
       (
         await db
@@ -389,6 +443,7 @@ it.each(["source", "session", "account"] as const)(
         "needs_operator",
       );
       expect(await auditActor()).toBe(DELETED_ACCOUNT_ACTOR);
+      await renewClaim(claimed);
     }
     await privacyCleanupJob(dependencies).run({ userId: fixtureData.ctx.userId, requestId }, job);
     expect((await getPrivacyDeletionRequest(db, fixtureData.ctx, requestId)).state).toBe(
@@ -398,6 +453,7 @@ it.each(["source", "session", "account"] as const)(
       expect.objectContaining({ requestId, kind, userId: fixtureData.ctx.userId }),
     );
     expect(JSON.stringify(recordJournal.mock.calls)).not.toContain("Private synthetic");
+    expect(journalJobs.map((recorded) => recorded === job)).toEqual([true]);
     expect(
       await db
         .selectFrom("priv.cleanup_step")

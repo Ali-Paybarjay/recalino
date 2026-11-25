@@ -15,6 +15,7 @@ import {
   enqueueJob,
   errors,
   hasJobStep,
+  isTestOnlyJobContext,
   type JobContext,
   type JobDefinition,
   type LearnerContext,
@@ -341,15 +342,20 @@ export async function coordinateSourceDeletion(
     sessionIds,
   );
 }
+/** ADR-0004 rule 4: the same rule as PLT storage for a hand-made, test-only context. */
+function markedTestContext(job: JobContext): boolean {
+  return job.lease === undefined && isTestOnlyJobContext(job);
+}
 /**
- * P12-09 AC-4 (P12-03 F-9; ADR-0004 rule 4): a record the cleanup writes is written only with the
- * job's authority, checked first in the write's own transaction. The runner always gives the
- * claim's lease, so a worker whose claim is void writes nothing and gets `JobLeaseLost`. A context
- * made by hand without a lease (a direct call, not a claim) keeps the earlier unchecked write.
+ * P12-09 AC-4 and AC-12 (P12-03 F-9, R2-P1209-01; ADR-0004 rule 4): a record the cleanup writes is
+ * written only with the job's authority, checked first in the write's own transaction. The runner
+ * always gives the claim's lease, so a worker whose claim is void writes nothing and gets
+ * `JobLeaseLost`. A context without a lease is refused too (fail-closed), unless it carries the
+ * test-only mark that PLT storage accepts.
  */
 async function withCleanupAuthority<T>(job: JobContext, write: (tx: Tx) => Promise<T>): Promise<T> {
   return job.db.transaction().execute(async (tx) => {
-    if (job.lease !== undefined) await assertJobAuthority(tx, job.lease);
+    if (!markedTestContext(job)) await assertJobAuthority(tx, job.lease);
     return write(tx);
   });
 }
@@ -363,6 +369,10 @@ export function privacyCleanupJob(
     version: 1,
     payload: payloadSchema,
     async run(payload, job) {
+      // P12-09 AC-12 (R2-P1209-01): the job's authority is checked before anything is read or
+      // written. A context with no lease and no test-only mark gets `JobLeaseLost` here, outside
+      // the catch below, so it writes no journal, cleanup step or state.
+      await withCleanupAuthority(job, async () => {});
       const ctx = { userId: payload.userId, requestId: job.job.id };
       const request = await getPrivacyDeletionRequest(job.db, ctx, payload.requestId);
       if (request.state === "completed") return;
@@ -389,10 +399,9 @@ export function privacyCleanupJob(
             relatedSessions: record.related_sessions,
             requestedAt: request.requestedAt,
           };
-          // P12-09 AC-1: a claim's job goes with the entry, so the journal is written only with
-          // its authority; a hand-made context without a lease records as before.
-          if (job.lease === undefined) await journal.record(entry);
-          else await journal.record(entry, { job });
+          // P12-09 AC-1 and AC-12: the job always goes with the entry, so the journal is written
+          // only with its authority; this path never falls back to the job-less API write.
+          await journal.record(entry, { job });
           await job.step("deletion_journal", async () => {});
         }
         const authentication = dependencies.authentication;
