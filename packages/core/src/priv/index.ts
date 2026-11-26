@@ -3,6 +3,7 @@ export {
   coordinateSourceDeletion,
   type DeletionJournal,
   type DeletionJournalEntry,
+  type DeletionJournalRecordOptions,
   findPrivacyDeletionRequest,
   getPrivacyDeletionRequest,
   type PrivacyDeletionRequest,

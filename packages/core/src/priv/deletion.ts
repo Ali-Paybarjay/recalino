@@ -10,10 +10,13 @@ import {
 import {
   AppError,
   anonymiseAuditActors,
+  assertJobAuthority,
   assertOwner,
   enqueueJob,
   errors,
   hasJobStep,
+  isTestOnlyJobContext,
+  type JobContext,
   type JobDefinition,
   type LearnerContext,
   ownerStorageAccessExpiry,
@@ -56,9 +59,17 @@ export interface DeletionJournalEntry {
   relatedSessions: readonly string[];
   requestedAt: string;
 }
+export interface DeletionJournalRecordOptions {
+  /**
+   * P12-09 AC-1 (P12-03 F-1): the JobContext of the privacy cleanup that records the entry, for
+   * the adapter to pass on to the journal write, which then writes only with that job's authority.
+   * Absent outside a job (the API path).
+   */
+  job?: Pick<JobContext, "lease">;
+}
 export interface DeletionJournal {
   /** External append must be idempotent by requestId; encrypted metadata contains no class text. */
-  record(entry: DeletionJournalEntry): Promise<void>;
+  record(entry: DeletionJournalEntry, options?: DeletionJournalRecordOptions): Promise<void>;
 }
 export interface PrivacyDependencies {
   hooks: readonly PrivacyHook[];
@@ -331,6 +342,23 @@ export async function coordinateSourceDeletion(
     sessionIds,
   );
 }
+/** ADR-0004 rule 4: the same rule as PLT storage for a hand-made, test-only context. */
+function markedTestContext(job: JobContext): boolean {
+  return job.lease === undefined && isTestOnlyJobContext(job);
+}
+/**
+ * P12-09 AC-4 and AC-12 (P12-03 F-9, R2-P1209-01; ADR-0004 rule 4): a record the cleanup writes is
+ * written only with the job's authority, checked first in the write's own transaction. The runner
+ * always gives the claim's lease, so a worker whose claim is void writes nothing and gets
+ * `JobLeaseLost`. A context without a lease is refused too (fail-closed), unless it carries the
+ * test-only mark that PLT storage accepts.
+ */
+async function withCleanupAuthority<T>(job: JobContext, write: (tx: Tx) => Promise<T>): Promise<T> {
+  return job.db.transaction().execute(async (tx) => {
+    if (!markedTestContext(job)) await assertJobAuthority(tx, job.lease);
+    return write(tx);
+  });
+}
 /** Checkpoints keep identifiers and module names. Captured modules must remain registered. */
 export function privacyCleanupJob(
   dependencies: PrivacyDependencies,
@@ -341,6 +369,10 @@ export function privacyCleanupJob(
     version: 1,
     payload: payloadSchema,
     async run(payload, job) {
+      // P12-09 AC-12 (R2-P1209-01): the job's authority is checked before anything is read or
+      // written. A context with no lease and no test-only mark gets `JobLeaseLost` here, outside
+      // the catch below, so it writes no journal, cleanup step or state.
+      await withCleanupAuthority(job, async () => {});
       const ctx = { userId: payload.userId, requestId: job.job.id };
       const request = await getPrivacyDeletionRequest(job.db, ctx, payload.requestId);
       if (request.state === "completed") return;
@@ -359,14 +391,17 @@ export function privacyCleanupJob(
         if (journal && !(await hasJobStep(job.db, job.job.id, "deletion_journal"))) {
           // The adapter commits its own durable registration; do not hold the job transaction
           // while it acquires a connection. An interrupted append is safe to repeat by requestId.
-          await journal.record({
+          const entry: DeletionJournalEntry = {
             requestId: request.id,
             userId: ctx.userId,
             kind: request.kind,
             subjectId: request.subjectId,
             relatedSessions: record.related_sessions,
             requestedAt: request.requestedAt,
-          });
+          };
+          // P12-09 AC-1 and AC-12: the job always goes with the entry, so the journal is written
+          // only with its authority; this path never falls back to the job-less API write.
+          await journal.record(entry, { job });
           await job.step("deletion_journal", async () => {});
         }
         const authentication = dependencies.authentication;
@@ -396,11 +431,13 @@ export function privacyCleanupJob(
               record.related_sessions,
               job.now(),
             );
-          await job.db
-            .insertInto("priv.cleanup_step")
-            .values({ request_id: request.id, module, completed_at: job.now() })
-            .onConflict((oc) => oc.doNothing())
-            .execute();
+          await withCleanupAuthority(job, (tx) =>
+            tx
+              .insertInto("priv.cleanup_step")
+              .values({ request_id: request.id, module, completed_at: job.now() })
+              .onConflict((oc) => oc.doNothing())
+              .execute(),
+          );
         }
         // PRD-DEL-01: finalize ORG even for older requests whose captured registry predates it.
         if (request.kind === "session")
@@ -412,26 +449,33 @@ export function privacyCleanupJob(
         if (request.kind === "account" && authentication) {
           // SEC-07 (D95): the audit trail keeps what happened, not who the deleted account was.
           // The id leaves it with the profile, before the identity; sessions are already revoked.
-          await job.db.transaction().execute(async (tx) => {
+          await withCleanupAuthority(job, async (tx) => {
             await purgeAccountProfile(tx, ctx);
             await anonymiseAuditActors(tx, [ctx.userId]);
           });
           await job.step("delete_auth", async () => authentication.deleteIdentity(ctx.userId));
         }
-        await job.db
-          .updateTable("priv.deletion_request")
-          .set({ state: "completed", completed_at: job.now(), last_error: null })
-          .where("id", "=", request.id)
-          .execute();
+        await withCleanupAuthority(job, (tx) =>
+          tx
+            .updateTable("priv.deletion_request")
+            .set({ state: "completed", completed_at: job.now(), last_error: null })
+            .where("id", "=", request.id)
+            .execute(),
+        );
       } catch (error) {
-        await job.db
-          .updateTable("priv.deletion_request")
-          .set({
-            state: "needs_operator",
-            last_error: error instanceof AppError ? error.code : "cleanup_failed",
-          })
-          .where("id", "=", request.id)
-          .execute();
+        // P12-09 AC-4 (P12-03 F-9): only with the job's authority, and never over a completed
+        // request: a worker whose claim is void gets `JobLeaseLost` here and changes nothing.
+        await withCleanupAuthority(job, (tx) =>
+          tx
+            .updateTable("priv.deletion_request")
+            .set({
+              state: "needs_operator",
+              last_error: error instanceof AppError ? error.code : "cleanup_failed",
+            })
+            .where("id", "=", request.id)
+            .where("state", "!=", "completed")
+            .execute(),
+        );
         throw error;
       }
     },

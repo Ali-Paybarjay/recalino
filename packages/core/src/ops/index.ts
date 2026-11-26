@@ -45,6 +45,8 @@ export { deletionJournalSaved } from "./deletion-journal-state";
 export {
   appendEncryptedDeletionJournal,
   type DeletionJournal,
+  type DeletionJournalAppendOptions,
+  type DeletionJournalJob,
   deletionJournalSchema,
   type JournalEncryption,
   maintainDeletionJournals,
