@@ -40,7 +40,42 @@ import { usesContentKnowledgeContract } from "../knowledge-contract";
 import { knowledgeRepairDetailSchema } from "../knowledge-generation";
 import { knowledgeSchemaFailureSchema } from "../knowledge-generation-step";
 import { ownedRun } from "../runs";
-import type { VoiceDiarizer } from "../voice-processing";
+
+// The voice diarizer's types, moved verbatim from voice-processing.ts, which re-exports them: that
+// module now imports its write boundary from here (P12-01 AC-35), and a type import back from it
+// would make a cycle.
+export interface VoiceDiarization {
+  modelRevision: string;
+  /** A bounded composite covers distributed excerpts rather than the entire selection. */
+  sampled?: boolean;
+  /** Planned excerpts were skipped or decoded short; disclosed apart from planned sampling. */
+  partial?: boolean;
+  segments: {
+    speakerId: string;
+    startMs: number;
+    endMs: number;
+    overlap: boolean;
+    boundaryUnsafe: boolean;
+  }[];
+  speakers: { speakerId: string; embedding: number[]; cleanSpeechMs: number }[];
+  /**
+   * Voiceprints of single clean turns, only when target-speaker turns were requested. They are
+   * scored against the learner's sample when the analysis is saved and never stored.
+   */
+  turns?: { speakerId: string; startMs: number; endMs: number; embedding: number[] }[];
+}
+export interface VoiceDiarizationOptions {
+  /** Excerpt plan of a background check; absent keeps the standard plan. */
+  plan?: { windowMs: number; maxWindows: number };
+  /** Embed clean single turns at least this long (target-speaker turns). */
+  targetTurnMinMs?: number;
+}
+export type VoiceDiarizer = (input: {
+  db: Database;
+  ctx: LearnerContext;
+  source: RunSource;
+  options?: VoiceDiarizationOptions;
+}) => Promise<VoiceDiarization>;
 
 export const audioChunkSchema = z.strictObject({
   id: z.string().min(1).max(100),
@@ -200,7 +235,7 @@ export const RUN_NOT_OWNED_CODE = "run_not_owned";
 function logRunNotOwner(
   job: Partial<Pick<JobContext, "job" | "log">>,
   code: "not_owner" | "continuation_exists" | "pointer_moved",
-  reason: "live_run" | "continue" | "response",
+  reason: "live_run" | "continue" | "response" | "write",
   kind?: string,
 ) {
   job.log?.("warn", "processing_run_not_owner", {
@@ -258,6 +293,102 @@ class ResponseNotOwned extends Error {
   constructor(readonly kind: string | undefined) {
     super("response not owned");
     this.name = "ResponseNotOwned";
+  }
+}
+
+/**
+ * P12-01 (AC-31, AC-32): whether the error is a stand-aside or a cancellation (`JobCancelled`, which
+ * includes `JobLeaseLost` and `RunNotOwned`, or an auxiliary job's RUN_NOT_OWNED_CODE). Such an
+ * error passes every recovery catch untouched: no fallback, no failure mark, no other write.
+ */
+export function isStandAside(error: unknown): boolean {
+  return (
+    error instanceof JobCancelled ||
+    (error instanceof ProviderError && error.code === RUN_NOT_OWNED_CODE)
+  );
+}
+
+/**
+ * The one stand-aside line of a class job's voice write refused by writeAsRunOwner, kept until the
+ * refusal reaches the handler: an acoustic check beside the lesson may be refused after the lesson's
+ * own response already stood aside (and logged), and only waited for (settled) then; so the line is
+ * written only where the refusal itself ends the handler (reportStandAside), once per stop.
+ */
+const pendingStandAside = new WeakMap<object, () => void>();
+/** Writes the pending stand-aside line of a refused voice write, once; any other error: nothing. */
+export function reportStandAside(error: unknown): void {
+  if (typeof error !== "object" || error === null) return;
+  const report = pendingStandAside.get(error);
+  if (!report) return;
+  pendingStandAside.delete(error);
+  report();
+}
+/** Thrown inside writeAsRunOwner's transaction so that it rolls back; never leaves this file. */
+class WriteNotOwned extends Error {
+  constructor(readonly kind: string | undefined) {
+    super("write not owned");
+    this.name = "WriteNotOwned";
+  }
+}
+
+/** The Job authority a voice write runs under (P12-01 AC-35): the job's claim and its log. */
+export type VoiceWriteJob = Pick<JobContext, "lease"> & Partial<Pick<JobContext, "job" | "log">>;
+
+/**
+ * P12-01 (AC-31, AC-32, AC-35): the write boundary of a voice analysis made on a job's behalf (its
+ * save and relink, its failure mark). Building the input that carries `job` runs nothing; the
+ * checks run here, when the write is made, in the transaction that writes, and `effect` gets that
+ * same transaction (voiceTransaction reuses a transaction it is given), so the analysis' insert and
+ * the class relink happen under the same locks. Three cases:
+ * 1. A job with a lease: always the real checks, whatever else the context carries: its claim is
+ *    valid (ADR-0004 rule 4; the job row locked first), then the account lock, then the run row
+ *    locked and its pointer equal to this claim's job. Both conditions are needed: a valid claim of
+ *    a job the run does not name is no ownership, and a run that is missing or whose pointer is
+ *    null is no proven ownership. Lock order job, account, run, as liveRun; the account lock the
+ *    effect takes again is already held.
+ * 2. A job without a lease that carries PLT's existing hand-made test mark (read only through
+ *    isTestOnlyJobContext): the earlier, unchecked write, for the existing tests only. This is a test
+ *    exception, no proof of authority.
+ * 3. No job, or a job with neither a lease nor that mark: refused before any write (`JobLeaseLost`).
+ *    A missing field never means a free API.
+ * A refused claim throws `JobLeaseLost`. A valid claim of a job that does not own the run writes
+ * nothing and stands aside: an auxiliary run's job gets the retryable ProviderError with
+ * RUN_NOT_OWNED_CODE (its handler logs its own line, voice-jobs.ts failOwnedAuxiliaryRun); a class
+ * run's job gets `RunNotOwned`, whose one line is written by reportStandAside.
+ */
+export async function writeAsRunOwner<T>(
+  db: Database,
+  ctx: LearnerContext,
+  runId: string,
+  job: unknown,
+  effect: (db: Database | Tx) => Promise<T>,
+): Promise<T> {
+  const claim =
+    typeof job === "object" && job !== null ? (job as Partial<VoiceWriteJob>) : undefined;
+  if (claim !== undefined && claim.lease === undefined && isTestOnlyJobContext(claim))
+    return effect(db);
+  try {
+    return await db.transaction().execute(async (tx) => {
+      // No job, no lease, a malformed or a void claim: refused here, before any write.
+      await assertJobAuthority(tx, claim?.lease);
+      await lockAccount(tx, ctx.userId);
+      const run = await tx
+        .selectFrom("proc.processing_run")
+        .select(["kind", "job_id"])
+        .where("id", "=", runId)
+        .where("user_id", "=", ctx.userId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!run || run.job_id === null || run.job_id !== claim?.lease?.id)
+        throw new WriteNotOwned(run?.kind);
+      return effect(tx);
+    });
+  } catch (error) {
+    if (!(error instanceof WriteNotOwned)) throw error;
+    if (error.kind === "auxiliary") throw new ProviderError(RUN_NOT_OWNED_CODE, true, false);
+    const refused = new RunNotOwned();
+    pendingStandAside.set(refused, () => logRunNotOwner(claim ?? {}, "not_owner", "write"));
+    throw refused;
   }
 }
 
@@ -601,36 +732,53 @@ async function commitProviderOutput<T>(
       // Reached only with the authority (or PLT's test-only mark). If the run has nonetheless
       // ended, the accounting still persists here and the job then ends.
       await lockAccountForCleanup(tx, ctx.userId);
-      await finishProviderStep(
-        tx,
-        ctx,
-        attempt.hold_id,
-        {
-          operationKey: attempt.operation_key,
-          provider: result.provider,
-          model: result.model,
-          currency: provider.settings.currency,
-          actualMicros: result.actualMicros,
-          estimatedMicros:
-            result.actualMicros === null
-              ? estimatedAttemptCost(call, attempt, result.model, result.usage)
-              : null,
-          priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
-          usage: result.usage,
-          runId,
-          attemptId: attempt.id,
-        },
-        job.now(),
-      );
-      await tx
-        .updateTable("proc.provider_attempt")
-        .set({
-          state: "succeeded",
-          provider_request_id: result.requestId,
-          finished_at: job.now(),
-        })
-        .where("id", "=", attempt.id)
-        .execute();
+      // P12-01 (AC-33): the same attempt's response consumed again at this boundary (a replay)
+      // finds the attempt already resolved by its first commit and accounts nothing twice: no
+      // second settle or cost row, the attempt's record as it was. Locked in the order of
+      // recordProviderFailure (job, account, attempt); a hand-made test context without a lease
+      // keeps the earlier statements.
+      const replayed =
+        job.lease !== undefined &&
+        (
+          await tx
+            .selectFrom("proc.provider_attempt")
+            .select("state")
+            .where("id", "=", attempt.id)
+            .forUpdate()
+            .executeTakeFirstOrThrow()
+        ).state === "succeeded";
+      if (!replayed) {
+        await finishProviderStep(
+          tx,
+          ctx,
+          attempt.hold_id,
+          {
+            operationKey: attempt.operation_key,
+            provider: result.provider,
+            model: result.model,
+            currency: provider.settings.currency,
+            actualMicros: result.actualMicros,
+            estimatedMicros:
+              result.actualMicros === null
+                ? estimatedAttemptCost(call, attempt, result.model, result.usage)
+                : null,
+            priceVersion: attempt.estimate_price_version ?? provider.settings.priceVersion,
+            usage: result.usage,
+            runId,
+            attemptId: attempt.id,
+          },
+          job.now(),
+        );
+        await tx
+          .updateTable("proc.provider_attempt")
+          .set({
+            state: "succeeded",
+            provider_request_id: result.requestId,
+            finished_at: job.now(),
+          })
+          .where("id", "=", attempt.id)
+          .execute();
+      }
       const run = await ownedRun(tx, ctx, runId, true);
       if (!["queued", "processing"].includes(run.state)) return null;
       // P12-01 (AC-27): the accounting above commits; a non-owner's run result does not.

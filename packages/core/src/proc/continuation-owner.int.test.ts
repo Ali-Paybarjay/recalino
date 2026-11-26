@@ -22,7 +22,7 @@ import { sql } from "kysely";
 import { afterAll, expect, it, vi } from "vitest";
 import { createAuthUser } from "../../test/auth-users";
 import { testDatabaseUrl } from "../../test/local-db";
-import { studyFixture } from "../../test/study-fixture";
+import { studyFixture, syntheticKnowledge } from "../../test/study-fixture";
 import {
   acceptDocuments,
   CURRENT_VERSIONS,
@@ -38,7 +38,7 @@ import {
   type StructuredInput,
   type Transcript,
 } from "../aip";
-import { createDatabase } from "../db";
+import { createDatabase, type Database, type Tx } from "../db";
 import type { KnowledgeModel } from "../lkm";
 import { createSession, renewCaptureLease } from "../org";
 import {
@@ -72,10 +72,16 @@ import {
 } from "../src";
 import { enableVoice, VOICE_CONSENT_VERSION } from "../voc";
 import { captureTranscriptionJob, scheduleCaptureTranscription } from "./capture-transcription";
+import { sourceSnapshotSchema } from "./contracts";
 import { reconcileEndedJobRuns } from "./maintenance";
 import { createProcessingRun } from "./runs";
 import { scheduleVoiceReanalysis, voiceAnalysisJob } from "./voice-jobs";
-import { scopedVoiceSpeakerId, type VoiceDiarization } from "./voice-processing";
+import {
+  analyzeVoiceSources,
+  processVoiceSource,
+  scopedVoiceSpeakerId,
+  type VoiceDiarization,
+} from "./voice-processing";
 import { type AudioPreparer, processingJob } from "./worker";
 
 /** Short leases, so a lease really runs out within a test; every job here is enqueued with it. */
@@ -399,9 +405,15 @@ type ClassSubject = Awaited<ReturnType<typeof classSubject>>;
  * read see it. Its lease is renewed while its handler runs, unless `renew` is false.
  */
 async function claimClass(
-  s: ClassSubject,
+  s: { job: JobDefinition<ClassPayload> },
   jobId: string,
-  options: { deadline?: Date; definition?: JobDefinition<ClassPayload>; renew?: boolean } = {},
+  options: {
+    deadline?: Date;
+    definition?: JobDefinition<ClassPayload>;
+    renew?: boolean;
+    /** The database the handler writes through (the AC-33 replay seam); the same one otherwise. */
+    db?: Database;
+  } = {},
 ) {
   const kind = `proc.synthetic_${randomUUID().replaceAll("-", "")}`;
   await db
@@ -415,7 +427,7 @@ async function claimClass(
     throw new Error("Expected a claim of the job");
   const logs: Logged[] = [];
   const context: JobContext = {
-    db,
+    db: options.db ?? db,
     now: () => new Date(),
     job: { id: claim.id, attempt: claim.attempt },
     lease: { id: claim.id, token: claim.token, generation: claim.generation },
@@ -591,12 +603,33 @@ async function expectNoSecondRow(runId: string, userId: string, attemptId: strin
   expect(after.costs.filter((row) => row.attemptId === attemptId)).toHaveLength(1);
 }
 
+/**
+ * Injected state (AC-33): the new owner's own checkpoint of the responder's step, with content no
+ * responder could write (it names the attempt and a fresh marker). Returns that content.
+ */
+async function injectOwnerCheckpoint(runId: string, attempt: Attempt): Promise<unknown> {
+  const content = { newOwnerCheckpoint: randomUUID(), step: attempt.step, attempt: attempt.id };
+  await db
+    .insertInto("proc.run_step")
+    .values({
+      run_id: runId,
+      step: attempt.step,
+      output: JSON.stringify(content),
+      completed_at: new Date(),
+    })
+    .execute();
+  return content;
+}
 /** Injected state: the run's pointer, as a writer the job layer can no longer produce sets it. */
 async function injectPointer(runId: string, to: string | null) {
   await db.updateTable("proc.processing_run").set({ job_id: to }).where("id", "=", runId).execute();
 }
 /** Another job of the same run (an injected owner), due much later, so no runner here takes it. */
-async function anotherClassJob(s: ClassSubject): Promise<string> {
+async function anotherClassJob(s: {
+  job: JobDefinition<ClassPayload>;
+  runId: string;
+  ctx: { userId: string };
+}): Promise<string> {
   const id = await db.transaction().execute((tx) =>
     enqueueJob(tx, s.job, {
       payload: { runId: s.runId, userId: s.ctx.userId },
@@ -913,23 +946,43 @@ it(
 /** The responder's run, with the pointer moved away while its call is in flight. */
 async function classResponseAway(
   to: "another" | "null",
-  options: { contentContract?: boolean; failWith?: (model: string) => ProviderError } = {},
+  options: {
+    contentContract?: boolean;
+    failWith?: (model: string) => ProviderError;
+    /** The handler's database (the AC-33 replay seam). */
+    db?: Database;
+    /** The new owner already has its own, distinct checkpoint of the responder's step (AC-33). */
+    ownerCheckpoint?: boolean;
+    /** Called inside the responder's call, before its ownership goes (AC-33: arms the replay). */
+    onCall?: (runId: string) => void;
+  } = {},
 ) {
   const s = await classSubject({ contentContract: options.contentContract ?? false });
   const j = await pointerOf(s.runId);
-  const responder = await claimClass(s, j);
+  const responder = await claimClass(s, j, options.db ? { db: options.db } : {});
   let moved: Observed | undefined;
   let target: string | null = null;
+  let checkpoint: unknown;
   s.gate.hook = async () => {
+    options.onCall?.(s.runId);
     target = to === "another" ? await anotherClassJob(s) : null;
     // Injected state: the pointer leaves the responder while its own attempt is in flight.
     await injectPointer(s.runId, target);
+    if (options.ownerCheckpoint)
+      checkpoint = await injectOwnerCheckpoint(s.runId, inFlightAttempt(await observe(s.runId)));
     moved = await observe(s.runId);
   };
   if (options.failWith) s.gate.failWith = options.failWith;
   await responder.run();
   if (!moved) throw new Error("Expected the responder's call");
-  return { s, j, responder, moved: moved as Observed, target: target as string | null };
+  return {
+    s,
+    j,
+    responder,
+    moved: moved as Observed,
+    target: target as string | null,
+    checkpoint,
+  };
 }
 /**
  * The responder's own attempt is accounted once (its state `state`, its hold closed, one row at
@@ -986,7 +1039,7 @@ it.each([
 );
 
 it(
-  "response guard proc.process: a repeated response after losing ownership writes no second cost row and nothing to the run",
+  "response guard proc.process: handler redelivery stops at the start guard and writes no second cost row and nothing to the run",
   async () => {
     const r = await classResponseAway("another");
     const { s, j, responder } = r;
@@ -1211,14 +1264,79 @@ async function captureSubject(): Promise<AuxSubject> {
   };
 }
 
-/** A class audio source with speaker-labelled transcript turns and its explicit voice check run. */
-async function voiceSubject(): Promise<AuxSubject> {
-  const x = await studyFixture(db);
-  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+/**
+ * The acoustic check's engine (AC-32, AC-36): each call counts as started, waits for the test's
+ * own step (`hold`, taken once) and counts as finished, then returns the two voices of the
+ * fixture's recording; without `acoustic`, the original is unavailable and the check reads the
+ * transcript labels instead, as before.
+ */
+interface Acoustic {
+  started: number;
+  finished: number;
+  hold?: () => Promise<void>;
+}
+const VOICE_MODEL = "synthetic-owner-voice";
+const voiceAxis = (index: number) => Array.from({ length: 16 }, (_, k) => (k === index ? 1 : 0));
+/** The teacher's turn and the learner's two turns of twoSpeakerTranscript, each fully covered. */
+function twoSpeakerDiarization(): VoiceDiarization {
+  const segment = (speakerId: string, startMs: number, endMs: number) => ({
+    speakerId,
+    startMs,
+    endMs,
+    overlap: false,
+    boundaryUnsafe: false,
+  });
+  return {
+    modelRevision: VOICE_MODEL,
+    segments: [segment("t", 500, 15500), segment("l", 21000, 30000), segment("l", 43000, 52000)],
+    speakers: [
+      { speakerId: "t", cleanSpeechMs: 30000, embedding: voiceAxis(0) },
+      { speakerId: "l", cleanSpeechMs: 24000, embedding: voiceAxis(1) },
+    ],
+  };
+}
+function acousticEngine(acoustic: Acoustic | undefined) {
+  return async (): Promise<VoiceDiarization> => {
+    if (!acoustic) throw new Error("original_audio_unavailable");
+    acoustic.started++;
+    const hold = acoustic.hold;
+    acoustic.hold = undefined;
+    try {
+      await hold?.();
+    } finally {
+      acoustic.finished++;
+    }
+    return twoSpeakerDiarization();
+  };
+}
+/** A live temporary original of the recording (D29), so a check reads "audio" (AC-32, AC-36). */
+async function liveOriginal(ctx: { userId: string; requestId: string }, assetId: string) {
+  const objectId = await writeOwnedObject(db, new MemoryObjectStore(), ctx, {
+    module: "src",
+    retention: "temporary",
+    contentType: "audio/mpeg",
+    bytes: new Uint8Array([0x49, 0x44, 0x33]),
+    now: new Date(),
+  });
+  await db
+    .insertInto("src.audio_upload")
+    .values({
+      user_id: ctx.userId,
+      asset_id: assetId,
+      reservation_id: randomUUID(),
+      object_id: objectId,
+      state: "verified",
+      actual_duration_ms: 60000,
+      expires_at: new Date(Date.now() + 3600_000),
+    })
+    .execute();
+}
+/** A class audio source of two speakers: the teacher once, the learner's same line twice. */
+async function twoSpeakerSource(ctx: { userId: string; requestId: string }, sessionId: string) {
   const asset = await db
     .insertInto("src.asset")
     .values({
-      user_id: x.ctx.userId,
+      user_id: ctx.userId,
       kind: "audio",
       declared_mime: "audio/mpeg",
       verified_mime: "audio/mpeg",
@@ -1237,8 +1355,8 @@ async function voiceSubject(): Promise<AuxSubject> {
   await db
     .insertInto("src.session_source")
     .values({
-      user_id: x.ctx.userId,
-      session_id: x.session.id,
+      user_id: ctx.userId,
+      session_id: sessionId,
       asset_id: asset.id,
       role: "class_audio",
       selected: true,
@@ -1246,7 +1364,7 @@ async function voiceSubject(): Promise<AuxSubject> {
     .execute();
   const speaker = (label: string) => scopedVoiceSpeakerId(asset.id, "fixture", label);
   await db.transaction().execute((tx) =>
-    appendContentVersion(tx, x.ctx, asset.id, {
+    appendContentVersion(tx, ctx, asset.id, {
       schemaVersion: "1",
       provenance: "machine_extraction",
       originKey: `voice-fixture:${asset.id}`,
@@ -1281,12 +1399,47 @@ async function voiceSubject(): Promise<AuxSubject> {
       ],
     }),
   );
+  return asset.id;
+}
+/** Every voice analysis of the class, as a write or a relink could change it. */
+async function voiceRows(sessionId: string) {
+  return db
+    .selectFrom("voc.analysis")
+    .select([
+      "id",
+      "run_id",
+      "status",
+      "reason",
+      "candidate_id",
+      "mistakes",
+      "speaker_links",
+      "model_version",
+      "updated_at",
+    ])
+    .where("session_id", "=", sessionId)
+    .orderBy("id")
+    .execute();
+}
+/** Waits, reading only, until `ready` holds. */
+async function until(ready: () => boolean | Promise<boolean>, what: string): Promise<void> {
+  for (let tries = 0; tries < 300; tries++) {
+    if (await ready()) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`Expected ${what}`);
+}
+
+/** A class audio source with speaker-labelled transcript turns and its explicit voice check run. */
+async function voiceSubject(acoustic?: Acoustic): Promise<AuxSubject> {
+  const x = await studyFixture(db);
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const assetId = await twoSpeakerSource(x.ctx, x.session.id);
+  // With `acoustic`, a live original and the acoustic engine (AC-36); otherwise the source keeps
+  // no original here, so the check reads the transcript labels instead.
+  if (acoustic) await liveOriginal(x.ctx, assetId);
   await allowanceFor(x.ctx.userId, { audio: 2000, document: 100, regeneration: 10 });
   await costPolicy();
-  // The source keeps no original here, so the check reads the transcript labels instead.
-  const diarize = async (): Promise<VoiceDiarization> => {
-    throw new Error("original_audio_unavailable");
-  };
+  const diarize = acousticEngine(acoustic);
   const gate: Gate = { calls: 0 };
   const dependencies = {
     provider: gatedProvider(syntheticSettings("synthetic-owner"), gate),
@@ -1325,6 +1478,8 @@ interface Round {
   loseLease?: boolean;
   /** The handler runs twice under the same claim, a redelivery, before the runner completes it. */
   repeat?: boolean;
+  /** The database the runner and its handler use (the AC-33 replay seam); the same one otherwise. */
+  db?: Database;
 }
 /** One round of the real PLT runner over this subject's jobs only (its target), one job at most. */
 async function round(s: AuxSubject, r: Round) {
@@ -1345,7 +1500,7 @@ async function round(s: AuxSubject, r: Round) {
       }
     },
   };
-  await runDueJobs(db, [wrapped], {
+  await runDueJobs(r.db ?? db, [wrapped], {
     now: () => new Date(clock),
     deadline: new Date(r.at + MINUTE),
     finishBy: new Date(r.at + (r.time ? 30 * MINUTE : 1000)),
@@ -1359,7 +1514,7 @@ async function round(s: AuxSubject, r: Round) {
 
 const auxMakers = {
   "proc.capture_transcription": captureSubject,
-  "proc.voice_analysis": voiceSubject,
+  "proc.voice_analysis": () => voiceSubject(),
 } as const;
 type AuxKind = keyof typeof auxMakers;
 
@@ -1502,17 +1657,31 @@ async function anotherAuxJob(s: AuxSubject): Promise<string> {
   return id;
 }
 /** The owner, really claimed by the runner, starts its attempt; the pointer then moves away. */
-async function auxResponseAway(kind: AuxKind, to: "another" | "null", repeat = false) {
+async function auxResponseAway(
+  kind: AuxKind,
+  to: "another" | "null",
+  repeat = false,
+  options: { db?: Database; ownerCheckpoint?: boolean; onCall?: (runId: string) => void } = {},
+) {
   const { s, base, owner } = await auxOwner(kind);
   let moved: { observed: Observed; effects: unknown } | undefined;
   let target: string | null = null;
+  let checkpoint: unknown;
   s.gate.hook = async () => {
+    options.onCall?.(s.runId);
     target = to === "another" ? await anotherAuxJob(s) : null;
     // Injected state: the pointer leaves the responder while its own attempt is in flight.
     await injectPointer(s.runId, target);
+    if (options.ownerCheckpoint)
+      checkpoint = await injectOwnerCheckpoint(s.runId, inFlightAttempt(await observe(s.runId)));
     moved = { observed: await observe(s.runId), effects: await s.effects() };
   };
-  const paid = await round(s, { at: base + 20 * MINUTE, time: true, repeat });
+  const paid = await round(s, {
+    at: base + 20 * MINUTE,
+    time: true,
+    repeat,
+    ...(options.db ? { db: options.db } : {}),
+  });
   expect(paid.ran).toEqual([owner]);
   if (!moved) throw new Error("Expected the responder's call");
   const { observed, effects } = moved as { observed: Observed; effects: unknown };
@@ -1536,15 +1705,21 @@ async function auxResponseAway(kind: AuxKind, to: "another" | "null", repeat = f
       row.id === owner ? { ...row, state: "succeeded" } : row,
     ),
   });
-  expect(after.steps).not.toContain(attempt.step);
-  expect(await stepOutput(s.runId, attempt.step)).toBeUndefined();
+  if (options.ownerCheckpoint) {
+    // The new owner's distinct checkpoint content, exactly as it was (AC-33).
+    expect(checkpoint).toBeDefined();
+    expect(await stepOutput(s.runId, attempt.step)).toEqual(checkpoint);
+  } else {
+    expect(after.steps).not.toContain(attempt.step);
+    expect(await stepOutput(s.runId, attempt.step)).toBeUndefined();
+  }
   expect(after.state).toBe("processing");
   expect(after.lastError).toBeNull();
   const t = target as string | null;
   if (t) expect(after.job(t)).toEqual(observed.job(t));
   expect(await s.effects()).toEqual(effects);
   expect(s.gate.calls).toBe(1);
-  return { s, owner, paid, after };
+  return { s, owner, paid, after, attempt };
 }
 
 it.each([
@@ -1582,11 +1757,11 @@ it.each([
 
 it.each([
   [
-    "response guard proc.capture_transcription: a repeated response after losing ownership writes no second cost row and nothing to the run",
+    "response guard proc.capture_transcription: handler redelivery stops at the start guard and writes no second cost row and nothing to the run",
     "proc.capture_transcription",
   ],
   [
-    "response guard proc.voice_analysis: a repeated response after losing ownership writes no second cost row and nothing to the run",
+    "response guard proc.voice_analysis: handler redelivery stops at the start guard and writes no second cost row and nothing to the run",
     "proc.voice_analysis",
   ],
 ] as [string, AuxKind][])(
@@ -1676,6 +1851,782 @@ it.each([
     expect(after.state).toBe("processing");
     expect(after.lastError).toBeNull();
     expect(paid.logs.map((line) => line.event)).toContain(NOT_COMMITTED);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The response replay (AC-33, R2-P1201-A-03): the same attempt, operation key and response
+// consumed a second time at the commit boundary, and the new owner's own checkpoint content.
+
+/** The accounting of a run's attempts as a commit could write it: attempts, holds and cost rows. */
+async function accounting(runId: string) {
+  const attempts = await db
+    .selectFrom("proc.provider_attempt")
+    .select(["id", "state", "error_code", "provider_request_id", "finished_at"])
+    .where("run_id", "=", runId)
+    .orderBy("started_at")
+    .execute();
+  const holds = await db
+    .selectFrom("proc.provider_attempt as a")
+    .innerJoin("quota.cost_hold as h", "h.id", "a.hold_id")
+    .select(["h.id as id", "h.closed_at as closedAt"])
+    .where("a.run_id", "=", runId)
+    .orderBy("h.id")
+    .execute();
+  const costs = await db
+    .selectFrom("quota.provider_cost")
+    .selectAll()
+    .where("run_id", "=", runId)
+    .orderBy("operation_key")
+    .execute();
+  return { attempts, holds, costs };
+}
+interface Replay {
+  /** Armed inside the responder's call; the first commit boundary that stands aside disarms it. */
+  armed: boolean;
+  runId?: string;
+  /** The outcomes of the two consumptions of the same closure, in order. */
+  consumed: unknown[];
+  /** The run's accounting between the first consumption and the second. */
+  between?: Awaited<ReturnType<typeof accounting>>;
+}
+/**
+ * The AC-33 seam, on the test side only (no production API is added for it): the job's own
+ * database, except that once armed, the first transaction whose outcome is a responder's
+ * stand-aside at the commit boundary of its response (`{ notOwned }`) is run once more, in a
+ * transaction of its own, with the very same closure: the same attempt, operation key, provider
+ * response and job. Both outcomes are kept, so a test shows the second one reached that boundary.
+ */
+function replayingDatabase(base: Database) {
+  const replay: Replay = { armed: false, consumed: [] };
+  const bound = (target: object, name: string | symbol) => {
+    const value = Reflect.get(target, name, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  };
+  const standsAside = (outcome: unknown) =>
+    typeof outcome === "object" && outcome !== null && "notOwned" in outcome;
+  const proxied = new Proxy(base, {
+    get(target, name) {
+      if (name !== "transaction") return bound(target, name);
+      return () => {
+        const builder = target.transaction();
+        return new Proxy(builder, {
+          get(inner, member) {
+            if (member !== "execute") return bound(inner, member);
+            return async <T>(effect: (tx: Tx) => Promise<T>): Promise<T> => {
+              const first = await inner.execute(effect);
+              if (replay.armed && standsAside(first)) {
+                replay.armed = false;
+                if (replay.runId) replay.between = await accounting(replay.runId);
+                const second = await target.transaction().execute(effect);
+                replay.consumed.push(first, second);
+              }
+              return first;
+            };
+          },
+        });
+      };
+    },
+  });
+  const arm = (runId: string) => {
+    replay.runId = runId;
+    replay.armed = true;
+  };
+  return { db: proxied as Database, replay, arm };
+}
+/**
+ * The replay's positive control and its checks: the boundary was reached twice (two outcomes, the
+ * second the same stand-aside as the first, after its accounting check), and the second wrote no
+ * second cost row and no second accounting: the attempt, its hold and the cost rows as after the
+ * first.
+ */
+async function expectReplayedOnce(replay: Replay, runId: string) {
+  expect(replay.armed).toBe(false);
+  expect(replay.consumed).toHaveLength(2);
+  expect(replay.consumed[0]).toEqual({ notOwned: expect.any(String) });
+  expect(replay.consumed[1]).toEqual(replay.consumed[0]);
+  const after = await accounting(runId);
+  expect(replay.between).toBeDefined();
+  expect(after).toEqual(replay.between);
+  expect(after.costs).toHaveLength(1);
+}
+
+it(
+  "response replay proc.process: the same attempt and response consumed twice at the commit boundary write no second cost row, no second accounting and no effective callback, result or checkpoint, and the boundary is shown to be reached",
+  async () => {
+    const seam = replayingDatabase(db);
+    const r = await classResponseAway("another", {
+      db: seam.db,
+      ownerCheckpoint: true,
+      onCall: seam.arm,
+    });
+    // Once accounted, one stand-aside line, nothing else of the run changed (expectAccountedOnly).
+    const { after } = await expectAccountedOnly(r, "succeeded");
+    await expectReplayedOnce(seam.replay, r.s.runId);
+    // No callback effect (the lesson's input context) and the new owner's checkpoint as it was.
+    expect(after.steps).not.toContain("knowledge:input-context");
+    expect(r.checkpoint).toBeDefined();
+    expect(await stepOutput(r.s.runId, "knowledge")).toEqual(r.checkpoint);
+    expect(await completeJob(db, r.responder.claim, new Date())).toBe(true);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it.each([
+  [
+    "response replay proc.capture_transcription: the same attempt and response consumed twice at the commit boundary write no second cost row, no second accounting and no effective callback, result or checkpoint, and the boundary is shown to be reached",
+    "proc.capture_transcription",
+  ],
+  [
+    "response replay proc.voice_analysis: the same attempt and response consumed twice at the commit boundary write no second cost row, no second accounting and no effective callback, result or checkpoint, and the boundary is shown to be reached",
+    "proc.voice_analysis",
+  ],
+] as [string, AuxKind][])(
+  "%s",
+  async (_name, kind) => {
+    const seam = replayingDatabase(db);
+    // auxResponseAway checks the one accounting, the caller's effects as they were, the run and
+    // the new owner's job as they were, and the new owner's distinct checkpoint content.
+    const { s, owner, paid, after, attempt } = await auxResponseAway(kind, "another", false, {
+      db: seam.db,
+      ownerCheckpoint: true,
+      onCall: seam.arm,
+    });
+    // The accounting check of auxResponseAway covers only this attempt's row; the voice run
+    // also holds the rows of its earlier rounds, so the replay is judged on this attempt.
+    expect(seam.replay.consumed).toHaveLength(2);
+    expect(seam.replay.consumed[0]).toEqual({ notOwned: "auxiliary" });
+    expect(seam.replay.consumed[1]).toEqual(seam.replay.consumed[0]);
+    const now = await accounting(s.runId);
+    expect(now).toEqual(seam.replay.between);
+    expect(now.costs.filter((row) => row.attempt_id === attempt.id)).toHaveLength(1);
+    expect(after.costs.filter((row) => row.attemptId === attempt.id)).toHaveLength(1);
+    expect(paid.standAsides).toEqual([
+      expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+    ]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "response guard proc.process: the distinct existing checkpoint content of the new owner stays unchanged after a non-owner response",
+  async () => {
+    const r = await classResponseAway("another", { ownerCheckpoint: true });
+    const { after } = await expectAccountedOnly(r, "succeeded");
+    expect(r.checkpoint).toBeDefined();
+    expect(await stepOutput(r.s.runId, "knowledge")).toEqual(r.checkpoint);
+    expect(after.steps).not.toContain("knowledge:input-context");
+    expect(await completeJob(db, r.responder.claim, new Date())).toBe(true);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The voice writes of a class run (AC-31, AC-32, AC-35): a class over one recording of two
+// speakers, its job really claimed as above.
+
+/**
+ * A class run over one recording of two speakers, with its acoustic check (AC-31, AC-32).
+ * Extraction is cached as the voice fixtures cache it (the run's own `source:` checkpoints); with
+ * `lessonCached`, the lesson too, so the run goes on to the spoken-mistake correction.
+ */
+async function classVoiceSubject(options: { acoustic?: Acoustic; lessonCached?: boolean }) {
+  const x = await studyFixture(db);
+  await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
+  const assetId = await twoSpeakerSource(x.ctx, x.session.id);
+  await liveOriginal(x.ctx, assetId);
+  await allowanceFor(x.ctx.userId, { audio: 2000, document: 100, regeneration: 100 });
+  await costPolicy();
+  const gate: Gate = { calls: 0 };
+  const provider = gatedProvider(syntheticSettings("synthetic-owner"), gate);
+  const job = processingJob({
+    provider,
+    store: new MemoryObjectStore(),
+    diarizeVoice: acousticEngine(options.acoustic),
+  });
+  const run = await createProcessingRun(
+    db,
+    x.ctx,
+    { sessionId: x.session.id, operationKey: randomUUID() },
+    { provider, job },
+  );
+  runIds.push(run.id);
+  const row = await db
+    .selectFrom("proc.processing_run")
+    .select("input_snapshot")
+    .where("id", "=", run.id)
+    .executeTakeFirstOrThrow();
+  const snapshot = sourceSnapshotSchema.parse(row.input_snapshot);
+  for (const source of snapshot.sources) {
+    if (source.kind === "audio") expect(source.objectId).toBeTruthy();
+    await db
+      .insertInto("proc.run_step")
+      .values({
+        run_id: run.id,
+        step: `source:${source.sourceId}`,
+        output: JSON.stringify(source),
+        completed_at: new Date(),
+      })
+      .execute();
+  }
+  if (options.lessonCached)
+    await db
+      .insertInto("proc.run_step")
+      .values({
+        run_id: run.id,
+        step: "knowledge",
+        output: JSON.stringify({
+          ...syntheticKnowledge(1),
+          sourceClassifications: snapshot.sources.map((source) => ({
+            sourceId: source.sourceId,
+            classification: { role: "class_material", confidence: "high" },
+          })),
+        }),
+        completed_at: new Date(),
+      })
+      .execute();
+  return { ctx: x.ctx, sessionId: x.session.id, runId: run.id, gate, job };
+}
+
+/**
+ * J, the owner, saves the class's analysis (from the transcript labels) and hands the run on to
+ * J2, which then reaches the paid correction of that analysis (AC-31).
+ */
+async function correctionOwner() {
+  const s = await classVoiceSubject({ lessonCached: true });
+  const first = await pointerOf(s.runId);
+  const j = await claimClass(s, first);
+  await j.run();
+  expect(await completeJob(db, j.claim, new Date())).toBe(true);
+  expect(j.standAsides()).toEqual([]);
+  const second = await pointerOf(s.runId);
+  expect(second).not.toBe(first);
+  const saved = await voiceRows(s.sessionId);
+  expect(saved).toHaveLength(1);
+  expect(saved[0]?.run_id).toBe(s.runId);
+  expect(s.gate.calls).toBe(0);
+  return { s, second, saved };
+}
+
+it.each([
+  [
+    "voice correction proc.process: the owner started the class response, then the pointer moved to another job; with a valid lease it accounts once and leaves voc.analysis, callback, checkpoint, run and the new owner's data unchanged",
+    "another",
+  ],
+  [
+    "voice correction proc.process: the owner started the class response, then the pointer became null; with a valid lease it accounts once and leaves voc.analysis, callback, checkpoint, run and the new owner's data unchanged",
+    "null",
+  ],
+] as [string, "another" | "null"][])(
+  "%s",
+  async (_name, to) => {
+    const { s, second, saved } = await correctionOwner();
+    const j2 = await claimClass(s, second);
+    let moved: Observed | undefined;
+    let target: string | null = null;
+    s.gate.hook = async () => {
+      target = to === "another" ? await anotherClassJob(s) : null;
+      // Injected state: the pointer leaves J2 while its own correction call is in flight.
+      await injectPointer(s.runId, target);
+      moved = await observe(s.runId);
+    };
+    await j2.run();
+    if (!moved) throw new Error("Expected J2's correction call");
+    const observed = moved as Observed;
+    const attempt = inFlightAttempt(observed);
+    const after = await observe(s.runId);
+    // The correction's own attempt is accounted once.
+    expect(after.attempts).toEqual([
+      { ...attempt, state: "succeeded", closedAt: expect.any(Date), errorCode: null },
+    ]);
+    expect(after.costs).toEqual([{ attemptId: attempt.id, amount: CALL_MICROS, estimated: null }]);
+    // No voc.analysis change (no saved mistakes from the callback, no failure mark, no relink),
+    // no checkpoint, the run and the new owner's job as they were.
+    expect(await voiceRows(s.sessionId)).toEqual(saved);
+    expect(runFacts(after)).toEqual(runFacts(observed));
+    expect(after.pointer).toBe(target);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    const t = target as string | null;
+    if (t) expect(after.job(t)).toEqual(observed.job(t));
+    expect(s.gate.calls).toBe(1);
+    // One stand-aside line, at the response; no retry or failure of its own.
+    expect(j2.standAsides()).toEqual([
+      expect.objectContaining({ job_id: second, code: "not_owner", reason: "response" }),
+    ]);
+    expect(await completeJob(db, j2.claim, new Date())).toBe(true);
+    expect((await observe(s.runId)).job(second)?.state).toBe("succeeded");
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "voice correction proc.process: a lost lease leaves voc.analysis unchanged and writes no refused cost",
+  async () => {
+    const { s, second, saved } = await correctionOwner();
+    const j2 = await claimClass(s, second, { renew: false });
+    let during: Observed | undefined;
+    s.gate.hook = async () => {
+      during = await observe(s.runId);
+      await loseLease(j2.claim);
+    };
+    await j2.run();
+    if (!during) throw new Error("Expected J2's correction call");
+    const observed = during as Observed;
+    const after = await observe(s.runId);
+    // The refused commit wrote nothing: the attempt started, its hold open, no cost row.
+    expect(after.attempts).toEqual(observed.attempts);
+    expect(after.attempts.map((row) => ({ state: row.state, closedAt: row.closedAt }))).toEqual([
+      { state: "started", closedAt: null },
+    ]);
+    expect(after.costs).toEqual([]);
+    // No failure mark or other voc.analysis write after the refusal.
+    expect(await voiceRows(s.sessionId)).toEqual(saved);
+    expect(after.pointer).toBe(second);
+    expect(after.steps).toEqual(observed.steps);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    expect(j2.logs.map((line) => line.event)).toContain(NOT_COMMITTED);
+    expect(j2.standAsides()).toEqual([]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "voice correction proc.voice_analysis: a lost lease leaves voc.analysis unchanged and writes no refused cost",
+  async () => {
+    const { s, base, owner } = await auxOwner("proc.voice_analysis");
+    const saved = await voiceRows(s.target.subjectId);
+    expect(saved).toHaveLength(1);
+    let during: Observed | undefined;
+    s.gate.hook = async () => {
+      during = await observe(s.runId);
+      await loseLease({ id: owner });
+    };
+    const paid = await round(s, { at: base + 20 * MINUTE, time: true, loseLease: true });
+    expect(paid.ran).toEqual([owner]);
+    if (!during) throw new Error("Expected the correction call");
+    const observed = during as Observed;
+    const attempt = inFlightAttempt(observed);
+    const after = await observe(s.runId);
+    expect(after.attempts).toEqual(observed.attempts);
+    expect(after.attempts.find((row) => row.id === attempt.id)).toMatchObject({
+      state: "started",
+      closedAt: null,
+    });
+    expect(after.costs).toEqual(observed.costs);
+    expect(await voiceRows(s.target.subjectId)).toEqual(saved);
+    expect(after.pointer).toBe(owner);
+    expect(after.steps).toEqual(observed.steps);
+    expect(after.lastError).toBeNull();
+    expect(paid.logs.map((line) => line.event)).toContain(NOT_COMMITTED);
+    // No not-owner line: the claim was void, not the ownership.
+    expect(paid.standAsides.filter((line) => line.code === "not_owner")).toEqual([]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "voice correction proc.process: the valid owner still corrects as today",
+  async () => {
+    const { s, second, saved } = await correctionOwner();
+    const j2 = await claimClass(s, second);
+    await j2.run();
+    expect(await completeJob(db, j2.claim, new Date())).toBe(true);
+    expect(j2.standAsides()).toEqual([]);
+    const after = await observe(s.runId);
+    expect(s.gate.calls).toBe(1);
+    expect(after.attempts.map((row) => row.state)).toEqual(["succeeded"]);
+    expect(after.costs).toHaveLength(1);
+    // Its callback saved the learner's mistake on the same analysis, and the run goes on.
+    const corrected = await voiceRows(s.sessionId);
+    expect(corrected.map((row) => row.id)).toEqual(saved.map((row) => row.id));
+    expect(corrected[0]?.mistakes).not.toEqual(saved[0]?.mistakes);
+    expect(JSON.stringify(corrected[0]?.mistakes)).toContain("I agree with you.");
+    expect(after.lastError).toBeNull();
+    expect(after.pointer).not.toBe(second);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "voice correction proc.process: a real error of the valid owner keeps today's contract",
+  async () => {
+    const { s, second, saved } = await correctionOwner();
+    const j2 = await claimClass(s, second);
+    s.gate.failWith = knownFailure("provider_schema_invalid");
+    await j2.run();
+    expect(await completeJob(db, j2.claim, new Date())).toBe(true);
+    expect(j2.standAsides()).toEqual([]);
+    const after = await observe(s.runId);
+    // The known paid failure is accounted once, and the owner marks its analysis as before.
+    expect(after.attempts.map((row) => ({ state: row.state, errorCode: row.errorCode }))).toEqual([
+      { state: "failed", errorCode: "provider_schema_invalid" },
+    ]);
+    expect(after.costs).toHaveLength(1);
+    const marked = await voiceRows(s.sessionId);
+    expect(marked.map((row) => row.id)).toEqual(saved.map((row) => row.id));
+    expect(saved[0]?.reason ?? "").not.toMatch(/^voice_correction_/);
+    expect(marked[0]?.reason).toMatch(/^voice_correction_/);
+    expect(marked[0]?.mistakes).toEqual(saved[0]?.mistakes);
+    expect(after.lastError).toBeNull();
+    expect(after.state).toBe("processing");
+  },
+  TEST_TIMEOUT_MS,
+);
+
+/**
+ * The class job, the run's owner, with its acoustic check and its lesson call both held (AC-32).
+ * With `to`, the pointer then leaves it; with `invalidLease`, its lease runs out. The lesson's
+ * answer is released first; the acoustic check only after the lesson's response stood aside (or
+ * was refused, or, for the owner, committed). Every part the check started is counted.
+ */
+async function acousticLane(options: { to?: "another" | "null"; invalidLease?: boolean } = {}) {
+  let releaseAcoustic = () => {};
+  let releaseLesson = () => {};
+  let lessonWaiting = false;
+  const acoustic: Acoustic = {
+    started: 0,
+    finished: 0,
+    hold: () =>
+      new Promise<void>((resolve) => {
+        releaseAcoustic = resolve;
+      }),
+  };
+  const s = await classVoiceSubject({ acoustic });
+  const j = await pointerOf(s.runId);
+  const before = await voiceRows(s.sessionId);
+  const owner = await claimClass(s, j, options.invalidLease ? { renew: false } : {});
+  s.gate.hook = () =>
+    new Promise<void>((resolve) => {
+      lessonWaiting = true;
+      releaseLesson = resolve;
+    });
+  const running = owner.run();
+  await until(
+    () => acoustic.started === 1 && lessonWaiting,
+    "the acoustic check and the lesson call both waiting",
+  );
+  let target: string | null = j;
+  if (options.to) {
+    target = options.to === "another" ? await anotherClassJob(s) : null;
+    // Injected state: the pointer leaves the job while both its acoustic check and its call wait.
+    await injectPointer(s.runId, target);
+  }
+  if (options.invalidLease) await loseLease(owner.claim);
+  const moved = await observe(s.runId);
+  releaseLesson();
+  if (options.to)
+    await until(() => owner.standAsides().length > 0, "the lesson response's stand-aside");
+  else if (options.invalidLease)
+    await until(
+      () => owner.logs.some((line) => line.event === NOT_COMMITTED),
+      "the refused lesson response",
+    );
+  else
+    await until(
+      async () => (await observe(s.runId)).attempts.some((row) => row.state === "succeeded"),
+      "the owner's lesson commit",
+    );
+  expect(acoustic.finished).toBe(0);
+  releaseAcoustic();
+  await running;
+  return { s, j, owner, acoustic, before, moved, target };
+}
+
+it.each([
+  [
+    "acoustic lane proc.process: the pointer moves to another job while the acoustic check and the lesson provider wait; after the lesson response stands aside, the released acoustic check writes no voc.analysis, relink, checkpoint or result, the lesson accounting stays and no started work is left running",
+    "another",
+  ],
+  [
+    "acoustic lane proc.process: the pointer becomes null while the acoustic check and the lesson provider wait; after the lesson response stands aside, the released acoustic check writes no voc.analysis, relink, checkpoint or result, the lesson accounting stays and no started work is left running",
+    "null",
+  ],
+] as [string, "another" | "null"][])(
+  "%s",
+  async (_name, to) => {
+    const r = await acousticLane({ to });
+    const after = await observe(r.s.runId);
+    // The lesson's own attempt keeps its accounting: resolved once, one row at the real amount.
+    const attempt = inFlightAttempt(r.moved);
+    expect(attempt.step).toBe("knowledge");
+    expect(after.attempts).toEqual([
+      { ...attempt, state: "succeeded", closedAt: expect.any(Date), errorCode: null },
+    ]);
+    expect(after.costs).toEqual([{ attemptId: attempt.id, amount: CALL_MICROS, estimated: null }]);
+    // The released check wrote no analysis and relinked nothing; no checkpoint or result either.
+    expect(await voiceRows(r.s.sessionId)).toEqual(r.before);
+    expect(runFacts(after)).toEqual(runFacts(r.moved));
+    expect(after.pointer).toBe(r.target);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    if (r.target) expect(after.job(r.target)).toEqual(r.moved.job(r.target));
+    // Every part the check started is done, and the handler's stop says so once.
+    expect(r.acoustic).toMatchObject({ started: 1, finished: 1 });
+    expect(r.owner.standAsides()).toEqual([
+      expect.objectContaining({ job_id: r.j, code: "not_owner", reason: "response" }),
+    ]);
+    expect(await completeJob(db, r.owner.claim, new Date())).toBe(true);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "acoustic lane proc.process: with an invalid lease the released acoustic check writes no voc.analysis and no relink",
+  async () => {
+    const r = await acousticLane({ invalidLease: true });
+    const after = await observe(r.s.runId);
+    expect(await voiceRows(r.s.sessionId)).toEqual(r.before);
+    // The refused lesson commit wrote nothing either: its attempt started, its hold open.
+    expect(after.attempts).toEqual(r.moved.attempts);
+    expect(after.costs).toEqual([]);
+    expect(after.pointer).toBe(r.j);
+    expect(after.steps).toEqual(r.moved.steps);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    expect(r.acoustic).toMatchObject({ started: 1, finished: 1 });
+    expect(r.owner.standAsides()).toEqual([]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "acoustic lane proc.process: the valid owner still saves the acoustic analysis and relinks as today",
+  async () => {
+    const r = await acousticLane();
+    await completeJob(db, r.owner.claim, new Date());
+    expect(r.owner.standAsides()).toEqual([]);
+    expect(r.acoustic).toMatchObject({ started: 1, finished: 1 });
+    const rows = await voiceRows(r.s.sessionId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ run_id: r.s.runId, model_version: VOICE_MODEL });
+    // Relinked as the class's voices: its voices carry their class voice links.
+    expect(Object.keys((rows[0]?.speaker_links ?? {}) as object).length).toBeGreaterThan(0);
+    // The lesson's own call was accounted as the owner's.
+    const after = await observe(r.s.runId);
+    expect(after.attempts[0]).toMatchObject({ step: "knowledge", state: "succeeded" });
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The voice check job's two writing calls (AC-36): voice-jobs.ts analyzeVoiceSources (the check of
+// every part) and processVoiceSource (the correction of a saved analysis), through the real PLT
+// runner, with the acoustic engine and a live original.
+
+/** :426-type path: the pointer leaves the job while the acoustic check of a part runs. */
+async function voiceJobAwayAtCheck(to: "another" | "null") {
+  const acoustic: Acoustic = { started: 0, finished: 0 };
+  const s = await voiceSubject(acoustic);
+  const sessionId = s.target.subjectId;
+  const owner = await pointerOf(s.runId);
+  let target: string | null = null;
+  let moved: Observed | undefined;
+  acoustic.hold = async () => {
+    target = to === "another" ? await anotherAuxJob(s) : null;
+    // Injected state: the pointer leaves the job while its check of a part runs.
+    await injectPointer(s.runId, target);
+    moved = await observe(s.runId);
+  };
+  const before = await voiceRows(sessionId);
+  const first = await round(s, { at: Date.now() + 10 * MINUTE, time: true });
+  expect(first.ran).toEqual([owner]);
+  if (!moved) throw new Error("Expected the check of a part");
+  const observed = moved as Observed;
+  expect(acoustic).toMatchObject({ started: 1, finished: 1 });
+  const after = await observe(s.runId);
+  expect(await voiceRows(sessionId)).toEqual(before);
+  expect(after.pointer).toBe(target);
+  expect(runFacts(after)).toEqual({
+    ...runFacts(observed),
+    jobs: runFacts(observed).jobs.map((row) =>
+      row.id === owner ? { ...row, state: "succeeded" } : row,
+    ),
+  });
+  expect(after.attempts).toEqual([]);
+  expect(after.state).toBe("processing");
+  expect(after.lastError).toBeNull();
+  const t = target as string | null;
+  if (t) expect(after.job(t)).toEqual(observed.job(t));
+  expect(first.standAsides).toEqual([
+    expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+  ]);
+}
+/** :440-type path: the owner saved the analysis; the pointer leaves its correction's job. */
+async function voiceJobAwayAtCorrection(to: "another" | "null") {
+  const s = await voiceSubject({ started: 0, finished: 0 });
+  const sessionId = s.target.subjectId;
+  const base = Date.now();
+  const first = await round(s, { at: base + 10 * MINUTE, time: true });
+  expect(first.standAsides).toEqual([]);
+  const owner = await pointerOf(s.runId);
+  const saved = await voiceRows(sessionId);
+  expect(saved).toHaveLength(1);
+  let target: string | null = null;
+  let moved: Observed | undefined;
+  s.gate.hook = async () => {
+    target = to === "another" ? await anotherAuxJob(s) : null;
+    // Injected state: the pointer leaves the job while its correction call is in flight.
+    await injectPointer(s.runId, target);
+    moved = await observe(s.runId);
+  };
+  const paid = await round(s, { at: base + 20 * MINUTE, time: true });
+  expect(paid.ran).toEqual([owner]);
+  if (!moved) throw new Error("Expected the correction call");
+  const observed = moved as Observed;
+  const attempt = inFlightAttempt(observed);
+  const after = await observe(s.runId);
+  expect(after.costs.filter((row) => row.attemptId === attempt.id)).toEqual([
+    { attemptId: attempt.id, amount: CALL_MICROS, estimated: null },
+  ]);
+  // No saved mistakes, no failure mark, no relink.
+  expect(await voiceRows(sessionId)).toEqual(saved);
+  expect(after.pointer).toBe(target);
+  expect(runFacts(after)).toEqual({
+    ...runFacts(observed),
+    jobs: runFacts(observed).jobs.map((row) =>
+      row.id === owner ? { ...row, state: "succeeded" } : row,
+    ),
+  });
+  expect(after.lastError).toBeNull();
+  expect(paid.standAsides).toEqual([
+    expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+  ]);
+}
+
+it(
+  "voice analysis job proc.voice_analysis: with a real claim the valid owner still saves the voice analysis and relinks as today",
+  async () => {
+    const acoustic: Acoustic = { started: 0, finished: 0 };
+    const s = await voiceSubject(acoustic);
+    const sessionId = s.target.subjectId;
+    const base = Date.now();
+    const owner = await pointerOf(s.runId);
+    // The check of every part (voice-jobs.ts analyzeVoiceSources) saves and relinks as the owner.
+    const first = await round(s, { at: base + 10 * MINUTE, time: true });
+    expect(first.ran).toEqual([owner]);
+    expect(first.standAsides).toEqual([]);
+    expect(acoustic).toMatchObject({ started: 1, finished: 1 });
+    const saved = await voiceRows(sessionId);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({ run_id: s.runId, model_version: VOICE_MODEL });
+    expect(Object.keys((saved[0]?.speaker_links ?? {}) as object).length).toBeGreaterThan(0);
+    const second = await pointerOf(s.runId);
+    expect(second).not.toBe(owner);
+    // The correction of the saved analysis (voice-jobs.ts processVoiceSource), as the owner.
+    const paid = await round(s, { at: base + 20 * MINUTE, time: true });
+    expect(paid.ran).toEqual([second]);
+    expect(paid.standAsides).toEqual([]);
+    expect(s.gate.calls).toBe(1);
+    const corrected = await voiceRows(sessionId);
+    expect(corrected.map((row) => row.id)).toEqual(saved.map((row) => row.id));
+    expect(JSON.stringify(corrected[0]?.mistakes)).toContain("I agree with you.");
+    const after = await observe(s.runId);
+    expect(after.attempts.map((row) => row.state)).toEqual(["succeeded"]);
+    expect(after.costs).toHaveLength(1);
+    expect(after.lastError).toBeNull();
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it.each([
+  [
+    "voice analysis job proc.voice_analysis: after the pointer moves to another job a real claim writes no voc.analysis and no relink",
+    "another",
+  ],
+  [
+    "voice analysis job proc.voice_analysis: after the pointer becomes null a real claim writes no voc.analysis and no relink",
+    "null",
+  ],
+] as [string, "another" | "null"][])(
+  "%s",
+  async (_name, to) => {
+    // Both writing calls of the job, each on a run of its own.
+    await voiceJobAwayAtCheck(to);
+    await voiceJobAwayAtCorrection(to);
+  },
+  2 * TEST_TIMEOUT_MS,
+);
+
+it(
+  "voice analysis job proc.voice_analysis: an invalid lease writes no voc.analysis and no relink",
+  async () => {
+    const acoustic: Acoustic = { started: 0, finished: 0 };
+    const s = await voiceSubject(acoustic);
+    const sessionId = s.target.subjectId;
+    const owner = await pointerOf(s.runId);
+    // The job's lease runs out while its check of a part runs.
+    acoustic.hold = () => loseLease({ id: owner });
+    const before = await voiceRows(sessionId);
+    const observedBefore = await observe(s.runId);
+    const first = await round(s, { at: Date.now() + 10 * MINUTE, time: true, loseLease: true });
+    expect(first.ran).toEqual([owner]);
+    expect(acoustic).toMatchObject({ started: 1, finished: 1 });
+    expect(await voiceRows(sessionId)).toEqual(before);
+    const after = await observe(s.runId);
+    expect(after.pointer).toBe(owner);
+    expect(after.steps).toEqual(observedBefore.steps);
+    expect(after.attempts).toEqual([]);
+    expect(after.state).toBe("processing");
+    expect(after.lastError).toBeNull();
+    expect(first.standAsides.filter((line) => line.code === "not_owner")).toEqual([]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "voice write boundary: an input without Job authority, or with neither a lease nor the existing marker, is refused before any voc.analysis write",
+  async () => {
+    const s = await voiceSubject({ started: 0, finished: 0 });
+    const sessionId = s.target.subjectId;
+    const ctx = { userId: s.userId, requestId: randomUUID() };
+    const pointer = await pointerOf(s.runId);
+    const row = await db
+      .selectFrom("proc.processing_run")
+      .select("input_snapshot")
+      .where("id", "=", s.runId)
+      .executeTakeFirstOrThrow();
+    const sources = sourceSnapshotSchema
+      .parse((row.input_snapshot as { request: unknown }).request)
+      .sources.filter((source) => source.kind === "audio")
+      .map((source) => ({ ...source, objectId: source.objectId ?? randomUUID() }));
+    const source = sources[0];
+    if (!source) throw new Error("Expected the recording");
+    // The engine counts each preparation, so the refusal is shown to come at the write itself.
+    const engine: Acoustic = { started: 0, finished: 0 };
+    const diarize = acousticEngine(engine);
+    // A context made by hand: the run's job id, but no lease and no marker.
+    const handMade = {
+      db,
+      now: () => new Date(),
+      job: { id: pointer, attempt: 1 },
+    } as unknown as JobContext;
+    const common = { db, ctx, sessionId, runId: s.runId, diarize, now: () => new Date() };
+    await expect(
+      processVoiceSource({
+        ...common,
+        job: undefined as unknown as JobContext,
+        source,
+        correct: async () => false,
+      }),
+    ).rejects.toMatchObject({ name: "JobLeaseLost" });
+    await expect(
+      processVoiceSource({ ...common, job: handMade, source, correct: async () => false }),
+    ).rejects.toMatchObject({ name: "JobLeaseLost" });
+    await expect(
+      analyzeVoiceSources({
+        ...common,
+        job: handMade,
+        sources,
+        concurrency: 1,
+        canStart: () => true,
+      }),
+    ).rejects.toMatchObject({ name: "JobLeaseLost" });
+    expect(engine).toMatchObject({ started: 3, finished: 3 });
+    expect(await voiceRows(sessionId)).toEqual([]);
+    expect(await pointerOf(s.runId)).toBe(pointer);
   },
   TEST_TIMEOUT_MS,
 );

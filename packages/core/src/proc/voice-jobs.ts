@@ -423,9 +423,12 @@ export function voiceAnalysisJob(
         const voiceSettings = readVoiceSettings();
         // A background check: its parts are diarized together, and it may cover more audio.
         const options = voiceDiarizationOptions(voiceSettings, true);
+        // P12-01 (AC-35): each voice write of both calls only as the run's owner, checked when it
+        // is made; a refused one ends here through failOwnedAuxiliaryRun's stand-aside.
         const analyzed = await analyzeVoiceSources({
           db: job.db,
           ctx,
+          job,
           sessionId: run.session_id,
           runId: run.id,
           sources: snapshot.sources,
@@ -440,6 +443,7 @@ export function voiceAnalysisJob(
           const progress = await processVoiceSource({
             db: job.db,
             ctx,
+            job,
             runId: run.id,
             sessionId: run.session_id,
             source,

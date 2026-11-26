@@ -24,39 +24,18 @@ import {
   voiceCoverageReason,
 } from "../voc";
 import type { RunSource } from "./contracts";
+import {
+  isStandAside,
+  type VoiceDiarization,
+  type VoiceDiarizationOptions,
+  type VoiceDiarizer,
+  type VoiceWriteJob,
+  writeAsRunOwner,
+} from "./steps/runtime";
 
-export interface VoiceDiarization {
-  modelRevision: string;
-  /** A bounded composite covers distributed excerpts rather than the entire selection. */
-  sampled?: boolean;
-  /** Planned excerpts were skipped or decoded short; disclosed apart from planned sampling. */
-  partial?: boolean;
-  segments: {
-    speakerId: string;
-    startMs: number;
-    endMs: number;
-    overlap: boolean;
-    boundaryUnsafe: boolean;
-  }[];
-  speakers: { speakerId: string; embedding: number[]; cleanSpeechMs: number }[];
-  /**
-   * Voiceprints of single clean turns, only when target-speaker turns were requested. They are
-   * scored against the learner's sample when the analysis is saved and never stored.
-   */
-  turns?: { speakerId: string; startMs: number; endMs: number; embedding: number[] }[];
-}
-export interface VoiceDiarizationOptions {
-  /** Excerpt plan of a background check; absent keeps the standard plan. */
-  plan?: { windowMs: number; maxWindows: number };
-  /** Embed clean single turns at least this long (target-speaker turns). */
-  targetTurnMinMs?: number;
-}
-export type VoiceDiarizer = (input: {
-  db: Database;
-  ctx: LearnerContext;
-  source: RunSource;
-  options?: VoiceDiarizationOptions;
-}) => Promise<VoiceDiarization>;
+// The diarizer's types are defined beside the run-step primitives that use them (steps/runtime.ts),
+// so the voice write boundary is imported from there without a cycle (P12-01 AC-35); unchanged.
+export type { VoiceDiarization, VoiceDiarizationOptions, VoiceDiarizer };
 
 /** Provider labels belong to exactly one audio job, never to a person globally. */
 export function scopedVoiceSpeakerId(sourceId: string, namespace: string, label: string): string {
@@ -533,9 +512,19 @@ export async function voiceAnalysisPending(
       return true;
   return false;
 }
+/**
+ * P12-01 (AC-31, AC-32, AC-35): every write here (the analysis' save and class relink, a
+ * correction's failure mark) passes the write boundary writeAsRunOwner with `job`, the Job the
+ * check runs for; it is required and is checked when the write is made, so a missing or broken
+ * one is refused rather than written unchecked. A stand-aside or cancellation (isStandAside) passes
+ * every recovery catch below before any fallback, read or mark; the owner's real errors keep their
+ * contract.
+ */
 export async function processVoiceSource(input: {
   db: Database;
   ctx: LearnerContext;
+  /** The Job authority of every write (AC-35); never optional on a job's path. */
+  job: VoiceWriteJob;
   sessionId: string;
   runId: string;
   source: RunSource;
@@ -547,6 +536,8 @@ export async function processVoiceSource(input: {
   now: () => Date;
 }): Promise<"unchanged" | "analyzed" | "corrected"> {
   if (input.source.kind !== "audio" || !input.source.contentVersionId) return "unchanged";
+  const write = <T>(effect: (db: Database | Tx) => Promise<T>) =>
+    writeAsRunOwner(input.db, input.ctx, input.runId, input.job, effect);
   const enrollment = await getVoiceEnrollment(input.db, input.ctx);
   if (!enrollment.enabled) return "unchanged";
   const key = {
@@ -583,8 +574,9 @@ export async function processVoiceSource(input: {
         prepared.reason = voicePreparationFailure(error, input.source);
     }
     try {
-      await saveVoiceAnalysis(input.db, input.ctx, prepared, input.now());
+      await write((db) => saveVoiceAnalysis(db, input.ctx, prepared, input.now()));
     } catch (error) {
+      if (isStandAside(error)) throw error;
       const current = await getVoiceEnrollment(input.db, input.ctx);
       if (!current.enabled || current.version !== enrollment.version) return "unchanged";
       throw error;
@@ -601,15 +593,20 @@ export async function processVoiceSource(input: {
   try {
     if (!(await input.correct(analysis))) return "unchanged";
   } catch (failure) {
+    // AC-31: a stand-aside or cancellation (RunNotOwned, JobLeaseLost) is passed on before any
+    // read or mark; it is not a failure of the correction.
+    if (isStandAside(failure)) throw failure;
     if (failure instanceof ProviderError && (failure.uncertain || failure.retryable)) throw failure;
     const current = await getVoiceEnrollment(input.db, input.ctx);
     if (!current.enabled || current.version !== enrollment.version) return "unchanged";
-    await markVoiceAnalysisFailure(
-      input.db,
-      input.ctx,
-      analysis.id,
-      voiceCorrectionFailure(failure),
-      input.now(),
+    await write((db) =>
+      markVoiceAnalysisFailure(
+        db,
+        input.ctx,
+        analysis.id,
+        voiceCorrectionFailure(failure),
+        input.now(),
+      ),
     );
   }
   return "corrected";
@@ -731,6 +728,8 @@ export function voiceDiarizationOptions(
 export async function analyzeVoiceSources(input: {
   db: Database;
   ctx: LearnerContext;
+  /** The Job authority of every write, passed on to processVoiceSource (AC-35). */
+  job: VoiceWriteJob;
   sessionId: string;
   runId: string;
   sources: readonly RunSource[];
@@ -758,6 +757,7 @@ export async function analyzeVoiceSources(input: {
         const progress = await processVoiceSource({
           db: input.db,
           ctx: input.ctx,
+          job: input.job,
           sessionId: input.sessionId,
           runId: input.runId,
           source,
