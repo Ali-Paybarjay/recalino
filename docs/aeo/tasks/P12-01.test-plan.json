@@ -5,8 +5,8 @@
   "authored_by": {
     "role": "L1"
   },
-  "base_sha": "e10f4593954993b9d69802c1649a57707407c7fb",
-  "commit_sha": "e10f4593954993b9d69802c1649a57707407c7fb",
+  "base_sha": "8e688083d7257055325f33b52a200f009857a048",
+  "commit_sha": "8e688083d7257055325f33b52a200f009857a048",
   "command": {
     "argv": ["pnpm", "test:unit"],
     "timeout_seconds": 1200
@@ -73,9 +73,17 @@
         "AC-27",
         "AC-28",
         "AC-29",
-        "AC-30"
+        "AC-30",
+        "AC-31",
+        "AC-32",
+        "AC-33",
+        "AC-34",
+        "AC-35",
+        "AC-36",
+        "AC-37",
+        "AC-38"
       ],
-      "name": "The unit suite is green on head, including the unchanged runtime, maintenance and admin tasks unit tests. A pass of TP-1 in the verify attestation covers the unit command only and claims no int run, no reset of the eight paths and no scope. The int scenarios of this part run in CI test:int on the same head, which prints each test name (AC-28), and are judged from that run (file, result, no skip) and from the diff, before the two paid reviews: the AC-25 names and the 17 AC-30 response guard names in packages/core/src/proc/continuation-owner.int.test.ts, each new name one exact, unique string literal in the diff, and the \"aux owner\" names in packages/core/src/proc/aux-continuation-owner.int.test.ts, from P12-06 on base, with the one AC-26 change. The three in-flight tests and the legacy null pointer test run the existing main reconcile and check attempt, hold and cost rows directly, with no part B helper or count (AC-19, AC-20); the three final combination tests are not in this part. The locked int tests (processing, knowledge-repair, lesson-review-service, priv media, step-authority, capture-transcription and voice-processing) stay green in the same CI run (AC-10). The full diff from base e10f459 to the head of this part changes only the five owned files, and the eight AC-29 paths equal base or are absent (AC-11, AC-24, AC-29); this is judged from the diff, not from TP-1. AC-12 is judged from the report."
+      "name": "The unit suite is green on head, including the unchanged runtime, maintenance and admin tasks unit tests and the unchanged static marker test tools/test/test-only-job-context-marker.test.ts (AC-35). A pass of TP-1 in the verify attestation covers the unit command only and claims no int run, no reset of the eight paths and no scope. The int scenarios of this part run in CI test:int on the same head, which prints each test name (AC-28), and are judged from that run (file, result, no skip) and from the diff, before the two paid reviews: the AC-25 names, the 17 AC-30 response guard names (three of them now say that handler redelivery stops at the start guard; AC-33 is the response replay evidence) and the AC-31 voice correction, AC-32 acoustic lane, AC-33 response replay and AC-36 voice analysis job names in packages/core/src/proc/continuation-owner.int.test.ts, all new ones with a real claim and no test-only marker, each new name one exact, unique string literal in the diff, and the \"aux owner\" names in packages/core/src/proc/aux-continuation-owner.int.test.ts, from P12-06 on base, with the one AC-26 change. The three in-flight tests and the legacy null pointer test run the existing main reconcile and check attempt, hold and cost rows directly, with no part B helper or count (AC-19, AC-20); the three final combination tests are not in this part. The locked int tests (processing, knowledge-repair, lesson-review-service, priv media, step-authority, capture-transcription and voice-processing) stay green in the same CI run (AC-10). The full diff from the PR base (the main of the card PR) to the head of this part changes only the owned files of the card, and the eight AC-29 paths equal their blobs at e10f459 or are absent (AC-11, AC-24, AC-29); this is judged from the diff, not from TP-1. packages/core/src/proc/voice-class-parts.int.test.ts is not locked in this plan: its diff against the frozen copy cb0e5a426b36a4e836e755c420b66490f97208b55cee0b24d1901bc6e4e21dc1 is judged with AC-37 and AC-38, the call at :602 stays unchanged, and the file runs in the same CI test:int. AC-35 to AC-38 are judged from the diff and the report; AC-12 and AC-34 from the report."
     }
   ]
 }
