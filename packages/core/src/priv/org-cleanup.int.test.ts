@@ -1,11 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
-import { afterAll, expect, it, vi } from "vitest";
+import { afterAll, expect, it, onTestFinished, vi } from "vitest";
 import { testDatabaseUrl } from "../../test/local-db";
 import { studyFixture } from "../../test/study-fixture";
 import { createDatabase } from "../db";
 import { getSession, updateSession } from "../org";
-import type { JobContext } from "../plt";
+import {
+  type ClaimedJob,
+  claimJobs,
+  completeJob,
+  enqueueJob,
+  type JobContext,
+  readPltSettings,
+  renewJobLease,
+  runJobStep,
+} from "../plt";
 import {
   getPrivacyDeletionRequest,
   type PrivacyDependencies,
@@ -15,6 +24,54 @@ import {
 
 const db = createDatabase(testDatabaseUrl(), { maxConnections: 3 });
 afterAll(() => db.destroy());
+
+/**
+ * P12-09 AC-14: a real claim of a job of its own queue kind for this receipt, so the handler runs
+ * with a valid lease from the job layer; the claim ends when the test finishes.
+ */
+async function claimedCleanup(
+  dependencies: PrivacyDependencies,
+  payload: { userId: string; requestId: string },
+): Promise<ClaimedJob> {
+  const kind = `priv.synthetic_${randomUUID().replaceAll("-", "")}`;
+  const jobId = await db
+    .transaction()
+    .execute((tx) =>
+      enqueueJob(
+        tx,
+        { ...privacyCleanupJob(dependencies), kind, options: { leaseSeconds: 300 } },
+        { payload, now: new Date(), defaults: readPltSettings().jobs },
+      ),
+    );
+  const [claimed] = await claimJobs(db, [kind], 1, new Date());
+  if (!jobId || !claimed || claimed.id !== jobId)
+    throw new Error("Expected the cleanup job's claim");
+  const claimedPayload = claimed.payload as Partial<typeof payload>;
+  if (claimedPayload.userId !== payload.userId || claimedPayload.requestId !== payload.requestId)
+    throw new Error("Expected the cleanup job's payload");
+  onTestFinished(async () => {
+    await completeJob(db, claimed, new Date());
+  });
+  return claimed;
+}
+
+/** What the runner gives a handler for this claim (runDueJobs builds the same context). */
+function contextOf(claimed: ClaimedJob): JobContext {
+  if (claimed.generation === undefined) throw new Error("Expected a lease generation");
+  return {
+    db,
+    now: () => new Date(),
+    job: { id: claimed.id, attempt: claimed.attempt },
+    lease: { id: claimed.id, token: claimed.token, generation: claimed.generation },
+    step: (name, effect) => runJobStep(db, claimed, name, effect, new Date()),
+  };
+}
+
+/** A live runner renews its lease before the next run (ADR-0004 rule 5). */
+async function renewClaim(claimed: ClaimedJob) {
+  if (!(await renewJobLease(db, claimed, new Date())))
+    throw new Error("Expected the cleanup job's lease to renew");
+}
 
 it("PRD-DEL-01 and FR-PLT-002: the ORG finalizer retries an older registry without erasing another owner", async () => {
   const own = await studyFixture(db, { count: 0 });
@@ -45,15 +102,11 @@ it("PRD-DEL-01 and FR-PLT-002: the ORG finalizer retries an older registry witho
     randomUUID(),
     dependencies,
   );
-  const job: JobContext = {
-    db,
-    now: () => new Date(),
-    job: { id: randomUUID(), attempt: 1 },
-    step: async (_name, effect) => {
-      await db.transaction().execute(effect);
-      return "ran";
-    },
-  };
+  const claimed = await claimedCleanup(dependencies, {
+    userId: own.ctx.userId,
+    requestId: receipt.id,
+  });
+  const job = contextOf(claimed);
   // Simulate inconsistent stored receipt metadata, never an allowed learner mutation.
   await db
     .updateTable("priv.deletion_request")
@@ -81,6 +134,7 @@ it("PRD-DEL-01 and FR-PLT-002: the ORG finalizer retries an older registry witho
     .set({ subject_id: own.session.id })
     .where("id", "=", receipt.id)
     .execute();
+  await renewClaim(claimed);
   await privacyCleanupJob(dependencies).run({ userId: own.ctx.userId, requestId: receipt.id }, job);
   expect(cleanup).toHaveBeenCalledTimes(1);
   expect((await getPrivacyDeletionRequest(db, own.ctx, receipt.id)).state).toBe("completed");
