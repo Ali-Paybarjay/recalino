@@ -26,7 +26,7 @@ import {
 } from "./auxiliary";
 import { sourceSnapshotSchema } from "./contracts";
 import { ownedRun, selectProcessingSourceSnapshot } from "./runs";
-import { assertWriteAuthority, isJobLeaseLost } from "./steps/runtime";
+import { assertWriteAuthority, isJobLeaseLost, isRefusedAuxiliaryWrite } from "./steps/runtime";
 import {
   analyzeVoiceSources,
   correctVoiceCandidates,
@@ -423,9 +423,12 @@ export function voiceAnalysisJob(
         const voiceSettings = readVoiceSettings();
         // A background check: its parts are diarized together, and it may cover more audio.
         const options = voiceDiarizationOptions(voiceSettings, true);
+        // P12-01 (AC-35): each voice write of both calls only as the run's owner, checked when it
+        // is made; a refused one ends here with its one stand-aside line (the catch below).
         const analyzed = await analyzeVoiceSources({
           db: job.db,
           ctx,
+          job,
           sessionId: run.session_id,
           runId: run.id,
           sources: snapshot.sources,
@@ -440,6 +443,7 @@ export function voiceAnalysisJob(
           const progress = await processVoiceSource({
             db: job.db,
             ctx,
+            job,
             runId: run.id,
             sessionId: run.session_id,
             source,
@@ -451,6 +455,9 @@ export function voiceAnalysisJob(
               correctVoiceCandidates({
                 db: job.db,
                 ctx,
+                // P12-01 (AC-39): the free write only as the run's owner, in its own guard's Tx.
+                job,
+                runId: run.id,
                 analysis,
                 provider,
                 explanationLanguage: settings.explanationLanguage,
@@ -487,6 +494,15 @@ export function voiceAnalysisJob(
           ),
         );
       } catch (error) {
+        // P12-01 (AC-41, AC-43): a voice write refused at its write boundary before the job reached
+        // its continuation (the pointer names another job, or none, with a valid claim) stands
+        // aside as the continuation's own refusal does: one pointer_moved/continue line, nothing
+        // else written, the job ends with nothing done. Told apart by its origin only; a refused
+        // provider step, a lost lease and a real error keep the error path below.
+        if (isRefusedAuxiliaryWrite(error)) {
+          logStandAside(job, definition.kind, "pointer_moved", "continue");
+          return;
+        }
         await failOwnedAuxiliaryRun(
           job,
           ctx,

@@ -10,6 +10,7 @@ import { type ProcessingStage, YIELDED, type Yielded } from "./context";
 import {
   checkpointAndContinue,
   hasTime,
+  reportStandAside,
   VOICE_ANALYSIS_TIME_MS,
   YIELD_DELAY_SECONDS,
 } from "./runtime";
@@ -29,13 +30,23 @@ export function startVoiceCheck(run: () => Promise<boolean>) {
   });
   return {
     running: () => running,
-    /** True when the check saved an analysis in this job; rethrows the check's failure. */
+    /**
+     * True when the check saved an analysis in this job; rethrows the check's failure. A refused
+     * voice write that ends the job here writes its one stand-aside line (P12-01 AC-32).
+     */
     async wait(): Promise<boolean> {
       const outcome = await result;
-      if ("error" in outcome) throw outcome.error;
+      if ("error" in outcome) {
+        reportStandAside(outcome.error);
+        throw outcome.error;
+      }
       return outcome.analyzed;
     },
-    /** Waits without rethrowing, when the job already fails for another reason. */
+    /**
+     * Waits without rethrowing, when the job already fails or stands aside for another reason:
+     * every part the check started is done when this returns, and a write it was then refused
+     * adds no second stand-aside line (P12-01 AC-32).
+     */
     async settle(): Promise<void> {
       await result;
     },
@@ -75,12 +86,15 @@ export const beginVoiceCheck: ProcessingStage<RunSource[], VoiceCheck | null | Y
       return YIELDED;
     }
     // Recording parts are checked side by side; no paid correction runs here, so required
-    // lesson generation gets cost headroom before this optional paid analysis.
+    // lesson generation gets cost headroom before this optional paid analysis. Each save is made
+    // only as the run's owner, checked when it is made (P12-01 AC-32, AC-35): a check released
+    // after the lesson's response stood aside writes nothing.
     const options = voiceDiarizationOptions(voiceSettings, false);
     voiceCheck = startVoiceCheck(() =>
       analyzeVoiceSources({
         db: job.db,
         ctx,
+        job,
         sessionId: initial.session_id,
         runId: payload.runId,
         sources: extracted,

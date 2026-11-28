@@ -471,14 +471,18 @@ it.each([
   [
     "aux owner proc.capture_transcription: retry after the continuation keeps the pointer",
     "proc.capture_transcription",
+    { code: "continuation_exists", reason: "continue" },
   ],
   [
     "aux owner proc.voice_analysis: retry after the continuation keeps the pointer",
     "proc.voice_analysis",
+    // The shared guard of a new provider attempt (runtime.ts) stops the voice retry first; the
+    // runner then records its one stand-aside on the fail path (P12-01 AC-26, E592).
+    { code: "not_owner", reason: "fail" },
   ],
-] as [string, Kind][])(
+] as [string, Kind, { code: string; reason: string }][])(
   "%s",
-  async (_name, kind) => {
+  async (_name, kind, standAside) => {
     const s = await makers[kind]();
     const base = Date.now();
     // J hands the run on to J2 and commits; its authority then ends before completeJob.
@@ -511,8 +515,8 @@ it.each([
         kind: s.kind,
         job_id: j,
         attempt: 2,
-        code: "continuation_exists",
-        reason: "continue",
+        code: standAside.code,
+        reason: standAside.reason,
       }),
     ]);
   },

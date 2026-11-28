@@ -16,7 +16,15 @@ import { studyFixture, syntheticKnowledge } from "../../test/study-fixture";
 import type { AiProvider, ProviderResult, ProviderSettings, StructuredInput } from "../aip";
 import { createDatabase } from "../db";
 import { renderClassNotesHtml } from "../lkm";
-import { type LearnerContext, MemoryObjectStore, writeOwnedObject } from "../plt";
+import {
+  claimJobs,
+  completeJob,
+  type JobContext,
+  type LearnerContext,
+  MemoryObjectStore,
+  runJobStep,
+  writeOwnedObject,
+} from "../plt";
 import { amounts, configureCostPolicy, grantEntitlement } from "../quota";
 import { appendContentVersion } from "../src";
 import {
@@ -31,7 +39,7 @@ import {
   VOICE_CONSENT_VERSION,
 } from "../voc";
 import { type RunSource, sourceSnapshotSchema } from "./contracts";
-import { createProcessingRun, getRun } from "./runs";
+import { cancelRun, createProcessingRun, getRun } from "./runs";
 import { scheduleVoiceReanalysis, voiceAnalysisJob } from "./voice-jobs";
 import {
   analyzeVoiceSources,
@@ -382,6 +390,59 @@ async function runClass(x: Fixture) {
   await runFixtureProcessingJobs(db, definition, { userId: x.ctx.userId, sessionId: x.session.id });
   return { run, snapshot };
 }
+/**
+ * P12-01 (AC-37): the Job authority of a direct voice write. A class run of the fixture's own
+ * session is created, its pointer names the job created with it, and that job is really claimed:
+ * on a queue kind of its own (made due now), so no other file's job is taken, then its real kind
+ * back at once. The context carries the claim's id, token and generation and its step comes from
+ * runJobStep. Its handler never runs, so nothing is paid. `end` completes the claim and then
+ * cancels the run with the existing APIs, so the session has no live run left.
+ */
+async function claimedClassRun(x: Fixture) {
+  const definition = processingJob({
+    provider: x.provider,
+    store: x.store,
+    diarizeVoice: x.diarize,
+  });
+  const run = await createProcessingRun(
+    db,
+    x.ctx,
+    { sessionId: x.session.id, operationKey: randomUUID() },
+    { provider: x.provider, job: definition },
+  );
+  fixtureRunIds.push(run.id);
+  const { job_id: jobId } = await db
+    .selectFrom("proc.processing_run")
+    .select("job_id")
+    .where("id", "=", run.id)
+    .executeTakeFirstOrThrow();
+  if (!jobId) throw new Error("Expected the run's job on its pointer");
+  const kind = `proc.synthetic_${randomUUID().replaceAll("-", "")}`;
+  await db
+    .updateTable("plt.job")
+    .set({ kind, run_at: new Date(Date.now() - 1000) })
+    .where("id", "=", jobId)
+    .execute();
+  const [claim] = await claimJobs(db, [kind], 1, new Date());
+  await db.updateTable("plt.job").set({ kind: definition.kind }).where("id", "=", jobId).execute();
+  if (!claim || claim.id !== jobId || claim.generation === undefined)
+    throw new Error("Expected a claim of the run's job");
+  const job: JobContext = {
+    db,
+    now: () => new Date(),
+    job: { id: claim.id, attempt: claim.attempt },
+    lease: { id: claim.id, token: claim.token, generation: claim.generation },
+    step: (name, effect) => runJobStep(db, claim, name, effect, new Date()),
+  };
+  return {
+    runId: run.id,
+    job,
+    async end() {
+      expect(await completeJob(db, claim, new Date())).toBe(true);
+      await cancelRun(db, x.ctx, run.id);
+    },
+  };
+}
 /** The view lists parts by source id; tests address them by recording order. */
 const byPart = (x: Fixture, view: Awaited<ReturnType<typeof getClassVoice>>) =>
   x.sources.map((sourceId) => {
@@ -532,10 +593,18 @@ it("PRD-SPK-02 audit: six parts, three people and 13 fragments become three clas
     1,
   );
 
-  // Item 1, incremental part (D60/D61): a seventh part saved under the same run joins the
-  // confirmed class voice without changing its id, and is the only thing asked again.
+  // Item 1, incremental part (D60/D61): a seventh part, added after the first run ended, is saved
+  // by a new run of the class through its own really claimed job (P12-01 AC-38): it joins the
+  // confirmed class voice without changing its id, and is the only thing asked again. The first
+  // run stays ready and its pointer as it was.
   const seventh = await addPart(x.ctx, x.session.id, 6, x.store);
   x.sources.push(seventh);
+  const firstRun = await db
+    .selectFrom("proc.processing_run")
+    .select(["state", "job_id"])
+    .where("id", "=", run.id)
+    .executeTakeFirstOrThrow();
+  const seventhRun = await claimedClassRun(x);
   const snapshotSource = sourceSnapshotSchema.parse(
     (
       await db
@@ -553,8 +622,9 @@ it("PRD-SPK-02 audit: six parts, three people and 13 fragments become three clas
   await processVoiceSource({
     db,
     ctx: x.ctx,
+    job: seventhRun.job,
     sessionId: x.session.id,
-    runId: run.id,
+    runId: seventhRun.runId,
     source: {
       ...snapshotSource,
       sourceId: seventh,
@@ -567,6 +637,15 @@ it("PRD-SPK-02 audit: six parts, three people and 13 fragments become three clas
     correct: async () => false,
     now: () => new Date(),
   });
+  await seventhRun.end();
+  expect(
+    await db
+      .selectFrom("proc.processing_run")
+      .select(["state", "job_id"])
+      .where("id", "=", run.id)
+      .executeTakeFirstOrThrow(),
+  ).toEqual(firstRun);
+  expect(firstRun.state).toBe("ready");
   after = await getClassVoice(db, x.ctx, x.session.id);
   expect(after.analyses).toHaveLength(7);
   const joined = after.classVoices?.find((voice) => voice.id === learnerVoice?.id);
@@ -628,7 +707,8 @@ it("FR-VOC-002 audit: a far-mic voice alike to two people stays unlinked and vis
       );
     return native;
   });
-  const runId = randomUUID();
+  // The check's writes run for a class run of this session, as its really claimed job (AC-37).
+  const owner = await claimedClassRun(x);
   const snapshot = x.sources.map((sourceId, part) => ({
     sourceId,
     contentVersionId: null as string | null,
@@ -645,8 +725,9 @@ it("FR-VOC-002 audit: a far-mic voice alike to two people stays unlinked and vis
   await analyzeVoiceSources({
     db,
     ctx: x.ctx,
+    job: owner.job,
     sessionId: x.session.id,
-    runId,
+    runId: owner.runId,
     sources: snapshot.map((item) => ({
       sourceId: item.sourceId,
       contentVersionId: item.contentVersionId,
@@ -665,6 +746,7 @@ it("FR-VOC-002 audit: a far-mic voice alike to two people stays unlinked and vis
     canStart: () => true,
     now: () => new Date(),
   });
+  await owner.end();
   const view = await getClassVoice(db, x.ctx, x.session.id);
   const voices = view.classVoices ?? [];
   // Part 2's teacher is 0.69 alike to both part 1's teacher and part 1's classmate: no link is
@@ -704,26 +786,33 @@ it("audit item 4: six parts diarized side by side finish well before the sequent
     ranges: [],
     ...partTranscript(part),
   }));
+  // Two runs and two claims (AC-37), so the first loop's analyses are no cache for the second. A
+  // class has one live run at a time: each run, its job and its claim are prepared before its own
+  // timing starts, and the first is ended (claim completed, run cancelled) after its timing ends.
+  const sequentialRun = await claimedClassRun(x);
   const sequentialStart = performance.now();
-  const sequentialRun = randomUUID();
   for (const source of sources)
     await processVoiceSource({
       db,
       ctx: x.ctx,
+      job: sequentialRun.job,
       sessionId: x.session.id,
-      runId: sequentialRun,
+      runId: sequentialRun.runId,
       source,
       diarize: x.diarize,
       correct: async () => false,
       now: () => new Date(),
     });
   const sequentialMs = performance.now() - sequentialStart;
+  await sequentialRun.end();
+  const parallelRun = await claimedClassRun(x);
   const parallelStart = performance.now();
   await analyzeVoiceSources({
     db,
     ctx: x.ctx,
+    job: parallelRun.job,
     sessionId: x.session.id,
-    runId: randomUUID(),
+    runId: parallelRun.runId,
     sources,
     diarize: x.diarize,
     concurrency: 3,
@@ -731,6 +820,7 @@ it("audit item 4: six parts diarized side by side finish well before the sequent
     now: () => new Date(),
   });
   const parallelMs = performance.now() - parallelStart;
+  await parallelRun.end();
   console.info(
     `voice-class-parts timing: sequential ${Math.round(sequentialMs)} ms, parallel(3) ${Math.round(parallelMs)} ms`,
   );

@@ -2,7 +2,7 @@ import type { RunSource } from "../contracts";
 import { correctVoiceCandidates, processVoiceSource } from "../voice-processing";
 import type { ProcessingStage } from "./context";
 import type { ValidatedKnowledge } from "./legacy-knowledge-repair";
-import { providerStep } from "./runtime";
+import { providerStep, reportStandAside } from "./runtime";
 import type { VoiceCheck } from "./voice-check";
 
 /**
@@ -29,40 +29,52 @@ export const correctSpokenMistakes: ProcessingStage<
     // Nor with the acoustic check that ran in this job: the check is saved first.
     if (voiceCheck && (await voiceCheck.wait())) return "checkpoint";
     for (const source of extracted) {
-      const voiceProgress = await processVoiceSource({
-        db: job.db,
-        ctx,
-        sessionId: initial.session_id,
-        runId: payload.runId,
-        source,
-        explanationLanguage: settings.explanationLanguage,
-        diarize: dependencies.diarizeVoice,
-        now: job.now,
-        correct: (analysis) =>
-          correctVoiceCandidates({
-            db: job.db,
-            ctx,
-            analysis,
-            explanationLanguage: settings.explanationLanguage,
-            provider,
-            now: job.now,
-            referenceTexts: classified
-              .filter((item) => item.kind !== "audio" && item.role !== "user_notes")
-              .flatMap((item) => item.blocks.map((block) => block.text)),
-            execute: (request) =>
-              providerStep(
-                job,
-                ctx,
-                payload.runId,
-                request.step,
-                request.model,
-                provider,
-                request.schema,
-                request.effect,
-                { onCommit: request.onCommit },
-              ),
-          }),
-      });
+      let voiceProgress: Awaited<ReturnType<typeof processVoiceSource>>;
+      try {
+        voiceProgress = await processVoiceSource({
+          db: job.db,
+          ctx,
+          // P12-01 (AC-31, AC-35): each voice write only as the run's owner.
+          job,
+          sessionId: initial.session_id,
+          runId: payload.runId,
+          source,
+          explanationLanguage: settings.explanationLanguage,
+          diarize: dependencies.diarizeVoice,
+          now: job.now,
+          correct: (analysis) =>
+            correctVoiceCandidates({
+              db: job.db,
+              ctx,
+              // P12-01 (AC-39): the free write only as the run's owner, in its own guard's Tx.
+              job,
+              runId: payload.runId,
+              analysis,
+              explanationLanguage: settings.explanationLanguage,
+              provider,
+              now: job.now,
+              referenceTexts: classified
+                .filter((item) => item.kind !== "audio" && item.role !== "user_notes")
+                .flatMap((item) => item.blocks.map((block) => block.text)),
+              execute: (request) =>
+                providerStep(
+                  job,
+                  ctx,
+                  payload.runId,
+                  request.step,
+                  request.model,
+                  provider,
+                  request.schema,
+                  request.effect,
+                  { onCommit: request.onCommit },
+                ),
+            }),
+        });
+      } catch (error) {
+        // A refused voice write ends the job here with its one stand-aside line (AC-31).
+        reportStandAside(error);
+        throw error;
+      }
       if (voiceProgress !== "unchanged") {
         return "checkpoint";
       }
