@@ -46,6 +46,9 @@ export const correctSpokenMistakes: ProcessingStage<
             correctVoiceCandidates({
               db: job.db,
               ctx,
+              // P12-01 (AC-39): the free write only as the run's owner, in its own guard's Tx.
+              job,
+              runId: payload.runId,
               analysis,
               explanationLanguage: settings.explanationLanguage,
               provider,

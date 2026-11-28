@@ -398,6 +398,14 @@ export function validateVoiceCorrections(
 export async function correctVoiceCandidates(input: {
   db: Database;
   ctx: LearnerContext;
+  /**
+   * The Job authority of the free write (AC-39, AC-35), carried by both job callers. Checked at run
+   * time when that write is made: absent or broken, the free write is refused (`JobLeaseLost`),
+   * never made unchecked. The paid branch does not read it (its executor carries the job).
+   */
+  job?: VoiceWriteJob;
+  /** The run the free write is made for; the analysis' own run when absent. */
+  runId?: string;
   analysis: PrivateVoiceAnalysis;
   provider: AiProvider;
   execute: VoiceCorrectionExecutor;
@@ -415,16 +423,23 @@ export async function correctVoiceCandidates(input: {
   // Every accepted mistake needs a second same-speaker occurrence; without one, a billable
   // request can only return discarded suggestions. Record "no mistakes" for free instead.
   if (!hasRepeatableVoiceEvidence(analysis.utterances)) {
-    await saveVoiceCandidateMistakes(
-      input.db,
-      input.ctx,
-      {
-        analysisId: analysis.id,
-        profileVersion: analysis.profileVersion,
-        mistakes: Object.fromEntries(analysis.candidates.map((candidate) => [candidate.id, []])),
-        explanationLanguage,
-      },
-      input.now(),
+    // P12-01 (AC-39, R2-P1201-D-01): only this free write is put under the write boundary, in the
+    // transaction that checks the job's claim, the account lock and the run's pointer; that same
+    // transaction (`tx`, never input.db) reaches the save. No provider call is made here, and the
+    // paid branch below keeps its own accounting and commit. A missing or broken `job` is refused
+    // before the write; a refusal passes on as a stand-aside (isStandAside), never as a failure.
+    await writeAsRunOwner(input.db, input.ctx, input.runId ?? analysis.runId, input.job, (tx) =>
+      saveVoiceCandidateMistakes(
+        tx,
+        input.ctx,
+        {
+          analysisId: analysis.id,
+          profileVersion: analysis.profileVersion,
+          mistakes: Object.fromEntries(analysis.candidates.map((candidate) => [candidate.id, []])),
+          explanationLanguage,
+        },
+        input.now(),
+      ),
     );
     return true;
   }
@@ -565,6 +580,10 @@ export async function processVoiceSource(input: {
         input.explanationLanguage,
       );
     } catch (error) {
+      // P12-01 (AC-40, R2-P1201-D-02): the first decision of this catch: a stand-aside or a
+      // cancellation from the engine is passed on as it is, never taken for an engine failure, so
+      // no fallback is built, saved or relinked. An ordinary engine error keeps today's fallback.
+      if (isStandAside(error)) throw error;
       prepared = buildTranscriptVoiceAnalysis(
         { ...key, profileVersion: enrollment.version, startedAt },
         input.source,

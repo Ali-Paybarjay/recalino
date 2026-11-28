@@ -323,6 +323,24 @@ export function reportStandAside(error: unknown): void {
   pendingStandAside.delete(error);
   report();
 }
+/**
+ * P12-01 (AC-41, AC-43): the stand-aside of an auxiliary job's voice write refused by
+ * writeAsRunOwner, before the job reached its continuation. Its origin is the refused write, not a
+ * provider step (the start guard of a new attempt or a refused response, `runNotOwned`) and not a
+ * real error; so the handler records it as `pointer_moved`/`continue` (voice-jobs.ts), once, and
+ * writes nothing else. It is still the retryable ProviderError with RUN_NOT_OWNED_CODE, so every
+ * recovery catch on its way passes it on as a stand-aside (isStandAside): no fallback, mark or read.
+ */
+class AuxiliaryWriteNotOwned extends ProviderError {
+  constructor() {
+    super(RUN_NOT_OWNED_CODE, true, false);
+    this.name = "AuxiliaryWriteNotOwned";
+  }
+}
+/** Whether the error is an auxiliary job's refused voice write (AC-41); never any other refusal. */
+export function isRefusedAuxiliaryWrite(error: unknown): boolean {
+  return error instanceof AuxiliaryWriteNotOwned;
+}
 /** Thrown inside writeAsRunOwner's transaction so that it rolls back; never leaves this file. */
 class WriteNotOwned extends Error {
   constructor(readonly kind: string | undefined) {
@@ -352,9 +370,10 @@ export type VoiceWriteJob = Pick<JobContext, "lease"> & Partial<Pick<JobContext,
  * 3. No job, or a job with neither a lease nor that mark: refused before any write (`JobLeaseLost`).
  *    A missing field never means a free API.
  * A refused claim throws `JobLeaseLost`. A valid claim of a job that does not own the run writes
- * nothing and stands aside: an auxiliary run's job gets the retryable ProviderError with
- * RUN_NOT_OWNED_CODE (its handler logs its own line, voice-jobs.ts failOwnedAuxiliaryRun); a class
- * run's job gets `RunNotOwned`, whose one line is written by reportStandAside.
+ * nothing and stands aside: an auxiliary run's job gets `AuxiliaryWriteNotOwned`, the retryable
+ * ProviderError with RUN_NOT_OWNED_CODE told apart by its origin (its handler logs its one
+ * `pointer_moved`/`continue` line, voice-jobs.ts; AC-41, AC-43); a class run's job gets
+ * `RunNotOwned`, whose one line is written by reportStandAside.
  */
 export async function writeAsRunOwner<T>(
   db: Database,
@@ -385,7 +404,7 @@ export async function writeAsRunOwner<T>(
     });
   } catch (error) {
     if (!(error instanceof WriteNotOwned)) throw error;
-    if (error.kind === "auxiliary") throw new ProviderError(RUN_NOT_OWNED_CODE, true, false);
+    if (error.kind === "auxiliary") throw new AuxiliaryWriteNotOwned();
     const refused = new RunNotOwned();
     pendingStandAside.set(refused, () => logRunNotOwner(claim ?? {}, "not_owner", "write"));
     throw refused;

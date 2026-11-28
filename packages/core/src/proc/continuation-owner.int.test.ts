@@ -48,6 +48,7 @@ import {
   completeJob,
   DEFAULT_PLT_SETTINGS,
   enqueueJob,
+  JobCancelled,
   type JobContext,
   type JobDefinition,
   type LogValue,
@@ -70,7 +71,13 @@ import {
   temporaryAudioPartLink,
   verifyTemporaryAudio,
 } from "../src";
-import { enableVoice, VOICE_CONSENT_VERSION } from "../voc";
+import {
+  enableVoice,
+  findVoiceAnalysis,
+  hasRepeatableVoiceEvidence,
+  type PrivateVoiceAnalysis,
+  VOICE_CONSENT_VERSION,
+} from "../voc";
 import { captureTranscriptionJob, scheduleCaptureTranscription } from "./capture-transcription";
 import { sourceSnapshotSchema } from "./contracts";
 import { reconcileEndedJobRuns } from "./maintenance";
@@ -78,6 +85,7 @@ import { createProcessingRun } from "./runs";
 import { scheduleVoiceReanalysis, voiceAnalysisJob } from "./voice-jobs";
 import {
   analyzeVoiceSources,
+  correctVoiceCandidates,
   processVoiceSource,
   scopedVoiceSpeakerId,
   type VoiceDiarization,
@@ -1331,8 +1339,16 @@ async function liveOriginal(ctx: { userId: string; requestId: string }, assetId:
     })
     .execute();
 }
-/** A class audio source of two speakers: the teacher once, the learner's same line twice. */
-async function twoSpeakerSource(ctx: { userId: string; requestId: string }, sessionId: string) {
+/**
+ * A class audio source of two speakers: the teacher once, the learner's same line twice. With
+ * `repeated` false (AC-39), the learner's second turn is a self-correction, which corroborates
+ * nothing: the analysis keeps its candidates but has no repeated evidence (the free branch).
+ */
+async function twoSpeakerSource(
+  ctx: { userId: string; requestId: string },
+  sessionId: string,
+  repeated = true,
+) {
   const asset = await db
     .insertInto("src.asset")
     .values({
@@ -1393,7 +1409,7 @@ async function twoSpeakerSource(ctx: { userId: string; requestId: string }, sess
           id: "learner-repeat-text",
           kind: "transcript",
           unitId: "learner-repeat",
-          text: "I am agree with you.",
+          text: repeated ? "I am agree with you." : "Sorry, I mean I agree with you.",
           speakerId: speaker("learner"),
         },
       ],
@@ -1430,10 +1446,10 @@ async function until(ready: () => boolean | Promise<boolean>, what: string): Pro
 }
 
 /** A class audio source with speaker-labelled transcript turns and its explicit voice check run. */
-async function voiceSubject(acoustic?: Acoustic): Promise<AuxSubject> {
+async function voiceSubject(acoustic?: Acoustic, repeated = true): Promise<AuxSubject> {
   const x = await studyFixture(db);
   await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
-  const assetId = await twoSpeakerSource(x.ctx, x.session.id);
+  const assetId = await twoSpeakerSource(x.ctx, x.session.id, repeated);
   // With `acoustic`, a live original and the acoustic engine (AC-36); otherwise the source keeps
   // no original here, so the check reads the transcript labels instead.
   if (acoustic) await liveOriginal(x.ctx, assetId);
@@ -2031,10 +2047,14 @@ it(
  * Extraction is cached as the voice fixtures cache it (the run's own `source:` checkpoints); with
  * `lessonCached`, the lesson too, so the run goes on to the spoken-mistake correction.
  */
-async function classVoiceSubject(options: { acoustic?: Acoustic; lessonCached?: boolean }) {
+async function classVoiceSubject(options: {
+  acoustic?: Acoustic;
+  lessonCached?: boolean;
+  repeated?: boolean;
+}) {
   const x = await studyFixture(db);
   await enableVoice(db, x.ctx, VOICE_CONSENT_VERSION);
-  const assetId = await twoSpeakerSource(x.ctx, x.session.id);
+  const assetId = await twoSpeakerSource(x.ctx, x.session.id, options.repeated ?? true);
   await liveOriginal(x.ctx, assetId);
   await allowanceFor(x.ctx.userId, { audio: 2000, document: 100, regeneration: 100 });
   await costPolicy();
@@ -2446,12 +2466,21 @@ async function voiceJobAwayAtCheck(to: "another" | "null") {
     ),
   });
   expect(after.attempts).toEqual([]);
-  expect(after.state).toBe("processing");
+  // The run is still in its first stage (queued, its initial state) when the check stops; the
+  // stop writes no state of its own: the state after is the snapshot's (AC-36, verdict 002 §5).
+  expect(observed.state).toBe("queued");
+  expect(after.state).toBe(observed.state);
   expect(after.lastError).toBeNull();
   const t = target as string | null;
   if (t) expect(after.job(t)).toEqual(observed.job(t));
+  // The refused acoustic write before the continuation: one pointer_moved/continue line (AC-43).
   expect(first.standAsides).toEqual([
-    expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
+    expect.objectContaining({
+      kind: s.kind,
+      job_id: owner,
+      code: "pointer_moved",
+      reason: "continue",
+    }),
   ]);
 }
 /** :440-type path: the owner saved the analysis; the pointer leaves its correction's job. */
@@ -2490,6 +2519,8 @@ async function voiceJobAwayAtCorrection(to: "another" | "null") {
       row.id === owner ? { ...row, state: "succeeded" } : row,
     ),
   });
+  // The state of this stage's own snapshot, as it was (AC-36; not forced to queued).
+  expect(after.state).toBe(observed.state);
   expect(after.lastError).toBeNull();
   expect(paid.standAsides).toEqual([
     expect.objectContaining({ kind: s.kind, job_id: owner, code: "not_owner", reason: "fail" }),
@@ -2543,9 +2574,18 @@ it.each([
 ] as [string, "another" | "null"][])(
   "%s",
   async (_name, to) => {
-    // Both writing calls of the job, each on a run of its own.
-    await voiceJobAwayAtCheck(to);
-    await voiceJobAwayAtCorrection(to);
+    // Both writing calls of the job, each on a run of its own; each runs to its end, so a failure
+    // of the first does not hide the second's evidence (AC-36, verdict 002 §5).
+    const failures: unknown[] = [];
+    for (const away of [voiceJobAwayAtCheck, voiceJobAwayAtCorrection]) {
+      try {
+        await away(to);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, "Both voice job paths failed");
   },
   2 * TEST_TIMEOUT_MS,
 );
@@ -2557,19 +2597,27 @@ it(
     const s = await voiceSubject(acoustic);
     const sessionId = s.target.subjectId;
     const owner = await pointerOf(s.runId);
-    // The job's lease runs out while its check of a part runs.
-    acoustic.hold = () => loseLease({ id: owner });
+    // The job's lease runs out while its check of a part runs; the snapshot just before that.
+    let stopped: Observed | undefined;
+    acoustic.hold = async () => {
+      stopped = await observe(s.runId);
+      await loseLease({ id: owner });
+    };
     const before = await voiceRows(sessionId);
     const observedBefore = await observe(s.runId);
     const first = await round(s, { at: Date.now() + 10 * MINUTE, time: true, loseLease: true });
     expect(first.ran).toEqual([owner]);
+    if (!stopped) throw new Error("Expected the check of a part");
+    const snapshot = stopped as Observed;
     expect(acoustic).toMatchObject({ started: 1, finished: 1 });
     expect(await voiceRows(sessionId)).toEqual(before);
     const after = await observe(s.runId);
     expect(after.pointer).toBe(owner);
     expect(after.steps).toEqual(observedBefore.steps);
     expect(after.attempts).toEqual([]);
-    expect(after.state).toBe("processing");
+    // Queued, its initial state, when the check stops; the state after is that snapshot's (AC-36).
+    expect(snapshot.state).toBe("queued");
+    expect(after.state).toBe(snapshot.state);
     expect(after.lastError).toBeNull();
     expect(first.standAsides.filter((line) => line.code === "not_owner")).toEqual([]);
   },
@@ -2627,6 +2675,446 @@ it(
     expect(engine).toMatchObject({ started: 3, finished: 3 });
     expect(await voiceRows(sessionId)).toEqual([]);
     expect(await pointerOf(s.runId)).toBe(pointer);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The free voice correction (AC-39, AC-42; R2-P1201-D-01): a saved analysis with candidates but no
+// repeated evidence records "no mistakes" for free, with no provider call. That write is made only
+// as the run's owner, in the transaction of its write boundary, on both job paths (the class job's
+// correction stage and the voice check job).
+
+/**
+ * The AC-39 seam, on the test side only (no production API is added for it): the job's own
+ * database, except that a transaction opened by the free correction write (writeAsRunOwner called
+ * from correctVoiceCandidates, read from the call stack when the transaction is opened) first runs
+ * `before`, once. `reached` counts those transactions: the positive control that the free branch
+ * itself was taken, not an earlier stop.
+ */
+function freeWriteDatabase(base: Database, before?: () => Promise<void>) {
+  const seam = { reached: 0 };
+  let pending = before;
+  const bound = (target: object, name: string | symbol) => {
+    const value = Reflect.get(target, name, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  };
+  const proxied = new Proxy(base, {
+    get(target, name) {
+      if (name !== "transaction") return bound(target, name);
+      return () => {
+        const limit = Error.stackTraceLimit;
+        Error.stackTraceLimit = 64;
+        const stack = new Error().stack ?? "";
+        Error.stackTraceLimit = limit;
+        const builder = target.transaction();
+        if (!stack.includes("writeAsRunOwner") || !stack.includes("correctVoiceCandidates"))
+          return builder;
+        seam.reached++;
+        return new Proxy(builder, {
+          get(inner, member) {
+            if (member !== "execute") return bound(inner, member);
+            return async <T>(effect: (tx: Tx) => Promise<T>): Promise<T> => {
+              const hook = pending;
+              pending = undefined;
+              await hook?.();
+              return inner.execute(effect);
+            };
+          },
+        });
+      };
+    },
+  });
+  return { db: proxied as Database, seam };
+}
+/** The run's one saved analysis, as the correction reads it. */
+async function savedAnalysis(
+  ctx: { userId: string; requestId: string },
+  sessionId: string,
+  runId: string,
+): Promise<PrivateVoiceAnalysis> {
+  const row = await db
+    .selectFrom("voc.analysis")
+    .select(["source_id", "source_version_id"])
+    .where("run_id", "=", runId)
+    .executeTakeFirstOrThrow();
+  const analysis = await findVoiceAnalysis(db, ctx, {
+    sessionId,
+    sourceId: row.source_id,
+    sourceVersionId: row.source_version_id,
+    runId,
+  });
+  if (!analysis) throw new Error("Expected the saved analysis");
+  return analysis;
+}
+/** The free branch's precondition: candidates, no repeated evidence, mistakes not yet recorded. */
+function expectFreeBranch(analysis: PrivateVoiceAnalysis) {
+  expect(analysis.candidates.length).toBeGreaterThan(0);
+  expect(hasRepeatableVoiceEvidence(analysis.utterances)).toBe(false);
+  expect(
+    analysis.candidates.every((candidate) => Object.hasOwn(analysis.mistakes, candidate.id)),
+  ).toBe(false);
+}
+/** The owner's free write: "no mistakes" for every candidate of the same analysis. */
+function expectFreeSave(before: PrivateVoiceAnalysis, after: PrivateVoiceAnalysis) {
+  expect(after.id).toBe(before.id);
+  expect(Object.keys(after.mistakes).sort()).toEqual(
+    before.candidates.map((candidate) => candidate.id).sort(),
+  );
+  for (const items of Object.values(after.mistakes)) expect(items).toEqual([]);
+}
+
+/** J, the class run's owner, saves an analysis with no repeated evidence and hands on to J2. */
+async function freeClassOwner() {
+  const s = await classVoiceSubject({ lessonCached: true, repeated: false });
+  const first = await pointerOf(s.runId);
+  const j = await claimClass(s, first);
+  await j.run();
+  expect(await completeJob(db, j.claim, new Date())).toBe(true);
+  expect(j.standAsides()).toEqual([]);
+  const second = await pointerOf(s.runId);
+  expect(second).not.toBe(first);
+  const saved = await voiceRows(s.sessionId);
+  expect(saved).toHaveLength(1);
+  const analysis = await savedAnalysis(s.ctx, s.sessionId, s.runId);
+  expectFreeBranch(analysis);
+  expect(s.gate.calls).toBe(0);
+  return { s, second, saved, analysis };
+}
+/** J2 reaches the free write; `away` runs just before that write's transaction opens. */
+async function freeClassAway(options: { to?: "another" | "null"; invalidLease?: boolean }) {
+  const { s, second, saved, analysis } = await freeClassOwner();
+  let target: string | null = second;
+  let moved: Observed | undefined;
+  const { db: seamDb, seam } = freeWriteDatabase(db, async () => {
+    if (options.to) {
+      target = options.to === "another" ? await anotherClassJob(s) : null;
+      // Injected state: the pointer leaves J2 after its start guard, before its free write.
+      await injectPointer(s.runId, target);
+    }
+    if (options.invalidLease) await loseLease({ id: second });
+    moved = await observe(s.runId);
+  });
+  const j2 = await claimClass(s, second, {
+    db: seamDb,
+    ...(options.invalidLease ? { renew: false } : {}),
+  });
+  await j2.run();
+  // The positive control: J2 really reached the free branch's write, once.
+  expect(seam.reached).toBe(1);
+  if (!moved) throw new Error("Expected the free write");
+  const observed = moved as Observed;
+  const after = await observe(s.runId);
+  // The whole voc.analysis row as it was; no callback, checkpoint or run change; no paid call.
+  expect(await voiceRows(s.sessionId)).toEqual(saved);
+  expect(runFacts(after)).toEqual(runFacts(observed));
+  expect(after.attempts).toEqual([]);
+  expect(after.costs).toEqual([]);
+  expect(s.gate.calls).toBe(0);
+  expect(after.pointer).toBe(target);
+  expect(after.lastError).toBeNull();
+  const t = target as string | null;
+  if (t && t !== second) expect(after.job(t)).toEqual(observed.job(t));
+  return { s, second, j2, analysis, after, observed };
+}
+
+it.each([
+  [
+    "free voice correction proc.process: after the pointer moves to another job the free path changes nothing",
+    "another",
+  ],
+  [
+    "free voice correction proc.process: after the pointer becomes null the free path changes nothing",
+    "null",
+  ],
+] as [string, "another" | "null"][])(
+  "%s",
+  async (_name, to) => {
+    const { second, j2 } = await freeClassAway({ to });
+    // One stand-aside line, at the refused write (the class contract); no retry or failure.
+    expect(j2.standAsides()).toEqual([
+      expect.objectContaining({ job_id: second, code: "not_owner", reason: "write" }),
+    ]);
+    expect(await completeJob(db, j2.claim, new Date())).toBe(true);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "free voice correction proc.process: an invalid lease makes the free path change nothing",
+  async () => {
+    const { second, j2, after } = await freeClassAway({ invalidLease: true });
+    expect(after.pointer).toBe(second);
+    // The claim was void, not the ownership: no not-owner line.
+    expect(j2.standAsides()).toEqual([]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "free voice correction proc.process: the valid owner still saves the free correction as today",
+  async () => {
+    const { s, second, saved, analysis } = await freeClassOwner();
+    const { db: seamDb, seam } = freeWriteDatabase(db);
+    const j2 = await claimClass(s, second, { db: seamDb });
+    await j2.run();
+    expect(await completeJob(db, j2.claim, new Date())).toBe(true);
+    expect(seam.reached).toBe(1);
+    expect(j2.standAsides()).toEqual([]);
+    // Saved for free on the same analysis: no provider call, no attempt and no cost row.
+    expectFreeSave(analysis, await savedAnalysis(s.ctx, s.sessionId, s.runId));
+    expect((await voiceRows(s.sessionId))[0]?.updated_at).not.toEqual(saved[0]?.updated_at);
+    const after = await observe(s.runId);
+    expect(s.gate.calls).toBe(0);
+    expect(after.attempts).toEqual([]);
+    expect(after.costs).toEqual([]);
+    expect(after.lastError).toBeNull();
+    // The run goes on as before: J2 hands on after its saved progress.
+    expect(after.pointer).not.toBe(second);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+/** J, the voice check job's owner, saves an analysis with no repeated evidence and hands on. */
+async function freeVoiceOwner() {
+  const s = await voiceSubject(undefined, false);
+  const sessionId = s.target.subjectId;
+  const ctx = { userId: s.userId, requestId: randomUUID() };
+  const base = Date.now();
+  const first = await round(s, { at: base + 10 * MINUTE });
+  expect(first.standAsides).toEqual([]);
+  const owner = await pointerOf(s.runId);
+  const saved = await voiceRows(sessionId);
+  expect(saved).toHaveLength(1);
+  const analysis = await savedAnalysis(ctx, sessionId, s.runId);
+  expectFreeBranch(analysis);
+  expect(s.gate.calls).toBe(0);
+  return { s, sessionId, ctx, base, owner, saved, analysis };
+}
+/** The owner's next job reaches the free write; `away` runs just before its transaction opens. */
+async function freeVoiceAway(options: { to?: "another" | "null"; invalidLease?: boolean }) {
+  const { s, sessionId, base, owner, saved } = await freeVoiceOwner();
+  let target: string | null = owner;
+  let moved: Observed | undefined;
+  const { db: seamDb, seam } = freeWriteDatabase(db, async () => {
+    if (options.to) {
+      target = options.to === "another" ? await anotherAuxJob(s) : null;
+      // Injected state: the pointer leaves the job before its free write.
+      await injectPointer(s.runId, target);
+    }
+    if (options.invalidLease) await loseLease({ id: owner });
+    moved = await observe(s.runId);
+  });
+  const paid = await round(s, {
+    at: base + 20 * MINUTE,
+    time: true,
+    db: seamDb,
+    ...(options.invalidLease ? { loseLease: true } : {}),
+  });
+  expect(paid.ran).toEqual([owner]);
+  expect(seam.reached).toBe(1);
+  if (!moved) throw new Error("Expected the free write");
+  const observed = moved as Observed;
+  const after = await observe(s.runId);
+  expect(await voiceRows(sessionId)).toEqual(saved);
+  expect(after.attempts).toEqual([]);
+  expect(after.costs).toEqual([]);
+  expect(s.gate.calls).toBe(0);
+  expect(after.pointer).toBe(target);
+  expect(after.steps).toEqual(observed.steps);
+  expect(after.state).toBe(observed.state);
+  expect(after.lastError).toBeNull();
+  const t = target as string | null;
+  if (t && t !== owner) expect(after.job(t)).toEqual(observed.job(t));
+  return { s, owner, paid, after, observed };
+}
+
+it.each([
+  [
+    "free voice correction proc.voice_analysis: after the pointer moves to another job the free path changes nothing",
+    "another",
+  ],
+  [
+    "free voice correction proc.voice_analysis: after the pointer becomes null the free path changes nothing",
+    "null",
+  ],
+] as [string, "another" | "null"][])(
+  "%s",
+  async (_name, to) => {
+    const { s, owner, paid, after, observed } = await freeVoiceAway({ to });
+    expect(runFacts(after)).toEqual({
+      ...runFacts(observed),
+      jobs: runFacts(observed).jobs.map((row) =>
+        row.id === owner ? { ...row, state: "succeeded" } : row,
+      ),
+    });
+    // A refused voice write before the continuation: one pointer_moved/continue line (AC-43).
+    expect(paid.standAsides).toEqual([
+      expect.objectContaining({
+        kind: s.kind,
+        job_id: owner,
+        code: "pointer_moved",
+        reason: "continue",
+      }),
+    ]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "free voice correction proc.voice_analysis: an invalid lease makes the free path change nothing",
+  async () => {
+    const { s, owner, paid, after } = await freeVoiceAway({ invalidLease: true });
+    expect(after.pointer).toBe(owner);
+    // The lease's own stand-aside, once; never a pointer_moved one (AC-43).
+    expect(paid.standAsides).toEqual([
+      expect.objectContaining({
+        kind: s.kind,
+        job_id: owner,
+        code: "job_lease_lost",
+        reason: "fail",
+      }),
+    ]);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "free voice correction proc.voice_analysis: the valid owner still saves the free correction as today",
+  async () => {
+    const { s, sessionId, ctx, base, owner, saved, analysis } = await freeVoiceOwner();
+    const { db: seamDb, seam } = freeWriteDatabase(db);
+    const paid = await round(s, { at: base + 20 * MINUTE, time: true, db: seamDb });
+    expect(paid.ran).toEqual([owner]);
+    expect(seam.reached).toBe(1);
+    expect(paid.standAsides).toEqual([]);
+    expectFreeSave(analysis, await savedAnalysis(ctx, sessionId, s.runId));
+    expect((await voiceRows(sessionId))[0]?.updated_at).not.toEqual(saved[0]?.updated_at);
+    const after = await observe(s.runId);
+    expect(s.gate.calls).toBe(0);
+    expect(after.attempts).toEqual([]);
+    expect(after.costs).toEqual([]);
+    expect(after.lastError).toBeNull();
+    // Its saved progress hands the run on, as before.
+    expect(after.pointer).not.toBe(owner);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+it(
+  "free voice correction: an input without Job authority is refused before the free write",
+  async () => {
+    // Deliberately without authority (AC-39): no Job, and a Job with neither a lease nor a mark,
+    // both on a saved analysis that takes the free branch.
+    const { s, sessionId, ctx, owner, saved, analysis } = await freeVoiceOwner();
+    const { db: seamDb, seam } = freeWriteDatabase(db);
+    const execute = vi.fn();
+    const common = {
+      db: seamDb,
+      ctx,
+      runId: s.runId,
+      analysis,
+      provider: gatedProvider(syntheticSettings("synthetic-owner"), s.gate),
+      execute,
+      now: () => new Date(),
+    };
+    const handMade = {
+      db: seamDb,
+      now: () => new Date(),
+      job: { id: owner, attempt: 1 },
+    } as unknown as JobContext;
+    await expect(correctVoiceCandidates({ ...common })).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    await expect(correctVoiceCandidates({ ...common, job: handMade })).rejects.toMatchObject({
+      name: "JobLeaseLost",
+    });
+    // Both reached the free branch's write and were refused there; nothing paid was dispatched.
+    expect(seam.reached).toBe(2);
+    expect(execute).not.toHaveBeenCalled();
+    expect(s.gate.calls).toBe(0);
+    expect(await voiceRows(sessionId)).toEqual(saved);
+    expect(await pointerOf(s.runId)).toBe(owner);
+  },
+  TEST_TIMEOUT_MS,
+);
+
+// ---------------------------------------------------------------------------------------------
+// The acoustic preparation catch (AC-40; R2-P1201-D-02): a stand-aside or cancellation from the
+// engine is passed on before any fallback; an ordinary engine error keeps today's fallback.
+
+/** The class job, the run's owner, with its acoustic engine started and held; it then rejects. */
+async function acousticPreparation(reject: () => Error, options: { cancel?: boolean } = {}) {
+  let rejectEngine: (error: Error) => void = () => {};
+  const acoustic: Acoustic = {
+    started: 0,
+    finished: 0,
+    hold: () =>
+      new Promise<void>((_resolve, fail) => {
+        rejectEngine = fail;
+      }),
+  };
+  const s = await classVoiceSubject({ acoustic, lessonCached: true });
+  const j = await pointerOf(s.runId);
+  const before = await voiceRows(s.sessionId);
+  const owner = await claimClass(s, j);
+  const running = owner.run();
+  await until(() => acoustic.started === 1, "the acoustic engine started");
+  // A real cancellation of the job (its lease is void after it).
+  if (options.cancel) await cancelJob(db, j, new Date());
+  const held = await observe(s.runId);
+  expect(acoustic.finished).toBe(0);
+  rejectEngine(reject());
+  await running;
+  return { s, j, owner, acoustic, before, held };
+}
+
+it(
+  "acoustic preparation: the engine really starts and waits, then the job is cancelled; the preparation catch passes the cancellation through with no fallback, save or relink, collects the started work and writes no extra log",
+  async () => {
+    // First with the lease and the pointer still valid when the engine rejects, so no guard
+    // further down can be why nothing is written; then after a real cancellation of the job.
+    for (const cancel of [false, true]) {
+      const r = await acousticPreparation(() => new JobCancelled(), { cancel });
+      if (!cancel) {
+        expect(r.held.pointer).toBe(r.j);
+        expect(r.held.job(r.j)).toMatchObject({
+          state: "running",
+          lease_token: r.owner.claim.token,
+        });
+      } else expect(r.held.job(r.j)?.state).toBe("cancelled");
+      const after = await observe(r.s.runId);
+      // No fallback analysis saved, nothing relinked, no checkpoint or result, no paid call.
+      expect(await voiceRows(r.s.sessionId)).toEqual(r.before);
+      expect(r.before).toEqual([]);
+      expect(runFacts(after)).toEqual(runFacts(r.held));
+      expect(after.attempts).toEqual([]);
+      expect(after.costs).toEqual([]);
+      expect(r.s.gate.calls).toBe(0);
+      // The started engine run is collected, and the stop writes no line of its own.
+      expect(r.acoustic).toMatchObject({ started: 1, finished: 1 });
+      expect(r.owner.logs).toEqual([]);
+      expect(await completeJob(db, r.owner.claim, new Date())).toBe(!cancel);
+    }
+  },
+  2 * TEST_TIMEOUT_MS,
+);
+
+it(
+  "acoustic preparation: a normal engine error of the valid owner still takes today's fallback",
+  async () => {
+    const r = await acousticPreparation(() => new Error("voice_engine_failed"));
+    expect(await completeJob(db, r.owner.claim, new Date())).toBe(true);
+    expect(r.acoustic).toMatchObject({ started: 1, finished: 1 });
+    expect(r.owner.standAsides()).toEqual([]);
+    // The transcript fallback is saved as the owner's analysis, and the run goes on.
+    const rows = await voiceRows(r.s.sessionId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ run_id: r.s.runId, model_version: "transcript-labels-v1" });
+    const after = await observe(r.s.runId);
+    expect(after.lastError).toBeNull();
+    expect(after.pointer).not.toBe(r.j);
+    expect(r.s.gate.calls).toBe(0);
   },
   TEST_TIMEOUT_MS,
 );
